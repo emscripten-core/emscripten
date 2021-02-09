@@ -3512,22 +3512,84 @@ LibraryManager.library = {
     return readAsmConstArgsArray;
   },
 
+  // Note: parameters and locals are prefixed with __ to avoid collisions. We
+  // are evalling in the context of this function (so that we can see the outer
+  // scope with other JS library code - which we need, and we would lose with a
+  // global eval). So locals in this function may confuse us.
+  $getAsmConst: function(__code, __numArgs) {
+#if !POST_PROCESS_JS
+    // When fully optimizing we emit the EM_ASM code in the JS, so that it can
+    // be seen by the JS optimizer. When not optimizing, we can optionally
+    // create the functions at runtime, if eval() or new Function() are
+    // available, which can save work by wasm-emscripten-finalize.
+    if (!ASM_CONSTS[__code]) {
+      // Do all the work in a function scope to avoid locals being seen by the
+      // later eval().
+      var __func = (function(code, numArgs) {
+        var argNames = [];
+        for (var i = 0; i < numArgs; i++) {
+          argNames.push('$' + i);
+        }
+        var body = UTF8ToString(code).trim();
+        // Fix escaping.
+        body = body.replace(/\\\\/g, '\\');
+        // Test if the parentheses at body[openIdx] and body[closeIdx] are a match to
+        // each other.
+        function parenthesesMatch(body, openIdx, closeIdx) {
+          var count = 1;
+          for (var i = openIdx + 1; i < closeIdx + 1; i++) {
+            if (body[i] == body[openIdx]) {
+              count += 1;
+            } else if (body[i] == body[closeIdx]) {
+              count -= 1;
+              if (count <= 0) {
+                return i == closeIdx;
+              }
+            }
+          }
+          return false;
+        }
+        var orig = null;
+        while (orig != body) {
+          orig = body;
+          if (body.length > 1 && body[0] == '"' && body[body.length - 1] == '"') {
+            body = body.substring(1, body.length - 1).replace(/\\"/g, '"').trim();
+          }
+          if (body.length > 1 && body[0] == '{' && body[body.length - 1] == '}' &&
+              parenthesesMatch(body, 0, body.length - 1)) {
+            body = body.substring(1, body.length - 1).trim();
+          }
+          if (body.length > 1 && body[0] == '(' && body[body.length - 1] == ')' &&
+              parenthesesMatch(body, 0, body.length - 1)) {
+            body = body.substring(1, body.length - 1).trim();
+          }
+        }
+        return '(function(' + argNames.join(', ') + ') { ' + body + ' })';
+      })(__code, __numArgs);
+      ASM_CONSTS[__code] = eval(__func);
+    }
+#else // !POST_PROCESS_JS
+#if RELOCATABLE
+    // ASM_CONSTS are relative to the global base, when emitted in the JS (as we
+    // do not know the absolute address at compile time).
+    __code -= {{{ GLOBAL_BASE }}};
+#endif
+#endif // !POST_PROCESS_JS
+    return ASM_CONSTS[__code];
+  },
+
+  emscripten_asm_const_int__deps: ['$getAsmConst'],
   emscripten_asm_const_int__sig: 'iiii',
   emscripten_asm_const_int: function(code, sigPtr, argbuf) {
-#if RELOCATABLE
-    code -= {{{ GLOBAL_BASE }}};
-#endif
     var args = readAsmConstArgs(sigPtr, argbuf);
-    return ASM_CONSTS[code].apply(null, args);
+    return getAsmConst(code, args.length).apply(null, args);
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
+  $mainThreadEM_ASM__deps: ['emscripten_asm_const_double'],
   $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
-#if RELOCATABLE
-    code -= {{{ GLOBAL_BASE }}};
-#endif
-    var args = readAsmConstArgs(sigPtr, argbuf);
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
+      var args = readAsmConstArgs(sigPtr, argbuf);
       // EM_ASM functions are variadic, receiving the actual arguments as a buffer
       // in memory. the last parameter (argBuf) points to that data. We need to
       // always un-variadify that, *before proxying*, as in the async case this
@@ -3542,7 +3604,7 @@ LibraryManager.library = {
       return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, sync].concat(args));
     }
 #endif
-    return ASM_CONSTS[code].apply(null, args);
+    return _emscripten_asm_const_double(code, sigPtr, argbuf);
   },
   emscripten_asm_const_int_sync_on_main_thread__deps: ['$mainThreadEM_ASM'],
   emscripten_asm_const_int_sync_on_main_thread__sig: 'iiii',
