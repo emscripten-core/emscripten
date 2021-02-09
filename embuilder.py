@@ -29,28 +29,30 @@ SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
 SYSTEM_TASKS += ['struct_info']
 
 # Minimal subset of SYSTEM_TASKS used by CI systems to build enough to useful
+# TODO Re-add 'except' versions of libc++abi, libc++, and libunwind after the
+# new EH implementation is stablized
 MINIMAL_TASKS = [
     'libcompiler_rt',
     'libc',
     'libc++abi',
-    'libc++abi-except',
     'libc++abi-noexcept',
     'libc++',
-    'libc++-except',
     'libc++-noexcept',
     'libal',
     'libdlmalloc',
     'libdlmalloc-debug',
     'libemmalloc',
-    'libemmalloc-64bit',
+    'libemmalloc-debug',
+    'libemmalloc-memvalidate',
+    'libemmalloc-verbose',
+    'libemmalloc-memvalidate-verbose',
     'libgl',
     'libhtml5',
     'libsockets',
     'libc_rt_wasm',
     'struct_info',
     'libstandalonewasm',
-    'crt1',
-    'libunwind-except'
+    'crt1'
 ]
 
 USER_TASKS = [

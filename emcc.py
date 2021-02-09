@@ -41,6 +41,7 @@ from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, safe_copy
 from tools.shared import run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
+from tools.shared import do_replace
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
@@ -425,7 +426,7 @@ def ensure_archive_index(archive_file):
     run_process([shared.LLVM_RANLIB, archive_file])
 
 
-def get_all_js_syms(temp_files):
+def get_all_js_syms():
   # Runs the js compiler to generate a list of all symbols available in the JS
   # libraries.  This must be done separately for each linker invokation since the
   # list of symbols depends on what settings are used.
@@ -439,7 +440,7 @@ def get_all_js_syms(temp_files):
     shared.Settings.INCLUDE_FULL_LIBRARY = True
     shared.Settings.ONLY_CALC_JS_SYMBOLS = True
     emscripten.generate_struct_info()
-    glue, forwarded_data = emscripten.compile_settings(temp_files)
+    glue, forwarded_data = emscripten.compile_settings()
     forwarded_json = json.loads(forwarded_data)
     library_fns = forwarded_json['Functions']['libraryFunctions']
     library_fns_list = []
@@ -611,12 +612,6 @@ def do_split_module(wasm_file):
   os.rename(wasm_file, wasm_file + '.orig')
   args = ['--instrument']
   building.run_binaryen_command('wasm-split', wasm_file + '.orig', outfile=wasm_file, args=args)
-
-
-def do_replace(input_, pattern, replacement):
-  if pattern not in input_:
-    exit_with_error('expected to find pattern in input JS: %s' % pattern)
-  return input_.replace(pattern, replacement)
 
 
 def is_dash_s_for_emcc(args, i):
@@ -822,7 +817,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(shared.shlex_join(parts[1:]))
     return 0
 
-  shared.check_sanity(force=DEBUG)
+  shared.check_sanity()
 
   def get_language_mode(args):
     return_next = False
@@ -1904,14 +1899,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         (shared.Settings.MAXIMUM_MEMORY < 0 or
          shared.Settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024)):
       shared.Settings.CAN_ADDRESS_2GB = 1
-      if shared.Settings.MALLOC == 'emmalloc':
-        if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
-          suggestion = 'decrease INITIAL_MEMORY'
-        elif shared.Settings.MAXIMUM_MEMORY < 0:
-          suggestion = 'set MAXIMUM_MEMORY'
-        else:
-          suggestion = 'decrease MAXIMUM_MEMORY'
-        exit_with_error('emmalloc only works on <2GB of memory. Use the default allocator, or ' + suggestion)
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.PROFILING_FUNCS = options.profiling_funcs
@@ -2139,7 +2126,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # TODO: we could check if this is a fastcomp build, and still speed things up here
     js_funcs = None
     if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
-      js_funcs = get_all_js_syms(misc_temp_files)
+      js_funcs = get_all_js_syms()
       log_time('JS symbol generation')
     building.link_lld(linker_inputs, wasm_target, external_symbol_list=js_funcs)
     # Special handling for when the user passed '-Wl,--version'.  In this case the linker

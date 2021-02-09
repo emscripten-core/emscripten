@@ -462,7 +462,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       os.chdir(os.path.dirname(self.get_dir()))
       try_delete(self.get_dir())
 
-      if EMTEST_DETECT_TEMPFILE_LEAKS and not os.environ.get('EMCC_DEBUG'):
+      if EMTEST_DETECT_TEMPFILE_LEAKS and not DEBUG:
         temp_files_after_run = []
         for root, dirnames, filenames in os.walk(self.temp_dir):
           for dirname in dirnames:
@@ -1841,7 +1841,7 @@ def flattened_tests(loaded_tests):
 
 def suite_for_module(module, tests):
   suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest')
-  if not EMTEST_SAVE_DIR:
+  if not EMTEST_SAVE_DIR and not DEBUG:
     has_multiple_tests = len(tests) > 1
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_tests and has_multiple_cores:

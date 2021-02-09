@@ -33,6 +33,7 @@ from . import filelock
 
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 99
 EXPECTED_LLVM_VERSION = "13.0"
@@ -283,6 +284,9 @@ def check_sanity(force=False):
   # not re-run the tests.
   os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
 
+  if DEBUG:
+    force = True
+
   if config.FROZEN_CACHE:
     if force:
       perform_sanity_checks()
@@ -373,12 +377,14 @@ def get_emscripten_temp_dir():
   if not EMSCRIPTEN_TEMP_DIR:
     EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
 
-    def prepare_to_clean_temp(d):
-      def clean_temp():
-        try_delete(d)
+    if not DEBUG_SAVE:
+      def prepare_to_clean_temp(d):
+        def clean_temp():
+          try_delete(d)
 
-      atexit.register(clean_temp)
-    prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
+        atexit.register(clean_temp)
+      # this global var might change later
+      prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR)
   return EMSCRIPTEN_TEMP_DIR
 
 
@@ -403,24 +409,29 @@ class Configuration(object):
       except Exception as e:
         exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.config_file_location())
 
-      # Since the cannonical temp directory is, by definition, the same
+      # Since the canonical temp directory is, by definition, the same
       # between all processes that run in DEBUG mode we need to use a multi
       # process lock to prevent more than one process from writing to it.
       # This is because emcc assumes that it can use non-unique names inside
       # the temp directory.
-      # In the case where we run emcc recurively to populate the cache we
-      # do (sadly) still need to ignore this lock, in the same way we do for
-      # the cache lock.
-      if 'EM_EXCLUSIVE_CACHE_ACCESS' not in os.environ:
+      # Sadly we need to allow child processes to access this directory
+      # though, since emcc can recursively call itself when building
+      # libraries and ports.
+      if 'EM_HAVE_TEMP_DIR_LOCK' not in os.environ:
         filelock_name = os.path.join(self.EMSCRIPTEN_TEMP_DIR, 'emscripten.lock')
         lock = filelock.FileLock(filelock_name)
+        os.environ['EM_HAVE_TEMP_DIR_LOCK'] = '1'
         lock.acquire()
         atexit.register(lock.release)
 
   def get_temp_files(self):
-    return tempfiles.TempFiles(
-      tmp=self.TEMP_DIR if not DEBUG else get_emscripten_temp_dir(),
-      save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
+    if DEBUG_SAVE:
+      # In debug mode store all temp files in the emscripten-specific temp dir
+      # and don't worry about cleaning them up.
+      return tempfiles.TempFiles(get_emscripten_temp_dir(), save_debug_files=True)
+    else:
+      # Otherwise use the system tempdir and try to clean up after ourselves.
+      return tempfiles.TempFiles(self.TEMP_DIR, save_debug_files=False)
 
 
 def apply_configuration():
@@ -518,6 +529,11 @@ def get_cflags(user_args):
   c_opts += ['-Dunix',
              '-D__unix',
              '-D__unix__']
+
+  # LLVM has turned on the new pass manager by default, but it causes some code
+  # size regressions. For now, use the legacy one.
+  # https://github.com/emscripten-core/emscripten/issues/13427
+  c_opts += ['-flegacy-pass-manager']
 
   # Changes to default clang behavior
 
@@ -953,6 +969,12 @@ def read_and_preprocess(filename, expand_macros=False):
   out = open(stdout, 'r').read()
 
   return out
+
+
+def do_replace(input_, pattern, replacement):
+  if pattern not in input_:
+    exit_with_error('expected to find pattern in input JS: %s' % pattern)
+  return input_.replace(pattern, replacement)
 
 
 # ============================================================================

@@ -992,37 +992,36 @@ function asmFFICoercion(value, type) {
 }
 
 function makeDynCall(sig, funcPtr) {
-  assert(sig.indexOf('j') == -1);
+  assert(sig.indexOf('j') == -1, 'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!');
+
+  const returnExpr = (sig[0] == 'v') ? '' : 'return';
+
+  let args = [];
+  for (let i = 1; i < sig.length; ++i) {
+    args.push(`a${i}`);
+  }
+  args = args.join(', ');
+
   if (funcPtr === undefined) {
     printErr(`warning: ${currentlyParsedFilename}: \
 Legacy use of {{{ makeDynCall("${sig}") }}}(funcPtr, arg1, arg2, ...). \
 Starting from Emscripten 2.0.2 (Aug 31st 2020), syntax for makeDynCall has changed. \
 New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). \
 Please update to new syntax.`);
-    const ret = (sig[0] == 'v') ? 'return ' : '';
-    let args = [];
-    for (let i = 1; i < sig.length; ++i) {
-      args.push(`a${i}`);
-    }
-    args = args.join(', ');
 
     if (DYNCALLS) {
-      return `(function(cb, ${args}) { return getDynCaller("${sig}", cb)(${args}) })`;
+      return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${args}) })`;
     } else {
-      return `(function(cb, ${args}) { return wasmTable.get(cb)(${args}) })`;
+      return `(function(cb, ${args}) { ${returnExpr} wasmTable.get(cb)(${args}) })`;
     }
   }
+
   if (DYNCALLS) {
     const dyncall = exportedAsmFunc(`dynCall_${sig}`);
     if (sig.length > 1) {
-      let args = [];
-      for (let i = 1; i < sig.length; ++i) {
-        args.push(`a${i}`);
-      }
-      args = args.join(', ');
-      return `(function(${args}) { ${dyncall}.apply(null, [${funcPtr}, ${args}]); })`;
+      return `(function(${args}) { ${returnExpr} ${dyncall}.apply(null, [${funcPtr}, ${args}]); })`;
     } else {
-      return `(function() { ${dyncall}.call(null, ${funcPtr}); })`;
+      return `(function() { ${returnExpr} ${dyncall}.call(null, ${funcPtr}); })`;
     }
   } else {
     return `wasmTable.get(${funcPtr})`;
