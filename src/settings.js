@@ -600,7 +600,7 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 // Emscripten uses an ExitStatus exception to halt when exit() is called.
 // With this option, we prevent that from showing up as an unhandled
 // exception.
-var NODEJS_CATCH_EXIT = 1;
+var NODEJS_CATCH_EXIT = 0;
 
 // Catch unhandled rejections in node. Without this, node may print the error,
 // and that this behavior will change in future node, wait a few seconds, and
