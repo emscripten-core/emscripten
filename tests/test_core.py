@@ -8235,19 +8235,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # test that Module.dynamicLibraries works with pthreads
 
     self.emcc_args += ['-pthread', '-Wno-experimental']
+    self.emcc_args += ['--extern-pre-js', 'pre.js']
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('MODULARIZE')
-    self.set_setting('EXPORT_NAME', 'createMyModule')
 
-    def post(filename):
-      shutil.move(filename, f'{filename}.module.js')
-      create_test_file(filename, f'''
-        var createMyModule = require('./{filename}.module.js');
-        createMyModule({{
+    create_test_file('pre.js', '''
+      if ( !global.Module ) {
+        // This is the initial load (not a worker)
+        // Define the initial state of Module as we would
+        // in the html shell file.
+        // Use var to escape the scope of the if statement
+        var Module = {
           dynamicLibraries: ['liblib.so']
-        }});
-      ''')
+        };
+      }
+    ''')
 
     self.dylink_test(
       r'''
@@ -8262,8 +8264,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
         int side() { return 42; }
       ''',
       'result is 42',
-      auto_load=False,
-      post_build=post)
+      auto_load=False)
 
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
