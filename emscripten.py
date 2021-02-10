@@ -136,7 +136,9 @@ def update_settings_glue(metadata, DEBUG):
     if shared.Settings.INITIAL_TABLE == -1:
       shared.Settings.INITIAL_TABLE = metadata['tableSize'] + 1
 
-  shared.Settings.MAIN_READS_PARAMS = metadata['mainReadsParams']
+  # When using dynamic linking the main function might be in a side module.
+  # To be safe assume they do take input parametes.
+  shared.Settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or shared.Settings.MAIN_MODULE
 
   # Store exports for Closure compiler to be able to track these as globals in
   # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
