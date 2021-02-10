@@ -8249,14 +8249,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
         });
       ''')
 
-    self.dylink_test(r'''
+    self.dylink_test(
+      r'''
         #include <stdio.h>
         int side();
         int main() {
           printf("result is %d", side());
           return 0;
         }
-      ''', '''
+      ''',
+      r'''
         int side() { return 42; }
       ''',
       'result is 42',
