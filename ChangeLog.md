@@ -27,6 +27,8 @@ Current Trunk
   actually used.  This option partially replaces the `EMCC_ONLY_FORCED_STDLIBS`
   environment variable which (among other things) essentially had the effect of
   setting `REVERSE_DEPS` to be 'all'.
+- Clang now performs loop unrolling when targeting WebAssembly at -O2 and
+  higher. It can be disabled using `-fno-unroll-loops`.
 
 2.0.13: 01/19/2021
 ------------------
