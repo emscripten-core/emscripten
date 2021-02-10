@@ -1479,7 +1479,8 @@ int f() {
     create_test_file('side.c', r'''
       int side() { return 42; }
     ''')
-    self.run_process([EMCC,
+    self.run_process([
+      EMCC,
       '-pthread', '-Wno-experimental',
       '-s', 'SIDE_MODULE',
       '-o', 'side.wasm',
