@@ -364,11 +364,7 @@ def make_paths_absolute(f):
     return os.path.abspath(f)
 
 
-# Runs llvm-nm in parallel for the given list of files.
-# The results are populated in nm_cache
-# multiprocessing_pool: An existing multiprocessing pool to reuse for the operation, or None
-# to have the function allocate its own.
-def parallel_llvm_nm(files):
+def multithreaded_llvm_nm(files):
   with ToolchainProfiler.profile_block('parallel_llvm_nm'):
     pool = get_multiprocessing_pool()
     object_contents = pool.map(g_llvm_nm_uncached, files)
@@ -378,6 +374,33 @@ def parallel_llvm_nm(files):
         logger.debug('llvm-nm failed on file ' + file + ': return code ' + str(object_contents[i].returncode) + ', error: ' + object_contents[i].output)
       nm_cache[file] = object_contents[i]
     return object_contents
+
+
+def singlethreaded_llvm_nm(files):
+  with ToolchainProfiler.profile_block('singlethreaded_llvm_nm'):
+    object_contents = []
+    for file in files:
+      obj = llvm_nm_uncached(file)
+      if obj.returncode != 0:
+        logger.debug('llvm-nm failed on file ' + file + ': return code ' + str(obj.returncode) + ', error: ' + obj.output)
+      nm_cache[file] = obj
+      object_contents += [obj]
+    return object_contents
+
+
+# Runs llvm-nm for the given list of files.
+# The results are populated in nm_cache
+def parallel_llvm_nm(files):
+  # Python multiprocessing pool (get_multiprocessing_pool() and pool.map() functions) have a lot of overhead,
+  # so run the llvm-nm calls sequentially if it will be faster than waiting for the pool to come up.
+  heuristic_multiprocessing_pool_startup_time_msecs = 700
+  # Individual llvm-nm completes very fast
+  heuristic_single_threaded_llvm_nm_execution_time_msecs = 10
+
+  if heuristic_multiprocessing_pool_startup_time_msecs + len(files) * heuristic_single_threaded_llvm_nm_execution_time_msecs / get_num_cores() < len(files) * heuristic_single_threaded_llvm_nm_execution_time_msecs:
+    return multithreaded_llvm_nm(files)
+  else:
+    return singlethreaded_llvm_nm(files)
 
 
 def read_link_inputs(files):
