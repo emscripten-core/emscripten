@@ -8241,12 +8241,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXPORT_NAME', 'createMyModule')
 
     def post(filename):
-      shutil.move(filename, '{filename}.module.js')
-      create_test_file(filename, '''
+      shutil.move(filename, f'{filename}.module.js')
+      create_test_file(filename, f'''
         var createMyModule = require('./{filename}.module.js');
-        createMyModule({
+        createMyModule({{
           dynamicLibraries: ['liblib.so']
-        });
+        }});
       ''')
 
     self.dylink_test(
