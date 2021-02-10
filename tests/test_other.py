@@ -1465,6 +1465,48 @@ int f() {
         '-s', 'ASSERTIONS=2'
       ])
 
+  def test_Module_dynamicLibraries_pthreads(self):
+    # test that Module.dynamicLibraries works with pthreads
+
+    create_test_file('main.c', r'''
+      #include <stdio.h>
+      int side();
+      int main() {
+        printf("%d", side());
+        return 0;
+      }
+    ''')
+    create_test_file('side.c', r'''
+      int side() { return 42; }
+    ''')
+    self.run_process([EMCC,
+      '-pthread', '-Wno-experimental',
+      '-s', 'SIDE_MODULE',
+      '-o', 'side.wasm',
+      'side.c'
+    ])
+    self.run_process([
+        EMCC,
+        '-pthread', '-Wno-experimental',
+        '-s', 'PROXY_TO_PTHREAD',
+        '-s', 'EXIT_RUNTIME=1',
+        '-s', 'MODULARIZE=1',
+        '-s', 'EXPORT_NAME=createMyModule',
+        '-s', 'MAIN_MODULE',
+        '-o', 'main.js',
+        'main.c'
+    ])
+    create_test_file('test.js', '''
+      var createMyModule = require('./main.js');
+      createMyModule({
+        dynamicLibraries: ['side.wasm']
+      });
+    ''')
+
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    seen = self.run_js('test.js', assert_returncode=0)
+    self.assertContained(['42'], seen)
+
   def test_multidynamic_link(self):
     # Linking the same dynamic library in statically will error, normally, since we statically link
     # it, causing dupe symbols
