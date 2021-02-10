@@ -249,7 +249,7 @@ class Library(object):
 
   # A list of flags to pass to emcc.
   # The flags for the parent class is automatically inherited.
-  cflags = ['-Werror']
+  cflags = ['-Werror', '-fno-unroll-loops']
 
   # A list of directories to put in the include path when building.
   # This is a list of tuples of path components.
