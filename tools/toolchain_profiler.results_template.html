@@ -602,14 +602,8 @@ function createSwimlaneChart(data) {
   }
 }
 
-var xhr = new XMLHttpRequest();
-xhr.onreadystatechange = function() {
-  if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 0)) {
-    createSwimlaneChart(JSON.parse(xhr.responseText));
-  }
-};
-xhr.open("GET", {{{results_log_file}}}, true);
-xhr.send();
+var emProfileJsonData = {{{ emprofile_json_data }}};
+createSwimlaneChart(emProfileJsonData);
 
 </script>
 </body>

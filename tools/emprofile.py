@@ -13,9 +13,6 @@ import time
 
 profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
 
-# If set to 1, always generates the output file under the same filename and doesn't delete the temp data.
-DEBUG_EMPROFILE_PY = 0
-
 OUTFILE = 'toolchain_profiler.results_' + time.strftime('%Y%m%d_%H%M')
 for arg in sys.argv:
   if arg.startswith('--outfile='):
@@ -52,6 +49,8 @@ def create_profiling_graph():
   for f in log_files:
     try:
       json_data = open(f, 'r').read()
+      if len(json_data.strip()) == 0:
+        continue
       lines = json_data.split('\n')
       lines = [x for x in lines if x != '[' and x != ']' and x != ',' and len(x.strip())]
       lines = [(x + ',') if not x.endswith(',') else x for x in lines]
@@ -63,31 +62,30 @@ def create_profiling_graph():
       print('Failed to parse JSON file "' + f + '"!', file=sys.stderr)
       sys.exit(1)
   if len(all_results) == 0:
-    print('No profiler logs were found in path "' + profiler_logs_path + '". Try setting the environment variable EM_PROFILE_TOOLCHAIN=1 and run some emcc commands, and then rerun "python emprofile.py --graph" again.')
+    print('No profiler logs were found in path "' + profiler_logs_path + '". Try setting the environment variable EM_PROFILE_TOOLCHAIN=1 and run some emcc commands, and then rerun "emprofile" again.')
     return
 
   all_results.sort(key=lambda x: x['time'])
 
-  json_file = OUTFILE + '.json'
-  open(json_file, 'w').write(json.dumps(all_results, indent=2))
-  print('Wrote "' + json_file + '"')
+  emprofile_json_data = json.dumps(all_results, indent=2)
 
   html_file = OUTFILE + '.html'
-  html_contents = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'toolchain_profiler.results_template.html'), 'r').read().replace('{{{results_log_file}}}', '"' + json_file + '"')
+  html_contents = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'toolchain_profiler.results_template.html'), 'r').read().replace('{{{ emprofile_json_data }}}', emprofile_json_data)
   open(html_file, 'w').write(html_contents)
   print('Wrote "' + html_file + '"')
 
-  if not DEBUG_EMPROFILE_PY:
-    delete_profiler_logs()
 
-
-if len(sys.argv) < 2:
+if '--help' in sys.argv:
   print('''Usage:
-       emprofile.py --reset
+       emprofile.py --clear
          Deletes all previously recorded profiling log files.
+         Use this to abort/drop any previously collected
+         profiling data for a new profiling run.
 
-       emprofile.py --graph
-         Draws a graph from all recorded profiling log files.
+       emprofile.py [--no-clear]
+         Draws a graph from all recorded profiling log files,
+         and deletes the recorded profiling files, unless
+         --no-clear is also passed.
 
 Optional parameters:
 
@@ -97,10 +95,9 @@ Optional parameters:
   sys.exit(1)
 
 
-if '--reset' in sys.argv:
+if '--reset' in sys.argv or '--clear' in sys.argv:
   delete_profiler_logs()
-elif '--graph' in sys.argv:
-  create_profiling_graph()
 else:
-  print('Unknown command "' + sys.argv[1] + '"!')
-  sys.exit(1)
+  create_profiling_graph()
+  if '--no-clear' not in sys.argv:
+    delete_profiler_logs()

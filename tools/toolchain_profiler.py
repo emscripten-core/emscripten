@@ -106,8 +106,12 @@ if EM_PROFILE_TOOLCHAIN:
       return open(os.path.join(ToolchainProfiler.profiler_logs_path, 'toolchain_profiler.pid_' + str(os.getpid()) + '.json'), 'a')
 
     @staticmethod
+    def escape_string(arg):
+      return arg.replace('\\', '\\\\').replace('"', '\\"')
+
+    @staticmethod
     def escape_args(args):
-      return map(lambda arg: arg.replace('\\', '\\\\').replace('"', '\\"'), args)
+      return map(lambda arg: ToolchainProfiler.escape_string(arg), args)
 
     @staticmethod
     def record_process_start(write_log_entry=True):
@@ -197,7 +201,7 @@ if EM_PROFILE_TOOLCHAIN:
 
     @staticmethod
     def profile_block(block_name):
-      return ToolchainProfiler.ProfileBlock(block_name)
+      return ToolchainProfiler.ProfileBlock(ToolchainProfiler.escape_string(block_name))
 
     @staticmethod
     def imaginary_pid():
