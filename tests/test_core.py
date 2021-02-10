@@ -8229,6 +8229,40 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.do_basic_dylink_test()
 
+  @needs_dlfcn
+  @node_pthreads
+  def test_Module_dynamicLibraries_pthreads(self):
+    # test that Module.dynamicLibraries works with pthreads
+
+    self.emcc_args += ['-pthread', '-Wno-experimental']
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('MODULARIZE')
+    self.set_setting('EXPORT_NAME', 'createMyModule')
+
+    def post(filename):
+      shutil.move(filename, '{filename}.module.js')
+      create_test_file(filename, '''
+        var createMyModule = require('./{filename}.module.js');
+        createMyModule({
+          dynamicLibraries: ['liblib.so']
+        });
+      ''')
+
+    self.dylink_test(r'''
+        #include <stdio.h>
+        int side();
+        int main() {
+          printf("result is %d", side());
+          return 0;
+        }
+      ''', '''
+        int side() { return 42; }
+      ''',
+      'result is 42',
+      auto_load=False,
+      post_build=post)
+
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
     # Could also test with -s ALLOW_TABLE_GROWTH=1
