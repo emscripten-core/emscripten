@@ -73,7 +73,7 @@ class StructuredRandomData:
     def make_array(self, depth, depth_left):
         width = random.randint(self.MIN_WIDTH, self.MAX_WIDTH)
         # When there is almost no depth left, emit fewer things.
-        width = min(width, depth_left)
+        width = min(width, depth_left + 1)
         return [self.make(depth + 1, depth_left - 1) for i in range(width)]
 
     def make_num(self):
@@ -130,6 +130,9 @@ class Cursor:
 
     def has_more(self):
         return self.remaining() > 0
+
+    def get_int(self):
+        return int(1000 * self.get_num())
 
 
 '''
@@ -275,12 +278,12 @@ void %(name)s() {
 
     def make_logging(self, cursor):
         if cursor.has_more():
-            return f'puts("log({cursor.get_num()})");'
+            return f'puts("log(-{cursor.get_int()})");'
         self.logging_index += 1
         return f'puts("log({self.logging_index})");'
 
     def make_throw(self, cursor):
-        return f'throw {cursor.get_num()};'
+        return f'throw {cursor.get_int()};'
 
     def make_catch(self, cursor):
         body = indent(self.make_statement(cursor.get_array()))
