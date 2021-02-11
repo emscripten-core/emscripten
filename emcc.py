@@ -627,6 +627,15 @@ def is_dash_s_for_emcc(args, i):
   return arg.isidentifier() and arg.isupper()
 
 
+def unmangle_symbols_from_cmdline(symbols):
+  def unmangle(x):
+    return x.replace('.', ' ').replace('#', '&').replace('?', ',')
+
+  if type(symbols) is list:
+    return [unmangle(x) for x in symbols]
+  return unmangle(x)
+
+
 def parse_s_args(args):
   settings_changes = []
   for i in range(len(args)):
@@ -1458,6 +1467,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base',
                                              '_emscripten_stack_get_end',
                                              '_emscripten_stack_set_limits']
+
+    shared.Settings.ASYNCIFY_ADD = unmangle_symbols_from_cmdline(shared.Settings.ASYNCIFY_ADD)
+    shared.Settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(shared.Settings.ASYNCIFY_REMOVE)
+    shared.Settings.ASYNCIFY_ONLY = unmangle_symbols_from_cmdline(shared.Settings.ASYNCIFY_ONLY)
 
     # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
     # so it won't think about generating native x86 SSE code.

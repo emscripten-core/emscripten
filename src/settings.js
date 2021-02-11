@@ -719,6 +719,7 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // to know you got this right), so this is not recommended unless you
 // really know what are doing, and need to optimize every bit of speed
 // and size.
+//
 // The names in this list are names from the WebAssembly Names section. The
 // wasm backend will emit those names in *human-readable* form instead of
 // typical C++ mangling. For example, you should write Struct::func()
@@ -730,7 +731,23 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // changes which would mean a single list couldn't work for both -O0 and -O1
 // builds, etc.). You can inspect the wasm binary to look for the actual names,
 // either directly or using wasm-objdump or wasm-dis, etc.
+//
 // Simple '*' wildcard matching is supported.
+//
+// To avoid dealing with limitations in operating system shells or build system
+// escaping, the following substitutions can be made:
+// - ' ' -> '.',
+// - '&' -> '%',
+// - ',' -> '.'.
+//
+// That is, the function
+//    "foo(char const*, int&)" can be inputted as
+//    "foo(char.const*?.int%)" on the command line instead.
+//
+// Note: Whitespace is part of the function signature! I.e.
+//    "foo(char const *, int &)" will not match "foo(char const*, int&)", and
+// neither would "foo(const char*, int &)".
+//
 // [link]
 var ASYNCIFY_REMOVE = [];
 
