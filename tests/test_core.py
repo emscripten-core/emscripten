@@ -8378,7 +8378,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MAIN_MODULE')
     self.do_runf(path_from_root('tests', 'core', 'test_gl_get_proc_address.c'))
 
-
   def test_REVERSE_DEPS(self):
     create_test_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)&connect; }')
     self.run_process([EMCC, 'connect.c'])
