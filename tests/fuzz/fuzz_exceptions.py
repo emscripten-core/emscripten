@@ -94,7 +94,7 @@ class StructuredRandomData:
 
 def intify(node):
     if type(node) == list:
-        return len(list)
+        return len(node)
     return node
 
 
@@ -127,29 +127,64 @@ exceptions.
 class CppTranslator:
     PREAMBLE = '''\
 #include <stdio.h> // avoid iostream C++ code, just test libc++abi, not libc++
+#include <stdint.h>
+
+extern void checkRecursion();
+'''
+
+    SUPPORT = '''\
+#include <stdlib.h>
+
+static int fuel = 100;
+
+void checkRecursion() {
+  if (fuel == 0) abort();
+  fuel--;
+}
 '''
 
     def __init__(self, input):
-        self.toplevel = Cursor(input)
+        self.toplevel = Cursor(input.root)
 
         # The output is a list of strings which will be concatenated at the end.
         self.output = [self.PREAMBLE]
 
         self.output.append(self.make_structs())
 
+    '''
+    Outputs the main file and the support file on the side. Support code is not
+    in the main file so that the optimizer cannot see it all.
+    '''
+    def write(self, main, support):
+        with open(main, 'w') as f:
+            f.write('\n'.join(self.output))
+        with open(support, 'w') as f:
+            f.write(self.SUPPORT)
+
     def make_structs(self):
         array = arrayify(self.toplevel.get())
-        self.structs = []
+        self.structs = {}
         ret = []
         for node in array:
             name = f'Struct{len(ret)}'
+            sig = self.get_types(node)
+            self.structs[name] = sig
+            fields = '\n'.join([f'  {t} f{i};' for i, t in enumerate(sig)])
+            print(fields)
+            ret.append('''\
+struct %(name)s {
+%(fields)s
+};
+''' % locals())
+        return '\n'.join(ret)
 
+    def get_types(self, node):
+        return [self.get_type(x) for x in arrayify(node)]
 
+    def get_type(self, node):
+        if intify(node) < 128:
+            return 'uint32_t'
+        return 'double'
 
-
-
-
-
-
-
+CppTranslator(StructuredRandomData()).write(main='a.cpp', support='b.cpp')
 
