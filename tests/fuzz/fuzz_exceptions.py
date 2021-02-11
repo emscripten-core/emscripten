@@ -50,56 +50,39 @@ small output, for example, if a huge nested tree of data is consumed in a place
 that just wants a bool.
 '''
 class StructuredRandomData:
-    # The overall maximum number of nodes we want.
-    MAX_NODES = 2000
+    NUM_TOPLEVEL = 20
 
-    # The minimum and maximum size of an array.
-    MIN_ARRAY_SIZE = 2
-    MAX_ARRAY_SIZE = 10
+    # The range of widths.
+    MIN_WIDTH = 1
+    MAX_WIDTH = 5
 
-    # How much shorter arrays are the deeper we go.
-    ARRAY_DEPTH_SHORTENING = 0.5
+    # The range of depths.
+    MIN_DEPTH = 2
+    MAX_DEPTH = 10
 
-    # How likely we are to create an array instead of a number (at the top
-    # level).
-    ARRAY_PROBABILITY = 0.5
-
-    # A reduction factor on the probability to have an array, per depth level.
-    ARRAY_DEPTH_UNLIKELIHOOD = 0.66
-
-    # How low the array probability can go due to ARRAY_DEPTH_UNLIKELIHOOD.
-    MIN_ARRAY_PROBABILITY = 0.1
-
-    # The maximum depth.
-    MAX_DEPTH = 20
+    # The chance to just emit a number instead of a list.
+    NUM_PROB = 0.25
 
     def __init__(self):
-        self.emitted_nodes = 0
-        # The root is always an array, so that we can append enough items to get
-        # to the size we want.
-        self.root = self.make_array(depth=0)
-        while self.emitted_nodes < self.MAX_NODES:
-            self.root.append(self.make(depth=1))
+        self.root = [self.make_toplevel() for x in range(self.NUM_TOPLEVEL)]
 
-    def make_array(self, depth):
-        max_size = self.MAX_ARRAY_SIZE - int(depth * self.ARRAY_DEPTH_SHORTENING)
-        max_size = max(max_size, self.MIN_ARRAY_SIZE + 1)
-        size = random.randint(self.MIN_ARRAY_SIZE, max_size)
-        size = min(size, self.MAX_NODES - self.emitted_nodes)
-        self.emitted_nodes += 1
-        return [self.make(depth + 1) for i in range(0, size)]
+    def make_toplevel(self):
+        depth_left = random.randint(self.MIN_DEPTH, self.MAX_DEPTH)
+        return self.make_array(0, depth_left)
+
+    def make_array(self, depth, depth_left):
+        width = random.randint(self.MIN_WIDTH, self.MAX_WIDTH)
+        # When there is almost no depth left, emit fewer things.
+        width = min(width, depth_left)
+        return [self.make(depth + 1, depth_left - 1) for i in range(width)]
 
     def make_num(self):
-        self.emitted_nodes += 1
         return random.random()
 
-    def make(self, depth):
-        if self.emitted_nodes < self.MAX_NODES:
-          array_probability = self.ARRAY_PROBABILITY * (self.ARRAY_DEPTH_UNLIKELIHOOD ** depth)
-          array_probability = max(array_probability, self.MIN_ARRAY_PROBABILITY)
-          if random.random() < array_probability:
-            return self.make_array(depth)
-        return self.make_num()
+    def make(self, depth, depth_left):
+        if depth_left == 0 or random.random() < self.NUM_PROB:
+            return self.make_num()
+        return self.make_array(depth, depth_left)
 
 # To see an example, run this line:
 # print(json.dumps(StructuredRandomData().root, indent='  '))
