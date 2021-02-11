@@ -118,12 +118,6 @@ def extract_archive_contents(archive_file):
   }
 
 
-# Due to a python pickling issue, the following two functions must be at top
-# level, or multiprocessing pool spawn won't find them.
-def g_llvm_nm_uncached(filename):
-  return llvm_nm_uncached(filename)
-
-
 def g_multiprocessing_initializer(*args):
   for item in args:
     (key, value) = item.split('=', 1)
@@ -364,43 +358,35 @@ def make_paths_absolute(f):
     return os.path.abspath(f)
 
 
-def multithreaded_llvm_nm(files):
-  with ToolchainProfiler.profile_block('parallel_llvm_nm'):
-    pool = get_multiprocessing_pool()
-    object_contents = pool.map(g_llvm_nm_uncached, files)
-
-    for i, file in enumerate(files):
-      if object_contents[i].returncode != 0:
-        logger.debug('llvm-nm failed on file ' + file + ': return code ' + str(object_contents[i].returncode) + ', error: ' + object_contents[i].output)
-      nm_cache[file] = object_contents[i]
-    return object_contents
-
-
-def singlethreaded_llvm_nm(files):
-  with ToolchainProfiler.profile_block('singlethreaded_llvm_nm'):
-    object_contents = []
-    for file in files:
-      obj = llvm_nm_uncached(file)
-      if obj.returncode != 0:
-        logger.debug('llvm-nm failed on file ' + file + ': return code ' + str(obj.returncode) + ', error: ' + obj.output)
-      nm_cache[file] = obj
-      object_contents += [obj]
-    return object_contents
-
-
 # Runs llvm-nm for the given list of files.
 # The results are populated in nm_cache
-def parallel_llvm_nm(files):
-  # Python multiprocessing pool (get_multiprocessing_pool() and pool.map() functions) have a lot of overhead,
-  # so run the llvm-nm calls sequentially if it will be faster than waiting for the pool to come up.
-  heuristic_multiprocessing_pool_startup_time_msecs = 700
-  # Individual llvm-nm completes very fast
-  heuristic_single_threaded_llvm_nm_execution_time_msecs = 10
+def llvm_nm_multiple(files):
+  with ToolchainProfiler.profile_block('llvm_nm_multiple'):
+    object_contents = []
+    processes = []
 
-  if heuristic_multiprocessing_pool_startup_time_msecs + len(files) * heuristic_single_threaded_llvm_nm_execution_time_msecs / get_num_cores() < len(files) * heuristic_single_threaded_llvm_nm_execution_time_msecs:
-    return multithreaded_llvm_nm(files)
-  else:
-    return singlethreaded_llvm_nm(files)
+    for file in files:
+      if file not in nm_cache:
+        processes += [(file, subprocess.Popen([LLVM_NM, file], stdout=PIPE, stderr=PIPE), None)]
+      else:
+        processes += [(file, None, nm_cache[file])]
+
+    for file, proc, result in processes:
+      if proc:
+        out, err = proc.communicate()
+        if proc.returncode == 0:
+          result = parse_symbols(out.decode('utf-8'))
+          nm_cache[file] = result
+        else:
+          result = ObjectFileInfo(proc.returncode, (out.decode('utf-8') if out else '') + (err.decode('utf-8') if out else ''))
+
+      object_contents += [result]
+
+    return object_contents
+
+
+def llvm_nm(file):
+  return llvm_nm_multiple([file])[0]
 
 
 def read_link_inputs(files):
@@ -440,7 +426,7 @@ def read_link_inputs(files):
 
     # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
     # The results are not used here directly, but populated to llvm-nm cache structure.
-    parallel_llvm_nm(object_names)
+    llvm_nm_multiple(object_names)
 
 
 def llvm_backend_args():
@@ -775,34 +761,6 @@ def parse_symbols(output):
         #        so for now we assume all uppercase are normally defined external symbols
         defs.append(symbol)
   return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
-
-
-def llvm_nm_uncached(filename, stdout=PIPE, stderr=PIPE):
-  # LLVM binary ==> list of symbols
-  proc = run_process([LLVM_NM, filename], stdout=stdout, stderr=stderr, check=False)
-  if proc.returncode == 0:
-    return parse_symbols(proc.stdout)
-  else:
-    return ObjectFileInfo(proc.returncode, str(proc.stdout) + str(proc.stderr))
-
-
-def llvm_nm(filename, stdout=PIPE, stderr=PIPE):
-  # Always use absolute paths to maximize cache usage
-  filename = os.path.abspath(filename)
-
-  if filename in nm_cache:
-    return nm_cache[filename]
-
-  ret = llvm_nm_uncached(filename, stdout, stderr)
-
-  if ret.returncode != 0:
-    logger.debug('llvm-nm failed on file ' + filename + ': return code ' + str(ret.returncode) + ', error: ' + ret.output)
-
-  # Even if we fail, write the results to the NM cache so that we don't keep trying to llvm-nm the
-  # failing file again later.
-  nm_cache[filename] = ret
-
-  return ret
 
 
 def emcc(filename, args=[], output_filename=None, stdout=None, stderr=None, env=None):
