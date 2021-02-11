@@ -5711,13 +5711,19 @@ int main(void) {
 
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   def test_dlmalloc(self):
-    self.banned_js_engines = [config.NODE_JS] # slower, and fail on 64-bit
+#    self.banned_js_engines = [config.NODE_JS] # slower, and fail on 64-bit
     # needed with typed arrays
     self.set_setting('INITIAL_MEMORY', '128mb')
 
     # Linked version
     self.do_runf(test_file('dlmalloc_test.c'), '*1,0*', args=['200', '1'])
     self.do_run('dlmalloc_test.js', '*400,0*', args=['400', '400'], no_build=True)
+
+    # Large allocation should fail
+    old_args = self.emcc_args[:]
+    self.emcc_args += ['-s', 'ABORTING_MALLOC=0']
+    self.do_runf(path_from_root('tests', 'dlmalloc_test_large.c'), '0 0 0 1')
+    self.emcc_args = old_args
 
     # TODO: do this in other passes too, passing their opts into emcc
     if self.emcc_args == []:
