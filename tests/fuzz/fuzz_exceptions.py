@@ -1,11 +1,10 @@
-import json
 import os
 import random
 import subprocess
 import time
 
 '''
-Structural fuzz generator. 
+Structural fuzz generator.
 
 Like the AFL and Binaryen etc. fuzzers, we start with random bytes as the input.
 However, we start with a tree structure of random bytes, something like
@@ -49,6 +48,8 @@ A downside to this approach is that a very large random input may lead to a very
 small output, for example, if a huge nested tree of data is consumed in a place
 that just wants a bool.
 '''
+
+
 class StructuredRandomData:
     NUM_TOPLEVEL = 50
 
@@ -101,14 +102,16 @@ def arrayify(node):
         return [node]
     return node
 
+
 def indent(code):
     return '\n'.join(['  ' + line for line in code.splitlines() if line])
 
-'''
-A cursor over an array, allowing gradual consumption of it. If we run out, we
-return simple values.
-'''
+
 class Cursor:
+    '''
+    A cursor over an array, allowing gradual consumption of it. If we run out, we
+    return simple values.
+    '''
     def __init__(self, array):
         self.array = arrayify(array)
         self.pos = 0
@@ -135,11 +138,11 @@ class Cursor:
         return int(1000 * self.get_num())
 
 
-'''
-Given a list of options (weight, func), and a value in [0, 1) to help pick from
-them, pick one, and call it with the parameter.
-'''
 def pick(options, value, param):
+    '''
+    Given a list of options (weight, func), and a value in [0, 1) to help pick from
+    them, pick one, and call it with the parameter.
+    '''
     # Scale the value by the total weight.
     assert 0 <= value < 1, value
     total = 0
@@ -155,11 +158,12 @@ def pick(options, value, param):
     raise Exception('inconceivable')
 
 
-'''
-Translates random structured data into a random C++ program that uses C++
-exceptions.
-'''
 class CppTranslator:
+    '''
+    Translates random structured data into a random C++ program that uses C++
+    exceptions.
+    '''
+
     PREAMBLE = '''\
 #include <stdio.h> // avoid iostream C++ code, just test libc++abi, not libc++
 #include <stdint.h>
@@ -267,7 +271,7 @@ void %(name)s() {
   }
 ''' % locals()
 
-        main +='''\
+        main += '''\
   return 0;
 }
 '''
@@ -365,14 +369,18 @@ while (getBoolean()) {
             return 'uint32_t'
         return 'double'
 
+
 # Main harness
 
+
+total = 0
 seed = time.time() * os.getpid()
 
 while 1:
     seed = random.randint(0, 1 << 64)
     random.seed(seed)
-    print(f'[iteration (seed = {seed})]')
+    print(f'[iteration {total} (seed = {seed})]')
+    total += 1
 
     # Compile normally.
     CppTranslator(StructuredRandomData()).write(main='a.cpp', support='b.cpp')
