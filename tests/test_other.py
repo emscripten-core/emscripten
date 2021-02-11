@@ -9970,3 +9970,18 @@ exec "$@"
     self.assertGreater(len(exports_linkable), 1000)
     self.assertIn('sendmsg', exports_linkable)
     self.assertNotIn('sendmsg', exports)
+
+  # Some build options that change the debug setting value should only be passed at link time. At compile time,
+  # one should pass -gX instead.
+  def test_link_time_debug_settings(self):
+    err = self.expect_fail([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'a.o', '--profiling'])
+    self.assertContained('-profiling is a link time setting!', err)
+
+    err = self.expect_fail([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'a.o', '-s', 'INLINING_LIMIT=10'])
+    self.assertContained('-s INLINING_LIMIT is a link time setting!', err)
+
+    err = self.expect_fail([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'a.o', '--minify', '0'])
+    self.assertContained('--minify is a link time setting!', err)
+
+    err = self.expect_fail([EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'a.o', '-gseparate-dwarf'])
+    self.assertContained('-gseparate-dwarf is a link time setting!', err)

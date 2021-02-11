@@ -876,11 +876,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     options, settings_changes, user_js_defines, newargs = parse_args(newargs)
 
+    has_dash_c = '-c' in newargs
+    has_dash_S = '-S' in newargs
+    has_dash_E = '-E' in newargs
+
+    compile_only = has_dash_c or has_dash_S or has_dash_E
+
     if options.post_link or options.oformat == OFormat.BARE:
       diagnostics.warning('experimental', '--oformat=base/--post-link are experimental and subject to change.')
 
     if '-print-search-dirs' in newargs:
       return run_process([clang, '-print-search-dirs'], check=False).returncode
+
+    if compile_only and len([x for x in newargs if x.startswith('-sINLINING_LIMIT') or x == 'INLINING_LIMIT' or x.startswith('INLINING_LIMIT=')]):
+      exit_with_error('-s INLINING_LIMIT is a link time setting! (Pass -fno-inline-functions at compile time to disable inlining)')
 
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
@@ -931,12 +940,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     has_header_inputs = False
     lib_dirs = []
-
-    has_dash_c = '-c' in newargs
-    has_dash_S = '-S' in newargs
-    has_dash_E = '-E' in newargs
-
-    compile_only = has_dash_c or has_dash_S or has_dash_E
 
     def add_link_flag(i, f):
       if f.startswith('-l'):
@@ -2345,6 +2348,8 @@ def parse_args(newargs):
   wasm_eh_enabled = False
   skip = False
 
+  compile_only = '-c' in newargs or '-S' in newargs or '-E' in newargs
+
   for i in range(len(newargs)):
     if skip:
       skip = False
@@ -2447,6 +2452,8 @@ def parse_args(newargs):
       arg = consume_arg()
       if arg != '0':
         exit_with_error('0 is the only supported option for --minify; 1 has been deprecated')
+      if compile_only:
+        exit_with_error('--minify is a link time setting! (Pass e.g. -g1 at compile stage instead)')
       shared.Settings.DEBUG_LEVEL = max(1, shared.Settings.DEBUG_LEVEL)
     elif arg.startswith('-g'):
       options.requested_debug = arg
@@ -2465,6 +2472,8 @@ def parse_args(newargs):
         if requested_level.startswith('force_dwarf'):
           exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
         elif requested_level.startswith('separate-dwarf'):
+          if compile_only:
+            exit_with_error('-gseparate-dwarf is a link time setting! (Pass e.g. -g at compile stage instead)')
           # emit full DWARF but also emit it in a file on the side
           newargs[i] = '-g'
           # if a file is provided, use that; otherwise use the default location
@@ -2483,6 +2492,8 @@ def parse_args(newargs):
         # difference).
         shared.Settings.DEBUG_LEVEL = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
+      if compile_only:
+        exit_with_error('-profiling is a link time setting! (Pass e.g. -g2 at compile stage instead)')
       shared.Settings.DEBUG_LEVEL = max(shared.Settings.DEBUG_LEVEL, 2)
       options.profiling = True
     elif check_flag('-profiling-funcs') or check_flag('--profiling-funcs'):

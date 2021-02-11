@@ -127,7 +127,7 @@ Options that are modified or new in *emcc* are listed below:
   - When linking, this is equivalent to :ref:`-g3 <emcc-g3>`.
 
 ``-gseparate-dwarf[=FILENAME]``
-  [same as -g3 if passed at compile time, otherwise applies at link]
+  [link]
   Preserve debug information, but in a separate file on the side. This is the
   same as ``-g``, but the main file will contain no debug info. Instead, debug
   info will be present in a file on the side, in ``FILENAME`` if provided,
@@ -175,7 +175,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-profiling:
 
 ``--profiling``
-  [same as -g2 if passed at compile time, otherwise applies at link]
+  [link]
   Use reasonable defaults when emitting JavaScript to make the build readable but still useful for profiling. This sets ``-g2`` (preserve whitespace and function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
 
 ``--profiling-funcs``
@@ -321,7 +321,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-minify:
 
 ``--minify 0``
-  [same as -g1 if passed at compile time, otherwise applies at link]
+  [link]
   Identical to ``-g1``.
 
 ``--js-transform <cmd>``
