@@ -1,3 +1,6 @@
+import json
+import random
+
 '''
 Structural fuzz generator. 
 
@@ -32,11 +35,12 @@ to something else with structure, like a source program, then pruning the input
 can lead to similar pruned source programs. (In comparison, unstructured random
 data allows for truncation easily, but changing bytes earlier can lead to
 dramatic differences in the output.)
+
+To get this benefit, the translator of the random structured data must convert
+it to the output in a structured manner. That is, one node should be converted
+to a corresponding node, and without looking at other nodes as much as possible,
+so that if they are altered, that one will not be.
 '''
-
-import json
-import random
-
 class StructuredRandomData:
     # The overall maximum number of nodes we want.
     MAX_NODES = 200
@@ -84,14 +88,61 @@ class StructuredRandomData:
             return self.make_array(depth)
         return self.make_int()
 
-print(json.dumps(StructuredRandomData().root, indent='  '))
+# To see an example, run this line:
+# print(json.dumps(StructuredRandomData().root, indent='  '))
 
 
+def intify(node):
+    if type(node) == list:
+        return len(list)
+    return node
 
 
+def arrayify(node):
+    if type(node) != list:
+        return [node]
+    return node
 
 
+'''
+A cursor over an array, allowing gradual consumption of it. If we run out, we
+return simple values.
+'''
+class Cursor:
+    def __init__(self, array):
+        self.array = array
+        self.pos = 0
 
+    def get(self):
+        if self.pos >= len(self.array):
+            return 0
+        self.pos += 1
+        return self.array[self.pos - 1]
+
+
+'''
+Translates random structured data into a random C++ program that uses C++
+exceptions.
+'''
+class CppTranslator:
+    PREAMBLE = '''\
+#include <stdio.h> // avoid iostream C++ code, just test libc++abi, not libc++
+'''
+
+    def __init__(self, input):
+        self.toplevel = Cursor(input)
+
+        # The output is a list of strings which will be concatenated at the end.
+        self.output = [self.PREAMBLE]
+
+        self.output.append(self.make_structs())
+
+    def make_structs(self):
+        array = arrayify(self.toplevel.get())
+        self.structs = []
+        ret = []
+        for node in array:
+            name = f'Struct{len(ret)}'
 
 
 
