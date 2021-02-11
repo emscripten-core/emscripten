@@ -207,6 +207,7 @@ bool getBoolean() {
         # print(json.dumps(input.root, indent='  '))
         self.toplevel = Cursor(input.root)
         self.logging_index = 0
+        self.try_nesting = 0
         self.loop_nesting = 0
 
         # The output is a list of strings which will be concatenated when
@@ -280,13 +281,17 @@ void %(name)s() {
     def make_statement(self, node):
         cursor = Cursor(node)
         options = [
-#          (1,  self.make_nothing),
+          (1,  self.make_nothing),
           (10, self.make_logging),
-          (5,  self.make_throw),
-          (10, self.make_catch),
+          (10, self.make_try),
           (10, self.make_if),
           (5,  self.make_loop),
         ]
+        if self.try_nesting:
+            options.append((10, self.make_throw))
+        else:
+            # Only rarely emit throws outside of a try.
+            options.append((2, self.make_throw))
         if self.loop_nesting:
             options.append((10, self.make_branch))
         return pick(options, cursor.get_num(), cursor)
@@ -303,8 +308,10 @@ void %(name)s() {
     def make_throw(self, cursor):
         return f'throw {cursor.get_int()};'
 
-    def make_catch(self, cursor):
+    def make_try(self, cursor):
+        self.try_nesting += 1
         body = indent(self.make_statement(cursor.get_array()))
+        self.try_nesting -= 1
         catch = indent(self.make_statement(cursor.get_array()))
 
         return '''\
