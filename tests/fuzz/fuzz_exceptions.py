@@ -2,7 +2,7 @@ import json
 import random
 
 # Determinism for testing.
-random.seed(2)
+#random.seed(2)
 
 '''
 Structural fuzz generator. 
@@ -115,6 +115,8 @@ def arrayify(node):
         return [node]
     return node
 
+def indent(code):
+    return '\n'.join(['  ' + line for line in code.splitlines()])
 
 '''
 A cursor over an array, allowing gradual consumption of it. If we run out, we
@@ -242,7 +244,7 @@ int main() {
 '''
         while self.toplevel.has_more():
             name = f'func_{len(funcs)}'
-            body = self.make_function_body(self.toplevel.get())
+            body = indent(self.make_function_body(self.toplevel.get()))
             funcs.append('''\
 void %(name)s() {
 %(body)s
@@ -262,12 +264,12 @@ void %(name)s() {
   return 0;
 }
 '''
-        funcs.append(main)
+        #funcs.append(main)
         self.output.append('\n'.join(funcs))
 
     def make_function_body(self, node):
         statements = [self.make_statement(n) for n in arrayify(node)]
-        return '\n'.join(['  ' + s for s in statements])
+        return '\n'.join(statements)
 
     def make_statement(self, node):
         cursor = Cursor(node)
@@ -279,7 +281,7 @@ void %(name)s() {
         ], cursor.get_num(), cursor)
 
     def make_logging(self, cursor):
-        return f'puts("log({cursor.get_num()});'
+        return f'puts("log({cursor.get_num()})");'
 
     def make_throw(self, cursor):
         return f'// TODO: throw'
@@ -288,19 +290,19 @@ void %(name)s() {
         return f'// TODO: catch'
 
     def make_if(self, cursor):
-        if_arm = self.make_statement(cursor.get_array())
+        if_arm = indent(self.make_statement(cursor.get_array()))
 
         else_ = ''
         if cursor.get_num() < 0.5:
-            else_arm = self.make_statement(cursor.get_array())
+            else_arm = indent(self.make_statement(cursor.get_array()))
             else_ = '''\
  else {
-  %(else_arm)s
+%(else_arm)s
 }''' % locals()
 
         return '''\
 if (getBoolean()) {
-  %(if_arm)s
+%(if_arm)s
 }%(else_)s
 ''' % locals()
 
