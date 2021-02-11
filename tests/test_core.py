@@ -4521,6 +4521,30 @@ res64 - external 64\n''', header='''
                      header=header,
                      expected='success')
 
+  @needs_dlfcn
+  def test_dylink_argv_argc(self):
+    # Verify that argc and argv can be sent to main when main is in a side module
+
+    self.emcc_args += ['--extern-pre-js', 'pre.js']
+
+    create_test_file('pre.js', '''
+      var Module = { arguments: ['hello', 'world!'] }
+    ''')
+
+    self.dylink_test(
+      '', # main module is empty.
+      r'''
+      #include <stdio.h>
+      int main(int argc, char const *argv[]) {
+        printf("%d ", argc);
+        for (int i=1; i<argc; i++) printf("%s ", argv[i]);
+        printf("\n");
+        return 0;
+      }
+      ''',
+      expected='3 hello world!',
+      need_reverse=False)
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>

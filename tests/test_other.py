@@ -1465,47 +1465,6 @@ int f() {
         '-s', 'ASSERTIONS=2'
       ])
 
-  def test_side_module_main_argc_argv(self):
-    # Verify that argc and argv can be sent to main when main is in a side module
-
-    # A side module with a main that takes argc and argv.
-    create_test_file('side.c', r'''
-      #include <stdio.h>
-      int main(int argc, char const *argv[]) {
-        printf("%d ", argc);
-        for (int i=1; i<argc; i++) printf("%s ", argv[i]);
-        printf("\n");
-        return 0;
-      }
-      ''')
-    
-    create_test_file('main.c', '')
-
-    self.run_process([
-      EMCC,
-      '-o', 'side.wasm',
-      'side.c',
-      '-s', 'SIDE_MODULE=1'])
-    
-    self.run_process([
-      EMCC,
-      '-o', 'main.js',
-      'main.c',
-      '-s', 'MAIN_MODULE=1',
-      '-s', 'RUNTIME_LINKED_LIBS=[\'side.wasm\']',
-      '-s', 'MODULARIZE=1',
-      '-s', 'EXPORT_NAME=createMyModule'])
-
-    create_test_file('test.js', '''
-      var createMyModule = require('./main.js');
-      createMyModule({
-        arguments: ['hello', 'world!']
-      });
-      ''')
-
-    seen = self.run_js('test.js', assert_returncode=0)
-    self.assertContained(['3 hello world!'], seen)
-
   def test_multidynamic_link(self):
     # Linking the same dynamic library in statically will error, normally, since we statically link
     # it, causing dupe symbols
