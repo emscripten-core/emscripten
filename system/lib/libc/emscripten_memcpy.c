@@ -19,8 +19,7 @@ void* emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_
 
 #ifdef EMSCRIPTEN_OPTIMIZE_FOR_OZ
 
-void *memcpy(void *dest, const void *src, size_t n)
-{
+void *memcpy(void *dest, const void *src, size_t n) {
   unsigned char *d = (unsigned char *)dest;
   const unsigned char *s = (const unsigned char *)src;
 #pragma clang loop unroll(disable)
@@ -30,8 +29,7 @@ void *memcpy(void *dest, const void *src, size_t n)
 
 #else
 
-void *memcpy(void *restrict dest, const void *restrict src, size_t n)
-{
+void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
   unsigned char *d = dest;
   const unsigned char *s = src;
 

@@ -11,8 +11,7 @@
 
 void *memcpy(void *dest, const void *src, size_t n);
 
-void *memmove(void *dest, const void *src, size_t n)
-{
+void *memmove(void *dest, const void *src, size_t n) {
   if (dest < src) return memcpy(dest, src, n);
   unsigned char *d = (unsigned char *)dest + n;
   const unsigned char *s = (const unsigned char *)src + n;
