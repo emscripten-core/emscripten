@@ -116,7 +116,7 @@ def arrayify(node):
     return node
 
 def indent(code):
-    return '\n'.join(['  ' + line for line in code.splitlines()])
+    return '\n'.join(['  ' + line for line in code.splitlines() if line])
 
 '''
 A cursor over an array, allowing gradual consumption of it. If we run out, we
@@ -176,10 +176,11 @@ class CppTranslator:
 #include <stdint.h>
 
 extern void checkRecursion();
-extern bool getBool();
+extern bool getBoolean();
 '''
 
     SUPPORT = '''\
+#include <stdio.h>
 #include <stdlib.h>
 
 static int fuel = 100;
@@ -195,7 +196,7 @@ void checkRecursion() {
 // TODO random data
 static bool boolean = true;
 
-bool getBool() {
+bool getBoolean() {
   boolean = !boolean;
   return boolean;
 }
@@ -264,7 +265,7 @@ void %(name)s() {
   return 0;
 }
 '''
-        #funcs.append(main)
+        funcs.append(main)
         self.output.append('\n'.join(funcs))
 
     def make_function_body(self, node):
@@ -278,16 +279,26 @@ void %(name)s() {
           (1, self.make_throw),
           (1, self.make_catch),
           (1, self.make_if),
+          (1, lambda x: ''),
         ], cursor.get_num(), cursor)
 
     def make_logging(self, cursor):
         return f'puts("log({cursor.get_num()})");'
 
     def make_throw(self, cursor):
-        return f'// TODO: throw'
+        return f'throw {cursor.get_num()};'
 
     def make_catch(self, cursor):
-        return f'// TODO: catch'
+        body = indent(self.make_statement(cursor.get_array()))
+        catch = indent(self.make_statement(cursor.get_array()))
+
+        return '''\
+try {
+%(body)s
+} catch(...) {
+%(catch)s
+}
+''' % locals()
 
     def make_if(self, cursor):
         if_arm = indent(self.make_statement(cursor.get_array()))
