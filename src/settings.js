@@ -1406,6 +1406,10 @@ var USE_HARFBUZZ = 0;
 // [link]
 var USE_COCOS2D = 0;
 
+// 1 = use libmodplug from emscripten-ports
+// [link]
+var USE_MODPLUG = 0;
+
 // Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm, tga, xcf, xpm, xv
 // [link]
 var SDL2_IMAGE_FORMATS = [];
