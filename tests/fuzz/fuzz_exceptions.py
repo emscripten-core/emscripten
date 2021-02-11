@@ -26,8 +26,9 @@ However, we start with a tree structure of random bytes, something like
 
 The grammar here is simply
 
-Node = int or Array
+Node = Number or Array
 Array = Node^K, K >= 0
+Number = [0..1)
 
 Starting from structured random data has the benefit of making it easy to reduce
 on the random input. Consider if the structure of the random input gets mapped
@@ -40,6 +41,10 @@ To get this benefit, the translator of the random structured data must convert
 it to the output in a structured manner. That is, one node should be converted
 to a corresponding node, and without looking at other nodes as much as possible,
 so that if they are altered, that one will not be.
+
+A downside to this approach is that a very large random input may lead to a very
+small output, for example, if a huge nested tree of data is consumed in a place
+that just wants a bool.
 '''
 class StructuredRandomData:
     # The overall maximum number of nodes we want.
@@ -52,7 +57,7 @@ class StructuredRandomData:
     # How much shorter arrays are the deeper we go.
     ARRAY_DEPTH_SHORTENING = 0.95
 
-    # How likely we are to create an array instead of an int.
+    # How likely we are to create an array instead of a number.
     ARRAY_PROBABILITY = 0.3
 
     # How much each extra level of depth makes it less likely to have an array.
@@ -77,22 +82,22 @@ class StructuredRandomData:
         self.emitted_nodes += 1
         return [self.make(depth + 1) for i in range(0, size)]
 
-    def make_int(self):
+    def make_num(self):
         self.emitted_nodes += 1
-        return random.randrange(0, 256)
+        return random.random()
 
     def make(self, depth):
         if self.emitted_nodes < self.MAX_NODES and \
            random.random() < \
            self.ARRAY_PROBABILITY * (self.ARRAY_DEPTH_UNLIKELIHOOD ** depth):
             return self.make_array(depth)
-        return self.make_int()
+        return self.make_num()
 
 # To see an example, run this line:
 # print(json.dumps(StructuredRandomData().root, indent='  '))
 
 
-def intify(node):
+def numify(node):
     if type(node) == list:
         return len(node)
     return node
@@ -118,6 +123,12 @@ class Cursor:
             return 0
         self.pos += 1
         return self.array[self.pos - 1]
+
+    def remaining(self):
+        return max(0, len(self.array) - self.pos)
+
+    def has_more(self):
+        return self.remaining() > 0
 
 
 '''
@@ -146,10 +157,11 @@ void checkRecursion() {
     def __init__(self, input):
         self.toplevel = Cursor(input.root)
 
-        # The output is a list of strings which will be concatenated at the end.
+        # The output is a list of strings which will be concatenated when
+        # writing.
         self.output = [self.PREAMBLE]
-
-        self.output.append(self.make_structs())
+        self.make_structs()
+        self.make_functions()
 
     '''
     Outputs the main file and the support file on the side. Support code is not
@@ -163,26 +175,61 @@ void checkRecursion() {
 
     def make_structs(self):
         array = arrayify(self.toplevel.get())
+        # Global mapping of struct name to its array of fields.
         self.structs = {}
-        ret = []
+        structs = []
         for node in array:
-            name = f'Struct{len(ret)}'
+            name = f'Struct{len(structs)}'
             sig = self.get_types(node)
             self.structs[name] = sig
             fields = '\n'.join([f'  {t} f{i};' for i, t in enumerate(sig)])
             print(fields)
-            ret.append('''\
+            structs.append('''\
 struct %(name)s {
 %(fields)s
 };
 ''' % locals())
-        return '\n'.join(ret)
+        self.output.append('\n'.join(structs))
+
+    def make_functions(self):
+        funcs = []
+        main = '''\
+int main() {
+'''
+        while self.toplevel.has_more():
+            node = self.toplevel.get()
+            name = f'func_{len(funcs)}'
+            body = self.make_function_body()
+            funcs.append('''\
+void %(name)s() {
+%(body)s
+}
+''' % locals())
+            main += '''\
+  // %(name)s
+  puts("calling %(name)s");
+  try {
+    %(name)s();
+  } catch(...) {
+    puts("main caught from %(name)s");
+  }
+''' % locals()
+
+        main +='''\
+  return 0;
+}
+'''
+        funcs.append(main)
+        self.output.append('\n'.join(funcs))
+
+    def make_function_body(self):
+        return ''
 
     def get_types(self, node):
         return [self.get_type(x) for x in arrayify(node)]
 
     def get_type(self, node):
-        if intify(node) < 128:
+        if numify(node) < 0.5:
             return 'uint32_t'
         return 'double'
 
