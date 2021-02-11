@@ -2,7 +2,7 @@ import json
 import random
 
 # Determinism for testing.
-#random.seed(2)
+random.seed(2)
 
 '''
 Structural fuzz generator. 
@@ -51,23 +51,27 @@ that just wants a bool.
 '''
 class StructuredRandomData:
     # The overall maximum number of nodes we want.
-    MAX_NODES = 200
+    MAX_NODES = 2000
 
     # The minimum and maximum size of an array.
-    MIN_ARRAY_SIZE = 3
+    MIN_ARRAY_SIZE = 2
     MAX_ARRAY_SIZE = 10
 
     # How much shorter arrays are the deeper we go.
-    ARRAY_DEPTH_SHORTENING = 0.95
+    ARRAY_DEPTH_SHORTENING = 0.5
 
-    # How likely we are to create an array instead of a number.
-    ARRAY_PROBABILITY = 0.3
+    # How likely we are to create an array instead of a number (at the top
+    # level).
+    ARRAY_PROBABILITY = 0.5
 
-    # How much each extra level of depth makes it less likely to have an array.
-    ARRAY_DEPTH_UNLIKELIHOOD = 0.95
+    # A reduction factor on the probability to have an array, per depth level.
+    ARRAY_DEPTH_UNLIKELIHOOD = 0.66
+
+    # How low the array probability can go due to ARRAY_DEPTH_UNLIKELIHOOD.
+    MIN_ARRAY_PROBABILITY = 0.1
 
     # The maximum depth.
-    MAX_DEPTH = 7
+    MAX_DEPTH = 20
 
     def __init__(self):
         self.emitted_nodes = 0
@@ -90,9 +94,10 @@ class StructuredRandomData:
         return random.random()
 
     def make(self, depth):
-        if self.emitted_nodes < self.MAX_NODES and \
-           random.random() < \
-           self.ARRAY_PROBABILITY * (self.ARRAY_DEPTH_UNLIKELIHOOD ** depth):
+        if self.emitted_nodes < self.MAX_NODES:
+          array_probability = self.ARRAY_PROBABILITY * (self.ARRAY_DEPTH_UNLIKELIHOOD ** depth)
+          array_probability = max(array_probability, self.MIN_ARRAY_PROBABILITY)
+          if random.random() < array_probability:
             return self.make_array(depth)
         return self.make_num()
 
@@ -104,9 +109,7 @@ def numify(node):
     if type(node) == list:
         if len(node) == 0:
             return 0
-        if len(node) == 1:
-            return 0.5
-        return 1 / len(node)
+        return numify(node[0])
     return node
 
 
@@ -203,7 +206,9 @@ bool getBoolean() {
 '''
 
     def __init__(self, input):
+        print(json.dumps(input.root, indent='  '))
         self.toplevel = Cursor(input.root)
+        self.logging_index = 0
 
         # The output is a list of strings which will be concatenated when
         # writing.
@@ -275,15 +280,21 @@ void %(name)s() {
     def make_statement(self, node):
         cursor = Cursor(node)
         return pick([
-          (1, self.make_logging),
-          (1, self.make_throw),
-          (1, self.make_catch),
-          (1, self.make_if),
-          (1, lambda x: ''),
+          (1, self.make_nothing),
+          (10, self.make_logging),
+          (10, self.make_throw),
+          (10, self.make_catch),
+          (10, self.make_if),
         ], cursor.get_num(), cursor)
 
+    def make_nothing(self, cursor):
+        return ''
+
     def make_logging(self, cursor):
-        return f'puts("log({cursor.get_num()})");'
+        if cursor.has_more():
+            return f'puts("log({cursor.get_num()})");'
+        self.logging_index += 1
+        return f'puts("log({self.logging_index})");'
 
     def make_throw(self, cursor):
         return f'throw {cursor.get_num()};'
@@ -304,7 +315,7 @@ try {
         if_arm = indent(self.make_statement(cursor.get_array()))
 
         else_ = ''
-        if cursor.get_num() < 0.5:
+        if cursor.get_num() >= 0.5:
             else_arm = indent(self.make_statement(cursor.get_array()))
             else_ = '''\
  else {
