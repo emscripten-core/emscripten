@@ -3777,6 +3777,16 @@ ok
       header='typedef float (*floatfunc)(float);', force_c=True, main_module=2)
 
   @needs_dlfcn
+  def test_missing_signatures(self):
+    create_test_file('test_sig.c', r'''#include <emscripten.h>
+                                       int main() {
+                                         return 0 == ( (int)&emscripten_run_script_string +
+                                                       (int)&emscripten_run_script );
+                                       }''')
+    self.set_setting('MAIN_MODULE', 1)
+    self.do_runf('test_sig.c', '')
+
+  @needs_dlfcn
   def test_dylink_global_init(self):
     self.dylink_test(r'''
       #include <stdio.h>
