@@ -362,27 +362,49 @@ def make_paths_absolute(f):
 # The results are populated in nm_cache
 def llvm_nm_multiple(files):
   with ToolchainProfiler.profile_block('llvm_nm_multiple'):
-    object_contents = []
-    processes = []
+    # Run llvm-nm on files that we haven't cached yet
+    llvm_nm_files = [f for f in files if f not in nm_cache]
+    cmd = [LLVM_NM] + llvm_nm_files
+    results = run_process(cmd, stdout=PIPE, stderr=PIPE).stdout
 
-    for file in files:
-      if file not in nm_cache:
-        processes += [(file, subprocess.Popen([LLVM_NM, file], stdout=PIPE, stderr=PIPE), None)]
-      else:
-        processes += [(file, None, nm_cache[file])]
+    # llvm-nm produces a single listing of form
+    # file1.o:
+    # 00000001 T __original_main
+    #          U __stack_pointer
+    #
+    # file2.o:
+    # 0000005d T main
+    #          U printf
+    #
+    # ...
+    # so loop over the report to extract the results
+    # for each individual file.
 
-    for file, proc, result in processes:
-      if proc:
-        out, err = proc.communicate()
-        if proc.returncode == 0:
-          result = parse_symbols(out.decode('utf-8'))
-          nm_cache[file] = result
-        else:
-          result = ObjectFileInfo(proc.returncode, (out.decode('utf-8') if out else '') + (err.decode('utf-8') if out else ''))
+    filename = llvm_nm_files[0]
+    file_start = 0
+    i = 0
 
-      object_contents += [result]
+    while True:
+      nl = results.find('\n', i)
+      if nl < 0:
+        break
+      colon = results.rfind(':', i, nl)
+      if colon >= 0 and results[colon+1] == '\n': # New file start?
+        nm_cache[filename] = parse_symbols(results[file_start:i-1])
+        filename = results[i:colon].strip()
+        file_start = colon+2
+      i = nl + 1
 
-    return object_contents
+    nm_cache[filename] = parse_symbols(results[file_start:])
+
+    # Any files that failed llvm-nm (e.g. they did not have any
+    # symbols) will be not present in the above, so fill in dummies
+    # for those.
+    for f in files:
+      if f not in nm_cache:
+        nm_cache[f] = ObjectFileInfo(1, '')
+
+  return [nm_cache[f] for f in files]
 
 
 def llvm_nm(file):
