@@ -866,8 +866,11 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
 }
 
 int _emscripten_call_on_thread(
-  int forceAsync,
+  int dispatchMode,
   pthread_t targetThread, EM_FUNC_SIGNATURE sig, void* func_ptr, void* satellite, ...) {
+  // dispatchMode==0 Synchronous if in the same thread_id, otherwise asynchronous.
+  // dispatchMode==1 Force asynchronous call even if in the same thread_id.
+  // dispatchMode==2 Always force a synchronous call.
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call* q = em_queued_call_malloc();
   assert(q);
@@ -912,14 +915,14 @@ int _emscripten_call_on_thread(
   q->calleeDelete = 1;
   // The called function will not be async if we are on the same thread; force
   // async if the user asked for that.
-  if (forceAsync == 1) {
+  if (dispatchMode == 1) {
     EM_ASM({
       setTimeout(function() {
         __emscripten_do_dispatch_to_thread($0, $1);
       }, 0);
     }, targetThread, q);
     return 0;
-  } else if (forceAsync == 2) {
+  } else if (dispatchMode == 2) {
     q->calleeDelete = 0;
     _emscripten_do_dispatch_to_thread_global(targetThread, q, 0);
     emscripten_wait_for_call_v(q, INFINITY);
