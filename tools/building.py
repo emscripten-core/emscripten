@@ -390,7 +390,7 @@ def llvm_nm_multiple(files):
         break
       colon = results.rfind(':', i, nl)
       if colon >= 0 and results[colon + 1] == '\n': # New file start?
-        nm_cache[filename] = parse_symbols(results[file_start:i-1])
+        nm_cache[filename] = parse_symbols(results[file_start:i - 1])
         filename = results[i:colon].strip()
         file_start = colon + 2
       i = nl + 1
