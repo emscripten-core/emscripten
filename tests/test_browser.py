@@ -3898,6 +3898,10 @@ window.close = function() {
   def test_pthread_call_async(self):
     self.btest(path_from_root('tests', 'pthread', 'call_async.c'), expected='1', args=['-s', 'USE_PTHREADS'])
 
+  @requires_threads
+  def test_pthread_call_sync(self):
+    self.btest(path_from_root('tests', 'pthread', 'call_sync.c'), expected='1', args=['-s', 'ASYNCIFY', '-s', 'USE_PTHREADS'])
+
   # Test that it is possible to synchronously call a JavaScript function on the main thread and get a return value back.
   @requires_threads
   def test_pthread_call_sync_on_main_thread(self):
