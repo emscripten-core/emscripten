@@ -633,7 +633,7 @@ def unmangle_symbols_from_cmdline(symbols):
 
   if type(symbols) is list:
     return [unmangle(x) for x in symbols]
-  return unmangle(x)
+  return unmangle(symbols)
 
 
 def parse_s_args(args):

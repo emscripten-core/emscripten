@@ -738,11 +738,11 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // escaping, the following substitutions can be made:
 // - ' ' -> '.',
 // - '&' -> '#',
-// - ',' -> '.'.
+// - ',' -> '?'.
 //
 // That is, the function
 //    "foo(char const*, int&)" can be inputted as
-//    "foo(char.const*?.int%)" on the command line instead.
+//    "foo(char.const*?.int#)" on the command line instead.
 //
 // Note: Whitespace is part of the function signature! I.e.
 //    "foo(char const *, int &)" will not match "foo(char const*, int&)", and
