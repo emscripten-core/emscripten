@@ -7420,7 +7420,7 @@ end
 
   def test_toolchain_profiler(self):
     environ = os.environ.copy()
-    environ['EM_PROFILE_TOOLCHAIN'] = '1'
+    environ['EMPROFILE'] = '1'
     # replaced subprocess functions should not cause errors
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c')], env=environ)
 

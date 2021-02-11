@@ -13,9 +13,9 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import response_file
 
-EM_PROFILE_TOOLCHAIN = int(os.getenv('EM_PROFILE_TOOLCHAIN', '0'))
+EMPROFILE = int(os.getenv('EMPROFILE', '0'))
 
-if EM_PROFILE_TOOLCHAIN:
+if EMPROFILE:
   original_sys_exit = sys.exit
   original_subprocess_call = subprocess.call
   original_subprocess_check_call = subprocess.check_call

@@ -62,7 +62,7 @@ def create_profiling_graph():
       print('Failed to parse JSON file "' + f + '"!', file=sys.stderr)
       sys.exit(1)
   if len(all_results) == 0:
-    print('No profiler logs were found in path "' + profiler_logs_path + '". Try setting the environment variable EM_PROFILE_TOOLCHAIN=1 and run some emcc commands, and then rerun "emprofile" again.')
+    print('No profiler logs were found in path "' + profiler_logs_path + '". Try setting the environment variable EMPROFILE=1 and run some emcc commands, and then rerun "emprofile" again.')
     return
 
   all_results.sort(key=lambda x: x['time'])
