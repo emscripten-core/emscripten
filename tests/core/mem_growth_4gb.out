@@ -1,9 +1,0 @@
-TODO: Adapt this file when Node.js gains 4GB memory support.
-Allocated 16777216: 1. Heap size: 22085632
-Allocated 33554432: 1. Heap size: 55640064
-Allocated 67108864: 1. Heap size: 122748928
-Allocated 134217728: 1. Heap size: 256966656
-Allocated 268435456: 1. Heap size: 525402112
-Allocated 536870912: 1. Heap size: 1062273024
-Allocated 1073741824: 1. Heap size: 2136014848
-Allocated 2147483648: 0. Heap size: 2136014848

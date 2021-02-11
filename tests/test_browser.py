@@ -5017,6 +5017,11 @@ window.close = function() {
     test(['-s', 'MALLOC=emmalloc-memvalidate-verbose'])
 
   @no_firefox('no 4GB support yet')
+  def test_zzz_zzz_emmalloc_memgrowth(self, *args):
+    self.emcc_args += ['-s', 'MALLOC=emmalloc', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'ABORTING_MALLOC=0', '-s', 'ASSERTIONS=2', '-s', 'MINIMAL_RUNTIME=1']
+    self.do_run_in_out_file_test('tests', 'browser', 'emmalloc_memgrowth.cpp')
+
+  @no_firefox('no 4GB support yet')
   def test_zzz_zzz_2gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which

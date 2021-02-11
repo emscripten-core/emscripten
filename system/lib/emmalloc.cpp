@@ -80,7 +80,7 @@ extern "C"
 // in the size field. I.e. for free regions, the size field is odd, and for used regions, the size field reads even.
 #define FREE_REGION_FLAG 0x1u
 
-// Attempts to malloc() more than this many bytes would cause an internal wraparound,
+// Attempts to malloc() more than this many bytes would cause an overflow when calculating the size of a region,
 // therefore allocations larger than this are short-circuited immediately on entry.
 #define MAX_ALLOC_SIZE 0xFFFFFFC7u
 
