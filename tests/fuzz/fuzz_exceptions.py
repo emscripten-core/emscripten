@@ -2,7 +2,7 @@ import json
 import random
 
 # Determinism for testing.
-random.seed(2)
+# random.seed(2)
 
 '''
 Structural fuzz generator. 
@@ -164,6 +164,7 @@ class CppTranslator:
 #include <stdio.h> // avoid iostream C++ code, just test libc++abi, not libc++
 #include <stdint.h>
 
+extern void refuel();
 extern void checkRecursion();
 extern bool getBoolean();
 '''
@@ -172,7 +173,13 @@ extern bool getBoolean();
 #include <stdio.h>
 #include <stdlib.h>
 
-static int fuel = 100;
+const int INIIAL_FUEL = 100;
+
+static int fuel = INIIAL_FUEL;
+
+void refuel() {
+  fuel = INIIAL_FUEL;
+}
 
 void checkRecursion() {
   if (fuel == 0) {
@@ -186,15 +193,21 @@ void checkRecursion() {
 static bool boolean = true;
 
 bool getBoolean() {
+  // If we are done, exit all loops etc.
+  if (fuel == 0) {
+    return false;
+  }
+  fuel--;
   boolean = !boolean;
   return boolean;
 }
 '''
 
     def __init__(self, input):
-        print(json.dumps(input.root, indent='  '))
+        # print(json.dumps(input.root, indent='  '))
         self.toplevel = Cursor(input.root)
         self.logging_index = 0
+        self.loop_nesting = 0
 
         # The output is a list of strings which will be concatenated when
         # writing.
@@ -245,6 +258,7 @@ void %(name)s() {
             main += '''\
   // %(name)s
   puts("calling %(name)s");
+  refuel();
   try {
     %(name)s();
   } catch(...) {
@@ -265,13 +279,17 @@ void %(name)s() {
 
     def make_statement(self, node):
         cursor = Cursor(node)
-        return pick([
-          (1, self.make_nothing),
+        options = [
+#          (1,  self.make_nothing),
           (10, self.make_logging),
-          (10, self.make_throw),
+          (5,  self.make_throw),
           (10, self.make_catch),
           (10, self.make_if),
-        ], cursor.get_num(), cursor)
+          (5,  self.make_loop),
+        ]
+        if self.loop_nesting:
+            options.append((10, self.make_branch))
+        return pick(options, cursor.get_num(), cursor)
 
     def make_nothing(self, cursor):
         return ''
@@ -313,6 +331,24 @@ if (getBoolean()) {
 %(if_arm)s
 }%(else_)s
 ''' % locals()
+
+    def make_loop(self, cursor):
+        self.loop_nesting += 1
+        body = indent(self.make_statement(cursor.get_array()))
+        self.loop_nesting -= 1
+
+        return '''\
+while (getBoolean()) {
+%(body)s
+}
+''' % locals()
+
+    def make_branch(self, cursor):
+        assert self.loop_nesting
+        if cursor.get_num() < 0.5:
+            return 'break;'
+        else:
+            return 'continue;'
 
     def get_types(self, node):
         return [self.get_type(x) for x in arrayify(node)]
