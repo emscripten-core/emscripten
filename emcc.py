@@ -1376,7 +1376,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Support all old browser versions
       shared.Settings.MIN_FIREFOX_VERSION = 0
-      shared.Settings.MIN_SAFARI_VERSION = 100000
+      shared.Settings.MIN_SAFARI_VERSION = 0
       shared.Settings.MIN_IE_VERSION = 0
       shared.Settings.MIN_EDGE_VERSION = 0
       shared.Settings.MIN_CHROME_VERSION = 0
