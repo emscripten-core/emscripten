@@ -1,8 +1,8 @@
 import json
+import os
 import random
-
-# Determinism for testing.
-# random.seed(2)
+import subprocess
+import time
 
 '''
 Structural fuzz generator. 
@@ -50,7 +50,7 @@ small output, for example, if a huge nested tree of data is consumed in a place
 that just wants a bool.
 '''
 class StructuredRandomData:
-    NUM_TOPLEVEL = 20
+    NUM_TOPLEVEL = 50
 
     # The range of widths.
     MIN_WIDTH = 1
@@ -365,5 +365,21 @@ while (getBoolean()) {
             return 'uint32_t'
         return 'double'
 
-CppTranslator(StructuredRandomData()).write(main='a.cpp', support='b.cpp')
+# Main harness
 
+seed = time.time() * os.getpid()
+
+while 1:
+    seed = random.randint(0, 1 << 64)
+    random.seed(seed)
+    print(f'[iteration (seed = {seed})]')
+
+    # Compile normally.
+    CppTranslator(StructuredRandomData()).write(main='a.cpp', support='b.cpp')
+    subprocess.check_call(['clang++', 'a.cpp', 'b.cpp'])
+    normal = subprocess.check_output(['./a.out'])
+
+    # Compile with emcc.
+    subprocess.check_call(['./em++', 'a.cpp', 'b.cpp', '-fexceptions', '-sWASM_BIGINT'])
+    emcc = subprocess.check_output(['nodejs', 'a.out.js'])
+    assert normal == emcc
