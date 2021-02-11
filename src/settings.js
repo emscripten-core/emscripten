@@ -737,7 +737,7 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // To avoid dealing with limitations in operating system shells or build system
 // escaping, the following substitutions can be made:
 // - ' ' -> '.',
-// - '&' -> '%',
+// - '&' -> '#',
 // - ',' -> '.'.
 //
 // That is, the function
