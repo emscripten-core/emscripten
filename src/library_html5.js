@@ -27,7 +27,7 @@ var LibraryJSEvents = {
     // so that we can report information about that element in the event message.
     previousFullscreenElement: null,
 
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 8 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
     // Remember the current mouse coordinates in case we need to emulate movementXY generation for browsers that don't support it.
     // Some browsers (e.g. Safari 6.0.5) only give movementXY when Pointerlock is active.
     previousScreenX: null,
@@ -2802,7 +2802,7 @@ var LibraryJSEvents = {
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
     return (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1.0;
 #else // otherwise, on the web and in workers, things are simpler
-#if MIN_IE_VERSION < 11 || MIN_FIREFOX_VERSION < 18 || MIN_CHROME_VERSION < 4 || MIN_SAFARI_VERSION < 3010 // https://caniuse.com/#feat=devicepixelratio
+#if MIN_IE_VERSION < 11 || MIN_FIREFOX_VERSION < 18 || MIN_CHROME_VERSION < 4 || MIN_SAFARI_VERSION < 30100 // https://caniuse.com/#feat=devicepixelratio
     return window.devicePixelRatio || 1.0;
 #else
     return devicePixelRatio;

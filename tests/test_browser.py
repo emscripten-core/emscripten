@@ -2513,7 +2513,7 @@ Module["preRun"].push(function () {
     '': ([],),
     'closure': (['-O2', '-g1', '--closure', '1', '-s', 'HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0'],),
     'pthread': (['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'],),
-    'legacy': (['-s', 'MIN_FIREFOX_VERSION=0', '-s', 'MIN_SAFARI_VERSION=0', '-s', 'MIN_IE_VERSION=0', '-s', 'MIN_EDGE_VERSION=0', '-s', 'MIN_CHROME_VERSION=0'],)
+    'legacy': (['-s', 'MIN_FIREFOX_VERSION=0', '-s', 'MIN_SAFARI_VERSION=90306', '-s', 'MIN_IE_VERSION=0', '-s', 'MIN_EDGE_VERSION=0', '-s', 'MIN_CHROME_VERSION=0'],)
   })
   @requires_threads
   def test_html5_core(self, opts):

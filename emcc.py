@@ -1381,8 +1381,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.MIN_EDGE_VERSION = 0
       shared.Settings.MIN_CHROME_VERSION = 0
 
-    if shared.Settings.MIN_SAFARI_VERSION <= 9 and shared.Settings.WASM2JS:
-      shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
+    if shared.Settings.MIN_SAFARI_VERSION <= 90305:
+      exit_with_error('MIN_SAFARI_VERSION <= 90305: Emscripten does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older. (browser has no Wasm support, and Wasm2JS support would not run). Please pass -s MIN_SAFARI_VERSION=100000 or higher.')
 
     if shared.Settings.MIN_CHROME_VERSION <= 37:
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
@@ -1392,7 +1392,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
     if not shared.Settings.WASM2JS:
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
-      shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
 
     if shared.Settings.STB_IMAGE and final_suffix in EXECUTABLE_ENDINGS:
