@@ -1,6 +1,9 @@
 import json
 import random
 
+# Determinism for testing.
+random.seed(2)
+
 '''
 Structural fuzz generator. 
 
@@ -99,7 +102,11 @@ class StructuredRandomData:
 
 def numify(node):
     if type(node) == list:
-        return len(node)
+        if len(node) == 0:
+            return 0
+        if len(node) == 1:
+            return 0.5
+        return 1 / len(node)
     return node
 
 
@@ -115,7 +122,7 @@ return simple values.
 '''
 class Cursor:
     def __init__(self, array):
-        self.array = array
+        self.array = arrayify(array)
         self.pos = 0
 
     def get(self):
@@ -124,11 +131,37 @@ class Cursor:
         self.pos += 1
         return self.array[self.pos - 1]
 
+    def get_num(self):
+        return numify(self.get())
+
+    def get_array(self):
+        return arrayify(self.get())
+
     def remaining(self):
         return max(0, len(self.array) - self.pos)
 
     def has_more(self):
         return self.remaining() > 0
+
+
+'''
+Given a list of options (weight, func), and a value in [0, 1) to help pick from
+them, pick one, and call it with the parameter.
+'''
+def pick(options, value, param):
+    # Scale the value by the total weight.
+    assert 0 <= value < 1, value
+    total = 0
+    for weight, func in options:
+        total += weight
+    value *= total
+
+    for weight, func in options:
+        if value < weight:
+            return func(param)
+        value -= weight
+
+    raise Exception('inconceivable')
 
 
 '''
@@ -141,6 +174,7 @@ class CppTranslator:
 #include <stdint.h>
 
 extern void checkRecursion();
+extern bool getBool();
 '''
 
     SUPPORT = '''\
@@ -149,8 +183,19 @@ extern void checkRecursion();
 static int fuel = 100;
 
 void checkRecursion() {
-  if (fuel == 0) abort();
+  if (fuel == 0) {
+    puts("out of fuel");
+    abort();
+  }
   fuel--;
+}
+
+// TODO random data
+static bool boolean = true;
+
+bool getBool() {
+  boolean = !boolean;
+  return boolean;
 }
 '''
 
@@ -183,7 +228,6 @@ void checkRecursion() {
             sig = self.get_types(node)
             self.structs[name] = sig
             fields = '\n'.join([f'  {t} f{i};' for i, t in enumerate(sig)])
-            print(fields)
             structs.append('''\
 struct %(name)s {
 %(fields)s
@@ -197,9 +241,8 @@ struct %(name)s {
 int main() {
 '''
         while self.toplevel.has_more():
-            node = self.toplevel.get()
             name = f'func_{len(funcs)}'
-            body = self.make_function_body()
+            body = self.make_function_body(self.toplevel.get())
             funcs.append('''\
 void %(name)s() {
 %(body)s
@@ -222,8 +265,44 @@ void %(name)s() {
         funcs.append(main)
         self.output.append('\n'.join(funcs))
 
-    def make_function_body(self):
-        return ''
+    def make_function_body(self, node):
+        statements = [self.make_statement(n) for n in arrayify(node)]
+        return '\n'.join(['  ' + s for s in statements])
+
+    def make_statement(self, node):
+        cursor = Cursor(node)
+        return pick([
+          (1, self.make_logging),
+          (1, self.make_throw),
+          (1, self.make_catch),
+          (1, self.make_if),
+        ], cursor.get_num(), cursor)
+
+    def make_logging(self, cursor):
+        return f'puts("log({cursor.get_num()});'
+
+    def make_throw(self, cursor):
+        return f'// TODO: throw'
+
+    def make_catch(self, cursor):
+        return f'// TODO: catch'
+
+    def make_if(self, cursor):
+        if_arm = self.make_statement(cursor.get_array())
+
+        else_ = ''
+        if cursor.get_num() < 0.5:
+            else_arm = self.make_statement(cursor.get_array())
+            else_ = '''\
+ else {
+  %(else_arm)s
+}''' % locals()
+
+        return '''\
+if (getBoolean()) {
+  %(if_arm)s
+}%(else_)s
+''' % locals()
 
     def get_types(self, node):
         return [self.get_type(x) for x in arrayify(node)]
