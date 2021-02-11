@@ -15,9 +15,9 @@
 static _Atomic bool started = false;
 
 void *new_thread(void* ctx) {
-    started = true;
-    emscripten_exit_with_live_runtime();
-    return NULL;
+  started = true;
+  emscripten_exit_with_live_runtime();
+  return NULL;
 }
 
 int magic_number() {
@@ -34,6 +34,6 @@ int main() {
   assert(emscripten_dispatch_to_thread_sync(worker, EM_FUNC_SIG_I, &magic_number, NULL) == 42);
 
 #ifdef REPORT_RESULT
-	REPORT_RESULT(1);
+  REPORT_RESULT(1);
 #endif
 }
