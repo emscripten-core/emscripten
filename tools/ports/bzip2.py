@@ -17,7 +17,7 @@ def needed(settings):
 def get(ports, settings, shared):
   ports.fetch_project('bzip2', 'https://github.com/emscripten-ports/bzip2/archive/' + VERSION + '.zip', 'bzip2-' + VERSION, sha512hash=HASH)
 
-  def create():
+  def create(final):
     ports.clear_project_build('bzip2')
 
     source_path = os.path.join(ports.get_dir(), 'bzip2', 'bzip2-' + VERSION)
@@ -42,10 +42,8 @@ def get(ports, settings, shared):
       o_s.append(o)
     ports.run_commands(commands)
 
-    final = os.path.join(ports.get_build_dir(), 'bzip2', 'libbz2.a')
     ports.create_lib(final, o_s)
     ports.install_headers(source_path)
-    return final
 
   return [shared.Cache.get_lib('libbz2.a', create, what='port')]
 

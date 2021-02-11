@@ -849,8 +849,8 @@ base align: 0, 0, 0, 0'''])
   @no_lsan('LSan does not support custom memory allocators')
   @parameterized({
     'normal': [],
-    'debug': ['-DEMMALLOC_DEBUG'],
-    'debug_log': ['-DEMMALLOC_DEBUG', '-DEMMALLOC_DEBUG_LOG', '-DRANDOM_ITERS=130'],
+    'memvalidate': ['-DEMMALLOC_MEMVALIDATE'],
+    'memvalidate_verbose': ['-DEMMALLOC_MEMVALIDATE', '-DEMMALLOC_VERBOSE', '-DRANDOM_ITERS=130'],
   })
   def test_emmalloc(self, *args):
     # in newer clang+llvm, the internal calls to malloc in emmalloc may be optimized under
@@ -3777,6 +3777,16 @@ ok
       header='typedef float (*floatfunc)(float);', force_c=True, main_module=2)
 
   @needs_dlfcn
+  def test_missing_signatures(self):
+    create_test_file('test_sig.c', r'''#include <emscripten.h>
+                                       int main() {
+                                         return 0 == ( (int)&emscripten_run_script_string +
+                                                       (int)&emscripten_run_script );
+                                       }''')
+    self.set_setting('MAIN_MODULE', 1)
+    self.do_runf('test_sig.c', '')
+
+  @needs_dlfcn
   def test_dylink_global_init(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4353,6 +4363,40 @@ res64 - external 64\n''', header='''
       print('check warnings')
       full = self.run_js('src.js')
       self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
+
+  @needs_dlfcn
+  def test_dylink_load_compiled_side_module(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args.append('-lnodefs.js')
+    self.set_setting('INITIAL_MEMORY', '64mb')
+
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      extern int sidef();
+      int main() {
+        EM_ASM({
+          FS.mkdir('/working');
+          FS.mount(NODEFS,{ root: '.' }, '/working');
+          var libData = FS.readFile('/working/liblib.so', {encoding: 'binary'});
+          if (!(libData instanceof Uint8Array)) {
+            libData = new Uint8Array(libData);
+          }
+          var compiledModule = new WebAssembly.Module(libData);
+          var sideExports = loadWebAssemblyModule(compiledModule, {loadAsync: false, nodelete: true});
+          mergeLibSymbols(sideExports, 'liblib.so');
+        });
+        printf("sidef: %d.\n", sidef());
+      }
+    ''',
+                     side=r'''
+      #include <stdio.h>
+      int sidef() { return 10; }
+    ''',
+                     expected=['sidef: 10'],
+                     # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
+                     need_reverse=not self.is_wasm(),
+                     auto_load=False)
 
   @needs_dlfcn
   def test_dylink_dso_needed(self):
@@ -4948,6 +4992,9 @@ main( int argv, char ** argc ) {
   def test_stat(self):
     self.do_runf(path_from_root('tests', 'stat', 'test_stat.c'), 'success')
     self.verify_in_strict_mode('test_stat.js')
+
+  def test_fstatat(self):
+    self.do_runf(path_from_root('tests', 'stat', 'test_fstatat.c'), 'success')
 
   def test_stat_chmod(self):
     self.do_runf(path_from_root('tests', 'stat', 'test_chmod.c'), 'success')
@@ -5998,7 +6045,7 @@ return malloc(size);
       FS.createDataFile('/', 'paper.pdf', eval(read_('paper.pdf.js')), true, false, false);
     };
     Module.postRun = function() {
-      var FileData = MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']);
+      var FileData = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents['filename-1.ppm']));
       out("Data: " + JSON.stringify(FileData.map(function(x) { return unSign(x, 8) })));
     };
     ''')
@@ -6035,7 +6082,7 @@ return malloc(size);
       create_test_file('pre.js', """
         Module.preRun = function() { FS.createDataFile('/', 'image.j2k', %s, true, false, false); };
         Module.postRun = function() {
-          out('Data: ' + JSON.stringify(MEMFS.getFileDataAsRegularArray(FS.analyzePath('image.raw').object)));
+          out('Data: ' + JSON.stringify(Array.from(MEMFS.getFileDataAsTypedArray(FS.analyzePath('image.raw').object))));
         };
         """ % line_splitter(str(image_bytes)))
 
@@ -6230,7 +6277,6 @@ return malloc(size);
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS.c')
 
-  @no_minimal_runtime('MINIMAL_RUNTIME does not blindly export all symbols to Module to save code size')
   def test_dyncall_specific(self):
     emcc_args = self.emcc_args[:]
     for which, exported_runtime_methods in [
@@ -6242,6 +6288,13 @@ return malloc(size);
       self.emcc_args = emcc_args + ['-D' + which]
       self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', exported_runtime_methods)
       self.do_run_in_out_file_test('tests', 'core', 'dyncall_specific.c')
+
+      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', [])
+      self.emcc_args = emcc_args + ['-s', 'DYNCALLS=1', '--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
+      self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
+
+      self.emcc_args += ['-s', 'MINIMAL_RUNTIME=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"]']
+      self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
@@ -7891,6 +7944,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp'),
                  post_build=modify_env, assert_all=True, expected_output=expected_output)
 
+  @no_wasm2js('TODO: sanitizers in wasm2js')
+  def test_ubsan_typeinfo_eq(self):
+    # https://github.com/emscripten-core/emscripten/issues/13330
+    src = r'''
+      #include <typeinfo>
+      #include <stdio.h>
+      int main() {
+        int mismatch = typeid(int) != typeid(int);
+        printf("ok\n");
+        return mismatch;
+      }
+      '''
+    self.emcc_args.append('-fsanitize=undefined')
+    self.do_run(src, 'ok\n')
+
   def test_template_class_deduction(self):
     self.emcc_args += ['-std=c++17']
     self.do_run_in_out_file_test('tests', 'core', 'test_template_class_deduction.cpp')
@@ -8163,6 +8231,51 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_PTHREADS')
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_futexes.c')
 
+  @needs_dlfcn
+  @node_pthreads
+  def test_pthread_dynamic_linking(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_basic_dylink_test()
+
+  @needs_dlfcn
+  @node_pthreads
+  def test_Module_dynamicLibraries_pthreads(self):
+    # test that Module.dynamicLibraries works with pthreads
+
+    self.emcc_args += ['-pthread', '-Wno-experimental']
+    self.emcc_args += ['--extern-pre-js', 'pre.js']
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+
+    create_test_file('pre.js', '''
+      if ( !global.Module ) {
+        // This is the initial load (not a worker)
+        // Define the initial state of Module as we would
+        // in the html shell file.
+        // Use var to escape the scope of the if statement
+        var Module = {
+          dynamicLibraries: ['liblib.so']
+        };
+      }
+    ''')
+
+    self.dylink_test(
+      r'''
+        #include <stdio.h>
+        int side();
+        int main() {
+          printf("result is %d", side());
+          return 0;
+        }
+      ''',
+      r'''
+        int side() { return 42; }
+      ''',
+      'result is 42',
+      auto_load=False)
+
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
     # Could also test with -s ALLOW_TABLE_GROWTH=1
@@ -8256,6 +8369,35 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.emcc_args += ['--bind', '--post-js', path_from_root('tests', 'core', 'test_abort_on_exception_post.js')]
     self.do_run_in_out_file_test('tests', 'core', 'test_abort_on_exception.cpp')
+
+  @needs_dlfcn
+  def test_gl_main_module(self):
+    self.set_setting('MAIN_MODULE')
+    self.do_runf(path_from_root('tests', 'core', 'test_gl_get_proc_address.c'))
+
+  @no_asan('asan does not yet work in MINIMAL_RUNTIME')
+  def test_dyncalls_minimal_runtime(self):
+    self.set_setting('DYNCALLS')
+    self.set_setting('MINIMAL_RUNTIME')
+    self.emcc_args += ['-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]']
+    self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
+    self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
+
+  def test_REVERSE_DEPS(self):
+    create_test_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)&connect; }')
+    self.run_process([EMCC, 'connect.c'])
+    base_size = os.path.getsize('a.out.wasm')
+
+    # 'auto' should work (its the default)
+    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=auto'])
+
+    # 'all' should work too although it should produce a larger binary
+    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=all'])
+    self.assertGreater(os.path.getsize('a.out.wasm'), base_size)
+
+    # 'none' should fail to link because the dependency on ntohs was not added.
+    err = self.expect_fail([EMCC, 'connect.c', '-sREVERSE_DEPS=none'])
+    self.assertContained('undefined symbol: ntohs', err)
 
 
 # Generate tests for everything

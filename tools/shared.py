@@ -29,12 +29,14 @@ from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles, colored_logger
 from . import diagnostics
 from . import config
+from . import filelock
 
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_BINARYEN_VERSION = 99
-EXPECTED_LLVM_VERSION = "12.0"
+EXPECTED_LLVM_VERSION = "13.0"
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 PYTHON = sys.executable
@@ -239,7 +241,20 @@ def generate_sanity():
 
 
 def perform_sanity_checks():
+  # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
+  check_node_version()
+  check_llvm_version()
+
+  llvm_ok = check_llvm()
+
+  if os.environ.get('EM_IGNORE_SANITY'):
+    logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
+    return
+
   logger.info('(Emscripten: Running sanity checks)')
+
+  if not llvm_ok:
+    exit_with_error('failing sanity checks due to previous llvm failure')
 
   with ToolchainProfiler.profile_block('sanity compiler_engine'):
     try:
@@ -264,57 +279,55 @@ def check_sanity(force=False):
   """
   if not force and os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
     return
+
   # We set EMCC_SKIP_SANITY_CHECK so that any subprocesses that we launch will
   # not re-run the tests.
   os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
+
+  if DEBUG:
+    force = True
+
+  if config.FROZEN_CACHE:
+    if force:
+      perform_sanity_checks()
+    return
+
+  if os.environ.get('EM_IGNORE_SANITY'):
+    perform_sanity_checks()
+    return
+
   with ToolchainProfiler.profile_block('sanity'):
-    check_llvm_version()
     if not config.config_file:
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
 
     sanity_file = Cache.get_path('sanity.txt')
-    if os.path.exists(sanity_file):
-      sanity_data = open(sanity_file).read()
-      if sanity_data != expected:
-        logger.debug('old sanity: %s' % sanity_data)
-        logger.debug('new sanity: %s' % expected)
-        if config.FROZEN_CACHE:
-          logger.info('(Emscripten: config changed, cache may need to be cleared, but FROZEN_CACHE is set)')
-        else:
+    with Cache.lock():
+      if os.path.exists(sanity_file):
+        sanity_data = open(sanity_file).read()
+        if sanity_data != expected:
+          logger.debug('old sanity: %s' % sanity_data)
+          logger.debug('new sanity: %s' % expected)
           logger.info('(Emscripten: config changed, clearing cache)')
           Cache.erase()
           # the check actually failed, so definitely write out the sanity file, to
           # avoid others later seeing failures too
           force = False
-      else:
-        if force:
-          logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
         else:
-          logger.debug(f'sanity file up-to-date: {sanity_file}')
-          return # all is well
-    else:
-      logger.debug(f'sanity file not found: {sanity_file}')
+          if force:
+            logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
+          else:
+            logger.debug(f'sanity file up-to-date: {sanity_file}')
+            return # all is well
+      else:
+        logger.debug(f'sanity file not found: {sanity_file}')
 
-    # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
-    check_node_version()
+      perform_sanity_checks()
 
-    llvm_ok = check_llvm()
-
-    if os.environ.get('EM_IGNORE_SANITY'):
-      logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
-      return
-
-    if not llvm_ok:
-      exit_with_error('failing sanity checks due to previous llvm failure')
-
-    perform_sanity_checks()
-
-    if not force:
-      # Only create/update this file if the sanity check succeeded, i.e., we got here
-      Cache.ensure()
-      with open(sanity_file, 'w') as f:
-        f.write(expected)
+      if not force:
+        # Only create/update this file if the sanity check succeeded, i.e., we got here
+        with open(sanity_file, 'w') as f:
+          f.write(expected)
 
 
 # Some distributions ship with multiple llvm versions so they add
@@ -364,12 +377,14 @@ def get_emscripten_temp_dir():
   if not EMSCRIPTEN_TEMP_DIR:
     EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
 
-    def prepare_to_clean_temp(d):
-      def clean_temp():
-        try_delete(d)
+    if not DEBUG_SAVE:
+      def prepare_to_clean_temp(d):
+        def clean_temp():
+          try_delete(d)
 
-      atexit.register(clean_temp)
-    prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
+        atexit.register(clean_temp)
+      # this global var might change later
+      prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR)
   return EMSCRIPTEN_TEMP_DIR
 
 
@@ -394,10 +409,29 @@ class Configuration(object):
       except Exception as e:
         exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.config_file_location())
 
+      # Since the canonical temp directory is, by definition, the same
+      # between all processes that run in DEBUG mode we need to use a multi
+      # process lock to prevent more than one process from writing to it.
+      # This is because emcc assumes that it can use non-unique names inside
+      # the temp directory.
+      # Sadly we need to allow child processes to access this directory
+      # though, since emcc can recursively call itself when building
+      # libraries and ports.
+      if 'EM_HAVE_TEMP_DIR_LOCK' not in os.environ:
+        filelock_name = os.path.join(self.EMSCRIPTEN_TEMP_DIR, 'emscripten.lock')
+        lock = filelock.FileLock(filelock_name)
+        os.environ['EM_HAVE_TEMP_DIR_LOCK'] = '1'
+        lock.acquire()
+        atexit.register(lock.release)
+
   def get_temp_files(self):
-    return tempfiles.TempFiles(
-      tmp=self.TEMP_DIR if not DEBUG else get_emscripten_temp_dir(),
-      save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
+    if DEBUG_SAVE:
+      # In debug mode store all temp files in the emscripten-specific temp dir
+      # and don't worry about cleaning them up.
+      return tempfiles.TempFiles(get_emscripten_temp_dir(), save_debug_files=True)
+    else:
+      # Otherwise use the system tempdir and try to clean up after ourselves.
+      return tempfiles.TempFiles(self.TEMP_DIR, save_debug_files=False)
 
 
 def apply_configuration():
@@ -495,6 +529,11 @@ def get_cflags(user_args):
   c_opts += ['-Dunix',
              '-D__unix',
              '-D__unix__']
+
+  # LLVM has turned on the new pass manager by default, but it causes some code
+  # size regressions. For now, use the legacy one.
+  # https://github.com/emscripten-core/emscripten/issues/13427
+  c_opts += ['-flegacy-pass-manager']
 
   # Changes to default clang behavior
 
@@ -804,7 +843,7 @@ class JS(object):
   @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
-    if Settings.USE_LEGACY_DYNCALLS or not JS.is_legal_sig(sig):
+    if Settings.DYNCALLS or not JS.is_legal_sig(sig):
       args = ','.join(args)
       if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
         # Optimize dynCall accesses in the case when not building with dynamic
@@ -930,6 +969,12 @@ def read_and_preprocess(filename, expand_macros=False):
   out = open(stdout, 'r').read()
 
   return out
+
+
+def do_replace(input_, pattern, replacement):
+  if pattern not in input_:
+    exit_with_error('expected to find pattern in input JS: %s' % pattern)
+  return input_.replace(pattern, replacement)
 
 
 # ============================================================================

@@ -17,9 +17,8 @@ def needed(settings):
 
 def get(ports, settings, shared):
   ports.fetch_project('mpg123', 'https://www.mpg123.de/download/mpg123-1.26.2.tar.bz2', 'mpg123-' + TAG, is_tarbz2=True, sha512hash=HASH)
-  libname = 'libmpg123.a'
 
-  def create():
+  def create(output_path):
     logging.info('building port: mpg123')
 
     source_path = os.path.join(ports.get_dir(), 'mpg123', 'mpg123-' + TAG)
@@ -34,7 +33,6 @@ def get(ports, settings, shared):
     open(os.path.join(sauce_path, 'config.h'), 'w').write(config_h)
     open(os.path.join(libmpg123_path, 'mpg123.h'), 'w').write(mpg123_h)
 
-    output_path = os.path.join(dest_path, libname)
     flags = [
       '-DOPT_GENERIC',
       '-DREAL_IS_FLOAT',
@@ -91,9 +89,8 @@ def get(ports, settings, shared):
 
     # copy header to a location so it can be used as 'MPG123/'
     ports.install_headers(libmpg123_path, pattern="*123.h", target='')
-    return output_path
 
-  return [shared.Cache.get_lib(libname, create, what='port')]
+  return [shared.Cache.get_lib('libmpg123.a', create, what='port')]
 
 
 def clear(ports, settings, shared):

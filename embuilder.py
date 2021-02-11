@@ -29,26 +29,30 @@ SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
 SYSTEM_TASKS += ['struct_info']
 
 # Minimal subset of SYSTEM_TASKS used by CI systems to build enough to useful
+# TODO Re-add 'except' versions of libc++abi, libc++, and libunwind after the
+# new EH implementation is stablized
 MINIMAL_TASKS = [
     'libcompiler_rt',
     'libc',
     'libc++abi',
-    'libc++abi-except',
     'libc++abi-noexcept',
     'libc++',
-    'libc++-except',
     'libc++-noexcept',
     'libal',
     'libdlmalloc',
     'libdlmalloc-debug',
     'libemmalloc',
-    'libemmalloc-64bit',
+    'libemmalloc-debug',
+    'libemmalloc-memvalidate',
+    'libemmalloc-verbose',
+    'libemmalloc-memvalidate-verbose',
+    'libgl',
+    'libhtml5',
     'libsockets',
     'libc_rt_wasm',
     'struct_info',
     'libstandalonewasm',
-    'crt1',
-    'libunwind-except'
+    'crt1'
 ]
 
 USER_TASKS = [
@@ -57,6 +61,7 @@ USER_TASKS = [
     'bzip2',
     'cocos2d',
     'freetype',
+    'giflib',
     'harfbuzz',
     'icu',
     'libjpeg',
@@ -98,7 +103,7 @@ Issuing 'embuilder.py build ALL' causes each task to be built.
 
 def build_port(port_name, lib_name):
   if force:
-    shared.Cache.erase_file(lib_name)
+    shared.Cache.erase_file(shared.Cache.get_lib_name(lib_name))
 
   system_libs.build_port(port_name, shared.Settings)
 
@@ -152,16 +157,9 @@ def main():
     tasks = SYSTEM_TASKS + USER_TASKS
     auto_tasks = True
   if auto_tasks:
-    skip_tasks = []
-    if shared.Settings.RELOCATABLE:
-      # we don't support PIC + pthreads yet
-      for task in SYSTEM_TASKS + USER_TASKS:
-        if '-mt' in task:
-          skip_tasks.append(task)
-      print('Skipping building of %s, because we don\'t support threads and PIC code.' % ', '.join(skip_tasks))
     # cocos2d: must be ported, errors on
     # "Cannot recognize the target platform; are you targeting an unsupported platform?"
-    skip_tasks += ['cocos2d']
+    skip_tasks = ['cocos2d']
     tasks = [x for x in tasks if x not in skip_tasks]
     print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:
@@ -193,6 +191,8 @@ def main():
       build_port('vorbis', 'libvorbis.a')
     elif what == 'ogg':
       build_port('ogg', 'libogg.a')
+    elif what == 'giflib':
+      build_port('giflib', 'libgif.a')
     elif what == 'libjpeg':
       build_port('libjpeg', 'libjpeg.a')
     elif what == 'libpng':
@@ -252,6 +252,8 @@ def main():
       shared.Settings.USE_PTHREADS = 0
     elif what == 'boost_headers':
       build_port('boost_headers', 'libboost_headers.a')
+    elif what == 'mpg123':
+      build_port('mpg123', 'libmpg123.a')
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

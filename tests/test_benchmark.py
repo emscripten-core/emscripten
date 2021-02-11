@@ -1061,7 +1061,7 @@ class benchmark(runner.RunnerCore):
             var hash = 5381;
             var totalSize = 0;
             files.forEach(function(file) {
-              var data = MEMFS.getFileDataAsRegularArray(FS.root.contents[file]);
+              var data = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents[file]));
               for (var i = 0; i < data.length; i++) {
                 hash = ((hash << 5) + hash) ^ (data[i] & 0xff);
               }

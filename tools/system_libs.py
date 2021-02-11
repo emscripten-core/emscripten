@@ -16,11 +16,9 @@ import zipfile
 from glob import iglob
 
 from . import shared, building, ports, config, utils
-from . import deps_info
+from . import deps_info, tempfiles
+from . import diagnostics
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
-
-stdout = None
-stderr = None
 
 logger = logging.getLogger('system_libs')
 
@@ -79,7 +77,7 @@ def run_one_command(cmd):
       del safe_env[opt]
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd.append('-Wno-deprecated')
-  shared.run_process(cmd, stdout=stdout, stderr=stderr, env=safe_env)
+  shared.run_process(cmd, env=safe_env)
 
 
 def run_build_commands(commands):
@@ -88,7 +86,7 @@ def run_build_commands(commands):
   # to setup the sysroot itself.
   ensure_sysroot()
   cores = min(len(commands), building.get_num_cores())
-  if cores <= 1:
+  if cores <= 1 or shared.DEBUG:
     for command in commands:
       run_one_command(command)
   else:
@@ -173,11 +171,6 @@ def get_wasm_libc_rt_files():
   return math_files + other_files + iprintf_files
 
 
-def in_temp(*args):
-  """Gets the path of a file in our temporary directory."""
-  return os.path.join(shared.get_emscripten_temp_dir(), *args)
-
-
 class Library(object):
   """
   `Library` is the base class of all system libraries.
@@ -256,7 +249,7 @@ class Library(object):
 
   # A list of flags to pass to emcc.
   # The flags for the parent class is automatically inherited.
-  cflags = ['-Werror']
+  cflags = ['-Werror', '-fno-unroll-loops']
 
   # A list of directories to put in the include path when building.
   # This is a list of tuples of path components.
@@ -298,20 +291,6 @@ class Library(object):
     """
     if not self.name:
       raise NotImplementedError('Cannot instantiate an abstract library')
-
-    # Read .symbols file if it exists. This first tries to read a symbols file
-    # with the same basename with the library file name (e.g.
-    # libc++-mt.symbols), and if there isn't one, it tries to read the 'default'
-    # symbol file, which does not have any optional suffices (e.g.
-    # libc++.symbols).
-    basename = shared.unsuffixed(self.get_filename())
-    symbols_dir = shared.path_from_root('system', 'lib', 'symbols', 'wasm')
-    symbols_file = os.path.join(symbols_dir, basename + '.symbols')
-    default_symbols_file = os.path.join(symbols_dir, self.name + '.symbols')
-    if os.path.isfile(symbols_file):
-      self.symbols = read_symbols(symbols_file)
-    elif os.path.isfile(default_symbols_file):
-      self.symbols = read_symbols(default_symbols_file)
 
   def can_use(self):
     """
@@ -359,7 +338,7 @@ class Library(object):
 
     raise NotImplementedError()
 
-  def build_objects(self):
+  def build_objects(self, build_dir):
     """
     Returns a list of compiled object files for this library.
 
@@ -370,7 +349,7 @@ class Library(object):
     objects = []
     cflags = self.get_cflags()
     for src in self.get_files():
-      o = in_temp(shared.unsuffixed_basename(src) + '.o')
+      o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
       ext = shared.suffix(src)
       if ext in ('.s', '.c'):
         cmd = [shared.EMCC]
@@ -385,11 +364,13 @@ class Library(object):
     run_build_commands(commands)
     return objects
 
-  def build(self):
+  def build(self, out_filename):
     """Builds the library and returns the path to the file."""
-    out_filename = in_temp(self.get_filename())
-    create_lib(out_filename, self.build_objects())
-    return out_filename
+    build_dir = shared.Cache.get_path(os.path.join('build', self.get_base_name()))
+    utils.safe_ensure_dirs(build_dir)
+    create_lib(out_filename, self.build_objects(build_dir))
+    if not shared.DEBUG:
+      tempfiles.try_delete(build_dir)
 
   @classmethod
   def _inherit_list(cls, attr):
@@ -528,7 +509,7 @@ class MTLibrary(Library):
   def get_cflags(self):
     cflags = super(MTLibrary, self).get_cflags()
     if self.is_mt:
-      cflags += ['-s', 'USE_PTHREADS=1', '-DUSE_THREADS']
+      cflags += ['-s', 'USE_PTHREADS']
     return cflags
 
   def get_base_name(self):
@@ -592,9 +573,9 @@ class NoExceptLibrary(Library):
   @classmethod
   def variations(cls, **kwargs):
     combos = super(NoExceptLibrary, cls).variations()
+    # TODO Reenable 'wasm' option after the new EH implementation is stabilized
     return ([dict(eh_mode=exceptions.none, **combo) for combo in combos] +
-            [dict(eh_mode=exceptions.emscripten, **combo) for combo in combos] +
-            [dict(eh_mode=exceptions.wasm, **combo) for combo in combos])
+            [dict(eh_mode=exceptions.emscripten, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -754,7 +735,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc'],
-        filenames=['extras.c', 'wasi-helpers.c'])
+        filenames=['extras.c', 'wasi-helpers.c', 'emscripten_pthread.c'])
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'pthread'],
@@ -772,6 +753,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'thrd_yield.c',
           'call_once.c',
         ])
+
+    libc_files += glob_in_path(['system', 'lib', 'libc', 'compat'], '*.c')
 
     if self.is_mt:
       libc_files += files_in_path(
@@ -988,36 +971,39 @@ class libmalloc(MTLibrary):
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
-    if self.malloc not in ('dlmalloc', 'emmalloc', 'none'):
-      raise Exception('malloc must be one of "emmalloc", "dlmalloc" or "none", see settings.js')
+    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'none'):
+      raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
 
-    self.is_debug = kwargs.pop('is_debug')
     self.use_errno = kwargs.pop('use_errno')
     self.is_tracing = kwargs.pop('is_tracing')
-    self.use_64bit_ops = kwargs.pop('use_64bit_ops')
+    self.memvalidate = kwargs.pop('memvalidate')
+    self.verbose = kwargs.pop('verbose')
+    self.is_debug = kwargs.pop('is_debug') or self.memvalidate or self.verbose
 
     super(libmalloc, self).__init__(**kwargs)
 
   def get_files(self):
+    malloc_base = self.malloc.replace('-memvalidate', '').replace('-verbose', '').replace('-debug', '')
     malloc = shared.path_from_root('system', 'lib', {
-      'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp'
-    }[self.malloc])
+      'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp',
+    }[malloc_base])
     sbrk = shared.path_from_root('system', 'lib', 'sbrk.c')
     return [malloc, sbrk]
 
   def get_cflags(self):
     cflags = super(libmalloc, self).get_cflags()
+    if self.memvalidate:
+      cflags += ['-DEMMALLOC_MEMVALIDATE']
+    if self.verbose:
+      cflags += ['-DEMMALLOC_VERBOSE']
     if self.is_debug:
       cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG']
-      # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
     else:
       cflags += ['-DNDEBUG']
     if not self.use_errno:
       cflags += ['-DMALLOC_FAILURE_ACTION=', '-DEMSCRIPTEN_NO_ERRNO']
     if self.is_tracing:
       cflags += ['--tracing']
-    if self.use_64bit_ops:
-      cflags += ['-DEMMALLOC_USE_64BIT_OPS=1']
     return cflags
 
   def get_base_name_prefix(self):
@@ -1025,15 +1011,13 @@ class libmalloc(MTLibrary):
 
   def get_base_name(self):
     name = super(libmalloc, self).get_base_name()
-    if self.is_debug:
+    if self.is_debug and not self.memvalidate and not self.verbose:
       name += '-debug'
     if not self.use_errno:
       # emmalloc doesn't actually use errno, but it's easier to build it again
       name += '-noerrno'
     if self.is_tracing:
       name += '-tracing'
-    if self.use_64bit_ops:
-      name += '-64bit'
     return name
 
   def can_use(self):
@@ -1041,7 +1025,7 @@ class libmalloc(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'use_64bit_ops']
+    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'memvalidate', 'verbose']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -1050,15 +1034,19 @@ class libmalloc(MTLibrary):
       is_debug=shared.Settings.ASSERTIONS >= 2,
       use_errno=shared.Settings.SUPPORT_ERRNO,
       is_tracing=shared.Settings.EMSCRIPTEN_TRACING,
-      use_64bit_ops=shared.Settings.MALLOC == 'emmalloc' and (shared.Settings.WASM == 1 or shared.Settings.WASM2JS == 0),
+      memvalidate='memvalidate' in shared.Settings.MALLOC,
+      verbose='verbose' in shared.Settings.MALLOC,
       **kwargs
     )
 
   @classmethod
   def variations(cls):
     combos = super(libmalloc, cls).variations()
-    return ([dict(malloc='dlmalloc', **combo) for combo in combos if not combo['use_64bit_ops']] +
-            [dict(malloc='emmalloc', **combo) for combo in combos])
+    return ([dict(malloc='dlmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']] +
+            [dict(malloc='emmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']] +
+            [dict(malloc='emmalloc-memvalidate-verbose', **combo) for combo in combos if combo['memvalidate'] and combo['verbose']] +
+            [dict(malloc='emmalloc-memvalidate', **combo) for combo in combos if combo['memvalidate'] and not combo['verbose']] +
+            [dict(malloc='emmalloc-verbose', **combo) for combo in combos if combo['verbose'] and not combo['memvalidate']])
 
 
 class libal(Library):
@@ -1073,7 +1061,7 @@ class libgl(MTLibrary):
   name = 'libgl'
 
   src_dir = ['system', 'lib', 'gl']
-  src_glob = '*.c'
+  src_files = ['gl.c', 'webgl1.c']
 
   cflags = ['-Oz']
 
@@ -1082,6 +1070,10 @@ class libgl(MTLibrary):
     self.is_webgl2 = kwargs.pop('is_webgl2')
     self.is_ofb = kwargs.pop('is_ofb')
     self.is_full_es3 = kwargs.pop('is_full_es3')
+    if self.is_webgl2 or self.is_full_es3:
+      # Don't use append or += here, otherwise we end up adding to
+      # the class member.
+      self.src_files = self.src_files + ['webgl2.c']
     super(libgl, self).__init__(**kwargs)
 
   def get_base_name(self):
@@ -1368,22 +1360,23 @@ def warn_on_unexported_main(symbolses):
         return
 
 
-def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
-  global stdout, stderr
-  stdout = stdout_
-  stderr = stderr_
+def handle_reverse_deps(input_files):
+  if shared.Settings.REVERSE_DEPS == 'none':
+    return
+  elif shared.Settings.REVERSE_DEPS == 'all':
+    # When not optimzing we add all possible reverse dependencies rather
+    # than scanning the input files
+    for symbols in deps_info.deps_info.values():
+      for symbol in symbols:
+        shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(symbol))
+    return
 
-  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
-  # for unresolved symbols in your project files, which can speed up linking, but if you do not have
-  # the proper list of actually needed libraries, errors can occur. See below for how we must
-  # export all the symbols in deps_info when using this option.
-  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
-  if only_forced:
-    temp_files = []
+  if shared.Settings.REVERSE_DEPS != 'auto':
+    shared.exit_with_error(f'invalid values for REVERSE_DEPS: {shared.Settings.REVERSE_DEPS}')
 
   added = set()
 
-  def add_back_deps(need):
+  def add_reverse_deps(need):
     more = False
     for ident, deps in deps_info.deps_info.items():
       if ident in need.undefs and ident not in added:
@@ -1394,10 +1387,10 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
           logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
           shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
     if more:
-      add_back_deps(need) # recurse to get deps of deps
+      add_reverse_deps(need) # recurse to get deps of deps
 
   # Scan symbols
-  symbolses = building.parallel_llvm_nm([os.path.abspath(t) for t in temp_files])
+  symbolses = building.parallel_llvm_nm([os.path.abspath(t) for t in input_files])
 
   warn_on_unexported_main(symbolses)
 
@@ -1414,15 +1407,22 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
     symbolses[0].undefs.add(demangle_c_symbol_name(export))
 
   for symbols in symbolses:
-    add_back_deps(symbols)
+    add_reverse_deps(symbols)
 
-  # If we are only doing forced stdlibs, then we don't know the actual symbols we need,
-  # and must assume all of deps_info must be exported. Note that this might cause
-  # warnings on exports that do not exist.
+
+def calculate(input_files, cxx, forced):
+  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
+  # for unresolved symbols in your project files, which can speed up linking, but if you do not have
+  # the proper list of actually needed libraries, errors can occur. See below for how we must
+  # export all the symbols in deps_info when using this option.
+  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
   if only_forced:
-    for key, value in deps_info.deps_info.items():
-      for dep in value:
-        shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
+    # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
+    # of the input files for reverse dependencies.
+    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` and/or `-s REVERSE_DEPS=none` depending on the desired result')
+    shared.Settings.REVERSE_DEPS = 'all'
+
+  handle_reverse_deps(input_files)
 
   libs_to_link = []
   already_included = set()
@@ -1464,39 +1464,13 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
     add_library(system_libs_map[forced])
 
   if only_forced:
-    if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
-      add_library(system_libs_map['libc_rt_wasm'])
+    add_library(system_libs_map['libc_rt_wasm'])
     add_library(system_libs_map['libcompiler_rt'])
   else:
-    # These libraries get included automatically based the symbols needed by the input file.
-    # Other system libraries are simply included by default.
-    for libname in ['libgl', 'libal', 'libhtml5']:
-      if libname in already_included:
-        continue
-      lib = system_libs_map[libname]
-      force_this = lib.name in force_include
-      if not force_this:
-        need_syms = set()
-        has_syms = set()
-        for symbols in symbolses:
-          if shared.Settings.VERBOSE:
-            logger.debug('undefs: ' + str(symbols.undefs))
-          for library_symbol in lib.symbols:
-            if library_symbol in symbols.undefs:
-              need_syms.add(library_symbol)
-            if library_symbol in symbols.defs:
-              has_syms.add(library_symbol)
-        for haz in has_syms:
-          if haz in need_syms:
-            # remove symbols that are supplied by another of the inputs
-            need_syms.remove(haz)
-        if shared.Settings.VERBOSE:
-          logger.debug('considering %s: we need %s and have %s' % (lib.name, str(need_syms), str(has_syms)))
-        if not len(need_syms):
-          continue
-
-      # We need to build and link the library in
-      add_library(lib)
+    if shared.Settings.AUTO_NATIVE_LIBRARIES:
+      add_library(system_libs_map['libgl'])
+      add_library(system_libs_map['libal'])
+      add_library(system_libs_map['libhtml5'])
 
     sanitize = shared.Settings.USE_LSAN or shared.Settings.USE_ASAN or shared.Settings.UBSAN_RUNTIME
 
@@ -1729,10 +1703,6 @@ class Ports(object):
       logger.debug('    (at ' + fullname + ')')
       Ports.name_cache.add(name)
 
-    class State(object):
-      retrieved = False
-      unpacked = False
-
     def retrieve():
       # retrieve from remote server
       logger.info('retrieving port: ' + name + ' from ' + url)
@@ -1741,15 +1711,9 @@ class Ports(object):
         response = requests.get(url)
         data = response.content
       except ImportError:
-        try:
-          from urllib.request import urlopen
-          f = urlopen(url)
-          data = f.read()
-        except ImportError:
-          # Python 2 compatibility
-          from urllib2 import urlopen
-          f = urlopen(url)
-          data = f.read()
+        from urllib.request import urlopen
+        f = urlopen(url)
+        data = f.read()
 
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
@@ -1757,7 +1721,6 @@ class Ports(object):
           shared.exit_with_error('Unexpected hash: ' + actual_hash + '\n'
                                  'If you are updating the port, please update the hash in the port module.')
       open(fullpath, 'wb').write(data)
-      State.retrieved = True
 
     def check_tag():
       if is_tarbz2:
@@ -1774,42 +1737,30 @@ class Ports(object):
     def unpack():
       logger.info('unpacking port: ' + name)
       shared.safe_ensure_dirs(fullname)
+      shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
 
-      # TODO: Someday when we are using Python 3, we might want to change the
-      # code below to use shlib.unpack_archive
-      # e.g.: shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
-      # (https://docs.python.org/3/library/shutil.html#shutil.unpack_archive)
-      if is_tarbz2:
-        z = tarfile.open(fullpath, 'r:bz2')
-      elif url.endswith('.tar.gz'):
-        z = tarfile.open(fullpath, 'r:gz')
-      else:
-        z = zipfile.ZipFile(fullpath, 'r')
-      with utils.chdir(fullname):
-        z.extractall()
-
-      State.unpacked = True
+    # before acquiring the lock we have an early out if the port already exists
+    if os.path.exists(fullpath) and check_tag():
+      return
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
-
     with shared.Cache.lock():
-      if not os.path.exists(fullpath):
-        retrieve()
-
-      if not os.path.exists(fullname):
-        unpack()
-
-      if not check_tag():
+      if os.path.exists(fullpath):
+        # Another early out in case another process build the library while we were
+        # waiting for the lock
+        if check_tag():
+          return
+        # file exists but tag is bad
         logger.warning('local copy of port is not correct, retrieving from remote server')
         shared.try_delete(fullname)
         shared.try_delete(fullpath)
-        retrieve()
-        unpack()
 
-      if State.unpacked:
-        # we unpacked a new version, clear the build in the cache
-        Ports.clear_project_build(name)
+      retrieve()
+      unpack()
+
+      # we unpacked a new version, clear the build in the cache
+      Ports.clear_project_build(name)
 
   @staticmethod
   def clear_project_build(name):
@@ -1920,11 +1871,15 @@ def copytree_exist_ok(src, dest):
         shared.safe_copy(os.path.join(src, dirname, f), os.path.join(destdir, f))
 
 
-def install_system_headers():
+def install_system_headers(stamp):
   install_dirs = {
     ('include',): '',
     ('lib', 'compiler-rt', 'include'): '',
     ('lib', 'libunwind', 'include'): '',
+    # Copy the generic arch files first then
+    ('lib', 'libc', 'musl', 'arch', 'generic'): '',
+    # Then overlay the emscripten directory on top.
+    # This mimicks how musl itself installs its headers.
     ('lib', 'libc', 'musl', 'arch', 'emscripten'): '',
     ('lib', 'libc', 'musl', 'include'): '',
     ('lib', 'libcxx', 'include'): os.path.join('c++', 'v1'),
@@ -1941,7 +1896,6 @@ def install_system_headers():
   # Removing this file, or running `emcc --clear-cache` or running
   # `./embuilder build sysroot --force` will cause the re-installation of
   # the system headers.
-  stamp = shared.Cache.get_path('sysroot_install.stamp')
   with open(stamp, 'w') as f:
     f.write('x')
   return stamp

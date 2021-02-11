@@ -422,9 +422,6 @@ v128_t TESTFN i16x8_abs(v128_t vec) {
 v128_t TESTFN i16x8_neg(v128_t vec) {
   return wasm_i16x8_neg(vec);
 }
-bool TESTFN i16x8_any_true(v128_t vec) {
-  return wasm_i16x8_any_true(vec);
-}
 bool TESTFN i16x8_all_true(v128_t vec) {
   return wasm_i16x8_all_true(vec);
 }
@@ -478,9 +475,6 @@ v128_t TESTFN i32x4_abs(v128_t vec) {
 }
 v128_t TESTFN i32x4_neg(v128_t vec) {
   return wasm_i32x4_neg(vec);
-}
-int32_t TESTFN i32x4_any_true(v128_t vec) {
-  return wasm_i32x4_any_true(vec);
 }
 int32_t TESTFN i32x4_all_true(v128_t vec) {
   return wasm_i32x4_all_true(vec);
@@ -1375,10 +1369,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     i16x8_neg((v128_t)i16x8(0, 1, 42, -3, -56, 32767, -32768, 32766)),
     i16x8(0, -1, -42, 3, 56, -32767, -32768, -32766)
   );
-  expect_eq(i16x8_any_true((v128_t)i16x8(0, 0, 0, 0, 0, 0, 0, 0)), 0);
-  expect_eq(i16x8_any_true((v128_t)i16x8(0, 0, 1, 0, 0, 0, 0, 0)), 1);
-  expect_eq(i16x8_any_true((v128_t)i16x8(1, 1, 1, 1, 1, 0, 1, 1)), 1);
-  expect_eq(i16x8_any_true((v128_t)i16x8(1, 1, 1, 1, 1, 1, 1, 1)), 1);
   expect_eq(i16x8_all_true((v128_t)i16x8(0, 0, 0, 0, 0, 0, 0, 0)), 0);
   expect_eq(i16x8_all_true((v128_t)i16x8(0, 0, 1, 0, 0, 0, 0, 0)), 0);
   expect_eq(i16x8_all_true((v128_t)i16x8(1, 1, 1, 1, 1, 0, 1, 1)), 0);
@@ -1501,10 +1491,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     i32x4_neg((v128_t)i32x4(0, 1, 0x80000000, 0x80000001)),
     i32x4(0, -1, 0x80000000, 0x7fffffff)
   );
-  expect_eq(i32x4_any_true((v128_t)i32x4(0, 0, 0, 0)), 0);
-  expect_eq(i32x4_any_true((v128_t)i32x4(0, 0, 1, 0)), 1);
-  expect_eq(i32x4_any_true((v128_t)i32x4(1, 0, 1, 1)), 1);
-  expect_eq(i32x4_any_true((v128_t)i32x4(1, 1, 1, 1)), 1);
   expect_eq(i32x4_all_true((v128_t)i32x4(0, 0, 0, 0)), 0);
   expect_eq(i32x4_all_true((v128_t)i32x4(0, 0, 1, 0)), 0);
   expect_eq(i32x4_all_true((v128_t)i32x4(1, 0, 1, 1)), 0);

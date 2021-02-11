@@ -10,11 +10,11 @@
 var nodeFS = require('fs');
 var nodePath = require('path');
 
-print = function(x) {
+print = (x) => {
   process['stdout'].write(x + '\n');
 };
 
-printErr = function(x) {
+printErr = (x) => {
   process['stderr'].write(x + '\n');
 };
 
@@ -29,7 +29,7 @@ function find(filename) {
   return filename;
 }
 
-read = function(filename) {
+read = (filename) => {
   var absolute = find(filename);
   return nodeFS.readFileSync(absolute).toString();
 };
@@ -113,16 +113,12 @@ try {
   // Instead of process.exit() directly, wait for stdout flush event.
   // See https://github.com/joyent/node/issues/1669 and https://github.com/emscripten-core/emscripten/issues/2582
   // Workaround is based on https://github.com/RReverser/acorn/commit/50ab143cecc9ed71a2d66f78b4aec3bb2e9844f6
-  process['stdout']['once']('drain', function () {
-    process['exit'](1);
-  });
+  process['stdout']['once']('drain', () => process['exit'](1));
   // Make sure to print something to force the drain event to occur, in case the
   // stdout buffer was empty.
   console.log(' ');
   // Work around another node bug where sometimes 'drain' is never fired - make
   // another effort to emit the exit status, after a significant delay (if node
   // hasn't fired drain by then, give up)
-  setTimeout(function() {
-    process['exit'](1);
-  }, 500);
+  setTimeout(() => process['exit'](1), 500);
 }

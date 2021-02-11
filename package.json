@@ -2,6 +2,8 @@
   "private": true,
   "devDependencies": {
     "es-check": "^5.1.0",
+    "eslint": "^7.18.0",
+    "eslint-config-google": "^0.14.0",
     "ws": "~0.4.28"
   },
   "dependencies": {
@@ -10,5 +12,8 @@
     "html-minifier-terser": "5.0.2",
     "source-map": "0.5.6",
     "wasm2c": "1.0.0"
+  },
+  "scripts": {
+    "lint": "eslint src/parseTools.js"
   }
 }

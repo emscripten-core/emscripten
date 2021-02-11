@@ -32,7 +32,7 @@ void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   struct utimbuf t = {1200000000, 1200000000};
-  
+
   mkdir("folder", 0777);
   create_file("folder/file", "abcdef", 0777);
   symlink("file", "folder/file-link");
@@ -52,6 +52,11 @@ void test() {
   int err;
   struct stat s;
   struct utimbuf t = {1200000000, 1200000000};
+
+  // non-existent
+  err = stat("does_not_exist", &s);
+  assert(err == -1);
+  assert(errno == ENOENT);
 
   // stat a folder
   memset(&s, 0, sizeof(s));

@@ -462,7 +462,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       os.chdir(os.path.dirname(self.get_dir()))
       try_delete(self.get_dir())
 
-      if EMTEST_DETECT_TEMPFILE_LEAKS and not os.environ.get('EMCC_DEBUG'):
+      if EMTEST_DETECT_TEMPFILE_LEAKS and not DEBUG:
         temp_files_after_run = []
         for root, dirnames, filenames in os.walk(self.temp_dir):
           for dirname in dirnames:
@@ -569,10 +569,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix
-    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + \
-        ['-I.', '-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
-        ['-I' + include for include in includes] + \
-        libraries
+    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + libraries
+    if shared.suffix(filename) not in ('.i', '.ii'):
+      # Add the location of the test file to include path.
+      cmd += ['-I.']
+      cmd += ['-I' + include for include in includes]
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
@@ -1518,7 +1519,7 @@ class BrowserCore(RunnerCore):
       kwargs['expected'] = 'exit:%s' % expected
       return self.btest(filename, *args, **kwargs)
 
-  def btest(self, filename, expected=None, reference=None, force_c=False,
+  def btest(self, filename, expected=None, reference=None,
             reference_slack=0, manual_reference=False, post_build=None,
             args=None, message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
@@ -1551,7 +1552,7 @@ class BrowserCore(RunnerCore):
     # Tests can opt into being run under asmjs as well
     if 'WASM=0' not in original_args and (also_asmjs or self.also_asmjs):
       print('WASM=0')
-      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
+      self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
                  original_args + ['-s', 'WASM=0'], message, also_proxied=False, timeout=timeout)
 
     if also_proxied:
@@ -1562,7 +1563,7 @@ class BrowserCore(RunnerCore):
         assert not post_build
         post_build = self.post_manual_reftest
       # run proxied
-      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
+      self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
                  original_args + ['--proxy-to-worker', '-s', 'GL_TESTING'], message, timeout=timeout)
 
 
@@ -1840,7 +1841,7 @@ def flattened_tests(loaded_tests):
 
 def suite_for_module(module, tests):
   suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest')
-  if not EMTEST_SAVE_DIR:
+  if not EMTEST_SAVE_DIR and not DEBUG:
     has_multiple_tests = len(tests) > 1
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_tests and has_multiple_cores:

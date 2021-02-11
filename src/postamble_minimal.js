@@ -17,6 +17,8 @@ function run() {
   ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
 
+  <<< ATMAINS >>>
+
 #if PROXY_TO_PTHREAD
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
   // pthread_create()s a new thread that will call the user's real main() for
@@ -27,7 +29,7 @@ function run() {
 
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
-  {{{ getQuoted('ATEXITS') }}}
+  <<< ATEXITS >>>
 #if USE_PTHREADS
   PThread.runExitHandlers();
 #endif
@@ -79,7 +81,7 @@ function initRuntime(asm) {
   asm['__wasm_call_ctors']();
 #endif
 
-  {{{ getQuoted('ATINITS') }}}
+  <<< ATINITS >>>
 }
 
 // Initialize wasm (asynchronous)
@@ -120,7 +122,7 @@ function loadWasmModuleToWorkers() {
 #endif
 
 #if DECLARE_ASM_MODULE_EXPORTS
-/*** ASM_MODULE_EXPORTS_DECLARES ***/
+<<< ASM_MODULE_EXPORTS_DECLARES >>>
 #endif
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
@@ -196,7 +198,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #if !DECLARE_ASM_MODULE_EXPORTS
   exportAsmFunctions(asm);
 #else
-  /*** ASM_MODULE_EXPORTS ***/
+  <<< ASM_MODULE_EXPORTS >>>
 #endif
   wasmTable = asm['__indirect_function_table'];
 #if ASSERTIONS
@@ -234,6 +236,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   // This Worker is now ready to host pthreads, tell the main thread we can proceed.
   if (ENVIRONMENT_IS_PTHREAD) {
     moduleLoaded();
+    postMessage({ 'cmd': 'loaded' });
   }
 #endif
 

@@ -61,19 +61,19 @@ var k = {
             function p() {}
             var o = r([]);
             return {
-                b: o,
-                c: p,
-                d: q
+                b: p,
+                c: q,
+                d: o
             };
         }
         return s(t);
     }(k);
 }).exports;
 
-l = n.d;
+l = n.c;
 
 f.set(new Uint8Array(b.mem), 1024);
 
-n.c();
+n.b();
 
 l();

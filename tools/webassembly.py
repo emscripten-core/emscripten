@@ -28,6 +28,8 @@ EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
 EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 29)
 
+WASM_PAGE_SIZE = 65536
+
 
 def toLEB(x):
   assert x >= 0, 'TODO: signed'
@@ -58,8 +60,6 @@ def readLEB(buf, offset):
 
 
 def add_emscripten_metadata(wasm_file):
-  WASM_PAGE_SIZE = 65536
-
   mem_size = shared.Settings.INITIAL_MEMORY // WASM_PAGE_SIZE
   global_base = shared.Settings.GLOBAL_BASE
 

@@ -105,7 +105,7 @@ INTERCEPTOR(int, pthread_create, void *thread,
 
 namespace __lsan {
 
-#ifndef USE_THREADS
+#ifndef __EMSCRIPTEN_PTHREADS__
 // XXX HACK: Emscripten treats thread_local variables the same as globals in
 // non-threaded builds, so a hack was introduced where we skip the allocator
 // cache in the common module. Now we have to define this symbol to keep that

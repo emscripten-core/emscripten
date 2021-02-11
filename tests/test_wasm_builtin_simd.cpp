@@ -367,9 +367,6 @@ i16x8 TESTFN i16x8_abs(i16x8 vec) {
 i16x8 TESTFN i16x8_neg(i16x8 vec) {
   return -vec;
 }
-int32_t TESTFN i16x8_any_true(i16x8 vec) {
-  return __builtin_wasm_any_true_i16x8(vec);
-}
 int32_t TESTFN i16x8_all_true(i16x8 vec) {
   return __builtin_wasm_all_true_i16x8(vec);
 }
@@ -412,9 +409,6 @@ i32x4 TESTFN i32x4_abs(i32x4 vec) {
 }
 i32x4 TESTFN i32x4_neg(i32x4 vec) {
   return -vec;
-}
-int32_t TESTFN i32x4_any_true(i32x4 vec) {
-  return __builtin_wasm_any_true_i32x4(vec);
 }
 int32_t TESTFN i32x4_all_true(i32x4 vec) {
   return __builtin_wasm_all_true_i32x4(vec);
@@ -1132,10 +1126,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     i16x8_neg((i16x8){0, 1, 42, -3, -56, 32767, -32768, 32766}),
     ((i16x8){0, -1, -42, 3, 56, -32767, -32768, -32766})
   );
-  expect_eq(i16x8_any_true((i16x8){0, 0, 0, 0, 0, 0, 0, 0}), 0);
-  expect_eq(i16x8_any_true((i16x8){0, 0, 1, 0, 0, 0, 0, 0}), 1);
-  expect_eq(i16x8_any_true((i16x8){1, 1, 1, 1, 1, 0, 1, 1}), 1);
-  expect_eq(i16x8_any_true((i16x8){1, 1, 1, 1, 1, 1, 1, 1}), 1);
   expect_eq(i16x8_all_true((i16x8){0, 0, 0, 0, 0, 0, 0, 0}), 0);
   expect_eq(i16x8_all_true((i16x8){0, 0, 1, 0, 0, 0, 0, 0}), 0);
   expect_eq(i16x8_all_true((i16x8){1, 1, 1, 1, 1, 0, 1, 1}), 0);
@@ -1224,10 +1214,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   // i32x4 arithmetic
   expect_vec(i32x4_abs((i32x4){0, 1, 0x80000000, 0x80000001}), ((i32x4){0, 1, 0x80000000, 0x7fffffff}));
   expect_vec(i32x4_neg((i32x4){0, 1, 0x80000000, 0x80000001}), ((i32x4){0, -1, 0x80000000, 0x7fffffff}));
-  expect_eq(i32x4_any_true((i32x4){0, 0, 0, 0}), 0);
-  expect_eq(i32x4_any_true((i32x4){0, 0, 1, 0}), 1);
-  expect_eq(i32x4_any_true((i32x4){1, 0, 1, 1}), 1);
-  expect_eq(i32x4_any_true((i32x4){1, 1, 1, 1}), 1);
   expect_eq(i32x4_all_true((i32x4){0, 0, 0, 0}), 0);
   expect_eq(i32x4_all_true((i32x4){0, 0, 1, 0}), 0);
   expect_eq(i32x4_all_true((i32x4){1, 0, 1, 1}), 0);

@@ -23,7 +23,7 @@ def get(ports, settings, shared):
   ports.fetch_project('regal', 'https://github.com/emscripten-ports/regal/archive/' + TAG + '.zip',
                       'regal-' + TAG, sha512hash=HASH)
 
-  def create():
+  def create(final):
     logging.info('building port: regal')
     ports.clear_project_build('regal')
 
@@ -134,9 +134,7 @@ def get(ports, settings, shared):
       o_s.append(o)
 
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'regal', get_lib_name(settings))
     ports.create_lib(final, o_s)
-    return final
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 

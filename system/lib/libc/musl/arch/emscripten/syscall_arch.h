@@ -7,27 +7,6 @@
 ((union { long long ll; long l[2]; }){ .ll = x }).l[1]
 #define __SYSCALL_LL_O(x) 0, __SYSCALL_LL_E((x))
 
-#define __SC_socket      1
-#define __SC_bind        2
-#define __SC_connect     3
-#define __SC_listen      4
-#define __SC_accept      5
-#define __SC_getsockname 6
-#define __SC_getpeername 7
-#define __SC_socketpair  8
-#define __SC_send        9
-#define __SC_recv        10
-#define __SC_sendto      11
-#define __SC_recvfrom    12
-#define __SC_shutdown    13
-#define __SC_setsockopt  14
-#define __SC_getsockopt  15
-#define __SC_sendmsg     16
-#define __SC_recvmsg     17
-#define __SC_accept4     18
-#define __SC_recvmmsg    19
-#define __SC_sendmmsg    20
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -143,6 +122,21 @@ long SYS_IMPORT(pipe2) __syscall331(long fds, long flags);
 long SYS_IMPORT(recvmmsg) __syscall337(long sockfd, long msgvec, long vlen, long flags, ...);
 long SYS_IMPORT(prlimit64) __syscall340(long pid, long resource, long new_limit, long old_limit);
 long SYS_IMPORT(sendmmsg) __syscall345(long sockfd, long msgvec, long vlen, long flags, ...);
+long SYS_IMPORT(socket) __syscall359(long sockfd, long level, long optname, long optval, long optlen, long dummy);
+long SYS_IMPORT(socketpair) __syscall360(long sockfd, long level, long optname, long optval, long optlen, long dummy);
+long SYS_IMPORT(bind) __syscall361(long sockfd, long level, long optname, long optval, long optlen, long dummy);
+long SYS_IMPORT(connect) __syscall362(long sockfd, long level, long optname, long optval, long optlen, long dummy);
+long SYS_IMPORT(listen) __syscall363(long sockfd, long level, long optname, long optval, long optlen, long dummy);
+long SYS_IMPORT(accept4) __syscall364(long sockfd, long addr, long addrlen, long flags, long dummy1, long dummy2);
+long SYS_IMPORT(getsockopt) __syscall365(long sockfd, long level, long optname, long optval, long optlen, long dummy);
+long SYS_IMPORT(setsockopt) __syscall366(long sockfd, long level, long optname, long optval, long optlen, long dummy);
+long SYS_IMPORT(getsockname) __syscall367(long sockfd, long level, long optname, long optval, long optlen, long dummy);
+long SYS_IMPORT(getpeername) __syscall368(long sockfd, long level, long optname, long optval, long optlen, long dummy);
+long SYS_IMPORT(sendto) __syscall369(long sockfd, long level, long optname, long optval, long optlen, long dummy);
+long SYS_IMPORT(sendmsg) __syscall370(long sockfd, long level, long optname, long optval, long optlen, long dummy);
+long SYS_IMPORT(recvfrom) __syscall371(long sockfd, long level, long optname, long optval, long optlen, long dummy);
+long SYS_IMPORT(recvmsg) __syscall372(long sockfd, long level, long optname, long optval, long optlen, long dummy);
+long SYS_IMPORT(shutdown) __syscall373(long sockfd, long level, long optname, long optval, long optlen, long dummy);
 
 #ifdef __cplusplus
 }
