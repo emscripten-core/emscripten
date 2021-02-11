@@ -8,4 +8,13 @@
   set EM_PY=python
 )
 
-@"%EM_PY%" "%~dp0\%~n0.py" %*
+@if "%EMCC_CCACHE%"=="" (
+  :: Do regular invocation of em++.py compiler
+  "%EM_PY%" "%~dp0\%~n0.py" %*
+) else (
+  :: Invoke the compiler via ccache, use a wrapper in ccache installation directory.
+  if "%EMSCRIPTEN%"=="" (
+    set EMSCRIPTEN=%~dp0
+  )
+  ccache "%EMCC_CCACHE%\%~n0.bat" %*
+)
