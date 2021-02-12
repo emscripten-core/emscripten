@@ -370,14 +370,15 @@ while (getBoolean()) {
 # Main harness
 
 
-def check_testcase(data):
+def check_testcase(data, silent=True):
     # Generate C++
     CppTranslator(data).write(main='a.cpp', support='b.cpp')
 
     # Compile with emcc, looking for a compilation error.
     try:
         subprocess.check_call(['./em++', 'a.cpp', 'b.cpp', '-sWASM_BIGINT',
-                               '-fwasm-exceptions'], stderr=subprocess.PIPE)
+                               '-fwasm-exceptions'],
+                               stderr=subprocess.PIPE if silent else None)
     except KeyboardInterrupt:
         print('[stopping by user request]')
         sys.exit(0)
@@ -538,7 +539,7 @@ def main():
         data = StructuredRandomData().root
 
         # Test it.
-        if not check_testcase(data):
+        if not check_testcase(data, silent=False):
             print('[testcase failed]')
             reduce(data)
             sys.exit(1)
