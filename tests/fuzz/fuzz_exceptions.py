@@ -408,7 +408,7 @@ def reduce(data):
         # nested structure in a single loop)
         print(f'[reduction iteration begins]')
 
-        def find_delimiter_at_same_scope(text, i):
+        def find_delimiter_at_same_scope(text, delimiters, i):
             '''
             Given a reference to the first comma here:
                 [1,2,3]
@@ -422,12 +422,12 @@ def reduce(data):
             nesting = 0
             while True:
                 curr = text[i]
-                if curr == '[':
+                if curr in delimiters and nesting == 0:
+                    return i
+                elif curr == '[':
                     nesting += 1
                 elif curr == ']':
                     nesting -= 1
-                elif curr in (',', ']') and nesting == 0:
-                    return i
                 i += 1
 
         i = 0
@@ -435,7 +435,10 @@ def reduce(data):
             i = text.find(',', i)
             if i < 0:
                 return text
-            j = find_delimiter_at_same_scope(text, i + 1)
+            # Look for the ], which might allow us to reduce all the tail of the
+            # current array. Often the tails are ignored, so this is a big
+            # speedup potentially.
+            j = find_delimiter_at_same_scope(text, ']', i + 1)
             assert j > 0
 
             # We now have something like
@@ -449,10 +452,21 @@ def reduce(data):
             if not check_testcase(json.loads(new_text)):
                 # This is a successful reduction!
                 text = new_text
-                print(f'[reduced to {len(text)}]')
+                print(f'[reduced (large) to {len(text)}]')
                 # Note that i can stay where it is.
-            else:
-                i += 1
+                continue
+
+            # The reduction failed. Try a smaller reduction, not all the way
+            # to the end of the tail.
+            j = find_delimiter_at_same_scope(text, ',]', i + 1)
+            assert j > 0
+            if text[j] == ',':
+                new_text = text[:i] + text[j:]
+                if not check_testcase(json.loads(new_text)):
+                    text = new_text
+                    print(f'[reduced (small) to {len(text)}]')
+                    continue
+            i += 1
         return text
 
     # Main loop: do iterations while we are still reducing.
@@ -460,11 +474,17 @@ def reduce(data):
         reduced = iteration(text)
         if reduced == text:
             break
+        text = reduced
+
+    # Run and verify the final reduction.
+    assert not check_testcase(json.loads(text))
+    print('[reduction complete, reduced testcase written out]')
 
 
 def main():
     total = 0
-    seed = time.time() * os.getpid()
+    seed = 2 # time.time() * os.getpid()
+    random.seed(seed)
 
     while 1:
         seed = random.randint(0, 1 << 64)
