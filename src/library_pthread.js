@@ -439,6 +439,9 @@ var LibraryPThread = {
 #if USE_OFFSET_CONVERTER
         'wasmOffsetConverter': wasmOffsetConverter,
 #endif
+#if MAIN_MODULE
+        'dynamicLibraries': Module['dynamicLibraries'],
+#endif
       });
     },
 

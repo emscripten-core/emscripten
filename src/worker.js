@@ -101,6 +101,10 @@ this.onmessage = function(e) {
       Module['wasmModule'] = e.data.wasmModule;
 #endif // MINIMAL_RUNTIME
 
+#if MAIN_MODULE
+      Module['dynamicLibraries'] = e.data.dynamicLibraries;
+#endif
+
       {{{ makeAsmImportsAccessInPthread('wasmMemory') }}} = e.data.wasmMemory;
 
 #if LOAD_SOURCE_MAP

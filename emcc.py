@@ -2721,15 +2721,19 @@ def do_binaryen(target, options, wasm_target):
     webassembly.add_emscripten_metadata(wasm_target)
 
   if final_js:
-    # pthreads memory growth requires some additional JS fixups
-    if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
-      final_js = building.apply_wasm_memory_growth(final_js)
-
     # >=2GB heap support requires pointers in JS to be unsigned. rather than
     # require all pointers to be unsigned by default, which increases code size
     # a little, keep them signed, and just unsign them here if we need that.
     if shared.Settings.CAN_ADDRESS_2GB:
       final_js = building.use_unsigned_pointers_in_js(final_js)
+
+    # pthreads memory growth requires some additional JS fixups.
+    # note that we must do this after handling of unsigned pointers. unsigning
+    # adds some >>> 0 things, while growth will replace a HEAP8 with a call to
+    # a method to get the heap, and that call would not be recognized by the
+    # unsigning pass
+    if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
+      final_js = building.apply_wasm_memory_growth(final_js)
 
     if shared.Settings.USE_ASAN:
       final_js = building.instrument_js_for_asan(final_js)

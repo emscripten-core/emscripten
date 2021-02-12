@@ -3777,6 +3777,16 @@ ok
       header='typedef float (*floatfunc)(float);', force_c=True, main_module=2)
 
   @needs_dlfcn
+  def test_missing_signatures(self):
+    create_test_file('test_sig.c', r'''#include <emscripten.h>
+                                       int main() {
+                                         return 0 == ( (int)&emscripten_run_script_string +
+                                                       (int)&emscripten_run_script );
+                                       }''')
+    self.set_setting('MAIN_MODULE', 1)
+    self.do_runf('test_sig.c', '')
+
+  @needs_dlfcn
   def test_dylink_global_init(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -8229,6 +8239,43 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.do_basic_dylink_test()
 
+  @needs_dlfcn
+  @node_pthreads
+  def test_Module_dynamicLibraries_pthreads(self):
+    # test that Module.dynamicLibraries works with pthreads
+
+    self.emcc_args += ['-pthread', '-Wno-experimental']
+    self.emcc_args += ['--extern-pre-js', 'pre.js']
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+
+    create_test_file('pre.js', '''
+      if ( !global.Module ) {
+        // This is the initial load (not a worker)
+        // Define the initial state of Module as we would
+        // in the html shell file.
+        // Use var to escape the scope of the if statement
+        var Module = {
+          dynamicLibraries: ['liblib.so']
+        };
+      }
+    ''')
+
+    self.dylink_test(
+      r'''
+        #include <stdio.h>
+        int side();
+        int main() {
+          printf("result is %d", side());
+          return 0;
+        }
+      ''',
+      r'''
+        int side() { return 42; }
+      ''',
+      'result is 42',
+      auto_load=False)
+
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
     # Could also test with -s ALLOW_TABLE_GROWTH=1
@@ -8335,6 +8382,22 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]']
     self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
     self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
+
+  def test_REVERSE_DEPS(self):
+    create_test_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)&connect; }')
+    self.run_process([EMCC, 'connect.c'])
+    base_size = os.path.getsize('a.out.wasm')
+
+    # 'auto' should work (its the default)
+    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=auto'])
+
+    # 'all' should work too although it should produce a larger binary
+    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=all'])
+    self.assertGreater(os.path.getsize('a.out.wasm'), base_size)
+
+    # 'none' should fail to link because the dependency on ntohs was not added.
+    err = self.expect_fail([EMCC, 'connect.c', '-sREVERSE_DEPS=none'])
+    self.assertContained('undefined symbol: ntohs', err)
 
 
 # Generate tests for everything
