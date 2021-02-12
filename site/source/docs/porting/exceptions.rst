@@ -46,5 +46,5 @@ You can reduce the overhead by specifying a list of allowed functions in
 which exceptions are enabled, see the ``EXCEPTION_CATCHING_ALLOWED`` setting.
 
 In the future direct support for exceptions in wasm will avoid that overhead.
-Usage will be as mentioned earlier, but the exceptions feature will also need to
-be enabled when compiling, using ``-fwasm-exceptions``.
+Usage will be as mentioned earlier, but with ``-fwasm-exceptions`` instead of
+``-fexceptions``.
