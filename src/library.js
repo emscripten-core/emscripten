@@ -39,6 +39,7 @@ LibraryManager.library = {
   // JavaScript <-> C string interop
   // ==========================================================================
 
+  $stringToNewUTF8__deps: ['malloc'],
   $stringToNewUTF8: function(jsString) {
     var length = lengthBytesUTF8(jsString)+1;
     var cString = _malloc(length);
@@ -2267,8 +2268,8 @@ LibraryManager.library = {
     return str;
   },
 
-  _read_sockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw', 'ntohs'],
-  _read_sockaddr: function (sa, salen) {
+  $readSockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw', 'ntohs'],
+  $readSockaddr: function (sa, salen) {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
     var port = _ntohs({{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_port, 'i16', undefined, true) }}});
@@ -2300,8 +2301,8 @@ LibraryManager.library = {
 
     return { family: family, addr: addr, port: port };
   },
-  _write_sockaddr__deps: ['$Sockets', '_inet_pton4_raw', '_inet_pton6_raw'],
-  _write_sockaddr: function (sa, family, addr, port, addrlen) {
+  $writeSockaddr__deps: ['$Sockets', '_inet_pton4_raw', '_inet_pton6_raw'],
+  $writeSockaddr: function (sa, family, addr, port, addrlen) {
     switch (family) {
       case {{{ cDefine('AF_INET') }}}:
         addr = __inet_pton4_raw(addr);
@@ -2311,7 +2312,7 @@ LibraryManager.library = {
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'family', 'i16') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'addr', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
-        /* Use makeSetValue instead of memset to avoid adding memset dependency for all users of _write_sockaddr. */
+        /* Use makeSetValue instead of memset to avoid adding memset dependency for all users of writeSockaddr. */
         {{{ assert(C_STRUCTS.sockaddr_in.__size__ - C_STRUCTS.sockaddr_in.sin_zero == 8), '' }}}
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_zero, '0', 'i64') }}};
         break;
@@ -2443,7 +2444,7 @@ LibraryManager.library = {
     return 0;
   },
 
-  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr'],
+  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '$writeSockaddr'],
   getaddrinfo__proxy: 'sync',
   getaddrinfo__sig: 'iiiii',
   getaddrinfo: function(node, service, hint, out) {
@@ -2471,7 +2472,7 @@ LibraryManager.library = {
         __inet_ntop6_raw(addr) :
         __inet_ntop4_raw(addr);
       sa = _malloc(salen);
-      errno = __write_sockaddr(sa, family, addr, port);
+      errno = writeSockaddr(sa, family, addr, port);
       assert(!errno);
 
       ai = _malloc({{{ C_STRUCTS.addrinfo.__size__ }}});
@@ -2615,9 +2616,9 @@ LibraryManager.library = {
     return 0;
   },
 
-  getnameinfo__deps: ['$Sockets', '$DNS', '_read_sockaddr'],
+  getnameinfo__deps: ['$Sockets', '$DNS', '$readSockaddr'],
   getnameinfo: function (sa, salen, node, nodelen, serv, servlen, flags) {
-    var info = __read_sockaddr(sa, salen);
+    var info = readSockaddr(sa, salen);
     if (info.errno) {
       return {{{ cDefine('EAI_FAMILY') }}};
     }
@@ -2899,6 +2900,7 @@ LibraryManager.library = {
     {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
   },
 
+  emscripten_run_script_string__sig: 'ii',
   emscripten_run_script_string: function(ptr) {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
     if (s == null) {

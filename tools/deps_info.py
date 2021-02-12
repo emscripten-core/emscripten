@@ -49,7 +49,6 @@
 #       both here and in the JS compiler.
 
 deps_info = {
-  '$getTypeName': ['free'],
   'Mix_LoadWAV_RW': ['fileno'],
   'SDL_CreateRGBSurface': ['malloc', 'free'],
   'SDL_GL_GetProcAddress': ['emscripten_GetProcAddress'],
@@ -86,7 +85,6 @@ deps_info = {
   '_embind_register_std_string': ['free'],
   '_embind_register_std_wstring': ['free'],
   '_inet_ntop6_raw': ['ntohs'],
-  '_read_sockaddr': ['ntohs'],
   'alGetProcAddress': ['emscripten_GetAlProcAddress'],
   'alGetString': ['malloc', 'free'],
   'alcGetProcAddress': ['emscripten_GetAlcProcAddress'],
@@ -102,7 +100,7 @@ deps_info = {
   'eglQueryString': ['malloc', 'free'],
   'emscripten_GetAlProcAddress': ['strcmp'],
   'emscripten_GetAlcProcAddress': ['strcmp'],
-  'emscripten_GetProcAddress': ['strstr'],
+  'emscripten_GetProcAddress': ['malloc', 'strstr'],
   'emscripten_SDL_SetEventHandler': ['malloc', 'free'],
   'emscripten_alcGetStringiSOFT': ['malloc', 'free'],
   'emscripten_async_wget2_data': ['malloc', 'free'],
@@ -174,7 +172,6 @@ deps_info = {
   'emscripten_websocket_set_onmessage_callback_on_thread': ['malloc', 'free'],
   'emscripten_websocket_set_onopen_callback_on_thread': ['malloc', 'free'],
   'emscripten_wget_data': ['malloc', 'free'],
-  'formatString': ['strlen'],
   'freeaddrinfo': ['free'],
   'freelocale': ['free'],
   'freopen': ['free'],
@@ -219,7 +216,6 @@ deps_info = {
   'socket': ['htonl', 'htons', 'ntohs'],
   'socketpair': ['htons', 'ntohs'],
   'strerror': ['malloc', 'free'],
-  'stringToNewUTF8': ['malloc', 'free'],
   'syslog': ['malloc', 'htons', 'ntohs'],
   'timegm': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc', 'free'],
   'times': ['memset'],
@@ -230,4 +226,5 @@ deps_info = {
   'uuid_compare': ['memcmp', 'memcpy', 'memset'],
   'uuid_copy': ['memcpy'],
   'wgpuDeviceCreateBuffer': ['malloc', 'free'],
+  'emscripten_glGetString': ['malloc'],
 }
