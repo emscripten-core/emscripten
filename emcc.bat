@@ -12,9 +12,7 @@
   :: Do regular invocation of em++.py compiler
   "%EM_PY%" "%~dp0\%~n0.py" %*
 ) else (
-  :: Invoke the compiler via ccache, use a wrapper in ccache installation directory.
-  if "%EMSCRIPTEN%"=="" (
-    set EMSCRIPTEN=%~dp0
-  )
+  :: Remove the ccache env. var, invoke ccache and re-enter this script to take the above branch.
+  set EMCC_CCACHE=
   ccache "%EMCC_CCACHE%\%~n0.bat" %*
 )
