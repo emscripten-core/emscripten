@@ -1187,7 +1187,7 @@ var DYNAMIC_EXECUTION = 1;
 var BOOTSTRAPPING_STRUCT_INFO = 0;
 
 // Add some calls to emscripten tracing APIs
-// [link]
+// [compile+link]
 var EMSCRIPTEN_TRACING = 0;
 
 // Specify the GLFW version that is being linked against.  Only relevant, if you
