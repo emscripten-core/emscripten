@@ -11,11 +11,11 @@
 #include <avxintrin.h>
 #endif
 
-#ifdef __SSE_4_2__
+#ifdef __SSE4_2__
 #include <nmmintrin.h>
 #endif
 
-#ifdef __SSE_4_1__
+#ifdef __SSE4_1__
 #include <smmintrin.h>
 #endif
 

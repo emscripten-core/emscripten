@@ -249,7 +249,11 @@ class Library(object):
 
   # A list of flags to pass to emcc.
   # The flags for the parent class is automatically inherited.
-  cflags = ['-Werror']
+  # TODO: Investigate whether perf gains from loop unrolling would be worth the
+  # extra code size. The -fno-unroll-loops flags was added here when loop
+  # unrolling landed upstream in LLVM to avoid changing behavior but was not
+  # specifically evaluated.
+  cflags = ['-Werror', '-fno-unroll-loops']
 
   # A list of directories to put in the include path when building.
   # This is a list of tuples of path components.

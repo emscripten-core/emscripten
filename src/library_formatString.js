@@ -46,7 +46,7 @@ mergeInto(LibraryManager.library, {
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
   $formatString__deps: ['$reallyNegative', '$convertI32PairToI53', '$convertU32PairToI53',
-                        '$reSign', '$unSign'
+                        '$reSign', '$unSign', 'strlen'
 #if MINIMAL_RUNTIME
     , '$intArrayFromString'
 #endif
@@ -467,7 +467,13 @@ mergeInto(LibraryManager.library, {
     return ret;
   },
 
-  // printf/puts implementations for when musl is not pulled in - very partial. useful for tests, and when bootstrapping structInfo
+  // printf/puts/strlen implementations for when musl is not pulled in - very
+  // partial. useful for tests, and when bootstrapping structInfo
+  strlen: function(ptr) {
+    var end = ptr;
+    while (HEAPU8[end]) ++end;
+    return end - ptr;
+  },
   printf__deps: ['$formatString'
 #if MINIMAL_RUNTIME
     , '$intArrayToString'
