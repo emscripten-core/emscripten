@@ -14,5 +14,5 @@
 ) else (
   :: Remove the ccache env. var, invoke ccache and re-enter this script to take the above branch.
   set EMCC_CCACHE=
-  ccache "%EMCC_CCACHE%\%~n0.bat" %*
+  ccache "%~dp0\%~n0.bat" %*
 )
