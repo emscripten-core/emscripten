@@ -55,11 +55,11 @@ class StructuredRandomData:
 
     # The range of widths.
     MIN_WIDTH = 1
-    MAX_WIDTH = 5
+    MAX_WIDTH = 4
 
     # The range of depths.
     MIN_DEPTH = 2
-    MAX_DEPTH = 10
+    MAX_DEPTH = 9
 
     # The chance to just emit a number instead of a list.
     NUM_PROB = 0.25
@@ -84,9 +84,6 @@ class StructuredRandomData:
         if depth_left == 0 or random.random() < self.NUM_PROB:
             return self.make_num()
         return self.make_array(depth, depth_left)
-
-# To see an example, run this line:
-# print(json.dumps(StructuredRandomData().root, indent='  '))
 
 
 def numify(node):
@@ -208,7 +205,6 @@ bool getBoolean() {
 '''
 
     def __init__(self, input):
-        # print(json.dumps(input.root, indent='  '))
         self.toplevel = Cursor(input.root)
         self.logging_index = 0
         self.try_nesting = 0
