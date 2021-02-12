@@ -1,3 +1,4 @@
+import json
 import os
 import random
 import subprocess
@@ -377,11 +378,88 @@ def check_testcase(data):
     # Compile with emcc, looking for a compilation error.
     try:
         subprocess.check_call(['./em++', 'a.cpp', 'b.cpp', '-sWASM_BIGINT',
-                               '-fwasm-exceptions'])
+                               '-fwasm-exceptions'], stderr=subprocess.PIPE)
+    except KeyboardInterrupt:
+        print('[stopping by user request]')
+        sys.exit(0)
     except:
         return False
 
     return True
+
+
+def reduce(data):
+    '''
+    Given a failing testcase, reduce the input data to create a reduced C++
+    testcase.
+    '''
+
+    assert not check_testcase(data)
+
+    # The input is structured. The simplest thing is to reduce on it in text
+    # form, so that we do not need to have references to nested things etc.
+    text = json.dumps(data)
+    assert not check_testcase(json.loads(text))
+    print(f'[reducing, starting from size {len(text)}]')
+
+    def iteration(text):
+        # Find ',' delimiters, and reduce using it it, starting from the start
+        # and going to the end (doing this on the text lets us handle all
+        # nested structure in a single loop)
+        print(f'[reduction iteration begins]')
+
+        def find_delimiter_at_same_scope(text, i):
+            '''
+            Given a reference to the first comma here:
+                [1,2,3]
+                  ^
+            We return a reference to the next one, or to a ] if there is none.
+            This handles scoping, that is,
+                [1,[5,6],3]
+                  ^
+            That will return the comma before the '3'.
+            '''
+            nesting = 0
+            while True:
+                curr = text[i]
+                if curr == '[':
+                    nesting += 1
+                elif curr == ']':
+                    nesting -= 1
+                elif curr in (',', ']') and nesting == 0:
+                    return i
+                i += 1
+
+        i = 0
+        while True:
+            i = text.find(',', i)
+            if i < 0:
+                return text
+            j = find_delimiter_at_same_scope(text, i + 1)
+            assert j > 0
+
+            # We now have something like
+            #   ,...,
+            #   i   j
+            # or
+            #   ,...]
+            #   i   j
+            # And we can try a reduction by removing up to j.
+            new_text = text[:i] + text[j:]
+            if not check_testcase(json.loads(new_text)):
+                # This is a successful reduction!
+                text = new_text
+                print(f'[reduced to {len(text)}]')
+                # Note that i can stay where it is.
+            else:
+                i += 1
+        return text
+
+    # Main loop: do iterations while we are still reducing.
+    while True:
+        reduced = iteration(text)
+        if reduced == text:
+            break
 
 
 def main():
@@ -399,8 +477,8 @@ def main():
 
         # Test it.
         if not check_testcase(data):
-            print('[testcase failed, halting]')
+            print('[testcase failed]')
+            reduce(data)
             sys.exit(1)
 
 main()
-
