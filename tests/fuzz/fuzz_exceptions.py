@@ -1,9 +1,7 @@
 import json
-import os
 import random
 import subprocess
 import sys
-import time
 
 '''
 Structural fuzz generator.
@@ -215,7 +213,6 @@ bool getBoolean() {
         # The output is a list of strings which will be concatenated when
         # writing.
         self.output = [self.PREAMBLE]
-        self.make_structs()
         self.make_functions()
 
     '''
@@ -382,7 +379,7 @@ def check_testcase(data):
     except KeyboardInterrupt:
         print('[stopping by user request]')
         sys.exit(0)
-    except:
+    except Exception:
         return False
 
     return True
@@ -500,5 +497,6 @@ def main():
             print('[testcase failed]')
             reduce(data)
             sys.exit(1)
+
 
 main()
