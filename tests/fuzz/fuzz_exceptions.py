@@ -1,6 +1,7 @@
 import os
 import random
 import subprocess
+import sys
 import time
 
 '''
@@ -12,16 +13,16 @@ However, we start with a tree structure of random bytes, something like
 [
   1,
   [
-    42,
-    50
-    17
+    0.42,
+    0.501,
+    0.17
   ],
   [
     [
     ],
     [
-      2,
-      12
+      0.2,
+      0.12
     ]
   ]
 ]
@@ -204,8 +205,8 @@ bool getBoolean() {
 }
 '''
 
-    def __init__(self, input):
-        self.toplevel = Cursor(input.root)
+    def __init__(self, data):
+        self.toplevel = Cursor(data)
         self.logging_index = 0
         self.try_nesting = 0
         self.loop_nesting = 0
@@ -369,25 +370,37 @@ while (getBoolean()) {
 # Main harness
 
 
-total = 0
-seed = time.time() * os.getpid()
+def check_testcase(data):
+    # Generate C++
+    CppTranslator(data).write(main='a.cpp', support='b.cpp')
 
-while 1:
-    seed = random.randint(0, 1 << 64)
-    random.seed(seed)
-    print(f'[iteration {total} (seed = {seed})]')
-    total += 1
+    # Compile with emcc, looking for a compilation error.
+    try:
+        subprocess.check_call(['./em++', 'a.cpp', 'b.cpp', '-sWASM_BIGINT',
+                               '-fwasm-exceptions'])
+    except:
+        return False
 
-    # Generate a testcase.
-    CppTranslator(StructuredRandomData()).write(main='a.cpp', support='b.cpp')
+    return True
 
-    # Compile normally.
-    subprocess.check_call(['clang++', 'a.cpp', 'b.cpp'])
-    normal = subprocess.check_output(['./a.out'])
 
-    # Compile with emcc.
-    subprocess.check_call(['./em++', 'a.cpp', 'b.cpp', '-fexceptions', '-sWASM_BIGINT'])
-    emcc = subprocess.check_output(['nodejs', 'a.out.js'])
+def main():
+    total = 0
+    seed = time.time() * os.getpid()
 
-    # Halt on an error.
-    assert normal == emcc
+    while 1:
+        seed = random.randint(0, 1 << 64)
+        random.seed(seed)
+        print(f'[iteration {total} (seed = {seed})]')
+        total += 1
+
+        # Generate a testcase.
+        data = StructuredRandomData().root
+
+        # Test it.
+        if not check_testcase(data):
+            print('[testcase failed, halting]')
+            sys.exit(1)
+
+main()
+

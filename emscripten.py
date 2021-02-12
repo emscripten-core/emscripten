@@ -1,3 +1,4 @@
+import sys
 # Copyright 2010 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -428,6 +429,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
 
   if shared.Settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
+  sys.exit(0)
   stdout = building.run_binaryen_command('wasm-emscripten-finalize',
                                          infile=infile,
                                          outfile=outfile if modify_wasm else None,
