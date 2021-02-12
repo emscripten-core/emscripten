@@ -5711,7 +5711,7 @@ int main(void) {
 
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   def test_dlmalloc(self):
-#    self.banned_js_engines = [config.NODE_JS] # slower, and fail on 64-bit
+    self.banned_js_engines = [config.NODE_JS] # slower, and fail on 64-bit
     # needed with typed arrays
     self.set_setting('INITIAL_MEMORY', '128mb')
 
