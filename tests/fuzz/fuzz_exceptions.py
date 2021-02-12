@@ -485,6 +485,30 @@ def reduce(data):
                 print(f'[reduced (open) to {len(text)}]')
             i += 1
 
+        # Reduce a singleton parent to a child,
+        #  [[x]]  =>  [x]
+        i = 0
+        while True:
+            i = text.find('[', i)
+            if i < 0:
+                break
+            if text[i + 1] != '[':
+                i += 1
+                continue
+            j = find_delimiter_at_same_scope(text, ']', i + 2)
+            if text[j + 1] != ']':
+                i += 1
+                continue
+            # We now have
+            # [[..]]
+            # i   j
+            new_text = text[:i] + text[i + 1:j + 1] + text[j + 2:]
+            if not check_testcase(json.loads(new_text)):
+                text = new_text
+                print(f'[reduced (singleton) to {len(text)}]')
+                continue
+            i += 1
+
         return text
 
     # Main loop: do iterations while we are still reducing.
