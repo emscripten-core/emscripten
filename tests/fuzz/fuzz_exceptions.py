@@ -429,16 +429,16 @@ def reduce(data):
                     nesting -= 1
                 i += 1
 
+        # Reduce starting from commas.
         i = 0
         while True:
             i = text.find(',', i)
             if i < 0:
-                return text
+                break
             # Look for the ], which might allow us to reduce all the tail of the
             # current array. Often the tails are ignored, so this is a big
             # speedup potentially.
             j = find_delimiter_at_same_scope(text, ']', i + 1)
-            assert j > 0
 
             # We now have something like
             #   ,...,
@@ -458,7 +458,6 @@ def reduce(data):
             # The reduction failed. Try a smaller reduction, not all the way
             # to the end of the tail.
             j = find_delimiter_at_same_scope(text, ',]', i + 1)
-            assert j > 0
             if text[j] == ',':
                 new_text = text[:i] + text[j:]
                 if not check_testcase(json.loads(new_text)):
@@ -466,6 +465,26 @@ def reduce(data):
                     print(f'[reduced (small) to {len(text)}]')
                     continue
             i += 1
+
+        # Reduce starting from open braces. This handles removing the very first
+        # element.
+        i = 0
+        while True:
+            i = text.find('[', i)
+            if i < 0:
+                break
+            j = find_delimiter_at_same_scope(text, ',]', i + 1)
+            if text[j] == ',':
+                # [..,  =>  [
+                new_text = text[:i + 1] + text[j + 1:]
+            else:
+                # [..]  =>  []
+                new_text = text[:i + 1] + text[j:]
+            if not check_testcase(json.loads(new_text)):
+                text = new_text
+                print(f'[reduced (open) to {len(text)}]')
+            i += 1
+
         return text
 
     # Main loop: do iterations while we are still reducing.
