@@ -5,8 +5,8 @@
 
 import os
 
-TAG = '703ebc7c66fd' # Latest as of 24 November 2020
-HASH = '362c95f08170a90fe026b264a1053692edea581f5a9908c84aa42d89315cf8c8f74719a80ae45fa16ed7944b12e1b930e5add1d3ad58de04012ed63f535dfb04'
+TAG = '9517474d772fe6ea5d848b6a59744c6f60755022' # Latest as of Feb 11 2021
+HASH = 'ee1df465cda5b585015dc8c85062e0f7e44adcecdb58032d70314926dcb649b2ebd270d4595a339bc585fc2543800575225380e51e49e8363890812bcbf80112'
 
 deps = ['freetype', 'sdl2', 'harfbuzz']
 
@@ -16,7 +16,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('sdl2_ttf', 'https://hg.libsdl.org/SDL_ttf/archive/' + TAG + '.zip', 'SDL_ttf-' + TAG, sha512hash=HASH)
+  ports.fetch_project('sdl2_ttf', 'https://github.com/libsdl-org/SDL_ttf/archive/' + TAG + '.zip', 'SDL_ttf-' + TAG, sha512hash=HASH)
 
   def create(final):
     src_root = os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL_ttf-' + TAG)
