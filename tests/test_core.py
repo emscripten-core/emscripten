@@ -5719,12 +5719,6 @@ int main(void) {
     self.do_runf(test_file('dlmalloc_test.c'), '*1,0*', args=['200', '1'])
     self.do_run('dlmalloc_test.js', '*400,0*', args=['400', '400'], no_build=True)
 
-    # Large allocation should fail
-    old_args = self.emcc_args[:]
-    self.emcc_args += ['-s', 'ABORTING_MALLOC=0']
-    self.do_runf(path_from_root('tests', 'dlmalloc_test_large.c'), '0 0 0 1')
-    self.emcc_args = old_args
-
     # TODO: do this in other passes too, passing their opts into emcc
     if self.emcc_args == []:
       # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
@@ -5745,6 +5739,11 @@ int main(void) {
         ('new Structy[10]', 'delete[]'),
       ]:
         self.do_run(src.replace('{{{ NEW }}}', new).replace('{{{ DELETE }}}', delete), '*1,0*')
+
+  # Tests that a large allocation should gracefully fail
+  def test_dlmalloc_large(self):
+    self.emcc_args += ['-s', 'ABORTING_MALLOC=0', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=128MB']
+    self.do_runf(path_from_root('tests', 'dlmalloc_test_large.c'), '0 0 0 1')
 
   @no_asan('asan also changes malloc, and that ends up linking in new twice')
   def test_dlmalloc_partial(self):
