@@ -378,12 +378,16 @@ while 1:
     print(f'[iteration {total} (seed = {seed})]')
     total += 1
 
-    # Compile normally.
+    # Generate a testcase.
     CppTranslator(StructuredRandomData()).write(main='a.cpp', support='b.cpp')
+
+    # Compile normally.
     subprocess.check_call(['clang++', 'a.cpp', 'b.cpp'])
     normal = subprocess.check_output(['./a.out'])
 
     # Compile with emcc.
     subprocess.check_call(['./em++', 'a.cpp', 'b.cpp', '-fexceptions', '-sWASM_BIGINT'])
     emcc = subprocess.check_output(['nodejs', 'a.out.js'])
+
+    # Halt on an error.
     assert normal == emcc
