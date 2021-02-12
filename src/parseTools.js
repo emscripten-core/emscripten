@@ -1143,7 +1143,8 @@ function expectToReceiveOnModule(name) {
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
   if (!localName) localName = moduleName;
-  return `if (!Object.getOwnPropertyDescriptor(Module, '${moduleName}')) {
+  return `
+if (!Object.getOwnPropertyDescriptor(Module, '${moduleName}')) {
   Object.defineProperty(Module, '${moduleName}', {
     configurable: true,
     get: function() {
@@ -1162,7 +1163,7 @@ function makeModuleReceive(localName, moduleName) {
   if (expectToReceiveOnModule(moduleName)) {
     // Usually the local we use is the same as the Module property name,
     // but sometimes they must differ.
-    ret = "if (Module['" + moduleName + "']) " + localName + " = Module['" + moduleName + "'];";
+    ret = `\nif (Module['${moduleName}']) ${localName} = Module['${moduleName}'];`;
   }
   ret += makeRemovedModuleAPIAssert(moduleName, localName);
   return ret;

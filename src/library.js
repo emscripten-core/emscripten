@@ -39,6 +39,7 @@ LibraryManager.library = {
   // JavaScript <-> C string interop
   // ==========================================================================
 
+  $stringToNewUTF8__deps: ['malloc'],
   $stringToNewUTF8: function(jsString) {
     var length = lengthBytesUTF8(jsString)+1;
     var cString = _malloc(length);

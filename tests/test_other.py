@@ -7563,6 +7563,25 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     self.assertIdentical(normal, tiny)
     self.assertIdentical(normal, huge)
 
+  def test_pthreads_growth_and_unsigned(self):
+    create_test_file('src.cpp', r'''
+#include <emscripten.h>
+
+int main() {
+  EM_ASM({
+    HEAP8.set([1,2,3], $0);
+  }, 1024);
+}''')
+    self.run_process([EMCC, 'src.cpp', '-O2', '--profiling', '-pthread',
+                      '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ALLOW_MEMORY_GROWTH'])
+    with open('a.out.js') as f:
+      # growable-heap must not interfere with heap unsigning, and vice versa:
+      # we must have both applied, that is
+      #   - GROWABLE_HEAP_I8() replaces HEAP8
+      #   - $0 gets an >>> 0 unsigning
+      self.assertContained('GROWABLE_HEAP_I8().set([ 1, 2, 3 ], $0 >>> 0)',
+                           f.read())
+
   @parameterized({
     '': ([],), # noqa
     'O3': (['-O3'],), # noqa
