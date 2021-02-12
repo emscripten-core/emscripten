@@ -429,7 +429,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
 
   if shared.Settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
-  sys.exit(0)
+#  sys.exit(0)
   stdout = building.run_binaryen_command('wasm-emscripten-finalize',
                                          infile=infile,
                                          outfile=outfile if modify_wasm else None,
