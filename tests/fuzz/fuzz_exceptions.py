@@ -1,7 +1,9 @@
 import json
+import os
 import random
 import subprocess
 import sys
+import time
 
 '''
 Structural fuzz generator.
@@ -51,7 +53,7 @@ that just wants a bool.
 
 
 class StructuredRandomData:
-    NUM_TOPLEVEL = 50
+    NUM_TOPLEVEL = 25
 
     # The range of widths.
     MIN_WIDTH = 1
@@ -480,7 +482,7 @@ def reduce(data):
 
 def main():
     total = 0
-    seed = 2 # time.time() * os.getpid()
+    seed = time.time() * os.getpid()
     random.seed(seed)
 
     while 1:
