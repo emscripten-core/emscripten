@@ -390,28 +390,36 @@ def llvm_nm_multiple(files):
     # for each individual file.
 
     filename = llvm_nm_files[0]
-    file_start = 0
-    i = 0
 
-    while True:
-      nl = results.find('\n', i)
-      if nl < 0:
-        break
-      colon = results.rfind(':', i, nl)
-      if colon >= 0 and results[colon + 1] == '\n': # New file start?
-        nm_cache[filename] = parse_symbols(results[file_start:i - 1])
-        filename = results[i:colon].strip()
-        file_start = colon + 2
-      i = nl + 1
+    # When we dispatched more than one file, we must manually parse
+    # the file result delimiters (like shown structured above)
+    if len(llvm_nm_files) > 1:
+      file_start = 0
+      i = 0
 
-    nm_cache[filename] = parse_symbols(results[file_start:])
+      while True:
+        nl = results.find('\n', i)
+        if nl < 0:
+          break
+        colon = results.rfind(':', i, nl)
+        if colon >= 0 and results[colon + 1] == '\n': # New file start?
+          nm_cache[filename] = parse_symbols(results[file_start:i - 1])
+          filename = results[i:colon].strip()
+          file_start = colon + 2
+        i = nl + 1
+
+      nm_cache[filename] = parse_symbols(results[file_start:])
+    else:
+      # We only dispatched a single file, we can just parse that directly
+      # to the output.
+      nm_cache[filename] = parse_symbols(results)
 
     # Any files that failed llvm-nm (e.g. they did not have any
     # symbols) will be not present in the above, so fill in dummies
     # for those.
     for f in files:
       if f not in nm_cache:
-        nm_cache[f] = ObjectFileInfo(1, '')
+        nm_cache[f] = llvm_nm(f)
 
   return [nm_cache[f] for f in files]
 
