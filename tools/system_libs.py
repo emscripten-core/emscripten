@@ -1394,7 +1394,7 @@ def handle_reverse_deps(input_files):
       add_reverse_deps(need) # recurse to get deps of deps
 
   # Scan symbols
-  symbolses = building.parallel_llvm_nm([os.path.abspath(t) for t in input_files])
+  symbolses = building.llvm_nm_multiple([os.path.abspath(t) for t in input_files])
 
   warn_on_unexported_main(symbolses)
 
