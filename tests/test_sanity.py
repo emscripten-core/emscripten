@@ -15,14 +15,14 @@ from subprocess import PIPE, STDOUT
 from runner import RunnerCore, path_from_root, env_modify
 from runner import create_test_file, ensure_dir, make_executable
 from tools.config import config_file, EM_CONFIG
-from tools.shared import PYTHON, EMCC
+from tools.shared import EMCC
 from tools.shared import CANONICAL_TEMP_DIR
 from tools.shared import try_delete, config
 from tools.shared import EXPECTED_LLVM_VERSION, Cache
 from tools import shared, system_libs, utils
 
 SANITY_FILE = shared.Cache.get_path('sanity.txt')
-commands = [[EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
+commands = [[EMCC], [path_from_root('tests', 'runner'), 'blahblah']]
 
 
 def restore():

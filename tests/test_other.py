@@ -26,7 +26,7 @@ import uuid
 from subprocess import PIPE, STDOUT
 
 if __name__ == '__main__':
-  raise Exception('do not run this file directly; do something like: tests/runner.py other')
+  raise Exception('do not run this file directly; do something like: tests/runner other')
 
 from tools.shared import try_delete, config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, EM_BUILD_VERBOSE
@@ -2472,7 +2472,6 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
   def test_module_exports_with_closure(self):
     # This test checks that module.export is retained when JavaScript is minified by compiling with --closure 1
     # This is important as if module.export is not present the Module object will not be visible to node.js
-    # Run with ./runner.py other.test_module_exports_with_closure
 
     # First make sure test.js isn't present.
     self.clear()
