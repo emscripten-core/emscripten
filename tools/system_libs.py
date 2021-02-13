@@ -13,6 +13,7 @@ import subprocess
 import sys
 from glob import iglob
 
+from .toolchain_profiler import ToolchainProfiler
 from . import shared, building, ports, config, utils
 from . import deps_info, tempfiles
 from . import diagnostics
@@ -78,35 +79,39 @@ def clean_env():
   return safe_env
 
 
-def run_one_command(cmd):
-  # Helper function used by run_build_commands.
-  if shared.EM_BUILD_VERBOSE:
-    print(shared.shlex_join(cmd))
-  # TODO(sbc): Remove this one we remove the test_em_config_env_var test
-  cmd.append('-Wno-deprecated')
-  try:
-    shared.run_process(cmd, env=clean_env())
-  except subprocess.CalledProcessError as e:
-    print("'%s' failed (%d)" % (shared.shlex_join(e.cmd), e.returncode))
-    raise
-
-
 def run_build_commands(commands):
   # Before running a set of build commands make sure the common sysroot
   # headers are installed.  This prevents each sub-process from attempting
   # to setup the sysroot itself.
   ensure_sysroot()
-  cores = min(len(commands), building.get_num_cores())
-  if cores <= 1 or shared.DEBUG:
-    for command in commands:
-      run_one_command(command)
-  else:
-    pool = building.get_multiprocessing_pool()
-    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
-    # https://bugs.python.org/issue8296
-    # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
-    # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
-    pool.map_async(run_one_command, commands, chunksize=1).get(999999)
+
+
+
+  safe_env = clean_env()  # We already did a sanity check launching the compiler once, no need to launch the compiler
+  # again on each child subprocess spawn.
+  safe_env['EMCC_SKIP_SANITY_CHECK'] = '1'
+
+  # If we got spawned by ccache, then launch subprocesses in ccache as well.
+  if 'EMCC_CCACHE_' in safe_env:
+    safe_env['EMCC_CCACHE'] = '1'
+
+  for i in range(len(commands)):
+    # TODO(sbc): Remove this one we remove the test_em_config_env_var test
+    commands[i].append('-Wno-deprecated')
+
+    # For subprocess spawns, do not route via the OS batch script launcher, but directly
+    # spawn the python script. This saves ~2 seconds on libc build.
+    # However if we are using ccache, we must use the wrappers, since they dispatch
+    # execution to ccache executable.
+    if 'EMCC_CCACHE' not in safe_env:
+      if commands[i][0].endswith('emcc.bat'):
+        commands[i][0] = commands[i][0].replace('emcc.bat', 'emcc.py')
+        commands[i] = [sys.executable] + commands[i]
+      elif commands[i][0].endswith('emcc'):
+        commands[i][0] = commands[i][0].replace('emcc', 'emcc.py')
+        commands[i] = [sys.executable] + commands[i]
+
+  shared.run_multiple_processes(commands)
 
 
 def create_lib(libname, inputs):
@@ -1962,4 +1967,5 @@ def install_system_headers(stamp):
 
 
 def ensure_sysroot():
-  shared.Cache.get('sysroot_install.stamp', install_system_headers, what='system headers')
+  with ToolchainProfiler.profile_block('ensure_sysroot'):
+    shared.Cache.get('sysroot_install.stamp', install_system_headers, what='system headers')

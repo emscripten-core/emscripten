@@ -32,6 +32,14 @@ from . import config
 from . import filelock
 
 
+import signal
+
+def signal_handler(sig, frame):
+    sys.exit(1)
+
+signal.signal(signal.SIGINT, signal_handler)
+
+
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
@@ -94,6 +102,41 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
   logger.debug(debug_text)
   return ret
+
+
+def get_num_cores():
+  import multiprocessing
+  return int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
+
+
+def run_multiple_processes(commands, child_env=None, route_stdout_to_temp_files_suffix=None, pipe_stdout=False):
+  std_outs = []
+  with ToolchainProfiler.profile_block('parallel_run_js_optimizers'):
+    processes = []
+    start = 0
+    end = 0
+    num_parallel_processes = get_num_cores()
+    temp_files = configuration.get_temp_files()
+    while start < len(commands):
+      if start + num_parallel_processes > end and end < len(commands): # Spawn a new process?
+        std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
+        if DEBUG:
+          logger.debug('Running subprocess %d/%d: %s' % (end + 1, len(commands), ' '.join(commands[end])))
+        processes += [subprocess.Popen(commands[end], stdout=std_out, env=child_env if child_env else os.environ.copy())]
+        if route_stdout_to_temp_files_suffix:
+          std_outs += [std_out.name]
+        elif pipe_stdout:
+          std_outs += [std_out]
+        end += 1
+      else:
+        # Too many commands running in parallel, wait for one to finish.
+        out, err = processes[start].communicate()
+        if processes[start].returncode != 0:
+          if out: logger.info(out.decode('UTF-8'))
+          if err: logger.error(err.decode('UTF-8'))
+          raise Exception('Subprocess %d/%d failed with return code %d!' % (start + 1, len(commands), processes[start].returncode))
+        start += 1
+  return std_outs
 
 
 def check_call(cmd, *args, **kw):

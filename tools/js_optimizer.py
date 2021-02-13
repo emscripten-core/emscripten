@@ -295,7 +295,7 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('js_optimizer.split_to_chunks'):
     # if we are making source maps, we want our debug numbering to start from the
     # top of the file, so avoid breaking the JS into chunks
-    cores = building.get_num_cores()
+    cores = shared.get_num_cores()
 
     if not just_split:
       intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
@@ -330,22 +330,7 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('run_optimizer'):
     if len(filenames):
       commands = [config.NODE_JS + [ACORN_OPTIMIZER, f] + passes for f in filenames]
-
-      cores = min(cores, len(filenames))
-      if len(chunks) > 1 and cores >= 2:
-        # We can parallelize
-        if DEBUG:
-          print('splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size / (1024 * 1024.)), file=sys.stderr)
-        with ToolchainProfiler.profile_block('optimizer_pool'):
-          pool = building.get_multiprocessing_pool()
-          filenames = pool.map(run_on_chunk, commands, chunksize=1)
-      else:
-        # We can't parallize, but still break into chunks to avoid node memory issues
-        if len(chunks) > 1 and DEBUG:
-          print('splitting up js optimization into %d chunks' % (len(chunks)), file=sys.stderr)
-        filenames = [run_on_chunk(command) for command in commands]
-    else:
-      filenames = []
+      filenames = shared.run_multiple_processes(commands, route_stdout_to_temp_files_suffix='js_opt.jo.js')
 
     for filename in filenames:
       temp_files.note(filename)

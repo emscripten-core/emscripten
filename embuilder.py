@@ -15,6 +15,7 @@ running multiple build commands in parallel, confusion can occur).
 import argparse
 import logging
 import sys
+import time
 
 from tools import shared
 from tools import system_libs
@@ -112,6 +113,9 @@ def build_port(port_name):
 
 def main():
   global force
+
+  all_build_start_time = time.time()
+
   parser = argparse.ArgumentParser(description=__doc__,
                                    formatter_class=argparse.RawDescriptionHelpFormatter,
                                    epilog=get_help())
@@ -166,6 +170,7 @@ def main():
     print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:
     logger.info('building and verifying ' + what)
+    start_time = time.time()
     if what in SYSTEM_LIBRARIES:
       library = SYSTEM_LIBRARIES[what]
       if force:
@@ -260,7 +265,13 @@ def main():
       logger.error('unfamiliar build target: ' + what)
       return 1
 
-    logger.info('...success')
+    time_taken = time.time() - start_time
+    logger.info('...success. Took %s(%.2fs)' % (('%02d:%02d mins ' % (time_taken // 60, time_taken % 60) if time_taken >= 60 else ''), time_taken))
+
+  if len(tasks) > 1:
+    all_build_time_taken = time.time() - all_build_start_time
+    logger.info('Built %d targets in %s(%.2fs)' % (len(tasks), ('%02d:%02d mins ' % (all_build_time_taken // 60, all_build_time_taken % 60) if all_build_time_taken >= 60 else ''), all_build_time_taken))
+
   return 0
 
 

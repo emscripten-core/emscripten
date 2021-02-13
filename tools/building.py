@@ -6,7 +6,6 @@
 import atexit
 import json
 import logging
-import multiprocessing
 import os
 import re
 import shlex
@@ -36,7 +35,6 @@ from .utils import WINDOWS
 logger = logging.getLogger('building')
 
 #  Building
-multiprocessing_pool = None
 binaryen_checked = False
 
 EXPECTED_BINARYEN_VERSION = 100
@@ -119,15 +117,6 @@ def extract_archive_contents(archive_file):
   }
 
 
-def g_multiprocessing_initializer(*args):
-  for item in args:
-    (key, value) = item.split('=', 1)
-    if key == 'EMCC_POOL_CWD':
-      os.chdir(value)
-    else:
-      os.environ[key] = value
-
-
 def unique_ordered(values):
   """return a list of unique values in an input list, without changing order
   (list(set(.)) would change order randomly).
@@ -150,74 +139,6 @@ def clear():
   nm_cache.clear()
   ar_contents.clear()
   _is_ar_cache.clear()
-
-
-def get_num_cores():
-  return int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
-
-
-# Multiprocessing pools are very slow to build up and tear down, and having
-# several pools throughout the application has a problem of overallocating
-# child processes. Therefore maintain a single centralized pool that is shared
-# between all pooled task invocations.
-def get_multiprocessing_pool():
-  global multiprocessing_pool
-  if not multiprocessing_pool:
-    cores = get_num_cores()
-
-    # If running with one core only, create a mock instance of a pool that does not
-    # actually spawn any new subprocesses. Very useful for internal debugging.
-    if cores == 1:
-      class FakeMultiprocessor(object):
-        def map(self, func, tasks, *args, **kwargs):
-          results = []
-          for t in tasks:
-            results += [func(t)]
-          return results
-
-        def map_async(self, func, tasks, *args, **kwargs):
-          class Result:
-            def __init__(self, func, tasks):
-              self.func = func
-              self.tasks = tasks
-
-            def get(self, timeout):
-              results = []
-              for t in tasks:
-                results += [func(t)]
-              return results
-
-          return Result(func, tasks)
-
-      multiprocessing_pool = FakeMultiprocessor()
-    else:
-      child_env = [
-        # Multiprocessing pool children must have their current working
-        # directory set to a safe path that is guaranteed not to die in
-        # between of executing commands, or otherwise the pool children will
-        # have trouble spawning subprocesses of their own.
-        'EMCC_POOL_CWD=' + path_from_root(),
-        # Multiprocessing pool children can't spawn their own linear number of
-        # children, that could cause a quadratic amount of spawned processes.
-        'EMCC_CORES=1'
-      ]
-      multiprocessing_pool = multiprocessing.Pool(processes=cores, initializer=g_multiprocessing_initializer, initargs=child_env)
-
-      def close_multiprocessing_pool():
-        global multiprocessing_pool
-        try:
-          # Shut down the pool explicitly, because leaving that for Python to do at process shutdown is buggy and can generate
-          # noisy "WindowsError: [Error 5] Access is denied" spam which is not fatal.
-          multiprocessing_pool.terminate()
-          multiprocessing_pool.join()
-          multiprocessing_pool = None
-        except OSError as e:
-          # Mute the "WindowsError: [Error 5] Access is denied" errors, raise all others through
-          if not (sys.platform.startswith('win') and isinstance(e, WindowsError) and e.winerror == 5):
-            raise
-      atexit.register(close_multiprocessing_pool)
-
-  return multiprocessing_pool
 
 
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
@@ -358,46 +279,6 @@ def llvm_nm(file):
   return llvm_nm_multiple([file])[0]
 
 
-def read_link_inputs(files):
-  with ToolchainProfiler.profile_block('read_link_inputs'):
-    # Before performing the link, we need to look at each input file to determine which symbols
-    # each of them provides. Do this in multiple parallel processes.
-    archive_names = [] # .a files passed in to the command line to the link
-    object_names = [] # .o/.bc files passed in to the command line to the link
-    for f in files:
-      absolute_path_f = make_paths_absolute(f)
-
-      if absolute_path_f not in ar_contents and is_ar(absolute_path_f):
-        archive_names.append(absolute_path_f)
-      elif absolute_path_f not in nm_cache and is_bitcode(absolute_path_f):
-        object_names.append(absolute_path_f)
-
-    # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
-    pool = get_multiprocessing_pool()
-    object_names_in_archives = pool.map(extract_archive_contents, archive_names)
-
-    def clean_temporary_archive_contents_directory(directory):
-      def clean_at_exit():
-        try_delete(directory)
-      if directory:
-        atexit.register(clean_at_exit)
-
-    for n in range(len(archive_names)):
-      if object_names_in_archives[n]['returncode'] != 0:
-        raise Exception('llvm-ar failed on archive ' + archive_names[n] + '!')
-      ar_contents[archive_names[n]] = object_names_in_archives[n]['files']
-      clean_temporary_archive_contents_directory(object_names_in_archives[n]['dir'])
-
-    for o in object_names_in_archives:
-      for f in o['files']:
-        if f not in nm_cache:
-          object_names.append(f)
-
-    # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
-    # The results are not used here directly, but populated to llvm-nm cache structure.
-    llvm_nm_multiple(object_names)
-
-
 def llvm_backend_args():
   # disable slow and relatively unimportant optimization passes
   args = ['-combiner-global-alias-analysis=false']
@@ -425,11 +306,7 @@ def llvm_backend_args():
 
 
 def link_to_object(linker_inputs, target):
-  # link using lld unless LTO is requested (lld can't output LTO/bitcode object files).
-  if not Settings.LTO:
-    link_lld(linker_inputs + ['--relocatable'], target)
-  else:
-    link_bitcode(linker_inputs, target)
+  link_lld(linker_inputs + ['--relocatable'], target)
 
 
 def link_llvm(linker_inputs, target):
@@ -555,144 +432,6 @@ def link_lld(args, target, external_symbol_list=None):
 
   cmd = get_command_with_possible_response_file(cmd)
   check_call(cmd)
-
-
-def link_bitcode(files, target, force_archive_contents=False):
-  # "Full-featured" linking: looks into archives (duplicates lld functionality)
-  actual_files = []
-  # Tracking unresolveds is necessary for .a linking, see below.
-  # Specify all possible entry points to seed the linking process.
-  # For a simple application, this would just be "main".
-  unresolved_symbols = set([func[1:] for func in Settings.EXPORTED_FUNCTIONS])
-  resolved_symbols = set()
-  # Paths of already included object files from archives.
-  added_contents = set()
-  has_ar = False
-  for f in files:
-    if not f.startswith('-'):
-      has_ar = has_ar or is_ar(make_paths_absolute(f))
-
-  # If we have only one archive or the force_archive_contents flag is set,
-  # then we will add every object file we see, regardless of whether it
-  # resolves any undefined symbols.
-  force_add_all = len(files) == 1 or force_archive_contents
-
-  # Considers an object file for inclusion in the link. The object is included
-  # if force_add=True or if the object provides a currently undefined symbol.
-  # If the object is included, the symbol tables are updated and the function
-  # returns True.
-  def consider_object(f, force_add=False):
-    new_symbols = llvm_nm(f)
-    # Check if the object was valid according to llvm-nm. It also accepts
-    # native object files.
-    if not new_symbols.is_valid_for_nm():
-      diagnostics.warning('emcc', 'object %s is not valid according to llvm-nm, cannot link', f)
-      return False
-    # Check the object is valid for us, and not a native object file.
-    if not is_bitcode(f):
-      exit_with_error('unknown file type: %s', f)
-    provided = new_symbols.defs.union(new_symbols.commons)
-    do_add = force_add or not unresolved_symbols.isdisjoint(provided)
-    if do_add:
-      logger.debug('adding object %s to link (forced: %d)' % (f, force_add))
-      # Update resolved_symbols table with newly resolved symbols
-      resolved_symbols.update(provided)
-      # Update unresolved_symbols table by adding newly unresolved symbols and
-      # removing newly resolved symbols.
-      unresolved_symbols.update(new_symbols.undefs.difference(resolved_symbols))
-      unresolved_symbols.difference_update(provided)
-      actual_files.append(f)
-    return do_add
-
-  # Traverse a single archive. The object files are repeatedly scanned for
-  # newly satisfied symbols until no new symbols are found. Returns true if
-  # any object files were added to the link.
-  def consider_archive(f, force_add):
-    added_any_objects = False
-    loop_again = True
-    logger.debug('considering archive %s' % (f))
-    contents = ar_contents[f]
-    while loop_again: # repeatedly traverse until we have everything we need
-      loop_again = False
-      for content in contents:
-        if content in added_contents:
-          continue
-        # Link in the .o if it provides symbols, *or* this is a singleton archive (which is
-        # apparently an exception in gcc ld)
-        if consider_object(content, force_add=force_add):
-          added_contents.add(content)
-          loop_again = True
-          added_any_objects = True
-    logger.debug('done running loop of archive %s' % (f))
-    return added_any_objects
-
-  read_link_inputs([x for x in files if not x.startswith('-')])
-
-  # Rescan a group of archives until we don't find any more objects to link.
-  def scan_archive_group(group):
-    loop_again = True
-    logger.debug('starting archive group loop')
-    while loop_again:
-      loop_again = False
-      for archive in group:
-        if consider_archive(archive, force_add=False):
-          loop_again = True
-    logger.debug('done with archive group loop')
-
-  current_archive_group = None
-  in_whole_archive = False
-  for f in files:
-    absolute_path_f = make_paths_absolute(f)
-    if f.startswith('-'):
-      if f in ['--start-group', '-(']:
-        assert current_archive_group is None, 'Nested --start-group, missing --end-group?'
-        current_archive_group = []
-      elif f in ['--end-group', '-)']:
-        assert current_archive_group is not None, '--end-group without --start-group'
-        scan_archive_group(current_archive_group)
-        current_archive_group = None
-      elif f in ['--whole-archive', '-whole-archive']:
-        in_whole_archive = True
-      elif f in ['--no-whole-archive', '-no-whole-archive']:
-        in_whole_archive = False
-      else:
-        # Command line flags should already be vetted by the time this method
-        # is called, so this is an internal error
-        assert False, 'unsupported link flag: ' + f
-    elif is_ar(absolute_path_f):
-      # Extract object files from ar archives, and link according to gnu ld semantics
-      # (link in an entire .o from the archive if it supplies symbols still unresolved)
-      consider_archive(absolute_path_f, in_whole_archive or force_add_all)
-      # If we're inside a --start-group/--end-group section, add to the list
-      # so we can loop back around later.
-      if current_archive_group is not None:
-        current_archive_group.append(absolute_path_f)
-    elif is_bitcode(absolute_path_f):
-      if has_ar:
-        consider_object(f, force_add=True)
-      else:
-        # If there are no archives then we can simply link all valid object
-        # files and skip the symbol table stuff.
-        actual_files.append(f)
-    else:
-      exit_with_error('unknown file type: %s', f)
-
-  # We have to consider the possibility that --start-group was used without a matching
-  # --end-group; GNU ld permits this behavior and implicitly treats the end of the
-  # command line as having an --end-group.
-  if current_archive_group:
-    logger.debug('--start-group without matching --end-group, rescanning')
-    scan_archive_group(current_archive_group)
-    current_archive_group = None
-
-  try_delete(target)
-
-  # Finish link
-  # tolerate people trying to link a.so a.so etc.
-  actual_files = unique_ordered(actual_files)
-
-  logger.debug('emcc: linking: %s to %s', actual_files, target)
-  link_llvm(actual_files, target)
 
 
 def get_command_with_possible_response_file(cmd):
