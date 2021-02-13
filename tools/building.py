@@ -366,57 +366,65 @@ def llvm_nm_multiple(files):
       return []
     # Run llvm-nm on files that we haven't cached yet
     llvm_nm_files = [f for f in files if f not in nm_cache]
-    cmd = [LLVM_NM] + llvm_nm_files
-    results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
 
-    # If one or more of the input files cannot be processed, llvm-nm will return a non-zero error code, but it will still process and print
-    # out all the other files in order. So even if process return code is non zero, we should always look at what we got to stdout.
-    if results.returncode != 0:
-      logger.debug('Subcommand ' + ' '.join(cmd) + ' failed with return code ' + str(results.returncode) + '! (An input file was corrupt?)')
-
-    results = results.stdout
-
-    # llvm-nm produces a single listing of form
-    # file1.o:
-    # 00000001 T __original_main
-    #          U __stack_pointer
-    #
-    # file2.o:
-    # 0000005d T main
-    #          U printf
-    #
-    # ...
-    # so loop over the report to extract the results
-    # for each individual file.
-
-    filename = llvm_nm_files[0]
-
-    # When we dispatched more than one file, we must manually parse
-    # the file result delimiters (like shown structured above)
+    # We can issue multiple files in a single llvm-nm calls, but only if those
+    # files are all .o or .bc files. Because of llvm-nm output format, we cannot
+    # llvm-nm multiple .a files in one call, but those must be individually checked.
     if len(llvm_nm_files) > 1:
-      file_start = 0
-      i = 0
+      llvm_nm_files = [f for f in files if f.endswith('.o') or f.endswith('.bc')]
 
-      while True:
-        nl = results.find('\n', i)
-        if nl < 0:
-          break
-        colon = results.rfind(':', i, nl)
-        if colon >= 0 and results[colon + 1] == '\n': # New file start?
-          nm_cache[filename] = parse_symbols(results[file_start:i - 1])
-          filename = results[i:colon].strip()
-          file_start = colon + 2
-        i = nl + 1
+    if len(llvm_nm_files) > 0:
+      cmd = [LLVM_NM] + llvm_nm_files
+      results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
 
-      nm_cache[filename] = parse_symbols(results[file_start:])
-    else:
-      # We only dispatched a single file, we can just parse that directly
-      # to the output.
-      nm_cache[filename] = parse_symbols(results)
+      # If one or more of the input files cannot be processed, llvm-nm will return a non-zero error code, but it will still process and print
+      # out all the other files in order. So even if process return code is non zero, we should always look at what we got to stdout.
+      if results.returncode != 0:
+        logger.debug('Subcommand ' + ' '.join(cmd) + ' failed with return code ' + str(results.returncode) + '! (An input file was corrupt?)')
 
-    # Any files that failed llvm-nm (e.g. they did not have any
-    # symbols) will be not present in the above, so fill in dummies
-    # for those.
+      results = results.stdout
+
+      # llvm-nm produces a single listing of form
+      # file1.o:
+      # 00000001 T __original_main
+      #          U __stack_pointer
+      #
+      # file2.o:
+      # 0000005d T main
+      #          U printf
+      #
+      # ...
+      # so loop over the report to extract the results
+      # for each individual file.
+
+      filename = llvm_nm_files[0]
+
+      # When we dispatched more than one file, we must manually parse
+      # the file result delimiters (like shown structured above)
+      if len(llvm_nm_files) > 1:
+        file_start = 0
+        i = 0
+
+        while True:
+          nl = results.find('\n', i)
+          if nl < 0:
+            break
+          colon = results.rfind(':', i, nl)
+          if colon >= 0 and results[colon + 1] == '\n': # New file start?
+            nm_cache[filename] = parse_symbols(results[file_start:i - 1])
+            filename = results[i:colon].strip()
+            file_start = colon + 2
+          i = nl + 1
+
+        nm_cache[filename] = parse_symbols(results[file_start:])
+      else:
+        # We only dispatched a single file, we can just parse that directly
+        # to the output.
+        nm_cache[filename] = parse_symbols(results)
+
+    # Any .a files that have multiple .o files will have hard time parsing. Scan those
+    # sequentially to confirm. TODO: Move this to use run_multiple_processes()
+    # when available.
     for f in files:
       if f not in nm_cache:
         nm_cache[f] = llvm_nm(f)
