@@ -47,9 +47,10 @@ uintptr_t* emscripten_get_sbrk_ptr() {
   return &sbrk_val;
 }
 
-void *sbrk(uintptr_t increment) {
+void *sbrk(intptr_t increment_) {
   uintptr_t old_size;
   // Enforce preserving a minimal 4-byte alignment for sbrk.
+  uintptr_t increment = (uintptr_t)increment_;
   increment = (increment + 3) & ~3;
 #if __EMSCRIPTEN_PTHREADS__
   // Our default dlmalloc uses locks around each malloc/free, so no additional
