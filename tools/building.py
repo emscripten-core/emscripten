@@ -365,7 +365,14 @@ def llvm_nm_multiple(files):
     # Run llvm-nm on files that we haven't cached yet
     llvm_nm_files = [f for f in files if f not in nm_cache]
     cmd = [LLVM_NM] + llvm_nm_files
-    results = run_process(cmd, stdout=PIPE, stderr=PIPE).stdout
+    results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
+
+    # If one or more of the input files cannot be processed, llvm-nm will return a non-zero error code, but it will still process and print
+    # out all the other files in order. So even if process return code is non zero, we should always look at what we got to stdout.
+    if results.returncode != 0:
+      logger.debug('Subcommand ' + ' '.join(cmd) + ' failed with return code ' + str(results.returncode) + '! (An input file was corrupt?)')
+
+    results = results.stdout
 
     # llvm-nm produces a single listing of form
     # file1.o:
