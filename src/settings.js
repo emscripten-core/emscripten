@@ -1897,6 +1897,7 @@ var SPLIT_MODULE = 0;
 // While 'auto' will produce a minimal set (so is good for code size), 'all'
 // and 'none' will give faster link times, especially for very large projects
 // (since they both avoid the running of llvm-nm on all linker inputs).
+// [link]
 var REVERSE_DEPS = 'auto';
 
 //===========================================
