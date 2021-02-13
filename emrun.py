@@ -39,12 +39,14 @@ if sys.version_info.major == 2:
   from SimpleHTTPServer import SimpleHTTPRequestHandler
   from urllib import unquote
   from urlparse import urlsplit
+
   def print_to_handle(handle, line):
-    print >> handle, line
+    print >> handle, line # noqa: F633
 else:
   import socketserver
   from http.server import HTTPServer, SimpleHTTPRequestHandler
   from urllib.parse import unquote, urlsplit
+
   def print_to_handle(handle, line):
     handle.write(line + '\n')
 
