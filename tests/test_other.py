@@ -7442,6 +7442,7 @@ end
     err = self.expect_fail(base + ['--embed-file', 'somefile'])
     self.assertContained(expected, err)
 
+  @disabled('https://github.com/nodejs/node/issues/18265')
   def test_node_code_caching(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
                       '-s', 'NODE_CODE_CACHING',
