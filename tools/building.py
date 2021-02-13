@@ -362,6 +362,8 @@ def make_paths_absolute(f):
 # The results are populated in nm_cache
 def llvm_nm_multiple(files):
   with ToolchainProfiler.profile_block('llvm_nm_multiple'):
+    if len(files) == 0:
+      return []
     # Run llvm-nm on files that we haven't cached yet
     llvm_nm_files = [f for f in files if f not in nm_cache]
     cmd = [LLVM_NM] + llvm_nm_files
