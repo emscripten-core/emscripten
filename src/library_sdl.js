@@ -7,7 +7,7 @@
 //"use strict";
 
 // See browser tests for examples (tests/runner.py, search for sdl_). Run with
-//    python tests/runner.py browser
+//    tests/runnery browser
 
 // Notes:
 //  SDL_VIDEORESIZE: This is sent when the canvas is resized. Note that the user

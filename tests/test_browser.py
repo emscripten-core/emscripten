@@ -2467,7 +2467,7 @@ void *getBindBuffer() {
     self.btest('hello_world_gles.c', expected='0', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '-O2', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'])
 
   def test_uuid(self):
-    # Run with ./runner.py browser.test_uuid
+    # Run with ./runner browser.test_uuid
     # We run this test in Node/SPIDERMONKEY and browser environments because we try to make use of
     # high quality crypto random number generators such as crypto.getRandomValues or randomBytes (if available).
 

@@ -16,7 +16,7 @@ import unittest
 from functools import wraps
 
 if __name__ == '__main__':
-  raise Exception('do not run this file directly; do something like: tests/runner.py')
+  raise Exception('do not run this file directly; do something like: tests/runner')
 
 from tools.shared import try_delete, PIPE
 from tools.shared import PYTHON, EMCC, EMAR
