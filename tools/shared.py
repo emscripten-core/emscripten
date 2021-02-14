@@ -109,7 +109,7 @@ def get_num_cores():
   return int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
 
 
-def run_multiple_processes(commands, child_env=None, route_stdout_to_temp_files_suffix=None, pipe_stdout=False):
+def run_multiple_processes(commands, child_env=None, route_stdout_to_temp_files_suffix=None, pipe_stdout=False, check=True):
   std_outs = []
   with ToolchainProfiler.profile_block('parallel_run_js_optimizers'):
     processes = []
@@ -125,13 +125,13 @@ def run_multiple_processes(commands, child_env=None, route_stdout_to_temp_files_
         processes += [subprocess.Popen(commands[end], stdout=std_out, env=child_env if child_env else os.environ.copy())]
         if route_stdout_to_temp_files_suffix:
           std_outs += [std_out.name]
-        elif pipe_stdout:
-          std_outs += [std_out]
         end += 1
       else:
         # Too many commands running in parallel, wait for one to finish.
         out, err = processes[start].communicate()
-        if processes[start].returncode != 0:
+        if pipe_stdout:
+          std_outs += out.decode('UTF-8')
+        if check and processes[start].returncode != 0:
           if out: logger.info(out.decode('UTF-8'))
           if err: logger.error(err.decode('UTF-8'))
           raise Exception('Subprocess %d/%d failed with return code %d!' % (start + 1, len(commands), processes[start].returncode))

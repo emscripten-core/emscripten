@@ -206,17 +206,26 @@ def llvm_nm_multiple(files):
   with ToolchainProfiler.profile_block('llvm_nm_multiple'):
     if len(files) == 0:
       return []
-    # Run llvm-nm on files that we haven't cached yet
+
+    # Run llvm-nm only files that we haven't cached yet
     llvm_nm_files = [f for f in files if f not in nm_cache]
 
     # We can issue multiple files in a single llvm-nm calls, but only if those
     # files are all .o or .bc files. Because of llvm-nm output format, we cannot
     # llvm-nm multiple .a files in one call, but those must be individually checked.
-    if len(llvm_nm_files) > 1:
-      llvm_nm_files = [f for f in files if f.endswith('.o') or f.endswith('.bc')]
 
-    if len(llvm_nm_files) > 0:
-      cmd = [LLVM_NM] + llvm_nm_files
+    o_files = [f for f in llvm_nm_files if os.path.splitext(f)[1].lower() in ['.o', '.obj', '.bc']]
+    a_files = [f for f in llvm_nm_files if f not in o_files]
+
+    # Issue parallel calls for .a files
+    if len(a_files) > 0:
+      results = shared.run_multiple_processes([[LLVM_NM, a] for a in a_files], pipe_stdout=True, check=False)
+      for i in range(len(results)):
+        nm_cache[a_files[i]] = parse_symbols(results[i])
+
+    # Issue a single call for multiple .o files
+    if len(o_files) > 0:
+      cmd = [LLVM_NM] + o_files
       cmd = get_command_with_possible_response_file(cmd)
       results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
 
@@ -240,11 +249,11 @@ def llvm_nm_multiple(files):
       # so loop over the report to extract the results
       # for each individual file.
 
-      filename = llvm_nm_files[0]
+      filename = o_files[0]
 
       # When we dispatched more than one file, we must manually parse
       # the file result delimiters (like shown structured above)
-      if len(llvm_nm_files) > 1:
+      if len(o_files) > 1:
         file_start = 0
         i = 0
 
@@ -261,18 +270,11 @@ def llvm_nm_multiple(files):
 
         nm_cache[filename] = parse_symbols(results[file_start:])
       else:
-        # We only dispatched a single file, we can just parse that directly
-        # to the output.
+        # We only dispatched a single file, so can parse all of the result directly
+        # to that file.
         nm_cache[filename] = parse_symbols(results)
 
-    # Any .a files that have multiple .o files will have hard time parsing. Scan those
-    # sequentially to confirm. TODO: Move this to use run_multiple_processes()
-    # when available.
-    for f in files:
-      if f not in nm_cache:
-        nm_cache[f] = llvm_nm(f)
-
-  return [nm_cache[f] for f in files]
+  return [nm_cache[f] if f in nm_cache else ObjectFileInfo(1, '') for f in files]
 
 
 def llvm_nm(file):
