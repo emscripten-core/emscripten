@@ -32,14 +32,6 @@ from . import config
 from . import filelock
 
 
-import signal
-
-def signal_handler(sig, frame):
-    sys.exit(1)
-
-signal.signal(signal.SIGINT, signal_handler)
-
-
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
@@ -111,6 +103,14 @@ def get_num_cores():
 
 def run_multiple_processes(commands, child_env=None, route_stdout_to_temp_files_suffix=None, pipe_stdout=False, check=True):
   std_outs = []
+
+  # TODO: Experiment with registering a signal handler here to see if that helps with Ctrl-C locking up the command prompt
+  # when multiple child processes have been spawned.
+  #import signal
+  #def signal_handler(sig, frame):
+  #  sys.exit(1)
+  #signal.signal(signal.SIGINT, signal_handler)
+
   with ToolchainProfiler.profile_block('parallel_run_js_optimizers'):
     processes = []
     start = 0
@@ -132,8 +132,10 @@ def run_multiple_processes(commands, child_env=None, route_stdout_to_temp_files_
         if pipe_stdout:
           std_outs += out.decode('UTF-8')
         if check and processes[start].returncode != 0:
-          if out: logger.info(out.decode('UTF-8'))
-          if err: logger.error(err.decode('UTF-8'))
+          if out:
+            logger.info(out.decode('UTF-8'))
+          if err:
+            logger.error(err.decode('UTF-8'))
           raise Exception('Subprocess %d/%d failed with return code %d!' % (start + 1, len(commands), processes[start].returncode))
         start += 1
   return std_outs

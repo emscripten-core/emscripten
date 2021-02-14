@@ -9,7 +9,6 @@ import itertools
 import logging
 import os
 import shutil
-import subprocess
 import sys
 from glob import iglob
 
