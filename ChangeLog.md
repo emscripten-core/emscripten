@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.14: 02/14/2021
+------------------
 - Add new setting: `REVERSE_DEPS`. This can be used to control how emscripten
   decides which reverse dependecies to include.  See `settings.js` for more
   information.  The default setting ('auto') is the transitional way emscripten
