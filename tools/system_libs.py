@@ -88,25 +88,18 @@ def run_build_commands(commands):
 
   safe_env = clean_env()
 
-  # If we got spawned by ccache, then launch subprocesses in ccache as well.
-  if 'EMCC_CCACHE_' in safe_env:
-    safe_env['EMCC_CCACHE'] = '1'
-
   for i in range(len(commands)):
     # TODO(sbc): Remove this one we remove the test_em_config_env_var test
     commands[i].append('-Wno-deprecated')
 
     # For subprocess spawns, do not route via the OS batch script launcher, but directly
     # spawn the python script. This saves ~2 seconds on libc build.
-    # However if we are using ccache, we must use the wrappers, since they dispatch
-    # execution to ccache executable.
-    if 'EMCC_CCACHE' not in safe_env:
-      if commands[i][0].endswith('emcc.bat'):
-        commands[i][0] = commands[i][0].replace('emcc.bat', 'emcc.py')
-        commands[i] = [sys.executable] + commands[i]
-      elif commands[i][0].endswith('emcc'):
-        commands[i][0] = commands[i][0].replace('emcc', 'emcc.py')
-        commands[i] = [sys.executable] + commands[i]
+    if commands[i][0].endswith('emcc.bat'):
+      commands[i][0] = commands[i][0].replace('emcc.bat', 'emcc.py')
+      commands[i] = [sys.executable] + commands[i]
+    elif commands[i][0].endswith('emcc'):
+      commands[i][0] = commands[i][0].replace('emcc', 'emcc.py')
+      commands[i] = [sys.executable] + commands[i]
 
   shared.run_multiple_processes(commands)
 
