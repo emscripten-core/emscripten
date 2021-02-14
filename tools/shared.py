@@ -106,10 +106,10 @@ def run_multiple_processes(commands, child_env=None, route_stdout_to_temp_files_
 
   # TODO: Experiment with registering a signal handler here to see if that helps with Ctrl-C locking up the command prompt
   # when multiple child processes have been spawned.
-  #import signal
-  #def signal_handler(sig, frame):
-  #  sys.exit(1)
-  #signal.signal(signal.SIGINT, signal_handler)
+  # import signal
+  # def signal_handler(sig, frame):
+  #   sys.exit(1)
+  # signal.signal(signal.SIGINT, signal_handler)
 
   with ToolchainProfiler.profile_block('parallel_run_js_optimizers'):
     processes = []
