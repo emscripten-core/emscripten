@@ -111,7 +111,7 @@ def run_multiple_processes(commands, child_env=None, route_stdout_to_temp_files_
   #   sys.exit(1)
   # signal.signal(signal.SIGINT, signal_handler)
 
-  with ToolchainProfiler.profile_block('parallel_run_js_optimizers'):
+  with ToolchainProfiler.profile_block('run_multiple_processes'):
     processes = []
     start = 0
     end = 0
