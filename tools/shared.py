@@ -130,7 +130,7 @@ def run_multiple_processes(commands, child_env=None, route_stdout_to_temp_files_
         # Too many commands running in parallel, wait for one to finish.
         out, err = processes[start].communicate()
         if pipe_stdout:
-          std_outs += out.decode('UTF-8')
+          std_outs += [out.decode('UTF-8')]
         if check and processes[start].returncode != 0:
           if out:
             logger.info(out.decode('UTF-8'))
