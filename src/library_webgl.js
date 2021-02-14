@@ -962,10 +962,12 @@ var LibraryGL = {
       var handle = GL.getNewId(GL.contexts);
 #endif // USE_PTHREADS
 
+      // workaround Safari bug returning WebGL 1.0 context by canvas.getContext("webgl2") if WebGL context was already created
+      var majVerWebGl = (typeof WebGL2RenderingContext === 'undefined' || !(ctx instanceof WebGL2RenderingContext)) ? 1 : webGLContextAttributes.majorVersion;
       var context = {
         handle: handle,
         attributes: webGLContextAttributes,
-        version: webGLContextAttributes.majorVersion,
+        version: majVerWebGl,
         GLctx: ctx
       };
 
