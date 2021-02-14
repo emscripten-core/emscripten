@@ -13,10 +13,15 @@ import time
 
 profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
 
-OUTFILE = 'toolchain_profiler.results_' + time.strftime('%Y%m%d_%H%M')
-for arg in sys.argv:
-  if arg.startswith('--outfile='):
+OUTFILE = 'emprofile.' + time.strftime('%Y%m%d_%H%M')
+for i in range(len(sys.argv)):
+  arg = sys.argv[i]
+  if arg.startswith('--outfile=') or arg.startswith('-o='):
     OUTFILE = arg.split('=', 1)[1].strip().replace('.html', '')
+    sys.argv[i] = ''
+  elif arg == '-o':
+    OUTFILE = sys.argv[i + 1].strip().replace('.html', '')
+    sys.argv[i] = sys.argv[i + 1] = ''
 
 
 # Deletes all previously captured log files to make room for a new clean run.
@@ -77,7 +82,7 @@ def create_profiling_graph():
 
 if '--help' in sys.argv:
   print('''Usage:
-       emprofile.py --clear
+       emprofile.py --clear (or -c)
          Deletes all previously recorded profiling log files.
          Use this to abort/drop any previously collected
          profiling data for a new profiling run.
@@ -89,13 +94,13 @@ if '--help' in sys.argv:
 
 Optional parameters:
 
-        --outfile=x.html
+        --outfile=x.html (or -o=x.html)
           Specifies the name of the results file to generate.
 ''')
   sys.exit(1)
 
 
-if '--reset' in sys.argv or '--clear' in sys.argv:
+if '--reset' in sys.argv or '--clear' in sys.argv or '-c' in sys.argv:
   delete_profiler_logs()
 else:
   create_profiling_graph()
