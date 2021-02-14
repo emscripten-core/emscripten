@@ -86,9 +86,7 @@ def run_build_commands(commands):
 
 
 
-  safe_env = clean_env()  # We already did a sanity check launching the compiler once, no need to launch the compiler
-  # again on each child subprocess spawn.
-  safe_env['EMCC_SKIP_SANITY_CHECK'] = '1'
+  safe_env = clean_env()
 
   # If we got spawned by ccache, then launch subprocesses in ccache as well.
   if 'EMCC_CCACHE_' in safe_env:
