@@ -470,7 +470,8 @@ f.write('transformed!')
 f.close()
 ''')
 
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--js-transform', '%s t.py' % (PYTHON)])
+    err = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-g4', '--js-transform', '%s t.py' % (PYTHON)], stderr=PIPE).stderr
+    self.assertContained('disabling source maps because a js transform is being done', err)
     self.assertIn('transformed!', open('a.out.js').read())
 
   def test_js_mem_file(self):
