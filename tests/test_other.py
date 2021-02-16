@@ -10384,7 +10384,7 @@ exec "$@"
     self.assertIn('Hello from lib!', result)
 
   def test_gen_struct_info(self):
-    # This tests is fragile and will need updating any time any of the refereced
+    # This tests is fragile and will need updating any time any of the referenced
     # structs or defines change.   However its easy to rebaseline with
     # EMTEST_REBASELINE and it prevents regressions or unintended changes
     # to the output json.
