@@ -16,7 +16,7 @@ import unittest
 from functools import wraps
 
 if __name__ == '__main__':
-  raise Exception('do not run this file directly; do something like: tests/runner.py')
+  raise Exception('do not run this file directly; do something like: tests/runner')
 
 from tools.shared import try_delete, PIPE
 from tools.shared import PYTHON, EMCC, EMAR
@@ -3777,6 +3777,16 @@ ok
       header='typedef float (*floatfunc)(float);', force_c=True, main_module=2)
 
   @needs_dlfcn
+  def test_missing_signatures(self):
+    create_test_file('test_sig.c', r'''#include <emscripten.h>
+                                       int main() {
+                                         return 0 == ( (int)&emscripten_run_script_string +
+                                                       (int)&emscripten_run_script );
+                                       }''')
+    self.set_setting('MAIN_MODULE', 1)
+    self.do_runf('test_sig.c', '')
+
+  @needs_dlfcn
   def test_dylink_global_init(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -6267,24 +6277,27 @@ return malloc(size);
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS.c')
 
-  def test_dyncall_specific(self):
+  @parameterized({
+    '': [],
+    'minimal_runtime': ['-s', 'MINIMAL_RUNTIME=1']
+  })
+  def test_dyncall_specific(self, *args):
     emcc_args = self.emcc_args[:]
-    for which, exported_runtime_methods in [
+    cases = [
         ('DIRECT', []),
+        ('DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"]']),
+      ]
+    if 'MINIMAL_RUNTIME=1' not in args:
+      cases += [
         ('EXPORTED', []),
-        ('FROM_OUTSIDE', ['dynCall_viji'])
-      ]:
-      print(which)
-      self.emcc_args = emcc_args + ['-D' + which]
-      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', exported_runtime_methods)
+        ('EXPORTED_DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[dynCall]']),
+        ('FROM_OUTSIDE', ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[dynCall_iiji]'])
+      ]
+
+    for which, extra_args in cases:
+      print(str(args) + ' ' + which)
+      self.emcc_args = emcc_args + ['-D' + which] + list(args) + extra_args
       self.do_run_in_out_file_test('tests', 'core', 'dyncall_specific.c')
-
-      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', [])
-      self.emcc_args = emcc_args + ['-s', 'DYNCALLS=1', '--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
-      self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
-
-      self.emcc_args += ['-s', 'MINIMAL_RUNTIME=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"]']
-      self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
@@ -8135,7 +8148,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.set_setting('INITIAL_MEMORY', '64mb')
     self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_c11_threads.c')
 
-  @no_asan('flakey errors that must be fixed, https://github.com/emscripten-core/emscripten/issues/12985')
   @node_pthreads
   def test_pthread_cxx_threads(self):
     self.set_setting('PROXY_TO_PTHREAD')
@@ -8228,6 +8240,43 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_basic_dylink_test()
+
+  @needs_dlfcn
+  @node_pthreads
+  def test_Module_dynamicLibraries_pthreads(self):
+    # test that Module.dynamicLibraries works with pthreads
+
+    self.emcc_args += ['-pthread', '-Wno-experimental']
+    self.emcc_args += ['--extern-pre-js', 'pre.js']
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+
+    create_test_file('pre.js', '''
+      if ( !global.Module ) {
+        // This is the initial load (not a worker)
+        // Define the initial state of Module as we would
+        // in the html shell file.
+        // Use var to escape the scope of the if statement
+        var Module = {
+          dynamicLibraries: ['liblib.so']
+        };
+      }
+    ''')
+
+    self.dylink_test(
+      r'''
+        #include <stdio.h>
+        int side();
+        int main() {
+          printf("result is %d", side());
+          return 0;
+        }
+      ''',
+      r'''
+        int side() { return 42; }
+      ''',
+      'result is 42',
+      auto_load=False)
 
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
@@ -8328,13 +8377,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MAIN_MODULE')
     self.do_runf(path_from_root('tests', 'core', 'test_gl_get_proc_address.c'))
 
-  @no_asan('asan does not yet work in MINIMAL_RUNTIME')
-  def test_dyncalls_minimal_runtime(self):
-    self.set_setting('DYNCALLS')
-    self.set_setting('MINIMAL_RUNTIME')
-    self.emcc_args += ['-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]']
-    self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
-    self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
+  def test_REVERSE_DEPS(self):
+    create_test_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)&connect; }')
+    self.run_process([EMCC, 'connect.c'])
+    base_size = os.path.getsize('a.out.wasm')
+
+    # 'auto' should work (its the default)
+    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=auto'])
+
+    # 'all' should work too although it should produce a larger binary
+    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=all'])
+    self.assertGreater(os.path.getsize('a.out.wasm'), base_size)
+
+    # 'none' should fail to link because the dependency on ntohs was not added.
+    err = self.expect_fail([EMCC, 'connect.c', '-sREVERSE_DEPS=none'])
+    self.assertContained('undefined symbol: ntohs', err)
 
 
 # Generate tests for everything

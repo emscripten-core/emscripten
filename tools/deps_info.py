@@ -49,7 +49,6 @@
 #       both here and in the JS compiler.
 
 deps_info = {
-  '$getTypeName': ['free'],
   'Mix_LoadWAV_RW': ['fileno'],
   'SDL_CreateRGBSurface': ['malloc', 'free'],
   'SDL_GL_GetProcAddress': ['emscripten_GetProcAddress'],
@@ -101,7 +100,7 @@ deps_info = {
   'eglQueryString': ['malloc', 'free'],
   'emscripten_GetAlProcAddress': ['strcmp'],
   'emscripten_GetAlcProcAddress': ['strcmp'],
-  'emscripten_GetProcAddress': ['strstr'],
+  'emscripten_GetProcAddress': ['malloc', 'strstr'],
   'emscripten_SDL_SetEventHandler': ['malloc', 'free'],
   'emscripten_alcGetStringiSOFT': ['malloc', 'free'],
   'emscripten_async_wget2_data': ['malloc', 'free'],
@@ -173,13 +172,14 @@ deps_info = {
   'emscripten_websocket_set_onmessage_callback_on_thread': ['malloc', 'free'],
   'emscripten_websocket_set_onopen_callback_on_thread': ['malloc', 'free'],
   'emscripten_wget_data': ['malloc', 'free'],
-  'formatString': ['strlen'],
   'freeaddrinfo': ['free'],
   'freelocale': ['free'],
   'freopen': ['free'],
   'gai_strerror': ['malloc', 'free'],
   'getaddrinfo': ['malloc', 'free', 'htonl', 'htons', 'ntohs'],
   'getenv': ['malloc', 'free'],
+  'gethostbyaddr': ['malloc'],
+  'gethostbyaddr_r': ['malloc'],
   'gethostbyname': ['malloc', 'free', 'htons', 'ntohs', 'memcpy'],
   'gethostbyname_r': ['malloc', 'free', 'htons', 'ntohs', 'memcpy'],
   'getlogin': ['malloc', 'free'],
@@ -218,7 +218,6 @@ deps_info = {
   'socket': ['htonl', 'htons', 'ntohs'],
   'socketpair': ['htons', 'ntohs'],
   'strerror': ['malloc', 'free'],
-  'stringToNewUTF8': ['malloc', 'free'],
   'syslog': ['malloc', 'htons', 'ntohs'],
   'timegm': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc', 'free'],
   'times': ['memset'],
@@ -229,4 +228,5 @@ deps_info = {
   'uuid_compare': ['memcmp', 'memcpy', 'memset'],
   'uuid_copy': ['memcpy'],
   'wgpuDeviceCreateBuffer': ['malloc', 'free'],
+  'emscripten_glGetString': ['malloc'],
 }

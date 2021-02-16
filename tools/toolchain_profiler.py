@@ -141,13 +141,15 @@ if EM_PROFILE_TOOLCHAIN:
 
     @staticmethod
     def record_subprocess_spawn(process_pid, process_cmdline):
-      response_cmdline = []
+      expanded_cmdline = []
       for item in process_cmdline:
         if item.startswith('@'):
-          response_cmdline += response_file.read_response_file(item)
+          expanded_cmdline += response_file.read_response_file(item)
+        else:
+          expanded_cmdline.append(item)
 
       with ToolchainProfiler.log_access() as f:
-        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"spawn","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(ToolchainProfiler.escape_args(process_cmdline + response_cmdline)) + '"]}')
+        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"spawn","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(ToolchainProfiler.escape_args(expanded_cmdline)) + '"]}')
 
     @staticmethod
     def record_subprocess_wait(process_pid):

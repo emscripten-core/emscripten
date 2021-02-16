@@ -42,7 +42,12 @@ int __timedwait_cp(volatile int *addr, int val,
 #ifdef __EMSCRIPTEN__
 	double msecsToSleep = top ? (top->tv_sec * 1000 + top->tv_nsec / 1000000.0) : INFINITY;
 	int is_main_thread = emscripten_is_main_browser_thread();
-	if (is_main_thread || pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
+	// cp suffix in the function name means "cancellation point", so this wait can be cancelled
+	// by the users unless current threads cancelability is set to PTHREAD_CANCEL_DISABLE
+	// which may be either done by the user of __timedwait() function.
+	if (is_main_thread ||
+	    pthread_self()->canceldisable != PTHREAD_CANCEL_DISABLE ||
+	    pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
 		double sleepUntilTime = emscripten_get_now() + msecsToSleep;
 		do {
 			if (_pthread_isduecanceled(pthread_self())) {

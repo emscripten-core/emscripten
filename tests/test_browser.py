@@ -2415,7 +2415,11 @@ void *getBindBuffer() {
     self.compile_btest([path_from_root('tests', 'browser_module.cpp'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE', '-s', 'EXPORTED_FUNCTIONS=[_one,_two]'])
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE'], expected='8')
 
-  def test_preload_module(self):
+  @parameterized({
+    'non-lz4': ([],),
+    'lz4': (['-s', 'LZ4'],)
+  })
+  def test_preload_module(self, args):
     create_test_file('library.c', r'''
       #include <stdio.h>
       int library_func() {
@@ -2449,7 +2453,7 @@ void *getBindBuffer() {
     ''')
     self.btest_exit(
       'main.c',
-      args=['-s', 'MAIN_MODULE', '--preload-file', '.@/', '-O2', '--use-preload-plugins', '-s', 'EXPORT_ALL'],
+      args=['-s', 'MAIN_MODULE', '--preload-file', '.@/', '-O2', '--use-preload-plugins', '-s', 'EXPORT_ALL'] + args,
       expected='0')
 
   def test_mmap_file(self):
@@ -2463,7 +2467,7 @@ void *getBindBuffer() {
     self.btest('hello_world_gles.c', expected='0', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '-O2', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'])
 
   def test_uuid(self):
-    # Run with ./runner.py browser.test_uuid
+    # Run with ./runner browser.test_uuid
     # We run this test in Node/SPIDERMONKEY and browser environments because we try to make use of
     # high quality crypto random number generators such as crypto.getRandomValues or randomBytes (if available).
 
@@ -3766,6 +3770,11 @@ window.close = function() {
   @requires_threads
   def test_pthread_cancel(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Test that pthread_cancel() cancels pthread_cond_wait() operation
+  @requires_threads
+  def test_pthread_cancel_cond_wait(self):
+    self.btest_exit(path_from_root('tests', 'pthread', 'test_pthread_cancel_cond_wait.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test pthread_kill() operation
   @no_chrome('pthread_kill hangs chrome renderer, and keep subsequent tests from passing')

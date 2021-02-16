@@ -26,7 +26,7 @@ import uuid
 from subprocess import PIPE, STDOUT
 
 if __name__ == '__main__':
-  raise Exception('do not run this file directly; do something like: tests/runner.py other')
+  raise Exception('do not run this file directly; do something like: tests/runner other')
 
 from tools.shared import try_delete, config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, EM_BUILD_VERBOSE
@@ -470,7 +470,8 @@ f.write('transformed!')
 f.close()
 ''')
 
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--js-transform', '%s t.py' % (PYTHON)])
+    err = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-g4', '--js-transform', '%s t.py' % (PYTHON)], stderr=PIPE).stderr
+    self.assertContained('disabling source maps because a js transform is being done', err)
     self.assertIn('transformed!', open('a.out.js').read())
 
   def test_js_mem_file(self):
@@ -2519,7 +2520,6 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
   def test_module_exports_with_closure(self):
     # This test checks that module.export is retained when JavaScript is minified by compiling with --closure 1
     # This is important as if module.export is not present the Module object will not be visible to node.js
-    # Run with ./runner.py other.test_module_exports_with_closure
 
     # First make sure test.js isn't present.
     self.clear()
@@ -4290,7 +4290,9 @@ int main() {
   })
   def test_only_force_stdlibs(self, env, fail):
     with env_modify(env):
-      self.run_process([EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
+      err = self.run_process([EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'], stderr=PIPE).stderr
+      if 'EMCC_ONLY_FORCED_STDLIBS' in env:
+        self.assertContained('EMCC_ONLY_FORCED_STDLIBS is deprecated', err)
       if fail:
         output = self.expect_fail(config.NODE_JS + ['a.out.js'], stdout=PIPE)
         self.assertContained('missing function', output)
@@ -7487,6 +7489,7 @@ end
     err = self.expect_fail(base + ['--embed-file', 'somefile'])
     self.assertContained(expected, err)
 
+  @disabled('https://github.com/nodejs/node/issues/18265')
   def test_node_code_caching(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
                       '-s', 'NODE_CODE_CACHING',
@@ -7607,6 +7610,25 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
 
     self.assertIdentical(normal, tiny)
     self.assertIdentical(normal, huge)
+
+  def test_pthreads_growth_and_unsigned(self):
+    create_test_file('src.cpp', r'''
+#include <emscripten.h>
+
+int main() {
+  EM_ASM({
+    HEAP8.set([1,2,3], $0);
+  }, 1024);
+}''')
+    self.run_process([EMCC, 'src.cpp', '-O2', '--profiling', '-pthread',
+                      '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ALLOW_MEMORY_GROWTH'])
+    with open('a.out.js') as f:
+      # growable-heap must not interfere with heap unsigning, and vice versa:
+      # we must have both applied, that is
+      #   - GROWABLE_HEAP_I8() replaces HEAP8
+      #   - $0 gets an >>> 0 unsigning
+      self.assertContained('GROWABLE_HEAP_I8().set([ 1, 2, 3 ], $0 >>> 0)',
+                           f.read())
 
   @parameterized({
     '': ([],), # noqa

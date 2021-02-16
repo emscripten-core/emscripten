@@ -16,11 +16,9 @@ executors:
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
-      PYTHON_BIN: "python3"
   mac:
     environment:
       EMSDK_NOTTY: "1"
-      PYTHON_BIN: "python3"
     macos:
       xcode: "12.2.0"
 
@@ -74,30 +72,30 @@ commands:
       - run:
           name: clear cache
           command: |
-            $PYTHON_BIN ./emcc.py --clear-cache
+            ./emcc --clear-cache
   build-libs-and-freeze:
     description: "Build all libraries, and freeze the cache"
     steps:
       - run:
           name: embuilder build ALL
           command: |
-            $PYTHON_BIN ./embuilder.py build ALL
-            $PYTHON_BIN tests/runner.py test_hello_world
+            ./embuilder build ALL
+            ./tests/runner test_hello_world
       - run:
           name: embuilder (LTO)
           command: |
-            $PYTHON_BIN ./embuilder.py build MINIMAL --lto
-            $PYTHON_BIN tests/runner.py test_hello_world
+            ./embuilder build MINIMAL --lto
+            ./tests/runner test_hello_world
       - run:
           name: embuilder (PIC)
           command: |
-            $PYTHON_BIN ./embuilder.py build SYSTEM --pic
-            $PYTHON_BIN tests/runner.py test_hello_world
+            ./embuilder build SYSTEM --pic
+            ./tests/runner test_hello_world
       - run:
           name: embuilder (PIC+LTO)
           command: |
-            $PYTHON_BIN ./embuilder.py build MINIMAL --pic --lto
-            $PYTHON_BIN tests/runner.py test_hello_world
+            ./embuilder build MINIMAL --pic --lto
+            ./tests/runner test_hello_world
       - run:
           name: freeze cache
           command: |
@@ -134,8 +132,8 @@ commands:
       - run:
           name: run tests
           command: |
-            $PYTHON_BIN tests/runner.py << parameters.test_targets >>
-            $PYTHON_BIN tools/check_clean.py
+            ./tests/runner << parameters.test_targets >>
+            $EMSDK_PYTHON ./tools/check_clean.py
   run-tests-mac:
     description: "Runs emscripten tests"
     parameters:
@@ -157,8 +155,8 @@ commands:
       - run:
           name: run tests
           command: |
-            python3 tests/runner.py << parameters.test_targets >>
-            tools/check_clean.py
+            ./tests/runner << parameters.test_targets >>
+            $EMSDK_PYTHON ./tools/check_clean.py
   test-firefox:
     description: "Runs emscripten tests under firefox"
     steps:
@@ -259,8 +257,8 @@ commands:
             EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
             cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
             rm -r $TMPDIR
-            python3 tests/runner.py browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
-            python3 tests/runner.py emrun
+            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            tests/runner emrun
             openbox --exit
             wait || true # wait for startx to shutdown cleanly, or not
   test-chrome:
@@ -294,8 +292,8 @@ commands:
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            python3 tests/runner.py browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail
-            python3 tests/runner.py emrun
+            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail
+            tests/runner emrun
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
@@ -323,7 +321,7 @@ commands:
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            python3 tests/runner.py sockets
+            tests/runner sockets
 
 jobs:
   build-docs:
@@ -446,9 +444,6 @@ jobs:
       name: win/vs2019
       shell: bash.exe -eo pipefail
     environment:
-      # on windows the python binary is always called python.exe and never
-      # python3.exe
-      PYTHON_BIN: "python"
       PYTHONUNBUFFERED: "1"
       EMSDK_NOTTY: "1"
       # clang can compile but not link in the current setup, see

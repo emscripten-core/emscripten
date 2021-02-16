@@ -126,7 +126,7 @@ var wasmOffsetConverter;
 var __ATEXIT__    = []; // functions called during shutdown
 #endif
 
-#if ASSERTIONS || SAFE_HEAP
+#if ASSERTIONS || SAFE_HEAP || USE_ASAN
 var runtimeInitialized = false;
 
 // This is always false in minimal_runtime - the runtime does not have a concept
