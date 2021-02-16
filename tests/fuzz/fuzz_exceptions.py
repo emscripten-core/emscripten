@@ -376,7 +376,8 @@ def check_testcase(data, silent=True):
 
     # Compile with emcc, looking for a compilation error.
     try:
-        subprocess.check_call(['./em++', 'a.cpp', 'b.cpp', '-sWASM_BIGINT',
+        # TODO: also compile b.cpp, and remove -c so that we test linking.
+        subprocess.check_call(['./em++', 'a.cpp', '-sWASM_BIGINT', '-c',
                                '-fwasm-exceptions'],
                                stderr=subprocess.PIPE if silent else None)
     except KeyboardInterrupt:
