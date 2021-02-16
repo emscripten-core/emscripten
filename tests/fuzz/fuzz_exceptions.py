@@ -375,18 +375,22 @@ def check_testcase(data, silent=True):
     CppTranslator(data).write(main='a.cpp', support='b.cpp')
 
     # Compile with emcc, looking for a compilation error.
-    try:
-        # TODO: also compile b.cpp, and remove -c so that we test linking.
-        subprocess.check_call(['./em++', 'a.cpp', '-sWASM_BIGINT', '-c',
-                               '-fwasm-exceptions'],
-                               stderr=subprocess.PIPE if silent else None)
-    except KeyboardInterrupt:
-        print('[stopping by user request]')
-        sys.exit(0)
-    except Exception:
-        return False
+    # TODO: also compile b.cpp, and remove -c so that we test linking.
+    result = subprocess.run(['./em++', 'a.cpp', '-sWASM_BIGINT', '-c',
+                             '-fwasm-exceptions'],
+                            stderr=subprocess.PIPE, text=True)
 
-    return True
+    if not silent:
+        print(result.stderr)
+
+    if result.returncode == 0:
+        return True
+
+    # Optionally look for something more specific:
+    #if 'Delegate destination should be in scope' not in result.stderr:
+    #    return True
+
+    return False
 
 
 def reduce(data):
