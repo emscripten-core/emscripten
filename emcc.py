@@ -851,9 +851,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   def optimizing(opts):
     return '-O0' not in opts
 
-  def need_llvm_debug_info():
-    return shared.Settings.DEBUG_LEVEL >= 3
-
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
 
@@ -906,7 +903,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.memory_init_file = shared.Settings.OPT_LEVEL >= 2
 
     # TODO: support source maps with js_transform
-    if options.js_transform and shared.Settings.GENERATE_SOURCE_MAP:
+    if options.js_transform and shared.Settings.DEBUG_LEVEL >= 4:
       logger.warning('disabling source maps because a js transform is being done')
       shared.Settings.DEBUG_LEVEL = 3
 
