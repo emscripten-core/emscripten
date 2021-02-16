@@ -2159,17 +2159,6 @@ LibraryManager.library = {
       (parts[7] << 16) | parts[6]
     ];
   },
-  _inet_pton6__deps: ['_inet_pton6_raw'],
-  _inet_pton6: function(src, dst) {
-    var ints = __inet_pton6_raw(UTF8ToString(src));
-    if (ints === null) {
-      return 0;
-    }
-    for (var i = 0; i < 4; i++) {
-      {{{ makeSetValue('dst', 'i*4', 'ints[i]', 'i32') }}};
-    }
-    return 1;
-  },
   _inet_ntop6_raw__deps: ['_inet_ntop4_raw'],
   _inet_ntop6_raw: function(ints) {
     //  ref:  http://www.ietf.org/rfc/rfc2373.txt - section 2.5.4
