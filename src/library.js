@@ -2394,13 +2394,14 @@ LibraryManager.library = {
     return getHostByName(host);
   },
 
-  gethostbyname__deps: ['$DNS', '_inet_pton4_raw', '$getHostByName'],
+  gethostbyname__deps: ['$getHostByName'],
   gethostbyname__proxy: 'sync',
   gethostbyname__sig: 'ii',
   gethostbyname: function(name) {
     return getHostByName(UTF8ToString(name));
   },
 
+  $getHostByName__deps: ['malloc', '$DNS', '_inet_pton4_raw'],
   $getHostByName: function(name) {
     // generate hostent
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
@@ -2421,7 +2422,7 @@ LibraryManager.library = {
     return ret;
   },
 
-  gethostbyname_r__deps: ['gethostbyname'],
+  gethostbyname_r__deps: ['gethostbyname', 'memcpy', 'free'],
   gethostbyname_r__proxy: 'sync',
   gethostbyname_r__sig: 'iiiiiii',
   gethostbyname_r: function(name, ret, buf, buflen, out, err) {

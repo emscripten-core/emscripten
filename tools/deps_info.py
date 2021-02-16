@@ -178,6 +178,8 @@ deps_info = {
   'gai_strerror': ['malloc', 'free'],
   'getaddrinfo': ['malloc', 'free', 'htonl', 'htons', 'ntohs'],
   'getenv': ['malloc', 'free'],
+  'gethostbyaddr': ['malloc'],
+  'gethostbyaddr_r': ['malloc'],
   'gethostbyname': ['malloc', 'free', 'htons', 'ntohs', 'memcpy'],
   'gethostbyname_r': ['malloc', 'free', 'htons', 'ntohs', 'memcpy'],
   'getlogin': ['malloc', 'free'],
