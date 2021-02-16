@@ -10,6 +10,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tarfile
 import zipfile
@@ -77,7 +78,11 @@ def run_one_command(cmd):
       del safe_env[opt]
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd.append('-Wno-deprecated')
-  shared.run_process(cmd, env=safe_env)
+  try:
+    shared.run_process(cmd, env=safe_env)
+  except subprocess.CalledProcessError as e:
+    print("'%s' failed (%d)" % (shared.shlex_join(e.cmd), e.returncode))
+    raise
 
 
 def run_build_commands(commands):
@@ -708,18 +713,14 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     ignore = set(ignore)
     # TODO: consider using more math code from musl, doing so makes box2d faster
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
+      # Don't recurse into ingored directories
+      remove = [d for d in dirnames if d in ignore]
+      for r in remove:
+        dirnames.remove(r)
+
       for f in filenames:
-        if f.endswith('.c'):
-          if f in ignore:
-            continue
-          dir_parts = os.path.split(dirpath)
-          cancel = False
-          for part in dir_parts:
-            if part in ignore:
-              cancel = True
-              break
-          if not cancel:
-            libc_files.append(os.path.join(musl_srcdir, dirpath, f))
+        if f.endswith('.c') and f not in ignore:
+          libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
     # Allowed files from ignored modules
     libc_files += files_in_path(
@@ -1213,6 +1214,7 @@ class libubsan_minimal_rt_wasm(CompilerRTLibrary, MTLibrary):
 
 class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
   name = 'libsanitizer_common_rt'
+  # TODO(sbc): We should not need musl-internal headers here.
   includes = [['system', 'lib', 'libc', 'musl', 'src', 'internal'],
               ['system', 'lib', 'compiler-rt', 'lib']]
   never_force = True
