@@ -58,6 +58,7 @@ diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 # Catch-all for other emcc warnings
 diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
+diagnostics.add_warning('launcher-script')
 diagnostics.add_warning('undefined', error=True)
 diagnostics.add_warning('deprecated')
 diagnostics.add_warning('version-check')

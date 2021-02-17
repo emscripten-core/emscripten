@@ -9970,3 +9970,7 @@ exec "$@"
     self.assertGreater(len(exports_linkable), 1000)
     self.assertIn('sendmsg', exports_linkable)
     self.assertNotIn('sendmsg', exports)
+
+  def test_python_launcher_warning(self):
+    err = self.run_process([sys.executable, path_from_root('emcc.py'), path_from_root('tests', 'hello_world.c')], stderr=PIPE).stderr
+    self.assertContained('was not run via the emcc launcher script', err)
