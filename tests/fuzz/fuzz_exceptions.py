@@ -57,7 +57,7 @@ class StructuredRandomData:
 
     # The range of widths.
     MIN_WIDTH = 1
-    MAX_WIDTH = 4
+    MAX_WIDTH = 8
 
     # The range of depths.
     MIN_DEPTH = 2
@@ -316,13 +316,24 @@ void %(name)s() {
         self.try_nesting += 1
         body = indent(self.make_statement(cursor.get_array()))
         self.try_nesting -= 1
-        catch = indent(self.make_statement(cursor.get_array()))
-
+        catches = []
+        if cursor.get_num() < 0.5:
+          catch = indent(self.make_statement(cursor.get_array()))
+          catches.append('''\
+} catch(int) {
+%(catch)s
+''' % locals())
+        if not catches or cursor.get_num() < 0.5:
+          catch = indent(self.make_statement(cursor.get_array()))
+          catches.append('''\
+} catch(...) {
+%(catch)s
+''' % locals())
+        catches = '\n'.join(catches)
         return '''\
 try {
 %(body)s
-} catch(...) {
-%(catch)s
+%(catches)s
 }
 ''' % locals()
 
