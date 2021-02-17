@@ -44,9 +44,14 @@ Compiling source files to object files works as you'd expect in a native build s
 Link Times
 ==========
 
-To skip extra optimization work at link time, link with ``-O0`` or ``-O1``. It
-is ok to link with those flags even if the source files were compiled with a
-different optimization level.
+To skip extra optimization work at link time, link with ``-O0`` or ``-O1``. In
+those modes Emscripten focuses on faster iteration, and does not try to improve
+code size and speed.
+
+.. note::
+
+  It is ok to link with those flags even if the source files were compiled with
+  a different optimization level.
 
 ``-O0`` will do no optimization work at link time. ``-O1`` will do very minimal
 optimizations, and does not have the assertions that ``-O0`` does by default,
@@ -80,6 +85,13 @@ during link if Emscripten must perform changes to the Wasm. If you remove that
 ``-s WASM_BIGINT``, it will tell you that legalization forces it to change the
 wasm. You will also get an error if you build with ``-O2`` or above, as the
 Binaryen optimizer would normally be run.
+
+.. note::
+
+  Some link flags can slow down the link stage significantly. For example ``-g``
+  enables DWARF support, flags like ``-s SAFE_HEAP`` will require JS
+  post-processing, and flags like ``-s ASYNCIFY`` will require wasm
+  post-processing.
 
 Advanced compiler settings
 ==========================
