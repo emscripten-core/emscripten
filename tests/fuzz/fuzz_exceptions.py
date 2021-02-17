@@ -437,10 +437,10 @@ def check_testcase(data, silent=True):
 
     # Optionally look for something more specific / ignore some things:
     if 'Delegate destination should be in scope' in result.stderr:
+        return True
+    if 'Branch destination should be in scope' in result.stderr:
         return False
     return True
-    if 'Branch destination should be in scope' in result.stderr:
-        return True
     if 'data symbols must have a size set with .size' in result.stderr:
         return True
     # Assertion !empty()
