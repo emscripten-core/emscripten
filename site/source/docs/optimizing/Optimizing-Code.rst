@@ -45,8 +45,7 @@ Link Times
 ==========
 
 To skip extra optimization work at link time, link with ``-O0`` or ``-O1``. In
-those modes Emscripten focuses on faster iteration, and does not try to improve
-code size and speed.
+those modes Emscripten focuses on faster iteration times.
 
 .. note::
 
