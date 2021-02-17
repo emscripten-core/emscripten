@@ -500,7 +500,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_loadu_si32
      - ❌ emulated with wasm_i32x4_make
    * - _mm_madd_epi16
-     - ❌ scalarized
+     - ✅ wasm_dot_s_i32x4_i16x8
    * - _mm_maskmoveu_si128
      - ❌ scalarized
    * - _mm_max_epi16

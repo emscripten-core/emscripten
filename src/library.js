@@ -2103,7 +2103,7 @@ LibraryManager.library = {
   _inet_ntop4_raw: function(addr) {
     return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
   },
-  _inet_pton6_raw__deps: ['htons', 'ntohs', '$jstoi_q'],
+  _inet_pton6_raw__deps: ['htons', '$jstoi_q'],
   _inet_pton6_raw: function(str) {
     var words;
     var w, offset, z, i;
@@ -2159,18 +2159,7 @@ LibraryManager.library = {
       (parts[7] << 16) | parts[6]
     ];
   },
-  _inet_pton6__deps: ['_inet_pton6_raw'],
-  _inet_pton6: function(src, dst) {
-    var ints = __inet_pton6_raw(UTF8ToString(src));
-    if (ints === null) {
-      return 0;
-    }
-    for (var i = 0; i < 4; i++) {
-      {{{ makeSetValue('dst', 'i*4', 'ints[i]', 'i32') }}};
-    }
-    return 1;
-  },
-  _inet_ntop6_raw__deps: ['_inet_ntop4_raw'],
+  _inet_ntop6_raw__deps: ['_inet_ntop4_raw', 'ntohs'],
   _inet_ntop6_raw: function(ints) {
     //  ref:  http://www.ietf.org/rfc/rfc2373.txt - section 2.5.4
     //  Format for IPv4 compatible and mapped  128-bit IPv6 Addresses
@@ -2405,13 +2394,14 @@ LibraryManager.library = {
     return getHostByName(host);
   },
 
-  gethostbyname__deps: ['$DNS', '_inet_pton4_raw', '$getHostByName'],
+  gethostbyname__deps: ['$getHostByName'],
   gethostbyname__proxy: 'sync',
   gethostbyname__sig: 'ii',
   gethostbyname: function(name) {
     return getHostByName(UTF8ToString(name));
   },
 
+  $getHostByName__deps: ['malloc', '$DNS', '_inet_pton4_raw'],
   $getHostByName: function(name) {
     // generate hostent
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
@@ -2432,7 +2422,7 @@ LibraryManager.library = {
     return ret;
   },
 
-  gethostbyname_r__deps: ['gethostbyname'],
+  gethostbyname_r__deps: ['gethostbyname', 'memcpy', 'free'],
   gethostbyname_r__proxy: 'sync',
   gethostbyname_r__sig: 'iiiiiii',
   gethostbyname_r: function(name, ret, buf, buflen, out, err) {

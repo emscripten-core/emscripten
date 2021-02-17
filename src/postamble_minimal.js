@@ -55,7 +55,7 @@ function run() {
 #endif
 
 function initRuntime(asm) {
-#if ASSERTIONS
+#if ASSERTIONS || SAFE_HEAP || USE_ASAN
   runtimeInitialized = true;
 #endif
 

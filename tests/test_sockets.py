@@ -12,7 +12,7 @@ import time
 from subprocess import Popen, PIPE
 
 if __name__ == '__main__':
-  raise Exception('do not run this file directly; do something like: tests/runner.py sockets')
+  raise Exception('do not run this file directly; do something like: tests/runner sockets')
 
 try:
   import websockify
@@ -202,7 +202,6 @@ class sockets(BrowserCore):
       self.btest('sdl2_net_client.c', expected='0', args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
 
   def test_sockets_async_echo(self):
-    # Run with ./runner.py sockets.test_sockets_async_echo
     sockets_include = '-I' + path_from_root('tests', 'sockets')
 
     # Websockify-proxied servers can't run dgram tests
@@ -410,7 +409,6 @@ class sockets(BrowserCore):
 
   def test_nodejs_sockets_echo(self):
     # This test checks that sockets work when the client code is run in Node.js
-    # Run with ./runner.py sockets.test_nodejs_sockets_echo
     if config.NODE_JS not in config.JS_ENGINES:
       self.skipTest('node is not present')
 

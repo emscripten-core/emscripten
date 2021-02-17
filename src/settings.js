@@ -1534,7 +1534,8 @@ var EVAL_CTORS = 0;
 // Is enabled, use the JavaScript TextDecoder API for string marshalling.
 // Enabled by default, set this to 0 to disable.
 // If set to 2, we assume TextDecoder is present and usable, and do not emit
-// any JS code to fall back if it is missing.
+// any JS code to fall back if it is missing. In single threaded -Oz build modes,
+// TEXTDECODER defaults to value == 2 to save code size.
 // [link]
 var TEXTDECODER = 1;
 
@@ -1897,6 +1898,7 @@ var SPLIT_MODULE = 0;
 // While 'auto' will produce a minimal set (so is good for code size), 'all'
 // and 'none' will give faster link times, especially for very large projects
 // (since they both avoid the running of llvm-nm on all linker inputs).
+// [link]
 var REVERSE_DEPS = 'auto';
 
 //===========================================

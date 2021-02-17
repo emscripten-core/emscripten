@@ -173,6 +173,30 @@ var LibraryPThread = {
       if (ENVIRONMENT_IS_PTHREAD && _pthread_self()) ___pthread_tsd_run_dtors();
     },
 
+    runExitHandlersAndDeinitThread: function(tb, exitCode) {
+#if PTHREADS_PROFILING
+      var profilerBlock = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0);
+      _free(profilerBlock);
+#endif
+
+      // Disable all cancellation so that executing the cleanup handlers won't trigger another JS
+      // canceled exception to be thrown.
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2, 1/*PTHREAD_CANCEL_DISABLE*/);
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.cancelasync }}} ) >> 2, 0/*PTHREAD_CANCEL_DEFERRED*/);
+      PThread.runExitHandlers();
+
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
+      // When we publish this, the main thread is free to deallocate the thread object and we are done.
+      // Therefore set _pthread_self = 0; above to 'release' the object in this worker thread.
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
+
+      _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
+
+      // Not hosting a pthread anymore in this worker, reset the info structures to null.
+      __emscripten_thread_init(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
+    },
+
     // Called when we are performing a pthread_exit(), either explicitly called
     // by programmer, or implicitly when leaving the thread main function.
     threadExit: function(exitCode) {
@@ -181,24 +205,8 @@ var LibraryPThread = {
 #if ASSERTIONS
         err('Pthread 0x' + tb.toString(16) + ' exited.');
 #endif
-#if PTHREADS_PROFILING
-        var profilerBlock = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
-        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0);
-        _free(profilerBlock);
-#endif
-        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
-        // When we publish this, the main thread is free to deallocate the thread object and we are done.
-        // Therefore set _pthread_self = 0; above to 'release' the object in this worker thread.
-        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1);
+        PThread.runExitHandlersAndDeinitThread(tb, exitCode);
 
-        // Disable all cancellation so that executing the cleanup handlers won't trigger another JS
-        // canceled exception to be thrown.
-        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2, 1/*PTHREAD_CANCEL_DISABLE*/);
-        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.cancelasync }}} ) >> 2, 0/*PTHREAD_CANCEL_DEFERRED*/);
-        PThread.runExitHandlers();
-
-        _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}});
-        __emscripten_thread_init(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
         if (ENVIRONMENT_IS_PTHREAD) {
           // Note: in theory we would like to return any offscreen canvases back to the main thread,
           // but if we ever fetched a rendering context for them that would not be valid, so we don't try.
@@ -208,13 +216,7 @@ var LibraryPThread = {
     },
 
     threadCancel: function() {
-      PThread.runExitHandlers();
-      var tb = _pthread_self();
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, -1/*PTHREAD_CANCELED*/);
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
-      _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
-      // Not hosting a pthread anymore in this worker, reset the info structures to null.
-      __emscripten_thread_init(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
+      PThread.runExitHandlersAndDeinitThread(_pthread_self(), -1/*PTHREAD_CANCELED*/);
       postMessage({ 'cmd': 'cancelDone' });
     },
 
@@ -494,9 +496,23 @@ var LibraryPThread = {
   $cleanupThread: function(pthread_ptr) {
     if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! cleanupThread() can only ever be called from main application thread!';
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in cleanupThread!';
-    {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
     var pthread = PThread.pthreads[pthread_ptr];
+    // If pthread has been removed from this map this also means that pthread_ptr points
+    // to already freed data. Such situation may occur in following circumstances:
+    // 1. Joining cancelled thread - in such situation it may happen that pthread data will
+    //    already be removed by handling 'cancelDone' message.
+    // 2. Joining thread from non-main browser thread (this also includes thread running main()
+    //    when compiled with `PROXY_TO_PTHREAD`) - in such situation it may happen that following
+    //    code flow occur (MB - Main Browser Thread, S1, S2 - Worker Threads):
+    //    S2: thread ends, 'exit' message is sent to MB
+    //    S1: calls pthread_join(S2), this causes:
+    //        a. S2 is marked as detached,
+    //        b. 'cleanupThread' message is sent to MB.
+    //    MB: handles 'exit' message, as thread is detached, so returnWorkerToPool()
+    //        is called and all thread related structs are freed/released.
+    //    MB: handles 'cleanupThread' message which calls this function.
     if (pthread) {
+      {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
       var worker = pthread.worker;
       PThread.returnWorkerToPool(worker);
     }

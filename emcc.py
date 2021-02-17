@@ -851,9 +851,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   def optimizing(opts):
     return '-O0' not in opts
 
-  def need_llvm_debug_info():
-    return shared.Settings.DEBUG_LEVEL >= 3
-
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
 
@@ -906,7 +903,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.memory_init_file = shared.Settings.OPT_LEVEL >= 2
 
     # TODO: support source maps with js_transform
-    if options.js_transform and shared.Settings.GENERATE_SOURCE_MAP:
+    if options.js_transform and shared.Settings.DEBUG_LEVEL >= 4:
       logger.warning('disabling source maps because a js transform is being done')
       shared.Settings.DEBUG_LEVEL = 3
 
@@ -1244,6 +1241,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       default_setting('IGNORE_MISSING_MAIN', 0)
       default_setting('DEFAULT_TO_CXX', 0)
 
+    # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
+    # in -Oz builds, since custom decoder for UTF-8 takes up space.
+    # In pthreads enabled builds, TEXTDECODER==2 may not work, see
+    # https://github.com/whatwg/encoding/issues/172
+    if shared.Settings.SHRINK_LEVEL >= 2 and not shared.Settings.USE_PTHREADS:
+      default_setting('TEXTDECODER', 2)
+
     # If set to 1, we will run the autodebugger (the automatic debugging tool, see
     # tools/autodebugger).  Note that this will disable inclusion of libraries. This
     # is useful because including dlmalloc makes it hard to compare native and js
@@ -1507,7 +1511,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('USE_PTHREADS=2 is not longer supported')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
-      # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
+      # UTF8Decoder.decode may not work with a view of a SharedArrayBuffer, see https://github.com/whatwg/encoding/issues/172
       shared.Settings.TEXTDECODER = 0
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
       newargs += ['-pthread']
@@ -2721,15 +2725,19 @@ def do_binaryen(target, options, wasm_target):
     webassembly.add_emscripten_metadata(wasm_target)
 
   if final_js:
-    # pthreads memory growth requires some additional JS fixups
-    if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
-      final_js = building.apply_wasm_memory_growth(final_js)
-
     # >=2GB heap support requires pointers in JS to be unsigned. rather than
     # require all pointers to be unsigned by default, which increases code size
     # a little, keep them signed, and just unsign them here if we need that.
     if shared.Settings.CAN_ADDRESS_2GB:
       final_js = building.use_unsigned_pointers_in_js(final_js)
+
+    # pthreads memory growth requires some additional JS fixups.
+    # note that we must do this after handling of unsigned pointers. unsigning
+    # adds some >>> 0 things, while growth will replace a HEAP8 with a call to
+    # a method to get the heap, and that call would not be recognized by the
+    # unsigning pass
+    if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
+      final_js = building.apply_wasm_memory_growth(final_js)
 
     if shared.Settings.USE_ASAN:
       final_js = building.instrument_js_for_asan(final_js)

@@ -7,7 +7,7 @@
 """This is the Emscripten test runner. To run some tests, specify which tests
 you want, for example
 
-  python3 tests/runner.py asm1.test_hello_world
+  tests/runner asm1.test_hello_world
 
 There are many options for which tests to run and how to run them. For details,
 see
@@ -549,8 +549,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     es_check = shared.get_npm_cmd('es-check')
     # use --quiet once its available
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
+    es_check_env = os.environ.copy()
+    es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
     try:
-      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stderr=PIPE)
+      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stderr=PIPE, env=es_check_env)
     except subprocess.CalledProcessError as e:
       print(e.stderr)
       self.fail('es-check failed to verify ES5 output compliance')

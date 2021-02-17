@@ -219,9 +219,9 @@ Options that are modified or new in *emcc* are listed below:
 
 .. _emcc-closure:
 
-``--closure <on>``
+``--closure 0|1|2``
   [link]
-  Runs the :term:`Closure Compiler`. Possible ``on`` values are:
+  Runs the :term:`Closure Compiler`. Possible values are:
 
     - ``0``: No closure compiler (default in ``-O2`` and below).
     - ``1``: Run closure compiler. This greatly reduces the size of the support JavaScript code (everything but the WebAssembly or asm.js). Note that this increases compile time significantly.
@@ -368,7 +368,7 @@ Options that are modified or new in *emcc* are listed below:
 
 .. _emcc-cache:
 
-``--cache``
+``--cache <directory>``
   [general]
   Sets the directory to use as the Emscripten cache. The Emscripten cache
   is used to store pre-built versions of ``libc``, ``libcxx`` and other
@@ -416,13 +416,13 @@ Options that are modified or new in *emcc* are listed below:
 
 .. _emcc-memory-init-file:
 
-``--memory-init-file <on>``
+``--memory-init-file 0|1``
   [link]
   Specifies whether to emit a separate memory initialization file.
 
       .. note:: Note that this is only relevant when *not* emitting wasm, as wasm embeds the memory init data in the wasm binary.
 
-  Possible ``on`` values are:
+  Possible values are:
 
     - ``0``: Do not emit a separate memory initialization file. Instead keep the static initialization inside the generated JavaScript as text. This is the default setting if compiling with -O0 or -O1 link-time optimization flags.
     - ``1``: Emit a separate memory initialization file in binary format. This is more efficient than storing it as text inside JavaScript, but does mean you have another file to publish. The binary file will also be loaded asynchronously, which means ``main()`` will not be called until the file is downloaded and applied; you cannot call any C functions until it arrives. This is the default setting when compiling with -O2 or higher.
@@ -462,14 +462,14 @@ Options that are modified or new in *emcc* are listed below:
 
 .. _emcc-config:
 
-``--em-config``
+``--em-config <path>``
   [general]
   Specifies the location of the **.emscripten** configuration file.  If not
   specified emscripten will search for ``.emscripten`` first in the emscripten
   directory itself, and then in the user's home directory (``~/.emscripten``).
   This can be overridden using the ``EM_CONFIG`` environment variable.
 
-``--default-obj-ext .ext``
+``--default-obj-ext <.ext>``
   [compile+link]
   Specifies the file suffix to generate if the location of a directory name is passed to the ``-o`` directive.
 
@@ -480,7 +480,7 @@ Options that are modified or new in *emcc* are listed below:
     emcc -c a.c -o dir/
 
 
-``--valid-abspath path``
+``--valid-abspath <path>``
   [compile+link]
   Note an allowed absolute path, which we should not warn about (absolute
   include paths normally are warned about, since they may refer to the
@@ -522,24 +522,24 @@ Environment variables
 =====================
 *emcc* is affected by several environment variables, as listed below:
 
-  - ``EMMAKEN_CFLAGS``
-  - ``EMMAKEN_COMPILER``
-  - ``EMMAKEN_JUST_CONFIGURE``
-  - ``EMMAKEN_NO_SDK``
-  - ``EMCC_AUTODEBUG``
-  - ``EMCC_CFLAGS``
-  - ``EMCC_CORES``
-  - ``EMCC_DEBUG``
-  - ``EMCC_DEBUG_SAVE``
-  - ``EMCC_FORCE_STDLIBS``
-  - ``EMCC_ONLY_FORCED_STDLIBS``
-  - ``EMCC_LOCAL_PORTS``
-  - ``EMCC_STDERR_FILE``
-  - ``EMCC_CLOSURE_ARGS`` : arguments to be passed to *Closure Compiler*
-  - ``EMCC_STRICT``
-  - ``EMCC_SKIP_SANITY_CHECK``
-  - ``EM_IGNORE_SANITY``
-  - ``EM_CONFIG``
+  - ``EMMAKEN_CFLAGS`` [compile+link]
+  - ``EMMAKEN_COMPILER`` [compile+link] Deprecated. Avoid using.
+  - ``EMMAKEN_JUST_CONFIGURE`` [other]
+  - ``EMMAKEN_NO_SDK`` [compile+link]
+  - ``EMCC_AUTODEBUG`` [compile+link]
+  - ``EMCC_CFLAGS`` [compile+link]
+  - ``EMCC_CORES`` [general]
+  - ``EMCC_DEBUG`` [general]
+  - ``EMCC_DEBUG_SAVE`` [general]
+  - ``EMCC_FORCE_STDLIBS`` [link]
+  - ``EMCC_ONLY_FORCED_STDLIBS`` [link]
+  - ``EMCC_LOCAL_PORTS`` [compile+link]
+  - ``EMCC_STDERR_FILE`` [general]
+  - ``EMCC_CLOSURE_ARGS`` : [link] arguments to be passed to *Closure Compiler*
+  - ``EMCC_STRICT`` [general]
+  - ``EMCC_SKIP_SANITY_CHECK`` [general]
+  - ``EM_IGNORE_SANITY`` [general]
+  - ``EM_CONFIG`` [general]
 
 Search for 'os.environ' in `emcc.py <https://github.com/emscripten-core/emscripten/blob/master/emcc.py>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
 
