@@ -1859,12 +1859,14 @@ int main(int argc, char **argv) {
 
   def test_em_asm(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm.cpp')
+    self.emcc_args.append('-std=gnu89')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm.cpp', force_c=True)
 
   # Tests various different ways to invoke the EM_ASM(), EM_ASM_INT() and EM_ASM_DOUBLE() macros.
   @no_asan('Cannot use ASan: test depends exactly on heap size')
   def test_em_asm_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2.cpp')
+    self.emcc_args.append('-std=gnu89')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2.cpp', force_c=True)
 
   # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
