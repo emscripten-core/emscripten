@@ -687,13 +687,6 @@ var LibraryEGL = {
     return 0 /* EGL_FALSE */;
   },
 
-  eglGetProcAddress__deps: ['emscripten_GetProcAddress'],
-  eglGetProcAddress__proxy: 'sync',
-  eglGetProcAddress__sig: 'ii',
-  eglGetProcAddress: function(name_) {
-    return _emscripten_GetProcAddress(name_);
-  },
-
   eglReleaseThread__proxy: 'sync',
   eglReleaseThread__sig: 'i',
   eglReleaseThread: function() {

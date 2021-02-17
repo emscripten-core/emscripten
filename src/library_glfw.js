@@ -1200,11 +1200,6 @@ var LibraryGLFW = {
     return (GLFW.extensions.indexOf("GL_" + extension) != -1);
   },
 
-  glfwGetProcAddress__deps: ['emscripten_GetProcAddress'],
-  glfwGetProcAddress: function(procname) {
-    return _emscripten_GetProcAddress(procname);
-  },
-
   glfwSwapInterval__deps: ['emscripten_set_main_loop_timing'],
   glfwSwapInterval: function(interval) {
     interval = Math.abs(interval); // GLFW uses negative values to enable GLX_EXT_swap_control_tear, which we don't have, so just treat negative and positive the same.

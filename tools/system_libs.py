@@ -1065,7 +1065,7 @@ class libgl(MTLibrary):
   name = 'libgl'
 
   src_dir = ['system', 'lib', 'gl']
-  src_files = ['gl.c', 'webgl1.c']
+  src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c']
 
   cflags = ['-Oz']
 
