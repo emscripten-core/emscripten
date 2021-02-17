@@ -270,7 +270,7 @@ int main() {
 '''
         while self.toplevel.has_more():
             name = f'func_{len(funcs)}'
-            body = indent(self.make_function_body(self.toplevel.get()))
+            body = indent(self.make_statements(self.toplevel.get()))
             self.func_names.append(name)
             funcs.append('''\
 void %(name)s() {
@@ -295,7 +295,7 @@ void %(name)s() {
         funcs.append(main)
         self.output.append('\n'.join(funcs))
 
-    def make_function_body(self, node):
+    def make_statements(self, node):
         statements = [self.make_statement(n) for n in arrayify(node)]
         return '\n'.join(statements)
 
@@ -337,17 +337,17 @@ void %(name)s() {
 
     def make_try(self, cursor):
         self.try_nesting += 1
-        body = indent(self.make_statement(cursor.get_array()))
+        body = indent(self.make_statements(cursor.get_array()))
         self.try_nesting -= 1
         catches = []
         if cursor.get_num() < 0.25:
-          catch = indent(self.make_statement(cursor.get_array()))
+          catch = indent(self.make_statements(cursor.get_array()))
           catches.append('''\
 } catch(int) {
 %(catch)s
 ''' % locals())
         if not catches or cursor.get_num() < 0.25:
-          catch = indent(self.make_statement(cursor.get_array()))
+          catch = indent(self.make_statements(cursor.get_array()))
           catches.append('''\
 } catch(...) {
 %(catch)s
@@ -361,11 +361,11 @@ try {
 ''' % locals()
 
     def make_if(self, cursor):
-        if_arm = indent(self.make_statement(cursor.get_array()))
+        if_arm = indent(self.make_statements(cursor.get_array()))
 
         else_ = ''
         if cursor.get_num() >= 0.5:
-            else_arm = indent(self.make_statement(cursor.get_array()))
+            else_arm = indent(self.make_statements(cursor.get_array()))
             else_ = '''\
  else {
 %(else_arm)s
@@ -379,7 +379,7 @@ if (getBoolean()) {
 
     def make_loop(self, cursor):
         self.loop_nesting += 1
-        body = indent(self.make_statement(cursor.get_array()))
+        body = indent(self.make_statements(cursor.get_array()))
         self.loop_nesting -= 1
 
         return '''\
