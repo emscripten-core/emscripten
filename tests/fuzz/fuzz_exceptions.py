@@ -53,11 +53,11 @@ that just wants a bool.
 
 
 class StructuredRandomData:
-    NUM_TOPLEVEL = 15
+    NUM_TOPLEVEL = 5
 
     # The range of widths.
     MIN_WIDTH = 1
-    MAX_WIDTH = 8
+    MAX_WIDTH = 9
 
     # The range of depths.
     MIN_DEPTH = 2
@@ -137,21 +137,23 @@ class Cursor:
         return int(1000 * self.get_num())
 
 
-def pick(options, value, param):
+def pick(options, value):
     '''
-    Given a list of options (weight, func), and a value in [0, 1) to help pick from
-    them, pick one, and call it with the parameter.
+    Given a list of options (weight, choice), and a value in [0, 1) to help pick from
+    them, pick one.
+    The options can also not have a weight, in which case the weight is 1.
     '''
     # Scale the value by the total weight.
     assert 0 <= value < 1, value
+    options = [option if len(option) == 2 else (1, option) for option in options]
     total = 0
-    for weight, func in options:
+    for weight, choice in options:
         total += weight
     value *= total
 
-    for weight, func in options:
+    for weight, choice in options:
         if value < weight:
-            return func(param)
+            return choice
         value -= weight
 
     raise Exception('inconceivable')
@@ -317,7 +319,7 @@ void %(name)s() {
             options.append((2, self.make_throw))
         if self.loop_nesting:
             options.append((10, self.make_branch))
-        return pick(options, cursor.get_num(), cursor)
+        return pick(options, cursor.get_num())(cursor)
 
     def make_nothing(self, cursor):
         return ''
@@ -339,19 +341,21 @@ void %(name)s() {
         self.try_nesting += 1
         body = indent(self.make_statements(cursor.get_array()))
         self.try_nesting -= 1
+        catch_types = ['int32_t', 'int64_t', 'float', 'double', 'Class']
         catches = []
-        if cursor.get_num() < 0.25:
+
+        def add_catch(ty):
           catch = indent(self.make_statements(cursor.get_array()))
           catches.append('''\
-} catch(int) {
+} catch(%(ty)s) {
 %(catch)s
 ''' % locals())
-        if not catches or cursor.get_num() < 0.25:
-          catch = indent(self.make_statements(cursor.get_array()))
-          catches.append('''\
-} catch(...) {
-%(catch)s
-''' % locals())
+
+        num = cursor.get_num()
+        if num < 0.5:
+          add_catch(pick(catch_types, num * 2))
+        if not catches or num > 0.5:
+          add_catch('...')
         catches = '\n'.join(catches)
         return '''\
 try {
@@ -433,7 +437,8 @@ def check_testcase(data, silent=True):
 
     # Optionally look for something more specific / ignore some things:
     if 'Delegate destination should be in scope' in result.stderr:
-        return True
+        return False
+    return True
     if 'Branch destination should be in scope' in result.stderr:
         return True
     if 'data symbols must have a size set with .size' in result.stderr:
