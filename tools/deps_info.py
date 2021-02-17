@@ -67,7 +67,6 @@ deps_info = {
   '_embind_register_function': ['free'],
   '_embind_register_std_string': ['free'],
   '_embind_register_std_wstring': ['free'],
-  '_inet_ntop6_raw': ['ntohs'],
   'alGetProcAddress': ['emscripten_GetAlProcAddress'],
   'alGetString': ['malloc'],
   'alcGetProcAddress': ['emscripten_GetAlcProcAddress'],
