@@ -669,20 +669,7 @@ _mm_avg_epu16(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_madd_epi16(__m128i __a, __m128i __b)
 {
-  // TODO: optimize
-  union {
-    signed short x[8];
-    __m128i m;
-  } src, src2;
-  union {
-    signed int x[4];
-    __m128i m;
-  } dst;
-  src.m = __a;
-  src2.m = __b;
-  for(int i = 0; i < 4; ++i)
-    dst.x[i] = src.x[i*2] * src2.x[i*2] + src.x[i*2+1] * src2.x[i*2+1];
-  return dst.m;
+  return (__m128i)__builtin_wasm_dot_s_i32x4_i16x8((__i16x8)__a, (__i16x8)__b);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
