@@ -246,12 +246,14 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     err("getOrAllocateModuleMemory: " + size + " runtimeInitialized=" + runtimeInitialized);
 #endif
-    if (runtimeInitialized)
 #if USE_PTHREADS
-      // In a pthread the module memory is allocated in the main thread before
-      // the runtime is initialized
-      if (!ENVIRONMENT_IS_PTHREAD)
+    // In a pthread the module memory is allocated in the main thread before
+    // the runtime is initialized. This is because today we only support load
+    // time dynamic linking with pthread.
+    // TODO: redesign this to allow runtime dylink + pthreads
+    if (!ENVIRONMENT_IS_PTHREAD)
 #endif
+      if (runtimeInitialized)
         return _malloc(size);
     var ret = Module['___heap_base'];
     var end = (ret + size + 15) & -16;
@@ -409,11 +411,14 @@ var LibraryDylink = {
       // from uninitialized memory.
 #if USE_PTHREADS
       // in a pthread the module heap was already allocated and initialized in the main thread.
-      if (!ENVIRONMENT_IS_PTHREAD)
+      if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
         for (var i = memoryBase; i < memoryBase + memorySize; i++) {
           HEAP8[i] = 0;
         }
+#if USE_PTHREADS
+      }
+#endif
       for (var i = tableBase; i < tableBase + tableSize; i++) {
         table.set(i, null);
       }
