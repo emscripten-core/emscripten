@@ -4640,8 +4640,8 @@ Have even and odd!
   def test_strtok(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strtok.c')
 
-  def test_parseInt(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_parseInt.c')
+  def test_strtol(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtol.c')
 
   def test_transtrcase(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_transtrcase.c')
