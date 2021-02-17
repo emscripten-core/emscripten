@@ -211,6 +211,7 @@ bool getBoolean() {
         self.logging_index = 0
         self.try_nesting = 0
         self.loop_nesting = 0
+        self.func_names = []
 
         # The output is a list of strings which will be concatenated when
         # writing.
@@ -252,6 +253,7 @@ int main() {
         while self.toplevel.has_more():
             name = f'func_{len(funcs)}'
             body = indent(self.make_function_body(self.toplevel.get()))
+            self.func_names.append(name)
             funcs.append('''\
 void %(name)s() {
 %(body)s
@@ -287,6 +289,7 @@ void %(name)s() {
           (10, self.make_try),
           (10, self.make_if),
           (5,  self.make_loop),
+          (5,  self.make_call)
         ]
         if self.try_nesting:
             options.append((10, self.make_throw))
@@ -351,6 +354,11 @@ while (getBoolean()) {
 }
 ''' % locals()
 
+    def make_call(self, cursor):
+        if not self.func_names:
+            return self.make_nothing(cursor)
+        return f'{random.choice(self.func_names)}();'
+
     def make_branch(self, cursor):
         assert self.loop_nesting
         if cursor.get_num() < 0.5:
@@ -371,6 +379,9 @@ while (getBoolean()) {
 
 
 def check_testcase(data, silent=True):
+    '''
+        Checks if a testcase is valid. Returns True if so.
+    '''
     # Generate C++
     CppTranslator(data).write(main='a.cpp', support='b.cpp')
 
@@ -386,10 +397,14 @@ def check_testcase(data, silent=True):
     if result.returncode == 0:
         return True
 
-    # Optionally look for something more specific:
-    #if 'Delegate destination should be in scope' not in result.stderr:
-    #    return True
-
+    # Optionally look for something more specific / ignore some things:
+    if 'Delegate destination should be in scope' in result.stderr:
+        return True
+    if 'Branch destination should be in scope' in result.stderr:
+        return True
+    if 'data symbols must have a size set with .size' in result.stderr:
+        return True
+    # Assertion !empty()
     return False
 
 
