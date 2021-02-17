@@ -770,7 +770,7 @@ var SyscallsLibrary = {
   },
   __sys_wait4__proxy: false,
   __sys_wait4: function(pid, wstart, options, rusage) {
-    abort('cannot wait on child processes');
+    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
   __sys_setdomainname__nothrow: true,
   __sys_setdomainname__proxy: false,
