@@ -4693,6 +4693,12 @@ Have even and odd!
   def test_printf_2(self):
     self.do_core_test('test_printf_2.c')
 
+  @node_pthreads
+  def test_printf_thread(self):
+    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('core', 'test_printf_thread.c')
+
   def test_printf_float(self):
     self.do_run_in_out_file_test('printf/test_float.c')
 
