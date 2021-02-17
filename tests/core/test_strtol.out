@@ -208,8 +208,6 @@ strtol("012", 0, 10) = 12
 strtol("0y12", 0, 0) = 0
 strtol("hello", 0, 30) = 14167554
 strtol("hello", 0, 10) = 0
-ERR Invalid argument
 strtol("not-a-number") = 0
-ERR Invalid argument
 strtol("  0x12end") = 302
 consumed 7 bytes
