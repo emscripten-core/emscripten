@@ -53,7 +53,7 @@ that just wants a bool.
 
 
 class StructuredRandomData:
-    NUM_TOPLEVEL = 25
+    NUM_TOPLEVEL = 15
 
     # The range of widths.
     MIN_WIDTH = 1
@@ -61,7 +61,7 @@ class StructuredRandomData:
 
     # The range of depths.
     MIN_DEPTH = 2
-    MAX_DEPTH = 9
+    MAX_DEPTH = 10
 
     # The chance to just emit a number instead of a list.
     NUM_PROB = 0.25
@@ -170,6 +170,11 @@ class CppTranslator:
 extern void refuel();
 extern void checkRecursion();
 extern bool getBoolean();
+
+struct Class {
+  Class();
+  ~Class();
+};
 '''
 
     SUPPORT = '''\
@@ -203,6 +208,19 @@ bool getBoolean() {
   fuel--;
   boolean = !boolean;
   return boolean;
+}
+
+struct Class {
+  Class();
+  ~Class();
+};
+
+Class::Class() {
+  puts("class-instance");
+}
+
+Class::~Class() {
+  puts("~class-instance");
 }
 '''
 
@@ -289,7 +307,8 @@ void %(name)s() {
           (10, self.make_try),
           (10, self.make_if),
           (5,  self.make_loop),
-          (5,  self.make_call)
+          (5,  self.make_call),
+          (5,  self.make_raii),
         ]
         if self.try_nesting:
             options.append((10, self.make_throw))
@@ -312,18 +331,22 @@ void %(name)s() {
     def make_throw(self, cursor):
         return f'throw {cursor.get_int()};'
 
+    def make_raii(self, cursor):
+        self.logging_index += 1
+        return f'Class instance{self.logging_index};'
+
     def make_try(self, cursor):
         self.try_nesting += 1
         body = indent(self.make_statement(cursor.get_array()))
         self.try_nesting -= 1
         catches = []
-        if cursor.get_num() < 0.5:
+        if cursor.get_num() < 0.25:
           catch = indent(self.make_statement(cursor.get_array()))
           catches.append('''\
 } catch(int) {
 %(catch)s
 ''' % locals())
-        if not catches or cursor.get_num() < 0.5:
+        if not catches or cursor.get_num() < 0.25:
           catch = indent(self.make_statement(cursor.get_array()))
           catches.append('''\
 } catch(...) {
