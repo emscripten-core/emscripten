@@ -10028,7 +10028,7 @@ exec "$@"
       if function.startswith('wgpu'):
         cmd.append('-sUSE_WEBGPU')
       if function.startswith('__cxa_'):
-        cmd.append('-sDISABLE_EXCEPTION_CATCHING=0')
+        cmd.append('-fexceptions')
       # Causes WebAssemblyLowerEmscriptenEHSjLj pass in llvm to crash
       if function == 'setjmp':
         continue
