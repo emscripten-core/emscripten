@@ -113,22 +113,6 @@ def create_lib(libname, inputs):
     raise Exception('unknown suffix ' + libname)
 
 
-def read_symbols(path):
-  with open(path) as f:
-    content = f.read()
-
-    # Require that Windows newlines should not be present in a symbols file, if running on Linux or macOS
-    # This kind of mismatch can occur if one copies a zip file of Emscripten cloned on Windows over to
-    # a Linux or macOS system. It will result in Emscripten linker getting confused on stray \r characters,
-    # and be unable to link any library symbols properly. We could harden against this by .strip()ping the
-    # opened files, but it is possible that the mismatching line endings can cause random problems elsewhere
-    # in the toolchain, hence abort execution if so.
-    if os.name != 'nt' and '\r\n' in content:
-      raise Exception('Windows newlines \\r\\n detected in symbols file "' + path + '"! This could happen for example when copying Emscripten checkout from Windows to Linux or macOS. Please use Unix line endings on checkouts of Emscripten on Linux and macOS!')
-
-    return building.parse_symbols(content).defs
-
-
 def get_wasm_libc_rt_files():
   # Static linking is tricky with LLVM, since e.g. memset might not be used
   # from libc, but be used as an intrinsic, and codegen will generate a libc
@@ -239,10 +223,6 @@ class Library(object):
   # This should only be overridden in a concrete library class, e.g. libc,
   # and left as None in an abstract library class, e.g. MTLibrary.
   name = None
-
-  # A set of symbols that this library exports. This will be set with a set
-  # returned by `read_symbols`.
-  symbols = set()
 
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
