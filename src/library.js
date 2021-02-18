@@ -2072,21 +2072,7 @@ LibraryManager.library = {
   },
 #endif
 
-  // ==========================================================================
-  // arpa/inet.h
-  // ==========================================================================
-
 #if PROXY_POSIX_SOCKETS == 0
-  // old ipv4 only functions
-  inet_addr__deps: ['_inet_pton4_raw'],
-  inet_addr: function(ptr) {
-    var addr = __inet_pton4_raw(UTF8ToString(ptr));
-    if (addr === null) {
-      return -1;
-    }
-    return addr;
-  },
-
   // ==========================================================================
   // netdb.h
   // ==========================================================================

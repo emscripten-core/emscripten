@@ -22,6 +22,7 @@ from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
 logger = logging.getLogger('system_libs')
 
+# Files that are part of libsockets.a and so should be excluded from libc.a
 LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
                 'listen.c', 'accept.c', 'getsockname.c', 'getpeername.c', 'send.c',
                 'recv.c', 'sendto.c', 'recvfrom.c', 'sendmsg.c', 'recvmsg.c',
@@ -655,7 +656,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # individual files
     ignore += [
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
-        'inet_addr.c', 'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
+        'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
         'alarm.c', 'syscall.c', '_exit.c', 'popen.c',
@@ -815,14 +816,13 @@ class libsockets(MuslInternalLibrary, MTLibrary):
     return [os.path.join(network_dir, x) for x in LIBC_SOCKETS]
 
 
-class libsockets_proxy(MuslInternalLibrary, MTLibrary):
+class libsockets_proxy(MTLibrary):
   name = 'libsockets_proxy'
 
   cflags = ['-Os']
 
   def get_files(self):
-    return [shared.path_from_root('system', 'lib', 'websocket', 'websocket_to_posix_socket.cpp'),
-            shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'network', 'inet_addr.c')]
+    return [shared.path_from_root('system', 'lib', 'websocket', 'websocket_to_posix_socket.cpp')]
 
 
 class crt1(MuslInternalLibrary):
