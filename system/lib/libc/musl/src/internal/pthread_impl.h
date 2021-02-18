@@ -215,16 +215,15 @@ static inline void __futexwait(volatile void *addr, int val, int priv)
 {
 #ifdef __EMSCRIPTEN__
 	(void)priv;
-	const int is_main_thread = emscripten_is_main_browser_thread();
-	if (is_main_thread) {
+	const int is_runtime_thread = emscripten_is_main_runtime_thread();
+	if (is_runtime_thread) {
 		int e;
 		do {
-			// Main thread waits in _very_ small slices so that it stays responsive to assist proxied
-			// pthread calls.
+			// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
 			e = emscripten_futex_wait(addr, val, 1);
 			// Assist other threads by executing proxied operations that are effectively singlethreaded.
 			emscripten_main_thread_process_queued_calls();
-		} while(e == -ETIMEDOUT);
+		} while (e == -ETIMEDOUT);
 	} else {
 		// Can wait in one go.
 		emscripten_futex_wait(addr, val, INFINITY);

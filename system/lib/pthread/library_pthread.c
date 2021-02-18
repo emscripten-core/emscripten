@@ -106,33 +106,29 @@ void emscripten_thread_sleep(double msecs) {
   double now = emscripten_get_now();
   double target = now + msecs;
 
-  __pthread_testcancel(); // pthreads spec: sleep is a cancellation point, so must test if this
-                          // thread is cancelled during the sleep.
-  emscripten_current_thread_process_queued_calls();
-
   // If we have less than this many msecs left to wait, busy spin that instead.
-  const double minimumTimeSliceToSleep = 0.1;
+  const double minTimeSliceToSleep = 0.1;
 
-  // main thread may need to run proxied calls, so sleep in very small slices to be responsive.
+  // Main browser thread may need to run proxied calls, so sleep in very small slices to be responsive.
   const double maxMsecsSliceToSleep = emscripten_is_main_browser_thread() ? 1 : 100;
 
   emscripten_conditional_set_current_thread_status(
     EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_SLEEPING);
-  now = emscripten_get_now();
-  while (now < target) {
+
+  double msecsToSleep;
+  do {
     // Keep processing the main loop of the calling thread.
     __pthread_testcancel(); // pthreads spec: sleep is a cancellation point, so must test if this
                             // thread is cancelled during the sleep.
     emscripten_current_thread_process_queued_calls();
 
-    now = emscripten_get_now();
-    double msecsToSleep = target - now;
-    if (msecsToSleep > maxMsecsSliceToSleep)
-      msecsToSleep = maxMsecsSliceToSleep;
-    if (msecsToSleep >= minimumTimeSliceToSleep)
-      emscripten_futex_wait(&dummyZeroAddress, 0, msecsToSleep);
-    now = emscripten_get_now();
-  };
+    msecsToSleep = target - emscripten_get_now();
+    if (msecsToSleep < minTimeSliceToSleep)
+      continue;
+
+    emscripten_futex_wait(&dummyZeroAddress, 0,
+      msecsToSleep > maxMsecsSliceToSleep ? maxMsecsSliceToSleep : msecsToSleep);
+  } while (msecsToSleep > 0);
 
   emscripten_conditional_set_current_thread_status(
     EM_THREAD_STATUS_SLEEPING, EM_THREAD_STATUS_RUNNING);
@@ -384,25 +380,24 @@ static CallQueue* GetOrAllocateQueue(void* target) {
   return q;
 }
 
+// TODO(kleisauke): All paths call this with timeoutMSecs == INFINITY, perhaps drop this param?
 EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeoutMSecs) {
-  int r;
-
   int done = atomic_load(&call->operationDone);
-  if (!done) {
-    double now = emscripten_get_now();
-    double waitEndTime = now + timeoutMSecs;
-    emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
-    while (!done && now < waitEndTime) {
-      r = emscripten_futex_wait(&call->operationDone, 0, waitEndTime - now);
-      done = atomic_load(&call->operationDone);
-      now = emscripten_get_now();
-    }
-    emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
-  }
-  if (done)
-    return EMSCRIPTEN_RESULT_SUCCESS;
-  else
-    return EMSCRIPTEN_RESULT_TIMED_OUT;
+  if (done) return EMSCRIPTEN_RESULT_SUCCESS;
+
+  emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
+
+  double timeoutUntilTime = emscripten_get_now() + timeoutMSecs;
+  do {
+    emscripten_futex_wait(&call->operationDone, 0, timeoutMSecs);
+    done = atomic_load(&call->operationDone);
+
+    timeoutMSecs = timeoutUntilTime - emscripten_get_now();
+  } while (!done && timeoutMSecs > 0);
+
+  emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
+
+  return done ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_TIMED_OUT;
 }
 
 EMSCRIPTEN_RESULT emscripten_wait_for_call_i(
@@ -463,7 +458,7 @@ int _emscripten_do_dispatch_to_thread(pthread_t target_thread, em_queued_call* c
     // If queue of the main browser thread is full, then we wait. (never drop messages for the main
     // browser thread)
     if (target_thread == emscripten_main_browser_thread_id()) {
-      emscripten_futex_wait((void*)&q->call_queue_head, head, INFINITY);
+      emscripten_futex_wait((void *)&q->call_queue_head, head, INFINITY);
       pthread_mutex_lock(&call_queue_lock);
       head = q->call_queue_head;
       tail = q->call_queue_tail;
@@ -665,7 +660,7 @@ void emscripten_current_thread_process_queued_calls() {
   pthread_mutex_unlock(&call_queue_lock);
 
   // If the queue was full and we had waiters pending to get to put data to queue, wake them up.
-  emscripten_futex_wake((void*)&q->call_queue_head, 0x7FFFFFFF);
+  emscripten_futex_wake((void *)&q->call_queue_head, INT_MAX);
 
   thread_is_processing_queued_calls = false;
 }

@@ -56,16 +56,16 @@ int __timedwait_cp(volatile int *addr, int val,
 	}
 #ifdef __EMSCRIPTEN__
 	pthread_t self = __pthread_self();
-	double msecsToSleep = top ? (top->tv_sec * 1000 + top->tv_nsec / 1000000.0) : INFINITY;
-	int is_main_thread = emscripten_is_main_browser_thread();
+	double msecsToSleep = top ? (top->tv_sec * 1000.0 + top->tv_nsec / 1000000.0) : INFINITY;
+	const int is_runtime_thread = emscripten_is_main_runtime_thread();
 
-	// Main browser thread may need to run proxied calls, so sleep in very small slices to be responsive.
-	const double maxMsecsSliceToSleep = is_main_thread ? 1 : 100;
+	// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
+	const double maxMsecsToSleep = is_runtime_thread ? 1 : 100;
 
 	// cp suffix in the function name means "cancellation point", so this wait can be cancelled
 	// by the users unless current threads cancellability is set to PTHREAD_CANCEL_DISABLE
 	// which may be either done by the user of __timedwait() function.
-	if (is_main_thread || self->canceldisable != PTHREAD_CANCEL_DISABLE || self->cancelasync) {
+	if (is_runtime_thread || self->canceldisable != PTHREAD_CANCEL_DISABLE || self->cancelasync) {
 		double sleepUntilTime = emscripten_get_now() + msecsToSleep;
 		do {
 			if (self->cancel) {
@@ -74,18 +74,13 @@ int __timedwait_cp(volatile int *addr, int val,
 				// cancel execution.
 				return ECANCELED;
 			}
-			// Assist other threads by executing proxied operations that are effectively singlethreaded.
-			if (is_main_thread) emscripten_main_thread_process_queued_calls();
 			// Must wait in slices in case this thread is cancelled in between.
-			double waitMsecs = sleepUntilTime - emscripten_get_now();
-			if (waitMsecs <= 0) {
-				r = ETIMEDOUT;
-				break;
-			}
-			if (waitMsecs > maxMsecsSliceToSleep)
-				waitMsecs = maxMsecsSliceToSleep;
-			r = -emscripten_futex_wait(addr, val, waitMsecs);
-		} while(r == ETIMEDOUT);
+			r = -emscripten_futex_wait(addr, val, msecsToSleep > maxMsecsToSleep ? maxMsecsToSleep : msecsToSleep);
+			// Assist other threads by executing proxied operations that are effectively singlethreaded.
+			if (is_runtime_thread) emscripten_main_thread_process_queued_calls();
+
+			msecsToSleep = sleepUntilTime - emscripten_get_now();
+		} while (r == ETIMEDOUT && msecsToSleep > 0);
 	} else {
 		// Can wait in one go.
 		r = -emscripten_futex_wait(addr, val, msecsToSleep);
