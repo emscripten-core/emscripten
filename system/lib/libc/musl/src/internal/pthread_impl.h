@@ -235,7 +235,18 @@ static inline void __wake(volatile void *addr, int cnt, int priv)
 static inline void __futexwait(volatile void *addr, int val, int priv)
 {
 #ifdef __EMSCRIPTEN__
-	__wait(addr, NULL, val, priv);
+	(void)priv;
+	const int is_runtime_thread = emscripten_is_main_runtime_thread();
+	if (is_runtime_thread) {
+		int e;
+		do {
+			// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
+			e = emscripten_futex_wait(addr, val, 1);
+		} while (e == -ETIMEDOUT);
+	} else {
+		// Can wait in one go.
+		emscripten_futex_wait(addr, val, INFINITY);
+	}
 #else
 	if (priv) priv = FUTEX_PRIVATE;
 	__syscall(SYS_futex, addr, FUTEX_WAIT|priv, val, 0) != -ENOSYS ||
