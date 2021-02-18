@@ -45,20 +45,20 @@
 // We use <::> to separate the arguments from the function body because it isn't
 // valid anywhere in a C function declaration.
 
-// Generated __em_js__-prefixed functions are read by either the JSBackend (for
-// asm.js) or by Binaryen, and the string data is extracted into the Emscripten
-// metadata dictionary under the "emJsFuncs" key. emJsFuncs itself is a
-// dictionary where the keys are function names (not prefixed with __em_js__),
-// and the values are the <::>-including description strings.
+// Generated __em_js__-prefixed functions are read by binaryen, and the string
+// data is extracted into the Emscripten metadata dictionary under the
+// "emJsFuncs" key. emJsFuncs itself is a dictionary where the keys are function
+// names (not prefixed with __em_js__), and the values are the <::>-including
+// description strings.
 
 // emJsFuncs metadata is read in emscripten.py's create_em_js, which creates an
 // array of JS function strings to be included in the JS output.
 
-#define EM_JS(ret, name, params, ...)          \
-  _EM_JS_CPP_BEGIN                             \
-  extern ret name params EM_IMPORT(name);      \
-  __attribute__((used, visibility("default"))) \
-  const char* __em_js__##name() {              \
-    return #params "<::>" #__VA_ARGS__;        \
-  }                                            \
+#define EM_JS(ret, name, params, ...)                                                              \
+  _EM_JS_CPP_BEGIN                                                                                 \
+  extern ret name params EM_IMPORT(name);                                                          \
+  __attribute__((used, visibility("default"))) const char* __em_js__##name() {                     \
+    __attribute__((section("em_js"), aligned(1))) static const char s[] = #params "<::>" #__VA_ARGS__;          \
+    return s;                                                                                      \
+  }                                                                                                \
   _EM_JS_CPP_END
