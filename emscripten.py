@@ -138,12 +138,11 @@ def update_settings_glue(metadata, DEBUG):
   # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
   shared.Settings.MODULE_EXPORTS = [(asmjs_mangle(f), f) for f in metadata['exports']]
 
-  if shared.Settings.STACK_OVERFLOW_CHECK:
-    if 'emscripten_stack_get_end' not in metadata['exports']:
-      logger.warning('STACK_OVERFLOW_CHECK disabled because emscripten stack helpers not exported')
-      shared.Settings.STACK_OVERFLOW_CHECK = 0
-    else:
-      shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+  if shared.Settings.STACK_OVERFLOW_CHECK and not shared.Settings.SIDE_MODULE:
+    shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+    # writeStackCookie and checkStackCookie both rely on emscripten_stack_get_end being
+    # exported.  In theory it should always be present since its defined in compiler-rt.
+    assert 'emscripten_stack_get_end' in metadata['exports']
 
 
 def apply_static_code_hooks(forwarded_json, code):
