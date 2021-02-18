@@ -795,6 +795,26 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     return libc_files
 
 
+class side_module(MTLibrary):
+  name = 'side_module'
+
+  # Without -fno-builtin, LLVM can optimize away or convert calls to library
+  # functions to something else based on assumptions that they behave exactly
+  # like the standard library. This can cause unexpected bugs when we use our
+  # custom standard library. The same for other libc/libm builds.
+  cflags = ['-Os', '-fno-builtin']
+
+  def get_files(self):
+    side_module_files = []
+    if self.is_mt:
+      side_module_files += [
+        shared.path_from_root('system', 'lib', 'pthread', 'emscripten_tls_init.c'),
+        shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_exception_builtins.c'),
+      ]
+
+    return side_module_files
+
+
 class libprintf_long_double(libc):
   name = 'libprintf_long_double'
 
@@ -1407,6 +1427,13 @@ def calculate(input_files, cxx, forced):
     shared.Settings.REVERSE_DEPS = 'all'
 
   handle_reverse_deps(input_files)
+
+  # side modules only link per-module support code.
+  # libraries are linked in the main module only.
+  if shared.Settings.SIDE_MODULE:
+    system_libs_map = Library.get_usable_variations()
+    lib = system_libs_map['side_module']
+    return [lib.get_path()]
 
   libs_to_link = []
   already_included = set()
