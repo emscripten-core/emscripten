@@ -3780,6 +3780,28 @@ LibraryManager.library = {
       }
     }
   },
+
+  // Callable in pthread without __proxy needed.
+  emscripten_exit_with_live_runtime: function() {
+#if !MINIMAL_RUNTIME
+    noExitRuntime = true;
+#endif
+    throw 'unwind';
+  },
+
+  emscripten_force_exit__proxy: 'sync',
+  emscripten_force_exit__sig: 'vi',
+  emscripten_force_exit: function(status) {
+#if EXIT_RUNTIME == 0
+#if ASSERTIONS
+    warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
+#endif
+#endif
+#if !MINIMAL_RUNTIME
+    noExitRuntime = false;
+#endif
+    exit(status);
+  },
 };
 
 function autoAddDeps(object, name) {
