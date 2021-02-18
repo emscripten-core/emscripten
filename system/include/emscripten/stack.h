@@ -10,8 +10,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 
-// API that gives access to introspecting the Wasm data stack. Build with
-// -lstack.js to use this API.
+// API that gives access to introspecting the Wasm data stack.
 
 #ifdef __cplusplus
 extern "C" {

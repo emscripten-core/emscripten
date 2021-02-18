@@ -1356,7 +1356,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         link_to_object = True
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_end', '_emscripten_stack_get_free']
       if shared.Settings.RELOCATABLE:
         shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_set_limits']
