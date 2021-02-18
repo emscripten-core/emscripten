@@ -1849,6 +1849,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        sanitize:
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
+      # If not for LTO builds, we could handle these by adding deps_info.py
+      # entries for __cxa_find_matching_catch_* functions.  However, under
+      # LTO these symbols don't exist prior the linking.
+      shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_is_pointer_type', '___cxa_can_catch']
+
     if shared.Settings.ASYNCIFY:
       if not shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
         # if we are not ignoring indirect calls, then we must treat invoke_* as if

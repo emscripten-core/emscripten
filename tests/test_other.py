@@ -10027,6 +10027,8 @@ exec "$@"
         cmd.append('-sOFFSCREENCANVAS_SUPPORT')
       if function.startswith('wgpu'):
         cmd.append('-sUSE_WEBGPU')
+      if function.startswith('__cxa_'):
+        cmd.append('-sDISABLE_EXCEPTION_CATCHING=0')
       # Causes WebAssemblyLowerEmscriptenEHSjLj pass in llvm to crash
       if function == 'setjmp':
         continue
