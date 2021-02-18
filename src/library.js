@@ -3635,7 +3635,10 @@ LibraryManager.library = {
 
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow: function() {
-    abort('stack overflow')
+    // TODO(sbc): Improve this error message.   The old abortStackOverflow used
+    // by asm.js used to do a better job:
+    // abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (_emscripten_stack_get_free() + allocSize) + ' bytes available!');
+    abort('stack overflow');
   },
 
   $getExecutableName: function() {
