@@ -8,8 +8,8 @@ C++ exceptions support can be enabled in emscripten using ``-fexceptions``.
 Note that unlike on most platforms, C++ exceptions are disabled by default due
 to their current overhead, see later.
 
-Passing ``-fexceptions`` during compilation will pass the relevant flags to
-clang, and during link it also links in system libraries with exceptions
+Passing ``-fexceptions`` at compile time will pass the relevant flags to
+clang, and at link time it also links in system libraries with exceptions
 support.
 
 Example
