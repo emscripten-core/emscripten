@@ -115,13 +115,18 @@ def create_lib(libname, inputs):
 
 
 def get_wasm_libc_rt_files():
-  # Static linking is tricky with LLVM, since e.g. memset might not be used
-  # from libc, but be used as an intrinsic, and codegen will generate a libc
-  # call from that intrinsic *after* static linking would have thought it is
-  # all in there. In asm.js this is not an issue as we do JS linking anyhow,
-  # and have asm.js-optimized versions of all the LLVM intrinsics. But for
-  # wasm, we need a better solution. For now, make another archive that gets
-  # included at the same time as compiler-rt.
+  # Combining static linking with LTO is tricky under LLVM.  The codegen that
+  # happens during LTO can generate references to new symbols that didn't exist
+  # in the linker inputs themselves.
+  # These symbols are called libcalls in LLVM and are the result of intrinsics
+  # and builtins at the LLVM level.  These libcalls cannot themselves be part
+  # of LTO because once the linker is running the LTO phase new bitcode objects
+  # cannot be added to link.  Another way of putting it: by the time LTO happens
+  # the decision about which bitcode symbols to compile has already been made.
+  # See: https://bugs.llvm.org/show_bug.cgi?id=44353.
+  # To solve this we put all such libcalls in a separate library that, like
+  # compiler-rt, is never compiled as LTO/bitcode (see force_object_files in
+  # CompilerRTLibrary).
   # Note that this also includes things that may be depended on by those
   # functions - fmin uses signbit, for example, so signbit must be here (so if
   # fmin is added by codegen, it will have all it needs).
