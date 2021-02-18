@@ -1219,7 +1219,7 @@ var LibraryGLFW = {
     }
     return GLFW.versionString;
   },
-
+  glfwSetErrorCallback__sig: 'ii',
   glfwSetErrorCallback: function(cbfun) {
     var prevcbfun = GLFW.errorFunc;
     GLFW.errorFunc = cbfun;
