@@ -10046,6 +10046,9 @@ exec "$@"
   def test_wasm_exception_handing(self):
     # building an object file is fine
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-fwasm-exceptions', '-c'])
+
     # TODO: test -O1 linking works, but libc++ cannot be built yet
+
+    # linking with -O2+ is not ok currently
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-fwasm-exceptions'])
     self.assertContained('wasm exception handling support is still experimental, and not supported in -O2+ yet', err)
