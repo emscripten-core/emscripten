@@ -285,7 +285,7 @@ void %(name)s() {
   refuel();
   try {
     %(name)s();
-  } catch(...) {
+  } catch (...) {
     puts("main caught from %(name)s");
   }
 ''' % locals()
@@ -347,7 +347,7 @@ void %(name)s() {
         def add_catch(ty):
           catch = indent(self.make_statements(cursor.get_array()))
           catches.append('''\
-} catch(%(ty)s) {
+} catch (%(ty)s) {
 %(catch)s
 ''' % locals())
 
@@ -425,9 +425,28 @@ def check_testcase(data, silent=True):
 
     # Compile with emcc, looking for a compilation error.
     # TODO: also compile b.cpp, and remove -c so that we test linking.
-    result = subprocess.run(['./em++', 'a.cpp', '-sWASM_BIGINT', '-c',
-                             '-fwasm-exceptions'],
+    result = subprocess.run(['./em++', 'a.cpp', 'b.cpp', '-sWASM_BIGINT',
+                             '-fwasm-exceptions', '-O1', '-o', 'a.out.js'],
                             stderr=subprocess.PIPE, text=True)
+
+    if not silent:
+        print(result.stderr)
+
+    if result.returncode != 0:
+        # Ignore things already found and reduced
+        if 'Delegate destination should be in scope' in result.stderr:
+            # https://github.com/emscripten-core/emscripten/issues/13514
+            return True
+        if 'Branch destination should be in scope' in result.stderr:
+            # https://github.com/emscripten-core/emscripten/issues/13515
+            return True
+
+        return False
+
+    result = subprocess.run(['/home/azakai/Dev/binaryen/bin/wasm-opt',
+                             'a.out.wasm', '-o', 'b.out.wasm', '-O1'],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True)
 
     if not silent:
         print(result.stderr)
@@ -435,15 +454,6 @@ def check_testcase(data, silent=True):
     if result.returncode == 0:
         return True
 
-    # Optionally look for something more specific / ignore some things:
-    if 'Delegate destination should be in scope' in result.stderr:
-        return True
-    if 'Branch destination should be in scope' in result.stderr:
-        return False
-    return True
-    if 'data symbols must have a size set with .size' in result.stderr:
-        return True
-    # Assertion !empty()
     return False
 
 
