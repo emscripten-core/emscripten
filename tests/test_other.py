@@ -10051,4 +10051,4 @@ exec "$@"
 
     # linking with -O2+ is not ok currently
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-fwasm-exceptions'])
-    self.assertContained('wasm exception handling support is still experimental, and not supported in -O2+ yet', err)
+    self.assertContained('wasm exception handling support is still experimental, and linking is not supported in -O2+ yet', err)
