@@ -22,7 +22,9 @@ int main(int argc, char* argv[]) {
   char buf[1024];
   ssize_t s = readlink("/proc/self/fd/0", buf, 1024);
   assert(s > 0);
-  printf("fd0: %s\n", buf);
+  // readlink does *not* append a null, so print out just the correct number of
+  // characters.
+  printf("fd0: %.8s\n", buf);
 
   printf("done\n");
   return 0;
