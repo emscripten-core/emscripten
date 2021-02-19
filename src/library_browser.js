@@ -1354,24 +1354,6 @@ var LibraryBrowser = {
     }
   },
 
-  // Callable in pthread without __proxy needed.
-  emscripten_exit_with_live_runtime: function() {
-    noExitRuntime = true;
-    throw 'unwind';
-  },
-
-  emscripten_force_exit__proxy: 'sync',
-  emscripten_force_exit__sig: 'vi',
-  emscripten_force_exit: function(status) {
-#if EXIT_RUNTIME == 0
-#if ASSERTIONS
-    warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
-#endif
-#endif
-    noExitRuntime = false;
-    exit(status);
-  },
-
   emscripten_get_window_title__proxy: 'sync',
   emscripten_get_window_title__sig: 'iv',
   emscripten_get_window_title: function() {
