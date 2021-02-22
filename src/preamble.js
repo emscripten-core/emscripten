@@ -20,7 +20,7 @@ out = err = function(){};
 #endif
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
-{{{ makeModuleReceiveWithVar('noExitRuntime') }}}
+{{{ makeModuleReceiveWithVar('noExitRuntime', undefined, EXIT_RUNTIME ? 'false' : 'true') }}}
 
 #if WASM != 2 && MAYBE_WASM2JS
 #if !WASM2JS
@@ -1120,6 +1120,24 @@ function createWasm() {
       var exports = Module['instantiateWasm'](info, receiveInstance);
 #if ASYNCIFY
       exports = Asyncify.instrumentWasmExports(exports);
+#endif
+#if USE_OFFSET_CONVERTER
+      {{{
+        runOnMainThread(`
+          // We have no way to create an OffsetConverter in this code path since
+          // we have no access to the wasm binary (only the user does). Instead,
+          // create a fake one that reports we cannot identify functions from
+          // their binary offsets.
+          // Note that we only do this on the main thread, as the workers
+          // receive the OffsetConverter data from there.
+          wasmOffsetConverter = {
+            getName: function() {
+              return 'unknown-due-to-instantiateWasm';
+            }
+          };
+          removeRunDependency('offset-converter');
+        `)
+      }}}
 #endif
       return exports;
     } catch(e) {

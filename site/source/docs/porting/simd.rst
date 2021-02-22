@@ -497,10 +497,14 @@ The following table highlights the availability and expected performance of diff
      - 🟡 wasm_v128_load. VM must guess type.
    * - _mm_loadu_si128
      - 🟡 wasm_v128_load. VM must guess type.
+   * - _mm_loadu_si64
+     - ❌ emulated with const+scalar load+replace lane
    * - _mm_loadu_si32
-     - ❌ emulated with wasm_i32x4_make
+     - ❌ emulated with const+scalar load+replace lane
+   * - _mm_loadu_si16
+     - ❌ emulated with const+scalar load+replace lane
    * - _mm_madd_epi16
-     - ❌ scalarized
+     - ✅ wasm_dot_s_i32x4_i16x8
    * - _mm_maskmoveu_si128
      - ❌ scalarized
    * - _mm_max_epi16
@@ -659,8 +663,12 @@ The following table highlights the availability and expected performance of diff
      - 🟡 wasm_v128_store. VM must guess type.
    * - _mm_storeu_si128
      - 🟡 wasm_v128_store. VM must guess type.
+   * - _mm_storeu_si64
+     - 💡 emulated with extract lane+scalar store
    * - _mm_storeu_si32
-     - 💡 emulated with scalar store
+     - 💡 emulated with extract lane+scalar store
+   * - _mm_storeu_si16
+     - 💡 emulated with extract lane+scalar store
    * - _mm_stream_pd
      - 🟡 wasm_v128_store. VM must guess type. :raw-html:`<br />` No cache control in Wasm SIMD.
    * - _mm_stream_si128

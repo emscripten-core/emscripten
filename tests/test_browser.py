@@ -2415,7 +2415,11 @@ void *getBindBuffer() {
     self.compile_btest([path_from_root('tests', 'browser_module.cpp'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE', '-s', 'EXPORTED_FUNCTIONS=[_one,_two]'])
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE'], expected='8')
 
-  def test_preload_module(self):
+  @parameterized({
+    'non-lz4': ([],),
+    'lz4': (['-s', 'LZ4'],)
+  })
+  def test_preload_module(self, args):
     create_test_file('library.c', r'''
       #include <stdio.h>
       int library_func() {
@@ -2449,7 +2453,7 @@ void *getBindBuffer() {
     ''')
     self.btest_exit(
       'main.c',
-      args=['-s', 'MAIN_MODULE', '--preload-file', '.@/', '-O2', '--use-preload-plugins', '-s', 'EXPORT_ALL'],
+      args=['-s', 'MAIN_MODULE', '--preload-file', '.@/', '-O2', '--use-preload-plugins', '-s', 'EXPORT_ALL'] + args,
       expected='0')
 
   def test_mmap_file(self):
@@ -2463,7 +2467,7 @@ void *getBindBuffer() {
     self.btest('hello_world_gles.c', expected='0', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '-O2', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'])
 
   def test_uuid(self):
-    # Run with ./runner.py browser.test_uuid
+    # Run with ./runner browser.test_uuid
     # We run this test in Node/SPIDERMONKEY and browser environments because we try to make use of
     # high quality crypto random number generators such as crypto.getRandomValues or randomBytes (if available).
 
@@ -3767,6 +3771,11 @@ window.close = function() {
   def test_pthread_cancel(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
+  # Test that pthread_cancel() cancels pthread_cond_wait() operation
+  @requires_threads
+  def test_pthread_cancel_cond_wait(self):
+    self.btest_exit(path_from_root('tests', 'pthread', 'test_pthread_cancel_cond_wait.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
   # Test pthread_kill() operation
   @no_chrome('pthread_kill hangs chrome renderer, and keep subsequent tests from passing')
   @requires_threads
@@ -4155,8 +4164,12 @@ window.close = function() {
     self.btest_exit('binaryen_async.c', expected=1, args=common_args)
 
   # Test that implementing Module.instantiateWasm() callback works.
-  def test_manual_wasm_instantiate(self):
-    self.compile_btest([path_from_root('tests/manual_wasm_instantiate.cpp'), '-o', 'manual_wasm_instantiate.js', '-s', 'BINARYEN'])
+  @parameterized({
+    '': ([],),
+    'asan': (['-fsanitize=address', '-s', 'INITIAL_MEMORY=128MB'],)
+  })
+  def test_manual_wasm_instantiate(self, args=[]):
+    self.compile_btest([path_from_root('tests/manual_wasm_instantiate.cpp'), '-o', 'manual_wasm_instantiate.js'] + args)
     shutil.copyfile(path_from_root('tests', 'manual_wasm_instantiate.html'), 'manual_wasm_instantiate.html')
     self.run_browser('manual_wasm_instantiate.html', 'wasm instantiation succeeded', '/report_result?1')
 
@@ -4927,7 +4940,7 @@ window.close = function() {
                args=['-s', 'AUTO_JS_LIBRARIES=0', '-lwebgl.js', '--js-library', path_from_root('tests', 'test_override_system_js_lib_symbol.js')])
 
   @no_firefox('no 4GB support yet')
-  def test_zzz_zzz_4GB(self):
+  def test_zzz_zzz_4gb(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
     #      means we don't compete for memory with anything else (and run it
@@ -4939,8 +4952,29 @@ window.close = function() {
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB']
     self.do_run_in_out_file_test('tests', 'browser', 'test_4GB.cpp', js_engines=[config.V8_ENGINE])
 
+  # Tests that emmalloc supports up to 4GB Wasm heaps.
   @no_firefox('no 4GB support yet')
-  def test_zzz_zzz_2GB_fail(self):
+  def test_zzz_zzz_emmalloc_4gb(self):
+    self.btest(path_from_root('tests', 'mem_growth.cpp'),
+               expected='-65536', # == 4*1024*1024*1024 - 65536 casted to signed
+               args=['-s', 'MALLOC=emmalloc', '-s', 'ABORTING_MALLOC=0', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=4GB'])
+
+  # Test that it is possible to malloc() a huge 3GB memory block in 4GB mode using emmalloc.
+  # Also test emmalloc-memvalidate and emmalloc-memvalidate-verbose build configurations.
+  @no_firefox('no 4GB support yet')
+  def test_emmalloc_3GB(self):
+    def test(args):
+      self.btest(path_from_root('tests', 'alloc_3gb.cpp'),
+                 expected='0',
+                 args=['-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ALLOW_MEMORY_GROWTH=1'] + args)
+
+    test(['-s', 'MALLOC=emmalloc'])
+    test(['-s', 'MALLOC=emmalloc-debug'])
+    test(['-s', 'MALLOC=emmalloc-memvalidate'])
+    test(['-s', 'MALLOC=emmalloc-memvalidate-verbose'])
+
+  @no_firefox('no 4GB support yet')
+  def test_zzz_zzz_2gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
     #      means we don't compete for memory with anything else (and run it
@@ -4953,7 +4987,7 @@ window.close = function() {
     self.do_run_in_out_file_test('tests', 'browser', 'test_2GB_fail.cpp', js_engines=[config.V8_ENGINE])
 
   @no_firefox('no 4GB support yet')
-  def test_zzz_zzz_4GB_fail(self):
+  def test_zzz_zzz_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
     #      means we don't compete for memory with anything else (and run it

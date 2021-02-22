@@ -21,6 +21,18 @@ See docs/process.md for more on how version tagging works.
 Current Trunk
 -------------
 
+2.0.14: 02/14/2021
+------------------
+- Add new setting: `REVERSE_DEPS`. This can be used to control how emscripten
+  decides which reverse dependecies to include.  See `settings.js` for more
+  information.  The default setting ('auto') is the transitional way emscripten
+  has worked in the past so there should be no change unless this options is
+  actually used.  This option partially replaces the `EMCC_ONLY_FORCED_STDLIBS`
+  environment variable which (among other things) essentially had the effect of
+  setting `REVERSE_DEPS` to be 'all'.
+- Clang now performs loop unrolling when targeting WebAssembly at -O2 and
+  higher. It can be disabled using `-fno-unroll-loops`.
+
 2.0.13: 01/19/2021
 ------------------
 - Remove unused `Browser.safeSetInterval` and `Browser.safeCallback`.  These
@@ -32,6 +44,8 @@ Current Trunk
 - Emscripten now builds a complete sysroot inside the EM_CACHE directory.
   This includes the system headers which get copied into place there rather
   than adding a sequence of extra include directories.
+- Added support for -s MALLOC=emmalloc when -s MAXIMUM_MEMORY is more than 2GB.
+  (#13258)
 - Add back support for calling the legacy dynCall_sig() API to invoke function
   pointers to wasm functions from JavaScript. Pass -s DYNCALLS=1
   to include that functionality in the build. This fixes a regression that

@@ -118,12 +118,6 @@ def extract_archive_contents(archive_file):
   }
 
 
-# Due to a python pickling issue, the following two functions must be at top
-# level, or multiprocessing pool spawn won't find them.
-def g_llvm_nm_uncached(filename):
-  return llvm_nm_uncached(filename)
-
-
 def g_multiprocessing_initializer(*args):
   for item in args:
     (key, value) = item.split('=', 1)
@@ -158,10 +152,6 @@ def clear():
 
 
 def get_num_cores():
-  if DEBUG:
-    # When in EMCC_DEBUG mode, only use a single core to avoid interleaving
-    # logging output and keeps things more deterministic.
-    return 1
   return int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
 
 
@@ -368,20 +358,82 @@ def make_paths_absolute(f):
     return os.path.abspath(f)
 
 
-# Runs llvm-nm in parallel for the given list of files.
+# Runs llvm-nm for the given list of files.
 # The results are populated in nm_cache
-# multiprocessing_pool: An existing multiprocessing pool to reuse for the operation, or None
-# to have the function allocate its own.
-def parallel_llvm_nm(files):
-  with ToolchainProfiler.profile_block('parallel_llvm_nm'):
-    pool = get_multiprocessing_pool()
-    object_contents = pool.map(g_llvm_nm_uncached, files)
+def llvm_nm_multiple(files):
+  with ToolchainProfiler.profile_block('llvm_nm_multiple'):
+    if len(files) == 0:
+      return []
+    # Run llvm-nm on files that we haven't cached yet
+    llvm_nm_files = [f for f in files if f not in nm_cache]
 
-    for i, file in enumerate(files):
-      if object_contents[i].returncode != 0:
-        logger.debug('llvm-nm failed on file ' + file + ': return code ' + str(object_contents[i].returncode) + ', error: ' + object_contents[i].output)
-      nm_cache[file] = object_contents[i]
-    return object_contents
+    # We can issue multiple files in a single llvm-nm calls, but only if those
+    # files are all .o or .bc files. Because of llvm-nm output format, we cannot
+    # llvm-nm multiple .a files in one call, but those must be individually checked.
+    if len(llvm_nm_files) > 1:
+      llvm_nm_files = [f for f in files if f.endswith('.o') or f.endswith('.bc')]
+
+    if len(llvm_nm_files) > 0:
+      cmd = [LLVM_NM] + llvm_nm_files
+      results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
+
+      # If one or more of the input files cannot be processed, llvm-nm will return a non-zero error code, but it will still process and print
+      # out all the other files in order. So even if process return code is non zero, we should always look at what we got to stdout.
+      if results.returncode != 0:
+        logger.debug('Subcommand ' + ' '.join(cmd) + ' failed with return code ' + str(results.returncode) + '! (An input file was corrupt?)')
+
+      results = results.stdout
+
+      # llvm-nm produces a single listing of form
+      # file1.o:
+      # 00000001 T __original_main
+      #          U __stack_pointer
+      #
+      # file2.o:
+      # 0000005d T main
+      #          U printf
+      #
+      # ...
+      # so loop over the report to extract the results
+      # for each individual file.
+
+      filename = llvm_nm_files[0]
+
+      # When we dispatched more than one file, we must manually parse
+      # the file result delimiters (like shown structured above)
+      if len(llvm_nm_files) > 1:
+        file_start = 0
+        i = 0
+
+        while True:
+          nl = results.find('\n', i)
+          if nl < 0:
+            break
+          colon = results.rfind(':', i, nl)
+          if colon >= 0 and results[colon + 1] == '\n': # New file start?
+            nm_cache[filename] = parse_symbols(results[file_start:i - 1])
+            filename = results[i:colon].strip()
+            file_start = colon + 2
+          i = nl + 1
+
+        nm_cache[filename] = parse_symbols(results[file_start:])
+      else:
+        # We only dispatched a single file, we can just parse that directly
+        # to the output.
+        nm_cache[filename] = parse_symbols(results)
+
+    # Any .a files that have multiple .o files will have hard time parsing. Scan those
+    # sequentially to confirm. TODO: Move this to use run_multiple_processes()
+    # when available.
+    for f in files:
+      if f not in nm_cache:
+        nm_cache[f] = llvm_nm(f)
+
+  return [nm_cache[f] for f in files]
+
+
+def llvm_nm(file):
+  return llvm_nm_multiple([file])[0]
 
 
 def read_link_inputs(files):
@@ -421,7 +473,7 @@ def read_link_inputs(files):
 
     # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
     # The results are not used here directly, but populated to llvm-nm cache structure.
-    parallel_llvm_nm(object_names)
+    llvm_nm_multiple(object_names)
 
 
 def llvm_backend_args():
@@ -518,7 +570,11 @@ def lld_flags_for_executable(external_symbol_list):
       cmd.append('--growable-table')
 
   if not Settings.SIDE_MODULE:
+    # Export these two section start symbols so that we can extact the string
+    # data that they contain.
     cmd += [
+      '--export', '__start_em_asm',
+      '--export', '__stop_em_asm',
       '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
       '--initial-memory=%d' % Settings.INITIAL_MEMORY,
     ]
@@ -563,6 +619,11 @@ def link_lld(args, target, external_symbol_list=None):
   cmd = [WASM_LD, '-o', target] + args
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
+
+  # LLVM has turned on the new pass manager by default, but it causes some code
+  # size regressions. For now, use the legacy one.
+  # https://github.com/emscripten-core/emscripten/issues/13427
+  cmd += ['--lto-legacy-pass-manager']
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
@@ -751,34 +812,6 @@ def parse_symbols(output):
         #        so for now we assume all uppercase are normally defined external symbols
         defs.append(symbol)
   return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
-
-
-def llvm_nm_uncached(filename, stdout=PIPE, stderr=PIPE):
-  # LLVM binary ==> list of symbols
-  proc = run_process([LLVM_NM, filename], stdout=stdout, stderr=stderr, check=False)
-  if proc.returncode == 0:
-    return parse_symbols(proc.stdout)
-  else:
-    return ObjectFileInfo(proc.returncode, str(proc.stdout) + str(proc.stderr))
-
-
-def llvm_nm(filename, stdout=PIPE, stderr=PIPE):
-  # Always use absolute paths to maximize cache usage
-  filename = os.path.abspath(filename)
-
-  if filename in nm_cache:
-    return nm_cache[filename]
-
-  ret = llvm_nm_uncached(filename, stdout, stderr)
-
-  if ret.returncode != 0:
-    logger.debug('llvm-nm failed on file ' + filename + ': return code ' + str(ret.returncode) + ', error: ' + ret.output)
-
-  # Even if we fail, write the results to the NM cache so that we don't keep trying to llvm-nm the
-  # failing file again later.
-  nm_cache[filename] = ret
-
-  return ret
 
 
 def emcc(filename, args=[], output_filename=None, stdout=None, stderr=None, env=None):

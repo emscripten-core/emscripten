@@ -10,6 +10,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tarfile
 import zipfile
@@ -17,13 +18,12 @@ from glob import iglob
 
 from . import shared, building, ports, config, utils
 from . import deps_info, tempfiles
+from . import diagnostics
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
-
-stdout = None
-stderr = None
 
 logger = logging.getLogger('system_libs')
 
+# Files that are part of libsockets.a and so should be excluded from libc.a
 LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
                 'listen.c', 'accept.c', 'getsockname.c', 'getpeername.c', 'send.c',
                 'recv.c', 'sendto.c', 'recvfrom.c', 'sendmsg.c', 'recvmsg.c',
@@ -79,7 +79,11 @@ def run_one_command(cmd):
       del safe_env[opt]
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd.append('-Wno-deprecated')
-  shared.run_process(cmd, stdout=stdout, stderr=stderr, env=safe_env)
+  try:
+    shared.run_process(cmd, env=safe_env)
+  except subprocess.CalledProcessError as e:
+    print("'%s' failed (%d)" % (shared.shlex_join(e.cmd), e.returncode))
+    raise
 
 
 def run_build_commands(commands):
@@ -88,7 +92,7 @@ def run_build_commands(commands):
   # to setup the sysroot itself.
   ensure_sysroot()
   cores = min(len(commands), building.get_num_cores())
-  if cores <= 1:
+  if cores <= 1 or shared.DEBUG:
     for command in commands:
       run_one_command(command)
   else:
@@ -115,30 +119,19 @@ def create_lib(libname, inputs):
     raise Exception('unknown suffix ' + libname)
 
 
-def read_symbols(path):
-  with open(path) as f:
-    content = f.read()
-
-    # Require that Windows newlines should not be present in a symbols file, if running on Linux or macOS
-    # This kind of mismatch can occur if one copies a zip file of Emscripten cloned on Windows over to
-    # a Linux or macOS system. It will result in Emscripten linker getting confused on stray \r characters,
-    # and be unable to link any library symbols properly. We could harden against this by .strip()ping the
-    # opened files, but it is possible that the mismatching line endings can cause random problems elsewhere
-    # in the toolchain, hence abort execution if so.
-    if os.name != 'nt' and '\r\n' in content:
-      raise Exception('Windows newlines \\r\\n detected in symbols file "' + path + '"! This could happen for example when copying Emscripten checkout from Windows to Linux or macOS. Please use Unix line endings on checkouts of Emscripten on Linux and macOS!')
-
-    return building.parse_symbols(content).defs
-
-
 def get_wasm_libc_rt_files():
-  # Static linking is tricky with LLVM, since e.g. memset might not be used
-  # from libc, but be used as an intrinsic, and codegen will generate a libc
-  # call from that intrinsic *after* static linking would have thought it is
-  # all in there. In asm.js this is not an issue as we do JS linking anyhow,
-  # and have asm.js-optimized versions of all the LLVM intrinsics. But for
-  # wasm, we need a better solution. For now, make another archive that gets
-  # included at the same time as compiler-rt.
+  # Combining static linking with LTO is tricky under LLVM.  The codegen that
+  # happens during LTO can generate references to new symbols that didn't exist
+  # in the linker inputs themselves.
+  # These symbols are called libcalls in LLVM and are the result of intrinsics
+  # and builtins at the LLVM level.  These libcalls cannot themselves be part
+  # of LTO because once the linker is running the LTO phase new bitcode objects
+  # cannot be added to link.  Another way of putting it: by the time LTO happens
+  # the decision about which bitcode symbols to compile has already been made.
+  # See: https://bugs.llvm.org/show_bug.cgi?id=44353.
+  # To solve this we put all such libcalls in a separate library that, like
+  # compiler-rt, is never compiled as LTO/bitcode (see force_object_files in
+  # CompilerRTLibrary).
   # Note that this also includes things that may be depended on by those
   # functions - fmin uses signbit, for example, so signbit must be here (so if
   # fmin is added by codegen, it will have all it needs).
@@ -242,16 +235,16 @@ class Library(object):
   # and left as None in an abstract library class, e.g. MTLibrary.
   name = None
 
-  # A set of symbols that this library exports. This will be set with a set
-  # returned by `read_symbols`.
-  symbols = set()
-
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
 
   # A list of flags to pass to emcc.
   # The flags for the parent class is automatically inherited.
-  cflags = ['-Werror']
+  # TODO: Investigate whether perf gains from loop unrolling would be worth the
+  # extra code size. The -fno-unroll-loops flags was added here when loop
+  # unrolling landed upstream in LLVM to avoid changing behavior but was not
+  # specifically evaluated.
+  cflags = ['-Werror', '-fno-unroll-loops']
 
   # A list of directories to put in the include path when building.
   # This is a list of tuples of path components.
@@ -575,9 +568,9 @@ class NoExceptLibrary(Library):
   @classmethod
   def variations(cls, **kwargs):
     combos = super(NoExceptLibrary, cls).variations()
+    # TODO Reenable 'wasm' option after the new EH implementation is stabilized
     return ([dict(eh_mode=exceptions.none, **combo) for combo in combos] +
-            [dict(eh_mode=exceptions.emscripten, **combo) for combo in combos] +
-            [dict(eh_mode=exceptions.wasm, **combo) for combo in combos])
+            [dict(eh_mode=exceptions.emscripten, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -673,7 +666,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # individual files
     ignore += [
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
-        'inet_addr.c', 'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
+        'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
         'alarm.c', 'syscall.c', '_exit.c', 'popen.c',
@@ -706,18 +699,14 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     ignore = set(ignore)
     # TODO: consider using more math code from musl, doing so makes box2d faster
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
+      # Don't recurse into ingored directories
+      remove = [d for d in dirnames if d in ignore]
+      for r in remove:
+        dirnames.remove(r)
+
       for f in filenames:
-        if f.endswith('.c'):
-          if f in ignore:
-            continue
-          dir_parts = os.path.split(dirpath)
-          cancel = False
-          for part in dir_parts:
-            if part in ignore:
-              cancel = True
-              break
-          if not cancel:
-            libc_files.append(os.path.join(musl_srcdir, dirpath, f))
+        if f.endswith('.c') and f not in ignore:
+          libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
     # Allowed files from ignored modules
     libc_files += files_in_path(
@@ -833,14 +822,13 @@ class libsockets(MuslInternalLibrary, MTLibrary):
     return [os.path.join(network_dir, x) for x in LIBC_SOCKETS]
 
 
-class libsockets_proxy(MuslInternalLibrary, MTLibrary):
+class libsockets_proxy(MTLibrary):
   name = 'libsockets_proxy'
 
   cflags = ['-Os']
 
   def get_files(self):
-    return [shared.path_from_root('system', 'lib', 'websocket', 'websocket_to_posix_socket.cpp'),
-            shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'network', 'inet_addr.c')]
+    return [shared.path_from_root('system', 'lib', 'websocket', 'websocket_to_posix_socket.cpp')]
 
 
 class crt1(MuslInternalLibrary):
@@ -973,36 +961,39 @@ class libmalloc(MTLibrary):
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
-    if self.malloc not in ('dlmalloc', 'emmalloc', 'none'):
-      raise Exception('malloc must be one of "emmalloc", "dlmalloc" or "none", see settings.js')
+    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'none'):
+      raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
 
-    self.is_debug = kwargs.pop('is_debug')
     self.use_errno = kwargs.pop('use_errno')
     self.is_tracing = kwargs.pop('is_tracing')
-    self.use_64bit_ops = kwargs.pop('use_64bit_ops')
+    self.memvalidate = kwargs.pop('memvalidate')
+    self.verbose = kwargs.pop('verbose')
+    self.is_debug = kwargs.pop('is_debug') or self.memvalidate or self.verbose
 
     super(libmalloc, self).__init__(**kwargs)
 
   def get_files(self):
+    malloc_base = self.malloc.replace('-memvalidate', '').replace('-verbose', '').replace('-debug', '')
     malloc = shared.path_from_root('system', 'lib', {
-      'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp'
-    }[self.malloc])
+      'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp',
+    }[malloc_base])
     sbrk = shared.path_from_root('system', 'lib', 'sbrk.c')
     return [malloc, sbrk]
 
   def get_cflags(self):
     cflags = super(libmalloc, self).get_cflags()
+    if self.memvalidate:
+      cflags += ['-DEMMALLOC_MEMVALIDATE']
+    if self.verbose:
+      cflags += ['-DEMMALLOC_VERBOSE']
     if self.is_debug:
       cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG']
-      # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
     else:
       cflags += ['-DNDEBUG']
     if not self.use_errno:
       cflags += ['-DMALLOC_FAILURE_ACTION=', '-DEMSCRIPTEN_NO_ERRNO']
     if self.is_tracing:
       cflags += ['--tracing']
-    if self.use_64bit_ops:
-      cflags += ['-DEMMALLOC_USE_64BIT_OPS=1']
     return cflags
 
   def get_base_name_prefix(self):
@@ -1010,15 +1001,13 @@ class libmalloc(MTLibrary):
 
   def get_base_name(self):
     name = super(libmalloc, self).get_base_name()
-    if self.is_debug:
+    if self.is_debug and not self.memvalidate and not self.verbose:
       name += '-debug'
     if not self.use_errno:
       # emmalloc doesn't actually use errno, but it's easier to build it again
       name += '-noerrno'
     if self.is_tracing:
       name += '-tracing'
-    if self.use_64bit_ops:
-      name += '-64bit'
     return name
 
   def can_use(self):
@@ -1026,7 +1015,7 @@ class libmalloc(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'use_64bit_ops']
+    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'memvalidate', 'verbose']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -1035,15 +1024,19 @@ class libmalloc(MTLibrary):
       is_debug=shared.Settings.ASSERTIONS >= 2,
       use_errno=shared.Settings.SUPPORT_ERRNO,
       is_tracing=shared.Settings.EMSCRIPTEN_TRACING,
-      use_64bit_ops=shared.Settings.MALLOC == 'emmalloc' and (shared.Settings.WASM == 1 or shared.Settings.WASM2JS == 0),
+      memvalidate='memvalidate' in shared.Settings.MALLOC,
+      verbose='verbose' in shared.Settings.MALLOC,
       **kwargs
     )
 
   @classmethod
   def variations(cls):
     combos = super(libmalloc, cls).variations()
-    return ([dict(malloc='dlmalloc', **combo) for combo in combos if not combo['use_64bit_ops']] +
-            [dict(malloc='emmalloc', **combo) for combo in combos])
+    return ([dict(malloc='dlmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']] +
+            [dict(malloc='emmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']] +
+            [dict(malloc='emmalloc-memvalidate-verbose', **combo) for combo in combos if combo['memvalidate'] and combo['verbose']] +
+            [dict(malloc='emmalloc-memvalidate', **combo) for combo in combos if combo['memvalidate'] and not combo['verbose']] +
+            [dict(malloc='emmalloc-verbose', **combo) for combo in combos if combo['verbose'] and not combo['memvalidate']])
 
 
 class libal(Library):
@@ -1206,6 +1199,7 @@ class libubsan_minimal_rt_wasm(CompilerRTLibrary, MTLibrary):
 
 class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
   name = 'libsanitizer_common_rt'
+  # TODO(sbc): We should not need musl-internal headers here.
   includes = [['system', 'lib', 'libc', 'musl', 'src', 'internal'],
               ['system', 'lib', 'compiler-rt', 'lib']]
   never_force = True
@@ -1357,22 +1351,23 @@ def warn_on_unexported_main(symbolses):
         return
 
 
-def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
-  global stdout, stderr
-  stdout = stdout_
-  stderr = stderr_
+def handle_reverse_deps(input_files):
+  if shared.Settings.REVERSE_DEPS == 'none':
+    return
+  elif shared.Settings.REVERSE_DEPS == 'all':
+    # When not optimzing we add all possible reverse dependencies rather
+    # than scanning the input files
+    for symbols in deps_info.deps_info.values():
+      for symbol in symbols:
+        shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(symbol))
+    return
 
-  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
-  # for unresolved symbols in your project files, which can speed up linking, but if you do not have
-  # the proper list of actually needed libraries, errors can occur. See below for how we must
-  # export all the symbols in deps_info when using this option.
-  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
-  if only_forced:
-    temp_files = []
+  if shared.Settings.REVERSE_DEPS != 'auto':
+    shared.exit_with_error(f'invalid values for REVERSE_DEPS: {shared.Settings.REVERSE_DEPS}')
 
   added = set()
 
-  def add_back_deps(need):
+  def add_reverse_deps(need):
     more = False
     for ident, deps in deps_info.deps_info.items():
       if ident in need.undefs and ident not in added:
@@ -1383,10 +1378,10 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
           logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
           shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
     if more:
-      add_back_deps(need) # recurse to get deps of deps
+      add_reverse_deps(need) # recurse to get deps of deps
 
   # Scan symbols
-  symbolses = building.parallel_llvm_nm([os.path.abspath(t) for t in temp_files])
+  symbolses = building.llvm_nm_multiple([os.path.abspath(t) for t in input_files])
 
   warn_on_unexported_main(symbolses)
 
@@ -1403,15 +1398,22 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
     symbolses[0].undefs.add(demangle_c_symbol_name(export))
 
   for symbols in symbolses:
-    add_back_deps(symbols)
+    add_reverse_deps(symbols)
 
-  # If we are only doing forced stdlibs, then we don't know the actual symbols we need,
-  # and must assume all of deps_info must be exported. Note that this might cause
-  # warnings on exports that do not exist.
+
+def calculate(input_files, cxx, forced):
+  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
+  # for unresolved symbols in your project files, which can speed up linking, but if you do not have
+  # the proper list of actually needed libraries, errors can occur. See below for how we must
+  # export all the symbols in deps_info when using this option.
+  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
   if only_forced:
-    for key, value in deps_info.deps_info.items():
-      for dep in value:
-        shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
+    # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
+    # of the input files for reverse dependencies.
+    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` and/or `-s REVERSE_DEPS=none` depending on the desired result')
+    shared.Settings.REVERSE_DEPS = 'all'
+
+  handle_reverse_deps(input_files)
 
   libs_to_link = []
   already_included = set()
@@ -1453,8 +1455,7 @@ def calculate(temp_files, cxx, forced, stdout_=None, stderr_=None):
     add_library(system_libs_map[forced])
 
   if only_forced:
-    if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
-      add_library(system_libs_map['libc_rt_wasm'])
+    add_library(system_libs_map['libc_rt_wasm'])
     add_library(system_libs_map['libcompiler_rt'])
   else:
     if shared.Settings.AUTO_NATIVE_LIBRARIES:

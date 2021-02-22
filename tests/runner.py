@@ -7,7 +7,7 @@
 """This is the Emscripten test runner. To run some tests, specify which tests
 you want, for example
 
-  python3 tests/runner.py asm1.test_hello_world
+  tests/runner asm1.test_hello_world
 
 There are many options for which tests to run and how to run them. For details,
 see
@@ -462,7 +462,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       os.chdir(os.path.dirname(self.get_dir()))
       try_delete(self.get_dir())
 
-      if EMTEST_DETECT_TEMPFILE_LEAKS and not os.environ.get('EMCC_DEBUG'):
+      if EMTEST_DETECT_TEMPFILE_LEAKS and not DEBUG:
         temp_files_after_run = []
         for root, dirnames, filenames in os.walk(self.temp_dir):
           for dirname in dirnames:
@@ -549,8 +549,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     es_check = shared.get_npm_cmd('es-check')
     # use --quiet once its available
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
+    es_check_env = os.environ.copy()
+    es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
     try:
-      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stderr=PIPE)
+      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stderr=PIPE, env=es_check_env)
     except subprocess.CalledProcessError as e:
       print(e.stderr)
       self.fail('es-check failed to verify ES5 output compliance')
@@ -566,6 +568,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
       # this if this issues is fixed.
       compiler = [EMCC, '-nostdlib++']
+
+    if force_c:
+      compiler.append('-xc')
 
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix
@@ -1841,7 +1846,7 @@ def flattened_tests(loaded_tests):
 
 def suite_for_module(module, tests):
   suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest')
-  if not EMTEST_SAVE_DIR:
+  if not EMTEST_SAVE_DIR and not DEBUG:
     has_multiple_tests = len(tests) > 1
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_tests and has_multiple_cores:

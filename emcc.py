@@ -41,6 +41,7 @@ from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, safe_copy
 from tools.shared import run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
+from tools.shared import do_replace
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
@@ -425,7 +426,7 @@ def ensure_archive_index(archive_file):
     run_process([shared.LLVM_RANLIB, archive_file])
 
 
-def get_all_js_syms(temp_files):
+def get_all_js_syms():
   # Runs the js compiler to generate a list of all symbols available in the JS
   # libraries.  This must be done separately for each linker invokation since the
   # list of symbols depends on what settings are used.
@@ -439,7 +440,7 @@ def get_all_js_syms(temp_files):
     shared.Settings.INCLUDE_FULL_LIBRARY = True
     shared.Settings.ONLY_CALC_JS_SYMBOLS = True
     emscripten.generate_struct_info()
-    glue, forwarded_data = emscripten.compile_settings(temp_files)
+    glue, forwarded_data = emscripten.compile_settings()
     forwarded_json = json.loads(forwarded_data)
     library_fns = forwarded_json['Functions']['libraryFunctions']
     library_fns_list = []
@@ -611,12 +612,6 @@ def do_split_module(wasm_file):
   os.rename(wasm_file, wasm_file + '.orig')
   args = ['--instrument']
   building.run_binaryen_command('wasm-split', wasm_file + '.orig', outfile=wasm_file, args=args)
-
-
-def do_replace(input_, pattern, replacement):
-  if pattern not in input_:
-    exit_with_error('expected to find pattern in input JS: %s' % pattern)
-  return input_.replace(pattern, replacement)
 
 
 def is_dash_s_for_emcc(args, i):
@@ -856,9 +851,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   def optimizing(opts):
     return '-O0' not in opts
 
-  def need_llvm_debug_info():
-    return shared.Settings.DEBUG_LEVEL >= 3
-
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
 
@@ -911,7 +903,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.memory_init_file = shared.Settings.OPT_LEVEL >= 2
 
     # TODO: support source maps with js_transform
-    if options.js_transform and shared.Settings.GENERATE_SOURCE_MAP:
+    if options.js_transform and shared.Settings.DEBUG_LEVEL >= 4:
       logger.warning('disabling source maps because a js transform is being done')
       shared.Settings.DEBUG_LEVEL = 3
 
@@ -1249,6 +1241,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       default_setting('IGNORE_MISSING_MAIN', 0)
       default_setting('DEFAULT_TO_CXX', 0)
 
+    # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
+    # in -Oz builds, since custom decoder for UTF-8 takes up space.
+    # In pthreads enabled builds, TEXTDECODER==2 may not work, see
+    # https://github.com/whatwg/encoding/issues/172
+    if shared.Settings.SHRINK_LEVEL >= 2 and not shared.Settings.USE_PTHREADS:
+      default_setting('TEXTDECODER', 2)
+
     # If set to 1, we will run the autodebugger (the automatic debugging tool, see
     # tools/autodebugger).  Note that this will disable inclusion of libraries. This
     # is useful because including dlmalloc makes it hard to compare native and js
@@ -1357,7 +1356,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         link_to_object = True
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_end', '_emscripten_stack_get_free']
       if shared.Settings.RELOCATABLE:
         shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_set_limits']
@@ -1512,7 +1510,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('USE_PTHREADS=2 is not longer supported')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
-      # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
+      # UTF8Decoder.decode may not work with a view of a SharedArrayBuffer, see https://github.com/whatwg/encoding/issues/172
       shared.Settings.TEXTDECODER = 0
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
       newargs += ['-pthread']
@@ -1850,6 +1848,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        sanitize:
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
+      # If not for LTO builds, we could handle these by adding deps_info.py
+      # entries for __cxa_find_matching_catch_* functions.  However, under
+      # LTO these symbols don't exist prior the linking.
+      shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_is_pointer_type', '___cxa_can_catch']
+
     if shared.Settings.ASYNCIFY:
       if not shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
         # if we are not ignoring indirect calls, then we must treat invoke_* as if
@@ -1904,14 +1908,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         (shared.Settings.MAXIMUM_MEMORY < 0 or
          shared.Settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024)):
       shared.Settings.CAN_ADDRESS_2GB = 1
-      if shared.Settings.MALLOC == 'emmalloc':
-        if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
-          suggestion = 'decrease INITIAL_MEMORY'
-        elif shared.Settings.MAXIMUM_MEMORY < 0:
-          suggestion = 'set MAXIMUM_MEMORY'
-        else:
-          suggestion = 'decrease MAXIMUM_MEMORY'
-        exit_with_error('emmalloc only works on <2GB of memory. Use the default allocator, or ' + suggestion)
+
+    if shared.Settings.EXCEPTION_HANDLING and shared.Settings.OPT_LEVEL >= 2 and not compile_only:
+      exit_with_error('wasm exception handling support is still experimental, and linking with -O2+ is not supported yet')
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.PROFILING_FUNCS = options.profiling_funcs
@@ -2139,7 +2138,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # TODO: we could check if this is a fastcomp build, and still speed things up here
     js_funcs = None
     if shared.Settings.LLD_REPORT_UNDEFINED and shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
-      js_funcs = get_all_js_syms(misc_temp_files)
+      js_funcs = get_all_js_syms()
       log_time('JS symbol generation')
     building.link_lld(linker_inputs, wasm_target, external_symbol_list=js_funcs)
     # Special handling for when the user passed '-Wl,--version'.  In this case the linker
@@ -2734,15 +2733,19 @@ def do_binaryen(target, options, wasm_target):
     webassembly.add_emscripten_metadata(wasm_target)
 
   if final_js:
-    # pthreads memory growth requires some additional JS fixups
-    if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
-      final_js = building.apply_wasm_memory_growth(final_js)
-
     # >=2GB heap support requires pointers in JS to be unsigned. rather than
     # require all pointers to be unsigned by default, which increases code size
     # a little, keep them signed, and just unsign them here if we need that.
     if shared.Settings.CAN_ADDRESS_2GB:
       final_js = building.use_unsigned_pointers_in_js(final_js)
+
+    # pthreads memory growth requires some additional JS fixups.
+    # note that we must do this after handling of unsigned pointers. unsigning
+    # adds some >>> 0 things, while growth will replace a HEAP8 with a call to
+    # a method to get the heap, and that call would not be recognized by the
+    # unsigning pass
+    if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
+      final_js = building.apply_wasm_memory_growth(final_js)
 
     if shared.Settings.USE_ASAN:
       final_js = building.instrument_js_for_asan(final_js)

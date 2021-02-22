@@ -129,7 +129,7 @@ the sub-command that it runs as well as passes ``-v`` to Clang.
 Manual print debugging
 ======================
 
-You can also manually instrument the source code with ``printf()`` statements, then compile and run the code to investigate issues.
+You can also manually instrument the source code with ``printf()`` statements, then compile and run the code to investigate issues. Note that ``printf()`` is line-buffered, make sure to add ``\n`` to see output in the console.
 
 If you have a good idea of the problem line you can add ``print(new Error().stack)`` to the JavaScript to get a stack trace at that point. Also available is :js:func:`stackTrace`, which emits a stack trace and also tries to demangle C++ function names if ``DEMANGLE_SUPPORT`` is enabled (if you don't want or need C++ demangling in a specific stack trace, you can call :js:func:`jsStackTrace`).
 
