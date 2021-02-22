@@ -10,6 +10,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tarfile
 import zipfile
@@ -22,6 +23,7 @@ from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
 logger = logging.getLogger('system_libs')
 
+# Files that are part of libsockets.a and so should be excluded from libc.a
 LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
                 'listen.c', 'accept.c', 'getsockname.c', 'getpeername.c', 'send.c',
                 'recv.c', 'sendto.c', 'recvfrom.c', 'sendmsg.c', 'recvmsg.c',
@@ -77,7 +79,11 @@ def run_one_command(cmd):
       del safe_env[opt]
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd.append('-Wno-deprecated')
-  shared.run_process(cmd, env=safe_env)
+  try:
+    shared.run_process(cmd, env=safe_env)
+  except subprocess.CalledProcessError as e:
+    print("'%s' failed (%d)" % (shared.shlex_join(e.cmd), e.returncode))
+    raise
 
 
 def run_build_commands(commands):
@@ -114,13 +120,18 @@ def create_lib(libname, inputs):
 
 
 def get_wasm_libc_rt_files():
-  # Static linking is tricky with LLVM, since e.g. memset might not be used
-  # from libc, but be used as an intrinsic, and codegen will generate a libc
-  # call from that intrinsic *after* static linking would have thought it is
-  # all in there. In asm.js this is not an issue as we do JS linking anyhow,
-  # and have asm.js-optimized versions of all the LLVM intrinsics. But for
-  # wasm, we need a better solution. For now, make another archive that gets
-  # included at the same time as compiler-rt.
+  # Combining static linking with LTO is tricky under LLVM.  The codegen that
+  # happens during LTO can generate references to new symbols that didn't exist
+  # in the linker inputs themselves.
+  # These symbols are called libcalls in LLVM and are the result of intrinsics
+  # and builtins at the LLVM level.  These libcalls cannot themselves be part
+  # of LTO because once the linker is running the LTO phase new bitcode objects
+  # cannot be added to link.  Another way of putting it: by the time LTO happens
+  # the decision about which bitcode symbols to compile has already been made.
+  # See: https://bugs.llvm.org/show_bug.cgi?id=44353.
+  # To solve this we put all such libcalls in a separate library that, like
+  # compiler-rt, is never compiled as LTO/bitcode (see force_object_files in
+  # CompilerRTLibrary).
   # Note that this also includes things that may be depended on by those
   # functions - fmin uses signbit, for example, so signbit must be here (so if
   # fmin is added by codegen, it will have all it needs).
@@ -655,7 +666,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # individual files
     ignore += [
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
-        'inet_addr.c', 'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
+        'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
         'alarm.c', 'syscall.c', '_exit.c', 'popen.c',
@@ -688,18 +699,14 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     ignore = set(ignore)
     # TODO: consider using more math code from musl, doing so makes box2d faster
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
+      # Don't recurse into ingored directories
+      remove = [d for d in dirnames if d in ignore]
+      for r in remove:
+        dirnames.remove(r)
+
       for f in filenames:
-        if f.endswith('.c'):
-          if f in ignore:
-            continue
-          dir_parts = os.path.split(dirpath)
-          cancel = False
-          for part in dir_parts:
-            if part in ignore:
-              cancel = True
-              break
-          if not cancel:
-            libc_files.append(os.path.join(musl_srcdir, dirpath, f))
+        if f.endswith('.c') and f not in ignore:
+          libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
     # Allowed files from ignored modules
     libc_files += files_in_path(
@@ -815,14 +822,13 @@ class libsockets(MuslInternalLibrary, MTLibrary):
     return [os.path.join(network_dir, x) for x in LIBC_SOCKETS]
 
 
-class libsockets_proxy(MuslInternalLibrary, MTLibrary):
+class libsockets_proxy(MTLibrary):
   name = 'libsockets_proxy'
 
   cflags = ['-Os']
 
   def get_files(self):
-    return [shared.path_from_root('system', 'lib', 'websocket', 'websocket_to_posix_socket.cpp'),
-            shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'network', 'inet_addr.c')]
+    return [shared.path_from_root('system', 'lib', 'websocket', 'websocket_to_posix_socket.cpp')]
 
 
 class crt1(MuslInternalLibrary):
@@ -1193,6 +1199,7 @@ class libubsan_minimal_rt_wasm(CompilerRTLibrary, MTLibrary):
 
 class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
   name = 'libsanitizer_common_rt'
+  # TODO(sbc): We should not need musl-internal headers here.
   includes = [['system', 'lib', 'libc', 'musl', 'src', 'internal'],
               ['system', 'lib', 'compiler-rt', 'lib']]
   never_force = True

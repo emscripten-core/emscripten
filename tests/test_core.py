@@ -8390,7 +8390,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Tests <emscripten/stack.h> API
   @no_asan('stack allocation sizes are no longer predictable')
   def test_emscripten_stack(self):
-    self.emcc_args += ['-lstack.js']
     self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_get_free.c')
 
