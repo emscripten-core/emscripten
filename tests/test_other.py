@@ -10043,7 +10043,7 @@ exec "$@"
         if direct not in js and via_module not in js and assignment not in js:
           self.fail(f'use of declared dependency {dep} not found in JS output for {function}')
 
-  def test_wasm_exception_handing(self):
+  def test_wasm_exception_handing_support(self):
     # building an object file is fine
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-fwasm-exceptions', '-c'])
 
@@ -10051,4 +10051,4 @@ exec "$@"
 
     # linking with -O2+ is not ok currently
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-fwasm-exceptions'])
-    self.assertContained('wasm exception handling support is still experimental, and linking is not supported in -O2+ yet', err)
+    self.assertContained('wasm exception handling support is still experimental, and linking with -O2+ is not supported yet', err)
