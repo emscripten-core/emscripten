@@ -440,6 +440,8 @@ def check_testcase(data, silent=True):
         if 'Branch destination should be in scope' in result.stderr:
             # https://github.com/emscripten-core/emscripten/issues/13515
             return True
+        if not silent:
+            print('unknown compile error')
         return False
 
     if result.returncode != 0:
@@ -451,8 +453,10 @@ def check_testcase(data, silent=True):
 
     debug_env = os.environ.copy()
     debug_env['BINARYEN_PASS_DEBUG'] = '1'
+    # read from a.out.wasm and also write to it, so that the execution below
+    # runs on optimized code.
     result = subprocess.run(['/home/azakai/Dev/binaryen/bin/wasm-opt',
-                             'a.out.wasm', '-o', 'b.out.wasm', '-O1'],
+                             'a.out.wasm', '-o', 'a.out.wasm', '-O1'],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             text=True, env=debug_env)
 
@@ -460,18 +464,24 @@ def check_testcase(data, silent=True):
         print(result.stderr)
 
     if result.returncode != 0:
+        if not silent:
+            print('binaryen -O1 error')
         return False
 
-    # Compile normally and compare the results.
+    # Compile normally, run normally and with wasm, and compare the results.
 
     subprocess.check_call(['c++', 'a.cpp', 'b.cpp'])
     normal = subprocess.run(['./a.out'], stdout=subprocess.PIPE, text=True)
     assert normal.returncode == 0
     wasm = subprocess.run([os.path.expanduser('~/.jsvu/v8'), '--experimental-wasm-eh', 'a.out.js'], stdout=subprocess.PIPE, text=True)
     if wasm.returncode != 0:
+        if not silent:
+            print('runtime error')
         return False
 
     if normal.stdout != wasm.stdout:
+        if not silent:
+            print('comparison error')
         return False
 
     return True
@@ -614,12 +624,18 @@ def reduce(data):
 
 
 def main():
+    given_seed = None
+    if len(sys.argv) == 2:
+        given_seed = int(sys.argv[1])
+
     total = 0
     seed = time.time() * os.getpid()
     random.seed(seed)
 
     while 1:
         seed = random.randint(0, 1 << 64)
+        if given_seed:
+            seed = given_seed
         random.seed(seed)
         print(f'[iteration {total} (seed = {seed})]')
         total += 1
@@ -633,5 +649,7 @@ def main():
             reduce(data)
             sys.exit(1)
 
+        if given_seed:
+            break
 
 main()
