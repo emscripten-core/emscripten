@@ -1100,12 +1100,14 @@ var LibraryBrowser = {
   },
 
   // Runs natively in pthread, no __proxy needed.
+  emscripten_get_main_loop_timing__sig: 'vii',
   emscripten_get_main_loop_timing: function(mode, value) {
     if (mode) {{{ makeSetValue('mode', 0, 'Browser.mainLoop.timingMode', 'i32') }}};
     if (value) {{{ makeSetValue('value', 0, 'Browser.mainLoop.timingValue', 'i32') }}};
   },
 
   // Runs natively in pthread, no __proxy needed.
+  emscripten_set_main_loop_timing__sig: 'iii',
   emscripten_set_main_loop_timing: function(mode, value) {
     Browser.mainLoop.timingMode = mode;
     Browser.mainLoop.timingValue = value;
@@ -1295,23 +1297,27 @@ var LibraryBrowser = {
 
   // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_arg__deps: ['$setMainLoop'],
+  emscripten_set_main_loop_arg__sig: 'viiii',
   emscripten_set_main_loop_arg: function(func, arg, fps, simulateInfiniteLoop) {
     var browserIterationFunc = function() { {{{ makeDynCall('vi', 'func') }}}(arg); };
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop, arg);
   },
 
   // Runs natively in pthread, no __proxy needed.
+  emscripten_cancel_main_loop__sig: 'v',
   emscripten_cancel_main_loop: function() {
     Browser.mainLoop.pause();
     Browser.mainLoop.func = null;
   },
 
   // Runs natively in pthread, no __proxy needed.
+  emscripten_pause_main_loop__sig: 'v',
   emscripten_pause_main_loop: function() {
     Browser.mainLoop.pause();
   },
 
   // Runs natively in pthread, no __proxy needed.
+  emscripten_resume_main_loop__sig: 'v',
   emscripten_resume_main_loop: function() {
     Browser.mainLoop.resume();
   },
@@ -1333,6 +1339,7 @@ var LibraryBrowser = {
   },
 
   // Runs natively in pthread, no __proxy needed.
+  emscripten_set_main_loop_expected_blockers__sig: 'vi',
   emscripten_set_main_loop_expected_blockers: function(num) {
     Browser.mainLoop.expectedBlockers = num;
     Browser.mainLoop.remainingBlockers = num;
@@ -1340,6 +1347,7 @@ var LibraryBrowser = {
   },
 
   // Runs natively in pthread, no __proxy needed.
+  emscripten_async_call__sig: 'viii',
   emscripten_async_call: function(func, arg, millis) {
     noExitRuntime = true;
 
