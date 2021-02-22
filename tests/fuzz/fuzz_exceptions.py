@@ -424,37 +424,57 @@ def check_testcase(data, silent=True):
     CppTranslator(data).write(main='a.cpp', support='b.cpp')
 
     # Compile with emcc, looking for a compilation error.
+
     # TODO: also compile b.cpp, and remove -c so that we test linking.
     result = subprocess.run(['./em++', 'a.cpp', 'b.cpp', '-sWASM_BIGINT',
-                             '-fwasm-exceptions', '-O1', '-o', 'a.out.js'],
+                             '-fwasm-exceptions', '-O0', '-o', 'a.out.js'],
                             stderr=subprocess.PIPE, text=True)
 
     if not silent:
         print(result.stderr)
 
-    if result.returncode != 0:
-        # Ignore things already found and reduced
+    def known(err):
         if 'Delegate destination should be in scope' in result.stderr:
             # https://github.com/emscripten-core/emscripten/issues/13514
             return True
         if 'Branch destination should be in scope' in result.stderr:
             # https://github.com/emscripten-core/emscripten/issues/13515
             return True
-
         return False
 
+    if result.returncode != 0:
+        # Ignore if the problem is known, and halt here regardless (as we cannot
+        # continue to do any more checks).
+        return known(result.stderr)
+
+    # Optimize with binaryen
+
+    debug_env = os.environ.copy()
+    debug_env['BINARYEN_PASS_DEBUG'] = '1'
     result = subprocess.run(['/home/azakai/Dev/binaryen/bin/wasm-opt',
                              'a.out.wasm', '-o', 'b.out.wasm', '-O1'],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            text=True)
+                            text=True, env=debug_env)
 
     if not silent:
         print(result.stderr)
 
-    if result.returncode == 0:
-        return True
+    if result.returncode != 0:
+        return False
 
-    return False
+    # Compile normally and compare the results.
+
+    subprocess.check_call(['c++', 'a.cpp', 'b.cpp'])
+    normal = subprocess.run(['./a.out'], stdout=subprocess.PIPE, text=True)
+    assert normal.returncode == 0
+    wasm = subprocess.run([os.path.expanduser('~/.jsvu/v8'), '--experimental-wasm-eh', 'a.out.js'], stdout=subprocess.PIPE, text=True)
+    if wasm.returncode != 0:
+        return False
+
+    if normal.stdout != wasm.stdout:
+        return False
+
+    return True
 
 
 def reduce(data):
