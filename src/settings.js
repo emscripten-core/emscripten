@@ -279,7 +279,7 @@ var INLINING_LIMIT = 0;
 // function call that uses DataView to enforce LE byte order for HEAP buffer;
 // This makes generated JavaScript run on BE as well as LE machines. (If 0, only
 // LE systems are supported). Does not affect generated wasm.
-var LE_HEAP = 0;
+var SUPPORT_BIG_ENDIAN = 0;
 
 // Check each write to the heap, for example, this will give a clear
 // error on what would be segfaults in a native build (like dereferencing

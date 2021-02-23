@@ -2726,7 +2726,7 @@ def do_binaryen(target, options, wasm_target):
     webassembly.add_emscripten_metadata(wasm_target)
 
   if final_js:
-    if shared.Settings.LE_HEAP or sys.byteorder == 'big':
+    if shared.Settings.SUPPORT_BIG_ENDIAN:
       final_js = building.little_endian_heap(final_js)
 
     # pthreads memory growth requires some additional JS fixups
