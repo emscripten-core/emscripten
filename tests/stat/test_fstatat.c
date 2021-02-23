@@ -134,6 +134,14 @@ void test() {
   assert(s.st_blocks == 1);
 #endif
 
+  struct timespec origTimes[2];
+  origTimes[0].tv_sec = (time_t)s.st_atime;
+  origTimes[0].tv_nsec = origTimes[0].tv_sec * 1000;
+  origTimes[1].tv_sec = (time_t)s.st_mtime;
+  origTimes[1].tv_nsec = origTimes[1].tv_sec * 1000;
+  while ((err = futimens(fd, origTimes)) < 0 && errno == EINTR);
+  assert(!err);
+
   close(fd);
 
   puts("success");
