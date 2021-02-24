@@ -1909,8 +1909,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
          shared.Settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024)):
       shared.Settings.CAN_ADDRESS_2GB = 1
 
-    if shared.Settings.EXCEPTION_HANDLING and shared.Settings.OPT_LEVEL >= 2 and not compile_only:
-      exit_with_error('wasm exception handling support is still experimental, and linking with -O2+ is not supported yet')
+    #if shared.Settings.EXCEPTION_HANDLING and shared.Settings.OPT_LEVEL >= 2 and not compile_only:
+    #  exit_with_error('wasm exception handling support is still experimental, and linking with -O2+ is not supported yet')
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.PROFILING_FUNCS = options.profiling_funcs
