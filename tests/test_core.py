@@ -1514,10 +1514,11 @@ int main() {
   def test_segfault(self):
     self.set_setting('SAFE_HEAP')
 
-    for addr in ['4', 'new D2()']:
+    for addr in ['get_null()', 'new D2()']:
       print(addr)
       src = r'''
         #include <stdio.h>
+        #include <emscripten.h>
 
         struct Classey {
           virtual void doIt() = 0;
@@ -1531,6 +1532,10 @@ int main() {
           virtual void doIt() { printf("marfoosh\n"); }
         };
 
+        EM_JS(Classey*, get_null, (), {
+          return 0;
+        });
+
         int main(int argc, char **argv)
         {
           Classey *p = argc == 100 ? new D1() : (Classey*)%s;
@@ -1540,7 +1545,7 @@ int main() {
           return 0;
         }
       ''' % addr
-      if addr.isdigit():
+      if 'get_null' in addr:
         self.do_run(src, 'segmentation fault', assert_returncode=NON_ZERO)
       else:
         self.do_run(src, 'marfoosh')
