@@ -78,8 +78,6 @@ deps_info = {
   'eglGetProcAddress': ['emscripten_GetProcAddress'],
   'eglQueryString': ['malloc'],
   'emscripten_GetProcAddress': ['malloc'],
-  'emscripten_GetAlProcAddress': ['emscripten_GetAlProcAddress'],
-  'emscripten_GetAlcProcAddress': ['emscripten_GetAlcProcAddress'],
   'emscripten_SDL_SetEventHandler': ['malloc', 'free'],
   'emscripten_alcGetStringiSOFT': ['malloc'],
   'emscripten_async_wget2_data': ['malloc', 'free'],
