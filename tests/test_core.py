@@ -1514,7 +1514,7 @@ int main() {
   def test_segfault(self):
     self.set_setting('SAFE_HEAP')
 
-    for addr in ['0', 'new D2()']:
+    for addr in ['4', 'new D2()']:
       print(addr)
       src = r'''
         #include <stdio.h>
