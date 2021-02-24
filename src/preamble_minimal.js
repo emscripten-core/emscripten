@@ -7,7 +7,7 @@
 #include "runtime_safe_heap.js"
 
 #if SUPPORT_BIG_ENDIAN
-#include "runtime_little_endian_heap.js"
+#include "library_little_endian_heap.js"
 #endif
 
 #if ASSERTIONS
@@ -69,7 +69,7 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64;
 var wasmMemory, buffer, wasmTable;
 
 #if SUPPORT_BIG_ENDIAN
-var _HEAP_DATA_VIEW;
+var HEAP_DATA_VIEW;
 #endif
 
 function updateGlobalBufferAndViews(b) {
@@ -78,7 +78,7 @@ function updateGlobalBufferAndViews(b) {
 #endif
   buffer = b;
 #if SUPPORT_BIG_ENDIAN
-  _HEAP_DATA_VIEW = new DataView(b);
+  HEAP_DATA_VIEW = new DataView(b);
 #endif
   HEAP8 = new Int8Array(b);
   HEAP16 = new Int16Array(b);

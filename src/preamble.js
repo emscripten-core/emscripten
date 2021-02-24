@@ -41,7 +41,7 @@ if (typeof WebAssembly !== 'object') {
 #include "runtime_safe_heap.js"
 
 #if SUPPORT_BIG_ENDIAN
-#include "runtime_little_endian_heap.js"
+#include "library_little_endian_heap.js"
 #endif
 
 // Wasm globals
@@ -266,7 +266,7 @@ var HEAP,
   HEAPF64;
 
 #if SUPPORT_BIG_ENDIAN
-var _HEAP_DATA_VIEW;
+var HEAP_DATA_VIEW;
 #endif
 
 #if WASM_BIGINT
@@ -276,7 +276,7 @@ var HEAP64;
 function updateGlobalBufferAndViews(buf) {
   buffer = buf;
 #if SUPPORT_BIG_ENDIAN
-  Module['_HEAP_DATA_VIEW'] = _HEAP_DATA_VIEW = new DataView(buf);
+  Module['HEAP_DATA_VIEW'] = HEAP_DATA_VIEW = new DataView(buf);
 #endif
   Module['HEAP8'] = HEAP8 = new Int8Array(buf);
   Module['HEAP16'] = HEAP16 = new Int16Array(buf);
