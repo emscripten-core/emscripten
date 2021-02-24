@@ -271,7 +271,7 @@ var LibraryGL = {
     // if x was rounded up to next pow2, which index is the single '1' bit at?
     // Then log2ceilLookup[x] returns ceil(log2(x)).
     log2ceilLookup: function(i) {
-      return 32 - Math.clz32(i-1);
+      return 32 - Math.clz32(i === 0 ? 0 : i - 1);
     },
 
     generateTempBuffers: function(quads, context) {
