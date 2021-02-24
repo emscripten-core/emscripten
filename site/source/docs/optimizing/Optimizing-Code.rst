@@ -45,12 +45,9 @@ Link Times
 ==========
 
 To skip extra optimization work at link time, link with ``-O0`` or ``-O1``. In
-those modes Emscripten focuses on faster iteration times.
-
-.. note::
-
-  It is ok to link with those flags even if the source files were compiled with
-  a different optimization level.
+those modes Emscripten focuses on faster iteration times. (Note that it is ok
+to link with those flags even if the source files were compiled with a different
+optimization level.)
 
 ``-O0`` will do no optimization work at link time. ``-O1`` will do very minimal
 optimizations, and does not have the assertions that ``-O0`` does by default,
