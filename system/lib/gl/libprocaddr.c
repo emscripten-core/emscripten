@@ -9,6 +9,7 @@
 
 extern void* emscripten_GetProcAddress(const char *name);
 
+__attribute__((weak)) // SDL2 will link in its own version of this
 void* SDL_GL_GetProcAddress(const char* name) {
   return emscripten_GetProcAddress(name);
 }
