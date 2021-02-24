@@ -1434,7 +1434,7 @@ int main(int argc, char **argv)
   @with_both_exception_handling
   def test_exceptions_rethrow_missing(self):
     create_test_file('main.cpp', 'int main() { throw; }')
-    self.do_runf('main.cpp', 'abort(no exception to throw)', assert_returncode=NON_ZERO)
+    self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
   @with_both_exception_handling
   def test_bad_typeid(self):
@@ -1859,12 +1859,14 @@ int main(int argc, char **argv) {
 
   def test_em_asm(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm.cpp')
+    self.emcc_args.append('-std=gnu89')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm.cpp', force_c=True)
 
   # Tests various different ways to invoke the EM_ASM(), EM_ASM_INT() and EM_ASM_DOUBLE() macros.
   @no_asan('Cannot use ASan: test depends exactly on heap size')
   def test_em_asm_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2.cpp')
+    self.emcc_args.append('-std=gnu89')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2.cpp', force_c=True)
 
   # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
@@ -1912,17 +1914,20 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_arguments_side_effects.cpp', force_c=True)
 
   @parameterized({
-    'normal': ([],),
-    'linked': (['-s', 'MAIN_MODULE'],),
+    '': ([], False),
+    'c': ([], True),
+    'linked': (['-s', 'MAIN_MODULE'], False),
+    'linked_c': (['-s', 'MAIN_MODULE'], True),
   })
-  def test_em_js(self, args):
+  def test_em_js(self, args, force_c):
     if 'MAIN_MODULE' in args and not self.is_wasm():
       self.skipTest('main module support for non-wasm')
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('no dynamic library support in asan yet')
     self.emcc_args += args + ['-s', 'EXPORTED_FUNCTIONS=["_main","_malloc"]']
-    self.do_run_in_out_file_test('tests', 'core', 'test_em_js.cpp')
-    self.do_run_in_out_file_test('tests', 'core', 'test_em_js.cpp', force_c=True)
+
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_js.cpp', force_c=force_c)
+    self.assertContained("no args returning int", open('test_em_js.js').read())
 
   def test_runtime_stacksave(self):
     self.do_runf(path_from_root('tests', 'core', 'test_runtime_stacksave.c'), 'success')
@@ -4640,8 +4645,8 @@ Have even and odd!
   def test_strtok(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strtok.c')
 
-  def test_parseInt(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_parseInt.c')
+  def test_strtol(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtol.c')
 
   def test_transtrcase(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_transtrcase.c')
@@ -7019,7 +7024,7 @@ someweirdtext
       # the file attribute is optional, but if it is present it needs to refer
       # the output file.
       self.assertPathsIdentical(map_referent, data['file'])
-    assert len(data['sources']) == 1, data['sources']
+    self.assertGreater(len(data['sources']), 1)
     self.assertPathsIdentical('src.cpp', data['sources'][0])
     if hasattr(data, 'sourcesContent'):
       # the sourcesContent attribute is optional, but if it is present it
@@ -7033,14 +7038,14 @@ someweirdtext
       mappings = encode_utf8(mappings)
     seen_lines = set()
     for m in mappings:
-      self.assertPathsIdentical('src.cpp', m['source'])
-      seen_lines.add(m['originalLine'])
+      if m['source'] == 'src.cpp':
+        seen_lines.add(m['originalLine'])
     # ensure that all the 'meaningful' lines in the original code get mapped
     # when optimizing, the binaryen optimizer may remove some of them (by inlining, etc.)
     if is_optimizing(self.emcc_args):
-      assert seen_lines.issuperset([11, 12]), seen_lines
+      self.assertTrue(seen_lines.issuperset([11, 12]), seen_lines)
     else:
-      assert seen_lines.issuperset([6, 7, 11, 12]), seen_lines
+      self.assertTrue(seen_lines.issuperset([6, 7, 11, 12]), seen_lines)
 
   @no_wasm2js('TODO: source maps in wasm2js')
   def test_dwarf(self):
@@ -7103,7 +7108,14 @@ someweirdtext
     # ------------------ ------ ------ ------ --- ------------- -------------
     # 0x000000000000000b      5      0      3   0             0  is_stmt
     src_to_addr = {}
+    found_src_cpp = False
     for line in sections['.debug_line'].splitlines():
+      if 'name: "src.cpp"' in line:
+        found_src_cpp = True
+      if not found_src_cpp:
+        continue
+      if 'debug_line' in line:
+        break
       if line.startswith('0x'):
         while '  ' in line:
           line = line.replace('  ', ' ')
@@ -7118,7 +7130,8 @@ someweirdtext
 
     def get_dwarf_addr(line, col):
       addrs = src_to_addr[(line, col)]
-      assert len(addrs) == 1, 'we assume the simple calls have one address'
+      # we assume the simple calls have one address
+      self.assertEqual(len(addrs), 1)
       return int(addrs[0], 0)
 
     # the lines must appear in sequence (as calls to JS, the optimizer cannot
@@ -7467,7 +7480,7 @@ Module['onRuntimeInitialized'] = function() {
     second_size = os.path.getsize('emscripten_lazy_load_code.wasm.lazy.wasm')
     print('first wasm size', first_size)
     print('second wasm size', second_size)
-    if not conditional and is_optimizing(self.emcc_args):
+    if not conditional and is_optimizing(self.emcc_args) and '-g' not in self.emcc_args:
       # If the call to lazy-load is unconditional, then the optimizer can dce
       # out more than half
       self.assertLess(first_size, 0.6 * second_size)
@@ -8385,7 +8398,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Tests <emscripten/stack.h> API
   @no_asan('stack allocation sizes are no longer predictable')
   def test_emscripten_stack(self):
-    self.emcc_args += ['-lstack.js']
     self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_get_free.c')
 
