@@ -20,7 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
-- System libraries are now compiled with debug info (`-g`).  This doesn't not
+- System libraries are now compiled with debug info (`-g`).  This doesn't
   effect release builds (builds without `-g`) but allows DWARF debugging of
   types defined in system libraries such as C++ STL types (#13078).
 
