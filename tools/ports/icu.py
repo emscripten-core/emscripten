@@ -15,8 +15,10 @@ libname_libicu_common = 'libicu_common.a'
 libname_libicu_stubdata = 'libicu_stubdata.a'
 libname_libicu_i18n = 'libicu_i18n.a'
 
+
 def needed(settings):
   return settings.USE_ICU
+
 
 def get(ports, settings, shared):
   url = 'https://github.com/unicode-org/icu/releases/download/%s/icu4c-%s-src.zip' % (TAG, VERSION)
@@ -44,17 +46,17 @@ def get(ports, settings, shared):
     lib_includes = other_includes
     additional_build_flags = [
         # usage of 'using namespace icu' is deprecated: icu v61
-        '-DU_USING_ICU_NAMESPACE=0', 
+        '-DU_USING_ICU_NAMESPACE=0',
         # make explicit inclusion of utf header: ref utf.h
-        '-DU_NO_DEFAULT_INCLUDE_UTF_HEADERS=1', 
+        '-DU_NO_DEFAULT_INCLUDE_UTF_HEADERS=1',
         # mark UnicodeString constructors explicit : ref unistr.h
-        '-DUNISTR_FROM_CHAR_EXPLICIT=explicit', 
-        '-DUNISTR_FROM_STRING_EXPLICIT=explicit', 
+        '-DUNISTR_FROM_CHAR_EXPLICIT=explicit',
+        '-DUNISTR_FROM_STRING_EXPLICIT=explicit',
         # generate static
-        '-DU_STATIC_IMPLEMENTATION', 
+        '-DU_STATIC_IMPLEMENTATION',
         # CXXFLAGS
-        '-std=c++11',
-        ]
+        '-std=c++11'
+    ]
     ports.build_port(lib_src, lib_output, lib_includes, build_flags + additional_build_flags)
 
   # creator for libicu_common
@@ -81,15 +83,17 @@ def get(ports, settings, shared):
     build_lib(lib_output, lib_src, other_includes, ['-DU_I18N_IMPLEMENTATION=1', '-DDOUBLE_CONVERSION_CORRECT_DOUBLE_OPERATIONS=1'])
 
   return [
-      shared.Cache.get_lib(libname_libicu_common, create_libicu_common), 
+      shared.Cache.get_lib(libname_libicu_common, create_libicu_common),
       shared.Cache.get_lib(libname_libicu_stubdata, create_libicu_stubdata),
       shared.Cache.get_lib(libname_libicu_i18n, create_libicu_i18n)
-      ]
+  ]
+
 
 def clear(ports, settings, shared):
   shared.Cache.erase_file(libname_libicu_common)
   shared.Cache.erase_file(libname_libicu_stubdata)
   shared.Cache.erase_file(libname_libicu_i18n)
+
 
 def process_args(ports):
   return []
