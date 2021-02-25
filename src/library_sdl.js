@@ -3450,11 +3450,6 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_GL_GetProcAddress__deps: ['emscripten_GetProcAddress'],
-  SDL_GL_GetProcAddress: function(name_) {
-    return _emscripten_GetProcAddress(name_);
-  },
-
   SDL_GL_SwapBuffers__proxy: 'sync',
   SDL_GL_SwapBuffers__sig: 'v',
   SDL_GL_SwapBuffers: function() {

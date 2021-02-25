@@ -5019,17 +5019,42 @@ window.close = function() {
                extra_tries=0)
 
 
+EMRUN = path_from_root('emrun')
+
+
 class emrun(RunnerCore):
   def test_emrun_info(self):
     if not has_browser():
       self.skipTest('need a browser')
-    result = self.run_process([path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
+    result = self.run_process([EMRUN, '--system_info', '--browser_info'], stdout=PIPE).stdout
     assert 'CPU' in result
     assert 'Browser' in result
     assert 'Traceback' not in result
 
-    result = self.run_process([path_from_root('emrun'), '--list_browsers'], stdout=PIPE).stdout
+    result = self.run_process([EMRUN, '--list_browsers'], stdout=PIPE).stdout
     assert 'Traceback' not in result
+
+  def test_no_browser(self):
+    # Test --no_browser mode where we have to take care of launching the browser outselves
+    # and killin emrun when we are done.
+    if not has_browser():
+      self.skipTest('need a browser')
+
+    self.run_process([EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
+    proc = subprocess.Popen([EMRUN, '--no_browser', '.', '--port=3333'], stdout=PIPE)
+    try:
+      if EMTEST_BROWSER:
+        browser_cmd = shlex.split(EMTEST_BROWSER)
+        browser = subprocess.Popen(browser_cmd + ['http://localhost:3333/hello_world.html'])
+        while True:
+          stdout = proc.stdout.read()
+          if b'Dumping out file' in stdout:
+            break
+        browser.terminate()
+        browser.wait()
+    finally:
+      proc.terminate()
+      proc.wait()
 
   def test_emrun(self):
     self.run_process([EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
@@ -5042,7 +5067,7 @@ class emrun(RunnerCore):
     # delete it. Therefore switch away from that directory before launching.
 
     os.chdir(path_from_root())
-    args_base = [path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile',
+    args_base = [EMRUN, '--timeout', '30', '--safe_firefox_profile',
                  '--kill_exit', '--port', '6939', '--verbose',
                  '--log_stdout', self.in_dir('stdout.txt'),
                  '--log_stderr', self.in_dir('stderr.txt')]

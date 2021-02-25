@@ -82,7 +82,7 @@ void main_tick(void *arg)
   ALfloat listenerVel[] = {0.0, 0.0, vel};
   alListenerfv(AL_VELOCITY, listenerVel);
 #elif defined(TEST_ANIMATED_LOOPED_PANNED_PLAYBACK) || defined(TEST_ANIMATED_LOOPED_RELATIVE_PLAYBACK) || defined(TEST_AL_SOFT_SOURCE_SPATIALIZE)
-  ALfloat listenerPos[] = {cos(t), 0.0, sin(t)};
+  ALfloat listenerPos[] = {cosf(t), 0.0, sinf(t)};
   alListenerfv(AL_POSITION, listenerPos);
 #elif defined(TEST_ALC_SOFT_PAUSE_DEVICE)
   ALCcontext *ctx = alcGetCurrentContext();

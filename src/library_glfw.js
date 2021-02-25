@@ -1207,12 +1207,6 @@ var LibraryGLFW = {
     return (GLFW.extensions.indexOf("GL_" + extension) != -1);
   },
 
-  glfwGetProcAddress__deps: ['emscripten_GetProcAddress'],
-  glfwGetProcAddress__sig: 'ii',
-  glfwGetProcAddress: function(procname) {
-    return _emscripten_GetProcAddress(procname);
-  },
-
   glfwSwapInterval__deps: ['emscripten_set_main_loop_timing'],
   glfwSwapInterval__sig: 'vi',
   glfwSwapInterval: function(interval) {
