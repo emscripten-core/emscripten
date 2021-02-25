@@ -1565,13 +1565,23 @@ class Ports(object):
     return dirname
 
   @staticmethod
-  def install_header_dir(src_dir, target=None):
+  def install_header_dir(src_dir, target=None, merge=False):
     if not target:
       target = os.path.basename(src_dir)
     dest = os.path.join(Ports.get_include_dir(), target)
-    shared.try_delete(dest)
-    logger.debug('installing headers: ' + dest)
-    shutil.copytree(src_dir, dest)
+    if not merge:
+      shared.try_delete(dest)
+      logger.debug('installing headers: ' + dest)
+      shutil.copytree(src_dir, dest)
+    else:
+      logger.debug('installing headers (merge): ' + dest)
+      for item in os.listdir(src_dir):
+        s = os.path.join(src_dir, item)
+        d = os.path.join(dest, item)
+        if os.path.isdir(s):
+          shutil.copytree(s, d)
+        else:
+          shutil.copy2(s, d)
 
   @staticmethod
   def install_headers(src_dir, pattern="*.h", target=None):
