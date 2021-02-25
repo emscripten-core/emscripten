@@ -439,6 +439,7 @@ entry:
 '''
 
     POSTAMBLE = '''\
+
 normal_exit:
   ret i32 0
 }
@@ -556,19 +557,22 @@ Class::~Class() {
             self.make_loop,
             self.make_if,
             self.make_if_else,
+            self.make_invoke,
         ])(backs, forwards)
 
         return f'''\
 {start}:
-{contents}
-'''
+{contents}'''
 
-    def make_basic_block(self, backs, forwards):
-        contents = self.pick([
+    def make_basic_block_contents(self):
+        return self.pick([
             self.make_nothing,
             self.make_logging,
-        ])(backs, forwards)
+            self.make_call,
+        ])()
 
+    def make_basic_block(self, backs, forwards):
+        contents = self.make_basic_block_contents()
         terminator = self.pick([
             (10, self.make_forward_branch),
             ( 1, self.make_unreachable),
@@ -587,12 +591,13 @@ Class::~Class() {
         return f'''\
   br label %{start}
 
+;; loop
 {body}
 
 {end}:
+  ;; loop end
   {call} = call zeroext i1 @_Z10getBooleanv()
-  br i1 {call}, label %{start}, label %{self.pick(forwards)}
-'''
+  br i1 {call}, label %{start}, label %{self.pick(forwards)}'''
 
     def make_if(self, backs, forwards):
         call = f'%c{self.get_global_index()}'
@@ -602,11 +607,11 @@ Class::~Class() {
         self.pop_cursor()
 
         return f'''\
+  ;; if
   {call} = call zeroext i1 @_Z10getBooleanv()
   br i1 {call}, label %{middle}, label %{self.pick(forwards)}
 
-{body}
-'''
+{body}'''
 
     def make_if_else(self, backs, forwards):
         call = f'%c{self.get_global_index()}'
@@ -620,18 +625,54 @@ Class::~Class() {
         self.pop_cursor()
 
         return f'''\
+  ;; if-else
   {call} = call zeroext i1 @_Z10getBooleanv()
   br i1 {call}, label %{left}, label %{right}
 
 {left_body}
 
-{right_body}
-'''
+{right_body}'''
 
-    def make_nothing(self, backs, forwards):
+    def make_invoke(self, backs, forwards):
+        call = f'%c{self.get_global_index()}'
+        ok = f'b{self.get_global_index()}'
+        bad = f'b{self.get_global_index()}'
+        self.push_cursor()
+        ok_body = self.make_blocks(ok, backs, forwards)
+        self.pop_cursor()
+        bad_body = self.make_basic_block_contents()
+
+        return f'''\
+  {call} = invoke zeroext i1 @_Z10getBooleanv()
+           to label %{ok} unwind label %{bad}.dispatch
+
+{bad}.dispatch:
+  %catch.{bad}.0 = catchswitch within none [label %{bad}.start] unwind to caller
+
+{bad}.start:
+  %catch.{bad}.1 = catchpad within %catch.{bad}.0 [i8* bitcast (i8** @_ZTId to i8*)]
+  %catch.{bad}.2 = call i8* @llvm.wasm.get.exception(token %catch.{bad}.1)
+  %catch.{bad}.3 = call i32 @llvm.wasm.get.ehselector(token %catch.{bad}.1)
+  %catch.{bad}.4 = call i32 @llvm.eh.typeid.for(i8* bitcast (i8** @_ZTId to i8*))
+  %catch.{bad}.matches = icmp eq i32 %catch.{bad}.3, %catch.{bad}.4
+  br i1 %catch.{bad}.matches, label %{bad}.catch, label %{bad}.rethrow
+
+{bad}.catch:
+  %catch.{bad}.5 = call i8* @__cxa_begin_catch(i8* %catch.{bad}.2) [ "funclet"(token %catch.{bad}.1) ]
+{bad_body}
+  call void @__cxa_end_catch() [ "funclet"(token %catch.{bad}.1) ]
+  catchret from %catch.{bad}.1 to label %{ok}
+
+{bad}.rethrow:
+  call void @llvm.wasm.rethrow() [ "funclet"(token %catch.{bad}.1) ]
+  unreachable
+
+{ok_body}'''
+
+    def make_nothing(self):
         return '  ;; nothing'
 
-    def make_logging(self, backs, forwards):
+    def make_logging(self):
         num = self.get_global_index()
         global_name = f'@.str.{num}'
         num_len = len(str(num))
@@ -640,6 +681,12 @@ Class::~Class() {
         self.global_defs += global_def
         logging = f'  %call{num} = call i32 @puts(i8* getelementptr inbounds ([{full_len} x i8], [{full_len} x i8]* {global_name}, i32 0, i32 0))'
         return logging
+
+    def make_call(self):
+        num = self.get_global_index()
+        return f'''\
+  %instance.{num} = alloca %struct.Class, align 1
+  %call.{num} = call %struct.Class* @_ZN5ClassC1Ev(%struct.Class* nonnull dereferenceable(1) %instance.{num})'''
 
     def make_forward_branch(self, backs, forwards):
         return f'  br label %{self.pick(forwards)}'
@@ -674,7 +721,9 @@ def check_testcase(data, silent=True):
     LLVMTranslator(data).write(main='a.ll', support='b.cpp')
 
     result = subprocess.run(['/home/azakai/Dev/sdk/upstream/bin/llc', 'a.ll',
-                             '-exception-model=wasm', '-o', '/dev/null'],
+                             '-exception-model=wasm',
+                             '-mattr=+exception-handling',
+                             '-o', '/dev/null'],
                             stderr=subprocess.PIPE, text=True)
 
     if not silent:
