@@ -977,21 +977,6 @@ function isEmscriptenHEAP(name) {
 // Replaces each HEAP access with function call that uses DataView to enforce
 // LE byte order for HEAP buffer
 function littleEndianHeap(ast) {
-  function makeHeapStoreCallExpression(node, idx, value, bytes, type) {
-    var args = [
-	    multiply(idx, bytes),
-	    value,
-	    createLiteral(bytes),
-	    createLiteral(type)];
-    makeCallExpression(node, 'LE_HEAP_STORE', args);
-  }
-  function makeHeapLoadCallExpression(node, idx, bytes, type) {
-    var args = [
-	    multiply(idx, bytes),
-	    createLiteral(bytes),
-	    createLiteral(type)];
-    makeCallExpression(node, 'LE_HEAP_LOAD', args);
-  }
   recursiveWalk(ast, {
     FunctionDeclaration: function(node, c) {
       // do not recurse into LE_HEAP_STORE, LE_HEAP_LOAD functions
@@ -1018,33 +1003,33 @@ function littleEndianHeap(ast) {
             break;
           }
           case 'HEAP16': {
-            // change "name[idx] = value" to "LE_HEAP_STORE(idx*2, value, 2, 1)"
-            makeHeapStoreCallExpression(node, idx, value, 2, 1);
+            // change "name[idx] = value" to "LE_HEAP_STORE_I16(idx*2, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_I16', [multiply(idx, 2), value]);
             break;
           }
           case 'HEAPU16': {
-            // change "name[idx] = value" to "LE_HEAP_STORE(idx*2, value, 2, 0)"
-            makeHeapStoreCallExpression(node, idx, value, 2, 0);
+            // change "name[idx] = value" to "LE_HEAP_STORE_U16(idx*2, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_U16', [multiply(idx, 2), value]);
             break;
           }
           case 'HEAP32': {
-            // change "name[idx] = value" to "LE_HEAP_STORE(idx*4, value, 4, 1)"
-            makeHeapStoreCallExpression(node, idx, value, 4, 1);
+            // change "name[idx] = value" to "LE_HEAP_STORE_I32(idx*4, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_I32', [multiply(idx, 4), value]);
             break;
           }
           case 'HEAPU32': {
-            // change "name[idx] = value" to "LE_HEAP_STORE(idx*4, value, 4, 0)"
-            makeHeapStoreCallExpression(node, idx, value, 4, 0);
+            // change "name[idx] = value" to "LE_HEAP_STORE_U32(idx*4, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_U32', [multiply(idx, 4), value]);
             break;
           }
           case 'HEAPF32': {
-            // change "name[idx] = value" to "LE_HEAP_STORE(idx*4, value, 4, 2)"
-            makeHeapStoreCallExpression(node, idx, value, 4, 2);
+            // change "name[idx] = value" to "LE_HEAP_STORE_F32(idx*4, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_F32', [multiply(idx, 4), value]);
             break;
           }
           case 'HEAPF64': {
-            // change "name[idx] = value" to "LE_HEAP_STORE(idx*8, value, 8, 2)"
-            makeHeapStoreCallExpression(node, idx, value, 8, 2);
+            // change "name[idx] = value" to "LE_HEAP_STORE_F64(idx*8, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_F64', [multiply(idx, 8), value]);
             break;
           }
         };
@@ -1065,33 +1050,33 @@ function littleEndianHeap(ast) {
             break;
           }
           case 'HEAP16': {
-            // change "name[idx]" to "LE_HEAP_LOAD(idx*2, 2, 1)"
-            makeHeapLoadCallExpression(node, idx, 2, 1);
+            // change "name[idx]" to "LE_HEAP_LOAD_I16(idx*2)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_I16', [multiply(idx, 2)]);
             break;
           }
           case 'HEAPU16': {
-            // change "name[idx]" to "LE_HEAP_LOAD(idx*2, 2, 0)"
-            makeHeapLoadCallExpression(node, idx, 2, 0);
+            // change "name[idx]" to "LE_HEAP_LOAD_U16(idx*2)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_U16', [multiply(idx, 2)]);
             break;
           }
           case 'HEAP32': {
-            // change "name[idx]" to "LE_HEAP_LOAD(idx*4, 4, 1)"
-            makeHeapLoadCallExpression(node, idx, 4, 1);
+            // change "name[idx]" to "LE_HEAP_LOAD_I32(idx*4)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_I32', [multiply(idx, 4)]);
             break;
           }
           case 'HEAPU32': {
-            // change "name[idx]" to "LE_HEAP_LOAD(idx*4, 4, 0)"
-            makeHeapLoadCallExpression(node, idx, 4, 0);
+            // change "name[idx]" to "LE_HEAP_LOAD_U32(idx*4)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_U32', [multiply(idx, 4)]);
             break;
           }
           case 'HEAPF32': {
-            // change "name[idx]" to "LE_HEAP_LOAD(idx*4, 4, 2)"
-            makeHeapLoadCallExpression(node, idx, 4, 2);
+            // change "name[idx]" to "LE_HEAP_LOAD_F32(idx*4)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_F32', [multiply(idx, 4)]);
             break;
           }
           case 'HEAPF64': {
-            // change "name[idx]" to "LE_HEAP_LOAD(idx*8, 8, 2)"
-            makeHeapLoadCallExpression(node, idx, 8, 2);
+            // change "name[idx]" to "LE_HEAP_LOAD_F64(idx*8)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_F64', [multiply(idx, 8)]);
             break;
           }
         };
