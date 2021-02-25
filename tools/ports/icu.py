@@ -43,7 +43,6 @@ def get(ports, settings, shared):
   def build_lib(lib_output, lib_src, other_includes, build_flags):
     logging.debug('building port: icu- ' + lib_output)
 
-    lib_includes = other_includes
     additional_build_flags = [
         # usage of 'using namespace icu' is deprecated: icu v61
         '-DU_USING_ICU_NAMESPACE=0',
@@ -57,7 +56,7 @@ def get(ports, settings, shared):
         # CXXFLAGS
         '-std=c++11'
     ]
-    ports.build_port(lib_src, lib_output, lib_includes, build_flags + additional_build_flags)
+    ports.build_port(lib_src, lib_output, other_includes, build_flags + additional_build_flags)
 
   # creator for libicu_common
   def create_libicu_common(lib_output):
@@ -80,7 +79,7 @@ def get(ports, settings, shared):
     lib_src = os.path.join(source_root, 'i18n')
     ports.install_header_dir(os.path.join(lib_src, 'unicode'), 'unicode', merge=True)
     other_includes = [os.path.join(source_root, 'common')]
-    build_lib(lib_output, lib_src, other_includes, ['-DU_I18N_IMPLEMENTATION=1', '-DDOUBLE_CONVERSION_CORRECT_DOUBLE_OPERATIONS=1'])
+    build_lib(lib_output, lib_src, other_includes, ['-DU_I18N_IMPLEMENTATION=1'])
 
   return [
       shared.Cache.get_lib(libname_libicu_common, create_libicu_common),
