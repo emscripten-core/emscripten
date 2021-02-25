@@ -1368,8 +1368,8 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
     var allowEmpty = flags & {{{ cDefine('AT_EMPTY_PATH') }}};
-    flags = flags & (~{{{ cDefine('AT_EMPTY_PATH') }}});
 #if ASSERTIONS
+    flags = flags & (~{{{ cDefine('AT_EMPTY_PATH') }}});
     assert(flags === 0);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, allowEmpty);
