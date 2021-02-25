@@ -554,6 +554,8 @@ Class::~Class() {
         contents = self.pick([
             self.make_basic_block,
             self.make_loop,
+            self.make_if,
+            self.make_if_else,
         ])(backs, forwards)
 
         return f'''\
@@ -590,6 +592,40 @@ Class::~Class() {
 {end}:
   {call} = call zeroext i1 @_Z10getBooleanv()
   br i1 {call}, label %{start}, label %{self.pick(forwards)}
+'''
+
+    def make_if(self, backs, forwards):
+        call = f'%c{self.get_global_index()}'
+        middle = f'b{self.get_global_index()}'
+        self.push_cursor()
+        body = self.make_blocks(middle, backs, forwards)
+        self.pop_cursor()
+
+        return f'''\
+  {call} = call zeroext i1 @_Z10getBooleanv()
+  br i1 {call}, label %{middle}, label %{self.pick(forwards)}
+
+{body}
+'''
+
+    def make_if_else(self, backs, forwards):
+        call = f'%c{self.get_global_index()}'
+        left = f'b{self.get_global_index()}'
+        right = f'b{self.get_global_index()}'
+        self.push_cursor()
+        left_body = self.make_blocks(left, backs, forwards)
+        self.pop_cursor()
+        self.push_cursor()
+        right_body = self.make_blocks(right, backs, forwards)
+        self.pop_cursor()
+
+        return f'''\
+  {call} = call zeroext i1 @_Z10getBooleanv()
+  br i1 {call}, label %{left}, label %{right}
+
+{left_body}
+
+{right_body}
 '''
 
     def make_nothing(self, backs, forwards):
