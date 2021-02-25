@@ -145,7 +145,7 @@ def pick(options, value):
     '''
     # Scale the value by the total weight.
     assert 0 <= value < 1, value
-    options = [option if len(option) == 2 else (1, option) for option in options]
+    options = [option if type(option) in (tuple, list) and len(option) == 2 else (1, option) for option in options]
     total = 0
     for weight, choice in options:
         total += weight
@@ -413,7 +413,221 @@ while (getBoolean()) {
         return 'double'
 
 
+
+class LLVMTranslator:
+    '''
+    Translates random structured data into a random LLVM IR uses wasm
+    exceptions.
+    '''
+
+    PREAMBLE = '''\
+; ModuleID = 'a.cpp'
+source_filename = "a.cpp"
+target datalayout = "e-m:e-p:32:32-i64:64-n32:64-S128"
+target triple = "wasm32-unknown-emscripten"
+
+%struct.Class = type { i8 }
+
+@_ZTIi = external constant i8*
+@_ZTId = external constant i8*
+'''
+
+    START = '''\
+define hidden i32 @main() personality i8* bitcast (i32 (...)* @__gxx_wasm_personality_v0 to i8*) {
+entry:
+  br label %b0
+'''
+
+    POSTAMBLE = '''\
+normal_exit:
+  ret i32 0
+}
+
+declare i32 @puts(i8*)
+
+declare %struct.Class* @_ZN5ClassC1Ev(%struct.Class* nonnull returned dereferenceable(1)) unnamed_addr
+declare %struct.Class* @_ZN5ClassD1Ev(%struct.Class* nonnull returned dereferenceable(1)) unnamed_addr
+
+declare zeroext i1 @_Z10getBooleanv()
+
+declare i32 @__gxx_wasm_personality_v0(...)
+declare i32 @llvm.eh.typeid.for(i8*)
+
+declare i8* @__cxa_begin_catch(i8*)
+declare void @__cxa_end_catch()
+declare i8* @__cxa_allocate_exception(i32)
+declare void @__cxa_throw(i8*, i8*, i8*)
+
+declare i8* @llvm.wasm.get.exception(token)
+declare i32 @llvm.wasm.get.ehselector(token)
+declare void @llvm.wasm.rethrow()
+'''
+
+    SUPPORT = '''\
+#include <stdio.h>
+#include <stdlib.h>
+
+const int INIIAL_FUEL = 100;
+
+static int fuel = INIIAL_FUEL;
+
+void refuel() {
+  fuel = INIIAL_FUEL;
+}
+
+// TODO random data
+static bool boolean = true;
+
+bool getBoolean() {
+  // If we are done, exit all loops etc.
+  if (fuel == 0) {
+    return false;
+  }
+  fuel--;
+  boolean = !boolean;
+  return boolean;
+}
+
+struct Class {
+  Class();
+  ~Class();
+};
+
+Class::Class() {
+  puts("class-instance");
+}
+
+Class::~Class() {
+  puts("~class-instance");
+}
+'''
+
+    def __init__(self, data):
+        self.cursors = [Cursor(data)]
+        self.global_index = 1
+        self.global_defs = ''
+
+        # The output is a list of strings which will be concatenated when
+        # writing.
+        main = self.make_main()
+        self.output = [self.PREAMBLE, self.global_defs, self.START,
+                       main, self.POSTAMBLE]
+
+    '''
+    Outputs the main file and the support file on the side. Support code is not
+    in the main file so that the optimizer cannot see it all.
+    '''
+    def write(self, main, support):
+        with open(main, 'w') as f:
+            f.write('\n'.join(self.output))
+        with open(support, 'w') as f:
+            f.write(self.SUPPORT)
+
+    def get_global_index(self):
+        ret = self.global_index
+        self.global_index += 1
+        return ret
+
+    def cursor(self):
+        return self.cursors[-1]
+
+    def push_cursor(self):
+        self.cursors.append(Cursor(self.cursor().get_array()))
+
+    def pop_cursor(self):
+        self.cursors.pop()
+
+    def pick(self, options):
+        return pick(options, self.cursor().get_num())
+
+    def make_main(self):
+        return self.make_blocks(start='b0', backs=[], forwards=['normal_exit'])
+
+    def make_blocks(self, start, backs, forwards):
+        '''
+        Make a block or blocks, starting with a block of name 'start', and with
+        given possible backedges and forward edges that are outside of what we
+        create in this call.
+        '''
+        assert forwards, 'There must be a place to fall through to.'
+
+        contents = self.pick([
+            self.make_basic_block,
+            self.make_loop,
+        ])(backs, forwards)
+
+        return f'''\
+{start}:
+{contents}
+'''
+
+    def make_basic_block(self, backs, forwards):
+        contents = self.pick([
+            self.make_nothing,
+            self.make_logging,
+        ])(backs, forwards)
+
+        terminator = self.pick([
+            (10, self.make_forward_branch),
+            ( 1, self.make_unreachable),
+        ])(backs, forwards)
+
+        return contents + '\n' + terminator
+
+    def make_loop(self, backs, forwards):
+        start = f'b{self.get_global_index()}'
+        end = f'b{self.get_global_index()}'
+        self.push_cursor()
+        body = self.make_blocks(start, backs + [start], forwards + [end])
+        self.pop_cursor()
+        call = f'%c{self.get_global_index()}'
+
+        return f'''\
+  br label %{start}
+
+{body}
+
+{end}:
+  {call} = call zeroext i1 @_Z10getBooleanv()
+  br i1 {call}, label %{start}, label %{self.pick(forwards)}
+'''
+
+    def make_nothing(self, backs, forwards):
+        return '  ;; nothing'
+
+    def make_logging(self, backs, forwards):
+        num = self.get_global_index()
+        global_name = f'@.str.{num}'
+        num_len = len(str(num))
+        full_len = 6 + num_len
+        global_def = f'{global_name} = private unnamed_addr constant [{full_len} x i8] c"log({num})\\00", align 1\n'
+        self.global_defs += global_def
+        logging = f'  %call{num} = call i32 @puts(i8* getelementptr inbounds ([{full_len} x i8], [{full_len} x i8]* {global_name}, i32 0, i32 0))'
+        return logging
+
+    def make_forward_branch(self, backs, forwards):
+        return f'  br label %{self.pick(forwards)}'
+
+    def make_unreachable(self, backs, forwards):
+        return f'  unreachable'
+
+
 # Main harness
+
+
+def known(err, silent):
+    if 'Delegate destination should be in scope' in err:
+        # https://github.com/emscripten-core/emscripten/issues/13514
+        return True
+    #if 'Branch destination should be in scope' in err:
+    #    # https://github.com/emscripten-core/emscripten/issues/13515
+    #    return True
+    if 'Active sort region list not finished' in err:
+        # https://github.com/emscripten-core/emscripten/issues/13554
+        return True
+    if not silent:
+        print('unknown compile error')
+    return False
 
 
 def check_testcase(data, silent=True):
@@ -421,7 +635,19 @@ def check_testcase(data, silent=True):
         Checks if a testcase is valid. Returns True if so.
     '''
     # Generate C++
-    CppTranslator(data).write(main='a.cpp', support='b.cpp')
+    LLVMTranslator(data).write(main='a.ll', support='b.cpp')
+
+    result = subprocess.run(['/home/azakai/Dev/sdk/upstream/bin/llc', 'a.ll',
+                             '-exception-model=wasm', '-o', '/dev/null'],
+                            stderr=subprocess.PIPE, text=True)
+
+    if not silent:
+        print(result.stderr)
+
+    if result.returncode != 0:
+        return known(result.stderr, silent)
+
+    return True # XXX
 
     # Compile with emcc, looking for a compilation error.
 
@@ -433,24 +659,10 @@ def check_testcase(data, silent=True):
     if not silent:
         print(result.stderr)
 
-    def known(err):
-        if 'Delegate destination should be in scope' in result.stderr:
-            # https://github.com/emscripten-core/emscripten/issues/13514
-            return True
-        #if 'Branch destination should be in scope' in result.stderr:
-        #    # https://github.com/emscripten-core/emscripten/issues/13515
-        #    return True
-        if 'Active sort region list not finished' in result.stderr:
-            # https://github.com/emscripten-core/emscripten/issues/13554
-            return True
-        if not silent:
-            print('unknown compile error')
-        return False
-
     if result.returncode != 0:
         # Ignore if the problem is known, and halt here regardless (as we cannot
         # continue to do any more checks).
-        return known(result.stderr)
+        return known(result.stderr, silent)
 
     # Optimize with binaryen
     '''
@@ -642,7 +854,7 @@ def main():
 
     while 1:
         seed = random.randint(0, 1 << 64)
-        if given_seed:
+        if given_seed is not None:
             seed = given_seed
         random.seed(seed)
         print(f'[iteration {total} (seed = {seed})]')
@@ -657,7 +869,7 @@ def main():
             reduce(data)
             sys.exit(1)
 
-        if given_seed:
+        if given_seed is not None:
             break
 
 main()
