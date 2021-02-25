@@ -5068,6 +5068,9 @@ main( int argv, char ** argc ) {
   def test_utime(self):
     self.do_runf(path_from_root('tests', 'utime', 'test_utime.c'), 'success')
 
+  def test_futimens(self):
+        self.do_runf(path_from_root('tests', 'utime', 'test_futimens.c'), 'success')
+
   @no_minimal_runtime('MINIMAL_RUNTIME does not have getValue() and setValue() (TODO add it to a JS library function to get it in)')
   def test_utf(self):
     self.banned_js_engines = [config.SPIDERMONKEY_ENGINE] # only node handles utf well
