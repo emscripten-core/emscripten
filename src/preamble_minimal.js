@@ -6,10 +6,6 @@
 
 #include "runtime_safe_heap.js"
 
-#if SUPPORT_BIG_ENDIAN
-#include "library_little_endian_heap.js"
-#endif
-
 #if ASSERTIONS
 /** @type {function(*, string=)} */
 function assert(condition, text) {

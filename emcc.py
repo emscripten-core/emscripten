@@ -1356,6 +1356,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file.  This is a form of emulation to support existing build systems.  If you want to build a runtime shared library use the SIDE_MODULE setting.')
         link_to_object = True
 
+    if shared.Settings.SUPPORT_BIG_ENDIAN:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        '$LE_HEAP_STORE_U16',
+        '$LE_HEAP_STORE_I16',
+        '$LE_HEAP_STORE_U32',
+        '$LE_HEAP_STORE_I32',
+        '$LE_HEAP_STORE_F32',
+        '$LE_HEAP_STORE_F64',
+        '$LE_HEAP_LOAD_U16',
+        '$LE_HEAP_LOAD_I16',
+        '$LE_HEAP_LOAD_U32',
+        '$LE_HEAP_LOAD_I32',
+        '$LE_HEAP_LOAD_F32',
+        '$LE_HEAP_LOAD_F64'
+      ]
+
     if shared.Settings.STACK_OVERFLOW_CHECK:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_end', '_emscripten_stack_get_free']
