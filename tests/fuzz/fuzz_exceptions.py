@@ -708,6 +708,9 @@ def known(err, silent):
     if 'Active sort region list not finished' in err:
         # https://github.com/emscripten-core/emscripten/issues/13554
         return True
+    if 'Allocation failed' in err:
+        # Looks related to "Active sort region", testcases fluctuate.
+        return True
     if not silent:
         print('unknown compile error')
     return False
@@ -718,28 +721,22 @@ def check_testcase(data, silent=True):
         Checks if a testcase is valid. Returns True if so.
     '''
     # Generate C++
-    LLVMTranslator(data).write(main='a.ll', support='b.cpp')
-
-    result = subprocess.run(['/home/azakai/Dev/sdk/upstream/bin/llc', 'a.ll',
-                             '-exception-model=wasm',
-                             '-mattr=+exception-handling',
-                             '-o', '/dev/null'],
-                            stderr=subprocess.PIPE, text=True)
-
-    if not silent:
-        print(result.stderr)
-
-    if result.returncode != 0:
-        return known(result.stderr, silent)
-
-    return True # XXX
+    CppTranslator(data).write(main='a.cpp', support='b.cpp')
 
     # Compile with emcc, looking for a compilation error.
 
     # TODO: also compile b.cpp, and remove -c so that we test linking.
-    result = subprocess.run(['./em++', 'a.cpp', 'b.cpp', '-sWASM_BIGINT',
-                             '-fwasm-exceptions', '-O0', '-o', 'a.out.js'],
-                            stderr=subprocess.PIPE, text=True)
+    open('a.sh', 'w').write('''\
+ulimit -v 500000
+./em++ a.cpp b.cpp -s WASM_BIGINT -fwasm-exceptions -O0 -o a.out.js
+''')
+    try:
+        result = subprocess.run(['bash', 'a.sh'],
+                                stderr=subprocess.PIPE, text=True, timeout=2)
+    except subprocess.TimeoutExpired:
+        if not silent:
+            print('timeout error')
+        return False
 
     if not silent:
         print(result.stderr)
@@ -781,7 +778,6 @@ def check_testcase(data, silent=True):
     if wasm.returncode != 0:
         if not silent:
             print('runtime error')
-            #sys.exit(42)
         return False
 
     if normal.stdout != wasm.stdout:
@@ -791,6 +787,23 @@ def check_testcase(data, silent=True):
 
     return True
 
+'''
+TODO: LLVM fuzzing
+
+    result = subprocess.run(['/home/azakai/Dev/sdk/upstream/bin/llc', 'a.ll',
+                             '-exception-model=wasm',
+                             '-mattr=+exception-handling',
+                             '-o', '/dev/null'],
+                            stderr=subprocess.PIPE, text=True)
+
+    if not silent:
+        print(result.stderr)
+
+    if result.returncode != 0:
+        return known(result.stderr, silent)
+
+    return True # XXX
+'''
 
 def reduce(data):
     '''
