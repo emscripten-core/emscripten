@@ -4,9 +4,7 @@
 static int __pthread_detach(pthread_t t)
 {
 #ifdef __EMSCRIPTEN__ // XXX Emscripten return ESRCH when attempting to detach invalid threads
-	if (!t || t->self != t) {
-		return ESRCH;
-	}
+	if (!t || !t->tid) return ESRCH;
 #endif
 	/* If the cas fails, detach state is either already-detached
 	 * or exiting/exited, and pthread_join will trap or cleanup. */

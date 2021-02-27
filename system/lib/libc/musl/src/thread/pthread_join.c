@@ -10,9 +10,7 @@ weak_alias(dummy1, __tl_sync);
 static int __pthread_timedjoin_np(pthread_t t, void **res, const struct timespec *at)
 {
 #ifdef __EMSCRIPTEN__ // XXX Emscripten return ESRCH when attempting to join invalid threads (see test_pthread_join_6_2)
-	if (!t || t->self != t) {
-		return ESRCH;
-	}
+	if (!t || !t->tid) return ESRCH;
 #endif
 
 	int state, cs, r = 0;
