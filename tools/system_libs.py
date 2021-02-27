@@ -56,8 +56,10 @@ def dir_is_newer(dir_a, dir_b):
   return newest_a < newest_b
 
 
-def get_cflags(force_object_files=False):
-  flags = []
+def get_base_cflags(force_object_files=False):
+  # Always build system libraries with debug information.  Non-debug builds
+  # will ignore this at link time because we link with `-strip-debug`.
+  flags = ['-g']
   if shared.Settings.LTO and not force_object_files:
     flags += ['-flto=' + shared.Settings.LTO]
   if shared.Settings.RELOCATABLE:
@@ -343,17 +345,21 @@ class Library(object):
     commands = []
     objects = []
     cflags = self.get_cflags()
+    base_flags = get_base_cflags()
     for src in self.get_files():
       o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
       ext = shared.suffix(src)
-      if ext in ('.s', '.c'):
+      if ext in ('.s', '.S', '.c'):
         cmd = [shared.EMCC]
       else:
         cmd = [shared.EMXX]
-      if ext != '.s':
+      if ext in ('.s', '.S'):
+        cmd += base_flags
+        # TODO(sbc) There is an llvm bug that causes a crash when `-g` is used with
+        # assembly files that define wasm globals.
+        cmd.remove('-g')
+      else:
         cmd += cflags
-      elif shared.Settings.MEMORY64:
-        cmd += ['-s', 'MEMORY64=' + str(shared.Settings.MEMORY64)]
       commands.append(cmd + ['-c', src, '-o', o])
       objects.append(o)
     run_build_commands(commands)
@@ -385,7 +391,7 @@ class Library(object):
     Override and add any flags as needed to handle new variations.
     """
     cflags = self._inherit_list('cflags')
-    cflags += get_cflags(force_object_files=self.force_object_files)
+    cflags += get_base_cflags(force_object_files=self.force_object_files)
 
     if self.includes:
       cflags += ['-I' + shared.path_from_root(*path) for path in self._inherit_list('includes')]
@@ -1051,7 +1057,7 @@ class libgl(MTLibrary):
   name = 'libgl'
 
   src_dir = ['system', 'lib', 'gl']
-  src_files = ['gl.c', 'webgl1.c']
+  src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c']
 
   cflags = ['-Oz']
 
@@ -1613,7 +1619,7 @@ class Ports(object):
       # this must only be called on a standard build command
       assert cmd[0] in (shared.EMCC, shared.EMXX)
       # add standard cflags, but also allow the cmd to override them
-      return cmd[:1] + get_cflags() + cmd[1:]
+      return cmd[:1] + get_base_cflags() + cmd[1:]
     run_build_commands([add_args(c) for c in commands])
 
   @staticmethod

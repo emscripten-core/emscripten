@@ -6199,7 +6199,7 @@ int main() {
   return 0;
 }
 ''')
-    self.run_process([EMCC, 'src.c', '-O2', '-g'])
+    self.run_process([EMCC, 'src.c', '-O2'])
     size = os.path.getsize('a.out.wasm')
     # size should be much smaller than the size of that zero-initialized buffer
     self.assertLess(size, 123456 / 2)
@@ -6587,18 +6587,24 @@ int main() {
       ]:
       print(args, expect_names)
       try_delete('a.out.js')
-      # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in them, which makes counting harder
+      # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in
+      # them, which makes counting harder
       self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'MALLOC="dlmalloc"', '-s', 'EXPORTED_FUNCTIONS=[_main,_malloc]'])
       code = open('a.out.wasm', 'rb').read()
-      if expect_names:
-        # name section adds the name of malloc (there is also another one for the export)
-        self.assertEqual(code.count(b'malloc'), 2)
+      if '-g' in args:
+        # With -g we get full dwarf info which means we there are many occurances of malloc
+        self.assertGreater(code.count(b'malloc'), 2)
       else:
-        # should be just malloc for the export
-        self.assertEqual(code.count(b'malloc'), 1)
+        if expect_names:
+          # name section adds the name of malloc (there is also another one for the export)
+          self.assertEqual(code.count(b'malloc'), 2)
+        else:
+          # should be just malloc for the export
+          self.assertEqual(code.count(b'malloc'), 1)
       sizes[str(args)] = os.path.getsize('a.out.wasm')
     print(sizes)
-    self.assertLess(sizes["['-O2']"], sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names')
+    # when -profiling-funcs, the size increases due to function names
+    self.assertLess(sizes["['-O2']"], sizes["['-O2', '--profiling-funcs']"])
 
   def test_binaryen_warn_mem(self):
     # if user changes INITIAL_MEMORY at runtime, the wasm module may not accept the memory import if
@@ -8749,14 +8755,14 @@ int main(void) {
 
   @parameterized({
     'c': ['c', [
-      r'in malloc.*a\.out\.wasm\+0x',
+      r'in malloc .*lsan_interceptors\.cpp:\d+:\d+',
       r'(?im)in f (|[/a-z\.]:).*/test_lsan_leaks\.c:6:21$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.c:10:16$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.c:12:3$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.c:13:3$',
     ]],
     'cpp': ['cpp', [
-      r'in operator new\[\]\(unsigned long\).*a\.out\.wasm\+0x',
+      r'in operator new\[\]\(unsigned long\) .*lsan_interceptors\.cpp:\d+:\d+',
       r'(?im)in f\(\) (|[/a-z\.]:).*/test_lsan_leaks\.cpp:4:21$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.cpp:8:16$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.cpp:10:3$',
