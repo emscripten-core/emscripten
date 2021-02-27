@@ -1482,8 +1482,8 @@ def calculate(input_files, cxx, forced):
 
     add_library(system_libs_map['libc'])
     add_library(system_libs_map['libcompiler_rt'])
-    if cxx:
-      add_library(system_libs_map['libc++'])
+    #if cxx:
+    #  add_library(system_libs_map['libc++'])
     if cxx or sanitize:
       add_library(system_libs_map['libc++abi'])
       if shared.Settings.EXCEPTION_HANDLING:
