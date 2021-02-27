@@ -173,9 +173,10 @@ int __pthread_create(pthread_t* restrict res,
   new->map_base = block;
   new->map_size = size;
 
-  // The pthread struct has a field that points to itself - this is used as a
-  // magic ID to detect whether the pthread_t structure is 'alive'.
+  // The pthread struct has a field that points to itself.
   new->self = new;
+
+  // Thread ID, this becomes zero when the thread is no longer available.
   new->tid = next_tid++;
 
   // pthread struct robust_list head should point to itself.
@@ -280,18 +281,21 @@ void _emscripten_thread_free_data(pthread_t t) {
   // A thread can never free its own thread data.
   assert(t != pthread_self());
 #ifndef NDEBUG
-  if (t->profilerBlock) {
-    emscripten_builtin_free(t->profilerBlock);
+  intptr_t old_block = __c11_atomic_exchange((_Atomic intptr_t*)&t->profilerBlock, 0, __ATOMIC_SEQ_CST);
+  if (old_block) {
+    emscripten_builtin_free((void*)old_block);
   }
 #endif
+  // The tid may be reused.  Clear it to prevent inadvertent use
+  // and inform functions that would use it that it's no longer
+  // available.
+  t->tid = 0;
 
-  // Free all the enture thread block (called map_base because
+  // Free the entire thread block (called map_base because
   // musl normally allocates this using mmap).  This region
   // includes the pthread structure itself.
   unsigned char* block = t->map_base;
   dbg("_emscripten_thread_free_data thread=%p map_base=%p", t, block);
-  // To aid in debugging, set the entire region to zero.
-  memset(block, 0, sizeof(struct pthread));
   emscripten_builtin_free(block);
 }
 

@@ -117,7 +117,7 @@ void emscripten_main_thread_process_queued_calls() {
 }
 
 int _emscripten_thread_is_valid(pthread_t thread) {
-  return thread->self == thread;
+  return thread->tid;
 }
 
 static void *dummy_tsd[1] = { 0 };
@@ -128,8 +128,7 @@ __attribute__((constructor(48)))
 void __emscripten_init_main_thread(void) {
   __emscripten_init_main_thread_js(&__main_pthread);
 
-  // The pthread struct has a field that points to itself - this is used as
-  // a magic ID to detect whether the pthread_t structure is 'alive'.
+  // The pthread struct has a field that points to itself.
   __main_pthread.self = &__main_pthread;
   __main_pthread.stack = (void*)emscripten_stack_get_base();
   __main_pthread.stack_size = emscripten_stack_get_base() - emscripten_stack_get_end();

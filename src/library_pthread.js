@@ -34,7 +34,7 @@ globalThis.MAX_PTR = (2 ** 32) - 1
 var LibraryPThread = {
   $PThread__postset: 'PThread.init();',
   $PThread__deps: ['_emscripten_thread_init',
-                   '$killThread',
+                   '$terminateWorker',
                    '$cancelThread', '$cleanupThread', '$zeroMemory',
 #if MAIN_MODULE
                    '$markAsFinshed',
@@ -180,7 +180,6 @@ var LibraryPThread = {
     setExitStatus: (status) => EXITSTATUS = status,
 #endif
 
-    terminateAllThreads__deps: ['$terminateWorker'],
     terminateAllThreads: () => {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! terminateAllThreads() can only ever be called from main application thread!');
@@ -204,7 +203,7 @@ var LibraryPThread = {
       PThread.runningWorkers = [];
       PThread.pthreads = [];
     },
-    returnWorkerToPool: (worker) => {
+    returnWorkerToPool: (worker, terminate) => {
       // We don't want to run main thread queued calls here, since we are doing
       // some operations that leave the worker queue in an invalid state until
       // we are completely done (it would be bad if free() ends up calling a
@@ -213,9 +212,13 @@ var LibraryPThread = {
       // we are all done.
       var pthread_ptr = worker.pthread_ptr;
       delete PThread.pthreads[pthread_ptr];
-      // Note: worker is intentionally not terminated so the pool can
-      // dynamically grow.
-      PThread.unusedWorkers.push(worker);
+      if (terminate) {
+        worker.terminate();
+      } else {
+        // No termination needed? Return it to the worker pool as an
+        // unused worker so the pool can dynamically grow.
+        PThread.unusedWorkers.push(worker);
+      }
       PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1);
       // Not a running Worker anymore
       // Detach the worker from the pthread object, and return it to the
@@ -282,13 +285,11 @@ var LibraryPThread = {
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
-          cleanupThread(d['thread']);
+          cleanupThread(d['thread'], d['terminate']);
 #if MAIN_MODULE
         } else if (cmd === 'markAsFinshed') {
           markAsFinshed(d['thread']);
 #endif
-        } else if (cmd === 'killThread') {
-          killThread(d['thread']);
         } else if (cmd === 'cancelThread') {
           cancelThread(d['thread']);
         } else if (cmd === 'loaded') {
@@ -538,25 +539,6 @@ var LibraryPThread = {
     };
   },
 
-  $killThread__deps: ['_emscripten_thread_free_data', '$terminateWorker'],
-  $killThread: (pthread_ptr) => {
-#if PTHREADS_DEBUG
-    dbg(`killThread ${ptrToString(pthread_ptr)}`);
-#endif
-#if ASSERTIONS
-    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! killThread() can only ever be called from main application thread!');
-    assert(pthread_ptr, 'Internal Error! Null pthread_ptr in killThread!');
-#endif
-    var worker = PThread.pthreads[pthread_ptr];
-    delete PThread.pthreads[pthread_ptr];
-    terminateWorker(worker);
-    __emscripten_thread_free_data(pthread_ptr);
-    // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
-    // but don't put it back to the pool.
-    PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1); // Not a running Worker anymore.
-    worker.pthread_ptr = 0;
-  },
-
   __emscripten_thread_cleanup: (thread) => {
     // Called when a thread needs to be cleaned up so it can be reused.
     // A thread is considered reusable when it either returns from its
@@ -566,8 +548,8 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
     dbg(`__emscripten_thread_cleanup: ${ptrToString(thread)}`)
 #endif
-    if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread);
-    else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
+    if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread, false);
+    else postMessage({ 'cmd': 'cleanupThread', 'thread': thread, 'terminate': false });
   },
 
   _emscripten_thread_set_strongref: (thread) => {
@@ -583,7 +565,7 @@ var LibraryPThread = {
 #endif
   },
 
-  $cleanupThread: (pthread_ptr) => {
+  $cleanupThread: (pthread_ptr, terminate) => {
 #if PTHREADS_DEBUG
     dbg(`cleanupThread: ${ptrToString(pthread_ptr)}`)
 #endif
@@ -601,7 +583,7 @@ var LibraryPThread = {
 #if ASSERTIONS
     assert(worker);
 #endif
-    PThread.returnWorkerToPool(worker);
+    PThread.returnWorkerToPool(worker, terminate);
   },
 
 #if MAIN_MODULE
@@ -928,8 +910,8 @@ var LibraryPThread = {
       if (!ENVIRONMENT_IS_PTHREAD) cancelThread(thread);
       else postMessage({ 'cmd': 'cancelThread', 'thread': thread });
     } else {
-      if (!ENVIRONMENT_IS_PTHREAD) killThread(thread);
-      else postMessage({ 'cmd': 'killThread', 'thread': thread });
+      if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread, true);
+      else postMessage({ 'cmd': 'cleanupThread', 'thread': thread, 'terminate': true });
     }
     return 0;
   },
