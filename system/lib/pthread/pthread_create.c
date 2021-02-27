@@ -279,14 +279,20 @@ void _emscripten_thread_free_data(pthread_t t) {
     emscripten_builtin_free(t->profilerBlock);
   }
 #endif
+  // Clear the self-reference to prevent inadvertent use and
+  // inform functions that validate it that the thread is no
+  // longer available.
+  t->self = NULL;
 
-  // Free all the entire thread block (called map_base because
+  // Free the entire thread block (called map_base because
   // musl normally allocates this using mmap).  This region
   // includes the pthread structure itself.
   unsigned char* block = t->map_base;
   dbg("_emscripten_thread_free_data thread=%p map_base=%p", t, block);
+#ifndef NDEBUG
   // To aid in debugging, set the entire region to zero.
   memset(block, 0, sizeof(struct pthread));
+#endif
   emscripten_builtin_free(block);
 }
 
