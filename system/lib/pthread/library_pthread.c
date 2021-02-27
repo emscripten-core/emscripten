@@ -117,7 +117,7 @@ void emscripten_main_thread_process_queued_calls() {
 }
 
 int _emscripten_thread_is_valid(pthread_t thread) {
-  return thread->self == thread;
+  return thread->tid;
 }
 
 static void *dummy_tsd[1] = { 0 };
@@ -126,8 +126,7 @@ weak_alias(dummy_tsd, __pthread_tsd_main);
 // See system/lib/README.md for static constructor ordering.
 __attribute__((constructor(48)))
 void _emscripten_init_main_thread(void) {
-  // The pthread struct has a field that points to itself - this is used as
-  // a magic ID to detect whether the pthread_t structure is 'alive'.
+  // The pthread struct has a field that points to itself.
   __main_pthread.self = &__main_pthread;
   __main_pthread.detach_state = DT_JOINABLE;
   // Main thread ID is always 1.  It can't be 0 because musl assumes
