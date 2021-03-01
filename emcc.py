@@ -1245,7 +1245,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # in -Oz builds, since custom decoder for UTF-8 takes up space.
     # In pthreads enabled builds, TEXTDECODER==2 may not work, see
     # https://github.com/whatwg/encoding/issues/172
-    if shared.Settings.SHRINK_LEVEL >= 2 and not shared.Settings.USE_PTHREADS:
+    # When supporting shell environments, do not do this as TextDecoder is not
+    # widely supported there.
+    if shared.Settings.SHRINK_LEVEL >= 2 and not shared.Settings.USE_PTHREADS and \
+       not shared.Settings.ENVIRONMENT_MAY_BE_SHELL:
       default_setting('TEXTDECODER', 2)
 
     # If set to 1, we will run the autodebugger (the automatic debugging tool, see
