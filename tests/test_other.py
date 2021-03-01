@@ -1814,7 +1814,8 @@ int f() {
       'growableHeap',
       'unsignPointers',
       'asanify',
-      'safeHeap'
+      'safeHeap',
+      'littleEndianHeap'
     ]
     for input, expected, passes in [
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyLocals.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyLocals-output.js')).read(),
@@ -1861,6 +1862,8 @@ int f() {
        ['asanify']),
       (path_from_root('tests', 'optimizer', 'test-safeHeap.js'), open(path_from_root('tests', 'optimizer', 'test-safeHeap-output.js')).read(),
        ['safeHeap']),
+      (path_from_root('tests', 'optimizer', 'test-LittleEndianHeap.js'), open(path_from_root('tests', 'optimizer', 'test-LittleEndianHeap-output.js')).read(),
+       ['littleEndianHeap']),
     ]:
       print(input, passes)
 
