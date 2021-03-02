@@ -10048,3 +10048,11 @@ exec "$@"
         print(f'  checking for: {dep}')
         if direct not in js and via_module not in js and assignment not in js:
           self.fail(f'use of declared dependency {dep} not found in JS output for {function}')
+
+  def test_shell_Oz(self):
+    # regression test for -Oz working on non-web, non-node environments that
+    # lack TextDecoder
+    if config.V8_ENGINE not in config.JS_ENGINES:
+      return self.skipTest('no shell to test')
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-Oz'])
+    self.assertContained('hello, world!', self.run_js('a.out.js', engine=config.V8_ENGINE))
