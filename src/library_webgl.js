@@ -1083,7 +1083,23 @@ var LibraryGL = {
       __webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GLctx);
 #endif
 
-      GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
+#if MAX_WEBGL_VERSION >= 2
+      // On WebGL 2, EXT_disjoint_timer_query is replaced with an alternative
+      // that's based on core APIs, and exposes only the queryCounterEXT()
+      // entrypoint.
+      if (context.version >= 2) {
+        GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query_webgl2");
+      }
+
+      // However, Firefox exposes the WebGL 1 version on WebGL 2 as well and
+      // thus we look for the WebGL 1 version again if the WebGL 2 version
+      // isn't present. https://bugzilla.mozilla.org/show_bug.cgi?id=1328882
+      if (context.version < 2 || !GLctx.disjointTimerQueryExt)
+#endif
+      {
+        GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
+      }
+
       __webgl_enable_WEBGL_multi_draw(GLctx);
 
       // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
@@ -1861,6 +1877,9 @@ var LibraryGL = {
     GLctx.disjointTimerQueryExt['endQueryEXT'](target);
   },
 
+  // This one is either from EXT_disjoint_timer_query on WebGL 1 (taking a
+  // WebGLTimerQueryEXT) or from EXT_disjoint_timer_query_webgl2 (taking a
+  // WebGLQuery)
   glQueryCounterEXT__sig: 'vii',
   glQueryCounterEXT: function(id, target) {
 #if GL_ASSERTIONS
