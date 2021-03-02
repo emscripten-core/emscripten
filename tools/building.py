@@ -134,7 +134,8 @@ def unique_ordered(values):
   seen = set()
 
   def check(value):
-    if value in seen:
+    # Dedup value if it already exists and it's not a link flag (flags start with '-')
+    if value in seen and not value.startswith('-'):
       return False
     seen.add(value)
     return True
