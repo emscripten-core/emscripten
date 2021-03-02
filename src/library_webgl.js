@@ -1925,7 +1925,18 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjecti64vEXT', 'id');
 #endif
     var query = GL.queries[id];
-    var param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
+    var param;
+#if MAX_WEBGL_VERSION >= 2
+    if (GL.currentContext.version < 2)
+#endif
+    {
+      param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
+    }
+#if MAX_WEBGL_VERSION >= 2
+    else {
+      param = GLctx['getQueryParameter'](query, pname);
+    }
+#endif
     var ret;
     if (typeof param == 'boolean') {
       ret = param ? 1 : 0;
