@@ -607,6 +607,10 @@ def link_lld(args, target, external_symbol_list=None):
   # grouping.
   args = [a for a in args if a not in ('--start-group', '--end-group')]
 
+  # Finish link
+  # tolerate people trying to link a.so a.so etc.
+  args = unique_ordered(args)
+
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.
   if Settings.LINKABLE:
