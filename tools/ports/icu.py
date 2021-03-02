@@ -23,19 +23,11 @@ def needed(settings):
 def get(ports, settings, shared):
   url = 'https://github.com/unicode-org/icu/releases/download/%s/icu4c-%s-src.zip' % (TAG, VERSION)
   ports.fetch_project('icu', url, 'icu', sha512hash=HASH)
-
-  def get_downloaded_icu4c_path():
-    return os.path.join(ports.get_dir(), 'icu', 'icu')
-
-  def get_icu_build_path():
-    return os.path.join(ports.get_build_dir(), 'icu')
-
-  def get_icu_source_path():
-    return os.path.join(get_icu_build_path(), 'source')
+  icu_source_path = os.path.join(ports.get_build_dir(), 'icu', 'source')
 
   def prepare_build():
-    dest_path = get_icu_build_path()
-    source_path = get_downloaded_icu4c_path()
+    source_path = os.path.join(ports.get_dir(), 'icu', 'icu') # downloaded icu4c path
+    dest_path = os.path.join(ports.get_build_dir(), 'icu') # icu build path
     logging.debug(f'preparing for icu build: {source_path} -> {dest_path}')
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
@@ -61,28 +53,25 @@ def get(ports, settings, shared):
   # creator for libicu_common
   def create_libicu_common(lib_output):
     prepare_build()
-    source_root = get_icu_source_path()
-    ports.install_header_dir(os.path.join(source_root, 'common', 'unicode'), 'unicode')
-    lib_src = os.path.join(source_root, 'common')
+    lib_src = os.path.join(icu_source_path, 'common')
+    ports.install_headers(os.path.join(lib_src, 'unicode'), target='unicode')
     build_lib(lib_output, lib_src, [], ['-DU_COMMON_IMPLEMENTATION=1'])
 
   # creator for libicu_stubdata
   def create_libicu_stubdata(lib_output):
-    source_root = get_icu_source_path()
-    lib_src = os.path.join(get_icu_source_path(), 'stubdata')
-    other_includes = [os.path.join(source_root, 'common')]
+    lib_src = os.path.join(icu_source_path, 'stubdata')
+    other_includes = [os.path.join(icu_source_path, 'common')]
     build_lib(lib_output, lib_src, other_includes, [])
 
   # creator for libicu_i18n
   def create_libicu_i18n(lib_output):
-    source_root = get_icu_source_path()
-    lib_src = os.path.join(source_root, 'i18n')
-    ports.install_header_dir(os.path.join(lib_src, 'unicode'), 'unicode', merge=True)
-    other_includes = [os.path.join(source_root, 'common')]
+    lib_src = os.path.join(icu_source_path, 'i18n')
+    ports.install_headers(os.path.join(lib_src, 'unicode'), target='unicode')
+    other_includes = [os.path.join(icu_source_path, 'common')]
     build_lib(lib_output, lib_src, other_includes, ['-DU_I18N_IMPLEMENTATION=1'])
 
   return [
-      shared.Cache.get_lib(libname_libicu_common, create_libicu_common),
+      shared.Cache.get_lib(libname_libicu_common, create_libicu_common), # this also prepares the build
       shared.Cache.get_lib(libname_libicu_stubdata, create_libicu_stubdata),
       shared.Cache.get_lib(libname_libicu_i18n, create_libicu_i18n)
   ]
