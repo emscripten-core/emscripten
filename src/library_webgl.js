@@ -198,9 +198,8 @@ var LibraryGL = {
     contexts: [],
 #endif
     offscreenCanvases: {}, // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their rendering control transferred to offscreen.
-    timerQueriesEXT: [],
+    queries: [], // on WebGL1 stores WebGLTimerQueryEXT, on WebGL2 WebGLQuery
 #if MAX_WEBGL_VERSION >= 2
-    queries: [],
     samplers: [],
     transformFeedbacks: [],
     syncs: [],
@@ -1824,9 +1823,9 @@ var LibraryGL = {
         while(i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
         return;
       }
-      var id = GL.getNewId(GL.timerQueriesEXT);
+      var id = GL.getNewId(GL.queries);
       query.name = id;
-      GL.timerQueriesEXT[id] = query;
+      GL.queries[id] = query;
       {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
     }
   },
@@ -1835,16 +1834,16 @@ var LibraryGL = {
   glDeleteQueriesEXT: function(n, ids) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
-      var query = GL.timerQueriesEXT[id];
+      var query = GL.queries[id];
       if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
       GLctx.disjointTimerQueryExt['deleteQueryEXT'](query);
-      GL.timerQueriesEXT[id] = null;
+      GL.queries[id] = null;
     }
   },
 
   glIsQueryEXT__sig: 'ii',
   glIsQueryEXT: function(id) {
-    var query = GL.timerQueriesEXT[id];
+    var query = GL.queries[id];
     if (!query) return 0;
     return GLctx.disjointTimerQueryExt['isQueryEXT'](query);
   },
@@ -1852,9 +1851,9 @@ var LibraryGL = {
   glBeginQueryEXT__sig: 'vii',
   glBeginQueryEXT: function(target, id) {
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glBeginQueryEXT', 'id');
+    GL.validateGLObjectID(GL.queries, id, 'glBeginQueryEXT', 'id');
 #endif
-    GLctx.disjointTimerQueryExt['beginQueryEXT'](target, GL.timerQueriesEXT[id]);
+    GLctx.disjointTimerQueryExt['beginQueryEXT'](target, GL.queries[id]);
   },
 
   glEndQueryEXT__sig: 'vi',
@@ -1865,9 +1864,9 @@ var LibraryGL = {
   glQueryCounterEXT__sig: 'vii',
   glQueryCounterEXT: function(id, target) {
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glQueryCounterEXT', 'id');
+    GL.validateGLObjectID(GL.queries, id, 'glQueryCounterEXT', 'id');
 #endif
-    GLctx.disjointTimerQueryExt['queryCounterEXT'](GL.timerQueriesEXT[id], target);
+    GLctx.disjointTimerQueryExt['queryCounterEXT'](GL.queries[id], target);
   },
 
   glGetQueryivEXT__sig: 'viii',
@@ -1896,9 +1895,9 @@ var LibraryGL = {
       return;
     }
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glGetQueryObjectivEXT', 'id');
+    GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjectivEXT', 'id');
 #endif
-    var query = GL.timerQueriesEXT[id];
+    var query = GL.queries[id];
     var param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
     var ret;
     if (typeof param == 'boolean') {
@@ -1923,9 +1922,9 @@ var LibraryGL = {
       return;
     }
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glGetQueryObjecti64vEXT', 'id');
+    GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjecti64vEXT', 'id');
 #endif
-    var query = GL.timerQueriesEXT[id];
+    var query = GL.queries[id];
     var param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
     var ret;
     if (typeof param == 'boolean') {
