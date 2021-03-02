@@ -205,7 +205,7 @@ class browser(BrowserCore):
     # sourceContent when the maps are relative paths
     try_delete(html_file)
     try_delete(html_file + '.map')
-    self.compile_btest(['src.cpp', '-o', 'src.html', '-g4'])
+    self.compile_btest(['src.cpp', '-o', 'src.html', '-gsource-map'])
     self.assertExists(html_file)
     self.assertExists('src.wasm.map')
     webbrowser.open_new('file://' + html_file)
@@ -218,7 +218,7 @@ If manually bisecting:
 
   def test_emscripten_log(self):
     self.btest_exit(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp'), 0,
-                    args=['--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4'])
+                    args=['--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-gsource-map'])
 
   def test_preload_file(self):
     absolute_src_path = os.path.join(self.get_dir(), 'somefile.txt').replace('\\', '/')
@@ -3627,7 +3627,7 @@ window.close = function() {
   def test_pthread_c11_threads(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_c11_threads.c'),
                expected='0',
-               args=['-g4', '-std=gnu11', '-xc', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_MEMORY=64mb'])
+               args=['-gsource-map', '-std=gnu11', '-xc', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_MEMORY=64mb'])
 
   # Test that the emscripten_ atomics api functions work.
   @parameterized({
@@ -4023,7 +4023,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'core', 'test_safe_stack.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'TOTAL_STACK=64KB', '--pre-js', path_from_root('tests', 'pthread', 'test_safe_stack.js')])
 
   @parameterized({
-    'leak': ['test_pthread_lsan_leak', ['-g4']],
+    'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
     'no_leak': ['test_pthread_lsan_no_leak'],
   })
   @requires_threads
@@ -4032,7 +4032,7 @@ window.close = function() {
 
   @parameterized({
     # Reusing the LSan test files for ASan.
-    'leak': ['test_pthread_lsan_leak', ['-g4']],
+    'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
     'no_leak': ['test_pthread_lsan_no_leak'],
   })
   @requires_threads
@@ -4880,7 +4880,7 @@ window.close = function() {
   @requires_threads
   def test_offset_converter(self, *args):
     try:
-      self.btest_exit(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-g4', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
+      self.btest_exit(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-gsource-map', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
     except Exception as e:
       # dump the wasm file; this is meant to help debug #10539 on the bots
       print(self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'), 'test.wasm', '-g', '--print', '-all'], stdout=PIPE).stdout)

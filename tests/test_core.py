@@ -6021,7 +6021,7 @@ return malloc(size);
 
     self.emcc_args.append('-Wno-shift-negative-value')
     if self.run_name == 'asm2g':
-      self.emcc_args.append('-g4') # more source maps coverage
+      self.emcc_args.append('-gsource-map') # more source maps coverage
 
     if use_cmake:
       make_args = []
@@ -6985,7 +6985,7 @@ someweirdtext
     wasm_filename = 'a.out.wasm'
     no_maps_filename = 'no-maps.out.js'
 
-    assert '-g4' not in self.emcc_args
+    assert '-gsource-map' not in self.emcc_args
     building.emcc('src.cpp', self.get_emcc_args(), out_filename)
     # the file name may find its way into the generated code, so make sure we
     # can do an apples-to-apples comparison by compiling with the same file name
@@ -6993,7 +6993,7 @@ someweirdtext
     with open(no_maps_filename) as f:
       no_maps_file = f.read()
     no_maps_file = re.sub(' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
-    self.emcc_args.append('-g4')
+    self.emcc_args.append('-gsource-map')
 
     building.emcc(os.path.abspath('src.cpp'),
                   self.get_emcc_args(),
@@ -7962,7 +7962,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
       'in main',
     ]),
-    'g4': ('-g4', [
+    'g4': ('-gsource-map', [
       ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
       'in main ',
       '.cpp:3:8'
@@ -7973,7 +7973,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-fsanitize=null', g_flag]
     self.set_setting('ALLOW_MEMORY_GROWTH')
 
-    if g_flag == '-g4':
+    if g_flag == '-gsource-map':
       if not self.is_wasm():
         self.skipTest('wasm2js has no source map support')
       elif '-Oz' in self.emcc_args:
