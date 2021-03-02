@@ -7,9 +7,9 @@ import logging
 import os
 import shutil
 
-TAG = 'release-62-1'
-VERSION = '62_1'
-HASH = 'd3fa42da9aa9c2fc749fff4a31a9e57e826903681d9f4e5b4474649bf3efe271fec10f214a027d542123b85ad3f6fcfc9b6208ad3f8e4c24fe4a0cbab4024e2d'
+TAG = 'release-68-2'
+VERSION = '68_2'
+HASH = '12c3db5966c234c94e7918fb8acc8bd0838edc36a620f3faa788e7ff27b06f1aa431eb117401026e3963622b9323212f444b735d5c9dd3d0b82d772a4834b993'
 
 
 def needed(settings):

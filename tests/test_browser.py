@@ -2415,7 +2415,11 @@ void *getBindBuffer() {
     self.compile_btest([path_from_root('tests', 'browser_module.cpp'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE', '-s', 'EXPORTED_FUNCTIONS=[_one,_two]'])
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE'], expected='8')
 
-  def test_preload_module(self):
+  @parameterized({
+    'non-lz4': ([],),
+    'lz4': (['-s', 'LZ4'],)
+  })
+  def test_preload_module(self, args):
     create_test_file('library.c', r'''
       #include <stdio.h>
       int library_func() {
@@ -2449,7 +2453,7 @@ void *getBindBuffer() {
     ''')
     self.btest_exit(
       'main.c',
-      args=['-s', 'MAIN_MODULE', '--preload-file', '.@/', '-O2', '--use-preload-plugins', '-s', 'EXPORT_ALL'],
+      args=['-s', 'MAIN_MODULE', '--preload-file', '.@/', '-O2', '--use-preload-plugins', '-s', 'EXPORT_ALL'] + args,
       expected='0')
 
   def test_mmap_file(self):
@@ -2463,7 +2467,7 @@ void *getBindBuffer() {
     self.btest('hello_world_gles.c', expected='0', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '-O2', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'])
 
   def test_uuid(self):
-    # Run with ./runner.py browser.test_uuid
+    # Run with ./runner browser.test_uuid
     # We run this test in Node/SPIDERMONKEY and browser environments because we try to make use of
     # high quality crypto random number generators such as crypto.getRandomValues or randomBytes (if available).
 
@@ -3767,6 +3771,11 @@ window.close = function() {
   def test_pthread_cancel(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
+  # Test that pthread_cancel() cancels pthread_cond_wait() operation
+  @requires_threads
+  def test_pthread_cancel_cond_wait(self):
+    self.btest_exit(path_from_root('tests', 'pthread', 'test_pthread_cancel_cond_wait.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
   # Test pthread_kill() operation
   @no_chrome('pthread_kill hangs chrome renderer, and keep subsequent tests from passing')
   @requires_threads
@@ -4155,8 +4164,12 @@ window.close = function() {
     self.btest_exit('binaryen_async.c', expected=1, args=common_args)
 
   # Test that implementing Module.instantiateWasm() callback works.
-  def test_manual_wasm_instantiate(self):
-    self.compile_btest([path_from_root('tests/manual_wasm_instantiate.cpp'), '-o', 'manual_wasm_instantiate.js', '-s', 'BINARYEN'])
+  @parameterized({
+    '': ([],),
+    'asan': (['-fsanitize=address', '-s', 'INITIAL_MEMORY=128MB'],)
+  })
+  def test_manual_wasm_instantiate(self, args=[]):
+    self.compile_btest([path_from_root('tests/manual_wasm_instantiate.cpp'), '-o', 'manual_wasm_instantiate.js'] + args)
     shutil.copyfile(path_from_root('tests', 'manual_wasm_instantiate.html'), 'manual_wasm_instantiate.html')
     self.run_browser('manual_wasm_instantiate.html', 'wasm instantiation succeeded', '/report_result?1')
 
@@ -5006,17 +5019,47 @@ window.close = function() {
                extra_tries=0)
 
 
+EMRUN = path_from_root('emrun')
+
+
 class emrun(RunnerCore):
   def test_emrun_info(self):
     if not has_browser():
       self.skipTest('need a browser')
-    result = self.run_process([path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
+    result = self.run_process([EMRUN, '--system_info', '--browser_info'], stdout=PIPE).stdout
     assert 'CPU' in result
     assert 'Browser' in result
     assert 'Traceback' not in result
 
-    result = self.run_process([path_from_root('emrun'), '--list_browsers'], stdout=PIPE).stdout
+    result = self.run_process([EMRUN, '--list_browsers'], stdout=PIPE).stdout
     assert 'Traceback' not in result
+
+  def test_no_browser(self):
+    # Test --no_browser mode where we have to take care of launching the browser ourselves
+    # and then killing emrun when we are done.
+    if not has_browser():
+      self.skipTest('need a browser')
+
+    self.run_process([EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
+    proc = subprocess.Popen([EMRUN, '--no_browser', '.', '--port=3333'], stdout=PIPE)
+    try:
+      if EMTEST_BROWSER:
+        print('Starting browser')
+        browser_cmd = shlex.split(EMTEST_BROWSER)
+        browser = subprocess.Popen(browser_cmd + ['http://localhost:3333/hello_world.html'])
+        try:
+          while True:
+            stdout = proc.stdout.read()
+            if b'Dumping out file' in stdout:
+              break
+        finally:
+          print('Terminating browser')
+          browser.terminate()
+          browser.wait()
+    finally:
+      print('Terminating emrun server')
+      proc.terminate()
+      proc.wait()
 
   def test_emrun(self):
     self.run_process([EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
@@ -5029,7 +5072,7 @@ class emrun(RunnerCore):
     # delete it. Therefore switch away from that directory before launching.
 
     os.chdir(path_from_root())
-    args_base = [path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile',
+    args_base = [EMRUN, '--timeout', '30', '--safe_firefox_profile',
                  '--kill_exit', '--port', '6939', '--verbose',
                  '--log_stdout', self.in_dir('stdout.txt'),
                  '--log_stderr', self.in_dir('stderr.txt')]

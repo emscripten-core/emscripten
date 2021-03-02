@@ -23,6 +23,7 @@ var LibraryPThreadStub = {
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
+  pthread_cleanup_pop__deps: ['pthread_cleanup_push'],
   pthread_cleanup_pop__sig: 'vi',
   pthread_cleanup_pop: function(execute) {
     assert(_pthread_cleanup_push.level == __ATEXIT__.length, 'cannot pop if something else added meanwhile!');

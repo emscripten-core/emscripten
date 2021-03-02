@@ -16,7 +16,7 @@ import unittest
 from functools import wraps
 
 if __name__ == '__main__':
-  raise Exception('do not run this file directly; do something like: tests/runner.py')
+  raise Exception('do not run this file directly; do something like: tests/runner')
 
 from tools.shared import try_delete, PIPE
 from tools.shared import PYTHON, EMCC, EMAR
@@ -88,7 +88,7 @@ def with_both_exception_handling(f):
   assert callable(f)
 
   def metafunc(self, native_exceptions):
-    if native_exceptions and False: # TODO: re-enable when V8 and LLVM support the updated EH proposal
+    if native_exceptions:
       # Wasm EH is currently supported only in wasm backend and V8
       if not self.is_wasm():
         self.skipTest('wasm2js does not support wasm exceptions')
@@ -1434,7 +1434,7 @@ int main(int argc, char **argv)
   @with_both_exception_handling
   def test_exceptions_rethrow_missing(self):
     create_test_file('main.cpp', 'int main() { throw; }')
-    self.do_runf('main.cpp', 'abort(no exception to throw)', assert_returncode=NON_ZERO)
+    self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
   @with_both_exception_handling
   def test_bad_typeid(self):
@@ -1514,10 +1514,11 @@ int main() {
   def test_segfault(self):
     self.set_setting('SAFE_HEAP')
 
-    for addr in ['0', 'new D2()']:
+    for addr in ['get_null()', 'new D2()']:
       print(addr)
       src = r'''
         #include <stdio.h>
+        #include <emscripten.h>
 
         struct Classey {
           virtual void doIt() = 0;
@@ -1531,6 +1532,10 @@ int main() {
           virtual void doIt() { printf("marfoosh\n"); }
         };
 
+        EM_JS(Classey*, get_null, (), {
+          return 0;
+        });
+
         int main(int argc, char **argv)
         {
           Classey *p = argc == 100 ? new D1() : (Classey*)%s;
@@ -1540,7 +1545,7 @@ int main() {
           return 0;
         }
       ''' % addr
-      if addr.isdigit():
+      if 'get_null' in addr:
         self.do_run(src, 'segmentation fault', assert_returncode=NON_ZERO)
       else:
         self.do_run(src, 'marfoosh')
@@ -1859,12 +1864,14 @@ int main(int argc, char **argv) {
 
   def test_em_asm(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm.cpp')
+    self.emcc_args.append('-std=gnu89')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm.cpp', force_c=True)
 
   # Tests various different ways to invoke the EM_ASM(), EM_ASM_INT() and EM_ASM_DOUBLE() macros.
   @no_asan('Cannot use ASan: test depends exactly on heap size')
   def test_em_asm_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2.cpp')
+    self.emcc_args.append('-std=gnu89')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2.cpp', force_c=True)
 
   # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
@@ -1912,17 +1919,20 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_arguments_side_effects.cpp', force_c=True)
 
   @parameterized({
-    'normal': ([],),
-    'linked': (['-s', 'MAIN_MODULE'],),
+    '': ([], False),
+    'c': ([], True),
+    'linked': (['-s', 'MAIN_MODULE'], False),
+    'linked_c': (['-s', 'MAIN_MODULE'], True),
   })
-  def test_em_js(self, args):
+  def test_em_js(self, args, force_c):
     if 'MAIN_MODULE' in args and not self.is_wasm():
       self.skipTest('main module support for non-wasm')
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('no dynamic library support in asan yet')
     self.emcc_args += args + ['-s', 'EXPORTED_FUNCTIONS=["_main","_malloc"]']
-    self.do_run_in_out_file_test('tests', 'core', 'test_em_js.cpp')
-    self.do_run_in_out_file_test('tests', 'core', 'test_em_js.cpp', force_c=True)
+
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_js.cpp', force_c=force_c)
+    self.assertContained("no args returning int", open('test_em_js.js').read())
 
   def test_runtime_stacksave(self):
     self.do_runf(path_from_root('tests', 'core', 'test_runtime_stacksave.c'), 'success')
@@ -3777,6 +3787,16 @@ ok
       header='typedef float (*floatfunc)(float);', force_c=True, main_module=2)
 
   @needs_dlfcn
+  def test_missing_signatures(self):
+    create_test_file('test_sig.c', r'''#include <emscripten.h>
+                                       int main() {
+                                         return 0 == ( (int)&emscripten_run_script_string +
+                                                       (int)&emscripten_run_script );
+                                       }''')
+    self.set_setting('MAIN_MODULE', 1)
+    self.do_runf('test_sig.c', '')
+
+  @needs_dlfcn
   def test_dylink_global_init(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4521,6 +4541,30 @@ res64 - external 64\n''', header='''
                      header=header,
                      expected='success')
 
+  @needs_dlfcn
+  def test_dylink_argv_argc(self):
+    # Verify that argc and argv can be sent to main when main is in a side module
+
+    self.emcc_args += ['--extern-pre-js', 'pre.js']
+
+    create_test_file('pre.js', '''
+      var Module = { arguments: ['hello', 'world!'] }
+    ''')
+
+    self.dylink_test(
+      '', # main module is empty.
+      r'''
+      #include <stdio.h>
+      int main(int argc, char const *argv[]) {
+        printf("%d ", argc);
+        for (int i=1; i<argc; i++) printf("%s ", argv[i]);
+        printf("\n");
+        return 0;
+      }
+      ''',
+      expected='3 hello world!',
+      need_reverse=False)
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
@@ -4606,8 +4650,8 @@ Have even and odd!
   def test_strtok(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strtok.c')
 
-  def test_parseInt(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_parseInt.c')
+  def test_strtol(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtol.c')
 
   def test_transtrcase(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_transtrcase.c')
@@ -6267,24 +6311,27 @@ return malloc(size);
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS.c')
 
-  def test_dyncall_specific(self):
+  @parameterized({
+    '': [],
+    'minimal_runtime': ['-s', 'MINIMAL_RUNTIME=1']
+  })
+  def test_dyncall_specific(self, *args):
     emcc_args = self.emcc_args[:]
-    for which, exported_runtime_methods in [
+    cases = [
         ('DIRECT', []),
+        ('DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"]']),
+      ]
+    if 'MINIMAL_RUNTIME=1' not in args:
+      cases += [
         ('EXPORTED', []),
-        ('FROM_OUTSIDE', ['dynCall_viji'])
-      ]:
-      print(which)
-      self.emcc_args = emcc_args + ['-D' + which]
-      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', exported_runtime_methods)
+        ('EXPORTED_DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[dynCall]']),
+        ('FROM_OUTSIDE', ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[dynCall_iiji]'])
+      ]
+
+    for which, extra_args in cases:
+      print(str(args) + ' ' + which)
+      self.emcc_args = emcc_args + ['-D' + which] + list(args) + extra_args
       self.do_run_in_out_file_test('tests', 'core', 'dyncall_specific.c')
-
-      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', [])
-      self.emcc_args = emcc_args + ['-s', 'DYNCALLS=1', '--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
-      self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
-
-      self.emcc_args += ['-s', 'MINIMAL_RUNTIME=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"]']
-      self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
@@ -6982,7 +7029,7 @@ someweirdtext
       # the file attribute is optional, but if it is present it needs to refer
       # the output file.
       self.assertPathsIdentical(map_referent, data['file'])
-    assert len(data['sources']) == 1, data['sources']
+    self.assertGreater(len(data['sources']), 1)
     self.assertPathsIdentical('src.cpp', data['sources'][0])
     if hasattr(data, 'sourcesContent'):
       # the sourcesContent attribute is optional, but if it is present it
@@ -6996,14 +7043,14 @@ someweirdtext
       mappings = encode_utf8(mappings)
     seen_lines = set()
     for m in mappings:
-      self.assertPathsIdentical('src.cpp', m['source'])
-      seen_lines.add(m['originalLine'])
+      if m['source'] == 'src.cpp':
+        seen_lines.add(m['originalLine'])
     # ensure that all the 'meaningful' lines in the original code get mapped
     # when optimizing, the binaryen optimizer may remove some of them (by inlining, etc.)
     if is_optimizing(self.emcc_args):
-      assert seen_lines.issuperset([11, 12]), seen_lines
+      self.assertTrue(seen_lines.issuperset([11, 12]), seen_lines)
     else:
-      assert seen_lines.issuperset([6, 7, 11, 12]), seen_lines
+      self.assertTrue(seen_lines.issuperset([6, 7, 11, 12]), seen_lines)
 
   @no_wasm2js('TODO: source maps in wasm2js')
   def test_dwarf(self):
@@ -7066,7 +7113,14 @@ someweirdtext
     # ------------------ ------ ------ ------ --- ------------- -------------
     # 0x000000000000000b      5      0      3   0             0  is_stmt
     src_to_addr = {}
+    found_src_cpp = False
     for line in sections['.debug_line'].splitlines():
+      if 'name: "src.cpp"' in line:
+        found_src_cpp = True
+      if not found_src_cpp:
+        continue
+      if 'debug_line' in line:
+        break
       if line.startswith('0x'):
         while '  ' in line:
           line = line.replace('  ', ' ')
@@ -7081,7 +7135,8 @@ someweirdtext
 
     def get_dwarf_addr(line, col):
       addrs = src_to_addr[(line, col)]
-      assert len(addrs) == 1, 'we assume the simple calls have one address'
+      # we assume the simple calls have one address
+      self.assertEqual(len(addrs), 1)
       return int(addrs[0], 0)
 
     # the lines must appear in sequence (as calls to JS, the optimizer cannot
@@ -7430,7 +7485,7 @@ Module['onRuntimeInitialized'] = function() {
     second_size = os.path.getsize('emscripten_lazy_load_code.wasm.lazy.wasm')
     print('first wasm size', first_size)
     print('second wasm size', second_size)
-    if not conditional and is_optimizing(self.emcc_args):
+    if not conditional and is_optimizing(self.emcc_args) and '-g' not in self.emcc_args:
       # If the call to lazy-load is unconditional, then the optimizer can dce
       # out more than half
       self.assertLess(first_size, 0.6 * second_size)
@@ -8135,7 +8190,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.set_setting('INITIAL_MEMORY', '64mb')
     self.do_run_in_out_file_test('tests', 'pthread', 'test_pthread_c11_threads.c')
 
-  @no_asan('flakey errors that must be fixed, https://github.com/emscripten-core/emscripten/issues/12985')
   @node_pthreads
   def test_pthread_cxx_threads(self):
     self.set_setting('PROXY_TO_PTHREAD')
@@ -8229,6 +8283,43 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.do_basic_dylink_test()
 
+  @needs_dlfcn
+  @node_pthreads
+  def test_Module_dynamicLibraries_pthreads(self):
+    # test that Module.dynamicLibraries works with pthreads
+
+    self.emcc_args += ['-pthread', '-Wno-experimental']
+    self.emcc_args += ['--extern-pre-js', 'pre.js']
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+
+    create_test_file('pre.js', '''
+      if ( !global.Module ) {
+        // This is the initial load (not a worker)
+        // Define the initial state of Module as we would
+        // in the html shell file.
+        // Use var to escape the scope of the if statement
+        var Module = {
+          dynamicLibraries: ['liblib.so']
+        };
+      }
+    ''')
+
+    self.dylink_test(
+      r'''
+        #include <stdio.h>
+        int side();
+        int main() {
+          printf("result is %d", side());
+          return 0;
+        }
+      ''',
+      r'''
+        int side() { return 42; }
+      ''',
+      'result is 42',
+      auto_load=False)
+
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
     # Could also test with -s ALLOW_TABLE_GROWTH=1
@@ -8312,7 +8403,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Tests <emscripten/stack.h> API
   @no_asan('stack allocation sizes are no longer predictable')
   def test_emscripten_stack(self):
-    self.emcc_args += ['-lstack.js']
     self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_get_free.c')
 
@@ -8328,13 +8418,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MAIN_MODULE')
     self.do_runf(path_from_root('tests', 'core', 'test_gl_get_proc_address.c'))
 
-  @no_asan('asan does not yet work in MINIMAL_RUNTIME')
-  def test_dyncalls_minimal_runtime(self):
-    self.set_setting('DYNCALLS')
-    self.set_setting('MINIMAL_RUNTIME')
-    self.emcc_args += ['-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]']
-    self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_dyncalls.js')]
-    self.do_run_in_out_file_test('tests', 'core', 'test_dyncalls.c')
+  def test_REVERSE_DEPS(self):
+    create_test_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)&connect; }')
+    self.run_process([EMCC, 'connect.c'])
+    base_size = os.path.getsize('a.out.wasm')
+
+    # 'auto' should work (its the default)
+    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=auto'])
+
+    # 'all' should work too although it should produce a larger binary
+    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=all'])
+    self.assertGreater(os.path.getsize('a.out.wasm'), base_size)
+
+    # 'none' should fail to link because the dependency on ntohs was not added.
+    err = self.expect_fail([EMCC, 'connect.c', '-sREVERSE_DEPS=none'])
+    self.assertContained('undefined symbol: ntohs', err)
 
 
 # Generate tests for everything

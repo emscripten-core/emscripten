@@ -32,6 +32,7 @@ emscons
 emsize
 tools/emdump
 tools/file_packager
+tests/runner
 '''.split()
 
 

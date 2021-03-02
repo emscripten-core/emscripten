@@ -432,7 +432,11 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 }
 
 function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
-  if (typeof noExitRuntime !== 'undefined') noExitRuntime = true; // If we are the main Emscripten runtime, we should not be closing down.
+#if !MINIMAL_RUNTIME
+  // Avoid shutting down the runtime since we want to wait for the async
+  // response.
+  noExitRuntime = true;
+#endif
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
   var requestMethod = UTF8ToString(fetch_attr);

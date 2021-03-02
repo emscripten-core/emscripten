@@ -424,6 +424,9 @@ def kill_browser_process():
 # starting a browser process from command line generally launches just a "stub" spawner
 # process that immediately exits.
 def detect_browser_processes():
+  if not browser_exe:
+    return # Running with --no_browser, we are not binding to a spawned browser.
+
   global current_browser_processes
   logv('First navigation occurred. Identifying currently running browser processes')
   running_browser_processes = list_processes_by_name(browser_exe)

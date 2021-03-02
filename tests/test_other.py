@@ -26,7 +26,7 @@ import uuid
 from subprocess import PIPE, STDOUT
 
 if __name__ == '__main__':
-  raise Exception('do not run this file directly; do something like: tests/runner.py other')
+  raise Exception('do not run this file directly; do something like: tests/runner other')
 
 from tools.shared import try_delete, config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, EM_BUILD_VERBOSE
@@ -34,7 +34,7 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
 from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from runner import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from runner import create_test_file, parameterized, NON_ZERO, node_pthreads
-from tools import shared, building, utils
+from tools import shared, building, utils, deps_info
 import jsrun
 import clang_native
 from tools import line_endings
@@ -470,7 +470,8 @@ f.write('transformed!')
 f.close()
 ''')
 
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--js-transform', '%s t.py' % (PYTHON)])
+    err = self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-g4', '--js-transform', '%s t.py' % (PYTHON)], stderr=PIPE).stderr
+    self.assertContained('disabling source maps because a js transform is being done', err)
     self.assertIn('transformed!', open('a.out.js').read())
 
   def test_js_mem_file(self):
@@ -1419,6 +1420,51 @@ int f() {
 
     self.run_process([EMCC, 'main.cpp', '--embed-file', 'tst', '--exclude-file', '*.exe'])
     self.assertEqual(self.run_js('a.out.js').strip(), '')
+
+  def test_dynamic_link_with_exceptions_and_assetions(self):
+    # Linking side modules using the STL and exceptions should not abort with
+    # "function in Table but not functionsInTableMap" when using ASSERTIONS=2
+
+    # A side module that uses the STL enables exceptions.
+    create_test_file('side.cpp', r'''
+      #include <vector>
+      std::vector<int> v;
+      std::vector<int> side(int n) {
+          for (int i=0; i<n; i++) v.push_back(i);
+          return v;
+      }
+      ''')
+    self.run_process([
+      EMCC,
+      '-o', 'side.wasm',
+      'side.cpp',
+      '-s', 'SIDE_MODULE=1',
+      '-s', 'DISABLE_EXCEPTION_CATCHING=0',
+      '-s', 'ASSERTIONS=2'])
+
+    create_test_file('main.cpp', r'''
+      #include <stdio.h>
+      #include <vector>
+      std::vector<int> side(int n);
+      int main(void) {
+          auto v = side(10);
+          for (auto i : v) printf("%d", i);
+          printf("\n");
+          return 0;
+      }
+      ''')
+
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    self.do_smart_test(
+      'main.cpp',
+      ['0123456789'],
+      emcc_args=[
+        '-s', 'EXIT_RUNTIME=1',
+        '-s', 'RUNTIME_LINKED_LIBS=[\'side.wasm\']',
+        '-s', 'MAIN_MODULE=1',
+        '-s', 'DISABLE_EXCEPTION_CATCHING=0',
+        '-s', 'ASSERTIONS=2'
+      ])
 
   def test_multidynamic_link(self):
     # Linking the same dynamic library in statically will error, normally, since we statically link
@@ -2430,7 +2476,6 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
   def test_module_exports_with_closure(self):
     # This test checks that module.export is retained when JavaScript is minified by compiling with --closure 1
     # This is important as if module.export is not present the Module object will not be visible to node.js
-    # Run with ./runner.py other.test_module_exports_with_closure
 
     # First make sure test.js isn't present.
     self.clear()
@@ -4201,7 +4246,9 @@ int main() {
   })
   def test_only_force_stdlibs(self, env, fail):
     with env_modify(env):
-      self.run_process([EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
+      err = self.run_process([EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'], stderr=PIPE).stderr
+      if 'EMCC_ONLY_FORCED_STDLIBS' in env:
+        self.assertContained('EMCC_ONLY_FORCED_STDLIBS is deprecated', err)
       if fail:
         output = self.expect_fail(config.NODE_JS + ['a.out.js'], stdout=PIPE)
         self.assertContained('missing function', output)
@@ -6155,7 +6202,7 @@ int main() {
   return 0;
 }
 ''')
-    self.run_process([EMCC, 'src.c', '-O2', '-g'])
+    self.run_process([EMCC, 'src.c', '-O2'])
     size = os.path.getsize('a.out.wasm')
     # size should be much smaller than the size of that zero-initialized buffer
     self.assertLess(size, 123456 / 2)
@@ -6543,18 +6590,24 @@ int main() {
       ]:
       print(args, expect_names)
       try_delete('a.out.js')
-      # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in them, which makes counting harder
+      # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in
+      # them, which makes counting harder
       self.run_process([EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'MALLOC="dlmalloc"', '-s', 'EXPORTED_FUNCTIONS=[_main,_malloc]'])
       code = open('a.out.wasm', 'rb').read()
-      if expect_names:
-        # name section adds the name of malloc (there is also another one for the export)
-        self.assertEqual(code.count(b'malloc'), 2)
+      if '-g' in args:
+        # With -g we get full dwarf info which means we there are many occurances of malloc
+        self.assertGreater(code.count(b'malloc'), 2)
       else:
-        # should be just malloc for the export
-        self.assertEqual(code.count(b'malloc'), 1)
+        if expect_names:
+          # name section adds the name of malloc (there is also another one for the export)
+          self.assertEqual(code.count(b'malloc'), 2)
+        else:
+          # should be just malloc for the export
+          self.assertEqual(code.count(b'malloc'), 1)
       sizes[str(args)] = os.path.getsize('a.out.wasm')
     print(sizes)
-    self.assertLess(sizes["['-O2']"], sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names')
+    # when -profiling-funcs, the size increases due to function names
+    self.assertLess(sizes["['-O2']"], sizes["['-O2', '--profiling-funcs']"])
 
   def test_binaryen_warn_mem(self):
     # if user changes INITIAL_MEMORY at runtime, the wasm module may not accept the memory import if
@@ -6974,7 +7027,7 @@ int main() {
     self.run_process(cmd)
 
     # build main module
-    args = ['-s', 'EXPORTED_FUNCTIONS=["_main", "_foo"]', '-s', 'MAIN_MODULE=2', '-s', 'EXIT_RUNTIME', '-lnodefs.js']
+    args = ['-g', '-s', 'EXPORTED_FUNCTIONS=["_main", "_foo"]', '-s', 'MAIN_MODULE=2', '-s', 'EXIT_RUNTIME', '-lnodefs.js']
     cmd = [EMCC, path_from_root('tests', 'other', 'alias', 'main.c'), '-o', 'main.js'] + args
     print(' '.join(cmd))
     self.run_process(cmd)
@@ -7398,6 +7451,7 @@ end
     err = self.expect_fail(base + ['--embed-file', 'somefile'])
     self.assertContained(expected, err)
 
+  @disabled('https://github.com/nodejs/node/issues/18265')
   def test_node_code_caching(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
                       '-s', 'NODE_CODE_CACHING',
@@ -7491,7 +7545,7 @@ int main() {
 var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
 ''', '''
-  1024: function() {var x = !<->5.;}
+  1025: function() {var x = !<->5.;}
                              ^
 '''), stderr)
 
@@ -7518,6 +7572,25 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
 
     self.assertIdentical(normal, tiny)
     self.assertIdentical(normal, huge)
+
+  def test_pthreads_growth_and_unsigned(self):
+    create_test_file('src.cpp', r'''
+#include <emscripten.h>
+
+int main() {
+  EM_ASM({
+    HEAP8.set([1,2,3], $0);
+  }, 1024);
+}''')
+    self.run_process([EMCC, 'src.cpp', '-O2', '--profiling', '-pthread',
+                      '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ALLOW_MEMORY_GROWTH'])
+    with open('a.out.js') as f:
+      # growable-heap must not interfere with heap unsigning, and vice versa:
+      # we must have both applied, that is
+      #   - GROWABLE_HEAP_I8() replaces HEAP8
+      #   - $0 gets an >>> 0 unsigning
+      self.assertContained('GROWABLE_HEAP_I8().set([ 1, 2, 3 ], $0 >>> 0)',
+                           f.read())
 
   @parameterized({
     '': ([],), # noqa
@@ -8685,14 +8758,14 @@ int main(void) {
 
   @parameterized({
     'c': ['c', [
-      r'in malloc.*a\.out\.wasm\+0x',
+      r'in malloc .*lsan_interceptors\.cpp:\d+:\d+',
       r'(?im)in f (|[/a-z\.]:).*/test_lsan_leaks\.c:6:21$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.c:10:16$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.c:12:3$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.c:13:3$',
     ]],
     'cpp': ['cpp', [
-      r'in operator new\[\]\(unsigned long\).*a\.out\.wasm\+0x',
+      r'in operator new\[\]\(unsigned long\) .*lsan_interceptors\.cpp:\d+:\d+',
       r'(?im)in f\(\) (|[/a-z\.]:).*/test_lsan_leaks\.cpp:4:21$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.cpp:8:16$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.cpp:10:3$',
@@ -9906,3 +9979,83 @@ exec "$@"
     self.assertGreater(len(exports_linkable), 1000)
     self.assertIn('sendmsg', exports_linkable)
     self.assertNotIn('sendmsg', exports)
+
+  @is_slow_test
+  def test_deps_info(self):
+    # Verify that for each symbol listed in deps_info all the reverse
+    # dependencies are indeed valid.
+    # To do this we compile a tiny test program that depends on the address
+    # of each function.  Once compiled the resulting JavaScript code should
+    # contain a reference to each of the dependencies.
+
+    # When debugging set this valud to the function that you want to start
+    # with.  All symbols prior will be skipped over.
+    start_at = None
+    assert not start_at or start_at in deps_info.deps_info
+    for function, deps in deps_info.deps_info.items():
+      if start_at:
+        if function == start_at:
+          start_at = None
+        else:
+          print(f'skipping {function}')
+          continue
+      create_test_file(function + '.c', '''
+      void %s();
+      int main() {
+        return (int)&%s;
+      }
+      ''' % (function, function))
+      # Compile with -O2 so we get JSDCE run to remove any false positives.  This
+      # also makes the string quotes consistent which makes the test below simpler.
+      # Including -sREVERSE_DEPS=auto explictly (even though its the default) to
+      # be clear this is what we are testing (and in case the default ever changes).
+      cmd = [EMCC, function + '.c', '-O2', '--minify=0', '--profiling-funcs', '-Wno-incompatible-library-redeclaration', '-sREVERSE_DEPS=auto']
+      print(f'compiling test program for: {function}')
+      if 'embind' in function:
+        cmd.append('--bind')
+      if 'fetch' in function:
+        cmd.append('-sFETCH')
+      if 'websocket' in function:
+        cmd += ['-sPROXY_POSIX_SOCKETS', '-lwebsocket.js']
+      if function == 'Mix_LoadWAV_RW':
+        cmd += ['-sUSE_SDL=2']
+      if 'thread' in function:
+        cmd.append('-sUSE_PTHREADS')
+      if 'glGetStringi' in function:
+        cmd.append('-sUSE_WEBGL2')
+      if 'glMapBufferRange' in function:
+        cmd.append('-sFULL_ES3')
+      if function == 'wgpuDeviceCreateBuffer':
+        cmd.append('-sUSE_WEBGPU')
+      # dladdr dlsym etc..
+      if function.startswith('dl'):
+        cmd.append('-sMAIN_MODULE=2')
+      if function.startswith('emscripten_idb') or function.startswith('emscripten_wget_'):
+        cmd.append('-sASYNCIFY')
+      if function.startswith('emscripten_webgl_'):
+        cmd.append('-sOFFSCREENCANVAS_SUPPORT')
+      if function.startswith('wgpu'):
+        cmd.append('-sUSE_WEBGPU')
+      if function.startswith('__cxa_'):
+        cmd.append('-fexceptions')
+      # Causes WebAssemblyLowerEmscriptenEHSjLj pass in llvm to crash
+      if function == 'setjmp':
+        continue
+      print(shared.shlex_join(cmd))
+      self.run_process(cmd)
+      js = open('a.out.js').read()
+      for dep in deps:
+        direct = '_' + dep + '('
+        via_module = '"_%s"](' % dep
+        assignment = ' = _' + dep
+        print(f'  checking for: {dep}')
+        if direct not in js and via_module not in js and assignment not in js:
+          self.fail(f'use of declared dependency {dep} not found in JS output for {function}')
+
+  def test_shell_Oz(self):
+    # regression test for -Oz working on non-web, non-node environments that
+    # lack TextDecoder
+    if config.V8_ENGINE not in config.JS_ENGINES:
+      return self.skipTest('no shell to test')
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-Oz'])
+    self.assertContained('hello, world!', self.run_js('a.out.js', engine=config.V8_ENGINE))

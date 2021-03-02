@@ -2488,6 +2488,7 @@ var LibraryJSEvents = {
   emscripten_set_canvas_element_size_main_thread: function(target, width, height) { return _emscripten_set_canvas_element_size_calling_thread(target, width, height); },
 
   emscripten_set_canvas_element_size__deps: ['$JSEvents', 'emscripten_set_canvas_element_size_calling_thread', 'emscripten_set_canvas_element_size_main_thread', '$findCanvasEventTarget'],
+  emscripten_set_canvas_element_size__sig: 'iiii',
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
     console.error('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
@@ -2501,6 +2502,7 @@ var LibraryJSEvents = {
   }, 
 #else
   emscripten_set_canvas_element_size__deps: ['$JSEvents', '$findCanvasEventTarget'],
+  emscripten_set_canvas_element_size__sig: 'iiii',
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
     console.error('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
@@ -2645,6 +2647,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_html5_remove_all_event_listeners__sig: 'v',
   emscripten_html5_remove_all_event_listeners__deps: ['$JSEvents'],
   emscripten_html5_remove_all_event_listeners: function() {
     JSEvents.removeAllEventListeners();

@@ -98,9 +98,6 @@ var PROFILING_FUNCS = 0;
 // Whether we are emitting a symbol map. You should not modify this.
 var EMIT_SYMBOL_MAP = 0;
 
-// tracks the list of EM_ASM signatures that are proxied between threads.
-var PROXIED_FUNCTION_SIGNATURES = [];
-
 // List of function explicitly exported by user on the command line.
 var USER_EXPORTED_FUNCTIONS = [];
 

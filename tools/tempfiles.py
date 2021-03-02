@@ -95,7 +95,7 @@ class TempFiles(object):
 
   def clean(self):
     if self.save_debug_files:
-      print(f'not cleaning up temp files since in debug-save mode, see them in ${self.tmpdir}', file=sys.stderr)
+      print(f'not cleaning up temp files since in debug-save mode, see them in {self.tmpdir}', file=sys.stderr)
       return
     for filename in self.to_clean:
       try_delete(filename)

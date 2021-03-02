@@ -209,8 +209,7 @@
                 "tv_sec",
                 "tv_usec"
             ]
-        },
-        "defines": []
+        }
     },
     {
         "file": "time.h",

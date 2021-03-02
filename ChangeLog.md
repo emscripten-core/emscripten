@@ -20,6 +20,22 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- System libraries are now compiled with debug info (`-g`).  This doesn't
+  affect release builds (builds without `-g`) but allows DWARF debugging of
+  types defined in system libraries such as C++ STL types (#13078).
+- uname machine field is now either wasm32 or wasm64 instead of x86-JS (#13440)
+
+2.0.14: 02/14/2021
+------------------
+- Add new setting: `REVERSE_DEPS`. This can be used to control how emscripten
+  decides which reverse dependecies to include.  See `settings.js` for more
+  information.  The default setting ('auto') is the transitional way emscripten
+  has worked in the past so there should be no change unless this options is
+  actually used.  This option partially replaces the `EMCC_ONLY_FORCED_STDLIBS`
+  environment variable which (among other things) essentially had the effect of
+  setting `REVERSE_DEPS` to be 'all'.
+- Clang now performs loop unrolling when targeting WebAssembly at -O2 and
+  higher. It can be disabled using `-fno-unroll-loops`.
 
 2.0.13: 01/19/2021
 ------------------
