@@ -258,6 +258,9 @@ commands:
             cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
             rm -r $TMPDIR
             tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            echo "-----"
+            echo "Running emrun tests"
+            echo "-----"
             tests/runner emrun
             openbox --exit
             wait || true # wait for startx to shutdown cleanly, or not
