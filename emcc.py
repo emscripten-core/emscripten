@@ -905,7 +905,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # TODO: support source maps with js_transform
     if options.js_transform and shared.Settings.GENERATE_SOURCE_MAP:
       logger.warning('disabling source maps because a js transform is being done')
-      shared.Settings.SOURCE_MAP = 0
+      shared.Settings.GENERATE_SOURCE_MAP = 0
 
     explicit_settings_changes, newargs = parse_s_args(newargs)
     settings_changes += explicit_settings_changes
