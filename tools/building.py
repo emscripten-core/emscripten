@@ -26,7 +26,7 @@ from .shared import Settings, CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
-from .shared import configuration, path_from_root, EXPECTED_BINARYEN_VERSION
+from .shared import configuration, path_from_root
 from .shared import asmjs_mangle, DEBUG
 from .shared import EM_BUILD_VERBOSE, TEMP_DIR
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
@@ -39,6 +39,7 @@ logger = logging.getLogger('building')
 multiprocessing_pool = None
 binaryen_checked = False
 
+EXPECTED_BINARYEN_VERSION = 100
 # cache results of nm - it can be slow to run
 nm_cache = {}
 # Stores the object files contained in different archive files passed as input
