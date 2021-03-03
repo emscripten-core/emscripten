@@ -465,7 +465,7 @@ var LibraryPThread = {
 
     getNewWorker: function() {
       if (PThread.unusedWorkers.length == 0) {
-#if PROXY_TO_PTHREAD
+#if !PROXY_TO_PTHREAD
 #if ASSERTIONS || PTHREADS_DEBUG
         err('Tried to spawn a new thread, but the thread pool is exhausted.\n' +
         'This will result in a deadlock unless the code explicitly breaks out to the event loop.\n' +
