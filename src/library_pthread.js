@@ -465,15 +465,17 @@ var LibraryPThread = {
 
     getNewWorker: function() {
       if (PThread.unusedWorkers.length == 0) {
-#if PTHREAD_POOL_SIZE_STRICT || ASSERTIONS
-        var warning = 'Tried to spawn a new thread, but the thread pool is exhausted.\n' +
+#if ASSERTIONS
+        err('Tried to spawn a new thread, but the thread pool is exhausted.\n' +
         'This will result in a deadlock unless the code explicitly breaks out to the event loop.\n' +
-        'If you want to increase the pool size, use setting `-s PTHREAD_POOL_SIZE=...`.';
+        'If you want to increase the pool size, use setting `-s PTHREAD_POOL_SIZE=...`.'
 #if !PTHREAD_POOL_SIZE_STRICT
-        err(warning + '\nIf you want to throw an explicit error instead of deadlocking in those cases, use setting `-s PTHREAD_POOL_SIZE_STRICT=1`.');
-#else
-        throw new Error(warning);
+        + '\nIf you want to throw an explicit error instead of deadlocking in those cases, use setting `-s PTHREAD_POOL_SIZE_STRICT=1`.'
 #endif
+        );
+#endif
+#if PTHREAD_POOL_SIZE_STRICT
+        throw new Error('No available workers in the PThread pool');
 #endif
         PThread.allocateUnusedWorker();
         PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
