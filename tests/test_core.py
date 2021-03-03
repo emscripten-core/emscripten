@@ -7295,8 +7295,14 @@ someweirdtext
   def test_minmax(self):
     self.do_runf(path_from_root('tests', 'test_minmax.c'), 'NAN != NAN\nSuccess!')
 
-  def test_locale(self):
-    self.do_run_in_out_file_test('tests', 'test_locale.c')
+  def test_localeconv(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_localeconv.c')
+
+  def test_newlocale(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_newlocale.c')
+
+  def test_setlocale(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_setlocale.c')
 
   def test_vswprintf_utf8(self):
     self.do_run_in_out_file_test('tests', 'vswprintf_utf8.c')

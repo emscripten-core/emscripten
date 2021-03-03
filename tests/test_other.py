@@ -4679,8 +4679,16 @@ int main(const int argc, const char * const * const argv) {
 }
 ''')
     self.run_process([EMCC, 'src.cpp', '-s', 'EXIT_RUNTIME', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
-    self.assertContained('Constructed locale "C"\nThis locale is the global locale.\nThis locale is the C locale.', self.run_js('a.out.js', args=['C']))
-    self.assertContained('''Can't construct locale "waka": collate_byname<char>::collate_byname failed to construct for waka''', self.run_js('a.out.js', args=['waka'], assert_returncode=1))
+    self.assertContained('''\
+Constructed locale "C"
+This locale is the global locale.
+This locale is the C locale.
+''', self.run_js('a.out.js', args=['C']))
+    self.assertContained('''\
+Constructed locale "waka"
+This locale is not the global locale.
+This locale is not the C locale.
+''', self.run_js('a.out.js', args=['waka']))
 
   def test_cleanup_os(self):
     # issue 2644
