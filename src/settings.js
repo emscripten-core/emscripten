@@ -1459,6 +1459,17 @@ var USE_PTHREADS = 0;
 // [link] - affects generated JS runtime code at link time
 var PTHREAD_POOL_SIZE = '';
 
+// Normally, applications can create new threads even when the pool is empty.
+// When application breaks out to the JS event loop before trying to block on
+// the thread via `pthread_join` or via manual condvars,
+// an extra Worker will be created and the thread callback will be executed.
+// However, breaking out to the event loop requires custom modifications to
+// the code to adapt it to the Web, and not something that works for
+// off-the-shelf apps. Those apps without any modifications are most likely
+// to deadlock. This setting ensures that, instead of a deadlock, they get
+// a runtime error instead that can be at least handled from the JS side.
+var PTHREAD_POOL_SIZE_STRICT = 0;
+
 // If your application does not need the ability to synchronously create
 // threads, but it would still like to opportunistically speed up initial thread
 // startup time by prewarming a pool of Workers, you can specify the size of
