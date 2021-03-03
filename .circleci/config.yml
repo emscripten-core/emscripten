@@ -261,7 +261,8 @@ commands:
             echo "-----"
             echo "Running emrun tests"
             echo "-----"
-            tests/runner emrun
+            # test_no_browser seems to cause the xsession to go down when run in github CI.
+            tests/runner emrun skip:emrun.test_no_browser
             openbox --exit
             wait || true # wait for startx to shutdown cleanly, or not
   test-chrome:
