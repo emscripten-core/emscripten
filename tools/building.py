@@ -1592,7 +1592,6 @@ def check_binaryen(bindir):
 
 
 def get_binaryen_bin():
-  assert Settings.WASM, 'non wasm builds should not ask for binaryen'
   global binaryen_checked
   rtn = os.path.join(config.BINARYEN_ROOT, 'bin')
   if not binaryen_checked:
