@@ -465,7 +465,8 @@ var LibraryPThread = {
 
     getNewWorker: function() {
       if (PThread.unusedWorkers.length == 0) {
-#if ASSERTIONS
+#if PROXY_TO_PTHREAD
+#if ASSERTIONS || PTHREADS_DEBUG
         err('Tried to spawn a new thread, but the thread pool is exhausted.\n' +
         'This will result in a deadlock unless the code explicitly breaks out to the event loop.\n' +
         'If you want to increase the pool size, use setting `-s PTHREAD_POOL_SIZE=...`.'
@@ -476,6 +477,7 @@ var LibraryPThread = {
 #endif
 #if PTHREAD_POOL_SIZE_STRICT
         throw new Error('No available workers in the PThread pool');
+#endif
 #endif
         PThread.allocateUnusedWorker();
         PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
