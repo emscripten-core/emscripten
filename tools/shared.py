@@ -35,7 +35,6 @@ from . import filelock
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 99
 EXPECTED_LLVM_VERSION = "13.0"
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
