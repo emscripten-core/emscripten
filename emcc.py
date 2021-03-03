@@ -1245,7 +1245,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # in -Oz builds, since custom decoder for UTF-8 takes up space.
     # In pthreads enabled builds, TEXTDECODER==2 may not work, see
     # https://github.com/whatwg/encoding/issues/172
-    if shared.Settings.SHRINK_LEVEL >= 2 and not shared.Settings.USE_PTHREADS:
+    # When supporting shell environments, do not do this as TextDecoder is not
+    # widely supported there.
+    if shared.Settings.SHRINK_LEVEL >= 2 and not shared.Settings.USE_PTHREADS and \
+       not shared.Settings.ENVIRONMENT_MAY_BE_SHELL:
       default_setting('TEXTDECODER', 2)
 
     # If set to 1, we will run the autodebugger (the automatic debugging tool, see
@@ -1908,9 +1911,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         (shared.Settings.MAXIMUM_MEMORY < 0 or
          shared.Settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024)):
       shared.Settings.CAN_ADDRESS_2GB = 1
-
-    if shared.Settings.EXCEPTION_HANDLING and shared.Settings.OPT_LEVEL >= 2 and not compile_only:
-      exit_with_error('wasm exception handling support is still experimental, and linking with -O2+ is not supported yet')
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.PROFILING_FUNCS = options.profiling_funcs

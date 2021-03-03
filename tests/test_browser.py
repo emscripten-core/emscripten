@@ -5035,8 +5035,8 @@ class emrun(RunnerCore):
     assert 'Traceback' not in result
 
   def test_no_browser(self):
-    # Test --no_browser mode where we have to take care of launching the browser outselves
-    # and killin emrun when we are done.
+    # Test --no_browser mode where we have to take care of launching the browser ourselves
+    # and then killing emrun when we are done.
     if not has_browser():
       self.skipTest('need a browser')
 
@@ -5044,15 +5044,20 @@ class emrun(RunnerCore):
     proc = subprocess.Popen([EMRUN, '--no_browser', '.', '--port=3333'], stdout=PIPE)
     try:
       if EMTEST_BROWSER:
+        print('Starting browser')
         browser_cmd = shlex.split(EMTEST_BROWSER)
         browser = subprocess.Popen(browser_cmd + ['http://localhost:3333/hello_world.html'])
-        while True:
-          stdout = proc.stdout.read()
-          if b'Dumping out file' in stdout:
-            break
-        browser.terminate()
-        browser.wait()
+        try:
+          while True:
+            stdout = proc.stdout.read()
+            if b'Dumping out file' in stdout:
+              break
+        finally:
+          print('Terminating browser')
+          browser.terminate()
+          browser.wait()
     finally:
+      print('Terminating emrun server')
       proc.terminate()
       proc.wait()
 

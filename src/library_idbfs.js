@@ -169,7 +169,7 @@ mergeInto(LibraryManager.library, {
     storeLocalEntry: function(path, entry, callback) {
       try {
         if (FS.isDir(entry['mode'])) {
-          FS.mkdir(path, entry['mode']);
+          FS.mkdirTree(path, entry['mode']);
         } else if (FS.isFile(entry['mode'])) {
           FS.writeFile(path, entry['contents'], { canOwn: true });
         } else {

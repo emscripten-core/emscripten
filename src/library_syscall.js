@@ -792,7 +792,11 @@ var SyscallsLibrary = {
     copyString('nodename', 'emscripten');
     copyString('release', '1.0');
     copyString('version', '#1');
-    copyString('machine', 'x86-JS');
+#if MEMORY64 == 1
+    copyString('machine', 'wasm64');
+#else
+    copyString('machine', 'wasm32');
+#endif
     return 0;
   },
   __sys_mprotect__nothrow: true,
