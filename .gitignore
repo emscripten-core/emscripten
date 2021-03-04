@@ -16,7 +16,8 @@
 /node_modules/
 
 # Python coverage tool output
-.coverage*
+.coverage
+.coverage.*
 tools/coverage/
 htmlcov/
 coverage.xml
