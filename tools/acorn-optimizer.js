@@ -1334,6 +1334,36 @@ function safeHeap(ast) {
   });
 }
 
+// Name minification
+
+var RESERVED = set('do', 'if', 'in', 'for', 'new', 'try', 'var', 'env', 'let', 'case', 'else', 'enum', 'void', 'this', 'void', 'with');
+var VALID_MIN_INITS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$';
+var VALID_MIN_LATERS = VALID_MIN_INITS + '0123456789';
+
+var minifiedNames = [];
+var minifiedState = [0];
+
+function ensureMinifiedNames(n) { // make sure the nth index in minifiedNames exists. done 100% deterministically
+  while (minifiedNames.length < n+1) {
+    // generate the current name
+    var name = VALID_MIN_INITS[minifiedState[0]];
+    for (var i = 1; i < minifiedState.length; i++) {
+      name += VALID_MIN_LATERS[minifiedState[i]];
+    }
+    if (!(name in RESERVED)) minifiedNames.push(name);
+    // increment the state
+    var i = 0;
+    while (1) {
+      minifiedState[i]++;
+      if (minifiedState[i] < (i === 0 ? VALID_MIN_INITS : VALID_MIN_LATERS).length) break;
+      // overflow
+      minifiedState[i] = 0;
+      i++;
+      if (i === minifiedState.length) minifiedState.push(-1); // will become 0 after increment in next loop head
+    }
+  }
+}
+
 function minifyLocals(ast) {
   // We are given a mapping of global names to their minified forms.
   assert(extraInfo && extraInfo.globals);
@@ -1382,6 +1412,52 @@ function minifyLocals(ast) {
         // in the outer scope. If a local is called, that is a bug.
         if (node.callee.type === 'Identifier') {
           assert(!isLocalName(node.callee.name), 'cannot call a local');
+        }
+      }
+    });
+
+    // The first time we encounter a local name, we assign it a/ minified name
+    // that's not currently in use. Allocating on demand means they're processed
+    // in a predictable order, which is very handy for testing/debugging
+    // purposes.
+    var nextMinifiedName = 0;
+
+    function getNextMinifiedName() {
+      while (1) {
+        ensureMinifiedNames(nextMinifiedName);
+        var minified = minifiedNames[nextMinifiedName++];
+        // TODO: we can probably remove !isLocalName here
+        if (!usedNames[minified] && !isLocalName(minified)) {
+          return minified;
+        }
+      }
+    }
+
+    // TODO: loop label minification as well
+
+    // Traverse and minify all names. First, the function itself.
+    assert(extraInfo.globals.hasOwnProperty(fun.id.name));
+    fun.id.name = extraInfo.globals[fun.id.name];
+    assert(fun.id.name && typeof fun.id.name === 'string');
+
+    // Next, the function parameters.
+    for (var param of fun.params) {
+      var minified = getNextMinifiedName();
+      newNames[param.name] = minified;
+      param.name = minified;
+    }
+
+    // Finally, the function body.
+    recursiveWalk(fun, {
+      Identifier(node, c) {
+        var name = node.name;
+        var minified = newNames[name];
+        if (minified) {
+          node.name = minified;
+        } else if (isLocalName(name)) {
+          minified = getNextMinifiedName();
+          newNames[name] = minified;
+          node.name = minified;
         }
       }
     });
