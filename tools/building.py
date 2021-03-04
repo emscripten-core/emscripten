@@ -835,31 +835,6 @@ def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None)
     assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
 
 
-def get_safe_internalize():
-  if Settings.LINKABLE:
-    return [] # do not internalize anything
-
-  exps = Settings.EXPORTED_FUNCTIONS
-  internalize_public_api = '-internalize-public-api-'
-  internalize_list = ','.join([demangle_c_symbol_name(exp) for exp in exps])
-
-  # EXPORTED_FUNCTIONS can potentially be very large.
-  # 8k is a bit of an arbitrary limit, but a reasonable one
-  # for max command line size before we use a response file
-  if len(internalize_list) > 8192:
-    logger.debug('using response file for EXPORTED_FUNCTIONS in internalize')
-    finalized_exports = '\n'.join([exp[1:] for exp in exps])
-    internalize_list_file = configuration.get_temp_files().get('.response').name
-    with open(internalize_list_file, 'w') as f:
-      f.write(finalized_exports)
-    internalize_public_api += 'file=' + internalize_list_file
-  else:
-    internalize_public_api += 'list=' + internalize_list
-
-  # internalize carefully, llvm 3.2 will remove even main if not told not to
-  return ['-internalize', internalize_public_api]
-
-
 def opt_level_to_str(opt_level, shrink_level=0):
   # convert opt_level/shrink_level pair to a string argument like -O1
   if opt_level == 0:

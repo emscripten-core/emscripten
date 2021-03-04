@@ -207,10 +207,7 @@ def log_time(name):
 
 def base64_encode(b):
   b64 = base64.b64encode(b)
-  if type(b64) == bytes:
-    return b64.decode('ascii')
-  else:
-    return b64
+  return b64.decode('ascii')
 
 
 class OFormat(Enum):
@@ -847,9 +844,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return unsuffixed(name) + '_' + seen_names[name] + shared.suffix(name)
 
   # ---------------- End configs -------------
-
-  def optimizing(opts):
-    return '-O0' not in opts
 
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
@@ -2670,15 +2664,6 @@ def parse_args(newargs):
 
   newargs = [a for a in newargs if a]
   return options, settings_changes, user_js_defines, newargs
-
-
-def emit_js_source_maps(target, js_transform_tempfiles):
-  logger.debug('generating source maps')
-  shared.run_js_tool(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
-                     js_transform_tempfiles +
-                     ['--sourceRoot', os.getcwd(),
-                      '--mapFileBaseName', target,
-                      '--offset', '0'])
 
 
 def do_binaryen(target, options, wasm_target):

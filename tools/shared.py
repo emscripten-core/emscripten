@@ -881,13 +881,9 @@ function%s(%s) {
     return ret
 
 
-# Python 2-3 compatibility helper function:
 # Converts a string to the native str type.
 def asstr(s):
-  if str is bytes:
-    if isinstance(s, type(u'')):
-      return s.encode('utf-8')
-  elif isinstance(s, bytes):
+  if isinstance(s, bytes):
     return s.decode('utf-8')
   return s
 
