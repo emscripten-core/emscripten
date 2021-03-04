@@ -118,10 +118,10 @@ class other(RunnerCore):
   def assertIsObjectFile(self, filename):
     self.assertTrue(building.is_wasm(filename))
 
-  def do_other_test(self, testname, emcc_args=[], run_args=[]):
+  def do_other_test(self, testname, emcc_args=[], **kwargs):
     orig_args = self.emcc_args
     self.emcc_args += emcc_args
-    self.do_run_in_out_file_test('tests', 'other', testname, args=run_args)
+    self.do_run_in_out_file_test('tests', 'other', testname, **kwargs)
     self.emcc_args = orig_args
 
   # Another utility to run a test in this suite. This receives a source file
@@ -1722,9 +1722,9 @@ int f() {
 
   def test_GetProcAddress_LEGACY_GL_EMULATION(self):
     # without legacy gl emulation, getting a proc from there should fail
-    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.cpp', run_args=['0'], emcc_args=['-s', 'LEGACY_GL_EMULATION=0'])
+    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.cpp', args=['0'], emcc_args=['-s', 'LEGACY_GL_EMULATION=0'])
     # with it, it should work
-    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.cpp', run_args=['1'], emcc_args=['-s', 'LEGACY_GL_EMULATION'])
+    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.cpp', args=['1'], emcc_args=['-s', 'LEGACY_GL_EMULATION'])
 
   def test_prepost(self):
     create_test_file('main.cpp', '''
@@ -9539,11 +9539,11 @@ int main() {
 
   def test_assembly(self):
     self.run_process([EMCC, '-c', path_from_root('tests', 'other', 'test_asm.s'), '-o', 'foo.o'])
-    self.do_run_in_out_file_test('tests', 'other', 'test_asm.c', libraries=['foo.o'])
+    self.do_other_test('test_asm.c', libraries=['foo.o'])
 
   def test_assembly_preprocessed(self):
     self.run_process([EMCC, '-c', path_from_root('tests', 'other', 'test_asm_cpp.S'), '-o', 'foo.o'])
-    self.do_run_in_out_file_test('tests', 'other', 'test_asm.c', libraries=['foo.o'])
+    self.do_other_test('test_asm.c', libraries=['foo.o'])
 
   @parameterized({
     '': (['-DUSE_KEEPALIVE'],),
@@ -9551,8 +9551,7 @@ int main() {
     'command_line': (['-s', 'EXPORTED_FUNCTIONS=[_g_foo,_main]'],),
   })
   def test_export_global_address(self, args):
-    self.emcc_args += args
-    self.do_run_in_out_file_test('tests', 'other', 'test_export_global_address.c')
+    self.do_other_test('test_export_global_address.c', emcc_args=args)
 
   def test_linker_version(self):
     out = self.run_process([EMCC, '-Wl,--version'], stdout=PIPE).stdout
