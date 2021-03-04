@@ -1254,6 +1254,7 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
+    var mode = varargs ? SYSCALLS.get() : 0;
     return FS.open(path, flags, mode).fd;
   },
   __sys_mkdirat: function(dirfd, path, mode) {
