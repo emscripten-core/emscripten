@@ -1334,6 +1334,62 @@ function safeHeap(ast) {
   });
 }
 
+function minifyLocals(ast) {
+  // We are given a mapping of global names to their minified forms.
+  assert(extraInfo && extraInfo.globals);
+
+  for (var fun of ast.body) {
+    if (!fun.type === 'FunctionDeclaration') {
+      continue;
+    }
+    // Find the list of local names, including params.
+    var localNames = {};
+    for (var param of fun.params) {
+      localNames[param.name] = 1;
+    }
+    recursiveWalk(fun, {
+      VariableDeclaration(node, c) {
+        for (var dec of node.declarations) {
+          localNames[dec.id.name] = 1;
+        }
+      }
+    });
+
+    function isLocalName(name) {
+      return Object.prototype.hasOwnProperty.call(localNames, name);
+    }
+
+    var newNames = {};
+    var usedNames = {};
+
+    // Find all the globals that we need to minify using pre-assigned names.
+    // Don't actually minify them yet as that might interfere with local
+    // variable names; just mark them as used, and what their new name will be.
+    recursiveWalk(fun, {
+      Identifier(node, c) {
+        var name = node.name;
+        if (!isLocalName(name)) {
+          var minified = extraInfo.globals[name];
+          if (minified){
+            newNames[name] = minified;
+            usedNames[minified] = 1;
+          }
+        }
+      },
+      CallExpression(node, c) {
+        // We should never call a local name, as in asm.js-style code our
+        // locals are just numbers, not functions; functions are all declared
+        // in the outer scope. If a local is called, that is a bug.
+        if (node.callee.type === 'Identifier') {
+          assert(!isLocalName(node.callee.name), 'cannot call a local');
+        }
+      }
+    });
+  }
+}
+
+// Utilities
+
 function reattachComments(ast, comments) {
   var symbols = [];
 
@@ -1447,6 +1503,7 @@ var registry = {
   dump: function() { dump(ast) },
   growableHeap: growableHeap,
   unsignPointers: unsignPointers,
+  minifyLocals: minifyLocals,
   asanify: asanify,
   safeHeap: safeHeap,
 };
