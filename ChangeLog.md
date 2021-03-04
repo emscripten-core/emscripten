@@ -20,6 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Calls to `newlocale` (and `new std::locale` in C++) with arbirary names will
+  now succeed.  This is the behaviour of musl libc which emscripten had
+  previously inadvertently disabled.
+- System libraries are now compiled with debug info (`-g`).  This doesn't
+  affect release builds (builds without `-g`) but allows DWARF debugging of
+  types defined in system libraries such as C++ STL types (#13078).
+- uname machine field is now either wasm32 or wasm64 instead of x86-JS (#13440)
 
 2.0.14: 02/14/2021
 ------------------

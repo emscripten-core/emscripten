@@ -7,7 +7,7 @@
 """This is the Emscripten test runner. To run some tests, specify which tests
 you want, for example
 
-  python3 tests/runner.py asm1.test_hello_world
+  tests/runner asm1.test_hello_world
 
 There are many options for which tests to run and how to run them. For details,
 see
@@ -568,6 +568,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
       # this if this issues is fixed.
       compiler = [EMCC, '-nostdlib++']
+
+    if force_c:
+      compiler.append('-xc')
 
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix

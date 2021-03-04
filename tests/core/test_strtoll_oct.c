@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <assert.h>
 #include <stdlib.h>
 
 int main() {
@@ -14,15 +15,25 @@ int main() {
 
   // undefined base
   long long int l1 = strtoll(STRING, &end_char, 0);
+  assert(l1 == 0);
   long long int l2 = strtoll(end_char, &end_char, 0);
+  assert(l2 == -29);
   long long int l3 = strtoll(end_char, NULL, 0);
+  assert(l3 == 2505);
 
   // defined base
   long long int l4 = strtoll(STRING, &end_char, 8);
+  assert(l4 == 0);
   long long int l5 = strtoll(end_char, &end_char, 8);
+  assert(l5 == -29);
   long long int l6 = strtoll(end_char, NULL, 8);
+  assert(l6 == 2505);
 
-  printf("%d%d%d%d%d%d\n", l1 == 0, l2 == -29, l3 == 2505, l4 == 0, l5 == -29,
-         l6 == 2505);
+  printf("%lli\n", l1);
+  printf("%lli\n", l2);
+  printf("%lli\n", l3);
+  printf("%lli\n", l4);
+  printf("%lli\n", l5);
+  printf("%lli\n", l6);
   return 0;
 }

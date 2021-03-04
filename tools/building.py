@@ -26,7 +26,7 @@ from .shared import Settings, CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
-from .shared import configuration, path_from_root, EXPECTED_BINARYEN_VERSION
+from .shared import configuration, path_from_root
 from .shared import asmjs_mangle, DEBUG
 from .shared import EM_BUILD_VERBOSE, TEMP_DIR
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
@@ -39,6 +39,7 @@ logger = logging.getLogger('building')
 multiprocessing_pool = None
 binaryen_checked = False
 
+EXPECTED_BINARYEN_VERSION = 100
 # cache results of nm - it can be slow to run
 nm_cache = {}
 # Stores the object files contained in different archive files passed as input
@@ -570,7 +571,11 @@ def lld_flags_for_executable(external_symbol_list):
       cmd.append('--growable-table')
 
   if not Settings.SIDE_MODULE:
+    # Export these two section start symbols so that we can extact the string
+    # data that they contain.
     cmd += [
+      '--export', '__start_em_asm',
+      '--export', '__stop_em_asm',
       '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
       '--initial-memory=%d' % Settings.INITIAL_MEMORY,
     ]
@@ -828,31 +833,6 @@ def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None)
 
   if 'c' in action:
     assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
-
-
-def get_safe_internalize():
-  if Settings.LINKABLE:
-    return [] # do not internalize anything
-
-  exps = Settings.EXPORTED_FUNCTIONS
-  internalize_public_api = '-internalize-public-api-'
-  internalize_list = ','.join([demangle_c_symbol_name(exp) for exp in exps])
-
-  # EXPORTED_FUNCTIONS can potentially be very large.
-  # 8k is a bit of an arbitrary limit, but a reasonable one
-  # for max command line size before we use a response file
-  if len(internalize_list) > 8192:
-    logger.debug('using response file for EXPORTED_FUNCTIONS in internalize')
-    finalized_exports = '\n'.join([exp[1:] for exp in exps])
-    internalize_list_file = configuration.get_temp_files().get('.response').name
-    with open(internalize_list_file, 'w') as f:
-      f.write(finalized_exports)
-    internalize_public_api += 'file=' + internalize_list_file
-  else:
-    internalize_public_api += 'list=' + internalize_list
-
-  # internalize carefully, llvm 3.2 will remove even main if not told not to
-  return ['-internalize', internalize_public_api]
 
 
 def opt_level_to_str(opt_level, shrink_level=0):
@@ -1588,7 +1568,6 @@ def check_binaryen(bindir):
 
 
 def get_binaryen_bin():
-  assert Settings.WASM, 'non wasm builds should not ask for binaryen'
   global binaryen_checked
   rtn = os.path.join(config.BINARYEN_ROOT, 'bin')
   if not binaryen_checked:

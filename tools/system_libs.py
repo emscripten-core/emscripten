@@ -10,6 +10,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tarfile
 import zipfile
@@ -22,6 +23,7 @@ from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
 logger = logging.getLogger('system_libs')
 
+# Files that are part of libsockets.a and so should be excluded from libc.a
 LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
                 'listen.c', 'accept.c', 'getsockname.c', 'getpeername.c', 'send.c',
                 'recv.c', 'sendto.c', 'recvfrom.c', 'sendmsg.c', 'recvmsg.c',
@@ -54,8 +56,10 @@ def dir_is_newer(dir_a, dir_b):
   return newest_a < newest_b
 
 
-def get_cflags(force_object_files=False):
-  flags = []
+def get_base_cflags(force_object_files=False):
+  # Always build system libraries with debug information.  Non-debug builds
+  # will ignore this at link time because we link with `-strip-debug`.
+  flags = ['-g']
   if shared.Settings.LTO and not force_object_files:
     flags += ['-flto=' + shared.Settings.LTO]
   if shared.Settings.RELOCATABLE:
@@ -77,7 +81,11 @@ def run_one_command(cmd):
       del safe_env[opt]
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd.append('-Wno-deprecated')
-  shared.run_process(cmd, env=safe_env)
+  try:
+    shared.run_process(cmd, env=safe_env)
+  except subprocess.CalledProcessError as e:
+    print("'%s' failed (%d)" % (shared.shlex_join(e.cmd), e.returncode))
+    raise
 
 
 def run_build_commands(commands):
@@ -113,30 +121,19 @@ def create_lib(libname, inputs):
     raise Exception('unknown suffix ' + libname)
 
 
-def read_symbols(path):
-  with open(path) as f:
-    content = f.read()
-
-    # Require that Windows newlines should not be present in a symbols file, if running on Linux or macOS
-    # This kind of mismatch can occur if one copies a zip file of Emscripten cloned on Windows over to
-    # a Linux or macOS system. It will result in Emscripten linker getting confused on stray \r characters,
-    # and be unable to link any library symbols properly. We could harden against this by .strip()ping the
-    # opened files, but it is possible that the mismatching line endings can cause random problems elsewhere
-    # in the toolchain, hence abort execution if so.
-    if os.name != 'nt' and '\r\n' in content:
-      raise Exception('Windows newlines \\r\\n detected in symbols file "' + path + '"! This could happen for example when copying Emscripten checkout from Windows to Linux or macOS. Please use Unix line endings on checkouts of Emscripten on Linux and macOS!')
-
-    return building.parse_symbols(content).defs
-
-
 def get_wasm_libc_rt_files():
-  # Static linking is tricky with LLVM, since e.g. memset might not be used
-  # from libc, but be used as an intrinsic, and codegen will generate a libc
-  # call from that intrinsic *after* static linking would have thought it is
-  # all in there. In asm.js this is not an issue as we do JS linking anyhow,
-  # and have asm.js-optimized versions of all the LLVM intrinsics. But for
-  # wasm, we need a better solution. For now, make another archive that gets
-  # included at the same time as compiler-rt.
+  # Combining static linking with LTO is tricky under LLVM.  The codegen that
+  # happens during LTO can generate references to new symbols that didn't exist
+  # in the linker inputs themselves.
+  # These symbols are called libcalls in LLVM and are the result of intrinsics
+  # and builtins at the LLVM level.  These libcalls cannot themselves be part
+  # of LTO because once the linker is running the LTO phase new bitcode objects
+  # cannot be added to link.  Another way of putting it: by the time LTO happens
+  # the decision about which bitcode symbols to compile has already been made.
+  # See: https://bugs.llvm.org/show_bug.cgi?id=44353.
+  # To solve this we put all such libcalls in a separate library that, like
+  # compiler-rt, is never compiled as LTO/bitcode (see force_object_files in
+  # CompilerRTLibrary).
   # Note that this also includes things that may be depended on by those
   # functions - fmin uses signbit, for example, so signbit must be here (so if
   # fmin is added by codegen, it will have all it needs).
@@ -239,10 +236,6 @@ class Library(object):
   # This should only be overridden in a concrete library class, e.g. libc,
   # and left as None in an abstract library class, e.g. MTLibrary.
   name = None
-
-  # A set of symbols that this library exports. This will be set with a set
-  # returned by `read_symbols`.
-  symbols = set()
 
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
@@ -352,17 +345,21 @@ class Library(object):
     commands = []
     objects = []
     cflags = self.get_cflags()
+    base_flags = get_base_cflags()
     for src in self.get_files():
       o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
       ext = shared.suffix(src)
-      if ext in ('.s', '.c'):
+      if ext in ('.s', '.S', '.c'):
         cmd = [shared.EMCC]
       else:
         cmd = [shared.EMXX]
-      if ext != '.s':
+      if ext in ('.s', '.S'):
+        cmd += base_flags
+        # TODO(sbc) There is an llvm bug that causes a crash when `-g` is used with
+        # assembly files that define wasm globals.
+        cmd.remove('-g')
+      else:
         cmd += cflags
-      elif shared.Settings.MEMORY64:
-        cmd += ['-s', 'MEMORY64=' + str(shared.Settings.MEMORY64)]
       commands.append(cmd + ['-c', src, '-o', o])
       objects.append(o)
     run_build_commands(commands)
@@ -394,7 +391,7 @@ class Library(object):
     Override and add any flags as needed to handle new variations.
     """
     cflags = self._inherit_list('cflags')
-    cflags += get_cflags(force_object_files=self.force_object_files)
+    cflags += get_base_cflags(force_object_files=self.force_object_files)
 
     if self.includes:
       cflags += ['-I' + shared.path_from_root(*path) for path in self._inherit_list('includes')]
@@ -577,9 +574,9 @@ class NoExceptLibrary(Library):
   @classmethod
   def variations(cls, **kwargs):
     combos = super(NoExceptLibrary, cls).variations()
-    # TODO Reenable 'wasm' option after the new EH implementation is stabilized
     return ([dict(eh_mode=exceptions.none, **combo) for combo in combos] +
-            [dict(eh_mode=exceptions.emscripten, **combo) for combo in combos])
+            [dict(eh_mode=exceptions.emscripten, **combo) for combo in combos] +
+            [dict(eh_mode=exceptions.wasm, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -675,7 +672,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # individual files
     ignore += [
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
-        'inet_addr.c', 'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
+        'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
         'alarm.c', 'syscall.c', '_exit.c', 'popen.c',
@@ -708,18 +705,14 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     ignore = set(ignore)
     # TODO: consider using more math code from musl, doing so makes box2d faster
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
+      # Don't recurse into ingored directories
+      remove = [d for d in dirnames if d in ignore]
+      for r in remove:
+        dirnames.remove(r)
+
       for f in filenames:
-        if f.endswith('.c'):
-          if f in ignore:
-            continue
-          dir_parts = os.path.split(dirpath)
-          cancel = False
-          for part in dir_parts:
-            if part in ignore:
-              cancel = True
-              break
-          if not cancel:
-            libc_files.append(os.path.join(musl_srcdir, dirpath, f))
+        if f.endswith('.c') and f not in ignore:
+          libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
     # Allowed files from ignored modules
     libc_files += files_in_path(
@@ -835,14 +828,13 @@ class libsockets(MuslInternalLibrary, MTLibrary):
     return [os.path.join(network_dir, x) for x in LIBC_SOCKETS]
 
 
-class libsockets_proxy(MuslInternalLibrary, MTLibrary):
+class libsockets_proxy(MTLibrary):
   name = 'libsockets_proxy'
 
   cflags = ['-Os']
 
   def get_files(self):
-    return [shared.path_from_root('system', 'lib', 'websocket', 'websocket_to_posix_socket.cpp'),
-            shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'network', 'inet_addr.c')]
+    return [shared.path_from_root('system', 'lib', 'websocket', 'websocket_to_posix_socket.cpp')]
 
 
 class crt1(MuslInternalLibrary):
@@ -1065,7 +1057,7 @@ class libgl(MTLibrary):
   name = 'libgl'
 
   src_dir = ['system', 'lib', 'gl']
-  src_files = ['gl.c', 'webgl1.c']
+  src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c']
 
   cflags = ['-Oz']
 
@@ -1213,6 +1205,7 @@ class libubsan_minimal_rt_wasm(CompilerRTLibrary, MTLibrary):
 
 class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
   name = 'libsanitizer_common_rt'
+  # TODO(sbc): We should not need musl-internal headers here.
   includes = [['system', 'lib', 'libc', 'musl', 'src', 'internal'],
               ['system', 'lib', 'compiler-rt', 'lib']]
   never_force = True
@@ -1626,7 +1619,7 @@ class Ports(object):
       # this must only be called on a standard build command
       assert cmd[0] in (shared.EMCC, shared.EMXX)
       # add standard cflags, but also allow the cmd to override them
-      return cmd[:1] + get_cflags() + cmd[1:]
+      return cmd[:1] + get_base_cflags() + cmd[1:]
     run_build_commands([add_args(c) for c in commands])
 
   @staticmethod

@@ -2072,26 +2072,12 @@ LibraryManager.library = {
   },
 #endif
 
-  // ==========================================================================
-  // arpa/inet.h
-  // ==========================================================================
-
 #if PROXY_POSIX_SOCKETS == 0
-  // old ipv4 only functions
-  inet_addr__deps: ['_inet_pton4_raw'],
-  inet_addr: function(ptr) {
-    var addr = __inet_pton4_raw(UTF8ToString(ptr));
-    if (addr === null) {
-      return -1;
-    }
-    return addr;
-  },
-
   // ==========================================================================
   // netdb.h
   // ==========================================================================
 
-  _inet_pton4_raw: function(str) {
+  $inetPton4: function(str) {
     var b = str.split('.');
     for (var i = 0; i < 4; i++) {
       var tmp = Number(b[i]);
@@ -2100,11 +2086,11 @@ LibraryManager.library = {
     }
     return (b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) >>> 0;
   },
-  _inet_ntop4_raw: function(addr) {
+  $inetNtop4: function(addr) {
     return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
   },
-  _inet_pton6_raw__deps: ['htons', 'ntohs', '$jstoi_q'],
-  _inet_pton6_raw: function(str) {
+  $inetPton6__deps: ['htons', '$jstoi_q'],
+  $inetPton6: function(str) {
     var words;
     var w, offset, z, i;
     /* http://home.deds.nl/~aeron/regex/ */
@@ -2159,19 +2145,8 @@ LibraryManager.library = {
       (parts[7] << 16) | parts[6]
     ];
   },
-  _inet_pton6__deps: ['_inet_pton6_raw'],
-  _inet_pton6: function(src, dst) {
-    var ints = __inet_pton6_raw(UTF8ToString(src));
-    if (ints === null) {
-      return 0;
-    }
-    for (var i = 0; i < 4; i++) {
-      {{{ makeSetValue('dst', 'i*4', 'ints[i]', 'i32') }}};
-    }
-    return 1;
-  },
-  _inet_ntop6_raw__deps: ['_inet_ntop4_raw'],
-  _inet_ntop6_raw: function(ints) {
+  $inetNtop6__deps: ['$inetNtop4', 'ntohs'],
+  $inetNtop6: function(ints) {
     //  ref:  http://www.ietf.org/rfc/rfc2373.txt - section 2.5.4
     //  Format for IPv4 compatible and mapped  128-bit IPv6 Addresses
     //  128-bits are split into eight 16-bit words
@@ -2215,7 +2190,7 @@ LibraryManager.library = {
 
     if (hasipv4) {
       // low-order 32-bits store an IPv4 address (bytes 13 to 16) (last 2 words)
-      v4part = __inet_ntop4_raw(parts[6] | (parts[7] << 16));
+      v4part = inetNtop4(parts[6] | (parts[7] << 16));
       // IPv4-mapped IPv6 address if 16-bit value (bytes 11 and 12) == 0xFFFF (6th word)
       if (parts[5] === -1) {
         str = "::ffff:";
@@ -2268,7 +2243,7 @@ LibraryManager.library = {
     return str;
   },
 
-  $readSockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw', 'ntohs'],
+  $readSockaddr__deps: ['$Sockets', '$inetNtop4', '$inetNtop6', 'ntohs'],
   $readSockaddr: function (sa, salen) {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
@@ -2281,7 +2256,7 @@ LibraryManager.library = {
           return { errno: {{{ cDefine('EINVAL') }}} };
         }
         addr = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'i32') }}};
-        addr = __inet_ntop4_raw(addr);
+        addr = inetNtop4(addr);
         break;
       case {{{ cDefine('AF_INET6') }}}:
         if (salen !== {{{ C_STRUCTS.sockaddr_in6.__size__ }}}) {
@@ -2293,7 +2268,7 @@ LibraryManager.library = {
           {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+8, 'i32') }}},
           {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+12, 'i32') }}}
         ];
-        addr = __inet_ntop6_raw(addr);
+        addr = inetNtop6(addr);
         break;
       default:
         return { errno: {{{ cDefine('EAFNOSUPPORT') }}} };
@@ -2301,11 +2276,11 @@ LibraryManager.library = {
 
     return { family: family, addr: addr, port: port };
   },
-  $writeSockaddr__deps: ['$Sockets', '_inet_pton4_raw', '_inet_pton6_raw'],
+  $writeSockaddr__deps: ['$Sockets', '$inetPton4', '$inetPton6'],
   $writeSockaddr: function (sa, family, addr, port, addrlen) {
     switch (family) {
       case {{{ cDefine('AF_INET') }}}:
-        addr = __inet_pton4_raw(addr);
+        addr = inetPton4(addr);
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
         }
@@ -2317,7 +2292,7 @@ LibraryManager.library = {
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_zero, '0', 'i64') }}};
         break;
       case {{{ cDefine('AF_INET6') }}}:
-        addr = __inet_pton6_raw(addr);
+        addr = inetPton6(addr);
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
         }
@@ -2340,7 +2315,7 @@ LibraryManager.library = {
   // we're generating fake IP addresses with lookup_name that we can
   // resolve later on with lookup_addr.
   // We do the aliasing in 172.29.*.*, giving us 65536 possibilities.
-  $DNS__deps: ['_inet_pton4_raw', '_inet_pton6_raw'],
+  $DNS__deps: ['$inetPton4', '$inetPton6'],
   $DNS: {
     address_map: {
       id: 1,
@@ -2350,11 +2325,11 @@ LibraryManager.library = {
 
     lookup_name: function (name) {
       // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
-      var res = __inet_pton4_raw(name);
+      var res = inetPton4(name);
       if (res !== null) {
         return name;
       }
-      res = __inet_pton6_raw(name);
+      res = inetPton6(name);
       if (res !== null) {
         return name;
       }
@@ -2387,7 +2362,7 @@ LibraryManager.library = {
   },
 
   // note: lots of leaking here!
-  gethostbyaddr__deps: ['$DNS', '$getHostByName', '_inet_ntop4_raw'],
+  gethostbyaddr__deps: ['$DNS', '$getHostByName', '$inetNtop4'],
   gethostbyaddr__proxy: 'sync',
   gethostbyaddr__sig: 'iiii',
   gethostbyaddr: function (addr, addrlen, type) {
@@ -2397,7 +2372,7 @@ LibraryManager.library = {
       return null;
     }
     addr = {{{ makeGetValue('addr', '0', 'i32') }}}; // addr is in_addr
-    var host = __inet_ntop4_raw(addr);
+    var host = inetNtop4(addr);
     var lookup = DNS.lookup_addr(host);
     if (lookup) {
       host = lookup;
@@ -2405,13 +2380,14 @@ LibraryManager.library = {
     return getHostByName(host);
   },
 
-  gethostbyname__deps: ['$DNS', '_inet_pton4_raw', '$getHostByName'],
+  gethostbyname__deps: ['$getHostByName'],
   gethostbyname__proxy: 'sync',
   gethostbyname__sig: 'ii',
   gethostbyname: function(name) {
     return getHostByName(UTF8ToString(name));
   },
 
+  $getHostByName__deps: ['malloc', '$DNS', '$inetPton4'],
   $getHostByName: function(name) {
     // generate hostent
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
@@ -2427,12 +2403,12 @@ LibraryManager.library = {
     var addrListBuf = _malloc(12);
     {{{ makeSetValue('addrListBuf', '0', 'addrListBuf+8', 'i32*') }}};
     {{{ makeSetValue('addrListBuf', '4', '0', 'i32*') }}};
-    {{{ makeSetValue('addrListBuf', '8', '__inet_pton4_raw(DNS.lookup_name(name))', 'i32') }}};
+    {{{ makeSetValue('addrListBuf', '8', 'inetPton4(DNS.lookup_name(name))', 'i32') }}};
     {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addr_list, 'addrListBuf', 'i8**') }}};
     return ret;
   },
 
-  gethostbyname_r__deps: ['gethostbyname'],
+  gethostbyname_r__deps: ['gethostbyname', 'memcpy', 'free'],
   gethostbyname_r__proxy: 'sync',
   gethostbyname_r__sig: 'iiiiiii',
   gethostbyname_r: function(name, ret, buf, buflen, out, err) {
@@ -2444,7 +2420,7 @@ LibraryManager.library = {
     return 0;
   },
 
-  getaddrinfo__deps: ['$Sockets', '$DNS', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '$writeSockaddr'],
+  getaddrinfo__deps: ['$Sockets', '$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr'],
   getaddrinfo__proxy: 'sync',
   getaddrinfo__sig: 'iiiii',
   getaddrinfo: function(node, service, hint, out) {
@@ -2469,8 +2445,8 @@ LibraryManager.library = {
         {{{ C_STRUCTS.sockaddr_in6.__size__ }}} :
         {{{ C_STRUCTS.sockaddr_in.__size__ }}};
       addr = family === {{{ cDefine('AF_INET6') }}} ?
-        __inet_ntop6_raw(addr) :
-        __inet_ntop4_raw(addr);
+        inetNtop6(addr) :
+        inetNtop4(addr);
       sa = _malloc(salen);
       errno = writeSockaddr(sa, family, addr, port);
       assert(!errno);
@@ -2568,7 +2544,7 @@ LibraryManager.library = {
     // try as a numeric address
     //
     node = UTF8ToString(node);
-    addr = __inet_pton4_raw(node);
+    addr = inetPton4(node);
     if (addr !== null) {
       // incoming node is a valid ipv4 address
       if (family === {{{ cDefine('AF_UNSPEC') }}} || family === {{{ cDefine('AF_INET') }}}) {
@@ -2581,7 +2557,7 @@ LibraryManager.library = {
         return {{{ cDefine('EAI_NONAME') }}};
       }
     } else {
-      addr = __inet_pton6_raw(node);
+      addr = inetPton6(node);
       if (addr !== null) {
         // incoming node is a valid ipv6 address
         if (family === {{{ cDefine('AF_UNSPEC') }}} || family === {{{ cDefine('AF_INET6') }}}) {
@@ -2605,7 +2581,7 @@ LibraryManager.library = {
     //
     // resolve the hostname to a temporary fake address
     node = DNS.lookup_name(node);
-    addr = __inet_pton4_raw(node);
+    addr = inetPton4(node);
     if (family === {{{ cDefine('AF_UNSPEC') }}}) {
       family = {{{ cDefine('AF_INET') }}};
     } else if (family === {{{ cDefine('AF_INET6') }}}) {
@@ -3659,7 +3635,10 @@ LibraryManager.library = {
 
   // Used by wasm-emscripten-finalize to implement STACK_OVERFLOW_CHECK
   __handle_stack_overflow: function() {
-    abort('stack overflow')
+    // TODO(sbc): Improve this error message.   The old abortStackOverflow used
+    // by asm.js used to do a better job:
+    // abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (_emscripten_stack_get_free() + allocSize) + ' bytes available!');
+    abort('stack overflow');
   },
 
   $getExecutableName: function() {
@@ -3789,6 +3768,28 @@ LibraryManager.library = {
         func(callback.arg === undefined ? null : callback.arg);
       }
     }
+  },
+
+  // Callable in pthread without __proxy needed.
+  emscripten_exit_with_live_runtime: function() {
+#if !MINIMAL_RUNTIME
+    noExitRuntime = true;
+#endif
+    throw 'unwind';
+  },
+
+  emscripten_force_exit__proxy: 'sync',
+  emscripten_force_exit__sig: 'vi',
+  emscripten_force_exit: function(status) {
+#if EXIT_RUNTIME == 0
+#if ASSERTIONS
+    warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
+#endif
+#endif
+#if !MINIMAL_RUNTIME
+    noExitRuntime = false;
+#endif
+    exit(status);
   },
 };
 

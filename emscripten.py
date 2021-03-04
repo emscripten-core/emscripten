@@ -28,12 +28,6 @@ from tools.toolchain_profiler import ToolchainProfiler
 
 logger = logging.getLogger('emscripten')
 
-STDERR_FILE = os.environ.get('EMCC_STDERR_FILE')
-if STDERR_FILE:
-  STDERR_FILE = os.path.abspath(STDERR_FILE)
-  logger.info('logging stderr in js compiler phase into %s' % STDERR_FILE)
-  STDERR_FILE = open(STDERR_FILE, 'w')
-
 WASM_INIT_FUNC = '__wasm_call_ctors'
 
 
@@ -136,7 +130,9 @@ def update_settings_glue(metadata, DEBUG):
     if shared.Settings.INITIAL_TABLE == -1:
       shared.Settings.INITIAL_TABLE = metadata['tableSize'] + 1
 
-  shared.Settings.MAIN_READS_PARAMS = metadata['mainReadsParams']
+  # When using dynamic linking the main function might be in a side module.
+  # To be safe assume they do take input parametes.
+  shared.Settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or shared.Settings.MAIN_MODULE
 
   # Store exports for Closure compiler to be able to track these as globals in
   # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
@@ -159,6 +155,12 @@ def apply_static_code_hooks(forwarded_json, code):
 
 
 def compile_settings():
+  stderr_file = os.environ.get('EMCC_STDERR_FILE')
+  if stderr_file:
+    stderr_file = os.path.abspath(stderr_file)
+    logger.info('logging stderr in js compiler phase into %s' % stderr_file)
+    stderr_file = open(stderr_file, 'w')
+
   # Save settings to a file to work around v8 issue 1579
   with shared.configuration.get_temp_files().get_file('.txt') as settings_file:
     with open(settings_file, 'w') as s:
@@ -168,7 +170,7 @@ def compile_settings():
     env = os.environ.copy()
     env['EMCC_BUILD_DIR'] = os.getcwd()
     out = shared.run_js_tool(path_from_root('src', 'compiler.js'),
-                             [settings_file], stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                             [settings_file], stdout=subprocess.PIPE, stderr=stderr_file,
                              cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')

@@ -3,7 +3,7 @@
     // libc - internal
     // ===========================================
     {
-        "file": "system/lib/libc/musl/src/internal/pthread_impl.h",
+        "file": "pthread_impl.h",
         "structs": {
             "pthread": [
               "threadStatus",
@@ -25,7 +25,7 @@
         "defines": ["__ATTRP_C11_THREAD"]
     },
     {
-        "file": "system/lib/libc/musl/src/internal/libc.h",
+        "file": "libc.h",
         "structs": {
             "libc": [
               "global_locale"
