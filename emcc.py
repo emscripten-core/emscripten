@@ -1511,9 +1511,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.TEXTDECODER = 0
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
       newargs += ['-pthread']
-      # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
-      # manually export them
-
       shared.Settings.EXPORTED_FUNCTIONS += [
         '___emscripten_pthread_data_constructor',
         '___pthread_tsd_run_dtors',
@@ -1650,8 +1647,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # individually - TODO: this could be optimized
       exit_with_error('DECLARE_ASM_MODULE_EXPORTS=0 is not compatible with MODULARIZE')
 
-    # When not declaring asm module exports in outer scope one by one, disable minifying
-    # asm.js/wasm module export names so that the names can be passed directly to the outer scope.
+    # When not declaring wasm module exports in outer scope one by one, disable minifying
+    # wasm module export names so that the names can be passed directly to the outer scope.
     # Also, if using library_exports.js API, disable minification so that the feature can work.
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS or 'exports.js' in [x for _, x in libs]:
       shared.Settings.MINIFY_ASMJS_EXPORT_NAMES = 0
