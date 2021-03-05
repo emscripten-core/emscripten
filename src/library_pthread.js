@@ -194,7 +194,7 @@ var LibraryPThread = {
       _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
 
       // Not hosting a pthread anymore in this worker, reset the info structures to null.
-      __emscripten_thread_init(0, 0, 0); // Unregister the thread block inside wasm module.
+      __emscripten_thread_init(0, 0, 0); // Unregister the thread block inside the wasm module.
     },
 
     // Called when we are performing a pthread_exit(), either explicitly called
