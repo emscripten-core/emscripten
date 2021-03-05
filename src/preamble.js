@@ -358,10 +358,6 @@ if (!ENVIRONMENT_IS_PTHREAD)
 __ATINIT__.push({ func: function() { ___wasm_call_ctors() } });
 #endif
 
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) runtimeInitialized = true; // The runtime is hosted in the main thread, and bits shared to pthreads via SharedArrayBuffer. No need to init again in pthread.
-#endif
-
 function preRun() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
@@ -387,6 +383,11 @@ function initRuntime() {
   assert(!runtimeInitialized);
 #endif
   runtimeInitialized = true;
+
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#endif
+
 #if STACK_OVERFLOW_CHECK >= 2
 #if RUNTIME_LOGGING
   err('__set_stack_limits: ' + _emscripten_stack_get_base() + ', ' + _emscripten_stack_get_end());
