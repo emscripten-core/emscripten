@@ -23,7 +23,7 @@ from tools.shared import PYTHON, EMCC, EMAR
 from tools.utils import WINDOWS, MACOS
 from tools import shared, building, config
 from runner import RunnerCore, path_from_root, requires_native_clang
-from runner import skip_if, needs_dlfcn, no_windows, is_slow_test, create_test_file, parameterized
+from runner import skip_if, needs_dylink, no_windows, is_slow_test, create_test_file, parameterized
 from runner import env_modify, with_env_modify, disabled, node_pthreads
 from runner import NON_ZERO
 import clang_native
@@ -972,7 +972,7 @@ base align: 0, 0, 0, 0'''])
   def test_longjmp2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp2.c')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_longjmp2_main_module(self):
     # Test for binaryen regression:
     # https://github.com/WebAssembly/binaryen/issues/2180
@@ -2577,7 +2577,7 @@ The current type of b is: 9
       self.build(filename)
       shutil.move(shared.unsuffixed(filename) + '.js', 'liblib.so')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_missing(self):
     self.set_setting('MAIN_MODULE')
     if self.has_changed_setting('ASSERTIONS'):
@@ -2600,7 +2600,7 @@ The current type of b is: 9
     self.set_setting('ASSERTIONS', 0)
     self.do_run(src, 'error: Could not load dynamic lib: libfoo.so\nError: FS error')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_basic(self):
     self.prep_dlfcn_lib()
     create_test_file('liblib.cpp', '''
@@ -2638,7 +2638,7 @@ The current type of b is: 9
       '''
     self.do_run(src, 'Constructing main object.\nConstructing lib object.\n')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_i64(self):
     self.prep_dlfcn_lib()
     create_test_file('liblib.c', '''
@@ -2678,7 +2678,7 @@ The current type of b is: 9
       '''
     self.do_run(src, '|65830|')
 
-  @needs_dlfcn
+  @needs_dylink
   @disabled('EM_ASM in not yet supported in SIDE_MODULE')
   def test_dlfcn_em_asm(self):
     self.prep_dlfcn_lib()
@@ -2713,7 +2713,7 @@ The current type of b is: 9
       '''
     self.do_run(src, 'Constructing main object.\nConstructing lib object.\nAll done.\n')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_qsort(self):
     self.prep_dlfcn_lib()
     self.set_setting('EXPORTED_FUNCTIONS', ['_get_cmp'])
@@ -2788,7 +2788,7 @@ The current type of b is: 9
     self.do_run(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
                 output_nicerizer=lambda x, err: x.replace('\n', '*'))
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_data_and_fptr(self):
     # Failing under v8 since: https://chromium-review.googlesource.com/712595
     if self.is_wasm():
@@ -2888,7 +2888,7 @@ parent_func called from child
 Var: 42
 ''')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_varargs(self):
     # this test is not actually valid - it fails natively. the child should fail
     # to be loaded, not load and successfully see the parent print_ints func
@@ -2936,7 +2936,7 @@ Var: 42
     self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
     self.do_run(src, '100\n200\n13\n42\n')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_alignment_and_zeroing(self):
     self.prep_dlfcn_lib()
     self.set_setting('INITIAL_MEMORY', '16mb')
@@ -3011,7 +3011,7 @@ Var: 42
       ''')
     self.do_runf('src.c', 'success.\n')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_self(self):
     self.set_setting('MAIN_MODULE')
     self.set_setting('EXPORT_ALL')
@@ -3029,7 +3029,7 @@ Var: 42
     self.assertGreater(export_count, 20)
     self.assertLess(export_count, 56)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_unique_sig(self):
 
     self.prep_dlfcn_lib()
@@ -3070,7 +3070,7 @@ Var: 42
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     self.do_runf('main.c', 'success')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_info(self):
 
     self.prep_dlfcn_lib()
@@ -3126,7 +3126,7 @@ Var: 42
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     self.do_runf('main.c', 'success')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_stacks(self):
     self.prep_dlfcn_lib()
     create_test_file('liblib.c', r'''
@@ -3182,7 +3182,7 @@ Var: 42
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_strcmp'])
     self.do_runf('main.c', 'success')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_funcs(self):
     self.prep_dlfcn_lib()
     create_test_file('liblib.c', r'''
@@ -3278,7 +3278,7 @@ int 1 9000
 ok
 ''')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_mallocs(self):
     # will be exhausted without functional malloc/free
     self.set_setting('INITIAL_MEMORY', '64mb')
@@ -3300,7 +3300,7 @@ ok
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_free'])
     self.do_runf(path_from_root('tests', 'dlmalloc_proxy.c'), '*294,153*')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_longjmp(self):
     self.prep_dlfcn_lib()
     create_test_file('liblib.c', r'''
@@ -3363,7 +3363,7 @@ out!
 
   # TODO: make this work. need to forward tempRet0 across modules
   # TODO Enable @with_both_exception_handling (the test is not working now)
-  @needs_dlfcn
+  @needs_dylink
   def zzztest_dlfcn_exceptions(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
@@ -3428,7 +3428,7 @@ int 123
 ok
 ''')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dlfcn_handle_alloc(self):
     # verify that dlopen does not allocate already used handles
     dirname = self.get_dir()
@@ -3495,7 +3495,7 @@ ok
       '''
     self.do_run(src, 'a: loaded\nb: loaded\na: loaded\n')
 
-  @needs_dlfcn
+  @needs_dylink
   @bleeding_edge_wasm_backend
   def test_dlfcn_feature_in_lib(self):
     self.emcc_args.append('-mnontrapping-fptoint')
@@ -3601,12 +3601,12 @@ ok
       }
     ''', 'other says 11.', 'int sidey();', force_c=True, main_module=2, **kwargs)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_basics(self):
     self.do_basic_dylink_test()
     self.verify_in_strict_mode('src.js')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_basics_no_modify(self):
     if is_optimizing(self.emcc_args):
       self.skipTest('no modify mode only works with non-optimizing builds')
@@ -3614,24 +3614,24 @@ ok
     self.set_setting('ERROR_ON_WASM_CHANGES_AFTER_LINK')
     self.do_basic_dylink_test()
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_no_export(self):
     self.set_setting('NO_DECLARE_ASM_MODULE_EXPORTS')
     self.do_basic_dylink_test()
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_memory_growth(self):
     if not self.is_wasm():
       self.skipTest('wasm only')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_basic_dylink_test()
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_safe_heap(self):
     self.set_setting('SAFE_HEAP')
     self.do_basic_dylink_test()
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_function_pointer_equality(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3656,7 +3656,7 @@ ok
       }
     ''', 'success', header='void* get_address();', force_c=True, main_module=2)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_floats(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3669,7 +3669,7 @@ ok
       float sidey() { return 11.5; }
     ''', 'other says 12.50', force_c=True, main_module=2)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_printfs(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3688,7 +3688,7 @@ ok
 
   # Verify that a function pointer can be passed back and forth and invoked
   # on both sides.
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_funcpointer(self):
     self.dylink_test(
       main=r'''
@@ -3711,7 +3711,7 @@ ok
       expected='hello from funcptr: 1\nhello from funcptr: 0\n',
       header='typedef void (*intfunc)(int );', force_c=True, main_module=2)
 
-  @needs_dlfcn
+  @needs_dylink
   # test dynamic linking of a module with multiple function pointers, stored
   # statically
   def test_dylink_static_funcpointers(self):
@@ -3737,7 +3737,7 @@ ok
       expected='hello 0\nhello 1\nhello 2\n',
       header='typedef void (*voidfunc)(); void sidey(voidfunc f);', force_c=True, main_module=2)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_funcpointers_wrapper(self):
     self.dylink_test(
       main=r'''\
@@ -3764,7 +3764,7 @@ ok
       extern charfunc get();
       ''', force_c=True)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_static_funcpointer_float(self):
     self.dylink_test(
       main=r'''\
@@ -3786,7 +3786,7 @@ ok
       expected='hello 1: 56.779999\ngot: 1\nhello 1: 12.340000\n',
       header='typedef float (*floatfunc)(float);', force_c=True, main_module=2)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_missing_signatures(self):
     create_test_file('test_sig.c', r'''#include <emscripten.h>
                                        int main() {
@@ -3796,7 +3796,7 @@ ok
     self.set_setting('MAIN_MODULE', 1)
     self.do_runf('test_sig.c', '')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_global_init(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3811,7 +3811,7 @@ ok
       void nothing() {}
     ''', 'a new Class\n')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_global_inits(self):
     def test():
       self.dylink_test(header=r'''
@@ -3839,7 +3839,7 @@ ok
     # full = self.run_js('src.js')
     # self.assertNotContained('already exists', full)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_i64(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3857,7 +3857,7 @@ ok
     ''', 'other says 42.', force_c=True, main_module=2)
 
   @all_engines
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_i64_b(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3890,7 +3890,7 @@ ok
       }
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.', force_c=True)
 
-  @needs_dlfcn
+  @needs_dylink
   @also_with_wasm_bigint
   def test_dylink_i64_c(self):
     self.dylink_test(r'''
@@ -3942,7 +3942,7 @@ res64 - external 64\n''', header='''
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
     ''', force_c=True, main_module=2)
 
-  @needs_dlfcn
+  @needs_dylink
   @also_with_wasm_bigint
   def test_dylink_i64_invoke(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -3978,7 +3978,7 @@ res64 - external 64\n''', header='''
     }
     }''', 'got 84', need_reverse=False)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_class(self):
     self.dylink_test(header=r'''
       #include <stdio.h>
@@ -3996,7 +3996,7 @@ res64 - external 64\n''', header='''
       Class::Class(const char *name) { printf("new %s\n", name); }
     ''', expected=['new main\n'])
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_global_var(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -4009,7 +4009,7 @@ res64 - external 64\n''', header='''
       int x = 123;
     ''', expected=['extern is 123.\n'], force_c=True, main_module=2)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_global_var_modded(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -4026,7 +4026,7 @@ res64 - external 64\n''', header='''
       Initter initter;
     ''', expected=['extern is 456.\n'], main_module=2)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_stdlib(self):
     self.dylink_test(header=r'''
       #include <math.h>
@@ -4058,7 +4058,7 @@ res64 - external 64\n''', header='''
       }
     ''', expected=['hello through side\n\npow_two: 59.'], force_c=True)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_jslib(self):
     create_test_file('lib.js', r'''
       mergeInto(LibraryManager.library, {
@@ -4093,7 +4093,7 @@ res64 - external 64\n''', header='''
       }
     ''', expected='other says 45.2', main_emcc_args=['--js-library', 'lib.js'], force_c=True)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_many_postsets(self):
     NUM = 1234
     self.dylink_test(header=r'''
@@ -4124,7 +4124,7 @@ res64 - external 64\n''', header='''
       }
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'], force_c=True)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_postsets_chunking(self):
     self.dylink_test(header=r'''
       extern int global_var;
@@ -4158,7 +4158,7 @@ res64 - external 64\n''', header='''
       int global_var = 12345;
     ''', expected=['12345\n'], force_c=True, main_module=2)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
     # https://github.com/emscripten-core/emscripten/issues/10571
     return self.skipTest('Currently not working due to duplicate symbol errors in wasm-ld')
@@ -4198,7 +4198,7 @@ res64 - external 64\n''', header='''
       self.set_setting('ASSERTIONS')
       test('', expect_pass=False, need_reverse=False)
 
-  @needs_dlfcn
+  @needs_dylink
   @with_env_modify({'EMCC_FORCE_STDLIBS': 'libc++'})
   def test_dylink_iostream(self):
     self.dylink_test(header=r'''
@@ -4216,7 +4216,7 @@ res64 - external 64\n''', header='''
       std::string side() { return "and hello from side"; }
     ''', expected=['hello from main and hello from side\n'])
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_dynamic_cast(self): # issue 3465
     self.dylink_test(header=r'''
       class Base {
@@ -4266,7 +4266,7 @@ res64 - external 64\n''', header='''
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
   @with_both_exception_handling
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_raii_exceptions(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -4296,7 +4296,7 @@ res64 - external 64\n''', header='''
       }
     ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
 
-  @needs_dlfcn
+  @needs_dylink
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
   def test_dylink_hyper_dupe(self):
     self.set_setting('INITIAL_MEMORY', '64mb')
@@ -4374,7 +4374,7 @@ res64 - external 64\n''', header='''
       full = self.run_js('src.js')
       self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_load_compiled_side_module(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args.append('-lnodefs.js')
@@ -4408,13 +4408,13 @@ res64 - external 64\n''', header='''
                      need_reverse=not self.is_wasm(),
                      auto_load=False)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_dso_needed(self):
     def do_run(src, expected_output):
       self.do_run(src + 'int main() { return test_main(); }', expected_output)
     self._test_dylink_dso_needed(do_run)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_dot_a(self):
     # .a linking must force all .o files inside it, when in a shared module
     create_test_file('third.c', 'int sidef() { return 36; }')
@@ -4437,7 +4437,7 @@ res64 - external 64\n''', header='''
                      side=['libfourth.a', 'third.o'],
                      expected=['sidef: 36, sideg: 17.\n'], force_c=True)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_spaghetti(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -4471,7 +4471,7 @@ res64 - external 64\n''', header='''
                    'main init sees -524, -534, 72.\nside init sees 82, 72, -534.\nmain main sees -524, -534, 72.'])
 
   @needs_make('mingw32-make')
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_zlib(self):
     self.emcc_args += ['-Wno-shift-negative-value', '-I' + path_from_root('tests', 'third_party', 'zlib')]
     self.set_setting('RELOCATABLE')
@@ -4481,7 +4481,7 @@ res64 - external 64\n''', header='''
                      expected=open(path_from_root('tests', 'core', 'test_zlib.out')).read(),
                      force_c=True)
 
-  # @needs_dlfcn
+  # @needs_dylink
   # def test_dylink_bullet(self):
   #   self.emcc_args += ['-I' + path_from_root('tests', 'bullet', 'src')]
   #   side = self.get_bullet_library(self, True)
@@ -4491,7 +4491,7 @@ res64 - external 64\n''', header='''
   #                              open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
   #                              open(path_from_root('tests', 'bullet', 'output3.txt')).read()])
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_rtti(self):
     # Verify that objects created in one module and be dynamic_cast<> correctly
     # in the another module.
@@ -4541,7 +4541,7 @@ res64 - external 64\n''', header='''
                      header=header,
                      expected='success')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_dylink_argv_argc(self):
     # Verify that argc and argv can be sent to main when main is in a side module
 
@@ -5471,7 +5471,7 @@ PORT: 3979
   def test_netinet_in(self):
     self.do_run_in_out_file_test('tests', 'netinet', 'in.cpp')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_main_module_static_align(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('no shared modules with memory growth')
@@ -5783,7 +5783,7 @@ return malloc(size);
     self.set_setting('ASYNCIFY')
     test()
 
-  @needs_dlfcn
+  @needs_dylink
   def test_relocatable_void_function(self):
     self.set_setting('RELOCATABLE')
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function.c')
@@ -8154,7 +8154,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(path_from_root('tests', 'core', 'test_safe_stack_alloca.c'),
                  expected_output=['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=NON_ZERO)
 
-  @needs_dlfcn
+  @needs_dylink
   def test_safe_stack_dylink(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
@@ -8279,7 +8279,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_PTHREADS')
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_futexes.c')
 
-  @needs_dlfcn
+  @needs_dylink
   @node_pthreads
   def test_pthread_dynamic_linking(self):
     self.emcc_args.append('-Wno-experimental')
@@ -8287,7 +8287,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.do_basic_dylink_test()
 
-  @needs_dlfcn
+  @needs_dylink
   @node_pthreads
   def test_Module_dynamicLibraries_pthreads(self):
     # test that Module.dynamicLibraries works with pthreads
@@ -8416,7 +8416,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['--bind', '--post-js', path_from_root('tests', 'core', 'test_abort_on_exception_post.js')]
     self.do_run_in_out_file_test('tests', 'core', 'test_abort_on_exception.cpp')
 
-  @needs_dlfcn
+  @needs_dylink
   def test_gl_main_module(self):
     self.set_setting('MAIN_MODULE')
     self.do_runf(path_from_root('tests', 'core', 'test_gl_get_proc_address.c'))
