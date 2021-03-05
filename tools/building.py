@@ -500,10 +500,7 @@ def llvm_backend_args():
 
 
 def link_to_object(linker_inputs, target):
-  # link using lld for the wasm backend with wasm object files,
-  # other otherwise for linking of bitcode we must use our python
-  # code (necessary for asm.js, for wasm bitcode see
-  # https://bugs.llvm.org/show_bug.cgi?id=40654)
+  # link using lld unless LTO is requested (lld can't output LTO/bitcode object files).
   if not Settings.LTO:
     link_lld(linker_inputs + ['--relocatable'], target)
   else:
@@ -958,11 +955,11 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
     # should not minify these symbol names.
     CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs', 'closure-externs.js')]
 
-    # Closure compiler needs to know about all exports that come from the asm.js/wasm module, because to optimize for small code size,
+    # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
     # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
     # externs file for the exports, Closure is able to reason about the exports.
     if Settings.MODULE_EXPORTS and not Settings.DECLARE_ASM_MODULE_EXPORTS:
-      # Generate an exports file that records all the exported symbols from asm.js/wasm module.
+      # Generate an exports file that records all the exported symbols from the wasm module.
       module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % i for i, j in Settings.MODULE_EXPORTS])
       exports_file = configuration.get_temp_files().get('_module_exports.js')
       exports_file.write(module_exports_suppressions.encode())

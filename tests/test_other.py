@@ -8245,7 +8245,7 @@ int main () {
       }
     ''', '', force_c=True)
 
-  # This test verifies that function names embedded into the build with --js-library (JS functions imported to asm.js/wasm)
+  # This test verifies that function names embedded into the build with --js-library (JS functions exported to wasm)
   # are minified when -O3 is used
   def test_js_function_names_are_minified(self):
     def check_size(f, expected_size):
@@ -8329,7 +8329,7 @@ int main () {
     else:
       self.assertEqual(licenses_found, 0, 'Found a license block in the output file, but it should not have been there!')
 
-  # This test verifies that the generated exports from asm.js/wasm module only reference the
+  # This test verifies that the generated exports from wasm module only reference the
   # unminified exported name exactly once.  (need to contain the export name once for unminified
   # access from calling code, and should not have the unminified name exist more than once, that
   # would be wasteful for size)
