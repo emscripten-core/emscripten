@@ -593,6 +593,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # side memory init file, or an empty one in the js
       assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
+    return output
+
   def get_func(self, src, name):
     start = src.index('function ' + name + '(')
     t = start
