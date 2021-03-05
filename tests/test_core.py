@@ -8302,7 +8302,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     side = path_from_root('tests', 'core', 'pthread', 'test_pthread_dylink_side.c')
     self.dylink_testf(main, side, "success", need_reverse=False)
 
-  @needs_dlfcn
+  @needs_dylink
   @node_pthreads
   def test_Module_dynamicLibraries_pthreads(self):
     # test that Module.dynamicLibraries works with pthreads
