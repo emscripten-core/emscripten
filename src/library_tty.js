@@ -150,7 +150,7 @@ mergeInto(LibraryManager.library, {
       },
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          out(UTF8ArrayToString(tty.output, 0));
+          stdout(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
           if (val != 0) tty.output.push(val); // val == 0 would cut text output off in the middle.
@@ -158,7 +158,7 @@ mergeInto(LibraryManager.library, {
       },
       flush: function(tty) {
         if (tty.output && tty.output.length > 0) {
-          out(UTF8ArrayToString(tty.output, 0));
+          stdout(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         }
       }
@@ -166,7 +166,7 @@ mergeInto(LibraryManager.library, {
     default_tty1_ops: {
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          err(UTF8ArrayToString(tty.output, 0));
+          stderr(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
           if (val != 0) tty.output.push(val);
@@ -174,7 +174,7 @@ mergeInto(LibraryManager.library, {
       },
       flush: function(tty) {
         if (tty.output && tty.output.length > 0) {
-          err(UTF8ArrayToString(tty.output, 0));
+          stderr(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         }
       }

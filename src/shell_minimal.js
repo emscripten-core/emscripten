@@ -101,6 +101,9 @@ function err(text) {
   console.error(text);
 }
 
+var stdout = out;
+var stderr = err;
+
 // Override this function in a --pre-js file to get a signal for when
 // compilation is ready. In that callback, call the function run() to start
 // the program.

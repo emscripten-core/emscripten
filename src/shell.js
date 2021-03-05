@@ -354,6 +354,21 @@ if (ENVIRONMENT_IS_NODE) {
 // stderr, respectively.
 {{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
 {{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)', true) }}}
+var stdout = out;
+var stderr = err;
+
+#if USE_PTHREADS
+// For pthread builds wrap all err() and out() calls so that message include the
+// thread ID.
+out = function(msg) {
+  if (runtimeInitialized) msg = 'tid:0x' + _pthread_self() + ': ' + msg;
+  stdout(msg)
+}
+err = function(msg) {
+  if (runtimeInitialized) msg = 'tid:0x' + _pthread_self() + ': ' + msg;
+  stderr(msg)
+}
+#endif
 
 // Merge back in the overrides
 for (key in moduleOverrides) {

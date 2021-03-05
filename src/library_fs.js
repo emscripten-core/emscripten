@@ -1400,13 +1400,13 @@ FS.staticInit();` +
       }
 
       // open default streams for the stdin, stdout and stderr devices
-      var stdin = FS.open('/dev/stdin', {{{ cDefine('O_RDONLY') }}});
-      var stdout = FS.open('/dev/stdout', {{{ cDefine('O_WRONLY') }}});
-      var stderr = FS.open('/dev/stderr', {{{ cDefine('O_WRONLY') }}});
+      var _stdin = FS.open('/dev/stdin', {{{ cDefine('O_RDONLY') }}});
+      var _stdout = FS.open('/dev/stdout', {{{ cDefine('O_WRONLY') }}});
+      var _stderr = FS.open('/dev/stderr', {{{ cDefine('O_WRONLY') }}});
 #if ASSERTIONS
-      assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
-      assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
-      assert(stderr.fd === 2, 'invalid handle for stderr (' + stderr.fd + ')');
+      assert(_stdin.fd === 0, 'invalid handle for stdin (' + _stdin.fd + ')');
+      assert(_stdout.fd === 1, 'invalid handle for stdout (' + _stdout.fd + ')');
+      assert(_stderr.fd === 2, 'invalid handle for stderr (' + _stderr.fd + ')');
 #endif
     },
     ensureErrnoError: function() {
