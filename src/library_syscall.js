@@ -770,7 +770,7 @@ var SyscallsLibrary = {
   },
   __sys_wait4__proxy: false,
   __sys_wait4: function(pid, wstart, options, rusage) {
-    abort('cannot wait on child processes');
+    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
   __sys_setdomainname__nothrow: true,
   __sys_setdomainname__proxy: false,
@@ -792,7 +792,11 @@ var SyscallsLibrary = {
     copyString('nodename', 'emscripten');
     copyString('release', '1.0');
     copyString('version', '#1');
-    copyString('machine', 'x86-JS');
+#if MEMORY64 == 1
+    copyString('machine', 'wasm64');
+#else
+    copyString('machine', 'wasm32');
+#endif
     return 0;
   },
   __sys_mprotect__nothrow: true,

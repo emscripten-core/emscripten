@@ -194,7 +194,7 @@ var LibraryPThread = {
       _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
 
       // Not hosting a pthread anymore in this worker, reset the info structures to null.
-      __emscripten_thread_init(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
+      __emscripten_thread_init(0, 0, 0); // Unregister the thread block inside the wasm module.
     },
 
     // Called when we are performing a pthread_exit(), either explicitly called
@@ -1343,7 +1343,7 @@ var LibraryPThread = {
     ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
 
-    // Call inside wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
+    // Call inside wasm module to set up the stack frame for this pthread in wasm module scope
     stackRestore(stackTop);
 
 #if STACK_OVERFLOW_CHECK

@@ -93,6 +93,7 @@ var LibraryEmVal = {
       }
   },
 
+  _emval_incref__sig: 'vi',
   _emval_incref__deps: ['$emval_handle_array'],
   _emval_incref: function(handle) {
     if (handle > 4) {
@@ -131,6 +132,7 @@ var LibraryEmVal = {
     return __emval_register(getStringOrSymbol(v));
   },
 
+  _emval_take_value__sig: 'iii',
   _emval_take_value__deps: ['_emval_register', '$requireRegisteredType'],
   _emval_take_value: function(type, argv) {
     type = requireRegisteredType(type, '_emval_take_value');
@@ -361,6 +363,7 @@ var LibraryEmVal = {
     return id;
   },
 
+  _emval_get_method_caller__sig: 'iii',
   _emval_get_method_caller__deps: ['_emval_addMethodCaller', '_emval_lookupTypes', '$new_', '$makeLegalFunctionName'],
   _emval_get_method_caller: function(argCount, argTypes) {
     var types = __emval_lookupTypes(argCount, argTypes);
@@ -436,6 +439,7 @@ var LibraryEmVal = {
     return caller(handle, methodName, __emval_allocateDestructors(destructorsRef), args);
   },
 
+  _emval_call_void_method__sig: 'viiii',
   _emval_call_void_method__deps: ['_emval_allocateDestructors', '$getStringOrSymbol', '$emval_methodCallers', '$requireHandle'],
   _emval_call_void_method: function(caller, handle, methodName, args) {
     caller = emval_methodCallers[caller];

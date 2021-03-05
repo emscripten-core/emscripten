@@ -569,6 +569,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # this if this issues is fixed.
       compiler = [EMCC, '-nostdlib++']
 
+    if force_c:
+      compiler.append('-xc')
+
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix
     cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + libraries

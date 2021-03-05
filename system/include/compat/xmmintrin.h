@@ -188,24 +188,6 @@ _mm_storeu_ps(float *__p, __m128 __a)
   ((struct __unaligned *)__p)->__v = __a;
 }
 
-static __inline__ void __attribute__((__always_inline__, __nodebug__))
-_mm_storeu_si16(void *__p, __m128i __a)
-{
-  struct __unaligned {
-    unsigned short __u;
-  } __attribute__((__packed__, __may_alias__));
-  ((struct __unaligned *)__p)->__u = ((__u16x8)__a)[0];
-}
-
-static __inline__ void __attribute__((__always_inline__, __nodebug__))
-_mm_storeu_si64(void *__p, __m128i __a)
-{
-  struct __unaligned {
-    unsigned long long __u;
-  } __attribute__((__packed__, __may_alias__));
-  ((struct __unaligned *)__p)->__u = ((__u64x2)__a)[0];
-}
-
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_movemask_ps(__m128 __a)
 {

@@ -11,7 +11,7 @@
 // and can be added/removed/renamed without fear of breaking out users.
 //
 
-// An array of all symbols exported from asm.js/wasm module.
+// An array of all symbols exported from the wasm module.
 var MODULE_EXPORTS = [];
 
 // stores the base name of the output file (-o TARGET_BASENAME.js)
@@ -175,7 +175,7 @@ var EXPORT_READY_PROMISE = 1;
 // struct_info that is either generated or cached
 var STRUCT_INFO = '';
 
-// If true, building against Emscripten's asm.js/wasm heap memory profiler.
+// If true, building against Emscripten's wasm heap memory profiler.
 var MEMORYPROFILER = 0;
 
 var GENERATE_SOURCE_MAP = 0;
