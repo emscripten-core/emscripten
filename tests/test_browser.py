@@ -3169,6 +3169,7 @@ window.close = function() {
     'wav': ([],         '0',            'the_entertainer.wav'),
     'ogg': (['ogg'],    'MIX_INIT_OGG', 'alarmvictory_1.ogg'),
     'mp3': (['mp3'],    'MIX_INIT_MP3', 'pudinha.mp3'),
+    'mod': (['mod'],    'MIX_INIT_MOD', 'bleep.xm'),
   })
   @requires_sound_hardware
   def test_sdl2_mixer_music(self, formats, flags, music_name):

@@ -55,6 +55,12 @@ def get(ports, settings, shared):
         '-DMUSIC_MP3_MPG123',
       ]
 
+    if "mod" in settings.SDL2_MIXER_FORMATS:
+      flags += [
+        '-s', 'USE_MODPLUG=1',
+        '-DMUSIC_MOD_MODPLUG',
+      ]
+
     ports.build_port(
       dest_path,
       final,
@@ -91,6 +97,9 @@ def process_dependencies(settings):
   if "mp3" in settings.SDL2_MIXER_FORMATS:
     deps.append('mpg123')
     settings.USE_MPG123 = 1
+  if "mod" in settings.SDL2_MIXER_FORMATS:
+    deps.append('libmodplug')
+    settings.USE_MODPLUG = 1
 
 
 def process_args(ports):
