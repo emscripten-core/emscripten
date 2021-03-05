@@ -234,31 +234,24 @@ var LibraryDylink = {
   },
 
   // We support some amount of allocation during startup in the case of
-  // dynamic linking, which is needed to allocate the memory for the library's
-  // data segment. That has to happen before the main program can start to run,
+  // dynamic linking, which needs to allocate memory for dynamic libraries that
+  // are loaded. That has to happen before the main program can start to run,
   // because the main program needs those linked in before it runs (so we can't
   // use normally malloc from the main program to do these allocations).
 
-  // Allocate memory for the module's data segment even if malloc isn't ready yet.
-  $getOrAllocateModuleMemory__deps: ['$GOT'],
-  $getOrAllocateModuleMemory: function(size) {
+  // Allocate memory even if malloc isn't ready yet.
+  $getMemory__deps: ['$GOT'],
+  $getMemory: function(size) {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
-    err("getOrAllocateModuleMemory: " + size + " runtimeInitialized=" + runtimeInitialized);
+    err("getMemory: " + size + " runtimeInitialized=" + runtimeInitialized);
 #endif
-#if USE_PTHREADS
-    // In a pthread the module memory is allocated in the main thread before
-    // the runtime is initialized. This is because today we only support load
-    // time dynamic linking with pthread.
-    // TODO: redesign this to allow runtime dylink + pthreads
-    if (!ENVIRONMENT_IS_PTHREAD)
-#endif
-      if (runtimeInitialized)
-        return _malloc(size);
+    if (runtimeInitialized)
+      return _malloc(size);
     var ret = Module['___heap_base'];
     var end = (ret + size + 15) & -16;
 #if ASSERTIONS
-    assert(end <= HEAP8.length, 'failure to getOrAllocateModuleMemory - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
+    assert(end <= HEAP8.length, 'failure to getMemory - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
 #endif
     Module['___heap_base'] = end;
     GOT['__heap_base'].value = end;
@@ -370,7 +363,7 @@ var LibraryDylink = {
 
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
-  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getOrAllocateModuleMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler', '$getDylinkMetadata'],
+  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler', '$getDylinkMetadata'],
   $loadWebAssemblyModule: function(binary, flags) {
     var metadata = getDylinkMetadata(binary);
     var memorySize = metadata.memorySize;
@@ -391,7 +384,7 @@ var LibraryDylink = {
       assert(tableAlign === 1, 'invalid tableAlign ' + tableAlign);
 #endif
       // prepare memory
-      var memoryBase = alignMemory(getOrAllocateModuleMemory(memorySize + memoryAlign), memoryAlign); // TODO: add to cleanups
+      var memoryBase = alignMemory(getMemory(memorySize + memoryAlign), memoryAlign); // TODO: add to cleanups
 #if DYLINK_DEBUG
       err("loadModule: memoryBase=" + memoryBase);
 #endif
