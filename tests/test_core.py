@@ -3533,28 +3533,36 @@ ok
       '''
     self.do_run(src, 'float: 42.\n')
 
-  def dylink_test(self, main, side, expected=None, header=None, main_emcc_args=[],
-                  force_c=False, need_reverse=True, auto_load=True, main_module=1, **kwargs):
+  def dylink_test(self, main, side, expected=None, header=None, force_c=False, **kwargs):
+    # Same as dylink_testf but take source code in string form
+    if not isinstance(side, list):
+      side_file = 'liblib.cpp' if not force_c else 'liblib.c'
+      create_test_file(side_file, side)
+      side = side_file
+    if not isinstance(main, list):
+      main_file = 'main.cpp' if not force_c else 'main.c'
+      create_test_file(main_file, main)
+      main = main_file
     if header:
       create_test_file('header.h', header)
 
+    return self.dylink_testf(main, side, expected, force_c, **kwargs)
+
+  def dylink_testf(self, main, side, expected=None, force_c=False, main_emcc_args=[],
+                   need_reverse=True, auto_load=True, main_module=1, **kwargs):
+    # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.emcc_args[:]
 
     # side settings
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
     side_suffix = 'wasm' if self.is_wasm() else 'js'
-    out_file = 'liblib.' + side_suffix
     if isinstance(side, list):
+      out_file = 'liblib.' + side_suffix
       # side is just a library
-      try_delete(out_file)
       self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', out_file])
     else:
-      filename = 'liblib.cpp' if not force_c else 'liblib.c'
-      try_delete(out_file)
-      with open(filename, 'w') as f:
-        f.write(side)
-      self.build(filename, js_outfile=(side_suffix == 'js'))
+      out_file = self.build(side, js_outfile=(side_suffix == 'js'))
     shutil.move(out_file, 'liblib.so')
 
     # main settings
@@ -3568,11 +3576,11 @@ ok
 
     if isinstance(main, list):
       # main is just a library
-      try_delete('src.js')
-      self.run_process([EMCC] + main + self.get_emcc_args() + ['-o', 'src.js'])
-      self.do_run('src.js', expected, no_build=True, **kwargs)
+      try_delete('main.js')
+      self.run_process([EMCC] + main + self.get_emcc_args() + ['-o', 'main.js'])
+      self.do_run('main.js', expected, no_build=True, **kwargs)
     else:
-      self.do_run(main, expected, force_c=force_c, **kwargs)
+      self.do_runf(main, expected, force_c=force_c, **kwargs)
 
     self.emcc_args = old_args
 
@@ -3581,8 +3589,8 @@ ok
       # Test the reverse as well.  There we flip the role of the side module and main module.
       # - We add --no-entry since the side module doesn't have a `main`
       # - We set main_module to 1 since in most cases MAIN_MODULE=2 doesn't work when flipped.
-      self.dylink_test(side, main, expected, header, main_emcc_args + ['--no-entry'],
-                       force_c, need_reverse=False, main_module=1,  **kwargs)
+      self.dylink_testf(side, main, expected, force_c, main_emcc_args + ['--no-entry'],
+                        need_reverse=False, main_module=1,  **kwargs)
 
   def do_basic_dylink_test(self, **kwargs):
     self.dylink_test(r'''
@@ -3603,8 +3611,8 @@ ok
 
   @needs_dlfcn
   def test_dylink_basics(self):
-    self.do_basic_dylink_test()
-    self.verify_in_strict_mode('src.js')
+    self.do_basic_dylink_test(need_reverse=False)
+    self.verify_in_strict_mode('main.js')
 
   @needs_dlfcn
   def test_dylink_basics_no_modify(self):
@@ -3834,7 +3842,6 @@ ok
     print('check warnings')
     self.set_setting('ASSERTIONS', 2)
     test()
-    self.run_js('src.js')
     # TODO: this in wasm
     # full = self.run_js('src.js')
     # self.assertNotContained('already exists', full)
@@ -8281,11 +8288,22 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dlfcn
   @node_pthreads
-  def test_pthread_dynamic_linking(self):
+  def test_pthread_dylink_basics(self):
     self.emcc_args.append('-Wno-experimental')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_basic_dylink_test()
+
+  @needs_dlfcn
+  @node_pthreads
+  def test_pthread_dylink(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PTHREAD_POOL_SIZE=2')
+    main = path_from_root('tests', 'core', 'pthread', 'test_pthread_dylink.c')
+    side = path_from_root('tests', 'core', 'pthread', 'test_pthread_dylink_side.c')
+    self.dylink_testf(main, side, "success", need_reverse=False)
 
   @needs_dlfcn
   @node_pthreads
