@@ -1583,6 +1583,7 @@ var registry = {
   applyDCEGraphRemovals: applyDCEGraphRemovals,
   minifyWhitespace: function() { minifyWhitespace = true },
   noPrint: function() { noPrint = true },
+  last: function() {},
   dump: function() { dump(ast) },
   growableHeap: growableHeap,
   unsignPointers: unsignPointers,

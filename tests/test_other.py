@@ -1860,7 +1860,8 @@ int f() {
       'growableHeap',
       'unsignPointers',
       'asanify',
-      'safeHeap'
+      'safeHeap',
+      'minifyLocals',
     ]
     for input, expected, passes in [
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyLocals.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyLocals-output.js')).read(),
