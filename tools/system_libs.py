@@ -1835,6 +1835,11 @@ def build_port(port_name, settings):
     port.get(Ports, settings, shared)
 
 
+def clear_port(port_name, settings):
+  port = ports.ports_by_name[port_name]
+  port.clear(Ports, settings, shared)
+
+
 def add_ports_cflags(args, settings):
   # Legacy SDL1 port is not actually a port at all but builtin
   if settings.USE_SDL == 1:
