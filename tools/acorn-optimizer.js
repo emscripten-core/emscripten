@@ -1373,36 +1373,44 @@ function minifyLocals(ast) {
       continue;
     }
     // Find the list of local names, including params.
-    var localNames = {};
+    var localNames = new Set();
     for (var param of fun.params) {
-      localNames[param.name] = 1;
+      localNames.add(param.name);
     }
-    recursiveWalk(fun, {
+    simpleWalk(fun, {
       VariableDeclaration(node, c) {
         for (var dec of node.declarations) {
-          localNames[dec.id.name] = 1;
+          localNames.add(dec.id.name)
         }
       }
     });
 
     function isLocalName(name) {
-      return Object.prototype.hasOwnProperty.call(localNames, name);
+      return localNames.has(name);
     }
 
-    var newNames = {};
-    var usedNames = {};
+    // Names old to new names.
+    var newNames = new Map();
+
+    // The names in use, that must not be collided with.
+    var usedNames = new Set;
+
+    // Put the function name aside. We don't want to traverse it as it is not
+    // in the scope of itself.
+    var funId = fun.id;
+    fun.id = null;
 
     // Find all the globals that we need to minify using pre-assigned names.
     // Don't actually minify them yet as that might interfere with local
     // variable names; just mark them as used, and what their new name will be.
-    recursiveWalk(fun, {
+    simpleWalk(fun, {
       Identifier(node, c) {
         var name = node.name;
         if (!isLocalName(name)) {
           var minified = extraInfo.globals[name];
           if (minified){
-            newNames[name] = minified;
-            usedNames[minified] = 1;
+            newNames.set(name, minified);
+            usedNames.add(minified);
           }
         }
       },
@@ -1427,7 +1435,7 @@ function minifyLocals(ast) {
         ensureMinifiedNames(nextMinifiedName);
         var minified = minifiedNames[nextMinifiedName++];
         // TODO: we can probably remove !isLocalName here
-        if (!usedNames[minified] && !isLocalName(minified)) {
+        if (!usedNames.has(minified) && !isLocalName(minified)) {
           return minified;
         }
       }
@@ -1435,32 +1443,31 @@ function minifyLocals(ast) {
 
     // TODO: loop label minification as well
 
-    // Traverse and minify all names. First, the function itself.
-    assert(extraInfo.globals.hasOwnProperty(fun.id.name));
-    fun.id.name = extraInfo.globals[fun.id.name];
-    assert(fun.id.name && typeof fun.id.name === 'string');
-
-    // Next, the function parameters.
+    // Traverse and minify all names. First the function parameters.
     for (var param of fun.params) {
       var minified = getNextMinifiedName();
-      newNames[param.name] = minified;
+      newNames.set(param.name, minified);
       param.name = minified;
     }
 
     // Finally, the function body.
-    recursiveWalk(fun, {
+    simpleWalk(fun, {
       Identifier(node, c) {
         var name = node.name;
-        var minified = newNames[name];
-        if (minified) {
-          node.name = minified;
+        if (newNames.has(name)) {
+          node.name = newNames.get(name);
         } else if (isLocalName(name)) {
           minified = getNextMinifiedName();
-          newNames[name] = minified;
+          newNames.set(name, minified);
           node.name = minified;
         }
       }
     });
+
+    // Finally, the function name, after restoring it.
+    fun.id = funId;
+    assert(extraInfo.globals.hasOwnProperty(fun.id.name));
+    fun.id.name = extraInfo.globals[fun.id.name];
   }
 }
 
