@@ -1944,9 +1944,25 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
     compile_args = [a for a in newargs if a and not is_link_flag(a)]
-    cflags = calc_cflags(options)
     system_libs.ensure_sysroot()
-    system_libs.add_ports_cflags(cflags, shared.Settings)
+
+    cflags = None
+    asflags = None
+
+    def get_cflags():
+      nonlocal cflags
+      if cflags is None:
+        cflags = calc_cflags(options)
+        cflags += shared.get_cflags(args)
+        system_libs.add_ports_cflags(cflags, shared.Settings)
+        cflags += compile_args
+      return cflags
+
+    def get_asflags():
+      nonlocal asflags
+      if asflags is None:
+        asflags = shared.get_clang_flags() + compile_args
+      return asflags
 
     def use_cxx(src):
       if 'c++' in language_mode or run_via_emxx:
@@ -1972,12 +1988,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return CC
 
     def get_clang_command(src_file):
-      per_file_cflags = shared.get_cflags(args)
-      return get_compiler(use_cxx(src_file)) + cflags + per_file_cflags + compile_args + [src_file]
+      return get_compiler(use_cxx(src_file)) + get_cflags() + [src_file]
 
     def get_clang_command_asm(src_file):
-      asflags = shared.get_clang_flags()
-      return get_compiler(use_cxx(src_file)) + asflags + compile_args + [src_file]
+      return get_compiler(use_cxx(src_file)) + get_asflags() + [src_file]
 
     # preprocessor-only (-E) support
     if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
