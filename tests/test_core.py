@@ -8233,7 +8233,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_exit_process(self):
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('PTHREAD_POOL_SIZE', '2')
     self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['--pre-js', path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.pre.js')]
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'test_pthread_exit_runtime.c', assert_returncode=42)
@@ -8243,7 +8242,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_no_exit_process(self):
     # Same as above but without EXIT_RUNTIME
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('PTHREAD_POOL_SIZE', '2')
     self.emcc_args += ['--pre-js', path_from_root('tests', 'core', 'pthread', 'test_pthread_exit_runtime.pre.js')]
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'test_pthread_exit_runtime.c', assert_returncode=43)
 
@@ -8293,7 +8291,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_Module_dynamicLibraries_pthreads(self):
     # test that Module.dynamicLibraries works with pthreads
-
     self.emcc_args += ['-pthread', '-Wno-experimental']
     self.emcc_args += ['--extern-pre-js', 'pre.js']
     self.set_setting('PROXY_TO_PTHREAD')
