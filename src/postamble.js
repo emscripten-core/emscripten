@@ -295,7 +295,7 @@ function run(args) {
     // creation promise can be resolved, marking the pthread-Module as initialized.
     readyPromiseResolve(Module);
 #endif // MODULARIZE
-
+    initRuntime();
     postMessage({ 'cmd': 'loaded' });
     return;
   }

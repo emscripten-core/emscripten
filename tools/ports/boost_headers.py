@@ -49,7 +49,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libboost_headers.a')
+  shared.Cache.erase_lib('libboost_headers.a')
 
 
 def process_args(ports):

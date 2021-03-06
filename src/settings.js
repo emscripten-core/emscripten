@@ -194,16 +194,12 @@ var MAXIMUM_MEMORY = 2147483648;
 
 // If false, we abort with an error if we try to allocate more memory than
 // we can (INITIAL_MEMORY). If true, we will grow the memory arrays at
-// runtime, seamlessly and dynamically. This has a performance cost in asm.js,
-// both during the actual growth and in general (the latter is because in
-// that case we must be careful about optimizations, in particular the
-// eliminator), but in wasm it is efficient and should be used whenever relevant.
+// runtime, seamlessly and dynamically. 
 // See https://code.google.com/p/v8/issues/detail?id=3907 regarding
 // memory growth performance in chrome.
 // Note that growing memory means we replace the JS typed array views, as
-// once created they cannot be resized. (This happens both in asm.js and in
-// wasm - in wasm we can grow the Memory, but still need to create new
-// views for JS.)
+// once created they cannot be resized. (In wasm we can grow the Memory, but
+// still need to create new views for JS.)
 // Setting this option on will disable ABORTING_MALLOC, in other words,
 // ALLOW_MEMORY_GROWTH enables fully standard behavior, of both malloc
 // returning 0 when it fails, and also of being able to allocate more
@@ -281,7 +277,7 @@ var CLOSURE_WARNINGS = 'quiet';
 // [link]
 var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 
-// If set to 1, each asm.js/wasm module export is individually declared with a
+// If set to 1, each wasm module export is individually declared with a
 // JavaScript "var" definition. This is the simple and recommended approach.
 // However, this does increase code size (especially if you have many such
 // exports), which can be avoided in an unsafe way by setting this to 0. In that
@@ -1315,8 +1311,8 @@ var EMIT_EMSCRIPTEN_LICENSE = 0;
 
 // Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
 // to automatically demote i64 to i32 and promote f32 to f64. This is necessary
-// in order to interface with JavaScript, both for asm.js and wasm.  For
-// non-web/non-JS embeddings, setting this to 0 may be desirable.
+// in order to interface with JavaScript.  For non-web/non-JS embeddings, setting
+// this to 0 may be desirable.
 // [link]
 var LEGALIZE_JS_FFI = 1;
 
@@ -1409,6 +1405,10 @@ var USE_HARFBUZZ = 0;
 // [link]
 var USE_COCOS2D = 0;
 
+// 1 = use libmodplug from emscripten-ports
+// [link]
+var USE_MODPLUG = 0;
+
 // Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm, tga, xcf, xpm, xv
 // [link]
 var SDL2_IMAGE_FORMATS = [];
@@ -1473,10 +1473,10 @@ var PTHREAD_POOL_DELAY_LOAD = 0;
 // size on Linux/x86-32 for a new thread is 2 megabytes, so follow the same
 // convention. Use pthread_attr_setstacksize() at thread creation time to
 // explicitly specify the stack size, in which case this value is ignored. Note
-// that the asm.js/wasm function call control flow stack is separate from this
+// that the wasm function call control flow stack is separate from this
 // stack, and this stack only contains certain function local variables, such as
 // those that have their addresses taken, or ones that are too large to fit as
-// local vars in asm.js/wasm code.
+// local vars in wasm code.
 // [link]
 var DEFAULT_PTHREAD_STACK_SIZE = 2*1024*1024;
 
@@ -1504,9 +1504,9 @@ var PTHREADS_DEBUG = 0;
 // compile step much slower.
 //
 // This basically runs the ctors during compile time, seeing if they execute
-// safely in a sandbox. Any ffi access out of asm.js causes failure, as it could
+// safely in a sandbox. Any ffi access out of wasm causes failure, as it could
 // do something nondeterministic and/or alter some other state we don't see. If
-// all the global ctor does is pure computation inside asm.js, it should be ok.
+// all the global ctor does is pure computation inside wasm, it should be ok.
 // Run with EMCC_DEBUG=1 in the env to see logging, and errors when it fails to
 // eval (you'll see a message, or a stack trace; in the latter case, the
 // functions on the stack should give you an idea of what ffi was called and
@@ -1525,7 +1525,7 @@ var PTHREADS_DEBUG = 0;
 // enough for e.g. libc++ iostream ctors. It is just hard to do at the LLVM IR
 // level - LLVM IR is complex and getting more complex, this would require
 // GlobalOpt to have a full interpreter, plus a way to write back into LLVM IR
-// global objects.  At the asm.js level, however, everything has been lowered
+// global objects.  At the wasm level, however, everything has been lowered
 // into a simple low level, and we also just need to write bytes into an array,
 // so this is easy for us to do, but not for LLVM. A further issue for LLVM is
 // that it doesn't know that we will not link in further code, so it only tries
@@ -1591,7 +1591,7 @@ var FETCH_DEBUG = 0;
 var FETCH = 0;
 
 // If set to 1, uses the multithreaded filesystem that is implemented within the
-// asm.js module, using emscripten_fetch. Implies -s FETCH=1.
+// wasm module, using emscripten_fetch. Implies -s FETCH=1.
 // [link]
 var ASMFS = 0;
 
@@ -1713,11 +1713,11 @@ var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = 0;
 var USES_DYNAMIC_ALLOC = 1;
 
 // Advanced manual dead code elimination: Specifies the set of runtime JS
-// functions that should be imported to the asm.js/wasm module.  Remove elements
+// functions that should be imported to the wasm module.  Remove elements
 // from this list to make build smaller if some of these are not needed.  In
-// Wasm -O3/-Os builds, adjusting this is not necessary, as the Meta-DCE pass is
-// able to remove these, but if you are targeting asm.js or doing a -O2 build or
-// lower, then this can be beneficial.
+// -O3/-Os builds, adjusting this is not necessary, as the Meta-DCE pass is
+// able to remove these, but if you doing a -O2 build or lower, then this can be
+// beneficial.
 // [link]
 var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
 
@@ -1941,7 +1941,7 @@ var LEGACY_SETTINGS = [
   ['BUILD_AS_SHARED_LIB', [0], 'Starting from Emscripten 1.38.16, no longer available (https://github.com/emscripten-core/emscripten/pull/7433)'],
   ['SAFE_SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SAFE_SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
   ['SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
-  ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-s WASM=1 - default), or to asm.js (-s WASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
+  ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-s WASM=1 - default), or to JavaScript (-s WASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
   ['BINARYEN_TRAP_MODE', [-1], 'The wasm backend does not support a trap mode (it always clamps, in effect)'],
   ['PRECISE_I64_MATH', [1, 2], 'Starting from Emscripten 1.38.26, PRECISE_I64_MATH is always enabled (https://github.com/emscripten-core/emscripten/pull/7935)'],
   ['MEMFS_APPEND_TO_TYPED_ARRAYS', [1], 'Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918)'],

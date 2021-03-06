@@ -26,9 +26,9 @@
 // function bodies containing commas are seamlessly handled.
 
 // EM_JS declares the JS function with a C function prototype, which becomes a
-// function import in asm.js/wasm. It also declares an __em_js__-prefixed
-// string constant, which we can use to pass information to the Emscripten compiler
-// that survives going through LLVM.
+// function import in wasm. It also declares an __em_js__-prefixed string constant,
+// which we can use to pass information to the Emscripten compiler that survives
+// going through LLVM.
 // Example:
 //
 //   EM_JS(int, foo, (int x, int y), { return 2 * x + y; })
