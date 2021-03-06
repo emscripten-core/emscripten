@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.15: 03/05/2021
+------------------
 - Calls to `newlocale` (and `new std::locale` in C++) with arbirary names will
   now succeed.  This is the behaviour of musl libc which emscripten had
   previously inadvertently disabled.
