@@ -1441,8 +1441,6 @@ function minifyLocals(ast) {
       }
     }
 
-    // TODO: loop label minification as well
-
     // Traverse and minify all names. First the function parameters.
     for (var param of fun.params) {
       var minified = getNextMinifiedName();
@@ -1450,9 +1448,17 @@ function minifyLocals(ast) {
       param.name = minified;
     }
 
+    // Label minification is done in a separate namespace.
+    var labelNames = new Map();
+    var nextMinifiedLabel = 0;
+    function getNextMinifiedLabel() {
+      ensureMinifiedNames(nextMinifiedLabel);
+      return minifiedNames[nextMinifiedLabel++];
+    }
+
     // Finally, the function body.
-    simpleWalk(fun, {
-      Identifier(node, c) {
+    recursiveWalk(fun, {
+      Identifier(node) {
         var name = node.name;
         if (newNames.has(name)) {
           node.name = newNames.get(name);
@@ -1461,7 +1467,24 @@ function minifyLocals(ast) {
           newNames.set(name, minified);
           node.name = minified;
         }
-      }
+      },
+      LabeledStatement(node, c) {
+        if (!labelNames.has(node.label.name)) {
+          labelNames.set(node.label.name, getNextMinifiedLabel());
+        }
+        node.label.name = labelNames.get(node.label.name);
+        c(node.body);
+      },
+      BreakStatement(node, c) {
+        if (node.label) {
+          node.label.name = labelNames.get(node.label.name);
+        }
+      },
+      ContinueStatement(node, c) {
+        if (node.label) {
+          node.label.name = labelNames.get(node.label.name);
+        }
+      },
     });
 
     // Finally, the function name, after restoring it.

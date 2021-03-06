@@ -17,3 +17,24 @@ function d(f, g, h) {
  l = f;
  return f + g + h + i + j + k + l;
 }
+
+function l() {
+ a: while (1) {
+  b: while (1) {
+   if (c()) {
+    if (d()) {
+     break a;
+    } else {
+     continue b;
+    }
+   } else {
+    if (d()) {
+     break;
+    } else {
+     continue;
+    }
+   }
+  }
+ }
+ a: while (1) {}
+}
