@@ -40,9 +40,9 @@ function E(a, b, c) {
   return;
  }
  e = a + c | 0;
- a : {
+ a: {
   if (!((a ^ b) & 3)) {
-   b : {
+   b: {
     if ((c | 0) < 1) {
      c = a;
      break b;
@@ -66,7 +66,7 @@ function E(a, b, c) {
     }
    }
    a = e & -4;
-   c : {
+   c: {
     if (a >>> 0 < 64) {
      break c;
     }
@@ -148,51 +148,52 @@ function E(a, b, c) {
   }
  }
 }
+
 function H(a, b, c) {
  a = a | 0;
  b = b | 0;
  c = c | 0;
- var d = 0, e = 0, g = 0, h = 0, i = 0, j = 0;
- d = z - 32 | 0;
- z = d;
- e = f[a + 28 >> 2];
- f[d + 16 >> 2] = e;
- g = f[a + 20 >> 2];
- f[d + 28 >> 2] = c;
- f[d + 24 >> 2] = b;
- b = g - e | 0;
- f[d + 20 >> 2] = b;
- e = b + c | 0;
- i = 2;
- b = d + 16 | 0;
- a : {
-  b : {
-   c : {
-    if (!D(x(f[a + 60 >> 2], d + 16 | 0, 2, d + 12 | 0) | 0)) {
+ var e = 0, g = 0, h = 0, i = 0, j = 0, k = 0;
+ e = z - 32 | 0;
+ z = e;
+ g = f[a + 28 >> 2];
+ f[e + 16 >> 2] = g;
+ h = f[a + 20 >> 2];
+ f[e + 28 >> 2] = c;
+ f[e + 24 >> 2] = b;
+ b = h - g | 0;
+ f[e + 20 >> 2] = b;
+ g = b + c | 0;
+ j = 2;
+ b = e + 16 | 0;
+ a: {
+  b: {
+   c: {
+    if (!D(x(f[a + 60 >> 2], e + 16 | 0, 2, e + 12 | 0) | 0)) {
      while (1) {
-      g = f[d + 12 >> 2];
-      if ((g | 0) == (e | 0)) {
+      h = f[e + 12 >> 2];
+      if ((h | 0) == (g | 0)) {
        break c;
       }
-      if ((g | 0) <= -1) {
+      if ((h | 0) <= -1) {
        break b;
       }
-      h = f[b + 4 >> 2];
-      j = g >>> 0 > h >>> 0;
-      b = j ? b + 8 | 0 : b;
-      h = g - (j ? h : 0) | 0;
-      f[b >> 2] = h + f[b >> 2];
-      f[b + 4 >> 2] = f[b + 4 >> 2] - h;
-      e = e - g | 0;
-      i = i - j | 0;
-      if (!D(x(f[a + 60 >> 2], b | 0, i | 0, d + 12 | 0) | 0)) {
+      i = f[b + 4 >> 2];
+      k = h >>> 0 > i >>> 0;
+      b = k ? b + 8 | 0 : b;
+      i = h - (k ? i : 0) | 0;
+      f[b >> 2] = i + f[b >> 2];
+      f[b + 4 >> 2] = f[b + 4 >> 2] - i;
+      g = g - h | 0;
+      j = j - k | 0;
+      if (!D(x(f[a + 60 >> 2], b | 0, j | 0, e + 12 | 0) | 0)) {
        continue;
       }
       break;
      }
     }
-    f[d + 12 >> 2] = -1;
-    if ((e | 0) != -1) {
+    f[e + 12 >> 2] = -1;
+    if ((g | 0) != -1) {
      break b;
     }
    }
@@ -208,20 +209,21 @@ function H(a, b, c) {
   f[a + 20 >> 2] = 0;
   f[a >> 2] = f[a >> 2] | 32;
   a = 0;
-  if ((i | 0) == 2) {
+  if ((j | 0) == 2) {
    break a;
   }
   a = c - f[b + 4 >> 2] | 0;
  }
- z = d + 32 | 0;
+ z = e + 32 | 0;
  return a | 0;
 }
+
 function B(a, b) {
  var e = 0, h = 0, i = 0, j = 0, k = 0;
  P();
  j = 1024;
  e = f[b + 16 >> 2];
- a : {
+ a: {
   if (!e) {
    if (C(b)) {
     break a;
@@ -232,7 +234,7 @@ function B(a, b) {
   if (e - i >>> 0 < a >>> 0) {
    return c[f[b + 36 >> 2]](b, 1024, a) | 0;
   }
-  b : {
+  b: {
    if (d[b + 75 | 0] < 0) {
     break b;
    }
@@ -263,13 +265,14 @@ function B(a, b) {
  }
  return h;
 }
+
 function L(a) {
  var b = 0, e = 0, g = 0;
  b = z - 16 | 0;
  z = b;
  d[b + 15 | 0] = 10;
  e = f[a + 16 >> 2];
- a : {
+ a: {
   if (!e) {
    if (C(a)) {
     break a;
@@ -288,6 +291,7 @@ function L(a) {
  }
  z = b + 16 | 0;
 }
+
 function J() {
  var a = 0, b = 0, c = 0;
  b = 1024;
@@ -314,16 +318,17 @@ function J() {
  }
  return b - 1024 | 0;
 }
+
 function K() {
  var a = 0, b = 0;
  a = f[260];
  a;
  b = J();
- a : {
+ a: {
   if ((((M(b, a) | 0) != (b | 0) ? -1 : 0) | 0) < 0) {
    break a;
   }
-  b : {
+  b: {
    if (g[a + 75 | 0] == 10) {
     break b;
    }
@@ -338,6 +343,7 @@ function K() {
   L(a);
  }
 }
+
 function C(a) {
  var b = 0;
  b = g[a + 74 | 0];
@@ -355,30 +361,33 @@ function C(a) {
  f[a + 16 >> 2] = b + f[a + 48 >> 2];
  return 0;
 }
+
 function M(a, b) {
- var c = 0, d = 0;
+ var c = 0, e = 0;
  c = a;
- d = c;
- a : {
+ e = c;
+ a: {
   if (f[b + 76 >> 2] <= -1) {
    b = B(c, b);
    break a;
   }
   b = B(c, b);
  }
- if ((d | 0) == (b | 0)) {
+ if ((e | 0) == (b | 0)) {
   return a;
  }
  return b;
 }
-function F(a, b, c, d) {
+
+function F(a, b, c, e) {
  a = a | 0;
  b = b | 0;
  c = c | 0;
- d = d | 0;
+ e = e | 0;
  A = 0;
  return 0;
 }
+
 function D(a) {
  if (!a) {
   return 0;
@@ -386,24 +395,25 @@ function D(a) {
  f[300] = a;
  return -1;
 }
+
 function N(a, b) {
  a = a | 0;
  b = b | 0;
  K();
  return 0;
 }
+
 function I(a) {
  a = a | 0;
  return u() | 0;
 }
+
 function G(a) {
  a = a | 0;
  return 0;
 }
+
 function O() {}
-
-
-
 
 // EMSCRIPTEN_END_FUNCS
 
