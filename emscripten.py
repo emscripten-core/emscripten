@@ -44,10 +44,10 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
     exports_that_are_not_initializers += ['dynCalls = {}']
 
   declares = 'var ' + ',\n '.join(exports_that_are_not_initializers) + ';'
-  post = shared.do_replace(post, '<<< ASM_MODULE_EXPORTS_DECLARES >>>', declares)
+  post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
 
-  # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
-  post = shared.do_replace(post, '<<< ASM_MODULE_EXPORTS >>>', receiving)
+  # Generate assignments from all wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
+  post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS >>>', receiving)
   return post
 
 

@@ -35,7 +35,7 @@ function splitter(array, filter) {
   return { leftIn: leftIn, splitOut: splitOut };
 }
 
-// Functions that start with '$' should not be imported to asm.js/wasm module.
+// Functions that start with '$' should not be exported to the wasm module.
 // They are intended to be exclusive to JS code only.
 function isJsOnlyIdentifier(ident) {
   return ident[0] == '$';
@@ -231,8 +231,8 @@ function JSify(data, functionsOnly) {
         }
       }
 
-      // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be imported
-      // to asm.js/wasm module.
+      // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be exported
+      // to wasm module.
       if (LibraryManager.library[ident + '__import']) {
         Functions.libraryFunctions[finalName] = 1;
       }

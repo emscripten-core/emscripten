@@ -72,7 +72,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(get_lib_name(settings))
+  shared.Cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):

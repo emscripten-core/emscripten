@@ -40,7 +40,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libogg.a')
+  shared.Cache.erase_lib('libogg.a')
 
 
 def process_args(ports):

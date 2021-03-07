@@ -207,10 +207,7 @@ def log_time(name):
 
 def base64_encode(b):
   b64 = base64.b64encode(b)
-  if type(b64) == bytes:
-    return b64.decode('ascii')
-  else:
-    return b64
+  return b64.decode('ascii')
 
 
 class OFormat(Enum):
@@ -848,9 +845,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # ---------------- End configs -------------
 
-  def optimizing(opts):
-    return '-O0' not in opts
-
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
 
@@ -1245,7 +1239,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # in -Oz builds, since custom decoder for UTF-8 takes up space.
     # In pthreads enabled builds, TEXTDECODER==2 may not work, see
     # https://github.com/whatwg/encoding/issues/172
-    if shared.Settings.SHRINK_LEVEL >= 2 and not shared.Settings.USE_PTHREADS:
+    # When supporting shell environments, do not do this as TextDecoder is not
+    # widely supported there.
+    if shared.Settings.SHRINK_LEVEL >= 2 and not shared.Settings.USE_PTHREADS and \
+       not shared.Settings.ENVIRONMENT_MAY_BE_SHELL:
       default_setting('TEXTDECODER', 2)
 
     # If set to 1, we will run the autodebugger (the automatic debugging tool, see
@@ -1514,9 +1511,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.TEXTDECODER = 0
       shared.Settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
       newargs += ['-pthread']
-      # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
-      # manually export them
-
       shared.Settings.EXPORTED_FUNCTIONS += [
         '___emscripten_pthread_data_constructor',
         '___pthread_tsd_run_dtors',
@@ -1653,8 +1647,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # individually - TODO: this could be optimized
       exit_with_error('DECLARE_ASM_MODULE_EXPORTS=0 is not compatible with MODULARIZE')
 
-    # When not declaring asm module exports in outer scope one by one, disable minifying
-    # asm.js/wasm module export names so that the names can be passed directly to the outer scope.
+    # When not declaring wasm module exports in outer scope one by one, disable minifying
+    # wasm module export names so that the names can be passed directly to the outer scope.
     # Also, if using library_exports.js API, disable minification so that the feature can work.
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS or 'exports.js' in [x for _, x in libs]:
       shared.Settings.MINIFY_ASMJS_EXPORT_NAMES = 0
@@ -1950,9 +1944,25 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
     compile_args = [a for a in newargs if a and not is_link_flag(a)]
-    cflags = calc_cflags(options)
     system_libs.ensure_sysroot()
-    system_libs.add_ports_cflags(cflags, shared.Settings)
+
+    cflags = None
+    asflags = None
+
+    def get_cflags():
+      nonlocal cflags
+      if cflags is None:
+        cflags = calc_cflags(options)
+        cflags += shared.get_cflags(args)
+        system_libs.add_ports_cflags(cflags, shared.Settings)
+        cflags += compile_args
+      return cflags
+
+    def get_asflags():
+      nonlocal asflags
+      if asflags is None:
+        asflags = shared.get_clang_flags() + compile_args
+      return asflags
 
     def use_cxx(src):
       if 'c++' in language_mode or run_via_emxx:
@@ -1978,12 +1988,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return CC
 
     def get_clang_command(src_file):
-      per_file_cflags = shared.get_cflags(args)
-      return get_compiler(use_cxx(src_file)) + cflags + per_file_cflags + compile_args + [src_file]
+      return get_compiler(use_cxx(src_file)) + get_cflags() + [src_file]
 
     def get_clang_command_asm(src_file):
-      asflags = shared.get_clang_flags()
-      return get_compiler(use_cxx(src_file)) + asflags + compile_args + [src_file]
+      return get_compiler(use_cxx(src_file)) + get_asflags() + [src_file]
 
     # preprocessor-only (-E) support
     if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
@@ -2667,15 +2675,6 @@ def parse_args(newargs):
 
   newargs = [a for a in newargs if a]
   return options, settings_changes, user_js_defines, newargs
-
-
-def emit_js_source_maps(target, js_transform_tempfiles):
-  logger.debug('generating source maps')
-  shared.run_js_tool(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
-                     js_transform_tempfiles +
-                     ['--sourceRoot', os.getcwd(),
-                      '--mapFileBaseName', target,
-                      '--offset', '0'])
 
 
 def do_binaryen(target, options, wasm_target):

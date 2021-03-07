@@ -74,7 +74,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libcocos2d.a')
+  shared.Cache.erase_lib('libcocos2d.a')
 
 
 def process_dependencies(settings):

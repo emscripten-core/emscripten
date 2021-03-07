@@ -39,7 +39,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libSDL2_net.a')
+  shared.Cache.erase_lib('libSDL2_net.a')
 
 
 def process_args(ports):
