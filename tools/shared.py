@@ -809,7 +809,7 @@ class JS(object):
         return ''
       with open(path, 'rb') as f:
         data = base64.b64encode(f.read())
-      return 'data:application/octet-stream;base64,' + asstr(data)
+      return 'data:application/octet-stream;base64,' + data.decode('ascii')
     else:
       return os.path.basename(path)
 
@@ -879,13 +879,6 @@ function%s(%s) {
 }''' % (name, ','.join(args), body, rethrow)
 
     return ret
-
-
-# Converts a string to the native str type.
-def asstr(s):
-  if isinstance(s, bytes):
-    return s.decode('utf-8')
-  return s
 
 
 def asbytes(s):
