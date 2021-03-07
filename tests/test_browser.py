@@ -964,7 +964,7 @@ keydown(100);keyup(100); // trigger the end
       window['simulateMouseEvent'] = simulateMouseEvent;
     ''')
 
-    self.compile_btest([path_from_root('tests', 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.compile_btest([path_from_root('tests', 'sdl_mouse.c'), '-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_mouse_offsets(self):
@@ -1041,7 +1041,7 @@ keydown(100);keyup(100); // trigger the end
       </html>
     ''')
 
-    self.compile_btest([path_from_root('tests', 'sdl_mouse.c'), '-DTEST_SDL_MOUSE_OFFSETS', '-O2', '--minify', '0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.compile_btest([path_from_root('tests', 'sdl_mouse.c'), '-DTEST_SDL_MOUSE_OFFSETS', '-O2', '--minify=0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_glut_touchevents(self):
@@ -1093,7 +1093,7 @@ keydown(100);keyup(100); // trigger the end
       };
     ''')
 
-    self.compile_btest([path_from_root('tests', 'sdl_joystick.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.compile_btest([path_from_root('tests', 'sdl_joystick.c'), '-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
     self.run_browser('page.html', '', '/report_result?2')
 
   def test_sdl_joystick_2(self):
@@ -1132,7 +1132,7 @@ keydown(100);keyup(100); // trigger the end
       };
     ''')
 
-    self.compile_btest([path_from_root('tests', 'sdl_joystick.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.compile_btest([path_from_root('tests', 'sdl_joystick.c'), '-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
     self.run_browser('page.html', '', '/report_result?2')
 
   @requires_graphics_hardware
@@ -1178,7 +1178,7 @@ keydown(100);keyup(100); // trigger the end
       };
     ''')
 
-    self.compile_btest([path_from_root('tests', 'test_glfw_joystick.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-lGL', '-lglfw3', '-s', 'USE_GLFW=3'])
+    self.compile_btest([path_from_root('tests', 'test_glfw_joystick.c'), '-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lGL', '-lglfw3', '-s', 'USE_GLFW=3'])
     self.run_browser('page.html', '', '/report_result?2')
 
   @requires_graphics_hardware
@@ -1242,11 +1242,11 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_threads
   def test_emscripten_get_now(self):
-    for args in [[], ['-s', 'USE_PTHREADS'], ['-s', 'ENVIRONMENT=web', '-O2', '--closure', '1']]:
+    for args in [[], ['-s', 'USE_PTHREADS'], ['-s', 'ENVIRONMENT=web', '-O2', '--closure=1']]:
       self.btest('emscripten_get_now.cpp', '1', args=args)
 
   def test_write_file_in_environment_web(self):
-    self.btest_exit('write_file.c', 0, args=['-s', 'ENVIRONMENT=web', '-Os', '--closure', '1'])
+    self.btest_exit('write_file.c', 0, args=['-s', 'ENVIRONMENT=web', '-Os', '--closure=1'])
 
   def test_fflush(self):
     self.btest('test_fflush.cpp', '0', args=['-s', 'EXIT_RUNTIME', '--shell-file', path_from_root('tests', 'test_fflush.html')], reporting=Reporting.NONE)
@@ -1363,7 +1363,7 @@ keydown(100);keyup(100); // trigger the end
     print('    opts')
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM', '-O2'])
     print('    opts+closure')
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM', '-O2', '--closure', '1', '-g1', '-s', 'CLOSURE_WARNINGS=quiet'])
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM', '-O2', '--closure=1', '-g1', '-s', 'CLOSURE_WARNINGS=quiet'])
 
     '''# non-lz4 for comparison
     try:
@@ -1416,7 +1416,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_sdl_canvas_size(self):
     self.btest('sdl_canvas_size.c', expected='1',
-               args=['-O2', '--minify', '0', '--shell-file',
+               args=['-O2', '--minify=0', '--shell-file',
                      path_from_root('tests', 'sdl_canvas_size.html'), '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
@@ -1434,21 +1434,21 @@ keydown(100);keyup(100); // trigger the end
   def test_sdl_ogl(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with gray at the top.')
 
   @requires_graphics_hardware
   def test_sdl_ogl_regal(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'USE_REGAL', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-s', 'USE_REGAL', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with gray at the top.')
 
   @requires_graphics_hardware
   def test_sdl_ogl_defaultmatrixmode(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['--minify=0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with gray at the top.')
 
   @requires_graphics_hardware
@@ -1469,7 +1469,7 @@ keydown(100);keyup(100); // trigger the end
   def test_sdl_fog_simple(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_fog_simple.c', reference='screenshot-fog-simple.png',
-               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with fog.')
 
   @requires_graphics_hardware
@@ -1853,7 +1853,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_sdlglshader(self):
-    self.btest('sdlglshader.c', reference='sdlglshader.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
+    self.btest('sdlglshader.c', reference='sdlglshader.png', args=['-O2', '--closure=1', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_sdlglshader2(self):
@@ -1982,7 +1982,7 @@ void *getBindBuffer() {
 
   @requires_graphics_hardware
   def test_cubegeom_glew(self):
-    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_glew.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lGLEW', '-lSDL'])
+    self.btest(os.path.join('third_party', 'cubegeom', 'cubegeom_glew.c'), reference=os.path.join('third_party', 'cubegeom', 'cubegeom.png'), args=['-O2', '--closure=1', '-s', 'LEGACY_GL_EMULATION', '-lGL', '-lGLEW', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_color(self):
@@ -2170,7 +2170,7 @@ void *getBindBuffer() {
     for args in [
       [],
       ['-lopenal', '-s', 'STRICT'],
-      ['--closure', '1']
+      ['--closure=1']
     ]:
       print(args)
       self.btest('openal_error.c', expected='1', args=args)
@@ -2397,8 +2397,8 @@ void *getBindBuffer() {
     self.btest('worker_api_main.cpp', expected='566')
 
   def test_worker_api_2(self):
-    self.compile_btest([path_from_root('tests', 'worker_api_2_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER', '-O2', '--minify', '0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two", "_three", "_four"]', '--closure', '1'])
-    self.btest('worker_api_2_main.cpp', args=['-O2', '--minify', '0'], expected='11')
+    self.compile_btest([path_from_root('tests', 'worker_api_2_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER', '-O2', '--minify=0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two", "_three", "_four"]', '--closure=1'])
+    self.btest('worker_api_2_main.cpp', args=['-O2', '--minify=0'], expected='11')
 
   def test_worker_api_3(self):
     self.compile_btest([path_from_root('tests', 'worker_api_3_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER', '-s', 'EXPORTED_FUNCTIONS=["_one"]'])
@@ -2473,7 +2473,7 @@ void *getBindBuffer() {
 
     # First run tests in Node and/or SPIDERMONKEY using self.run_js. Use closure compiler so we can check that
     # require('crypto').randomBytes and window.crypto.getRandomValues doesn't get minified out.
-    self.run_process([EMCC, '-O2', '--closure', '1', path_from_root('tests', 'uuid', 'test.c'), '-o', 'test.js', '-luuid'])
+    self.run_process([EMCC, '-O2', '--closure=1', path_from_root('tests', 'uuid', 'test.c'), '-o', 'test.js', '-luuid'])
 
     test_js_closure = open('test.js').read()
 
@@ -2511,7 +2511,7 @@ Module["preRun"].push(function () {
 
   @parameterized({
     '': ([],),
-    'closure': (['-O2', '-g1', '--closure', '1', '-s', 'HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0'],),
+    'closure': (['-O2', '-g1', '--closure=1', '-s', 'HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0'],),
     'pthread': (['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'],),
     'legacy': (['-s', 'MIN_FIREFOX_VERSION=0', '-s', 'MIN_SAFARI_VERSION=0', '-s', 'MIN_IE_VERSION=0', '-s', 'MIN_EDGE_VERSION=0', '-s', 'MIN_CHROME_VERSION=0'],)
   })
@@ -2521,13 +2521,13 @@ Module["preRun"].push(function () {
 
   @requires_threads
   def test_html5_gamepad(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
+    for opts in [[], ['-O2', '-g1', '--closure=1'], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
       print(opts)
       self.btest(path_from_root('tests', 'test_gamepad.c'), args=[] + opts, expected='0')
 
   @requires_graphics_hardware
   def test_html5_webgl_create_context_no_antialias(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
+    for opts in [[], ['-O2', '-g1', '--closure=1'], ['-s', 'FULL_ES2=1']]:
       print(opts)
       self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts + ['-DNO_ANTIALIAS', '-lGL'], expected='0')
 
@@ -2535,7 +2535,7 @@ Module["preRun"].push(function () {
   @requires_threads
   @requires_graphics_hardware
   def test_html5_webgl_create_context(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1'], ['-s', 'USE_PTHREADS']]:
+    for opts in [[], ['-O2', '-g1', '--closure=1'], ['-s', 'FULL_ES2=1'], ['-s', 'USE_PTHREADS']]:
       print(opts)
       self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts + ['-lGL'], expected='0')
 
@@ -2572,7 +2572,7 @@ Module["preRun"].push(function () {
   def test_webgl2(self):
     for opts in [
       ['-s', 'MIN_CHROME_VERSION=0'],
-      ['-O2', '-g1', '--closure', '1', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG'],
+      ['-O2', '-g1', '--closure=1', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG'],
       ['-s', 'FULL_ES2=1'],
     ]:
       print(opts)
@@ -2621,7 +2621,7 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   def test_webgl_with_closure(self):
-    self.btest(path_from_root('tests', 'webgl_with_closure.cpp'), args=['-O2', '-s', 'MAX_WEBGL_VERSION=2', '--closure', '1', '-lGL'], expected='0')
+    self.btest(path_from_root('tests', 'webgl_with_closure.cpp'), args=['-O2', '-s', 'MAX_WEBGL_VERSION=2', '--closure=1', '-lGL'], expected='0')
 
   # Tests that -s GL_ASSERTIONS=1 and glVertexAttribPointer with packed types works
   @requires_graphics_hardware
@@ -2650,17 +2650,17 @@ Module["preRun"].push(function () {
                reference=os.path.join('third_party', 'sokol', 'arraytex-emsc.png'))
 
   def test_sdl_touch(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1']]:
+    for opts in [[], ['-O2', '-g1', '--closure=1']]:
       print(opts)
       self.btest(path_from_root('tests', 'sdl_touch.c'), args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'], expected='0')
 
   def test_html5_mouse(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1']]:
+    for opts in [[], ['-O2', '-g1', '--closure=1']]:
       print(opts)
       self.btest(path_from_root('tests', 'test_html5_mouse.c'), args=opts + ['-DAUTOMATE_SUCCESS=1'], expected='0')
 
   def test_sdl_mousewheel(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1']]:
+    for opts in [[], ['-O2', '-g1', '--closure=1']]:
       print(opts)
       self.btest(path_from_root('tests', 'test_sdl_mousewheel.c'), args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'], expected='0')
 
@@ -2756,7 +2756,7 @@ Module["preRun"].push(function () {
     'gl_es': (['-DCLIENT_API=GLFW_OPENGL_ES_API'],)
   })
   def test_glfw3(self, args):
-    for opts in [[], ['-s', 'LEGACY_GL_EMULATION'], ['-Os', '--closure', '1']]:
+    for opts in [[], ['-s', 'LEGACY_GL_EMULATION'], ['-Os', '--closure=1']]:
       print(opts)
       self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
 
@@ -2876,7 +2876,7 @@ Module["preRun"].push(function () {
       window['simulateMouseEvent'] = simulateMouseEvent;
     ''')
 
-    self.compile_btest([path_from_root('tests', 'sdl2_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
+    self.compile_btest([path_from_root('tests', 'sdl2_mouse.c'), '-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
     self.run_browser('page.html', '', '/report_result?1')
 
   @requires_graphics_hardware
@@ -2954,7 +2954,7 @@ Module["preRun"].push(function () {
       </html>
     ''')
 
-    self.compile_btest([path_from_root('tests', 'sdl2_mouse.c'), '-DTEST_SDL_MOUSE_OFFSETS=1', '-O2', '--minify', '0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
+    self.compile_btest([path_from_root('tests', 'sdl2_mouse.c'), '-DTEST_SDL_MOUSE_OFFSETS=1', '-O2', '--minify=0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
     self.run_browser('page.html', '', '/report_result?1')
 
   @requires_threads
@@ -2963,7 +2963,7 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   def test_sdl2glshader(self):
-    self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '--closure', '1', '-g1', '-s', 'LEGACY_GL_EMULATION'])
+    self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '--closure=1', '-g1', '-s', 'LEGACY_GL_EMULATION'])
     self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '-s', 'LEGACY_GL_EMULATION'], also_proxied=True) # XXX closure fails on proxy
 
   @requires_graphics_hardware
@@ -3079,7 +3079,7 @@ window.close = function() {
   def test_sdl2_fog_simple(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
-               args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins'],
+               args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-O2', '--minify=0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION', '--use-preload-plugins'],
                message='You should see an image with fog.')
 
   @requires_graphics_hardware
@@ -3281,7 +3281,7 @@ window.close = function() {
       ['-O1'],
       ['-O2', '-profiling'],
       ['-O2'],
-      ['-O2', '--closure', '1']
+      ['-O2', '--closure=1']
     ]:
       for args, code in [
         # defaults
@@ -3368,7 +3368,7 @@ window.close = function() {
   def test_modularize_and_preload_files(self):
     # amount of memory different from the default one that will be allocated for the emscripten heap
     totalMemory = 33554432
-    for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure', '1']]:
+    for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure=1']]:
       # the main function simply checks that the amount of allocated heap memory is correct
       create_test_file('test.c', r'''
         #include <stdio.h>
@@ -3633,7 +3633,7 @@ window.close = function() {
   # Test that the emscripten_ atomics api functions work.
   @parameterized({
     'normal': ([],),
-    'closure': (['--closure', '1'],),
+    'closure': (['--closure=1'],),
   })
   @requires_threads
   def test_pthread_atomics(self, args=[]):
@@ -3822,7 +3822,7 @@ window.close = function() {
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_spawns(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_spawns.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '--closure', '1', '-s', 'ENVIRONMENT=web,worker'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_spawns.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '--closure=1', '-s', 'ENVIRONMENT=web,worker'])
 
   # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
   # kind of scheme will work with Emscripten as well.
@@ -4199,7 +4199,7 @@ window.close = function() {
     self.assertLess(just_fallback, td_with_fallback)
 
   def test_small_js_flags(self):
-    self.btest('browser_test_hello_world.c', '0', args=['-O3', '--closure', '1', '-s', 'INCOMING_MODULE_JS_API=[]', '-s', 'ENVIRONMENT=web'])
+    self.btest('browser_test_hello_world.c', '0', args=['-O3', '--closure=1', '-s', 'INCOMING_MODULE_JS_API=[]', '-s', 'ENVIRONMENT=web'])
     # Check an absolute js code size, with some slack.
     size = os.path.getsize('test.js')
     print('size:', size)
@@ -4655,7 +4655,7 @@ window.close = function() {
 
   # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)
   def test_single_file_in_web_environment_with_closure(self):
-    self.btest('minimal_hello.c', '0', args=['-s', 'SINGLE_FILE', '-s', 'ENVIRONMENT=web', '-O2', '--closure', '1'])
+    self.btest('minimal_hello.c', '0', args=['-s', 'SINGLE_FILE', '-s', 'ENVIRONMENT=web', '-O2', '--closure=1'])
 
   # Tests that SINGLE_FILE works as intended with locateFile
   def test_single_file_locate_file(self):
@@ -4851,19 +4851,19 @@ window.close = function() {
 
   # Tests that Closure run in combination with -s ENVIRONMENT=web mode works with a minimal console.log() application
   def test_closure_in_web_only_target_environment_console_log(self):
-    self.btest('minimal_hello.c', '0', args=['-s', 'ENVIRONMENT=web', '-O3', '--closure', '1'])
+    self.btest('minimal_hello.c', '0', args=['-s', 'ENVIRONMENT=web', '-O3', '--closure=1'])
 
   # Tests that Closure run in combination with -s ENVIRONMENT=web mode works with a small WebGL application
   @requires_graphics_hardware
   def test_closure_in_web_only_target_environment_webgl(self):
-    self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1'])
+    self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'ENVIRONMENT=web', '-O3', '--closure=1'])
 
   def test_no_declare_asm_module_exports_asmjs(self):
     for minimal_runtime in [[], ['-s', 'MINIMAL_RUNTIME']]:
-      self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1', '-s', 'WASM=0'] + minimal_runtime)
+      self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure=1', '-s', 'WASM=0'] + minimal_runtime)
 
   def test_no_declare_asm_module_exports_wasm_minimal_runtime(self):
-    self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1', '-s', 'MINIMAL_RUNTIME'])
+    self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure=1', '-s', 'MINIMAL_RUNTIME'])
 
   # Tests that the different code paths in src/shell_minimal_runtime.html all work ok.
   def test_minimal_runtime_loader_shell(self):
@@ -4875,7 +4875,7 @@ window.close = function() {
 
   # Tests that -s MINIMAL_RUNTIME=1 works well in different build modes
   def test_minimal_runtime_hello_world(self):
-    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', '--closure', '1'], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', '--closure', '1']]:
+    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', '--closure=1'], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', '--closure', '1']]:
       self.btest(path_from_root('tests', 'small_hello_world.c'), '0', args=args + ['-s', 'MINIMAL_RUNTIME'])
 
   @requires_threads

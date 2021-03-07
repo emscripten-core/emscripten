@@ -262,7 +262,7 @@ class TestCoreBase(RunnerCore):
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
     if '-g' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args):
-      self.emcc_args += ['--closure', '1']
+      self.emcc_args += ['--closure=1']
       return True
     return False
 
@@ -1779,7 +1779,7 @@ int main() {
     self.set_setting('EXIT_RUNTIME')
 
     if self.run_name == 'asm2':
-      self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.emcc_args += ['--closure=1'] # Use closure here for some additional coverage
     self.do_runf(path_from_root('tests', 'emscripten_get_now.cpp'), 'Timer resolution is good')
 
   def test_emscripten_get_compiler_setting(self):
@@ -5175,7 +5175,7 @@ main( int argv, char ** argc ) {
     self.do_runf(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'success')
     if '-g' not in self.emcc_args:
       print('closure')
-      self.emcc_args += ['--closure', '1']
+      self.emcc_args += ['--closure=1']
       self.do_runf(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'success')
 
   @also_with_noderawfs
@@ -5771,7 +5771,7 @@ return malloc(size);
     # uses register keyword
     self.emcc_args += ['-std=c++03', '-Wno-dynamic-class-memaccess']
     if self.run_name == 'asm3':
-      self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.emcc_args += ['--closure=1'] # Use closure here for some additional coverage
 
     self.emcc_args = [x for x in self.emcc_args if x != '-g'] # remove -g, so we have one test without it by default
 
@@ -6169,7 +6169,7 @@ return malloc(size);
 
         return output
 
-      self.emcc_args += ['--minify', '0'] # to compare the versions
+      self.emcc_args += ['--minify=0'] # to compare the versions
       self.emcc_args += ['--pre-js', 'pre.js']
 
       def do_test():
@@ -6304,7 +6304,7 @@ return malloc(size);
 
     if '-O2' in self.emcc_args and '-g' not in self.emcc_args:
       print('with closure')
-      self.emcc_args += ['--closure', '1']
+      self.emcc_args += ['--closure=1']
       self.do_core_test('test_ccall.cpp')
 
   def test_EXTRA_EXPORTED_RUNTIME_METHODS(self):
@@ -6919,7 +6919,7 @@ someweirdtext
   @sync
   def test_webidl(self, mode, allow_memory_growth):
     if self.run_name == 'asm2':
-      self.emcc_args += ['--closure', '1', '-g1'] # extra testing
+      self.emcc_args += ['--closure=1', '-g1'] # extra testing
       # avoid closure minified names competing with our test code in the global name space
       self.set_setting('MODULARIZE')
 
@@ -7215,7 +7215,7 @@ someweirdtext
     # closure should not minify the Module object in a way that the pre-js cannot use it.
     self.emcc_args += [
       '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
-      '--closure', '1',
+      '--closure=1',
       '-g1',
       '-s',
       'MODULARIZE=1',
@@ -7238,7 +7238,7 @@ someweirdtext
     self.do_run_in_out_file_test('tests', 'emscripten_log', 'emscripten_log.cpp')
     # test closure compiler as well
     print('closure')
-    self.emcc_args += ['--closure', '1', '-g1'] # extra testing
+    self.emcc_args += ['--closure=1', '-g1'] # extra testing
     self.do_run_in_out_file_test('tests', 'emscripten_log', 'emscripten_log_with_closure.cpp')
 
   def test_float_literals(self):
