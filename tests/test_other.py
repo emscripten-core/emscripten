@@ -1107,7 +1107,7 @@ int f() {
     create_test_file('in.txt', 'abcdef\nghijkl')
     run_test()
     building.emcc(path_from_root('tests', 'module', 'test_stdin.c'),
-                  ['-O2', '--closure', '1'], output_filename='out.js')
+                  ['-O2', '--closure=1'], output_filename='out.js')
     run_test()
 
   def test_ungetc_fscanf(self):
@@ -2153,7 +2153,7 @@ int f() {
     test_cases += test_cases_without_utf8
     test_cases.extend([(args[:] + ['-s', 'DYNAMIC_EXECUTION=0']) for args in test_cases])
     # closure compiler doesn't work with DYNAMIC_EXECUTION=0
-    test_cases.append((['--bind', '-O2', '--closure', '1']))
+    test_cases.append((['--bind', '-O2', '--closure=1']))
     for args in test_cases:
       print(args)
       self.clear()
@@ -2506,7 +2506,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
     # compile with -O2 --closure 1
     self.run_process([EMCC, path_from_root('tests', 'Module-exports', 'test.c'),
-                      '-o', 'test.js', '-O2', '--closure', '1',
+                      '-o', 'test.js', '-O2', '--closure=1',
                       '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'),
                       '-s', 'EXPORTED_FUNCTIONS=["_bufferTest","_malloc","_free"]',
                       '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
@@ -4778,9 +4778,9 @@ This locale is not the C locale.
     test(['-s', 'ASSERTIONS=0'], 120000) # we don't care about code size with assertions
     test(['-O1'], 91000)
     test(['-O2'], 46000)
-    test(['-O3', '--closure', '1'], 17000)
+    test(['-O3', '--closure=1'], 17000)
     # js too
-    test(['-O3', '--closure', '1', '-s', 'WASM=0'], 36000)
+    test(['-O3', '--closure=1', '-s', 'WASM=0'], 36000)
     test(['-O3', '--closure', '2', '-s', 'WASM=0'], 33000) # might change now and then
 
   def test_no_browser(self):
@@ -5684,7 +5684,7 @@ int main() {
   printf("hello, world!\n");
 }
 ''')
-    self.run_process([EMCC, 'src.c', '-s', 'EXPORTED_FUNCTIONS=["_main", "_treecount"]', '--minify', '0', '-g4', '-Oz'])
+    self.run_process([EMCC, 'src.c', '-s', 'EXPORTED_FUNCTIONS=["_main", "_treecount"]', '--minify=0', '-g4', '-Oz'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_emscripten_print_double(self):
@@ -6102,7 +6102,7 @@ Resolved: "/" => "/"
                       '--post-js', path_from_root('tests', 'return64bit', 'testbindend.js'),
                       '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]',
                       '-s', 'EXPORTED_FUNCTIONS=[_test_return64]', '-o', 'test.js', '-O2',
-                      '--closure', '1', '-g1', '-s', 'WASM_ASYNC_COMPILATION=0'] + args)
+                      '--closure=1', '-g1', '-s', 'WASM_ASYNC_COMPILATION=0'] + args)
 
     # Simple test program to load the test.js binding library and call the binding to the
     # C function returning the 64 bit long.
@@ -6707,8 +6707,8 @@ int main() {
         (['-O2'],        False, False, True,  False, False),
         (['-O2', '-g1'], False, False, True,  True, False),
         (['-O2', '-g'],  True,  True,  False, True, False),
-        (['-O2', '--closure', '1'],         False, False, True, False, True),
-        (['-O2', '--closure', '1', '-g1'],  False, False, True, True,  True),
+        (['-O2', '--closure=1'],         False, False, True, False, True),
+        (['-O2', '--closure=1', '-g1'],  False, False, True, True,  True),
       ]:
       print(args, expect_dash_g, expect_emit_text)
       try_delete('a.out.wat')
@@ -7288,7 +7288,7 @@ int main() {
       if debug_enabled:
         cmd += ['-g']
       if closure_enabled:
-        cmd += ['--closure', '1']
+        cmd += ['--closure=1']
       if not wasm_enabled:
         cmd += ['-s', 'WASM=0']
 
@@ -7407,7 +7407,7 @@ end
     ''')
 
     def test(check, extra=[]):
-      cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '--pre-js', 'pre.js'] + extra
+      cmd = [EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure=1', '--pre-js', 'pre.js'] + extra
       proc = self.run_process(cmd, check=check, stderr=PIPE)
       if not check:
         self.assertNotEqual(proc.returncode, 0)
@@ -7428,11 +7428,11 @@ end
     with env_modify({'EMCC_CLOSURE_ARGS': '--jscomp_off undefinedVars'}):
       # USE_WEBGPU is specified here to make sure that it's closure-safe.
       # It can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
-      self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '--closure', '1', '-g1', '-s', 'INCLUDE_FULL_LIBRARY', '-s', 'USE_WEBGPU', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+      self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '--closure=1', '-g1', '-s', 'INCLUDE_FULL_LIBRARY', '-s', 'USE_WEBGPU', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
 
   # Tests --closure-args command line flag
   def test_closure_externs(self):
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--closure', '1', '--pre-js', path_from_root('tests', 'test_closure_externs_pre_js.js'), '--closure-args', '--externs "' + path_from_root('tests', 'test_closure_externs.js') + '"'])
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--closure=1', '--pre-js', path_from_root('tests', 'test_closure_externs_pre_js.js'), '--closure-args', '--externs "' + path_from_root('tests', 'test_closure_externs.js') + '"'])
 
   def test_toolchain_profiler(self):
     environ = os.environ.copy()
@@ -7602,8 +7602,8 @@ int main() {
   @parameterized({
     '': ([],), # noqa
     'O3': (['-O3'],), # noqa
-    'closure': (['--closure', '1'],), # noqa
-    'closure_O3': (['--closure', '1', '-O3'],), # noqa
+    'closure': (['--closure=1'],), # noqa
+    'closure_O3': (['--closure=1', '-O3'],), # noqa
   })
   def test_EM_ASM_ES6(self, args):
     create_test_file('src.cpp', r'''
@@ -8262,7 +8262,7 @@ int main () {
     for wasm in [[], ['-s', 'WASM=0']]:
       # Currently we rely on Closure for full minification of every appearance of JS function names.
       # TODO: Add minification also for non-Closure users and add [] to this list to test minification without Closure.
-      for closure in [['--closure', '1']]:
+      for closure in [['--closure=1']]:
         args = [EMCC, '-O3', '--js-library', 'library_long.js', 'main_long.c', '-o', 'a.html'] + wasm + closure
         print(' '.join(args))
         self.run_process(args)
@@ -8315,9 +8315,9 @@ int main () {
     'O2': (False, ['-O2']), # noqa
     'O2_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE']), # noqa
     'O2_js_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '-s', 'WASM=0']), # noqa
-    'O2_closure': (False, ['-O2', '--closure', '1']), # noqa
-    'O2_closure_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1']), # noqa
-    'O2_closure_js_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1', '-s', 'WASM=0']), # noqa
+    'O2_closure': (False, ['-O2', '--closure=1']), # noqa
+    'O2_closure_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure=1']), # noqa
+    'O2_closure_js_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure=1', '-s', 'WASM=0']), # noqa
   })
   def test_emscripten_license(self, expect_license, args):
     # fastcomp does not support the new license flag
@@ -8352,7 +8352,7 @@ int main () {
         num_times_export_is_referenced = output.count('thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunction')
         self.assertEqual(num_times_export_is_referenced, 1)
 
-    for closure in [[], ['--closure', '1']]:
+    for closure in [[], ['--closure=1']]:
       for opt in [['-O2'], ['-O3'], ['-Os']]:
         test(['-s', 'WASM=0'], closure, opt)
         test(['-s', 'WASM_ASYNC_COMPILATION=0'], closure, opt)
@@ -8394,7 +8394,7 @@ int main () {
                                '-s', 'NO_FILESYSTEM',
                                '--output_eol', 'linux',
                                '-Oz',
-                               '--closure', '1',
+                               '--closure=1',
                                '-DNDEBUG',
                                '-ffast-math']
 
@@ -8894,7 +8894,7 @@ int main(void) {
 
   def test_INCOMING_MODULE_JS_API(self):
     def test(args):
-      self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O3', '--closure', '1'] + args)
+      self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O3', '--closure=1'] + args)
       for engine in config.JS_ENGINES:
         self.assertContained('hello, world!', self.run_js('a.out.js', engine=engine))
       with open('a.out.js') as f:
@@ -9215,7 +9215,7 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
 
   def test_warning_flags(self):
     self.run_process([EMCC, '-c', '-o', 'hello.o', path_from_root('tests', 'hello_world.c')])
-    cmd = [EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure', '1']
+    cmd = [EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure=1']
 
     # warning that is enabled by default
     stderr = self.run_process(cmd, stderr=PIPE).stderr
@@ -9453,13 +9453,13 @@ int main() {
 
   # Verifies that warning messages that Closure outputs are recorded to console
   def test_closure_warnings(self):
-    proc = self.run_process([EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=quiet'], stderr=PIPE)
+    proc = self.run_process([EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure=1', '-s', 'CLOSURE_WARNINGS=quiet'], stderr=PIPE)
     self.assertNotContained('WARNING', proc.stderr)
 
-    proc = self.run_process([EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=warn'], stderr=PIPE)
+    proc = self.run_process([EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure=1', '-s', 'CLOSURE_WARNINGS=warn'], stderr=PIPE)
     self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
 
-    self.expect_fail([EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=error'])
+    self.expect_fail([EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure=1', '-s', 'CLOSURE_WARNINGS=error'])
 
   def test_bitcode_input(self):
     # Verify that bitcode files are accepted as input
@@ -9484,7 +9484,7 @@ int main() {
   def test_argument_match(self):
     # Verify that emcc arguments match precisely.  We had a bug where only the prefix
     # was matched
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--minify', '0'])
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--minify=0'])
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'), '--minifyXX'])
     self.assertContained("error: unsupported option '--minifyXX'", err)
 
@@ -9869,7 +9869,7 @@ exec "$@"
 
   # Test that Closure prints out clear readable error messages when there are errors.
   def test_closure_errors(self):
-    err = self.expect_fail([EMCC, path_from_root('tests', 'closure_error.c'), '-O2', '--closure', '1'])
+    err = self.expect_fail([EMCC, path_from_root('tests', 'closure_error.c'), '-O2', '--closure=1'])
     lines = err.split('\n')
 
     def find_substr_index(s):
@@ -9888,17 +9888,17 @@ exec "$@"
   # Make sure that --cpuprofiler compiles with --closure 1
   def test_cpuprofiler_closure(self):
     # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '--cpuprofiler'])
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure=1', '--cpuprofiler'])
 
   # Make sure that --memoryprofiler compiles with --closure 1
   def test_memoryprofiler_closure(self):
     # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '--memoryprofiler'])
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure=1', '--memoryprofiler'])
 
   # Make sure that --threadprofiler compiles with --closure 1
   def test_threadprofiler_closure(self):
     # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
-    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'USE_PTHREADS', '--closure', '1', '--threadprofiler'])
+    self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'USE_PTHREADS', '--closure=1', '--threadprofiler'])
 
   def test_syslog(self):
     self.do_other_test('test_syslog.c')
