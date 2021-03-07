@@ -1336,7 +1336,7 @@ function safeHeap(ast) {
 
 // Name minification
 
-var RESERVED = set('do', 'if', 'in', 'for', 'new', 'try', 'var', 'env', 'let', 'case', 'else', 'enum', 'void', 'this', 'void', 'with');
+var RESERVED = new Set(['do', 'if', 'in', 'for', 'new', 'try', 'var', 'env', 'let', 'case', 'else', 'enum', 'void', 'this', 'void', 'with']);
 var VALID_MIN_INITS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$';
 var VALID_MIN_LATERS = VALID_MIN_INITS + '0123456789';
 
@@ -1350,7 +1350,7 @@ function ensureMinifiedNames(n) { // make sure the nth index in minifiedNames ex
     for (var i = 1; i < minifiedState.length; i++) {
       name += VALID_MIN_LATERS[minifiedState[i]];
     }
-    if (!(name in RESERVED)) minifiedNames.push(name);
+    if (!RESERVED.has(name)) minifiedNames.push(name);
     // increment the state
     var i = 0;
     while (1) {
