@@ -5901,7 +5901,7 @@ int main(int argc, char **argv) {
 
   printf("Resolved: %s\n", t_realpath_buf);
   free(t_realpath_buf);
-
+  
   std::error_code ec;
   std::filesystem::path filename = "/boot/README.txt";
   using std::filesystem::perms;
@@ -5912,7 +5912,7 @@ int main(int argc, char **argv) {
     perror("not writeable");
     return 1;
   }
-
+  
   return 0;
 }
 ''')
