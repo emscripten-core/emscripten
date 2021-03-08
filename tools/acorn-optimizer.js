@@ -1343,7 +1343,8 @@ var VALID_MIN_LATERS = VALID_MIN_INITS + '0123456789';
 var minifiedNames = [];
 var minifiedState = [0];
 
-function ensureMinifiedNames(n) { // make sure the nth index in minifiedNames exists. done 100% deterministically
+// Make sure the nth index in minifiedNames exists. Done 100% deterministically.
+function ensureMinifiedNames(n) {
   while (minifiedNames.length < n+1) {
     // generate the current name
     var name = VALID_MIN_INITS[minifiedState[0]];
@@ -1359,7 +1360,8 @@ function ensureMinifiedNames(n) { // make sure the nth index in minifiedNames ex
       // overflow
       minifiedState[i] = 0;
       i++;
-      if (i === minifiedState.length) minifiedState.push(-1); // will become 0 after increment in next loop head
+      // will become 0 after increment in next loop head
+      if (i === minifiedState.length) minifiedState.push(-1);
     }
   }
 }
@@ -1606,7 +1608,7 @@ var registry = {
   applyDCEGraphRemovals: applyDCEGraphRemovals,
   minifyWhitespace: function() { minifyWhitespace = true },
   noPrint: function() { noPrint = true },
-  last: function() {},
+  last: function() {}, // TODO: remove 'last' in the python driver code
   dump: function() { dump(ast) },
   growableHeap: growableHeap,
   unsignPointers: unsignPointers,
