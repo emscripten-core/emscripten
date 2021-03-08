@@ -51,7 +51,7 @@ Patches should be submitted as *pull requests* in the normal way on GitHub.
 
 .. note::
    Together with your first patch, add yourself to the
-   `AUTHORS <https://github.com/emscripten-core/emscripten/blob/master/AUTHORS>`_
+   `AUTHORS <https://github.com/emscripten-core/emscripten/blob/main/AUTHORS>`_
    file. By doing so, you agree to license your code under the project's
    :ref:`open source licenses (MIT/LLVM) <emscripten-license>`.
 
@@ -81,7 +81,7 @@ The :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` is a python script that
 - **emcc** calls :term:`Clang` to compile C++ and ``wasm-ld`` to link it. It
   builds and integrates with the Emscripten system libraries, both the
   compiled ones and the ones implemented in JS.
-- **emcc** then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/master/emscripten.py>`_
+- **emcc** then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/main/emscripten.py>`_
   which performs the final transformation to wasm (including invoking
   **wasm-emscripten-finalize** from Binaryen) and calls the JS compiler
   (see ``src/compiler.js`` and related files) which emits the JS.
@@ -114,7 +114,7 @@ mentioned earlier, are two separate codebases that are depended on).
 If you have a large bisection range, you generally can't bisect a single repo.
 You can still bisect, though! To do that you need the emsdk and to understand
 how the
-`release process <https://github.com/emscripten-core/emscripten/blob/master/docs/process.md#release-processes>`_
+`release process <https://github.com/emscripten-core/emscripten/blob/main/docs/process.md#release-processes>`_
 works for all the repos together. The key "trick" is that::
 
      emsdk install tot

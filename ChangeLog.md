@@ -21,6 +21,8 @@ See docs/process.md for more on how version tagging works.
 Current Trunk
 -------------
 
+- Primary development branch switched from `master` to `main`.
+
 2.0.15: 03/05/2021
 ------------------
 - Calls to `newlocale` (and `new std::locale` in C++) with arbirary names will
