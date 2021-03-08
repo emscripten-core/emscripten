@@ -19,8 +19,8 @@ function d(f, g, h) {
 }
 
 function l() {
- a : while (1) {
-  b : while (1) {
+ a: while (1) {
+  b: while (1) {
    if (c()) {
     if (d()) {
      break a;
@@ -36,5 +36,5 @@ function l() {
    }
   }
  }
- a : while (1) {}
+ a: while (1) {}
 }

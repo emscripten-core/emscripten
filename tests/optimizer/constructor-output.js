@@ -24,15 +24,14 @@ function instantiate(o, p, q) {
 function i() {
  return g(10, 20) + h(30);
 }
-
-
-
 function g(a, b) {
  return h(a + b);
 }
+
 function h(a) {
  return a + 1;
 }
+
 
 // EMSCRIPTEN_END_FUNCS
 
