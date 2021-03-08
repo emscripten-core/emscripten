@@ -23,6 +23,12 @@ Current Trunk
 - Deprecate `-g4`, which is a little confusing as it does not do more than `-g3`
   but instead emits source maps instead of DWARF. `-g4` will now warn. A new
   flag `-gsource-map` enables source maps without warning.
+
+2.0.15: 03/05/2021
+------------------
+- Calls to `newlocale` (and `new std::locale` in C++) with arbirary names will
+  now succeed.  This is the behaviour of musl libc which emscripten had
+  previously inadvertently disabled.
 - System libraries are now compiled with debug info (`-g`).  This doesn't
   affect release builds (builds without `-g`) but allows DWARF debugging of
   types defined in system libraries such as C++ STL types (#13078).

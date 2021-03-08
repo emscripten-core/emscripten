@@ -46,7 +46,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libz.a')
+  shared.Cache.erase_lib('libz.a')
 
 
 def process_args(ports):

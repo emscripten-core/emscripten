@@ -204,7 +204,7 @@ class EmscriptenBenchmarker(Benchmarker):
       OPTIMIZATIONS,
       '-s', 'INITIAL_MEMORY=256MB',
       '-s', 'FILESYSTEM=0',
-      '--closure', '1',
+      '--closure=1',
       '-s', 'MINIMAL_RUNTIME',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
