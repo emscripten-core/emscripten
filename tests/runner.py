@@ -59,7 +59,7 @@ from jsrun import NON_ZERO
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import EM_BUILD_VERBOSE
-from tools.shared import asstr, get_canonical_temp_dir, try_delete
+from tools.shared import get_canonical_temp_dir, try_delete
 from tools.shared import asbytes
 from tools.utils import MACOS, WINDOWS
 from tools import shared, line_endings, building, config
@@ -743,7 +743,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]:
       values = [values]
-    values = list(map(asstr, values))
     if callable(string):
       string = string()
 
