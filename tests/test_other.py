@@ -5886,11 +5886,10 @@ mergeInto(LibraryManager.library, {
     self.assertContained('dddddddddd', self.run_js('a.out.js'))
 
   def test_realpath(self):
-    create_test_file('src.cpp', r'''
+    create_test_file('src.c', r'''
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <filesystem>
 
 int main(int argc, char **argv) {
   char *t_realpath_buf = realpath("/boot/README.txt", NULL);
@@ -5901,24 +5900,12 @@ int main(int argc, char **argv) {
 
   printf("Resolved: %s\n", t_realpath_buf);
   free(t_realpath_buf);
-  
-  std::error_code ec;
-  std::filesystem::path filename = "/boot/README.txt";
-  using std::filesystem::perms;
-  std::filesystem::permissions(filename, perms::group_write, ec);
-  auto s = std::filesystem::status(filename, ec);
-  bool readonly = perms::none == (s.permissions() & (perms::owner_write | perms::group_write | perms::others_write));
-  if(readonly) {
-    perror("not writeable");
-    return 1;
-  }
-  
   return 0;
 }
 ''')
     ensure_dir('boot')
     create_test_file(os.path.join('boot', 'README.txt'), ' ')
-    self.run_process([EMCC, 'src.cpp', '-std=c++17', '-s', 'SAFE_HEAP', '--embed-file', 'boot'])
+    self.run_process([EMCC, 'src.c', '-s', 'SAFE_HEAP', '--embed-file', 'boot'])
     self.assertContained('Resolved: /boot/README.txt', self.run_js('a.out.js'))
 
   def test_realpath_nodefs(self):
