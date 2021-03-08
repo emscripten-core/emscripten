@@ -29,7 +29,7 @@ from .shared import try_delete, run_process, check_call, exit_with_error
 from .shared import configuration, path_from_root
 from .shared import asmjs_mangle, DEBUG
 from .shared import EM_BUILD_VERBOSE, TEMP_DIR
-from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
+from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name
 from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
 from .utils import which, WINDOWS
 
@@ -1369,7 +1369,7 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
-  filename_bytes = asbytes(embedded_path)
+  filename_bytes = embedded_path.encode('utf-8')
   contents = webassembly.toLEB(len(filename_bytes)) + filename_bytes
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'ab') as f:
