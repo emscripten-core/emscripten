@@ -18,7 +18,7 @@ how best to do that.
 Running tests
 =============
 
-Run the test suite runner (`tests/runner <https://github.com/emscripten-core/emscripten/blob/master/tests/runner.py>`_) with no arguments to see the help message:
+Run the test suite runner (`tests/runner <https://github.com/emscripten-core/emscripten/blob/main/tests/runner.py>`_) with no arguments to see the help message:
 
 .. code-block:: bash
 
@@ -43,7 +43,7 @@ The tests are divided into *modes*. You can run either an entire mode or an indi
   # run all tests in a specific mode (here, asm.js -O1)
   tests/runner asm1
 
-The *core* test modes (defined at the bottom of `tests/test_core.py <https://github.com/emscripten-core/emscripten/blob/master/tests/test_core.py>`_) let you run a specific test in either asm.js or wasm, and with different optimization flags. There are also non-core test modes, that run tests in more special manner (in particular, in those tests it is not possible to say "run the test with a different optimization flag" - that is what the core tests are for). The non-core test modes include
+The *core* test modes (defined at the bottom of `tests/test_core.py <https://github.com/emscripten-core/emscripten/blob/main/tests/test_core.py>`_) let you run a specific test in either asm.js or wasm, and with different optimization flags. There are also non-core test modes, that run tests in more special manner (in particular, in those tests it is not possible to say "run the test with a different optimization flag" - that is what the core tests are for). The non-core test modes include
 
  * `other`: Non-core tests running in the shell.
  * `browser`: Tests that run in a browser.
@@ -96,7 +96,7 @@ Replace ``100`` with another number as you prefer. This will run that number of 
 Important Tests
 ===============
 
-Please see the bottom the file `tests/test_core.py <https://github.com/emscripten-core/emscripten/blob/master/tests/test_core.py>`_ for the current test modes, as they may change slowly over time.
+Please see the bottom the file `tests/test_core.py <https://github.com/emscripten-core/emscripten/blob/main/tests/test_core.py>`_ for the current test modes, as they may change slowly over time.
 When you want to run the entire test suite locally, these are currently the important commands:
 
 .. code-block:: bash

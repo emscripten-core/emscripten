@@ -62,7 +62,7 @@ Options that are modified or new in *emcc* are listed below:
   [compile+link]
   Like ``-O1``, but enables more optimizations. During link this will also enable various JavaScript optimizations.
 
-  .. note:: These JavaScript optimizations can reduce code size by removing things that the compiler does not see being used, in particular, parts of the runtime may be stripped if they are not exported on the ``Module`` object. The compiler is aware of code in :ref:`--pre-js <emcc-pre-js>` and :ref:`--post-js <emcc-post-js>`, so you can safely use the runtime from there. Alternatively, you can use ``EXTRA_EXPORTED_RUNTIME_METHODS``, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_.
+  .. note:: These JavaScript optimizations can reduce code size by removing things that the compiler does not see being used, in particular, parts of the runtime may be stripped if they are not exported on the ``Module`` object. The compiler is aware of code in :ref:`--pre-js <emcc-pre-js>` and :ref:`--post-js <emcc-post-js>`, so you can safely use the runtime from there. Alternatively, you can use ``EXTRA_EXPORTED_RUNTIME_METHODS``, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_.
 
 .. _emcc-O3:
 
@@ -90,7 +90,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-s OPTION[=VALUE]``
   [different OPTIONs affect at different stages, most at link time]
-  Emscripten build options. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_.
+  Emscripten build options. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_.
 
   .. note:: You can prefix boolean options with ``NO_`` to reverse them. For example, ``-s EXIT_RUNTIME=1`` is the same as ``-s NO_EXIT_RUNTIME=0``.
 
@@ -286,7 +286,7 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: This option is similar to :ref:`--embed-file <emcc-embed-file>`, except that it is only relevant when generating HTML (it uses asynchronous binary :term:`XHRs <XHR>`), or JavaScript that will be used in a web page.
 
-  *emcc* runs `tools/file_packager <https://github.com/emscripten-core/emscripten/blob/master/tools/file_packager.py>`_ to do the actual packaging of embedded and preloaded files. You can run the file packager yourself if you want (see :ref:`packaging-files-file-packager`). You should then put the output of the file packager in an emcc ``--pre-js``, so that it executes before your main compiled code.
+  *emcc* runs `tools/file_packager <https://github.com/emscripten-core/emscripten/blob/main/tools/file_packager.py>`_ to do the actual packaging of embedded and preloaded files. You can run the file packager yourself if you want (see :ref:`packaging-files-file-packager`). You should then put the output of the file packager in an emcc ``--pre-js``, so that it executes before your main compiled code.
 
   For more information about the ``--preload-file`` options, see :ref:`packaging-files`.
 
@@ -309,7 +309,7 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note::
 
-    - See `src/shell.html <https://github.com/emscripten-core/emscripten/blob/master/src/shell.html>`_ and `src/shell_minimal.html <https://github.com/emscripten-core/emscripten/blob/master/src/shell_minimal.html>`_ for examples.
+    - See `src/shell.html <https://github.com/emscripten-core/emscripten/blob/main/src/shell.html>`_ and `src/shell_minimal.html <https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html>`_ for examples.
     - This argument is ignored if a target other than HTML is specified using the ``-o`` option.
 
 .. _emcc-source-map-base:
@@ -541,7 +541,7 @@ Environment variables
   - ``EM_IGNORE_SANITY`` [general]
   - ``EM_CONFIG`` [general]
 
-Search for 'os.environ' in `emcc.py <https://github.com/emscripten-core/emscripten/blob/master/emcc.py>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
+Search for 'os.environ' in `emcc.py <https://github.com/emscripten-core/emscripten/blob/main/emcc.py>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
 
 
 .. todo:: In case we choose to document them properly in future, below are some of the :ref:`-s <emcc-s-option-value>` options that are documented in the site are listed below. Note that this is not exhaustive by any means:

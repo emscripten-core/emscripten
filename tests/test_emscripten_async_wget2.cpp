@@ -342,15 +342,15 @@ void wait_http(void* request) {
 int main() {
   time_elapsed = emscripten_get_now();
 
-  http* http1 = new http("https://github.com", http::REQUEST_GET, "emscripten_master.zip");
-  http1->runRequest("/emscripten-core/emscripten/archive/master.zip", http::ASSYNC_THREAD);
+  http* http1 = new http("https://github.com", http::REQUEST_GET, "emscripten_main.zip");
+  http1->runRequest("/emscripten-core/emscripten/archive/main.zip", http::ASSYNC_THREAD);
 
   http* http2 = new http("https://github.com",http::REQUEST_GET, "wolfviking_master.zip");
   http2->runRequest("/wolfviking0/image.js/archive/master.zip", http::ASSYNC_THREAD);
   http2->abortRequest();
 
   http* http3 = new http("https://raw.github.com", http::REQUEST_GET);
-  http3->runRequest("/emscripten-core/emscripten/master/LICENSE", http::ASSYNC_THREAD);
+  http3->runRequest("/emscripten-core/emscripten/main/LICENSE", http::ASSYNC_THREAD);
 
   num_request++;
   emscripten_async_call(wait_http, http1, 500);
