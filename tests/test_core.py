@@ -96,6 +96,8 @@ def with_both_exception_handling(f):
         self.skipTest('d8 required to run wasm eh tests')
       self.emcc_args.append('-fwasm-exceptions')
       self.v8_args.append('--experimental-wasm-eh')
+      # avoid liftoff due to https://bugs.chromium.org/p/v8/issues/detail?id=11537
+      self.v8_args.append('--no-liftoff')
       self.js_engines = [config.V8_ENGINE]
       f(self)
     else:
