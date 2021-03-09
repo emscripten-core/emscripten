@@ -466,16 +466,15 @@ var LibraryPThread = {
     getNewWorker: function() {
       if (PThread.unusedWorkers.length == 0) {
 #if !PROXY_TO_PTHREAD
-#if PTHREAD_POOL_SIZE_STRICT
+#if PTHREAD_POOL_SIZE_STRICT == 1
         err('Tried to spawn a new thread, but the thread pool is exhausted.\n' +
         'This might result in a deadlock unless some threads eventually exit or the code explicitly breaks out to the event loop.\n' +
         'If you want to increase the pool size, use setting `-s PTHREAD_POOL_SIZE=...`.'
-#if PTHREAD_POOL_SIZE_STRICT == 1
         + '\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-s PTHREAD_POOL_SIZE_STRICT=2`.'
-#endif
         );
 #endif
 #if PTHREAD_POOL_SIZE_STRICT == 2
+        err('No available workers in the PThread pool');
         return;
 #endif
 #endif
@@ -544,7 +543,7 @@ var LibraryPThread = {
     var worker = PThread.getNewWorker();
 
     if (!worker) {
-      err('No available workers in the PThread pool');
+      // No available workers in the PThread pool.
       return {{{ cDefine('EAGAIN') }}};
     }
     if (worker.pthread !== undefined) throw 'Internal error!';
