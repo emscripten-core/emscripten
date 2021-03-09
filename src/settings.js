@@ -1468,7 +1468,12 @@ var PTHREAD_POOL_SIZE = '';
 // off-the-shelf apps. Those apps without any modifications are most likely
 // to deadlock. This setting ensures that, instead of a deadlock, they get
 // a runtime error instead that can be at least handled from the JS side.
-var PTHREAD_POOL_SIZE_STRICT = 0;
+// Values:
+//  - `0` - disable warnings on thread pool exhaustion
+//  - `1` - enable warnings on thread pool exhaustion (default)
+//  - `2` - make thread pool exhaustion a hard error
+// [link]
+var PTHREAD_POOL_SIZE_STRICT = 1;
 
 // If your application does not need the ability to synchronously create
 // threads, but it would still like to opportunistically speed up initial thread
