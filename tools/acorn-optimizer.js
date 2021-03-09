@@ -1575,9 +1575,17 @@ function minifyGlobals(ast) {
   function minify(name) {
     if (!minified.has(name)) {
       minified.set(name, getNewMinifiedName());
+      console.log(name, ' => ', minified.get(name));
     }
     assert(minified.get(name));
     return minified.get(name);
+  }
+
+  // Minify all globals in function chunks, i.e. not seen here, but will be in
+  // the minifyLocals work on functions.
+  for (var name of extraInfo.globals) {
+    declared.add(name);
+    minify(name);
   }
 
   simpleWalk(fun, {
