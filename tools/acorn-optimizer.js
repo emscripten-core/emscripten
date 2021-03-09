@@ -1540,11 +1540,14 @@ function minifyGlobals(ast) {
 
   simpleWalk(fun, {
     FunctionDeclaration(node) {
-console.log(node.id);
       if (node.id) {
         declared.add(node.id.name);
       }
-console.log(node.params);
+      for (var param of node.params) {
+        declared.add(param.name);
+      }
+    },
+    FunctionExpression(node) {
       for (var param of node.params) {
         declared.add(param.name);
       }
@@ -1555,9 +1558,6 @@ console.log(node.params);
       }
     }
   });
-
-console.log(declared);
-throw 5;
 
   // TODO: find names to avoid, that are not declared (should not happen in
   // wasm2js output)
