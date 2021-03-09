@@ -32,6 +32,9 @@ Current Trunk
   affect release builds (builds without `-g`) but allows DWARF debugging of
   types defined in system libraries such as C++ STL types (#13078).
 - uname machine field is now either wasm32 or wasm64 instead of x86-JS (#13440)
+- Several pthreads exit-related fixes (#12985) (#10524).
+- Fix IDBFS syncing with existing directories (#13574).
+- Add libmodplug port and allow mod files to be played in SDL2 (#13478).
 
 2.0.14: 02/14/2021
 ------------------
