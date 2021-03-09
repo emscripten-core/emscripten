@@ -771,13 +771,6 @@ function%s(%s) {
     return ret
 
 
-def asbytes(s):
-  if isinstance(s, bytes):
-    # Do not attempt to encode bytes
-    return s
-  return s.encode('utf-8')
-
-
 def suffix(name):
   """Return the file extension"""
   return os.path.splitext(name)[1]

@@ -40,7 +40,7 @@ import emscripten
 from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, safe_copy
-from tools.shared import run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
+from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
 from tools.shared import do_replace
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
@@ -3124,8 +3124,9 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 
   html_contents = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
+  # Force UTF-8 output for consistency across platforms and with the web.
   with open(target, 'wb') as f:
-    f.write(asbytes(html_contents))
+    f.write(html_contents.encode('utf-8'))
 
 
 def minify_html(filename):
