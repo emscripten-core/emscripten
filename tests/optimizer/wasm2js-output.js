@@ -40,9 +40,9 @@ function E(a, b, c) {
   return;
  }
  e = a + c | 0;
- a : {
+ a: {
   if (!((a ^ b) & 3)) {
-   b : {
+   b: {
     if ((c | 0) < 1) {
      c = a;
      break b;
@@ -66,7 +66,7 @@ function E(a, b, c) {
     }
    }
    a = e & -4;
-   c : {
+   c: {
     if (a >>> 0 < 64) {
      break c;
     }
@@ -148,6 +148,7 @@ function E(a, b, c) {
   }
  }
 }
+
 function H(a, b, c) {
  a = a | 0;
  b = b | 0;
@@ -165,9 +166,9 @@ function H(a, b, c) {
  e = b + c | 0;
  i = 2;
  b = d + 16 | 0;
- a : {
-  b : {
-   c : {
+ a: {
+  b: {
+   c: {
     if (!D(x(f[a + 60 >> 2], d + 16 | 0, 2, d + 12 | 0) | 0)) {
      while (1) {
       g = f[d + 12 >> 2];
@@ -216,12 +217,13 @@ function H(a, b, c) {
  z = d + 32 | 0;
  return a | 0;
 }
+
 function B(a, b) {
  var e = 0, h = 0, i = 0, j = 0, k = 0;
  P();
  j = 1024;
  e = f[b + 16 >> 2];
- a : {
+ a: {
   if (!e) {
    if (C(b)) {
     break a;
@@ -232,7 +234,7 @@ function B(a, b) {
   if (e - i >>> 0 < a >>> 0) {
    return c[f[b + 36 >> 2]](b, 1024, a) | 0;
   }
-  b : {
+  b: {
    if (d[b + 75 | 0] < 0) {
     break b;
    }
@@ -263,13 +265,14 @@ function B(a, b) {
  }
  return h;
 }
+
 function L(a) {
  var b = 0, e = 0, g = 0;
  b = z - 16 | 0;
  z = b;
  d[b + 15 | 0] = 10;
  e = f[a + 16 >> 2];
- a : {
+ a: {
   if (!e) {
    if (C(a)) {
     break a;
@@ -288,6 +291,7 @@ function L(a) {
  }
  z = b + 16 | 0;
 }
+
 function J() {
  var a = 0, b = 0, c = 0;
  b = 1024;
@@ -314,16 +318,17 @@ function J() {
  }
  return b - 1024 | 0;
 }
+
 function K() {
  var a = 0, b = 0;
  a = f[260];
  a;
  b = J();
- a : {
+ a: {
   if ((((M(b, a) | 0) != (b | 0) ? -1 : 0) | 0) < 0) {
    break a;
   }
-  b : {
+  b: {
    if (g[a + 75 | 0] == 10) {
     break b;
    }
@@ -338,6 +343,7 @@ function K() {
   L(a);
  }
 }
+
 function C(a) {
  var b = 0;
  b = g[a + 74 | 0];
@@ -355,11 +361,12 @@ function C(a) {
  f[a + 16 >> 2] = b + f[a + 48 >> 2];
  return 0;
 }
+
 function M(a, b) {
  var c = 0, d = 0;
  c = a;
  d = c;
- a : {
+ a: {
   if (f[b + 76 >> 2] <= -1) {
    b = B(c, b);
    break a;
@@ -371,6 +378,7 @@ function M(a, b) {
  }
  return b;
 }
+
 function F(a, b, c, d) {
  a = a | 0;
  b = b | 0;
@@ -379,6 +387,7 @@ function F(a, b, c, d) {
  A = 0;
  return 0;
 }
+
 function D(a) {
  if (!a) {
   return 0;
@@ -386,24 +395,25 @@ function D(a) {
  f[300] = a;
  return -1;
 }
+
 function N(a, b) {
  a = a | 0;
  b = b | 0;
  K();
  return 0;
 }
+
 function I(a) {
  a = a | 0;
  return u() | 0;
 }
+
 function G(a) {
  a = a | 0;
  return 0;
 }
+
 function O() {}
-
-
-
 
 // EMSCRIPTEN_END_FUNCS
 

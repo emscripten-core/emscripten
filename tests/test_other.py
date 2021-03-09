@@ -248,7 +248,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # -dumpmachine
     output = self.run_process([compiler, '-dumpmachine'], stdout=PIPE, stderr=PIPE)
-    self.assertContained(shared.get_llvm_target(), output.stdout)
+    self.assertContained('wasm32-unknown-emscripten', output.stdout)
 
     # -dumpversion
     output = self.run_process([compiler, '-dumpversion'], stdout=PIPE, stderr=PIPE)
@@ -503,10 +503,12 @@ f.close()
   def test_emcc_cflags(self):
     output = self.run_process([EMCC, '--cflags'], stdout=PIPE)
     flags = output.stdout.strip()
-    self.assertContained(shared.shlex_join(shared.emsdk_cflags([])), flags)
+    self.assertContained('-target wasm32-unknown-emscripten', flags)
+    self.assertContained('--sysroot=', flags)
     output = self.run_process([EMXX, '--cflags'], stdout=PIPE)
     flags = output.stdout.strip()
-    self.assertContained(shared.shlex_join(shared.emsdk_cflags([])), flags)
+    self.assertContained('-target wasm32-unknown-emscripten', flags)
+    self.assertContained('--sysroot=', flags)
     # check they work
     cmd = [CLANG_CXX, path_from_root('tests', 'hello_world.cpp')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-o', 'out.o']
     self.run_process(cmd)
@@ -1860,7 +1862,9 @@ int f() {
       'growableHeap',
       'unsignPointers',
       'asanify',
-      'safeHeap'
+      'safeHeap',
+      'minifyLocals',
+      'minifyGlobals',
     ]
     for input, expected, passes in [
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyGlobals.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyGlobals-output.js')).read(),
