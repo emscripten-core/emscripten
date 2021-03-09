@@ -34,6 +34,7 @@ def path_from_root(*pathelems):
 
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
+ACORN_OPTIMIZER = path_from_root('tools', 'acorn-optimizer.js')
 
 NUM_CHUNKS_PER_CORE = 3
 MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 512 * 1024) # configuring this is just for debugging purposes
@@ -329,7 +330,7 @@ EMSCRIPTEN_FUNCS();
 
   with ToolchainProfiler.profile_block('run_optimizer'):
     if len(filenames):
-      commands = [config.NODE_JS + [JS_OPTIMIZER, f, 'noPrintMetadata'] + passes for f in filenames]
+      commands = [config.NODE_JS + [ACORN_OPTIMIZER, f] + passes for f in filenames]
 
       cores = min(cores, len(filenames))
       if len(chunks) > 1 and cores >= 2:

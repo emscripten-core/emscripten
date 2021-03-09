@@ -83,9 +83,9 @@ When migrating from WebGL 1 to WebGL 2, take note that some WebGL 1 extensions a
 Test code/examples
 ==================
 
-The files in `tests/glbook <https://github.com/emscripten-core/emscripten/tree/master/tests/glbook>`_ provide a number of simple examples that use only the :ref:`opengl-support-webgl-subset`.
+The files in `tests/glbook <https://github.com/emscripten-core/emscripten/tree/main/tests/glbook>`_ provide a number of simple examples that use only the :ref:`opengl-support-webgl-subset`.
 
-The other modes are covered in various tests, including several in `tests/test_browser.py <https://github.com/emscripten-core/emscripten/blob/master/tests/test_browser.py>`_. The best way to locate the tests is to search the source code for the appropriate compiler flags: ``FULL_ES2``, ``LEGACY_GL_EMULATION`` etc.
+The other modes are covered in various tests, including several in `tests/test_browser.py <https://github.com/emscripten-core/emscripten/blob/main/tests/test_browser.py>`_. The best way to locate the tests is to search the source code for the appropriate compiler flags: ``FULL_ES2``, ``LEGACY_GL_EMULATION`` etc.
 
 Bug Reports
 ===========

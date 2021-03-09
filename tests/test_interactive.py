@@ -44,7 +44,7 @@ class interactive(BrowserCore):
     self.btest(path_from_root('tests', 'test_sdl_mousewheel.c'), expected='0')
 
   def test_sdl_touch(self):
-    self.btest(path_from_root('tests', 'sdl_touch.c'), args=['-O2', '-g1', '--closure', '1'], expected='0')
+    self.btest(path_from_root('tests', 'sdl_touch.c'), args=['-O2', '-g1', '--closure=1'], expected='0')
 
   def test_sdl_wm_togglefullscreen(self):
     self.btest('sdl_wm_togglefullscreen.c', expected='1')
@@ -63,7 +63,7 @@ class interactive(BrowserCore):
     open(os.path.join(self.get_dir(), 'bad.ogg'), 'w').write('I claim to be audio, but am lying')
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest(['-O2', '--closure', '1', '--minify', '0', path_from_root('tests', 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]'])
+    self.compile_btest(['-O2', '--closure=1', '--minify=0', path_from_root('tests', 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]'])
     self.run_browser('page.html', '', '/report_result?1')
 
     # print('SDL2')
@@ -72,13 +72,13 @@ class interactive(BrowserCore):
     #        depended on fragile SDL1/SDL2 mixing, which stopped working with
     #        7a5744d754e00bec4422405a1a94f60b8e53c8fc (which just uncovered
     #        the existing problem)
-    # self.run_process([EMCC, '-O1', '--closure', '0', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
+    # self.run_process([EMCC, '-O1', '--closure', '0', '--minify=0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
     # self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_mix_channels(self):
     shutil.copyfile(path_from_root('tests', 'sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
 
-    self.compile_btest(['-O2', '--minify', '0', path_from_root('tests', 'sdl_audio_mix_channels.c'), '--preload-file', 'sound.ogg', '-o', 'page.html'])
+    self.compile_btest(['-O2', '--minify=0', path_from_root('tests', 'sdl_audio_mix_channels.c'), '--preload-file', 'sound.ogg', '-o', 'page.html'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_mix(self):
@@ -86,19 +86,19 @@ class interactive(BrowserCore):
     shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.ogg'), os.path.join(self.get_dir(), 'music.ogg'))
     shutil.copyfile(path_from_root('tests', 'sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'noise.ogg'))
 
-    self.compile_btest(['-O2', '--minify', '0', path_from_root('tests', 'sdl_audio_mix.c'), '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg', '-o', 'page.html'])
+    self.compile_btest(['-O2', '--minify=0', path_from_root('tests', 'sdl_audio_mix.c'), '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg', '-o', 'page.html'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_panning(self):
     shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'the_entertainer.wav'))
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest(['-O2', '--closure', '1', '--minify', '0', path_from_root('tests', 'sdl_audio_panning.c'), '--preload-file', 'the_entertainer.wav', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play"]'])
+    self.compile_btest(['-O2', '--closure=1', '--minify=0', path_from_root('tests', 'sdl_audio_panning.c'), '--preload-file', 'the_entertainer.wav', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play"]'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_beeps(self):
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest([path_from_root('tests', 'sdl_audio_beep.cpp'), '-O2', '--closure', '1', '--minify', '0', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html'])
+    self.compile_btest([path_from_root('tests', 'sdl_audio_beep.cpp'), '-O2', '--closure=1', '--minify=0', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl2_mixer_wav(self):
@@ -120,7 +120,7 @@ class interactive(BrowserCore):
     shutil.copyfile(path_from_root('tests', 'sounds', music_name), music_name)
     self.btest('sdl2_mixer_music.c', expected='1', args=[
       '-O2',
-      '--minify', '0',
+      '--minify=0',
       '--preload-file', music_name,
       '-DSOUND_PATH=' + json.dumps(music_name),
       '-DFLAGS=' + flags,
@@ -132,7 +132,7 @@ class interactive(BrowserCore):
 
   def zzztest_sdl2_audio_beeps(self):
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest(['-O2', '--closure', '1', '--minify', '0', path_from_root('tests', 'sdl2_audio_beep.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-s', 'USE_SDL=2', '-o', 'page.html'])
+    self.compile_btest(['-O2', '--closure=1', '--minify=0', path_from_root('tests', 'sdl2_audio_beep.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-s', 'USE_SDL=2', '-o', 'page.html'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_openal_playback(self):

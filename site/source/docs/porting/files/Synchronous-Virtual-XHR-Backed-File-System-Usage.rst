@@ -18,7 +18,7 @@ Test code
 
 An example of how to implement a synchronous virtual XHR backed file system is provided in the test code at `tests/test_browser.py <https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_browser.py#L1313>`_ (see ``test_chunked_synchronous_xhr``). The test case also contains an HTTP server (see `test_chunked_synchronous_xhr_server <https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_browser.py#L14>`_) showing CORS headers that might need to be set (if the resources are hosted from the same domain Emscripten runs from, there is no issue).
 
-The tests use `checksummer.c <https://github.com/emscripten-core/emscripten/blob/master/tests/checksummer.c>`_ as the Emscripten-compiled program. This is simply a vanilla C program using synchronous *libc* file system calls like ``fopen()``, ``fread()``, ``fclose()`` etc.
+The tests use `checksummer.c <https://github.com/emscripten-core/emscripten/blob/main/tests/checksummer.c>`_ as the Emscripten-compiled program. This is simply a vanilla C program using synchronous *libc* file system calls like ``fopen()``, ``fread()``, ``fclose()`` etc.
 
 JavaScript code is added (using *emcc*'s :ref:`pre-js <emcc-pre-js>` option) to map the file system calls in **checksummer.c** to a file in the virtual file system. This file is *created* early in Emscripten initialisation using :js:func:`FS.createLazyFile`, but only loaded with content from the server when the file is first accessed by compiled code. The added JavaScript code also sets up communication between the web worker and the main thread.
 

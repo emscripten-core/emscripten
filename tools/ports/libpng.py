@@ -38,7 +38,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libpng.a')
+  shared.Cache.erase_lib('libpng.a')
 
 
 def process_dependencies(settings):

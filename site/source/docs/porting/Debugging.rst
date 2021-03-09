@@ -107,7 +107,7 @@ Some important settings are:
 
     ``DEMANGLE_SUPPORT=1`` links in code to automatically demangle stack traces, that is, emit human-readable C++ function names instead of ``_ZN..`` ones.
 
-A number of other useful debug settings are defined in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_. For more information, search that file for the keywords "check" and "debug".
+A number of other useful debug settings are defined in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_. For more information, search that file for the keywords "check" and "debug".
 
 .. _debugging-sanitizers:
 

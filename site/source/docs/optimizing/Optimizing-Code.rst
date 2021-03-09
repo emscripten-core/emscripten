@@ -29,7 +29,7 @@ The optimization level you should use depends mostly on the current stage of dev
 
 .. note::
 
-  -  The meanings of the *emcc* optimization flags (``-O1, -O2`` etc.) are similar to *gcc*, *clang*, and other compilers, but also different because optimizing asm.js and WebAssembly includes some additional types of optimizations. The mapping of the *emcc* levels to the LLVM bitcode optimization levels is documented in the reference.
+  -  The meanings of the *emcc* optimization flags (``-O1, -O2`` etc.) are similar to *gcc*, *clang*, and other compilers, but also different because optimizing WebAssembly includes some additional types of optimizations. The mapping of the *emcc* levels to the LLVM bitcode optimization levels is documented in the reference.
 
 How Emscripten optimizes
 ========================
@@ -37,7 +37,6 @@ How Emscripten optimizes
 Compiling source files to object files works as you'd expect in a native build system that uses clang and LLVM. When linking object files to the final executable, Emscripten does additional optimizations as well depending on the optimization level:
 
 - For wasm, the Binaryen optimizer is run. Binaryen does both general-purpose optimizations to the wasm that LLVM does not, and also does some whole-program optimization. (Note that Binaryen's whole-program optimizations may do things like inlining, which can be surprising in some cases as LLVM IR attributes like ``noinline`` have been lost at this point.)
-- For asm.js, the Emscripten asm.js optimizer is run.
 - JavaScript is generated at this phase, and is optimized by Emscripten's JS optimizer. Optionally you can also run :ref:`the closure compiler <emcc-closure>`, which is highly recommended for code size.
 - Emscripten also optimizes the combined wasm+JS, by minifying imports and exports between them, and by running meta-dce which removes unused code in cycles that span the two worlds.
 
@@ -84,12 +83,12 @@ Binaryen optimizer would normally be run.
 Advanced compiler settings
 ==========================
 
-There are several flags you can :ref:`pass to the compiler <emcc-s-option-value>` to affect code generation, which will also affect performance — for example :ref:`DISABLE_EXCEPTION_CATCHING <optimizing-code-exception-catching>`. These are documented in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_. Some of these will be directly affected by the optimization settings (you can find out which ones by searching for ``apply_opt_level`` in `tools/shared.py <https://github.com/emscripten-core/emscripten/blob/1.29.12/tools/shared.py#L958>`_).
+There are several flags you can :ref:`pass to the compiler <emcc-s-option-value>` to affect code generation, which will also affect performance — for example :ref:`DISABLE_EXCEPTION_CATCHING <optimizing-code-exception-catching>`. These are documented in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_. Some of these will be directly affected by the optimization settings (you can find out which ones by searching for ``apply_opt_level`` in `tools/shared.py <https://github.com/emscripten-core/emscripten/blob/1.29.12/tools/shared.py#L958>`_).
 
 WebAssembly
 ===========
 
-Emscripten will emit WebAssembly by default. You can switch that off with ``-s WASM=0`` (and then emscripten emits asm.js), which is necessary if you want the output to run in places where wasm support is not present yet, but the downside is larger and slower code.
+Emscripten will emit WebAssembly by default. You can switch that off with ``-s WASM=0`` (in which case emscripten emit JavaScript), which is necessary if you want the output to run in places where wasm support is not present yet, but the downside is larger and slower code.
 
 .. _optimizing-code-size:
 
@@ -105,7 +104,7 @@ Trading off code size and performance
 
 You may wish to build the less performance-sensitive source files in your project using :ref:`-Os <emcc-Os>` or :ref:`-Oz <emcc-Oz>` and the remainder using :ref:`-O2 <emcc-O2>` (:ref:`-Os <emcc-Os>` and :ref:`-Oz <emcc-Oz>` are similar to :ref:`-O2 <emcc-O2>`, but reduce code size at the expense of performance. :ref:`-Oz <emcc-Oz>` reduces code size more than :ref:`-Os <emcc-Os>`.)
 
-Separately, you can do the final link/build command with ``-Os`` or ``-Oz`` to make the compiler focus more on code size when generating WebAssembly/asm.js.
+Separately, you can do the final link/build command with ``-Os`` or ``-Oz`` to make the compiler focus more on code size when generating WebAssembly module.
 
 Miscellaneous code size tips
 ----------------------------
@@ -154,9 +153,9 @@ Other optimization issues
 C++ exceptions
 --------------
 
-Catching C++ exceptions (specifically, emitting catch blocks) is turned off by default in ``-O1`` (and above). Due to how asm.js/wasm currently implement exceptions, this makes the code much smaller and faster (eventually, wasm should gain native support for exceptions, and not have this issue).
+Catching C++ exceptions (specifically, emitting catch blocks) is turned off by default in ``-O1`` (and above). Due to how WebAssembly currently implement exceptions, this makes the code much smaller and faster (eventually, wasm should gain native support for exceptions, and not have this issue).
 
-To re-enable exceptions in optimized code, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_).
+To re-enable exceptions in optimized code, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_).
 
 .. note:: When exception catching is disabled, a thrown exception terminates the application. In other words, an exception is still thrown, but it isn't caught.
 
@@ -170,7 +169,7 @@ C++ run-time type info support (dynamic casts, etc.) adds overhead that is somet
 Memory Growth
 -------------
 
-Building with ``-s ALLOW_MEMORY_GROWTH=1`` allows the total amount of memory used to change depending on the demands of the application. This is useful for apps that don't know ahead of time how much they will need, but it disables asm.js optimizations. In WebAssembly, however, there should be little or no overhead.
+Building with ``-s ALLOW_MEMORY_GROWTH=1`` allows the total amount of memory used to change depending on the demands of the application. This is useful for apps that don't know ahead of time how much they will need.
 
 Viewing code optimization passes
 --------------------------------
@@ -207,5 +206,3 @@ Emscripten-compiled code can currently achieve approximately half the speed of a
 
 -  :ref:`Building-Projects` is a two-stage process: compiling source code files to LLVM **and** generating JavaScript from LLVM. Did you build using the same optimization values in **both** steps (``-O2`` or ``-O3``)?
 -  Test on multiple browsers. If performance is acceptable on one browser and significantly poorer on another, then :ref:`file a bug report <bug-reports>`, noting the problem browser and other relevant information.
-- Does the code *validate* in Firefox (look for "Successfully compiled asm.js code" in the web console). If you see a validation error when using an up-to-date version of Firefox and Emscripten then please :ref:`file a bug report <bug-reports>`.
-

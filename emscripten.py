@@ -23,7 +23,7 @@ from tools import diagnostics
 from tools import shared
 from tools import gen_struct_info
 from tools import webassembly
-from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
+from tools.shared import WINDOWS, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
 from tools.toolchain_profiler import ToolchainProfiler
 
 logger = logging.getLogger('emscripten')
@@ -44,10 +44,10 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
     exports_that_are_not_initializers += ['dynCalls = {}']
 
   declares = 'var ' + ',\n '.join(exports_that_are_not_initializers) + ';'
-  post = shared.do_replace(post, '<<< ASM_MODULE_EXPORTS_DECLARES >>>', declares)
+  post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
 
-  # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
-  post = shared.do_replace(post, '<<< ASM_MODULE_EXPORTS >>>', receiving)
+  # Generate assignments from all wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
+  post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS >>>', receiving)
   return post
 
 
@@ -188,12 +188,11 @@ def set_memory(static_bump):
 def report_missing_symbols(all_implemented, pre):
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
-  missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)
+  missing = set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented
 
-  for requested in missing:
-    if ('function ' + asstr(requested) + '(') in pre:
-      continue
-    diagnostics.warning('undefined', 'undefined exported symbol: "%s"', requested)
+  for requested in sorted(missing):
+    if (f'function {requested}(') not in pre:
+      diagnostics.warning('undefined', f'undefined exported symbol: "{requested}"')
 
   # Special hanlding for the `_main` symbol
 
@@ -455,7 +454,6 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
 def create_asm_consts(metadata):
   asm_consts = {}
   for addr, const in metadata['asmConsts'].items():
-    const = asstr(const)
     const = trim_asm_const_body(const)
     args = []
     max_arity = 16
@@ -484,7 +482,7 @@ def create_em_js(forwarded_json, metadata):
     else:
       args = args.split(',')
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
-    func = 'function {}({}){}'.format(name, ','.join(arg_names), asstr(body))
+    func = 'function {}({}){}'.format(name, ','.join(arg_names), body)
     em_js_funcs.append(func)
     forwarded_json['Functions']['libraryFunctions'][name] = 1
 
@@ -778,14 +776,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   for key, value in metadata_json.items():
     if key in legacy_keys:
       continue
-    # json.loads returns `unicode` for strings but other code in this file
-    # generally works with utf8 encoded `str` objects, and they don't alwasy
-    # mix well.  e.g. s.replace(x, y) will blow up is `s` a uts8 str containing
-    # non-ascii and either x or y are unicode objects.
-    # TODO(sbc): Remove this encoding if we switch to unicode elsewhere
-    # (specifically the glue returned from compile_settings)
-    if type(value) == list:
-      value = [asstr(v) for v in value]
     if key not in metadata:
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value

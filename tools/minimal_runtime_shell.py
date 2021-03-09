@@ -183,5 +183,6 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
     js_contents = ''
   shell = shell.replace('{{{ JS_CONTENTS_IN_SINGLE_FILE_BUILD }}}', js_contents)
   shell = line_endings.convert_line_endings(shell, '\n', options.output_eol)
+  # Force UTF-8 output for consistency across platforms and with the web.
   with open(target, 'wb') as f:
-    f.write(shared.asbytes(shell))
+    f.write(shell.encode('utf-8'))
