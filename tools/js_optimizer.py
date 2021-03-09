@@ -102,7 +102,7 @@ class Minifier(object):
         f.write('\n')
         f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
 
-      cmd = config.NODE_JS + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata']
+      cmd = config.NODE_JS + [ACORN_OPTIMIZER, temp_file, 'minifyGlobals']
       if minify_whitespace:
         cmd.append('minifyWhitespace')
       output = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
