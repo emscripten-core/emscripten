@@ -1466,8 +1466,9 @@ var PTHREAD_POOL_SIZE = '';
 // However, breaking out to the event loop requires custom modifications to
 // the code to adapt it to the Web, and not something that works for
 // off-the-shelf apps. Those apps without any modifications are most likely
-// to deadlock. This setting ensures that, instead of a deadlock, they get
-// a runtime error instead that can be at least handled from the JS side.
+// to deadlock. This setting ensures that, instead of a risking a deadlock,
+// they get a runtime EAGAIN error instead that can be at least gracefully
+// handled from the C / C++ side.
 // Values:
 //  - `0` - disable warnings on thread pool exhaustion
 //  - `1` - enable warnings on thread pool exhaustion (default)

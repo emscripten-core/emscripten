@@ -468,10 +468,10 @@ var LibraryPThread = {
 #if !PROXY_TO_PTHREAD
 #if PTHREAD_POOL_SIZE_STRICT
         err('Tried to spawn a new thread, but the thread pool is exhausted.\n' +
-        'This will result in a deadlock unless the code explicitly breaks out to the event loop.\n' +
+        'This might result in a deadlock unless some threads eventually exit or the code explicitly breaks out to the event loop.\n' +
         'If you want to increase the pool size, use setting `-s PTHREAD_POOL_SIZE=...`.'
 #if PTHREAD_POOL_SIZE_STRICT == 1
-        + '\nIf you want to throw an explicit error instead of deadlocking in those cases, use setting `-s PTHREAD_POOL_SIZE_STRICT=2`.'
+        + '\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-s PTHREAD_POOL_SIZE_STRICT=2`.'
 #endif
         );
 #endif
