@@ -1334,6 +1334,170 @@ function safeHeap(ast) {
   });
 }
 
+// Name minification
+
+var RESERVED = new Set(['do', 'if', 'in', 'for', 'new', 'try', 'var', 'env', 'let', 'case', 'else', 'enum', 'void', 'this', 'void', 'with']);
+var VALID_MIN_INITS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$';
+var VALID_MIN_LATERS = VALID_MIN_INITS + '0123456789';
+
+var minifiedNames = [];
+var minifiedState = [0];
+
+// Make sure the nth index in minifiedNames exists. Done 100% deterministically.
+function ensureMinifiedNames(n) {
+  while (minifiedNames.length < n+1) {
+    // generate the current name
+    var name = VALID_MIN_INITS[minifiedState[0]];
+    for (var i = 1; i < minifiedState.length; i++) {
+      name += VALID_MIN_LATERS[minifiedState[i]];
+    }
+    if (!RESERVED.has(name)) minifiedNames.push(name);
+    // increment the state
+    var i = 0;
+    while (1) {
+      minifiedState[i]++;
+      if (minifiedState[i] < (i === 0 ? VALID_MIN_INITS : VALID_MIN_LATERS).length) break;
+      // overflow
+      minifiedState[i] = 0;
+      i++;
+      // will become 0 after increment in next loop head
+      if (i === minifiedState.length) minifiedState.push(-1);
+    }
+  }
+}
+
+function minifyLocals(ast) {
+  // We are given a mapping of global names to their minified forms.
+  assert(extraInfo && extraInfo.globals);
+
+  for (var fun of ast.body) {
+    if (!fun.type === 'FunctionDeclaration') {
+      continue;
+    }
+    // Find the list of local names, including params.
+    var localNames = new Set();
+    for (var param of fun.params) {
+      localNames.add(param.name);
+    }
+    simpleWalk(fun, {
+      VariableDeclaration(node, c) {
+        for (var dec of node.declarations) {
+          localNames.add(dec.id.name)
+        }
+      }
+    });
+
+    function isLocalName(name) {
+      return localNames.has(name);
+    }
+
+    // Names old to new names.
+    var newNames = new Map();
+
+    // The names in use, that must not be collided with.
+    var usedNames = new Set;
+
+    // Put the function name aside. We don't want to traverse it as it is not
+    // in the scope of itself.
+    var funId = fun.id;
+    fun.id = null;
+
+    // Find all the globals that we need to minify using pre-assigned names.
+    // Don't actually minify them yet as that might interfere with local
+    // variable names; just mark them as used, and what their new name will be.
+    simpleWalk(fun, {
+      Identifier(node, c) {
+        var name = node.name;
+        if (!isLocalName(name)) {
+          var minified = extraInfo.globals[name];
+          if (minified){
+            newNames.set(name, minified);
+            usedNames.add(minified);
+          }
+        }
+      },
+      CallExpression(node, c) {
+        // We should never call a local name, as in asm.js-style code our
+        // locals are just numbers, not functions; functions are all declared
+        // in the outer scope. If a local is called, that is a bug.
+        if (node.callee.type === 'Identifier') {
+          assert(!isLocalName(node.callee.name), 'cannot call a local');
+        }
+      }
+    });
+
+    // The first time we encounter a local name, we assign it a/ minified name
+    // that's not currently in use. Allocating on demand means they're processed
+    // in a predictable order, which is very handy for testing/debugging
+    // purposes.
+    var nextMinifiedName = 0;
+
+    function getNextMinifiedName() {
+      while (1) {
+        ensureMinifiedNames(nextMinifiedName);
+        var minified = minifiedNames[nextMinifiedName++];
+        // TODO: we can probably remove !isLocalName here
+        if (!usedNames.has(minified) && !isLocalName(minified)) {
+          return minified;
+        }
+      }
+    }
+
+    // Traverse and minify all names. First the function parameters.
+    for (var param of fun.params) {
+      var minified = getNextMinifiedName();
+      newNames.set(param.name, minified);
+      param.name = minified;
+    }
+
+    // Label minification is done in a separate namespace.
+    var labelNames = new Map();
+    var nextMinifiedLabel = 0;
+    function getNextMinifiedLabel() {
+      ensureMinifiedNames(nextMinifiedLabel);
+      return minifiedNames[nextMinifiedLabel++];
+    }
+
+    // Finally, the function body.
+    recursiveWalk(fun, {
+      Identifier(node) {
+        var name = node.name;
+        if (newNames.has(name)) {
+          node.name = newNames.get(name);
+        } else if (isLocalName(name)) {
+          minified = getNextMinifiedName();
+          newNames.set(name, minified);
+          node.name = minified;
+        }
+      },
+      LabeledStatement(node, c) {
+        if (!labelNames.has(node.label.name)) {
+          labelNames.set(node.label.name, getNextMinifiedLabel());
+        }
+        node.label.name = labelNames.get(node.label.name);
+        c(node.body);
+      },
+      BreakStatement(node, c) {
+        if (node.label) {
+          node.label.name = labelNames.get(node.label.name);
+        }
+      },
+      ContinueStatement(node, c) {
+        if (node.label) {
+          node.label.name = labelNames.get(node.label.name);
+        }
+      },
+    });
+
+    // Finally, the function name, after restoring it.
+    fun.id = funId;
+    assert(extraInfo.globals.hasOwnProperty(fun.id.name));
+    fun.id.name = extraInfo.globals[fun.id.name];
+  }
+}
+
+// Utilities
+
 function reattachComments(ast, comments) {
   var symbols = [];
 
@@ -1444,9 +1608,11 @@ var registry = {
   applyDCEGraphRemovals: applyDCEGraphRemovals,
   minifyWhitespace: function() { minifyWhitespace = true },
   noPrint: function() { noPrint = true },
+  last: function() {}, // TODO: remove 'last' in the python driver code
   dump: function() { dump(ast) },
   growableHeap: growableHeap,
   unsignPointers: unsignPointers,
+  minifyLocals: minifyLocals,
   asanify: asanify,
   safeHeap: safeHeap,
 };

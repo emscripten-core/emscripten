@@ -66,7 +66,7 @@ How:
 3. Tag the emsdk repo as well, on the commit that does the update, after it
    lands on master.
 4. Update
-   [emscripten-version.txt](https://github.com/emscripten-core/emscripten/blob/master/emscripten-version.txt)
+   [emscripten-version.txt](https://github.com/emscripten-core/emscripten/blob/main/emscripten-version.txt)
    in the emscripten repo. This is a delayed update, in that the tag will refer
    to the actual release, but the update to emscripten-version.txt is a new
    commit to emscripten that happens later.

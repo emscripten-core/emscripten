@@ -59,7 +59,7 @@ from jsrun import NON_ZERO
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import EM_BUILD_VERBOSE
-from tools.shared import asstr, get_canonical_temp_dir, try_delete
+from tools.shared import get_canonical_temp_dir, try_delete
 from tools.shared import asbytes
 from tools.utils import MACOS, WINDOWS
 from tools import shared, line_endings, building, config
@@ -128,12 +128,12 @@ def skip_if(func, condition, explanation='', negate=False):
   return decorated
 
 
-def needs_dlfcn(func):
+def needs_dylink(func):
   assert callable(func)
 
   @wraps(func)
   def decorated(self):
-    self.check_dlfcn()
+    self.check_dylink()
     return func(self)
 
   return decorated
@@ -380,13 +380,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def is_wasm(self):
     return self.get_setting('WASM') != 0
 
-  def check_dlfcn(self):
+  def check_dylink(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
-      self.skipTest('no dlfcn with memory growth (without wasm)')
+      self.skipTest('no dynamic linking with memory growth (without wasm)')
     if not self.is_wasm():
-      self.skipTest('no dynamic library support in wasm2js yet')
+      self.skipTest('no dynamic linking support in wasm2js yet')
     if '-fsanitize=address' in self.emcc_args:
-      self.skipTest('no dynamic library support in asan yet')
+      self.skipTest('no dynamic linking support in asan yet')
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
@@ -593,6 +593,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # side memory init file, or an empty one in the js
       assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
+    return output
+
   def get_func(self, src, name):
     start = src.index('function ' + name + '(')
     t = start
@@ -741,7 +743,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]:
       values = [values]
-    values = list(map(asstr, values))
     if callable(string):
       string = string()
 
