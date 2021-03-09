@@ -33,7 +33,6 @@ def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
 
-JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 ACORN_OPTIMIZER = path_from_root('tools', 'acorn-optimizer.js')
 
 NUM_CHUNKS_PER_CORE = 3
@@ -133,8 +132,8 @@ end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
 
 def run_on_chunk(command):
   try:
-    if JS_OPTIMIZER in command: # XXX hackish
-      index = command.index(JS_OPTIMIZER)
+    if ACORN_OPTIMIZER in command: # XXX hackish
+      index = command.index(ACORN_OPTIMIZER)
       filename = command[index + 1]
     else:
       filename = command[1]
