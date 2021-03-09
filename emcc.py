@@ -1492,13 +1492,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       ]
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
+      # The basic writeStackCookie/checkStackCookie mechanism just needs to know where the end
+      # of the stack is.
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_end', '_emscripten_stack_get_free']
+      if shared.Settings.STACK_OVERFLOW_CHECK == 2:
+        # The full checking done by binaryen's `StackCheck` pass also needs to know the base of the
+        # stack.
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base']
+
+      # We call one of these two functions during startup which caches the stack limits
+      # in wasm globals allowing get_base/get_free to be super fast.
+      # See compiler-rt/stack_limits.S.
       if shared.Settings.RELOCATABLE:
         shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_set_limits']
       else:
         shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_init']
-      if shared.Settings.STACK_OVERFLOW_CHECK == 2:
-        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base']
 
     if shared.Settings.MODULARIZE:
       if shared.Settings.PROXY_TO_WORKER:
