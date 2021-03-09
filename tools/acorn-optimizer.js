@@ -1575,10 +1575,15 @@ function minifyGlobals(ast) {
   function minify(name) {
     if (!minified.has(name)) {
       minified.set(name, getNewMinifiedName());
-      console.log(name, ' => ', minified.get(name));
     }
     assert(minified.get(name));
     return minified.get(name);
+  }
+
+  // Start with the declared things in the lowest indices. Things like HEAP8
+  // can have very high use counts.
+  for (var name of declared) {
+    minify(name);
   }
 
   // Minify all globals in function chunks, i.e. not seen here, but will be in
@@ -1588,6 +1593,7 @@ function minifyGlobals(ast) {
     minify(name);
   }
 
+  // Replace the names with their minified versions.
   simpleWalk(fun, {
     Identifier(node, c) {
       if (declared.has(node.name)) {
