@@ -10,7 +10,7 @@ function instantiate(I) {
  }
  function G(H) {
   var e = H.a;
-  var f = e.f;
+  var f = e.buffer;
   var g = new Int8Array(f);
   var h = new Int16Array(f);
   var i = new Int32Array(f);
@@ -29,7 +29,7 @@ function instantiate(I) {
   var v = Math.ceil;
   var w = Math.trunc;
   var x = Math.sqrt;
-  var y = H.y;
+  var y = H.abort;
   var z = NaN;
   var A = Infinity;
   var B = H.b;

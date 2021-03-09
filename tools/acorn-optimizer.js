@@ -1538,6 +1538,9 @@ function minifyGlobals(ast) {
   // Find all the declarations.
   var declared = new Set();
 
+  // Some identifiers must be left as they are and not minified.
+  var ignore = new Set();
+
   simpleWalk(fun, {
     FunctionDeclaration(node) {
       if (node.id) {
@@ -1555,6 +1558,12 @@ function minifyGlobals(ast) {
     VariableDeclaration(node) {
       for (var decl of node.declarations) {
         declared.add(decl.id.name);
+      }
+    },
+    MemberExpression(node) {
+      // In  x.a  we must not minify a. However, for  x[a]  we must.
+      if (!node.computed) {
+        ignore.add(node.property);
       }
     }
   });
@@ -1595,8 +1604,8 @@ function minifyGlobals(ast) {
 
   // Replace the names with their minified versions.
   simpleWalk(fun, {
-    Identifier(node, c) {
-      if (declared.has(node.name)) {
+    Identifier(node) {
+      if (declared.has(node.name) && !ignore.has(node)) {
         node.name = minify(node.name);
       }
     }
