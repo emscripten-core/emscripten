@@ -173,6 +173,10 @@ var LibraryManager = {
       ];
     }
 
+    if (SUPPORT_BIG_ENDIAN) {
+      libraries.push('library_little_endian_heap.js');
+    }
+
     // Deduplicate libraries to avoid processing any library file multiple times
     libraries = libraries.filter(function(item, pos) {
       return libraries.indexOf(item) == pos;
