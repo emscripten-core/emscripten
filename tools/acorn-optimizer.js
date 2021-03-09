@@ -1527,7 +1527,7 @@ function minifyGlobals(ast) {
 
   // We must run on a singleton instantiate() function as described above.
   assert(ast.type === 'Program' && ast.body.length === 1 &&
-         ast.body[0].type === 'FunctionDeclaration' && 
+         ast.body[0].type === 'FunctionDeclaration' &&
          ast.body[0].id.name === 'instantiate');
   var fun = ast.body[0];
 
