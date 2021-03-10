@@ -22,13 +22,10 @@ int main() {
     onerror = function(e) {
       var message = e.toString();
       var success = message.indexOf("Blocking on the main thread is not allowed by default. See https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread") >= 0;
-      if (success && !Module.reported) {
-        Module.reported = true;
+      if (success) {
         console.log("reporting success");
-        // manually REPORT_RESULT; we shouldn't call back into native code at this point
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "http://localhost:8888/report_result?0");
-        xhr.send();
+        // reporting result from JS; we shouldn't call back into native code at this point
+        maybeReportResultToServer("0");
       }
     };
     return 0;

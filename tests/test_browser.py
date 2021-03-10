@@ -3662,17 +3662,17 @@ window.close = function() {
   })
   @requires_threads
   def test_pthread_main_thread_blocking(self, name):
-    print('Test that we error if not ALLOW_BLOCKING_ON_MAIN_THREAD')
+    # 'Test that we error if not ALLOW_BLOCKING_ON_MAIN_THREAD
     self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
     if name == 'join':
       print('Test that by default we just warn about blocking on the main thread.')
-      self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
+      self.btest(path_from_root('tests', 'pthread', 'main_thread_join.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
       print('Test that tryjoin is fine, even if not ALLOW_BLOCKING_ON_MAIN_THREAD')
       self.btest(path_from_root('tests', 'pthread', 'main_thread_join.cpp'), expected='2', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-g', '-DTRY_JOIN', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
       print('Test that tryjoin is fine, even if not ALLOW_BLOCKING_ON_MAIN_THREAD, and even without a pool')
       self.btest(path_from_root('tests', 'pthread', 'main_thread_join.cpp'), expected='2', args=['-O3', '-s', 'USE_PTHREADS', '-g', '-DTRY_JOIN', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
       print('Test that everything works ok when we are on a pthread.')
-      self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'PROXY_TO_PTHREAD', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+      self.btest(path_from_root('tests', 'pthread', 'main_thread_join.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'PROXY_TO_PTHREAD', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
