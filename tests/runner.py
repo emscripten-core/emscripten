@@ -730,10 +730,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       fail_message += '\n' + msg
     self.fail(fail_message)
 
-  def assertIdenticalUrlEncoded(self, expected, actual, **kwargs):
-    """URL decodes the `actual` parameter before checking for equality."""
-    self.assertIdentical(expected, unquote(actual), **kwargs)
-
   def assertTextDataContained(self, text1, text2):
     text1 = text1.replace('\r\n', '\n')
     text2 = text2.replace('\r\n', '\n')
@@ -1367,8 +1363,9 @@ class BrowserCore(RunnerCore):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
           # verify the result, and try again if we should do so
+          output = unquote(output)
           try:
-            self.assertIdenticalUrlEncoded(expectedResult, output)
+            self.assertContained(expectedResult, output)
           except Exception as e:
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')

@@ -3263,7 +3263,7 @@ window.close = function() {
     self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IGNORE_INDIRECT', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS'])
 
   def test_async_stack_overflow(self):
-    self.btest('browser/async_stack_overflow.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_STACK_SIZE=4'])
+    self.btest('browser/async_stack_overflow.cpp', 'abort:RuntimeError: unreachable', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_STACK_SIZE=4'])
 
   def test_async_bad_list(self):
     self.btest('browser/async_bad_list.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_ONLY=[waka]', '--profiling'])
@@ -3322,7 +3322,7 @@ window.close = function() {
   def test_modularize_network_error(self):
     test_c_path = path_from_root('tests', 'browser_test_hello_world.c')
     browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
-    self.compile_btest([test_c_path, '-s', 'MODULARIZE', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    self.compile_btest([test_c_path, '-s', 'MODULARIZE', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path], reporting=Reporting.NONE)
     create_test_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
@@ -3342,7 +3342,7 @@ window.close = function() {
   def test_modularize_init_error(self):
     test_cpp_path = path_from_root('tests', 'browser', 'test_modularize_init_error.cpp')
     browser_reporting_js_path = path_from_root('tests', 'browser_reporting.js')
-    self.compile_btest([test_cpp_path, '-s', 'MODULARIZE', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path])
+    self.compile_btest([test_cpp_path, '-s', 'MODULARIZE', '-s', 'EXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path], reporting=Reporting.NONE)
     create_test_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
@@ -3662,7 +3662,7 @@ window.close = function() {
   @requires_threads
   def test_pthread_main_thread_blocking(self, name):
     print('Test that we error if not ALLOW_BLOCKING_ON_MAIN_THREAD')
-    self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+    self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='abort:Blocking on the main thread is not allowed by default.', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
     if name == 'join':
       print('Test that by default we just warn about blocking on the main thread.')
       self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
@@ -4020,7 +4020,7 @@ window.close = function() {
     # Note that as the test runs with PROXY_TO_PTHREAD, we set TOTAL_STACK,
     # and not DEFAULT_PTHREAD_STACK_SIZE, as the pthread for main() gets the
     # same stack size as the main thread normally would.
-    self.btest(path_from_root('tests', 'core', 'test_safe_stack.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'TOTAL_STACK=64KB', '--pre-js', path_from_root('tests', 'pthread', 'test_safe_stack.js')])
+    self.btest(path_from_root('tests', 'core', 'test_safe_stack.c'), expected='abort:stack overflow', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'TOTAL_STACK=64KB'])
 
   @parameterized({
     'leak': ['test_pthread_lsan_leak', ['-g4']],
@@ -5017,6 +5017,9 @@ window.close = function() {
                # don't run this with the default extra_tries value, as this is
                # *meant* to notice something random, a race condition.
                extra_tries=0)
+
+  def test_assert_failure(self):
+    self.btest(path_from_root('tests', 'browser', 'test_assert_failure.c'), 'abort:Assertion failed: false && "this is a test"')
 
 
 EMRUN = path_from_root('emrun')

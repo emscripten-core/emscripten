@@ -18,22 +18,6 @@ int main() {
     return 0;
   }
 
-  int x = EM_ASM_INT({
-    onerror = function(e) {
-      var message = e.toString();
-      var success = message.indexOf("Blocking on the main thread is not allowed by default. See https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread") >= 0;
-      if (success && !Module.reported) {
-        Module.reported = true;
-        console.log("reporting success");
-        // manually REPORT_RESULT; we shouldn't call back into native code at this point
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "http://localhost:8888/report_result?0");
-        xhr.send();
-      }
-    };
-    return 0;
-  });
-
   // This should fail on the main thread.
   puts("trying to block...");
   pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
