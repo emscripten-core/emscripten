@@ -205,6 +205,9 @@ def report_missing_symbols(js_library_funcs):
     # In this mode we never expect _main in the export list.
     return
 
+  if settings.PROXY_TO_PTHREAD and '_main' not in all_implemented:
+    exit_with_error('PROXY_TO_PTHREAD proxies main() for you, but no main exists')
+
   if settings.IGNORE_MISSING_MAIN:
     # The default mode for emscripten is to ignore the missing main function allowing
     # maximum compatibility.
