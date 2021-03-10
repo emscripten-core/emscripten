@@ -1249,7 +1249,7 @@ int main(int argc, char **argv)
     size = len(open('test_exceptions_allowed.js').read())
     shutil.copyfile('test_exceptions_allowed.js', 'orig.js')
 
-    # check that an empty whitelist works properly (as in, same as exceptions disabled)
+    # check that an empty allow list works properly (as in, same as exceptions disabled)
     src = path_from_root('tests', 'core', 'test_exceptions_allowed.cpp')
     empty_output = path_from_root('tests', 'core', 'test_exceptions_allowed_empty.out')
 

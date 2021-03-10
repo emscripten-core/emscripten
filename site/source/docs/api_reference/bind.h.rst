@@ -73,7 +73,7 @@ object ownership.
 
 .. cpp:type:: allow_raw_pointers
 
-   This policy is used to whitelist raw pointers.
+   This policy is used to allow raw pointers.
 
    .. cpp:type:: Transform::type
 
