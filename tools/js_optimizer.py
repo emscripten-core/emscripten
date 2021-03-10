@@ -84,7 +84,7 @@ class Minifier(object):
     # to minify all global names, we receive a dictionary back, which is then
     # used by the function processors
 
-    shell = shell.replace('0.0', '13371337') # avoid uglify doing 0.0 => 0
+    shell = shell.replace('0.0', '13371337') # avoid optimizer doing 0.0 => 0
 
     # Find all globals in the JS functions code
 
@@ -340,7 +340,7 @@ EMSCRIPTEN_FUNCS();
           pool = building.get_multiprocessing_pool()
           filenames = pool.map(run_on_chunk, commands, chunksize=1)
       else:
-        # We can't parallize, but still break into chunks to avoid uglify/node memory issues
+        # We can't parallize, but still break into chunks to avoid node memory issues
         if len(chunks) > 1 and DEBUG:
           print('splitting up js optimization into %d chunks' % (len(chunks)), file=sys.stderr)
         filenames = [run_on_chunk(command) for command in commands]
