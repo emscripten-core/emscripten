@@ -20,7 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
-
+- Remove dependency on Uglify by finishing the rewrite of passes to acorn
+ (#13636, #13621).
 - Primary development branch switched from `master` to `main`.
 
 2.0.15: 03/05/2021

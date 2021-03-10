@@ -1853,20 +1853,6 @@ int f() {
       self.assertGreater(len(js), 100 * SLACK)
 
   def test_js_optimizer(self):
-    ACORN_PASSES = [
-      'JSDCE',
-      'AJSDCE',
-      'applyImportAndExportNameChanges',
-      'emitDCEGraph',
-      'applyDCEGraphRemovals',
-      'growableHeap',
-      'unsignPointers',
-      'asanify',
-      'safeHeap',
-      'minifyLocals',
-      'minifyGlobals',
-      'littleEndianHeap'
-    ]
     for input, expected, passes in [
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyGlobals.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyGlobals-output.js')).read(),
        ['minifyGlobals']),
@@ -1905,7 +1891,7 @@ int f() {
       (path_from_root('tests', 'optimizer', 'standalone-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'standalone-emitDCEGraph-output.js')).read(),
        ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'emittedJSPreservesParens.js'), open(path_from_root('tests', 'optimizer', 'emittedJSPreservesParens-output.js')).read(),
-       ['asm']),
+       []),
       (path_from_root('tests', 'optimizer', 'test-growableHeap.js'), open(path_from_root('tests', 'optimizer', 'test-growableHeap-output.js')).read(),
        ['growableHeap']),
       (path_from_root('tests', 'optimizer', 'test-unsignPointers.js'), open(path_from_root('tests', 'optimizer', 'test-unsignPointers-output.js')).read(),
@@ -1923,15 +1909,8 @@ int f() {
         expected = [expected]
       expected = [out.replace('\n\n', '\n').replace('\n\n', '\n') for out in expected]
 
-      acorn = any(p in ACORN_PASSES for p in passes)
-
       # test calling optimizer
-      if not acorn:
-        print('  js')
-        output = self.run_process(config.NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
-      else:
-        print('  acorn')
-        output = self.run_process(config.NODE_JS + [path_from_root('tools', 'acorn-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
+      output = self.run_process(config.NODE_JS + [path_from_root('tools', 'acorn-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
 
       def check_js(js, expected):
         # print >> sys.stderr, 'chak\n==========================\n', js, '\n===========================\n'
