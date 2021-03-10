@@ -1864,6 +1864,7 @@ int f() {
       'asanify',
       'safeHeap',
       'minifyLocals',
+      'minifyGlobals',
       'littleEndianHeap'
     ]
     for input, expected, passes in [

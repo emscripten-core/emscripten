@@ -1607,6 +1607,131 @@ function minifyLocals(ast) {
   }
 }
 
+function minifyGlobals(ast) {
+  // The input is in form
+  //
+  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //      var helper..
+  //      function asmFunc(global, env, buffer) {
+  //        var memory = env.memory;
+  //        var HEAP8 = new global.Int8Array(buffer);
+  //
+  // We want to minify the interior of instantiate, basically everything but
+  // the name instantiate itself, which is used externally to call it.
+  //
+  // This is *not* a complete minification algorithm. It does not have a full
+  // understanding of nested scopes. Instead it assumes the code is fairly
+  // simple - as wasm2js output is - and looks at all the minifiable names as
+  // a whole. A possible bug here is something like
+  //
+  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //      var x = foo;
+  //      function asmFunc(global, env, buffer) {
+  //        var foo = 10;
+  //
+  // Here foo is declared in an inner scope, and the outer use of foo looks
+  // to the global scope. The analysis here only thinks something is from the
+  // global scope if it is not in any var or function declaration. In practice,
+  // the globals used from wasm2js output are things like Int8Array that we
+  // don't declare as locals, but we should probably have a fully scope-aware
+  // analysis here. FIXME
+
+  // We must run on a singleton instantiate() function as described above.
+  assert(ast.type === 'Program' && ast.body.length === 1 &&
+         ast.body[0].type === 'FunctionDeclaration' &&
+         ast.body[0].id.name === 'instantiate');
+  var fun = ast.body[0];
+
+  // Swap the function's name away so that we can then minify everything else.
+  var funId = fun.id;
+  fun.id = null;
+
+  // Find all the declarations.
+  var declared = new Set();
+
+  // Some identifiers must be left as they are and not minified.
+  var ignore = new Set();
+
+  simpleWalk(fun, {
+    FunctionDeclaration(node) {
+      if (node.id) {
+        declared.add(node.id.name);
+      }
+      for (var param of node.params) {
+        declared.add(param.name);
+      }
+    },
+    FunctionExpression(node) {
+      for (var param of node.params) {
+        declared.add(param.name);
+      }
+    },
+    VariableDeclaration(node) {
+      for (var decl of node.declarations) {
+        declared.add(decl.id.name);
+      }
+    },
+    MemberExpression(node) {
+      // In  x.a  we must not minify a. However, for  x[a]  we must.
+      if (!node.computed) {
+        ignore.add(node.property);
+      }
+    }
+  });
+
+  // TODO: find names to avoid, that are not declared (should not happen in
+  // wasm2js output)
+
+  // Minify the names.
+  var nextMinifiedName = 0;
+
+  function getNewMinifiedName() {
+    ensureMinifiedNames(nextMinifiedName);
+    return minifiedNames[nextMinifiedName++];
+  }
+
+  var minified = new Map();
+
+  function minify(name) {
+    if (!minified.has(name)) {
+      minified.set(name, getNewMinifiedName());
+    }
+    assert(minified.get(name));
+    return minified.get(name);
+  }
+
+  // Start with the declared things in the lowest indices. Things like HEAP8
+  // can have very high use counts.
+  for (var name of declared) {
+    minify(name);
+  }
+
+  // Minify all globals in function chunks, i.e. not seen here, but will be in
+  // the minifyLocals work on functions.
+  for (var name of extraInfo.globals) {
+    declared.add(name);
+    minify(name);
+  }
+
+  // Replace the names with their minified versions.
+  simpleWalk(fun, {
+    Identifier(node) {
+      if (declared.has(node.name) && !ignore.has(node)) {
+        node.name = minify(node.name);
+      }
+    }
+  });
+
+  // Restore the name
+  fun.id = funId;
+
+  // Emit the metadata
+  var json = {};
+  for (var x of minified.entries()) json[x[0]] = x[1];
+
+  suffix = '// EXTRA_INFO:' + JSON.stringify(json);
+}
+
 // Utilities
 
 function reattachComments(ast, comments) {
@@ -1663,6 +1788,8 @@ function reattachComments(ast, comments) {
 }
 
 // Main
+
+var suffix = '';
 
 var arguments = process['argv'].slice(2);;
 // If enabled, output retains parentheses and comments so that the
@@ -1727,6 +1854,7 @@ var registry = {
   minifyLocals: minifyLocals,
   asanify: asanify,
   safeHeap: safeHeap,
+  minifyGlobals: minifyGlobals,
 };
 
 passes.forEach(function(pass) {
@@ -1747,4 +1875,5 @@ if (!noPrint) {
     comments: true // for closure as well
   });
   print(output);
+  if (suffix) print(suffix);
 }

@@ -1,53 +1,51 @@
-function instantiate(Q) {
- function N(R) {
-  R.set = (function(S, T) {
-   this[S] = T;
-  });
-  R.get = (function(S) {
-   return this[S];
-  });
-  return R;
+function instantiate(I) {
+ function c(d) {
+  d.set = function(a, b) {
+   this[a] = b;
+  };
+  d.get = function(a) {
+   return this[a];
+  };
+  return d;
  }
- function O(U) {
-  var a = U.a;
-  var b = a.buffer;
-  var c = new Int8Array(b);
-  var d = new Int16Array(b);
-  var e = new Int32Array(b);
-  var f = new Uint8Array(b);
-  var g = new Uint16Array(b);
-  var h = new Uint32Array(b);
-  var i = new Float32Array(b);
-  var j = new Float64Array(b);
-  var k = Math.imul;
-  var l = Math.fround;
-  var m = Math.abs;
-  var n = Math.clz32;
-  var o = Math.min;
-  var p = Math.max;
-  var q = Math.floor;
-  var r = Math.ceil;
-  var s = Math.trunc;
-  var t = Math.sqrt;
-  var u = U.abort;
-  var v = NaN;
-  var w = Infinity;
-  var x = U.b;
-  var y = U.c;
-  var z = 5245136;
+ function G(H) {
+  var e = H.a;
+  var f = e.buffer;
+  var g = new Int8Array(f);
+  var h = new Int16Array(f);
+  var i = new Int32Array(f);
+  var j = new Uint8Array(f);
+  var k = new Uint16Array(f);
+  var l = new Uint32Array(f);
+  var m = new Float32Array(f);
+  var n = new Float64Array(f);
+  var o = Math.imul;
+  var p = Math.fround;
+  var q = Math.abs;
+  var r = Math.clz32;
+  var s = Math.min;
+  var t = Math.max;
+  var u = Math.floor;
+  var v = Math.ceil;
+  var w = Math.trunc;
+  var x = Math.sqrt;
+  var y = H.abort;
+  var z = NaN;
+  var A = Infinity;
+  var B = H.b;
+  var C = H.c;
+  var D = 5245136;
   EMSCRIPTEN_FUNCS();
-  var A = N([ null, H, I, G ]);
-  function P() {
-   return b.byteLength / 65536 | 0;
+  var E = c([ null, P, Q, O ]);
+  function F() {
+   return f.byteLength / 65536 | 0;
   }
   return {
-   "d": D,
-   "e": M,
-   "f": A
+   "d": L,
+   "e": U,
+   "f": E
   };
  }
- return O(Q);
+ return G(I);
 }
-
-
-// EXTRA_INFO:{"memory":"a","buffer":"b","HEAP8":"c","HEAP16":"d","HEAP32":"e","HEAPU8":"f","HEAPU16":"g","HEAPU32":"h","HEAPF32":"i","HEAPF64":"j","Math_imul":"k","Math_fround":"l","Math_abs":"m","Math_clz32":"n","Math_min":"o","Math_max":"p","Math_floor":"q","Math_ceil":"r","Math_trunc":"s","Math_sqrt":"t","abort":"u","nan":"v","infinity":"w","fimport$0":"x","fimport$1":"y","global$0":"z","FUNCTION_TABLE":"A","$0":"B","$1":"C","$2":"D","$3":"E","$4":"F","$5":"G","$6":"H","$7":"I","$8":"J","$9":"K","$10":"L","$11":"M","Table":"N","asmFunc":"O","__wasm_memory_size":"P","asmLibraryArg":"Q","ret":"R","i":"S","func":"T","env":"U"}
+// EXTRA_INFO:{"i":"a","func":"b","Table":"c","ret":"d","memory":"e","buffer":"f","HEAP8":"g","HEAP16":"h","HEAP32":"i","HEAPU8":"j","HEAPU16":"k","HEAPU32":"l","HEAPF32":"m","HEAPF64":"n","Math_imul":"o","Math_fround":"p","Math_abs":"q","Math_clz32":"r","Math_min":"s","Math_max":"t","Math_floor":"u","Math_ceil":"v","Math_trunc":"w","Math_sqrt":"x","abort":"y","nan":"z","infinity":"A","fimport$0":"B","fimport$1":"C","global$0":"D","FUNCTION_TABLE":"E","__wasm_memory_size":"F","asmFunc":"G","env":"H","asmLibraryArg":"I","$0":"J","$1":"K","$2":"L","$3":"M","$4":"N","$5":"O","$6":"P","$7":"Q","$8":"R","$9":"S","$10":"T","$11":"U"}
