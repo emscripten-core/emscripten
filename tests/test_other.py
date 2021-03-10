@@ -1084,7 +1084,7 @@ int f() {
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('__get_daylight is not defined', err)
 
-    building.emcc('lib.c', ['-s', "EXPORTED_FUNCTIONS=['__get_daylight']", '-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
+    building.emcc('lib.c', ['-s', "EXPORTED_FUNCTIONS=[__get_daylight]", '-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libfunc\n', self.run_js('a.out.js'))
 
   def test_stdin(self):
@@ -1345,7 +1345,7 @@ int f() {
     self.assertFalse(self.is_exported_in_wasm(export_name, 'a.out.wasm'))
 
     # Exporting it causes it to appear in the output.
-    self.run_process([EMCC, 'main.c', '-L.', '-lexport', '-s', "EXPORTED_FUNCTIONS=['%s']" % full_export_name])
+    self.run_process([EMCC, 'main.c', '-L.', '-lexport', '-s', "EXPORTED_FUNCTIONS=[%s]" % full_export_name])
     self.assertTrue(self.is_exported_in_wasm(export_name, 'a.out.wasm'))
 
   def test_embed_file(self):
@@ -1462,7 +1462,7 @@ int f() {
       ['0123456789'],
       emcc_args=[
         '-s', 'EXIT_RUNTIME=1',
-        '-s', 'RUNTIME_LINKED_LIBS=[\'side.wasm\']',
+        '-s', 'RUNTIME_LINKED_LIBS=[side.wasm]',
         '-s', 'MAIN_MODULE=1',
         '-s', 'DISABLE_EXCEPTION_CATCHING=0',
         '-s', 'ASSERTIONS=2'
@@ -1664,7 +1664,7 @@ int f() {
     self.run_process(cmd)
 
     # adding a missing symbol to EXPORTED_FUNCTIONS should cause failure
-    cmd += ['-s', "EXPORTED_FUNCTIONS=['foobar']"]
+    cmd += ['-s', "EXPORTED_FUNCTIONS=[foobar]"]
     err = self.expect_fail(cmd)
     self.assertContained('undefined exported symbol: "foobar"', err)
 
@@ -1759,7 +1759,7 @@ int f() {
     # noInitialRun prevents run
     for no_initial_run, run_dep in [(0, 0), (1, 0), (0, 1)]:
       print(no_initial_run, run_dep)
-      args = ['-s', 'WASM_ASYNC_COMPILATION=0', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["callMain"]']
+      args = ['-s', 'WASM_ASYNC_COMPILATION=0', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[callMain]']
       if no_initial_run:
         args += ['-s', 'INVOKE_RUN=0']
       if run_dep:
@@ -2490,8 +2490,8 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.run_process([EMCC, path_from_root('tests', 'Module-exports', 'test.c'),
                       '-o', 'test.js', '-O2', '--closure', '0',
                       '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'),
-                      '-s', 'EXPORTED_FUNCTIONS=["_bufferTest","_malloc","_free"]',
-                      '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
+                      '-s', 'EXPORTED_FUNCTIONS=[_bufferTest,_malloc,_free]',
+                      '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]',
                       '-s', 'WASM_ASYNC_COMPILATION=0'])
 
     # Check that compilation was successful
@@ -2515,8 +2515,8 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.run_process([EMCC, path_from_root('tests', 'Module-exports', 'test.c'),
                       '-o', 'test.js', '-O2', '--closure=1',
                       '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'),
-                      '-s', 'EXPORTED_FUNCTIONS=["_bufferTest","_malloc","_free"]',
-                      '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
+                      '-s', 'EXPORTED_FUNCTIONS=[_bufferTest,_malloc,_free]',
+                      '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]',
                       '-s', 'WASM_ASYNC_COMPILATION=0'])
 
     # Check that compilation was successful
@@ -2585,7 +2585,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     reference_error_text = 'undefined'
 
     self.run_process([EMCC, 'count.c', '-s', 'FORCE_FILESYSTEM', '-s',
-                     'EXTRA_EXPORTED_RUNTIME_METHODS=["FS_writeFile"]', '-o', 'count.js'])
+                     'EXTRA_EXPORTED_RUNTIME_METHODS=[FS_writeFile]', '-o', 'count.js'])
 
     # Check that the Module.FS_writeFile exists
     self.assertNotContained(reference_error_text,
@@ -2853,7 +2853,7 @@ EMSCRIPTEN_KEEPALIVE int myreade() {
     self.run_process([EMCC,
                       '-o', 'proxyfs_test.js', 'proxyfs_test.c',
                       '--embed-file', 'proxyfs_embed.txt', '--pre-js', 'proxyfs_pre.js',
-                      '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap", "FS", "PROXYFS"]',
+                      '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap,FS,PROXYFS]',
                       '-lproxyfs.js',
                       '-s', 'WASM_ASYNC_COMPILATION=0'])
     # Following shutil.copyfile just prevent 'require' of node.js from caching js-object.
@@ -2966,7 +2966,7 @@ int main() {
   });
 }
 ''')
-    self.run_process([EMCC, 'src.cpp', '--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=["_main", "_jslibfunc"]'])
+    self.run_process([EMCC, 'src.cpp', '--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=[_main,_jslibfunc]'])
     self.assertContained('c calling: 12\njs calling: 10.', self.run_js('a.out.js'))
 
   def test_js_lib_using_asm_lib(self):
@@ -4814,8 +4814,8 @@ This locale is not the C locale.
 
     test([], 'Module["', 'Module["waka')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["addRunDependency')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=["addRunDependency"]'], 'Module["addRunDependency', 'Module["waka')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["addRunDependency"]'], 'Module["addRunDependency', 'Module["waka')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[addRunDependency]'], 'Module["addRunDependency', 'Module["waka')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[addRunDependency]'], 'Module["addRunDependency', 'Module["waka')
 
   def test_stat_fail_alongtheway(self):
     create_test_file('src.cpp', r'''
@@ -5340,13 +5340,13 @@ int main(int argc, char** argv) {
     dce = test(main_args=['-s', 'MAIN_MODULE=2'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
 
     # with exporting, it works
-    dce = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_puts"]'])
+    dce = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=[_main,_puts]'])
 
     # printf is not used in main, and we dce, so we failz
     dce_fail = test(main_args=['-s', 'MAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
 
     # exporting printf in main keeps it alive for the library
-    dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_printf", "_puts"]'], library_args=['-DUSE_PRINTF'])
+    dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=[_main,_printf,_puts]'], library_args=['-DUSE_PRINTF'])
 
     self.assertLess(percent_diff(full[0], printf[0]), 4)
     self.assertLess(percent_diff(dce[0], dce_fail[0]), 4)
@@ -5358,7 +5358,7 @@ int main(int argc, char** argv) {
     # mode 2, so dce in side, but library_func is not exported, so it is dce'd
     side_dce_fail = test(main_args=['-s', 'MAIN_MODULE'], library_args=['-s', 'SIDE_MODULE=2'], expected='cannot find side function')
     # mode 2, so dce in side, and library_func is not exported
-    side_dce_work = test(main_args=['-s', 'MAIN_MODULE'], library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_library_func"]'], expected='hello from library')
+    side_dce_work = test(main_args=['-s', 'MAIN_MODULE'], library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=[_library_func]'], expected='hello from library')
 
     self.assertLess(side_dce_fail[1], 0.95 * side_dce_work[1]) # removing that function saves a chunk
 
@@ -5691,7 +5691,7 @@ int main() {
   printf("hello, world!\n");
 }
 ''')
-    self.run_process([EMCC, 'src.c', '-s', 'EXPORTED_FUNCTIONS=["_main", "_treecount"]', '--minify=0', '-g4', '-Oz'])
+    self.run_process([EMCC, 'src.c', '-s', 'EXPORTED_FUNCTIONS=[_main,_treecount]', '--minify=0', '-g4', '-Oz'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_emscripten_print_double(self):
@@ -5779,14 +5779,14 @@ int main() {
 
   def test_no_warn_exported_jslibfunc(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'),
-                      '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["alGetError"]',
-                      '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGetError"]'])
+                      '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[alGetError]',
+                      '-s', 'EXPORTED_FUNCTIONS=[_main,_alGetError]'])
 
     # Same again but with `_alGet` wich does not exist.  This is a regression
     # test for a bug we had where any prefix of a valid function was accepted.
     err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.c'),
-                            '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["alGetError"]',
-                            '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGet"]'])
+                            '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[alGetError]',
+                            '-s', 'EXPORTED_FUNCTIONS=[_main,_alGet]'])
     self.assertContained('undefined exported symbol: "_alGet"', err)
 
   def test_musl_syscalls(self):
@@ -6204,7 +6204,7 @@ high = 1234
 
   def test_dash_s_no_space(self):
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-sEXPORT_ALL'])
-    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.cpp'), '-sEXPORTED_FUNCTIONS=["foo"]'])
+    err = self.expect_fail([EMCC, path_from_root('tests', 'hello_world.cpp'), '-sEXPORTED_FUNCTIONS=[foo]'])
     self.assertContained('error: undefined exported symbol: "foo"', err)
 
   def test_zeroinit(self):
@@ -6447,10 +6447,10 @@ mergeInto(LibraryManager.library, {
         preRun: [function(module) { module.ENV.hello = 'world' }]
       };
     ''')
-    self.run_process([EMCC, 'src.cpp', '--pre-js', 'pre.js', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ENV"]'])
+    self.run_process([EMCC, 'src.cpp', '--pre-js', 'pre.js', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[ENV]'])
     self.assertContained('|world|', self.run_js('a.out.js'))
 
-    self.run_process([EMCC, 'src.cpp', '--pre-js', 'pre.js', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ENV"]', '-s', 'MODULARIZE'])
+    self.run_process([EMCC, 'src.cpp', '--pre-js', 'pre.js', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[ENV]', '-s', 'MODULARIZE'])
     output = self.run_process(config.NODE_JS + ['-e', 'require("./a.out.js")();'], stdout=PIPE, stderr=PIPE)
     self.assertContained('|world|', output.stdout)
 
@@ -6515,7 +6515,7 @@ mergeInto(LibraryManager.library, {
     test("Module['printErr']('x')", error, assert_returncode=NON_ZERO)
 
     # when exported, all good
-    test("Module['print']('print'); Module['printErr']('err'); ", 'print\nerr', ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["print", "printErr"]'])
+    test("Module['print']('print'); Module['printErr']('err'); ", 'print\nerr', ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[print,printErr]'])
 
   def test_warn_unexported_main(self):
     WARNING = 'main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.'
@@ -7041,7 +7041,7 @@ int main() {
     self.run_process(cmd)
 
     # build main module
-    args = ['-g', '-s', 'EXPORTED_FUNCTIONS=["_main", "_foo"]', '-s', 'MAIN_MODULE=2', '-s', 'EXIT_RUNTIME', '-lnodefs.js']
+    args = ['-g', '-s', 'EXPORTED_FUNCTIONS=[_main,_foo]', '-s', 'MAIN_MODULE=2', '-s', 'EXIT_RUNTIME', '-lnodefs.js']
     cmd = [EMCC, path_from_root('tests', 'other', 'alias', 'main.c'), '-o', 'main.js'] + args
     print(' '.join(cmd))
     self.run_process(cmd)
@@ -7925,6 +7925,10 @@ test_module().then((test_module_instance) => {
 ''')
 
     for export_arg, expected in [
+      # No quotes needed
+      ('EXPORTED_FUNCTIONS=[_a,_b,_c,_d]', ''),
+      # No quotes with spaces
+      ('EXPORTED_FUNCTIONS=[_a, _b, _c, _d]', ''),
       # extra space at end - should be ignored
       ("EXPORTED_FUNCTIONS=['_a', '_b', '_c', '_d' ]", ''),
       # extra newline in response file - should be ignored
