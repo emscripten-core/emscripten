@@ -1963,7 +1963,7 @@ int f() {
           expected = fix(expected)
         self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
 
-      if input not in [ # blacklist of tests that are native-optimizer only
+      if input not in [ # tests that are native-optimizer only
         path_from_root('tests', 'optimizer', 'asmLastOpts.js'),
         path_from_root('tests', 'optimizer', '3154.js')
       ]:
