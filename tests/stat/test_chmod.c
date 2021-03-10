@@ -30,6 +30,7 @@ void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   create_file("file", "abcdef", 0777);
+  create_file("otherfile", "abcdef", 0777);
   symlink("file", "file-link");
   // some platforms use 777, some use 755 by default for symlinks
   // make sure we're using 777 for the test
@@ -40,6 +41,7 @@ void setup() {
 void cleanup() {
   unlink("file-link");
   unlink("file");
+  unlink("otherfile");
   rmdir("folder");
 }
 
@@ -77,6 +79,20 @@ void test() {
 
   memset(&s, 0, sizeof s);
   stat("file", &s);
+  assert(s.st_mode == (0100 | S_IFREG));
+  assert(s.st_ctime != lastctime);
+
+
+  //
+  // fchmodat a file
+  //
+  lastctime = s.st_ctime;
+  sleep(1);
+  err = fchmodat(AT_FDCWD, "otherfile", 0100, 0);
+  assert(!err);
+
+  memset(&s, 0, sizeof s);
+  stat("otherfile", &s);
   assert(s.st_mode == (0100 | S_IFREG));
   assert(s.st_ctime != lastctime);
 

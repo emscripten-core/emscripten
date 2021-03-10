@@ -974,6 +974,117 @@ function isEmscriptenHEAP(name) {
   }
 }
 
+// Replaces each HEAP access with function call that uses DataView to enforce
+// LE byte order for HEAP buffer
+function littleEndianHeap(ast) {
+  recursiveWalk(ast, {
+    FunctionDeclaration: function(node, c) {
+      // do not recurse into LE_HEAP_STORE, LE_HEAP_LOAD functions
+      if (!(node.id.type === 'Identifier' &&
+          node.id.name.startsWith('LE_HEAP'))) {
+        c(node.body);
+      }
+    },
+    AssignmentExpression: function(node, c) {
+      var target = node.left;
+      var value = node.right;
+      c(value);
+      if (!isHEAPAccess(target)) {
+        // not accessing the HEAP
+        c(target);
+      } else {
+        // replace the heap access with LE_HEAP_STORE
+        var name = target.object.name;
+        var idx = target.property;
+        switch (target.object.name) {
+          case 'HEAP8':
+          case 'HEAPU8': {
+            // no action required - storing only 1 byte
+            break;
+          }
+          case 'HEAP16': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_I16(idx*2, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_I16', [multiply(idx, 2), value]);
+            break;
+          }
+          case 'HEAPU16': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_U16(idx*2, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_U16', [multiply(idx, 2), value]);
+            break;
+          }
+          case 'HEAP32': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_I32(idx*4, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_I32', [multiply(idx, 4), value]);
+            break;
+          }
+          case 'HEAPU32': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_U32(idx*4, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_U32', [multiply(idx, 4), value]);
+            break;
+          }
+          case 'HEAPF32': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_F32(idx*4, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_F32', [multiply(idx, 4), value]);
+            break;
+          }
+          case 'HEAPF64': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_F64(idx*8, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_F64', [multiply(idx, 8), value]);
+            break;
+          }
+        };
+      }
+    },
+    MemberExpression: function(node, c) {
+      c(node.property);
+      if (!isHEAPAccess(node)) {
+        // not accessing the HEAP
+        c(node.object);
+      } else {
+        // replace the heap access with LE_HEAP_LOAD
+        var idx = node.property;
+        switch (node.object.name) {
+          case 'HEAP8':
+          case 'HEAPU8': {
+            // no action required - loading only 1 byte
+            break;
+          }
+          case 'HEAP16': {
+            // change "name[idx]" to "LE_HEAP_LOAD_I16(idx*2)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_I16', [multiply(idx, 2)]);
+            break;
+          }
+          case 'HEAPU16': {
+            // change "name[idx]" to "LE_HEAP_LOAD_U16(idx*2)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_U16', [multiply(idx, 2)]);
+            break;
+          }
+          case 'HEAP32': {
+            // change "name[idx]" to "LE_HEAP_LOAD_I32(idx*4)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_I32', [multiply(idx, 4)]);
+            break;
+          }
+          case 'HEAPU32': {
+            // change "name[idx]" to "LE_HEAP_LOAD_U32(idx*4)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_U32', [multiply(idx, 4)]);
+            break;
+          }
+          case 'HEAPF32': {
+            // change "name[idx]" to "LE_HEAP_LOAD_F32(idx*4)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_F32', [multiply(idx, 4)]);
+            break;
+          }
+          case 'HEAPF64': {
+            // change "name[idx]" to "LE_HEAP_LOAD_F64(idx*8)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_F64', [multiply(idx, 8)]);
+            break;
+          }
+        };
+      }
+    },
+  });
+}
+
 // Instrument heap accesses to call GROWABLE_HEAP_* helper functions instead, which allows
 // pthreads + memory growth to work (we check if the memory was grown on another thread
 // in each access), see #8365.
@@ -1737,6 +1848,7 @@ var registry = {
   noPrint: function() { noPrint = true },
   last: function() {}, // TODO: remove 'last' in the python driver code
   dump: function() { dump(ast) },
+  littleEndianHeap: littleEndianHeap,
   growableHeap: growableHeap,
   unsignPointers: unsignPointers,
   minifyLocals: minifyLocals,
