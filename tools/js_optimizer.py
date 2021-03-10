@@ -68,8 +68,8 @@ def split_funcs(js, just_split=False):
 
 
 class Minifier(object):
-  """asm.js minification support. We calculate minification of
-  globals here, then pass that into the parallel js-optimizer.js runners which
+  """minification support. We calculate minification of
+  globals here, then pass that into the parallel acorn-optimizer.js runners which
   perform minification of locals.
   """
 
@@ -79,7 +79,7 @@ class Minifier(object):
     self.profiling_funcs = False
 
   def minify_shell(self, shell, minify_whitespace):
-    # Run through js-optimizer.js to find and minify the global symbols
+    # Run through acorn-optimizer.js to find and minify the global symbols
     # We send it the globals, which it parses at the proper time. JS decides how
     # to minify all global names, we receive a dictionary back, which is then
     # used by the function processors
@@ -352,7 +352,7 @@ EMSCRIPTEN_FUNCS();
 
   with ToolchainProfiler.profile_block('split_closure_cleanup'):
     if closure or cleanup:
-      # run on the shell code, everything but what we js-optimize
+      # run on the shell code, everything but what we acorn-optimize
       start_asm = '// EMSCRIPTEN_START_ASM\n'
       end_asm = '// EMSCRIPTEN_END_ASM\n'
       cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(wakaGlobal,wakaEnv,wakaBuffer)\n'
