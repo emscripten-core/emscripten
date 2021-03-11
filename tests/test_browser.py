@@ -3637,7 +3637,7 @@ window.close = function() {
                args=['-g2', '-xc', '-std=gnu11', '-pthread', '-s', 'PTHREAD_POOL_SIZE=4', '-s', 'PTHREAD_POOL_SIZE_STRICT=2', '-s', 'TOTAL_MEMORY=64mb'])
     # Check that it fails instead of deadlocking on insufficient number of threads in the pool.
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_c11_threads.c'),
-               expected='1',
+               expected='abort:Assertion failed: thrd_create(&t4, thread_main, NULL) == thrd_success',
                args=['-g2', '-xc', '-std=gnu11', '-pthread', '-s', 'PTHREAD_POOL_SIZE=3', '-s', 'PTHREAD_POOL_SIZE_STRICT=2', '-s', 'TOTAL_MEMORY=64mb'])
 
   @requires_threads

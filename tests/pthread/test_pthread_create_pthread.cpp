@@ -21,7 +21,7 @@ static void *thread2_start(void *arg)
 
 static void *thread1_start(void *arg)
 {
-  EM_ASM(out('thread1_start!'); debugger);
+  EM_ASM(out('thread1_start!'));
   pthread_t thr;
   if (pthread_create(&thr, NULL, thread2_start, NULL) != 0) {
     result = -200;
