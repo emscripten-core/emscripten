@@ -831,9 +831,8 @@ var LibraryPThread = {
       // new thread, the thread creation must be deferred to the main JS thread.
       threadParams.cmd = 'spawnThread';
       postMessage(threadParams, transferList);
-      // We don't care about actual exit code, because spawnThread
-      // only returns non-0 as part of the PTHREAD_POOL_SIZE_STRICT check, which
-      // doesn't apply to the PROXY_TO_PTHREAD mode we're in anyway.
+      // When we defer thread creation this way, we have no way to detect thread
+      // creation synchronously today, so we have to assume success and return 0.
       return 0;
     }
 
