@@ -1067,6 +1067,10 @@ function createWasm() {
         var search = location.search;
         if (search.indexOf('_rwasm=0') < 0) {
           location.href += (search ? search + '&' : '?') + '_rwasm=0';
+          // Return here to avoid calling abort() below.  The application
+          // still has a chance to start sucessfully do we don't want to
+          // trigger onAbort or onExit handlers.
+          return;
         }
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
       }
