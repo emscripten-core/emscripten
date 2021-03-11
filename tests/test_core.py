@@ -96,6 +96,8 @@ def with_both_exception_handling(f):
         self.skipTest('d8 required to run wasm eh tests')
       self.emcc_args.append('-fwasm-exceptions')
       self.v8_args.append('--experimental-wasm-eh')
+      # avoid liftoff due to https://bugs.chromium.org/p/v8/issues/detail?id=11537
+      self.v8_args.append('--no-liftoff')
       self.js_engines = [config.V8_ENGINE]
       f(self)
     else:
@@ -262,7 +264,7 @@ class TestCoreBase(RunnerCore):
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
     if '-g' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args):
-      self.emcc_args += ['--closure', '1']
+      self.emcc_args += ['--closure=1']
       return True
     return False
 
@@ -1247,7 +1249,7 @@ int main(int argc, char **argv)
     size = len(open('test_exceptions_allowed.js').read())
     shutil.copyfile('test_exceptions_allowed.js', 'orig.js')
 
-    # check that an empty whitelist works properly (as in, same as exceptions disabled)
+    # check that an empty allow list works properly (as in, same as exceptions disabled)
     src = path_from_root('tests', 'core', 'test_exceptions_allowed.cpp')
     empty_output = path_from_root('tests', 'core', 'test_exceptions_allowed_empty.out')
 
@@ -1779,7 +1781,7 @@ int main() {
     self.set_setting('EXIT_RUNTIME')
 
     if self.run_name == 'asm2':
-      self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.emcc_args += ['--closure=1'] # Use closure here for some additional coverage
     self.do_runf(path_from_root('tests', 'emscripten_get_now.cpp'), 'Timer resolution is good')
 
   def test_emscripten_get_compiler_setting(self):
@@ -1926,7 +1928,7 @@ int main(int argc, char **argv) {
       self.skipTest('main module support for non-wasm')
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('no dynamic library support in asan yet')
-    self.emcc_args += args + ['-s', 'EXPORTED_FUNCTIONS=["_main","_malloc"]']
+    self.emcc_args += args + ['-s', 'EXPORTED_FUNCTIONS=[_main,_malloc]']
 
     self.do_core_test('test_em_js.cpp', force_c=force_c)
     self.assertContained("no args returning int", open('test_em_js.js').read())
@@ -5175,7 +5177,7 @@ main( int argv, char ** argc ) {
     self.do_runf(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'success')
     if '-g' not in self.emcc_args:
       print('closure')
-      self.emcc_args += ['--closure', '1']
+      self.emcc_args += ['--closure=1']
       self.do_runf(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'success')
 
   @also_with_noderawfs
@@ -5771,7 +5773,7 @@ return malloc(size);
     # uses register keyword
     self.emcc_args += ['-std=c++03', '-Wno-dynamic-class-memaccess']
     if self.run_name == 'asm3':
-      self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.emcc_args += ['--closure=1'] # Use closure here for some additional coverage
 
     self.emcc_args = [x for x in self.emcc_args if x != '-g'] # remove -g, so we have one test without it by default
 
@@ -6169,7 +6171,7 @@ return malloc(size);
 
         return output
 
-      self.emcc_args += ['--minify', '0'] # to compare the versions
+      self.emcc_args += ['--minify=0'] # to compare the versions
       self.emcc_args += ['--pre-js', 'pre.js']
 
       def do_test():
@@ -6304,7 +6306,7 @@ return malloc(size);
 
     if '-O2' in self.emcc_args and '-g' not in self.emcc_args:
       print('with closure')
-      self.emcc_args += ['--closure', '1']
+      self.emcc_args += ['--closure=1']
       self.do_core_test('test_ccall.cpp')
 
   def test_EXTRA_EXPORTED_RUNTIME_METHODS(self):
@@ -6323,12 +6325,12 @@ return malloc(size);
     emcc_args = self.emcc_args[:]
     cases = [
         ('DIRECT', []),
-        ('DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"]']),
+        ('DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]']),
       ]
     if 'MINIMAL_RUNTIME=1' not in args:
       cases += [
         ('EXPORTED', []),
-        ('EXPORTED_DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$dynCall"]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[dynCall]']),
+        ('EXPORTED_DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[dynCall]']),
         ('FROM_OUTSIDE', ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[dynCall_iiji]'])
       ]
 
@@ -6919,7 +6921,7 @@ someweirdtext
   @sync
   def test_webidl(self, mode, allow_memory_growth):
     if self.run_name == 'asm2':
-      self.emcc_args += ['--closure', '1', '-g1'] # extra testing
+      self.emcc_args += ['--closure=1', '-g1'] # extra testing
       # avoid closure minified names competing with our test code in the global name space
       self.set_setting('MODULARIZE')
 
@@ -6934,7 +6936,7 @@ someweirdtext
 
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc","_free"]', '--post-js', 'glue.js']
+    self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=[_malloc,_free]', '--post-js', 'glue.js']
     if allow_memory_growth:
       self.set_setting('ALLOW_MEMORY_GROWTH')
 
@@ -7215,7 +7217,7 @@ someweirdtext
     # closure should not minify the Module object in a way that the pre-js cannot use it.
     self.emcc_args += [
       '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
-      '--closure', '1',
+      '--closure=1',
       '-g1',
       '-s',
       'MODULARIZE=1',
@@ -7238,7 +7240,7 @@ someweirdtext
     self.do_run_in_out_file_test('tests', 'emscripten_log', 'emscripten_log.cpp')
     # test closure compiler as well
     print('closure')
-    self.emcc_args += ['--closure', '1', '-g1'] # extra testing
+    self.emcc_args += ['--closure=1', '-g1'] # extra testing
     self.do_run_in_out_file_test('tests', 'emscripten_log', 'emscripten_log_with_closure.cpp')
 
   def test_float_literals(self):

@@ -27,46 +27,46 @@ var k = {
     },
     memory: g
 }, l, n = (new function() {
-    this.exports = function instantiate(t) {
-        function r(u) {
-            u.set = function(v, w) {
-                this[v] = w;
+    this.exports = function instantiate(v) {
+        function c(d) {
+            d.set = function(a, b) {
+                this[a] = b;
             };
-            u.get = function(v) {
-                return this[v];
+            d.get = function(a) {
+                return this[a];
             };
-            return u;
+            return d;
         }
-        function s(x) {
-            var a = Math.imul;
-            var b = Math.fround;
-            var c = Math.abs;
-            var d = Math.clz32;
-            var e = Math.min;
-            var f = Math.max;
-            var g = Math.floor;
-            var h = Math.ceil;
-            var i = Math.trunc;
-            var j = Math.sqrt;
-            var k = x.abort;
-            var l = NaN;
-            var m = Infinity;
-            var n = x.a;
-            function q(a, b) {
+        function t(u) {
+            var e = Math.imul;
+            var f = Math.fround;
+            var g = Math.abs;
+            var h = Math.clz32;
+            var i = Math.min;
+            var j = Math.max;
+            var k = Math.floor;
+            var l = Math.ceil;
+            var m = Math.trunc;
+            var n = Math.sqrt;
+            var o = u.abort;
+            var p = NaN;
+            var q = Infinity;
+            var r = u.a;
+            function x(a, b) {
                 a = a | 0;
                 b = b | 0;
-                n(1024);
+                r(1024);
                 return 0;
             }
-            function p() {}
-            var o = r([]);
+            function w() {}
+            var s = c([]);
             return {
-                b: p,
-                c: q,
-                d: o
+                b: w,
+                c: x,
+                d: s
             };
         }
-        return s(t);
+        return t(v);
     }(k);
 }).exports;
 

@@ -59,8 +59,7 @@ from jsrun import NON_ZERO
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import EM_BUILD_VERBOSE
-from tools.shared import asstr, get_canonical_temp_dir, try_delete
-from tools.shared import asbytes
+from tools.shared import get_canonical_temp_dir, try_delete
 from tools.utils import MACOS, WINDOWS
 from tools import shared, line_endings, building, config
 
@@ -743,7 +742,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]:
       values = [values]
-    values = list(map(asstr, values))
     if callable(string):
       string = string()
 
@@ -1224,7 +1222,7 @@ def harness_server_func(in_queue, out_queue, port):
           assert in_queue.empty(), 'should not be any blockage - one test runs at a time'
           assert out_queue.empty(), 'the single response from the last test was read'
           # tell the browser to load the test
-          self.wfile.write(b'COMMAND:' + url)
+          self.wfile.write(b'COMMAND:' + url.encode('utf-8'))
           # move us to the right place to serve the files for the new test
           os.chdir(dir)
         else:
@@ -1344,7 +1342,7 @@ class BrowserCore(RunnerCore):
     if expectedResult is not None:
       try:
         self.harness_in_queue.put((
-          asbytes('http://localhost:%s/%s' % (self.port, html_file)),
+          'http://localhost:%s/%s' % (self.port, html_file),
           self.get_dir()
         ))
         received_output = False
@@ -1514,7 +1512,7 @@ class BrowserCore(RunnerCore):
                  path_from_root('tests', 'report_result.cpp')]
     self.run_process([EMCC] + self.get_emcc_args() + args)
 
-  def btest_exit(self, filename, expected, *args, **kwargs):
+  def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
       """Special case of btest that reports its result solely via exiting
       with a give result code.
 
@@ -1523,7 +1521,7 @@ class BrowserCore(RunnerCore):
       """
       self.set_setting('EXIT_RUNTIME')
       kwargs['reporting'] = Reporting.JS_ONLY
-      kwargs['expected'] = 'exit:%s' % expected
+      kwargs['expected'] = 'exit:%d' % assert_returncode
       return self.btest(filename, *args, **kwargs)
 
   def btest(self, filename, expected=None, reference=None,

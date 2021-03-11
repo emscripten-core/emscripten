@@ -62,8 +62,9 @@ mergeInto(LibraryManager.library, {
       }
     }
 
-    uuid[6] = (uuid[6] & 0x0F) | 0x40;
-    uuid[8] = (uuid[8] & 0x7F) | 0x80;
+    // Makes uuid compliant to RFC-4122
+    uuid[6] = (uuid[6] & 0x0F) | 0x40; // uuid version
+    uuid[8] = (uuid[8] & 0x3F) | 0x80; // uuid variant
     writeArrayToMemory(uuid, out);
   },
 

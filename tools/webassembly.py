@@ -164,7 +164,7 @@ def add_dylink_section(wasm_file, needed_dynlibs):
   # https://github.com/WebAssembly/tool-conventions/pull/77
   contents += toLEB(len(needed_dynlibs))
   for dyn_needed in needed_dynlibs:
-    dyn_needed = bytes(shared.asbytes(dyn_needed))
+    dyn_needed = dyn_needed.encode('utf-8')
     contents += toLEB(len(dyn_needed))
     contents += dyn_needed
 

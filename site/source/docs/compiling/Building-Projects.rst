@@ -191,7 +191,7 @@ Using libraries
 Built-in support is available for a number of standard libraries: *libc*, *libc++* and *SDL*. These will automatically be linked when you compile code that uses them (you do not even need to add ``-lSDL``, but see below for more SDL-specific details).
 
 If your project uses other libraries, for example
-`zlib <https://github.com/emscripten-core/emscripten/tree/master/tests/zlib>`_
+`zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/zlib>`_
 or *glib*, you will need to build and link them. The normal approach is to build
 the libraries (to object files, or ``.a`` archives of them) and then link those
 with your main program to emit JavaScript+WebAssembly.
@@ -227,7 +227,7 @@ You should see some notifications about SDL2 being used, and built if it wasn't 
 
 .. note:: *SDL_net* has also been added to ports, use it with ``-s USE_SDL_NET=2``. To see a list of all available ports, run ``emcc --show-ports``.
 
-.. note:: Emscripten also has support for older SDL1, which is built-in. If you do not specify SDL2 as in the command above, then SDL1 is linked in and the SDL1 include paths are used. SDL1 has support for *sdl-config*, which is present in `system/bin <https://github.com/emscripten-core/emscripten/blob/master/system/bin/sdl-config>`_. Using the native *sdl-config* may result in compilation or missing-symbol errors. You will need to modify the build system to look for files in **emscripten/system** or **emscripten/system/bin** in order to use the Emscripten *sdl-config*.
+.. note:: Emscripten also has support for older SDL1, which is built-in. If you do not specify SDL2 as in the command above, then SDL1 is linked in and the SDL1 include paths are used. SDL1 has support for *sdl-config*, which is present in `system/bin <https://github.com/emscripten-core/emscripten/blob/main/system/bin/sdl-config>`_. Using the native *sdl-config* may result in compilation or missing-symbol errors. You will need to modify the build system to look for files in **emscripten/system** or **emscripten/system/bin** in order to use the Emscripten *sdl-config*.
 
 .. note:: You can also build a library from ports in a manual way if you prefer
     that, but then you will need to also apply the python logic that ports does.
@@ -255,7 +255,7 @@ Build system self-execution
 
 Some large projects generate executables and run them in order to generate input for later parts of the build process (for example, a parser may be built and then run on a grammar, which then generates C/C++ code that implements that grammar). This sort of build process causes problems when using Emscripten because you cannot directly run the code you are generating.
 
-The simplest solution is usually to build the project twice: once natively, and once to JavaScript. When the JavaScript build procedure fails because a generated executable is not present, you can then copy that executable from the native build, and continue to build normally. This approach was successfully used for compiling Python (see `tests/python/readme.md <https://github.com/emscripten-core/emscripten/blob/master/tests/python/readme.md>`_ for more details).
+The simplest solution is usually to build the project twice: once natively, and once to JavaScript. When the JavaScript build procedure fails because a generated executable is not present, you can then copy that executable from the native build, and continue to build normally. This approach was successfully used for compiling Python (see `tests/python/readme.md <https://github.com/emscripten-core/emscripten/blob/main/tests/python/readme.md>`_ for more details).
 
 In some cases it makes sense to modify the build scripts so that they build the generated executable natively. For example, this can be done by specifying two compilers in the build scripts, *emcc* and *gcc*, and using *gcc* just for generated executables. However, this can be more complicated than the previous solution because you need to modify the project build scripts, and you may have to work around cases where code is compiled and used both for the final result and for a generated executable.
 
@@ -364,7 +364,7 @@ set via an environment variable.  e.g::
 Examples / test code
 ====================
 
-The Emscripten test suite (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/master/tests/runner.py>`_) contains a number of good examples — large C/C++ projects that are built using their normal build systems as described above: `freetype <https://github.com/emscripten-core/emscripten/tree/master/tests/freetype>`_, `openjpeg <https://github.com/emscripten-core/emscripten/tree/master/tests/openjpeg>`_, `zlib <https://github.com/emscripten-core/emscripten/tree/master/tests/zlib>`_, `bullet <https://github.com/emscripten-core/emscripten/tree/master/tests/bullet>`_ and `poppler <https://github.com/emscripten-core/emscripten/tree/master/tests/poppler>`_.
+The Emscripten test suite (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/main/tests/runner.py>`_) contains a number of good examples — large C/C++ projects that are built using their normal build systems as described above: `freetype <https://github.com/emscripten-core/emscripten/tree/main/tests/freetype>`_, `openjpeg <https://github.com/emscripten-core/emscripten/tree/main/tests/openjpeg>`_, `zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/zlib>`_, `bullet <https://github.com/emscripten-core/emscripten/tree/main/tests/bullet>`_ and `poppler <https://github.com/emscripten-core/emscripten/tree/main/tests/poppler>`_.
 
 It is also worth looking at the build scripts in the `ammo.js <https://github.com/kripken/ammo.js/blob/master/make.py>`_ project.
 

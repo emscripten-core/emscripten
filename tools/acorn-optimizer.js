@@ -974,6 +974,117 @@ function isEmscriptenHEAP(name) {
   }
 }
 
+// Replaces each HEAP access with function call that uses DataView to enforce
+// LE byte order for HEAP buffer
+function littleEndianHeap(ast) {
+  recursiveWalk(ast, {
+    FunctionDeclaration: function(node, c) {
+      // do not recurse into LE_HEAP_STORE, LE_HEAP_LOAD functions
+      if (!(node.id.type === 'Identifier' &&
+          node.id.name.startsWith('LE_HEAP'))) {
+        c(node.body);
+      }
+    },
+    AssignmentExpression: function(node, c) {
+      var target = node.left;
+      var value = node.right;
+      c(value);
+      if (!isHEAPAccess(target)) {
+        // not accessing the HEAP
+        c(target);
+      } else {
+        // replace the heap access with LE_HEAP_STORE
+        var name = target.object.name;
+        var idx = target.property;
+        switch (target.object.name) {
+          case 'HEAP8':
+          case 'HEAPU8': {
+            // no action required - storing only 1 byte
+            break;
+          }
+          case 'HEAP16': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_I16(idx*2, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_I16', [multiply(idx, 2), value]);
+            break;
+          }
+          case 'HEAPU16': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_U16(idx*2, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_U16', [multiply(idx, 2), value]);
+            break;
+          }
+          case 'HEAP32': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_I32(idx*4, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_I32', [multiply(idx, 4), value]);
+            break;
+          }
+          case 'HEAPU32': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_U32(idx*4, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_U32', [multiply(idx, 4), value]);
+            break;
+          }
+          case 'HEAPF32': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_F32(idx*4, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_F32', [multiply(idx, 4), value]);
+            break;
+          }
+          case 'HEAPF64': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_F64(idx*8, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_F64', [multiply(idx, 8), value]);
+            break;
+          }
+        };
+      }
+    },
+    MemberExpression: function(node, c) {
+      c(node.property);
+      if (!isHEAPAccess(node)) {
+        // not accessing the HEAP
+        c(node.object);
+      } else {
+        // replace the heap access with LE_HEAP_LOAD
+        var idx = node.property;
+        switch (node.object.name) {
+          case 'HEAP8':
+          case 'HEAPU8': {
+            // no action required - loading only 1 byte
+            break;
+          }
+          case 'HEAP16': {
+            // change "name[idx]" to "LE_HEAP_LOAD_I16(idx*2)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_I16', [multiply(idx, 2)]);
+            break;
+          }
+          case 'HEAPU16': {
+            // change "name[idx]" to "LE_HEAP_LOAD_U16(idx*2)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_U16', [multiply(idx, 2)]);
+            break;
+          }
+          case 'HEAP32': {
+            // change "name[idx]" to "LE_HEAP_LOAD_I32(idx*4)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_I32', [multiply(idx, 4)]);
+            break;
+          }
+          case 'HEAPU32': {
+            // change "name[idx]" to "LE_HEAP_LOAD_U32(idx*4)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_U32', [multiply(idx, 4)]);
+            break;
+          }
+          case 'HEAPF32': {
+            // change "name[idx]" to "LE_HEAP_LOAD_F32(idx*4)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_F32', [multiply(idx, 4)]);
+            break;
+          }
+          case 'HEAPF64': {
+            // change "name[idx]" to "LE_HEAP_LOAD_F64(idx*8)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_F64', [multiply(idx, 8)]);
+            break;
+          }
+        };
+      }
+    },
+  });
+}
+
 // Instrument heap accesses to call GROWABLE_HEAP_* helper functions instead, which allows
 // pthreads + memory growth to work (we check if the memory was grown on another thread
 // in each access), see #8365.
@@ -1334,6 +1445,295 @@ function safeHeap(ast) {
   });
 }
 
+// Name minification
+
+var RESERVED = new Set(['do', 'if', 'in', 'for', 'new', 'try', 'var', 'env', 'let', 'case', 'else', 'enum', 'void', 'this', 'void', 'with']);
+var VALID_MIN_INITS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$';
+var VALID_MIN_LATERS = VALID_MIN_INITS + '0123456789';
+
+var minifiedNames = [];
+var minifiedState = [0];
+
+// Make sure the nth index in minifiedNames exists. Done 100% deterministically.
+function ensureMinifiedNames(n) {
+  while (minifiedNames.length < n+1) {
+    // generate the current name
+    var name = VALID_MIN_INITS[minifiedState[0]];
+    for (var i = 1; i < minifiedState.length; i++) {
+      name += VALID_MIN_LATERS[minifiedState[i]];
+    }
+    if (!RESERVED.has(name)) minifiedNames.push(name);
+    // increment the state
+    var i = 0;
+    while (1) {
+      minifiedState[i]++;
+      if (minifiedState[i] < (i === 0 ? VALID_MIN_INITS : VALID_MIN_LATERS).length) break;
+      // overflow
+      minifiedState[i] = 0;
+      i++;
+      // will become 0 after increment in next loop head
+      if (i === minifiedState.length) minifiedState.push(-1);
+    }
+  }
+}
+
+function minifyLocals(ast) {
+  // We are given a mapping of global names to their minified forms.
+  assert(extraInfo && extraInfo.globals);
+
+  for (var fun of ast.body) {
+    if (!fun.type === 'FunctionDeclaration') {
+      continue;
+    }
+    // Find the list of local names, including params.
+    var localNames = new Set();
+    for (var param of fun.params) {
+      localNames.add(param.name);
+    }
+    simpleWalk(fun, {
+      VariableDeclaration(node, c) {
+        for (var dec of node.declarations) {
+          localNames.add(dec.id.name)
+        }
+      }
+    });
+
+    function isLocalName(name) {
+      return localNames.has(name);
+    }
+
+    // Names old to new names.
+    var newNames = new Map();
+
+    // The names in use, that must not be collided with.
+    var usedNames = new Set;
+
+    // Put the function name aside. We don't want to traverse it as it is not
+    // in the scope of itself.
+    var funId = fun.id;
+    fun.id = null;
+
+    // Find all the globals that we need to minify using pre-assigned names.
+    // Don't actually minify them yet as that might interfere with local
+    // variable names; just mark them as used, and what their new name will be.
+    simpleWalk(fun, {
+      Identifier(node, c) {
+        var name = node.name;
+        if (!isLocalName(name)) {
+          var minified = extraInfo.globals[name];
+          if (minified){
+            newNames.set(name, minified);
+            usedNames.add(minified);
+          }
+        }
+      },
+      CallExpression(node, c) {
+        // We should never call a local name, as in asm.js-style code our
+        // locals are just numbers, not functions; functions are all declared
+        // in the outer scope. If a local is called, that is a bug.
+        if (node.callee.type === 'Identifier') {
+          assert(!isLocalName(node.callee.name), 'cannot call a local');
+        }
+      }
+    });
+
+    // The first time we encounter a local name, we assign it a/ minified name
+    // that's not currently in use. Allocating on demand means they're processed
+    // in a predictable order, which is very handy for testing/debugging
+    // purposes.
+    var nextMinifiedName = 0;
+
+    function getNextMinifiedName() {
+      while (1) {
+        ensureMinifiedNames(nextMinifiedName);
+        var minified = minifiedNames[nextMinifiedName++];
+        // TODO: we can probably remove !isLocalName here
+        if (!usedNames.has(minified) && !isLocalName(minified)) {
+          return minified;
+        }
+      }
+    }
+
+    // Traverse and minify all names. First the function parameters.
+    for (var param of fun.params) {
+      var minified = getNextMinifiedName();
+      newNames.set(param.name, minified);
+      param.name = minified;
+    }
+
+    // Label minification is done in a separate namespace.
+    var labelNames = new Map();
+    var nextMinifiedLabel = 0;
+    function getNextMinifiedLabel() {
+      ensureMinifiedNames(nextMinifiedLabel);
+      return minifiedNames[nextMinifiedLabel++];
+    }
+
+    // Finally, the function body.
+    recursiveWalk(fun, {
+      Identifier(node) {
+        var name = node.name;
+        if (newNames.has(name)) {
+          node.name = newNames.get(name);
+        } else if (isLocalName(name)) {
+          minified = getNextMinifiedName();
+          newNames.set(name, minified);
+          node.name = minified;
+        }
+      },
+      LabeledStatement(node, c) {
+        if (!labelNames.has(node.label.name)) {
+          labelNames.set(node.label.name, getNextMinifiedLabel());
+        }
+        node.label.name = labelNames.get(node.label.name);
+        c(node.body);
+      },
+      BreakStatement(node, c) {
+        if (node.label) {
+          node.label.name = labelNames.get(node.label.name);
+        }
+      },
+      ContinueStatement(node, c) {
+        if (node.label) {
+          node.label.name = labelNames.get(node.label.name);
+        }
+      },
+    });
+
+    // Finally, the function name, after restoring it.
+    fun.id = funId;
+    assert(extraInfo.globals.hasOwnProperty(fun.id.name));
+    fun.id.name = extraInfo.globals[fun.id.name];
+  }
+}
+
+function minifyGlobals(ast) {
+  // The input is in form
+  //
+  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //      var helper..
+  //      function asmFunc(global, env, buffer) {
+  //        var memory = env.memory;
+  //        var HEAP8 = new global.Int8Array(buffer);
+  //
+  // We want to minify the interior of instantiate, basically everything but
+  // the name instantiate itself, which is used externally to call it.
+  //
+  // This is *not* a complete minification algorithm. It does not have a full
+  // understanding of nested scopes. Instead it assumes the code is fairly
+  // simple - as wasm2js output is - and looks at all the minifiable names as
+  // a whole. A possible bug here is something like
+  //
+  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //      var x = foo;
+  //      function asmFunc(global, env, buffer) {
+  //        var foo = 10;
+  //
+  // Here foo is declared in an inner scope, and the outer use of foo looks
+  // to the global scope. The analysis here only thinks something is from the
+  // global scope if it is not in any var or function declaration. In practice,
+  // the globals used from wasm2js output are things like Int8Array that we
+  // don't declare as locals, but we should probably have a fully scope-aware
+  // analysis here. FIXME
+
+  // We must run on a singleton instantiate() function as described above.
+  assert(ast.type === 'Program' && ast.body.length === 1 &&
+         ast.body[0].type === 'FunctionDeclaration' &&
+         ast.body[0].id.name === 'instantiate');
+  var fun = ast.body[0];
+
+  // Swap the function's name away so that we can then minify everything else.
+  var funId = fun.id;
+  fun.id = null;
+
+  // Find all the declarations.
+  var declared = new Set();
+
+  // Some identifiers must be left as they are and not minified.
+  var ignore = new Set();
+
+  simpleWalk(fun, {
+    FunctionDeclaration(node) {
+      if (node.id) {
+        declared.add(node.id.name);
+      }
+      for (var param of node.params) {
+        declared.add(param.name);
+      }
+    },
+    FunctionExpression(node) {
+      for (var param of node.params) {
+        declared.add(param.name);
+      }
+    },
+    VariableDeclaration(node) {
+      for (var decl of node.declarations) {
+        declared.add(decl.id.name);
+      }
+    },
+    MemberExpression(node) {
+      // In  x.a  we must not minify a. However, for  x[a]  we must.
+      if (!node.computed) {
+        ignore.add(node.property);
+      }
+    }
+  });
+
+  // TODO: find names to avoid, that are not declared (should not happen in
+  // wasm2js output)
+
+  // Minify the names.
+  var nextMinifiedName = 0;
+
+  function getNewMinifiedName() {
+    ensureMinifiedNames(nextMinifiedName);
+    return minifiedNames[nextMinifiedName++];
+  }
+
+  var minified = new Map();
+
+  function minify(name) {
+    if (!minified.has(name)) {
+      minified.set(name, getNewMinifiedName());
+    }
+    assert(minified.get(name));
+    return minified.get(name);
+  }
+
+  // Start with the declared things in the lowest indices. Things like HEAP8
+  // can have very high use counts.
+  for (var name of declared) {
+    minify(name);
+  }
+
+  // Minify all globals in function chunks, i.e. not seen here, but will be in
+  // the minifyLocals work on functions.
+  for (var name of extraInfo.globals) {
+    declared.add(name);
+    minify(name);
+  }
+
+  // Replace the names with their minified versions.
+  simpleWalk(fun, {
+    Identifier(node) {
+      if (declared.has(node.name) && !ignore.has(node)) {
+        node.name = minify(node.name);
+      }
+    }
+  });
+
+  // Restore the name
+  fun.id = funId;
+
+  // Emit the metadata
+  var json = {};
+  for (var x of minified.entries()) json[x[0]] = x[1];
+
+  suffix = '// EXTRA_INFO:' + JSON.stringify(json);
+}
+
+// Utilities
+
 function reattachComments(ast, comments) {
   var symbols = [];
 
@@ -1388,6 +1788,8 @@ function reattachComments(ast, comments) {
 }
 
 // Main
+
+var suffix = '';
 
 var arguments = process['argv'].slice(2);;
 // If enabled, output retains parentheses and comments so that the
@@ -1444,11 +1846,15 @@ var registry = {
   applyDCEGraphRemovals: applyDCEGraphRemovals,
   minifyWhitespace: function() { minifyWhitespace = true },
   noPrint: function() { noPrint = true },
+  last: function() {}, // TODO: remove 'last' in the python driver code
   dump: function() { dump(ast) },
+  littleEndianHeap: littleEndianHeap,
   growableHeap: growableHeap,
   unsignPointers: unsignPointers,
+  minifyLocals: minifyLocals,
   asanify: asanify,
   safeHeap: safeHeap,
+  minifyGlobals: minifyGlobals,
 };
 
 passes.forEach(function(pass) {
@@ -1469,4 +1875,5 @@ if (!noPrint) {
     comments: true // for closure as well
   });
   print(output);
+  if (suffix) print(suffix);
 }

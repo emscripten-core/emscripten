@@ -256,7 +256,7 @@ class sockets(BrowserCore):
       CompiledServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), [], 49181)
     ]:
       with harness:
-        self.btest_exit(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=%d' % harness.listen_port])
+        self.btest_exit(os.path.join('sockets', 'test_sockets_partial_client.c'), assert_returncode=165, args=['-DSOCKK=%d' % harness.listen_port])
 
   @no_windows('This test is Unix-specific.')
   def test_sockets_select_server_down(self):

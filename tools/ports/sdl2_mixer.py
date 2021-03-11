@@ -84,7 +84,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libSDL2_mixer.a')
+  shared.Cache.erase_lib('libSDL2_mixer.a')
 
 
 def process_dependencies(settings):

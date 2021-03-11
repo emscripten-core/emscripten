@@ -40,7 +40,7 @@ import emscripten
 from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, safe_copy
-from tools.shared import run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
+from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
 from tools.shared import do_replace
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
@@ -165,6 +165,8 @@ UBSAN_SANITIZERS = {
 
 
 VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
+SIMD_NEON_FLAGS = ['-mfpu=neon']
 
 
 # this function uses the global 'final' variable, which contains the current
@@ -656,10 +658,85 @@ def parse_s_args(args):
   return (settings_changes, newargs)
 
 
-def calc_cflags(options):
+def emsdk_ldflags(user_args):
+  if os.environ.get('EMMAKEN_NO_SDK'):
+    return []
+
+  library_paths = [
+     shared.Cache.get_lib_dir(absolute=True)
+  ]
+  ldflags = ['-L' + l for l in library_paths]
+
+  if '-nostdlib' in user_args:
+    return ldflags
+
+  # TODO(sbc): Add system libraries here rather than conditionally including
+  # them via .symbols files.
+  libraries = []
+  ldflags += ['-l' + l for l in libraries]
+
+  return ldflags
+
+
+def emsdk_cflags(user_args):
+  cflags = ['--sysroot=' + shared.Cache.get_sysroot_dir(absolute=True)]
+
+  def array_contains_any_of(hay, needles):
+    for n in needles:
+      if n in hay:
+        return True
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
+    if '-msimd128' not in user_args:
+      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128!')
+    cflags += ['-D__SSE__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
+    cflags += ['-D__SSE2__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
+    cflags += ['-D__SSE3__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
+    cflags += ['-D__SSSE3__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
+    cflags += ['-D__SSE4_1__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
+    cflags += ['-D__SSE4_2__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[6:]):
+    cflags += ['-D__AVX__=1']
+
+  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
+    cflags += ['-D__ARM_NEON__=1']
+
+  return cflags + ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
+
+
+def get_clang_flags():
+  return ['-target', get_llvm_target()]
+
+
+def get_llvm_target():
+  if shared.Settings.MEMORY64:
+    return 'wasm64-unknown-emscripten'
+  else:
+    return 'wasm32-unknown-emscripten'
+
+
+cflags = None
+
+
+def get_cflags(options, user_args):
+  global cflags
+  if cflags:
+    return cflags
+
   # Flags we pass to the compiler when building C/C++ code
   # We add these to the user's flags (newargs), but not when building .s or .S assembly files
-  cflags = []
+  cflags = get_clang_flags()
 
   if options.tracing:
     cflags.append('-D__EMSCRIPTEN_TRACING__=1')
@@ -692,6 +769,39 @@ def calc_cflags(options):
     for a in building.llvm_backend_args():
       cflags += ['-mllvm', a]
 
+  # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
+  # data and other nice fixes.
+  cflags += [# '-fno-threadsafe-statics', # disabled due to issue 1289
+             '-D__EMSCRIPTEN_major__=' + str(shared.EMSCRIPTEN_VERSION_MAJOR),
+             '-D__EMSCRIPTEN_minor__=' + str(shared.EMSCRIPTEN_VERSION_MINOR),
+             '-D__EMSCRIPTEN_tiny__=' + str(shared.EMSCRIPTEN_VERSION_TINY),
+             '-D_LIBCPP_ABI_VERSION=2']
+
+  # For compatability with the fastcomp compiler that defined these
+  cflags += ['-Dunix',
+             '-D__unix',
+             '-D__unix__']
+
+  # LLVM has turned on the new pass manager by default, but it causes some code
+  # size regressions. For now, use the legacy one.
+  # https://github.com/emscripten-core/emscripten/issues/13427
+  cflags += ['-flegacy-pass-manager']
+
+  # Changes to default clang behavior
+
+  # Implicit functions can cause horribly confusing function pointer type errors, see #2175
+  # If your codebase really needs them - very unrecommended! - you can disable the error with
+  #   -Wno-error=implicit-function-declaration
+  # or disable even a warning about it with
+  #   -Wno-implicit-function-declaration
+  cflags += ['-Werror=implicit-function-declaration']
+
+  system_libs.add_ports_cflags(cflags, shared.Settings)
+
+  if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
+    return cflags
+
+  cflags += emsdk_cflags(user_args)
   return cflags
 
 
@@ -788,10 +898,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if len(args) == 1 and args[0] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print(version_string(), file=sys.stderr)
-    return shared.check_call([clang, '-v'] + shared.get_clang_flags(), check=False).returncode
+    return shared.check_call([clang, '-v'] + get_clang_flags(), check=False).returncode
 
   if '-dumpmachine' in args:
-    print(shared.get_llvm_target())
+    print(get_llvm_target())
     return 0
 
   if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
@@ -1337,7 +1447,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
     # so it won't think about generating native x86 SSE code.
-    newargs = [x for x in newargs if x not in shared.SIMD_INTEL_FEATURE_TOWER and x not in shared.SIMD_NEON_FLAGS]
+    newargs = [x for x in newargs if x not in SIMD_INTEL_FEATURE_TOWER and x not in SIMD_NEON_FLAGS]
 
     link_to_object = False
     if options.shared or options.relocatable:
@@ -1351,6 +1461,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.shared:
           diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file.  This is a form of emulation to support existing build systems.  If you want to build a runtime shared library use the SIDE_MODULE setting.')
         link_to_object = True
+
+    if shared.Settings.SUPPORT_BIG_ENDIAN:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        '$LE_HEAP_STORE_U16',
+        '$LE_HEAP_STORE_I16',
+        '$LE_HEAP_STORE_U32',
+        '$LE_HEAP_STORE_I32',
+        '$LE_HEAP_STORE_F32',
+        '$LE_HEAP_STORE_F64',
+        '$LE_HEAP_LOAD_U16',
+        '$LE_HEAP_LOAD_I16',
+        '$LE_HEAP_LOAD_U32',
+        '$LE_HEAP_LOAD_I32',
+        '$LE_HEAP_LOAD_F32',
+        '$LE_HEAP_LOAD_F64'
+      ]
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_end', '_emscripten_stack_get_free']
@@ -1944,9 +2070,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
     compile_args = [a for a in newargs if a and not is_link_flag(a)]
-    cflags = calc_cflags(options)
     system_libs.ensure_sysroot()
-    system_libs.add_ports_cflags(cflags, shared.Settings)
 
     def use_cxx(src):
       if 'c++' in language_mode or run_via_emxx:
@@ -1972,12 +2096,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return CC
 
     def get_clang_command(src_file):
-      per_file_cflags = shared.get_cflags(args)
-      return get_compiler(use_cxx(src_file)) + cflags + per_file_cflags + compile_args + [src_file]
+      return get_compiler(use_cxx(src_file)) + get_cflags(options, args) + compile_args + [src_file]
 
     def get_clang_command_asm(src_file):
-      asflags = shared.get_clang_flags()
-      return get_compiler(use_cxx(src_file)) + asflags + compile_args + [src_file]
+      return get_compiler(use_cxx(src_file)) + get_clang_flags() + compile_args + [src_file]
 
     # preprocessor-only (-E) support
     if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
@@ -2065,7 +2187,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if specified_target and specified_target.startswith('-'):
     exit_with_error('invalid output filename: `%s`' % specified_target)
 
-  ldflags = shared.emsdk_ldflags(newargs)
+  ldflags = emsdk_ldflags(newargs)
   for f in ldflags:
     add_link_flag(sys.maxsize, f)
 
@@ -2715,6 +2837,9 @@ def do_binaryen(target, options, wasm_target):
     webassembly.add_emscripten_metadata(wasm_target)
 
   if final_js:
+    if shared.Settings.SUPPORT_BIG_ENDIAN:
+      final_js = building.little_endian_heap(final_js)
+
     # >=2GB heap support requires pointers in JS to be unsigned. rather than
     # require all pointers to be unsigned by default, which increases code size
     # a little, keep them signed, and just unsign them here if we need that.
@@ -3018,8 +3143,9 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 
   html_contents = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
+  # Force UTF-8 output for consistency across platforms and with the web.
   with open(target, 'wb') as f:
-    f.write(asbytes(html_contents))
+    f.write(html_contents.encode('utf-8'))
 
 
 def minify_html(filename):

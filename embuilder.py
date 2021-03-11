@@ -102,9 +102,9 @@ Issuing 'embuilder.py build ALL' causes each task to be built.
 ''' % '\n        '.join(all_tasks)
 
 
-def build_port(port_name, lib_name):
+def build_port(port_name):
   if force:
-    shared.Cache.erase_file(shared.Cache.get_lib_name(lib_name))
+    system_libs.clear_port(port_name, shared.Settings)
 
   system_libs.build_port(port_name, shared.Settings)
 
@@ -179,82 +179,82 @@ def main():
         shared.Cache.erase_file('generated_struct_info.json')
       emscripten.generate_struct_info()
     elif what == 'icu':
-      build_port('icu', 'libicuuc.a')
+      build_port('icu')
     elif what == 'zlib':
       shared.Settings.USE_ZLIB = 1
-      build_port('zlib', 'libz.a')
+      build_port('zlib')
       shared.Settings.USE_ZLIB = 0
     elif what == 'bzip2':
-      build_port('bzip2', 'libbz2.a')
+      build_port('bzip2')
     elif what == 'bullet':
-      build_port('bullet', 'libbullet.a')
+      build_port('bullet')
     elif what == 'vorbis':
-      build_port('vorbis', 'libvorbis.a')
+      build_port('vorbis')
     elif what == 'ogg':
-      build_port('ogg', 'libogg.a')
+      build_port('ogg')
     elif what == 'giflib':
-      build_port('giflib', 'libgif.a')
+      build_port('giflib')
     elif what == 'libjpeg':
-      build_port('libjpeg', 'libjpeg.a')
+      build_port('libjpeg')
     elif what == 'libpng':
-      build_port('libpng', 'libpng.a')
+      build_port('libpng')
     elif what == 'sdl2':
-      build_port('sdl2', 'libSDL2.a')
+      build_port('sdl2')
     elif what == 'sdl2-mt':
       shared.Settings.USE_PTHREADS = 1
-      build_port('sdl2', 'libSDL2-mt.a')
+      build_port('sdl2')
       shared.Settings.USE_PTHREADS = 0
     elif what == 'sdl2-gfx':
-      build_port('sdl2_gfx', 'libSDL2_gfx.a')
+      build_port('sdl2_gfx')
     elif what == 'sdl2-image':
-      build_port('sdl2_image', 'libSDL2_image.a')
+      build_port('sdl2_image')
     elif what == 'sdl2-image-png':
       shared.Settings.SDL2_IMAGE_FORMATS = ["png"]
-      build_port('sdl2_image', 'libSDL2_image_png.a')
+      build_port('sdl2_image')
       shared.Settings.SDL2_IMAGE_FORMATS = []
     elif what == 'sdl2-image-jpg':
       shared.Settings.SDL2_IMAGE_FORMATS = ["jpg"]
-      build_port('sdl2_image', 'libSDL2_image_jpg.a')
+      build_port('sdl2_image')
       shared.Settings.SDL2_IMAGE_FORMATS = []
     elif what == 'sdl2-net':
-      build_port('sdl2_net', 'libSDL2_net.a')
+      build_port('sdl2_net')
     elif what == 'sdl2-mixer':
       old_formats = shared.Settings.SDL2_MIXER_FORMATS
       shared.Settings.SDL2_MIXER_FORMATS = []
-      build_port('sdl2_mixer', 'libSDL2_mixer.a')
+      build_port('sdl2_mixer')
       shared.Settings.SDL2_MIXER_FORMATS = old_formats
     elif what == 'sdl2-mixer-ogg':
       old_formats = shared.Settings.SDL2_MIXER_FORMATS
       shared.Settings.SDL2_MIXER_FORMATS = ["ogg"]
-      build_port('sdl2_mixer', 'libSDL2_mixer_ogg.a')
+      build_port('sdl2_mixer')
       shared.Settings.SDL2_MIXER_FORMATS = old_formats
     elif what == 'sdl2-mixer-mp3':
       old_formats = shared.Settings.SDL2_MIXER_FORMATS
       shared.Settings.SDL2_MIXER_FORMATS = ["mp3"]
-      build_port('sdl2_mixer', 'libSDL2_mixer_mp3.a')
+      build_port('sdl2_mixer')
       shared.Settings.SDL2_MIXER_FORMATS = old_formats
     elif what == 'freetype':
-      build_port('freetype', 'libfreetype.a')
+      build_port('freetype')
     elif what == 'harfbuzz':
-      build_port('harfbuzz', 'libharfbuzz.a')
+      build_port('harfbuzz')
     elif what == 'harfbuzz-mt':
       shared.Settings.USE_PTHREADS = 1
-      build_port('harfbuzz', 'libharfbuzz-mt.a')
+      build_port('harfbuzz')
       shared.Settings.USE_PTHREADS = 0
     elif what == 'sdl2-ttf':
-      build_port('sdl2_ttf', 'libSDL2_ttf.a')
+      build_port('sdl2_ttf')
     elif what == 'cocos2d':
-      build_port('cocos2d', 'libcocos2d.a')
+      build_port('cocos2d')
     elif what == 'regal':
-      build_port('regal', 'libregal.a')
+      build_port('regal')
     elif what == 'regal-mt':
       shared.Settings.USE_PTHREADS = 1
-      build_port('regal', 'libregal-mt.a')
+      build_port('regal')
       shared.Settings.USE_PTHREADS = 0
     elif what == 'boost_headers':
-      build_port('boost_headers', 'libboost_headers.a')
+      build_port('boost_headers')
     elif what == 'mpg123':
-      build_port('mpg123', 'libmpg123.a')
+      build_port('mpg123')
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

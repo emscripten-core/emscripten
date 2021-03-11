@@ -226,9 +226,9 @@ def inspect_headers(headers, cflags):
   code.append('}')
 
   # Write the source code to a temporary file.
-  src_file = tempfile.mkstemp('.c')
+  src_file = tempfile.mkstemp('.c', text=True)
   show('Generating C code... ' + src_file[1])
-  os.write(src_file[0], shared.asbytes('\n'.join(code)))
+  os.write(src_file[0], '\n'.join(code).encode())
 
   js_file = tempfile.mkstemp('.js')
 
