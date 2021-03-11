@@ -1527,11 +1527,13 @@ int f() {
     test([self.in_dir('libdir', 'libfile.so.3.1.4.1.5.9')], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
 
   def test_dynamic_link_pthread_static_data(self):
-    # Test that a side module uses the same static data regionfor global objects across all threads
+    # Test that a side module uses the same static data region for global objects across all threads
 
     # A side module with a global object with a constructor.
-    # The global object must have a constructor to make sure
-    # we construct it only once (and not once per thread).
+    # * The global object must have a non-zero initial value to make sure that
+    #   the memory is zero-initialized only once (and not once per thread).
+    # * The global object must have a constructor to make sure that it is
+    #   constructed only once (and not once per thread).
     create_test_file('side.cpp', r'''
       struct Data {
           Data() : value(42) {}
