@@ -1524,19 +1524,19 @@ int f() {
     test(['-lfile'], '') # -l, auto detection from library path
     test([self.in_dir('libdir', 'libfile.so.3.1.4.1.5.9')], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
 
-  def test_dynamic_link_module_heap_in_pthread(self):
-    # Test that a side module uses the same heap for global objects across all threads
+  def test_dynamic_link_pthread_static_data(self):
+    # Test that a side module uses the same static data regionfor global objects across all threads
 
     # A side module with a global object with a constructor.
     # The global object must have a constructor to make sure
-    # verify we construct it only once.
+    # we construct it only once (and not once per thread).
     create_test_file('side.cpp', r'''
       struct Data {
           Data() : value(42) {}
           int value;
       } data;
-      int & get_value() {
-          return data.value;
+      int * get_address() {
+          return &data.value;
       }
       ''')
     self.run_process([
@@ -1549,11 +1549,11 @@ int f() {
     create_test_file('main.cpp', r'''
       #include <stdio.h>
       #include <thread>
-      int & get_value();
+      int * get_address();
       int main(void) {
-          get_value() = 123;
+          *get_address() = 123;
           std::thread([]{
-            printf("%d\n", get_value());
+            printf("%d\n", *get_address());
           }).join();
           return 0;
       }
