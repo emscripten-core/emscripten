@@ -465,11 +465,23 @@ var LibraryPThread = {
 
     getNewWorker: function() {
       if (PThread.unusedWorkers.length == 0) {
+#if !PROXY_TO_PTHREAD
+#if PTHREAD_POOL_SIZE_STRICT == 1
+        err('Tried to spawn a new thread, but the thread pool is exhausted.\n' +
+        'This might result in a deadlock unless some threads eventually exit or the code explicitly breaks out to the event loop.\n' +
+        'If you want to increase the pool size, use setting `-s PTHREAD_POOL_SIZE=...`.'
+        + '\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-s PTHREAD_POOL_SIZE_STRICT=2`.'
+        );
+#endif
+#if PTHREAD_POOL_SIZE_STRICT == 2
+        err('No available workers in the PThread pool');
+        return;
+#endif
+#endif
         PThread.allocateUnusedWorker();
         PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
       }
-      if (PThread.unusedWorkers.length > 0) return PThread.unusedWorkers.pop();
-      else return null;
+      return PThread.unusedWorkers.pop();
     },
 
     busySpinWait: function(msecs) {
@@ -530,6 +542,10 @@ var LibraryPThread = {
 
     var worker = PThread.getNewWorker();
 
+    if (!worker) {
+      // No available workers in the PThread pool.
+      return {{{ cDefine('EAGAIN') }}};
+    }
     if (worker.pthread !== undefined) throw 'Internal error!';
     if (!threadParams.pthread_ptr) throw 'Internal error, no pthread ptr!';
     PThread.runningWorkers.push(worker);
@@ -595,6 +611,7 @@ var LibraryPThread = {
       worker.runPthread();
       delete worker.runPthread;
     }
+    return 0;
   },
 
   emscripten_has_threading_support: function() {
@@ -814,13 +831,14 @@ var LibraryPThread = {
       // new thread, the thread creation must be deferred to the main JS thread.
       threadParams.cmd = 'spawnThread';
       postMessage(threadParams, transferList);
-    } else {
-      // We are the main thread, so we have the pthread warmup pool in this
-      // thread and can fire off JS thread creation directly ourselves.
-      spawnThread(threadParams);
+      // When we defer thread creation this way, we have no way to detect thread
+      // creation synchronously today, so we have to assume success and return 0.
+      return 0;
     }
 
-    return 0;
+    // We are the main thread, so we have the pthread warmup pool in this
+    // thread and can fire off JS thread creation directly ourselves.
+    return spawnThread(threadParams);
   },
 
   // TODO HACK! Remove this function, it is a JS side copy of the function

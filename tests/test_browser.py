@@ -3629,6 +3629,24 @@ window.close = function() {
                expected='0',
                args=['-g4', '-std=gnu11', '-xc', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_MEMORY=64mb'])
 
+  @requires_threads
+  def test_pthread_pool_size_strict(self):
+    # Check that it doesn't fail with sufficient number of threads in the pool.
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_c11_threads.c'),
+               expected='0',
+               args=['-g2', '-xc', '-std=gnu11', '-pthread', '-s', 'PTHREAD_POOL_SIZE=4', '-s', 'PTHREAD_POOL_SIZE_STRICT=2', '-s', 'TOTAL_MEMORY=64mb'])
+    # Check that it fails instead of deadlocking on insufficient number of threads in the pool.
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_c11_threads.c'),
+               expected='abort:Assertion failed: thrd_create(&t4, thread_main, NULL) == thrd_success',
+               args=['-g2', '-xc', '-std=gnu11', '-pthread', '-s', 'PTHREAD_POOL_SIZE=3', '-s', 'PTHREAD_POOL_SIZE_STRICT=2', '-s', 'TOTAL_MEMORY=64mb'])
+
+  @requires_threads
+  def test_pthread_in_pthread_pool_size_strict(self):
+    # Check that it fails when there's a pthread creating another pthread.
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-g2', '-pthread', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'PTHREAD_POOL_SIZE_STRICT=2'])
+    # Check that it fails when there's a pthread creating another pthread.
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='-200', args=['-g2', '-pthread', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'PTHREAD_POOL_SIZE_STRICT=2'])
+
   # Test that the emscripten_ atomics api functions work.
   @parameterized({
     'normal': ([],),
