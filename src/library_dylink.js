@@ -239,7 +239,7 @@ var LibraryDylink = {
   // because the main program needs those linked in before it runs (so we can't
   // use normally malloc from the main program to do these allocations).
 
-  // Allocate memory no even if malloc isn't ready yet.
+  // Allocate memory even if malloc isn't ready yet.
   $getMemory__deps: ['$GOT'],
   $getMemory: function(size) {
     // After the runtime is initialized, we must only use sbrk() normally.
@@ -402,9 +402,16 @@ var LibraryDylink = {
       // dlopen'ing the SIDE_MODULE.  Since we don't know the size of the explicitly initialized data
       // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
       // from uninitialized memory.
-      for (var i = memoryBase; i < memoryBase + memorySize; i++) {
-        HEAP8[i] = 0;
+#if USE_PTHREADS
+      // in a pthread the module heap was already allocated and initialized in the main thread.
+      if (!ENVIRONMENT_IS_PTHREAD) {
+#endif
+        for (var i = memoryBase; i < memoryBase + memorySize; i++) {
+          HEAP8[i] = 0;
+        }
+#if USE_PTHREADS
       }
+#endif
       for (var i = tableBase; i < tableBase + tableSize; i++) {
         table.set(i, null);
       }
@@ -499,16 +506,23 @@ var LibraryDylink = {
 #if STACK_OVERFLOW_CHECK >= 2
         moduleExports['__set_stack_limits']({{{ STACK_BASE }}} , {{{ STACK_MAX }}});
 #endif
-        // initialize the module
-        var init = moduleExports['__post_instantiate'];
-        if (init) {
-          if (runtimeInitialized) {
-            init();
-          } else {
-            // we aren't ready to run compiled code yet
-            __ATINIT__.push(init);
+#if USE_PTHREADS
+        // in a pthread the module heap was initialized in the main thread
+        if (!ENVIRONMENT_IS_PTHREAD) {
+#endif
+          // initialize the module
+          var init = moduleExports['__post_instantiate'];
+          if (init) {
+            if (runtimeInitialized) {
+              init();
+            } else {
+              // we aren't ready to run compiled code yet
+              __ATINIT__.push(init);
+            }
           }
+#if USE_PTHREADS
         }
+#endif
         return moduleExports;
       }
 
