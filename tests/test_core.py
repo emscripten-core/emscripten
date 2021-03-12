@@ -5798,7 +5798,6 @@ return malloc(size);
     # Improves test readability
     self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-format']
     self.do_runf(path_from_root('tests', 'test_wasm_builtin_simd.cpp'), 'Success!')
-    self.emcc_args.append('-munimplemented-simd128')
     self.build(path_from_root('tests', 'test_wasm_builtin_simd.cpp'))
 
   @wasm_simd
@@ -5812,7 +5811,6 @@ return malloc(size);
     run()
     self.emcc_args.append('-funsigned-char')
     run()
-    self.emcc_args.extend(['-munimplemented-simd128', '-xc', '-std=c99'])
     self.build(path_from_root('tests', 'test_wasm_intrinsics_simd.c'))
 
   # Tests invoking the NEON SIMD API via arm_neon.h header

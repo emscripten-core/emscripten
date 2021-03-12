@@ -459,14 +459,6 @@ f32x4 TESTFN f32x4_neg(f32x4 vec) {
 f32x4 TESTFN f32x4_sqrt(f32x4 vec) {
   return __builtin_wasm_sqrt_f32x4(vec);
 }
-#ifdef __wasm_unimplemented_simd128__
-f32x4 TESTFN f32x4_qfma(f32x4 a, f32x4 b, f32x4 c) {
-  return __builtin_wasm_qfma_f32x4(a, b, c);
-}
-f32x4 TESTFN f32x4_qfms(f32x4 a, f32x4 b, f32x4 c) {
-  return __builtin_wasm_qfms_f32x4(a, b, c);
-}
-#endif // __wasm_unimplemented_simd128__
 f32x4 TESTFN f32x4_add(f32x4 x, f32x4 y) {
   return x + y;
 }
@@ -494,14 +486,6 @@ f64x2 TESTFN f64x2_neg(f64x2 vec) {
 f64x2 TESTFN f64x2_sqrt(f64x2 vec) {
   return __builtin_wasm_sqrt_f64x2(vec);
 }
-#ifdef __wasm_unimplemented_simd128__
-f64x2 TESTFN f64x2_qfma(f64x2 a, f64x2 b, f64x2 c) {
-  return __builtin_wasm_qfma_f64x2(a, b, c);
-}
-f64x2 TESTFN f64x2_qfms(f64x2 a, f64x2 b, f64x2 c) {
-  return __builtin_wasm_qfms_f64x2(a, b, c);
-}
-#endif // __wasm_unimplemented_simd128__
 f64x2 TESTFN f64x2_add(f64x2 x, f64x2 y) {
   return x + y;
 }
@@ -1244,7 +1228,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   expect_vec(f32x4_abs((f32x4){-0., NAN, -INFINITY, 5}), ((f32x4){0, NAN, INFINITY, 5}));
   expect_vec(f32x4_neg((f32x4){-0., NAN, -INFINITY, 5}), ((f32x4){0, -NAN, INFINITY, -5}));
   expect_vec(f32x4_sqrt((f32x4){-0., NAN, INFINITY, 4}), ((f32x4){-0., NAN, INFINITY, 2}));
-  // TODO: Test QFMA/QFMS
   expect_vec(f32x4_add((f32x4){NAN, -NAN, INFINITY, 42}, (f32x4){42, INFINITY, INFINITY, 1}), ((f32x4){NAN, -NAN, INFINITY, 43}));
   expect_vec(f32x4_sub((f32x4){NAN, -NAN, INFINITY, 42}, (f32x4){42, INFINITY, -INFINITY, 1}), ((f32x4){NAN, -NAN, INFINITY, 41}));
   expect_vec(f32x4_mul((f32x4){NAN, -NAN, INFINITY, 42}, (f32x4){42, INFINITY, INFINITY, 2}), ((f32x4){NAN, -NAN, INFINITY, 84}));
@@ -1257,10 +1240,6 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   expect_vec(f64x2_abs((f64x2){-INFINITY, 5}), ((f64x2){INFINITY, 5}));
   expect_vec(f64x2_neg((f64x2){-0., NAN}), ((f64x2){0, -NAN}));
   expect_vec(f64x2_neg((f64x2){-INFINITY, 5}), ((f64x2){INFINITY, -5}));
-  // https://bugs.chromium.org/p/v8/issues/detail?id=10170
-  // expect_vec(f64x2_sqrt((f64x2){-0., NAN}), ((f64x2){-0., NAN}));
-  // expect_vec(f64x2_sqrt((f64x2){INFINITY, 4}), ((f64x2){INFINITY, 2}));
-  // TODO: Test QFMA/QFMS
   expect_vec(f64x2_add((f64x2){NAN, -NAN}, (f64x2){42, INFINITY}), ((f64x2){NAN, -NAN}));
   expect_vec(f64x2_add((f64x2){INFINITY, 42}, (f64x2){INFINITY, 1}), ((f64x2){INFINITY, 43}));
   expect_vec(f64x2_sub((f64x2){NAN, -NAN}, (f64x2){42, INFINITY}), ((f64x2){NAN, -NAN}));
