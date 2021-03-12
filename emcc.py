@@ -253,7 +253,6 @@ class EmccOptions(object):
     self.memory_init_file = None
     self.use_preload_cache = False
     self.use_preload_plugins = False
-    self.proxy_to_worker = False
     self.default_object_extension = '.o'
     self.valid_abspaths = []
     self.cfi = False
@@ -1488,7 +1487,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base']
 
     if shared.Settings.MODULARIZE:
-      assert not options.proxy_to_worker, '-s MODULARIZE=1 is not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
+      if shared.Settings.PROXY_TO_WORKER:
+        exit_with_error('-s MODULARIZE=1 is not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)')
       # in MINIMAL_RUNTIME we may not need to emit the Promise code, as the
       # HTML output creates a singleton instance, and it does so without the
       # Promise. However, in Pthreads mode the Promise is used for worker
@@ -1584,16 +1584,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
-    if options.proxy_to_worker:
-      shared.Settings.PROXY_TO_WORKER = 1
-
     if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
       if shared.Settings.NODERAWFS:
         exit_with_error('--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem')
       # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
       shared.Settings.FORCE_FILESYSTEM = 1
 
-    if options.proxy_to_worker or options.use_preload_plugins:
+    if shared.Settings.PROXY_TO_WORKER or options.use_preload_plugins:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
     if not shared.Settings.MINIMAL_RUNTIME:
@@ -2441,7 +2438,7 @@ def post_link(options, in_wasm, wasm_target, target):
     if options.oformat == OFormat.HTML:
       generate_html(target, options, js_target, target_basename,
                     wasm_target, memfile)
-    elif options.proxy_to_worker:
+    elif shared.Settings.PROXY_TO_WORKER:
       generate_worker_js(target, js_target, target_basename)
 
     if embed_memfile() and memfile:
@@ -2681,7 +2678,7 @@ def parse_args(newargs):
     elif check_arg('--memory-init-file'):
       options.memory_init_file = int(consume_arg())
     elif check_flag('--proxy-to-worker'):
-      options.proxy_to_worker = True
+      settings_changes.append('PROXY_TO_WORKER=1')
     elif check_arg('--valid-abspath'):
       options.valid_abspaths.append(consume_arg())
     elif check_flag('--separate-asm'):
@@ -3050,7 +3047,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
   base_js_target = os.path.basename(js_target)
 
-  if options.proxy_to_worker:
+  if shared.Settings.PROXY_TO_WORKER:
     proxy_worker_filename = (shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename) + '.js'
     worker_js = worker_js_script(proxy_worker_filename)
     script.inline = ('''
