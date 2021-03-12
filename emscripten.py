@@ -284,6 +284,10 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   update_settings_glue(metadata, DEBUG)
 
   if shared.Settings.SIDE_MODULE:
+    if metadata['asmConsts']:
+      exit_with_error('EM_ASM is not supported in side modules')
+    if metadata['emJsFuncs']:
+      exit_with_error('EM_JS is not supported in side modules')
     logger.debug('emscript: skipping remaining js glue generation')
     return
 
