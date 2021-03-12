@@ -2228,7 +2228,7 @@ void *getBindBuffer() {
         return suppInt;
       }
     ''')
-    self.compile_btest(['supp.cpp', '-o', 'supp.wasm', '-s', 'SIDE_MODULE', '-O2', '-s', 'EXPORT_ALL'])
+    self.run_process([EMCC, 'supp.cpp', '-o', 'supp.wasm', '-s', 'SIDE_MODULE', '-O2', '-s', 'EXPORT_ALL'])
     self.btest_exit('main.cpp', args=['-DBROWSER=1', '-s', 'MAIN_MODULE', '-O2', '-s', 'RUNTIME_LINKED_LIBS=[supp.wasm]', '-s', 'EXPORT_ALL'], assert_returncode=76)
 
   def test_pre_run_deps(self):
@@ -2418,7 +2418,7 @@ void *getBindBuffer() {
     self.btest('test_emscripten_async_wget2.cpp', expected='0')
 
   def test_module(self):
-    self.compile_btest([path_from_root('tests', 'browser_module.cpp'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE', '-s', 'EXPORTED_FUNCTIONS=[_one,_two]'])
+    self.run_process([EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE', '-s', 'EXPORTED_FUNCTIONS=[_one,_two]'])
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE'], expected='8')
 
   @parameterized({
@@ -2432,7 +2432,7 @@ void *getBindBuffer() {
         return 42;
       }
     ''')
-    self.compile_btest(['library.c', '-s', 'SIDE_MODULE', '-O2', '-o', 'library.wasm', '-s', 'EXPORT_ALL'])
+    self.run_process([EMCC, 'library.c', '-s', 'SIDE_MODULE', '-O2', '-o', 'library.wasm', '-s', 'EXPORT_ALL'])
     os.rename('library.wasm', 'library.so')
     create_test_file('main.c', r'''
       #include <dlfcn.h>

@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Using EM_ASM and EM_JS in a side module will now result in an error (since
+  this is not implemented yet).  This could effect users were previously
+  inadvertently including (but not actually using) EM_ASM or EM_JS functions in
+  side modules. (#13649)
 - Remove dependency on Uglify by finishing the rewrite of passes to acorn
  (#13636, #13621).
 - Primary development branch switched from `master` to `main`.

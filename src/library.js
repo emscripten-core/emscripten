@@ -3496,6 +3496,9 @@ LibraryManager.library = {
     code -= {{{ GLOBAL_BASE }}};
 #endif
     var args = readAsmConstArgs(sigPtr, argbuf);
+#if ASSERTIONS
+    if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
+#endif
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
@@ -3519,6 +3522,9 @@ LibraryManager.library = {
       // (positive numbers are non-EM_ASM calls).
       return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, sync].concat(args));
     }
+#endif
+#if ASSERTIONS
+    if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
 #endif
     return ASM_CONSTS[code].apply(null, args);
   },
