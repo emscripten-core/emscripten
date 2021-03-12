@@ -10104,3 +10104,9 @@ exec "$@"
       return self.skipTest('no shell to test')
     self.run_process([EMCC, path_from_root('tests', 'hello_world.c'), '-Oz'])
     self.assertContained('hello, world!', self.run_js('a.out.js', engine=config.V8_ENGINE))
+
+  def test_runtime_keepalive(self):
+    self.uses_es6 = True
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$runtimeKeepalivePush', '$runtimeKeepalivePop', '$callUserCallback'])
+    self.set_setting('EXIT_RUNTIME')
+    self.do_other_test('test_runtime_keepalive.cpp')

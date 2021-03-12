@@ -1823,6 +1823,12 @@ keydown(100);keyup(100); // trigger the end
       self.btest('emscripten_main_loop_and_blocker.cpp', '0', args=args)
 
   @requires_threads
+  def test_emscripten_main_loop_and_blocker_exit(self):
+    # Same as above but tests that EXIT_RUNTIME works with emscripten_main_loop.  The
+    # app should still stay alive until the loop ends
+    self.btest_exit('emscripten_main_loop_and_blocker.cpp', 0)
+
+  @requires_threads
   def test_emscripten_main_loop_setimmediate(self):
     for args in [[], ['--proxy-to-worker'], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
       self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=args)
@@ -4386,6 +4392,18 @@ window.close = function() {
                  expected='1',
                  args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'] + arg,
                  also_asmjs=True)
+
+  @parameterized({
+    '': ([],),
+    'pthread_exit': (['-DDO_PTHREAD_EXIT'],),
+  })
+  @requires_threads
+  def test_fetch_from_thread(self, args):
+    shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
+    self.btest('fetch/from_thread.cpp',
+               expected='42',
+               args=args + ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'FETCH_DEBUG', '-s', 'FETCH', '-DFILE_DOES_NOT_EXIST'],
+               also_asmjs=True)
 
   def test_fetch_to_indexdb(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')

@@ -25,11 +25,21 @@ var LibraryFetch = {
   $fetchXHR: fetchXHR,
 
   emscripten_start_fetch: startFetch,
-  emscripten_start_fetch__deps: ['$Fetch', '$fetchXHR',
-#if FETCH_SUPPORT_INDEXEDDB
-  '$fetchCacheData', '$fetchLoadCachedData', '$fetchDeleteCachedData',
+  emscripten_start_fetch__deps: [
+    '$Fetch',
+    '$fetchXHR',
+    '$callUserCallback',
+    'emscripten_is_main_browser_thread',
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepalivePush',
+    '$runtimeKeepalivePop',
 #endif
-  'emscripten_is_main_browser_thread']
+#if FETCH_SUPPORT_INDEXEDDB
+    '$fetchCacheData',
+    '$fetchLoadCachedData',
+    '$fetchDeleteCachedData',
+#endif
+  ]
 };
 
 mergeInto(LibraryManager.library, LibraryFetch);

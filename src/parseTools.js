@@ -1291,3 +1291,21 @@ function makeMalloc(source, param) {
   }
   return `abort('malloc was not included, but is needed in ${source}. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.');`;
 }
+
+// Adds a call to runtimeKeepalivePush, if needed by the current build
+// configuration.
+// We skip this completely in MINIMAL_RUNTIME and also in builds that
+// don't ever need to exit the runtime.
+function runtimeKeepalivePush() {
+  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && USE_PTHREADS == 0)) return '';
+  return 'runtimeKeepalivePush();';
+}
+
+// Adds a call to runtimeKeepalivePush, if needed by the current build
+// configuration.
+// We skip this completely in MINIMAL_RUNTIME and also in builds that
+// don't ever need to exit the runtime.
+function runtimeKeepalivePop() {
+  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && USE_PTHREADS == 0)) return '';
+  return 'runtimeKeepalivePop();';
+}
