@@ -3014,7 +3014,7 @@ var %(EXPORT_NAME)s = (function() {
 if (typeof exports === 'object' && typeof module === 'object')
   module.exports = %(EXPORT_NAME)s;
 else if (typeof define === 'function' && define['amd'])
-  define([], function() { return %(EXPORT_NAME)s; });
+  define('%(EXPORT_NAME)s', [], function() { return %(EXPORT_NAME)s; });
 else if (typeof exports === 'object')
   exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {'EXPORT_NAME': shared.Settings.EXPORT_NAME})
