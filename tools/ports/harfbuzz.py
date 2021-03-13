@@ -31,7 +31,7 @@ def get(ports, settings, shared):
     ports.clear_project_build('harfbuzz')
 
     source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + TAG)
-    dest_path = os.path.join(ports.get_build_dir(), 'harfbuzz')
+    build_path = os.path.join(ports.get_build_dir(), 'harfbuzz')
 
     freetype_lib = shared.Cache.get_path(shared.Cache.get_lib_name('libfreetype.a'))
     freetype_include = os.path.join(ports.get_include_dir(), 'freetype2', 'freetype')
@@ -39,11 +39,10 @@ def get(ports, settings, shared):
 
     configure_args = [
       'cmake',
-      '-G', 'Unix Makefiles',
-      '-B' + dest_path,
+      '-B' + build_path,
       '-H' + source_path,
       '-DCMAKE_BUILD_TYPE=Release',
-      '-DCMAKE_INSTALL_PREFIX=' + dest_path,
+      '-DCMAKE_INSTALL_PREFIX=' + build_path,
       '-DFREETYPE_INCLUDE_DIRS=' + freetype_include_dirs,
       '-DFREETYPE_LIBRARY=' + freetype_lib,
       '-DHB_HAVE_FREETYPE=ON'
@@ -62,11 +61,11 @@ def get(ports, settings, shared):
       configure_args += ['-DCMAKE_C_FLAGS="{}"'.format(' '.join(extra_cflags))]
 
     building.configure(configure_args)
-    building.make(['make', '-j%d' % building.get_num_cores(), '-C' + dest_path, 'install'])
+    shared.run_process(['cmake', '--build', build_path, '--target', 'install'])
 
-    ports.install_header_dir(os.path.join(dest_path, 'include', 'harfbuzz'))
+    ports.install_header_dir(os.path.join(build_path, 'include', 'harfbuzz'))
 
-    shutil.copyfile(os.path.join(dest_path, 'libharfbuzz.a'), final)
+    shutil.copyfile(os.path.join(build_path, 'libharfbuzz.a'), final)
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 
