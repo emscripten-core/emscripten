@@ -12,8 +12,8 @@ import tempfile
 import zipfile
 from subprocess import PIPE, STDOUT
 
-from runner import RunnerCore, path_from_root, env_modify
-from runner import create_test_file, ensure_dir, make_executable
+from runner import RunnerCore, path_from_root, env_modify, test_file
+from runner import create_file, ensure_dir, make_executable
 from tools.config import config_file, EM_CONFIG
 from tools.shared import EMCC
 from tools.shared import CANONICAL_TEMP_DIR
@@ -100,7 +100,7 @@ EMBUILDER = path_from_root('embuilder.py')
 #  FILESYSTEM=0 avoids bringing libc for that)
 # (ERROR_ON_UNDEFINED_SYMBOLS=0 is needed because __errno_location is
 #  not included on the native side but needed by a lot of JS libraries.)
-MINIMAL_HELLO_WORLD = [path_from_root('tests', 'hello_world_em_asm.c'), '-O1', '-s', 'FILESYSTEM=0', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0']
+MINIMAL_HELLO_WORLD = [test_file('hello_world_em_asm.c'), '-O1', '-s', 'FILESYSTEM=0', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0']
 
 
 class sanity(RunnerCore):
@@ -216,7 +216,7 @@ class sanity(RunnerCore):
       # The guessed config should be ok
       # XXX This depends on your local system! it is possible `which` guesses wrong
       # try_delete('a.out.js')
-      # output = self.run_process([EMCC, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).output
+      # output = self.run_process([EMCC, test_file('hello_world.c')], stdout=PIPE, stderr=PIPE).output
       # self.assertContained('hello, world!', self.run_js('a.out.js'), output)
 
       # Second run, with bad EM_CONFIG
@@ -375,7 +375,7 @@ fi
   def test_em_config_env_var(self):
     # emcc should be configurable directly from EM_CONFIG without any config file
     restore_and_set_up()
-    create_test_file('main.cpp', '''
+    create_file('main.cpp', '''
       #include <stdio.h>
       int main() {
         printf("hello from emcc with no config file\\n");
@@ -399,7 +399,7 @@ fi
       self.assertIn(os.listdir(Cache.dirname), ([], ['cache.lock']))
 
   def ensure_cache(self):
-    self.do([EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
+    self.do([EMCC, '-O2', test_file('hello_world.c')])
 
   def test_emcc_caching(self):
     BUILDING_MESSAGE = 'generating system library: %s'
@@ -413,7 +413,7 @@ fi
     for i in range(3):
       print(i)
       self.clear()
-      output = self.do([EMCC, '-O' + str(i), path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+      output = self.do([EMCC, '-O' + str(i), test_file('hello_libcxx.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
       print('\n\n\n', output)
       self.assertContainedIf(BUILDING_MESSAGE % libname, output, i == 0)
       self.assertContained('hello, world!', self.run_js('a.out.js'))
@@ -462,7 +462,7 @@ fi
   def test_emcc_multiprocess_cache_access(self):
     restore_and_set_up()
 
-    create_test_file('test.c', r'''
+    create_file('test.c', r'''
       #include <stdio.h>
       int main() {
         printf("hello, world!\n");
@@ -541,14 +541,14 @@ fi
       self.assertNotExists(PORTS_DIR)
 
       # Building a file that doesn't need ports should not trigger anything
-      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp')])
+      output = self.do([EMCC, test_file('hello_world_sdl.cpp')])
       assert RETRIEVING_MESSAGE not in output, output
       assert BUILDING_MESSAGE not in output
       print('no', output)
       self.assertNotExists(PORTS_DIR)
 
       def first_use():
-        output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        output = self.do([EMCC, test_file('hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
         self.assertContained(RETRIEVING_MESSAGE, output)
         self.assertContained(BUILDING_MESSAGE, output)
         self.assertExists(PORTS_DIR)
@@ -556,7 +556,7 @@ fi
 
       def second_use():
         # Using it again avoids retrieve and build
-        output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        output = self.do([EMCC, test_file('hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
         self.assertNotContained(RETRIEVING_MESSAGE, output)
         self.assertNotContained(BUILDING_MESSAGE, output)
 
@@ -581,7 +581,7 @@ fi
     # Test that running JS commands works for node, d8, and jsc and is not path dependent
     restore_and_set_up()
 
-    sample_script = path_from_root('tests', 'print_args.js')
+    sample_script = test_file('print_args.js')
 
     # Fake some JS engines
     # Note that the path contains 'd8'.
@@ -664,10 +664,10 @@ fi
     restore_and_set_up()
 
     open(config_file, 'a').write('\nBINARYEN_ROOT = ""\n')
-    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % config_file)
+    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % config_file)
 
     open(config_file, 'a').write('\ndel BINARYEN_ROOT\n')
-    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT is not defined in %s' % config_file)
+    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT is not defined in %s' % config_file)
 
   def test_embuilder_force(self):
     restore_and_set_up()
@@ -701,7 +701,7 @@ fi
       f.write('\nBINARYEN_ROOT = "' + self.in_dir('fake') + '"')
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), 'foo')
-    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
+    self.check_working([EMCC, test_file('hello_world.c')], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), '70')
-    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'unexpected binaryen version: 70 (expected ')
+    self.check_working([EMCC, test_file('hello_world.c')], 'unexpected binaryen version: 70 (expected ')
