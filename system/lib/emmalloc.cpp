@@ -10,8 +10,7 @@
  * Assumptions:
  *
  *  - Pointers are 32-bit.
- *  - Maximum individual allocation size is 2GB-1 bytes (2147483647 bytes)
- *  - sbrk() is used to claim new memory (sbrk handles geometric/linear 
+ *  - sbrk() is used to claim new memory (sbrk handles geometric/linear
  *  - overallocation growth)
  *  - sbrk() can be used by other code outside emmalloc.
  *  - sbrk() is very fast in most cases (internal wasm call).
@@ -32,9 +31,9 @@
  * Debugging:
  *
  *  - If not NDEBUG, runtime assert()s are in use.
- *  - If EMMALLOC_DEBUG is defined, a large amount of extra checks are done.
- *  - If EMMALLOC_DEBUG_LOG is defined, a lot of operations are logged
- *    out, in addition to EMMALLOC_DEBUG.
+ *  - If EMMALLOC_MEMVALIDATE is defined, a large amount of extra checks are done.
+ *  - If EMMALLOC_VERBOSE is defined, a lot of operations are logged
+ *    out, in addition to EMMALLOC_MEMVALIDATE.
  *  - Debugging and logging directly uses console.log via uses EM_ASM, not
  *    printf etc., to minimize any risk of debugging or logging depending on
  *    malloc.
@@ -63,36 +62,23 @@ extern "C"
 // than this will yield an allocation with this much alignment.
 #define MALLOC_ALIGNMENT 8
 
-// Configuration: If EMMALLOC_USE_64BIT_OPS is specified, emmalloc uses 64 buckets for free memory regions instead of just 32.
-// When building to target asm.js/wasm2js, 64-bit ops are disabled, but in Wasm builds, 64-bit ops are enabled. (this is
-// configured from command line in system_libs.py build)
-// #define EMMALLOC_USE_64BIT_OPS
-
 #define EMMALLOC_EXPORT __attribute__((weak, __visibility__("default")))
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
-#ifdef EMMALLOC_USE_64BIT_OPS
 #define NUM_FREE_BUCKETS 64
 #define BUCKET_BITMASK_T uint64_t
-#define CountLeadingZeroesInBitmask __builtin_clzll
-#define CountTrailingZeroesInBitmask __builtin_ctzll
-#else
-#define NUM_FREE_BUCKETS 32
-#define BUCKET_BITMASK_T uint32_t
-#define CountLeadingZeroesInBitmask __builtin_clz
-#define CountTrailingZeroesInBitmask __builtin_ctz
-#endif
 
 // Dynamic memory is subdivided into regions, in the format
 
 // <size:uint32_t> ..... <size:uint32_t> | <size:uint32_t> ..... <size:uint32_t> | <size:uint32_t> ..... <size:uint32_t> | .....
 
 // That is, at the bottom and top end of each memory region, the size of that region is stored. That allows traversing the
-// memory regions backwards and forwards. Free regions are distinguished by used regions by having all bits inverted in the size
-// field at the end of the region. Hence if the size values at the beginning and at the end of the region are the same, then the
-// region is in use, otherwise it is a free region.
+// memory regions backwards and forwards. Because each allocation must be at least a multiple of 4 bytes, the lowest two bits of
+// each size field is unused. Free regions are distinguished by used regions by having the FREE_REGION_FLAG bit present
+// in the size field. I.e. for free regions, the size field is odd, and for used regions, the size field reads even.
+#define FREE_REGION_FLAG 0x1u
 
 // A free region has the following structure:
 // <size:uint32_t> <prevptr> <nextptr> ... <size:uint32_t>
@@ -155,43 +141,8 @@ static BUCKET_BITMASK_T freeRegionBucketsUsed = 0;
 
 /* Subdivide regions of free space into distinct circular doubly linked lists, where each linked list
 represents a range of free space blocks. The following function compute_free_list_bucket() converts
-an allocation size to the bucket index that should be looked at.
+an allocation size to the bucket index that should be looked at. The buckets are grouped as follows:
 
-When using 32 buckets, this function produces a subdivision/grouping as follows:
-  Bucket 0: [8-15], range size=8
-  Bucket 1: [16-23], range size=8
-  Bucket 2: [24-31], range size=8
-  Bucket 3: [32-39], range size=8
-  Bucket 4: [40-47], range size=8
-  Bucket 5: [48-63], range size=16
-  Bucket 6: [64-127], range size=64
-  Bucket 7: [128-255], range size=128
-  Bucket 8: [256-511], range size=256
-  Bucket 9: [512-1023], range size=512
-  Bucket 10: [1024-2047], range size=1024
-  Bucket 11: [2048-3071], range size=1024
-  Bucket 12: [3072-4095], range size=1024
-  Bucket 13: [4096-6143], range size=2048
-  Bucket 14: [6144-8191], range size=2048
-  Bucket 15: [8192-12287], range size=4096
-  Bucket 16: [12288-16383], range size=4096
-  Bucket 17: [16384-24575], range size=8192
-  Bucket 18: [24576-32767], range size=8192
-  Bucket 19: [32768-49151], range size=16384
-  Bucket 20: [49152-65535], range size=16384
-  Bucket 21: [65536-98303], range size=32768
-  Bucket 22: [98304-131071], range size=32768
-  Bucket 23: [131072-196607], range size=65536
-  Bucket 24: [196608-262143], range size=65536
-  Bucket 25: [262144-393215], range size=131072
-  Bucket 26: [393216-524287], range size=131072
-  Bucket 27: [524288-786431], range size=262144
-  Bucket 28: [786432-1048575], range size=262144
-  Bucket 29: [1048576-1572863], range size=524288
-  Bucket 30: [1572864-2097151], range size=524288
-  Bucket 31: 2097152 bytes and larger.
-
-When using 64 buckets, this function produces a grouping as follows:
   Bucket 0: [8, 15], range size=8
   Bucket 1: [16, 23], range size=8
   Bucket 2: [24, 31], range size=8
@@ -256,25 +207,18 @@ When using 64 buckets, this function produces a grouping as follows:
   Bucket 61: [67108864, 100663295], range size=33554432
   Bucket 62: [100663296, 134217727], range size=33554432
   Bucket 63: 134217728 bytes and larger. */
+static_assert(NUM_FREE_BUCKETS == 64, "Following function is tailored specifically for NUM_FREE_BUCKETS == 64 case");
 static int compute_free_list_bucket(uint32_t allocSize)
 {
-#if NUM_FREE_BUCKETS == 32
-  if (allocSize < 48) return (allocSize >> 3) - 1;
-  int clz = __builtin_clz(allocSize);
-  int bucketIndex = (clz > 20) ? 31 - clz : MIN(51 - (clz<<1) + ((allocSize >> (30-clz)) ^ 2), NUM_FREE_BUCKETS-1);
-#elif NUM_FREE_BUCKETS == 64
   if (allocSize < 128) return (allocSize >> 3) - 1;
   int clz = __builtin_clz(allocSize);
   int bucketIndex = (clz > 19) ? 110 - (clz<<2) + ((allocSize >> (29-clz)) ^ 4) : MIN(71 - (clz<<1) + ((allocSize >> (30-clz)) ^ 2), NUM_FREE_BUCKETS-1);
-#else
-#error Invalid size chosen for NUM_FREE_BUCKETS
-#endif
   assert(bucketIndex >= 0);
   assert(bucketIndex < NUM_FREE_BUCKETS);
   return bucketIndex;
 }
 
-#define DECODE_CEILING_SIZE(size) (uint32_t)(((size) ^ (((int32_t)(size)) >> 31)))
+#define DECODE_CEILING_SIZE(size) ((uint32_t)((size) & ~FREE_REGION_FLAG))
 
 static Region *prev_region(Region *region)
 {
@@ -295,7 +239,7 @@ static uint32_t region_ceiling_size(Region *region)
 
 static bool region_is_free(Region *r)
 {
-  return region_ceiling_size(r) >> 31;
+  return region_ceiling_size(r) & FREE_REGION_FLAG;
 }
 
 static bool region_is_in_use(Region *r)
@@ -345,7 +289,7 @@ static void create_free_region(void *ptr, uint32_t size)
   assert(size >= sizeof(Region));
   Region *freeRegion = (Region*)ptr;
   freeRegion->size = size;
-  ((uint32_t*)ptr)[(size>>2)-1] = ~size;
+  ((uint32_t*)ptr)[(size>>2)-1] = size | FREE_REGION_FLAG;
 }
 
 static void prepend_to_free_list(Region *region, Region *prependTo)
@@ -397,17 +341,17 @@ static void dump_memory_regions()
     Region *r = root;
     assert(debug_region_is_consistent(r));
     uint8_t *lastRegionEnd = (uint8_t*)(((uint32_t*)root)[2]);
-    MAIN_THREAD_ASYNC_EM_ASM(console.log('Region block '+$0.toString(16)+'-'+$1.toString(16)+ ' ('+$2+' bytes):'),
+    MAIN_THREAD_ASYNC_EM_ASM(console.log('Region block 0x'+($0>>>0).toString(16)+' - 0x'+($1>>>0).toString(16)+ ' ('+($2>>>0)+' bytes):'),
       r, lastRegionEnd, lastRegionEnd-(uint8_t*)r);
     while((uint8_t*)r < lastRegionEnd)
     {
-      MAIN_THREAD_ASYNC_EM_ASM(console.log('Region '+$0.toString(16)+', size: '+$1+' ('+($2?"used":"--FREE--")+')'),
+      MAIN_THREAD_ASYNC_EM_ASM(console.log('Region 0x'+($0>>>0).toString(16)+', size: '+($1>>>0)+' ('+($2?"used":"--FREE--")+')'),
         r, r->size, region_ceiling_size(r) == r->size);
 
       assert(debug_region_is_consistent(r));
       uint32_t sizeFromCeiling = size_of_region_from_ceiling(r);
       if (sizeFromCeiling != r->size)
-        MAIN_THREAD_ASYNC_EM_ASM(console.log('Corrupt region! Size marker at the end of the region does not match: '+$0), sizeFromCeiling);
+        MAIN_THREAD_ASYNC_EM_ASM(console.log('Corrupt region! Size marker at the end of the region does not match: '+($0>>>0)), sizeFromCeiling);
       if (r->size == 0)
         break;
       r = next_region(r);
@@ -422,7 +366,7 @@ static void dump_memory_regions()
     Region *fr = freeRegionBuckets[i].next;
     while(fr != &freeRegionBuckets[i])
     {
-      MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region '+$1.toString(16)+', size: ' + $2 + ' (size at ceiling: '+$3+'), prev: ' + $4.toString(16) + ', next: ' + $5.toString(16)),
+      MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region 0x'+($1>>>0).toString(16)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: 0x' + ($4>>>0).toString(16) + ', next: 0x' + ($5>>>0).toString(16)),
         i, fr, fr->size, size_of_region_from_ceiling(fr), fr->prev, fr->next);
       assert(debug_region_is_consistent(fr));
       assert(region_is_free(fr));
@@ -433,11 +377,7 @@ static void dump_memory_regions()
       fr = fr->next;
     }
   }
-#if NUM_FREE_BUCKETS == 64
   MAIN_THREAD_ASYNC_EM_ASM(console.log('Free bucket index map: ' + ($0>>>0).toString(2) + ' ' + ($1>>>0).toString(2)), (uint32_t)(freeRegionBucketsUsed >> 32), (uint32_t)freeRegionBucketsUsed);
-#else
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('Free bucket index map: ' + ($0>>>0).toString(2)), freeRegionBucketsUsed);
-#endif
   MAIN_THREAD_ASYNC_EM_ASM(console.log(""));
 }
 
@@ -457,7 +397,7 @@ static int validate_memory_regions()
     Region *r = root;
     if (!debug_region_is_consistent(r))
     {
-      MAIN_THREAD_ASYNC_EM_ASM(console.error('Used region '+$0.toString(16)+', size: '+$1+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
+      MAIN_THREAD_ASYNC_EM_ASM(console.error('Used region 0x'+($0>>>0).toString(16)+', size: '+($1>>>0)+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
         r, r->size, region_ceiling_size(r) == r->size);
       return 1;
     }
@@ -466,7 +406,7 @@ static int validate_memory_regions()
     {
       if (!debug_region_is_consistent(r))
       {
-        MAIN_THREAD_ASYNC_EM_ASM(console.error('Used region '+$0.toString(16)+', size: '+$1+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
+        MAIN_THREAD_ASYNC_EM_ASM(console.error('Used region 0x'+($0>>>0).toString(16)+', size: '+($1>>>0)+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
           r, r->size, region_ceiling_size(r) == r->size);
         return 1;
       }
@@ -484,7 +424,7 @@ static int validate_memory_regions()
     {
       if (!debug_region_is_consistent(fr) || !region_is_free(fr) || fr->prev != prev || fr->next == fr || fr->prev == fr)
       {
-        MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region '+$1.toString(16)+', size: ' + $2 + ' (size at ceiling: '+$3+'), prev: ' + $4.toString(16) + ', next: ' + $5.toString(16) + ' is corrupt!'),
+        MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region 0x'+($1>>>0).toString(16)+', size: ' + ($2>>>0) + ' (size at ceiling: '+($3>>>0)+'), prev: 0x' + ($4>>>0).toString(16) + ', next: 0x' + ($5>>>0).toString(16) + ' is corrupt!'),
           i, fr, fr->size, size_of_region_from_ceiling((Region*)fr), fr->prev, fr->next);
         return 1;
       }
@@ -505,25 +445,25 @@ int emmalloc_validate_memory_regions()
 
 static bool claim_more_memory(size_t numBytes)
 {
-#ifdef EMMALLOC_DEBUG_LOG
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('claim_more_memory(numBytes='+$0+ ')'), numBytes);
+#ifdef EMMALLOC_VERBOSE
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('claim_more_memory(numBytes='+($0>>>0)+ ')'), numBytes);
 #endif
 
-#ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_MEMVALIDATE
   validate_memory_regions();
 #endif
 
   // Claim memory via sbrk
   uint8_t *startPtr = (uint8_t*)sbrk(numBytes);
-  if ((intptr_t)startPtr <= 0)
+  if ((intptr_t)startPtr == -1)
   {
-#ifdef EMMALLOC_DEBUG_LOG
-    MAIN_THREAD_ASYNC_EM_ASM(console.error('claim_more_memory - sbrk failed!'));
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(console.error('claim_more_memory: sbrk failed!'));
 #endif
     return false;
   }
-#ifdef EMMALLOC_DEBUG_LOG
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('claim_more_memory - claimed ' + $0.toString(16) + '-' + $1.toString(16) + ' (' + $2 + ' bytes) via sbrk()'), startPtr, startPtr + numBytes, numBytes);
+#ifdef EMMALLOC_VERBOSE
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('claim_more_memory: claimed 0x' + ($0>>>0).toString(16) + ' - 0x' + ($1>>>0).toString(16) + ' (' + ($2>>>0) + ' bytes) via sbrk()'), startPtr, startPtr + numBytes, numBytes);
 #endif
   assert(HAS_ALIGNMENT(startPtr, 4));
   uint8_t *endPtr = startPtr + numBytes;
@@ -594,7 +534,7 @@ static void EMSCRIPTEN_KEEPALIVE __attribute__((constructor(0))) initialize_mall
   for(int i = 0; i < NUM_FREE_BUCKETS; ++i)
     freeRegionBuckets[i].prev = freeRegionBuckets[i].next = &freeRegionBuckets[i];
 
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('initialize_malloc_heap()'));
 #endif
 
@@ -647,9 +587,9 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
   // Next, we need to decide whether this region is so large that it should be split into two regions,
   // one representing the newly used memory area, and at the high end a remaining leftover free area.
   // This splitting to two is done always if there is enough space for the high end to fit a region.
-  // Carve 'size' bytes of payload off this region. So, 
+  // Carve 'size' bytes of payload off this region. So,
   // [sz prev next sz]
-  // becomes 
+  // becomes
   // [sz payload sz] [sz prev next sz]
   if (sizeof(Region) + REGION_HEADER_SIZE + size <= freeRegion->size)
   {
@@ -674,8 +614,8 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
   emscripten_trace_record_allocation(freeRegion, freeRegion->size);
 #endif
 
-#ifdef EMMALLOC_DEBUG_LOG
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_allocate - succeeded allocating memory, region ptr=' + $0.toString(16) + ', align=' + $1 + ', payload size=' + $2 + ' bytes)'), freeRegion, alignment, size);
+#ifdef EMMALLOC_VERBOSE
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_allocate - succeeded allocating memory, region ptr=0x' + ($0>>>0).toString(16) + ', align=' + $1 + ', payload size=' + ($2>>>0) + ' bytes)'), freeRegion, alignment, size);
 #endif
 
   return (uint8_t*)freeRegion + sizeof(uint32_t);
@@ -701,16 +641,21 @@ static void *allocate_memory(size_t alignment, size_t size)
 {
   ASSERT_MALLOC_IS_ACQUIRED();
 
-#ifdef EMMALLOC_DEBUG_LOG
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('allocate_memory(align=' + $0 + ', size=' + $1 + ' bytes)'), alignment, size);
+#ifdef EMMALLOC_VERBOSE
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('allocate_memory(align=' + $0 + ', size=' + ($1>>>0) + ' bytes)'), alignment, size);
 #endif
 
-#ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_MEMVALIDATE
   validate_memory_regions();
 #endif
 
   if (!IS_POWER_OF_2(alignment))
+  {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(console.log('Allocation failed: alignment not power of 2!'));
+#endif
     return 0;
+  }
 
   alignment = validate_alloc_alignment(alignment);
   size = validate_alloc_size(size);
@@ -724,7 +669,7 @@ static void *allocate_memory(size_t alignment, size_t size)
   // Loop through each bucket that has free regions in it, based on bits set in freeRegionBucketsUsed bitmap.
   while(bucketMask)
   {
-    BUCKET_BITMASK_T indexAdd = CountTrailingZeroesInBitmask(bucketMask);
+    BUCKET_BITMASK_T indexAdd = __builtin_ctzll(bucketMask);
     bucketIndex += indexAdd;
     bucketMask >>= indexAdd;
     assert(bucketIndex >= 0);
@@ -769,9 +714,7 @@ static void *allocate_memory(size_t alignment, size_t size)
     // Instead of recomputing bucketMask from scratch at the end of each loop, it is updated as we go,
     // to avoid undefined behavior with (x >> 32)/(x >> 64) when bucketIndex reaches 32/64, (the shift would comes out as a no-op instead of 0).
 
-    // Work around bug https://github.com/emscripten-core/emscripten/issues/10173
-//    assert((bucketIndex == NUM_FREE_BUCKETS && bucketMask == 0) || (bucketMask == freeRegionBucketsUsed >> bucketIndex));
-    assert((bucketIndex == NUM_FREE_BUCKETS && bucketMask == 0) || (bucketMask + EM_ASM_INT(return 0) == (freeRegionBucketsUsed >> bucketIndex) + EM_ASM_INT(return 0)));
+    assert((bucketIndex == NUM_FREE_BUCKETS && bucketMask == 0) || (bucketMask == freeRegionBucketsUsed >> bucketIndex));
   }
 
   // None of the buckets were able to accommodate an allocation. If this happens we are almost out of memory.
@@ -780,13 +723,9 @@ static void *allocate_memory(size_t alignment, size_t size)
   // But only if the bucket representing largest allocations available is not any of the first ten buckets (thirty buckets
   // in 64-bit buckets build), these represent allocatable areas less than <1024 bytes - which could be a lot of scrap.
   // In such case, prefer to sbrk() in more memory right away.
-  int largestBucketIndex = NUM_FREE_BUCKETS - 1 - CountLeadingZeroesInBitmask(freeRegionBucketsUsed);
+  int largestBucketIndex = NUM_FREE_BUCKETS - 1 - __builtin_clzll(freeRegionBucketsUsed);
   Region *freeRegion = freeRegionBuckets[largestBucketIndex].next;
-#ifdef EMMALLOC_USE_64BIT_OPS
   if (freeRegionBucketsUsed >> 30)
-#else
-  if (freeRegionBucketsUsed >> 10)
-#endif
   {
     // Look only at a constant number of regions in this bucket max, to avoid bad worst case behavior.
     // If this many regions cannot find free space, we give up and prefer to sbrk() more instead.
@@ -817,6 +756,10 @@ static void *allocate_memory(size_t alignment, size_t size)
       return ptr;
     freeRegion = freeRegion->next;
   }
+
+#ifdef EMMALLOC_VERBOSE
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('Could not find a free memory block!'));
+#endif
 
   return 0;
 }
@@ -880,15 +823,15 @@ size_t EMMALLOC_EXPORT malloc_usable_size(void *ptr)
 
 void emmalloc_free(void *ptr)
 {
-#ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_MEMVALIDATE
   emmalloc_validate_memory_regions();
 #endif
 
   if (!ptr)
     return;
 
-#ifdef EMMALLOC_DEBUG_LOG
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('free(ptr='+$0.toString(16)+')'), ptr);
+#ifdef EMMALLOC_VERBOSE
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('free(ptr=0x'+($0>>>0).toString(16)+')'), ptr);
 #endif
 
   uint8_t *regionStartPtr = (uint8_t*)ptr - sizeof(uint32_t);
@@ -898,14 +841,15 @@ void emmalloc_free(void *ptr)
   MALLOC_ACQUIRE();
 
   uint32_t size = region->size;
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   if (size < sizeof(Region) || !region_is_in_use(region))
   {
     if (debug_region_is_consistent(region))
       // LLVM wasm backend bug: cannot use MAIN_THREAD_ASYNC_EM_ASM() here, that generates internal compiler error
-      EM_ASM(console.error('Double free at region ptr ' + $0.toString(16) + ', region->size: ' + $1.toString(16) + ', region->sizeAtCeiling: ' + $2.toString(16) + ')'), region, size, region_ceiling_size(region));
+      // Reproducible by running e.g. other.test_alloc_3GB
+      EM_ASM(console.error('Double free at region ptr 0x' + ($0>>>0).toString(16) + ', region->size: 0x' + ($1>>>0).toString(16) + ', region->sizeAtCeiling: 0x' + ($2>>>0).toString(16) + ')'), region, size, region_ceiling_size(region));
     else
-      MAIN_THREAD_ASYNC_EM_ASM(console.error('Corrupt region at region ptr ' + $0.toString(16) + ' region->size:' + $1.toString(16) + ', region->sizeAtCeiling:' + $2.toString(16) + ')'), region, size, region_ceiling_size(region));
+      MAIN_THREAD_ASYNC_EM_ASM(console.error('Corrupt region at region ptr 0x' + ($0>>>0).toString(16) + ' region->size: 0x' + ($1>>>0).toString(16) + ', region->sizeAtCeiling: 0x' + ($2>>>0).toString(16) + ')'), region, size, region_ceiling_size(region));
   }
 #endif
   assert(size >= sizeof(Region));
@@ -916,11 +860,10 @@ void emmalloc_free(void *ptr)
 #endif
 
   // Check merging with left side
-  uint32_t prevRegionSize = ((uint32_t*)region)[-1];
-  uint32_t prevRegionSizeMask = (uint32_t)((int32_t)prevRegionSize >> 31);
-  if (prevRegionSizeMask)
+  uint32_t prevRegionSizeField = ((uint32_t*)region)[-1];
+  uint32_t prevRegionSize = prevRegionSizeField & ~FREE_REGION_FLAG;
+  if (prevRegionSizeField != prevRegionSize) // Previous region is free?
   {
-    prevRegionSize ^= prevRegionSizeMask;
     Region *prevRegion = (Region*)((uint8_t*)region - prevRegionSize);
     assert(debug_region_is_consistent(prevRegion));
     unlink_from_free_list(prevRegion);
@@ -943,7 +886,7 @@ void emmalloc_free(void *ptr)
 
   MALLOC_RELEASE();
 
-#ifdef EMMALLOC_DEBUG
+#ifdef EMMALLOC_MEMVALIDATE
   emmalloc_validate_memory_regions();
 #endif
 }
@@ -962,8 +905,8 @@ static int attempt_region_resize(Region *region, size_t size)
   assert(size > 0);
   assert(HAS_ALIGNMENT(size, sizeof(uint32_t)));
 
-#ifdef EMMALLOC_DEBUG_LOG
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_region_resize(region=' + $0.toString(16) + ', size=' + $1 + ' bytes)'), region, size);
+#ifdef EMMALLOC_VERBOSE
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_region_resize(region=0x' + ($0>>>0).toString(16) + ', size=' + ($1>>>0) + ' bytes)'), region, size);
 #endif
 
   // First attempt to resize this region, if the next region that follows this one
@@ -1014,7 +957,7 @@ static int attempt_region_resize(Region *region, size_t size)
       return 1;
     }
   }
-#ifdef EMMALLOC_DEBUG_LOG
+#ifdef EMMALLOC_VERBOSE
   MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_region_resize failed.'));
 #endif
   return 0;
@@ -1030,8 +973,8 @@ static int acquire_and_attempt_region_resize(Region *region, size_t size)
 
 void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size)
 {
-#ifdef EMMALLOC_DEBUG_LOG
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('aligned_realloc(ptr=' + $0.toString(16) + ', alignment=' + $1 + ', size=' + $2), ptr, alignment, size);
+#ifdef EMMALLOC_VERBOSE
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('aligned_realloc(ptr=0x' + ($0>>>0).toString(16) + ', alignment=' + $1 + ', size=' + ($2>>>0)), ptr, alignment, size);
 #endif
 
   if (!ptr)
@@ -1227,7 +1170,7 @@ struct mallinfo emmalloc_mallinfo()
 
   // Walk through all the heap blocks to report the following data:
   // The "highwater mark" for allocated space—that is, the maximum amount of
-  // space that was ever allocated. Emmalloc does not want to pay code to 
+  // space that was ever allocated. Emmalloc does not want to pay code to
   // track this, so this is only reported from current allocation data, and
   // may not be accurate.
   info.usmblks = 0;
@@ -1344,36 +1287,6 @@ int EMMALLOC_EXPORT malloc_trim(size_t pad)
   return emmalloc_trim(pad);
 }
 
-#if 0
-// TODO: In wasm2js/asm.js builds, we could use the following API to actually shrink the heap size, but in
-// WebAssembly builds this won't work. Keeping this code here for future use.
-
-emmalloc.h:
-// Shrinks the asm.js/wasm2js heap to the minimum size, releasing memory back to the system.
-// Returns 1 if memory was actually freed, and 0 if not. In WebAssembly builds, this function
-// does nothing, because it is not possible to shrink the Wasm heap size once it has grown.
-// Call emmalloc_trim() first before calling this function to maximize the amount of
-// free memory that is released.
-int emmalloc_shrink_heap(void);
-
-emmalloc.c:
-int emmalloc_shrink_heap()
-{
-  MALLOC_ACQUIRE();
-  size_t sbrkTop = (size_t)sbrk(0);
-  size_t heapSize = emscripten_get_heap_size();
-  assert(heapSize >= sbrkTop);
-  int success = 0;
-  if (sbrkTop < heapSize)
-  {
-    success = emscripten_realloc_buffer(sbrkTop);
-    assert(!success || emscripten_get_heap_size() == sbrkTop);
-  }
-  MALLOC_RELEASE();
-  return success;
-}
-#endif
-
 size_t emmalloc_dynamic_heap_size()
 {
   size_t dynamicHeapSize = 0;
@@ -1403,7 +1316,7 @@ size_t emmalloc_free_dynamic_memory()
   // Loop through each bucket that has free regions in it, based on bits set in freeRegionBucketsUsed bitmap.
   while(bucketMask)
   {
-    BUCKET_BITMASK_T indexAdd = CountTrailingZeroesInBitmask(bucketMask);
+    BUCKET_BITMASK_T indexAdd = __builtin_ctzll(bucketMask);
     bucketIndex += indexAdd;
     bucketMask >>= indexAdd;
     for(Region *freeRegion = freeRegionBuckets[bucketIndex].next;
@@ -1431,7 +1344,7 @@ size_t emmalloc_compute_free_dynamic_memory_fragmentation_map(size_t freeMemoryS
   // Loop through each bucket that has free regions in it, based on bits set in freeRegionBucketsUsed bitmap.
   while(bucketMask)
   {
-    BUCKET_BITMASK_T indexAdd = CountTrailingZeroesInBitmask(bucketMask);
+    BUCKET_BITMASK_T indexAdd = __builtin_ctzll(bucketMask);
     bucketIndex += indexAdd;
     bucketMask >>= indexAdd;
     for(Region *freeRegion = freeRegionBuckets[bucketIndex].next;

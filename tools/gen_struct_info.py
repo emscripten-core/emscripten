@@ -88,6 +88,7 @@ import subprocess
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared
+from tools import system_libs
 
 QUIET = (__name__ != '__main__')
 DEBUG = False
@@ -192,7 +193,7 @@ def gen_inspect_code(path, struct, code):
   c_ascent(code)
 
 
-def inspect_headers(headers, cpp_opts):
+def inspect_headers(headers, cflags):
   code = ['#include <stdio.h>', '#include <stddef.h>']
   for header in headers:
     code.append('#include "' + header['name'] + '"')
@@ -225,36 +226,42 @@ def inspect_headers(headers, cpp_opts):
   code.append('}')
 
   # Write the source code to a temporary file.
-  src_file = tempfile.mkstemp('.c')
+  src_file = tempfile.mkstemp('.c', text=True)
   show('Generating C code... ' + src_file[1])
-  os.write(src_file[0], shared.asbytes('\n'.join(code)))
+  os.write(src_file[0], '\n'.join(code).encode())
 
   js_file = tempfile.mkstemp('.js')
+
+  # Check sanity early on before populating the cache with libcompiler_rt
+  # If we don't do this the parallel build of compiler_rt will run while holding the cache
+  # lock and with EM_EXCLUSIVE_CACHE_ACCESS set causing N processes to race to run sanity checks.
+  # While this is not in itself serious problem it is wasteful and noise on stdout.
+  # For the same reason we run this early in embuilder.py and emcc.py.
+  # TODO(sbc): If we can remove EM_EXCLUSIVE_CACHE_ACCESS then this would not longer be needed.
+  shared.check_sanity()
+
+  compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt'].get_path()
 
   # Close all unneeded FDs.
   os.close(src_file[0])
   os.close(js_file[0])
 
-  # Remove dangerous env modifications
-  env = os.environ.copy()
-  env['EMCC_FORCE_STDLIBS'] = 'libcompiler_rt'
-  env['EMCC_ONLY_FORCED_STDLIBS'] = '1'
-
   info = []
   # Compile the program.
   show('Compiling generated code...')
+
   # -Oz optimizes enough to avoid warnings on code size/num locals
-  cmd = [shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1],
-                                    '-O0',
-                                    '-Werror',
-                                    '-Wno-format',
-                                    '-I', shared.path_from_root(),
-                                    '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
-                                    '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
-                                    '-s', 'STRICT=1',
-                                    # Use SINGLE_FILE=1 so there is only a single
-                                    # file to cleanup.
-                                    '-s', 'SINGLE_FILE=1']
+  cmd = [shared.EMCC] + cflags + ['-o', js_file[1], src_file[1],
+                                  '-O0',
+                                  '-Werror',
+                                  '-Wno-format',
+                                  '-nostdlib',
+                                  compiler_rt,
+                                  '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
+                                  '-s', 'STRICT',
+                                  # Use SINGLE_FILE=1 so there is only a single
+                                  # file to cleanup.
+                                  '-s', 'SINGLE_FILE']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
@@ -268,7 +275,7 @@ def inspect_headers(headers, cpp_opts):
 
   show(shared.shlex_join(cmd))
   try:
-    subprocess.check_call(cmd, env=env)
+    subprocess.check_call(cmd)
   except subprocess.CalledProcessError as e:
     sys.stderr.write('FAIL: Compilation failed!: %s\n' % e.cmd)
     sys.exit(1)
@@ -299,13 +306,13 @@ def merge_info(target, src):
     target['structs'][key] = value
 
 
-def inspect_code(headers, cpp_opts):
+def inspect_code(headers, cflags):
   if not DEBUG:
-    info = inspect_headers(headers, cpp_opts)
+    info = inspect_headers(headers, cflags)
   else:
     info = {'defines': {}, 'structs': {}}
     for header in headers:
-      merge_info(info, inspect_headers([header], cpp_opts))
+      merge_info(info, inspect_headers([header], cflags))
   return info
 
 
@@ -384,17 +391,21 @@ def main(args):
   QUIET = args.quiet
 
   # Avoid parsing problems due to gcc specifc syntax.
-  cpp_opts = ['-D_GNU_SOURCE']
+  cflags = ['-D_GNU_SOURCE']
 
   # Add the user options to the list as well.
   for path in args.includes:
-    cpp_opts.append('-I' + path)
+    cflags.append('-I' + path)
 
   for arg in args.defines:
-    cpp_opts.append('-D' + arg)
+    cflags.append('-D' + arg)
 
   for arg in args.undefines:
-    cpp_opts.append('-U' + arg)
+    cflags.append('-U' + arg)
+
+  internal_cflags = [
+    '-I' + shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'),
+  ]
 
   # Look for structs in all passed headers.
   info = {'defines': {}, 'structs': {}}
@@ -403,7 +414,11 @@ def main(args):
     # This is a JSON file, parse it.
     header_files = parse_json(f)
     # Inspect all collected structs.
-    info_fragment = inspect_code(header_files, cpp_opts)
+    if 'internal' in f:
+      use_cflags = cflags + internal_cflags
+    else:
+      use_cflags = cflags
+    info_fragment = inspect_code(header_files, use_cflags)
     merge_info(info, info_fragment)
 
   output_json(info, args.output)

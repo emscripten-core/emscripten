@@ -135,15 +135,19 @@ unsupported = {
   'test_pthread_spin_lock_3_1': 'signals are not supported',
 }
 
+# Mark certain tests as flaky, which may sometimes fail.
+# TODO invesigate these tests.
+flaky = {
+  'test_pthread_cond_signal_1_1': 'flaky: https://github.com/emscripten-core/emscripten/issues/13283',
+}
+
 # Mark certain tests as not passing
 disabled = {
   **unsupported,
+  **flaky,
   'test_pthread_create_11_1': 'never returns',
   'test_pthread_barrier_wait_2_1': 'never returns',
-  'test_pthread_cond_timedwait_2_6': 'never returns',
-  'test_pthread_cond_timedwait_4_3': 'never returns',
   'test_pthread_attr_setscope_5_1': 'internally skipped (PTS_UNTESTED)',
-  'test_pthread_cond_wait_2_3': 'never returns',
   'test_pthread_create_5_1': 'never returns',
   'test_pthread_exit_1_2': 'never returns',
   'test_pthread_exit_2_2': 'never returns',

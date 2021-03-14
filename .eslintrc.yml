@@ -1,0 +1,16 @@
+env:
+  browser: true
+  es2020: true
+  node: true
+extends:
+  - google
+parserOptions:
+  ecmaVersion: 12
+ignorePatterns: "library_*.js"
+rules:
+  #max-len: ["error", 100]
+  max-len: "off"
+  require-jsdoc: "off"
+  no-unused-vars: "off"
+  space-infix-ops: "error"
+  quotes: ["error", "single", {"avoidEscape": true}]

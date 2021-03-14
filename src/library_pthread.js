@@ -90,6 +90,7 @@ var LibraryPThread = {
       PThread['setThreadStatus'] = PThread.setThreadStatus;
       PThread['threadCancel'] = PThread.threadCancel;
       PThread['threadExit'] = PThread.threadExit;
+      PThread['setExitStatus'] = PThread.setExitStatus;
 #endif
     },
     // Maps pthread_t to pthread info objects
@@ -173,6 +174,34 @@ var LibraryPThread = {
       if (ENVIRONMENT_IS_PTHREAD && _pthread_self()) ___pthread_tsd_run_dtors();
     },
 
+    runExitHandlersAndDeinitThread: function(tb, exitCode) {
+#if PTHREADS_PROFILING
+      var profilerBlock = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0);
+      _free(profilerBlock);
+#endif
+
+      // Disable all cancellation so that executing the cleanup handlers won't trigger another JS
+      // canceled exception to be thrown.
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2, 1/*PTHREAD_CANCEL_DISABLE*/);
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.cancelasync }}} ) >> 2, 0/*PTHREAD_CANCEL_DEFERRED*/);
+      PThread.runExitHandlers();
+
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
+      // When we publish this, the main thread is free to deallocate the thread object and we are done.
+      // Therefore set _pthread_self = 0; above to 'release' the object in this worker thread.
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
+
+      _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
+
+      // Not hosting a pthread anymore in this worker, reset the info structures to null.
+      __emscripten_thread_init(0, 0, 0); // Unregister the thread block inside the wasm module.
+    },
+
+    setExitStatus: function(status) {
+      EXITSTATUS = status;
+    },
+
     // Called when we are performing a pthread_exit(), either explicitly called
     // by programmer, or implicitly when leaving the thread main function.
     threadExit: function(exitCode) {
@@ -181,24 +210,8 @@ var LibraryPThread = {
 #if ASSERTIONS
         err('Pthread 0x' + tb.toString(16) + ' exited.');
 #endif
-#if PTHREADS_PROFILING
-        var profilerBlock = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
-        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0);
-        _free(profilerBlock);
-#endif
-        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
-        // When we publish this, the main thread is free to deallocate the thread object and we are done.
-        // Therefore set _pthread_self = 0; above to 'release' the object in this worker thread.
-        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1);
+        PThread.runExitHandlersAndDeinitThread(tb, exitCode);
 
-        // Disable all cancellation so that executing the cleanup handlers won't trigger another JS
-        // canceled exception to be thrown.
-        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2, 1/*PTHREAD_CANCEL_DISABLE*/);
-        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.cancelasync }}} ) >> 2, 0/*PTHREAD_CANCEL_DEFERRED*/);
-        PThread.runExitHandlers();
-
-        _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}});
-        __emscripten_thread_init(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
         if (ENVIRONMENT_IS_PTHREAD) {
           // Note: in theory we would like to return any offscreen canvases back to the main thread,
           // but if we ever fetched a rendering context for them that would not be valid, so we don't try.
@@ -208,13 +221,7 @@ var LibraryPThread = {
     },
 
     threadCancel: function() {
-      PThread.runExitHandlers();
-      var tb = _pthread_self();
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, -1/*PTHREAD_CANCELED*/);
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
-      _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
-      // Not hosting a pthread anymore in this worker, reset the info structures to null.
-      __emscripten_thread_init(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
+      PThread.runExitHandlersAndDeinitThread(_pthread_self(), -1/*PTHREAD_CANCELED*/);
       postMessage({ 'cmd': 'cancelDone' });
     },
 
@@ -439,6 +446,9 @@ var LibraryPThread = {
 #if USE_OFFSET_CONVERTER
         'wasmOffsetConverter': wasmOffsetConverter,
 #endif
+#if MAIN_MODULE
+        'dynamicLibraries': Module['dynamicLibraries'],
+#endif
       });
     },
 
@@ -460,11 +470,27 @@ var LibraryPThread = {
 
     getNewWorker: function() {
       if (PThread.unusedWorkers.length == 0) {
+#if !PROXY_TO_PTHREAD && PTHREAD_POOL_SIZE_STRICT
+#if ASSERTIONS
+        err('Tried to spawn a new thread, but the thread pool is exhausted.\n' +
+        'This might result in a deadlock unless some threads eventually exit or the code explicitly breaks out to the event loop.\n' +
+        'If you want to increase the pool size, use setting `-s PTHREAD_POOL_SIZE=...`.'
+#if PTHREAD_POOL_SIZE_STRICT == 1
+        + '\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-s PTHREAD_POOL_SIZE_STRICT=2`.'
+#endif
+        );
+#else
+        err('No available workers in the PThread pool');
+#endif
+#if PTHREAD_POOL_SIZE_STRICT == 2
+        // Don't return a Worker, which will translate into an EAGAIN error.
+        return;
+#endif
+#endif
         PThread.allocateUnusedWorker();
         PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
       }
-      if (PThread.unusedWorkers.length > 0) return PThread.unusedWorkers.pop();
-      else return null;
+      return PThread.unusedWorkers.pop();
     },
 
     busySpinWait: function(msecs) {
@@ -491,9 +517,23 @@ var LibraryPThread = {
   $cleanupThread: function(pthread_ptr) {
     if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! cleanupThread() can only ever be called from main application thread!';
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in cleanupThread!';
-    {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
     var pthread = PThread.pthreads[pthread_ptr];
+    // If pthread has been removed from this map this also means that pthread_ptr points
+    // to already freed data. Such situation may occur in following circumstances:
+    // 1. Joining cancelled thread - in such situation it may happen that pthread data will
+    //    already be removed by handling 'cancelDone' message.
+    // 2. Joining thread from non-main browser thread (this also includes thread running main()
+    //    when compiled with `PROXY_TO_PTHREAD`) - in such situation it may happen that following
+    //    code flow occur (MB - Main Browser Thread, S1, S2 - Worker Threads):
+    //    S2: thread ends, 'exit' message is sent to MB
+    //    S1: calls pthread_join(S2), this causes:
+    //        a. S2 is marked as detached,
+    //        b. 'cleanupThread' message is sent to MB.
+    //    MB: handles 'exit' message, as thread is detached, so returnWorkerToPool()
+    //        is called and all thread related structs are freed/released.
+    //    MB: handles 'cleanupThread' message which calls this function.
     if (pthread) {
+      {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
       var worker = pthread.worker;
       PThread.returnWorkerToPool(worker);
     }
@@ -511,6 +551,10 @@ var LibraryPThread = {
 
     var worker = PThread.getNewWorker();
 
+    if (!worker) {
+      // No available workers in the PThread pool.
+      return {{{ cDefine('EAGAIN') }}};
+    }
     if (worker.pthread !== undefined) throw 'Internal error!';
     if (!threadParams.pthread_ptr) throw 'Internal error, no pthread ptr!';
     PThread.runningWorkers.push(worker);
@@ -576,6 +620,7 @@ var LibraryPThread = {
       worker.runPthread();
       delete worker.runPthread;
     }
+    return 0;
   },
 
   emscripten_has_threading_support: function() {
@@ -795,13 +840,14 @@ var LibraryPThread = {
       // new thread, the thread creation must be deferred to the main JS thread.
       threadParams.cmd = 'spawnThread';
       postMessage(threadParams, transferList);
-    } else {
-      // We are the main thread, so we have the pthread warmup pool in this
-      // thread and can fire off JS thread creation directly ourselves.
-      spawnThread(threadParams);
+      // When we defer thread creation this way, we have no way to detect thread
+      // creation synchronously today, so we have to assume success and return 0.
+      return 0;
     }
 
-    return 0;
+    // We are the main thread, so we have the pthread warmup pool in this
+    // thread and can fire off JS thread creation directly ourselves.
+    return spawnThread(threadParams);
   },
 
   // TODO HACK! Remove this function, it is a JS side copy of the function
@@ -1178,7 +1224,7 @@ var LibraryPThread = {
   __call_main: function(argc, argv) {
     var returnCode = {{{ exportedAsmFunc('_main') }}}(argc, argv);
 #if EXIT_RUNTIME
-    if (!noExitRuntime) {
+    if (!keepRuntimeAlive()) {
       // exitRuntime enabled, proxied main() finished in a pthread, shut down the process.
 #if ASSERTIONS
       out('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
@@ -1324,7 +1370,7 @@ var LibraryPThread = {
     ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
 
-    // Call inside wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
+    // Call inside wasm module to set up the stack frame for this pthread in wasm module scope
     stackRestore(stackTop);
 
 #if STACK_OVERFLOW_CHECK
@@ -1332,11 +1378,6 @@ var LibraryPThread = {
     // current position of the stack.
     writeStackCookie();
 #endif
-  },
-
-  // allow pthreads to check if noExitRuntime from worker.js
-  $getNoExitRuntime: function() {
-    return noExitRuntime;
   },
 
   $invokeEntryPoint: function(ptr, arg) {

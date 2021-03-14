@@ -26,10 +26,10 @@ from .shared import Settings, CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
-from .shared import configuration, path_from_root, EXPECTED_BINARYEN_VERSION
+from .shared import configuration, path_from_root
 from .shared import asmjs_mangle, DEBUG
 from .shared import EM_BUILD_VERBOSE, TEMP_DIR
-from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
+from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name
 from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
 from .utils import which, WINDOWS
 
@@ -39,10 +39,9 @@ logger = logging.getLogger('building')
 multiprocessing_pool = None
 binaryen_checked = False
 
-# internal caches
-internal_nm_cache = {}
+EXPECTED_BINARYEN_VERSION = 100
 # cache results of nm - it can be slow to run
-uninternal_nm_cache = {}
+nm_cache = {}
 # Stores the object files contained in different archive files passed as input
 ar_contents = {}
 _is_ar_cache = {}
@@ -120,12 +119,6 @@ def extract_archive_contents(archive_file):
   }
 
 
-# Due to a python pickling issue, the following two functions must be at top
-# level, or multiprocessing pool spawn won't find them.
-def g_llvm_nm_uncached(filename):
-  return llvm_nm_uncached(filename)
-
-
 def g_multiprocessing_initializer(*args):
   for item in args:
     (key, value) = item.split('=', 1)
@@ -150,12 +143,11 @@ def unique_ordered(values):
   return list(filter(check, values))
 
 
-# clear internal caches. this is not normally needed, except if the clang/LLVM
+# clear caches. this is not normally needed, except if the clang/LLVM
 # used changes inside this invocation of Building, which can happen in the benchmarker
 # when it compares different builds.
 def clear():
-  internal_nm_cache.clear()
-  uninternal_nm_cache.clear()
+  nm_cache.clear()
   ar_contents.clear()
   _is_ar_cache.clear()
 
@@ -172,10 +164,6 @@ def get_multiprocessing_pool():
   global multiprocessing_pool
   if not multiprocessing_pool:
     cores = get_num_cores()
-    if DEBUG:
-      # When in EMCC_DEBUG mode, only use a single core in the pool, so that
-      # logging is not all jumbled up.
-      cores = 1
 
     # If running with one core only, create a mock instance of a pool that does not
     # actually spawn any new subprocesses. Very useful for internal debugging.
@@ -371,20 +359,82 @@ def make_paths_absolute(f):
     return os.path.abspath(f)
 
 
-# Runs llvm-nm in parallel for the given list of files.
-# The results are populated in uninternal_nm_cache
-# multiprocessing_pool: An existing multiprocessing pool to reuse for the operation, or None
-# to have the function allocate its own.
-def parallel_llvm_nm(files):
-  with ToolchainProfiler.profile_block('parallel_llvm_nm'):
-    pool = get_multiprocessing_pool()
-    object_contents = pool.map(g_llvm_nm_uncached, files)
+# Runs llvm-nm for the given list of files.
+# The results are populated in nm_cache
+def llvm_nm_multiple(files):
+  with ToolchainProfiler.profile_block('llvm_nm_multiple'):
+    if len(files) == 0:
+      return []
+    # Run llvm-nm on files that we haven't cached yet
+    llvm_nm_files = [f for f in files if f not in nm_cache]
 
-    for i, file in enumerate(files):
-      if object_contents[i].returncode != 0:
-        logger.debug('llvm-nm failed on file ' + file + ': return code ' + str(object_contents[i].returncode) + ', error: ' + object_contents[i].output)
-      uninternal_nm_cache[file] = object_contents[i]
-    return object_contents
+    # We can issue multiple files in a single llvm-nm calls, but only if those
+    # files are all .o or .bc files. Because of llvm-nm output format, we cannot
+    # llvm-nm multiple .a files in one call, but those must be individually checked.
+    if len(llvm_nm_files) > 1:
+      llvm_nm_files = [f for f in files if f.endswith('.o') or f.endswith('.bc')]
+
+    if len(llvm_nm_files) > 0:
+      cmd = [LLVM_NM] + llvm_nm_files
+      results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
+
+      # If one or more of the input files cannot be processed, llvm-nm will return a non-zero error code, but it will still process and print
+      # out all the other files in order. So even if process return code is non zero, we should always look at what we got to stdout.
+      if results.returncode != 0:
+        logger.debug('Subcommand ' + ' '.join(cmd) + ' failed with return code ' + str(results.returncode) + '! (An input file was corrupt?)')
+
+      results = results.stdout
+
+      # llvm-nm produces a single listing of form
+      # file1.o:
+      # 00000001 T __original_main
+      #          U __stack_pointer
+      #
+      # file2.o:
+      # 0000005d T main
+      #          U printf
+      #
+      # ...
+      # so loop over the report to extract the results
+      # for each individual file.
+
+      filename = llvm_nm_files[0]
+
+      # When we dispatched more than one file, we must manually parse
+      # the file result delimiters (like shown structured above)
+      if len(llvm_nm_files) > 1:
+        file_start = 0
+        i = 0
+
+        while True:
+          nl = results.find('\n', i)
+          if nl < 0:
+            break
+          colon = results.rfind(':', i, nl)
+          if colon >= 0 and results[colon + 1] == '\n': # New file start?
+            nm_cache[filename] = parse_symbols(results[file_start:i - 1])
+            filename = results[i:colon].strip()
+            file_start = colon + 2
+          i = nl + 1
+
+        nm_cache[filename] = parse_symbols(results[file_start:])
+      else:
+        # We only dispatched a single file, we can just parse that directly
+        # to the output.
+        nm_cache[filename] = parse_symbols(results)
+
+    # Any .a files that have multiple .o files will have hard time parsing. Scan those
+    # sequentially to confirm. TODO: Move this to use run_multiple_processes()
+    # when available.
+    for f in files:
+      if f not in nm_cache:
+        nm_cache[f] = llvm_nm(f)
+
+  return [nm_cache[f] for f in files]
+
+
+def llvm_nm(file):
+  return llvm_nm_multiple([file])[0]
 
 
 def read_link_inputs(files):
@@ -398,7 +448,7 @@ def read_link_inputs(files):
 
       if absolute_path_f not in ar_contents and is_ar(absolute_path_f):
         archive_names.append(absolute_path_f)
-      elif absolute_path_f not in uninternal_nm_cache and is_bitcode(absolute_path_f):
+      elif absolute_path_f not in nm_cache and is_bitcode(absolute_path_f):
         object_names.append(absolute_path_f)
 
     # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
@@ -419,12 +469,12 @@ def read_link_inputs(files):
 
     for o in object_names_in_archives:
       for f in o['files']:
-        if f not in uninternal_nm_cache:
+        if f not in nm_cache:
           object_names.append(f)
 
     # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
     # The results are not used here directly, but populated to llvm-nm cache structure.
-    parallel_llvm_nm(object_names)
+    llvm_nm_multiple(object_names)
 
 
 def llvm_backend_args():
@@ -450,10 +500,7 @@ def llvm_backend_args():
 
 
 def link_to_object(linker_inputs, target):
-  # link using lld for the wasm backend with wasm object files,
-  # other otherwise for linking of bitcode we must use our python
-  # code (necessary for asm.js, for wasm bitcode see
-  # https://bugs.llvm.org/show_bug.cgi?id=40654)
+  # link using lld unless LTO is requested (lld can't output LTO/bitcode object files).
   if not Settings.LTO:
     link_lld(linker_inputs + ['--relocatable'], target)
   else:
@@ -494,19 +541,9 @@ def lld_flags_for_executable(external_symbol_list):
                                    not Settings.ASYNCIFY):
     cmd.append('--strip-debug')
 
-  if Settings.RELOCATABLE:
-    if Settings.MAIN_MODULE == 2 or Settings.SIDE_MODULE == 2:
-      cmd.append('--no-export-dynamic')
-    else:
-      cmd.append('--no-gc-sections')
-      cmd.append('--export-dynamic')
-  else:
-    cmd.append('--export-table')
-    if Settings.ALLOW_TABLE_GROWTH:
-      cmd.append('--growable-table')
-
   if Settings.LINKABLE:
     cmd.append('--export-all')
+    cmd.append('--no-gc-sections')
   else:
     c_exports = [e for e in Settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
     # Strip the leading underscores
@@ -523,9 +560,19 @@ def lld_flags_for_executable(external_symbol_list):
       cmd.append('-shared')
     else:
       cmd.append('-pie')
+    if not Settings.LINKABLE:
+      cmd.append('--no-export-dynamic')
+  else:
+    cmd.append('--export-table')
+    if Settings.ALLOW_TABLE_GROWTH:
+      cmd.append('--growable-table')
 
   if not Settings.SIDE_MODULE:
+    # Export these two section start symbols so that we can extact the string
+    # data that they contain.
     cmd += [
+      '--export', '__start_em_asm',
+      '--export', '__stop_em_asm',
       '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
       '--initial-memory=%d' % Settings.INITIAL_MEMORY,
     ]
@@ -570,6 +617,11 @@ def link_lld(args, target, external_symbol_list=None):
   cmd = [WASM_LD, '-o', target] + args
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
+
+  # LLVM has turned on the new pass manager by default, but it causes some code
+  # size regressions. For now, use the legacy one.
+  # https://github.com/emscripten-core/emscripten/issues/13427
+  cmd += ['--lto-legacy-pass-manager']
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
@@ -730,7 +782,7 @@ def get_command_with_possible_response_file(cmd):
   return new_cmd
 
 
-def parse_symbols(output, include_internal=False):
+def parse_symbols(output):
   defs = []
   undefs = []
   commons = []
@@ -753,44 +805,11 @@ def parse_symbols(output, include_internal=False):
         undefs.append(symbol)
       elif status == 'C':
         commons.append(symbol)
-      elif (not include_internal and status == status.upper()) or \
-           (include_internal and status in ['W', 't', 'T', 'd', 'D']):
+      elif status == status.upper():
         # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
         #        so for now we assume all uppercase are normally defined external symbols
         defs.append(symbol)
   return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
-
-
-def llvm_nm_uncached(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
-  # LLVM binary ==> list of symbols
-  proc = run_process([LLVM_NM, filename], stdout=stdout, stderr=stderr, check=False)
-  if proc.returncode == 0:
-    return parse_symbols(proc.stdout, include_internal)
-  else:
-    return ObjectFileInfo(proc.returncode, str(proc.stdout) + str(proc.stderr))
-
-
-def llvm_nm(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
-  # Always use absolute paths to maximize cache usage
-  filename = os.path.abspath(filename)
-
-  if include_internal and filename in internal_nm_cache:
-    return internal_nm_cache[filename]
-  elif not include_internal and filename in uninternal_nm_cache:
-    return uninternal_nm_cache[filename]
-
-  ret = llvm_nm_uncached(filename, stdout, stderr, include_internal)
-
-  if ret.returncode != 0:
-    logger.debug('llvm-nm failed on file ' + filename + ': return code ' + str(ret.returncode) + ', error: ' + ret.output)
-
-  # Even if we fail, write the results to the NM cache so that we don't keep trying to llvm-nm the failing file again later.
-  if include_internal:
-    internal_nm_cache[filename] = ret
-  else:
-    uninternal_nm_cache[filename] = ret
-
-  return ret
 
 
 def emcc(filename, args=[], output_filename=None, stdout=None, stderr=None, env=None):
@@ -811,31 +830,6 @@ def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None)
 
   if 'c' in action:
     assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
-
-
-def get_safe_internalize():
-  if Settings.LINKABLE:
-    return [] # do not internalize anything
-
-  exps = Settings.EXPORTED_FUNCTIONS
-  internalize_public_api = '-internalize-public-api-'
-  internalize_list = ','.join([demangle_c_symbol_name(exp) for exp in exps])
-
-  # EXPORTED_FUNCTIONS can potentially be very large.
-  # 8k is a bit of an arbitrary limit, but a reasonable one
-  # for max command line size before we use a response file
-  if len(internalize_list) > 8192:
-    logger.debug('using response file for EXPORTED_FUNCTIONS in internalize')
-    finalized_exports = '\n'.join([exp[1:] for exp in exps])
-    internalize_list_file = configuration.get_temp_files().get('.response').name
-    with open(internalize_list_file, 'w') as f:
-      f.write(finalized_exports)
-    internalize_public_api += 'file=' + internalize_list_file
-  else:
-    internalize_public_api += 'list=' + internalize_list
-
-  # internalize carefully, llvm 3.2 will remove even main if not told not to
-  return ['-internalize', internalize_public_api]
 
 
 def opt_level_to_str(opt_level, shrink_level=0):
@@ -961,11 +955,11 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
     # should not minify these symbol names.
     CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs', 'closure-externs.js')]
 
-    # Closure compiler needs to know about all exports that come from the asm.js/wasm module, because to optimize for small code size,
+    # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
     # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
     # externs file for the exports, Closure is able to reason about the exports.
     if Settings.MODULE_EXPORTS and not Settings.DECLARE_ASM_MODULE_EXPORTS:
-      # Generate an exports file that records all the exported symbols from asm.js/wasm module.
+      # Generate an exports file that records all the exported symbols from the wasm module.
       module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % i for i, j in Settings.MODULE_EXPORTS])
       exports_file = configuration.get_temp_files().get('_module_exports.js')
       exports_file.write(module_exports_suppressions.encode())
@@ -1375,7 +1369,7 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
-  filename_bytes = asbytes(embedded_path)
+  filename_bytes = embedded_path.encode('utf-8')
   contents = webassembly.toLEB(len(filename_bytes)) + filename_bytes
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'ab') as f:
@@ -1383,6 +1377,11 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
     f.write(webassembly.toLEB(section_size))
     f.write(section_name)
     f.write(contents)
+
+
+def little_endian_heap(js_file):
+  logger.debug('enforcing little endian heap byte order')
+  return acorn_optimizer(js_file, ['littleEndianHeap'])
 
 
 def apply_wasm_memory_growth(js_file):
@@ -1571,7 +1570,6 @@ def check_binaryen(bindir):
 
 
 def get_binaryen_bin():
-  assert Settings.WASM, 'non wasm builds should not ask for binaryen'
   global binaryen_checked
   rtn = os.path.join(config.BINARYEN_ROOT, 'bin')
   if not binaryen_checked:

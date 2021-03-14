@@ -20,7 +20,7 @@ out = err = function(){};
 #endif
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
-{{{ makeModuleReceiveWithVar('noExitRuntime') }}}
+{{{ makeModuleReceiveWithVar('noExitRuntime', undefined, EXIT_RUNTIME ? 'false' : 'true') }}}
 
 #if WASM != 2 && MAYBE_WASM2JS
 #if !WASM2JS
@@ -261,12 +261,19 @@ var HEAP,
 /** @type {Float64Array} */
   HEAPF64;
 
+#if SUPPORT_BIG_ENDIAN
+var HEAP_DATA_VIEW;
+#endif
+
 #if WASM_BIGINT
 var HEAP64;
 #endif
 
 function updateGlobalBufferAndViews(buf) {
   buffer = buf;
+#if SUPPORT_BIG_ENDIAN
+  Module['HEAP_DATA_VIEW'] = HEAP_DATA_VIEW = new DataView(buf);
+#endif
   Module['HEAP8'] = HEAP8 = new Int8Array(buf);
   Module['HEAP16'] = HEAP16 = new Int16Array(buf);
   Module['HEAP32'] = HEAP32 = new Int32Array(buf);
@@ -358,10 +365,6 @@ if (!ENVIRONMENT_IS_PTHREAD)
 __ATINIT__.push({ func: function() { ___wasm_call_ctors() } });
 #endif
 
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) runtimeInitialized = true; // The runtime is hosted in the main thread, and bits shared to pthreads via SharedArrayBuffer. No need to init again in pthread.
-#endif
-
 function preRun() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
@@ -387,6 +390,11 @@ function initRuntime() {
   assert(!runtimeInitialized);
 #endif
   runtimeInitialized = true;
+
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#endif
+
 #if STACK_OVERFLOW_CHECK >= 2
 #if RUNTIME_LOGGING
   err('__set_stack_limits: ' + _emscripten_stack_get_base() + ', ' + _emscripten_stack_get_end());
@@ -1059,6 +1067,10 @@ function createWasm() {
         var search = location.search;
         if (search.indexOf('_rwasm=0') < 0) {
           location.href += (search ? search + '&' : '?') + '_rwasm=0';
+          // Return here to avoid calling abort() below.  The application
+          // still has a chance to start sucessfully do we don't want to
+          // trigger onAbort or onExit handlers.
+          return;
         }
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
       }
@@ -1120,6 +1132,24 @@ function createWasm() {
       var exports = Module['instantiateWasm'](info, receiveInstance);
 #if ASYNCIFY
       exports = Asyncify.instrumentWasmExports(exports);
+#endif
+#if USE_OFFSET_CONVERTER
+      {{{
+        runOnMainThread(`
+          // We have no way to create an OffsetConverter in this code path since
+          // we have no access to the wasm binary (only the user does). Instead,
+          // create a fake one that reports we cannot identify functions from
+          // their binary offsets.
+          // Note that we only do this on the main thread, as the workers
+          // receive the OffsetConverter data from there.
+          wasmOffsetConverter = {
+            getName: function() {
+              return 'unknown-due-to-instantiateWasm';
+            }
+          };
+          removeRunDependency('offset-converter');
+        `)
+      }}}
 #endif
       return exports;
     } catch(e) {

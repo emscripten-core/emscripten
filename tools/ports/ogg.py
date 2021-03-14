@@ -17,9 +17,8 @@ def needed(settings):
 
 def get(ports, settings, shared):
   ports.fetch_project('ogg', 'https://github.com/emscripten-ports/ogg/archive/' + TAG + '.zip', 'Ogg-' + TAG, sha512hash=HASH)
-  libname = 'libogg.a'
 
-  def create():
+  def create(final):
     logging.info('building port: ogg')
     ports.clear_project_build('vorbis')
 
@@ -35,15 +34,13 @@ def get(ports, settings, shared):
     shutil.rmtree(header_dir, ignore_errors=True)
     shutil.copytree(os.path.join(dest_path, 'include', 'ogg'), header_dir)
 
-    final = os.path.join(dest_path, libname)
     ports.build_port(os.path.join(dest_path, 'src'), final)
-    return final
 
-  return [shared.Cache.get_lib(libname, create)]
+  return [shared.Cache.get_lib('libogg.a', create)]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libogg.a')
+  shared.Cache.erase_lib('libogg.a')
 
 
 def process_args(ports):

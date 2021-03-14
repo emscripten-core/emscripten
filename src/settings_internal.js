@@ -11,7 +11,7 @@
 // and can be added/removed/renamed without fear of breaking out users.
 //
 
-// An array of all symbols exported from asm.js/wasm module.
+// An array of all symbols exported from the wasm module.
 var MODULE_EXPORTS = [];
 
 // stores the base name of the output file (-o TARGET_BASENAME.js)
@@ -98,9 +98,6 @@ var PROFILING_FUNCS = 0;
 // Whether we are emitting a symbol map. You should not modify this.
 var EMIT_SYMBOL_MAP = 0;
 
-// tracks the list of EM_ASM signatures that are proxied between threads.
-var PROXIED_FUNCTION_SIGNATURES = [];
-
 // List of function explicitly exported by user on the command line.
 var USER_EXPORTED_FUNCTIONS = [];
 
@@ -175,12 +172,10 @@ var EXPECT_MAIN = 1;
 // MODULARIZE, and returned from the factory function.
 var EXPORT_READY_PROMISE = 1;
 
-var USE_LEGACY_DYNCALLS = 0;
-
 // struct_info that is either generated or cached
 var STRUCT_INFO = '';
 
-// If true, building against Emscripten's asm.js/wasm heap memory profiler.
+// If true, building against Emscripten's wasm heap memory profiler.
 var MEMORYPROFILER = 0;
 
 var GENERATE_SOURCE_MAP = 0;

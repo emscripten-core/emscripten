@@ -301,6 +301,9 @@ public:
       return __impl::__hash(__type_name);
     }
 
+    // XXX Emscripten: adding `always_inline` fixes
+    // https://github.com/emscripten-core/emscripten/issues/13330
+    __attribute__((always_inline))
     _LIBCPP_INLINE_VISIBILITY
     bool operator==(const type_info& __arg) const _NOEXCEPT
     {

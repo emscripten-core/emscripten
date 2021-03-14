@@ -29,14 +29,13 @@ from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles, colored_logger
 from . import diagnostics
 from . import config
+from . import filelock
 
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 99
-EXPECTED_LLVM_VERSION = "12.0"
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
-SIMD_NEON_FLAGS = ['-mfpu=neon']
+EXPECTED_LLVM_VERSION = "13.0"
 PYTHON = sys.executable
 
 # can add  %(asctime)s  to see timestamps
@@ -239,7 +238,20 @@ def generate_sanity():
 
 
 def perform_sanity_checks():
+  # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
+  check_node_version()
+  check_llvm_version()
+
+  llvm_ok = check_llvm()
+
+  if os.environ.get('EM_IGNORE_SANITY'):
+    logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
+    return
+
   logger.info('(Emscripten: Running sanity checks)')
+
+  if not llvm_ok:
+    exit_with_error('failing sanity checks due to previous llvm failure')
 
   with ToolchainProfiler.profile_block('sanity compiler_engine'):
     try:
@@ -264,11 +276,24 @@ def check_sanity(force=False):
   """
   if not force and os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
     return
+
   # We set EMCC_SKIP_SANITY_CHECK so that any subprocesses that we launch will
   # not re-run the tests.
   os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
+
+  if DEBUG:
+    force = True
+
+  if config.FROZEN_CACHE:
+    if force:
+      perform_sanity_checks()
+    return
+
+  if os.environ.get('EM_IGNORE_SANITY'):
+    perform_sanity_checks()
+    return
+
   with ToolchainProfiler.profile_block('sanity'):
-    check_llvm_version()
     if not config.config_file:
       return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
@@ -278,16 +303,13 @@ def check_sanity(force=False):
       if os.path.exists(sanity_file):
         sanity_data = open(sanity_file).read()
         if sanity_data != expected:
-          logger.info('old sanity: %s' % sanity_data)
-          logger.info('new sanity: %s' % expected)
-          if config.FROZEN_CACHE:
-            logger.info('(Emscripten: config changed, cache may need to be cleared, but FROZEN_CACHE is set)')
-          else:
-            logger.info('(Emscripten: config changed, clearing cache)')
-            Cache.erase()
-            # the check actually failed, so definitely write out the sanity file, to
-            # avoid others later seeing failures too
-            force = False
+          logger.debug('old sanity: %s' % sanity_data)
+          logger.debug('new sanity: %s' % expected)
+          logger.info('(Emscripten: config changed, clearing cache)')
+          Cache.erase()
+          # the check actually failed, so definitely write out the sanity file, to
+          # avoid others later seeing failures too
+          force = False
         else:
           if force:
             logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
@@ -296,18 +318,6 @@ def check_sanity(force=False):
             return # all is well
       else:
         logger.debug(f'sanity file not found: {sanity_file}')
-
-      # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
-      check_node_version()
-
-      llvm_ok = check_llvm()
-
-      if os.environ.get('EM_IGNORE_SANITY'):
-        logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
-        return
-
-      if not llvm_ok:
-        exit_with_error('failing sanity checks due to previous llvm failure')
 
       perform_sanity_checks()
 
@@ -364,12 +374,14 @@ def get_emscripten_temp_dir():
   if not EMSCRIPTEN_TEMP_DIR:
     EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
 
-    def prepare_to_clean_temp(d):
-      def clean_temp():
-        try_delete(d)
+    if not DEBUG_SAVE:
+      def prepare_to_clean_temp(d):
+        def clean_temp():
+          try_delete(d)
 
-      atexit.register(clean_temp)
-    prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
+        atexit.register(clean_temp)
+      # this global var might change later
+      prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR)
   return EMSCRIPTEN_TEMP_DIR
 
 
@@ -394,10 +406,29 @@ class Configuration(object):
       except Exception as e:
         exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.config_file_location())
 
+      # Since the canonical temp directory is, by definition, the same
+      # between all processes that run in DEBUG mode we need to use a multi
+      # process lock to prevent more than one process from writing to it.
+      # This is because emcc assumes that it can use non-unique names inside
+      # the temp directory.
+      # Sadly we need to allow child processes to access this directory
+      # though, since emcc can recursively call itself when building
+      # libraries and ports.
+      if 'EM_HAVE_TEMP_DIR_LOCK' not in os.environ:
+        filelock_name = os.path.join(self.EMSCRIPTEN_TEMP_DIR, 'emscripten.lock')
+        lock = filelock.FileLock(filelock_name)
+        os.environ['EM_HAVE_TEMP_DIR_LOCK'] = '1'
+        lock.acquire()
+        atexit.register(lock.release)
+
   def get_temp_files(self):
-    return tempfiles.TempFiles(
-      tmp=self.TEMP_DIR if not DEBUG else get_emscripten_temp_dir(),
-      save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
+    if DEBUG_SAVE:
+      # In debug mode store all temp files in the emscripten-specific temp dir
+      # and don't worry about cleaning them up.
+      return tempfiles.TempFiles(get_emscripten_temp_dir(), save_debug_files=True)
+    else:
+      # Otherwise use the system tempdir and try to clean up after ourselves.
+      return tempfiles.TempFiles(self.TEMP_DIR, save_debug_files=False)
 
 
 def apply_configuration():
@@ -406,109 +437,6 @@ def apply_configuration():
   EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
   CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
   TEMP_DIR = configuration.TEMP_DIR
-
-
-def get_llvm_target():
-  if Settings.MEMORY64:
-    return 'wasm64-unknown-emscripten'
-  else:
-    return 'wasm32-unknown-emscripten'
-
-
-def emsdk_ldflags(user_args):
-  if os.environ.get('EMMAKEN_NO_SDK'):
-    return []
-
-  library_paths = [
-      Cache.get_lib_dir(absolute=True)
-  ]
-  ldflags = ['-L' + l for l in library_paths]
-
-  if '-nostdlib' in user_args:
-    return ldflags
-
-  # TODO(sbc): Add system libraries here rather than conditionally including
-  # them via .symbols files.
-  libraries = []
-  ldflags += ['-l' + l for l in libraries]
-
-  return ldflags
-
-
-def emsdk_cflags(user_args):
-  # Disable system C and C++ include directories, and add our own (using
-  # -isystem so they are last, like system dirs, which allows projects to
-  # override them)
-
-  c_opts = ['--sysroot=' + Cache.get_sysroot_dir(absolute=True)]
-
-  def array_contains_any_of(hay, needles):
-    for n in needles:
-      if n in hay:
-        return True
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    if '-msimd128' not in user_args:
-      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128!')
-    c_opts += ['-D__SSE__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
-    c_opts += ['-D__SSE2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
-    c_opts += ['-D__SSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
-    c_opts += ['-D__SSSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
-    c_opts += ['-D__SSE4_1__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
-    c_opts += ['-D__SSE4_2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[6:]):
-    c_opts += ['-D__AVX__=1']
-
-  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    c_opts += ['-D__ARM_NEON__=1']
-
-  return c_opts + ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
-
-
-def get_clang_flags():
-  return ['-target', get_llvm_target()]
-
-
-def get_cflags(user_args):
-  c_opts = get_clang_flags()
-
-  # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
-  # data and other nice fixes.
-  c_opts += [# '-fno-threadsafe-statics', # disabled due to issue 1289
-             '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
-             '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
-             '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
-             '-D_LIBCPP_ABI_VERSION=2']
-
-  # For compatability with the fastcomp compiler that defined these
-  c_opts += ['-Dunix',
-             '-D__unix',
-             '-D__unix__']
-
-  # Changes to default clang behavior
-
-  # Implicit functions can cause horribly confusing function pointer type errors, see #2175
-  # If your codebase really needs them - very unrecommended! - you can disable the error with
-  #   -Wno-error=implicit-function-declaration
-  # or disable even a warning about it with
-  #   -Wno-implicit-function-declaration
-  c_opts += ['-Werror=implicit-function-declaration']
-
-  if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
-    return c_opts
-
-  return c_opts + emsdk_cflags(user_args)
 
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
@@ -771,7 +699,7 @@ class JS(object):
         return ''
       with open(path, 'rb') as f:
         data = base64.b64encode(f.read())
-      return 'data:application/octet-stream;base64,' + asstr(data)
+      return 'data:application/octet-stream;base64,' + data.decode('ascii')
     else:
       return os.path.basename(path)
 
@@ -804,7 +732,7 @@ class JS(object):
   @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
-    if Settings.USE_LEGACY_DYNCALLS or not JS.is_legal_sig(sig):
+    if Settings.DYNCALLS or not JS.is_legal_sig(sig):
       args = ','.join(args)
       if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
         # Optimize dynCall accesses in the case when not building with dynamic
@@ -841,24 +769,6 @@ function%s(%s) {
 }''' % (name, ','.join(args), body, rethrow)
 
     return ret
-
-
-# Python 2-3 compatibility helper function:
-# Converts a string to the native str type.
-def asstr(s):
-  if str is bytes:
-    if isinstance(s, type(u'')):
-      return s.encode('utf-8')
-  elif isinstance(s, bytes):
-    return s.decode('utf-8')
-  return s
-
-
-def asbytes(s):
-  if isinstance(s, bytes):
-    # Do not attempt to encode bytes
-    return s
-  return s.encode('utf-8')
 
 
 def suffix(name):
@@ -930,6 +840,12 @@ def read_and_preprocess(filename, expand_macros=False):
   out = open(stdout, 'r').read()
 
   return out
+
+
+def do_replace(input_, pattern, replacement):
+  if pattern not in input_:
+    exit_with_error('expected to find pattern in input JS: %s' % pattern)
+  return input_.replace(pattern, replacement)
 
 
 # ============================================================================

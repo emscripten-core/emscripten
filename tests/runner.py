@@ -7,7 +7,7 @@
 """This is the Emscripten test runner. To run some tests, specify which tests
 you want, for example
 
-  python3 tests/runner.py asm1.test_hello_world
+  tests/runner asm1.test_hello_world
 
 There are many options for which tests to run and how to run them. For details,
 see
@@ -59,8 +59,7 @@ from jsrun import NON_ZERO
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import EM_BUILD_VERBOSE
-from tools.shared import asstr, get_canonical_temp_dir, try_delete
-from tools.shared import asbytes
+from tools.shared import get_canonical_temp_dir, try_delete
 from tools.utils import MACOS, WINDOWS
 from tools import shared, line_endings, building, config
 
@@ -128,12 +127,12 @@ def skip_if(func, condition, explanation='', negate=False):
   return decorated
 
 
-def needs_dlfcn(func):
+def needs_dylink(func):
   assert callable(func)
 
   @wraps(func)
   def decorated(self):
-    self.check_dlfcn()
+    self.check_dylink()
     return func(self)
 
   return decorated
@@ -380,13 +379,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def is_wasm(self):
     return self.get_setting('WASM') != 0
 
-  def check_dlfcn(self):
+  def check_dylink(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
-      self.skipTest('no dlfcn with memory growth (without wasm)')
+      self.skipTest('no dynamic linking with memory growth (without wasm)')
     if not self.is_wasm():
-      self.skipTest('no dynamic library support in wasm2js yet')
+      self.skipTest('no dynamic linking support in wasm2js yet')
     if '-fsanitize=address' in self.emcc_args:
-      self.skipTest('no dynamic library support in asan yet')
+      self.skipTest('no dynamic linking support in asan yet')
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
@@ -462,7 +461,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       os.chdir(os.path.dirname(self.get_dir()))
       try_delete(self.get_dir())
 
-      if EMTEST_DETECT_TEMPFILE_LEAKS and not os.environ.get('EMCC_DEBUG'):
+      if EMTEST_DETECT_TEMPFILE_LEAKS and not DEBUG:
         temp_files_after_run = []
         for root, dirnames, filenames in os.walk(self.temp_dir):
           for dirname in dirnames:
@@ -549,8 +548,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     es_check = shared.get_npm_cmd('es-check')
     # use --quiet once its available
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
+    es_check_env = os.environ.copy()
+    es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
     try:
-      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stderr=PIPE)
+      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stderr=PIPE, env=es_check_env)
     except subprocess.CalledProcessError as e:
       print(e.stderr)
       self.fail('es-check failed to verify ES5 output compliance')
@@ -566,6 +567,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
       # this if this issues is fixed.
       compiler = [EMCC, '-nostdlib++']
+
+    if force_c:
+      compiler.append('-xc')
 
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix
@@ -587,6 +591,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       src = open(output).read()
       # side memory init file, or an empty one in the js
       assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
+
+    return output
 
   def get_func(self, src, name):
     start = src.index('function ' + name + '(')
@@ -724,10 +730,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       fail_message += '\n' + msg
     self.fail(fail_message)
 
-  def assertIdenticalUrlEncoded(self, expected, actual, **kwargs):
-    """URL decodes the `actual` parameter before checking for equality."""
-    self.assertIdentical(expected, unquote(actual), **kwargs)
-
   def assertTextDataContained(self, text1, text2):
     text1 = text1.replace('\r\n', '\n')
     text2 = text2.replace('\r\n', '\n')
@@ -736,7 +738,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]:
       values = [values]
-    values = list(map(asstr, values))
     if callable(string):
       string = string()
 
@@ -1217,7 +1218,7 @@ def harness_server_func(in_queue, out_queue, port):
           assert in_queue.empty(), 'should not be any blockage - one test runs at a time'
           assert out_queue.empty(), 'the single response from the last test was read'
           # tell the browser to load the test
-          self.wfile.write(b'COMMAND:' + url)
+          self.wfile.write(b'COMMAND:' + url.encode('utf-8'))
           # move us to the right place to serve the files for the new test
           os.chdir(dir)
         else:
@@ -1337,7 +1338,7 @@ class BrowserCore(RunnerCore):
     if expectedResult is not None:
       try:
         self.harness_in_queue.put((
-          asbytes('http://localhost:%s/%s' % (self.port, html_file)),
+          'http://localhost:%s/%s' % (self.port, html_file),
           self.get_dir()
         ))
         received_output = False
@@ -1362,8 +1363,9 @@ class BrowserCore(RunnerCore):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
           # verify the result, and try again if we should do so
+          output = unquote(output)
           try:
-            self.assertIdenticalUrlEncoded(expectedResult, output)
+            self.assertContained(expectedResult, output)
           except Exception as e:
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
@@ -1507,7 +1509,7 @@ class BrowserCore(RunnerCore):
                  path_from_root('tests', 'report_result.cpp')]
     self.run_process([EMCC] + self.get_emcc_args() + args)
 
-  def btest_exit(self, filename, expected, *args, **kwargs):
+  def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
       """Special case of btest that reports its result solely via exiting
       with a give result code.
 
@@ -1516,7 +1518,7 @@ class BrowserCore(RunnerCore):
       """
       self.set_setting('EXIT_RUNTIME')
       kwargs['reporting'] = Reporting.JS_ONLY
-      kwargs['expected'] = 'exit:%s' % expected
+      kwargs['expected'] = 'exit:%d' % assert_returncode
       return self.btest(filename, *args, **kwargs)
 
   def btest(self, filename, expected=None, reference=None,
@@ -1841,7 +1843,7 @@ def flattened_tests(loaded_tests):
 
 def suite_for_module(module, tests):
   suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest')
-  if not EMTEST_SAVE_DIR:
+  if not EMTEST_SAVE_DIR and not DEBUG:
     has_multiple_tests = len(tests) > 1
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_tests and has_multiple_cores:

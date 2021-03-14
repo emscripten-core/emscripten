@@ -1063,7 +1063,7 @@ var LibraryEmbind = {
   },
 
   $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError'
-#if USE_LEGACY_DYNCALLS || !WASM_BIGINT
+#if DYNCALLS || !WASM_BIGINT
     , '$getDynCaller'
 #endif
   ],
@@ -1071,7 +1071,7 @@ var LibraryEmbind = {
     signature = readLatin1String(signature);
 
     function makeDynCaller() {
-#if USE_LEGACY_DYNCALLS
+#if DYNCALLS
       return getDynCaller(signature, rawFunction);
 #else
 #if !WASM_BIGINT
@@ -1218,6 +1218,7 @@ var LibraryEmbind = {
 
   $structRegistrations: {},
 
+  _embind_register_value_object__sig: 'viiiiii',
   _embind_register_value_object__deps: [
     '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_object: function(
@@ -1236,6 +1237,7 @@ var LibraryEmbind = {
     };
   },
 
+  _embind_register_value_object_field__sig: 'viiiiiiiiii',
   _embind_register_value_object_field__deps: [
     '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
   _embind_register_value_object_field: function(
@@ -1261,6 +1263,7 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_finalize_value_object__sig: 'ii',
   _embind_finalize_value_object__deps: [
     '$structRegistrations', '$runDestructors',
     '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],

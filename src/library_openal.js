@@ -2314,7 +2314,9 @@ var LibraryOpenAL = {
   },
 
   // The spec is vague about what these are actually supposed to do, and NOP is a reasonable implementation
+  alcProcessContext__sig: 'vi',
   alcProcessContext: function(contextId) {},
+  alcSuspendContext__sig: 'vi',
   alcSuspendContext: function(contextId) {},
 
   alcIsExtensionPresent__proxy: 'sync',
@@ -2323,20 +2325,6 @@ var LibraryOpenAL = {
     var name = UTF8ToString(pExtName);
 
     return AL.ALC_EXTENSIONS[name] ? 1 : 0;
-  },
-
-  alcGetProcAddress__deps: ['emscripten_GetAlcProcAddress'],
-  alcGetProcAddress__proxy: 'sync',
-  alcGetProcAddress__sig: 'iii',
-  alcGetProcAddress: function(deviceId, pProcName) {
-    if (!pProcName) {
-#if OPENAL_DEBUG
-      console.error('alcGetProcAddress() called with null name pointer');
-#endif
-      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
-      return 0; /* ALC_NONE */
-    }
-    return _emscripten_GetAlcProcAddress(pProcName);
   },
 
   alcGetEnumValue__proxy: 'sync',
@@ -2942,26 +2930,6 @@ var LibraryOpenAL = {
     name = UTF8ToString(pExtName);
 
     return AL.AL_EXTENSIONS[name] ? 1 : 0;
-  },
-
-  alGetProcAddress__deps: ['emscripten_GetAlProcAddress'],
-  alGetProcAddress__proxy: 'sync',
-  alGetProcAddress__sig: 'vi',
-  alGetProcAddress: function(pProcName) {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      console.error('alGetProcAddress() called without a valid context');
-#endif
-      return;
-    }
-    if (!pProcName) {
-#if OPENAL_DEBUG
-      console.error('alcGetProcAddress() called with null name pointer');
-#endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
-      return 0; /* ALC_NONE */
-    }
-    return _emscripten_GetAlProcAddress(pProcName);
   },
 
   alGetEnumValue__proxy: 'sync',

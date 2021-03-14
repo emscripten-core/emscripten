@@ -43,4 +43,8 @@ if (hasModule) {
   Module['onExit'] = function(status) {
     maybeReportResultToServer('exit:' + status);
   }
+
+  Module['onAbort'] = function(reason) {
+    maybeReportResultToServer('abort:' + reason);
+  }
 }

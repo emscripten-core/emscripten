@@ -7,7 +7,7 @@
 //"use strict";
 
 // See browser tests for examples (tests/runner.py, search for sdl_). Run with
-//    python tests/runner.py browser
+//    tests/runner browser
 
 // Notes:
 //  SDL_VIDEORESIZE: This is sent when the canvas is resized. Note that the user
@@ -3448,11 +3448,6 @@ var LibrarySDL = {
     if (value) {{{ makeSetValue('value', '0', 'SDL.glAttributes[attr]', 'i32') }}};
 
     return 0;
-  },
-
-  SDL_GL_GetProcAddress__deps: ['emscripten_GetProcAddress'],
-  SDL_GL_GetProcAddress: function(name_) {
-    return _emscripten_GetProcAddress(name_);
   },
 
   SDL_GL_SwapBuffers__proxy: 'sync',

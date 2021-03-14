@@ -291,7 +291,9 @@ void test_store()
 	void_OutDoublePtr_M128d(_mm_storel_pd, double*, 8, 1);
 	void_OutDoublePtr_M128d(_mm_storer_pd, double*, 16, 16);
 	void_OutDoublePtr_M128d(_mm_storeu_pd, double*, 16, 1);
+	void_OutIntPtr_M128i(_mm_storeu_si16, unsigned short*, 2, 1);
 	void_OutIntPtr_M128i(_mm_storeu_si32, __m128i*, 4, 1);
+	void_OutIntPtr_M128i(_mm_storeu_si64, __m64*, 8, 1);
 	void_OutIntPtr_M128i(_mm_storeu_si128, __m128i*, 16, 1);
 	void_OutDoublePtr_M128d(_mm_stream_pd, double*, 16, 16);
 	void_OutIntPtr_M128i(_mm_stream_si128, __m128i*, 16, 16);
