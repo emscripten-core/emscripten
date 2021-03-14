@@ -458,7 +458,7 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install make cmake.portable ninja
+            choco install cmake.portable ninja
             choco install python --version 3.8.0
       - run:
           name: Add python to bash path
