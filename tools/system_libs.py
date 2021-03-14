@@ -1159,6 +1159,15 @@ class libfetch(MTLibrary):
     return [shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')]
 
 
+class libstb_image(Library):
+  name = 'libstb_image'
+  never_force = True
+  includes = [['third_party']]
+
+  def get_files(self):
+    return [shared.path_from_root('system', 'lib', 'stb_image.c')]
+
+
 class libasmfs(MTLibrary):
   name = 'libasmfs'
   never_force = True
