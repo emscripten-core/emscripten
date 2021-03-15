@@ -3576,6 +3576,15 @@ LibraryManager.library = {
 #endif
   },
 
+  $handleException: function(e) {
+    if (e instanceof ExitStatus || e === 'unwind') {
+      return;
+    }
+    // And actual unexpected user-exectpion occured
+    if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
+    throw e;
+  },
+
 #if !MINIMAL_RUNTIME
   // Callable in pthread without __proxy needed.
   $runtimeKeepalivePush__sig: 'v',
@@ -3604,9 +3613,11 @@ LibraryManager.library = {
   // The job of this wrapper is the handle emscripten-specfic exceptions such
   // as ExitStatus and 'unwind' and prevent these from escaping to the top
   // level.
+  $callUserCallback__deps: ['$handleException',
 #if EXIT_RUNTIME || USE_PTHREADS
-  $callUserCallback__deps: ['$maybeExit'],
+    '$maybeExit',
 #endif
+  ],
   $callUserCallback: function(func, synchronous) {
     if (ABORT) {
 #if ASSERTIONS
@@ -3622,13 +3633,7 @@ LibraryManager.library = {
     try {
       func();
     } catch (e) {
-      if (e instanceof ExitStatus) {
-        return;
-      } else if (e !== 'unwind') {
-        // And actual unexpected user-exectpion occured
-        if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
-        throw e;
-      }
+      handleException(e);
     }
 #if EXIT_RUNTIME || USE_PTHREADS
 #if USE_PTHREADS && !EXIT_RUNTIME
@@ -3638,7 +3643,7 @@ LibraryManager.library = {
 #endif
   },
 
-  $maybeExit__deps: ['exit',
+  $maybeExit__deps: ['exit', '$handleException',
 #if USE_PTHREADS
     'pthread_exit',
 #endif
@@ -3658,10 +3663,7 @@ LibraryManager.library = {
 #endif
         _exit(EXITSTATUS);
       } catch (e) {
-        if (e instanceof ExitStatus) {
-          return;
-        }
-        throw e;
+        handleException(e);
       }
     }
   },

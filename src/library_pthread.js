@@ -9,6 +9,7 @@ var LibraryPThread = {
   $PThread__deps: ['_emscripten_thread_init',
                    'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
+                   '$handleException',
                    ],
   $PThread: {
     // Contains all Workers that are idle/unused and not currently hosting an
@@ -362,8 +363,7 @@ var LibraryPThread = {
           try {
             exit(d['returnCode']);
           } catch (e) {
-            if (e instanceof ExitStatus) return;
-            throw e;
+            handleException(e);
           }
         } else if (cmd === 'cancelDone') {
           PThread.returnWorkerToPool(worker);
@@ -379,6 +379,7 @@ var LibraryPThread = {
 
       worker.onerror = function(e) {
         err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
+        throw e;
       };
 
 #if ENVIRONMENT_MAY_BE_NODE
@@ -386,10 +387,10 @@ var LibraryPThread = {
         worker.on('message', function(data) {
           worker.onmessage({ data: data });
         });
-        worker.on('error', function(data) {
-          worker.onerror(data);
+        worker.on('error', function(e) {
+          worker.onerror(e);
         });
-        worker.on('exit', function(data) {
+        worker.on('exit', function() {
           // TODO: update the worker queue?
           // See: https://github.com/emscripten-core/emscripten/issues/9763
         });

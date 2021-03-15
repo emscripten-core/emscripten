@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 - Added `EM_ASYNC_JS` macro - similar to `EM_JS`, but allows using `await`
   inside the JS block and automatically integrates with Asyncify without
   the need for listing the declared function in `ASYNCIFY_IMPORTS` (#9709).
+- Errors that occur on pthreads (e.g. uncaught exception) will now get re-thrown
+  on the main thread rather than simply being logged (#13666).
 
 2.0.26 - 07/26/2021
 -------------------
