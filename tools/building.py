@@ -376,6 +376,7 @@ def llvm_nm_multiple(files):
 
     if len(llvm_nm_files) > 0:
       cmd = [LLVM_NM] + llvm_nm_files
+      cmd = get_command_with_possible_response_file(cmd)
       results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
 
       # If one or more of the input files cannot be processed, llvm-nm will return a non-zero error code, but it will still process and print
