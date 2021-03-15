@@ -5922,9 +5922,9 @@ return malloc(size);
 
   @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
-    self.emcc_args += ['-I' + path_from_root('third_party')]
+    self.emcc_args += ['-I' + test_file('third_party', 'libiberty')]
 
-    self.do_runf(path_from_root('third_party', 'gcc_demangler.c'), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
+    self.do_runf(test_file('third_party', 'libiberty', 'cp-demangle.c'), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
   @needs_make('make')
   def test_lua(self):
