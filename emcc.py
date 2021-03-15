@@ -1326,10 +1326,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         setattr(shared.Settings, name, new_default)
 
     # -s ASSERTIONS=1 implies basic stack overflow checks, and ASSERTIONS=2
-    # implies full stack overflow checks (unless the user specifically set
-    # something else)
+    # implies full stack overflow checks.
     if shared.Settings.ASSERTIONS:
-      default_setting('STACK_OVERFLOW_CHECK',  max(shared.Settings.ASSERTIONS, shared.Settings.STACK_OVERFLOW_CHECK))
+      # However, we don't set this default in PURE_WASI, or when we are linking without standard
+      # libraries because STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end which is defined
+      # in libcompiler-rt.
+      if not shared.Settings.PURE_WASI and '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
+        default_setting('STACK_OVERFLOW_CHECK', max(shared.Settings.ASSERTIONS, shared.Settings.STACK_OVERFLOW_CHECK))
 
     if shared.Settings.LLD_REPORT_UNDEFINED or shared.Settings.STANDALONE_WASM:
       # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function
