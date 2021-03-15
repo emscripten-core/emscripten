@@ -108,7 +108,7 @@ def delete_contents(pathname):
 
 
 def test_file(*path_components):
-  """Construct and path relative to the emscripten "tests" directory."""
+  """Construct a path relative to the emscripten "tests" directory."""
   return os.path.join(TEST_ROOT, *path_components)
 
 
