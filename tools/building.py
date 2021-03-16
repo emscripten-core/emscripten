@@ -1007,6 +1007,7 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
     # Closure compiler is unable to deal with path names that are not 7-bit ASCII:
     # https://github.com/google/closure-compiler/issues/3784
     outfile = configuration.get_temp_files().get('.cc.js').name  # Safe 7-bit filename
+
     def move_to_safe_7bit_ascii_filename(filename):
       safe_filename = configuration.get_temp_files().get('.js').name  # Safe 7-bit filename
       shutil.copyfile(filename, safe_filename)
@@ -1017,7 +1018,7 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
 
     for i in range(len(user_args)):
       if user_args[i] == '--externs':
-        user_args[i+1] = move_to_safe_7bit_ascii_filename(user_args[i+1])
+        user_args[i + 1] = move_to_safe_7bit_ascii_filename(user_args[i + 1])
 
     # Specify output file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
     args += ['--js_output_file', os.path.relpath(outfile, configuration.get_temp_files_directory())]
