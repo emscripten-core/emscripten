@@ -1006,12 +1006,13 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
 
     # Closure compiler is unable to deal with path names that are not 7-bit ASCII:
     # https://github.com/google/closure-compiler/issues/3784
-    outfile = configuration.get_temp_files().get('.cc.js').name  # Safe 7-bit filename
+    tempfiles = configuration.get_temp_files()
+    outfile = tempfiles.get('.cc.js').name  # Safe 7-bit filename
 
     def move_to_safe_7bit_ascii_filename(filename):
-      safe_filename = configuration.get_temp_files().get('.js').name  # Safe 7-bit filename
+      safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
       shutil.copyfile(filename, safe_filename)
-      return os.path.relpath(safe_filename, configuration.get_temp_files_directory())
+      return os.path.relpath(safe_filename, tempfiles.tmpdir)
 
     for e in CLOSURE_EXTERNS:
       args += ['--externs', move_to_safe_7bit_ascii_filename(e)]
@@ -1021,7 +1022,7 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
         user_args[i + 1] = move_to_safe_7bit_ascii_filename(user_args[i + 1])
 
     # Specify output file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
-    args += ['--js_output_file', os.path.relpath(outfile, configuration.get_temp_files_directory())]
+    args += ['--js_output_file', os.path.relpath(outfile, tempfiles.tmpdir)]
 
     if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
       args.append('--jscomp_off=*')
@@ -1036,12 +1037,7 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
     # 7-bit ASCII range. Therefore make sure the command line we pass does not contain any such
     # input files by passing all input filenames relative to the cwd. (user temp directory might
     # be in user's home directory, and user's profile name might contain unicode characters)
-    cwd = os.getcwd()
-    try:
-      os.chdir(configuration.get_temp_files_directory())
-      proc = run_process(cmd, stderr=PIPE, check=False, env=env)
-    finally:
-      os.chdir(cwd)
+    proc = run_process(cmd, stderr=PIPE, check=False, env=env, cwd=tempfiles.tmpdir)
 
     # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
     # outfile.map source map file (https://github.com/google/closure-compiler/wiki/Source-Maps)

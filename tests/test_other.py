@@ -7473,7 +7473,7 @@ end
     test = "☃ äö Ć € ' 🦠.c"
     shutil.copyfile(test_file('hello_world.c'), test)
     externs = '💩' + test
-    open(externs, 'w').write('')
+    create_file(externs, '')
     self.run_process([EMCC, test, '--closure=1', '--closure-args', '--externs "' + externs + '"'])
 
   def test_toolchain_profiler(self):

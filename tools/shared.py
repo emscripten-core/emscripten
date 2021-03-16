@@ -421,17 +421,14 @@ class Configuration(object):
         lock.acquire()
         atexit.register(lock.release)
 
-  def get_temp_files_directory(self):
+  def get_temp_files(self):
     if DEBUG_SAVE:
       # In debug mode store all temp files in the emscripten-specific temp dir
       # and don't worry about cleaning them up.
-      return get_emscripten_temp_dir()
+      return tempfiles.TempFiles(get_emscripten_temp_dir(), save_debug_files=True)
     else:
       # Otherwise use the system tempdir and try to clean up after ourselves.
-      return self.TEMP_DIR
-
-  def get_temp_files(self):
-    return tempfiles.TempFiles(self.get_temp_files_directory(), save_debug_files=DEBUG_SAVE)
+      return tempfiles.TempFiles(self.TEMP_DIR, save_debug_files=False)
 
 
 def apply_configuration():
