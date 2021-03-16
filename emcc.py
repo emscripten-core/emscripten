@@ -2902,9 +2902,11 @@ def do_binaryen(target, options, wasm_target):
                                use_closure_compiler=options.use_closure_compiler,
                                debug_info=debug_info,
                                symbols_file=symbols_file)
+
+    shared.configuration.get_temp_files().note(wasm2js)
+
     if shared.Settings.WASM == 2:
       safe_copy(wasm2js, wasm2js_template)
-      shared.try_delete(wasm2js)
 
     if shared.Settings.WASM != 2:
       final_js = wasm2js
@@ -3012,6 +3014,7 @@ else if (typeof exports === 'object')
   exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {'EXPORT_NAME': shared.Settings.EXPORT_NAME})
 
+  shared.configuration.get_temp_files().note(final_js)
   save_intermediate('modularized')
 
 

@@ -7467,6 +7467,14 @@ end
   def test_closure_externs(self):
     self.run_process([EMCC, test_file('hello_world.c'), '--closure=1', '--pre-js', test_file('test_closure_externs_pre_js.js'), '--closure-args', '--externs "' + test_file('test_closure_externs.js') + '"'])
 
+  # Tests that it is possible to enable the Closure compiler via --closure=1 even if any of the input files reside in a path with unicode characters.
+  def test_closure_cmdline_utf8_chars(self):
+    test = "☃ äö Ć € ' 🦠.c"
+    shutil.copyfile(test_file('hello_world.c'), test)
+    externs = '💩' + test
+    create_file(externs, '')
+    self.run_process([EMCC, test, '--closure=1', '--closure-args', '--externs "' + externs + '"'])
+
   def test_toolchain_profiler(self):
     environ = os.environ.copy()
     environ['EMPROFILE'] = '1'
