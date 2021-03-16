@@ -10144,4 +10144,4 @@ exec "$@"
     open('main.c', 'w').write(main)
 
     self.run_process(building.get_command_with_possible_response_file([EMCC, 'main.c'] + files))
-    self.assertContained(str(count * (count-1)//2), self.run_js('a.out.js'))
+    self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
