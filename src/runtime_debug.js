@@ -24,7 +24,7 @@ function prettyPrint(arg) {
     var i8buf = new Int8Array(buf);
     var i16buf = new Int16Array(buf);
     var f32buf = new Float32Array(buf);
-    switch(arg.toString()) {
+    switch (arg.toString()) {
       case '[object Uint8Array]':
         i8buf.set(arg.subarray(0, 32));
         break;

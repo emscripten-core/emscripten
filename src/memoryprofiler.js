@@ -104,7 +104,7 @@ var emscriptenMemoryProfiler = {
     var q = v * (1 - f*s);
     var t = v * (1 - (1 - f) * s);
     var r, g, b;
-    switch(h_i) {
+    switch (h_i) {
       case 0: r = v; g = t; b = p; break;
       case 1: r = q; g = v; b = p; break;
       case 2: r = p; g = v; b = t; break;
@@ -437,7 +437,7 @@ var emscriptenMemoryProfiler = {
   printHeapResizeLog: function(heapResizes) {
     var demangler = typeof demangleAll !== 'undefined' ? demangleAll : function(x) { return x; };
     var html = '';
-    for(var i = 0; i < heapResizes.length; ++i) {
+    for (var i = 0; i < heapResizes.length; ++i) {
       var j = i+1;
       while(j < heapResizes.length) {
         if ((heapResizes[j].filteredStack || heapResizes[j].stack) == (heapResizes[i].filteredStack || heapResizes[i].stack)) {
@@ -546,7 +546,7 @@ var emscriptenMemoryProfiler = {
 
     if (document.getElementById('showHeapResizes').checked) {
       // Print heap resize traces.
-      for(var i in self.resizeMemorySources) {
+      for (var i in self.resizeMemorySources) {
         var resize = self.resizeMemorySources[i];
         self.drawContext.fillStyle = resize.color;
         self.fillRect(resize.begin, resize.end, 0.5);
@@ -555,7 +555,7 @@ var emscriptenMemoryProfiler = {
       // Print sbrk() traces.
       var uniqueSources = {};
       var filterWords = document.getElementById('sbrkFilter').value.split(',');
-      for(var i in self.sbrkSources) {
+      for (var i in self.sbrkSources) {
         var sbrk = self.sbrkSources[i];
         var stack = sbrk.stack;
         for (var j in filterWords) {

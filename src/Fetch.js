@@ -300,7 +300,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     xhr.overrideMimeType(overriddenMimeTypeStr);
   }
   if (requestHeaders) {
-    for(;;) {
+    for (;;) {
       var key = HEAPU32[requestHeaders >> 2];
       if (!key) break;
       var value = HEAPU32[requestHeaders + 4 >> 2];

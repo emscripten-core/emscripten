@@ -33,7 +33,7 @@ var Types = {
 // Constructs an array ['a0', 'a1', 'a2', ..., 'a(n-1)']
 function genArgSequence(n) {
   var args = [];
-  for(var i = 0; i < n; ++i) {
+  for (var i = 0; i < n; ++i) {
     args.push('a'+i);
   }
   return args;

@@ -285,7 +285,7 @@ THE SOFTWARE.
     var that = this;
 
     var type = message['type'];
-    switch(type) {
+    switch (type) {
       case 'ice':
         var candidate = JSON.parse(message['candidate']);
         if(candidate)

@@ -76,8 +76,7 @@ var LibraryEmVal = {
 
   _emval_register__deps: ['$emval_free_list', '$emval_handle_array', '$init_emval'],
   _emval_register: function(value) {
-
-    switch(value){
+    switch (value) {
       case undefined :{ return 1; }
       case null :{ return 2; }
       case true :{ return 3; }
@@ -168,14 +167,14 @@ var LibraryEmVal = {
     };
 #else
     var argsList = "";
-    for(var i = 0; i < argCount; ++i) {
+    for (var i = 0; i < argCount; ++i) {
         argsList += (i!==0?", ":"")+"arg"+i; // 'arg0, arg1, ..., argn'
     }
 
     var functionBody =
         "return function emval_allocator_"+argCount+"(constructor, argTypes, args) {\n";
 
-    for(var i = 0; i < argCount; ++i) {
+    for (var i = 0; i < argCount; ++i) {
         functionBody +=
             "var argType"+i+" = requireRegisteredType(Module['HEAP32'][(argTypes >>> 2) + "+i+"], \"parameter "+i+"\");\n" +
             "var arg"+i+" = argType"+i+".readValueFromPointer(args);\n" +
@@ -244,7 +243,7 @@ var LibraryEmVal = {
 #endif
   _emval_get_global__deps: ['_emval_register', '$getStringOrSymbol', '$emval_get_global'],
   _emval_get_global: function(name) {
-    if(name===0){
+    if (name===0) {
       return __emval_register(emval_get_global());
     } else {
       name = getStringOrSymbol(name);

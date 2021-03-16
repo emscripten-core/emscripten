@@ -514,7 +514,7 @@ var LibraryBrowser = {
     },
 
     getUserMedia: function(func) {
-      if(!window.getUserMedia) {
+      if (!window.getUserMedia) {
         window.getUserMedia = navigator['getUserMedia'] ||
                               navigator['mozGetUserMedia'];
       }
@@ -558,7 +558,7 @@ var LibraryBrowser = {
           break;
         case 'wheel':
           delta = event.deltaY
-          switch(event.deltaMode) {
+          switch (event.deltaMode) {
             case 0:
               // DOM_DELTA_PIXEL: 100 pixels make up a step
               delta /= 100;

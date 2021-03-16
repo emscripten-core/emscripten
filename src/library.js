@@ -286,7 +286,7 @@ LibraryManager.library = {
   sysconf: function(name) {
     // long sysconf(int name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
-    switch(name) {
+    switch (name) {
       case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_PHYS_PAGES') }}}:
 #if ALLOW_MEMORY_GROWTH
@@ -558,7 +558,7 @@ LibraryManager.library = {
 
     // Loop through potential heap size increases. If we attempt a too eager reservation that fails, cut down on the
     // attempted size and reserve a smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
-    for(var cutDown = 1; cutDown <= 4; cutDown *= 2) {
+    for (var cutDown = 1; cutDown <= 4; cutDown *= 2) {
 #if MEMORY_GROWTH_LINEAR_STEP == -1
       var overGrownHeapSize = oldSize * (1 + {{{ MEMORY_GROWTH_GEOMETRIC_STEP }}} / cutDown); // ensure geometric growth
 #if MEMORY_GROWTH_GEOMETRIC_CAP
@@ -1038,7 +1038,7 @@ LibraryManager.library = {
   _addDays__deps: ['_isLeapYear', '_MONTH_DAYS_LEAP', '_MONTH_DAYS_REGULAR'],
   _addDays: function(date, days) {
     var newDate = new Date(date.getTime());
-    while(days > 0) {
+    while (days > 0) {
       var leap = __isLeapYear(newDate.getFullYear());
       var currentMonth = newDate.getMonth();
       var daysInCurrentMonth = (leap ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR)[currentMonth];
@@ -2201,8 +2201,8 @@ LibraryManager.library = {
       if (parts[5] === 0) {
         str = "::";
         //special case IPv6 addresses
-        if(v4part === "0.0.0.0") v4part = ""; // any/unspecified address
-        if(v4part === "0.0.0.1") v4part = "1";// loopback address
+        if (v4part === "0.0.0.0") v4part = ""; // any/unspecified address
+        if (v4part === "0.0.0.1") v4part = "1";// loopback address
         str += v4part;
         return str;
       }
@@ -3757,7 +3757,7 @@ LibraryManager.library = {
   },
 
   $callRuntimeCallbacks: function(callbacks) {
-    while(callbacks.length > 0) {
+    while (callbacks.length > 0) {
       var callback = callbacks.shift();
       if (typeof callback == 'function') {
         callback(Module); // Pass the module as the first argument.
