@@ -3014,6 +3014,7 @@ else if (typeof exports === 'object')
   exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {'EXPORT_NAME': shared.Settings.EXPORT_NAME})
 
+  shared.configuration.get_temp_files().note(final_js)
   save_intermediate('modularized')
 
 
