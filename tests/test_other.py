@@ -1423,7 +1423,7 @@ int f() {
     self.run_process([EMCC, 'main.cpp', '--embed-file', 'tst', '--exclude-file', '*.exe'])
     self.assertEqual(self.run_js('a.out.js').strip(), '')
 
-  def test_dynamic_link_with_exceptions_and_assetions(self):
+  def test_dylink_exceptions_and_assetions(self):
     # Linking side modules using the STL and exceptions should not abort with
     # "function in Table but not functionsInTableMap" when using ASSERTIONS=2
 
@@ -1456,7 +1456,6 @@ int f() {
       }
       ''')
 
-    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
     self.do_smart_test(
       'main.cpp',
       ['0123456789'],
@@ -1526,7 +1525,8 @@ int f() {
     test(['-lfile'], '') # -l, auto detection from library path
     test([self.in_dir('libdir', 'libfile.so.3.1.4.1.5.9')], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
 
-  def test_dynamic_link_pthread_static_data(self):
+  @node_pthreads
+  def test_dylink_pthread_static_data(self):
     # Test that a side module uses the same static data region for global objects across all threads
 
     # A side module with a global object with a constructor.
@@ -1563,7 +1563,6 @@ int f() {
       }
       ''')
 
-    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
     self.do_smart_test(
       'main.cpp',
       ['123'],
@@ -8862,8 +8861,8 @@ int main(void) {
   def test_asan_pthread_stubs(self):
     self.do_smart_test(test_file('other', 'test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=314572800'])
 
+  @node_pthreads
   def test_proxy_to_pthread_stack(self):
-    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
     self.do_smart_test(test_file('other', 'test_proxy_to_pthread_stack.c'),
                        ['success'],
                        engine=config.NODE_JS,
@@ -9855,7 +9854,7 @@ exec "$@"
       ''')
     self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$__foo]'])
 
-  def test_wasm2js_no_dynamic_linking(self):
+  def test_wasm2js_no_dylink(self):
     for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE']:
       err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM=0', arg])
       self.assertContained('WASM2JS is not compatible with relocatable output', err)
