@@ -8870,10 +8870,11 @@ int main(void) {
 
   @node_pthreads
   def test_proxy_to_pthread_stack(self):
+    # Check that the proxied main gets run with TOTAL_STACK setting and not
+    # DEFAULT_PTHREAD_STACK_SIZE.
     self.do_smart_test(test_file('other', 'test_proxy_to_pthread_stack.c'),
                        ['success'],
-                       engine=config.NODE_JS,
-                       emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_STACK=1048576'])
+                       emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'DEFAULT_PTHREAD_STACK_SIZE=64kb', '-s', 'TOTAL_STACK=128kb'])
 
   @parameterized({
     'async': ['-s', 'WASM_ASYNC_COMPILATION'],
