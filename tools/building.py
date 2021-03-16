@@ -993,8 +993,6 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
 
     if Settings.MINIMAL_RUNTIME and Settings.USE_PTHREADS and not Settings.MODULARIZE:
       CLOSURE_EXTERNS += [path_from_root('src', 'minimal_runtime_worker_externs.js')]
-    outfile = filename + '.cc.js'
-    configuration.get_temp_files().note(outfile)
 
     args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
     # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
@@ -1006,19 +1004,43 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
     # Tell closure never to inject the 'use strict' directive.
     args += ['--emit_use_strict=false']
 
+    # Closure compiler is unable to deal with path names that are not 7-bit ASCII:
+    # https://github.com/google/closure-compiler/issues/3784
+    outfile = configuration.get_temp_files().get('.cc.js').name  # Safe 7-bit filename
+    def move_to_safe_7bit_ascii_filename(filename):
+      safe_filename = configuration.get_temp_files().get('.js').name  # Safe 7-bit filename
+      shutil.copyfile(filename, safe_filename)
+      return os.path.relpath(safe_filename, configuration.get_temp_files_directory())
+
     for e in CLOSURE_EXTERNS:
-      args += ['--externs', e]
-    args += ['--js_output_file', outfile]
+      args += ['--externs', move_to_safe_7bit_ascii_filename(e)]
+
+    for i in range(len(user_args)):
+      if user_args[i] == '--externs':
+        user_args[i+1] = move_to_safe_7bit_ascii_filename(user_args[i+1])
+
+    # Specify output file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
+    args += ['--js_output_file', os.path.relpath(outfile, configuration.get_temp_files_directory())]
 
     if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
       args.append('--jscomp_off=*')
     if pretty:
       args += ['--formatting', 'PRETTY_PRINT']
-    args += ['--js', filename]
+    # Specify input file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
+    args += ['--js', move_to_safe_7bit_ascii_filename(filename)]
     cmd = closure_cmd + args + user_args
     logger.debug('closure compiler: ' + ' '.join(cmd))
 
-    proc = run_process(cmd, stderr=PIPE, check=False, env=env)
+    # Closure compiler does not work if any of the input files contain characters outside the
+    # 7-bit ASCII range. Therefore make sure the command line we pass does not contain any such
+    # input files by passing all input filenames relative to the cwd. (user temp directory might
+    # be in user's home directory, and user's profile name might contain unicode characters)
+    cwd = os.getcwd()
+    try:
+      os.chdir(configuration.get_temp_files_directory())
+      proc = run_process(cmd, stderr=PIPE, check=False, env=env)
+    finally:
+      os.chdir(cwd)
 
     # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
     # outfile.map source map file (https://github.com/google/closure-compiler/wiki/Source-Maps)
