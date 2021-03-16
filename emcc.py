@@ -2432,7 +2432,8 @@ def post_link(options, in_wasm, wasm_target, target):
 
     # If we were asked to also generate HTML, do that
     if options.oformat == OFormat.HTML:
-      generate_html(target, options, js_target, target_basename,
+      html_target = unsuffixed(js_target) + '.html'
+      generate_html(html_target, options, js_target, target_basename,
                     wasm_target, memfile)
     elif shared.Settings.PROXY_TO_WORKER:
       generate_worker_js(target, js_target, target_basename)
