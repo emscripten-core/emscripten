@@ -7371,15 +7371,14 @@ end
     create_file('file1', ' ')
     self.run_process([EMAR, 'cr', 'file1.a', 'file1', 'file1'])
 
-  # Temporarily disabled to allow this llvm change to roll
-  # https://reviews.llvm.org/D69665
-  @no_windows('Temporarily disabled under windows')
   def test_emar_response_file(self):
     # Test that special character such as single quotes in filenames survive being
     # sent via response file
     create_file("file'1", ' ')
     create_file("file'2", ' ')
-    building.emar('cr', 'libfoo.a', ("file'1", "file'2"))
+    create_file("hyvää päivää", ' ')
+    create_file("snowman freezes covid ☃ 🦠", ' ')
+    building.emar('cr', 'libfoo.a', ("file'1", "file'2", "hyvää päivää", "snowman freezes covid ☃ 🦠"))
 
   def test_archive_empty(self):
     # This test added because we had an issue with the AUTO_ARCHIVE_INDEXES failing on empty
