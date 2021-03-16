@@ -1359,7 +1359,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # errno support by default.
     if shared.Settings.MINIMAL_RUNTIME:
       default_setting('SUPPORT_ERRNO', 0)
-      logger.debug('In MINIMAL_RUNTIME builds, errno support is disabled by default to save code size. Pass -s SUPPORT_ERRNO=1 to enable support.')
 
     if shared.Settings.STRICT:
       default_setting('STRICT_JS', 1)
