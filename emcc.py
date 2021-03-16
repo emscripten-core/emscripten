@@ -1510,9 +1510,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.MIN_EDGE_VERSION = 0
       shared.Settings.MIN_CHROME_VERSION = 0
 
-    if shared.Settings.MIN_SAFARI_VERSION <= 9 and shared.Settings.WASM2JS:
-      shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
-
     if shared.Settings.MIN_CHROME_VERSION <= 37:
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
 
@@ -1521,7 +1518,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
     if not shared.Settings.WASM2JS:
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
-      shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
 
     forced_stdlibs = []
