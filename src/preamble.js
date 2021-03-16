@@ -212,11 +212,7 @@ function allocate(slab, allocator) {
 #endif
 
   if (allocator == ALLOC_STACK) {
-#if DECLARE_ASM_MODULE_EXPORTS
     ret = stackAlloc(slab.length);
-#else
-    ret = (typeof stackAlloc !== 'undefined' ? stackAlloc : null)(slab.length);
-#endif
   } else {
     ret = {{{ makeMalloc('allocate', 'slab.length') }}};
   }
