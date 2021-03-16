@@ -14,8 +14,8 @@ launcher but don't have symlink support.
 """
 
 import os
-import shutil
 import sys
+import stat
 
 compiler_entry_points = '''
 emcc
@@ -33,29 +33,48 @@ emranlib
 emrun
 emscons
 emsize
-tools/emdump
+emdump
+emprofile
 tools/file_packager
 tests/runner
 '''.split()
 
 
+# For some tools the entry point doesn't live alongside the python
+# script.
+entry_remap = {
+  'emdump': 'tools/emdump',
+  'emprofile': 'tools/emprofile',
+}
+
+tools_dir = os.path.dirname(os.path.abspath(__file__))
+
+
 def main():
-  tools_dir = os.path.dirname(os.path.abspath(__file__))
   root_dir = os.path.dirname(tools_dir)
 
   def generate_entry_points(cmd, path):
     sh_file = path + '.sh'
     bat_file = path + '.bat'
-    for entry_point in cmd:
-      dst = os.path.join(root_dir, entry_point)
-      if os.path.exists(dst):
-          os.remove(dst)
-      shutil.copy2(sh_file, dst)
+    with open(sh_file) as f:
+      sh_file = f.read()
+    with open(bat_file) as f:
+      bat_file = f.read()
 
-      dst += '.bat'
-      if os.path.exists(dst):
-          os.remove(dst)
-      shutil.copy2(bat_file, dst)
+    for entry_point in cmd:
+      sh_data = sh_file
+      bat_data = bat_file
+      if entry_point in entry_remap:
+        sh_data = sh_data.replace('$0', '$(dirname $0)/' + entry_remap[entry_point])
+        bat_data = bat_data.replace('%~n0', entry_remap[entry_point].replace('/', '\\'))
+
+      out_sh_file = os.path.join(root_dir, entry_point)
+      with open(out_sh_file, 'w') as f:
+        f.write(sh_data)
+      os.chmod(out_sh_file, stat.S_IMODE(os.stat(out_sh_file).st_mode) | stat.S_IXUSR)
+
+      with open(os.path.join(root_dir, entry_point + '.bat'), 'w') as f:
+        f.write(bat_data)
 
   generate_entry_points(entry_points, os.path.join(tools_dir, 'run_python'))
   generate_entry_points(compiler_entry_points, os.path.join(tools_dir, 'run_python_compiler'))

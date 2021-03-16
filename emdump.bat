@@ -8,4 +8,4 @@
   set EM_PY=python
 )
 
-@"%EM_PY%" "%~dp0\%~n0.py" %*
+@"%EM_PY%" "%~dp0\tools\emdump.py" %*
