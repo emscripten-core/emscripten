@@ -31,7 +31,7 @@ var LibraryPThread = {
 #if PTHREAD_POOL_SIZE
       var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
       // Start loading up the Worker pool, if requested.
-      for(var i = 0; i < pthreadPoolSize; ++i) {
+      for (var i = 0; i < pthreadPoolSize; ++i) {
         PThread.allocateUnusedWorker();
       }
 #endif
@@ -144,7 +144,7 @@ var LibraryPThread = {
     },
 
     threadStatusToString: function(threadStatus) {
-      switch(threadStatus) {
+      switch (threadStatus) {
         case 0: return "not yet started";
         case 1: return "running";
         case 2: return "sleeping";
@@ -495,7 +495,7 @@ var LibraryPThread = {
 
     busySpinWait: function(msecs) {
       var t = performance.now() + msecs;
-      while(performance.now() < t) {
+      while (performance.now() < t) {
         ;
       }
     }

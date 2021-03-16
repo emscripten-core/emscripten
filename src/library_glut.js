@@ -164,16 +164,14 @@ var LibraryGLUT = {
       if (GLUT.specialFunc || GLUT.keyboardFunc) {
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
-          if( GLUT.specialFunc ) {
+          if (GLUT.specialFunc) {
             event.preventDefault();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.specialFunc') }}}(key, Browser.mouseX, Browser.mouseY);
           }
-        }
-        else
-        {
+        } else {
           key = GLUT.getASCIIKey(event);
-          if( key !== null && GLUT.keyboardFunc ) {
+          if (key !== null && GLUT.keyboardFunc) {
             event.preventDefault();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.keyboardFunc') }}}(key, Browser.mouseX, Browser.mouseY);
@@ -186,16 +184,14 @@ var LibraryGLUT = {
       if (GLUT.specialUpFunc || GLUT.keyboardUpFunc) {
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
-          if(GLUT.specialUpFunc) {
+          if (GLUT.specialUpFunc) {
             event.preventDefault ();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.specialUpFunc') }}}(key, Browser.mouseX, Browser.mouseY);
           }
-        }
-        else
-        {
+        } else {
           key = GLUT.getASCIIKey(event);
-          if( key !== null && GLUT.keyboardUpFunc ) {
+          if (key !== null && GLUT.keyboardUpFunc) {
             event.preventDefault ();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.keyboardUpFunc') }}}(key, Browser.mouseX, Browser.mouseY);
@@ -213,7 +209,7 @@ var LibraryGLUT = {
           main = touches[0],
           type = "";
 
-      switch(event.type) {
+      switch (event.type) {
         case "touchstart": type = "mousedown"; break;
         case "touchmove": type = "mousemove"; break;
         case "touchend": type = "mouseup"; break;
@@ -500,7 +496,7 @@ var LibraryGLUT = {
   glutSetCursor__sig: 'vi',
   glutSetCursor: function(cursor) {
     var cursorStyle = 'auto';
-    switch(cursor) {
+    switch (cursor) {
       case 0x0000: /* GLUT_CURSOR_RIGHT_ARROW */
         // No equivalent css cursor style, fallback to 'auto'
         break;

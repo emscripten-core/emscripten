@@ -162,7 +162,7 @@ var emscriptenCpuProfiler = {
         accumulatedFrameTimeInsideMainLoop: function(startX, numSamples) {
           var total = 0;
           numSamples = Math.min(numSamples, this.frametimesInsideMainLoop.length);
-          for(var i = 0; i < numSamples; ++i) {
+          for (var i = 0; i < numSamples; ++i) {
             var x = (startX + i) % this.frametimesInsideMainLoop.length;
             if (this.frametimesInsideMainLoop[x]) total += this.frametimesInsideMainLoop[x];
           }
@@ -171,7 +171,7 @@ var emscriptenCpuProfiler = {
         accumulatedFrameTimeOutsideMainLoop: function(startX, numSamples) {
           var total = 0;
           numSamples = Math.min(numSamples, this.frametimesInsideMainLoop.length);
-          for(var i = 0; i < numSamples; ++i) {
+          for (var i = 0; i < numSamples; ++i) {
             var x = (startX + i) % this.frametimesInsideMainLoop.length;
             if (this.frametimesOutsideMainLoop[x]) total += this.frametimesOutsideMainLoop[x];
           }
@@ -201,7 +201,7 @@ var emscriptenCpuProfiler = {
       if (sect.traceable && timeInSection > this.logWebGLCallsSlowerThan) {
         var funcs = new Error().stack.toString().split('\n');
         var cs = '';
-        for(var i = 2; i < 5 && i < funcs.length; ++i) {
+        for (var i = 2; i < 5 && i < funcs.length; ++i) {
           if (i != 2) cs += ' <- ';
           var fn = funcs[i];
           var at = fn.indexOf('@');
@@ -232,7 +232,7 @@ var emscriptenCpuProfiler = {
     if (this.insideMainLoopRecursionCounter != 0) return;
 
     // Aggregate total times spent in each section to memory store to wait until the next stats UI redraw period.
-    for(var i = 0; i < this.sections.length; ++i) {
+    for (var i = 0; i < this.sections.length; ++i) {
       var sect = this.sections[i];
       if (!sect) continue;
       sect.frametimesInsideMainLoop[this.currentHistogramX] = sect.accumulatedTimeInsideMainLoop;
@@ -417,7 +417,7 @@ var emscriptenCpuProfiler = {
 
   drawBar: function drawBar(x) {
     var timeSpentInSectionsInsideMainLoop = 0;
-    for(var i = 0; i < this.sections.length; ++i) {
+    for (var i = 0; i < this.sections.length; ++i) {
       var sect = this.sections[i];
       if (!sect) continue;
       timeSpentInSectionsInsideMainLoop += sect.frametimesInsideMainLoop[x];
@@ -428,7 +428,7 @@ var emscriptenCpuProfiler = {
     y -= h;
     this.drawContext.fillStyle = this.colorCpuTimeSpentInUserCode;
     this.drawContext.fillRect(x, y, 1, h);
-    for(var i = 0; i < this.sections.length; ++i) {
+    for (var i = 0; i < this.sections.length; ++i) {
       var sect = this.sections[i];
       if (!sect) continue;
       h = (sect.frametimesInsideMainLoop[x] + sect.frametimesOutsideMainLoop[x]) * scale;
@@ -566,7 +566,7 @@ var emscriptenCpuProfiler = {
     this.hookedWebGLContexts.splice(this.hookedWebGLContexts.indexOf(glCtx), 1);
     document.getElementById("toggle_webgl_profile").style.background = '#E1E1E1';
 
-    for(var f in glCtx) {
+    for (var f in glCtx) {
       if (typeof glCtx[f] !== 'function' || f.indexOf('real_') == 0) continue;
       var realf = 'real_' + f;
       glCtx[f] = glCtx[realf];
@@ -581,7 +581,7 @@ var emscriptenCpuProfiler = {
     glCtx[realf] = glCtx[f];
     var numArgs = this_.webGLFunctionLength(f); // On Firefox & Chrome, could do "glCtx[realf].length", but that doesn't work on Edge, which always reports 0.
     // Accessing 'arguments' is super slow, so to avoid overhead, statically reason the number of arguments.
-    switch(numArgs) {
+    switch (numArgs) {
       case 0: glCtx[f] = function webgl_0() { this_.enterSection(section); var ret = glCtx[realf](); this_.endSection(section); return ret; }; break;
       case 1: glCtx[f] = function webgl_1(a1) { this_.enterSection(section); var ret =  glCtx[realf](a1); this_.endSection(section); return ret; }; break;
       case 2: glCtx[f] = function webgl_2(a1, a2) { this_.enterSection(section); var ret =  glCtx[realf](a1, a2); this_.endSection(section); return ret; }; break;
@@ -616,7 +616,7 @@ var emscriptenCpuProfiler = {
     // Distinguishing between these two allows pinpointing locations of troublesome GL usage that might cause performance issues.
     this.createSection(0, 'Hot GL', this.colorHotGLFunction, /*traceable=*/true);
     this.createSection(1, 'Cold GL', this.colorColdGLFunction, /*traceable=*/true);
-    for(var f in glCtx) {
+    for (var f in glCtx) {
       if (typeof glCtx[f] !== 'function' || f.indexOf('real_') == 0) continue;
       this.hookWebGLFunction(f, glCtx);
     }

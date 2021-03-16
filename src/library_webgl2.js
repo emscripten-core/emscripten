@@ -23,7 +23,7 @@ var LibraryWebGL2 = {
       }
       return stringiCache[index];
     }
-    switch(name) {
+    switch (name) {
       case 0x1F03 /* GL_EXTENSIONS */:
         var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
@@ -594,7 +594,7 @@ var LibraryWebGL2 = {
 #endif
     program = GL.programs[program];
 
-    switch(pname) {
+    switch (pname) {
       case 0x8A41: /* GL_UNIFORM_BLOCK_NAME_LENGTH */
         var name = GLctx['getActiveUniformBlockName'](program, uniformBlockIndex);
         {{{ makeSetValue('params', 0, 'name.length+1', 'i32') }}};

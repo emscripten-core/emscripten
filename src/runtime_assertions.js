@@ -19,7 +19,7 @@
 function abortFnPtrError(ptr, sig) {
 #if ASSERTIONS >= 2
 	var possibleSig = '';
-	for(var x in debug_tables) {
+	for (var x in debug_tables) {
 		var tbl = debug_tables[x];
 		if (tbl[ptr]) {
 			possibleSig += 'as sig "' + x + '" pointing to function ' + tbl[ptr] + ', ';
