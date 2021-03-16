@@ -645,6 +645,8 @@ Environment variables
 
    * "EM_CONFIG" [general]
 
+   * "EM_LLVM_ROOT" [compile+link]
+
 Search for 'os.environ' in emcc.py to see how these are used. The most
 interesting is possibly "EMCC_DEBUG", which forces the compiler to
 dump its build and temporary files to a temporary directory where they
