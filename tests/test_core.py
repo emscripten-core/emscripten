@@ -3549,6 +3549,10 @@ ok
                    need_reverse=True, auto_load=True, main_module=1, **kwargs):
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.emcc_args[:]
+    if not expected:
+      outfile = shared.unsuffixed(main) + '.out'
+      if os.path.exists(outfile):
+        expected = open(outfile).read()
 
     # side settings
     self.clear_setting('MAIN_MODULE')
@@ -8306,6 +8310,17 @@ NODEFS is no longer included by default; build with -lnodefs.js
     main = test_file('core', 'pthread', 'test_pthread_dylink.c')
     side = test_file('core', 'pthread', 'test_pthread_dylink_side.c')
     self.dylink_testf(main, side, "success", need_reverse=False)
+
+  @needs_dylink
+  @node_pthreads
+  def test_pthread_dylink_tls(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PTHREAD_POOL_SIZE=1')
+    main = test_file('core', 'pthread', 'test_pthread_dylink_tls.c')
+    side = test_file('core', 'pthread', 'test_pthread_dylink_tls_side.c')
+    self.dylink_testf(main, side, need_reverse=False)
 
   @needs_dylink
   @node_pthreads

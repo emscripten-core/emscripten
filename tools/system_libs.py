@@ -808,7 +808,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         path_components=['system', 'lib', 'pthread'],
         filenames=[
           'library_pthread.c',
-          'emscripten_tls_init.c',
           'emscripten_thread_state.s',
         ])
     else:
@@ -875,6 +874,18 @@ class crt1_reactor(MuslInternalLibrary):
 
   def can_use(self):
     return super(crt1_reactor, self).can_use() and shared.Settings.STANDALONE_WASM
+
+
+class crtbegin(Library):
+  name = 'crtbegin'
+  cflags = ['-O2', '-s', 'USE_PTHREADS']
+  src_dir = ['system', 'lib', 'pthread']
+  src_files = ['emscripten_tls_init.c']
+
+  force_object_files = True
+
+  def get_ext(self):
+    return '.o'
 
 
 class libcxxabi(NoExceptLibrary, MTLibrary):
@@ -1466,6 +1477,12 @@ def calculate(input_files, cxx, forced):
 
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
     libs_to_link.append((lib.get_path(), need_whole_archive))
+
+  if shared.Settings.USE_PTHREADS:
+    add_library('crtbegin')
+
+  if shared.Settings.SIDE_MODULE:
+    return [l[0] for l in libs_to_link]
 
   if shared.Settings.STANDALONE_WASM:
     if shared.Settings.EXPECT_MAIN:
