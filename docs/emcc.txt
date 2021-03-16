@@ -647,7 +647,7 @@ Environment variables
 
    * "EM_LLVM_ROOT" [compile+link]
 
-   * "EMCC_CCACHE" [general] Internal setting that is set to 1 by emsdk
+   * "_EMCC_CCACHE" [general] Internal setting that is set to 1 by emsdk
      when integrating with ccache compiler frontend
 
 Search for 'os.environ' in emcc.py to see how these are used. The most

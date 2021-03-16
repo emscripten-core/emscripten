@@ -8,11 +8,11 @@
   set EM_PY=python
 )
 
-@if "%EMCC_CCACHE%"=="" (
+@if "%_EMCC_CCACHE%"=="" (
   :: Do regular invocation of em++.py compiler
   "%EM_PY%" "%~dp0\%~n0.py" %*
 ) else (
   :: Remove the ccache env. var, invoke ccache and re-enter this script to take the above branch.
-  set EMCC_CCACHE=
+  set _EMCC_CCACHE=
   ccache "%~dp0\%~n0.bat" %*
 )
