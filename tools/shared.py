@@ -788,19 +788,6 @@ def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
 
 
-def safe_move(src, dst):
-  logging.debug('move: %s -> %s', src, dst)
-  src = os.path.abspath(src)
-  dst = os.path.abspath(dst)
-  if os.path.isdir(dst):
-    dst = os.path.join(dst, os.path.basename(src))
-  if src == dst:
-    return
-  if dst == os.devnull:
-    return
-  shutil.move(src, dst)
-
-
 def safe_copy(src, dst):
   logging.debug('copy: %s -> %s', src, dst)
   src = os.path.abspath(src)
