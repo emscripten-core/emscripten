@@ -20,6 +20,7 @@ from . import shared, building, ports, config, utils
 from . import deps_info, tempfiles
 from . import diagnostics
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
+from tools.toolchain_profiler import ToolchainProfiler
 
 logger = logging.getLogger('system_libs')
 
@@ -1729,11 +1730,14 @@ class Ports(object):
 
     def check_tag():
       if is_tarbz2:
-        names = tarfile.open(fullpath, 'r:bz2').getnames()
+        with ToolchainProfiler.profile_block('check_tag_tar_bz2(' + name + ')'):
+          names = tarfile.open(fullpath, 'r:bz2').getnames()
       elif url.endswith('.tar.gz'):
-        names = tarfile.open(fullpath, 'r:gz').getnames()
+        with ToolchainProfiler.profile_block('check_tag_tar_gz(' + name + ')'):
+          names = tarfile.open(fullpath, 'r:gz').getnames()
       else:
-        names = zipfile.ZipFile(fullpath, 'r').namelist()
+        with ToolchainProfiler.profile_block('check_tag_zip(' + name + ')'):
+          names = zipfile.ZipFile(fullpath, 'r').namelist()
 
       # check if first entry of the archive is prefixed with the same
       # tag as we need so no longer download and recompile if so

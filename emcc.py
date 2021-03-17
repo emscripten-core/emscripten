@@ -734,75 +734,76 @@ def get_cflags(options, user_args):
   if cflags:
     return cflags
 
-  # Flags we pass to the compiler when building C/C++ code
-  # We add these to the user's flags (newargs), but not when building .s or .S assembly files
-  cflags = get_clang_flags()
+  with ToolchainProfiler.profile_block('get_cflags'):
+    # Flags we pass to the compiler when building C/C++ code
+    # We add these to the user's flags (newargs), but not when building .s or .S assembly files
+    cflags = get_clang_flags()
 
-  if options.tracing:
-    cflags.append('-D__EMSCRIPTEN_TRACING__=1')
+    if options.tracing:
+      cflags.append('-D__EMSCRIPTEN_TRACING__=1')
 
-  if shared.Settings.USE_PTHREADS:
-    cflags.append('-D__EMSCRIPTEN_PTHREADS__=1')
+    if shared.Settings.USE_PTHREADS:
+      cflags.append('-D__EMSCRIPTEN_PTHREADS__=1')
 
-  if not shared.Settings.STRICT:
-    # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
-    # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-    cflags.append('-DEMSCRIPTEN')
+    if not shared.Settings.STRICT:
+      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
+      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+      cflags.append('-DEMSCRIPTEN')
 
-  # if exception catching is disabled, we can prevent that code from being
-  # generated in the frontend
-  if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and not shared.Settings.EXCEPTION_HANDLING:
-    cflags.append('-fignore-exceptions')
+    # if exception catching is disabled, we can prevent that code from being
+    # generated in the frontend
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and not shared.Settings.EXCEPTION_HANDLING:
+      cflags.append('-fignore-exceptions')
 
-  if shared.Settings.INLINING_LIMIT:
-    cflags.append('-fno-inline-functions')
+    if shared.Settings.INLINING_LIMIT:
+      cflags.append('-fno-inline-functions')
 
-  if shared.Settings.RELOCATABLE:
-    cflags.append('-fPIC')
-    cflags.append('-fvisibility=default')
+    if shared.Settings.RELOCATABLE:
+      cflags.append('-fPIC')
+      cflags.append('-fvisibility=default')
 
-  if shared.Settings.LTO:
-    cflags.append('-flto=' + shared.Settings.LTO)
-  else:
-    # With LTO mode these args get passed instead
-    # at link time when the backend runs.
-    for a in building.llvm_backend_args():
-      cflags += ['-mllvm', a]
+    if shared.Settings.LTO:
+      cflags.append('-flto=' + shared.Settings.LTO)
+    else:
+      # With LTO mode these args get passed instead
+      # at link time when the backend runs.
+      for a in building.llvm_backend_args():
+        cflags += ['-mllvm', a]
 
-  # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
-  # data and other nice fixes.
-  cflags += [# '-fno-threadsafe-statics', # disabled due to issue 1289
-             '-D__EMSCRIPTEN_major__=' + str(shared.EMSCRIPTEN_VERSION_MAJOR),
-             '-D__EMSCRIPTEN_minor__=' + str(shared.EMSCRIPTEN_VERSION_MINOR),
-             '-D__EMSCRIPTEN_tiny__=' + str(shared.EMSCRIPTEN_VERSION_TINY),
-             '-D_LIBCPP_ABI_VERSION=2']
+    # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
+    # data and other nice fixes.
+    cflags += [# '-fno-threadsafe-statics', # disabled due to issue 1289
+               '-D__EMSCRIPTEN_major__=' + str(shared.EMSCRIPTEN_VERSION_MAJOR),
+               '-D__EMSCRIPTEN_minor__=' + str(shared.EMSCRIPTEN_VERSION_MINOR),
+               '-D__EMSCRIPTEN_tiny__=' + str(shared.EMSCRIPTEN_VERSION_TINY),
+               '-D_LIBCPP_ABI_VERSION=2']
 
-  # For compatability with the fastcomp compiler that defined these
-  cflags += ['-Dunix',
-             '-D__unix',
-             '-D__unix__']
+    # For compatability with the fastcomp compiler that defined these
+    cflags += ['-Dunix',
+               '-D__unix',
+               '-D__unix__']
 
-  # LLVM has turned on the new pass manager by default, but it causes some code
-  # size regressions. For now, use the legacy one.
-  # https://github.com/emscripten-core/emscripten/issues/13427
-  cflags += ['-flegacy-pass-manager']
+    # LLVM has turned on the new pass manager by default, but it causes some code
+    # size regressions. For now, use the legacy one.
+    # https://github.com/emscripten-core/emscripten/issues/13427
+    cflags += ['-flegacy-pass-manager']
 
-  # Changes to default clang behavior
+    # Changes to default clang behavior
 
-  # Implicit functions can cause horribly confusing function pointer type errors, see #2175
-  # If your codebase really needs them - very unrecommended! - you can disable the error with
-  #   -Wno-error=implicit-function-declaration
-  # or disable even a warning about it with
-  #   -Wno-implicit-function-declaration
-  cflags += ['-Werror=implicit-function-declaration']
+    # Implicit functions can cause horribly confusing function pointer type errors, see #2175
+    # If your codebase really needs them - very unrecommended! - you can disable the error with
+    #   -Wno-error=implicit-function-declaration
+    # or disable even a warning about it with
+    #   -Wno-implicit-function-declaration
+    cflags += ['-Werror=implicit-function-declaration']
 
-  system_libs.add_ports_cflags(cflags, shared.Settings)
+    system_libs.add_ports_cflags(cflags, shared.Settings)
 
-  if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
+    if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
+      return cflags
+
+    cflags += emsdk_cflags(user_args)
     return cflags
-
-  cflags += emsdk_cflags(user_args)
-  return cflags
 
 
 def get_file_suffix(filename):
