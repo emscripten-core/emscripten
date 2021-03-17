@@ -9963,6 +9963,58 @@ exec "$@"
     self.assertIn('Hello from main!', result)
     self.assertIn('Hello from lib!', result)
 
+  def test_split_module_ex(self):
+    self.set_setting('SPLIT_MODULE')
+    self.set_setting('WASM', 1)
+    self.set_setting('EVAL_CTORS', 0)
+    self.set_setting('INLINING_LIMIT', 1)
+    self.set_setting('FORCE_FILESYSTEM', 1)
+    self.set_setting('LEGACY_GL_EMULATION', 0)
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.set_setting('ALLOW_MEMORY_GROWTH', 1)
+    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 1)
+    self.set_setting('GL_TRACK_ERRORS', 0)
+    self.set_setting('WASM_OBJECT_FILES', 0)
+    # self.set_setting('INCLUDE_FULL_LIBRARY', 1)
+
+    self.emcc_args += ['-g', '-Wno-experimental']
+    self.emcc_args += ['-std=c++17']
+    self.emcc_args += ['-D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR']
+    self.emcc_args += ['--emit-symbol-map']
+    self.emcc_args += ['--post-js', path_from_root('tests', 'other', 'test_split_module_ex.post.js')]
+    self.emcc_args += ['-sEXPORTED_FUNCTIONS=[_malloc, _free]'] 
+    self.emcc_args += ['-sEXTRA_EXPORTED_RUNTIME_METHODS=[allocate]']
+    self.emcc_args += ['-sUSE_WEBGL2']
+    self.emcc_args += ['-sUSE_GLFW=3']
+    self.emcc_args += ['-sFULL_ES3=1']
+    self.emcc_args += ['-flto']
+    self.emcc_args += ['-fPIC']
+    self.emcc_args += ['-Oz']
+    #self.emcc_args += ['-sMAIN_MODULE=2']
+
+    self.do_other_test('test_split_module_ex.cpp')
+
+    self.assertExists('test_split_module_ex.wasm')
+    self.assertExists('test_split_module_ex.wasm.orig')
+    self.assertExists('profile.data')
+
+    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
+    self.run_process([wasm_split, 
+                    '--enable-mutable-globals', 
+                    '--export-prefix=%', 
+                    'test_split_module_ex.wasm.orig', 
+                    '-o1', 'primary.wasm', # -o2
+                    '-o2', 'secondary.wasm', 
+                    '--profile=profile.data'])
+
+    os.remove('test_split_module_ex.wasm')
+    os.rename('primary.wasm', 'test_split_module_ex.wasm')
+    os.rename('secondary.wasm', 'test_split_module_ex.wasm.deferred')
+    result = self.run_js('test_split_module_ex.js')
+    self.assertNotIn('profile', result)
+    self.assertIn('Test exception handling: -1', result)
+
   def test_gen_struct_info(self):
     # This tests is fragile and will need updating any time any of the refereced
     # structs or defines change.   However its easy to rebaseline with
