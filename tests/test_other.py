@@ -10119,7 +10119,8 @@ exec "$@"
     self.assertContained('EM_JS is not supported in side modules', err)
 
   # On Windows maximum command line length is 32767 characters. Create such a long build line by linking together
-  # several .o files to test that emcc internally uses response files properly.
+  # several .o files to test that emcc internally uses response files properly when calling llvmn-nm and wasm-ld.
+  @is_slow_test
   def test_windows_long_link_response_file(self):
     decls = ''
     calls = ''
@@ -10128,7 +10129,7 @@ exec "$@"
     def create_o(name, i):
       nonlocal decls, calls, files
       f = name + '.c'
-      open(f, 'w').write('int %s() { return %d; }' % (name, i))
+      create_file(f, 'int %s() { return %d; }' % (name, i))
       files += [f]
       decls += 'int %s();' % name
       calls += 'value += %s();' % name
@@ -10142,6 +10143,8 @@ exec "$@"
 
     main = '#include<stdio.h>\n%s int main() { int value = 0; %s printf("%%d\\n", value); }' % (decls, calls)
     open('main.c', 'w').write(main)
+
+    assert(sum(len(f) for f in files) > 32767)
 
     self.run_process(building.get_command_with_possible_response_file([EMCC, 'main.c'] + files))
     self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
