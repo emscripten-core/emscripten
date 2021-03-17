@@ -275,7 +275,7 @@ def inspect_headers(headers, cflags):
 
   show(shared.shlex_join(cmd))
   try:
-    subprocess.check_call(cmd)
+    subprocess.check_call(cmd, env=system_libs.clean_env())
   except subprocess.CalledProcessError as e:
     sys.stderr.write('FAIL: Compilation failed!: %s\n' % e.cmd)
     sys.exit(1)
@@ -284,11 +284,12 @@ def inspect_headers(headers, cflags):
   show('Calling generated program... ' + js_file[1])
   info = shared.run_js_tool(js_file[1], stdout=shared.PIPE).splitlines()
 
-  # Remove all temporary files.
-  os.unlink(src_file[1])
+  if not DEBUG:
+    # Remove all temporary files.
+    os.unlink(src_file[1])
 
-  if os.path.exists(js_file[1]):
-    os.unlink(js_file[1])
+    if os.path.exists(js_file[1]):
+      os.unlink(js_file[1])
 
   # Parse the output of the program into a dict.
   return parse_c_output(info)

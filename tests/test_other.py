@@ -10029,6 +10029,13 @@ exec "$@"
     self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
     self.assertFileContents(test_file('reference_struct_info.json'), open('out.json').read())
 
+  def test_gen_struct_info_env(self):
+    # gen_struct_info.py builds C code in a very particlar way.  We don't want EMMAKEN_CFLAGS to
+    # be injected which could cause it to fail.
+    # For example -O2 causes printf -> iprintf which will fail with undefined symbol iprintf.
+    with env_modify({'EMMAKEN_CFLAGS': '-O2 BAD_ARG'}):
+      self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
+
   def test_relocatable_limited_exports(self):
     # Building with RELOCATABLE should *not* automatically export all sybmols.
     self.run_process([EMCC, test_file('hello_world.c'), '-sRELOCATABLE', '-o', 'out.wasm'])
