@@ -592,6 +592,21 @@ var LibraryGL = {
       webGLContextAttributes['preserveDrawingBuffer'] = true;
 #endif
 
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED && GL_WORKAROUND_SAFARI_GETCONTEXT_BUG
+      // BUG: Workaround Safari WebGL issue: After successfully acquiring WebGL context on a canvas,
+      // calling .getContext() will always return that context independent of which 'webgl' or 'webgl2'
+      // context version was passed. See https://bugs.webkit.org/show_bug.cgi?id=222758 and
+      // https://github.com/emscripten-core/emscripten/issues/13295.
+      // TODO: Once the bug is fixed and shipped in Safari, adjust the Safari version field in above check.
+      if (!canvas.getContextSafariWebGL2Fixed) {
+        canvas.getContextSafariWebGL2Fixed = canvas.getContext;
+        canvas.getContext = function(ver, attrs) {
+          var gl = canvas.getContextSafariWebGL2Fixed(ver, attrs);
+          return ((ver == 'webgl') == (gl instanceof WebGLRenderingContext)) ? gl : null;
+        }
+      }
+#endif
+
 #if MAX_WEBGL_VERSION >= 2 && MIN_CHROME_VERSION <= 57
       // BUG: Workaround Chrome WebGL 2 issue: the first shipped versions of WebGL 2 in Chrome 57 did not actually implement
       // the new garbage free WebGL 2 entry points that take an offset and a length to an existing heap (instead of having to

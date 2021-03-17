@@ -568,6 +568,13 @@ var STB_IMAGE = 0;
 // [link]
 var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = 0;
 
+// Workaround Safari WebGL issue: After successfully acquiring WebGL context on a canvas,
+// calling .getContext() will always return that context independent of which 'webgl' or 'webgl2'
+// context version was passed. See https://bugs.webkit.org/show_bug.cgi?id=222758 and
+// https://github.com/emscripten-core/emscripten/issues/13295.
+// Set this to 0 to force-disable the workaround if you know the issue will not affect you.
+var GL_WORKAROUND_SAFARI_GETCONTEXT_BUG = 1;
+
 // Use JavaScript math functions like Math.tan. This saves code size as we can avoid shipping
 // compiled musl code. However, it can be significantly slower as it calls out to JS. It
 // also may give different results as JS math is specced somewhat differently than libc, and

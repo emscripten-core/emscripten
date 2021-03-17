@@ -8447,6 +8447,7 @@ int main () {
                                '-s', 'GL_SUPPORT_EXPLICIT_SWAP_CONTROL=0',
                                '-s', 'GL_POOL_TEMP_BUFFERS=0',
                                '-s', 'MIN_CHROME_VERSION=58',
+                               '-s', 'GL_WORKAROUND_SAFARI_GETCONTEXT_BUG=0',
                                '-s', 'NO_FILESYSTEM',
                                '--output_eol', 'linux',
                                '-Oz',
