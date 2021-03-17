@@ -6075,6 +6075,7 @@ return malloc(size);
   @no_asan('issues with freetype itself')
   @needs_make('depends on freetype')
   @is_slow_test
+  @disabled('https://github.com/WebAssembly/binaryen/issues/3697')
   def test_poppler(self):
     pdf_data = open(test_file('poppler', 'paper.pdf'), 'rb').read()
     create_file('paper.pdf.js', str(list(bytearray(pdf_data))))
