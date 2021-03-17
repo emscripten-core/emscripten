@@ -535,12 +535,13 @@ Environment variables
   - ``EMCC_ONLY_FORCED_STDLIBS`` [link]
   - ``EMCC_LOCAL_PORTS`` [compile+link]
   - ``EMCC_STDERR_FILE`` [general]
-  - ``EMCC_CLOSURE_ARGS`` : [link] arguments to be passed to *Closure Compiler*
+  - ``EMCC_CLOSURE_ARGS`` [link] arguments to be passed to *Closure Compiler*
   - ``EMCC_STRICT`` [general]
   - ``EMCC_SKIP_SANITY_CHECK`` [general]
   - ``EM_IGNORE_SANITY`` [general]
   - ``EM_CONFIG`` [general]
   - ``EM_LLVM_ROOT`` [compile+link]
+  - ``_EMCC_CCACHE`` [general] Internal setting that is set to 1 by emsdk when integrating with ccache compiler frontend
 
 Search for 'os.environ' in `emcc.py <https://github.com/emscripten-core/emscripten/blob/main/emcc.py>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
 

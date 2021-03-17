@@ -26,9 +26,9 @@ if [ -z "$PYTHON" ]; then
   exit 1
 fi
 
-if [ -z "$EMCC_CCACHE" ]; then
+if [ -z "$_EMCC_CCACHE" ]; then
   exec "$PYTHON" "$0.py" "$@"
 else
-  unset EMCC_CCACHE
+  unset _EMCC_CCACHE
   exec ccache "$0" "$@"
 fi
