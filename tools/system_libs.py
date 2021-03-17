@@ -69,20 +69,24 @@ def get_base_cflags(force_object_files=False):
   return flags
 
 
+def clean_env():
+  # building system libraries and ports should be hermetic in that it is not
+  # affected by things like EMMAKEN_CFLAGS which the user may have set
+  safe_env = os.environ.copy()
+  for opt in ['EMCC_CFLAGS', 'EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
+    if opt in safe_env:
+      del safe_env[opt]
+  return safe_env
+
+
 def run_one_command(cmd):
   # Helper function used by run_build_commands.
   if shared.EM_BUILD_VERBOSE:
     print(shared.shlex_join(cmd))
-  # building system libraries and ports should be hermetic in that it is not
-  # affected by things like EMMAKEN_CFLAGS which the user may have set
-  safe_env = os.environ.copy()
-  for opt in ['EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
-    if opt in safe_env:
-      del safe_env[opt]
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd.append('-Wno-deprecated')
   try:
-    shared.run_process(cmd, env=safe_env)
+    shared.run_process(cmd, env=clean_env())
   except subprocess.CalledProcessError as e:
     print("'%s' failed (%d)" % (shared.shlex_join(e.cmd), e.returncode))
     raise
