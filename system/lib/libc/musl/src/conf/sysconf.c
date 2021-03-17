@@ -7,6 +7,11 @@
 #include "syscall.h"
 #include "libc.h"
 
+#ifdef __EMSCRIPTEN__
+#include "emscripten/heap.h"
+#include "emscripten/threading.h"
+#endif
+
 #define JT(x) (-256|(x))
 #define VER JT(1)
 #define JT_ARG_MAX JT(2)
@@ -191,8 +196,7 @@ long sysconf(int name)
 	case JT_NPROCESSORS_CONF & 255:
 	case JT_NPROCESSORS_ONLN & 255: ;
 #ifdef __EMSCRIPTEN__
-		errno = ENOSYS;
-		return -1;
+		return emscripten_num_logical_cores();
 #else
 		unsigned char set[128] = {1};
 		int i, cnt;
@@ -204,8 +208,7 @@ long sysconf(int name)
 	case JT_PHYS_PAGES & 255:
 	case JT_AVPHYS_PAGES & 255: ;
 #ifdef __EMSCRIPTEN__
-		errno = ENOSYS;
-		return -1;
+		return emscripten_get_heap_max() / PAGE_SIZE;
 #else
 		unsigned long long mem;
 		int __lsysinfo(struct sysinfo *);
