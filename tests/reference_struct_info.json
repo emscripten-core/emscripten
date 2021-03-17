@@ -1054,12 +1054,6 @@
             "nextInChain": 0,
             "type": 4
         },
-        "WGPUBufferCopyView": {
-            "__size__": 40,
-            "buffer": 32,
-            "layout": 8,
-            "nextInChain": 0
-        },
         "WGPUBufferDescriptor": {
             "__size__": 32,
             "label": 4,
@@ -1132,6 +1126,20 @@
             "initialValue": 8,
             "label": 4,
             "nextInChain": 0
+        },
+        "WGPUImageCopyBuffer": {
+            "__size__": 40,
+            "buffer": 32,
+            "layout": 8,
+            "nextInChain": 0
+        },
+        "WGPUImageCopyTexture": {
+            "__size__": 28,
+            "aspect": 24,
+            "mipLevel": 8,
+            "nextInChain": 0,
+            "origin": 12,
+            "texture": 4
         },
         "WGPUInstanceDescriptor": {
             "__size__": 4,
@@ -1309,14 +1317,6 @@
             "nextInChain": 0,
             "sampleType": 4,
             "viewDimension": 8
-        },
-        "WGPUTextureCopyView": {
-            "__size__": 28,
-            "aspect": 24,
-            "mipLevel": 8,
-            "nextInChain": 0,
-            "origin": 12,
-            "texture": 4
         },
         "WGPUTextureDataLayout": {
             "__size__": 24,
