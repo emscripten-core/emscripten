@@ -280,7 +280,7 @@ LibraryManager.library = {
     }
   },
 
-  sysconf__deps: ['$setErrNo'],
+  sysconf__deps: ['$setErrNo', 'emscripten_num_logical_cores'],
   sysconf__proxy: 'sync',
   sysconf__sig: 'ii',
   sysconf: function(name) {
@@ -429,8 +429,7 @@ LibraryManager.library = {
       case {{{ cDefine('_SC_TZNAME_MAX') }}}: return 6;
       case {{{ cDefine('_SC_THREAD_DESTRUCTOR_ITERATIONS') }}}: return 4;
       case {{{ cDefine('_SC_NPROCESSORS_ONLN') }}}: {
-        if (typeof navigator === 'object') return navigator['hardwareConcurrency'] || 1;
-        return 1;
+        return _emscripten_num_logical_cores();
       }
     }
     setErrNo({{{ cDefine('EINVAL') }}});
