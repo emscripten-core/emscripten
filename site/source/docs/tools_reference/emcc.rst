@@ -535,7 +535,7 @@ Environment variables
   - ``EMCC_ONLY_FORCED_STDLIBS`` [link]
   - ``EMCC_LOCAL_PORTS`` [compile+link]
   - ``EMCC_STDERR_FILE`` [general]
-  - ``EMCC_CLOSURE_ARGS``  [link] arguments to be passed to *Closure Compiler*
+  - ``EMCC_CLOSURE_ARGS`` [link] arguments to be passed to *Closure Compiler*
   - ``EMCC_STRICT`` [general]
   - ``EMCC_SKIP_SANITY_CHECK`` [general]
   - ``EM_IGNORE_SANITY`` [general]
