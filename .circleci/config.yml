@@ -16,6 +16,8 @@ executors:
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
+      # Currently pinned to 9.1.146 due to https://bugs.chromium.org/p/v8/issues/detail?id=11581
+      V8_VERSION: "9.1.146"
   mac:
     environment:
       EMSDK_NOTTY: "1"
@@ -57,7 +59,7 @@ commands:
             # test v8 with --wasm-staging which enables new features. we use v8
             # as a "bleeding edge" shell here, basically, with node being the
             # primary shell (which we run without any special flags)
-            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> .emscripten
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8-${V8_VERSION}'), '--wasm-staging']" >> .emscripten
             echo "JS_ENGINES = [NODE_JS]" >> .emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
             echo "WASM_ENGINES = []" >> .emscripten
@@ -390,7 +392,7 @@ jobs:
             export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
             export PATH="${HOME}/.jsvu:${PATH}"
-            jsvu --os=default --engines=v8
+            jsvu --os=default --engines=v8 v8@${V8_VERSION}
       - build
       - build-libs-and-freeze
       - persist
