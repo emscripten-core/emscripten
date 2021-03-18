@@ -16,7 +16,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('mpg123', 'https://www.mpg123.de/download/mpg123-1.26.2.tar.bz2', 'mpg123-' + TAG, is_tarbz2=True, sha512hash=HASH)
+  ports.fetch_project('mpg123', 'https://www.mpg123.de/download/mpg123-1.26.2.tar.bz2', 'mpg123-' + TAG, sha512hash=HASH)
 
   def create(output_path):
     logging.info('building port: mpg123')
