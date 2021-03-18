@@ -9992,10 +9992,6 @@ exec "$@"
     self.emcc_args += ['-fPIC']
     self.emcc_args += ['-Oz']
 
-    # side_src = path_from_root('tests', 'other', 'lib_hello.c')
-    # self.run_process([EMCC, side_src, '-sSIDE_MODULE=1', '-g', '-o', 'libhello.wasm'])
-    # self.emcc_args += ['--embed-file', 'libhello.wasm']
-    # self.emcc_args += ['-sEXPORTED_FUNCTIONS=[___stack_pointer, ___memory_base, ___table_base, ___heap_base]'] 
     # self.emcc_args += ['-sMAIN_MODULE=2']
 
     self.do_other_test('test_split_module_ex.cpp')
@@ -10005,13 +10001,7 @@ exec "$@"
     self.assertExists('profile.data')
 
     wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    self.run_process([wasm_split,
-                    '--enable-mutable-globals',
-                    '--export-prefix=%',
-                    'test_split_module_ex.wasm.orig',
-                    '-o1', 'primary.wasm',# -o2
-                    '-o2', 'secondary.wasm',
-                    '--profile=profile.data'])
+    self.run_process([wasm_split, '--enable-mutable-globals', '--export-prefix=%', 'test_split_module_ex.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data'])
 
     os.remove('test_split_module_ex.wasm')
     os.rename('primary.wasm', 'test_split_module_ex.wasm')
