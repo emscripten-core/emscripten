@@ -10024,6 +10024,7 @@ exec "$@"
   def test_split_module_ex(self):
     self.set_setting('SPLIT_MODULE')
     self.set_setting('WASM', 1)
+    self.set_setting('WASM_BIGINT')
     self.set_setting('EVAL_CTORS', 0)
     self.set_setting('INLINING_LIMIT', 1)
     self.set_setting('FORCE_FILESYSTEM', 1)
@@ -10048,8 +10049,16 @@ exec "$@"
     self.emcc_args += ['-flto']
     self.emcc_args += ['-fPIC']
     self.emcc_args += ['-Oz']
-
     # self.emcc_args += ['-sMAIN_MODULE=2']
+
+    create_file('mylib.js', '''
+      mergeInto(LibraryManager.library, {
+        js_call: function(x, y) {
+          return x + y;
+        }
+      });
+    ''')
+    self.emcc_args += ['--js-library', 'mylib.js']
 
     self.do_other_test('test_split_module_ex.cpp')
 

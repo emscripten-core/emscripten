@@ -61,9 +61,16 @@ int __attribute__((noinline)) test_golbal_vars()
     return g_globalVar;
 }
 
+/* test_js_call */
+extern "C" {
+    extern int js_call(int x, int y);
+}
+
+
 /* MAIN */
 EMSCRIPTEN_KEEPALIVE void cpp_main() {
     printf("Test exception handling: %d\n", test_exception_handling());
     printf("Test fnptr calling: %d\n", test_fn_ptr_calls());
     printf("Test accessing global var: %d == %d\n", test_golbal_vars(), g_globalVar);
+    printf("Test js_call: %d\n", js_call(23, 27));
 }

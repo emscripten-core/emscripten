@@ -1,5 +1,6 @@
-wrote profile of 5576 bytes (allocated 5576 bytes)
+wrote profile of 5532 bytes (allocated 5532 bytes)
 Test exception handling: -1
 Test fnptr calling: 40
 Test accessing global var: 600 == 600
+Test js_call: 50
 fn_throws_exception argument too large.
