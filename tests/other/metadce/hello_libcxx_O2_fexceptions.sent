@@ -8,10 +8,10 @@ __cxa_free_exception
 __cxa_rethrow
 __cxa_throw
 __cxa_uncaught_exceptions
+__emscripten_resize_heap
 __resumeException
 abort
 emscripten_memcpy_big
-emscripten_resize_heap
 environ_get
 environ_sizes_get
 fd_close

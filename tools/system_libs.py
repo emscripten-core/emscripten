@@ -736,7 +736,13 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc'],
-        filenames=['extras.c', 'wasi-helpers.c', 'emscripten_pthread.c'])
+        filenames=[
+          'extras.c',
+          'wasi-helpers.c',
+          'emscripten_pthread.c',
+          'emscripten_get_heap_size.c',
+          'emscripten_resize_heap.c',
+        ])
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'pthread'],
