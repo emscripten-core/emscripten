@@ -9983,7 +9983,6 @@ exec "$@"
     self.emcc_args += ['-D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR']
     self.emcc_args += ['--emit-symbol-map']
     self.emcc_args += ['--post-js', path_from_root('tests', 'other', 'test_split_module_ex.post.js')]
-    self.emcc_args += ['-sEXPORTED_FUNCTIONS=[_malloc, _free]'] 
     self.emcc_args += ['-sEXTRA_EXPORTED_RUNTIME_METHODS=[allocate]']
     self.emcc_args += ['-sUSE_WEBGL2']
     self.emcc_args += ['-sUSE_GLFW=3']
