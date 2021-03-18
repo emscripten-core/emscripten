@@ -437,10 +437,6 @@ LibraryManager.library = {
     return -1;
   },
 
-  emscripten_get_heap_size: function() {
-    return HEAPU8.length;
-  },
-
 #if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
@@ -487,7 +483,7 @@ LibraryManager.library = {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
-  emscripten_resize_heap__deps: ['emscripten_get_heap_size'
+  __emscripten_resize_heap__deps: [
 #if ASSERTIONS == 2
   , 'emscripten_get_now'
 #endif
@@ -498,7 +494,7 @@ LibraryManager.library = {
   , '$emscripten_realloc_buffer'
 #endif
   ],
-  emscripten_resize_heap: function(requestedSize) {
+  __emscripten_resize_heap: function(oldSize, requestedSize) {
 #if CAN_ADDRESS_2GB
     requestedSize = requestedSize >>> 0;
 #endif
@@ -509,7 +505,6 @@ LibraryManager.library = {
     return false; // malloc will report failure
 #endif // ABORTING_MALLOC
 #else // ALLOW_MEMORY_GROWTH == 0
-    var oldSize = _emscripten_get_heap_size();
     // With pthreads, races can happen (another thread might increase the size in between), so return a failure, and let the caller retry.
 #if USE_PTHREADS
     if (requestedSize <= oldSize) {

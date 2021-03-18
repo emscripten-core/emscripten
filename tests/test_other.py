@@ -9981,6 +9981,7 @@ exec "$@"
     self.assertNotIn('profile', result)
     self.assertIn('Hello! answer: 42', result)
 
+  @disabled('https://github.com/WebAssembly/binaryen/issues/3701')
   def test_split_main_module(self):
     initialTableSize = 16
 
