@@ -39,6 +39,7 @@ $emscripten_sync_run_in_main_thread
 $emscripten_sync_run_in_main_thread
 $emscripten_tls_init
 $emscripten_wait_for_call_v
+$free_tls
 $init_mparams
 $internal_memalign
 $pthread_mutex_init

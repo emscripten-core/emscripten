@@ -1577,7 +1577,7 @@ var LibraryOpenAL = {
       var err = c.mediaStreamError;
       if (err) {
 #if OPENAL_DEBUG
-        switch(err.name) {
+        switch (err.name) {
         case 'PermissionDeniedError':
           console.error(funcname+'() but the user denied access to the device');
           break;
@@ -1773,7 +1773,7 @@ var LibraryOpenAL = {
       newCapture.mediaStream = mediaStream;
 
       var inputChannelCount = 1;
-      switch(newCapture.mediaStreamSourceNode.channelCountMode) {
+      switch (newCapture.mediaStreamSourceNode.channelCountMode) {
       case 'max':
         inputChannelCount = outputChannelCount;
         break;
@@ -2011,7 +2011,7 @@ var LibraryOpenAL = {
 
     var setSample;
 
-    switch(c.requestedSampleType) {
+    switch (c.requestedSampleType) {
     case 'f32': setSample = setF32Sample; break;
     case 'i16': setSample = setI16Sample; break;
     case 'u8' : setSample = setU8Sample ; break;
@@ -2346,7 +2346,7 @@ var LibraryOpenAL = {
     }
     name = UTF8ToString(pEnumName);
     // See alGetEnumValue(), but basically behave the same as OpenAL-Soft
-    switch(name) {
+    switch (name) {
     case 'ALC_NO_ERROR': return 0;
     case 'ALC_INVALID_DEVICE': return 0xA001;
     case 'ALC_INVALID_CONTEXT': return 0xA002;
@@ -2480,7 +2480,7 @@ var LibraryOpenAL = {
       return;
     }
 
-    switch(param) {
+    switch (param) {
     case 0x1000 /* ALC_MAJOR_VERSION */:
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
       break;
@@ -2951,7 +2951,7 @@ var LibraryOpenAL = {
     }
     name = UTF8ToString(pEnumName);
 
-    switch(name) {
+    switch (name) {
     // Spec doesn't clearly state that alGetEnumValue() is required to
     // support _only_ extension tokens.
     // We should probably follow OpenAL-Soft's example and support all

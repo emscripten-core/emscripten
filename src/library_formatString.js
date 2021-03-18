@@ -100,7 +100,7 @@ mergeInto(LibraryManager.library, {
 
     var ret = [];
     var curr, next, currArg;
-    while(1) {
+    while (1) {
       var startTextIndex = textIndex;
       curr = {{{ makeGetValue(0, 'textIndex', 'i8') }}};
       if (curr === 0) break;
@@ -165,7 +165,7 @@ mergeInto(LibraryManager.library, {
             precision = getNextArg('i32');
             textIndex++;
           } else {
-            while(1) {
+            while (1) {
               var precisionChr = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
               if (precisionChr < {{{ charCode('0') }}} ||
                   precisionChr > {{{ charCode('9') }}}) break;

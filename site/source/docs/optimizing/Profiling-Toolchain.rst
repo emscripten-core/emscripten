@@ -14,32 +14,30 @@ To try out the toolchain profiler, run the following set of commands:
 .. code-block:: bash
 
     cd path/to/emscripten
-    tools/emprofile.py --reset
-    export EM_PROFILE_TOOLCHAIN=1
+    export EMPROFILE=1
     emcc tests/hello_world.c -O3 -o a.html
-    tools/emprofile.py --graph
+    emprofile
 
 On Windows, replace the ``export`` keyword with ``set`` instead. The last command should generate a HTML file of form ``toolchain_profiler.results_yyyymmdd_hhmm.html`` that can be opened in the web browser to view the results.
 
 Details
 =======
 
-The toolchain profiler is active whenever the toolchain is invoked with the environment variable ``EM_PROFILE_TOOLCHAIN=1`` being set. In this mode, each called tool will accumulate profiling instrumentation data to a set of .json files under the Emscripten temp directory.
+The toolchain profiler is active whenever the toolchain is invoked with the environment variable ``EMPROFILE=1`` being set. In this mode, each called tool will accumulate profiling instrumentation data to a set of .json files under the Emscripten temp directory.
 
 Profiling Tool Commands
 -----------------------
 
-The command ``tools/emprofile.py --reset`` deletes all previously stored profiling data. Call this command to erase the profiling session to a fresh empty state. To start profiling, call Emscripten tool commands with the environment variable ``EM_PROFILE_TOOLCHAIN=1`` set either system-wide as shown in the example, or on a per command basis, like this:
+The command ``tools/emprofile.py --clear`` deletes all previously stored profiling data. Call this command to erase the profiling session to a fresh empty state. To start profiling, call Emscripten tool commands with the environment variable ``EMPROFILE=1`` set either system-wide as shown in the example, or on a per command basis, like this:
 
 .. code-block:: bash
 
-    cd path/to/emscripten
-    tools/emprofile.py --reset
-    EM_PROFILE_TOOLCHAIN=1 emcc tests/hello_world.c -o a.bc
-    EM_PROFILE_TOOLCHAIN=1 emcc a.bc -O3 -o a.html
-    tools/emprofile.py --graph --outfile=myresults.html
+    emprofile --clear
+    EMPROFILE=1 emcc -c foo.c a.o
+    EMPROFILE=1 emcc a.o -O3 -o a.html
+    emprofile --outfile=myresults.html
 
-Any number of commands can be profiled within one session, and when ``tools/emprofile.py --graph`` is finally called, it will pick up records from all Emscripten tool invocations up to that point. Calling ``--graph`` also clears the recorded profiling data.
+Any number of commands can be profiled within one session, and when ``emprofile`` is finally called, it will pick up records from all Emscripten tool invocations up to that point, graph them, and clear the recorded profiling data for the next run.
 
 The output HTML filename can be chosen with the optional ``--outfile=myresults.html`` parameter.
 

@@ -33,7 +33,7 @@ def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
 
-JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
+ACORN_OPTIMIZER = path_from_root('tools', 'acorn-optimizer.js')
 
 NUM_CHUNKS_PER_CORE = 3
 MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 512 * 1024) # configuring this is just for debugging purposes
@@ -68,8 +68,8 @@ def split_funcs(js, just_split=False):
 
 
 class Minifier(object):
-  """asm.js minification support. We calculate minification of
-  globals here, then pass that into the parallel js-optimizer.js runners which
+  """minification support. We calculate minification of
+  globals here, then pass that into the parallel acorn-optimizer.js runners which
   perform minification of locals.
   """
 
@@ -79,12 +79,12 @@ class Minifier(object):
     self.profiling_funcs = False
 
   def minify_shell(self, shell, minify_whitespace):
-    # Run through js-optimizer.js to find and minify the global symbols
+    # Run through acorn-optimizer.js to find and minify the global symbols
     # We send it the globals, which it parses at the proper time. JS decides how
     # to minify all global names, we receive a dictionary back, which is then
     # used by the function processors
 
-    shell = shell.replace('0.0', '13371337') # avoid uglify doing 0.0 => 0
+    shell = shell.replace('0.0', '13371337') # avoid optimizer doing 0.0 => 0
 
     # Find all globals in the JS functions code
 
@@ -101,7 +101,7 @@ class Minifier(object):
         f.write('\n')
         f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
 
-      cmd = config.NODE_JS + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata']
+      cmd = config.NODE_JS + [ACORN_OPTIMIZER, temp_file, 'minifyGlobals']
       if minify_whitespace:
         cmd.append('minifyWhitespace')
       output = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
@@ -132,8 +132,8 @@ end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
 
 def run_on_chunk(command):
   try:
-    if JS_OPTIMIZER in command: # XXX hackish
-      index = command.index(JS_OPTIMIZER)
+    if ACORN_OPTIMIZER in command: # XXX hackish
+      index = command.index(ACORN_OPTIMIZER)
       filename = command[index + 1]
     else:
       filename = command[1]
@@ -329,7 +329,7 @@ EMSCRIPTEN_FUNCS();
 
   with ToolchainProfiler.profile_block('run_optimizer'):
     if len(filenames):
-      commands = [config.NODE_JS + [JS_OPTIMIZER, f, 'noPrintMetadata'] + passes for f in filenames]
+      commands = [config.NODE_JS + [ACORN_OPTIMIZER, f] + passes for f in filenames]
 
       cores = min(cores, len(filenames))
       if len(chunks) > 1 and cores >= 2:
@@ -340,7 +340,7 @@ EMSCRIPTEN_FUNCS();
           pool = building.get_multiprocessing_pool()
           filenames = pool.map(run_on_chunk, commands, chunksize=1)
       else:
-        # We can't parallize, but still break into chunks to avoid uglify/node memory issues
+        # We can't parallize, but still break into chunks to avoid node memory issues
         if len(chunks) > 1 and DEBUG:
           print('splitting up js optimization into %d chunks' % (len(chunks)), file=sys.stderr)
         filenames = [run_on_chunk(command) for command in commands]
@@ -352,7 +352,7 @@ EMSCRIPTEN_FUNCS();
 
   with ToolchainProfiler.profile_block('split_closure_cleanup'):
     if closure or cleanup:
-      # run on the shell code, everything but what we js-optimize
+      # run on the shell code, everything but what we acorn-optimize
       start_asm = '// EMSCRIPTEN_START_ASM\n'
       end_asm = '// EMSCRIPTEN_END_ASM\n'
       cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(wakaGlobal,wakaEnv,wakaBuffer)\n'

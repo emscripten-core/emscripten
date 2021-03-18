@@ -69,20 +69,24 @@ def get_base_cflags(force_object_files=False):
   return flags
 
 
+def clean_env():
+  # building system libraries and ports should be hermetic in that it is not
+  # affected by things like EMMAKEN_CFLAGS which the user may have set
+  safe_env = os.environ.copy()
+  for opt in ['EMCC_CFLAGS', 'EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
+    if opt in safe_env:
+      del safe_env[opt]
+  return safe_env
+
+
 def run_one_command(cmd):
   # Helper function used by run_build_commands.
   if shared.EM_BUILD_VERBOSE:
     print(shared.shlex_join(cmd))
-  # building system libraries and ports should be hermetic in that it is not
-  # affected by things like EMMAKEN_CFLAGS which the user may have set
-  safe_env = os.environ.copy()
-  for opt in ['EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
-    if opt in safe_env:
-      del safe_env[opt]
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd.append('-Wno-deprecated')
   try:
-    shared.run_process(cmd, env=safe_env)
+    shared.run_process(cmd, env=clean_env())
   except subprocess.CalledProcessError as e:
     print("'%s' failed (%d)" % (shared.shlex_join(e.cmd), e.returncode))
     raise
@@ -1159,6 +1163,15 @@ class libfetch(MTLibrary):
     return [shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')]
 
 
+class libstb_image(Library):
+  name = 'libstb_image'
+  never_force = True
+  includes = [['third_party']]
+
+  def get_files(self):
+    return [shared.path_from_root('system', 'lib', 'stb_image.c')]
+
+
 class libasmfs(MTLibrary):
   name = 'libasmfs'
   never_force = True
@@ -1437,11 +1450,8 @@ def calculate(input_files, cxx, forced):
   if force_include:
     logger.debug('forcing stdlibs: ' + str(force_include))
 
-  for lib in force_include:
-    if lib not in system_libs_map:
-      shared.exit_with_error('invalid forced library: %s', lib)
-
-  def add_library(lib):
+  def add_library(libname):
+    lib = system_libs_map[libname]
     if lib.name in already_included:
       return
     already_included.add(lib.name)
@@ -1453,66 +1463,68 @@ def calculate(input_files, cxx, forced):
 
   if shared.Settings.STANDALONE_WASM:
     if shared.Settings.EXPECT_MAIN:
-      add_library(system_libs_map['crt1'])
+      add_library('crt1')
     else:
-      add_library(system_libs_map['crt1_reactor'])
+      add_library('crt1_reactor')
 
   for forced in force_include:
-    add_library(system_libs_map[forced])
+    if forced not in system_libs_map:
+      shared.exit_with_error('invalid forced library: %s', forced)
+    add_library(forced)
 
   if only_forced:
-    add_library(system_libs_map['libc_rt_wasm'])
-    add_library(system_libs_map['libcompiler_rt'])
+    add_library('libc_rt_wasm')
+    add_library('libcompiler_rt')
   else:
     if shared.Settings.AUTO_NATIVE_LIBRARIES:
-      add_library(system_libs_map['libgl'])
-      add_library(system_libs_map['libal'])
-      add_library(system_libs_map['libhtml5'])
+      add_library('libgl')
+      add_library('libal')
+      add_library('libhtml5')
 
     sanitize = shared.Settings.USE_LSAN or shared.Settings.USE_ASAN or shared.Settings.UBSAN_RUNTIME
 
     # JS math must come before anything else, so that it overrides the normal
     # libc math.
     if shared.Settings.JS_MATH:
-      add_library(system_libs_map['libjsmath'])
+      add_library('libjsmath')
 
     # to override the normal libc printf, we must come before it
     if shared.Settings.PRINTF_LONG_DOUBLE:
-      add_library(system_libs_map['libprintf_long_double'])
+      add_library('libprintf_long_double')
 
-    add_library(system_libs_map['libc'])
-    add_library(system_libs_map['libcompiler_rt'])
+    add_library('libc')
+    add_library('libcompiler_rt')
     if cxx:
-      add_library(system_libs_map['libc++'])
+      add_library('libc++')
     if cxx or sanitize:
-      add_library(system_libs_map['libc++abi'])
+      add_library('libc++abi')
       if shared.Settings.EXCEPTION_HANDLING:
-        add_library(system_libs_map['libunwind'])
+        add_library('libunwind')
     if shared.Settings.MALLOC != 'none':
-      add_library(system_libs_map['libmalloc'])
+      add_library('libmalloc')
     if shared.Settings.STANDALONE_WASM:
-      add_library(system_libs_map['libstandalonewasm'])
-    add_library(system_libs_map['libc_rt_wasm'])
+      add_library('libstandalonewasm')
+    add_library('libc_rt_wasm')
 
     if shared.Settings.USE_LSAN:
       force_include.add('liblsan_rt')
-      add_library(system_libs_map['liblsan_rt'])
+      add_library('liblsan_rt')
 
     if shared.Settings.USE_ASAN:
       force_include.add('libasan_rt')
-      add_library(system_libs_map['libasan_rt'])
-      add_library(system_libs_map['libasan_js'])
+      add_library('libasan_rt')
+      add_library('libasan_js')
 
     if shared.Settings.UBSAN_RUNTIME == 1:
-      add_library(system_libs_map['libubsan_minimal_rt_wasm'])
+      add_library('libubsan_minimal_rt_wasm')
     elif shared.Settings.UBSAN_RUNTIME == 2:
-      add_library(system_libs_map['libubsan_rt'])
+      add_library('libubsan_rt')
 
     if shared.Settings.USE_LSAN or shared.Settings.USE_ASAN:
-      add_library(system_libs_map['liblsan_common_rt'])
+      add_library('liblsan_common_rt')
 
     if sanitize:
-      add_library(system_libs_map['libsanitizer_common_rt'])
+      add_library('libsanitizer_common_rt')
 
     # the sanitizer runtimes may call mmap, which will need a few things. sadly
     # the usual deps_info mechanism does not work since we scan only user files
@@ -1523,12 +1535,12 @@ def calculate(input_files, cxx, forced):
       shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name('memset'))
 
     if shared.Settings.PROXY_POSIX_SOCKETS:
-      add_library(system_libs_map['libsockets_proxy'])
+      add_library('libsockets_proxy')
     else:
-      add_library(system_libs_map['libsockets'])
+      add_library('libsockets')
 
     if shared.Settings.USE_WEBGPU:
-      add_library(system_libs_map['libwebgpu_cpp'])
+      add_library('libwebgpu_cpp')
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
@@ -1833,6 +1845,11 @@ def build_port(port_name, settings):
   resolve_dependencies(port_set, settings)
   for port in dependency_order(port_set):
     port.get(Ports, settings, shared)
+
+
+def clear_port(port_name, settings):
+  port = ports.ports_by_name[port_name]
+  port.clear(Ports, settings, shared)
 
 
 def add_ports_cflags(args, settings):

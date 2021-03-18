@@ -1759,7 +1759,7 @@ FS.staticInit();` +
         Object.defineProperties(lazyArray, {
           length: {
             get: /** @this{Object} */ function() {
-              if(!this.lengthKnown) {
+              if (!this.lengthKnown) {
                 this.cacheLength();
               }
               return this._length;
@@ -1767,7 +1767,7 @@ FS.staticInit();` +
           },
           chunkSize: {
             get: /** @this{Object} */ function() {
-              if(!this.lengthKnown) {
+              if (!this.lengthKnown) {
                 this.cacheLength();
               }
               return this._chunkSize;

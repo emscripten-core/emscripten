@@ -29,7 +29,7 @@ from .shared import try_delete, run_process, check_call, exit_with_error
 from .shared import configuration, path_from_root
 from .shared import asmjs_mangle, DEBUG
 from .shared import EM_BUILD_VERBOSE, TEMP_DIR
-from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
+from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name
 from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
 from .utils import which, WINDOWS
 
@@ -376,6 +376,7 @@ def llvm_nm_multiple(files):
 
     if len(llvm_nm_files) > 0:
       cmd = [LLVM_NM] + llvm_nm_files
+      cmd = get_command_with_possible_response_file(cmd)
       results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
 
       # If one or more of the input files cannot be processed, llvm-nm will return a non-zero error code, but it will still process and print
@@ -992,8 +993,6 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
 
     if Settings.MINIMAL_RUNTIME and Settings.USE_PTHREADS and not Settings.MODULARIZE:
       CLOSURE_EXTERNS += [path_from_root('src', 'minimal_runtime_worker_externs.js')]
-    outfile = filename + '.cc.js'
-    configuration.get_temp_files().note(outfile)
 
     args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
     # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
@@ -1005,19 +1004,40 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
     # Tell closure never to inject the 'use strict' directive.
     args += ['--emit_use_strict=false']
 
+    # Closure compiler is unable to deal with path names that are not 7-bit ASCII:
+    # https://github.com/google/closure-compiler/issues/3784
+    tempfiles = configuration.get_temp_files()
+    outfile = tempfiles.get('.cc.js').name  # Safe 7-bit filename
+
+    def move_to_safe_7bit_ascii_filename(filename):
+      safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
+      shutil.copyfile(filename, safe_filename)
+      return os.path.relpath(safe_filename, tempfiles.tmpdir)
+
     for e in CLOSURE_EXTERNS:
-      args += ['--externs', e]
-    args += ['--js_output_file', outfile]
+      args += ['--externs', move_to_safe_7bit_ascii_filename(e)]
+
+    for i in range(len(user_args)):
+      if user_args[i] == '--externs':
+        user_args[i + 1] = move_to_safe_7bit_ascii_filename(user_args[i + 1])
+
+    # Specify output file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
+    args += ['--js_output_file', os.path.relpath(outfile, tempfiles.tmpdir)]
 
     if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
       args.append('--jscomp_off=*')
     if pretty:
       args += ['--formatting', 'PRETTY_PRINT']
-    args += ['--js', filename]
+    # Specify input file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
+    args += ['--js', move_to_safe_7bit_ascii_filename(filename)]
     cmd = closure_cmd + args + user_args
     logger.debug('closure compiler: ' + ' '.join(cmd))
 
-    proc = run_process(cmd, stderr=PIPE, check=False, env=env)
+    # Closure compiler does not work if any of the input files contain characters outside the
+    # 7-bit ASCII range. Therefore make sure the command line we pass does not contain any such
+    # input files by passing all input filenames relative to the cwd. (user temp directory might
+    # be in user's home directory, and user's profile name might contain unicode characters)
+    proc = run_process(cmd, stderr=PIPE, check=False, env=env, cwd=tempfiles.tmpdir)
 
     # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
     # outfile.map source map file (https://github.com/google/closure-compiler/wiki/Source-Maps)
@@ -1369,7 +1389,7 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
-  filename_bytes = asbytes(embedded_path)
+  filename_bytes = embedded_path.encode('utf-8')
   contents = webassembly.toLEB(len(filename_bytes)) + filename_bytes
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'ab') as f:
@@ -1377,6 +1397,11 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
     f.write(webassembly.toLEB(section_size))
     f.write(section_name)
     f.write(contents)
+
+
+def little_endian_heap(js_file):
+  logger.debug('enforcing little endian heap byte order')
+  return acorn_optimizer(js_file, ['littleEndianHeap'])
 
 
 def apply_wasm_memory_growth(js_file):

@@ -286,7 +286,7 @@ LibraryManager.library = {
   sysconf: function(name) {
     // long sysconf(int name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
-    switch(name) {
+    switch (name) {
       case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_PHYS_PAGES') }}}:
 #if ALLOW_MEMORY_GROWTH
@@ -558,7 +558,7 @@ LibraryManager.library = {
 
     // Loop through potential heap size increases. If we attempt a too eager reservation that fails, cut down on the
     // attempted size and reserve a smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
-    for(var cutDown = 1; cutDown <= 4; cutDown *= 2) {
+    for (var cutDown = 1; cutDown <= 4; cutDown *= 2) {
 #if MEMORY_GROWTH_LINEAR_STEP == -1
       var overGrownHeapSize = oldSize * (1 + {{{ MEMORY_GROWTH_GEOMETRIC_STEP }}} / cutDown); // ensure geometric growth
 #if MEMORY_GROWTH_GEOMETRIC_CAP
@@ -1038,7 +1038,7 @@ LibraryManager.library = {
   _addDays__deps: ['_isLeapYear', '_MONTH_DAYS_LEAP', '_MONTH_DAYS_REGULAR'],
   _addDays: function(date, days) {
     var newDate = new Date(date.getTime());
-    while(days > 0) {
+    while (days > 0) {
       var leap = __isLeapYear(newDate.getFullYear());
       var currentMonth = newDate.getMonth();
       var daysInCurrentMonth = (leap ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR)[currentMonth];
@@ -2201,8 +2201,8 @@ LibraryManager.library = {
       if (parts[5] === 0) {
         str = "::";
         //special case IPv6 addresses
-        if(v4part === "0.0.0.0") v4part = ""; // any/unspecified address
-        if(v4part === "0.0.0.1") v4part = "1";// loopback address
+        if (v4part === "0.0.0.0") v4part = ""; // any/unspecified address
+        if (v4part === "0.0.0.1") v4part = "1";// loopback address
         str += v4part;
         return str;
       }
@@ -3496,6 +3496,9 @@ LibraryManager.library = {
     code -= {{{ GLOBAL_BASE }}};
 #endif
     var args = readAsmConstArgs(sigPtr, argbuf);
+#if ASSERTIONS
+    if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
+#endif
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
@@ -3519,6 +3522,9 @@ LibraryManager.library = {
       // (positive numbers are non-EM_ASM calls).
       return _emscripten_proxy_to_main_thread_js.apply(null, [-1 - code, sync].concat(args));
     }
+#endif
+#if ASSERTIONS
+    if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
 #endif
     return ASM_CONSTS[code].apply(null, args);
   },
@@ -3751,7 +3757,7 @@ LibraryManager.library = {
   },
 
   $callRuntimeCallbacks: function(callbacks) {
-    while(callbacks.length > 0) {
+    while (callbacks.length > 0) {
       var callback = callbacks.shift();
       if (typeof callback == 'function') {
         callback(Module); // Pass the module as the first argument.
@@ -3771,13 +3777,16 @@ LibraryManager.library = {
   },
 
   // Callable in pthread without __proxy needed.
-  emscripten_exit_with_live_runtime: function() {
+  emscripten_exit_with_live_runtime__sig: 'v',
 #if !MINIMAL_RUNTIME
-    noExitRuntime = true;
+  emscripten_exit_with_live_runtime__deps: ['$runtimeKeepalivePush'],
 #endif
+  emscripten_exit_with_live_runtime: function() {
+    {{{ runtimeKeepalivePush() }}}
     throw 'unwind';
   },
 
+  emscripten_force_exit__deps: ['$runtimeKeepaliveCounter'],
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
@@ -3788,9 +3797,111 @@ LibraryManager.library = {
 #endif
 #if !MINIMAL_RUNTIME
     noExitRuntime = false;
+    runtimeKeepaliveCounter = 0;
 #endif
     exit(status);
   },
+
+#if !MINIMAL_RUNTIME
+  $runtimeKeepaliveCounter: 0,
+
+  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
+  $keepRuntimeAlive: function() {
+    return noExitRuntime || runtimeKeepaliveCounter > 0;
+  },
+
+  // Callable in pthread without __proxy needed.
+  $runtimeKeepalivePush__sig: 'v',
+  $runtimeKeepalivePush__deps: ['$runtimeKeepaliveCounter'],
+  $runtimeKeepalivePush: function() {
+    runtimeKeepaliveCounter += 1;
+#if RUNTIME_DEBUG
+    err('runtimeKeepalivePush -> counter=' + runtimeKeepaliveCounter);
+#endif
+  },
+
+  $runtimeKeepalivePop__sig: 'v',
+  $runtimeKeepalivePop__deps: ['$runtimeKeepaliveCounter'],
+  $runtimeKeepalivePop: function() {
+#if ASSERTIONS
+    assert(runtimeKeepaliveCounter > 0);
+#endif
+    runtimeKeepaliveCounter -= 1;
+#if RUNTIME_DEBUG
+    err('runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
+#endif
+  },
+
+
+  // Used to call user callbacks from the embedder / event loop.  For example
+  // setTimeout or any other kind of event handler that calls into user case
+  // needs to use this wrapper.
+  //
+  // The job of this wrapper is the handle emscripten-specfic exceptions such
+  // as ExitStatus and 'unwind' and prevent these from escaping to the top
+  // level.
+#if EXIT_RUNTIME || USE_PTHREADS
+  $callUserCallback__deps: ['$maybeExit'],
+#endif
+  $callUserCallback: function(func) {
+    if (ABORT) {
+#if ASSERTIONS
+      err('user callback triggered after application aborted.  Ignoring.');
+      return;
+#endif
+    }
+    try {
+      func();
+    } catch (e) {
+      if (e instanceof ExitStatus) {
+        return;
+      } else if (e !== 'unwind') {
+        // And actual unexpected user-exectpion occured
+        if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
+        throw e;
+      }
+    }
+#if EXIT_RUNTIME || USE_PTHREADS
+#if USE_PTHREADS && !EXIT_RUNTIME
+    if (ENVIRONMENT_IS_PTHREAD)
+#endif
+      maybeExit();
+#endif
+  },
+
+  $maybeExit__deps: ['exit',
+#if USE_PTHREADS
+    'pthread_exit',
+#endif
+  ],
+  $maybeExit: function() {
+#if RUNTIME_DEBUG
+    err('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
+#endif
+    if (!keepRuntimeAlive()) {
+#if RUNTIME_DEBUG
+      err('maybeExit: calling exit() implicitly after user callback completed: ' + EXITSTATUS);
+#endif
+      try {
+#if USE_PTHREADS
+        if (ENVIRONMENT_IS_PTHREAD) _pthread_exit(EXITSTATUS);
+        else
+#endif
+        _exit(EXITSTATUS);
+      } catch (e) {
+        if (e instanceof ExitStatus) {
+          return;
+        }
+        throw e;
+      }
+    }
+  },
+#else
+  // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
+  $callUserCallback: function(func) {
+    func();
+  },
+#endif
 };
 
 function autoAddDeps(object, name) {

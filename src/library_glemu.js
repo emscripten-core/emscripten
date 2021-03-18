@@ -285,7 +285,7 @@ var LibraryGLEmulation = {
       var glGetString = _glGetString;
       _glGetString = _emscripten_glGetString = function _glGetString(name_) {
         if (GL.stringCache[name_]) return GL.stringCache[name_];
-        switch(name_) {
+        switch (name_) {
           case 0x1F03 /* GL_EXTENSIONS */: // Add various extensions that we can support
             var ret = stringToNewUTF8((GLctx.getSupportedExtensions() || []).join(' ') +
                    ' GL_EXT_texture_env_combine GL_ARB_texture_env_crossbar GL_ATI_texture_env_combine3 GL_NV_texture_env_combine4 GL_EXT_texture_env_dot3 GL_ARB_multitexture GL_ARB_vertex_buffer_object GL_EXT_framebuffer_object GL_ARB_vertex_program GL_ARB_fragment_program GL_ARB_shading_language_100 GL_ARB_shader_objects GL_ARB_vertex_shader GL_ARB_fragment_shader GL_ARB_texture_cube_map GL_EXT_draw_range_elements' +
@@ -688,7 +688,7 @@ var LibraryGLEmulation = {
 
   glGetPointerv: function(name, p) {
     var attribute;
-    switch(name) {
+    switch (name) {
       case 0x808E: // GL_VERTEX_ARRAY_POINTER
         attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX]; break;
       case 0x8090: // GL_COLOR_ARRAY_POINTER
@@ -1171,7 +1171,7 @@ var LibraryGLEmulation = {
         var load;
 
         // As an optimization, merge duplicate identical texture loads to one var.
-        while(load = texLoadRegex.exec(lines)) {
+        while (load = texLoadRegex.exec(lines)) {
           var texLoadExpr = load[1];
           var secondOccurrence = lines.slice(load.index+1).indexOf(texLoadExpr);
           if (secondOccurrence != -1) { // And also has a second occurrence of same load expression..
@@ -3006,7 +3006,7 @@ var LibraryGLEmulation = {
   },
 
   glFogf: function(pname, param) { // partial support, TODO
-    switch(pname) {
+    switch (pname) {
       case 0xB63: // GL_FOG_START
         GLEmulation.fogStart = param; break;
       case 0xB64: // GL_FOG_END
@@ -3038,7 +3038,7 @@ var LibraryGLEmulation = {
   },
   glFogfv__deps: ['glFogf'],
   glFogfv: function(pname, param) { // partial support, TODO
-    switch(pname) {
+    switch (pname) {
       case 0xB66: // GL_FOG_COLOR
         GLEmulation.fogColor[0] = {{{ makeGetValue('param', '0', 'float') }}};
         GLEmulation.fogColor[1] = {{{ makeGetValue('param', '4', 'float') }}};
@@ -3052,7 +3052,7 @@ var LibraryGLEmulation = {
   },
   glFogiv__deps: ['glFogf'],
   glFogiv: function(pname, param) {
-    switch(pname) {
+    switch (pname) {
       case 0xB66: // GL_FOG_COLOR
         GLEmulation.fogColor[0] = ({{{ makeGetValue('param', '0', 'i32') }}}/2147483647)/2.0+0.5;
         GLEmulation.fogColor[1] = ({{{ makeGetValue('param', '4', 'i32') }}}/2147483647)/2.0+0.5;

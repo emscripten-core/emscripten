@@ -24,23 +24,24 @@ emcc can be influenced by a few environment variables:
 """
 
 
+import base64
 import json
 import logging
 import os
 import re
 import shlex
+import shutil
 import stat
 import sys
 import time
-import base64
 from enum import Enum
 from subprocess import PIPE
 
 import emscripten
 from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
-from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, safe_copy
-from tools.shared import run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
+from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
+from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
 from tools.shared import do_replace
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
@@ -165,6 +166,8 @@ UBSAN_SANITIZERS = {
 
 
 VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
+SIMD_NEON_FLAGS = ['-mfpu=neon']
 
 
 # this function uses the global 'final' variable, which contains the current
@@ -251,7 +254,6 @@ class EmccOptions(object):
     self.memory_init_file = None
     self.use_preload_cache = False
     self.use_preload_plugins = False
-    self.proxy_to_worker = False
     self.default_object_extension = '.o'
     self.valid_abspaths = []
     self.cfi = False
@@ -656,10 +658,85 @@ def parse_s_args(args):
   return (settings_changes, newargs)
 
 
-def calc_cflags(options):
+def emsdk_ldflags(user_args):
+  if os.environ.get('EMMAKEN_NO_SDK'):
+    return []
+
+  library_paths = [
+     shared.Cache.get_lib_dir(absolute=True)
+  ]
+  ldflags = ['-L' + l for l in library_paths]
+
+  if '-nostdlib' in user_args:
+    return ldflags
+
+  # TODO(sbc): Add system libraries here rather than conditionally including
+  # them via .symbols files.
+  libraries = []
+  ldflags += ['-l' + l for l in libraries]
+
+  return ldflags
+
+
+def emsdk_cflags(user_args):
+  cflags = ['--sysroot=' + shared.Cache.get_sysroot_dir(absolute=True)]
+
+  def array_contains_any_of(hay, needles):
+    for n in needles:
+      if n in hay:
+        return True
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
+    if '-msimd128' not in user_args:
+      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128!')
+    cflags += ['-D__SSE__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
+    cflags += ['-D__SSE2__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
+    cflags += ['-D__SSE3__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
+    cflags += ['-D__SSSE3__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
+    cflags += ['-D__SSE4_1__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
+    cflags += ['-D__SSE4_2__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[6:]):
+    cflags += ['-D__AVX__=1']
+
+  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
+    cflags += ['-D__ARM_NEON__=1']
+
+  return cflags + ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
+
+
+def get_clang_flags():
+  return ['-target', get_llvm_target()]
+
+
+def get_llvm_target():
+  if shared.Settings.MEMORY64:
+    return 'wasm64-unknown-emscripten'
+  else:
+    return 'wasm32-unknown-emscripten'
+
+
+cflags = None
+
+
+def get_cflags(options, user_args):
+  global cflags
+  if cflags:
+    return cflags
+
   # Flags we pass to the compiler when building C/C++ code
   # We add these to the user's flags (newargs), but not when building .s or .S assembly files
-  cflags = []
+  cflags = get_clang_flags()
 
   if options.tracing:
     cflags.append('-D__EMSCRIPTEN_TRACING__=1')
@@ -692,6 +769,39 @@ def calc_cflags(options):
     for a in building.llvm_backend_args():
       cflags += ['-mllvm', a]
 
+  # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
+  # data and other nice fixes.
+  cflags += [# '-fno-threadsafe-statics', # disabled due to issue 1289
+             '-D__EMSCRIPTEN_major__=' + str(shared.EMSCRIPTEN_VERSION_MAJOR),
+             '-D__EMSCRIPTEN_minor__=' + str(shared.EMSCRIPTEN_VERSION_MINOR),
+             '-D__EMSCRIPTEN_tiny__=' + str(shared.EMSCRIPTEN_VERSION_TINY),
+             '-D_LIBCPP_ABI_VERSION=2']
+
+  # For compatability with the fastcomp compiler that defined these
+  cflags += ['-Dunix',
+             '-D__unix',
+             '-D__unix__']
+
+  # LLVM has turned on the new pass manager by default, but it causes some code
+  # size regressions. For now, use the legacy one.
+  # https://github.com/emscripten-core/emscripten/issues/13427
+  cflags += ['-flegacy-pass-manager']
+
+  # Changes to default clang behavior
+
+  # Implicit functions can cause horribly confusing function pointer type errors, see #2175
+  # If your codebase really needs them - very unrecommended! - you can disable the error with
+  #   -Wno-error=implicit-function-declaration
+  # or disable even a warning about it with
+  #   -Wno-implicit-function-declaration
+  cflags += ['-Werror=implicit-function-declaration']
+
+  system_libs.add_ports_cflags(cflags, shared.Settings)
+
+  if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
+    return cflags
+
+  cflags += emsdk_cflags(user_args)
   return cflags
 
 
@@ -788,10 +898,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if len(args) == 1 and args[0] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print(version_string(), file=sys.stderr)
-    return shared.check_call([clang, '-v'] + shared.get_clang_flags(), check=False).returncode
+    return shared.check_call([clang, '-v'] + get_clang_flags(), check=False).returncode
 
   if '-dumpmachine' in args:
-    print(shared.get_llvm_target())
+    print(get_llvm_target())
     return 0
 
   if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
@@ -1216,10 +1326,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         setattr(shared.Settings, name, new_default)
 
     # -s ASSERTIONS=1 implies basic stack overflow checks, and ASSERTIONS=2
-    # implies full stack overflow checks (unless the user specifically set
-    # something else)
+    # implies full stack overflow checks.
     if shared.Settings.ASSERTIONS:
-      default_setting('STACK_OVERFLOW_CHECK',  max(shared.Settings.ASSERTIONS, shared.Settings.STACK_OVERFLOW_CHECK))
+      # However, we don't set this default in PURE_WASI, or when we are linking without standard
+      # libraries because STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end which is defined
+      # in libcompiler-rt.
+      if not shared.Settings.PURE_WASI and '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
+        default_setting('STACK_OVERFLOW_CHECK', max(shared.Settings.ASSERTIONS, shared.Settings.STACK_OVERFLOW_CHECK))
 
     if shared.Settings.LLD_REPORT_UNDEFINED or shared.Settings.STANDALONE_WASM:
       # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function
@@ -1337,7 +1450,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
     # so it won't think about generating native x86 SSE code.
-    newargs = [x for x in newargs if x not in shared.SIMD_INTEL_FEATURE_TOWER and x not in shared.SIMD_NEON_FLAGS]
+    newargs = [x for x in newargs if x not in SIMD_INTEL_FEATURE_TOWER and x not in SIMD_NEON_FLAGS]
 
     link_to_object = False
     if options.shared or options.relocatable:
@@ -1352,6 +1465,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file.  This is a form of emulation to support existing build systems.  If you want to build a runtime shared library use the SIDE_MODULE setting.')
         link_to_object = True
 
+    if shared.Settings.SUPPORT_BIG_ENDIAN:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        '$LE_HEAP_STORE_U16',
+        '$LE_HEAP_STORE_I16',
+        '$LE_HEAP_STORE_U32',
+        '$LE_HEAP_STORE_I32',
+        '$LE_HEAP_STORE_F32',
+        '$LE_HEAP_STORE_F64',
+        '$LE_HEAP_LOAD_U16',
+        '$LE_HEAP_LOAD_I16',
+        '$LE_HEAP_LOAD_U32',
+        '$LE_HEAP_LOAD_I32',
+        '$LE_HEAP_LOAD_F32',
+        '$LE_HEAP_LOAD_F64'
+      ]
+
     if shared.Settings.STACK_OVERFLOW_CHECK:
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_end', '_emscripten_stack_get_free']
       if shared.Settings.RELOCATABLE:
@@ -1362,7 +1491,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base']
 
     if shared.Settings.MODULARIZE:
-      assert not options.proxy_to_worker, '-s MODULARIZE=1 is not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
+      if shared.Settings.PROXY_TO_WORKER:
+        exit_with_error('-s MODULARIZE=1 is not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)')
       # in MINIMAL_RUNTIME we may not need to emit the Promise code, as the
       # HTML output creates a singleton instance, and it does so without the
       # Promise. However, in Pthreads mode the Promise is used for worker
@@ -1381,9 +1511,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.MIN_EDGE_VERSION = 0
       shared.Settings.MIN_CHROME_VERSION = 0
 
-    if shared.Settings.MIN_SAFARI_VERSION <= 9 and shared.Settings.WASM2JS:
-      shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
-
     if shared.Settings.MIN_CHROME_VERSION <= 37:
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
 
@@ -1392,23 +1519,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
     if not shared.Settings.WASM2JS:
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
-      shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
 
+    forced_stdlibs = []
+
     if shared.Settings.STB_IMAGE and final_suffix in EXECUTABLE_ENDINGS:
-      input_files.append((len(newargs), shared.path_from_root('third_party', 'stb_image.c')))
+      forced_stdlibs.append('libstb_image')
       shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
-      # stb_image 2.x need to have STB_IMAGE_IMPLEMENTATION defined to include the implementation
-      # when compiling
-      newargs.append('-DSTB_IMAGE_IMPLEMENTATION')
 
     if shared.Settings.USE_WEBGL2:
       shared.Settings.MAX_WEBGL_VERSION = 2
 
     if not shared.Settings.GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS and shared.Settings.GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS:
       exit_with_error('-s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0 only makes sense with -s GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0!')
-
-    forced_stdlibs = []
 
     if shared.Settings.ASMFS and final_suffix in EXECUTABLE_ENDINGS:
       forced_stdlibs.append('libasmfs')
@@ -1458,22 +1581,25 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
-    if options.proxy_to_worker:
-      shared.Settings.PROXY_TO_WORKER = 1
-
     if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
       if shared.Settings.NODERAWFS:
         exit_with_error('--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem')
       # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
       shared.Settings.FORCE_FILESYSTEM = 1
 
-    if options.proxy_to_worker or options.use_preload_plugins:
+    if shared.Settings.PROXY_TO_WORKER or options.use_preload_plugins:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
     if not shared.Settings.MINIMAL_RUNTIME:
       # In non-MINIMAL_RUNTIME, the core runtime depends on these functions to be present. (In MINIMAL_RUNTIME, they are
       # no longer always bundled in)
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$demangleAll', '$jsStackTrace', '$stackTrace']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        '$keepRuntimeAlive',
+        '$demangle',
+        '$demangleAll',
+        '$jsStackTrace',
+        '$stackTrace'
+      ]
 
     if shared.Settings.FILESYSTEM:
       # to flush streams on FS exit, we need to be able to call fflush
@@ -1590,7 +1716,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       include_and_export('invokeEntryPoint')
       if not shared.Settings.MINIMAL_RUNTIME:
         # noExitRuntime does not apply to MINIMAL_RUNTIME.
-        include_and_export('getNoExitRuntime')
+        include_and_export('keepRuntimeAlive')
 
       if shared.Settings.MODULARIZE:
         if shared.Settings.EXPORT_NAME == 'Module':
@@ -1944,9 +2070,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
     compile_args = [a for a in newargs if a and not is_link_flag(a)]
-    cflags = calc_cflags(options)
     system_libs.ensure_sysroot()
-    system_libs.add_ports_cflags(cflags, shared.Settings)
 
     def use_cxx(src):
       if 'c++' in language_mode or run_via_emxx:
@@ -1972,12 +2096,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return CC
 
     def get_clang_command(src_file):
-      per_file_cflags = shared.get_cflags(args)
-      return get_compiler(use_cxx(src_file)) + cflags + per_file_cflags + compile_args + [src_file]
+      return get_compiler(use_cxx(src_file)) + get_cflags(options, args) + compile_args + [src_file]
 
     def get_clang_command_asm(src_file):
-      asflags = shared.get_clang_flags()
-      return get_compiler(use_cxx(src_file)) + asflags + compile_args + [src_file]
+      return get_compiler(use_cxx(src_file)) + get_clang_flags() + compile_args + [src_file]
 
     # preprocessor-only (-E) support
     if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
@@ -2065,7 +2187,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if specified_target and specified_target.startswith('-'):
     exit_with_error('invalid output filename: `%s`' % specified_target)
 
-  ldflags = shared.emsdk_ldflags(newargs)
+  ldflags = emsdk_ldflags(newargs)
   for f in ldflags:
     add_link_flag(sys.maxsize, f)
 
@@ -2150,6 +2272,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     post_link(options, wasm_target, wasm_target, target)
 
   return 0
+
+
+def move_file(src, dst):
+  logging.debug('move: %s -> %s', src, dst)
+  if os.path.isdir(dst):
+    exit_with_error(f'cannot write output file `{dst}`: Is a directory')
+  src = os.path.abspath(src)
+  dst = os.path.abspath(dst)
+  if src == dst:
+    return
+  if dst == os.devnull:
+    return
+  shutil.move(src, dst)
 
 
 def post_link(options, in_wasm, wasm_target, target):
@@ -2304,7 +2439,7 @@ def post_link(options, in_wasm, wasm_target, target):
       js_target = unsuffixed(target) + '.js'
 
     # The JS is now final. Move it to its final location
-    safe_move(final_js, js_target)
+    move_file(final_js, js_target)
 
     if not shared.Settings.SINGLE_FILE:
       generated_text_files_with_native_eols += [js_target]
@@ -2313,7 +2448,7 @@ def post_link(options, in_wasm, wasm_target, target):
     if options.oformat == OFormat.HTML:
       generate_html(target, options, js_target, target_basename,
                     wasm_target, memfile)
-    elif options.proxy_to_worker:
+    elif shared.Settings.PROXY_TO_WORKER:
       generate_worker_js(target, js_target, target_basename)
 
     if embed_memfile() and memfile:
@@ -2553,7 +2688,7 @@ def parse_args(newargs):
     elif check_arg('--memory-init-file'):
       options.memory_init_file = int(consume_arg())
     elif check_flag('--proxy-to-worker'):
-      options.proxy_to_worker = True
+      settings_changes.append('PROXY_TO_WORKER=1')
     elif check_arg('--valid-abspath'):
       options.valid_abspaths.append(consume_arg())
     elif check_flag('--separate-asm'):
@@ -2715,6 +2850,9 @@ def do_binaryen(target, options, wasm_target):
     webassembly.add_emscripten_metadata(wasm_target)
 
   if final_js:
+    if shared.Settings.SUPPORT_BIG_ENDIAN:
+      final_js = building.little_endian_heap(final_js)
+
     # >=2GB heap support requires pointers in JS to be unsigned. rather than
     # require all pointers to be unsigned by default, which increases code size
     # a little, keep them signed, and just unsign them here if we need that.
@@ -2778,9 +2916,11 @@ def do_binaryen(target, options, wasm_target):
                                use_closure_compiler=options.use_closure_compiler,
                                debug_info=debug_info,
                                symbols_file=symbols_file)
+
+    shared.configuration.get_temp_files().note(wasm2js)
+
     if shared.Settings.WASM == 2:
       safe_copy(wasm2js, wasm2js_template)
-      shared.try_delete(wasm2js)
 
     if shared.Settings.WASM != 2:
       final_js = wasm2js
@@ -2888,6 +3028,7 @@ else if (typeof exports === 'object')
   exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {'EXPORT_NAME': shared.Settings.EXPORT_NAME})
 
+  shared.configuration.get_temp_files().note(final_js)
   save_intermediate('modularized')
 
 
@@ -2919,7 +3060,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
   base_js_target = os.path.basename(js_target)
 
-  if options.proxy_to_worker:
+  if shared.Settings.PROXY_TO_WORKER:
     proxy_worker_filename = (shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename) + '.js'
     worker_js = worker_js_script(proxy_worker_filename)
     script.inline = ('''
@@ -3018,8 +3159,13 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 
   html_contents = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
-  with open(target, 'wb') as f:
-    f.write(asbytes(html_contents))
+
+  try:
+    with open(target, 'wb') as f:
+      # Force UTF-8 output for consistency across platforms and with the web.
+      f.write(html_contents.encode('utf-8'))
+  except OSError as e:
+    exit_with_error(f'cannot write output file: {e}')
 
 
 def minify_html(filename):
@@ -3094,7 +3240,7 @@ def generate_worker_js(target, js_target, target_basename):
 
   # compiler output goes in .worker.js file
   else:
-    safe_move(js_target, unsuffixed(js_target) + '.worker.js')
+    move_file(js_target, unsuffixed(js_target) + '.worker.js')
     worker_target_basename = target_basename + '.worker'
     proxy_worker_filename = (shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 

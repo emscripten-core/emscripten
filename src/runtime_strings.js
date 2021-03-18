@@ -111,7 +111,7 @@ function UTF8ToString(ptr, maxBytesToRead) {
 #if TEXTDECODER == 2
   if (!ptr) return '';
   var maxPtr = ptr + maxBytesToRead;
-  for(var end = ptr; !(end >= maxPtr) && HEAPU8[end];) ++end;
+  for (var end = ptr; !(end >= maxPtr) && HEAPU8[end];) ++end;
   return UTF8Decoder.decode(HEAPU8.subarray(ptr, end));
 #else
   return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';

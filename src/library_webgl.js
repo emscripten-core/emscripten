@@ -472,7 +472,7 @@ var LibraryGL = {
     // Validates that user obeys GL spec #6.4: http://www.khronos.org/registry/webgl/specs/latest/1.0/#6.4
     validateVertexAttribPointer: function(dimension, dataType, stride, offset) {
       var sizeBytes = 1;
-      switch(dataType) {
+      switch (dataType) {
         case 0x1400 /* GL_BYTE */:
         case 0x1401 /* GL_UNSIGNED_BYTE */:
           sizeBytes = 1;
@@ -531,7 +531,7 @@ var LibraryGL = {
       var contextHandle = glCtx.canvas.GLctxObject.handle;
       var threadId = (typeof _pthread_self !== 'undefined') ? _pthread_self : function() { return 1; };
       // Accessing 'arguments' is super slow, so to avoid overhead, statically reason the number of arguments.
-      switch(numArgs) {
+      switch (numArgs) {
         case 0: glCtx[f] = function webgl_0() { var ret = glCtx[realf](); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '() -> ' + ret); return ret; }; break;
         case 1: glCtx[f] = function webgl_1(a1) { var ret = glCtx[realf](a1); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+') -> ' + ret); return ret; }; break;
         case 2: glCtx[f] = function webgl_2(a1, a2) { var ret = glCtx[realf](a1, a2); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +') -> ' + ret); return ret; }; break;
@@ -561,7 +561,7 @@ var LibraryGL = {
 
       // Hot GL functions are ones that you'd expect to find during render loops (render calls, dynamic resource uploads), cold GL functions are load time functions (shader compilation, texture/mesh creation)
       // Distinguishing between these two allows pinpointing locations of troublesome GL usage that might cause performance issues.
-      for(var f in glCtx) {
+      for (var f in glCtx) {
         if (typeof glCtx[f] !== 'function' || f.indexOf('real_') == 0) continue;
         this.hookWebGLFunction(f, glCtx);
       }
@@ -590,6 +590,21 @@ var LibraryGL = {
 
 #if GL_TESTING
       webGLContextAttributes['preserveDrawingBuffer'] = true;
+#endif
+
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED && GL_WORKAROUND_SAFARI_GETCONTEXT_BUG
+      // BUG: Workaround Safari WebGL issue: After successfully acquiring WebGL context on a canvas,
+      // calling .getContext() will always return that context independent of which 'webgl' or 'webgl2'
+      // context version was passed. See https://bugs.webkit.org/show_bug.cgi?id=222758 and
+      // https://github.com/emscripten-core/emscripten/issues/13295.
+      // TODO: Once the bug is fixed and shipped in Safari, adjust the Safari version field in above check.
+      if (!canvas.getContextSafariWebGL2Fixed) {
+        canvas.getContextSafariWebGL2Fixed = canvas.getContext;
+        canvas.getContext = function(ver, attrs) {
+          var gl = canvas.getContextSafariWebGL2Fixed(ver, attrs);
+          return ((ver == 'webgl') == (gl instanceof WebGLRenderingContext)) ? gl : null;
+        }
+      }
 #endif
 
 #if MAX_WEBGL_VERSION >= 2 && MIN_CHROME_VERSION <= 57
@@ -1167,7 +1182,7 @@ var LibraryGL = {
   glGetString: function(name_) {
     if (GL.stringCache[name_]) return GL.stringCache[name_];
     var ret;
-    switch(name_) {
+    switch (name_) {
       case 0x1F03 /* GL_EXTENSIONS */:
         var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
@@ -1243,7 +1258,7 @@ var LibraryGL = {
       return;
     }
     var ret = undefined;
-    switch(name_) { // Handle a few trivial GLES values
+    switch (name_) { // Handle a few trivial GLES values
       case 0x8DFA: // GL_SHADER_COMPILER
         ret = 1;
         break;
@@ -1317,7 +1332,7 @@ var LibraryGL = {
           if (result === null) {
             // null is a valid result for some (e.g., which buffer is bound - perhaps nothing is bound), but otherwise
             // can mean an invalid name_, which we need to report as an error
-            switch(name_) {
+            switch (name_) {
               case 0x8894: // ARRAY_BUFFER_BINDING
               case 0x8B8D: // CURRENT_PROGRAM
               case 0x8895: // ELEMENT_ARRAY_BUFFER_BINDING
@@ -1821,7 +1836,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
         err('GL_INVALID_OPERATION in glGenQueriesEXT: GLctx.disjointTimerQueryExt.createQueryEXT returned null - most likely GL context is lost!');
 #endif
-        while(i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
+        while (i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
         return;
       }
       var id = GL.getNewId(GL.timerQueriesEXT);
@@ -3679,7 +3694,7 @@ var LibraryGL = {
   // but without targeting WebGL 2, so this FULL_ES3 block is in library_webgl.js instead of library_webgl2.js
 #if FULL_ES3
   $emscriptenWebGLGetBufferBinding: function(target) {
-    switch(target) {
+    switch (target) {
       case 0x8892 /*GL_ARRAY_BUFFER*/: target = 0x8894 /*GL_ARRAY_BUFFER_BINDING*/; break;
       case 0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/: target = 0x8895 /*GL_ELEMENT_ARRAY_BUFFER_BINDING*/; break;
       case 0x88EB /*GL_PIXEL_PACK_BUFFER*/: target = 0x88ED /*GL_PIXEL_PACK_BUFFER_BINDING*/; break;

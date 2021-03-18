@@ -36,8 +36,6 @@ DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_LLVM_VERSION = "13.0"
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
-SIMD_NEON_FLAGS = ['-mfpu=neon']
 PYTHON = sys.executable
 
 # can add  %(asctime)s  to see timestamps
@@ -441,114 +439,6 @@ def apply_configuration():
   TEMP_DIR = configuration.TEMP_DIR
 
 
-def get_llvm_target():
-  if Settings.MEMORY64:
-    return 'wasm64-unknown-emscripten'
-  else:
-    return 'wasm32-unknown-emscripten'
-
-
-def emsdk_ldflags(user_args):
-  if os.environ.get('EMMAKEN_NO_SDK'):
-    return []
-
-  library_paths = [
-      Cache.get_lib_dir(absolute=True)
-  ]
-  ldflags = ['-L' + l for l in library_paths]
-
-  if '-nostdlib' in user_args:
-    return ldflags
-
-  # TODO(sbc): Add system libraries here rather than conditionally including
-  # them via .symbols files.
-  libraries = []
-  ldflags += ['-l' + l for l in libraries]
-
-  return ldflags
-
-
-def emsdk_cflags(user_args):
-  # Disable system C and C++ include directories, and add our own (using
-  # -isystem so they are last, like system dirs, which allows projects to
-  # override them)
-
-  c_opts = ['--sysroot=' + Cache.get_sysroot_dir(absolute=True)]
-
-  def array_contains_any_of(hay, needles):
-    for n in needles:
-      if n in hay:
-        return True
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    if '-msimd128' not in user_args:
-      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128!')
-    c_opts += ['-D__SSE__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
-    c_opts += ['-D__SSE2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
-    c_opts += ['-D__SSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
-    c_opts += ['-D__SSSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
-    c_opts += ['-D__SSE4_1__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
-    c_opts += ['-D__SSE4_2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[6:]):
-    c_opts += ['-D__AVX__=1']
-
-  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    c_opts += ['-D__ARM_NEON__=1']
-
-  return c_opts + ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
-
-
-def get_clang_flags():
-  return ['-target', get_llvm_target()]
-
-
-def get_cflags(user_args):
-  c_opts = get_clang_flags()
-
-  # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
-  # data and other nice fixes.
-  c_opts += [# '-fno-threadsafe-statics', # disabled due to issue 1289
-             '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
-             '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
-             '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
-             '-D_LIBCPP_ABI_VERSION=2']
-
-  # For compatability with the fastcomp compiler that defined these
-  c_opts += ['-Dunix',
-             '-D__unix',
-             '-D__unix__']
-
-  # LLVM has turned on the new pass manager by default, but it causes some code
-  # size regressions. For now, use the legacy one.
-  # https://github.com/emscripten-core/emscripten/issues/13427
-  c_opts += ['-flegacy-pass-manager']
-
-  # Changes to default clang behavior
-
-  # Implicit functions can cause horribly confusing function pointer type errors, see #2175
-  # If your codebase really needs them - very unrecommended! - you can disable the error with
-  #   -Wno-error=implicit-function-declaration
-  # or disable even a warning about it with
-  #   -Wno-implicit-function-declaration
-  c_opts += ['-Werror=implicit-function-declaration']
-
-  if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
-    return c_opts
-
-  return c_opts + emsdk_cflags(user_args)
-
-
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 class SettingsManager(object):
 
@@ -809,7 +699,7 @@ class JS(object):
         return ''
       with open(path, 'rb') as f:
         data = base64.b64encode(f.read())
-      return 'data:application/octet-stream;base64,' + asstr(data)
+      return 'data:application/octet-stream;base64,' + data.decode('ascii')
     else:
       return os.path.basename(path)
 
@@ -881,20 +771,6 @@ function%s(%s) {
     return ret
 
 
-# Converts a string to the native str type.
-def asstr(s):
-  if isinstance(s, bytes):
-    return s.decode('utf-8')
-  return s
-
-
-def asbytes(s):
-  if isinstance(s, bytes):
-    # Do not attempt to encode bytes
-    return s
-  return s.encode('utf-8')
-
-
 def suffix(name):
   """Return the file extension"""
   return os.path.splitext(name)[1]
@@ -910,19 +786,6 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
-
-
-def safe_move(src, dst):
-  logging.debug('move: %s -> %s', src, dst)
-  src = os.path.abspath(src)
-  dst = os.path.abspath(dst)
-  if os.path.isdir(dst):
-    dst = os.path.join(dst, os.path.basename(src))
-  if src == dst:
-    return
-  if dst == os.devnull:
-    return
-  shutil.move(src, dst)
 
 
 def safe_copy(src, dst):

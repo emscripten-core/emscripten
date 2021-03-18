@@ -297,6 +297,12 @@ var DECLARE_ASM_MODULE_EXPORTS = 1;
 // [compile+link]
 var INLINING_LIMIT = 0;
 
+// If set to 1, perform acorn pass that converts each HEAP access into a
+// function call that uses DataView to enforce LE byte order for HEAP buffer;
+// This makes generated JavaScript run on BE as well as LE machines. (If 0, only
+// LE systems are supported). Does not affect generated wasm.
+var SUPPORT_BIG_ENDIAN = 0;
+
 // Check each write to the heap, for example, this will give a clear
 // error on what would be segfaults in a native build (like dereferencing
 // 0). See runtime_safe_heap.js for the actual checks performed.
@@ -555,23 +561,19 @@ var USE_WEBGPU = 0;
 // [link]
 var STB_IMAGE = 0;
 
-// If WORKAROUND_IOS_9_RIGHT_SHIFT_BUG==1, work around Safari/WebKit bug in iOS 9.3.5: https://bugs.webkit.org/show_bug.cgi?id=151514 where computing "a >> b" or "a >>> b" in
-// JavaScript would erroneously output 0 when a!=0 and b==0, after suitable JIT compiler optimizations have been applied to a function at runtime (bug does not
-// occur in debug builds). Fix was landed in https://trac.webkit.org/changeset/196591/webkit on Feb 15th 2016. iOS 9.3.5 was released on August 25 2016, but
-// oddly did not have the fix. iOS Safari 10.3.3 was released on July 19 2017, that no longer has the issue. Unknown which released version between these was the
-// first to contain the fix, though notable is that iOS 9.3.5 and iOS 10.3.3 are the two consecutive "end-of-life" versions of iOS that users are likely
-// to be on, e.g. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 all had end-of-life at iOS 9.3.5 (tested to be affected),
-// and iPad 4, iPhone 5 and iPhone 5c all had end-of-life at iOS 10.3.3 (confirmed not affected).
-// If you do not care about old iOS 9 support, keep this disabled.
-// [link]
-var WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0;
-
 // From Safari 8 (where WebGL was introduced to Safari) onwards, OES_texture_half_float and OES_texture_half_float_linear extensions
 // are broken and do not function correctly, when used as source textures.
 // See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
 // https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
 // [link]
 var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = 0;
+
+// Workaround Safari WebGL issue: After successfully acquiring WebGL context on a canvas,
+// calling .getContext() will always return that context independent of which 'webgl' or 'webgl2'
+// context version was passed. See https://bugs.webkit.org/show_bug.cgi?id=222758 and
+// https://github.com/emscripten-core/emscripten/issues/13295.
+// Set this to 0 to force-disable the workaround if you know the issue will not affect you.
+var GL_WORKAROUND_SAFARI_GETCONTEXT_BUG = 1;
 
 // Use JavaScript math functions like Math.tan. This saves code size as we can avoid shipping
 // compiled musl code. However, it can be significantly slower as it calls out to JS. It
@@ -588,7 +590,6 @@ var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 // the highest possible probability of the code working everywhere, even in rare old
 // browsers and shell environments. Specifically:
 //  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-s POLYFILL_OLD_MATH_FUNCTIONS=1)
-//  * Work around iOS 9 right shift bug (-s WORKAROUND_IOS_9_RIGHT_SHIFT_BUG=1)
 //  * Work around old Chromium WebGL 1 bug (-s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
 //  * Disable WebAssembly. (Must be paired with -s WASM=0)
 //  * Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
@@ -1193,7 +1194,7 @@ var DYNAMIC_EXECUTION = 1;
 var BOOTSTRAPPING_STRUCT_INFO = 0;
 
 // Add some calls to emscripten tracing APIs
-// [link]
+// [compile+link]
 var EMSCRIPTEN_TRACING = 0;
 
 // Specify the GLFW version that is being linked against.  Only relevant, if you
@@ -1453,6 +1454,23 @@ var USE_PTHREADS = 0;
 // [link] - affects generated JS runtime code at link time
 var PTHREAD_POOL_SIZE = '';
 
+// Normally, applications can create new threads even when the pool is empty.
+// When application breaks out to the JS event loop before trying to block on
+// the thread via `pthread_join` or any other blocking primitive,
+// an extra Worker will be created and the thread callback will be executed.
+// However, breaking out to the event loop requires custom modifications to
+// the code to adapt it to the Web, and not something that works for
+// off-the-shelf apps. Those apps without any modifications are most likely
+// to deadlock. This setting ensures that, instead of a risking a deadlock,
+// they get a runtime EAGAIN error instead that can at least be gracefully
+// handled from the C / C++ side.
+// Values:
+//  - `0` - disable warnings on thread pool exhaustion
+//  - `1` - enable warnings on thread pool exhaustion (default)
+//  - `2` - make thread pool exhaustion a hard error
+// [link]
+var PTHREAD_POOL_SIZE_STRICT = 1;
+
 // If your application does not need the ability to synchronously create
 // threads, but it would still like to opportunistically speed up initial thread
 // startup time by prewarming a pool of Workers, you can specify the size of
@@ -1632,7 +1650,10 @@ var MIN_FIREFOX_VERSION = 65;
 // Specifies the oldest version of desktop Safari to target. Version is encoded
 // in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
 // Safari 12.0.0 was released on September 17, 2018, bundled with macOS 10.14.0
-// Mojave
+// Mojave.
+// NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
+// older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
+// see https://github.com/emscripten-core/emscripten/pull/7191.
 // [link]
 var MIN_SAFARI_VERSION = 120000;
 
@@ -1981,4 +2002,5 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_SCRIPTS', [""], 'No longer needed'],
   ['WARN_UNALIGNED', [0, 1], 'No longer needed'],
   ['ASM_PRIMITIVE_VARS', [[]], 'No longer needed'],
+  ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older']
 ];

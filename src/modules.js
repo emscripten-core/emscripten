@@ -33,7 +33,7 @@ var Types = {
 // Constructs an array ['a0', 'a1', 'a2', ..., 'a(n-1)']
 function genArgSequence(n) {
   var args = [];
-  for(var i = 0; i < n; ++i) {
+  for (var i = 0; i < n; ++i) {
     args.push('a'+i);
   }
   return args;
@@ -171,6 +171,10 @@ var LibraryManager = {
         'library_stack_trace.js',
         'library_int53.js',
       ];
+    }
+
+    if (SUPPORT_BIG_ENDIAN) {
+      libraries.push('library_little_endian_heap.js');
     }
 
     // Deduplicate libraries to avoid processing any library file multiple times

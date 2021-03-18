@@ -78,9 +78,9 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(libname_libicu_common)
-  shared.Cache.erase_file(libname_libicu_stubdata)
-  shared.Cache.erase_file(libname_libicu_i18n)
+  shared.Cache.erase_lib(libname_libicu_common)
+  shared.Cache.erase_lib(libname_libicu_stubdata)
+  shared.Cache.erase_lib(libname_libicu_i18n)
 
 
 def process_args(ports):

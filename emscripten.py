@@ -23,7 +23,7 @@ from tools import diagnostics
 from tools import shared
 from tools import gen_struct_info
 from tools import webassembly
-from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
+from tools.shared import WINDOWS, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
 from tools.toolchain_profiler import ToolchainProfiler
 
 logger = logging.getLogger('emscripten')
@@ -138,12 +138,11 @@ def update_settings_glue(metadata, DEBUG):
   # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
   shared.Settings.MODULE_EXPORTS = [(asmjs_mangle(f), f) for f in metadata['exports']]
 
-  if shared.Settings.STACK_OVERFLOW_CHECK:
-    if 'emscripten_stack_get_end' not in metadata['exports']:
-      logger.warning('STACK_OVERFLOW_CHECK disabled because emscripten stack helpers not exported')
-      shared.Settings.STACK_OVERFLOW_CHECK = 0
-    else:
-      shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+  if shared.Settings.STACK_OVERFLOW_CHECK and not shared.Settings.SIDE_MODULE:
+    shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+    # writeStackCookie and checkStackCookie both rely on emscripten_stack_get_end being
+    # exported.  In theory it should always be present since its defined in compiler-rt.
+    assert 'emscripten_stack_get_end' in metadata['exports']
 
 
 def apply_static_code_hooks(forwarded_json, code):
@@ -188,12 +187,11 @@ def set_memory(static_bump):
 def report_missing_symbols(all_implemented, pre):
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
-  missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)
+  missing = set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented
 
-  for requested in missing:
-    if ('function ' + asstr(requested) + '(') in pre:
-      continue
-    diagnostics.warning('undefined', 'undefined exported symbol: "%s"', requested)
+  for requested in sorted(missing):
+    if (f'function {requested}(') not in pre:
+      diagnostics.warning('undefined', f'undefined exported symbol: "{requested}"')
 
   # Special hanlding for the `_main` symbol
 
@@ -285,6 +283,10 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   update_settings_glue(metadata, DEBUG)
 
   if shared.Settings.SIDE_MODULE:
+    if metadata['asmConsts']:
+      exit_with_error('EM_ASM is not supported in side modules')
+    if metadata['emJsFuncs']:
+      exit_with_error('EM_JS is not supported in side modules')
     logger.debug('emscript: skipping remaining js glue generation')
     return
 
@@ -455,7 +457,6 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
 def create_asm_consts(metadata):
   asm_consts = {}
   for addr, const in metadata['asmConsts'].items():
-    const = asstr(const)
     const = trim_asm_const_body(const)
     args = []
     max_arity = 16
@@ -484,7 +485,7 @@ def create_em_js(forwarded_json, metadata):
     else:
       args = args.split(',')
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
-    func = 'function {}({}){}'.format(name, ','.join(arg_names), asstr(body))
+    func = 'function {}({}){}'.format(name, ','.join(arg_names), body)
     em_js_funcs.append(func)
     forwarded_json['Functions']['libraryFunctions'][name] = 1
 
@@ -778,14 +779,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   for key, value in metadata_json.items():
     if key in legacy_keys:
       continue
-    # json.loads returns `unicode` for strings but other code in this file
-    # generally works with utf8 encoded `str` objects, and they don't alwasy
-    # mix well.  e.g. s.replace(x, y) will blow up is `s` a uts8 str containing
-    # non-ascii and either x or y are unicode objects.
-    # TODO(sbc): Remove this encoding if we switch to unicode elsewhere
-    # (specifically the glue returned from compile_settings)
-    if type(value) == list:
-      value = [asstr(v) for v in value]
     if key not in metadata:
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value

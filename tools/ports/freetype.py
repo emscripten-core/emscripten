@@ -111,7 +111,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libfreetype.a')
+  shared.Cache.erase_lib('libfreetype.a')
 
 
 def process_args(ports):

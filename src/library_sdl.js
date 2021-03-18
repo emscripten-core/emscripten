@@ -560,7 +560,7 @@ var LibrarySDL = {
           });
         }
       };
-      switch(event.type) {
+      switch (event.type) {
         case 'touchstart': case 'touchmove': {
           event.preventDefault();
 
@@ -585,7 +585,7 @@ var LibrarySDL = {
               SDL.DOMButtons[0] = 1;
             }
             var mouseEventType;
-            switch(event.type) {
+            switch (event.type) {
               case 'touchstart': mouseEventType = 'mousedown'; break;
               case 'touchmove': mouseEventType = 'mousemove'; break;
             }
@@ -612,7 +612,7 @@ var LibrarySDL = {
 
           // Remove the entry in the SDL.downFingers hash
           // because the finger is no longer down.
-          for(var i = 0; i < event.changedTouches.length; i++) {
+          for (var i = 0; i < event.changedTouches.length; i++) {
             var touch = event.changedTouches[i];
             if (SDL.downFingers[touch.identifier] === true) {
               delete SDL.downFingers[touch.identifier];
@@ -1190,22 +1190,22 @@ var LibrarySDL = {
       // so perform a buffer conversion for the data.
       var audio = SDL_audio();
       var numChannels = audio.channels;
-      for(var c = 0; c < numChannels; ++c) {
+      for (var c = 0; c < numChannels; ++c) {
         var channelData = dstAudioBuffer['getChannelData'](c);
         if (channelData.length != sizeSamplesPerChannel) {
           throw 'Web Audio output buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + sizeSamplesPerChannel + ' samples!';
         }
         if (audio.format == 0x8010 /*AUDIO_S16LSB*/) {
-          for(var j = 0; j < sizeSamplesPerChannel; ++j) {
+          for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*2', 'i16', 0, 0) }}}) / 0x8000;
           }
         } else if (audio.format == 0x0008 /*AUDIO_U8*/) {
-          for(var j = 0; j < sizeSamplesPerChannel; ++j) {
+          for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             var v = ({{{ makeGetValue('heapPtr', 'j*numChannels + c', 'i8', 0, 0) }}});
             channelData[j] = ((v >= 0) ? v-128 : v+128) /128;
           }
         } else if (audio.format == 0x8120 /*AUDIO_F32*/) {
-          for(var j = 0; j < sizeSamplesPerChannel; ++j) {
+          for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*4', 'float', 0, 0) }}});
           }
         } else {
@@ -2077,7 +2077,7 @@ var LibrarySDL = {
   SDL_PeepEvents__proxy: 'sync',
   SDL_PeepEvents__sig: 'iiiiii',
   SDL_PeepEvents: function(events, requestedEventCount, action, from, to) {
-    switch(action) {
+    switch (action) {
       case 2: { // SDL_GETEVENT
         // We only handle 1 event right now
         assert(requestedEventCount == 1);
@@ -2495,7 +2495,7 @@ var LibrarySDL = {
       SDL.audio.queueNewAudioData = function SDL_queueNewAudioData() {
         if (!SDL.audio) return;
 
-        for(var i = 0; i < SDL.audio.numSimultaneouslyQueuedBuffers; ++i) {
+        for (var i = 0; i < SDL.audio.numSimultaneouslyQueuedBuffers; ++i) {
           // Only queue new data if we don't have enough audio data already in queue. Otherwise skip this time slot
           // and wait to queue more in the next time the callback is run.
           var secsUntilNextPlayStart = SDL.audio.nextPlayTime - SDL.audioContext['currentTime'];
