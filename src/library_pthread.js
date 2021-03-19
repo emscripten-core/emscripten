@@ -23,6 +23,7 @@ var LibraryPThread = {
     unusedWorkers: [],
     // Contains all Workers that are currently hosting an active pthread.
     runningWorkers: [],
+    tlsInitFunctions: [],
     initMainThreadBlock: function() {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD);
@@ -87,7 +88,7 @@ var LibraryPThread = {
       // worker.js is not compiled together with us, and must access certain
       // things.
       PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
-      PThread['setThreadStatus'] = PThread.setThreadStatus;
+      PThread['threadInit'] = PThread.threadInit;
       PThread['threadCancel'] = PThread.threadCancel;
       PThread['threadExit'] = PThread.threadExit;
       PThread['setExitStatus'] = PThread.setExitStatus;
@@ -318,7 +319,18 @@ var LibraryPThread = {
       }
 #endif
     },
-
+    // Called by worker.js each time a thread is started.
+    threadInit: function() {
+#if PTHREADS_DEBUG
+      out("threadInit");
+#endif
+      PThread.setThreadStatus(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
+      // Call thread init functions (these are the emscripten_tls_init for each
+      // module loaded.
+      for (var i in PThread.tlsInitFunctions) {
+        PThread.tlsInitFunctions[i]();
+      }
+    },
     // Loads the WebAssembly module into the given list of Workers.
     // onFinishedLoading: A callback function that will be called once all of
     //                    the workers have been initialized and are

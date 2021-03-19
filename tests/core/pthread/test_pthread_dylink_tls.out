@@ -1,0 +1,15 @@
+thread: 1
+side_tls value  : 42
+main_tls value  : 10
+increment done
+side_tls value  : 62
+main_tls value  : 30
+
+thread: 2
+side_tls value  : 42
+main_tls value  : 10
+increment done
+side_tls value  : 52
+main_tls value  : 20
+
+success
