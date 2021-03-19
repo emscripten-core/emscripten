@@ -1845,6 +1845,14 @@ var PRINTF_LONG_DOUBLE = 0;
 // [link]
 var WASM2C = 0;
 
+// Experimental sandboxing mode, see
+// https://kripken.github.io/blog/wasm/2020/07/27/wasmboxc.html
+//
+//  * full: Normal full wasm2c sandboxing. This uses a signal handler if it can.
+//  * mask: Masks loads and stores.
+//  * none: No sandboxing at all.
+var WASM2C_SANDBOXING = 'full';
+
 // Setting this affects the path emitted in the wasm that refers to the DWARF
 // file, in -gseparate-dwarf mode. This allows the debugging file to be hosted
 // in a custom location.
