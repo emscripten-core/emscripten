@@ -124,8 +124,9 @@ size_t emscripten_get_heap_max() {
   return emscripten_get_heap_size();
 }
 
-int __emscripten_resize_heap(size_t old_size, size_t size) {
+int emscripten_resize_heap(size_t size) {
 #ifdef __EMSCRIPTEN_MEMORY_GROWTH__
+  size_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
   assert(old_size < size);
   ssize_t diff = (size - old_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
   size_t result = __builtin_wasm_memory_grow(0, diff);

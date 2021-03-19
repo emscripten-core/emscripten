@@ -1,7 +1,7 @@
 __cxa_atexit
-__emscripten_resize_heap
 abort
 emscripten_memcpy_big
+emscripten_resize_heap
 environ_get
 environ_sizes_get
 fd_close
