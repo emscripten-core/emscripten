@@ -117,9 +117,8 @@ void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_
 
 extern void emscripten_notify_memory_growth(size_t memory_index);
 
-int emscripten_resize_heap(size_t size) {
+int __emscripten_resize_heap(size_t old_size, size_t size) {
 #ifdef __EMSCRIPTEN_MEMORY_GROWTH__
-  size_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
   assert(old_size < size);
   ssize_t diff = (size - old_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
   size_t result = __builtin_wasm_memory_grow(0, diff);

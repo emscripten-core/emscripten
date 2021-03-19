@@ -1785,7 +1785,7 @@
                 "entryCount",
                 "entries"
             ],
-            "WGPUBufferCopyView": [
+            "WGPUImageCopyBuffer": [
                 "nextInChain",
                 "layout",
                 "buffer"
@@ -1820,7 +1820,7 @@
                 "storeOp",
                 "clearColor"
             ],
-            "WGPUTextureCopyView": [
+            "WGPUImageCopyTexture": [
                 "nextInChain",
                 "texture",
                 "mipLevel",

@@ -1077,17 +1077,17 @@ namespace wgpu {
     static_assert(offsetof(BindGroupLayoutEntry, storageTexture) == offsetof(WGPUBindGroupLayoutEntry, storageTexture),
             "offsetof mismatch for BindGroupLayoutEntry::storageTexture");
 
-    // BufferCopyView
+    // ImageCopyBuffer
 
-    static_assert(sizeof(BufferCopyView) == sizeof(WGPUBufferCopyView), "sizeof mismatch for BufferCopyView");
-    static_assert(alignof(BufferCopyView) == alignof(WGPUBufferCopyView), "alignof mismatch for BufferCopyView");
+    static_assert(sizeof(ImageCopyBuffer) == sizeof(WGPUImageCopyBuffer), "sizeof mismatch for ImageCopyBuffer");
+    static_assert(alignof(ImageCopyBuffer) == alignof(WGPUImageCopyBuffer), "alignof mismatch for ImageCopyBuffer");
 
-    static_assert(offsetof(BufferCopyView, nextInChain) == offsetof(WGPUBufferCopyView, nextInChain),
-            "offsetof mismatch for BufferCopyView::nextInChain");
-    static_assert(offsetof(BufferCopyView, layout) == offsetof(WGPUBufferCopyView, layout),
-            "offsetof mismatch for BufferCopyView::layout");
-    static_assert(offsetof(BufferCopyView, buffer) == offsetof(WGPUBufferCopyView, buffer),
-            "offsetof mismatch for BufferCopyView::buffer");
+    static_assert(offsetof(ImageCopyBuffer, nextInChain) == offsetof(WGPUImageCopyBuffer, nextInChain),
+            "offsetof mismatch for ImageCopyBuffer::nextInChain");
+    static_assert(offsetof(ImageCopyBuffer, layout) == offsetof(WGPUImageCopyBuffer, layout),
+            "offsetof mismatch for ImageCopyBuffer::layout");
+    static_assert(offsetof(ImageCopyBuffer, buffer) == offsetof(WGPUImageCopyBuffer, buffer),
+            "offsetof mismatch for ImageCopyBuffer::buffer");
 
     // ColorStateDescriptor
 
@@ -1157,21 +1157,21 @@ namespace wgpu {
     static_assert(offsetof(RenderPassColorAttachmentDescriptor, clearColor) == offsetof(WGPURenderPassColorAttachmentDescriptor, clearColor),
             "offsetof mismatch for RenderPassColorAttachmentDescriptor::clearColor");
 
-    // TextureCopyView
+    // ImageCopyTexture
 
-    static_assert(sizeof(TextureCopyView) == sizeof(WGPUTextureCopyView), "sizeof mismatch for TextureCopyView");
-    static_assert(alignof(TextureCopyView) == alignof(WGPUTextureCopyView), "alignof mismatch for TextureCopyView");
+    static_assert(sizeof(ImageCopyTexture) == sizeof(WGPUImageCopyTexture), "sizeof mismatch for ImageCopyTexture");
+    static_assert(alignof(ImageCopyTexture) == alignof(WGPUImageCopyTexture), "alignof mismatch for ImageCopyTexture");
 
-    static_assert(offsetof(TextureCopyView, nextInChain) == offsetof(WGPUTextureCopyView, nextInChain),
-            "offsetof mismatch for TextureCopyView::nextInChain");
-    static_assert(offsetof(TextureCopyView, texture) == offsetof(WGPUTextureCopyView, texture),
-            "offsetof mismatch for TextureCopyView::texture");
-    static_assert(offsetof(TextureCopyView, mipLevel) == offsetof(WGPUTextureCopyView, mipLevel),
-            "offsetof mismatch for TextureCopyView::mipLevel");
-    static_assert(offsetof(TextureCopyView, origin) == offsetof(WGPUTextureCopyView, origin),
-            "offsetof mismatch for TextureCopyView::origin");
-    static_assert(offsetof(TextureCopyView, aspect) == offsetof(WGPUTextureCopyView, aspect),
-            "offsetof mismatch for TextureCopyView::aspect");
+    static_assert(offsetof(ImageCopyTexture, nextInChain) == offsetof(WGPUImageCopyTexture, nextInChain),
+            "offsetof mismatch for ImageCopyTexture::nextInChain");
+    static_assert(offsetof(ImageCopyTexture, texture) == offsetof(WGPUImageCopyTexture, texture),
+            "offsetof mismatch for ImageCopyTexture::texture");
+    static_assert(offsetof(ImageCopyTexture, mipLevel) == offsetof(WGPUImageCopyTexture, mipLevel),
+            "offsetof mismatch for ImageCopyTexture::mipLevel");
+    static_assert(offsetof(ImageCopyTexture, origin) == offsetof(WGPUImageCopyTexture, origin),
+            "offsetof mismatch for ImageCopyTexture::origin");
+    static_assert(offsetof(ImageCopyTexture, aspect) == offsetof(WGPUImageCopyTexture, aspect),
+            "offsetof mismatch for ImageCopyTexture::aspect");
 
     // TextureDescriptor
 
@@ -1386,14 +1386,14 @@ namespace wgpu {
     void CommandEncoder::CopyBufferToBuffer(Buffer const& source, uint64_t sourceOffset, Buffer const& destination, uint64_t destinationOffset, uint64_t size) const {
         wgpuCommandEncoderCopyBufferToBuffer(Get(), source.Get(), sourceOffset, destination.Get(), destinationOffset, size);
     }
-    void CommandEncoder::CopyBufferToTexture(BufferCopyView const * source, TextureCopyView const * destination, Extent3D const * copySize) const {
-        wgpuCommandEncoderCopyBufferToTexture(Get(), reinterpret_cast<WGPUBufferCopyView const * >(source), reinterpret_cast<WGPUTextureCopyView const * >(destination), reinterpret_cast<WGPUExtent3D const * >(copySize));
+    void CommandEncoder::CopyBufferToTexture(ImageCopyBuffer const * source, ImageCopyTexture const * destination, Extent3D const * copySize) const {
+        wgpuCommandEncoderCopyBufferToTexture(Get(), reinterpret_cast<WGPUImageCopyBuffer const * >(source), reinterpret_cast<WGPUImageCopyTexture const * >(destination), reinterpret_cast<WGPUExtent3D const * >(copySize));
     }
-    void CommandEncoder::CopyTextureToBuffer(TextureCopyView const * source, BufferCopyView const * destination, Extent3D const * copySize) const {
-        wgpuCommandEncoderCopyTextureToBuffer(Get(), reinterpret_cast<WGPUTextureCopyView const * >(source), reinterpret_cast<WGPUBufferCopyView const * >(destination), reinterpret_cast<WGPUExtent3D const * >(copySize));
+    void CommandEncoder::CopyTextureToBuffer(ImageCopyTexture const * source, ImageCopyBuffer const * destination, Extent3D const * copySize) const {
+        wgpuCommandEncoderCopyTextureToBuffer(Get(), reinterpret_cast<WGPUImageCopyTexture const * >(source), reinterpret_cast<WGPUImageCopyBuffer const * >(destination), reinterpret_cast<WGPUExtent3D const * >(copySize));
     }
-    void CommandEncoder::CopyTextureToTexture(TextureCopyView const * source, TextureCopyView const * destination, Extent3D const * copySize) const {
-        wgpuCommandEncoderCopyTextureToTexture(Get(), reinterpret_cast<WGPUTextureCopyView const * >(source), reinterpret_cast<WGPUTextureCopyView const * >(destination), reinterpret_cast<WGPUExtent3D const * >(copySize));
+    void CommandEncoder::CopyTextureToTexture(ImageCopyTexture const * source, ImageCopyTexture const * destination, Extent3D const * copySize) const {
+        wgpuCommandEncoderCopyTextureToTexture(Get(), reinterpret_cast<WGPUImageCopyTexture const * >(source), reinterpret_cast<WGPUImageCopyTexture const * >(destination), reinterpret_cast<WGPUExtent3D const * >(copySize));
     }
     CommandBuffer CommandEncoder::Finish(CommandBufferDescriptor const * descriptor) const {
         auto result = wgpuCommandEncoderFinish(Get(), reinterpret_cast<WGPUCommandBufferDescriptor const * >(descriptor));
@@ -1675,8 +1675,8 @@ namespace wgpu {
     void Queue::WriteBuffer(Buffer const& buffer, uint64_t bufferOffset, void const * data, size_t size) const {
         wgpuQueueWriteBuffer(Get(), buffer.Get(), bufferOffset, reinterpret_cast<void const * >(data), size);
     }
-    void Queue::WriteTexture(TextureCopyView const * destination, void const * data, size_t dataSize, TextureDataLayout const * dataLayout, Extent3D const * writeSize) const {
-        wgpuQueueWriteTexture(Get(), reinterpret_cast<WGPUTextureCopyView const * >(destination), reinterpret_cast<void const * >(data), dataSize, reinterpret_cast<WGPUTextureDataLayout const * >(dataLayout), reinterpret_cast<WGPUExtent3D const * >(writeSize));
+    void Queue::WriteTexture(ImageCopyTexture const * destination, void const * data, size_t dataSize, TextureDataLayout const * dataLayout, Extent3D const * writeSize) const {
+        wgpuQueueWriteTexture(Get(), reinterpret_cast<WGPUImageCopyTexture const * >(destination), reinterpret_cast<void const * >(data), dataSize, reinterpret_cast<WGPUTextureDataLayout const * >(dataLayout), reinterpret_cast<WGPUExtent3D const * >(writeSize));
     }
     void Queue::WGPUReference(WGPUQueue handle) {
         if (handle != nullptr) {
