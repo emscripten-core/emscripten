@@ -238,7 +238,7 @@ LibraryManager.library = {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
-  __emscripten_resize_heap__deps: [
+  emscripten_resize_heap__deps: [
 #if ASSERTIONS == 2
   , 'emscripten_get_now'
 #endif
@@ -249,7 +249,8 @@ LibraryManager.library = {
   , '$emscripten_realloc_buffer'
 #endif
   ],
-  __emscripten_resize_heap: function(oldSize, requestedSize) {
+  emscripten_resize_heap: function(requestedSize) {
+    var oldSize = HEAPU8.length;
 #if CAN_ADDRESS_2GB
     requestedSize = requestedSize >>> 0;
 #endif

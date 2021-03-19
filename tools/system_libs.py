@@ -738,7 +738,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'wasi-helpers.c',
           'emscripten_pthread.c',
           'emscripten_get_heap_size.c',
-          'emscripten_resize_heap.c',
         ])
 
     libc_files += files_in_path(

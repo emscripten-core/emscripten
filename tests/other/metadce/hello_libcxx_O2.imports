@@ -1,6 +1,6 @@
-env.__emscripten_resize_heap
 env.abort
 env.emscripten_memcpy_big
+env.emscripten_resize_heap
 env.setTempRet0
 env.strftime_l
 wasi_snapshot_preview1.environ_get
