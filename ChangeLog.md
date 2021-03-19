@@ -20,7 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
-- values returns from `pathconf` now match the defintions found in header files
+- Values returned from `sysconf` now more closely match the definitions found in
+  header files and in upstream musl (#13713).
+- Values returned from `pathconf` now match the definitions found in header files
   and/or upstream musl:
     _PC_LINK_MAX 3200 -> 8
     _PC_SYNC_IO -1 -> 1
@@ -30,11 +32,11 @@ Current Trunk
 - Added support for wrapping emcc and em++ via ccache: install Emscripten port
   of ccache via emsdk, or from https://github.com/juj/ccache/tree/emscripten,
   and run explicitly with "ccache emcc ..." after installing, or automatically
-  just with "emcc ..." after activating ccache via emsdk. (#13498)
+  just with "emcc ..." after activating ccache via emsdk (#13498).
 - Using EM_ASM and EM_JS in a side module will now result in an error (since
   this is not implemented yet).  This could effect users were previously
   inadvertently including (but not actually using) EM_ASM or EM_JS functions in
-  side modules. (#13649)
+  side modules (#13649).
 - Remove dependency on Uglify by finishing the rewrite of passes to acorn
  (#13636, #13621).
 - Primary development branch switched from `master` to `main`.
