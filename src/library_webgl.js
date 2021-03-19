@@ -3105,6 +3105,10 @@ var LibraryGL = {
     GLctx.deleteProgram(program);
     program.name = 0;
     GL.programs[id] = null;
+    var uniforms = GL.programInfos[id].uniforms;
+    for (var name in uniforms) {
+      GL.uniforms[uniforms[name][1]] = null;
+    }
     GL.programInfos[id] = null;
   },
 
