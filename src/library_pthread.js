@@ -479,9 +479,8 @@ var LibraryPThread = {
         + '\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-s PTHREAD_POOL_SIZE_STRICT=2`.'
 #endif
         );
-#else
-        err('No available workers in the PThread pool');
-#endif
+#endif // ASSERTIONS
+
 #if PTHREAD_POOL_SIZE_STRICT == 2
         // Don't return a Worker, which will translate into an EAGAIN error.
         return;
