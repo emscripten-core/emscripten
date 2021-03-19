@@ -9,7 +9,6 @@ import shutil
 import time
 import re
 import tempfile
-import zipfile
 from subprocess import PIPE, STDOUT
 
 from runner import RunnerCore, path_from_root, env_modify, test_file
@@ -542,9 +541,8 @@ fi
 
       # Building a file that doesn't need ports should not trigger anything
       output = self.do([EMCC, test_file('hello_world_sdl.cpp')])
-      assert RETRIEVING_MESSAGE not in output, output
-      assert BUILDING_MESSAGE not in output
-      print('no', output)
+      self.assertNotContained(RETRIEVING_MESSAGE, output)
+      self.assertNotContained(BUILDING_MESSAGE, output)
       self.assertNotExists(PORTS_DIR)
 
       def first_use():
@@ -552,7 +550,6 @@ fi
         self.assertContained(RETRIEVING_MESSAGE, output)
         self.assertContained(BUILDING_MESSAGE, output)
         self.assertExists(PORTS_DIR)
-        print('yes', output)
 
       def second_use():
         # Using it again avoids retrieve and build
@@ -564,15 +561,9 @@ fi
       first_use()
       second_use()
 
-      # if the tag doesn't match, we retrieve and rebuild
-      subdir = os.listdir(os.path.join(PORTS_DIR, 'sdl2'))[0]
-      os.rename(os.path.join(PORTS_DIR, 'sdl2', subdir), os.path.join(PORTS_DIR, 'sdl2', 'old-subdir'))
-      ensure_dir('old-sub')
-      open(os.path.join('old-sub', 'a.txt'), 'w').write('waka')
-      open(os.path.join('old-sub', 'b.txt'), 'w').write('waka')
-      with zipfile.ZipFile(os.path.join(PORTS_DIR, 'sdl2.zip'), 'w') as z:
-        z.write(os.path.join('old-sub', 'a.txt'))
-        z.write(os.path.join('old-sub', 'b.txt'))
+      # if the url doesn't match, we retrieve and rebuild
+      with open(os.path.join(PORTS_DIR, 'sdl2', '.emscripten_url'), 'w') as f:
+        f.write('foo')
 
       first_use()
       second_use()
