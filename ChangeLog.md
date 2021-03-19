@@ -20,6 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- values returns from `pathconf` now match the defintions found in header files
+  and/or upstream musl:
+    _PC_LINK_MAX 3200 -> 8
+    _PC_SYNC_IO -1 -> 1
+    _PC_REC_INCR_XFER_SIZE -1 -> 4096
+    _PC_REC_MAX_XFER_SIZE -1 -> 4096
+    _PC_SYMLINK_MAX -1 -> 255
 - Added support for wrapping emcc and em++ via ccache: install Emscripten port
   of ccache via emsdk, or from https://github.com/juj/ccache/tree/emscripten,
   and run explicitly with "ccache emcc ..." after installing, or automatically
