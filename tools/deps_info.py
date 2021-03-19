@@ -181,6 +181,7 @@ deps_info = {
   'send': ['ntohs'],
   'setjmp': ['saveSetjmp'],
   'setprotoent': ['malloc'],
+  'setgroups': ['sysconf'],
   'siglongjmp': ['setThrew'],
   'syslog': ['malloc', 'ntohs'],
   'timegm': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],

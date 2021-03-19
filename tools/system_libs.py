@@ -670,7 +670,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     ignore = [
         'ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux',
         'aio', 'exit', 'legacy', 'mq', 'search', 'setjmp', 'env',
-        'ldso', 'conf'
+        'ldso'
     ]
 
     # individual files
@@ -1350,10 +1350,7 @@ class libstandalonewasm(MuslInternalLibrary):
         filenames=['assert.c', 'atexit.c', 'exit.c']) + files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'unistd'],
         filenames=['_exit.c'])
-    conf_files = files_in_path(
-        path_components=['system', 'lib', 'libc', 'musl', 'src', 'conf'],
-        filenames=['sysconf.c'])
-    return base_files + time_files + exit_files + conf_files
+    return base_files + time_files + exit_files
 
 
 class libjsmath(Library):
