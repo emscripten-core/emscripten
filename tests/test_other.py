@@ -7093,7 +7093,7 @@ int main() {
       print(str(cmd))
       self.run_process(cmd)
       result = self.run_js('a.out.js').strip()
-      self.assertEqual(result,  str(expected) + ', errno: 0')
+      self.assertEqual(result, f'{expected}, errno: 0')
 
     run([], 1024)
     run(['-s', 'INITIAL_MEMORY=32MB'], 2048)

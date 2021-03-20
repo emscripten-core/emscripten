@@ -7,10 +7,10 @@ env.__cxa_free_exception
 env.__cxa_rethrow
 env.__cxa_throw
 env.__cxa_uncaught_exceptions
-env.__emscripten_resize_heap
 env.__resumeException
 env.abort
 env.emscripten_memcpy_big
+env.emscripten_resize_heap
 env.getTempRet0
 env.invoke_diii
 env.invoke_fiii
