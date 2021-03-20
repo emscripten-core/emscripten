@@ -1281,7 +1281,9 @@ int main(int argc, char **argv)
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["main"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT')
+    self.do_core_test('test_exceptions_allowed_2.cpp')
 
+    self.emcc_args += ['-DMAIN_NO_SIGNATURE']
     self.do_core_test('test_exceptions_allowed_2.cpp')
 
   def test_exceptions_allowed_uncaught(self):
