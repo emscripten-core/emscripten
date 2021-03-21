@@ -1235,6 +1235,10 @@ keydown(100);keyup(100); // trigger the end
   def test_webgl_no_double_error(self):
     self.btest('webgl_error.cpp', '0')
 
+  @requires_graphics_hardware
+  def test_webgl_parallel_shader_compile(self):
+    self.btest('webgl_parallel_shader_compile.cpp', '1')
+
   # Test that -s GL_PREINITIALIZED_CONTEXT=1 works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
   def test_preinitialized_webgl_context(self):
