@@ -1293,7 +1293,7 @@ int main(int argc, char **argv)
     # mismatches are fixed in fixImports() function in JS glue code.
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z4testv"])
     # otherwise it is inlined and not identified
-    self.set_setting('INLINING_LIMIT')
+    self.set_setting('INLINING_LIMIT', 50)
 
     self.do_core_test('test_exceptions_allowed_uncaught.cpp')
 
