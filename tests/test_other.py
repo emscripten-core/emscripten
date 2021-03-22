@@ -10179,3 +10179,13 @@ exec "$@"
 
     self.run_process(building.get_command_with_possible_response_file([EMCC, 'main.c'] + files))
     self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
+
+  def test_output_name_collision(self):
+    # Ensure that the seconday filenames never collide with the primary output filename
+    # In this case we explcitly ask for JS to be ceated in a file with the `.wasm` suffix.
+    # Even though this doesn't make much sense the `--oformat` flag is designed to overide
+    # any implict type that we might infer from the output name.
+    self.run_process([EMCC, '-o', 'hello.wasm', '--oformat=js', test_file('hello_world.c')])
+    self.assertExists('hello.wasm')
+    self.assertExists('hello_.wasm')
+    self.assertContained('hello, world!', self.run_js('hello.wasm'))
