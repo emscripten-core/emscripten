@@ -53,6 +53,11 @@ var LibraryGLEmulation = {
     fogMode: 0x800, // GL_EXP
     fogEnabled: false,
 
+    // GL_CLIP_PLANE support
+    MAX_CLIP_PLANES: 6,
+    clipPlaneEnabled: [false, false, false, false, false, false],
+    clipPlaneEquation: [null, null, null, null, null, null],
+
     // GL_POINTS support.
     pointSize: 1.0,
 
@@ -108,6 +113,10 @@ var LibraryGLEmulation = {
 
       GLEmulation.fogColor = new Float32Array(4);
 
+      for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+          GLEmulation.clipPlaneEquation[clipPlaneId] = new Float32Array(4);
+      }
+
       // Add some emulation workarounds
       err('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work.');
 #if GL_UNSAFE_OPTS == 1
@@ -151,6 +160,13 @@ var LibraryGLEmulation = {
             GLEmulation.fogEnabled = true;
           }
           return;
+        } else if ((cap >= 0x3000) && (cap < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
+            var clipPlaneId = cap - 0x3000;
+            if (GLEmulation.clipPlaneEnabled[clipPlaneId] != true) {
+              GLImmediate.currentRenderer = null; // clip plane parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+              GLEmulation.clipPlaneEnabled[clipPlaneId] = true;
+            }
+            return;
         } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glEnableClientState
@@ -175,6 +191,13 @@ var LibraryGLEmulation = {
             GLEmulation.fogEnabled = false;
           }
           return;
+        } else if ((cap >= 0x3000) && (cap < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
+          var clipPlaneId = cap - 0x3000;
+          if (GLEmulation.clipPlaneEnabled[clipPlaneId] != false) {
+            GLImmediate.currentRenderer = null; // clip plane parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.clipPlaneEnabled[clipPlaneId] = false;
+          }
+          return;
         } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glDisableClientState
@@ -193,6 +216,9 @@ var LibraryGLEmulation = {
       _glIsEnabled = _emscripten_glIsEnabled = function _glIsEnabled(cap) {
         if (cap == 0xB60 /* GL_FOG */) {
           return GLEmulation.fogEnabled ? 1 : 0;
+        } else if ((cap >= 0x3000) && (cap < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
+          var clipPlaneId = cap - 0x3000;
+          return GLEmulation.clipPlaneEnabled[clipPlaneId] ? 1 : 0;
         } else if (!(cap in validCapabilities)) {
           return 0;
         }
@@ -275,6 +301,10 @@ var LibraryGLEmulation = {
           case 0x808A: { // GL_TEXTURE_COORD_ARRAY_STRIDE
             var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
+            return;
+          }
+          case 0x0D32: { // GL_MAX_CLIP_PLANES
+            {{{ makeSetValue('params', '0', 'GLEmulation.MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support atleast 6
             return;
           }
         }
@@ -1990,6 +2020,11 @@ var LibraryGLEmulation = {
       }
       enabledAttributesKey = (enabledAttributesKey << 2) | fogParam;
 
+      // By clip plane mode
+      for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+          enabledAttributesKey = (enabledAttributesKey << 1) | GLEmulation.clipPlaneEnabled[clipPlaneId];
+      }
+
       // By drawing mode:
       enabledAttributesKey = (enabledAttributesKey << 1) | (GLImmediate.mode == GLctx.POINTS ? 1 : 0);
 
@@ -2112,6 +2147,20 @@ var LibraryGLEmulation = {
               vsPointSizeInit = '  gl_PointSize = u_pointSize;\n';
             }
 
+            var vsClipPlaneDefs = '';
+            var vsClipPlaneInit = '';
+            var fsClipPlaneDefs = '';
+            var fsClipPlanePass = '';
+            for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+              if (GLEmulation.clipPlaneEnabled[clipPlaneId]) {
+                vsClipPlaneDefs += 'uniform vec4 u_clipPlaneEquation' + clipPlaneId + ';';
+                vsClipPlaneDefs += 'varying float v_clipDistance' + clipPlaneId + ';';
+                vsClipPlaneInit += '  v_clipDistance' + clipPlaneId + ' = dot(ecPosition, u_clipPlaneEquation' + clipPlaneId + ');';
+                fsClipPlaneDefs += 'varying float v_clipDistance' + clipPlaneId + ';';
+                fsClipPlanePass += '  if(v_clipDistance' + clipPlaneId + ' < 0.0) discard;';
+              }
+            }
+
             var vsSource = [
               'attribute vec4 a_position;',
               'attribute vec4 a_color;',
@@ -2122,6 +2171,7 @@ var LibraryGLEmulation = {
               'uniform mat4 u_modelView;',
               'uniform mat4 u_projection;',
               vsPointSizeDefs,
+              vsClipPlaneDefs,
               'void main()',
               '{',
               '  vec4 ecPosition = u_modelView * a_position;', // eye-coordinate position
@@ -2130,6 +2180,7 @@ var LibraryGLEmulation = {
               vsTexCoordInits,
               vsFogVaryingInit,
               vsPointSizeInit,
+              vsClipPlaneInit,
               '}',
               ''
             ].join('\n').replace(/\n\n+/g, '\n');
@@ -2167,8 +2218,10 @@ var LibraryGLEmulation = {
               texUnitUniformList,
               'varying vec4 v_color;',
               fogHeaderIfNeeded,
+              fsClipPlaneDefs,
               'void main()',
               '{',
+              fsClipPlanePass,
               fsTexEnvPass,
               fogPass,
               '}',
@@ -2261,6 +2314,11 @@ var LibraryGLEmulation = {
                            this.fogScaleLocation || this.fogDensityLocation);
 
           this.pointSizeLocation = GLctx.getUniformLocation(this.program, 'u_pointSize');
+
+          this.clipPlaneEquationLocation = [];
+          for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+              this.clipPlaneEquationLocation[clipPlaneId] = GLctx.getUniformLocation(this.program, 'u_clipPlaneEquation' + clipPlaneId);
+          }
         },
 
         prepare: function prepare() {
@@ -2413,6 +2471,10 @@ var LibraryGLEmulation = {
             if (this.fogEndLocation) GLctx.uniform1f(this.fogEndLocation, GLEmulation.fogEnd);
             if (this.fogScaleLocation) GLctx.uniform1f(this.fogScaleLocation, 1/(GLEmulation.fogEnd - GLEmulation.fogStart));
             if (this.fogDensityLocation) GLctx.uniform1f(this.fogDensityLocation, GLEmulation.fogDensity);
+          }
+
+          for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+              if (this.clipPlaneEquationLocation[clipPlaneId]) GLctx.uniform4fv(this.clipPlaneEquationLocation[clipPlaneId], GLEmulation.clipPlaneEquation[clipPlaneId]);
           }
 
           if (GLImmediate.mode == GLctx.POINTS) {
@@ -3074,7 +3136,19 @@ var LibraryGLEmulation = {
 
   glAlphaFunc: function(){}, // TODO
 
-  glNormal3f: function(){}, // TODO
+  glNormal3f: function(x, y, z) {
+#if ASSERTIONS
+    assert(GLImmediate.mode >= 0); // must be in begin/end
+#endif
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = x;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = z;
+#if ASSERTIONS
+    assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
+#endif
+    GLImmediate.addRendererComponent(GLImmediate.NORMAL, 3, GLctx.FLOAT);
+  },
+
 
   // Additional non-GLES rendering calls
 
@@ -3415,9 +3489,27 @@ var LibraryGLEmulation = {
   glReadBuffer: function() { throw 'glReadBuffer: TODO' },
 #endif
 
-  glLightfv: function() { throw 'glLightfv: TODO' },
-  glLightModelfv: function() { throw 'glLightModelfv: TODO' },
-  glMaterialfv: function() { throw 'glMaterialfv: TODO' },
+  glClipPlane: function(pname, param) { // partial support, TODO
+    if ((pname >= 0x3000) && (pname < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
+      var clipPlaneId = pname - 0x3000;
+
+      GLEmulation.clipPlaneEquation[clipPlaneId][0] = {{{ makeGetValue('param', '0', 'double') }}};
+      GLEmulation.clipPlaneEquation[clipPlaneId][1] = {{{ makeGetValue('param', '8', 'double') }}};
+      GLEmulation.clipPlaneEquation[clipPlaneId][2] = {{{ makeGetValue('param', '16', 'double') }}};
+      GLEmulation.clipPlaneEquation[clipPlaneId][3] = {{{ makeGetValue('param', '24', 'double') }}};
+
+      // apply inverse transposed current modelview matrix then setting clip plane
+      var tmpMV = GLImmediate.matrixLib.mat4.create(GLImmediate.matrix[0]);
+      GLImmediate.matrixLib.mat4.inverse(tmpMV);
+      GLImmediate.matrixLib.mat4.transpose(tmpMV);
+      GLImmediate.matrixLib.mat4.multiplyVec4(tmpMV, GLEmulation.clipPlaneEquation[clipPlaneId]);
+    }
+  },
+
+  glLightfv: function() {}, //{ throw 'glLightfv: TODO' },
+  glLightModelf: function() {}, //{ throw 'glLightModelf: TODO' },
+  glLightModelfv: function() {}, //{ throw 'glLightModelfv: TODO' },
+  glMaterialfv: function() {}, //{ throw 'glMaterialfv: TODO' },
 
   glTexGeni: function() { throw 'glTexGeni: TODO' },
   glTexGenfv: function() { throw 'glTexGenfv: TODO' },
