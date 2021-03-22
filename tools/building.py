@@ -488,6 +488,10 @@ def llvm_backend_args():
   if Settings.DISABLE_EXCEPTION_CATCHING == 2:
     allowed = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED or ['__fake'])
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
+    # make sure catching-allowed funcitons are not inlined before we do code
+    # transformation for EH in the backend
+    for func in Settings.EXCEPTION_CATCHING_ALLOWED:
+      args += ['--force-attribute=' + func + ':noinline']
 
   if Settings.SUPPORT_LONGJMP:
     # asm.js-style setjmp/longjmp handling

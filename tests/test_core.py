@@ -1295,6 +1295,14 @@ int main(int argc, char **argv)
 
     self.do_core_test('test_exceptions_allowed_uncaught.cpp')
 
+  def test_exceptions_allowed_inlining(self):
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z12somefunctionv"])
+    # make sure inlining is allowed
+    self.set_setting('INLINING_LIMIT', 0)
+
+    self.do_core_test('test_exceptions_allowed.cpp')
+
   @with_both_exception_handling
   def test_exceptions_uncaught(self):
     # needs to flush stdio streams
