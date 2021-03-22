@@ -22,6 +22,11 @@ Current Trunk
 -------------
 - Values returned from `sysconf` now more closely match the definitions found in
   header files and in upstream musl (#13713).
+- `DISABLE_EXCEPTION_CATCHING=2` is now deprecated since it can be inferred from
+  the presence of the `EXCEPTION_CATCHING_ALLOWED` list.  This makes
+  `DISABLE_EXCEPTION_CATCHING` a simple binary option (0 or 1) which defaults to
+  0 which will be set to 1 internally if `EXCEPTION_CATCHING_ALLOWED` list is
+  specified.
 - Values returned from `pathconf` now match the definitions found in header files
   and/or upstream musl:
     _PC_LINK_MAX 3200 -> 8
