@@ -1244,7 +1244,9 @@ int main(int argc, char **argv)
     self.set_setting('INLINING_LIMIT', 50)
 
     self.do_core_test('test_exceptions_allowed.cpp')
-    size = len(open('test_exceptions_allowed.js').read())
+    size = os.path.getsize('test_exceptions_allowed.js')
+    if self.is_wasm():
+      size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'orig.js')
 
     # check that an empty allow list works properly (as in, same as exceptions disabled)
@@ -1253,26 +1255,34 @@ int main(int argc, char **argv)
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
     self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
-    empty_size = len(open('test_exceptions_allowed.js').read())
+    empty_size = os.path.getsize('test_exceptions_allowed.js')
+    if self.is_wasm():
+      empty_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'empty.js')
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['fake'])
     self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
-    fake_size = len(open('test_exceptions_allowed.js').read())
+    fake_size = os.path.getsize('test_exceptions_allowed.js')
+    if self.is_wasm():
+      fake_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'fake.js')
 
     self.set_setting('DISABLE_EXCEPTION_CATCHING')
     self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
-    disabled_size = len(open('test_exceptions_allowed.js').read())
+    disabled_size = os.path.getsize('test_exceptions_allowed.js')
+    if self.is_wasm():
+      disabled_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'disabled.js')
 
-    if not self.is_wasm():
-      print(size, empty_size, fake_size, disabled_size)
-      assert empty_size == fake_size, [empty_size, fake_size]
-      # big change when we disable exception catching of the function
-      assert size - empty_size > 0.01 * size, [empty_size, size]
-      # full disable can remove a little bit more
-      assert empty_size >= disabled_size, [empty_size, disabled_size]
+    print('size: %d' % size)
+    print('empty_size: %d' % empty_size)
+    print('fake_size: %d' % fake_size)
+    print('disabled_size: %d' % disabled_size)
+    self.assertEqual(empty_size, fake_size)
+    # big change when we disable exception catching of the function
+    self.assertGreater(size - empty_size, 0.01 * size)
+    # full disable can remove a little bit more
+    self.assertLess(disabled_size, empty_size)
 
   def test_exceptions_allowed_2(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)

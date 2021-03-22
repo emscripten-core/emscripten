@@ -817,6 +817,18 @@ def get_file_suffix(filename):
   return ''
 
 
+def get_secondary_target(target, ext):
+  # Depending on the output format emscripten creates zero or more secondary
+  # output files (e.g. the .wasm file when creating JS output, or the
+  # .js and the .wasm file when creating html output.
+  # Thus function names the secondary output files, while ensuring they
+  # never collide with the primary one.
+  base = unsuffixed(target)
+  if get_file_suffix(target) == ext:
+    base += '_'
+  return base + ext
+
+
 def in_temp(name):
   temp_dir = shared.get_emscripten_temp_dir()
   return os.path.join(temp_dir, os.path.basename(name))
@@ -829,8 +841,6 @@ run_via_emxx = False
 # Main run() function
 #
 def run(args):
-  target = None
-
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
   EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
@@ -1227,7 +1237,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       wasm_target = target
     else:
       # Otherwise the wasm file is produced alongside the final target.
-      wasm_target = unsuffixed(target) + '.wasm'
+      wasm_target = get_secondary_target(target, '.wasm')
 
     # Apply user -jsD settings
     for s in user_js_defines:
@@ -2438,7 +2448,7 @@ def post_link(options, in_wasm, wasm_target, target):
     if options.oformat in (OFormat.JS, OFormat.MJS):
       js_target = target
     else:
-      js_target = unsuffixed(target) + '.js'
+      js_target = get_secondary_target(target, '.js')
 
     # The JS is now final. Move it to its final location
     move_file(final_js, js_target)
