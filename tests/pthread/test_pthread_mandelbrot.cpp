@@ -288,18 +288,18 @@ pthread_t thread[MAX_NUM_THREADS];
 double timeSpentInMandelbrot[MAX_NUM_THREADS] = {};
 unsigned long long numIters[MAX_NUM_THREADS] = {};
 
-uint32_t numThreadsRunning = 0;
+_Atomic uint32_t numThreadsRunning = 0;
 uint32_t maxThreadsRunning = 1;
 
 bool use_sse = true;
 
-int tasksDone = 0;
-int tasksPending[MAX_NUM_THREADS] = {};
+_Atomic uint32_t tasksDone = 0;
+_Atomic uint32_t tasksPending[MAX_NUM_THREADS] = {};
 #ifndef SINGLETHREADED
 void *mandelbrot_thread(void *arg)
 {
   int idx = (int)arg;
-  emscripten_atomic_add_u32(&numThreadsRunning, 1);
+  numThreadsRunning++;
 
   char threadName[32];
   sprintf(threadName, "Worker %d", idx);
@@ -308,7 +308,7 @@ void *mandelbrot_thread(void *arg)
   for(;;)
   {
     emscripten_futex_wait(&tasksPending[idx], 0, INFINITY);
-    emscripten_atomic_store_u32(&tasksPending[idx], 0);
+    tasksPending[idx] = 0;
     double t0 = emscripten_get_now();
     int ni;
 #ifdef TEST_THREAD_PROFILING
@@ -325,11 +325,10 @@ void *mandelbrot_thread(void *arg)
     else
 #endif
       ni = ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
-    //emscripten_atomic_add_u32(&numIters, ni);
     double t1 = emscripten_get_now();
     numIters[idx] += ni;
     timeSpentInMandelbrot[idx] += t1-t0;
-    emscripten_atomic_add_u32(&tasksDone, 1);
+    tasksDone++;
     emscripten_futex_wake(&tasksDone, 9999);
   }
 }
@@ -369,11 +368,11 @@ void register_tasks()
   if (numTasks > emscripten_num_logical_cores()) numTasks = emscripten_num_logical_cores();
 
   // Register tasks.
-  emscripten_atomic_store_u32(&tasksDone, 0);
+  tasksDone = 0;
   emscripten_atomic_fence();
   for(int i = 0; i < numTasks; ++i)
   {
-      emscripten_atomic_store_u32(&tasksPending[i], 1);
+      tasksPending[i] = 1;
       emscripten_futex_wake(&tasksPending[i], 999);
   }
 #endif
@@ -385,7 +384,7 @@ void wait_tasks()
   // Wait for each task to finish.
   for(;;)
   {
-    int td = emscripten_atomic_load_u32(&tasksDone);
+    int td = tasksDone;
     if (td >= numTasks)
       break;
     emscripten_futex_wait(&tasksDone, td, 1);
@@ -397,7 +396,7 @@ void wait_tasks()
 void main_tick()
 {
 #ifndef SINGLETHREADED
-  const int threadsRunning = emscripten_atomic_load_u32(&numThreadsRunning);
+  const int threadsRunning = numThreadsRunning;
   if (threadsRunning < maxThreadsRunning) return;
 #endif
 
