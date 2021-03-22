@@ -601,14 +601,14 @@ var LibraryWebGL2 = {
     }
 
     var result = GLctx['getActiveUniformBlockParameter'](program, uniformBlockIndex, pname);
+    if (result === null) return; // If an error occurs, nothing should be written to params.
     if (pname == 0x8A43 /*GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES*/) {
       for (var i = 0; i < result.length; i++) {
         {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
       }
-      return;
+    } else {
+      {{{ makeSetValue('params', '0', 'result', 'i32') }}};
     }
-    if (result === null) return; // If an error occurs, nothing should be written to params.
-    {{{ makeSetValue('params', '0', 'result', 'i32') }}};
   },
 
   glGetActiveUniformBlockName__sig: 'viiiii',
