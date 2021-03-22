@@ -3498,7 +3498,7 @@ var LibraryGLEmulation = {
       GLEmulation.clipPlaneEquation[clipPlaneId][2] = {{{ makeGetValue('param', '16', 'double') }}};
       GLEmulation.clipPlaneEquation[clipPlaneId][3] = {{{ makeGetValue('param', '24', 'double') }}};
 
-      // apply inverse transposed current modelview matrix then setting clip plane
+      // apply inverse transposed current modelview matrix when setting clip plane
       var tmpMV = GLImmediate.matrixLib.mat4.create(GLImmediate.matrix[0]);
       GLImmediate.matrixLib.mat4.inverse(tmpMV);
       GLImmediate.matrixLib.mat4.transpose(tmpMV);
