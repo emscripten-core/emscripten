@@ -105,27 +105,28 @@ If you find a regression, bisection is often the fastest way to figure out what
 went wrong. This is true not just for finding an actual regression in Emscripten
 but also if your project stopped working when you upgrade, and you need to
 investigate if it's an Emscripten regression or something else. The rest of
-this section covers bisection on Emscripten itself.
+this section covers bisection on Emscripten itself. It is hopefully useful for
+both people using Emscripten as well as Emscripten developers.
 
 If you have a large bisection range - for example, that covers more than one
 version of Emscripten - then you probably have changes across multiple repos
 (Emscripten, LLVM, and Binaryen). In that case the easiest and fastest thing
 is to bisect using **emsdk builds**. Each step of the bisection will download
-a "tip of tree" (tot) build from the emsdk. Using this approach you don't need
-to compile anything yourself, so it can be very fast!
+a build produced by the emscripten releases builders. Using this approach you
+don't need to compile anything yourself, so it can be very fast!
 
 To do this, you need a basic understanding of Emscripten's
 `release process <https://github.com/emscripten-core/emscripten/blob/main/docs/process.md#release-processes>`_
 The key idea is that::
 
-     emsdk install HASH
+     emsdk install [HASH]
 
-can install an arbitrary build of emscripten from any point in the history
-of the emsdk. Each build is identified by a hash (a long string of numbers
+can install an arbitrary build of emscripten from any point in the past (assuming
+the build succeeded). Each build is identified by a hash (a long string of numbers
 and characters), which is a hash of a commit in the
 `releases repo <https://chromium.googlesource.com/emscripten-releases>`_.
 The mapping of Emscripten release numbers to such hashes is tracked by
-`emscripten-releases-tags.txt in the emsdk repo <https://github.com/emscripten-core/emsdk/blob/7cba2e0a92b9df42376707dfdae6e1f108f79a27/emscripten-releases-tags.txt>`_.
+`emscripten-releases-tags.txt in the emsdk repo <https://github.com/emscripten-core/emsdk/blob/master/emscripten-releases-tags.txt>`_.
 
 With that background, the bisection process would look like this:
 
