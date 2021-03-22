@@ -6712,11 +6712,14 @@ int main() {
     self.assertContained('emcc: error: cannot write output file `.`: Is a directory', ret)
 
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', '.', '--oformat=wasm'])
-    self.assertContained('wasm-ld: error: cannot open output file .: Is a directory', ret)
+    self.assertContained('wasm-ld: error: cannot open output file .:', ret)
+    # Linux/Mac and Windows's error messages are slightly different
+    self.assertContained(['Is a directory', 'is a directory'], ret)
 
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', '.', '--oformat=html'])
     self.assertContained('emcc: error: cannot write output file:', ret)
-    self.assertContained("Is a directory: '.'", ret)
+    # Linux/Mac and Windows's error codes and messages are different
+    self.assertContained(['Is a directory', 'Permission denied'], ret)
 
   def test_binaryen_ctors(self):
     # ctor order must be identical to js builds, deterministically
