@@ -1237,8 +1237,6 @@ int main(int argc, char **argv)
 
   def test_exceptions_allowed(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
-    # Wasm does not add an underscore to function names. For wasm, the
-    # mismatches are fixed in fixImports() function in JS glue code.
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z12somefunctionv"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 50)
@@ -1276,8 +1274,6 @@ int main(int argc, char **argv)
 
   def test_exceptions_allowed_2(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
-    # Wasm does not add an underscore to function names. For wasm, the
-    # mismatches are fixed in fixImports() function in JS glue code.
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["main"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 50)
@@ -1289,8 +1285,6 @@ int main(int argc, char **argv)
   def test_exceptions_allowed_uncaught(self):
     self.emcc_args += ['-std=c++11']
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
-    # Wasm does not add an underscore to function names. For wasm, the
-    # mismatches are fixed in fixImports() function in JS glue code.
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z4testv"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 50)
