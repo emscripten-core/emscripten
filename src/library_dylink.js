@@ -286,27 +286,6 @@ var LibraryDylink = {
       return ret;
     }
 
-    function parseDylinkSection() {
-      var customSection = {};
-      customSection.memorySize = getLEB();
-      customSection.memoryAlign = getLEB();
-      customSection.tableSize = getLEB();
-      customSection.tableAlign = getLEB();
-      // shared libraries this module needs. We need to load them first, so that
-      // current module could resolve its imports. (see tools/shared.py
-      // WebAssembly.make_shared_library() for "dylink" section extension format)
-      var neededDynlibsCount = getLEB();
-      customSection.neededDynlibs = [];
-      for (var i = 0; i < neededDynlibsCount; ++i) {
-        var nameLen = getLEB();
-        var nameUTF8 = binary.subarray(next, next + nameLen);
-        next += nameLen;
-        var name = UTF8ArrayToString(nameUTF8, 0);
-        customSection.neededDynlibs.push(name);
-      }
-      return customSection;
-    }
-
     if (binary instanceof WebAssembly.Module) {
       var dylinkSection = WebAssembly.Module.customSections(binary, "dylink");
       assert(dylinkSection.length != 0, 'need dylink section');
@@ -327,7 +306,24 @@ var LibraryDylink = {
       assert(binary[next] === 'k'.charCodeAt(0)); next++;
     }
 
-    return parseDylinkSection();
+    var customSection = {};
+    customSection.memorySize = getLEB();
+    customSection.memoryAlign = getLEB();
+    customSection.tableSize = getLEB();
+    customSection.tableAlign = getLEB();
+    // shared libraries this module needs. We need to load them first, so that
+    // current module could resolve its imports. (see tools/shared.py
+    // WebAssembly.make_shared_library() for "dylink" section extension format)
+    var neededDynlibsCount = getLEB();
+    customSection.neededDynlibs = [];
+    for (var i = 0; i < neededDynlibsCount; ++i) {
+      var nameLen = getLEB();
+      var nameUTF8 = binary.subarray(next, next + nameLen);
+      next += nameLen;
+      var name = UTF8ArrayToString(nameUTF8, 0);
+      customSection.neededDynlibs.push(name);
+    }
+    return customSection;
   },
 
   // Module.symbols <- libModule.symbols (flags.global handler)
