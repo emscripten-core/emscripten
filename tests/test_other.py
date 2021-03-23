@@ -10045,7 +10045,7 @@ exec "$@"
     self.emcc_args += ['-sEXTRA_EXPORTED_RUNTIME_METHODS=[allocate]']
     # self.emcc_args += ['-sUSE_WEBGL2']
     # self.emcc_args += ['-sUSE_GLFW=3']
-    self.emcc_args += ['-sFULL_ES3=1']
+    # self.emcc_args += ['-sFULL_ES3=1']
     self.emcc_args += ['-flto']
     self.emcc_args += ['-fPIC']
     self.emcc_args += ['-Oz']
