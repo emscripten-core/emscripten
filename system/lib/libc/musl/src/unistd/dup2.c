@@ -13,10 +13,10 @@ int dup2(int old, int new)
 	while ((r=__syscall(SYS_dup2, old, new))==-EBUSY);
 #else
 	if (old==new) {
-#if __EMSCRIPTEN__
-		r = __syscall(SYS_fcntl, old, F_GETFD);
-#else
+#ifdef __EMSCRIPTEN__
 		r = __wasi_fd_is_valid(old);
+#else
+		r = __syscall(SYS_fcntl, old, F_GETFD);
 #endif
 		if (r >= 0) return old;
 	} else {
