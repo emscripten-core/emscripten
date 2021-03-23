@@ -330,7 +330,7 @@ def expand_byte_size_suffixes(value):
 
 
 def apply_settings(changes):
-  """Take a list of settings in form `NAME=VALUE` and apply them to the global
+  """Take a map of users settings {NAME: VALUE} and apply them to the global
   Settings object.
   """
 
@@ -344,8 +344,7 @@ def apply_settings(changes):
       value = str(1 - int(value))
     return key, value
 
-  for change in changes:
-    key, value = change.split('=', 1)
+  for key, value in changes.items():
     key, value = standardize_setting_change(key, value)
 
     if key in shared.Settings.internal_settings:
@@ -365,14 +364,14 @@ def apply_settings(changes):
     if value and value[0] == '@':
       filename = value[1:]
       if not os.path.exists(filename):
-        exit_with_error('%s: file not found parsing argument: %s' % (filename, change))
+        exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
       value = open(filename).read()
     else:
       value = value.replace('\\', '\\\\')
     try:
       value = parse_value(value)
     except Exception as e:
-      exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+      exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
 
     # Do some basic type checking by comparing to the existing settings.
     # Sadly we can't do this generically in the SettingsManager since there are settings
@@ -1138,15 +1137,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i] = ''
     newargs = [a for a in newargs if a]
 
-    settings_key_changes = {}
+    settings_map = {}
     for s in settings_changes:
       key, value = s.split('=', 1)
-      settings_key_changes[key] = value
+      settings_map[key] = value
 
     # Libraries are searched before settings_changes are applied, so apply the
     # value for STRICT from command line already now.
 
-    strict_cmdline = settings_key_changes.get('STRICT')
+    strict_cmdline = settings_map.get('STRICT')
     if strict_cmdline:
       shared.Settings.STRICT = int(strict_cmdline)
 
@@ -1155,15 +1154,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
     # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
-    if settings_key_changes.get('WARN_ON_UNDEFINED_SYMBOLS') == '0':
+    if settings_map.get('WARN_ON_UNDEFINED_SYMBOLS') == '0':
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
 
-    if shared.Settings.MINIMAL_RUNTIME or settings_key_changes.get('MINIMAL_RUNTIME') in ('1', '2'):
+    if shared.Settings.MINIMAL_RUNTIME or settings_map.get('MINIMAL_RUNTIME') in ('1', '2'):
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
-    apply_settings(settings_changes)
+    apply_settings(settings_map)
 
     specified_target = options.output_file
 
@@ -1277,7 +1276,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       #    reactor.
       # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
       #    is specified (see above).
-      if 'EXPORTED_FUNCTIONS' in settings_key_changes:
+      if 'EXPORTED_FUNCTIONS' in settings_map:
         if '_main' not in shared.Settings.USER_EXPORTED_FUNCTIONS:
           shared.Settings.EXPECT_MAIN = 0
       else:
@@ -1289,7 +1288,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # See https://github.com/WebAssembly/WASI/blob/master/design/application-abi.md
       # For a command we always want EXIT_RUNTIME=1
       # For a reactor we always want EXIT_RUNTIME=0
-      if 'EXIT_RUNTIME' in settings_key_changes:
+      if 'EXIT_RUNTIME' in settings_map:
         exit_with_error('Explictly setting EXIT_RUNTIME not compatible with STANDALONE_WASM.  EXIT_RUNTIME will always be True for programs (with a main function) and False for reactors (not main function).')
       shared.Settings.EXIT_RUNTIME = shared.Settings.EXPECT_MAIN
 
@@ -1332,7 +1331,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
     def default_setting(name, new_default):
-      if name not in settings_key_changes:
+      if name not in settings_map:
         setattr(shared.Settings, name, new_default)
 
     # -s ASSERTIONS=1 implies basic stack overflow checks, and ASSERTIONS=2
@@ -1774,7 +1773,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.EXPORT_ES6 and not shared.Settings.MODULARIZE:
       # EXPORT_ES6 requires output to be a module
-      if 'MODULARIZE' in settings_key_changes:
+      if 'MODULARIZE' in settings_map:
         exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
       shared.Settings.MODULARIZE = 1
 
@@ -1847,7 +1846,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
       exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
 
-    if 'MEM_INIT_METHOD' in settings_key_changes:
+    if 'MEM_INIT_METHOD' in settings_map:
       exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
 
     if shared.Settings.WASM2JS:
@@ -2027,7 +2026,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Any "pointers" passed to JS will now be i64's, in both modes.
     if shared.Settings.MEMORY64:
-      if settings_key_changes.get('WASM_BIGINT') == '0':
+      if settings_map.get('WASM_BIGINT') == '0':
         exit_with_error('MEMORY64 is not compatible with WASM_BIGINT=0')
       shared.Settings.WASM_BIGINT = 1
 
