@@ -1024,11 +1024,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     explicit_settings_changes, newargs = parse_s_args(newargs)
     settings_changes += explicit_settings_changes
 
-    settings_key_changes = {}
-    for s in settings_changes:
-      key, value = s.split('=', 1)
-      settings_key_changes[key] = value
-
     # Find input files
 
     # These three arrays are used to store arguments of different types for
@@ -1143,6 +1138,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i] = ''
     newargs = [a for a in newargs if a]
 
+    settings_key_changes = {}
+    for s in settings_changes:
+      key, value = s.split('=', 1)
+      settings_key_changes[key] = value
+
     # Libraries are searched before settings_changes are applied, so apply the
     # value for STRICT from command line already now.
 
@@ -1155,10 +1155,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
     # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
-    if 'WARN_ON_UNDEFINED_SYMBOLS=0' in settings_changes:
+    if settings_key_changes.get('WARN_ON_UNDEFINED_SYMBOLS') == '0':
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
 
-    if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
+    if shared.Settings.MINIMAL_RUNTIME or settings_key_changes.get('MINIMAL_RUNTIME') in ('1', '2'):
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
@@ -1847,7 +1847,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
       exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
 
-    if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
+    if 'MEM_INIT_METHOD' in settings_key_changes:
       exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
 
     if shared.Settings.WASM2JS:
