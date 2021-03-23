@@ -8627,7 +8627,6 @@ int main () {
     normal = self.run_js('a.out.js')
     print(str(normal))
 
-
   # Test that legacy settings that have been fixed to a specific value and their value can no longer be changed,
   def test_legacy_settings_forbidden_to_change(self):
     stderr = self.expect_fail([EMCC, '-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=0', test_file('hello_world.c')])
