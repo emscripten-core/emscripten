@@ -215,26 +215,6 @@ Options that are modified or new in *emcc* are listed below:
      happens in "-O2" and above, and when no "-g" option was specified
      to prevent minification.
 
-"--llvm-opts <level>"
-   [compile+link] Enables LLVM optimizations, relevant when we call
-   the LLVM optimizer (which is done when building source files to
-   object code). Possible "level" values are:
-
-      * "0": No LLVM optimizations (default in -O0).
-
-      * "1": LLVM "-O1" optimizations (default in -O1).
-
-      * "2": LLVM "-O2" optimizations.
-
-      * "3": LLVM "-O3" optimizations (default in -O2+).
-
-   You can also specify arbitrary LLVM options, e.g.:
-
-      --llvm-opts "['-O3', '-somethingelse']"
-
-   You normally don't need to specify this option, as "-O" with an
-   optimization level will set a good value.
-
 "-flto"
    [compile+link] Enables link-time optimizations (LTO).
 

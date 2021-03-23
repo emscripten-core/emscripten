@@ -6589,7 +6589,7 @@ return malloc(size);
     self.set_setting('DEMANGLE_SUPPORT')
     self.set_setting('ASSERTIONS')
     # ensure function names are preserved
-    self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
+    self.emcc_args += ['--profiling-funcs']
     self.do_core_test('test_demangle_stacks.cpp', assert_returncode=NON_ZERO)
     if not self.has_changed_setting('ASSERTIONS'):
       print('without assertions, the stack is not printed, but a message suggesting assertions is')
@@ -6598,9 +6598,7 @@ return malloc(size);
 
   def test_demangle_stacks_symbol_map(self):
     self.set_setting('DEMANGLE_SUPPORT')
-    if '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args and '-O1' not in self.emcc_args and '-g' not in self.emcc_args:
-      self.emcc_args += ['--llvm-opts', '0']
-    else:
+    if '-O' not in str(self.emcc_args) or '-O0' in self.emcc_args or '-O1' in self.emcc_args or '-g' in self.emcc_args:
       self.skipTest("without opts, we don't emit a symbol map")
     self.emcc_args += ['--emit-symbol-map']
     self.do_runf(test_file('core', 'test_demangle_stacks.cpp'), 'abort', assert_returncode=NON_ZERO)
