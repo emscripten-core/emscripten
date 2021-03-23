@@ -10022,6 +10022,7 @@ exec "$@"
     self.assertIn('Hello from lib!', result)
 
   def test_split_module_ex(self):
+    initialTableSize = 5655
     self.set_setting('SPLIT_MODULE')
     self.set_setting('WASM', 1)
     self.set_setting('WASM_BIGINT')
@@ -10032,7 +10033,6 @@ exec "$@"
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.set_setting('ALLOW_MEMORY_GROWTH', 1)
     self.set_setting('NO_EXIT_RUNTIME', 0)
-    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 1)
     self.set_setting('GL_TRACK_ERRORS', 0)
     self.set_setting('WASM_OBJECT_FILES', 0)
     # self.set_setting('INCLUDE_FULL_LIBRARY', 1)
@@ -10043,13 +10043,17 @@ exec "$@"
     self.emcc_args += ['--emit-symbol-map']
     self.emcc_args += ['--post-js', path_from_root('tests', 'other', 'test_split_module_ex.post.js')]
     self.emcc_args += ['-sEXTRA_EXPORTED_RUNTIME_METHODS=[allocate]']
+    # Cannot set WEBGL flags as webgl is not available on ci cache as FROZEN_CACHE is used
     # self.emcc_args += ['-sUSE_WEBGL2']
     # self.emcc_args += ['-sUSE_GLFW=3']
     # self.emcc_args += ['-sFULL_ES3=1']
     self.emcc_args += ['-flto']
     self.emcc_args += ['-fPIC']
     self.emcc_args += ['-Oz']
-    # self.emcc_args += ['-sMAIN_MODULE=2']
+    # TODO: set MAIN_MODULE=2, currently fails due to https://github.com/emscripten-core/emscripten/issues/13633
+    self.emcc_args += ['-sMAIN_MODULE=1']
+    self.emcc_args += [f'-sINITIAL_TABLE={initialTableSize}']
+
 
     create_file('mylib.js', '''
       mergeInto(LibraryManager.library, {
@@ -10067,7 +10071,7 @@ exec "$@"
     self.assertExists('profile.data')
 
     wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    self.run_process([wasm_split, '--enable-mutable-globals', '--export-prefix=%', 'test_split_module_ex.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data'])
+    self.run_process([wasm_split, '--enable-mutable-globals', '--export-prefix=%', f'--initial-table={initialTableSize}', 'test_split_module_ex.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data'])
 
     os.remove('test_split_module_ex.wasm')
     os.rename('primary.wasm', 'test_split_module_ex.wasm')
