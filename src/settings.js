@@ -643,22 +643,23 @@ var LZ4 = 0;
 // currently (in the future, wasm should improve that). When exceptions are
 // disabled, if an exception actually happens then it will not be caught
 // and the program will halt (so this will not introduce silent failures).
-// There are 3 specific modes here:
-// DISABLE_EXCEPTION_CATCHING = 0 - generate code to actually catch exceptions
-// DISABLE_EXCEPTION_CATCHING = 1 - disable exception catching at all
-// DISABLE_EXCEPTION_CATCHING = 2 - disable exception catching, but enables
-//                                  catching in list of allowed functions
+//
 // XXX note that this removes *catching* of exceptions, which is the main
 //     issue for speed, but you should build source files with
 //     -fno-exceptions to really get rid of all exceptions code overhead,
 //     as it may contain thrown exceptions that are never caught (e.g.
 //     just using std::vector can have that). -fno-rtti may help as well.
 //
+// This option is mutually exclusive with EXCEPTION_CATCHING_ALLOWED.
+//
 // [compile+link] - affects user code at compile and system libraries at link
 var DISABLE_EXCEPTION_CATCHING = 1;
 
-// Enables catching exception in the listed functions only, if
-// DISABLE_EXCEPTION_CATCHING = 2 is set
+// Enables catching exception but only in the listed functions.  This
+// option acts like a more precise version of `DISABLE_EXCEPTION_CATCHING=0`.
+//
+// This option is mutually exclusive with DISABLE_EXCEPTION_CATCHING.
+//
 // [compile+link] - affects user code at compile and system libraries at link
 var EXCEPTION_CATCHING_ALLOWED = [];
 

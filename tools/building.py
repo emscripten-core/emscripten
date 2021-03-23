@@ -483,10 +483,10 @@ def llvm_backend_args():
   args = ['-combiner-global-alias-analysis=false']
 
   # asm.js-style exception handling
-  if Settings.DISABLE_EXCEPTION_CATCHING != 1:
+  if not Settings.DISABLE_EXCEPTION_CATCHING:
     args += ['-enable-emscripten-cxx-exceptions']
-  if Settings.DISABLE_EXCEPTION_CATCHING == 2:
-    allowed = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED or ['__fake'])
+  if Settings.EXCEPTION_CATCHING_ALLOWED:
+    allowed = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED)
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
   if Settings.SUPPORT_LONGJMP:

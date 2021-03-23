@@ -1236,7 +1236,6 @@ int main(int argc, char **argv)
     self.do_run('src.js', 'Caught exception: Hello\nDone.', args=['2'], no_build=True)
 
   def test_exceptions_allowed(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z12somefunctionv"])
@@ -1267,7 +1266,7 @@ int main(int argc, char **argv)
       fake_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'fake.js')
 
-    self.set_setting('DISABLE_EXCEPTION_CATCHING')
+    self.clear_setting('EXCEPTION_CATCHING_ALLOWED')
     self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
     disabled_size = os.path.getsize('test_exceptions_allowed.js')
     if self.is_wasm():
@@ -1278,17 +1277,17 @@ int main(int argc, char **argv)
     print('empty_size: %d' % empty_size)
     print('fake_size: %d' % fake_size)
     print('disabled_size: %d' % disabled_size)
-    self.assertEqual(empty_size, fake_size)
+    # empty list acts the same as fully disabled
+    self.assertEqual(empty_size, disabled_size)
     # big change when we disable exception catching of the function
     self.assertGreater(size - empty_size, 0.01 * size)
     # full disable can remove a little bit more
-    self.assertLess(disabled_size, empty_size)
+    self.assertLess(disabled_size, fake_size)
 
   def test_exceptions_allowed_2(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
-    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["main"])
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['main'])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT')
 
@@ -1296,14 +1295,36 @@ int main(int argc, char **argv)
 
   def test_exceptions_allowed_uncaught(self):
     self.emcc_args += ['-std=c++11']
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
     # Wasm does not add an underscore to function names. For wasm, the
     # mismatches are fixed in fixImports() function in JS glue code.
-    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z4testv"])
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['_Z4testv'])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT')
 
     self.do_core_test('test_exceptions_allowed_uncaught.cpp')
+
+  def test_exceptions_allowed_misuse(self):
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['foo'])
+
+    # Test old =2 setting for DISABLE_EXCEPTION_CATCHING
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
+    err = self.expect_fail([EMCC, test_file('hello_world.c')] + self.get_emcc_args())
+    self.assertContained('error: DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED [-Wdeprecated] [-Werror]', err)
+
+    # =0 should also be a warning
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    err = self.expect_fail([EMCC, test_file('hello_world.c')] + self.get_emcc_args())
+    self.assertContained('error: DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED [-Wdeprecated] [-Werror]', err)
+
+    # =1 should be a hard error
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+    err = self.expect_fail([EMCC, test_file('hello_world.c')] + self.get_emcc_args())
+    self.assertContained('error: DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive', err)
+
+    # even setting an empty list should trigger the error;
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
+    err = self.expect_fail([EMCC, test_file('hello_world.c')] + self.get_emcc_args())
+    self.assertContained('error: DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive', err)
 
   @with_both_exception_handling
   def test_exceptions_uncaught(self):
