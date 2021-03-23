@@ -1587,11 +1587,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       default_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
       default_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
 
-    if 'DISABLE_EXCEPTION_CATCHING' in settings_key_changes and 'EXCEPTION_CATCHING_ALLOWED' in settings_key_changes:
+    if 'DISABLE_EXCEPTION_CATCHING' in settings_map and 'EXCEPTION_CATCHING_ALLOWED' in settings_map:
       # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
       # on the command line.  This is no longer valid so report either an error or a warning (for
       # backwards compat with the old `DISABLE_EXCEPTION_CATCHING=2`
-      if settings_key_changes['DISABLE_EXCEPTION_CATCHING'] in ('0', '2'):
+      if settings_map['DISABLE_EXCEPTION_CATCHING'] in ('0', '2'):
         diagnostics.warning('deprecated', 'DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED')
       else:
         exit_with_error('DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive')
