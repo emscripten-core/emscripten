@@ -10022,7 +10022,7 @@ exec "$@"
     self.assertIn('Hello from lib!', result)
 
   def test_split_module_ex(self):
-    initialTableSize = 5655
+    initialTableSize = 542
     self.set_setting('SPLIT_MODULE')
     self.set_setting('WASM', 1)
     self.set_setting('WASM_BIGINT')
@@ -10051,7 +10051,8 @@ exec "$@"
     self.emcc_args += ['-fPIC']
     self.emcc_args += ['-Oz']
     # TODO: set MAIN_MODULE=2, currently fails due to https://github.com/emscripten-core/emscripten/issues/13633
-    self.emcc_args += ['-sMAIN_MODULE=1']
+    # TODO: cannot set MAIN_MODULE=1, https://github.com/WebAssembly/binaryen/issues/3701
+    # self.emcc_args += ['-sMAIN_MODULE=1']
     self.emcc_args += [f'-sINITIAL_TABLE={initialTableSize}']
 
 
