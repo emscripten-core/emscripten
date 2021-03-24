@@ -324,7 +324,7 @@ def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
   if EM_BUILD_VERBOSE >= 1:
     stderr = None
   print('configure: ' + shared.shlex_join(args), file=sys.stderr)
-  run_process(args, stdout=stdout, stderr=stderr, env=env, **kwargs)
+  check_call(args, stdout=stdout, stderr=stderr, env=env, **kwargs)
 
 
 def make(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
@@ -349,7 +349,7 @@ def make(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
   if EM_BUILD_VERBOSE >= 1:
     stderr = None
   print('make: ' + ' '.join(args), file=sys.stderr)
-  run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, **kwargs)
+  check_call(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, **kwargs)
 
 
 def make_paths_absolute(f):
