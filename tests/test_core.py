@@ -1288,6 +1288,8 @@ int main(int argc, char **argv)
     self.set_setting('INLINING_LIMIT', 50)
     self.do_core_test('test_exceptions_allowed_2.cpp')
 
+    # When 'main' function does not have a signature, its contents will be
+    # outlined to '__original_main'. Check if we can handle that case.
     self.emcc_args += ['-DMAIN_NO_SIGNATURE']
     self.do_core_test('test_exceptions_allowed_2.cpp')
 
