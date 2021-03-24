@@ -765,7 +765,7 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_loop.c')
 
   def test_stack(self):
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
     # some extra coverage in all test suites for stack checks
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
 
@@ -1238,7 +1238,7 @@ int main(int argc, char **argv)
   def test_exceptions_allowed(self):
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z12somefunctionv"])
     # otherwise it is inlined and not identified
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
 
     self.do_core_test('test_exceptions_allowed.cpp')
     size = os.path.getsize('test_exceptions_allowed.js')
@@ -1622,7 +1622,7 @@ int main() {
     # of the program directory influences how much stack we need, and so
     # long random temp dir names can lead to random failures. The stack
     # size was increased here to avoid that.
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
     self.set_setting('TOTAL_STACK', 8 * 1024)
 
     self.do_core_test('test_stack_varargs.c')
@@ -1708,7 +1708,7 @@ int main() {
 
   def test_stack_void(self):
     self.emcc_args.append('-Wno-format-extra-args')
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
     self.do_core_test('test_stack_void.c')
 
   def test_life(self):
@@ -2286,7 +2286,7 @@ The current type of b is: 9
     self.do_core_test('test_functionpointer_libfunc_varargs.c')
 
   def test_structbyval(self):
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
 
     # part 1: make sure that normally, passing structs by value works
 
@@ -6016,7 +6016,7 @@ return malloc(size);
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
     if '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
-      self.set_setting('INLINING_LIMIT', 50)
+      self.set_setting('INLINING_LIMIT')
 
     # newer clang has a warning for implicit conversions that lose information,
     # which happens in sqlite (see #9138)
