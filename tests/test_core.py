@@ -1285,7 +1285,7 @@ int main(int argc, char **argv)
   def test_exceptions_allowed_2(self):
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["main"])
     # otherwise it is inlined and not identified
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
     self.do_core_test('test_exceptions_allowed_2.cpp')
 
     # When 'main' function does not have a signature, its contents will be
@@ -1297,7 +1297,7 @@ int main(int argc, char **argv)
     self.emcc_args += ['-std=c++11']
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z4testv"])
     # otherwise it is inlined and not identified
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
 
     self.do_core_test('test_exceptions_allowed_uncaught.cpp')
 
