@@ -6579,7 +6579,7 @@ int main() {
 }
 ''')
 
-    # Without the 'INLINING_LIMIT=1', -O2 inlines foo()
+    # Without the 'INLINING_LIMIT', -O2 inlines foo()
     cmd = [EMCC, '-c', 'test.c', '-O2', '-o', 'test.o', '-s', 'INLINING_LIMIT', '-flto']
     self.run_process(cmd)
     # If foo() had been wrongly inlined above, internalizing foo and running

@@ -290,11 +290,9 @@ var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 // [link]
 var DECLARE_ASM_MODULE_EXPORTS = 1;
 
-// A limit on inlining. If 0, we will inline normally in LLVM and closure. If
-// greater than 0, we will *not* inline in LLVM, and we will prevent inlining of
-// functions of this size or larger in closure. 50 is a reasonable setting if
-// you do not want inlining
-// [compile+link]
+// If 0, prevents inlining if set to 1. If 0, we will inline normally in LLVM.
+// This does not affect the inlining policy in Binaryen.
+// [compile]
 var INLINING_LIMIT = 0;
 
 // If set to 1, perform acorn pass that converts each HEAP access into a
