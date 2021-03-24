@@ -330,7 +330,7 @@ def expand_byte_size_suffixes(value):
 
 
 def apply_settings(changes):
-  """Take a list of settings in form `NAME=VALUE` and apply them to the global
+  """Take a map of users settings {NAME: VALUE} and apply them to the global
   Settings object.
   """
 
@@ -344,8 +344,7 @@ def apply_settings(changes):
       value = str(1 - int(value))
     return key, value
 
-  for change in changes:
-    key, value = change.split('=', 1)
+  for key, value in changes.items():
     key, value = standardize_setting_change(key, value)
 
     if key in shared.Settings.internal_settings:
@@ -365,23 +364,26 @@ def apply_settings(changes):
     if value and value[0] == '@':
       filename = value[1:]
       if not os.path.exists(filename):
-        exit_with_error('%s: file not found parsing argument: %s' % (filename, change))
+        exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
       value = open(filename).read()
     else:
       value = value.replace('\\', '\\\\')
+
+    existing = getattr(shared.Settings, user_key, None)
+    expect_list = type(existing) == list
+
     try:
-      value = parse_value(value)
+      value = parse_value(value, expect_list)
     except Exception as e:
-      exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+      exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
 
     # Do some basic type checking by comparing to the existing settings.
     # Sadly we can't do this generically in the SettingsManager since there are settings
     # that so change types internally over time.
-    existing = getattr(shared.Settings, user_key, None)
-    if existing is not None:
-      # We only currently worry about lists vs non-lists.
-      if (type(existing) == list) != (type(value) == list):
-        exit_with_error('setting `%s` expects `%s` but got `%s`' % (user_key, type(existing), type(value)))
+    # We only currently worry about lists vs non-lists.
+    if expect_list != (type(value) == list):
+      exit_with_error('setting `%s` expects `%s` but got `%s`' % (user_key, type(existing), type(value)))
+
     setattr(shared.Settings, user_key, value)
 
     if key == 'EXPORTED_FUNCTIONS':
@@ -751,7 +753,7 @@ def get_cflags(options, user_args):
 
   # if exception catching is disabled, we can prevent that code from being
   # generated in the frontend
-  if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and not shared.Settings.EXCEPTION_HANDLING:
+  if shared.Settings.DISABLE_EXCEPTION_CATCHING and not shared.Settings.EXCEPTION_HANDLING:
     cflags.append('-fignore-exceptions')
 
   if shared.Settings.INLINING_LIMIT:
@@ -817,6 +819,18 @@ def get_file_suffix(filename):
   return ''
 
 
+def get_secondary_target(target, ext):
+  # Depending on the output format emscripten creates zero or more secondary
+  # output files (e.g. the .wasm file when creating JS output, or the
+  # .js and the .wasm file when creating html output.
+  # Thus function names the secondary output files, while ensuring they
+  # never collide with the primary one.
+  base = unsuffixed(target)
+  if get_file_suffix(target) == ext:
+    base += '_'
+  return base + ext
+
+
 def in_temp(name):
   temp_dir = shared.get_emscripten_temp_dir()
   return os.path.join(temp_dir, os.path.basename(name))
@@ -829,8 +843,6 @@ run_via_emxx = False
 # Main run() function
 #
 def run(args):
-  target = None
-
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
   EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
@@ -1014,11 +1026,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     explicit_settings_changes, newargs = parse_s_args(newargs)
     settings_changes += explicit_settings_changes
 
-    settings_key_changes = {}
-    for s in settings_changes:
-      key, value = s.split('=', 1)
-      settings_key_changes[key] = value
-
     # Find input files
 
     # These three arrays are used to store arguments of different types for
@@ -1133,10 +1140,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i] = ''
     newargs = [a for a in newargs if a]
 
+    settings_map = {}
+    for s in settings_changes:
+      key, value = s.split('=', 1)
+      settings_map[key] = value
+
     # Libraries are searched before settings_changes are applied, so apply the
     # value for STRICT from command line already now.
 
-    strict_cmdline = settings_key_changes.get('STRICT')
+    strict_cmdline = settings_map.get('STRICT')
     if strict_cmdline:
       shared.Settings.STRICT = int(strict_cmdline)
 
@@ -1145,15 +1157,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
     # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
-    if 'WARN_ON_UNDEFINED_SYMBOLS=0' in settings_changes:
+    if settings_map.get('WARN_ON_UNDEFINED_SYMBOLS') == '0':
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
 
-    if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
+    if shared.Settings.MINIMAL_RUNTIME or settings_map.get('MINIMAL_RUNTIME') in ('1', '2'):
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
-    apply_settings(settings_changes)
+    apply_settings(settings_map)
 
     specified_target = options.output_file
 
@@ -1227,7 +1239,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       wasm_target = target
     else:
       # Otherwise the wasm file is produced alongside the final target.
-      wasm_target = unsuffixed(target) + '.wasm'
+      wasm_target = get_secondary_target(target, '.wasm')
 
     # Apply user -jsD settings
     for s in user_js_defines:
@@ -1267,7 +1279,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       #    reactor.
       # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
       #    is specified (see above).
-      if 'EXPORTED_FUNCTIONS' in settings_key_changes:
+      if 'EXPORTED_FUNCTIONS' in settings_map:
         if '_main' not in shared.Settings.USER_EXPORTED_FUNCTIONS:
           shared.Settings.EXPECT_MAIN = 0
       else:
@@ -1279,7 +1291,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # See https://github.com/WebAssembly/WASI/blob/master/design/application-abi.md
       # For a command we always want EXIT_RUNTIME=1
       # For a reactor we always want EXIT_RUNTIME=0
-      if 'EXIT_RUNTIME' in settings_key_changes:
+      if 'EXIT_RUNTIME' in settings_map:
         exit_with_error('Explictly setting EXIT_RUNTIME not compatible with STANDALONE_WASM.  EXIT_RUNTIME will always be True for programs (with a main function) and False for reactors (not main function).')
       shared.Settings.EXIT_RUNTIME = shared.Settings.EXPECT_MAIN
 
@@ -1322,7 +1334,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
     def default_setting(name, new_default):
-      if name not in settings_key_changes:
+      if name not in settings_map:
         setattr(shared.Settings, name, new_default)
 
     # -s ASSERTIONS=1 implies basic stack overflow checks, and ASSERTIONS=2
@@ -1578,6 +1590,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       default_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
       default_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
 
+    if 'DISABLE_EXCEPTION_CATCHING' in settings_map and 'EXCEPTION_CATCHING_ALLOWED' in settings_map:
+      # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
+      # on the command line.  This is no longer valid so report either an error or a warning (for
+      # backwards compat with the old `DISABLE_EXCEPTION_CATCHING=2`
+      if settings_map['DISABLE_EXCEPTION_CATCHING'] in ('0', '2'):
+        diagnostics.warning('deprecated', 'DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED')
+      else:
+        exit_with_error('DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive')
+
+    if shared.Settings.EXCEPTION_CATCHING_ALLOWED:
+      shared.Settings.DISABLE_EXCEPTION_CATCHING = 0
+
     if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
@@ -1630,7 +1654,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.USE_PTHREADS:
       if shared.Settings.USE_PTHREADS == 2:
-        exit_with_error('USE_PTHREADS=2 is not longer supported')
+        exit_with_error('USE_PTHREADS=2 is no longer supported')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
       # UTF8Decoder.decode may not work with a view of a SharedArrayBuffer, see https://github.com/whatwg/encoding/issues/172
@@ -1764,7 +1788,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.EXPORT_ES6 and not shared.Settings.MODULARIZE:
       # EXPORT_ES6 requires output to be a module
-      if 'MODULARIZE' in settings_key_changes:
+      if 'MODULARIZE' in settings_map:
         exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
       shared.Settings.MODULARIZE = 1
 
@@ -1837,7 +1861,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
       exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
 
-    if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
+    if 'MEM_INIT_METHOD' in settings_map:
       exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
 
     if shared.Settings.WASM2JS:
@@ -1955,7 +1979,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        shared.Settings.USE_PTHREADS or \
        shared.Settings.OFFSCREENCANVAS_SUPPORT or \
        shared.Settings.LEGACY_GL_EMULATION or \
-       shared.Settings.DISABLE_EXCEPTION_CATCHING != 1 or \
+       not shared.Settings.DISABLE_EXCEPTION_CATCHING or \
        shared.Settings.ASYNCIFY or \
        shared.Settings.ASMFS or \
        shared.Settings.DEMANGLE_SUPPORT or \
@@ -1968,7 +1992,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        sanitize:
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
+    if not shared.Settings.DISABLE_EXCEPTION_CATCHING:
       # If not for LTO builds, we could handle these by adding deps_info.py
       # entries for __cxa_find_matching_catch_* functions.  However, under
       # LTO these symbols don't exist prior the linking.
@@ -2017,7 +2041,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Any "pointers" passed to JS will now be i64's, in both modes.
     if shared.Settings.MEMORY64:
-      if settings_key_changes.get('WASM_BIGINT') == '0':
+      if settings_map.get('WASM_BIGINT') == '0':
         exit_with_error('MEMORY64 is not compatible with WASM_BIGINT=0')
       shared.Settings.WASM_BIGINT = 1
 
@@ -2438,7 +2462,7 @@ def post_link(options, in_wasm, wasm_target, target):
     if options.oformat in (OFormat.JS, OFormat.MJS):
       js_target = target
     else:
-      js_target = unsuffixed(target) + '.js'
+      js_target = get_secondary_target(target, '.js')
 
     # The JS is now final. Move it to its final location
     move_file(final_js, js_target)
@@ -2549,7 +2573,7 @@ def parse_args(newargs):
       logger.warning('--js-opts ignored when using llvm backend')
       consume_arg()
     elif check_arg('--llvm-opts'):
-      options.llvm_opts = parse_value(consume_arg())
+      options.llvm_opts = parse_value(consume_arg(), expect_list=True)
     elif arg.startswith('-flto'):
       if '=' in arg:
         shared.Settings.LTO = arg.split('=')[1]
@@ -3347,10 +3371,7 @@ def is_valid_abspath(options, path_name):
   return False
 
 
-def parse_value(text):
-  if not text:
-    return text
-
+def parse_value(text, expect_list):
   # Note that using response files can introduce whitespace, if the file
   # has a newline at the end. For that reason, we rstrip() in relevant
   # places here.
@@ -3397,14 +3418,15 @@ def parse_value(text):
 
   def parse_string_list(text):
     text = text.rstrip()
-    if text[-1] != ']':
-      exit_with_error('unclosed opened string list. expected final character to be "]" in "%s"' % (text))
-    inner = text[1:-1]
-    if inner.strip() == "":
+    if text and text[0] == '[':
+      if text[-1] != ']':
+        exit_with_error('unclosed opened string list. expected final character to be "]" in "%s"' % (text))
+      text = text[1:-1]
+    if text.strip() == "":
       return []
-    return parse_string_list_members(inner)
+    return parse_string_list_members(text)
 
-  if text[0] == '[':
+  if expect_list or (text and text[0] == '['):
     # if json parsing fails, we fall back to our own parser, which can handle a few
     # simpler syntaxes
     try:

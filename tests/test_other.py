@@ -6210,8 +6210,6 @@ high = 1234
     self.assertNotContained('a problem occurred in evaluating the content after a "-s", specifically', err)
 
   def test_dash_s_wrong_type(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=foo'])
-    self.assertContained("error: setting `EXPORTED_FUNCTIONS` expects `<class 'list'>` but got `<class 'str'>`", err)
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-s', 'EXIT_RUNTIME=[foo,bar]'])
     self.assertContained("error: setting `EXIT_RUNTIME` expects `<class 'int'>` but got `<class 'list'>`", err)
 
@@ -6712,11 +6710,14 @@ int main() {
     self.assertContained('emcc: error: cannot write output file `.`: Is a directory', ret)
 
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', '.', '--oformat=wasm'])
-    self.assertContained('wasm-ld: error: cannot open output file .: Is a directory', ret)
+    self.assertContained('wasm-ld: error: cannot open output file .:', ret)
+    # Linux/Mac and Windows's error messages are slightly different
+    self.assertContained(['Is a directory', 'is a directory'], ret)
 
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', '.', '--oformat=html'])
     self.assertContained('emcc: error: cannot write output file:', ret)
-    self.assertContained("Is a directory: '.'", ret)
+    # Linux/Mac and Windows's error codes and messages are different
+    self.assertContained(['Is a directory', 'Permission denied'], ret)
 
   def test_binaryen_ctors(self):
     # ctor order must be identical to js builds, deterministically
@@ -7953,7 +7954,7 @@ test_module().then((test_module_instance) => {
       f.write(b'!<arch>\n')
     self.assertTrue(building.is_ar(fname))
 
-  def test_emcc_parsing(self):
+  def test_dash_s_list_parsing(self):
     create_file('src.c', r'''
         #include <stdio.h>
         void a() { printf("a\n"); }
@@ -7974,6 +7975,10 @@ test_module().then((test_module_instance) => {
       ('EXPORTED_FUNCTIONS=[_a,_b,_c,_d]', ''),
       # No quotes with spaces
       ('EXPORTED_FUNCTIONS=[_a, _b, _c, _d]', ''),
+      # No brackets needed either
+      ('EXPORTED_FUNCTIONS=_a,_b,_c,_d', ''),
+      # No brackets with spaced
+      ('EXPORTED_FUNCTIONS=_a, _b, _c, _d', ''),
       # extra space at end - should be ignored
       ("EXPORTED_FUNCTIONS=['_a', '_b', '_c', '_d' ]", ''),
       # extra newline in response file - should be ignored
@@ -10176,3 +10181,13 @@ exec "$@"
 
     self.run_process(building.get_command_with_possible_response_file([EMCC, 'main.c'] + files))
     self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
+
+  def test_output_name_collision(self):
+    # Ensure that the seconday filenames never collide with the primary output filename
+    # In this case we explcitly ask for JS to be ceated in a file with the `.wasm` suffix.
+    # Even though this doesn't make much sense the `--oformat` flag is designed to overide
+    # any implict type that we might infer from the output name.
+    self.run_process([EMCC, '-o', 'hello.wasm', '--oformat=js', test_file('hello_world.c')])
+    self.assertExists('hello.wasm')
+    self.assertExists('hello_.wasm')
+    self.assertContained('hello, world!', self.run_js('hello.wasm'))
