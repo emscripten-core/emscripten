@@ -486,6 +486,10 @@ def llvm_backend_args():
   if not Settings.DISABLE_EXCEPTION_CATCHING:
     args += ['-enable-emscripten-cxx-exceptions']
   if Settings.EXCEPTION_CATCHING_ALLOWED:
+    # When 'main' has a non-standard signature, LLVM outlines its content out to
+    # '__original_main'. So we add it to the allowed list as well.
+    if 'main' in Settings.EXCEPTION_CATCHING_ALLOWED:
+      Settings.EXCEPTION_CATCHING_ALLOWED += ['__original_main']
     allowed = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED)
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
