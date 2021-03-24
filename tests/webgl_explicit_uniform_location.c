@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
 {
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
+  attr.majorVersion = 2;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
 
@@ -35,20 +36,24 @@ int main(int argc, char *argv[])
   assert(maxUniformLocations == 1048576);
 
   GLuint vs = CompileShader(GL_VERTEX_SHADER,
-    "#version 100\n"
+    "#version 300 es\n"
     "layout(location = 42) uniform mat4 world;\n"
     "layout(location = 0) uniform mat4 view;\n"
     " // layout(location = -1) uniform mat4 proj; // Invalid usage, check this is preprocessed away\n"
     " /* layout(location = 100000000) uniform mat4 proj; Invalid usage, check this is preprocessed away */\n"
-    "attribute vec4 pos; void main() { gl_Position = view*world*pos; }");
+    "layout(location = 0) in vec4 pos; // Make sure attribute layout locations don't get removed by preprocessor\n"
+    "out vec4 v_pos;\n"
+    "void main() { v_pos = pos; gl_Position = view*world*pos; }");
 
   GLuint ps = CompileShader(GL_FRAGMENT_SHADER,
-    "#version 100\n"
+    "#version 300 es\n"
     "precision lowp float;\n"
     "#define LOCATION(x) layout(location=x)\n"
     "LOCATION(8) uniform vec3 color;\n"
     "layout(location = 18) uniform vec3 colors[3];\n"
-    "void main() { gl_FragColor = vec4(color,1) + vec4(colors[0].r, colors[1].g, colors[2].b, 1); }");
+    "in vec4 v_pos;\n"
+    "LOCATION(0) out highp vec4 SV_TARGET0; // Make sure MRT output locations don't get removed by preprocessor\n"
+    "void main() { SV_TARGET0 = vec4(color,1) + vec4(colors[0].r, colors[1].g, colors[2].b, 1); }");
 
   GLuint program = glCreateProgram();
   glAttachShader(program, vs);
