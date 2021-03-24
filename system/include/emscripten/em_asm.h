@@ -175,7 +175,11 @@ void emscripten_asm_const_async_on_main_thread(
 // then wrap the whole code block inside parentheses (). See tests/core/test_em_asm_2.cpp
 // for example code snippets.
 
-#define CODE_EXPR(code) ({ __attribute__((section("em_asm"), aligned(1))) static const char x[] = code; x; })
+#define CODE_EXPR(code) (__extension__({           \
+    __attribute__((section("em_asm"), aligned(1))) \
+    static const char x[] = code;                  \
+    x;                                             \
+  }))
 
 // Runs the given JavaScript code on the calling thread (synchronously), and returns no value back.
 #define EM_ASM(code, ...) ((void)emscripten_asm_const_int(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__)))
