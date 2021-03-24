@@ -558,11 +558,12 @@ f.close()
     else:
       generators = ['Unix Makefiles', 'Ninja', 'Eclipse CDT4 - Ninja']
 
-    configurations = {'MinGW Makefiles'     : {'build'   : ['mingw32-make'] }, # noqa
-                      'NMake Makefiles'     : {'build'   : ['nmake', '/NOLOGO']}, # noqa
-                      'Unix Makefiles'      : {'build'   : ['make']}, # noqa
-                      'Ninja'               : {'build'   : ['ninja']}, # noqa
-                      'Eclipse CDT4 - Ninja': {'build'   : ['ninja']}, # noqa
+    configurations = {
+      'MinGW Makefiles'     : {'build'   : ['mingw32-make'] }, # noqa
+      'NMake Makefiles'     : {'build'   : ['nmake', '/NOLOGO']}, # noqa
+      'Unix Makefiles'      : {'build'   : ['make']}, # noqa
+      'Ninja'               : {'build'   : ['ninja']}, # noqa
+      'Eclipse CDT4 - Ninja': {'build'   : ['ninja']}, # noqa
     }
     for generator in generators:
       conf = configurations[generator]
