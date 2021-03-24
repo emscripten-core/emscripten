@@ -19,6 +19,13 @@ Module.realPrint = out;
 out = err = function(){};
 #endif
 
+#if RELOCATABLE
+{{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]', true) }}}
+#if RUNTIME_LINKED_LIBS
+dynamicLibraries = {{{ JSON.stringify(RUNTIME_LINKED_LIBS) }}}.concat(dynamicLibraries);
+#endif
+#endif
+
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
 {{{ makeModuleReceiveWithVar('noExitRuntime', undefined, EXIT_RUNTIME ? 'false' : 'true') }}}
 

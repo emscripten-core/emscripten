@@ -694,11 +694,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     err('preloadDylibs');
 #endif
-    var libs = {{{ JSON.stringify(RUNTIME_LINKED_LIBS) }}};
-    if (Module['dynamicLibraries']) {
-      libs = libs.concat(Module['dynamicLibraries'])
-    }
-    if (!libs.length) {
+    if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
       err('preloadDylibs: no libraries to preload');
 #endif
@@ -710,7 +706,7 @@ var LibraryDylink = {
     if (!readBinary) {
       // we can't read binary data synchronously, so preload
       addRunDependency('preloadDylibs');
-      libs.reduce(function(chain, lib) {
+      dynamicLibraries.reduce(function(chain, lib) {
         return chain.then(function() {
           return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true});
         });
@@ -722,7 +718,7 @@ var LibraryDylink = {
       return;
     }
 
-    libs.forEach(function(lib) {
+    dynamicLibraries.forEach(function(lib) {
       // libraries linked to main never go away
       loadDynamicLibrary(lib, {global: true, nodelete: true, allowUndefined: true});
     });
