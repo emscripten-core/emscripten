@@ -6599,6 +6599,8 @@ return malloc(size);
     self.emcc_args += extra_args
     self.set_setting('DEMANGLE_SUPPORT')
     self.set_setting('ASSERTIONS')
+    # disable aggressive inlining in binaryen
+    self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
     # ensure function names are preserved
     self.emcc_args += ['--profiling-funcs']
     self.do_core_test('test_demangle_stacks.cpp', assert_returncode=NON_ZERO)
@@ -6608,6 +6610,9 @@ return malloc(size);
       self.do_core_test('test_demangle_stacks_noassert.cpp', assert_returncode=NON_ZERO)
 
   def test_demangle_stacks_symbol_map(self):
+    # disable aggressive inlining in binaryen
+    self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
+
     self.set_setting('DEMANGLE_SUPPORT')
     if '-O' not in str(self.emcc_args) or '-O0' in self.emcc_args or '-O1' in self.emcc_args or '-g' in self.emcc_args:
       self.skipTest("without opts, we don't emit a symbol map")
