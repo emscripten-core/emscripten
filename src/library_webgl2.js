@@ -594,21 +594,20 @@ var LibraryWebGL2 = {
 #endif
     program = GL.programs[program];
 
-    switch (pname) {
-      case 0x8A41: /* GL_UNIFORM_BLOCK_NAME_LENGTH */
-        var name = GLctx['getActiveUniformBlockName'](program, uniformBlockIndex);
-        {{{ makeSetValue('params', 0, 'name.length+1', 'i32') }}};
-        return;
-      default:
-        var result = GLctx['getActiveUniformBlockParameter'](program, uniformBlockIndex, pname);
-        if (!result) return; // If an error occurs, nothing will be written to params.
-        if (typeof result == 'number') {
-          {{{ makeSetValue('params', '0', 'result', 'i32') }}};
-        } else {
-          for (var i = 0; i < result.length; i++) {
-            {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
-          }
-        }
+    if (pname == 0x8A41 /* GL_UNIFORM_BLOCK_NAME_LENGTH */) {
+      var name = GLctx['getActiveUniformBlockName'](program, uniformBlockIndex);
+      {{{ makeSetValue('params', 0, 'name.length+1', 'i32') }}};
+      return;
+    }
+
+    var result = GLctx['getActiveUniformBlockParameter'](program, uniformBlockIndex, pname);
+    if (result === null) return; // If an error occurs, nothing should be written to params.
+    if (pname == 0x8A43 /*GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES*/) {
+      for (var i = 0; i < result.length; i++) {
+        {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
+      }
+    } else {
+      {{{ makeSetValue('params', '0', 'result', 'i32') }}};
     }
   },
 
