@@ -7285,10 +7285,12 @@ int main() {
     assert os.path.isfile('b.js')
     assert not os.path.isfile('a.js')
 
-  # Tests that Emscripten-provided header files can be cleanly included in C code
+  # Tests that Emscripten-provided header files can be cleanly included in C code without
+  # any errors or warnings
   @is_slow_test
   def test_include_system_header_in_c(self):
-    for std in [[], ['-std=c89']]: # Test oldest C standard, and the default C standard
+    # Test oldest C standard, and the default C standard
+    for std in [[], ['-std=c89']]:
       for directory, headers in [
         # This directory has also bind.h, val.h and wire.h, which require C++11
         ('emscripten', ['dom_pk_codes.h', 'em_asm.h', 'emscripten.h', 'fetch.h', 'html5.h', 'key_codes.h', 'threading.h', 'trace.h']),
@@ -7300,12 +7302,12 @@ int main() {
         ('GLES3', ['gl3.h', 'gl3platform.h', 'gl31.h', 'gl32.h']),
         ('GLFW', ['glfw3.h']),
         ('KHR', ['khrplatform.h'])]:
-        for h in headers:
-          inc = '#include <' + directory + '/' + h + '>'
-          print(inc)
+        for header in headers:
+          inc = f'#include <{directory}/{header}>\n__attribute__((weak)) int foo;\n'
+          print(header)
           create_file('a.c', inc)
           create_file('b.c', inc)
-          self.run_process([EMCC] + std + ['a.c', 'b.c'])
+          self.run_process([EMCC] + std + ['-Werror', '-Wall', '-pedantic', 'a.c', 'b.c'])
 
   @is_slow_test
   def test_single_file(self):
@@ -9181,6 +9183,16 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     self.run_process([EMCC, '-c', 'main.c'])
     self.run_process([EMCC, 'foo.o', 'main.o'])
     self.assertContained('Hello, world!\nHello, world!\n', self.run_js('a.out.js'))
+
+  def test_em_asm_c89(self):
+    create_file('src.c', '''
+      #include <emscripten/em_asm.h>
+      int main() {
+        EM_ASM({ console.log('hello'); });
+      }\n''')
+    self.run_process([EMCC, '-c', 'src.c',
+                      '-pedantic', '-Wall', '-Werror',
+                      '-Wno-gnu-zero-variadic-macro-arguments'])
 
   def test_em_asm_strict_c(self):
     create_file('src.c', '''
