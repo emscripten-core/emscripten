@@ -10055,7 +10055,6 @@ exec "$@"
     # self.emcc_args += ['-sMAIN_MODULE=1']
     self.emcc_args += [f'-sINITIAL_TABLE={initialTableSize}']
 
-
     create_file('mylib.js', '''
       mergeInto(LibraryManager.library, {
         js_call: function(x, y) {
