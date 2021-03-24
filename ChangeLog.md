@@ -23,6 +23,9 @@ Current Trunk
 - Lists that are passed on the command line can now skip the opening an closing
   braces, allowing for simpler, more readable settings.  e.g.
     `-s EXPORTED_FUNCTIONS=foo,bar`
+- Remove/deprecate no longer used `--llvm-opts` command line option.  Any
+  arguments not processed by emcc will be passed through to clang directly
+  these days.
 - Values returned from `sysconf` now more closely match the definitions found in
   header files and in upstream musl (#13713).
 - `DISABLE_EXCEPTION_CATCHING=2` is now deprecated since it can be inferred from
