@@ -4,6 +4,6 @@
 # the codebase, not for users of emscripten.
 # Install with `pip3 install -r requirements-dev.txt`
 
-flake8==3.7.8
+flake8==3.9.0
 flake8-unused-arguments==0.0.6
 coverage==5.5
