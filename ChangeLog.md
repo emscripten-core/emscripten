@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Lists that are passed on the command line can now skip the opening an closing
+  braces, allowing for simpler, more readable settings.  e.g.
+    `-s EXPORTED_FUNCTIONS=foo,bar`
 - Values returned from `sysconf` now more closely match the definitions found in
   header files and in upstream musl (#13713).
 - `DISABLE_EXCEPTION_CATCHING=2` is now deprecated since it can be inferred from
