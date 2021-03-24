@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
 #include <emscripten/emscripten.h>
 
 #define WASM_PAGE_SIZE 65536
@@ -29,6 +31,9 @@ int emscripten_resize_heap(size_t requested_size) EM_IMPORT(emscripten_resize_he
 
 // Returns the current size of the WebAssembly heap.
 size_t emscripten_get_heap_size(void);
+
+// Returns the max size of the WebAssembly heap.
+size_t emscripten_get_heap_max(void);
 
 #ifdef __cplusplus
 }

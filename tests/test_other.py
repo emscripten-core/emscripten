@@ -6712,11 +6712,14 @@ int main() {
     self.assertContained('emcc: error: cannot write output file `.`: Is a directory', ret)
 
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', '.', '--oformat=wasm'])
-    self.assertContained('wasm-ld: error: cannot open output file .: Is a directory', ret)
+    self.assertContained('wasm-ld: error: cannot open output file .:', ret)
+    # Linux/Mac and Windows's error messages are slightly different
+    self.assertContained(['Is a directory', 'is a directory'], ret)
 
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', '.', '--oformat=html'])
     self.assertContained('emcc: error: cannot write output file:', ret)
-    self.assertContained("Is a directory: '.'", ret)
+    # Linux/Mac and Windows's error codes and messages are different
+    self.assertContained(['Is a directory', 'Permission denied'], ret)
 
   def test_binaryen_ctors(self):
     # ctor order must be identical to js builds, deterministically
@@ -7093,7 +7096,7 @@ int main() {
       print(str(cmd))
       self.run_process(cmd)
       result = self.run_js('a.out.js').strip()
-      self.assertEqual(result,  str(expected) + ', errno: 0')
+      self.assertEqual(result, f'{expected}, errno: 0')
 
     run([], 1024)
     run(['-s', 'INITIAL_MEMORY=32MB'], 2048)
@@ -9981,6 +9984,7 @@ exec "$@"
     self.assertNotIn('profile', result)
     self.assertIn('Hello! answer: 42', result)
 
+  @disabled('https://github.com/WebAssembly/binaryen/issues/3701')
   def test_split_main_module(self):
     initialTableSize = 16
 
@@ -10230,3 +10234,13 @@ exec "$@"
 
     self.run_process(building.get_command_with_possible_response_file([EMCC, 'main.c'] + files))
     self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
+
+  def test_output_name_collision(self):
+    # Ensure that the seconday filenames never collide with the primary output filename
+    # In this case we explcitly ask for JS to be ceated in a file with the `.wasm` suffix.
+    # Even though this doesn't make much sense the `--oformat` flag is designed to overide
+    # any implict type that we might infer from the output name.
+    self.run_process([EMCC, '-o', 'hello.wasm', '--oformat=js', test_file('hello_world.c')])
+    self.assertExists('hello.wasm')
+    self.assertExists('hello_.wasm')
+    self.assertContained('hello, world!', self.run_js('hello.wasm'))

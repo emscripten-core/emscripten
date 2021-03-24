@@ -1244,7 +1244,9 @@ int main(int argc, char **argv)
     self.set_setting('INLINING_LIMIT', 50)
 
     self.do_core_test('test_exceptions_allowed.cpp')
-    size = len(open('test_exceptions_allowed.js').read())
+    size = os.path.getsize('test_exceptions_allowed.js')
+    if self.is_wasm():
+      size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'orig.js')
 
     # check that an empty allow list works properly (as in, same as exceptions disabled)
@@ -1253,26 +1255,34 @@ int main(int argc, char **argv)
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
     self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
-    empty_size = len(open('test_exceptions_allowed.js').read())
+    empty_size = os.path.getsize('test_exceptions_allowed.js')
+    if self.is_wasm():
+      empty_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'empty.js')
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['fake'])
     self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
-    fake_size = len(open('test_exceptions_allowed.js').read())
+    fake_size = os.path.getsize('test_exceptions_allowed.js')
+    if self.is_wasm():
+      fake_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'fake.js')
 
     self.set_setting('DISABLE_EXCEPTION_CATCHING')
     self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
-    disabled_size = len(open('test_exceptions_allowed.js').read())
+    disabled_size = os.path.getsize('test_exceptions_allowed.js')
+    if self.is_wasm():
+      disabled_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'disabled.js')
 
-    if not self.is_wasm():
-      print(size, empty_size, fake_size, disabled_size)
-      assert empty_size == fake_size, [empty_size, fake_size]
-      # big change when we disable exception catching of the function
-      assert size - empty_size > 0.01 * size, [empty_size, size]
-      # full disable can remove a little bit more
-      assert empty_size >= disabled_size, [empty_size, disabled_size]
+    print('size: %d' % size)
+    print('empty_size: %d' % empty_size)
+    print('fake_size: %d' % fake_size)
+    print('disabled_size: %d' % disabled_size)
+    self.assertEqual(empty_size, fake_size)
+    # big change when we disable exception catching of the function
+    self.assertGreater(size - empty_size, 0.01 * size)
+    # full disable can remove a little bit more
+    self.assertLess(disabled_size, empty_size)
 
   def test_exceptions_allowed_2(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
@@ -3549,6 +3559,10 @@ ok
                    need_reverse=True, auto_load=True, main_module=1, **kwargs):
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.emcc_args[:]
+    if not expected:
+      outfile = shared.unsuffixed(main) + '.out'
+      if os.path.exists(outfile):
+        expected = open(outfile).read()
 
     # side settings
     self.clear_setting('MAIN_MODULE')
@@ -6075,7 +6089,6 @@ return malloc(size);
   @no_asan('issues with freetype itself')
   @needs_make('depends on freetype')
   @is_slow_test
-  @disabled('https://github.com/WebAssembly/binaryen/issues/3697')
   def test_poppler(self):
     pdf_data = open(test_file('poppler', 'paper.pdf'), 'rb').read()
     create_file('paper.pdf.js', str(list(bytearray(pdf_data))))
@@ -8243,7 +8256,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_exit_process(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.emcc_args += ['--pre-js', test_file('core', 'pthread', 'test_pthread_exit_runtime.pre.js')]
+    self.emcc_args += ['-DEXIT_RUNTIME', '--pre-js', test_file('core', 'pthread', 'test_pthread_exit_runtime.pre.js')]
     self.do_run_in_out_file_test('core', 'pthread', 'test_pthread_exit_runtime.c', assert_returncode=42)
 
   @node_pthreads
@@ -8306,6 +8319,17 @@ NODEFS is no longer included by default; build with -lnodefs.js
     main = test_file('core', 'pthread', 'test_pthread_dylink.c')
     side = test_file('core', 'pthread', 'test_pthread_dylink_side.c')
     self.dylink_testf(main, side, "success", need_reverse=False)
+
+  @needs_dylink
+  @node_pthreads
+  def test_pthread_dylink_tls(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PTHREAD_POOL_SIZE=1')
+    main = test_file('core', 'pthread', 'test_pthread_dylink_tls.c')
+    side = test_file('core', 'pthread', 'test_pthread_dylink_tls_side.c')
+    self.dylink_testf(main, side, need_reverse=False)
 
   @needs_dylink
   @node_pthreads

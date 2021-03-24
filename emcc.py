@@ -817,6 +817,18 @@ def get_file_suffix(filename):
   return ''
 
 
+def get_secondary_target(target, ext):
+  # Depending on the output format emscripten creates zero or more secondary
+  # output files (e.g. the .wasm file when creating JS output, or the
+  # .js and the .wasm file when creating html output.
+  # Thus function names the secondary output files, while ensuring they
+  # never collide with the primary one.
+  base = unsuffixed(target)
+  if get_file_suffix(target) == ext:
+    base += '_'
+  return base + ext
+
+
 def in_temp(name):
   temp_dir = shared.get_emscripten_temp_dir()
   return os.path.join(temp_dir, os.path.basename(name))
@@ -829,8 +841,6 @@ run_via_emxx = False
 # Main run() function
 #
 def run(args):
-  target = None
-
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
   EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
@@ -1227,7 +1237,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       wasm_target = target
     else:
       # Otherwise the wasm file is produced alongside the final target.
-      wasm_target = unsuffixed(target) + '.wasm'
+      wasm_target = get_secondary_target(target, '.wasm')
 
     # Apply user -jsD settings
     for s in user_js_defines:
@@ -2215,17 +2225,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ## Continue on to create JavaScript
 
   with ToolchainProfiler.profile_block('calculate system libraries'):
+    extra_files_to_link = []
     # link in ports and system libraries, if necessary
-    if not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
-      extra_files_to_link = system_libs.get_ports(shared.Settings)
-      if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-        link_as_cxx = run_via_emxx
-        # Traditionally we always link as C++.  For compatibility we continue to do that,
-        # unless running in strict mode.
-        if not shared.Settings.STRICT and '-nostdlib++' not in newargs:
-          link_as_cxx = True
-        extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, link_as_cxx, forced=forced_stdlibs)
-      linker_inputs += extra_files_to_link
+    if not shared.Settings.SIDE_MODULE:
+      # Ports are always linked into the main module, never the size module.
+      extra_files_to_link += system_libs.get_ports(shared.Settings)
+    if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
+      link_as_cxx = run_via_emxx
+      # Traditionally we always link as C++.  For compatibility we continue to do that,
+      # unless running in strict mode.
+      if not shared.Settings.STRICT and '-nostdlib++' not in newargs:
+        link_as_cxx = True
+      extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, link_as_cxx, forced=forced_stdlibs)
+    linker_inputs += extra_files_to_link
 
   # exit block 'calculate system libraries'
   log_time('calculate system libraries')
@@ -2436,7 +2448,7 @@ def post_link(options, in_wasm, wasm_target, target):
     if options.oformat in (OFormat.JS, OFormat.MJS):
       js_target = target
     else:
-      js_target = unsuffixed(target) + '.js'
+      js_target = get_secondary_target(target, '.js')
 
     # The JS is now final. Move it to its final location
     move_file(final_js, js_target)

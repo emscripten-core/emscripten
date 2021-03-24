@@ -381,7 +381,7 @@ function initRuntime() {
   runtimeInitialized = true;
 
 #if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+  if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
@@ -963,6 +963,10 @@ function createWasm() {
 
 #if '___wasm_call_ctors' in IMPLEMENTED_FUNCTIONS
     addOnInit(Module['asm']['__wasm_call_ctors']);
+#endif
+
+#if USE_PTHREADS
+    PThread.tlsInitFunctions.push(Module['asm']['emscripten_tls_init']);
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS

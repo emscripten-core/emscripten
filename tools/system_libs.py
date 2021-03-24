@@ -8,12 +8,9 @@ import hashlib
 import itertools
 import logging
 import os
-import re
 import shutil
 import subprocess
 import sys
-import tarfile
-import zipfile
 from glob import iglob
 
 from . import shared, building, ports, config, utils
@@ -670,7 +667,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     ignore = [
         'ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux',
         'aio', 'exit', 'legacy', 'mq', 'search', 'setjmp', 'env',
-        'ldso', 'conf'
+        'ldso'
     ]
 
     # individual files
@@ -736,7 +733,12 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc'],
-        filenames=['extras.c', 'wasi-helpers.c', 'emscripten_pthread.c'])
+        filenames=[
+          'extras.c',
+          'wasi-helpers.c',
+          'emscripten_pthread.c',
+          'emscripten_get_heap_size.c',
+        ])
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'pthread'],
@@ -802,7 +804,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         path_components=['system', 'lib', 'pthread'],
         filenames=[
           'library_pthread.c',
-          'emscripten_tls_init.c',
           'emscripten_thread_state.s',
         ])
     else:
@@ -869,6 +870,18 @@ class crt1_reactor(MuslInternalLibrary):
 
   def can_use(self):
     return super(crt1_reactor, self).can_use() and shared.Settings.STANDALONE_WASM
+
+
+class crtbegin(Library):
+  name = 'crtbegin'
+  cflags = ['-O2', '-s', 'USE_PTHREADS']
+  src_dir = ['system', 'lib', 'pthread']
+  src_files = ['emscripten_tls_init.c']
+
+  force_object_files = True
+
+  def get_ext(self):
+    return '.o'
 
 
 class libcxxabi(NoExceptLibrary, MTLibrary):
@@ -1344,10 +1357,7 @@ class libstandalonewasm(MuslInternalLibrary):
         filenames=['assert.c', 'atexit.c', 'exit.c']) + files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'unistd'],
         filenames=['_exit.c'])
-    conf_files = files_in_path(
-        path_components=['system', 'lib', 'libc', 'musl', 'src', 'conf'],
-        filenames=['sysconf.c'])
-    return base_files + time_files + exit_files + conf_files
+    return base_files + time_files + exit_files
 
 
 class libjsmath(Library):
@@ -1460,6 +1470,12 @@ def calculate(input_files, cxx, forced):
 
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
     libs_to_link.append((lib.get_path(), need_whole_archive))
+
+  if shared.Settings.USE_PTHREADS:
+    add_library('crtbegin')
+
+  if shared.Settings.SIDE_MODULE:
+    return [l[0] for l in libs_to_link]
 
   if shared.Settings.STANDALONE_WASM:
     if shared.Settings.EXPECT_MAIN:
@@ -1658,7 +1674,7 @@ class Ports(object):
   name_cache = set()
 
   @staticmethod
-  def fetch_project(name, url, subdir, is_tarbz2=False, sha512hash=None):
+  def fetch_project(name, url, subdir, sha512hash=None):
     # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = os.path.join(Ports.get_dir(), name)
 
@@ -1700,7 +1716,7 @@ class Ports(object):
               Ports.clear_project_build(name)
             return
 
-    if is_tarbz2:
+    if url.endswith('.tar.bz2'):
       fullpath = fullname + '.tar.bz2'
     elif url.endswith('.tar.gz'):
       fullpath = fullname + '.tar.gz'
@@ -1729,27 +1745,27 @@ class Ports(object):
         if actual_hash != sha512hash:
           shared.exit_with_error('Unexpected hash: ' + actual_hash + '\n'
                                  'If you are updating the port, please update the hash in the port module.')
-      open(fullpath, 'wb').write(data)
+      with open(fullpath, 'wb') as f:
+        f.write(data)
 
-    def check_tag():
-      if is_tarbz2:
-        names = tarfile.open(fullpath, 'r:bz2').getnames()
-      elif url.endswith('.tar.gz'):
-        names = tarfile.open(fullpath, 'r:gz').getnames()
-      else:
-        names = zipfile.ZipFile(fullpath, 'r').namelist()
-
-      # check if first entry of the archive is prefixed with the same
-      # tag as we need so no longer download and recompile if so
-      return bool(re.match(subdir + r'(\\|/|$)', names[0]))
+    marker = os.path.join(fullname, '.emscripten_url')
 
     def unpack():
       logger.info('unpacking port: ' + name)
       shared.safe_ensure_dirs(fullname)
       shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
+      with open(marker, 'w') as f:
+        f.write(url + '\n')
+
+    def up_to_date():
+      if os.path.exists(marker):
+        with open(marker) as f:
+          if f.read().strip() == url:
+            return True
+      return False
 
     # before acquiring the lock we have an early out if the port already exists
-    if os.path.exists(fullpath) and check_tag():
+    if up_to_date():
       return
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
@@ -1758,7 +1774,7 @@ class Ports(object):
       if os.path.exists(fullpath):
         # Another early out in case another process build the library while we were
         # waiting for the lock
-        if check_tag():
+        if up_to_date():
           return
         # file exists but tag is bad
         logger.warning('local copy of port is not correct, retrieving from remote server')
