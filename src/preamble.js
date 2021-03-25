@@ -21,9 +21,6 @@ out = err = function(){};
 
 #if RELOCATABLE
 {{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]', true) }}}
-#if RUNTIME_LINKED_LIBS
-dynamicLibraries = {{{ JSON.stringify(RUNTIME_LINKED_LIBS) }}}.concat(dynamicLibraries);
-#endif
 #endif
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
@@ -947,6 +944,13 @@ function createWasm() {
 
     Module['asm'] = exports;
 
+#if MAIN_MODULE
+    var metadata = getDylinkMetadata(module);
+    if (metadata.neededDynlibs) {
+      dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
+    }
+#endif
+
 #if !IMPORTED_MEMORY
     wasmMemory = Module['asm']['memory'];
 #if ASSERTIONS
@@ -1036,7 +1040,7 @@ function createWasm() {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if USE_PTHREADS
+#if USE_PTHREADS || RELOCATABLE
     receiveInstance(output['instance'], output['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
@@ -1177,7 +1181,14 @@ function createWasm() {
   return {}; // no exports yet; we'll fill them in later
 #else
   var result = instantiateSync(wasmBinaryFile, info);
+#if USE_PTHREADS || MAIN_MODULE
   receiveInstance(result[0], result[1]);
+#else
+  // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
+  // the above line no longer optimizes out down to the following line.
+  // When the regression is fixed, we can remove this if/else.
+  receiveInstance(result[0]);
+#endif
   return Module['asm']; // exports were assigned here
 #endif
 }
