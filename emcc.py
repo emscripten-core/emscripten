@@ -1282,7 +1282,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.STANDALONE_WASM:
       # In STANDALONE_WASM mode we either build a command or a reactor.
-      # See https://github.com/WebAssembly/WASI/blob/master/design/application-abi.md
+      # See https://github.com/WebAssembly/WASI/blob/main/design/application-abi.md
       # For a command we always want EXIT_RUNTIME=1
       # For a reactor we always want EXIT_RUNTIME=0
       if 'EXIT_RUNTIME' in settings_map:
