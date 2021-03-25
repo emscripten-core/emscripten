@@ -815,9 +815,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return generated_libs
 
     print(f'<building and saving {cache_name} into cache>', file=sys.stderr)
+    if configure is not None:
+      configure += configure_args
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
-                         configure_args, make, make_args, self.library_cache,
+                         make, make_args, self.library_cache,
                          cache_name, env_init=env_init, native=native, cflags=self.get_emcc_args())
 
   def clear(self):
@@ -1121,9 +1123,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def get_zlib_library(self):
     if WINDOWS:
       return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
-                              configure=[path_from_root('emconfigure.bat')],
-                              configure_args=['cmake', '.'],
-                              make=['mingw32-make'],
+                              configure=['cmake', '.'],
+                              make=['cmake', '--build', '.'],
                               make_args=[])
     return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'])
 
@@ -1585,7 +1586,6 @@ def build_library(name,
                   output_dir,
                   generated_libs,
                   configure=['sh', './configure'],
-                  configure_args=[],
                   make=['make'],
                   make_args=[],
                   cache=None,
@@ -1622,11 +1622,11 @@ def build_library(name,
         with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
           stdout = out if EM_BUILD_VERBOSE < 2 else None
           stderr = err if EM_BUILD_VERBOSE < 1 else None
-          building.configure(configure + configure_args, env=env,
+          building.configure(configure, env=env,
                              stdout=stdout,
                              stderr=stderr,
                              cwd=project_dir)
-    except subprocess.CalledProcessError:
+    except Exception:
       with open(os.path.join(project_dir, 'configure_out')) as f:
         print('-- configure stdout --')
         print(f.read())
@@ -1653,7 +1653,7 @@ def build_library(name,
         stderr = make_err if EM_BUILD_VERBOSE < 1 else None
         building.make(make + make_args, stdout=stdout, stderr=stderr, env=env,
                       cwd=project_dir)
-  except subprocess.CalledProcessError:
+  except Exception:
     with open_make_out() as f:
       print('-- make stdout --')
       print(f.read())
