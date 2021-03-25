@@ -319,6 +319,10 @@ def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     # compilation with emcc, but instead do builds natively with Clang. This
     # is a heuristic emulation that may or may not work.
     env['EMMAKEN_JUST_CONFIGURE'] = '1'
+    if not any(a.startswith('--prefix') for a in args):
+      sysroot = shared.Cache.get_sysroot_dir()
+      args.append('--prefix=' + os.path.join(sysroot, 'local'))
+
   if EM_BUILD_VERBOSE >= 2:
     stdout = None
   if EM_BUILD_VERBOSE >= 1:
