@@ -4602,6 +4602,14 @@ res64 - external 64\n''', header='''
       expected='3 hello world!',
       need_reverse=False)
 
+  @disabled('https://github.com/emscripten-core/emscripten/issues/13773')
+  def test_dylink_weak(self):
+    # Verify that weakly symbols can be defined in both side module and main
+    # module
+    main = test_file('core', 'test_dylink_weak_main.c')
+    side = test_file('core', 'test_dylink_weak_side.c')
+    self.dylink_testf(main, side, force_c=True, need_reverse=False)
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
