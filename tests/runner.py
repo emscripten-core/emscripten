@@ -56,7 +56,7 @@ import clang_native
 import jsrun
 import parallel_testsuite
 from jsrun import NON_ZERO
-from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG
+from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import get_canonical_temp_dir, try_delete
@@ -1617,16 +1617,18 @@ def build_library(name,
   for k, v in env_init.items():
     env[k] = v
   if configure:
+    if configure[0] == 'cmake':
+      configure = [EMCMAKE] + configure
+    else:
+      configure = [EMCONFIGURE] + configure
     try:
       with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
         with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
           stdout = out if EM_BUILD_VERBOSE < 2 else None
           stderr = err if EM_BUILD_VERBOSE < 1 else None
-          building.configure(configure, env=env,
-                             stdout=stdout,
-                             stderr=stderr,
+          shared.run_process(configure, env=env, stdout=stdout, stderr=stderr,
                              cwd=project_dir)
-    except Exception:
+    except subprocess.CalledProcessError:
       with open(os.path.join(project_dir, 'configure_out')) as f:
         print('-- configure stdout --')
         print(f.read())
@@ -1651,9 +1653,9 @@ def build_library(name,
       with open_make_err('w') as make_err:
         stdout = make_out if EM_BUILD_VERBOSE < 2 else None
         stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-        building.make(make + make_args, stdout=stdout, stderr=stderr, env=env,
-                      cwd=project_dir)
-  except Exception:
+        shared.run_process(make + make_args, stdout=stdout, stderr=stderr, env=env,
+                           cwd=project_dir)
+  except subprocess.CalledProcessError:
     with open_make_out() as f:
       print('-- make stdout --')
       print(f.read())

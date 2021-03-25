@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
 from tools.shared import try_delete, config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, EM_BUILD_VERBOSE
-from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
+from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, EMCMAKE, EMCONFIGURE
 from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from runner import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from runner import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
@@ -42,8 +42,6 @@ from tools import webassembly
 
 scons_path = utils.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
-emcmake = shared.bat_suffix(path_from_root('emcmake'))
-emconfigure = shared.bat_suffix(path_from_root('emconfigure'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
 wasm_dis = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
@@ -576,7 +574,7 @@ f.close()
       cmakelistsdir = test_file('cmake', test_dir)
       with temp_directory(self.get_dir()) as tempdirname:
         # Run Cmake
-        cmd = [emcmake, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
+        cmd = [EMCMAKE, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
         env = os.environ.copy()
         # https://github.com/emscripten-core/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
@@ -607,7 +605,7 @@ f.close()
       native_features = self.run_process(cmd, stdout=PIPE).stdout
 
     with temp_directory(self.get_dir()):
-      cmd = [emcmake, 'cmake', test_file('cmake', 'stdproperty')]
+      cmd = [EMCMAKE, 'cmake', test_file('cmake', 'stdproperty')]
       print(str(cmd))
       emscripten_features = self.run_process(cmd, stdout=PIPE).stdout
 
@@ -623,7 +621,7 @@ f.close()
     for args in [[], ['-DNO_GNU_EXTENSIONS=1']]:
       self.clear()
       # Use ninja generator here since we assume its always installed on our build/test machines.
-      configure = [emcmake, 'cmake', test_file('cmake', 'cmake_with_emval')] + args
+      configure = [EMCMAKE, 'cmake', test_file('cmake', 'cmake_with_emval')] + args
       if WINDOWS:
         configure += ['-G', 'Ninja']
       print(str(configure))
@@ -641,12 +639,12 @@ f.close()
   # Tests that the Emscripten CMake toolchain option
   def test_cmake_bitcode_static_libraries(self):
     # Test that this option produces an error
-    err = self.expect_fail([emcmake, 'cmake', test_file('cmake', 'static_lib'), '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON'])
+    err = self.expect_fail([EMCMAKE, 'cmake', test_file('cmake', 'static_lib'), '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON'])
     self.assertContained('EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES is not compatible with the', err)
 
   # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
   def test_cmake_emscripten_version(self):
-    self.run_process([emcmake, 'cmake', test_file('cmake', 'emscripten_version')])
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake', 'emscripten_version')])
 
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
@@ -5068,26 +5066,26 @@ Descriptor desc;
       assert ('Typical usage' in output.stderr) == fail
       self.assertContained(expect, output.stdout)
     check(emmake, [])
-    check(emconfigure, [])
+    check(EMCONFIGURE, [])
     check(emmake, ['--version'])
-    check(emconfigure, ['--version'])
+    check(EMCONFIGURE, ['--version'])
     check(emmake, ['make'], fail=False)
-    check(emconfigure, ['configure'], fail=False)
-    check(emconfigure, ['./configure'], fail=False)
-    check(emcmake, ['cmake'], fail=False)
+    check(EMCONFIGURE, ['configure'], fail=False)
+    check(EMCONFIGURE, ['./configure'], fail=False)
+    check(EMCMAKE, ['cmake'], fail=False)
 
     create_file('test.py', '''
 import os
 print(os.environ.get('CROSS_COMPILE'))
 ''')
-    check(emconfigure, [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
+    check(EMCONFIGURE, [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
     check(emmake, [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
 
     create_file('test.py', '''
 import os
 print(os.environ.get('NM'))
 ''')
-    check(emconfigure, [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
+    check(EMCONFIGURE, [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
 
   def test_emmake_python(self):
     # simulates a configure/make script that looks for things like CC, AR, etc., and which we should
