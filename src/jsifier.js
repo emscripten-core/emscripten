@@ -62,7 +62,7 @@ function JSify(functionsOnly) {
   var mainPass = !functionsOnly;
   var functionStubs = [];
 
-  var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
+  var itemsDict = { type: [], functionStub: [], function: [], GlobalVariablePostSet: [] };
 
   if (mainPass) {
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
@@ -363,7 +363,7 @@ function JSify(functionsOnly) {
     //
 
     if (!mainPass) {
-      var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
+      var generated = itemsDict.function.concat(itemsDict.type);
       print(generated.map((item) => item.JS).join('\n'));
       return;
     }
