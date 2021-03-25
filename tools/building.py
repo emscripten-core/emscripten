@@ -28,7 +28,7 @@ from .shared import LLVM_LINK, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
 from .shared import configuration, path_from_root
 from .shared import asmjs_mangle, DEBUG
-from .shared import EM_BUILD_VERBOSE, TEMP_DIR
+from .shared import TEMP_DIR
 from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name
 from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
 from .utils import which, WINDOWS
@@ -304,11 +304,8 @@ def handle_cmake_toolchain(args, env):
   return (args, env)
 
 
-def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
-  if env:
-    env = env.copy()
-  else:
-    env = get_building_env(cflags=cflags)
+def configure(args):
+  env = get_building_env()
   if 'cmake' in args[0]:
     # Note: EMMAKEN_JUST_CONFIGURE shall not be enabled when configuring with
     #       CMake. This is because CMake does expect to be able to do
@@ -319,17 +316,12 @@ def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     # compilation with emcc, but instead do builds natively with Clang. This
     # is a heuristic emulation that may or may not work.
     env['EMMAKEN_JUST_CONFIGURE'] = '1'
-  if EM_BUILD_VERBOSE >= 2:
-    stdout = None
-  if EM_BUILD_VERBOSE >= 1:
-    stderr = None
   print('configure: ' + shared.shlex_join(args), file=sys.stderr)
-  check_call(args, stdout=stdout, stderr=stderr, env=env, **kwargs)
+  check_call(args, env=env)
 
 
-def make(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
-  if env is None:
-    env = get_building_env(cflags=cflags)
+def make(args):
+  env = get_building_env()
 
   # On Windows prefer building with mingw32-make instead of make, if it exists.
   if WINDOWS:
@@ -344,12 +336,8 @@ def make(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
   # On Windows, run the execution through shell to get PATH expansion and
   # executable extension lookup, e.g. 'sdl2-config' will match with
   # 'sdl2-config.bat' in PATH.
-  if EM_BUILD_VERBOSE >= 2:
-    stdout = None
-  if EM_BUILD_VERBOSE >= 1:
-    stderr = None
   print('make: ' + ' '.join(args), file=sys.stderr)
-  check_call(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, **kwargs)
+  check_call(args, shell=WINDOWS, env=env)
 
 
 def make_paths_absolute(f):
