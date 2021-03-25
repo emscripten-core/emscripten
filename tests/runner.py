@@ -816,7 +816,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     print(f'<building and saving {cache_name} into cache>', file=sys.stderr)
     if configure is not None:
-      configure += configure_args
+      # Avoid += so we don't mutate the default arg
+      configure = configure + configure_args
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
                          make, make_args, self.library_cache,
