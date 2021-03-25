@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.16: 03/25/2021
+------------------
 - Lists that are passed on the command line can now skip the opening an closing
   braces, allowing for simpler, more readable settings.  e.g.
     `-s EXPORTED_FUNCTIONS=foo,bar`
