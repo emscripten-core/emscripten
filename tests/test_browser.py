@@ -2583,6 +2583,11 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest(test_file('webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + opts, expected='0')
 
+  # Tests the WebGL 2 glGetBufferSubData() functionality.
+  @requires_graphics_hardware
+  def test_webgl2_get_buffer_sub_data(self):
+    self.btest(test_file('webgl2_get_buffer_sub_data.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
+
   @requires_graphics_hardware
   @requires_threads
   def test_webgl2_pthreads(self):

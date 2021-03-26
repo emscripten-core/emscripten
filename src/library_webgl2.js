@@ -101,16 +101,33 @@ var LibraryWebGL2 = {
   glGetBufferParameteri64v__sig: 'viii',
   glGetBufferParameteri64v__deps: ['$writeI53ToI64'],
   glGetBufferParameteri64v: function(target, value, data) {
+#if GL_TRACK_ERRORS
     if (!data) {
       // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
       // if data == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetBufferParameteri64v(target=' + target + ', value=' + value + ', data=0): Function called with null out pointer!');
+      err('GL_INVALID_VALUE in glGetBufferParameteri64v(target=' + target + ', value=' + value + ', data=0): Function called with null out data pointer!');
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+#endif
     writeI53ToI64(data, GLctx.getBufferParameter(target, value));
+  },
+
+  glGetBufferSubData: function(target, offset, size, data) {
+#if GL_TRACK_ERRORS
+    if (!data) {
+      // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
+      // if data == null, issue a GL error to notify user about it.
+#if GL_ASSERTIONS
+      err('GL_INVALID_VALUE in glGetBufferSubData(target=' + target + ', offset=' + offset + ', size=' + size + ', data=0): Function called with null out data pointer!');
+#endif
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
+    GLctx['getBufferSubData'](target, offset, HEAPU8, data, size);
   },
 
   glInvalidateFramebuffer__deps: ['$tempFixedLengthArray'],
