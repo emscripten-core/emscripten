@@ -2026,6 +2026,14 @@ var LibraryGL = {
   glGetUniformLocation__sig: 'iii',
   glGetUniformLocation__deps: ['$jstoi_q'],
   glGetUniformLocation: function(program, name) {
+    // Returns the index of '[' character in an uniform that represents an array of uniforms (e.g. colors[10])
+    // Closure does counterproductive inlining: https://github.com/google/closure-compiler/issues/3203, so prevent
+    // inlining manually.
+    /** @noinline */
+    function getLeftBracePos(name) {
+      return name.slice(-1) == ']' && name.lastIndexOf('[');
+    }
+
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformLocation', 'program');
 #endif
@@ -2038,12 +2046,16 @@ var LibraryGL = {
     program = GL.programs[program];
     var uniformLocsById = program.uniformLocsById; // Maps GLuint -> WebGLUniformLocation
     var uniformSizeAndIdsByName = program.uniformSizeAndIdsByName; // Maps name -> [uniform array length, GLuint]
+    var i, j;
+    var arrayIndex = 0;
+    var uniformBaseName = name;
 
     // Invariant: when populating integer IDs for uniform locations, we must maintain the precondition that
     // arrays reside in contiguous addresses, i.e. for a 'vec4 colors[10];', colors[4] must be at location colors[0]+4.
     // However, user might call glGetUniformLocation(program, "colors") for an array, so we cannot discover based on the user
     // input arguments whether the uniform we are dealing with is an array. The only way to discover which uniforms are arrays
     // is to enumerate over all the active uniforms in the program.
+    var leftBrace = getLeftBracePos(name);
 
     // On the first time invocation of glGetUniformLocation on this shader program:
     // initialize cache data structures and discover which uniforms are arrays.
@@ -2053,44 +2065,41 @@ var LibraryGL = {
       // maps integer locations back to uniform name strings, so that we can lazily fetch uniform array locations
       program.uniformArrayNamesById = {};
 
-      for (var i = 0; i < GLctx.getProgramParameter(program, 0x8B86/*GL_ACTIVE_UNIFORMS*/); ++i) {
+      for (i = 0; i < GLctx.getProgramParameter(program, 0x8B86/*GL_ACTIVE_UNIFORMS*/); ++i) {
         var u = GLctx.getActiveUniform(program, i);
-        if (u.size > 1) { // Is this uniform an array?
-          var arrayName = u.name.slice(0, u.name.lastIndexOf('['));
+        var nm = u.name;
+        var sz = u.size;
+        var lb = getLeftBracePos(nm);
+        var arrayName = lb > 0 ? nm.slice(0, lb) : nm;
 
 #if GL_EXPLICIT_UNIFORM_LOCATION
-          // Acquire the preset location from the explicit uniform location if one was specified, or
-          // programmatically assign a new one if not.
-          var id = uniformSizeAndIdsByName[arrayName] ? uniformSizeAndIdsByName[arrayName][1] : program.uniformIdCounter;
-          program.uniformIdCounter = Math.max(id + u.size, program.uniformIdCounter);
+        // Acquire the preset location from the explicit uniform location if one was specified, or
+        // programmatically assign a new one if not.
+        var id = uniformSizeAndIdsByName[arrayName] ? uniformSizeAndIdsByName[arrayName][1] : program.uniformIdCounter;
+        program.uniformIdCounter = Math.max(id + sz, program.uniformIdCounter);
 #else
-          // Assign a new location.
-          var id = program.uniformIdCounter;
-          program.uniformIdCounter += u.size;
+        // Assign a new location.
+        var id = program.uniformIdCounter;
+        program.uniformIdCounter += sz;
 #endif
-          // Eagerly get the location of the uniformArray[0] base element.
-          // The remaining indices >0 will be left for lazy evaluation to
-          // improve performance. Those may never be needed to fetch, if the
-          // application fills arrays always in full starting from the first
-          // element of the array.
-          uniformLocsById[id] = GLctx.getUniformLocation(program, arrayName);
-          uniformSizeAndIdsByName[arrayName] = [u.size, id];
+        // Eagerly get the location of the uniformArray[0] base element.
+        // The remaining indices >0 will be left for lazy evaluation to
+        // improve performance. Those may never be needed to fetch, if the
+        // application fills arrays always in full starting from the first
+        // element of the array.
+        uniformSizeAndIdsByName[arrayName] = [sz, id];
 
-          // Store placeholder integers in place that highlight that these
-          // >0 index locations are array indices pending population.
-          for(var j = 1; j < u.size; ++j) {
-            uniformLocsById[++id] = j;
-            program.uniformArrayNamesById[id] = arrayName;
-          }
+        // Store placeholder integers in place that highlight that these
+        // >0 index locations are array indices pending population.
+        for(j = 1; j < sz; ++j) {
+          uniformLocsById[++id] = j;
+          program.uniformArrayNamesById[id] = arrayName;
         }
       }
     }
 
     // If user passed an array accessor "[index]", parse the array index off the accessor.
-    var arrayIndex = 0;
-    var uniformBaseName = name;
-    if (name.slice(-1) == ']') {
-      var leftBrace = name.lastIndexOf('[');
+    if (leftBrace > 0) {
 #if GL_ASSERTIONS
       assert(name.slice(leftBrace + 1).length == 1 || !isNaN(jstoi_q(name.slice(leftBrace + 1))), 'Malformed input parameter name "' + name + '" passed to glGetUniformLocation!');
 #endif
@@ -2100,40 +2109,20 @@ var LibraryGL = {
 
     // Have we cached the location of this uniform before?
     var sizeAndId = uniformSizeAndIdsByName[uniformBaseName]; // A pair [array length, GLint of the uniform location]
-    if (sizeAndId) {
-      // In cache. Are we accessing out of bounds of an uniform array?
-      if (arrayIndex >= sizeAndId[0]) {
-        return -1;
-      }
-      // Are we accessing the first element of an array, or the uniform is not an array at all?
-      if (arrayIndex == 0) {
-        return sizeAndId[1];
-      }
+
+#if ASSERTIONS
+    assert(sizeAndId, 'Unable to get uniform location for uniform ' + uniformBaseName); // This is an internal error if we cannot query this location here. All the uniforms should be recorded by now.
+#endif
+
+    if (sizeAndId && arrayIndex < sizeAndId[0]) {
       // Finally we must be accessing a non-zero index of a uniform array. Run the arithmetic
       // to find what the base+offset GLint location should be for this index.
       arrayIndex += sizeAndId[1];
-      if (!uniformLocsById[arrayIndex]) {
-        uniformLocsById[arrayIndex] = GLctx.getUniformLocation(program, name);
-#if ASSERTIONS
-        assert(uniformLocsById[arrayIndex]); // This is an internal error if we cannot query this location here. All the array indices in bounds should be queryable.
-#endif
+      if ((uniformLocsById[arrayIndex] = uniformLocsById[arrayIndex] || GLctx.getUniformLocation(program, name))) {
+        return arrayIndex;
       }
-      return arrayIndex;
     }
-
-    // This is a uniform that is not cached before. It must hence be a non-array
-    // uniform, since the base locations of all array uniforms did get cached eagerly
-    // above.
-    var loc = GLctx.getUniformLocation(program, uniformBaseName);
-    var sizeAndId = -1;
-    if (loc) {
-      sizeAndId = program.uniformIdCounter++; // TODO make sure this won't stomp on pre
-      uniformLocsById[sizeAndId] = loc;
-      uniformSizeAndIdsByName[uniformBaseName] = [1, sizeAndId];
-    } else {
-      uniformSizeAndIdsByName[uniformBaseName] = [0, 0];
-    }
-    return sizeAndId;
+    return -1;
   },
 
   $emscriptenWebGLGetVertexAttrib__docs: '/** @suppress{checkTypes} */', // This function intentionally assigns `HEAP32[x] = someBoolean;` Don't let Closure mind about that.
