@@ -2075,7 +2075,7 @@ int main(int argc, char **argv) {
     if not self.is_wasm():
       self.skipTest('wasm memory specific test')
 
-    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MEMORY_GROWTH_GEOMETRIC_STEP=15', '-s', 'MEMORY_GROWTH_GEOMETRIC_CAP=0']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MEMORY_GROWTH_GEOMETRIC_STEP=8.5', '-s', 'MEMORY_GROWTH_GEOMETRIC_CAP=32MB']
     self.do_core_test('test_memorygrowth_geometric_step.c')
 
   def test_memorygrowth_3_force_fail_reallocBuffer(self):

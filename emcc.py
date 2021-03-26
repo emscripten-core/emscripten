@@ -356,7 +356,7 @@ def apply_settings(changes):
       key = shared.Settings.alt_names[key]
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
-    if key in ('TOTAL_STACK', 'INITIAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_STEP',
+    if key in ('TOTAL_STACK', 'INITIAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_CAP',
                'GL_MAX_TEMP_BUFFER_SIZE', 'MAXIMUM_MEMORY', 'DEFAULT_PTHREAD_STACK_SIZE'):
       value = str(expand_byte_size_suffixes(value))
 
