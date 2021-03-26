@@ -2110,10 +2110,6 @@ var LibraryGL = {
     // Have we cached the location of this uniform before?
     var sizeAndId = uniformSizeAndIdsByName[uniformBaseName]; // A pair [array length, GLint of the uniform location]
 
-#if ASSERTIONS
-    assert(sizeAndId, 'Unable to get uniform location for uniform ' + uniformBaseName); // This is an internal error if we cannot query this location here. All the uniforms should be recorded by now.
-#endif
-
     // If an uniform with this name exists, and if its index is within the array limits (if it's even an array),
     // query the WebGLlocation, or return an existing cached location.
     if (sizeAndId && arrayIndex < sizeAndId[0]) {
