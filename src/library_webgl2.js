@@ -57,6 +57,7 @@ var LibraryWebGL2 = {
 
   glGetInternalformativ__sig: 'viiiii',
   glGetInternalformativ: function(target, internalformat, pname, bufSize, params) {
+#if GL_TRACK_ERRORS
     if (bufSize < 0) {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetInternalformativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=' + params + '): Function called with bufSize < 0!');
@@ -73,6 +74,7 @@ var LibraryWebGL2 = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+#endif
     var ret = GLctx['getInternalformatParameter'](target, internalformat, pname);
     if (ret === null) return;
     for (var i = 0; i < ret.length && i < bufSize; ++i) {
@@ -101,16 +103,33 @@ var LibraryWebGL2 = {
   glGetBufferParameteri64v__sig: 'viii',
   glGetBufferParameteri64v__deps: ['$writeI53ToI64'],
   glGetBufferParameteri64v: function(target, value, data) {
+#if GL_TRACK_ERRORS
     if (!data) {
       // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
       // if data == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetBufferParameteri64v(target=' + target + ', value=' + value + ', data=0): Function called with null out pointer!');
+      err('GL_INVALID_VALUE in glGetBufferParameteri64v(target=' + target + ', value=' + value + ', data=0): Function called with null out data pointer!');
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+#endif
     writeI53ToI64(data, GLctx.getBufferParameter(target, value));
+  },
+
+  glGetBufferSubData: function(target, offset, size, data) {
+#if GL_TRACK_ERRORS
+    if (!data) {
+      // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
+      // if data == null, issue a GL error to notify user about it.
+#if GL_ASSERTIONS
+      err('GL_INVALID_VALUE in glGetBufferSubData(target=' + target + ', offset=' + offset + ', size=' + size + ', data=0): Function called with null out data pointer!');
+#endif
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
+    GLctx['getBufferSubData'](target, offset, HEAPU8, data, size);
   },
 
   glInvalidateFramebuffer__deps: ['$tempFixedLengthArray'],
@@ -206,6 +225,7 @@ var LibraryWebGL2 = {
 
   glGetQueryiv__sig: 'viii',
   glGetQueryiv: function(target, pname, params) {
+#if GL_TRACK_ERRORS
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
       // if p == null, issue a GL error to notify user about it.
@@ -215,11 +235,13 @@ var LibraryWebGL2 = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+#endif
     {{{ makeSetValue('params', '0', 'GLctx[\'getQuery\'](target, pname)', 'i32') }}};
   },
 
   glGetQueryObjectuiv__sig: 'viii',
   glGetQueryObjectuiv: function(id, pname, params) {
+#if GL_TRACK_ERRORS
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
       // if p == null, issue a GL error to notify user about it.
@@ -229,6 +251,7 @@ var LibraryWebGL2 = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+#endif
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjectuiv', 'id');
 #endif
@@ -317,6 +340,7 @@ var LibraryWebGL2 = {
 
   glGetSamplerParameterfv__sig: 'viii',
   glGetSamplerParameterfv: function(sampler, pname, params) {
+#if GL_TRACK_ERRORS
     if (!params) {
       // GLES3 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
       // if p == null, issue a GL error to notify user about it.
@@ -326,12 +350,13 @@ var LibraryWebGL2 = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
-    sampler = GL.samplers[sampler];
-    {{{ makeSetValue('params', '0', 'GLctx[\'getSamplerParameter\'](sampler, pname)', 'float') }}};
+#endif
+    {{{ makeSetValue('params', '0', 'GLctx[\'getSamplerParameter\'](GL.samplers[sampler], pname)', 'float') }}};
   },
 
   glGetSamplerParameteriv__sig: 'viii',
   glGetSamplerParameteriv: function(sampler, pname, params) {
+#if GL_TRACK_ERRORS
     if (!params) {
       // GLES3 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
       // if p == null, issue a GL error to notify user about it.
@@ -341,8 +366,8 @@ var LibraryWebGL2 = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
-    sampler = GL.samplers[sampler];
-    {{{ makeSetValue('params', '0', 'GLctx[\'getSamplerParameter\'](sampler, pname)', 'i32') }}};
+#endif
+    {{{ makeSetValue('params', '0', 'GLctx[\'getSamplerParameter\'](GL.samplers[sampler], pname)', 'i32') }}};
   },
 
   // Transform Feedback
@@ -416,6 +441,7 @@ var LibraryWebGL2 = {
 
   $emscriptenWebGLGetIndexed__deps: ['$writeI53ToI64'],
   $emscriptenWebGLGetIndexed: function(target, index, data, type) {
+#if GL_TRACK_ERRORS
     if (!data) {
       // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
       // if data == null, issue a GL error to notify user about it.
@@ -425,6 +451,7 @@ var LibraryWebGL2 = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+#endif
     var result = GLctx['getIndexedParameter'](target, index);
     var ret;
     switch (typeof result) {
@@ -510,6 +537,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformIndices', 'program');
 #endif
+#if GL_TRACK_ERRORS
     if (!uniformIndices) {
       // GLES2 specification does not specify how to behave if uniformIndices is a null pointer. Since calling this function does not make sense
       // if uniformIndices == null, issue a GL error to notify user about it.
@@ -523,6 +551,7 @@ var LibraryWebGL2 = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+#endif
     program = GL.programs[program];
     var names = [];
     for (var i = 0; i < uniformCount; i++)
@@ -542,6 +571,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformsiv', 'program');
 #endif
+#if GL_TRACK_ERRORS
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
       // if params == null, issue a GL error to notify user about it.
@@ -555,6 +585,7 @@ var LibraryWebGL2 = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+#endif
     program = GL.programs[program];
     var ids = [];
     for (var i = 0; i < uniformCount; i++) {
@@ -580,6 +611,7 @@ var LibraryWebGL2 = {
 
   glGetActiveUniformBlockiv__sig: 'viiii',
   glGetActiveUniformBlockiv: function(program, uniformBlockIndex, pname, params) {
+#if GL_TRACK_ERRORS
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
       // if params == null, issue a GL error to notify user about it.
@@ -589,6 +621,7 @@ var LibraryWebGL2 = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+#endif
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformBlockiv', 'program');
 #endif
@@ -710,6 +743,7 @@ var LibraryWebGL2 = {
 
   glGetSynciv__sig: 'viiiii',
   glGetSynciv: function(sync, pname, bufSize, length, values) {
+#if GL_TRACK_ERRORS
     if (bufSize < 0) {
       // GLES3 specification does not specify how to behave if bufSize < 0, however in the spec wording for glGetInternalformativ, it does say that GL_INVALID_VALUE should be raised,
       // so raise GL_INVALID_VALUE here as well.
@@ -728,6 +762,7 @@ var LibraryWebGL2 = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
+#endif
     var ret = GLctx.getSyncParameter(GL.syncs[sync], pname);
     if (ret !== null) {
       {{{ makeSetValue('values', '0', 'ret', 'i32') }}};
