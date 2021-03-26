@@ -2114,10 +2114,10 @@ var LibraryGL = {
     assert(sizeAndId, 'Unable to get uniform location for uniform ' + uniformBaseName); // This is an internal error if we cannot query this location here. All the uniforms should be recorded by now.
 #endif
 
+    // If an uniform with this name exists, and if its index is within the array limits (if it's even an array),
+    // query the WebGLlocation, or return an existing cached location.
     if (sizeAndId && arrayIndex < sizeAndId[0]) {
-      // Finally we must be accessing a non-zero index of a uniform array. Run the arithmetic
-      // to find what the base+offset GLint location should be for this index.
-      arrayIndex += sizeAndId[1];
+      arrayIndex += sizeAndId[1]; // Add the base location of the uniform to the array index offset.
       if ((uniformLocsById[arrayIndex] = uniformLocsById[arrayIndex] || GLctx.getUniformLocation(program, name))) {
         return arrayIndex;
       }
