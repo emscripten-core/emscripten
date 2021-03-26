@@ -10052,7 +10052,7 @@ exec "$@"
     self.set_setting('NO_EXIT_RUNTIME', 0)
     self.set_setting('GL_TRACK_ERRORS', 0)
     self.set_setting('WASM_OBJECT_FILES', 0)
-    # self.set_setting('INCLUDE_FULL_LIBRARY', 1)
+    self.set_setting('INCLUDE_FULL_LIBRARY', 1)
 
     self.emcc_args += ['-g', '-Wno-experimental']
     self.emcc_args += ['-std=c++17']
@@ -10060,16 +10060,13 @@ exec "$@"
     self.emcc_args += ['--emit-symbol-map']
     self.emcc_args += ['--post-js', path_from_root('tests', 'other', 'test_split_module_ex.post.js')]
     self.emcc_args += ['-sEXTRA_EXPORTED_RUNTIME_METHODS=[allocate]']
-    # Cannot set WEBGL flags as webgl is not available on ci cache as FROZEN_CACHE is used
-    # self.emcc_args += ['-sUSE_WEBGL2']
-    # self.emcc_args += ['-sUSE_GLFW=3']
-    # self.emcc_args += ['-sFULL_ES3=1']
+    self.emcc_args += ['-sUSE_WEBGL2']
+    self.emcc_args += ['-sUSE_GLFW=3']
+    self.emcc_args += ['-sFULL_ES3=1']
     self.emcc_args += ['-flto']
     self.emcc_args += ['-fPIC']
     self.emcc_args += ['-Oz']
-    # TODO: set MAIN_MODULE=2, currently fails due to https://github.com/emscripten-core/emscripten/issues/13633
-    # TODO: cannot set MAIN_MODULE=1, https://github.com/WebAssembly/binaryen/issues/3701
-    # self.emcc_args += ['-sMAIN_MODULE=1']
+    self.emcc_args += ['-sMAIN_MODULE=2']
     self.emcc_args += [f'-sINITIAL_TABLE={initialTableSize}']
 
     create_file('mylib.js', '''
