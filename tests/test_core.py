@@ -765,7 +765,7 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_loop.c')
 
   def test_stack(self):
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
     # some extra coverage in all test suites for stack checks
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
 
@@ -1236,12 +1236,9 @@ int main(int argc, char **argv)
     self.do_run('src.js', 'Caught exception: Hello\nDone.', args=['2'], no_build=True)
 
   def test_exceptions_allowed(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
-    # Wasm does not add an underscore to function names. For wasm, the
-    # mismatches are fixed in fixImports() function in JS glue code.
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z12somefunctionv"])
     # otherwise it is inlined and not identified
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
 
     self.do_core_test('test_exceptions_allowed.cpp')
     size = os.path.getsize('test_exceptions_allowed.js')
@@ -1267,7 +1264,7 @@ int main(int argc, char **argv)
       fake_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'fake.js')
 
-    self.set_setting('DISABLE_EXCEPTION_CATCHING')
+    self.clear_setting('EXCEPTION_CATCHING_ALLOWED')
     self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
     disabled_size = os.path.getsize('test_exceptions_allowed.js')
     if self.is_wasm():
@@ -1278,32 +1275,54 @@ int main(int argc, char **argv)
     print('empty_size: %d' % empty_size)
     print('fake_size: %d' % fake_size)
     print('disabled_size: %d' % disabled_size)
-    self.assertEqual(empty_size, fake_size)
+    # empty list acts the same as fully disabled
+    self.assertEqual(empty_size, disabled_size)
     # big change when we disable exception catching of the function
     self.assertGreater(size - empty_size, 0.01 * size)
     # full disable can remove a little bit more
-    self.assertLess(disabled_size, empty_size)
+    self.assertLess(disabled_size, fake_size)
 
   def test_exceptions_allowed_2(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
-    # Wasm does not add an underscore to function names. For wasm, the
-    # mismatches are fixed in fixImports() function in JS glue code.
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["main"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT')
+    self.do_core_test('test_exceptions_allowed_2.cpp')
 
+    # When 'main' function does not have a signature, its contents will be
+    # outlined to '__original_main'. Check if we can handle that case.
+    self.emcc_args += ['-DMAIN_NO_SIGNATURE']
     self.do_core_test('test_exceptions_allowed_2.cpp')
 
   def test_exceptions_allowed_uncaught(self):
     self.emcc_args += ['-std=c++11']
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
-    # Wasm does not add an underscore to function names. For wasm, the
-    # mismatches are fixed in fixImports() function in JS glue code.
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z4testv"])
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT')
 
     self.do_core_test('test_exceptions_allowed_uncaught.cpp')
+
+  def test_exceptions_allowed_misuse(self):
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['foo'])
+
+    # Test old =2 setting for DISABLE_EXCEPTION_CATCHING
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
+    err = self.expect_fail([EMCC, test_file('hello_world.c')] + self.get_emcc_args())
+    self.assertContained('error: DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED [-Wdeprecated] [-Werror]', err)
+
+    # =0 should also be a warning
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    err = self.expect_fail([EMCC, test_file('hello_world.c')] + self.get_emcc_args())
+    self.assertContained('error: DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED [-Wdeprecated] [-Werror]', err)
+
+    # =1 should be a hard error
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+    err = self.expect_fail([EMCC, test_file('hello_world.c')] + self.get_emcc_args())
+    self.assertContained('error: DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive', err)
+
+    # even setting an empty list should trigger the error;
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
+    err = self.expect_fail([EMCC, test_file('hello_world.c')] + self.get_emcc_args())
+    self.assertContained('error: DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive', err)
 
   @with_both_exception_handling
   def test_exceptions_uncaught(self):
@@ -1603,7 +1622,7 @@ int main() {
     # of the program directory influences how much stack we need, and so
     # long random temp dir names can lead to random failures. The stack
     # size was increased here to avoid that.
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
     self.set_setting('TOTAL_STACK', 8 * 1024)
 
     self.do_core_test('test_stack_varargs.c')
@@ -1689,7 +1708,7 @@ int main() {
 
   def test_stack_void(self):
     self.emcc_args.append('-Wno-format-extra-args')
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
     self.do_core_test('test_stack_void.c')
 
   def test_life(self):
@@ -2267,7 +2286,7 @@ The current type of b is: 9
     self.do_core_test('test_functionpointer_libfunc_varargs.c')
 
   def test_structbyval(self):
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
 
     # part 1: make sure that normally, passing structs by value works
 
@@ -5997,7 +6016,7 @@ return malloc(size);
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
     if '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
-      self.set_setting('INLINING_LIMIT', 50)
+      self.set_setting('INLINING_LIMIT')
 
     # newer clang has a warning for implicit conversions that lose information,
     # which happens in sqlite (see #9138)
@@ -6568,7 +6587,7 @@ return malloc(size);
     self.set_setting('DEMANGLE_SUPPORT')
     self.set_setting('ASSERTIONS')
     # ensure function names are preserved
-    self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
+    self.emcc_args += ['--profiling-funcs']
     self.do_core_test('test_demangle_stacks.cpp', assert_returncode=NON_ZERO)
     if not self.has_changed_setting('ASSERTIONS'):
       print('without assertions, the stack is not printed, but a message suggesting assertions is')
@@ -6577,9 +6596,7 @@ return malloc(size);
 
   def test_demangle_stacks_symbol_map(self):
     self.set_setting('DEMANGLE_SUPPORT')
-    if '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args and '-O1' not in self.emcc_args and '-g' not in self.emcc_args:
-      self.emcc_args += ['--llvm-opts', '0']
-    else:
+    if '-O' not in str(self.emcc_args) or '-O0' in self.emcc_args or '-O1' in self.emcc_args or '-g' in self.emcc_args:
       self.skipTest("without opts, we don't emit a symbol map")
     self.emcc_args += ['--emit-symbol-map']
     self.do_runf(test_file('core', 'test_demangle_stacks.cpp'), 'abort', assert_returncode=NON_ZERO)

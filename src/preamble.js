@@ -19,6 +19,10 @@ Module.realPrint = out;
 out = err = function(){};
 #endif
 
+#if RELOCATABLE
+{{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]', true) }}}
+#endif
+
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
 {{{ makeModuleReceiveWithVar('noExitRuntime', undefined, EXIT_RUNTIME ? 'false' : 'true') }}}
 
@@ -658,11 +662,12 @@ function createExportWrapper(name, fixedasm) {
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
-// When DISABLE_EXCEPTION_CATCHING != 1 `abortWrapperDepth` counts the recursion
-// level of the wrapper function so that we only handle exceptions at the top level
-// letting the exception mechanics work uninterrupted at the inner level.
-// Additionally, `abortWrapperDepth` is also manually incremented in callMain so that
-// we know to ignore exceptions from there since they're handled by callMain directly.
+// When exception catching is enabled (!DISABLE_EXCEPTION_CATCHING)
+// `abortWrapperDepth` counts the recursion level of the wrapper function so
+// that we only handle exceptions at the top level letting the exception
+// mechanics work uninterrupted at the inner level.  Additionally,
+// `abortWrapperDepth` is also manually incremented in callMain so that we know
+// to ignore exceptions from there since they're handled by callMain directly.
 var abortWrapperDepth = 0;
 
 // Creates a wrapper in a closure so that each wrapper gets it's own copy of 'original'
@@ -673,7 +678,7 @@ function makeAbortWrapper(original) {
       throw "program has already aborted!";
     }
 
-#if DISABLE_EXCEPTION_CATCHING != 1
+#if !DISABLE_EXCEPTION_CATCHING
     abortWrapperDepth += 1;
 #endif
     try {
@@ -692,7 +697,7 @@ function makeAbortWrapper(original) {
 
       abort("unhandled exception: " + [e, e.stack]);
     }
-#if DISABLE_EXCEPTION_CATCHING != 1
+#if !DISABLE_EXCEPTION_CATCHING
     finally {
       abortWrapperDepth -= 1;
     }
@@ -939,6 +944,13 @@ function createWasm() {
 
     Module['asm'] = exports;
 
+#if MAIN_MODULE
+    var metadata = getDylinkMetadata(module);
+    if (metadata.neededDynlibs) {
+      dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
+    }
+#endif
+
 #if !IMPORTED_MEMORY
     wasmMemory = Module['asm']['memory'];
 #if ASSERTIONS
@@ -1028,7 +1040,7 @@ function createWasm() {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if USE_PTHREADS
+#if USE_PTHREADS || RELOCATABLE
     receiveInstance(output['instance'], output['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
@@ -1043,16 +1055,14 @@ function createWasm() {
 
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
-#if USE_OFFSET_CONVERTER
       var result = WebAssembly.instantiate(binary, info);
+#if USE_OFFSET_CONVERTER
       result.then(function (instance) {
         wasmOffsetConverter = new WasmOffsetConverter(binary, instance.module);
         {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
       });
-      return result;
-#else // USE_OFFSET_CONVERTER
-      return WebAssembly.instantiate(binary, info);
 #endif // USE_OFFSET_CONVERTER
+      return result;
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
 
@@ -1171,7 +1181,14 @@ function createWasm() {
   return {}; // no exports yet; we'll fill them in later
 #else
   var result = instantiateSync(wasmBinaryFile, info);
+#if USE_PTHREADS || MAIN_MODULE
   receiveInstance(result[0], result[1]);
+#else
+  // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
+  // the above line no longer optimizes out down to the following line.
+  // When the regression is fixed, we can remove this if/else.
+  receiveInstance(result[0]);
+#endif
   return Module['asm']; // exports were assigned here
 #endif
 }

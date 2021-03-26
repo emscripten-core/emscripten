@@ -286,27 +286,6 @@ var LibraryDylink = {
       return ret;
     }
 
-    function parseDylinkSection() {
-      var customSection = {};
-      customSection.memorySize = getLEB();
-      customSection.memoryAlign = getLEB();
-      customSection.tableSize = getLEB();
-      customSection.tableAlign = getLEB();
-      // shared libraries this module needs. We need to load them first, so that
-      // current module could resolve its imports. (see tools/shared.py
-      // WebAssembly.make_shared_library() for "dylink" section extension format)
-      var neededDynlibsCount = getLEB();
-      customSection.neededDynlibs = [];
-      for (var i = 0; i < neededDynlibsCount; ++i) {
-        var nameLen = getLEB();
-        var nameUTF8 = binary.subarray(next, next + nameLen);
-        next += nameLen;
-        var name = UTF8ArrayToString(nameUTF8, 0);
-        customSection.neededDynlibs.push(name);
-      }
-      return customSection;
-    }
-
     if (binary instanceof WebAssembly.Module) {
       var dylinkSection = WebAssembly.Module.customSections(binary, "dylink");
       assert(dylinkSection.length != 0, 'need dylink section');
@@ -327,7 +306,24 @@ var LibraryDylink = {
       assert(binary[next] === 'k'.charCodeAt(0)); next++;
     }
 
-    return parseDylinkSection();
+    var customSection = {};
+    customSection.memorySize = getLEB();
+    customSection.memoryAlign = getLEB();
+    customSection.tableSize = getLEB();
+    customSection.tableAlign = getLEB();
+    // shared libraries this module needs. We need to load them first, so that
+    // current module could resolve its imports. (see tools/shared.py
+    // WebAssembly.make_shared_library() for "dylink" section extension format)
+    var neededDynlibsCount = getLEB();
+    customSection.neededDynlibs = [];
+    for (var i = 0; i < neededDynlibsCount; ++i) {
+      var nameLen = getLEB();
+      var nameUTF8 = binary.subarray(next, next + nameLen);
+      next += nameLen;
+      var name = UTF8ArrayToString(nameUTF8, 0);
+      customSection.neededDynlibs.push(name);
+    }
+    return customSection;
   },
 
   // Module.symbols <- libModule.symbols (flags.global handler)
@@ -698,11 +694,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     err('preloadDylibs');
 #endif
-    var libs = {{{ JSON.stringify(RUNTIME_LINKED_LIBS) }}};
-    if (Module['dynamicLibraries']) {
-      libs = libs.concat(Module['dynamicLibraries'])
-    }
-    if (!libs.length) {
+    if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
       err('preloadDylibs: no libraries to preload');
 #endif
@@ -714,7 +706,7 @@ var LibraryDylink = {
     if (!readBinary) {
       // we can't read binary data synchronously, so preload
       addRunDependency('preloadDylibs');
-      libs.reduce(function(chain, lib) {
+      dynamicLibraries.reduce(function(chain, lib) {
         return chain.then(function() {
           return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true});
         });
@@ -726,7 +718,7 @@ var LibraryDylink = {
       return;
     }
 
-    libs.forEach(function(lib) {
+    dynamicLibraries.forEach(function(lib) {
       // libraries linked to main never go away
       loadDynamicLibrary(lib, {global: true, nodelete: true, allowUndefined: true});
     });

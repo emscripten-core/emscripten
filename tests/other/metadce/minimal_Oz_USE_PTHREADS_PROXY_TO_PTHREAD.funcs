@@ -28,7 +28,6 @@ $dlmemalign
 $em_queued_call_free
 $em_queued_call_malloc
 $emscripten_async_run_in_main_thread
-$emscripten_atomic_store_u32
 $emscripten_current_thread_process_queued_calls
 $emscripten_get_global_libc
 $emscripten_main_thread_process_queued_calls

@@ -96,7 +96,16 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: If no value is specifed it will default to ``1``.
 
-  .. note:: For options that are lists, you need quotation marks (") around the list in most shells (to avoid errors being raised). Two examples are shown below:
+  .. note:: Lists can be specified without or without quotes around each element and with or without brackets around the list.  For example all the following are equivelent:
+
+    ::
+
+      -s EXPORTED_FUNCTIONS=foo,bar
+      -s EXPORTED_FUNCTIONS="foo","bar"
+      -s EXPORTED_FUNCTIONS=["foo","bar"]
+      -s EXPORTED_FUNCTIONS=[foo,bar]
+
+  .. note:: For lists that include brackets or quote, you need quotation marks (") around the list in most shells (to avoid errors being raised). Two examples are shown below:
 
     ::
 
@@ -193,23 +202,6 @@ Options that are modified or new in *emcc* are listed below:
   Save a map file between the minified global names and the original function names. This allows you, for example, to reconstruct meaningful stack traces.
 
   .. note:: This is only relevant when :term:`minifying` global names, which happens in ``-O2`` and above, and when no ``-g`` option was specified to prevent minification.
-
-.. _emcc-llvm-opts:
-
-``--llvm-opts <level>``
-  [compile+link]
-  Enables LLVM optimizations, relevant when we call the LLVM optimizer (which is done when building source files to object code). Possible ``level`` values are:
-
-    - ``0``: No LLVM optimizations (default in -O0).
-    - ``1``: LLVM ``-O1`` optimizations (default in -O1).
-    - ``2``: LLVM ``-O2`` optimizations.
-    - ``3``: LLVM ``-O3`` optimizations (default in -O2+).
-
-  You can also specify arbitrary LLVM options, e.g.::
-
-    --llvm-opts "['-O3', '-somethingelse']"
-
-  You normally don't need to specify this option, as ``-O`` with an optimization level will set a good value.
 
 .. _emcc-lto:
 

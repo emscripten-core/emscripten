@@ -68,9 +68,11 @@ def get_base_cflags(force_object_files=False):
 
 def clean_env():
   # building system libraries and ports should be hermetic in that it is not
-  # affected by things like EMMAKEN_CFLAGS which the user may have set
+  # affected by things like EMMAKEN_CFLAGS which the user may have set.
+  # At least one port also uses autoconf (harfbuzz) so we also need to clear
+  # CFLAGS/LDFLAGS which we don't want to effect the inner call to configure.
   safe_env = os.environ.copy()
-  for opt in ['EMCC_CFLAGS', 'EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
+  for opt in ['CFLAGS', 'LDFLAGS', 'EMCC_CFLAGS', 'EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
   return safe_env
@@ -1794,24 +1796,6 @@ class Ports(object):
     shared.try_delete(os.path.join(Ports.get_build_dir(), name))
 
 
-# get all ports
-def get_ports(settings):
-  ret = []
-  needed = get_needed_ports(settings)
-
-  for port in dependency_order(needed):
-    if port.needed(settings):
-      try:
-        # ports return their output files, which will be linked, or a txt file
-        ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
-      except Exception:
-        logger.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
-        raise
-
-  ret.reverse()
-  return ret
-
-
 def dependency_order(port_list):
   # Perform topological sort of ports according to the dependency DAG
   port_map = {p.name: p for p in port_list}
@@ -1868,7 +1852,29 @@ def clear_port(port_name, settings):
   port.clear(Ports, settings, shared)
 
 
-def add_ports_cflags(args, settings):
+def get_ports_libs(settings):
+  """Called add link time to calculate the list of port libraries.
+  Can have the side effect of building and installing the needed ports.
+  """
+  ret = []
+  needed = get_needed_ports(settings)
+
+  for port in dependency_order(needed):
+    if port.needed(settings):
+      # ports return their output files, which will be linked, or a txt file
+      ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
+
+  ret.reverse()
+  return ret
+
+
+def add_ports_cflags(args, settings): # noqa: U100
+  """Called during compile phase add any compiler flags (e.g -Ifoo) needed
+  by the selected ports.  Can also add/change settings.
+
+  Can have the side effect of building and installing the needed ports.
+  """
+
   # Legacy SDL1 port is not actually a port at all but builtin
   if settings.USE_SDL == 1:
     args += ['-Xclang', '-iwithsysroot/include/SDL']
@@ -1880,8 +1886,6 @@ def add_ports_cflags(args, settings):
   for port in dependency_order(needed):
     port.get(Ports, settings, shared)
     args += port.process_args(Ports)
-
-  return args
 
 
 def show_ports():

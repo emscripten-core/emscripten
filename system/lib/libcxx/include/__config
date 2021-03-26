@@ -909,7 +909,7 @@ typedef unsigned int   char32_t;
 
 #if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 // Most unix variants have catopen.  These are the specific ones that don't.
-#  if !defined(__BIONIC__) && !defined(_NEWLIB_VERSION)
+#  if !defined(__BIONIC__) && !defined(_NEWLIB_VERSION) && !defined(__EMSCRIPTEN__) // XXX Emscripten catopen always returns -1
 #    define _LIBCPP_HAS_CATOPEN 1
 #  endif
 #endif

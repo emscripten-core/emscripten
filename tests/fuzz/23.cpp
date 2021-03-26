@@ -476,5 +476,5 @@ int main (int argc, char* argv[])
     return 0;
 }
 
-// /usr/bin/python Dev/emscripten/emcc -O2 --llvm-opts 3 Dev/emscripten/tests/fuzz/temp_fuzzcode29254_.cpp -o Dev/emscripten/tests/fuzz/temp_fuzzcode29254_.js -I Dev/csmith/runtime
+// /usr/bin/python Dev/emscripten/emcc -O2 Dev/emscripten/tests/fuzz/temp_fuzzcode29254_.cpp -o Dev/emscripten/tests/fuzz/temp_fuzzcode29254_.js -I Dev/csmith/runtime
 

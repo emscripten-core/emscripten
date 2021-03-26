@@ -145,8 +145,6 @@ However, sometimes you may want slightly different optimizations on certain file
 .. note:: Unfortunately each build-system defines its own mechanisms for setting compiler and optimization methods. **You will need to work out the correct approach to set the LLVM optimization flags for your system**.
 
   - Some build systems have a flag like ``./configure --enable-optimize``.
-  - You can control whether LLVM optimizations are run using ``--llvm-opts N`` where N is an integer in the range 0-3. Sending ``-O2 --llvm-opts 0`` to *emcc* during all compilation stages will disable LLVM optimizations but utilize JavaScript optimizations. This can be useful when debugging a build failure.
-
 
 JavaScript/WebAssembly optimizations are specified in the final step (sometimes called "link", as that step typically also links together a bunch of files that are all compiled together into one JavaScript/WebAssembly output). For example, to compile with :ref:`-O1 <emcc-O1>`:
 
