@@ -34,26 +34,28 @@ static void base64_encode(void *dst, const void *src, size_t len) // thread-safe
 
 #define BUFFER_SIZE 1024
 #define on_error(...) { fprintf(stderr, __VA_ARGS__); fflush(stderr); exit(1); }
+#define MIN(a, b) ((a) <= (b) ? (a) : (b))
 
 // Given a multiline string of HTTP headers, returns a pointer to the beginning of the value of given header inside the string that was passed in.
-static int GetHttpHeader(const char *headers, const char *header, char *out) // thread-safe, re-entrant
+static int GetHttpHeader(const char *headers, const char *header, char *out, int maxBytesOut) // thread-safe, re-entrant
 {
   const char *pos = strstr(headers, header);
   if (!pos) return 0;
   pos += strlen(header);
   const char *end = pos;
-  while(*end != '\r') ++end;
-  memcpy(out, pos, end-pos);
-  out[end-pos] = '\0';
+  while(*end != '\r' && *end != '\n' && *end != '\0') ++end;
+  int numBytesToWrite = MIN((int)(end-pos), maxBytesOut-1);
+  memcpy(out, pos, numBytesToWrite);
+  out[numBytesToWrite] = '\0';
   return (int)(end-pos);
 }
 
 // Sends WebSocket handshake back to the given WebSocket connection.
 void SendHandshake(int fd, const char *request)
 {
-  char key[128];
-  GetHttpHeader(request, "Sec-WebSocket-Key: ", key);
-  const char webSocketGlobalGuid[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+  const char webSocketGlobalGuid[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // 36 characters long
+  char key[128+sizeof(webSocketGlobalGuid)];
+  GetHttpHeader(request, "Sec-WebSocket-Key: ", key, sizeof(key)/2);
   strcat(key, webSocketGlobalGuid);
 
   char sha1[21];
