@@ -54,7 +54,7 @@ static int GetHttpHeader(const char *headers, const char *header, char *out, int
 void SendHandshake(int fd, const char *request)
 {
   const char webSocketGlobalGuid[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"; // 36 characters long
-  char key[128+36];
+  char key[128+sizeof(webSocketGlobalGuid)];
   GetHttpHeader(request, "Sec-WebSocket-Key: ", key, sizeof(key)/2);
   strcat(key, webSocketGlobalGuid);
 
