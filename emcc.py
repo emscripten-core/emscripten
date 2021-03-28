@@ -1355,6 +1355,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # TODO(sbc): Remove this once this becomes the default
       shared.Settings.IGNORE_MISSING_MAIN = 0
 
+    # It is unlikely that developers targeting "native web" APIs with MINIMAL_RUNTIME need
+    # errno support by default.
+    if shared.Settings.MINIMAL_RUNTIME:
+      default_setting('SUPPORT_ERRNO', 0)
+
     if shared.Settings.STRICT:
       default_setting('STRICT_JS', 1)
       default_setting('AUTO_JS_LIBRARIES', 0)

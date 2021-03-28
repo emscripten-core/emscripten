@@ -1698,6 +1698,7 @@ var MIN_CHROME_VERSION = 75;
 // bit of generated code size in applications that do not care about
 // POSIX errno variable. Setting this to 0 also requires using --closure
 // for effective code size optimizations to take place.
+// In MINIMAL_RUNTIME builds, this option defaults to 0.
 // [link]
 var SUPPORT_ERRNO = 1;
 
