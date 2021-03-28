@@ -97,8 +97,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
 
 def get_num_cores():
-  import multiprocessing
-  return int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
+  return int(os.environ.get('EMCC_CORES', os.cpu_count()))
 
 
 # Runs multiple subprocess commands.
