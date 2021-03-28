@@ -1118,8 +1118,8 @@ var LibraryGL = {
   glGetString__sig: 'ii',
   glGetString__deps: ['$stringToNewUTF8'],
   glGetString: function(name_) {
-    if (!GL.stringCache[name_]) {
-      var ret;
+    var ret = GL.stringCache[name_];
+    if (!ret) {
       switch (name_) {
         case 0x1F03 /* GL_EXTENSIONS */:
           var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
@@ -1182,8 +1182,8 @@ var LibraryGL = {
 #endif
           // fall through
       }
+      GL.stringCache[name_] = ret;
     }
-    GL.stringCache[name_] = ret;
     return ret;
   },
 
