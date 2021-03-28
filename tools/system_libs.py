@@ -88,15 +88,6 @@ def run_build_commands(commands):
     # TODO(sbc): Remove this one we remove the test_em_config_env_var test
     commands[i].append('-Wno-deprecated')
 
-    # For subprocess spawns, do not route via the OS batch script launcher, but directly
-    # spawn the python script. This saves ~2 seconds on libc build.
-    if commands[i][0].endswith('emcc.bat'):
-      commands[i][0] = commands[i][0].replace('emcc.bat', 'emcc.py')
-      commands[i] = [sys.executable] + commands[i]
-    elif commands[i][0].endswith('emcc'):
-      commands[i][0] = commands[i][0].replace('emcc', 'emcc.py')
-      commands[i] = [sys.executable] + commands[i]
-
   shared.run_multiple_processes(commands, env=clean_env())
 
 
