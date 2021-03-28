@@ -41,10 +41,13 @@ LibraryManager.library = {
 
   $stringToNewUTF8__deps: ['malloc'],
   $stringToNewUTF8: function(jsString) {
-    var length = lengthBytesUTF8(jsString)+1;
-    var cString = _malloc(length);
-    stringToUTF8(jsString, cString, length);
-    return cString;
+    if (jsString) {
+      var length = lengthBytesUTF8(jsString)+1;
+      var cString = _malloc(length);
+      stringToUTF8(jsString, cString, length);
+      return cString;
+    }
+    // Return implicit undefined to be coerced to a 0 pointer in WebAssembly side.
   },
 
   // ==========================================================================
