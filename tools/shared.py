@@ -105,7 +105,7 @@ def get_num_cores():
 # bool 'check': If True (default), raises an exception if any of the subprocesses failed with a nonzero exit code.
 # string 'route_stdout_to_temp_files_suffix': if not None, all stdouts are instead written to files, and an array of filenames is returned.
 # bool 'pipe_stdout': If True, an array of stdouts is returned, for each subprocess.
-def run_multiple_processes(commands, child_env=None, route_stdout_to_temp_files_suffix=None, pipe_stdout=False, check=True, cwd=None):
+def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp_files_suffix=None, pipe_stdout=False, check=True, cwd=None):
   std_outs = []
 
   # TODO: Experiment with registering a signal handler here to see if that helps with Ctrl-C locking up the command prompt
@@ -126,7 +126,7 @@ def run_multiple_processes(commands, child_env=None, route_stdout_to_temp_files_
         std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
         if DEBUG:
           logger.debug('Running subprocess %d/%d: %s' % (end + 1, len(commands), ' '.join(commands[end])))
-        processes += [subprocess.Popen(commands[end], stdout=std_out, env=child_env if child_env else os.environ.copy(), cwd=cwd)]
+        processes += [subprocess.Popen(commands[end], stdout=std_out, env=env, cwd=cwd)]
         if route_stdout_to_temp_files_suffix:
           std_outs += [std_out.name]
         end += 1

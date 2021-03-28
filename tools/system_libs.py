@@ -84,10 +84,6 @@ def run_build_commands(commands):
   # to setup the sysroot itself.
   ensure_sysroot()
 
-
-
-  safe_env = clean_env()
-
   for i in range(len(commands)):
     # TODO(sbc): Remove this one we remove the test_em_config_env_var test
     commands[i].append('-Wno-deprecated')
@@ -101,7 +97,7 @@ def run_build_commands(commands):
       commands[i][0] = commands[i][0].replace('emcc', 'emcc.py')
       commands[i] = [sys.executable] + commands[i]
 
-  shared.run_multiple_processes(commands)
+  shared.run_multiple_processes(commands, env=clean_env())
 
 
 def create_lib(libname, inputs):

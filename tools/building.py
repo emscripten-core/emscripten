@@ -12,7 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from subprocess import STDOUT, PIPE
+from subprocess import PIPE
 
 from . import diagnostics
 from . import response_file
@@ -79,6 +79,7 @@ def extract_archive_contents(archive_files):
   archive_results = shared.run_multiple_processes([[LLVM_AR, 't', a] for a in archive_files], pipe_stdout=True)
 
   unpack_temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
+
   def clean_at_exit():
     try_delete(unpack_temp_dir)
   shared.atexit.register(clean_at_exit)
@@ -110,7 +111,7 @@ def extract_archive_contents(archive_files):
   for a in archive_contents:
     missing_contents = [x for x in a['o_files'] if not os.path.exists(x)]
     if missing_contents:
-      exit_with_error('llvm-ar failed to extract file(s) ' + str(missing_contents) + ' from archive file ' + f + '! Error:' + str(proc.stdout))
+      exit_with_error('llvm-ar failed to extract file(s) ' + str(missing_contents) + ' from archive file ' + f + '!')
 
   return archive_contents
 
