@@ -3211,7 +3211,7 @@ window.close = function() {
       self.btest('browser/async.cpp', '1', args=['-O' + str(opts), '-g2', '-s', 'ASYNCIFY'])
 
   def test_asyncify_tricky_function_sig(self):
-    self.btest('browser/test_asyncify_tricky_function_sig.cpp', '1', args=['-s', 'ASYNCIFY_ONLY=[foo(char.const*?.int#),foo2()]', '-s', 'ASYNCIFY=1'])
+    self.btest('browser/test_asyncify_tricky_function_sig.cpp', '85', args=['-s', 'ASYNCIFY_ONLY=[foo(char.const*?.int#),foo2(),main,__original_main]', '-s', 'ASYNCIFY=1'])
 
   @requires_threads
   def test_async_in_pthread(self):
