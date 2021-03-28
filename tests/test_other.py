@@ -9607,7 +9607,7 @@ int main() {
 
     # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
     # to be set after the failing syscall.
-    self.set_setting('SUPPORT_ERRNO', 0)
+    self.emcc_args += ['-s', 'SUPPORT_ERRNO=0']
     output = test_file('core', 'test_support_errno_disabled.out')
     self.do_run_from_file(src, output)
 
