@@ -74,46 +74,45 @@ def warn_if_duplicate_entries(archive_contents, archive_filename):
     diagnostics.warning('emcc', msg)
 
 
-# This function creates a temporary directory specified by the 'dir' field in
-# the returned dictionary. Caller is responsible for cleaning up those files
-# after done.
-def extract_archive_contents(archive_file):
-  lines = run_process([LLVM_AR, 't', archive_file], stdout=PIPE).stdout.splitlines()
-  # ignore empty lines
-  contents = [l for l in lines if len(l)]
-  if len(contents) == 0:
-    logger.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % archive_file)
-    return {
-      'returncode': 0,
-      'dir': None,
-      'files': []
-    }
+# Extracts the given list of archive files and outputs their contents
+def extract_archive_contents(archive_files):
+  archive_results = shared.run_multiple_processes([[LLVM_AR, 't', a] for a in archive_files], pipe_stdout=True)
 
-  # `ar` files can only contains filenames. Just to be sure,  verify that each
-  # file has only as filename component and is not absolute
-  for f in contents:
-    assert not os.path.dirname(f)
-    assert not os.path.isabs(f)
+  unpack_temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
+  def clean_at_exit():
+    try_delete(unpack_temp_dir)
+  shared.atexit.register(clean_at_exit)
 
-  warn_if_duplicate_entries(contents, archive_file)
+  archive_contents = []
 
-  # create temp dir
-  temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
+  for i in range(len(archive_results)):
+    a = archive_results[i]
+    contents = [l for l in a.splitlines() if len(l)]
+    if len(contents) == 0:
+      logger.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % a)
 
-  # extract file in temp dir
-  proc = run_process([LLVM_AR, 'xo', archive_file], stdout=PIPE, stderr=STDOUT, cwd=temp_dir)
-  abs_contents = [os.path.join(temp_dir, c) for c in contents]
+    # `ar` files can only contains filenames. Just to be sure, verify that each
+    # file has only as filename component and is not absolute
+    for f in contents:
+      assert not os.path.dirname(f)
+      assert not os.path.isabs(f)
+
+    warn_if_duplicate_entries(contents, a)
+
+    archive_contents += [{
+      'archive_name': archive_files[i],
+      'o_files': [os.path.join(unpack_temp_dir, c) for c in contents]
+    }]
+
+  shared.run_multiple_processes([[LLVM_AR, 'xo', a] for a in archive_files], cwd=unpack_temp_dir)
 
   # check that all files were created
-  missing_contents = [x for x in abs_contents if not os.path.exists(x)]
-  if missing_contents:
-    exit_with_error('llvm-ar failed to extract file(s) ' + str(missing_contents) + ' from archive file ' + f + '! Error:' + str(proc.stdout))
+  for a in archive_contents:
+    missing_contents = [x for x in a['o_files'] if not os.path.exists(x)]
+    if missing_contents:
+      exit_with_error('llvm-ar failed to extract file(s) ' + str(missing_contents) + ' from archive file ' + f + '! Error:' + str(proc.stdout))
 
-  return {
-    'returncode': proc.returncode,
-    'dir': temp_dir,
-    'files': abs_contents
-  }
+  return archive_contents
 
 
 def unique_ordered(values):
@@ -139,30 +138,6 @@ def clear():
   ar_contents.clear()
   _is_ar_cache.clear()
 
-
-def get_multiprocessing_pool():
-  class FakeMultiprocessor(object):
-    def map(self, func, tasks, *args, **kwargs):
-      results = []
-      for t in tasks:
-        results += [func(t)]
-      return results
-
-    def map_async(self, func, tasks, *args, **kwargs):
-      class Result:
-        def __init__(self, func, tasks):
-          self.func = func
-          self.tasks = tasks
-
-        def get(self, timeout):
-          results = []
-          for t in tasks:
-            results += [func(t)]
-          return results
-
-      return Result(func, tasks)
-
-  return FakeMultiprocessor()
 
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
 # remove them when needed.
@@ -229,7 +204,7 @@ def llvm_nm_multiple(files):
   with ToolchainProfiler.profile_block('llvm_nm_multiple'):
     if len(files) == 0:
       return []
-    # Run llvm-nm only files that we haven't cached yet
+    # Run llvm-nm on files that we haven't cached yet
     llvm_nm_files = [f for f in files if f not in nm_cache]
 
     # We can issue multiple files in a single llvm-nm calls, but only if those
@@ -318,25 +293,13 @@ def read_link_inputs(files):
         object_names.append(absolute_path_f)
 
     # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
-    pool = get_multiprocessing_pool()
-    object_names_in_archives = pool.map(extract_archive_contents, archive_names)
+    archive_contents = extract_archive_contents(archive_names)
 
-    def clean_temporary_archive_contents_directory(directory):
-      def clean_at_exit():
-        try_delete(directory)
-      if directory:
-        atexit.register(clean_at_exit)
-
-    for n in range(len(archive_names)):
-      if object_names_in_archives[n]['returncode'] != 0:
-        raise Exception('llvm-ar failed on archive ' + archive_names[n] + '!')
-      ar_contents[archive_names[n]] = object_names_in_archives[n]['files']
-      clean_temporary_archive_contents_directory(object_names_in_archives[n]['dir'])
-
-    for o in object_names_in_archives:
-      for f in o['files']:
-        if f not in nm_cache:
-          object_names.append(f)
+    for a in archive_contents:
+      ar_contents[os.path.abspath(a['archive_name'])] = a['o_files']
+      for o in a['o_files']:
+        if o not in nm_cache:
+          object_names.append(o)
 
     # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
     # The results are not used here directly, but populated to llvm-nm cache structure.

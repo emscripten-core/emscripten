@@ -130,36 +130,6 @@ start_asm_marker = '// EMSCRIPTEN_START_ASM\n'
 end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
 
 
-def run_on_chunk(command):
-  try:
-    if ACORN_OPTIMIZER in command: # XXX hackish
-      index = command.index(ACORN_OPTIMIZER)
-      filename = command[index + 1]
-    else:
-      filename = command[1]
-    if os.environ.get('EMCC_SAVE_OPT_TEMP') and os.environ.get('EMCC_SAVE_OPT_TEMP') != '0':
-      saved = 'save_' + os.path.basename(filename)
-      while os.path.exists(saved):
-        saved = 'input' + str(int(saved.replace('input', '').replace('.txt', '')) + 1) + '.txt'
-      print('running js optimizer command', ' '.join([c if c != filename else saved for c in command]), file=sys.stderr)
-      shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
-    if shared.EM_BUILD_VERBOSE >= 3:
-      print('run_on_chunk: ' + str(command), file=sys.stderr)
-    proc = shared.run_process(command, stdout=subprocess.PIPE)
-    output = proc.stdout
-    assert proc.returncode == 0, 'Error in optimizer (return code ' + str(proc.returncode) + '): ' + output
-    assert len(output) and not output.startswith('Assertion failed'), 'Error in optimizer: ' + output
-    filename = temp_files.get(os.path.basename(filename) + '.jo.js').name
-    with open(filename, 'w') as f:
-      f.write(output)
-    if DEBUG and not shared.WINDOWS:
-      print('.', file=sys.stderr) # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
-    return filename
-  except KeyboardInterrupt:
-    # avoid throwing keyboard interrupts from a child process
-    raise Exception()
-
-
 # Given a set of functions of form (ident, text), and a preferred chunk size,
 # generates a set of chunks for parallel processing and caching.
 def chunkify(funcs, chunk_size):
@@ -330,6 +300,14 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('run_optimizer'):
     if len(filenames):
       commands = [config.NODE_JS + [ACORN_OPTIMIZER, f] + passes for f in filenames]
+
+      if os.environ.get('EMCC_SAVE_OPT_TEMP') and os.environ.get('EMCC_SAVE_OPT_TEMP') != '0':
+        for filename in filenames:
+          saved = 'save_' + os.path.basename(filename)
+          while os.path.exists(saved):
+            saved = 'input' + str(int(saved.replace('input', '').replace('.txt', '')) + 1) + '.txt'
+          shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
+
       filenames = shared.run_multiple_processes(commands, route_stdout_to_temp_files_suffix='js_opt.jo.js')
 
     for filename in filenames:
