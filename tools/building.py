@@ -229,7 +229,6 @@ def llvm_nm_multiple(files):
   with ToolchainProfiler.profile_block('llvm_nm_multiple'):
     if len(files) == 0:
       return []
-
     # Run llvm-nm only files that we haven't cached yet
     llvm_nm_files = [f for f in files if f not in nm_cache]
 
@@ -246,7 +245,7 @@ def llvm_nm_multiple(files):
       for i in range(len(results)):
         nm_cache[a_files[i]] = parse_symbols(results[i])
 
-    # Issue a single call for multiple .o files
+    # Issue a single batch call for multiple .o files
     if len(o_files) > 0:
       cmd = [LLVM_NM] + o_files
       cmd = get_command_with_possible_response_file(cmd)
