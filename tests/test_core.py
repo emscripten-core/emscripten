@@ -765,7 +765,7 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_loop.c')
 
   def test_stack(self):
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
     # some extra coverage in all test suites for stack checks
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
 
@@ -1238,7 +1238,7 @@ int main(int argc, char **argv)
   def test_exceptions_allowed(self):
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z12somefunctionv"])
     # otherwise it is inlined and not identified
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
 
     self.do_core_test('test_exceptions_allowed.cpp')
     size = os.path.getsize('test_exceptions_allowed.js')
@@ -1622,7 +1622,7 @@ int main() {
     # of the program directory influences how much stack we need, and so
     # long random temp dir names can lead to random failures. The stack
     # size was increased here to avoid that.
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
     self.set_setting('TOTAL_STACK', 8 * 1024)
 
     self.do_core_test('test_stack_varargs.c')
@@ -1708,7 +1708,7 @@ int main() {
 
   def test_stack_void(self):
     self.emcc_args.append('-Wno-format-extra-args')
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
     self.do_core_test('test_stack_void.c')
 
   def test_life(self):
@@ -2286,7 +2286,7 @@ The current type of b is: 9
     self.do_core_test('test_functionpointer_libfunc_varargs.c')
 
   def test_structbyval(self):
-    self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT')
 
     # part 1: make sure that normally, passing structs by value works
 
@@ -4602,6 +4602,14 @@ res64 - external 64\n''', header='''
       expected='3 hello world!',
       need_reverse=False)
 
+  @disabled('https://github.com/emscripten-core/emscripten/issues/13773')
+  def test_dylink_weak(self):
+    # Verify that weakly symbols can be defined in both side module and main
+    # module
+    main = test_file('core', 'test_dylink_weak_main.c')
+    side = test_file('core', 'test_dylink_weak_side.c')
+    self.dylink_testf(main, side, force_c=True, need_reverse=False)
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
@@ -5732,6 +5740,11 @@ int main(void) {
       ]:
         self.do_run(src.replace('{{{ NEW }}}', new).replace('{{{ DELETE }}}', delete), '*1,0*')
 
+  # Tests that a large allocation should gracefully fail
+  def test_dlmalloc_large(self):
+    self.emcc_args += ['-s', 'ABORTING_MALLOC=0', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=128MB']
+    self.do_runf(path_from_root('tests', 'dlmalloc_test_large.c'), '0 0 0 1')
+
   @no_asan('asan also changes malloc, and that ends up linking in new twice')
   def test_dlmalloc_partial(self):
     # present part of the symbols of dlmalloc, not all
@@ -6016,7 +6029,7 @@ return malloc(size);
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
     if '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
-      self.set_setting('INLINING_LIMIT', 50)
+      self.set_setting('INLINING_LIMIT')
 
     # newer clang has a warning for implicit conversions that lose information,
     # which happens in sqlite (see #9138)
@@ -6589,7 +6602,7 @@ return malloc(size);
     # disable aggressive inlining in binaryen
     self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
     # ensure function names are preserved
-    self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
+    self.emcc_args += ['--profiling-funcs']
     self.do_core_test('test_demangle_stacks.cpp', assert_returncode=NON_ZERO)
     if not self.has_changed_setting('ASSERTIONS'):
       print('without assertions, the stack is not printed, but a message suggesting assertions is')
@@ -6601,9 +6614,7 @@ return malloc(size);
     self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
 
     self.set_setting('DEMANGLE_SUPPORT')
-    if '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args and '-O1' not in self.emcc_args and '-g' not in self.emcc_args:
-      self.emcc_args += ['--llvm-opts', '0']
-    else:
+    if '-O' not in str(self.emcc_args) or '-O0' in self.emcc_args or '-O1' in self.emcc_args or '-g' in self.emcc_args:
       self.skipTest("without opts, we don't emit a symbol map")
     self.emcc_args += ['--emit-symbol-map']
     self.do_runf(test_file('core', 'test_demangle_stacks.cpp'), 'abort', assert_returncode=NON_ZERO)

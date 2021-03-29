@@ -50,6 +50,7 @@ MINIMAL_TASKS = [
     'libhtml5',
     'libsockets',
     'libc_rt_wasm',
+    'libc_rt_wasm-optz',
     'struct_info',
     'libstandalonewasm',
     'crt1',

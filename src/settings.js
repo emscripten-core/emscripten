@@ -290,11 +290,9 @@ var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 // [link]
 var DECLARE_ASM_MODULE_EXPORTS = 1;
 
-// A limit on inlining. If 0, we will inline normally in LLVM and closure. If
-// greater than 0, we will *not* inline in LLVM, and we will prevent inlining of
-// functions of this size or larger in closure. 50 is a reasonable setting if
-// you do not want inlining
-// [compile+link]
+// If 0, prevents inlining if set to 1. If 0, we will inline normally in LLVM.
+// This does not affect the inlining policy in Binaryen.
+// [compile]
 var INLINING_LIMIT = 0;
 
 // If set to 1, perform acorn pass that converts each HEAP access into a
@@ -721,6 +719,7 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // to know you got this right), so this is not recommended unless you
 // really know what are doing, and need to optimize every bit of speed
 // and size.
+//
 // The names in this list are names from the WebAssembly Names section. The
 // wasm backend will emit those names in *human-readable* form instead of
 // typical C++ mangling. For example, you should write Struct::func()
@@ -732,7 +731,23 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // changes which would mean a single list couldn't work for both -O0 and -O1
 // builds, etc.). You can inspect the wasm binary to look for the actual names,
 // either directly or using wasm-objdump or wasm-dis, etc.
+//
 // Simple '*' wildcard matching is supported.
+//
+// To avoid dealing with limitations in operating system shells or build system
+// escaping, the following substitutions can be made:
+// - ' ' -> '.',
+// - '&' -> '#',
+// - ',' -> '?'.
+//
+// That is, the function
+//    "foo(char const*, int&)" can be inputted as
+//    "foo(char.const*?.int#)" on the command line instead.
+//
+// Note: Whitespace is part of the function signature! I.e.
+//    "foo(char const *, int &)" will not match "foo(char const*, int&)", and
+// neither would "foo(const char*, int &)".
+//
 // [link]
 var ASYNCIFY_REMOVE = [];
 
@@ -1683,6 +1698,7 @@ var MIN_CHROME_VERSION = 75;
 // bit of generated code size in applications that do not care about
 // POSIX errno variable. Setting this to 0 also requires using --closure
 // for effective code size optimizations to take place.
+// In MINIMAL_RUNTIME builds, this option defaults to 0.
 // [link]
 var SUPPORT_ERRNO = 1;
 

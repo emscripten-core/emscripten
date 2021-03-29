@@ -13,10 +13,6 @@ function run() {
   emscriptenMemoryProfiler.onPreloadComplete();
 #endif
 
-#if STACK_OVERFLOW_CHECK >= 2
-  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
-#endif
-
   <<< ATMAINS >>>
 
 #if PROXY_TO_PTHREAD
@@ -75,6 +71,9 @@ function initRuntime(asm) {
 #if STACK_OVERFLOW_CHECK
   _emscripten_stack_init();
   writeStackCookie();
+#if STACK_OVERFLOW_CHECK >= 2
+  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+#endif
 #endif
 
 #if '___wasm_call_ctors' in IMPLEMENTED_FUNCTIONS

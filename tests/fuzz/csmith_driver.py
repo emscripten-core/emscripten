@@ -55,10 +55,6 @@ while 1:
       opts = '-Oz'
   print('opt level:', opts)
 
-  llvm_opts = []
-  if random.random() < 0.5:
-    llvm_opts = ['--llvm-opts', str(random.randint(0, 3))]
-
   print('Tried %d, notes: %s' % (tried, notes))
   print('1) Generate source')
   extra_args = []
@@ -115,7 +111,7 @@ while 1:
 
   def try_js(args=[]):
     shared.try_delete(filename + '.js')
-    js_args = [shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + llvm_opts + CSMITH_CFLAGS + args + ['-w']
+    js_args = [shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + CSMITH_CFLAGS + args + ['-w']
     if TEST_BINARYEN:
       if random.random() < 0.5:
         js_args += ['-g']

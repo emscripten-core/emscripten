@@ -2583,6 +2583,11 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest(test_file('webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + opts, expected='0')
 
+  # Tests the WebGL 2 glGetBufferSubData() functionality.
+  @requires_graphics_hardware
+  def test_webgl2_get_buffer_sub_data(self):
+    self.btest(test_file('webgl2_get_buffer_sub_data.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
+
   @requires_graphics_hardware
   @requires_threads
   def test_webgl2_pthreads(self):
@@ -3204,6 +3209,9 @@ window.close = function() {
     for opts in [0, 1, 2, 3]:
       print(opts)
       self.btest('browser/async.cpp', '1', args=['-O' + str(opts), '-g2', '-s', 'ASYNCIFY'])
+
+  def test_asyncify_tricky_function_sig(self):
+    self.btest('browser/test_asyncify_tricky_function_sig.cpp', '85', args=['-s', 'ASYNCIFY_ONLY=[foo(char.const*?.int#),foo2(),main,__original_main]', '-s', 'ASYNCIFY=1'])
 
   @requires_threads
   def test_async_in_pthread(self):
@@ -5007,6 +5015,10 @@ window.close = function() {
     test(['-s', 'MALLOC=emmalloc-debug'])
     test(['-s', 'MALLOC=emmalloc-memvalidate'])
     test(['-s', 'MALLOC=emmalloc-memvalidate-verbose'])
+
+  @no_firefox('no 4GB support yet')
+  def test_zzz_zzz_emmalloc_memgrowth(self, *args):
+    self.btest(test_file('browser', 'emmalloc_memgrowth.cpp'), expected='0', args=['-s', 'MALLOC=emmalloc', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'ABORTING_MALLOC=0', '-s', 'ASSERTIONS=2', '-s', 'MINIMAL_RUNTIME=1', '-s', 'MAXIMUM_MEMORY=4GB'])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_2gb_fail(self):

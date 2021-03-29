@@ -56,7 +56,7 @@ import clang_native
 import jsrun
 import parallel_testsuite
 from jsrun import NON_ZERO
-from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG
+from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import get_canonical_temp_dir, try_delete
@@ -815,9 +815,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return generated_libs
 
     print(f'<building and saving {cache_name} into cache>', file=sys.stderr)
+    if configure is not None:
+      # Avoid += so we don't mutate the default arg
+      configure = configure + configure_args
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
-                         configure_args, make, make_args, self.library_cache,
+                         make, make_args, self.library_cache,
                          cache_name, env_init=env_init, native=native, cflags=self.get_emcc_args())
 
   def clear(self):
@@ -1121,9 +1124,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def get_zlib_library(self):
     if WINDOWS:
       return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
-                              configure=[path_from_root('emconfigure.bat')],
-                              configure_args=['cmake', '.'],
-                              make=['mingw32-make'],
+                              configure=['cmake', '.'],
+                              make=['cmake', '--build', '.'],
                               make_args=[])
     return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'])
 
@@ -1585,7 +1587,6 @@ def build_library(name,
                   output_dir,
                   generated_libs,
                   configure=['sh', './configure'],
-                  configure_args=[],
                   make=['make'],
                   make_args=[],
                   cache=None,
@@ -1617,14 +1618,16 @@ def build_library(name,
   for k, v in env_init.items():
     env[k] = v
   if configure:
+    if configure[0] == 'cmake':
+      configure = [EMCMAKE] + configure
+    else:
+      configure = [EMCONFIGURE] + configure
     try:
       with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
         with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
           stdout = out if EM_BUILD_VERBOSE < 2 else None
           stderr = err if EM_BUILD_VERBOSE < 1 else None
-          building.configure(configure + configure_args, env=env,
-                             stdout=stdout,
-                             stderr=stderr,
+          shared.run_process(configure, env=env, stdout=stdout, stderr=stderr,
                              cwd=project_dir)
     except subprocess.CalledProcessError:
       with open(os.path.join(project_dir, 'configure_out')) as f:
@@ -1651,8 +1654,8 @@ def build_library(name,
       with open_make_err('w') as make_err:
         stdout = make_out if EM_BUILD_VERBOSE < 2 else None
         stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-        building.make(make + make_args, stdout=stdout, stderr=stderr, env=env,
-                      cwd=project_dir)
+        shared.run_process(make + make_args, stdout=stdout, stderr=stderr, env=env,
+                           cwd=project_dir)
   except subprocess.CalledProcessError:
     with open_make_out() as f:
       print('-- make stdout --')

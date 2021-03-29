@@ -58,10 +58,11 @@ function stringifyWithFunctions(obj) {
 }
 
 // JSifier
-function JSify(data, functionsOnly) {
+function JSify(functionsOnly) {
   var mainPass = !functionsOnly;
+  var functionStubs = [];
 
-  var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
+  var itemsDict = { type: [], functionStub: [], function: [], GlobalVariablePostSet: [] };
 
   if (mainPass) {
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
@@ -81,7 +82,7 @@ function JSify(data, functionsOnly) {
       libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     }
     libFuncsToInclude.forEach((ident) => {
-      data.functionStubs.push({
+      functionStubs.push({
         identOrig: ident,
         identMangled: mangleCSymbolName(ident)
       });
@@ -362,7 +363,7 @@ function JSify(data, functionsOnly) {
     //
 
     if (!mainPass) {
-      var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
+      var generated = itemsDict.function.concat(itemsDict.type);
       print(generated.map((item) => item.JS).join('\n'));
       return;
     }
@@ -384,9 +385,7 @@ function JSify(data, functionsOnly) {
     var legalizedI64sDefault = legalizedI64s;
     legalizedI64s = false;
 
-    var globalsData = {functionStubs: []}
-    JSify(globalsData, true);
-    globalsData = null;
+    JSify(true);
 
     var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
     generated.forEach((item) => print(indentify(item.JS || '', 2)));
@@ -445,7 +444,7 @@ function JSify(data, functionsOnly) {
   // Data
 
   if (mainPass) {
-    data.functionStubs.forEach(functionStubHandler);
+    functionStubs.forEach(functionStubHandler);
   }
 
   finalCombiner();

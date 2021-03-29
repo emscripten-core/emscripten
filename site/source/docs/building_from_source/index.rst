@@ -8,7 +8,7 @@ Building Emscripten yourself is an alternative to getting binaries using the ems
 
 Emscripten's core codebase, which is in the main "emscripten" repo, does not need to be compiled (it uses Python for most of the scripting that glues together all the tools). What do need to be compiled are LLVM (which in particular provides clang and wasm-ld) and Binaryen. After compiling them, simply edit the ``.emscripten`` file to point to the right place for each of those tools (if the file doesn't exist yet, run ``emcc`` for the first time).
 
-Get the ``master`` branches, or check the `Packaging <https://github.com/emscripten-core/emscripten/blob/main/docs/packaging.md>`_ instructions to identify precise commits in existing releases.
+Get the ``main`` branches, or check the `Packaging <https://github.com/emscripten-core/emscripten/blob/main/docs/packaging.md>`_ instructions to identify precise commits in existing releases.
 
 
 Building LLVM

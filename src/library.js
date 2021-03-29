@@ -238,7 +238,7 @@ LibraryManager.library = {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
-  emscripten_resize_heap__deps: [
+  emscripten_resize_heap__deps: ['emscripten_resize_heap' // Dummy depend on itself to allow following ','s to match up.
 #if ASSERTIONS == 2
   , 'emscripten_get_now'
 #endif
@@ -251,9 +251,7 @@ LibraryManager.library = {
   ],
   emscripten_resize_heap: function(requestedSize) {
     var oldSize = HEAPU8.length;
-#if CAN_ADDRESS_2GB
     requestedSize = requestedSize >>> 0;
-#endif
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
     abortOnCannotGrowMemory(requestedSize);
@@ -474,6 +472,8 @@ LibraryManager.library = {
     return limit;
   },
 
+#if SHRINK_LEVEL < 2 // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm variant, so we should never emit emscripten_memcpy_big() in the build.
+
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101 || STANDALONE_WASM
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
   // has outdated information for Safari, saying it would not support it.
@@ -495,6 +495,8 @@ LibraryManager.library = {
   emscripten_memcpy_big: function(dest, src, num) {
     HEAPU8.copyWithin(dest, src, src + num);
   },
+#endif
+
 #endif
 
   // ==========================================================================

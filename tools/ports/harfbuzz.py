@@ -6,7 +6,6 @@
 import os
 import shutil
 import logging
-from tools import building
 
 TAG = '1.7.5'
 HASH = 'c2c13fc97bb74f0f13092b07804f7087e948bce49793f48b62c2c24a5792523acc0002840bebf21829172bb2e7c3df9f9625250aec6c786a55489667dd04d6a0'
@@ -37,7 +36,8 @@ def get(ports, settings, shared):
     freetype_include = os.path.join(ports.get_include_dir(), 'freetype2', 'freetype')
     freetype_include_dirs = freetype_include + ';' + os.path.join(freetype_include, 'config')
 
-    configure_args = [
+    cmake_cmd = [
+      shared.EMCMAKE,
       'cmake',
       '-B' + build_path,
       '-H' + source_path,
@@ -57,10 +57,10 @@ def get(ports, settings, shared):
       extra_cflags.append('-pthread')
 
     if len(extra_cflags):
-      configure_args += ['-DCMAKE_CXX_FLAGS="{}"'.format(' '.join(extra_cflags))]
-      configure_args += ['-DCMAKE_C_FLAGS="{}"'.format(' '.join(extra_cflags))]
+      cmake_cmd += ['-DCMAKE_CXX_FLAGS="{}"'.format(' '.join(extra_cflags))]
+      cmake_cmd += ['-DCMAKE_C_FLAGS="{}"'.format(' '.join(extra_cflags))]
 
-    building.configure(configure_args)
+    shared.run_process(cmake_cmd)
     shared.run_process(['cmake', '--build', build_path, '--target', 'install'])
 
     ports.install_header_dir(os.path.join(build_path, 'include', 'harfbuzz'))

@@ -240,28 +240,30 @@ var LibraryBrowser = {
       Module['preloadPlugins'].push(audioPlugin);
 
 #if MAIN_MODULE
-      var wasmPlugin = {};
-      wasmPlugin['asyncWasmLoadPromise'] = new Promise(
-        function(resolve, reject) { return resolve(); });
-      wasmPlugin['canHandle'] = function(name) {
-        return !Module.noWasmDecoding && name.endsWith('.so');
-      };
-      wasmPlugin['handle'] = function(byteArray, name, onload, onerror) {
-        // loadWebAssemblyModule can not load modules out-of-order, so rather
-        // than just running the promises in parallel, this makes a chain of
-        // promises to run in series.
-        this['asyncWasmLoadPromise'] = this['asyncWasmLoadPromise'].then(
-          function() {
-            return loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true});
-          }).then(
-            function(module) {
-              Module['preloadedWasm'][name] = module;
-              onload();
-            },
-            function(err) {
-              console.warn("Couldn't instantiate wasm: " + name + " '" + err + "'");
-              onerror();
-            });
+      // Use string keys here to avoid minification since the plugin consumer
+      // also uses string keys.
+      var wasmPlugin = {
+        'asyncWasmLoadPromise': new Promise(function(resolve, reject) { return resolve(); }),
+        'canHandle': function(name) {
+          return !Module.noWasmDecoding && name.endsWith('.so')
+        },
+        'handle': function(byteArray, name, onload, onerror) {
+          // loadWebAssemblyModule can not load modules out-of-order, so rather
+          // than just running the promises in parallel, this makes a chain of
+          // promises to run in series.
+          this['asyncWasmLoadPromise'] = this['asyncWasmLoadPromise'].then(
+            function() {
+              return loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true});
+            }).then(
+              function(module) {
+                Module['preloadedWasm'][name] = module;
+                onload();
+              },
+              function(err) {
+                console.warn("Couldn't instantiate wasm: " + name + " '" + err + "'");
+                onerror();
+              });
+        }
       };
       Module['preloadPlugins'].push(wasmPlugin);
 #endif // MAIN_MODULE

@@ -233,7 +233,6 @@ class EmccOptions(object):
     self.profiling_funcs = False
     self.tracing = False
     self.emit_symbol_map = False
-    self.llvm_opts = None
     self.use_closure_compiler = None
     self.closure_args = []
     self.js_transform = None
@@ -628,6 +627,15 @@ def is_dash_s_for_emcc(args, i):
   return arg.isidentifier() and arg.isupper()
 
 
+def unmangle_symbols_from_cmdline(symbols):
+  def unmangle(x):
+    return x.replace('.', ' ').replace('#', '&').replace('?', ',')
+
+  if type(symbols) is list:
+    return [unmangle(x) for x in symbols]
+  return unmangle(symbols)
+
+
 def parse_s_args(args):
   settings_changes = []
   for i in range(len(args)):
@@ -1010,11 +1018,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.thread_profiler:
       options.post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
 
-    if options.llvm_opts is None:
-      options.llvm_opts = LLVM_OPT_LEVEL[shared.Settings.OPT_LEVEL]
-    elif type(options.llvm_opts) == int:
-      options.llvm_opts = ['-O%d' % options.llvm_opts]
-
     if options.memory_init_file is None:
       options.memory_init_file = shared.Settings.OPT_LEVEL >= 2
 
@@ -1288,7 +1291,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.STANDALONE_WASM:
       # In STANDALONE_WASM mode we either build a command or a reactor.
-      # See https://github.com/WebAssembly/WASI/blob/master/design/application-abi.md
+      # See https://github.com/WebAssembly/WASI/blob/main/design/application-abi.md
       # For a command we always want EXIT_RUNTIME=1
       # For a reactor we always want EXIT_RUNTIME=0
       if 'EXIT_RUNTIME' in settings_map:
@@ -1351,6 +1354,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # or not, as does standalone wasm mode.
       # TODO(sbc): Remove this once this becomes the default
       shared.Settings.IGNORE_MISSING_MAIN = 0
+
+    # It is unlikely that developers targeting "native web" APIs with MINIMAL_RUNTIME need
+    # errno support by default.
+    if shared.Settings.MINIMAL_RUNTIME:
+      default_setting('SUPPORT_ERRNO', 0)
 
     if shared.Settings.STRICT:
       default_setting('STRICT_JS', 1)
@@ -1424,7 +1432,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.RELOCATABLE = 1
 
     if shared.Settings.RELOCATABLE:
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$reportUndefinedSymbols', '$relocateExports', '$GOTHandler']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+          '$reportUndefinedSymbols',
+          '$relocateExports',
+          '$GOTHandler',
+          '$getDylinkMetadata',
+      ]
       if options.use_closure_compiler:
         exit_with_error('cannot use closure compiler on shared modules')
       if shared.Settings.MINIMAL_RUNTIME:
@@ -1459,6 +1472,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base',
                                              '_emscripten_stack_get_end',
                                              '_emscripten_stack_set_limits']
+
+    shared.Settings.ASYNCIFY_ADD = unmangle_symbols_from_cmdline(shared.Settings.ASYNCIFY_ADD)
+    shared.Settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(shared.Settings.ASYNCIFY_REMOVE)
+    shared.Settings.ASYNCIFY_ONLY = unmangle_symbols_from_cmdline(shared.Settings.ASYNCIFY_ONLY)
 
     # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
     # so it won't think about generating native x86 SSE code.
@@ -2243,7 +2260,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # link in ports and system libraries, if necessary
     if not shared.Settings.SIDE_MODULE:
       # Ports are always linked into the main module, never the size module.
-      extra_files_to_link += system_libs.get_ports(shared.Settings)
+      extra_files_to_link += system_libs.get_ports_libs(shared.Settings)
     if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
       link_as_cxx = run_via_emxx
       # Traditionally we always link as C++.  For compatibility we continue to do that,
@@ -2559,21 +2576,19 @@ def parse_args(newargs):
       # Let -O default to -O2, which is what gcc does.
       options.requested_level = arg[2:] or '2'
       if options.requested_level == 's':
-        options.llvm_opts = ['-Os']
         options.requested_level = 2
         shared.Settings.SHRINK_LEVEL = 1
-        settings_changes.append('INLINING_LIMIT=50')
+        settings_changes.append('INLINING_LIMIT=1')
       elif options.requested_level == 'z':
-        options.llvm_opts = ['-Oz']
         options.requested_level = 2
         shared.Settings.SHRINK_LEVEL = 2
-        settings_changes.append('INLINING_LIMIT=25')
+        settings_changes.append('INLINING_LIMIT=1')
       shared.Settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + arg, clamp=True)
     elif check_arg('--js-opts'):
       logger.warning('--js-opts ignored when using llvm backend')
       consume_arg()
     elif check_arg('--llvm-opts'):
-      options.llvm_opts = parse_value(consume_arg(), expect_list=True)
+      diagnostics.warning('deprecated', '--llvm-opts is deprecated.  All non-emcc args are passed through to clang.')
     elif arg.startswith('-flto'):
       if '=' in arg:
         shared.Settings.LTO = arg.split('=')[1]
@@ -2868,8 +2883,8 @@ def do_binaryen(target, options, wasm_target):
     building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
-  if shared.Settings.SIDE_MODULE:
-    webassembly.add_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
+  if shared.Settings.RELOCATABLE:
+    webassembly.update_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
     diagnostics.warning('deprecated', 'We hope to remove support for EMIT_EMSCRIPTEN_METADATA. See https://github.com/emscripten-core/emscripten/issues/12231')

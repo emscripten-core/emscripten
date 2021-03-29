@@ -20,9 +20,15 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.16: 03/25/2021
+------------------
 - Lists that are passed on the command line can now skip the opening an closing
   braces, allowing for simpler, more readable settings.  e.g.
     `-s EXPORTED_FUNCTIONS=foo,bar`
+- Remove/deprecate no longer used `--llvm-opts` command line option.  Any
+  arguments not processed by emcc will be passed through to clang directly
+  these days.
 - Values returned from `sysconf` now more closely match the definitions found in
   header files and in upstream musl (#13713).
 - `DISABLE_EXCEPTION_CATCHING=2` is now deprecated since it can be inferred from
@@ -41,6 +47,12 @@ Current Trunk
   of ccache via emsdk, or from https://github.com/juj/ccache/tree/emscripten,
   and run explicitly with "ccache emcc ..." after installing, or automatically
   just with "emcc ..." after activating ccache via emsdk (#13498).
+- Added support to use a custom set of substitution characters . # and ? to
+  ease passing arrays of C symbols on the command line to ASYNCIFY_* settings.
+  (#13477)
+- In MINIMAL_RUNTIME build mode, errno support will now be disabled by default
+  due to the code size that it adds. (MINIMAL_RUNTIME=1 implies SUPPORT_ERRNO=0
+  by default) Pass -s SUPPORT_ERRNO=1 to enable errno support if necessary.
 - Using EM_ASM and EM_JS in a side module will now result in an error (since
   this is not implemented yet).  This could effect users were previously
   inadvertently including (but not actually using) EM_ASM or EM_JS functions in

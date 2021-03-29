@@ -23,6 +23,8 @@ generate JavaScript.
 
 import sys
 from tools import building
+from tools import shared
+from tools import utils
 from subprocess import CalledProcessError
 
 
@@ -40,12 +42,28 @@ variables so that emcc etc. are used. Typical usage:
 (but you can run any command instead of make)''', file=sys.stderr)
     return 1
 
+  args = sys.argv[1:]
+  env = building.get_building_env()
+
+  # On Windows prefer building with mingw32-make instead of make, if it exists.
+  if utils.WINDOWS:
+    if args[0] == 'make':
+      mingw32_make = building.which('mingw32-make')
+      if mingw32_make:
+        args[0] = mingw32_make
+
+    if 'mingw32-make' in args[0]:
+      env = building.remove_sh_exe_from_path(env)
+
+  # On Windows, run the execution through shell to get PATH expansion and
+  # executable extension lookup, e.g. 'sdl2-config' will match with
+  # 'sdl2-config.bat' in PATH.
+  print('make: ' + ' '.join(args), file=sys.stderr)
   try:
-    building.make(sys.argv[1:])
+    shared.check_call(args, shell=utils.WINDOWS, env=env)
+    return 0
   except CalledProcessError as e:
     return e.returncode
-
-  return 0
 
 
 if __name__ == '__main__':

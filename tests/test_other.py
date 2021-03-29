@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
 from tools.shared import try_delete, config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, EM_BUILD_VERBOSE
-from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP
+from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, EMCMAKE, EMCONFIGURE
 from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from runner import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from runner import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
@@ -42,8 +42,6 @@ from tools import webassembly
 
 scons_path = utils.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
-emcmake = shared.bat_suffix(path_from_root('emcmake'))
-emconfigure = shared.bat_suffix(path_from_root('emconfigure'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
 wasm_dis = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
@@ -558,11 +556,12 @@ f.close()
     else:
       generators = ['Unix Makefiles', 'Ninja', 'Eclipse CDT4 - Ninja']
 
-    configurations = {'MinGW Makefiles'     : {'build'   : ['mingw32-make'] }, # noqa
-                      'NMake Makefiles'     : {'build'   : ['nmake', '/NOLOGO']}, # noqa
-                      'Unix Makefiles'      : {'build'   : ['make']}, # noqa
-                      'Ninja'               : {'build'   : ['ninja']}, # noqa
-                      'Eclipse CDT4 - Ninja': {'build'   : ['ninja']}, # noqa
+    configurations = {
+      'MinGW Makefiles'     : {'build'   : ['mingw32-make'] }, # noqa
+      'NMake Makefiles'     : {'build'   : ['nmake', '/NOLOGO']}, # noqa
+      'Unix Makefiles'      : {'build'   : ['make']}, # noqa
+      'Ninja'               : {'build'   : ['ninja']}, # noqa
+      'Eclipse CDT4 - Ninja': {'build'   : ['ninja']}, # noqa
     }
     for generator in generators:
       conf = configurations[generator]
@@ -575,7 +574,7 @@ f.close()
       cmakelistsdir = test_file('cmake', test_dir)
       with temp_directory(self.get_dir()) as tempdirname:
         # Run Cmake
-        cmd = [emcmake, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
+        cmd = [EMCMAKE, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
         env = os.environ.copy()
         # https://github.com/emscripten-core/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
@@ -606,7 +605,7 @@ f.close()
       native_features = self.run_process(cmd, stdout=PIPE).stdout
 
     with temp_directory(self.get_dir()):
-      cmd = [emcmake, 'cmake', test_file('cmake', 'stdproperty')]
+      cmd = [EMCMAKE, 'cmake', test_file('cmake', 'stdproperty')]
       print(str(cmd))
       emscripten_features = self.run_process(cmd, stdout=PIPE).stdout
 
@@ -622,7 +621,7 @@ f.close()
     for args in [[], ['-DNO_GNU_EXTENSIONS=1']]:
       self.clear()
       # Use ninja generator here since we assume its always installed on our build/test machines.
-      configure = [emcmake, 'cmake', test_file('cmake', 'cmake_with_emval')] + args
+      configure = [EMCMAKE, 'cmake', test_file('cmake', 'cmake_with_emval')] + args
       if WINDOWS:
         configure += ['-G', 'Ninja']
       print(str(configure))
@@ -640,12 +639,12 @@ f.close()
   # Tests that the Emscripten CMake toolchain option
   def test_cmake_bitcode_static_libraries(self):
     # Test that this option produces an error
-    err = self.expect_fail([emcmake, 'cmake', test_file('cmake', 'static_lib'), '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON'])
+    err = self.expect_fail([EMCMAKE, 'cmake', test_file('cmake', 'static_lib'), '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON'])
     self.assertContained('EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES is not compatible with the', err)
 
   # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
   def test_cmake_emscripten_version(self):
-    self.run_process([emcmake, 'cmake', test_file('cmake', 'emscripten_version')])
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake', 'emscripten_version')])
 
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
@@ -5067,26 +5066,26 @@ Descriptor desc;
       assert ('Typical usage' in output.stderr) == fail
       self.assertContained(expect, output.stdout)
     check(emmake, [])
-    check(emconfigure, [])
+    check(EMCONFIGURE, [])
     check(emmake, ['--version'])
-    check(emconfigure, ['--version'])
+    check(EMCONFIGURE, ['--version'])
     check(emmake, ['make'], fail=False)
-    check(emconfigure, ['configure'], fail=False)
-    check(emconfigure, ['./configure'], fail=False)
-    check(emcmake, ['cmake'], fail=False)
+    check(EMCONFIGURE, ['configure'], fail=False)
+    check(EMCONFIGURE, ['./configure'], fail=False)
+    check(EMCMAKE, ['cmake'], fail=False)
 
     create_file('test.py', '''
 import os
 print(os.environ.get('CROSS_COMPILE'))
 ''')
-    check(emconfigure, [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
+    check(EMCONFIGURE, [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
     check(emmake, [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
 
     create_file('test.py', '''
 import os
 print(os.environ.get('NM'))
 ''')
-    check(emconfigure, [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
+    check(EMCONFIGURE, [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
 
   def test_emmake_python(self):
     # simulates a configure/make script that looks for things like CC, AR, etc., and which we should
@@ -6578,7 +6577,7 @@ int main() {
 }
 ''')
 
-    # Without the 'INLINING_LIMIT=1', -O2 inlines foo()
+    # Without the 'INLINING_LIMIT', -O2 inlines foo()
     cmd = [EMCC, '-c', 'test.c', '-O2', '-o', 'test.o', '-s', 'INLINING_LIMIT', '-flto']
     self.run_process(cmd)
     # If foo() had been wrongly inlined above, internalizing foo and running
@@ -6814,6 +6813,8 @@ int main() {
 
   def run_metadce_test(self, filename, args, expected_exists, expected_not_exists, expected_size,
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
+    return self.skipTest('let https://github.com/WebAssembly/binaryen/pull/3730 roll in')
+
     size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
@@ -6941,7 +6942,7 @@ int main() {
     'O2': (['-O2'], [], ['waka'],  2060), # noqa
     'O3': (['-O3'], [], [],        1792), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'], [], [],        1781), # noqa
-    'Oz': (['-Oz'], [], [],        1777), # noqa
+    'Oz': (['-Oz'], [], [],        1305), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
           (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],    [], [],     55), # noqa
@@ -7285,13 +7286,15 @@ int main() {
     assert os.path.isfile('b.js')
     assert not os.path.isfile('a.js')
 
-  # Tests that Emscripten-provided header files can be cleanly included in C code
+  # Tests that Emscripten-provided header files can be cleanly included in C code without
+  # any errors or warnings
   @is_slow_test
   def test_include_system_header_in_c(self):
-    for std in [[], ['-std=c89']]: # Test oldest C standard, and the default C standard
+    # Test oldest C standard, and the default C standard
+    for std in [[], ['-std=c89']]:
       for directory, headers in [
         # This directory has also bind.h, val.h and wire.h, which require C++11
-        ('emscripten', ['dom_pk_codes.h', 'em_asm.h', 'emscripten.h', 'fetch.h', 'html5.h', 'key_codes.h', 'threading.h', 'trace.h']),
+        ('emscripten', ['asmfs.h', 'dom_pk_codes.h', 'em_asm.h', 'em_js.h', 'em_macros.h', 'em_math.h', 'emmalloc.h', 'emscripten.h', 'exports.h', 'fetch.h', 'fiber.h', 'heap.h', 'html5.h', 'html5_webgl.h', 'html5_webgpu.h', 'key_codes.h', 'posix_socket.h', 'stack.h', 'threading.h', 'trace.h', 'websocket.h']),
         ('AL', ['al.h', 'alc.h']),
         ('EGL', ['egl.h', 'eglplatform.h']),
         ('GL', ['freeglut_std.h', 'gl.h', 'glew.h', 'glfw.h', 'glu.h', 'glut.h']),
@@ -7300,12 +7303,12 @@ int main() {
         ('GLES3', ['gl3.h', 'gl3platform.h', 'gl31.h', 'gl32.h']),
         ('GLFW', ['glfw3.h']),
         ('KHR', ['khrplatform.h'])]:
-        for h in headers:
-          inc = '#include <' + directory + '/' + h + '>'
-          print(inc)
+        for header in headers:
+          inc = f'#include <{directory}/{header}>\n__attribute__((weak)) int foo;\n'
+          print(header)
           create_file('a.c', inc)
           create_file('b.c', inc)
-          self.run_process([EMCC] + std + ['a.c', 'b.c'])
+          self.run_process([EMCC] + std + ['-Werror', '-Wall', '-pedantic', 'a.c', 'b.c'])
 
   @is_slow_test
   def test_single_file(self):
@@ -8435,6 +8438,7 @@ int main () {
     'hello_webgl2_wasm': ('hello_webgl2', False),
     'hello_webgl2_wasm2js': ('hello_webgl2', True),
   })
+  @unittest.skip('let https://github.com/WebAssembly/binaryen/pull/3730 roll in')
   def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
                                '-s', 'ENVIRONMENT=web',
@@ -9182,6 +9186,16 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     self.run_process([EMCC, 'foo.o', 'main.o'])
     self.assertContained('Hello, world!\nHello, world!\n', self.run_js('a.out.js'))
 
+  def test_em_asm_c89(self):
+    create_file('src.c', '''
+      #include <emscripten/em_asm.h>
+      int main() {
+        EM_ASM({ console.log('hello'); });
+      }\n''')
+    self.run_process([EMCC, '-c', 'src.c',
+                      '-pedantic', '-Wall', '-Werror',
+                      '-Wno-gnu-zero-variadic-macro-arguments'])
+
   def test_em_asm_strict_c(self):
     create_file('src.c', '''
       #include <emscripten/em_asm.h>
@@ -9584,18 +9598,19 @@ int main() {
 
   @parameterized({
     '': ([],),
-    'minimal': (['-s', 'MINIMAL_RUNTIME'],),
+    'minimal': (['-s', 'MINIMAL_RUNTIME', '-s', 'SUPPORT_ERRNO'],),
   })
   def test_support_errno(self, args):
     self.emcc_args += args
     src = test_file('core', 'test_support_errno.c')
     output = test_file('core', 'test_support_errno.out')
+
     self.do_run_from_file(src, output)
     size_default = os.path.getsize('test_support_errno.js')
 
     # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
     # to be set after the failing syscall.
-    self.set_setting('SUPPORT_ERRNO', 0)
+    self.emcc_args += ['-s', 'SUPPORT_ERRNO=0']
     output = test_file('core', 'test_support_errno_disabled.out')
     self.do_run_from_file(src, output)
 

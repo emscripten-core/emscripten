@@ -130,12 +130,11 @@ def parse_dylink_section(wasm_file):
   return (mem_size, mem_align, table_size, table_align, section_end)
 
 
-def add_dylink_section(wasm_file, needed_dynlibs):
+def update_dylink_section(wasm_file, needed_dynlibs):
   # A wasm shared library has a special "dylink" section, see tools-conventions repo.
   # This function adds this section to the beginning on the given file.
 
   mem_size, mem_align, table_size, table_align, section_end = parse_dylink_section(wasm_file)
-  logger.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
 
   section_name = b'\06dylink' # section name, including prefixed size
   contents = (toLEB(mem_size) + toLEB(mem_align) +
