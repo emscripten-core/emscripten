@@ -6940,7 +6940,7 @@ int main() {
     'O2': (['-O2'], [], ['waka'],  2060), # noqa
     'O3': (['-O3'], [], [],        1792), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'], [], [],        1781), # noqa
-    'Oz': (['-Oz'], [], [],        1777), # noqa
+    'Oz': (['-Oz'], [], [],        1305), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
           (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],    [], [],     55), # noqa
