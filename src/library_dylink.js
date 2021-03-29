@@ -311,6 +311,10 @@ var LibraryDylink = {
     customSection.memoryAlign = getLEB();
     customSection.tableSize = getLEB();
     customSection.tableAlign = getLEB();
+#if ASSERTIONS
+    var tableAlign = Math.pow(2, customSection.tableAlign);
+    assert(tableAlign === 1, 'invalid tableAlign ' + tableAlign);
+#endif
     // shared libraries this module needs. We need to load them first, so that
     // current module could resolve its imports. (see tools/shared.py
     // WebAssembly.make_shared_library() for "dylink" section extension format)
@@ -362,36 +366,27 @@ var LibraryDylink = {
   $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler', '$getDylinkMetadata'],
   $loadWebAssemblyModule: function(binary, flags) {
     var metadata = getDylinkMetadata(binary);
-    var memorySize = metadata.memorySize;
-    var memoryAlign = metadata.memoryAlign;
-    var tableSize = metadata.tableSize;
-    var tableAlign = metadata.tableAlign;
-    var neededDynlibs = metadata.neededDynlibs;
+#if ASSERTIONS
+    var originalTable = wasmTable;
+#endif
 
     // loadModule loads the wasm module after all its dependencies have been loaded.
     // can be called both sync/async.
     function loadModule() {
       // alignments are powers of 2
-      memoryAlign = Math.pow(2, memoryAlign);
-      tableAlign = Math.pow(2, tableAlign);
+      var memAlign = Math.pow(2, metadata.memoryAlign);
       // finalize alignments and verify them
-      memoryAlign = Math.max(memoryAlign, STACK_ALIGN); // we at least need stack alignment
-#if ASSERTIONS
-      assert(tableAlign === 1, 'invalid tableAlign ' + tableAlign);
-#endif
+      memAlign = Math.max(memAlign, STACK_ALIGN); // we at least need stack alignment
       // prepare memory
-      var memoryBase = alignMemory(getMemory(memorySize + memoryAlign), memoryAlign); // TODO: add to cleanups
+      var memoryBase = alignMemory(getMemory(metadata.memorySize + memAlign), memAlign); // TODO: add to cleanups
 #if DYLINK_DEBUG
       err("loadModule: memoryBase=" + memoryBase);
 #endif
       // prepare env imports
       var env = asmLibraryArg;
       // TODO: use only __memory_base and __table_base, need to update asm.js backend
-      var table = wasmTable;
-      var tableBase = table.length;
-      var originalTable = table;
-      table.grow(tableSize);
-      assert(table === originalTable);
+      var tableBase = wasmTable.length;
+      wasmTable.grow(metadata.tableSize);
       // zero-initialize memory and table
       // The static area consists of explicitly initialized data, followed by zero-initialized data.
       // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
@@ -402,14 +397,14 @@ var LibraryDylink = {
       // in a pthread the module heap was already allocated and initialized in the main thread.
       if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
-        for (var i = memoryBase; i < memoryBase + memorySize; i++) {
+        for (var i = memoryBase; i < memoryBase + metadata.memorySize; i++) {
           HEAP8[i] = 0;
         }
 #if USE_PTHREADS
       }
 #endif
-      for (var i = tableBase; i < tableBase + tableSize; i++) {
-        table.set(i, null);
+      for (var i = tableBase; i < tableBase + metadata.tableSize; i++) {
+        wasmTable.set(i, null);
       }
 
       // This is the export map that we ultimately return.  We declare it here
@@ -480,12 +475,11 @@ var LibraryDylink = {
       function postInstantiation(instance) {
 #if ASSERTIONS
         // the table should be unchanged
-        assert(table === originalTable);
-        assert(table === wasmTable);
+        assert(wasmTable === originalTable);
 #endif
         // add new entries to functionsInTableMap
-        for (var i = 0; i < tableSize; i++) {
-          var item = table.get(tableBase + i);
+        for (var i = 0; i < metadata.tableSize; i++) {
+          var item = wasmTable.get(tableBase + i);
 #if ASSERTIONS
           // verify that the new table region was filled in
           assert(item !== undefined, 'table entry was not filled in');
@@ -549,7 +543,7 @@ var LibraryDylink = {
 
     // now load needed libraries and the module itself.
     if (flags.loadAsync) {
-      return neededDynlibs.reduce(function(chain, dynNeeded) {
+      return metadata.neededDynlibs.reduce(function(chain, dynNeeded) {
         return chain.then(function() {
           return loadDynamicLibrary(dynNeeded, flags);
         });
@@ -558,7 +552,7 @@ var LibraryDylink = {
       });
     }
 
-    neededDynlibs.forEach(function(dynNeeded) {
+    metadata.neededDynlibs.forEach(function(dynNeeded) {
       loadDynamicLibrary(dynNeeded, flags);
     });
     return loadModule();
