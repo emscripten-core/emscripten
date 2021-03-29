@@ -238,7 +238,7 @@ LibraryManager.library = {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
-  emscripten_resize_heap__deps: [
+  emscripten_resize_heap__deps: ['emscripten_resize_heap' // Dummy depend on itself to allow following ','s to match up.
 #if ASSERTIONS == 2
   , 'emscripten_get_now'
 #endif
