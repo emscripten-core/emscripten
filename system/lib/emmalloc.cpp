@@ -80,6 +80,10 @@ extern "C"
 // in the size field. I.e. for free regions, the size field is odd, and for used regions, the size field reads even.
 #define FREE_REGION_FLAG 0x1u
 
+// Attempts to malloc() more than this many bytes would cause an overflow when calculating the size of a region,
+// therefore allocations larger than this are short-circuited immediately on entry.
+#define MAX_ALLOC_SIZE 0xFFFFFFC7u
+
 // A free region has the following structure:
 // <size:uint32_t> <prevptr> <nextptr> ... <size:uint32_t>
 
@@ -633,8 +637,13 @@ static size_t validate_alloc_alignment(size_t alignment)
 
 static size_t validate_alloc_size(size_t size)
 {
+  assert(size + REGION_HEADER_SIZE > size);
+
   // Allocation sizes must be a multiple of pointer sizes, and at least 2*sizeof(pointer).
-  return size > 2*sizeof(Region*) ? (size_t)ALIGN_UP(size, sizeof(Region*)) : 2*sizeof(Region*);
+  size_t validatedSize = size > 2*sizeof(Region*) ? (size_t)ALIGN_UP(size, sizeof(Region*)) : 2*sizeof(Region*);
+  assert(validatedSize >= size); // 32-bit wraparound should not occur, too large sizes should be stopped before
+
+  return validatedSize;
 }
 
 static void *allocate_memory(size_t alignment, size_t size)
@@ -653,6 +662,14 @@ static void *allocate_memory(size_t alignment, size_t size)
   {
 #ifdef EMMALLOC_VERBOSE
     MAIN_THREAD_ASYNC_EM_ASM(console.log('Allocation failed: alignment not power of 2!'));
+#endif
+    return 0;
+  }
+
+  if (size > MAX_ALLOC_SIZE)
+  {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(console.log('Allocation failed: attempted allocation size is too large: ' + ($0 >>> 0) + 'bytes! (negative integer wraparound?)'), size);
 #endif
     return 0;
   }
@@ -720,11 +737,12 @@ static void *allocate_memory(size_t alignment, size_t size)
   // None of the buckets were able to accommodate an allocation. If this happens we are almost out of memory.
   // The largest bucket might contain some suitable regions, but we only looked at one region in that bucket, so
   // as a last resort, loop through more free regions in the bucket that represents the largest allocations available.
-  // But only if the bucket representing largest allocations available is not any of the first ten buckets (thirty buckets
-  // in 64-bit buckets build), these represent allocatable areas less than <1024 bytes - which could be a lot of scrap.
+  // But only if the bucket representing largest allocations available is not any of the first thirty buckets,
+  // these represent allocatable areas less than <1024 bytes - which could be a lot of scrap.
   // In such case, prefer to sbrk() in more memory right away.
   int largestBucketIndex = NUM_FREE_BUCKETS - 1 - __builtin_clzll(freeRegionBucketsUsed);
-  Region *freeRegion = freeRegionBuckets[largestBucketIndex].next;
+  // freeRegion will be null if there is absolutely no memory left. (all buckets are 100% used)
+  Region *freeRegion = freeRegionBucketsUsed ? freeRegionBuckets[largestBucketIndex].next : 0;
   if (freeRegionBucketsUsed >> 30)
   {
     // Look only at a constant number of regions in this bucket max, to avoid bad worst case behavior.
@@ -742,6 +760,7 @@ static void *allocate_memory(size_t alignment, size_t size)
 
   // We were unable to find a free memory region. Must sbrk() in more memory!
   size_t numBytesToClaim = size+sizeof(Region)*3;
+  assert(numBytesToClaim > size); // 32-bit wraparound should not happen here, allocation size has been validated above!
   bool success = claim_more_memory(numBytesToClaim);
   if (success)
     return allocate_memory(alignment, size); // Recurse back to itself to try again
@@ -749,12 +768,15 @@ static void *allocate_memory(size_t alignment, size_t size)
   // also sbrk() failed, we are really really constrained :( As a last resort, go back to looking at the
   // bucket we already looked at above, continuing where the above search left off - perhaps there are
   // regions we overlooked the first time that might be able to satisfy the allocation.
-  while(freeRegion != &freeRegionBuckets[largestBucketIndex])
+  if (freeRegion)
   {
-    void *ptr = attempt_allocate(freeRegion, alignment, size);
-    if (ptr)
-      return ptr;
-    freeRegion = freeRegion->next;
+    while(freeRegion != &freeRegionBuckets[largestBucketIndex])
+    {
+      void *ptr = attempt_allocate(freeRegion, alignment, size);
+      if (ptr)
+        return ptr;
+      freeRegion = freeRegion->next;
+    }
   }
 
 #ifdef EMMALLOC_VERBOSE
@@ -986,11 +1008,17 @@ void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size)
     return 0;
   }
 
-  assert(IS_POWER_OF_2(alignment));
+  if (size > MAX_ALLOC_SIZE)
+  {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(console.log('Allocation failed: attempted allocation size is too large: ' + ($0 >>> 0) + 'bytes! (negative integer wraparound?)'), size);
+#endif
+    return 0;
+  }
 
+  assert(IS_POWER_OF_2(alignment));
   // aligned_realloc() cannot be used to ask to change the alignment of a pointer.
   assert(HAS_ALIGNMENT(ptr, alignment));
-
   size = validate_alloc_size(size);
 
   // Calculate the region start address of the original allocation
@@ -1013,6 +1041,8 @@ void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size)
     memcpy(newptr, ptr, MIN(size, region->size - REGION_HEADER_SIZE));
     free(ptr);
   }
+  // N.B. If there is not enough memory, the old memory block should not be freed and
+  // null pointer is returned.
   return newptr;
 }
 
@@ -1035,6 +1065,15 @@ void *emmalloc_realloc_try(void *ptr, size_t size)
     free(ptr);
     return 0;
   }
+
+  if (size > MAX_ALLOC_SIZE)
+  {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(console.log('Allocation failed: attempted allocation size is too large: ' + ($0 >>> 0) + 'bytes! (negative integer wraparound?)'), size);
+#endif
+    return 0;
+  }
+
   size = validate_alloc_size(size);
 
   // Calculate the region start address of the original allocation
@@ -1059,6 +1098,14 @@ void *emmalloc_aligned_realloc_uninitialized(void *ptr, size_t alignment, size_t
   if (size == 0)
   {
     free(ptr);
+    return 0;
+  }
+
+  if (size > MAX_ALLOC_SIZE)
+  {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(console.log('Allocation failed: attempted allocation size is too large: ' + ($0 >>> 0) + 'bytes! (negative integer wraparound?)'), size);
+#endif
     return 0;
   }
 

@@ -5740,6 +5740,11 @@ int main(void) {
       ]:
         self.do_run(src.replace('{{{ NEW }}}', new).replace('{{{ DELETE }}}', delete), '*1,0*')
 
+  # Tests that a large allocation should gracefully fail
+  def test_dlmalloc_large(self):
+    self.emcc_args += ['-s', 'ABORTING_MALLOC=0', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=128MB']
+    self.do_runf(path_from_root('tests', 'dlmalloc_test_large.c'), '0 0 0 1')
+
   @no_asan('asan also changes malloc, and that ends up linking in new twice')
   def test_dlmalloc_partial(self):
     # present part of the symbols of dlmalloc, not all
