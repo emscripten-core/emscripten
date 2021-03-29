@@ -109,8 +109,8 @@ Options that are modified or new in *emcc* are listed below:
 
     ::
 
-      -s RUNTIME_LINKED_LIBS="['liblib.so']"
-      -s "RUNTIME_LINKED_LIBS=['liblib.so']"
+      -s EXPORTED_FUNCTIONS="['liblib.so']"
+      -s "EXPORTED_FUNCTIONS=['liblib.so']"
 
   You can also specify that the value of an option will be read from a specified JSON-formatted file. For example, the following option sets the ``EXPORTED_FUNCTIONS`` option with the contents of the file at **path/to/file**.
 

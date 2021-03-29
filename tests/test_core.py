@@ -3599,8 +3599,8 @@ ok
     self.set_setting('MAIN_MODULE', main_module)
     self.clear_setting('SIDE_MODULE')
     if auto_load:
-      self.set_setting('RUNTIME_LINKED_LIBS', ['liblib.so'])
       self.emcc_args += main_emcc_args
+      self.emcc_args.append('liblib.so')
       if force_c:
         self.emcc_args.append('-nostdlib++')
 

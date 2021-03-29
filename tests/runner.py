@@ -923,7 +923,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # reset dylink-related options first.
     self.clear_setting('MAIN_MODULE')
     self.clear_setting('SIDE_MODULE')
-    self.clear_setting('RUNTIME_LINKED_LIBS')
 
     # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
     self.set_setting('INITIAL_MEMORY', '32mb')
@@ -931,8 +930,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     so = '.wasm' if self.is_wasm() else '.js'
 
     def ccshared(src, linkto=[]):
-      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so] + self.get_emcc_args()
-      cmdv += ['-s', 'SIDE_MODULE', '-s', 'RUNTIME_LINKED_LIBS=' + str(linkto)]
+      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so, '-s', 'SIDE_MODULE'] + self.get_emcc_args()
+      cmdv += linkto
       self.run_process(cmdv)
 
     ccshared('liba.cpp')
@@ -940,7 +939,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ccshared('libc.cpp', ['liba' + so])
 
     self.set_setting('MAIN_MODULE')
-    self.set_setting('RUNTIME_LINKED_LIBS', ['libb' + so, 'libc' + so])
+    original_args = list(self.emcc_args)
+    extra_args = ['libb' + so, 'libc' + so]
+    self.emcc_args += extra_args
     do_run(r'''
       #ifdef __cplusplus
       extern "C" {
@@ -959,7 +960,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       ''',
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n')
 
-    self.set_setting('RUNTIME_LINKED_LIBS', [])
+    self.emcc_args = original_args
     for libname in ['liba', 'libb', 'libc']:
       self.emcc_args += ['--embed-file', libname + so]
     do_run(r'''
