@@ -1,5 +1,6 @@
 VERSION = $(shell cat emscripten-version.txt | sed s/\"//g)
-DESTDIR ?= ../emscripten-$(VERSION)
+TMPDESTDIR := $(shell mktemp -d)
+DESTDIR ?= $(TMPDESTDIR)/emscripten-$(VERSION)
 DISTFILE = emscripten-$(VERSION).tar.bz2
 
 dist: $(DISTFILE)
