@@ -2949,7 +2949,7 @@ def do_binaryen(target, options, wasm_target):
     if shared.Settings.WASM == 2:
       wasm2js_template = wasm_target + '.js'
       open(wasm2js_template, 'w').write(preprocess_wasm2js_script())
-      # generate secondary file for asm.js symbols
+      # generate secondary file for JS symbols
       symbols_file_js = shared.replace_or_append_suffix(wasm2js_template, '.symbols') if options.emit_symbol_map else None
     else:
       wasm2js_template = final_js

@@ -3523,6 +3523,30 @@ int main()
       self.assertContainedIf(warning, err, suffix in shared_suffixes)
 
   def test_symbol_map(self):
+    def get_symbols_lines(symbols_file):
+      self.assertTrue(os.path.isfile(symbols_file), "Symbols file %s isn't created" % symbols_file)
+      # check that the map is correct
+      with open(symbols_file) as f:
+        symbols = f.read()
+      lines = [line.split(':') for line in symbols.strip().split('\n')]
+      return lines
+
+    def get_minified_middle(symbols_file):
+      minified_middle = None
+      for minified, full in get_symbols_lines(symbols_file):
+        # handle both fastcomp and wasm backend notation
+        if full == 'middle':
+          minified_middle = minified
+          break
+      return minified_middle
+
+    def guess_symbols_file_type(symbols_file):
+      for minified, full in get_symbols_lines(symbols_file):
+        # define symbolication file by JS specific entries
+        if full in ['FUNCTION_TABLE', 'HEAP32']:
+          return 'js'
+      return 'wasm'
+
     UNMINIFIED_HEAP8 = 'var HEAP8 = new '
     UNMINIFIED_MIDDLE = 'function middle'
 
@@ -3553,17 +3577,9 @@ EM_ASM({ _middle() });
         cmd = [EMCC, 'src.c', '--emit-symbol-map'] + opts
         cmd += ['-s', 'WASM=%d' % wasm]
         self.run_process(cmd)
-        # check that the map is correct
-        with open('a.out.js.symbols') as f:
-          symbols = f.read()
-        lines = [line.split(':') for line in symbols.strip().split('\n')]
-        minified_middle = None
-        for minified, full in lines:
-          # handle both fastcomp and wasm backend notation
-          if full == '_middle' or full == 'middle':
-            minified_middle = minified
-            break
-        self.assertNotEqual(minified_middle, None)
+
+        minified_middle = get_minified_middle('a.out.js.symbols')
+        self.assertNotEqual(minified_middle, None, "Missing minified 'middle' function")
         if wasm:
           # stack traces are standardized enough that we can easily check that the
           # minified name is actually in the output
@@ -3574,6 +3590,19 @@ EM_ASM({ _middle() });
           wat = self.run_process([wasm_dis, 'a.out.wasm'], stdout=PIPE).stdout
           for func_start in ('(func $middle', '(func $_middle'):
             self.assertNotContained(func_start, wat)
+
+        # Ensure symbols file type according to `-s WASM=` mode
+        if wasm == 0:
+          self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'js', 'Primary symbols file should store JS mappings')
+        elif wasm == 1:
+          self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store WASM mappings')
+        elif wasm == 2:
+          # special case when ASM and WASM targets are created
+          minified_middle_2 = get_minified_middle('a.out.wasm.js.symbols')
+          self.assertNotEqual(minified_middle_2, None, "Missing minified 'middle' function")
+          self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store WASM mappings')
+          self.assertEqual(guess_symbols_file_type('a.out.wasm.js.symbols'), 'js', 'Secondary symbols file should store JS mappings')
+
         # check we don't keep unnecessary debug info with wasm2js when emitting
         # a symbol map
         if wasm == 0 and '-O' in str(opts):

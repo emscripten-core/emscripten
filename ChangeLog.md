@@ -25,7 +25,7 @@ Current Trunk
 - Fix generating of symbol files with `--emit-symbol-map` for ASM.js targets.
   When `-s WASM=2` is used. Two symbols are generated:
     - `[name].js.symbols` - storing WASM mapping
-    - `[name].wasm.js.symbols` - storing ASM.js mapping
+    - `[name].wasm.js.symbols` - storing JS mapping
   In other cases a single `[name].js.symbols` file is created.
 
 2.0.16: 03/25/2021
