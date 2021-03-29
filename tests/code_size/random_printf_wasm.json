@@ -1,13 +1,6 @@
 {
-<<<<<<< HEAD
-  "a.html": 13570,
-  "a.html.gz": 7194,
-  "total": 13570,
-  "total_gz": 7194
-=======
-  "a.html": 12617,
-  "a.html.gz": 6787,
-  "total": 12617,
-  "total_gz": 6787
->>>>>>> origin/main
+  "a.html": 12509,
+  "a.html.gz": 6735,
+  "total": 12509,
+  "total_gz": 6735
 }
