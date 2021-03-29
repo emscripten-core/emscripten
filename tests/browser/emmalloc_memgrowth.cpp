@@ -33,4 +33,9 @@ int main()
 	// Exhaust all available memory.
 	for(int i = 0; i < 50; ++i)
 		grow_memory();
+	// If we get this far without crashing on OOM, we are ok!
+	printf("Test finished!\n");
+#ifdef REPORT_RESULT
+	REPORT_RESULT(0);
+#endif
 }
