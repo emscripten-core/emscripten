@@ -23,6 +23,17 @@ GLuint CompileShader(GLenum type, const char *src)
   return shader;
 }
 
+GLuint CreateProgram(GLuint vertexShader, GLuint fragmentShader)
+{
+   GLuint program = glCreateProgram();
+   glAttachShader(program, vertexShader);
+   glAttachShader(program, fragmentShader);
+   glBindAttribLocation(program, 0, "apos");
+   glBindAttribLocation(program, 1, "acolor");
+   glLinkProgram(program);
+   return program;
+}
+
 int main(int argc, char *argv[])
 {
   EmscriptenWebGLContextAttributes attr;
@@ -50,25 +61,67 @@ int main(int argc, char *argv[])
     "precision lowp float;\n"
     "#define LOCATION(x) layout(location=x)\n"
     "LOCATION(8) uniform vec3 color;\n"
+    "LOCATION(11) uniform vec4 color2;\n"
     "layout(location = 18) uniform vec3 colors[3];\n"
+    "layout(location = 24) uniform vec3 colors2[3];\n"
     "in vec4 v_pos;\n"
     "LOCATION(0) out highp vec4 SV_TARGET0; // Make sure MRT output locations don't get removed by preprocessor\n"
-    "void main() { SV_TARGET0 = vec4(color,1) + vec4(colors[0].r, colors[1].g, colors[2].b, 1); }");
+    "void main() { SV_TARGET0 = vec4(color,1) + color2 + vec4(colors[0].r, colors[1].g, colors[2].b, 1) + vec4(colors2[0].r, colors2[1].g, colors2[2].b, 1); }");
 
   GLuint program = glCreateProgram();
   glAttachShader(program, vs);
   glAttachShader(program, ps);
   glLinkProgram(program);
   assert(glGetError() == GL_NO_ERROR && "Shader program link failed");
+  glUseProgram(program);
 
   assert(glGetUniformLocation(program, "world") == 42);
   assert(glGetUniformLocation(program, "view") == 0);
   assert(glGetUniformLocation(program, "color") == 8);
+  assert(glGetUniformLocation(program, "colors[2]") == 20);
   assert(glGetUniformLocation(program, "colors") == 18);
   assert(glGetUniformLocation(program, "colors[]") == 18);
   assert(glGetUniformLocation(program, "colors[0]") == 18);
   assert(glGetUniformLocation(program, "colors[1]") == 19);
-  assert(glGetUniformLocation(program, "colors[2]") == 20);
+
+  float world[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
+  glUniformMatrix4fv(42, 1, GL_FALSE, world);
+
+  float view[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
+  glUniformMatrix4fv(0, 1, GL_FALSE, view);
+
+  static const float vb[] = {
+     -0.6f, -0.6f,
+      0.6f, -0.6f,
+      0.f,   0.6f,
+  };
+
+  GLuint vbo;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vb), vb, GL_STATIC_DRAW);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 8, 0);
+  glEnableVertexAttribArray(0);
+
+  // Test submitting a non-array uniform
+  glUniform3f(8/*color*/, 0.1f, 0.2f, 0.3f);
+  // Test submitting a non-array uniform that has never had glGetUniformLocation() called on it
+  glUniform4f(11/*color2*/, 0.2f, 0.3f, 0.4f, 1.f);
+  // Test submitting an array uniform
+  float colors[9] = { 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.2f, 0.1f, 0.0f, 0.3f };
+  glUniform3fv(18, 3, colors);
+    // Test submitting an array uniform that has never had glGetUniformLocation() called on it
+  float colors2[9] = { 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.1f, 0.0f, 0.2f, 0.1f };
+  glUniform3fv(24, 3, colors2);
+
+  glClearColor(0.3f,0.3f,0.3f,1);
+  glClear(GL_COLOR_BUFFER_BIT);
+  glDrawArrays(GL_TRIANGLES, 0, 3);
+
+  uint8_t data[4];
+  glReadPixels(150, 75, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, data);
+  printf("output triangle color: %u, %u, %u, %u\n", data[0], data[1], data[2], data[3]);
+//  assert(data[0] == )
 
   printf("Test passed!\n");
 #ifdef REPORT_RESULT

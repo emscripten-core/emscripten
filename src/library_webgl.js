@@ -456,8 +456,8 @@ var LibraryGL = {
       if (objectID != 0) {
         if (objectHandleArray[objectID] === null) {
           console.error(callerFunctionName + ' called with an already deleted ' + objectReadableType + ' ID ' + objectID + '!');
-        } else if (!objectHandleArray[objectID]) {
-          console.error(callerFunctionName + ' called with an invalid ' + objectReadableType + ' ID ' + objectID + '!');
+        } else if (!(objectID in objectHandleArray)) {
+          console.error(callerFunctionName + ' called with a nonexisting ' + objectReadableType + ' ID ' + objectID + '!');
         }
       }
     },
@@ -2017,7 +2017,7 @@ var LibraryGL = {
     // If an integer, we have not yet bound the location, so do it now. The integer value specifies the array index
     // we should bind to.
     if (webglLoc >= 0) {
-      p.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(p, p.uniformArrayNamesById[location] + '[' + webglLoc + ']');
+      p.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(p, p.uniformArrayNamesById[location] + (webglLoc > 0 ? '[' + webglLoc + ']' : ''));
     }
     // Else an already cached WebGLUniformLocation, return it.
     return webglLoc;
@@ -2091,9 +2091,9 @@ var LibraryGL = {
 
         // Store placeholder integers in place that highlight that these
         // >0 index locations are array indices pending population.
-        for(j = 1; j < sz; ++j) {
-          uniformLocsById[++id] = j;
-          program.uniformArrayNamesById[id] = arrayName;
+        for(j = 0; j < sz; ++j) {
+          uniformLocsById[id] = j;
+          program.uniformArrayNamesById[id++] = arrayName;
         }
       }
     }
@@ -3040,13 +3040,17 @@ var LibraryGL = {
     // Remove all the layout(location = x) directives so that they do not make
     // their way to the actual WebGL shader compiler.
     source = source.replace(regex, '$2');
-#if GL_DEBUG
-    console.log('Shader source after removing layout location directives: ' + source);
-#endif
 
     // Remember all the directives to be handled after glLinkProgram is called.
     GL.shaders[shader].explicitUniformLocations = explicitUniformLocations;
+
+#if GL_DEBUG
+    console.log('Shader source after removing layout location directives: ' + source);
+    console.log('Explicit uniform locations recorded in the shader:');
+    console.dir(explicitUniformLocations);
 #endif
+
+#endif // ~GL_EXPLICIT_UNIFORM_LOCATION
 
     GLctx.shaderSource(GL.shaders[shader], source);
   },
@@ -3271,6 +3275,9 @@ var LibraryGL = {
         // with size=1, this is not true, but on the first glGetUniformLocation() call
         // the array sizes will get populated to correct sizes.
         program.uniformSizeAndIdsByName[shaderLocation] = [1, loc];
+#if GL_DEBUG
+        console.log('Marking uniform ' + loc + ' to location ' + shaderLocation);
+#endif
 
         // Make sure we will never automatically assign locations within the range
         // used for explicit layout(location=x) variables.
