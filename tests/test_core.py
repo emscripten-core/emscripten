@@ -6307,6 +6307,20 @@ return malloc(size);
     self.do_runf(test_file('core', 'test_autodebug.c'),
                  'success', output_nicerizer=check)
 
+  @parameterized({
+    'full': ('full',),
+    'mask': ('mask',),
+    'none': ('none',),
+  })
+  def test_wasm2c_sandboxing(self, mode):
+    if not can_do_standalone(self):
+      return self.skipTest('standalone mode not supported')
+    self.set_setting('STANDALONE_WASM')
+    self.set_setting('WASM2C')
+    self.set_setting('WASM2C_SANDBOXING', mode)
+    self.wasm_engines = []
+    self.do_core_test('test_hello_world.c')
+
   ### Integration tests
 
   @sync
