@@ -6813,8 +6813,6 @@ int main() {
 
   def run_metadce_test(self, filename, args, expected_exists, expected_not_exists, expected_size,
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
-    return self.skipTest('let https://github.com/WebAssembly/binaryen/pull/3730 roll in')
-
     size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
@@ -8438,7 +8436,6 @@ int main () {
     'hello_webgl2_wasm': ('hello_webgl2', False),
     'hello_webgl2_wasm2js': ('hello_webgl2', True),
   })
-  @unittest.skip('let https://github.com/WebAssembly/binaryen/pull/3730 roll in')
   def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
                                '-s', 'ENVIRONMENT=web',
