@@ -18,7 +18,7 @@ Contact
 
 Status
 
-    Implemented in Emscripten 2.0.16 and newer for OpenGL ES 2 and
+    Implemented in Emscripten 2.0.17 and newer for OpenGL ES 2 and
     OpenGL ES 3 contexts. (March 2021)
 
 Version
@@ -28,7 +28,7 @@ Version
 
 Dependencies
 
-    Emscripten 2.0.16 compiler targeting OpenGL ES 2.0 or OpenGL ES 3.0
+    Emscripten 2.0.17 compiler targeting OpenGL ES 2.0 or OpenGL ES 3.0
     versions.
 
     Written against the OpenGL ES 2.0.25 and WebGL 1 specifications.
