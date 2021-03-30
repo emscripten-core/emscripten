@@ -103,8 +103,6 @@ UNSUPPORTED_LLD_FLAGS = {
     '-version-script': True,
 }
 
-LIB_PREFIXES = ('', 'lib')
-
 DEFAULT_ASYNCIFY_IMPORTS = [
   'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
@@ -1098,12 +1096,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           elif file_suffix in (STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
             # if it's not, and it's a library, just add it to libs to find later
             libname = unsuffixed_basename(arg)
-            for prefix in LIB_PREFIXES:
-              if not prefix:
-                continue
-              if libname.startswith(prefix):
-                libname = libname[len(prefix):]
-                break
+            libname = libname.lstrip('lib')
             libs.append((i, libname))
         elif file_suffix in STATICLIB_ENDINGS:
           if not building.is_ar(arg):
@@ -3308,7 +3301,7 @@ def process_libraries(libs, lib_dirs, temp_files):
     logger.debug('looking for library "%s"', lib)
 
     found = False
-    for prefix in LIB_PREFIXES:
+    for prefix in ('', 'lib'):
       for suff in suffixes:
         name = prefix + lib + suff
         for lib_dir in lib_dirs:
