@@ -20,8 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
-- Binaryen inlining heuristics changed to always inline single-use functions.
-  This should reduce code size and improve performance (#13744).
+- Binaryen now always inlines single-use functions. This should reduce code size
+  and improve performance (#13744).
 
 2.0.16: 03/25/2021
 ------------------
