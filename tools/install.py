@@ -37,6 +37,9 @@ logger = logging.getLogger('install')
 
 
 def add_revision_file(target):
+  if not os.path.exists('.git'):
+    print('skipping generate emscripten-revision.txt as .git directory does not exist')
+    return
   # text=True would be better than encoding here, but it's only supported in 3.7+
   git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], encoding='utf-8').strip()
   with open(os.path.join(target, 'emscripten-revision.txt'), 'w') as f:
