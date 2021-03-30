@@ -3024,7 +3024,7 @@ var LibraryGL = {
     console.log('Shader source after preprocessing: ' + source);
 #endif
     // Extract the layout(location = x) directives.
-    var regex = /layout\s*\(\s*location\s*=\s*([-\d]+)\s*\)\s*(uniform\s*\w*\s*(\w*))/g, explicitUniformLocations = {}, match;
+    var regex = /layout\s*\(\s*location\s*=\s*([-\d]+)\s*\)\s*(uniform\s+\w+\s+(\w+))/g, explicitUniformLocations = {}, match;
     while(match = regex.exec(source)) {
 #if GL_DEBUG
       console.dir(match);
