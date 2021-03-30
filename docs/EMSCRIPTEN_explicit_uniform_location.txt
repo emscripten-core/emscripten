@@ -115,7 +115,7 @@ Additions to Emscripten compiler
 
         -s GL_EXPLICIT_UNIFORM_LOCATION=1
 
-    to 'emcc' or 'em++; linker command line in the Emscripten compiler.
+    to 'emcc' or 'em++' linker command line in the Emscripten compiler.
 
     When this flag is passed, the extension EMSCRIPTEN_explicit_uniform_location
     is enabled for all contexts created in the application.
