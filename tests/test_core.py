@@ -5741,6 +5741,7 @@ int main(void) {
         self.do_run(src.replace('{{{ NEW }}}', new).replace('{{{ DELETE }}}', delete), '*1,0*')
 
   # Tests that a large allocation should gracefully fail
+  @no_asan('the memory size limit here is too small for asan')
   def test_dlmalloc_large(self):
     self.emcc_args += ['-s', 'ABORTING_MALLOC=0', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=128MB']
     self.do_runf(path_from_root('tests', 'dlmalloc_test_large.c'), '0 0 0 1')
