@@ -2229,7 +2229,7 @@ void *getBindBuffer() {
       }
     ''')
     self.run_process([EMCC, 'supp.cpp', '-o', 'supp.wasm', '-s', 'SIDE_MODULE', '-O2', '-s', 'EXPORT_ALL'])
-    self.btest_exit('main.cpp', args=['-DBROWSER=1', '-s', 'MAIN_MODULE', '-O2', '-s', 'RUNTIME_LINKED_LIBS=[supp.wasm]', '-s', 'EXPORT_ALL'], assert_returncode=76)
+    self.btest_exit('main.cpp', args=['-DBROWSER=1', '-s', 'MAIN_MODULE', '-O2', 'supp.wasm', '-s', 'EXPORT_ALL'], assert_returncode=76)
 
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
@@ -3620,8 +3620,7 @@ window.close = function() {
     self.run_process([EMCC, 'side1.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side1.wasm'])
     self.run_process([EMCC, 'side2.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side2.wasm'])
     self.btest(self.in_dir('main.cpp'), '1',
-               args=['-Wno-experimental', '-pthread', '-s', 'MAIN_MODULE',
-                     '-s', 'RUNTIME_LINKED_LIBS=[side1.wasm,side2.wasm]'])
+               args=['-Wno-experimental', '-pthread', '-s', 'MAIN_MODULE', 'side1.wasm', 'side2.wasm'])
 
   def test_memory_growth_during_startup(self):
     create_file('data.dat', 'X' * (30 * 1024 * 1024))

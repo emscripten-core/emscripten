@@ -1460,10 +1460,10 @@ int f() {
       ['0123456789'],
       emcc_args=[
         '-s', 'EXIT_RUNTIME=1',
-        '-s', 'RUNTIME_LINKED_LIBS=[side.wasm]',
         '-s', 'MAIN_MODULE=1',
         '-s', 'DISABLE_EXCEPTION_CATCHING=0',
-        '-s', 'ASSERTIONS=2'
+        '-s', 'ASSERTIONS=2',
+        'side.wasm',
       ])
 
   def test_multidynamic_link(self):
@@ -1569,8 +1569,8 @@ int f() {
         '-pthread', '-Wno-experimental',
         '-s', 'PROXY_TO_PTHREAD',
         '-s', 'EXIT_RUNTIME=1',
-        '-s', 'RUNTIME_LINKED_LIBS=[\'side.wasm\']',
         '-s', 'MAIN_MODULE=1',
+        'side.wasm',
       ])
 
   def test_js_link(self):
@@ -5387,6 +5387,21 @@ int main(int argc, char** argv) {
     side_dce_work = test(main_args=['-s', 'MAIN_MODULE'], library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=[_library_func]'], expected='hello from library')
 
     self.assertLess(side_dce_fail[1], 0.95 * side_dce_work[1]) # removing that function saves a chunk
+
+  def test_RUNTIME_LINKED_LIBS(self):
+    # Verify that the legacy `-s RUNTIME_LINKED_LIBS` option acts the same as passing a
+    # library on the command line directly.
+    create_file('side.c', 'int foo() { return 42; }')
+    create_file('main.c', '#include <assert.h>\nextern int foo(); int main() { assert(foo() == 42); return 0; }')
+
+    self.run_process([EMCC, '-O2', 'side.c', '-s', 'SIDE_MODULE', '-o', 'side.wasm'])
+    self.run_process([EMCC, '-O2', 'main.c', '-s', 'MAIN_MODULE', '-o', 'main.js', 'side.wasm'])
+    self.run_js('main.js')
+
+    self.run_process([EMCC, '-O2', 'main.c', '-s', 'MAIN_MODULE', '-o', 'main2.js', '-s', 'RUNTIME_LINKED_LIBS=side.wasm'])
+    self.run_js('main2.js')
+
+    self.assertBinaryEqual('main.wasm', 'main2.wasm')
 
   def test_ld_library_path(self):
     create_file('hello1.c', r'''

@@ -971,6 +971,8 @@ var SIDE_MODULE = 0;
 
 // If this is a shared object (MAIN_MODULE == 1 || SIDE_MODULE == 1), then we
 // will link these at runtime. They must have been built with SIDE_MODULE == 1.
+// In most cases it is simpler to pass the filenames directly on the commandline
+// instead.
 // [link]
 var RUNTIME_LINKED_LIBS = [];
 

@@ -59,6 +59,13 @@ def readLEB(buf, offset):
   return (result, offset)
 
 
+def readString(buf, offset):
+  size, offset = readLEB(buf, offset)
+  end = offset + size
+  s = buf[offset:end]
+  return s.decode('utf-8'), end
+
+
 def add_emscripten_metadata(wasm_file):
   mem_size = shared.Settings.INITIAL_MEMORY // WASM_PAGE_SIZE
   global_base = shared.Settings.GLOBAL_BASE
@@ -110,7 +117,6 @@ def add_emscripten_metadata(wasm_file):
 
 def parse_dylink_section(wasm_file):
   wasm = open(wasm_file, 'rb').read()
-  section_name = b'\06dylink' # section name, including prefixed size
 
   # Read the existing section data
   offset = 8
@@ -119,22 +125,30 @@ def parse_dylink_section(wasm_file):
   size, offset = readLEB(wasm, offset)
   section_end = offset + size
   section = wasm[offset:section_end]
+  offset = 0
   # section name
-  assert section.startswith(section_name)
-  offset = len(section_name)
+  section_name, offset = readString(section, offset)
+  assert section_name == 'dylink'
   mem_size, offset = readLEB(section, offset)
   mem_align, offset = readLEB(section, offset)
   table_size, offset = readLEB(section, offset)
   table_align, offset = readLEB(section, offset)
 
-  return (mem_size, mem_align, table_size, table_align, section_end)
+  needed = []
+  needed_count, offset = readLEB(section, offset)
+  while needed_count:
+    libname, offset = readString(section, offset)
+    needed.append(libname)
+    needed_count -= 1
+
+  return (mem_size, mem_align, table_size, table_align, section_end, needed)
 
 
-def update_dylink_section(wasm_file, needed_dynlibs):
+def update_dylink_section(wasm_file, extra_dynlibs):
   # A wasm shared library has a special "dylink" section, see tools-conventions repo.
-  # This function adds this section to the beginning on the given file.
+  # This function updates this section, adding extra dynamic library dependencies.
 
-  mem_size, mem_align, table_size, table_align, section_end = parse_dylink_section(wasm_file)
+  mem_size, mem_align, table_size, table_align, section_end, needed = parse_dylink_section(wasm_file)
 
   section_name = b'\06dylink' # section name, including prefixed size
   contents = (toLEB(mem_size) + toLEB(mem_align) +
@@ -161,8 +175,9 @@ def update_dylink_section(wasm_file, needed_dynlibs):
   #
   # a proposal has been filed to include the extension into "dylink" specification:
   # https://github.com/WebAssembly/tool-conventions/pull/77
-  contents += toLEB(len(needed_dynlibs))
-  for dyn_needed in needed_dynlibs:
+  needed += extra_dynlibs
+  contents += toLEB(len(needed))
+  for dyn_needed in needed:
     dyn_needed = dyn_needed.encode('utf-8')
     contents += toLEB(len(dyn_needed))
     contents += dyn_needed

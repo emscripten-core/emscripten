@@ -2883,7 +2883,9 @@ def do_binaryen(target, options, wasm_target):
     building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
-  if shared.Settings.RELOCATABLE:
+
+  # Add extra dylibs if needed.
+  if shared.Settings.RUNTIME_LINKED_LIBS:
     webassembly.update_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
