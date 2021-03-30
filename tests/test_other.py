@@ -5388,6 +5388,56 @@ int main(int argc, char** argv) {
 
     self.assertLess(side_dce_fail[1], 0.95 * side_dce_work[1]) # removing that function saves a chunk
 
+  def test_dynamic_linking_with_pthread_and_stack_check(self):
+    # Test that the stack overflow check is handled correctly
+    # for dynamically linked libraries running on threads.
+
+    # A side module that allocates memory in the stack
+    create_test_file('side.cpp', r'''
+      #include <stdio.h>
+      int side(void (*f)(int &)) {
+          int x = 42;
+          // Do something with x so that the compiler
+          // won't optimize it out, forcing it to
+          // allocate x in the stack.
+          if (f) f(x);
+          return x;
+      }
+      ''')
+    self.run_process([
+      EMCC,
+      '-o', 'side.wasm',
+      'side.cpp',
+      '-pthread', '-Wno-experimental',
+      '-s', 'SIDE_MODULE=1',
+      '-s', 'ASSERTIONS=2'])
+
+    # Run the side module in a thread
+    create_test_file('main.cpp', r'''
+      #include <thread>
+      int side(void (*f)(int &));
+      int main(void) {
+          std::thread([=]{
+              side(nullptr);
+              printf("success\n");
+          }).join();
+          return 0;
+      }
+      ''')
+
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    self.do_smart_test(
+      'main.cpp',
+      ['success'],
+      emcc_args=[
+        '-pthread', '-Wno-experimental',
+        '-s', 'PROXY_TO_PTHREAD',
+        '-s', 'EXIT_RUNTIME=1',
+        '-s', 'RUNTIME_LINKED_LIBS=[\'side.wasm\']',
+        '-s', 'MAIN_MODULE=1',
+        '-s', 'ASSERTIONS=2'
+      ])
+
   def test_ld_library_path(self):
     create_file('hello1.c', r'''
 #include <stdio.h>

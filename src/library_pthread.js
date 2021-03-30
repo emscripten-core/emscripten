@@ -1375,10 +1375,20 @@ var LibraryPThread = {
     return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
   },
 
+#if MAIN_MODULE
+  $establishStackSpace__deps: ['$LDSO'],
+#endif
   $establishStackSpace: function(stackTop, stackMax) {
     _emscripten_stack_set_limits(stackTop, stackMax);
 #if STACK_OVERFLOW_CHECK >= 2
     ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+#if MAIN_MODULE
+    Object.values(LDSO.loadedLibs).forEach(function (lib) {
+      if ("__set_stack_limits" in lib.module) {
+        lib.module.__set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+      }
+    });
+#endif
 #endif
 
     // Call inside wasm module to set up the stack frame for this pthread in wasm module scope
