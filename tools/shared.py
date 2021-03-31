@@ -144,7 +144,7 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
             # then look again if any process has completed.
             try:
               out, err = processes[0][1].communicate(0.2)
-              return (0, out, err)
+              return (0, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
             except subprocess.TimeoutExpired:
               pass
 
@@ -152,12 +152,12 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
         idx, finished_process = processes[j]
         del processes[j]
         if pipe_stdout:
-          std_outs += [(idx, out.decode('UTF-8'))]
+          std_outs += [(idx, out)]
         if check and finished_process.returncode != 0:
           if out:
-            logger.info(out.decode('UTF-8'))
+            logger.info(out)
           if err:
-            logger.error(err.decode('UTF-8'))
+            logger.error(err)
           raise Exception('Subprocess %d/%d failed with return code %d! (cmdline: %s)' % (idx + 1, len(commands), finished_process.returncode, shlex_join(commands[idx])))
         num_completed += 1
 
