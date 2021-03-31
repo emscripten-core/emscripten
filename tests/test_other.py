@@ -3595,7 +3595,7 @@ EM_ASM({ _middle() });
         if wasm == 0:
           self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'js', 'Primary symbols file should store JS mappings')
         elif wasm == 1:
-          self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store WASM mappings')
+          self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store Wasm mappings')
         elif wasm == 2:
           # special case when both JS and Wasm targets are created
           minified_middle_2 = get_minified_middle('a.out.wasm.js.symbols')
