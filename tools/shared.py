@@ -107,6 +107,9 @@ def get_num_cores():
 def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp_files_suffix=None, pipe_stdout=False, check=True, cwd=None):
   std_outs = []
 
+  if route_stdout_to_temp_files_suffix and pipe_stdout:
+    raise Exception('Cannot simultaneously pipe stdout to file and a string! Choose one or the other.')
+
   # TODO: Experiment with registering a signal handler here to see if that helps with Ctrl-C locking up the command prompt
   # when multiple child processes have been spawned.
   # import signal
@@ -126,7 +129,7 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
         std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
         if DEBUG:
           logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
-        processes += [(i, subprocess.Popen(commands[i], stdout=std_out, env=env, cwd=cwd))]
+        processes += [(i, subprocess.Popen(commands[i], stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd))]
         if route_stdout_to_temp_files_suffix:
           std_outs += [(i, std_out.name)]
         i += 1
