@@ -2040,7 +2040,7 @@ var LibraryGL = {
     name = UTF8ToString(name);
 
 #if GL_ASSERTIONS
-    assert(name.trim() == name, 'Uniform names passed to glGetUniformLocation() should not contain slop trimmable whitespace!');
+    assert(name.indexOf(' ') == -1, 'Uniform names passed to glGetUniformLocation() should not contain spaces! (received "' + name + '")');
 #endif
 
     program = GL.programs[program];
