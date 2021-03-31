@@ -3597,10 +3597,10 @@ EM_ASM({ _middle() });
         elif wasm == 1:
           self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store WASM mappings')
         elif wasm == 2:
-          # special case when ASM and WASM targets are created
+          # special case when both JS and Wasm targets are created
           minified_middle_2 = get_minified_middle('a.out.wasm.js.symbols')
           self.assertNotEqual(minified_middle_2, None, "Missing minified 'middle' function")
-          self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store WASM mappings')
+          self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store Wasm mappings')
           self.assertEqual(guess_symbols_file_type('a.out.wasm.js.symbols'), 'js', 'Secondary symbols file should store JS mappings')
 
         # check we don't keep unnecessary debug info with wasm2js when emitting

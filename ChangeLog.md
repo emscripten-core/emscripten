@@ -22,9 +22,9 @@ Current Trunk
 -------------
 - Binaryen now always inlines single-use functions. This should reduce code size
   and improve performance (#13744).
-- Fix generating of symbol files with `--emit-symbol-map` for ASM.js targets.
+- Fix generating of symbol files with `--emit-symbol-map` for JS targets.
   When `-s WASM=2` is used. Two symbols are generated:
-    - `[name].js.symbols` - storing WASM mapping
+    - `[name].js.symbols` - storing Wasm mapping
     - `[name].wasm.js.symbols` - storing JS mapping
   In other cases a single `[name].js.symbols` file is created.
 
