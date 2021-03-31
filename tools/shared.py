@@ -100,11 +100,38 @@ def get_num_cores():
   return int(os.environ.get('EMCC_CORES', os.cpu_count()))
 
 
+multiprocessing_pool = None
+
+def get_multiprocessing_pool():
+  import multiprocessing
+  global multiprocessing_pool
+  if multiprocessing_pool:
+    return multiprocessing_pool
+  multiprocessing_pool = multiprocessing.Pool(processes=get_num_cores())
+  return multiprocessing_pool
+
+
+def mp_run_process(command_tuple):
+  cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd = command_tuple
+  std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
+  ret = std_out.name if route_stdout_to_temp_files_suffix else None
+  proc = subprocess.Popen(cmd, stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd)
+  out, err = proc.communicate()
+  if pipe_stdout:
+    ret = out.decode('UTF-8')
+  return ret
+
+
+def run_multiple_processes_multiprocessing(commands, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd):
+  return get_multiprocessing_pool().map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd) for cmd in commands], chunksize=1)
+
 # Runs multiple subprocess commands.
 # bool 'check': If True (default), raises an exception if any of the subprocesses failed with a nonzero exit code.
 # string 'route_stdout_to_temp_files_suffix': if not None, all stdouts are instead written to files, and an array of filenames is returned.
 # bool 'pipe_stdout': If True, an array of stdouts is returned, for each subprocess.
 def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp_files_suffix=None, pipe_stdout=False, check=True, cwd=None):
+  return run_multiple_processes_multiprocessing(commands, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd)
+
   std_outs = []
 
   if route_stdout_to_temp_files_suffix and pipe_stdout:
