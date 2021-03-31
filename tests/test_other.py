@@ -8552,6 +8552,9 @@ int main () {
     if compare_js_output:
       js_out = test_file('code_size', test_name + '.js')
       terser = shared.get_npm_cmd('terser')
+      # N.b. this requires node in PATH, it does not run against NODE from
+      # Emscripten config file. If you have this line fail, make sure 'node' is
+      # visible in PATH.
       self.run_process(terser + ['-b', 'beautify=true', 'a.js', '-o', 'pretty.js'])
       self.assertFileContents(js_out, open('pretty.js').read())
 
