@@ -25,7 +25,7 @@ if sys.version_info < (3, 6):
 
 from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
-from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS, LINUX
+from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles, colored_logger
 from . import diagnostics
 from . import config
