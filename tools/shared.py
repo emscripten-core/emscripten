@@ -151,20 +151,16 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
     i = 0
     num_completed = 0
 
-    def launch_new_process():
-      nonlocal processes, std_outs, i
-      std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
-      if DEBUG:
-        logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
-      processes += [(i, subprocess.Popen(commands[i], stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd))]
-      if route_stdout_to_temp_files_suffix:
-        std_outs += [(i, std_out.name)]
-      i += 1
-
     while num_completed < len(commands):
       if i < len(commands) and len(processes) < num_parallel_processes:
         # Not enough parallel processes running, spawn a new one.
-        launch_new_process()
+        std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
+        if DEBUG:
+          logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
+        processes += [(i, subprocess.Popen(commands[i], stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd))]
+        if route_stdout_to_temp_files_suffix:
+          std_outs += [(i, std_out.name)]
+        i += 1
       else:
         # Not spawning a new process (Too many commands running in parallel, or no commands left): find if a process has finished.
         def get_finished_process():
@@ -172,9 +168,6 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
             j = 0
             while j < len(processes):
               if processes[j][1].poll() is not None:
-                # Immediately launch the next process to maximize utilization
-                if i < len(commands):
-                  launch_new_process()
                 out, err = processes[j][1].communicate()
                 return (j, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
               j += 1
