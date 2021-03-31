@@ -133,18 +133,24 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
       else:
         # Not spawning a new process (Too many commands running in parallel, or no commands left): find if a process has finished.
         def get_finished_process():
-          j = 0
-          while j < len(processes):
-            if processes[j][1].poll() is not None:
-              return j
-            j += 1
-          # All processes still running; take first (oldest) process to finish.
-          return 0
+          while True:
+            j = 0
+            while j < len(processes):
+              if processes[j][1].poll() is not None:
+                out, err = processes[j][1].communicate()
+                return (j, '', '')
+              j += 1
+            # All processes still running; wait a short while for the first (oldest) process to finish,
+            # then look again if any process has completed.
+            try:
+              out, err = processes[0][1].communicate(0.2)
+              return (0, out, err)
+            except TimeoutExpired:
+              pass
 
-        j = get_finished_process()
+        j, out, err = get_finished_process()
         idx, finished_process = processes[j]
         del processes[j]
-        out, err = finished_process.communicate()
         if pipe_stdout:
           std_outs += [(idx, out.decode('UTF-8'))]
         if check and finished_process.returncode != 0:
