@@ -1211,7 +1211,7 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minif
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
-def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info, symbols_file=None):
+def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info, symbols_file=None, symbols_file_js=None):
   logger.debug('wasm2js')
   args = ['--emscripten']
   if opt_level > 0:
@@ -1230,6 +1230,8 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     passes = []
     if not debug_info and not Settings.USE_PTHREADS:
       passes += ['minifyNames']
+      if symbols_file_js:
+        passes += ['symbolMap=%s' % symbols_file_js]
     if minify_whitespace:
       passes += ['minifyWhitespace']
     passes += ['last']
