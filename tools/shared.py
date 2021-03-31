@@ -145,7 +145,7 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
             try:
               out, err = processes[0][1].communicate(0.2)
               return (0, out, err)
-            except TimeoutExpired:
+            except subprocess.TimeoutExpired:
               pass
 
         j, out, err = get_finished_process()
