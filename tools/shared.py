@@ -38,6 +38,9 @@ EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_LLVM_VERSION = "13.0"
 PYTHON = sys.executable
 
+# Used only on Linux
+multiprocessing_pool = None
+
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
                     level=logging.DEBUG if DEBUG else logging.INFO)
@@ -94,6 +97,101 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
   logger.debug(debug_text)
   return ret
+
+
+def get_num_cores():
+  return int(os.environ.get('EMCC_CORES', os.cpu_count()))
+
+
+def mp_run_process(command_tuple):
+  temp_files = configuration.get_temp_files()
+  cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd = command_tuple
+  std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
+  ret = std_out.name if route_stdout_to_temp_files_suffix else None
+  proc = subprocess.Popen(cmd, stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd)
+  out, _ = proc.communicate()
+  if pipe_stdout:
+    ret = out.decode('UTF-8')
+  return ret
+
+
+# Runs multiple subprocess commands.
+# bool 'check': If True (default), raises an exception if any of the subprocesses failed with a nonzero exit code.
+# string 'route_stdout_to_temp_files_suffix': if not None, all stdouts are instead written to files, and an array of filenames is returned.
+# bool 'pipe_stdout': If True, an array of stdouts is returned, for each subprocess.
+def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp_files_suffix=None, pipe_stdout=False, check=True, cwd=None):
+  # By default, avoid using Python multiprocessing library due to a large amount of bugs it has on Windows (#8013, #718, #13785, etc.)
+  # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be faster, but may not work on Windows.
+  if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
+    import multiprocessing
+    global multiprocessing_pool
+    if not multiprocessing_pool:
+      multiprocessing_pool = multiprocessing.Pool(processes=get_num_cores())
+    return multiprocessing_pool.map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd) for cmd in commands], chunksize=1)
+
+  std_outs = []
+
+  if route_stdout_to_temp_files_suffix and pipe_stdout:
+    raise Exception('Cannot simultaneously pipe stdout to file and a string! Choose one or the other.')
+
+  # TODO: Experiment with registering a signal handler here to see if that helps with Ctrl-C locking up the command prompt
+  # when multiple child processes have been spawned.
+  # import signal
+  # def signal_handler(sig, frame):
+  #   sys.exit(1)
+  # signal.signal(signal.SIGINT, signal_handler)
+
+  with ToolchainProfiler.profile_block('run_multiple_processes'):
+    processes = []
+    num_parallel_processes = get_num_cores()
+    temp_files = configuration.get_temp_files()
+    i = 0
+    num_completed = 0
+
+    while num_completed < len(commands):
+      if i < len(commands) and len(processes) < num_parallel_processes:
+        # Not enough parallel processes running, spawn a new one.
+        std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
+        if DEBUG:
+          logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
+        processes += [(i, subprocess.Popen(commands[i], stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd))]
+        if route_stdout_to_temp_files_suffix:
+          std_outs += [(i, std_out.name)]
+        i += 1
+      else:
+        # Not spawning a new process (Too many commands running in parallel, or no commands left): find if a process has finished.
+        def get_finished_process():
+          while True:
+            j = 0
+            while j < len(processes):
+              if processes[j][1].poll() is not None:
+                out, err = processes[j][1].communicate()
+                return (j, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
+              j += 1
+            # All processes still running; wait a short while for the first (oldest) process to finish,
+            # then look again if any process has completed.
+            try:
+              out, err = processes[0][1].communicate(0.2)
+              return (0, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
+            except subprocess.TimeoutExpired:
+              pass
+
+        j, out, err = get_finished_process()
+        idx, finished_process = processes[j]
+        del processes[j]
+        if pipe_stdout:
+          std_outs += [(idx, out)]
+        if check and finished_process.returncode != 0:
+          if out:
+            logger.info(out)
+          if err:
+            logger.error(err)
+          raise Exception('Subprocess %d/%d failed with return code %d! (cmdline: %s)' % (idx + 1, len(commands), finished_process.returncode, shlex_join(commands[idx])))
+        num_completed += 1
+
+  # If processes finished out of order, sort the results to the order of the input.
+  std_outs.sort(key=lambda x: x[0])
+  return [x[1] for x in std_outs]
 
 
 def check_call(cmd, *args, **kw):
