@@ -308,6 +308,12 @@ WEBGL_APICALL void GL_APIENTRY emscripten_webgl_getSupportedAstcProfiles(GLsizei
 #define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT 0x8C4F
 #endif /* EMSCRIPTEN_GL_WEBGL_compressed_texture_s3tc_srgb */
 
+// 37. https://www.khronos.org/registry/webgl/extensions/KHR_parallel_shader_compile/
+#ifndef EMSCRIPTEN_GL_KHR_PARALLEL_SHADER_COMPILE
+#define EMSCRIPTEN_GL_KHR_PARALLEL_SHADER_COMPILE 1
+#define GL_COMPLETION_STATUS_KHR 0x91B1
+#endif
+
 // 40. https://www.khronos.org/registry/webgl/extensions/WEBGL_multi_draw/
 #ifndef EMSCRIPTEN_GL_WEBGL_multi_draw
 #define EMSCRIPTEN_GL_WEBGL_multi_draw 1

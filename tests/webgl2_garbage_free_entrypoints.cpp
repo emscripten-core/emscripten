@@ -62,14 +62,16 @@ int main(int argc, char *argv[])
   float col[3] = { 0.2f, 0.2f, 0.2f };
   glUniform3fv(color_loc, 1, col);
 
+  int loc2 = glGetUniformLocation(program, "colors[2]");
   int loc = glGetUniformLocation(program, "colors");
   assert(glGetUniformLocation(program, "colors[2]") == loc+2);
+  assert(loc2 == loc+2);
   assert(glGetUniformLocation(program, "colors[0]") == loc);
   assert(glGetUniformLocation(program, "colors[3]") == -1);
   assert(glGetUniformLocation(program, "colors[1]") == loc+1);
   assert(glGetUniformLocation(program, "colors[]") == loc);
+  assert(glGetUniformLocation(program, "colors[-1]") == -1);
   assert(glGetUniformLocation(program, "colors[-100]") == -1);
-  assert(glGetUniformLocation(program, "colors[bleh]") == -1);
 
   float colors[4*3] = { 1,0,0, 0,0.5,0, 0,0,0.2, 1,1,1 };
 

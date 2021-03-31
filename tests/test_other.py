@@ -8552,6 +8552,9 @@ int main () {
     if compare_js_output:
       js_out = test_file('code_size', test_name + '.js')
       terser = shared.get_npm_cmd('terser')
+      # N.b. this requires node in PATH, it does not run against NODE from
+      # Emscripten config file. If you have this line fail, make sure 'node' is
+      # visible in PATH.
       self.run_process(terser + ['-b', 'beautify=true', 'a.js', '-o', 'pretty.js'])
       self.assertFileContents(js_out, open('pretty.js').read())
 
@@ -8620,6 +8623,12 @@ int main () {
       if total_output_size < total_expected_size:
         print('Hey amazing, overall generated code size was improved by ' + str(total_expected_size - total_output_size) + ' bytes! Rerun test with other.test_minimal_runtime_code_size with EMTEST_REBASELINE=1 to update the expected sizes!')
       self.assertEqual(total_output_size, total_expected_size)
+
+  # Tests the library_c_preprocessor.js functionality.
+  def test_c_preprocessor(self):
+    self.run_process([EMCC, test_file('test_c_preprocessor.c'), '--js-library', path_from_root('src', 'library_c_preprocessor.js'), '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$remove_cpp_comments_in_shaders","$preprocess_c_code"]'])
+    normal = self.run_js('a.out.js')
+    print(str(normal))
 
   # Test that legacy settings that have been fixed to a specific value and their value can no longer be changed,
   def test_legacy_settings_forbidden_to_change(self):
