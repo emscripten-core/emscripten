@@ -176,7 +176,7 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
                 if i < len(commands):
                   launch_new_process()
                 out, err = processes[j][1].communicate()
-                return (j, '', '')
+                return (j, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
               j += 1
             # All processes still running; wait a short while for the first (oldest) process to finish,
             # then look again if any process has completed.
