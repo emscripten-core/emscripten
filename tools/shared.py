@@ -104,6 +104,7 @@ def get_num_cores():
 
 
 def mp_run_process(command_tuple):
+  temp_files = configuration.get_temp_files()
   cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd = command_tuple
   std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
   ret = std_out.name if route_stdout_to_temp_files_suffix else None
@@ -119,8 +120,9 @@ def mp_run_process(command_tuple):
 # string 'route_stdout_to_temp_files_suffix': if not None, all stdouts are instead written to files, and an array of filenames is returned.
 # bool 'pipe_stdout': If True, an array of stdouts is returned, for each subprocess.
 def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp_files_suffix=None, pipe_stdout=False, check=True, cwd=None):
-  # Spawning multiple processes on Linux is slower without multiprocessing pool. On Windows and macOS, not using multiprocessing pool is faster.
-  if LINUX:
+  # By default, avoid using Python multiprocessing library due to a large amount of bugs it has on Windows (#8013, #718, #13785, etc.)
+  # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be faster, but may not work on Windows.
+  if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
     import multiprocessing
     global multiprocessing_pool
     if not multiprocessing_pool:

@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Removed use of Python multiprocessing library because of stability issues. Added
+  new environment variable EM_PYTHON_MULTIPROCESSING=1 that can be enabled
+  to revert back to using Python multiprocessing. (#13493)
 - Binaryen now always inlines single-use functions. This should reduce code size
   and improve performance (#13744).
 
