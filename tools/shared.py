@@ -38,7 +38,7 @@ EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_LLVM_VERSION = "13.0"
 PYTHON = sys.executable
 
-# Used only on Linux
+# Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
 multiprocessing_pool = None
 
 # can add  %(asctime)s  to see timestamps
