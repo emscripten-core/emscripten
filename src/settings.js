@@ -491,6 +491,10 @@ var GL_POOL_TEMP_BUFFERS = 1;
 // [link]
 var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0;
 
+// If true, enables support for the EMSCRIPTEN_explicit_uniform_location WebGL
+// extension. See docs/EMSCRIPTEN_explicit_uniform_location.txt
+var GL_EXPLICIT_UNIFORM_LOCATION = 0;
+
 // Deprecated. Pass -s MAX_WEBGL_VERSION=2 to target WebGL 2.0.
 // [link]
 var USE_WEBGL2 = 0;
@@ -719,6 +723,7 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // to know you got this right), so this is not recommended unless you
 // really know what are doing, and need to optimize every bit of speed
 // and size.
+//
 // The names in this list are names from the WebAssembly Names section. The
 // wasm backend will emit those names in *human-readable* form instead of
 // typical C++ mangling. For example, you should write Struct::func()
@@ -730,7 +735,23 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // changes which would mean a single list couldn't work for both -O0 and -O1
 // builds, etc.). You can inspect the wasm binary to look for the actual names,
 // either directly or using wasm-objdump or wasm-dis, etc.
+//
 // Simple '*' wildcard matching is supported.
+//
+// To avoid dealing with limitations in operating system shells or build system
+// escaping, the following substitutions can be made:
+// - ' ' -> '.',
+// - '&' -> '#',
+// - ',' -> '?'.
+//
+// That is, the function
+//    "foo(char const*, int&)" can be inputted as
+//    "foo(char.const*?.int#)" on the command line instead.
+//
+// Note: Whitespace is part of the function signature! I.e.
+//    "foo(char const *, int &)" will not match "foo(char const*, int&)", and
+// neither would "foo(const char*, int &)".
+//
 // [link]
 var ASYNCIFY_REMOVE = [];
 
@@ -954,6 +975,8 @@ var SIDE_MODULE = 0;
 
 // If this is a shared object (MAIN_MODULE == 1 || SIDE_MODULE == 1), then we
 // will link these at runtime. They must have been built with SIDE_MODULE == 1.
+// In most cases it is simpler to pass the filenames directly on the commandline
+// instead.
 // [link]
 var RUNTIME_LINKED_LIBS = [];
 
@@ -1681,6 +1704,7 @@ var MIN_CHROME_VERSION = 75;
 // bit of generated code size in applications that do not care about
 // POSIX errno variable. Setting this to 0 also requires using --closure
 // for effective code size optimizations to take place.
+// In MINIMAL_RUNTIME builds, this option defaults to 0.
 // [link]
 var SUPPORT_ERRNO = 1;
 
@@ -1843,6 +1867,14 @@ var PRINTF_LONG_DOUBLE = 0;
 // which avoids trampling a C file).
 // [link]
 var WASM2C = 0;
+
+// Experimental sandboxing mode, see
+// https://kripken.github.io/blog/wasm/2020/07/27/wasmboxc.html
+//
+//  * full: Normal full wasm2c sandboxing. This uses a signal handler if it can.
+//  * mask: Masks loads and stores.
+//  * none: No sandboxing at all.
+var WASM2C_SANDBOXING = 'full';
 
 // Setting this affects the path emitted in the wasm that refers to the DWARF
 // file, in -gseparate-dwarf mode. This allows the debugging file to be hosted

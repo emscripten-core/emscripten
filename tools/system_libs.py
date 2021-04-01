@@ -9,10 +9,10 @@ import itertools
 import logging
 import os
 import shutil
-import subprocess
 import sys
 from glob import iglob
 
+from .toolchain_profiler import ToolchainProfiler
 from . import shared, building, ports, config, utils
 from . import deps_info, tempfiles
 from . import diagnostics
@@ -78,35 +78,17 @@ def clean_env():
   return safe_env
 
 
-def run_one_command(cmd):
-  # Helper function used by run_build_commands.
-  if shared.EM_BUILD_VERBOSE:
-    print(shared.shlex_join(cmd))
-  # TODO(sbc): Remove this one we remove the test_em_config_env_var test
-  cmd.append('-Wno-deprecated')
-  try:
-    shared.run_process(cmd, env=clean_env())
-  except subprocess.CalledProcessError as e:
-    print("'%s' failed (%d)" % (shared.shlex_join(e.cmd), e.returncode))
-    raise
-
-
 def run_build_commands(commands):
   # Before running a set of build commands make sure the common sysroot
   # headers are installed.  This prevents each sub-process from attempting
   # to setup the sysroot itself.
   ensure_sysroot()
-  cores = min(len(commands), building.get_num_cores())
-  if cores <= 1 or shared.DEBUG:
-    for command in commands:
-      run_one_command(command)
-  else:
-    pool = building.get_multiprocessing_pool()
-    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
-    # https://bugs.python.org/issue8296
-    # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
-    # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
-    pool.map_async(run_one_command, commands, chunksize=1).get(999999)
+
+  for i in range(len(commands)):
+    # TODO(sbc): Remove this one we remove the test_em_config_env_var test
+    commands[i].append('-Wno-deprecated')
+
+  shared.run_multiple_processes(commands, env=clean_env())
 
 
 def create_lib(libname, inputs):
@@ -529,6 +511,32 @@ class MTLibrary(Library):
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super(MTLibrary, cls).get_default_variation(is_mt=shared.Settings.USE_PTHREADS, **kwargs)
+
+
+class OptimizedAggressivelyForSizeLibrary(Library):
+  def __init__(self, **kwargs):
+    self.is_optz = kwargs.pop('is_optz')
+    super(OptimizedAggressivelyForSizeLibrary, self).__init__(**kwargs)
+
+  def get_base_name(self):
+    name = super(OptimizedAggressivelyForSizeLibrary, self).get_base_name()
+    if self.is_optz:
+      name += '-optz'
+    return name
+
+  def get_cflags(self):
+    cflags = super(OptimizedAggressivelyForSizeLibrary, self).get_cflags()
+    if self.is_optz:
+      cflags += ['-DEMSCRIPTEN_OPTIMIZE_FOR_OZ']
+    return cflags
+
+  @classmethod
+  def vary_on(cls):
+    return super(OptimizedAggressivelyForSizeLibrary, cls).vary_on() + ['is_optz']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(OptimizedAggressivelyForSizeLibrary, cls).get_default_variation(is_optz=shared.Settings.SHRINK_LEVEL >= 2, **kwargs)
 
 
 class exceptions(object):
@@ -1215,7 +1223,7 @@ class CompilerRTLibrary(Library):
   force_object_files = True
 
 
-class libc_rt_wasm(AsanInstrumentedLibrary, CompilerRTLibrary, MuslInternalLibrary):
+class libc_rt_wasm(OptimizedAggressivelyForSizeLibrary, AsanInstrumentedLibrary, CompilerRTLibrary, MuslInternalLibrary):
   name = 'libc_rt_wasm'
 
   def get_files(self):
@@ -1936,4 +1944,5 @@ def install_system_headers(stamp):
 
 
 def ensure_sysroot():
-  shared.Cache.get('sysroot_install.stamp', install_system_headers, what='system headers')
+  with ToolchainProfiler.profile_block('ensure_sysroot'):
+    shared.Cache.get('sysroot_install.stamp', install_system_headers, what='system headers')

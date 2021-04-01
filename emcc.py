@@ -356,7 +356,7 @@ def apply_settings(changes):
       key = shared.Settings.alt_names[key]
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
-    if key in ('TOTAL_STACK', 'INITIAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_STEP',
+    if key in ('TOTAL_STACK', 'INITIAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_CAP',
                'GL_MAX_TEMP_BUFFER_SIZE', 'MAXIMUM_MEMORY', 'DEFAULT_PTHREAD_STACK_SIZE'):
       value = str(expand_byte_size_suffixes(value))
 
@@ -625,6 +625,15 @@ def is_dash_s_for_emcc(args, i):
     arg = args[i][2:]
   arg = arg.split('=')[0]
   return arg.isidentifier() and arg.isupper()
+
+
+def unmangle_symbols_from_cmdline(symbols):
+  def unmangle(x):
+    return x.replace('.', ' ').replace('#', '&').replace('?', ',')
+
+  if type(symbols) is list:
+    return [unmangle(x) for x in symbols]
+  return unmangle(symbols)
 
 
 def parse_s_args(args):
@@ -1346,6 +1355,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # TODO(sbc): Remove this once this becomes the default
       shared.Settings.IGNORE_MISSING_MAIN = 0
 
+    # It is unlikely that developers targeting "native web" APIs with MINIMAL_RUNTIME need
+    # errno support by default.
+    if shared.Settings.MINIMAL_RUNTIME:
+      default_setting('SUPPORT_ERRNO', 0)
+
     if shared.Settings.STRICT:
       default_setting('STRICT_JS', 1)
       default_setting('AUTO_JS_LIBRARIES', 0)
@@ -1458,6 +1472,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base',
                                              '_emscripten_stack_get_end',
                                              '_emscripten_stack_set_limits']
+
+    shared.Settings.ASYNCIFY_ADD = unmangle_symbols_from_cmdline(shared.Settings.ASYNCIFY_ADD)
+    shared.Settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(shared.Settings.ASYNCIFY_REMOVE)
+    shared.Settings.ASYNCIFY_ONLY = unmangle_symbols_from_cmdline(shared.Settings.ASYNCIFY_ONLY)
 
     # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
     # so it won't think about generating native x86 SSE code.
@@ -2865,7 +2883,9 @@ def do_binaryen(target, options, wasm_target):
     building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
-  if shared.Settings.RELOCATABLE:
+
+  # Add extra dylibs if needed.
+  if shared.Settings.RUNTIME_LINKED_LIBS:
     webassembly.update_dylink_section(wasm_target, shared.Settings.RUNTIME_LINKED_LIBS)
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
@@ -2929,8 +2949,11 @@ def do_binaryen(target, options, wasm_target):
     if shared.Settings.WASM == 2:
       wasm2js_template = wasm_target + '.js'
       open(wasm2js_template, 'w').write(preprocess_wasm2js_script())
+      # generate secondary file for JS symbols
+      symbols_file_js = shared.replace_or_append_suffix(wasm2js_template, '.symbols') if options.emit_symbol_map else None
     else:
       wasm2js_template = final_js
+      symbols_file_js = shared.replace_or_append_suffix(target, '.symbols') if options.emit_symbol_map else None
 
     wasm2js = building.wasm2js(wasm2js_template,
                                wasm_target,
@@ -2938,7 +2961,8 @@ def do_binaryen(target, options, wasm_target):
                                minify_whitespace=minify_whitespace(),
                                use_closure_compiler=options.use_closure_compiler,
                                debug_info=debug_info,
-                               symbols_file=symbols_file)
+                               symbols_file=symbols_file,
+                               symbols_file_js=symbols_file_js)
 
     shared.configuration.get_temp_files().note(wasm2js)
 

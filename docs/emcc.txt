@@ -119,8 +119,8 @@ Options that are modified or new in *emcc* are listed below:
      marks (") around the list in most shells (to avoid errors being
      raised). Two examples are shown below:
 
-        -s RUNTIME_LINKED_LIBS="['liblib.so']"
-        -s "RUNTIME_LINKED_LIBS=['liblib.so']"
+        -s EXPORTED_FUNCTIONS="['liblib.so']"
+        -s "EXPORTED_FUNCTIONS=['liblib.so']"
 
    You can also specify that the value of an option will be read from
    a specified JSON-formatted file. For example, the following option
@@ -214,6 +214,12 @@ Options that are modified or new in *emcc* are listed below:
      This is only relevant when *minifying* global names, which
      happens in "-O2" and above, and when no "-g" option was specified
      to prevent minification.
+
+   Note:
+
+     When used with "-s WASM=2", two symbol files are created.
+     "[name].js.symbols" (with WASM symbols) and
+     "[name].wasm.js.symbols" (with ASM.js symbols)
 
 "-flto"
    [compile+link] Enables link-time optimizations (LTO).

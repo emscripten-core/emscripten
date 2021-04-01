@@ -186,6 +186,24 @@ IMPORT_IMPL(%(return_type)s, Z_envZ_invoke_%(sig)sZ_%(wabt_sig)s, (%(full_typed_
     })
 
   total += '\n'.join(invokes)
+
+  # adjust sandboxing
+  TRAP_OOB = 'TRAP(OOB)'
+  assert total.count(TRAP_OOB) == 2
+  if Settings.WASM2C_SANDBOXING == 'full':
+    pass # keep it
+  elif Settings.WASM2C_SANDBOXING == 'none':
+    total = total.replace(TRAP_OOB, '{}')
+  elif Settings.WASM2C_SANDBOXING == 'mask':
+    assert not Settings.ALLOW_MEMORY_GROWTH
+    assert (Settings.INITIAL_MEMORY & (Settings.INITIAL_MEMORY - 1)) == 0, 'poewr of 2'
+    total = total.replace(TRAP_OOB, '{}')
+    MEM_ACCESS = '[addr]'
+    assert total.count(MEM_ACCESS) == 3, '2 from wasm2c, 1 from runtime'
+    total = total.replace(MEM_ACCESS, '[addr & %d]' % (Settings.INITIAL_MEMORY - 1))
+  else:
+    exit_with_error('bad sandboxing')
+
   # write out the final file
   with open(c_file, 'w') as out:
     out.write(total)

@@ -3,10 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import atexit
 import json
 import logging
-import multiprocessing
 import os
 import re
 import shlex
@@ -14,7 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from subprocess import STDOUT, PIPE
+from subprocess import PIPE
 
 from . import diagnostics
 from . import response_file
@@ -36,7 +34,6 @@ from .utils import WINDOWS
 logger = logging.getLogger('building')
 
 #  Building
-multiprocessing_pool = None
 binaryen_checked = False
 
 EXPECTED_BINARYEN_VERSION = 100
@@ -77,55 +74,46 @@ def warn_if_duplicate_entries(archive_contents, archive_filename):
     diagnostics.warning('emcc', msg)
 
 
-# This function creates a temporary directory specified by the 'dir' field in
-# the returned dictionary. Caller is responsible for cleaning up those files
-# after done.
-def extract_archive_contents(archive_file):
-  lines = run_process([LLVM_AR, 't', archive_file], stdout=PIPE).stdout.splitlines()
-  # ignore empty lines
-  contents = [l for l in lines if len(l)]
-  if len(contents) == 0:
-    logger.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % archive_file)
-    return {
-      'returncode': 0,
-      'dir': None,
-      'files': []
-    }
+# Extracts the given list of archive files and outputs their contents
+def extract_archive_contents(archive_files):
+  archive_results = shared.run_multiple_processes([[LLVM_AR, 't', a] for a in archive_files], pipe_stdout=True)
 
-  # `ar` files can only contains filenames. Just to be sure,  verify that each
-  # file has only as filename component and is not absolute
-  for f in contents:
-    assert not os.path.dirname(f)
-    assert not os.path.isabs(f)
+  unpack_temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
 
-  warn_if_duplicate_entries(contents, archive_file)
+  def clean_at_exit():
+    try_delete(unpack_temp_dir)
+  shared.atexit.register(clean_at_exit)
 
-  # create temp dir
-  temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
+  archive_contents = []
 
-  # extract file in temp dir
-  proc = run_process([LLVM_AR, 'xo', archive_file], stdout=PIPE, stderr=STDOUT, cwd=temp_dir)
-  abs_contents = [os.path.join(temp_dir, c) for c in contents]
+  for i in range(len(archive_results)):
+    a = archive_results[i]
+    contents = [l for l in a.splitlines() if len(l)]
+    if len(contents) == 0:
+      logger.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % a)
+
+    # `ar` files can only contains filenames. Just to be sure, verify that each
+    # file has only as filename component and is not absolute
+    for f in contents:
+      assert not os.path.dirname(f)
+      assert not os.path.isabs(f)
+
+    warn_if_duplicate_entries(contents, a)
+
+    archive_contents += [{
+      'archive_name': archive_files[i],
+      'o_files': [os.path.join(unpack_temp_dir, c) for c in contents]
+    }]
+
+  shared.run_multiple_processes([[LLVM_AR, 'xo', a] for a in archive_files], cwd=unpack_temp_dir)
 
   # check that all files were created
-  missing_contents = [x for x in abs_contents if not os.path.exists(x)]
-  if missing_contents:
-    exit_with_error('llvm-ar failed to extract file(s) ' + str(missing_contents) + ' from archive file ' + f + '! Error:' + str(proc.stdout))
+  for a in archive_contents:
+    missing_contents = [x for x in a['o_files'] if not os.path.exists(x)]
+    if missing_contents:
+      exit_with_error('llvm-ar failed to extract file(s) ' + str(missing_contents) + ' from archive file ' + f + '!')
 
-  return {
-    'returncode': proc.returncode,
-    'dir': temp_dir,
-    'files': abs_contents
-  }
-
-
-def g_multiprocessing_initializer(*args):
-  for item in args:
-    (key, value) = item.split('=', 1)
-    if key == 'EMCC_POOL_CWD':
-      os.chdir(value)
-    else:
-      os.environ[key] = value
+  return archive_contents
 
 
 def unique_ordered(values):
@@ -150,74 +138,6 @@ def clear():
   nm_cache.clear()
   ar_contents.clear()
   _is_ar_cache.clear()
-
-
-def get_num_cores():
-  return int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
-
-
-# Multiprocessing pools are very slow to build up and tear down, and having
-# several pools throughout the application has a problem of overallocating
-# child processes. Therefore maintain a single centralized pool that is shared
-# between all pooled task invocations.
-def get_multiprocessing_pool():
-  global multiprocessing_pool
-  if not multiprocessing_pool:
-    cores = get_num_cores()
-
-    # If running with one core only, create a mock instance of a pool that does not
-    # actually spawn any new subprocesses. Very useful for internal debugging.
-    if cores == 1:
-      class FakeMultiprocessor(object):
-        def map(self, func, tasks, *args, **kwargs):
-          results = []
-          for t in tasks:
-            results += [func(t)]
-          return results
-
-        def map_async(self, func, tasks, *args, **kwargs):
-          class Result:
-            def __init__(self, func, tasks):
-              self.func = func
-              self.tasks = tasks
-
-            def get(self, timeout):
-              results = []
-              for t in tasks:
-                results += [func(t)]
-              return results
-
-          return Result(func, tasks)
-
-      multiprocessing_pool = FakeMultiprocessor()
-    else:
-      child_env = [
-        # Multiprocessing pool children must have their current working
-        # directory set to a safe path that is guaranteed not to die in
-        # between of executing commands, or otherwise the pool children will
-        # have trouble spawning subprocesses of their own.
-        'EMCC_POOL_CWD=' + path_from_root(),
-        # Multiprocessing pool children can't spawn their own linear number of
-        # children, that could cause a quadratic amount of spawned processes.
-        'EMCC_CORES=1'
-      ]
-      multiprocessing_pool = multiprocessing.Pool(processes=cores, initializer=g_multiprocessing_initializer, initargs=child_env)
-
-      def close_multiprocessing_pool():
-        global multiprocessing_pool
-        try:
-          # Shut down the pool explicitly, because leaving that for Python to do at process shutdown is buggy and can generate
-          # noisy "WindowsError: [Error 5] Access is denied" spam which is not fatal.
-          multiprocessing_pool.terminate()
-          multiprocessing_pool.join()
-          multiprocessing_pool = None
-        except OSError as e:
-          # Mute the "WindowsError: [Error 5] Access is denied" errors, raise all others through
-          if not (sys.platform.startswith('win') and isinstance(e, WindowsError) and e.winerror == 5):
-            raise
-      atexit.register(close_multiprocessing_pool)
-
-  return multiprocessing_pool
 
 
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
@@ -291,11 +211,19 @@ def llvm_nm_multiple(files):
     # We can issue multiple files in a single llvm-nm calls, but only if those
     # files are all .o or .bc files. Because of llvm-nm output format, we cannot
     # llvm-nm multiple .a files in one call, but those must be individually checked.
-    if len(llvm_nm_files) > 1:
-      llvm_nm_files = [f for f in files if f.endswith('.o') or f.endswith('.bc')]
 
-    if len(llvm_nm_files) > 0:
-      cmd = [LLVM_NM] + llvm_nm_files
+    o_files = [f for f in llvm_nm_files if os.path.splitext(f)[1].lower() in ['.o', '.obj', '.bc']]
+    a_files = [f for f in llvm_nm_files if f not in o_files]
+
+    # Issue parallel calls for .a files
+    if len(a_files) > 0:
+      results = shared.run_multiple_processes([[LLVM_NM, a] for a in a_files], pipe_stdout=True, check=False)
+      for i in range(len(results)):
+        nm_cache[a_files[i]] = parse_symbols(results[i])
+
+    # Issue a single batch call for multiple .o files
+    if len(o_files) > 0:
+      cmd = [LLVM_NM] + o_files
       cmd = get_command_with_possible_response_file(cmd)
       results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
 
@@ -319,11 +247,11 @@ def llvm_nm_multiple(files):
       # so loop over the report to extract the results
       # for each individual file.
 
-      filename = llvm_nm_files[0]
+      filename = o_files[0]
 
       # When we dispatched more than one file, we must manually parse
       # the file result delimiters (like shown structured above)
-      if len(llvm_nm_files) > 1:
+      if len(o_files) > 1:
         file_start = 0
         i = 0
 
@@ -340,18 +268,11 @@ def llvm_nm_multiple(files):
 
         nm_cache[filename] = parse_symbols(results[file_start:])
       else:
-        # We only dispatched a single file, we can just parse that directly
-        # to the output.
+        # We only dispatched a single file, so can parse all of the result directly
+        # to that file.
         nm_cache[filename] = parse_symbols(results)
 
-    # Any .a files that have multiple .o files will have hard time parsing. Scan those
-    # sequentially to confirm. TODO: Move this to use run_multiple_processes()
-    # when available.
-    for f in files:
-      if f not in nm_cache:
-        nm_cache[f] = llvm_nm(f)
-
-  return [nm_cache[f] for f in files]
+  return [nm_cache[f] if f in nm_cache else ObjectFileInfo(1, '') for f in files]
 
 
 def llvm_nm(file):
@@ -373,25 +294,13 @@ def read_link_inputs(files):
         object_names.append(absolute_path_f)
 
     # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
-    pool = get_multiprocessing_pool()
-    object_names_in_archives = pool.map(extract_archive_contents, archive_names)
+    archive_contents = extract_archive_contents(archive_names)
 
-    def clean_temporary_archive_contents_directory(directory):
-      def clean_at_exit():
-        try_delete(directory)
-      if directory:
-        atexit.register(clean_at_exit)
-
-    for n in range(len(archive_names)):
-      if object_names_in_archives[n]['returncode'] != 0:
-        raise Exception('llvm-ar failed on archive ' + archive_names[n] + '!')
-      ar_contents[archive_names[n]] = object_names_in_archives[n]['files']
-      clean_temporary_archive_contents_directory(object_names_in_archives[n]['dir'])
-
-    for o in object_names_in_archives:
-      for f in o['files']:
-        if f not in nm_cache:
-          object_names.append(f)
+    for a in archive_contents:
+      ar_contents[os.path.abspath(a['archive_name'])] = a['o_files']
+      for o in a['o_files']:
+        if o not in nm_cache:
+          object_names.append(o)
 
     # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
     # The results are not used here directly, but populated to llvm-nm cache structure.
@@ -1211,7 +1120,7 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minif
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
-def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info, symbols_file=None):
+def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info, symbols_file=None, symbols_file_js=None):
   logger.debug('wasm2js')
   args = ['--emscripten']
   if opt_level > 0:
@@ -1230,6 +1139,8 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     passes = []
     if not debug_info and not Settings.USE_PTHREADS:
       passes += ['minifyNames']
+      if symbols_file_js:
+        passes += ['symbolMap=%s' % symbols_file_js]
     if minify_whitespace:
       passes += ['minifyWhitespace']
     passes += ['last']

@@ -1235,6 +1235,14 @@ keydown(100);keyup(100); // trigger the end
   def test_webgl_no_double_error(self):
     self.btest('webgl_error.cpp', '0')
 
+  @requires_graphics_hardware
+  def test_webgl_parallel_shader_compile(self):
+    self.btest('webgl_parallel_shader_compile.cpp', '1')
+
+  @requires_graphics_hardware
+  def test_webgl_explicit_uniform_location(self):
+    self.btest('webgl_explicit_uniform_location.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_LOCATION=1', '-s', 'MIN_WEBGL_VERSION=2'])
+
   # Test that -s GL_PREINITIALIZED_CONTEXT=1 works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
   def test_preinitialized_webgl_context(self):
@@ -2229,7 +2237,7 @@ void *getBindBuffer() {
       }
     ''')
     self.run_process([EMCC, 'supp.cpp', '-o', 'supp.wasm', '-s', 'SIDE_MODULE', '-O2', '-s', 'EXPORT_ALL'])
-    self.btest_exit('main.cpp', args=['-DBROWSER=1', '-s', 'MAIN_MODULE', '-O2', '-s', 'RUNTIME_LINKED_LIBS=[supp.wasm]', '-s', 'EXPORT_ALL'], assert_returncode=76)
+    self.btest_exit('main.cpp', args=['-DBROWSER=1', '-s', 'MAIN_MODULE', '-O2', 'supp.wasm', '-s', 'EXPORT_ALL'], assert_returncode=76)
 
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
@@ -2582,6 +2590,11 @@ Module["preRun"].push(function () {
     ]:
       print(opts)
       self.btest(test_file('webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + opts, expected='0')
+
+  # Tests the WebGL 2 glGetBufferSubData() functionality.
+  @requires_graphics_hardware
+  def test_webgl2_get_buffer_sub_data(self):
+    self.btest(test_file('webgl2_get_buffer_sub_data.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
   @requires_graphics_hardware
   @requires_threads
@@ -3205,6 +3218,9 @@ window.close = function() {
       print(opts)
       self.btest('browser/async.cpp', '1', args=['-O' + str(opts), '-g2', '-s', 'ASYNCIFY'])
 
+  def test_asyncify_tricky_function_sig(self):
+    self.btest('browser/test_asyncify_tricky_function_sig.cpp', '85', args=['-s', 'ASYNCIFY_ONLY=[foo(char.const*?.int#),foo2(),main,__original_main]', '-s', 'ASYNCIFY=1'])
+
   @requires_threads
   def test_async_in_pthread(self):
     self.btest('browser/async.cpp', '1', args=['-s', 'ASYNCIFY', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-g'])
@@ -3612,8 +3628,7 @@ window.close = function() {
     self.run_process([EMCC, 'side1.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side1.wasm'])
     self.run_process([EMCC, 'side2.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side2.wasm'])
     self.btest(self.in_dir('main.cpp'), '1',
-               args=['-Wno-experimental', '-pthread', '-s', 'MAIN_MODULE',
-                     '-s', 'RUNTIME_LINKED_LIBS=[side1.wasm,side2.wasm]'])
+               args=['-Wno-experimental', '-pthread', '-s', 'MAIN_MODULE', 'side1.wasm', 'side2.wasm'])
 
   def test_memory_growth_during_startup(self):
     create_file('data.dat', 'X' * (30 * 1024 * 1024))
@@ -5007,6 +5022,10 @@ window.close = function() {
     test(['-s', 'MALLOC=emmalloc-debug'])
     test(['-s', 'MALLOC=emmalloc-memvalidate'])
     test(['-s', 'MALLOC=emmalloc-memvalidate-verbose'])
+
+  @no_firefox('no 4GB support yet')
+  def test_zzz_zzz_emmalloc_memgrowth(self, *args):
+    self.btest(test_file('browser', 'emmalloc_memgrowth.cpp'), expected='0', args=['-s', 'MALLOC=emmalloc', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'ABORTING_MALLOC=0', '-s', 'ASSERTIONS=2', '-s', 'MINIMAL_RUNTIME=1', '-s', 'MAXIMUM_MEMORY=4GB'])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_2gb_fail(self):

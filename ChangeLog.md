@@ -20,6 +20,16 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Removed use of Python multiprocessing library because of stability issues. Added
+  new environment variable EM_PYTHON_MULTIPROCESSING=1 that can be enabled
+  to revert back to using Python multiprocessing. (#13493)
+- Binaryen now always inlines single-use functions. This should reduce code size
+  and improve performance (#13744).
+- Fix generating of symbol files with `--emit-symbol-map` for JS targets.
+  When `-s WASM=2` is used. Two symbols are generated:
+    - `[name].js.symbols` - storing Wasm mapping
+    - `[name].wasm.js.symbols` - storing JS mapping
+  In other cases a single `[name].js.symbols` file is created.
 
 2.0.16: 03/25/2021
 ------------------
@@ -47,6 +57,12 @@ Current Trunk
   of ccache via emsdk, or from https://github.com/juj/ccache/tree/emscripten,
   and run explicitly with "ccache emcc ..." after installing, or automatically
   just with "emcc ..." after activating ccache via emsdk (#13498).
+- Added support to use a custom set of substitution characters . # and ? to
+  ease passing arrays of C symbols on the command line to ASYNCIFY_* settings.
+  (#13477)
+- In MINIMAL_RUNTIME build mode, errno support will now be disabled by default
+  due to the code size that it adds. (MINIMAL_RUNTIME=1 implies SUPPORT_ERRNO=0
+  by default) Pass -s SUPPORT_ERRNO=1 to enable errno support if necessary.
 - Using EM_ASM and EM_JS in a side module will now result in an error (since
   this is not implemented yet).  This could effect users were previously
   inadvertently including (but not actually using) EM_ASM or EM_JS functions in
@@ -111,7 +127,7 @@ Current Trunk
 ------------------
 - `emscripten/vr.h` and other remnants of WebVR support removed. (#13210, which
   is a followup to #10460)
-- Stop overriding CMake default flags based on build type. This will 
+- Stop overriding CMake default flags based on build type. This will
   result in builds that are more like CMake does on other platforms. You
   may notice that `RelWithDebInfo` will now include debug info (it did not
   before, which appears to have been an error), and that `Release` will
@@ -300,7 +316,7 @@ Current Trunk
   is encountered. This makes the Emscripten program behave more like a native
   program where the OS would terminate the process and no further code can be
   executed when an unhandled exception (e.g. out-of-bounds memory access) happens.
-  Once the program aborts any exported function calls will fail with a "program 
+  Once the program aborts any exported function calls will fail with a "program
   has already aborted" exception to prevent calls into code with a potentially
   corrupted program state.
 - Use `__indirect_function_table` as the import name for the table, which is

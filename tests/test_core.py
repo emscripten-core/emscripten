@@ -2075,7 +2075,7 @@ int main(int argc, char **argv) {
     if not self.is_wasm():
       self.skipTest('wasm memory specific test')
 
-    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MEMORY_GROWTH_GEOMETRIC_STEP=15', '-s', 'MEMORY_GROWTH_GEOMETRIC_CAP=0']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MEMORY_GROWTH_GEOMETRIC_STEP=8.5', '-s', 'MEMORY_GROWTH_GEOMETRIC_CAP=32MB']
     self.do_core_test('test_memorygrowth_geometric_step.c')
 
   def test_memorygrowth_3_force_fail_reallocBuffer(self):
@@ -3599,8 +3599,8 @@ ok
     self.set_setting('MAIN_MODULE', main_module)
     self.clear_setting('SIDE_MODULE')
     if auto_load:
-      self.set_setting('RUNTIME_LINKED_LIBS', ['liblib.so'])
       self.emcc_args += main_emcc_args
+      self.emcc_args.append('liblib.so')
       if force_c:
         self.emcc_args.append('-nostdlib++')
 
@@ -4601,6 +4601,14 @@ res64 - external 64\n''', header='''
       ''',
       expected='3 hello world!',
       need_reverse=False)
+
+  @disabled('https://github.com/emscripten-core/emscripten/issues/13773')
+  def test_dylink_weak(self):
+    # Verify that weakly symbols can be defined in both side module and main
+    # module
+    main = test_file('core', 'test_dylink_weak_main.c')
+    side = test_file('core', 'test_dylink_weak_side.c')
+    self.dylink_testf(main, side, force_c=True, need_reverse=False)
 
   def test_random(self):
     src = r'''#include <stdlib.h>
@@ -5732,6 +5740,12 @@ int main(void) {
       ]:
         self.do_run(src.replace('{{{ NEW }}}', new).replace('{{{ DELETE }}}', delete), '*1,0*')
 
+  # Tests that a large allocation should gracefully fail
+  @no_asan('the memory size limit here is too small for asan')
+  def test_dlmalloc_large(self):
+    self.emcc_args += ['-s', 'ABORTING_MALLOC=0', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=128MB']
+    self.do_runf(path_from_root('tests', 'dlmalloc_test_large.c'), '0 0 0 1')
+
   @no_asan('asan also changes malloc, and that ends up linking in new twice')
   def test_dlmalloc_partial(self):
     # present part of the symbols of dlmalloc, not all
@@ -5930,6 +5944,7 @@ return malloc(size);
   # Tests invoking the SIMD API via x86 SSE4.2 nmmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @unittest.skip('recent SIMD changes require a binaryen fix')
   def test_sse4_2(self):
     src = test_file('sse', 'test_sse4_2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse4.2', '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6293,6 +6308,20 @@ return malloc(size);
     self.do_runf(test_file('core', 'test_autodebug.c'),
                  'success', output_nicerizer=check)
 
+  @parameterized({
+    'full': ('full',),
+    'mask': ('mask',),
+    'none': ('none',),
+  })
+  def test_wasm2c_sandboxing(self, mode):
+    if not can_do_standalone(self):
+      return self.skipTest('standalone mode not supported')
+    self.set_setting('STANDALONE_WASM')
+    self.set_setting('WASM2C')
+    self.set_setting('WASM2C_SANDBOXING', mode)
+    self.wasm_engines = []
+    self.do_core_test('test_hello_world.c')
+
   ### Integration tests
 
   @sync
@@ -6586,6 +6615,8 @@ return malloc(size);
     self.emcc_args += extra_args
     self.set_setting('DEMANGLE_SUPPORT')
     self.set_setting('ASSERTIONS')
+    # disable aggressive inlining in binaryen
+    self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
     # ensure function names are preserved
     self.emcc_args += ['--profiling-funcs']
     self.do_core_test('test_demangle_stacks.cpp', assert_returncode=NON_ZERO)
@@ -6595,6 +6626,9 @@ return malloc(size);
       self.do_core_test('test_demangle_stacks_noassert.cpp', assert_returncode=NON_ZERO)
 
   def test_demangle_stacks_symbol_map(self):
+    # disable aggressive inlining in binaryen
+    self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
+
     self.set_setting('DEMANGLE_SUPPORT')
     if '-O' not in str(self.emcc_args) or '-O0' in self.emcc_args or '-O1' in self.emcc_args or '-g' in self.emcc_args:
       self.skipTest("without opts, we don't emit a symbol map")
