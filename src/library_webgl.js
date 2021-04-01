@@ -1145,7 +1145,7 @@ var LibraryGL = {
 #endif
           }
 #endif
-          ret = stringToNewUTF8(s);
+          ret = s && stringToNewUTF8(s);
           break;
 
 #if GL_EMULATE_GLES_VERSION_STRING_FORMAT
