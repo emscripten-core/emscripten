@@ -792,11 +792,6 @@ def get_cflags(options, user_args):
              '-D__unix',
              '-D__unix__']
 
-  # LLVM has turned on the new pass manager by default, but it causes some code
-  # size regressions. For now, use the legacy one.
-  # https://github.com/emscripten-core/emscripten/issues/13427
-  cflags += ['-flegacy-pass-manager']
-
   # Changes to default clang behavior
 
   # Implicit functions can cause horribly confusing function pointer type errors, see #2175
