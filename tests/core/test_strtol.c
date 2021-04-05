@@ -77,6 +77,8 @@ int main() {
   check("hello", 30);
   check("hello", 10);
   check("not-a-number", 0);
+  check(" ", 0);
+  check("-", 0);
   check("  0x12end", 0);
 
   return 0;
