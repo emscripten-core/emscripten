@@ -31,39 +31,32 @@ EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 29)
 WASM_PAGE_SIZE = 65536
 
 
-def toLEB(x):
-  assert x >= 0, 'TODO: signed'
-  ret = []
+def toLEB(num):
+  assert num >= 0, 'TODO: signed'
+  ret = bytearray()
   while 1:
-    byte = x & 127
-    x >>= 7
-    more = x != 0
+    byte = num & 127
+    num >>= 7
+    more = num != 0
     if more:
       byte = byte | 128
     ret.append(byte)
     if not more:
       break
-  return bytearray(ret)
+  return ret
 
 
 def readLEB(buf, offset):
   result = 0
   shift = 0
   while True:
-    byte = bytearray(buf[offset:offset + 1])[0]
+    byte = buf[offset]
     offset += 1
     result |= (byte & 0x7f) << shift
     if not (byte & 0x80):
       break
     shift += 7
   return (result, offset)
-
-
-def readString(buf, offset):
-  size, offset = readLEB(buf, offset)
-  end = offset + size
-  s = buf[offset:end]
-  return s.decode('utf-8'), end
 
 
 def add_emscripten_metadata(wasm_file):
@@ -115,29 +108,53 @@ def add_emscripten_metadata(wasm_file):
     f.write(orig[8:])
 
 
+class Module:
+  """Extremely minimal wasm module reader.  Currently only used
+  for parsing the dylink section."""
+  def __init__(self, filename):
+    with open(filename, 'rb') as f:
+      self.buf = f.read()
+    assert self.buf[:4] == b'\0asm'
+    assert self.buf[4:8] == b'\x01\0\0\0'
+    self.offset = 8
+
+  def readByte(self):
+    ret = self.buf[self.offset]
+    self.offset += 1
+    return ret
+
+  def readLEB(self):
+    ret, self.offset = readLEB(self.buf, self.offset)
+    return ret
+
+  def readString(self):
+    size = self.readLEB()
+    end = self.offset + size
+    s = self.buf[self.offset:end]
+    self.offset = end
+    return s.decode('utf-8')
+
+
 def parse_dylink_section(wasm_file):
-  wasm = open(wasm_file, 'rb').read()
+  module = Module(wasm_file)
 
   # Read the existing section data
-  offset = 8
-  assert wasm[offset] == 0
-  offset += 1
-  size, offset = readLEB(wasm, offset)
-  section_end = offset + size
-  section = wasm[offset:section_end]
-  offset = 0
+  section_type = module.readByte()
+  section_size = module.readLEB()
+  assert section_type == 0
+  section_end = module.offset + section_size
   # section name
-  section_name, offset = readString(section, offset)
+  section_name = module.readString()
   assert section_name == 'dylink'
-  mem_size, offset = readLEB(section, offset)
-  mem_align, offset = readLEB(section, offset)
-  table_size, offset = readLEB(section, offset)
-  table_align, offset = readLEB(section, offset)
+  mem_size = module.readLEB()
+  mem_align = module.readLEB()
+  table_size = module.readLEB()
+  table_align = module.readLEB()
 
   needed = []
-  needed_count, offset = readLEB(section, offset)
+  needed_count = module.readLEB()
   while needed_count:
-    libname, offset = readString(section, offset)
+    libname = module.readString()
     needed.append(libname)
     needed_count -= 1
 
