@@ -1,19 +1,10 @@
 {
   "a.html": 588,
   "a.html.gz": 386,
-<<<<<<< HEAD
-  "a.js": 19908,
-  "a.js.gz": 8114,
+  "a.js": 19972,
+  "a.js.gz": 8171,
   "a.mem": 3171,
   "a.mem.gz": 2715,
-  "total": 23667,
-  "total_gz": 11215
-=======
-  "a.js": 19921,
-  "a.js.gz": 8163,
-  "a.mem": 3171,
-  "a.mem.gz": 2715,
-  "total": 23680,
-  "total_gz": 11264
->>>>>>> origin/main
+  "total": 23731,
+  "total_gz": 11272
 }

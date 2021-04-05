@@ -1,19 +1,10 @@
 {
   "a.html": 563,
   "a.html.gz": 377,
-<<<<<<< HEAD
-  "a.js": 4882,
-  "a.js.gz": 2330,
-  "a.wasm": 10384,
-  "a.wasm.gz": 6693,
-  "total": 15829,
-  "total_gz": 9400
-=======
   "a.js": 4946,
   "a.js.gz": 2383,
-  "a.wasm": 10348,
-  "a.wasm.gz": 6663,
-  "total": 15857,
-  "total_gz": 9423
->>>>>>> origin/main
+  "a.wasm": 10386,
+  "a.wasm.gz": 6691,
+  "total": 15895,
+  "total_gz": 9451
 }
