@@ -2582,6 +2582,10 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest(test_file('webgl_shader_source_length.cpp'), args=opts + ['-lGL'], expected='0')
 
+  # Tests calling glGetString(GL_UNMASKED_VENDOR_WEBGL).
+  def test_webgl_unmasked_vendor_webgl(self):
+    self.btest(test_file('webgl_unmasked_vendor_webgl.c'), args=['-lGL'], expected='0')
+
   def test_webgl2(self):
     for opts in [
       ['-s', 'MIN_CHROME_VERSION=0'],
