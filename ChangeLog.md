@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Use LLVM's new pass manager by default, as LLVM does. This changes a bunch of
+  things about how LLVM optimizes and inlines, so it may cause noticeable
+  changes in compile times, code size, and speed, either for better or for
+  worse. (#13427)
 - Removed use of Python multiprocessing library because of stability issues. Added
   new environment variable EM_PYTHON_MULTIPROCESSING=1 that can be enabled
   to revert back to using Python multiprocessing. (#13493)
