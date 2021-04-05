@@ -155,6 +155,10 @@ var LibraryManager = {
       libraries.push('library_webgl2.js');
     }
 
+    if (GL_EXPLICIT_UNIFORM_LOCATION) {
+      libraries.push('library_c_preprocessor.js');
+    }
+
     if (LEGACY_GL_EMULATION) {
       libraries.push('library_glemu.js');
     }

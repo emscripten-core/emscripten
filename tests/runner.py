@@ -791,7 +791,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                   configure_args=[], make=['make'], make_args=None,
                   env_init={}, cache_name_extra='', native=False):
     if make_args is None:
-      make_args = ['-j', str(building.get_num_cores())]
+      make_args = ['-j', str(shared.get_num_cores())]
 
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()

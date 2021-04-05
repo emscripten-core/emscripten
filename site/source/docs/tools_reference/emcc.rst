@@ -203,6 +203,8 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: This is only relevant when :term:`minifying` global names, which happens in ``-O2`` and above, and when no ``-g`` option was specified to prevent minification.
 
+  .. note:: When used with ``-s WASM=2``, two symbol files are created. ``[name].js.symbols`` (with WASM symbols) and ``[name].wasm.js.symbols`` (with ASM.js symbols)
+
 .. _emcc-lto:
 
 ``-flto``

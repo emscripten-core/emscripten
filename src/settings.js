@@ -491,6 +491,10 @@ var GL_POOL_TEMP_BUFFERS = 1;
 // [link]
 var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0;
 
+// If true, enables support for the EMSCRIPTEN_explicit_uniform_location WebGL
+// extension. See docs/EMSCRIPTEN_explicit_uniform_location.txt
+var GL_EXPLICIT_UNIFORM_LOCATION = 0;
+
 // Deprecated. Pass -s MAX_WEBGL_VERSION=2 to target WebGL 2.0.
 // [link]
 var USE_WEBGL2 = 0;
@@ -1863,6 +1867,14 @@ var PRINTF_LONG_DOUBLE = 0;
 // which avoids trampling a C file).
 // [link]
 var WASM2C = 0;
+
+// Experimental sandboxing mode, see
+// https://kripken.github.io/blog/wasm/2020/07/27/wasmboxc.html
+//
+//  * full: Normal full wasm2c sandboxing. This uses a signal handler if it can.
+//  * mask: Masks loads and stores.
+//  * none: No sandboxing at all.
+var WASM2C_SANDBOXING = 'full';
 
 // Setting this affects the path emitted in the wasm that refers to the DWARF
 // file, in -gseparate-dwarf mode. This allows the debugging file to be hosted

@@ -504,15 +504,16 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_get_uniform_d__sig: 'fii',
   emscripten_webgl_get_uniform_d__proxy: 'sync_on_current_webgl_context_thread',
+  emscripten_webgl_get_uniform_d__deps: ['$webglGetUniformLocation'],
   emscripten_webgl_get_uniform_d: function(program, location) {
-    return GLctx.getUniform(GL.programs[program], GL.uniforms[location]);
+    return GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location));
   },
 
   emscripten_webgl_get_uniform_v__sig: 'iiiiii',
   emscripten_webgl_get_uniform_v__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_uniform_v__deps: ['$writeGLArray'],
+  emscripten_webgl_get_uniform_v__deps: ['$writeGLArray', '$webglGetUniformLocation'],
   emscripten_webgl_get_uniform_v: function(program, location, dst, dstLength, dstType) {
-    return writeGLArray(GLctx.getUniform(GL.programs[program], GL.uniforms[location]), dst, dstLength, dstType);
+    return writeGLArray(GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location)), dst, dstLength, dstType);
   },
 
   emscripten_webgl_get_parameter_v__sig: 'iiiii',
