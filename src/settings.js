@@ -1840,7 +1840,7 @@ var DISABLE_EXCEPTION_THROWING = 0;
 var USE_OFFSET_CONVERTER = 0;
 
 // If set to 1, the JS compiler is run before wasm-ld so that the linker can
-// report undefined symbols within the binary.  Without this option linker
+// report undefined symbols within the binary.  Without this option the linker
 // doesn't know which symbols might be defined in JS so reporting of undefined
 // symbols is delayed until the JS compiler is run.
 // [link]
@@ -1944,8 +1944,8 @@ var SPLIT_MODULE = 0;
 // native functions) prior to linking native code with wasm-ld.  This option
 // has three possible values:
 // 'auto': (default) Inspect the object code passed to the linker (by running
-//         llvm-nm) and use the map in deps_info.py to determine the set of
-//         additional dependencies.
+//         llvm-nm on all input) and use the map in deps_info.py to determine
+//         the set of additional dependencies.
 // 'all' : Include the full set of possible reverse dependencies.
 // 'none': No reverse dependences will be added by emscriopten. Any reverse
 //         dependencies will be assumed to be explicitly added to
