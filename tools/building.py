@@ -46,7 +46,7 @@ _is_ar_cache = {}
 user_requested_exports = []
 
 
-class ObjectFileInfo(object):
+class ObjectFileInfo:
   def __init__(self, returncode, output, defs=set(), undefs=set(), commons=set()):
     self.returncode = returncode
     self.output = output
