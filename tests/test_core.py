@@ -5944,7 +5944,6 @@ return malloc(size);
   # Tests invoking the SIMD API via x86 SSE4.2 nmmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
-  @unittest.skip('recent SIMD changes require a binaryen fix')
   def test_sse4_2(self):
     src = test_file('sse', 'test_sse4_2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse4.2', '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
