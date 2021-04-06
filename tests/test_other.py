@@ -2274,9 +2274,10 @@ int f() {
         return 0;
       }
     ''')
+    # the name "conftest.c" is enough to make us use a configure-like mode,
+    # the same as if EMMAKEN_JUST_CONFIGURE=1 were set in the env.
     cmd = [EMCC, '-s', 'ASSERTIONS', 'conftest.c', '-o', 'conftest']
-    with env_modify({'EMMAKEN_JUST_CONFIGURE': '1'}):
-      output = self.run_process(cmd, stderr=PIPE)
+    output = self.run_process(cmd, stderr=PIPE)
     self.assertNotContained('emcc: warning: treating -s as linker option', output.stderr)
     self.assertExists('conftest')
 
