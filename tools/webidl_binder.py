@@ -24,7 +24,7 @@ import WebIDL
 # CHECKS='ALL' will do extensive argument type checking (~5x slower than default).
 #                 This will catch invalid numbers, invalid pointers, invalid strings, etc.
 # Anything else defaults to legacy mode for backward compatibility.
-CHECKS = os.environ.get('IDL_CHECKS') or 'DEFAULT'
+CHECKS = os.environ.get('IDL_CHECKS', 'DEFAULT')
 # DEBUG=1 will print debug info in render_function
 DEBUG = os.environ.get('IDL_VERBOSE') == '1'
 
