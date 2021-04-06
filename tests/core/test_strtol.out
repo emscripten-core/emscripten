@@ -217,5 +217,9 @@ strtol("hello", 0, 10) = 0
 consumed 0 bytes
 strtol("not-a-number", 0, 0) = 0
 consumed 0 bytes
+strtol(" ", 0, 0) = 0
+consumed 0 bytes
+strtol("-", 0, 0) = 0
+consumed 0 bytes
 strtol("  0x12end", 0, 0) = 302
 consumed 7 bytes
