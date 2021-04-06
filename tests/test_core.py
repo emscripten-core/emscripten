@@ -8320,6 +8320,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_PTHREADS')
     self.do_run_in_out_file_test('core', 'pthread', 'emscripten_futexes.c')
 
+  @node_pthreads
+  def test_printf_thread(self):
+    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('core', 'test_printf_thread.c')
+
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink_basics(self):
