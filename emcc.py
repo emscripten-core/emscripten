@@ -103,8 +103,6 @@ UNSUPPORTED_LLD_FLAGS = {
     '-version-script': True,
 }
 
-LIB_PREFIXES = ('', 'lib')
-
 DEFAULT_ASYNCIFY_IMPORTS = [
   'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
@@ -1072,43 +1070,29 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         skip = True
 
       if not arg.startswith('-'):
+        # we already removed -o <target>, so all these should be inputs
+        newargs[i] = ''
         # os.devnul should always be reported as existing but there is bug in windows
         # python before 3.8:
         # https://bugs.python.org/issue1311
         if not os.path.exists(arg) and arg != os.devnull:
           exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
         file_suffix = get_file_suffix(arg)
-        if file_suffix in SOURCE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS or building.is_ar(arg):
-          # we already removed -o <target>, so all these should be inputs
-          newargs[i] = ''
-          if file_suffix in SOURCE_ENDINGS or (has_dash_c and file_suffix == '.bc'):
-            input_files.append((i, arg))
-          elif file_suffix in HEADER_ENDINGS:
-            input_files.append((i, arg))
-            has_header_inputs = True
-          elif file_suffix in ASSEMBLY_ENDINGS or building.is_bitcode(arg) or building.is_ar(arg):
-            input_files.append((i, arg))
-          elif building.is_wasm(arg):
-            input_files.append((i, arg))
-          elif file_suffix in (STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
-            # if it's not, and it's a library, just add it to libs to find later
-            libname = unsuffixed_basename(arg)
-            for prefix in LIB_PREFIXES:
-              if not prefix:
-                continue
-              if libname.startswith(prefix):
-                libname = libname[len(prefix):]
-                break
-            libs.append((i, libname))
-        elif file_suffix in STATICLIB_ENDINGS:
-          if not building.is_ar(arg):
-            if building.is_bitcode(arg):
-              message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files use .bc or .o.'
-            else:
-              message = arg + ': Unknown format, not a static library!'
-            exit_with_error(message)
+        if file_suffix in HEADER_ENDINGS:
+          has_header_inputs = True
+        if file_suffix in STATICLIB_ENDINGS and not building.is_ar(arg):
+          if building.is_bitcode(arg):
+            message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files use .bc or .o.'
+          else:
+            message = arg + ': Unknown format, not a static library!'
+          exit_with_error(message)
+        if file_suffix in DYNAMICLIB_ENDINGS and not building.is_bitcode(arg) and not building.is_wasm(arg):
+          # For shared libraries that are neither bitcode nor wasm, assuming its local native
+          # library and attempt to find a library by the same name in our own library path.
+          # TODO(sbc): Do we really need this feature?  See test_other.py:test_local_link
+          libname = unsuffixed_basename(arg).lstrip('lib')
+          libs.append((i, libname))
         else:
-          newargs[i] = ''
           input_files.append((i, arg))
       elif arg.startswith('-L'):
         add_link_flag(i, arg)
@@ -3302,14 +3286,15 @@ def worker_js_script(proxy_worker_filename):
 def process_libraries(libs, lib_dirs, temp_files):
   libraries = []
   consumed = []
-  suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
+  suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
+  prefixes = ('', 'lib')
 
   # Find library files
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
 
     found = False
-    for prefix in LIB_PREFIXES:
+    for prefix in prefixes:
       for suff in suffixes:
         name = prefix + lib + suff
         for lib_dir in lib_dirs:
