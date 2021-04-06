@@ -3287,25 +3287,21 @@ def process_libraries(libs, lib_dirs, temp_files):
   libraries = []
   consumed = []
   suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
-  prefixes = ('', 'lib')
 
   # Find library files
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
 
     found = False
-    for prefix in prefixes:
-      for suff in suffixes:
-        name = prefix + lib + suff
-        for lib_dir in lib_dirs:
-          path = os.path.join(lib_dir, name)
-          if os.path.exists(path):
-            logger.debug('found library "%s" at %s', lib, path)
-            temp_files.append((i, path))
-            consumed.append(i)
-            found = True
-            break
-        if found:
+    for suff in suffixes:
+      name = 'lib' + lib + suff
+      for lib_dir in lib_dirs:
+        path = os.path.join(lib_dir, name)
+        if os.path.exists(path):
+          logger.debug('found library "%s" at %s', lib, path)
+          temp_files.append((i, path))
+          consumed.append(i)
+          found = True
           break
       if found:
         break

@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Refactoring of the library search algorithm means that emscripten no longer
+  supports some (unintented) methods of library lookup:
+    1. Linking with `-llibc` rather than `-lc` will no longer work.
+    2. Linking a library called `foo.a` via `-lfoo` will no longer work.
+       (libraries found via `-l` have to start with `lib`)
 - Use LLVM's new pass manager by default, as LLVM does. This changes a bunch of
   things about how LLVM optimizes and inlines, so it may cause noticeable
   changes in compile times, code size, and speed, either for better or for
