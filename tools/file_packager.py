@@ -153,7 +153,7 @@ def add(mode, rootpathsrc, rootpathdst):
       elif DEBUG:
         print('Skipping file "%s" from inclusion in the emscripten '
               'virtual file system.' % fullname, file=sys.stderr)
-    del dirnames[:]
+    dirnames.clear()
     dirnames.extend(new_dirnames)
 
 

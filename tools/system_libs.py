@@ -1836,7 +1836,7 @@ def resolve_dependencies(port_set, settings):
         port_set.add(dep)
         add_deps(dep)
 
-  for port in list(port_set):
+  for port in port_set.copy():
     add_deps(port)
 
 

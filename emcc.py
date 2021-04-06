@@ -385,7 +385,7 @@ def apply_settings(changes):
 
     if key == 'EXPORTED_FUNCTIONS':
       # used for warnings in emscripten.py
-      shared.Settings.USER_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
+      shared.Settings.USER_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS.copy()
 
     # TODO(sbc): Remove this legacy way.
     if key == 'WASM_OBJECT_FILES':
@@ -971,7 +971,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
 
-    newargs = list(args)
+    newargs = args.copy()
 
     # Scan and strip emscripten specific cmdline warning flags.
     # This needs to run before other cmdline flags have been parsed, so that
@@ -1313,7 +1313,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('no input files')
 
     # Note the exports the user requested
-    building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
+    building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS.copy()
 
     def default_setting(name, new_default):
       if name not in settings_map:

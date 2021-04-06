@@ -128,7 +128,7 @@ def unique_ordered(values):
     seen.add(value)
     return True
 
-  return list(filter(check, values))
+  return [v for v in values if check(v)]
 
 
 # clear caches. this is not normally needed, except if the clang/LLVM
