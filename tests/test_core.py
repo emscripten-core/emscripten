@@ -1808,9 +1808,7 @@ int main() {
     self.banned_js_engines = [config.V8_ENGINE] # timer limitations in v8 shell
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
-
-    if self.run_name == 'asm2':
-      self.emcc_args += ['--closure=1'] # Use closure here for some additional coverage
+    self.maybe_closure()
     self.do_runf(test_file('emscripten_get_now.cpp'), 'Timer resolution is good')
 
   def test_emscripten_get_compiler_setting(self):
@@ -4739,12 +4737,6 @@ Have even and odd!
     self.do_core_test('test_strstr.c')
 
   def test_fnmatch(self):
-    # Run one test without assertions, for additional coverage
-    if self.run_name == 'asm2m':
-      i = self.emcc_args.index('ASSERTIONS=1')
-      assert i > 0 and self.emcc_args[i - 1] == '-s'
-      self.emcc_args[i] = 'ASSERTIONS=0'
-      print('flip assertions off')
     self.do_core_test('test_fnmatch.cpp')
 
   def test_sscanf(self):
@@ -5822,11 +5814,7 @@ return malloc(size);
   def test_cubescript(self):
     # uses register keyword
     self.emcc_args += ['-std=c++03', '-Wno-dynamic-class-memaccess']
-    if self.run_name == 'asm3':
-      self.emcc_args += ['--closure=1'] # Use closure here for some additional coverage
-
-    self.emcc_args = [x for x in self.emcc_args if x != '-g'] # remove -g, so we have one test without it by default
-
+    self.maybe_closure()
     self.emcc_args += ['-I', test_file('third_party', 'cubescript')]
 
     def test():
@@ -6075,7 +6063,7 @@ return malloc(size);
     self.maybe_closure()
 
     self.emcc_args.append('-Wno-shift-negative-value')
-    if self.run_name == 'asm2g':
+    if '-g' in self.emcc_args:
       self.emcc_args.append('-g4') # more source maps coverage
 
     if use_cmake:
@@ -6969,8 +6957,7 @@ someweirdtext
   })
   @sync
   def test_webidl(self, mode, allow_memory_growth):
-    if self.run_name == 'asm2':
-      self.emcc_args += ['--closure=1', '-g1'] # extra testing
+    if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
       self.set_setting('MODULARIZE')
 
@@ -6989,7 +6976,7 @@ someweirdtext
     def post(filename):
       with open(filename, 'a') as f:
         f.write('\n\n')
-        if self.run_name == 'asm2':
+        if self.get_setting('MODULARIZE'):
           f.write('var TheModule = Module();\n')
         else:
           f.write('var TheModule = Module;\n')
