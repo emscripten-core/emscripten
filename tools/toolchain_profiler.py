@@ -76,7 +76,7 @@ if EMPROFILE:
   subprocess.check_output = profiled_check_output
   subprocess.Popen = ProfiledPopen
 
-  class ToolchainProfiler(object):
+  class ToolchainProfiler:
     # Provide a running counter towards negative numbers for PIDs for which we don't know what the actual process ID is
     imaginary_pid_ = 0
     profiler_logs_path = None # Log file not opened yet
@@ -191,7 +191,7 @@ if EMPROFILE:
       for b in ToolchainProfiler.block_stack[::-1]:
         ToolchainProfiler.exit_block(b)
 
-    class ProfileBlock(object):
+    class ProfileBlock:
       def __init__(self, block_name):
         self.block_name = block_name
 
@@ -211,7 +211,7 @@ if EMPROFILE:
       return ToolchainProfiler.imaginary_pid_
 
 else:
-  class ToolchainProfiler(object):
+  class ToolchainProfiler:
     @staticmethod
     def record_process_start():
       pass
@@ -240,7 +240,7 @@ else:
     def exit_block(block_name):
       pass
 
-    class ProfileBlock(object):
+    class ProfileBlock:
       def __init__(self, block_name):
         pass
 

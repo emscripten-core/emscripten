@@ -67,7 +67,7 @@ def split_funcs(js, just_split=False):
   return funcs
 
 
-class Minifier(object):
+class Minifier:
   """minification support. We calculate minification of
   globals here, then pass that into the parallel acorn-optimizer.js runners which
   perform minification of locals.
@@ -201,7 +201,7 @@ def run_on_js(filename, passes, extra_info=None, just_split=False, just_concat=F
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
       if 'asm' not in passes:
         # can have Module[..] and inlining prevention code, push those to post
-        class Finals(object):
+        class Finals:
           buf = []
 
         def process(line):

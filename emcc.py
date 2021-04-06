@@ -192,7 +192,7 @@ def save_intermediate_with_wasm(name, wasm_binary):
   building.save_intermediate(wasm_binary, name + '.wasm')
 
 
-class TimeLogger(object):
+class TimeLogger:
   last = time.time()
 
   @staticmethod
@@ -221,7 +221,7 @@ class OFormat(Enum):
   BARE = 5
 
 
-class EmccOptions(object):
+class EmccOptions:
   def __init__(self):
     self.output_file = None
     self.post_link = False
@@ -3342,7 +3342,7 @@ def process_libraries(libs, lib_dirs, temp_files):
   return consumed
 
 
-class ScriptSource(object):
+class ScriptSource:
   def __init__(self):
     self.src = None # if set, we have a script to load with a src attribute
     self.inline = None # if set, we have the contents of a script to write inline in a script

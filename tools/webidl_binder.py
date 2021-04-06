@@ -34,7 +34,7 @@ if DEBUG: print("Debug print ON, CHECKS=%s" % CHECKS)
 # We need to avoid some closure errors on the constructors we define here.
 CONSTRUCTOR_CLOSURE_SUPPRESSIONS = '/** @suppress {undefinedVars, duplicate} @this{Object} */'
 
-class Dummy(object):
+class Dummy:
   def __init__(self, init):
     for k, v in init.items():
       self.__dict__[k] = v
