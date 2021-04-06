@@ -98,6 +98,9 @@ EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
 
 TEST_ROOT = path_from_root('tests')
 
+WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools', 'webidl_binder'))
+
+
 if EMTEST_VERBOSE:
   logging.root.setLevel(logging.DEBUG)
 
@@ -1515,7 +1518,7 @@ class BrowserCore(RunnerCore):
       if reporting == Reporting.FULL:
         # If C reporting (i.e. REPORT_RESULT macro) is required
         # also compile in report_result.cpp and forice-include report_result.h
-        args += ['-I', path_from_root('tests'),
+        args += ['-I' + TEST_ROOT,
                  '-include', test_file('report_result.h'),
                  test_file('report_result.cpp')]
     self.run_process([EMCC] + self.get_emcc_args() + args)

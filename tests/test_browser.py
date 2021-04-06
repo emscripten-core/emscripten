@@ -20,11 +20,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.request import urlopen
 
 from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
-from runner import create_file, parameterized, ensure_dir, disabled, test_file
+from runner import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
 from tools import building
 from tools import shared
 from tools import system_libs
-from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE
+from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
 from tools.shared import try_delete, config
 
 
@@ -3424,9 +3424,7 @@ window.close = function() {
 
   def test_webidl(self):
     # see original in test_core.py
-    self.run_process([PYTHON, path_from_root('tools', 'webidl_binder.py'),
-                     test_file('webidl', 'test.idl'),
-                     'glue'])
+    self.run_process([WEBIDL_BINDER, test_file('webidl', 'test.idl'), 'glue'])
     self.assertExists('glue.cpp')
     self.assertExists('glue.js')
     for opts in [[], ['-O1'], ['-O2']]:

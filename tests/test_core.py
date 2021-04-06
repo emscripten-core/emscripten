@@ -25,7 +25,7 @@ from tools import shared, building, config
 from runner import RunnerCore, path_from_root, requires_native_clang, test_file
 from runner import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
 from runner import env_modify, with_env_modify, disabled, node_pthreads
-from runner import NON_ZERO
+from runner import NON_ZERO, WEBIDL_BINDER
 import clang_native
 
 # decorators for limiting which modes a test can run in
@@ -6992,11 +6992,8 @@ someweirdtext
       self.set_setting('MODULARIZE')
 
     # Force IDL checks mode
-    os.environ['IDL_CHECKS'] = mode
-
-    self.run_process([PYTHON, path_from_root('tools', 'webidl_binder.py'),
-                     test_file('webidl', 'test.idl'),
-                     'glue'])
+    with env_modify({'IDL_CHECKS': mode}):
+      self.run_process([WEBIDL_BINDER, test_file('webidl', 'test.idl'), 'glue'])
     self.assertExists('glue.cpp')
     self.assertExists('glue.js')
 
