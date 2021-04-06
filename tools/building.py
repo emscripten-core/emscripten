@@ -46,7 +46,7 @@ _is_ar_cache = {}
 user_requested_exports = []
 
 
-class ObjectFileInfo(object):
+class ObjectFileInfo:
   def __init__(self, returncode, output, defs=set(), undefs=set(), commons=set()):
     self.returncode = returncode
     self.output = output
@@ -451,11 +451,6 @@ def link_lld(args, target, external_symbol_list=None):
   cmd = [WASM_LD, '-o', target] + args
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
-
-  # LLVM has turned on the new pass manager by default, but it causes some code
-  # size regressions. For now, use the legacy one.
-  # https://github.com/emscripten-core/emscripten/issues/13427
-  cmd += ['--lto-legacy-pass-manager']
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable

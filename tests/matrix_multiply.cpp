@@ -79,7 +79,6 @@ void Tick()
   if (++NumFramesDone >= NumFrames)
   {
     Done();
-    exit(0);
   }
 }
 
@@ -125,4 +124,10 @@ int main(int argc, char **argv)
     for(int i = 0; i < NumFrames; ++i)
       Tick();
   }
+  if (NumFramesDone != NumFrames) {
+    puts("Invalid number of frames");
+    abort();
+  }
+
+  return 0;
 }

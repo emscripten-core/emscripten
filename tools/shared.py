@@ -38,7 +38,7 @@ EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_LLVM_VERSION = "13.0"
 PYTHON = sys.executable
 
-# Used only on Linux
+# Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
 multiprocessing_pool = None
 
 # can add  %(asctime)s  to see timestamps
@@ -487,7 +487,7 @@ def get_canonical_temp_dir(temp_dir):
   return os.path.join(temp_dir, 'emscripten_temp')
 
 
-class Configuration(object):
+class Configuration:
   def __init__(self):
     self.EMSCRIPTEN_TEMP_DIR = None
 
@@ -538,9 +538,9 @@ def apply_configuration():
 
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
-class SettingsManager(object):
+class SettingsManager:
 
-  class __impl(object):
+  class __impl:
     attrs = {}
     internal_settings = set()
 
@@ -743,7 +743,7 @@ def asmjs_mangle(name):
     return name
 
 
-class JS(object):
+class JS:
   emscripten_license = '''\
 /**
  * @license

@@ -153,7 +153,7 @@ def get_wasm_libc_rt_files():
   return math_files + other_files + iprintf_files
 
 
-class Library(object):
+class Library:
   """
   `Library` is the base class of all system libraries.
 
@@ -539,7 +539,7 @@ class OptimizedAggressivelyForSizeLibrary(Library):
     return super(OptimizedAggressivelyForSizeLibrary, cls).get_default_variation(is_optz=shared.Settings.SHRINK_LEVEL >= 2, **kwargs)
 
 
-class exceptions(object):
+class exceptions:
   """
   This represents exception handling mode of Emscripten. Currently there are
   three modes of exception handling:
@@ -1425,7 +1425,7 @@ def handle_reverse_deps(input_files):
   warn_on_unexported_main(symbolses)
 
   if len(symbolses) == 0:
-    class Dummy(object):
+    class Dummy:
       defs = set()
       undefs = set()
     symbolses.append(Dummy())
@@ -1592,7 +1592,7 @@ def calculate(input_files, cxx, forced):
   return ret
 
 
-class Ports(object):
+class Ports:
   """emscripten-ports library management (https://github.com/emscripten-ports).
   """
 
