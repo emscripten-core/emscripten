@@ -7678,6 +7678,12 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     self.assertIdentical(normal, tiny)
     self.assertIdentical(normal, huge)
 
+  def test_js_optimizer_verbose(self):
+    # build at -O3 with wasm2js to use as much as possible of the JS
+    # optimization code, and verify it works ok in verbose mode
+    self.run_process([EMCC, test_file('hello_world.c'), '-O3', '-s', 'WASM=0',
+                      '-s', 'VERBOSE'], stdout=PIPE, stderr=PIPE)
+
   def test_pthreads_growth_and_unsigned(self):
     create_file('src.cpp', r'''
 #include <emscripten.h>

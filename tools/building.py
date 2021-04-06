@@ -697,6 +697,8 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   # will be carried over to a later Closure run.
   if Settings.USE_CLOSURE_COMPILER:
     cmd += ['--closureFriendly']
+  if Settings.VERBOSE:
+    cmd += ['verbose']
   if not return_output:
     next = original_filename + '.jso.js'
     configuration.get_temp_files().note(next)
