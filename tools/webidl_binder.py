@@ -3,11 +3,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-'''
-WebIDL binder
+"""WebIDL binder
 
-http://kripken.github.io/emscripten-site/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html
-'''
+https://emscripten.org/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html
+"""
 
 import os, sys
 
