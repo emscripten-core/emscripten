@@ -6256,30 +6256,13 @@ return malloc(size);
   def test_fuzz(self):
     self.emcc_args += ['-I' + test_file('fuzz', 'include'), '-w']
 
-    skip_lto_tests = [
-      # LLVM LTO bug
-      '19.c', '18.cpp',
-      # puts exists before LTO, but is not used; LTO cleans it out, but then creates uses to it (printf=>puts) XXX https://llvm.org/bugs/show_bug.cgi?id=23814
-      '23.cpp'
-    ]
-
     def run_all(x):
       print(x)
       for name in sorted(glob.glob(test_file('fuzz', '*.c')) + glob.glob(test_file('fuzz', '*.cpp'))):
-        # if os.path.basename(name) != '4.c':
-        #   continue
         if 'newfail' in name:
           continue
         if os.path.basename(name).startswith('temp_fuzzcode'):
           continue
-        # pnacl legalization issue, see https://code.google.com/p/nativeclient/issues/detail?id=4027
-        if x == 'lto' and self.run_name in ['default'] and os.path.basename(name) in ['8.c']:
-          continue
-        if x == 'lto' and self.run_name == 'default' and os.path.basename(name) in skip_lto_tests:
-          continue
-        if x == 'lto' and os.path.basename(name) in ['21.c']:
-          continue # LLVM LTO bug
-
         print(name)
         if name.endswith('.cpp'):
           self.emcc_args.append('-std=c++03')
