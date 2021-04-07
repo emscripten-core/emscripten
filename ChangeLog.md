@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- In order to behave more like clang and gcc, emscripten no longer
+  supports some nonstandard methods of library lookup (that worked
+  unintentionally and were untested and not documented):
+    1. Linking with `-llibc` rather than `-lc` will no longer work.
+    2. Linking a library called `foo.a` via `-lfoo` will no longer work.
+       (libraries found via `-l` have to start with `lib`)
 - Use LLVM's new pass manager by default, as LLVM does. This changes a bunch of
   things about how LLVM optimizes and inlines, so it may cause noticeable
   changes in compile times, code size, and speed, either for better or for
