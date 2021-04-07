@@ -4487,9 +4487,9 @@ window.close = function() {
   @requires_threads
   def test_fetch_sync_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest('fetch/sync_xhr.cpp', expected='1', args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/sync_xhr.cpp', args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
-  # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
+  # Tests emscripten_fetch() usage when user passes none of trhe main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
   @requires_threads
   def test_fetch_implicit_append(self):
