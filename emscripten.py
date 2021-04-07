@@ -117,11 +117,6 @@ def update_settings_glue(metadata, DEBUG):
   # With the wasm backend the set of implemented functions is identical to the set of exports
   shared.Settings.IMPLEMENTED_FUNCTIONS = [asmjs_mangle(x) for x in metadata['exports']]
 
-  if metadata['asmConsts']:
-    # emit the EM_ASM signature-reading helper function only if we have any EM_ASM
-    # functions in the module.
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$readAsmConstArgs']
-
   shared.Settings.BINARYEN_FEATURES = metadata['features']
   if shared.Settings.RELOCATABLE:
     # When building relocatable output (e.g. MAIN_MODULE) the reported table
