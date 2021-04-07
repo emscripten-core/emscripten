@@ -1944,6 +1944,9 @@ int main(int argc, char **argv) {
     self.do_core_test('test_em_asm_arguments_side_effects.cpp')
     self.do_core_test('test_em_asm_arguments_side_effects.cpp', force_c=True)
 
+  def test_em_asm_direct(self):
+    self.do_core_test('test_em_asm_direct.c')
+
   @parameterized({
     '': ([], False),
     'c': ([], True),

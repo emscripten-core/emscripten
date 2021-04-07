@@ -3244,6 +3244,7 @@ LibraryManager.library = {
   },
 
   emscripten_asm_const_int__sig: 'iiii',
+  emscripten_asm_const_int__deps: ['$readAsmConstArgs'],
   emscripten_asm_const_int: function(code, sigPtr, argbuf) {
 #if RELOCATABLE
     code -= {{{ GLOBAL_BASE }}};
@@ -3255,6 +3256,8 @@ LibraryManager.library = {
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
+
+  $mainThreadEM_ASM__deps: ['$readAsmConstArgs'],
   $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
 #if RELOCATABLE
     code -= {{{ GLOBAL_BASE }}};
