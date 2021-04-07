@@ -1258,14 +1258,6 @@
     },
     {
         "file": "emscripten/threading.h",
-        "structs": {
-            "thread_profiler_block": [
-                "threadStatus",
-                "currentStatusStartTime",
-                "timeSpentInStatus",
-                "name"
-            ]
-        },
         "defines": [
             "EM_PROXIED_PTHREAD_CREATE",
             "EM_PROXIED_CREATE_CONTEXT",

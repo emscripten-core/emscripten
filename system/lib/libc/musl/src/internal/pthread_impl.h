@@ -15,6 +15,22 @@
 
 #define pthread __pthread
 
+#ifdef __EMSCRIPTEN__
+#define EM_THREAD_NAME_MAX 32
+
+typedef struct thread_profiler_block {
+	// One of THREAD_STATUS_*
+	int threadStatus;
+	// Wallclock time denoting when the current thread state was entered in.
+	double currentStatusStartTime;
+	// Accumulated duration times denoting how much time has been spent in each
+	// state, in msecs.
+	double timeSpentInStatus[EM_THREAD_STATUS_NUMFIELDS];
+	// A human-readable name for this thread.
+	char name[EM_THREAD_NAME_MAX];
+} thread_profiler_block;
+#endif
+
 struct pthread {
 // XXX Emscripten: Need some custom thread control structures.
 #ifdef __EMSCRIPTEN__
@@ -22,7 +38,7 @@ struct pthread {
 	// by direct pointer arithmetic in worker.js.
 	int threadStatus; // 0: thread not exited, 1: exited.
 	int threadExitCode; // Thread exit code.
-	void *profilerBlock; // If --threadprofiler is enabled, this pointer is allocated to contain internal information about the thread state for profiling purposes.
+	thread_profiler_block * _Atomic profilerBlock; // If --threadprofiler is enabled, this pointer is allocated to contain internal information about the thread state for profiling purposes.
 #endif
 
 	struct pthread *self;
