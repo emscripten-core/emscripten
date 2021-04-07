@@ -162,8 +162,6 @@ var LibraryPThread = {
       var status = (profilerBlock == 0) ? 0 : Atomics.load(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.threadStatus }}} ) >> 2);
       return PThread.threadStatusToString(status);
     },
-#else
-    setThreadStatus: function() {},
 #endif
 
     runExitHandlers: function() {
@@ -324,7 +322,9 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
       out("threadInit");
 #endif
+#if PTHREADS_PROFILING
       PThread.setThreadStatus(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
+#endif
       // Call thread init functions (these are the emscripten_tls_init for each
       // module loaded.
       for (var i in PThread.tlsInitFunctions) {
