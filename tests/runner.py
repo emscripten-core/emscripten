@@ -429,8 +429,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.env = {}
     self.temp_files_before_run = []
     self.uses_es6 = False
-    self.js_engines = list(config.JS_ENGINES)
-    self.wasm_engines = list(config.WASM_ENGINES)
+    self.js_engines = config.JS_ENGINES.copy()
+    self.wasm_engines = config.WASM_ENGINES.copy()
     self.banned_js_engines = []
     self.use_all_engines = EMTEST_ALL_ENGINES
 
@@ -942,7 +942,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ccshared('libc.cpp', ['liba' + so])
 
     self.set_setting('MAIN_MODULE')
-    original_args = list(self.emcc_args)
+    original_args = self.emcc_args.copy()
     extra_args = ['libb' + so, 'libc' + so]
     self.emcc_args += extra_args
     do_run(r'''
@@ -1544,7 +1544,7 @@ class BrowserCore(RunnerCore):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
-    original_args = args[:]
+    original_args = args.copy()
     if not os.path.exists(filename):
       filename = test_file(filename)
     if reference:
@@ -1681,7 +1681,7 @@ def build_library(name,
 
 
 def check_js_engines():
-  working_engines = list(filter(jsrun.check_engine, config.JS_ENGINES))
+  working_engines = [e for e in config.JS_ENGINES if jsrun.check_engine(e)]
   if len(working_engines) < len(config.JS_ENGINES):
     print('Not all the JS engines in JS_ENGINES appears to work.')
     exit(1)

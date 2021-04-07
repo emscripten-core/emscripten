@@ -129,7 +129,7 @@ def sync(f):
 
 def also_with_noderawfs(func):
   def decorated(self):
-    orig_args = self.emcc_args[:]
+    orig_args = self.emcc_args.copy()
     func(self)
     print('noderawfs')
     self.emcc_args = orig_args + ['-DNODERAWFS']
@@ -3577,7 +3577,7 @@ ok
   def dylink_testf(self, main, side, expected=None, force_c=False, main_emcc_args=[],
                    need_reverse=True, auto_load=True, main_module=1, **kwargs):
     # Same as dylink_test but takes source code as filenames on disc.
-    old_args = self.emcc_args[:]
+    old_args = self.emcc_args.copy()
     if not expected:
       outfile = shared.unsuffixed(main) + '.out'
       if os.path.exists(outfile):
@@ -4942,7 +4942,7 @@ Module = {
 
   def test_fgetc_ungetc(self):
     print('TODO: update this test once the musl ungetc-on-EOF-stream bug is fixed upstream and reaches us')
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       print(fs)
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
@@ -5251,7 +5251,7 @@ main( int argv, char ** argc ) {
 
   def test_fs_mmap(self):
     self.uses_es6 = True
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS', 'NODERAWFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
@@ -5300,7 +5300,7 @@ main( int argv, char ** argc ) {
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_access(self):
     self.uses_es6 = True
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
@@ -5339,7 +5339,7 @@ main( int argv, char ** argc ) {
 
   def test_unistd_truncate(self):
     self.uses_es6 = True
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
@@ -5378,7 +5378,7 @@ main( int argv, char ** argc ) {
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_unlink(self):
     self.clear()
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
@@ -5401,7 +5401,7 @@ main( int argv, char ** argc ) {
 
   def test_unistd_links(self):
     self.clear()
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       if WINDOWS and fs == 'NODEFS':
         print('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.', file=sys.stderr)
@@ -5428,7 +5428,7 @@ main( int argv, char ** argc ) {
   @also_with_wasm_bigint
   def test_unistd_io(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ERRNO_CODES'])
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       self.clear()
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
@@ -5438,7 +5438,7 @@ main( int argv, char ** argc ) {
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_misc(self):
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
@@ -6355,7 +6355,7 @@ return malloc(size);
     'minimal_runtime': ['-s', 'MINIMAL_RUNTIME=1']
   })
   def test_dyncall_specific(self, *args):
-    emcc_args = self.emcc_args[:]
+    emcc_args = self.emcc_args.copy()
     cases = [
         ('DIRECT', []),
         ('DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]']),
@@ -6375,7 +6375,7 @@ return malloc(size);
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
     def test(output_prefix='', args=[], assert_returncode=0):
-      old = self.emcc_args[:]
+      old = self.emcc_args.copy()
       self.emcc_args += args
       src = test_file('core', 'getValue_setValue.cpp')
       expected = test_file('core', 'getValue_setValue' + output_prefix + '.out')
@@ -6403,7 +6403,7 @@ return malloc(size);
         if use_files:
           args += ['-DUSE_FILES']
         print(args)
-        old = self.emcc_args[:]
+        old = self.emcc_args.copy()
         self.emcc_args += args
         self.do_runf(test_file('core', 'FS_exports.cpp'),
                      (open(test_file('core', 'FS_exports' + output_prefix + '.out')).read(),
@@ -6426,7 +6426,7 @@ return malloc(size);
   def test_legacy_exported_runtime_numbers(self):
     # these used to be exported, but no longer are by default
     def test(output_prefix='', args=[], assert_returncode=0):
-      old = self.emcc_args[:]
+      old = self.emcc_args.copy()
       self.emcc_args += args
       src = test_file('core', 'legacy_exported_runtime_numbers.cpp')
       expected = test_file('core', 'legacy_exported_runtime_numbers%s.out' % output_prefix)
