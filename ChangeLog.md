@@ -30,9 +30,10 @@ Current Trunk
   things about how LLVM optimizes and inlines, so it may cause noticeable
   changes in compile times, code size, and speed, either for better or for
   worse. (#13427)
-- Removed use of Python multiprocessing library because of stability issues. Added
-  new environment variable EM_PYTHON_MULTIPROCESSING=1 that can be enabled
-  to revert back to using Python multiprocessing. (#13493)
+- Removed use of Python multiprocessing library because of stability issues.
+  Added a new environment variable `EM_PYTHON_MULTIPROCESSING=1` that can be set
+  to revert back to using Python multiprocessing, in case there are reports of
+  regressions (that variable is intended to be temporary). (#13493)
 - Binaryen now always inlines single-use functions. This should reduce code size
   and improve performance (#13744).
 - Fix generating of symbol files with `--emit-symbol-map` for JS targets.

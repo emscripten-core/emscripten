@@ -2274,8 +2274,9 @@ int f() {
         return 0;
       }
     ''')
-    with env_modify({'EMMAKEN_JUST_CONFIGURE': '1'}):
-      cmd = [EMCC, '-s', 'ASSERTIONS', 'conftest.c', '-o', 'conftest']
+    # the name "conftest.c" is enough to make us use a configure-like mode,
+    # the same as if EMMAKEN_JUST_CONFIGURE=1 were set in the env.
+    cmd = [EMCC, '-s', 'ASSERTIONS', 'conftest.c', '-o', 'conftest']
     output = self.run_process(cmd, stderr=PIPE)
     self.assertNotContained('emcc: warning: treating -s as linker option', output.stderr)
     self.assertExists('conftest')
@@ -10262,3 +10263,9 @@ exec "$@"
     self.assertExists('hello.wasm')
     self.assertExists('hello_.wasm')
     self.assertContained('hello, world!', self.run_js('hello.wasm'))
+
+  def test_EM_PYTHON_MULTIPROCESSING(self):
+    with env_modify({'EM_PYTHON_MULTIPROCESSING': '1'}):
+      # wasm2js optimizations use multiprocessing to run multiple node
+      # invocations
+      self.run_process([EMCC, test_file('hello_world.c'), '-sWASM=0', '-O2'])
