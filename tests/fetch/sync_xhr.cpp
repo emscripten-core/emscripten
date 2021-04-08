@@ -48,5 +48,11 @@ int main()
   if (result == -1) {
     printf("emscripten_fetch() failed to run synchronously!\n");
   }
+  #ifndef __EMSCRIPTEN_PTHREADS__
+  // For proxy-to-worker mode (the only case where we can do sync xhr in main())
+  // Just use REPORT_RESULT
+  REPORT_RESULT(result);
+  #endif
+  // Otherwise test that the exit status gets returned correctly.
   return result;
 }
