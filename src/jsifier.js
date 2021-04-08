@@ -62,7 +62,7 @@ function JSify(functionsOnly) {
   var mainPass = !functionsOnly;
   var functionStubs = [];
 
-  var itemsDict = { type: [], functionStub: [], function: [], GlobalVariablePostSet: [] };
+  var itemsDict = { type: [], functionStub: [], function: [], globalVariablePostSet: [] };
 
   if (mainPass) {
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
@@ -251,7 +251,7 @@ function JSify(functionsOnly) {
         }
         if (postset && !addedLibraryItems[postsetId]) {
           addedLibraryItems[postsetId] = true;
-          itemsDict.GlobalVariablePostSet.push({
+          itemsDict.globalVariablePostSet.push({
             JS: postset + ';'
           });
         }
@@ -339,8 +339,8 @@ function JSify(functionsOnly) {
   // Final combiner
 
   function finalCombiner() {
-    var splitPostSets = splitter(itemsDict.GlobalVariablePostSet, (x) => x.ident && x.dependencies);
-    itemsDict.GlobalVariablePostSet = splitPostSets.leftIn;
+    var splitPostSets = splitter(itemsDict.globalVariablePostSet, (x) => x.ident && x.dependencies);
+    itemsDict.globalVariablePostSet = splitPostSets.leftIn;
     var orderedPostSets = splitPostSets.splitOut;
 
     var limit = orderedPostSets.length * orderedPostSets.length;
@@ -358,7 +358,7 @@ function JSify(functionsOnly) {
       }
     }
 
-    itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.concat(orderedPostSets);
+    itemsDict.globalVariablePostSet = itemsDict.globalVariablePostSet.concat(orderedPostSets);
 
     //
 
@@ -387,7 +387,7 @@ function JSify(functionsOnly) {
 
     JSify(true);
 
-    var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
+    var generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
     generated.forEach((item) => print(indentify(item.JS || '', 2)));
 
     legalizedI64s = legalizedI64sDefault;
