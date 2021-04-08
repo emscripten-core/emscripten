@@ -4506,8 +4506,7 @@ window.close = function() {
   @requires_threads
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest('fetch/sync_xhr.cpp',
-               expected='1',
+    self.btest_exit('fetch/sync_xhr.cpp',
                args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '--proxy-to-worker'],
                also_asmjs=True)
 
