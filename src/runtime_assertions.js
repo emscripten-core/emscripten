@@ -5,18 +5,21 @@
  */
 
 #if ASSERTIONS
-// Endianness check (note: assumes compiler arch was little-endian)
+
+// Endianness check
+#if !SUPPORT_BIG_ENDIAN
 (function() {
   var h16 = new Int16Array(1);
   var h8 = new Int8Array(h16.buffer);
   h16[0] = 0x6373;
-  if (h8[0] !== 0x73 || h8[1] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
+  if (h8[0] !== 0x73 || h8[1] !== 0x63) throw 'Runtime error: expected the system to be little-endian! (Run with -s SUPPORT_BIG_ENDIAN=1 to bypass)';
 })();
+#endif
 
 function abortFnPtrError(ptr, sig) {
 #if ASSERTIONS >= 2
 	var possibleSig = '';
-	for(var x in debug_tables) {
+	for (var x in debug_tables) {
 		var tbl = debug_tables[x];
 		if (tbl[ptr]) {
 			possibleSig += 'as sig "' + x + '" pointing to function ' + tbl[ptr] + ', ';

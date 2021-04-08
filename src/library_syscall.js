@@ -1254,7 +1254,7 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    var mode = SYSCALLS.get();
+    var mode = varargs ? SYSCALLS.get() : 0;
     return FS.open(path, flags, mode).fd;
   },
   __sys_mkdirat: function(dirfd, path, mode) {
@@ -1346,7 +1346,6 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    mode = SYSCALLS.get();
     FS.chmod(path, mode);
     return 0;
   },
@@ -1374,7 +1373,7 @@ var SyscallsLibrary = {
 #if ASSERTIONS
     assert(flags === 0);
 #endif
-    path = SYSCALLS.calculateAt(dirfd, path);
+    path = SYSCALLS.calculateAt(dirfd, path, true);
     var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
     var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
     var atime = (seconds*1000) + (nanoseconds/(1000*1000));

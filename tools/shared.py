@@ -36,9 +36,10 @@ DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_LLVM_VERSION = "13.0"
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
-SIMD_NEON_FLAGS = ['-mfpu=neon']
 PYTHON = sys.executable
+
+# Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
+multiprocessing_pool = None
 
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
@@ -96,6 +97,101 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
   logger.debug(debug_text)
   return ret
+
+
+def get_num_cores():
+  return int(os.environ.get('EMCC_CORES', os.cpu_count()))
+
+
+def mp_run_process(command_tuple):
+  temp_files = configuration.get_temp_files()
+  cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd = command_tuple
+  std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
+  ret = std_out.name if route_stdout_to_temp_files_suffix else None
+  proc = subprocess.Popen(cmd, stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd)
+  out, _ = proc.communicate()
+  if pipe_stdout:
+    ret = out.decode('UTF-8')
+  return ret
+
+
+# Runs multiple subprocess commands.
+# bool 'check': If True (default), raises an exception if any of the subprocesses failed with a nonzero exit code.
+# string 'route_stdout_to_temp_files_suffix': if not None, all stdouts are instead written to files, and an array of filenames is returned.
+# bool 'pipe_stdout': If True, an array of stdouts is returned, for each subprocess.
+def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp_files_suffix=None, pipe_stdout=False, check=True, cwd=None):
+  # By default, avoid using Python multiprocessing library due to a large amount of bugs it has on Windows (#8013, #718, #13785, etc.)
+  # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be faster, but may not work on Windows.
+  if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
+    import multiprocessing
+    global multiprocessing_pool
+    if not multiprocessing_pool:
+      multiprocessing_pool = multiprocessing.Pool(processes=get_num_cores())
+    return multiprocessing_pool.map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd) for cmd in commands], chunksize=1)
+
+  std_outs = []
+
+  if route_stdout_to_temp_files_suffix and pipe_stdout:
+    raise Exception('Cannot simultaneously pipe stdout to file and a string! Choose one or the other.')
+
+  # TODO: Experiment with registering a signal handler here to see if that helps with Ctrl-C locking up the command prompt
+  # when multiple child processes have been spawned.
+  # import signal
+  # def signal_handler(sig, frame):
+  #   sys.exit(1)
+  # signal.signal(signal.SIGINT, signal_handler)
+
+  with ToolchainProfiler.profile_block('run_multiple_processes'):
+    processes = []
+    num_parallel_processes = get_num_cores()
+    temp_files = configuration.get_temp_files()
+    i = 0
+    num_completed = 0
+
+    while num_completed < len(commands):
+      if i < len(commands) and len(processes) < num_parallel_processes:
+        # Not enough parallel processes running, spawn a new one.
+        std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
+        if DEBUG:
+          logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
+        processes += [(i, subprocess.Popen(commands[i], stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd))]
+        if route_stdout_to_temp_files_suffix:
+          std_outs += [(i, std_out.name)]
+        i += 1
+      else:
+        # Not spawning a new process (Too many commands running in parallel, or no commands left): find if a process has finished.
+        def get_finished_process():
+          while True:
+            j = 0
+            while j < len(processes):
+              if processes[j][1].poll() is not None:
+                out, err = processes[j][1].communicate()
+                return (j, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
+              j += 1
+            # All processes still running; wait a short while for the first (oldest) process to finish,
+            # then look again if any process has completed.
+            try:
+              out, err = processes[0][1].communicate(0.2)
+              return (0, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
+            except subprocess.TimeoutExpired:
+              pass
+
+        j, out, err = get_finished_process()
+        idx, finished_process = processes[j]
+        del processes[j]
+        if pipe_stdout:
+          std_outs += [(idx, out)]
+        if check and finished_process.returncode != 0:
+          if out:
+            logger.info(out)
+          if err:
+            logger.error(err)
+          raise Exception('Subprocess %d/%d failed with return code %d! (cmdline: %s)' % (idx + 1, len(commands), finished_process.returncode, shlex_join(commands[idx])))
+        num_completed += 1
+
+  # If processes finished out of order, sort the results to the order of the input.
+  std_outs.sort(key=lambda x: x[0])
+  return [x[1] for x in std_outs]
 
 
 def check_call(cmd, *args, **kw):
@@ -391,7 +487,7 @@ def get_canonical_temp_dir(temp_dir):
   return os.path.join(temp_dir, 'emscripten_temp')
 
 
-class Configuration(object):
+class Configuration:
   def __init__(self):
     self.EMSCRIPTEN_TEMP_DIR = None
 
@@ -441,118 +537,10 @@ def apply_configuration():
   TEMP_DIR = configuration.TEMP_DIR
 
 
-def get_llvm_target():
-  if Settings.MEMORY64:
-    return 'wasm64-unknown-emscripten'
-  else:
-    return 'wasm32-unknown-emscripten'
-
-
-def emsdk_ldflags(user_args):
-  if os.environ.get('EMMAKEN_NO_SDK'):
-    return []
-
-  library_paths = [
-      Cache.get_lib_dir(absolute=True)
-  ]
-  ldflags = ['-L' + l for l in library_paths]
-
-  if '-nostdlib' in user_args:
-    return ldflags
-
-  # TODO(sbc): Add system libraries here rather than conditionally including
-  # them via .symbols files.
-  libraries = []
-  ldflags += ['-l' + l for l in libraries]
-
-  return ldflags
-
-
-def emsdk_cflags(user_args):
-  # Disable system C and C++ include directories, and add our own (using
-  # -isystem so they are last, like system dirs, which allows projects to
-  # override them)
-
-  c_opts = ['--sysroot=' + Cache.get_sysroot_dir(absolute=True)]
-
-  def array_contains_any_of(hay, needles):
-    for n in needles:
-      if n in hay:
-        return True
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    if '-msimd128' not in user_args:
-      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128!')
-    c_opts += ['-D__SSE__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
-    c_opts += ['-D__SSE2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
-    c_opts += ['-D__SSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
-    c_opts += ['-D__SSSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
-    c_opts += ['-D__SSE4_1__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
-    c_opts += ['-D__SSE4_2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[6:]):
-    c_opts += ['-D__AVX__=1']
-
-  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    c_opts += ['-D__ARM_NEON__=1']
-
-  return c_opts + ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
-
-
-def get_clang_flags():
-  return ['-target', get_llvm_target()]
-
-
-def get_cflags(user_args):
-  c_opts = get_clang_flags()
-
-  # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
-  # data and other nice fixes.
-  c_opts += [# '-fno-threadsafe-statics', # disabled due to issue 1289
-             '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
-             '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
-             '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
-             '-D_LIBCPP_ABI_VERSION=2']
-
-  # For compatability with the fastcomp compiler that defined these
-  c_opts += ['-Dunix',
-             '-D__unix',
-             '-D__unix__']
-
-  # LLVM has turned on the new pass manager by default, but it causes some code
-  # size regressions. For now, use the legacy one.
-  # https://github.com/emscripten-core/emscripten/issues/13427
-  c_opts += ['-flegacy-pass-manager']
-
-  # Changes to default clang behavior
-
-  # Implicit functions can cause horribly confusing function pointer type errors, see #2175
-  # If your codebase really needs them - very unrecommended! - you can disable the error with
-  #   -Wno-error=implicit-function-declaration
-  # or disable even a warning about it with
-  #   -Wno-implicit-function-declaration
-  c_opts += ['-Werror=implicit-function-declaration']
-
-  if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
-    return c_opts
-
-  return c_opts + emsdk_cflags(user_args)
-
-
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
-class SettingsManager(object):
+class SettingsManager:
 
-  class __impl(object):
+  class __impl:
     attrs = {}
     internal_settings = set()
 
@@ -755,7 +743,7 @@ def asmjs_mangle(name):
     return name
 
 
-class JS(object):
+class JS:
   emscripten_license = '''\
 /**
  * @license
@@ -881,13 +869,6 @@ function%s(%s) {
     return ret
 
 
-def asbytes(s):
-  if isinstance(s, bytes):
-    # Do not attempt to encode bytes
-    return s
-  return s.encode('utf-8')
-
-
 def suffix(name):
   """Return the file extension"""
   return os.path.splitext(name)[1]
@@ -903,19 +884,6 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
-
-
-def safe_move(src, dst):
-  logging.debug('move: %s -> %s', src, dst)
-  src = os.path.abspath(src)
-  dst = os.path.abspath(dst)
-  if os.path.isdir(dst):
-    dst = os.path.join(dst, os.path.basename(src))
-  if src == dst:
-    return
-  if dst == os.devnull:
-    return
-  shutil.move(src, dst)
 
 
 def safe_copy(src, dst):
@@ -1000,6 +968,8 @@ EMCC = bat_suffix(path_from_root('emcc'))
 EMXX = bat_suffix(path_from_root('em++'))
 EMAR = bat_suffix(path_from_root('emar'))
 EMRANLIB = bat_suffix(path_from_root('emranlib'))
+EMCMAKE = bat_suffix(path_from_root('emcmake'))
+EMCONFIGURE = bat_suffix(path_from_root('emconfigure'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools', 'file_packager'))
 
 apply_configuration()

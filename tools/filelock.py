@@ -119,7 +119,7 @@ class Timeout(TimeoutError):
 # automatically.
 #
 # :seealso: issue #37 (memory leak)
-class _Acquire_ReturnProxy(object):
+class _Acquire_ReturnProxy:
 
     def __init__(self, lock):
         self.lock = lock
@@ -133,7 +133,7 @@ class _Acquire_ReturnProxy(object):
         return None
 
 
-class BaseFileLock(object):
+class BaseFileLock:
     """
     Implements the base class of a file lock.
     """

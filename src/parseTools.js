@@ -873,8 +873,8 @@ function makeStructuralReturn(values) {
 }
 
 function makeThrow(what) {
-  if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING == 1) {
-    what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch."';
+  if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
+    what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s NO_DISABLE_EXCEPTION_CATCHING or -s EXCEPTION_CATCHING_ALLOWED=[..] to catch."';
     if (MAIN_MODULE) {
       what += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
     }
@@ -1290,4 +1290,22 @@ function makeMalloc(source, param) {
     return 'abort();';
   }
   return `abort('malloc was not included, but is needed in ${source}. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.');`;
+}
+
+// Adds a call to runtimeKeepalivePush, if needed by the current build
+// configuration.
+// We skip this completely in MINIMAL_RUNTIME and also in builds that
+// don't ever need to exit the runtime.
+function runtimeKeepalivePush() {
+  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && USE_PTHREADS == 0)) return '';
+  return 'runtimeKeepalivePush();';
+}
+
+// Adds a call to runtimeKeepalivePush, if needed by the current build
+// configuration.
+// We skip this completely in MINIMAL_RUNTIME and also in builds that
+// don't ever need to exit the runtime.
+function runtimeKeepalivePop() {
+  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && USE_PTHREADS == 0)) return '';
+  return 'runtimeKeepalivePop();';
 }

@@ -843,7 +843,9 @@ function emitDCEGraph(ast) {
             // example, we might call Module.dynCall_vi in library code, but it
             // won't exist in a standalone (non-JS) build anyhow. We can ignore
             // it in that case as the JS won't be used, but warn to be safe.
-            warnOnce('metadce: missing declaration for ' + reached);
+            if (verbose) {
+              console.warn('metadce: missing declaration for ' + reached);
+            }
           }
         }
       }
@@ -972,6 +974,117 @@ function isEmscriptenHEAP(name) {
       return false;
     }
   }
+}
+
+// Replaces each HEAP access with function call that uses DataView to enforce
+// LE byte order for HEAP buffer
+function littleEndianHeap(ast) {
+  recursiveWalk(ast, {
+    FunctionDeclaration: function(node, c) {
+      // do not recurse into LE_HEAP_STORE, LE_HEAP_LOAD functions
+      if (!(node.id.type === 'Identifier' &&
+          node.id.name.startsWith('LE_HEAP'))) {
+        c(node.body);
+      }
+    },
+    AssignmentExpression: function(node, c) {
+      var target = node.left;
+      var value = node.right;
+      c(value);
+      if (!isHEAPAccess(target)) {
+        // not accessing the HEAP
+        c(target);
+      } else {
+        // replace the heap access with LE_HEAP_STORE
+        var name = target.object.name;
+        var idx = target.property;
+        switch (target.object.name) {
+          case 'HEAP8':
+          case 'HEAPU8': {
+            // no action required - storing only 1 byte
+            break;
+          }
+          case 'HEAP16': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_I16(idx*2, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_I16', [multiply(idx, 2), value]);
+            break;
+          }
+          case 'HEAPU16': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_U16(idx*2, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_U16', [multiply(idx, 2), value]);
+            break;
+          }
+          case 'HEAP32': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_I32(idx*4, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_I32', [multiply(idx, 4), value]);
+            break;
+          }
+          case 'HEAPU32': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_U32(idx*4, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_U32', [multiply(idx, 4), value]);
+            break;
+          }
+          case 'HEAPF32': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_F32(idx*4, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_F32', [multiply(idx, 4), value]);
+            break;
+          }
+          case 'HEAPF64': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_F64(idx*8, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_F64', [multiply(idx, 8), value]);
+            break;
+          }
+        };
+      }
+    },
+    MemberExpression: function(node, c) {
+      c(node.property);
+      if (!isHEAPAccess(node)) {
+        // not accessing the HEAP
+        c(node.object);
+      } else {
+        // replace the heap access with LE_HEAP_LOAD
+        var idx = node.property;
+        switch (node.object.name) {
+          case 'HEAP8':
+          case 'HEAPU8': {
+            // no action required - loading only 1 byte
+            break;
+          }
+          case 'HEAP16': {
+            // change "name[idx]" to "LE_HEAP_LOAD_I16(idx*2)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_I16', [multiply(idx, 2)]);
+            break;
+          }
+          case 'HEAPU16': {
+            // change "name[idx]" to "LE_HEAP_LOAD_U16(idx*2)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_U16', [multiply(idx, 2)]);
+            break;
+          }
+          case 'HEAP32': {
+            // change "name[idx]" to "LE_HEAP_LOAD_I32(idx*4)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_I32', [multiply(idx, 4)]);
+            break;
+          }
+          case 'HEAPU32': {
+            // change "name[idx]" to "LE_HEAP_LOAD_U32(idx*4)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_U32', [multiply(idx, 4)]);
+            break;
+          }
+          case 'HEAPF32': {
+            // change "name[idx]" to "LE_HEAP_LOAD_F32(idx*4)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_F32', [multiply(idx, 4)]);
+            break;
+          }
+          case 'HEAPF64': {
+            // change "name[idx]" to "LE_HEAP_LOAD_F64(idx*8)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_F64', [multiply(idx, 8)]);
+            break;
+          }
+        };
+      }
+    },
+  });
 }
 
 // Instrument heap accesses to call GROWABLE_HEAP_* helper functions instead, which allows
@@ -1496,6 +1609,131 @@ function minifyLocals(ast) {
   }
 }
 
+function minifyGlobals(ast) {
+  // The input is in form
+  //
+  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //      var helper..
+  //      function asmFunc(global, env, buffer) {
+  //        var memory = env.memory;
+  //        var HEAP8 = new global.Int8Array(buffer);
+  //
+  // We want to minify the interior of instantiate, basically everything but
+  // the name instantiate itself, which is used externally to call it.
+  //
+  // This is *not* a complete minification algorithm. It does not have a full
+  // understanding of nested scopes. Instead it assumes the code is fairly
+  // simple - as wasm2js output is - and looks at all the minifiable names as
+  // a whole. A possible bug here is something like
+  //
+  //   function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+  //      var x = foo;
+  //      function asmFunc(global, env, buffer) {
+  //        var foo = 10;
+  //
+  // Here foo is declared in an inner scope, and the outer use of foo looks
+  // to the global scope. The analysis here only thinks something is from the
+  // global scope if it is not in any var or function declaration. In practice,
+  // the globals used from wasm2js output are things like Int8Array that we
+  // don't declare as locals, but we should probably have a fully scope-aware
+  // analysis here. FIXME
+
+  // We must run on a singleton instantiate() function as described above.
+  assert(ast.type === 'Program' && ast.body.length === 1 &&
+         ast.body[0].type === 'FunctionDeclaration' &&
+         ast.body[0].id.name === 'instantiate');
+  var fun = ast.body[0];
+
+  // Swap the function's name away so that we can then minify everything else.
+  var funId = fun.id;
+  fun.id = null;
+
+  // Find all the declarations.
+  var declared = new Set();
+
+  // Some identifiers must be left as they are and not minified.
+  var ignore = new Set();
+
+  simpleWalk(fun, {
+    FunctionDeclaration(node) {
+      if (node.id) {
+        declared.add(node.id.name);
+      }
+      for (var param of node.params) {
+        declared.add(param.name);
+      }
+    },
+    FunctionExpression(node) {
+      for (var param of node.params) {
+        declared.add(param.name);
+      }
+    },
+    VariableDeclaration(node) {
+      for (var decl of node.declarations) {
+        declared.add(decl.id.name);
+      }
+    },
+    MemberExpression(node) {
+      // In  x.a  we must not minify a. However, for  x[a]  we must.
+      if (!node.computed) {
+        ignore.add(node.property);
+      }
+    }
+  });
+
+  // TODO: find names to avoid, that are not declared (should not happen in
+  // wasm2js output)
+
+  // Minify the names.
+  var nextMinifiedName = 0;
+
+  function getNewMinifiedName() {
+    ensureMinifiedNames(nextMinifiedName);
+    return minifiedNames[nextMinifiedName++];
+  }
+
+  var minified = new Map();
+
+  function minify(name) {
+    if (!minified.has(name)) {
+      minified.set(name, getNewMinifiedName());
+    }
+    assert(minified.get(name));
+    return minified.get(name);
+  }
+
+  // Start with the declared things in the lowest indices. Things like HEAP8
+  // can have very high use counts.
+  for (var name of declared) {
+    minify(name);
+  }
+
+  // Minify all globals in function chunks, i.e. not seen here, but will be in
+  // the minifyLocals work on functions.
+  for (var name of extraInfo.globals) {
+    declared.add(name);
+    minify(name);
+  }
+
+  // Replace the names with their minified versions.
+  simpleWalk(fun, {
+    Identifier(node) {
+      if (declared.has(node.name) && !ignore.has(node)) {
+        node.name = minify(node.name);
+      }
+    }
+  });
+
+  // Restore the name
+  fun.id = funId;
+
+  // Emit the metadata
+  var json = {};
+  for (var x of minified.entries()) json[x[0]] = x[1];
+
+  suffix = '// EXTRA_INFO:' + JSON.stringify(json);
+}
+
 // Utilities
 
 function reattachComments(ast, comments) {
@@ -1553,6 +1791,8 @@ function reattachComments(ast, comments) {
 
 // Main
 
+var suffix = '';
+
 var arguments = process['argv'].slice(2);;
 // If enabled, output retains parentheses and comments so that the
 // output can further be passed out to Closure.
@@ -1599,6 +1839,7 @@ try {
 
 var minifyWhitespace = false;
 var noPrint = false;
+var verbose = false;
 
 var registry = {
   JSDCE: JSDCE,
@@ -1608,13 +1849,16 @@ var registry = {
   applyDCEGraphRemovals: applyDCEGraphRemovals,
   minifyWhitespace: function() { minifyWhitespace = true },
   noPrint: function() { noPrint = true },
+  verbose: function() { verbose = true },
   last: function() {}, // TODO: remove 'last' in the python driver code
   dump: function() { dump(ast) },
+  littleEndianHeap: littleEndianHeap,
   growableHeap: growableHeap,
   unsignPointers: unsignPointers,
   minifyLocals: minifyLocals,
   asanify: asanify,
   safeHeap: safeHeap,
+  minifyGlobals: minifyGlobals,
 };
 
 passes.forEach(function(pass) {
@@ -1635,4 +1879,5 @@ if (!noPrint) {
     comments: true // for closure as well
   });
   print(output);
+  if (suffix) print(suffix);
 }

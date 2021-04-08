@@ -92,10 +92,9 @@ load('runtime.js');
 //===============================
 
 B = new Benchmarker();
-var dummyData = {functionStubs: []}
 
 try {
-  JSify(dummyData);
+  JSify();
 
   B.print('glue');
 } catch(err) {

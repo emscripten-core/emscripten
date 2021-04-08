@@ -39,5 +39,12 @@ int main() {
   printf("\n");
   errno = 0;
 
+  printf("DUP2 err\n");
+  f = dup2(-2, -2);
+  printf("f: %d\n", f == -1);
+  printf("errno: %d\n", errno);
+  printf("close(f): %d\n", close(f));
+  errno = 0;
+
   return 0;
 }

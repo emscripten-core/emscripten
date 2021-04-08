@@ -3,10 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import atexit
 import json
 import logging
-import multiprocessing
 import os
 import re
 import shlex
@@ -14,7 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from subprocess import STDOUT, PIPE
+from subprocess import PIPE
 
 from . import diagnostics
 from . import response_file
@@ -28,15 +26,14 @@ from .shared import LLVM_LINK, LLVM_OBJCOPY
 from .shared import try_delete, run_process, check_call, exit_with_error
 from .shared import configuration, path_from_root
 from .shared import asmjs_mangle, DEBUG
-from .shared import EM_BUILD_VERBOSE, TEMP_DIR
-from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name, asbytes
+from .shared import TEMP_DIR
+from .shared import CANONICAL_TEMP_DIR, LLVM_DWARFDUMP, demangle_c_symbol_name
 from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
-from .utils import which, WINDOWS
+from .utils import WINDOWS
 
 logger = logging.getLogger('building')
 
 #  Building
-multiprocessing_pool = None
 binaryen_checked = False
 
 EXPECTED_BINARYEN_VERSION = 100
@@ -49,7 +46,7 @@ _is_ar_cache = {}
 user_requested_exports = []
 
 
-class ObjectFileInfo(object):
+class ObjectFileInfo:
   def __init__(self, returncode, output, defs=set(), undefs=set(), commons=set()):
     self.returncode = returncode
     self.output = output
@@ -77,55 +74,46 @@ def warn_if_duplicate_entries(archive_contents, archive_filename):
     diagnostics.warning('emcc', msg)
 
 
-# This function creates a temporary directory specified by the 'dir' field in
-# the returned dictionary. Caller is responsible for cleaning up those files
-# after done.
-def extract_archive_contents(archive_file):
-  lines = run_process([LLVM_AR, 't', archive_file], stdout=PIPE).stdout.splitlines()
-  # ignore empty lines
-  contents = [l for l in lines if len(l)]
-  if len(contents) == 0:
-    logger.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % archive_file)
-    return {
-      'returncode': 0,
-      'dir': None,
-      'files': []
-    }
+# Extracts the given list of archive files and outputs their contents
+def extract_archive_contents(archive_files):
+  archive_results = shared.run_multiple_processes([[LLVM_AR, 't', a] for a in archive_files], pipe_stdout=True)
 
-  # `ar` files can only contains filenames. Just to be sure,  verify that each
-  # file has only as filename component and is not absolute
-  for f in contents:
-    assert not os.path.dirname(f)
-    assert not os.path.isabs(f)
+  unpack_temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
 
-  warn_if_duplicate_entries(contents, archive_file)
+  def clean_at_exit():
+    try_delete(unpack_temp_dir)
+  shared.atexit.register(clean_at_exit)
 
-  # create temp dir
-  temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
+  archive_contents = []
 
-  # extract file in temp dir
-  proc = run_process([LLVM_AR, 'xo', archive_file], stdout=PIPE, stderr=STDOUT, cwd=temp_dir)
-  abs_contents = [os.path.join(temp_dir, c) for c in contents]
+  for i in range(len(archive_results)):
+    a = archive_results[i]
+    contents = [l for l in a.splitlines() if len(l)]
+    if len(contents) == 0:
+      logger.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % a)
+
+    # `ar` files can only contains filenames. Just to be sure, verify that each
+    # file has only as filename component and is not absolute
+    for f in contents:
+      assert not os.path.dirname(f)
+      assert not os.path.isabs(f)
+
+    warn_if_duplicate_entries(contents, a)
+
+    archive_contents += [{
+      'archive_name': archive_files[i],
+      'o_files': [os.path.join(unpack_temp_dir, c) for c in contents]
+    }]
+
+  shared.run_multiple_processes([[LLVM_AR, 'xo', a] for a in archive_files], cwd=unpack_temp_dir)
 
   # check that all files were created
-  missing_contents = [x for x in abs_contents if not os.path.exists(x)]
-  if missing_contents:
-    exit_with_error('llvm-ar failed to extract file(s) ' + str(missing_contents) + ' from archive file ' + f + '! Error:' + str(proc.stdout))
+  for a in archive_contents:
+    missing_contents = [x for x in a['o_files'] if not os.path.exists(x)]
+    if missing_contents:
+      exit_with_error('llvm-ar failed to extract file(s) ' + str(missing_contents) + ' from archive file ' + f + '!')
 
-  return {
-    'returncode': proc.returncode,
-    'dir': temp_dir,
-    'files': abs_contents
-  }
-
-
-def g_multiprocessing_initializer(*args):
-  for item in args:
-    (key, value) = item.split('=', 1)
-    if key == 'EMCC_POOL_CWD':
-      os.chdir(value)
-    else:
-      os.environ[key] = value
+  return archive_contents
 
 
 def unique_ordered(values):
@@ -140,7 +128,7 @@ def unique_ordered(values):
     seen.add(value)
     return True
 
-  return list(filter(check, values))
+  return [v for v in values if check(v)]
 
 
 # clear caches. this is not normally needed, except if the clang/LLVM
@@ -150,74 +138,6 @@ def clear():
   nm_cache.clear()
   ar_contents.clear()
   _is_ar_cache.clear()
-
-
-def get_num_cores():
-  return int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
-
-
-# Multiprocessing pools are very slow to build up and tear down, and having
-# several pools throughout the application has a problem of overallocating
-# child processes. Therefore maintain a single centralized pool that is shared
-# between all pooled task invocations.
-def get_multiprocessing_pool():
-  global multiprocessing_pool
-  if not multiprocessing_pool:
-    cores = get_num_cores()
-
-    # If running with one core only, create a mock instance of a pool that does not
-    # actually spawn any new subprocesses. Very useful for internal debugging.
-    if cores == 1:
-      class FakeMultiprocessor(object):
-        def map(self, func, tasks, *args, **kwargs):
-          results = []
-          for t in tasks:
-            results += [func(t)]
-          return results
-
-        def map_async(self, func, tasks, *args, **kwargs):
-          class Result:
-            def __init__(self, func, tasks):
-              self.func = func
-              self.tasks = tasks
-
-            def get(self, timeout):
-              results = []
-              for t in tasks:
-                results += [func(t)]
-              return results
-
-          return Result(func, tasks)
-
-      multiprocessing_pool = FakeMultiprocessor()
-    else:
-      child_env = [
-        # Multiprocessing pool children must have their current working
-        # directory set to a safe path that is guaranteed not to die in
-        # between of executing commands, or otherwise the pool children will
-        # have trouble spawning subprocesses of their own.
-        'EMCC_POOL_CWD=' + path_from_root(),
-        # Multiprocessing pool children can't spawn their own linear number of
-        # children, that could cause a quadratic amount of spawned processes.
-        'EMCC_CORES=1'
-      ]
-      multiprocessing_pool = multiprocessing.Pool(processes=cores, initializer=g_multiprocessing_initializer, initargs=child_env)
-
-      def close_multiprocessing_pool():
-        global multiprocessing_pool
-        try:
-          # Shut down the pool explicitly, because leaving that for Python to do at process shutdown is buggy and can generate
-          # noisy "WindowsError: [Error 5] Access is denied" spam which is not fatal.
-          multiprocessing_pool.terminate()
-          multiprocessing_pool.join()
-          multiprocessing_pool = None
-        except OSError as e:
-          # Mute the "WindowsError: [Error 5] Access is denied" errors, raise all others through
-          if not (sys.platform.startswith('win') and isinstance(e, WindowsError) and e.winerror == 5):
-            raise
-      atexit.register(close_multiprocessing_pool)
-
-  return multiprocessing_pool
 
 
 # .. but for Popen, we cannot have doublequotes, so provide functionality to
@@ -272,86 +192,6 @@ def remove_sh_exe_from_path(env):
   return env
 
 
-def handle_cmake_toolchain(args, env):
-  def has_substr(args, substr):
-    return any(substr in s for s in args)
-
-  # Append the Emscripten toolchain file if the user didn't specify one.
-  if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
-    args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
-  node_js = config.NODE_JS
-
-  if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
-    node_js = config.NODE_JS[0].replace('"', '\"')
-    args.append('-DCMAKE_CROSSCOMPILING_EMULATOR="%s"' % node_js)
-
-  # On Windows specify MinGW Makefiles or ninja if we have them and no other
-  # toolchain was specified, to keep CMake from pulling in a native Visual
-  # Studio, or Unix Makefiles.
-  if WINDOWS and '-G' not in args:
-    if which('mingw32-make'):
-      args += ['-G', 'MinGW Makefiles']
-    elif which('ninja'):
-      args += ['-G', 'Ninja']
-
-  # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles
-  # is being used. This happens quite often, so do this automatically on
-  # behalf of the user. See
-  # http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
-  if WINDOWS and 'MinGW Makefiles' in args:
-    env = remove_sh_exe_from_path(env)
-
-  return (args, env)
-
-
-def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
-  if env:
-    env = env.copy()
-  else:
-    env = get_building_env(cflags=cflags)
-  if 'cmake' in args[0]:
-    # Note: EMMAKEN_JUST_CONFIGURE shall not be enabled when configuring with
-    #       CMake. This is because CMake does expect to be able to do
-    #       config-time builds with emcc.
-    args, env = handle_cmake_toolchain(args, env)
-  else:
-    # When we configure via a ./configure script, don't do config-time
-    # compilation with emcc, but instead do builds natively with Clang. This
-    # is a heuristic emulation that may or may not work.
-    env['EMMAKEN_JUST_CONFIGURE'] = '1'
-  if EM_BUILD_VERBOSE >= 2:
-    stdout = None
-  if EM_BUILD_VERBOSE >= 1:
-    stderr = None
-  print('configure: ' + shared.shlex_join(args), file=sys.stderr)
-  run_process(args, stdout=stdout, stderr=stderr, env=env, **kwargs)
-
-
-def make(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
-  if env is None:
-    env = get_building_env(cflags=cflags)
-
-  # On Windows prefer building with mingw32-make instead of make, if it exists.
-  if WINDOWS:
-    if args[0] == 'make':
-      mingw32_make = which('mingw32-make')
-      if mingw32_make:
-        args[0] = mingw32_make
-
-    if 'mingw32-make' in args[0]:
-      env = remove_sh_exe_from_path(env)
-
-  # On Windows, run the execution through shell to get PATH expansion and
-  # executable extension lookup, e.g. 'sdl2-config' will match with
-  # 'sdl2-config.bat' in PATH.
-  if EM_BUILD_VERBOSE >= 2:
-    stdout = None
-  if EM_BUILD_VERBOSE >= 1:
-    stderr = None
-  print('make: ' + ' '.join(args), file=sys.stderr)
-  run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, **kwargs)
-
-
 def make_paths_absolute(f):
   if f.startswith('-'):  # skip flags
     return f
@@ -371,11 +211,20 @@ def llvm_nm_multiple(files):
     # We can issue multiple files in a single llvm-nm calls, but only if those
     # files are all .o or .bc files. Because of llvm-nm output format, we cannot
     # llvm-nm multiple .a files in one call, but those must be individually checked.
-    if len(llvm_nm_files) > 1:
-      llvm_nm_files = [f for f in files if f.endswith('.o') or f.endswith('.bc')]
 
-    if len(llvm_nm_files) > 0:
-      cmd = [LLVM_NM] + llvm_nm_files
+    o_files = [f for f in llvm_nm_files if os.path.splitext(f)[1].lower() in ['.o', '.obj', '.bc']]
+    a_files = [f for f in llvm_nm_files if f not in o_files]
+
+    # Issue parallel calls for .a files
+    if len(a_files) > 0:
+      results = shared.run_multiple_processes([[LLVM_NM, a] for a in a_files], pipe_stdout=True, check=False)
+      for i in range(len(results)):
+        nm_cache[a_files[i]] = parse_symbols(results[i])
+
+    # Issue a single batch call for multiple .o files
+    if len(o_files) > 0:
+      cmd = [LLVM_NM] + o_files
+      cmd = get_command_with_possible_response_file(cmd)
       results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
 
       # If one or more of the input files cannot be processed, llvm-nm will return a non-zero error code, but it will still process and print
@@ -398,11 +247,11 @@ def llvm_nm_multiple(files):
       # so loop over the report to extract the results
       # for each individual file.
 
-      filename = llvm_nm_files[0]
+      filename = o_files[0]
 
       # When we dispatched more than one file, we must manually parse
       # the file result delimiters (like shown structured above)
-      if len(llvm_nm_files) > 1:
+      if len(o_files) > 1:
         file_start = 0
         i = 0
 
@@ -419,18 +268,11 @@ def llvm_nm_multiple(files):
 
         nm_cache[filename] = parse_symbols(results[file_start:])
       else:
-        # We only dispatched a single file, we can just parse that directly
-        # to the output.
+        # We only dispatched a single file, so can parse all of the result directly
+        # to that file.
         nm_cache[filename] = parse_symbols(results)
 
-    # Any .a files that have multiple .o files will have hard time parsing. Scan those
-    # sequentially to confirm. TODO: Move this to use run_multiple_processes()
-    # when available.
-    for f in files:
-      if f not in nm_cache:
-        nm_cache[f] = llvm_nm(f)
-
-  return [nm_cache[f] for f in files]
+  return [nm_cache[f] if f in nm_cache else ObjectFileInfo(1, '') for f in files]
 
 
 def llvm_nm(file):
@@ -452,25 +294,13 @@ def read_link_inputs(files):
         object_names.append(absolute_path_f)
 
     # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
-    pool = get_multiprocessing_pool()
-    object_names_in_archives = pool.map(extract_archive_contents, archive_names)
+    archive_contents = extract_archive_contents(archive_names)
 
-    def clean_temporary_archive_contents_directory(directory):
-      def clean_at_exit():
-        try_delete(directory)
-      if directory:
-        atexit.register(clean_at_exit)
-
-    for n in range(len(archive_names)):
-      if object_names_in_archives[n]['returncode'] != 0:
-        raise Exception('llvm-ar failed on archive ' + archive_names[n] + '!')
-      ar_contents[archive_names[n]] = object_names_in_archives[n]['files']
-      clean_temporary_archive_contents_directory(object_names_in_archives[n]['dir'])
-
-    for o in object_names_in_archives:
-      for f in o['files']:
-        if f not in nm_cache:
-          object_names.append(f)
+    for a in archive_contents:
+      ar_contents[os.path.abspath(a['archive_name'])] = a['o_files']
+      for o in a['o_files']:
+        if o not in nm_cache:
+          object_names.append(o)
 
     # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
     # The results are not used here directly, but populated to llvm-nm cache structure.
@@ -482,10 +312,14 @@ def llvm_backend_args():
   args = ['-combiner-global-alias-analysis=false']
 
   # asm.js-style exception handling
-  if Settings.DISABLE_EXCEPTION_CATCHING != 1:
+  if not Settings.DISABLE_EXCEPTION_CATCHING:
     args += ['-enable-emscripten-cxx-exceptions']
-  if Settings.DISABLE_EXCEPTION_CATCHING == 2:
-    allowed = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED or ['__fake'])
+  if Settings.EXCEPTION_CATCHING_ALLOWED:
+    # When 'main' has a non-standard signature, LLVM outlines its content out to
+    # '__original_main'. So we add it to the allowed list as well.
+    if 'main' in Settings.EXCEPTION_CATCHING_ALLOWED:
+      Settings.EXCEPTION_CATCHING_ALLOWED += ['__original_main']
+    allowed = ','.join(Settings.EXCEPTION_CATCHING_ALLOWED)
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
   if Settings.SUPPORT_LONGJMP:
@@ -617,11 +451,6 @@ def link_lld(args, target, external_symbol_list=None):
   cmd = [WASM_LD, '-o', target] + args
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
-
-  # LLVM has turned on the new pass manager by default, but it causes some code
-  # size regressions. For now, use the legacy one.
-  # https://github.com/emscripten-core/emscripten/issues/13427
-  cmd += ['--lto-legacy-pass-manager']
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
@@ -868,6 +697,8 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   # will be carried over to a later Closure run.
   if Settings.USE_CLOSURE_COMPILER:
     cmd += ['--closureFriendly']
+  if Settings.VERBOSE:
+    cmd += ['verbose']
   if not return_output:
     next = original_filename + '.jso.js'
     configuration.get_temp_files().note(next)
@@ -992,8 +823,6 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
 
     if Settings.MINIMAL_RUNTIME and Settings.USE_PTHREADS and not Settings.MODULARIZE:
       CLOSURE_EXTERNS += [path_from_root('src', 'minimal_runtime_worker_externs.js')]
-    outfile = filename + '.cc.js'
-    configuration.get_temp_files().note(outfile)
 
     args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
     # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
@@ -1005,19 +834,40 @@ def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=No
     # Tell closure never to inject the 'use strict' directive.
     args += ['--emit_use_strict=false']
 
+    # Closure compiler is unable to deal with path names that are not 7-bit ASCII:
+    # https://github.com/google/closure-compiler/issues/3784
+    tempfiles = configuration.get_temp_files()
+    outfile = tempfiles.get('.cc.js').name  # Safe 7-bit filename
+
+    def move_to_safe_7bit_ascii_filename(filename):
+      safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
+      shutil.copyfile(filename, safe_filename)
+      return os.path.relpath(safe_filename, tempfiles.tmpdir)
+
     for e in CLOSURE_EXTERNS:
-      args += ['--externs', e]
-    args += ['--js_output_file', outfile]
+      args += ['--externs', move_to_safe_7bit_ascii_filename(e)]
+
+    for i in range(len(user_args)):
+      if user_args[i] == '--externs':
+        user_args[i + 1] = move_to_safe_7bit_ascii_filename(user_args[i + 1])
+
+    # Specify output file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
+    args += ['--js_output_file', os.path.relpath(outfile, tempfiles.tmpdir)]
 
     if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
       args.append('--jscomp_off=*')
     if pretty:
       args += ['--formatting', 'PRETTY_PRINT']
-    args += ['--js', filename]
+    # Specify input file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
+    args += ['--js', move_to_safe_7bit_ascii_filename(filename)]
     cmd = closure_cmd + args + user_args
     logger.debug('closure compiler: ' + ' '.join(cmd))
 
-    proc = run_process(cmd, stderr=PIPE, check=False, env=env)
+    # Closure compiler does not work if any of the input files contain characters outside the
+    # 7-bit ASCII range. Therefore make sure the command line we pass does not contain any such
+    # input files by passing all input filenames relative to the cwd. (user temp directory might
+    # be in user's home directory, and user's profile name might contain unicode characters)
+    proc = run_process(cmd, stderr=PIPE, check=False, env=env, cwd=tempfiles.tmpdir)
 
     # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
     # outfile.map source map file (https://github.com/google/closure-compiler/wiki/Source-Maps)
@@ -1267,7 +1117,7 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minif
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
-def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info, symbols_file=None):
+def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info, symbols_file=None, symbols_file_js=None):
   logger.debug('wasm2js')
   args = ['--emscripten']
   if opt_level > 0:
@@ -1286,6 +1136,8 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     passes = []
     if not debug_info and not Settings.USE_PTHREADS:
       passes += ['minifyNames']
+      if symbols_file_js:
+        passes += ['symbolMap=%s' % symbols_file_js]
     if minify_whitespace:
       passes += ['minifyWhitespace']
     passes += ['last']
@@ -1369,7 +1221,7 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   # embed a section in the main wasm to point to the file with external DWARF,
   # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
   section_name = b'\x13external_debug_info' # section name, including prefixed size
-  filename_bytes = asbytes(embedded_path)
+  filename_bytes = embedded_path.encode('utf-8')
   contents = webassembly.toLEB(len(filename_bytes)) + filename_bytes
   section_size = len(section_name) + len(contents)
   with open(wasm_file, 'ab') as f:
@@ -1377,6 +1229,11 @@ def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
     f.write(webassembly.toLEB(section_size))
     f.write(section_name)
     f.write(contents)
+
+
+def little_endian_heap(js_file):
+  logger.debug('enforcing little endian heap byte order')
+  return acorn_optimizer(js_file, ['littleEndianHeap'])
 
 
 def apply_wasm_memory_growth(js_file):

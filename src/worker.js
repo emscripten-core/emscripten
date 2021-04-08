@@ -45,9 +45,16 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
   var instance = new WebAssembly.Instance(Module['wasmModule'], info);
+#if RELOCATABLE || MAIN_MODULE
+  receiveInstance(instance, Module['wasmModule']);
+#else
+  // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
+  // the above line no longer optimizes out down to the following line.
+  // When the regression is fixed, we can remove this if/else.
+  receiveInstance(instance);
+#endif
   // We don't need the module anymore; new threads will be spawned from the main thread.
   Module['wasmModule'] = null;
-  receiveInstance(instance); // The second 'module' parameter is intentionally null here, we don't need to keep a ref to the Module object from here.
   return instance.exports;
 };
 #endif
@@ -187,10 +194,8 @@ this.onmessage = function(e) {
 #endif
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpace'](top, max);
-      Module['_emscripten_tls_init']();
-
       Module['PThread'].receiveObjectTransfer(e.data);
-      Module['PThread'].setThreadStatus(Module['_pthread_self'](), 1/*EM_THREAD_STATUS_RUNNING*/);
+      Module['PThread'].threadInit();
 
 #if EMBIND
       // Embind must initialize itself on all threads, as it generates support JS.
@@ -214,16 +219,21 @@ this.onmessage = function(e) {
 #if STACK_OVERFLOW_CHECK
         Module['checkStackCookie']();
 #endif
-#if !MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME
         // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
         // pthreads. To exit a pthread with live runtime, use the function
         // emscripten_unwind_to_js_event_loop() in the pthread body.
         // The thread might have finished without calling pthread_exit(). If so,
         // then perform the exit operation ourselves.
         // (This is a no-op if explicit pthread_exit() had been called prior.)
-        if (!Module['getNoExitRuntime']())
-#endif
+        Module['PThread'].threadExit(result);
+#else
+        if (Module['keepRuntimeAlive']()) {
+          Module['PThread'].setExitStatus(result);
+        } else {
           Module['PThread'].threadExit(result);
+        }
+#endif
       } catch(ex) {
         if (ex === 'Canceled!') {
           Module['PThread'].threadCancel();
@@ -241,7 +251,7 @@ this.onmessage = function(e) {
           // ExitStatus not present in MINIMAL_RUNTIME
 #if !MINIMAL_RUNTIME
           if (ex instanceof Module['ExitStatus']) {
-            if (Module['getNoExitRuntime']()) {
+            if (Module['keepRuntimeAlive']()) {
 #if ASSERTIONS
               err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), staying alive due to noExitRuntime.');
 #endif

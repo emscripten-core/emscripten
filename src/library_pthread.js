@@ -23,6 +23,7 @@ var LibraryPThread = {
     unusedWorkers: [],
     // Contains all Workers that are currently hosting an active pthread.
     runningWorkers: [],
+    tlsInitFunctions: [],
     initMainThreadBlock: function() {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD);
@@ -31,7 +32,7 @@ var LibraryPThread = {
 #if PTHREAD_POOL_SIZE
       var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
       // Start loading up the Worker pool, if requested.
-      for(var i = 0; i < pthreadPoolSize; ++i) {
+      for (var i = 0; i < pthreadPoolSize; ++i) {
         PThread.allocateUnusedWorker();
       }
 #endif
@@ -87,9 +88,10 @@ var LibraryPThread = {
       // worker.js is not compiled together with us, and must access certain
       // things.
       PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
-      PThread['setThreadStatus'] = PThread.setThreadStatus;
+      PThread['threadInit'] = PThread.threadInit;
       PThread['threadCancel'] = PThread.threadCancel;
       PThread['threadExit'] = PThread.threadExit;
+      PThread['setExitStatus'] = PThread.setExitStatus;
 #endif
     },
     // Maps pthread_t to pthread info objects
@@ -133,7 +135,7 @@ var LibraryPThread = {
     setThreadName: function(pthreadPtr, name) {
       var profilerBlock = Atomics.load(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
       if (!profilerBlock) return;
-      stringToUTF8(name, profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}}, 32);
+      stringToUTF8(name, profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}}, {{{ cDefine('EM_THREAD_NAME_MAX') }}});
     },
 
     getThreadName: function(pthreadPtr) {
@@ -143,7 +145,7 @@ var LibraryPThread = {
     },
 
     threadStatusToString: function(threadStatus) {
-      switch(threadStatus) {
+      switch (threadStatus) {
         case 0: return "not yet started";
         case 1: return "running";
         case 2: return "sleeping";
@@ -160,8 +162,6 @@ var LibraryPThread = {
       var status = (profilerBlock == 0) ? 0 : Atomics.load(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.threadStatus }}} ) >> 2);
       return PThread.threadStatusToString(status);
     },
-#else
-    setThreadStatus: function() {},
 #endif
 
     runExitHandlers: function() {
@@ -195,6 +195,10 @@ var LibraryPThread = {
 
       // Not hosting a pthread anymore in this worker, reset the info structures to null.
       __emscripten_thread_init(0, 0, 0); // Unregister the thread block inside the wasm module.
+    },
+
+    setExitStatus: function(status) {
+      EXITSTATUS = status;
     },
 
     // Called when we are performing a pthread_exit(), either explicitly called
@@ -313,7 +317,20 @@ var LibraryPThread = {
       }
 #endif
     },
-
+    // Called by worker.js each time a thread is started.
+    threadInit: function() {
+#if PTHREADS_DEBUG
+      out("threadInit");
+#endif
+#if PTHREADS_PROFILING
+      PThread.setThreadStatus(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
+#endif
+      // Call thread init functions (these are the emscripten_tls_init for each
+      // module loaded.
+      for (var i in PThread.tlsInitFunctions) {
+        PThread.tlsInitFunctions[i]();
+      }
+    },
     // Loads the WebAssembly module into the given list of Workers.
     // onFinishedLoading: A callback function that will be called once all of
     //                    the workers have been initialized and are
@@ -465,16 +482,31 @@ var LibraryPThread = {
 
     getNewWorker: function() {
       if (PThread.unusedWorkers.length == 0) {
+#if !PROXY_TO_PTHREAD && PTHREAD_POOL_SIZE_STRICT
+#if ASSERTIONS
+        err('Tried to spawn a new thread, but the thread pool is exhausted.\n' +
+        'This might result in a deadlock unless some threads eventually exit or the code explicitly breaks out to the event loop.\n' +
+        'If you want to increase the pool size, use setting `-s PTHREAD_POOL_SIZE=...`.'
+#if PTHREAD_POOL_SIZE_STRICT == 1
+        + '\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-s PTHREAD_POOL_SIZE_STRICT=2`.'
+#endif
+        );
+#endif // ASSERTIONS
+
+#if PTHREAD_POOL_SIZE_STRICT == 2
+        // Don't return a Worker, which will translate into an EAGAIN error.
+        return;
+#endif
+#endif
         PThread.allocateUnusedWorker();
         PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
       }
-      if (PThread.unusedWorkers.length > 0) return PThread.unusedWorkers.pop();
-      else return null;
+      return PThread.unusedWorkers.pop();
     },
 
     busySpinWait: function(msecs) {
       var t = performance.now() + msecs;
-      while(performance.now() < t) {
+      while (performance.now() < t) {
         ;
       }
     }
@@ -530,6 +562,10 @@ var LibraryPThread = {
 
     var worker = PThread.getNewWorker();
 
+    if (!worker) {
+      // No available workers in the PThread pool.
+      return {{{ cDefine('EAGAIN') }}};
+    }
     if (worker.pthread !== undefined) throw 'Internal error!';
     if (!threadParams.pthread_ptr) throw 'Internal error, no pthread ptr!';
     PThread.runningWorkers.push(worker);
@@ -595,6 +631,7 @@ var LibraryPThread = {
       worker.runPthread();
       delete worker.runPthread;
     }
+    return 0;
   },
 
   emscripten_has_threading_support: function() {
@@ -814,13 +851,14 @@ var LibraryPThread = {
       // new thread, the thread creation must be deferred to the main JS thread.
       threadParams.cmd = 'spawnThread';
       postMessage(threadParams, transferList);
-    } else {
-      // We are the main thread, so we have the pthread warmup pool in this
-      // thread and can fire off JS thread creation directly ourselves.
-      spawnThread(threadParams);
+      // When we defer thread creation this way, we have no way to detect thread
+      // creation synchronously today, so we have to assume success and return 0.
+      return 0;
     }
 
-    return 0;
+    // We are the main thread, so we have the pthread warmup pool in this
+    // thread and can fire off JS thread creation directly ourselves.
+    return spawnThread(threadParams);
   },
 
   // TODO HACK! Remove this function, it is a JS side copy of the function
@@ -1197,7 +1235,7 @@ var LibraryPThread = {
   __call_main: function(argc, argv) {
     var returnCode = {{{ exportedAsmFunc('_main') }}}(argc, argv);
 #if EXIT_RUNTIME
-    if (!noExitRuntime) {
+    if (!keepRuntimeAlive()) {
       // exitRuntime enabled, proxied main() finished in a pthread, shut down the process.
 #if ASSERTIONS
       out('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
@@ -1306,8 +1344,7 @@ var LibraryPThread = {
 
   emscripten_receive_on_main_thread_js__deps: [
     'emscripten_proxy_to_main_thread_js',
-    'emscripten_receive_on_main_thread_js_callArgs',
-    '$readAsmConstArgs'],
+    'emscripten_receive_on_main_thread_js_callArgs'],
   emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
 #if WASM_BIGINT
     numCallArgs /= 2;
@@ -1351,11 +1388,6 @@ var LibraryPThread = {
     // current position of the stack.
     writeStackCookie();
 #endif
-  },
-
-  // allow pthreads to check if noExitRuntime from worker.js
-  $getNoExitRuntime: function() {
-    return noExitRuntime;
   },
 
   $invokeEntryPoint: function(ptr, arg) {
