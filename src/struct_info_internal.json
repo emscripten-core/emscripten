@@ -20,9 +20,18 @@
               "canceldisable",
               "cancelasync",
               "locale"
+            ],
+            "thread_profiler_block": [
+                "threadStatus",
+                "currentStatusStartTime",
+                "timeSpentInStatus",
+                "name"
             ]
         },
-        "defines": ["__ATTRP_C11_THREAD"]
+        "defines": [
+          "__ATTRP_C11_THREAD",
+          "EM_THREAD_NAME_MAX"
+        ]
     },
     {
         "file": "libc.h",

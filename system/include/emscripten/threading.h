@@ -345,19 +345,6 @@ int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a, cons
 // The special value "#canvas" denotes the element stored in Module.canvas.
 int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t *a, const char *str);
 
-struct thread_profiler_block
-{
-  // One of THREAD_STATUS_*
-  int threadStatus;
-  // Wallclock time denoting when the current thread state was entered in.
-  double currentStatusStartTime;
-  // Accumulated duration times denoting how much time has been spent in each
-  // state, in msecs.
-  double timeSpentInStatus[EM_THREAD_STATUS_NUMFIELDS];
-  // A human-readable name for this thread.
-  char name[32];
-};
-
 // Called when blocking on the main thread. This will error if main thread
 // blocking is not enabled, see ALLOW_BLOCKING_ON_MAIN_THREAD.
 void emscripten_check_blocking_allowed(void);
