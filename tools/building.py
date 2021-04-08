@@ -1432,10 +1432,11 @@ def get_binaryen_bin():
 
 def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
   cmd = [os.path.join(get_binaryen_bin(), tool)]
-  if outfile and tool == 'wasm-opt' and Settings.DEBUG_LEVEL != 3:
+  if outfile and tool == 'wasm-opt' and \
+     (Settings.DEBUG_LEVEL < 3 or shared.Settings.GENERATE_SOURCE_MAP):
     # remove any dwarf debug info sections, if the debug level is <3, as
-    # we don't need them; also remove them if we the level is 4, as then we
-    # want a source map, which is implemented separately from dwarf.
+    # we don't need them; also remove them if we use source maps (which are
+    # implemented separately from dwarf).
     # note that we add this pass first, so that it doesn't interfere with
     # the final set of passes (which may generate stack IR, and nothing
     # should be run after that)

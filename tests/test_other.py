@@ -468,7 +468,7 @@ f.write('transformed!')
 f.close()
 ''')
 
-    err = self.run_process([EMCC, test_file('hello_world.c'), '-g4', '--js-transform', '%s t.py' % (PYTHON)], stderr=PIPE).stderr
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-gsource-map', '--js-transform', '%s t.py' % (PYTHON)], stderr=PIPE).stderr
     self.assertContained('disabling source maps because a js transform is being done', err)
     self.assertIn('transformed!', open('a.out.js').read())
 
@@ -2044,7 +2044,7 @@ int f() {
     for args, expect_debug in [
         (['-O0'], False),
         (['-O0', '-g'], True),
-        (['-O0', '-g4'], True),
+        (['-O0', '-gsource-map'], True),
         (['-O1'], False),
         (['-O1', '-g'], True),
         (['-O2'], False),
@@ -4785,7 +4785,7 @@ This locale is not the C locale.
         sizes[i] = os.path.getsize('a' + str(i) + '.o')
       print('  ', sizes)
       assert sizes['_'] == sizes[0] == sizes[1] == sizes[2], 'no debug means no llvm debug info ' + str(sizes)
-      assert sizes['g'] == sizes[3] == sizes[4], '-g or -g4 means llvm debug info ' + str(sizes)
+      assert sizes['g'] == sizes[3] == sizes[4], '-g or -gsource-map means llvm debug info ' + str(sizes)
       assert sizes['_'] < sizes['g'], 'llvm debug info has positive size ' + str(sizes)
     test([])
     test(['-O1'])
@@ -5762,7 +5762,7 @@ int main() {
   printf("hello, world!\n");
 }
 ''')
-    self.run_process([EMCC, 'src.c', '-s', 'EXPORTED_FUNCTIONS=[_main,_treecount]', '--minify=0', '-g4', '-Oz'])
+    self.run_process([EMCC, 'src.c', '-s', 'EXPORTED_FUNCTIONS=[_main,_treecount]', '--minify=0', '-gsource-map', '-Oz'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_emscripten_print_double(self):
@@ -7728,7 +7728,7 @@ int main() {
   def test_check_sourcemapurl(self):
     if not self.is_wasm():
       self.skipTest('only supported with wasm')
-    self.run_process([EMCC, test_file('hello_123.c'), '-g4', '-o', 'a.js', '--source-map-base', 'dir/'])
+    self.run_process([EMCC, test_file('hello_123.c'), '-gsource-map', '-o', 'a.js', '--source-map-base', 'dir/'])
     output = open('a.wasm', 'rb').read()
     # has sourceMappingURL section content and points to 'dir/a.wasm.map' file
     source_mapping_url_content = webassembly.toLEB(len('sourceMappingURL')) + b'sourceMappingURL' + webassembly.toLEB(len('dir/a.wasm.map')) + b'dir/a.wasm.map'
@@ -7737,21 +7737,25 @@ int main() {
     self.assertNotIn(b'.debug_', output)
 
   def test_check_source_map_args(self):
-    # -g4 is needed for source maps; -g is not enough
+    # -gsource-map is needed for source maps; -g is not enough
     self.run_process([EMCC, test_file('hello_world.c'), '-g'])
     self.assertNotExists('a.out.wasm.map')
-    self.run_process([EMCC, test_file('hello_world.c'), '-g4'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-gsource-map'])
+    self.assertExists('a.out.wasm.map')
+    os.unlink('a.out.wasm.map')
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-g4'], stderr=subprocess.PIPE).stderr
+    self.assertIn('please replace -g4 with -gsource-map', err)
     self.assertExists('a.out.wasm.map')
 
   @parameterized({
     'normal': [],
-    'profiling': ['--profiling'] # -g4 --profiling should still emit a source map; see #8584
+    'profiling': ['--profiling'] # -gsource-map --profiling should still emit a source map; see #8584
   })
   def test_check_sourcemapurl_default(self, *args):
     if not self.is_wasm():
       self.skipTest('only supported with wasm')
 
-    self.run_process([EMCC, test_file('hello_123.c'), '-g4', '-o', 'a.js'] + list(args))
+    self.run_process([EMCC, test_file('hello_123.c'), '-gsource-map', '-o', 'a.js'] + list(args))
     output = open('a.wasm', 'rb').read()
     # has sourceMappingURL section content and points to 'a.wasm.map' file
     source_mapping_url_content = webassembly.toLEB(len('sourceMappingURL')) + b'sourceMappingURL' + webassembly.toLEB(len('a.wasm.map')) + b'a.wasm.map'
@@ -7803,7 +7807,7 @@ int main() {
       ]
       for curr in infiles:
         print('  ', curr)
-        self.run_process([EMCC, curr, '-g4'])
+        self.run_process([EMCC, curr, '-gsource-map'])
         with open('a.out.wasm.map', 'r') as f:
           self.assertIn('"%s"' % expected_source_map_path, str(f.read()))
 
@@ -8904,7 +8908,7 @@ int main(void) {
   })
   def test_lsan_stack_trace(self, ext, regexes):
     self.do_smart_test(test_file('other', 'test_lsan_leaks.' + ext),
-                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH', '-g4'],
+                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH', '-gsource-map'],
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
       'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
@@ -8960,7 +8964,7 @@ int main(void) {
   })
   def test_offset_converter(self, *args):
     self.do_smart_test(test_file('other', 'test_offset_converter.c'),
-                       emcc_args=['-s', 'USE_OFFSET_CONVERTER', '-g4'] + list(args), literals=['ok'])
+                       emcc_args=['-s', 'USE_OFFSET_CONVERTER', '-gsource-map'] + list(args), literals=['ok'])
 
   @no_windows('ptys and select are not available on windows')
   def test_build_error_color(self):
