@@ -7738,12 +7738,12 @@ int main() {
 
   def test_check_source_map_args(self):
     # -gsource-map is needed for source maps; -g is not enough
-    self.run_process([EMCC, test_file('tests', 'hello_world.c'), '-g'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-g'])
     self.assertNotExists('a.out.wasm.map')
-    self.run_process([EMCC, test_file('tests', 'hello_world.c'), '-gsource-map'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-gsource-map'])
     self.assertExists('a.out.wasm.map')
     os.unlink('a.out.wasm.map')
-    err = self.run_process([EMCC, test_file('tests', 'hello_world.c'), '-g4'], stderr=subprocess.PIPE).stderr
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-g4'], stderr=subprocess.PIPE).stderr
     self.assertIn('please replace -g4 with -gsource-map', err)
     self.assertExists('a.out.wasm.map')
 
