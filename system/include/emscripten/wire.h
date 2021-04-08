@@ -113,7 +113,13 @@ namespace emscripten {
 
         template<typename T>
         struct TypeID<T*> {
+#ifdef EMSCRIPTEN_ALWAYS_ALLOW_RAW_POINTERS
+            static constexpr TYPEID get() {
+                return LightTypeID<T*>::get();
+            }
+#else
             static_assert(!std::is_pointer<T*>::value, "Implicitly binding raw pointers is illegal.  Specify allow_raw_pointer<arg<?>>");
+#endif
         };
 
         template<typename T>
