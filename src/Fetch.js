@@ -451,6 +451,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
 #endif
   var fetchAttrAppend = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_APPEND') }}});
   var fetchAttrReplace = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_REPLACE') }}});
+  var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_SYNCHRONOUS') }}});
 
   var reportSuccess = function(fetch, xhr, e) {
 #if FETCH_DEBUG
@@ -460,14 +461,14 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     callUserCallback(function() {
       if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
       else if (successcb) successcb(fetch);
-    });
+    }, fetchAttrSynchronous);
   };
 
   var reportProgress = function(fetch, xhr, e) {
     callUserCallback(function() {
       if (onprogress) {{{ makeDynCall('vi', 'onprogress') }}}(fetch);
       else if (progresscb) progresscb(fetch);
-    });
+    }, fetchAttrSynchronous);
   };
 
   var reportError = function(fetch, xhr, e) {
@@ -478,7 +479,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     callUserCallback(function() {
       if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(fetch);
       else if (errorcb) errorcb(fetch);
-    });
+    }, fetchAttrSynchronous);
   };
 
   var reportReadyStateChange = function(fetch, xhr, e) {
@@ -488,7 +489,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     callUserCallback(function() {
       if (onreadystatechange) {{{ makeDynCall('vi', 'onreadystatechange') }}}(fetch);
       else if (readystatechangecb) readystatechangecb(fetch);
-    });
+    }, fetchAttrSynchronous);
   };
 
   var performUncachedXhr = function(fetch, xhr, e) {
@@ -511,7 +512,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
       callUserCallback(function() {
         if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
         else if (successcb) successcb(fetch);
-      });
+      }, fetchAttrSynchronous);
     };
     var storeError = function(fetch, xhr, e) {
 #if FETCH_DEBUG
@@ -521,7 +522,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
       callUserCallback(function() {
         if (onsuccess) {{{ makeDynCall('vi', 'onsuccess') }}}(fetch);
         else if (successcb) successcb(fetch);
-      });
+      }, fetchAttrSynchronous);
     };
     fetchCacheData(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);
   };
