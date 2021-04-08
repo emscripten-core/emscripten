@@ -4507,8 +4507,8 @@ window.close = function() {
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/sync_xhr.cpp',
-               args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '--proxy-to-worker'],
-               also_asmjs=True)
+                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '--proxy-to-worker'],
+                    also_asmjs=True)
 
   # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
   @no_wasm_backend("emscripten_fetch_wait uses an asm.js based web worker")
