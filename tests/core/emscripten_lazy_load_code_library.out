@@ -1,0 +1,13 @@
+print 0
+early print
+print 1
+early print
+print 2
+early print
+print 3
+later print: 3
+print 4
+later print: 4
+print 5
+later print: 5
+all done
