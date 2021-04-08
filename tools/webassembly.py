@@ -7,10 +7,16 @@
 """
 
 import logging
+import sys
 
 from . import shared
 
+sys.path.append(shared.path_from_root('third_party'))
+
+import leb128
+
 logger = logging.getLogger('shared')
+
 
 # For the Emscripten-specific WASM metadata section, follows semver, changes
 # whenever metadata section changes structure.
@@ -32,31 +38,11 @@ WASM_PAGE_SIZE = 65536
 
 
 def toLEB(num):
-  assert num >= 0, 'TODO: signed'
-  ret = bytearray()
-  while 1:
-    byte = num & 127
-    num >>= 7
-    more = num != 0
-    if more:
-      byte = byte | 128
-    ret.append(byte)
-    if not more:
-      break
-  return ret
+  return leb128.u.encode(num)
 
 
-def readLEB(buf, offset):
-  result = 0
-  shift = 0
-  while True:
-    byte = buf[offset]
-    offset += 1
-    result |= (byte & 0x7f) << shift
-    if not (byte & 0x80):
-      break
-    shift += 7
-  return (result, offset)
+def readLEB(iobuf):
+  return leb128.u.decode_reader(iobuf)[0]
 
 
 def add_emscripten_metadata(wasm_file):
@@ -112,27 +98,24 @@ class Module:
   """Extremely minimal wasm module reader.  Currently only used
   for parsing the dylink section."""
   def __init__(self, filename):
-    with open(filename, 'rb') as f:
-      self.buf = f.read()
-    assert self.buf[:4] == b'\0asm'
-    assert self.buf[4:8] == b'\x01\0\0\0'
-    self.offset = 8
+    self.buf = open(filename, 'rb')
+    magic = self.buf.read(4)
+    version = self.buf.read(4)
+    assert magic == b'\0asm'
+    assert version == b'\x01\0\0\0'
+
+  def __del__(self):
+    self.buf.close()
 
   def readByte(self):
-    ret = self.buf[self.offset]
-    self.offset += 1
-    return ret
+    return self.buf.read(1)[0]
 
   def readLEB(self):
-    ret, self.offset = readLEB(self.buf, self.offset)
-    return ret
+    return readLEB(self.buf)
 
   def readString(self):
     size = self.readLEB()
-    end = self.offset + size
-    s = self.buf[self.offset:end]
-    self.offset = end
-    return s.decode('utf-8')
+    return self.buf.read(size).decode('utf-8')
 
 
 def parse_dylink_section(wasm_file):
@@ -142,7 +125,7 @@ def parse_dylink_section(wasm_file):
   section_type = module.readByte()
   section_size = module.readLEB()
   assert section_type == 0
-  section_end = module.offset + section_size
+  section_end = module.buf.tell() + section_size
   # section name
   section_name = module.readString()
   assert section_name == 'dylink'
