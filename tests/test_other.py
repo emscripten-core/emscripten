@@ -10319,3 +10319,8 @@ exec "$@"
       # wasm2js optimizations use multiprocessing to run multiple node
       # invocations
       self.run_process([EMCC, test_file('hello_world.c'), '-sWASM=0', '-O2'])
+
+  def test_main_module_no_undefined(self):
+    # Test that ERROR_ON_UNDEFINED_SYMBOLS works with MAIN_MODULE.
+    self.run_process([EMCC, '-sMAIN_MODULE', '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('hello_world.c')])
+    self.run_js('a.out.js')
