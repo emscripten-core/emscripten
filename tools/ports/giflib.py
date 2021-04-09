@@ -35,7 +35,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libgif.a')
+  shared.Cache.erase_lib('libgif.a')
 
 
 def process_args(ports):

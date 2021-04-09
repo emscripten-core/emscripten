@@ -20,16 +20,89 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Deprecate `-g4`, which is a little confusing as it does not do more than `-g3`
+  but instead emits source maps instead of DWARF. `-g4` will now warn. A new
+  flag `-gsource-map` enables source maps without warning.
+- In order to behave more like clang and gcc, emscripten no longer
+  supports some nonstandard methods of library lookup (that worked
+  unintentionally and were untested and not documented):
+    1. Linking with `-llibc` rather than `-lc` will no longer work.
+    2. Linking a library called `foo.a` via `-lfoo` will no longer work.
+       (libraries found via `-l` have to start with `lib`)
+- Use LLVM's new pass manager by default, as LLVM does. This changes a bunch of
+  things about how LLVM optimizes and inlines, so it may cause noticeable
+  changes in compile times, code size, and speed, either for better or for
+  worse. (#13427)
+- Removed use of Python multiprocessing library because of stability issues.
+  Added a new environment variable `EM_PYTHON_MULTIPROCESSING=1` that can be set
+  to revert back to using Python multiprocessing, in case there are reports of
+  regressions (that variable is intended to be temporary). (#13493)
+- Binaryen now always inlines single-use functions. This should reduce code size
+  and improve performance (#13744).
+- Fix generating of symbol files with `--emit-symbol-map` for JS targets.
+  When `-s WASM=2` is used. Two symbols are generated:
+    - `[name].js.symbols` - storing Wasm mapping
+    - `[name].wasm.js.symbols` - storing JS mapping
+  In other cases a single `[name].js.symbols` file is created.
+
+2.0.16: 03/25/2021
+------------------
+- Lists that are passed on the command line can now skip the opening an closing
+  braces, allowing for simpler, more readable settings.  e.g.
+    `-s EXPORTED_FUNCTIONS=foo,bar`
+- Remove/deprecate no longer used `--llvm-opts` command line option.  Any
+  arguments not processed by emcc will be passed through to clang directly
+  these days.
+- Values returned from `sysconf` now more closely match the definitions found in
+  header files and in upstream musl (#13713).
+- `DISABLE_EXCEPTION_CATCHING=2` is now deprecated since it can be inferred from
+  the presence of the `EXCEPTION_CATCHING_ALLOWED` list.  This makes
+  `DISABLE_EXCEPTION_CATCHING` a simple binary option (0 or 1) which defaults to
+  0 which will be set to 1 internally if `EXCEPTION_CATCHING_ALLOWED` list is
+  specified.
+- Values returned from `pathconf` now match the definitions found in header files
+  and/or upstream musl:
+    _PC_LINK_MAX 3200 -> 8
+    _PC_SYNC_IO -1 -> 1
+    _PC_REC_INCR_XFER_SIZE -1 -> 4096
+    _PC_REC_MAX_XFER_SIZE -1 -> 4096
+    _PC_SYMLINK_MAX -1 -> 255
+- Added support for wrapping emcc and em++ via ccache: install Emscripten port
+  of ccache via emsdk, or from https://github.com/juj/ccache/tree/emscripten,
+  and run explicitly with "ccache emcc ..." after installing, or automatically
+  just with "emcc ..." after activating ccache via emsdk (#13498).
+- Added support to use a custom set of substitution characters . # and ? to
+  ease passing arrays of C symbols on the command line to ASYNCIFY_* settings.
+  (#13477)
+- In MINIMAL_RUNTIME build mode, errno support will now be disabled by default
+  due to the code size that it adds. (MINIMAL_RUNTIME=1 implies SUPPORT_ERRNO=0
+  by default) Pass -s SUPPORT_ERRNO=1 to enable errno support if necessary.
+- Using EM_ASM and EM_JS in a side module will now result in an error (since
+  this is not implemented yet).  This could effect users were previously
+  inadvertently including (but not actually using) EM_ASM or EM_JS functions in
+  side modules (#13649).
+- Remove dependency on Uglify by finishing the rewrite of passes to acorn
+ (#13636, #13621).
+- Primary development branch switched from `master` to `main`.
+
+2.0.15: 03/05/2021
+------------------
+- Calls to `newlocale` (and `new std::locale` in C++) with arbirary names will
+  now succeed.  This is the behaviour of musl libc which emscripten had
+  previously inadvertently disabled.
 - System libraries are now compiled with debug info (`-g`).  This doesn't
   affect release builds (builds without `-g`) but allows DWARF debugging of
   types defined in system libraries such as C++ STL types (#13078).
 - uname machine field is now either wasm32 or wasm64 instead of x86-JS (#13440)
+- Several pthreads exit-related fixes (#12985) (#10524).
+- Fix IDBFS syncing with existing directories (#13574).
+- Add libmodplug port and allow mod files to be played in SDL2 (#13478).
 
 2.0.14: 02/14/2021
 ------------------
 - Add new setting: `REVERSE_DEPS`. This can be used to control how emscripten
   decides which reverse dependecies to include.  See `settings.js` for more
-  information.  The default setting ('auto') is the transitional way emscripten
+  information.  The default setting ('auto') is the traditional way emscripten
   has worked in the past so there should be no change unless this options is
   actually used.  This option partially replaces the `EMCC_ONLY_FORCED_STDLIBS`
   environment variable which (among other things) essentially had the effect of
@@ -68,7 +141,7 @@ Current Trunk
 ------------------
 - `emscripten/vr.h` and other remnants of WebVR support removed. (#13210, which
   is a followup to #10460)
-- Stop overriding CMake default flags based on build type. This will 
+- Stop overriding CMake default flags based on build type. This will
   result in builds that are more like CMake does on other platforms. You
   may notice that `RelWithDebInfo` will now include debug info (it did not
   before, which appears to have been an error), and that `Release` will
@@ -257,7 +330,7 @@ Current Trunk
   is encountered. This makes the Emscripten program behave more like a native
   program where the OS would terminate the process and no further code can be
   executed when an unhandled exception (e.g. out-of-bounds memory access) happens.
-  Once the program aborts any exported function calls will fail with a "program 
+  Once the program aborts any exported function calls will fail with a "program
   has already aborted" exception to prevent calls into code with a potentially
   corrupted program state.
 - Use `__indirect_function_table` as the import name for the table, which is

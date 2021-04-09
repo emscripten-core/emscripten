@@ -51,7 +51,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libbullet.a')
+  shared.Cache.erase_lib('libbullet.a')
 
 
 def process_args(ports):

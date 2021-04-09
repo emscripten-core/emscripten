@@ -7,10 +7,16 @@
 """
 
 import logging
+import sys
 
 from . import shared
 
+sys.path.append(shared.path_from_root('third_party'))
+
+import leb128
+
 logger = logging.getLogger('shared')
+
 
 # For the Emscripten-specific WASM metadata section, follows semver, changes
 # whenever metadata section changes structure.
@@ -31,32 +37,12 @@ EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 29)
 WASM_PAGE_SIZE = 65536
 
 
-def toLEB(x):
-  assert x >= 0, 'TODO: signed'
-  ret = []
-  while 1:
-    byte = x & 127
-    x >>= 7
-    more = x != 0
-    if more:
-      byte = byte | 128
-    ret.append(byte)
-    if not more:
-      break
-  return bytearray(ret)
+def toLEB(num):
+  return leb128.u.encode(num)
 
 
-def readLEB(buf, offset):
-  result = 0
-  shift = 0
-  while True:
-    byte = bytearray(buf[offset:offset + 1])[0]
-    offset += 1
-    result |= (byte & 0x7f) << shift
-    if not (byte & 0x80):
-      break
-    shift += 7
-  return (result, offset)
+def readLEB(iobuf):
+  return leb128.u.decode_reader(iobuf)[0]
 
 
 def add_emscripten_metadata(wasm_file):
@@ -108,34 +94,61 @@ def add_emscripten_metadata(wasm_file):
     f.write(orig[8:])
 
 
+class Module:
+  """Extremely minimal wasm module reader.  Currently only used
+  for parsing the dylink section."""
+  def __init__(self, filename):
+    self.buf = open(filename, 'rb')
+    magic = self.buf.read(4)
+    version = self.buf.read(4)
+    assert magic == b'\0asm'
+    assert version == b'\x01\0\0\0'
+
+  def __del__(self):
+    self.buf.close()
+
+  def readByte(self):
+    return self.buf.read(1)[0]
+
+  def readLEB(self):
+    return readLEB(self.buf)
+
+  def readString(self):
+    size = self.readLEB()
+    return self.buf.read(size).decode('utf-8')
+
+
 def parse_dylink_section(wasm_file):
-  wasm = open(wasm_file, 'rb').read()
-  section_name = b'\06dylink' # section name, including prefixed size
+  module = Module(wasm_file)
 
   # Read the existing section data
-  offset = 8
-  assert wasm[offset] == 0
-  offset += 1
-  size, offset = readLEB(wasm, offset)
-  section_end = offset + size
-  section = wasm[offset:section_end]
+  section_type = module.readByte()
+  section_size = module.readLEB()
+  assert section_type == 0
+  section_end = module.buf.tell() + section_size
   # section name
-  assert section.startswith(section_name)
-  offset = len(section_name)
-  mem_size, offset = readLEB(section, offset)
-  mem_align, offset = readLEB(section, offset)
-  table_size, offset = readLEB(section, offset)
-  table_align, offset = readLEB(section, offset)
+  section_name = module.readString()
+  assert section_name == 'dylink'
+  mem_size = module.readLEB()
+  mem_align = module.readLEB()
+  table_size = module.readLEB()
+  table_align = module.readLEB()
 
-  return (mem_size, mem_align, table_size, table_align, section_end)
+  needed = []
+  needed_count = module.readLEB()
+  while needed_count:
+    libname = module.readString()
+    needed.append(libname)
+    needed_count -= 1
+
+  return (mem_size, mem_align, table_size, table_align, section_end, needed)
 
 
-def add_dylink_section(wasm_file, needed_dynlibs):
+def update_dylink_section(wasm_file, extra_dynlibs):
   # A wasm shared library has a special "dylink" section, see tools-conventions repo.
-  # This function adds this section to the beginning on the given file.
+  # This function updates this section, adding extra dynamic library dependencies.
 
-  mem_size, mem_align, table_size, table_align, section_end = parse_dylink_section(wasm_file)
-  logger.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
+  mem_size, mem_align, table_size, table_align, section_end, needed = parse_dylink_section(wasm_file)
 
   section_name = b'\06dylink' # section name, including prefixed size
   contents = (toLEB(mem_size) + toLEB(mem_align) +
@@ -162,9 +175,10 @@ def add_dylink_section(wasm_file, needed_dynlibs):
   #
   # a proposal has been filed to include the extension into "dylink" specification:
   # https://github.com/WebAssembly/tool-conventions/pull/77
-  contents += toLEB(len(needed_dynlibs))
-  for dyn_needed in needed_dynlibs:
-    dyn_needed = bytes(shared.asbytes(dyn_needed))
+  needed += extra_dynlibs
+  contents += toLEB(len(needed))
+  for dyn_needed in needed:
+    dyn_needed = dyn_needed.encode('utf-8')
     contents += toLEB(len(dyn_needed))
     contents += dyn_needed
 

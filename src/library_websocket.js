@@ -263,9 +263,9 @@ var LibraryWebSocket = {
         HEAP8.set(new Uint8Array(e.data), buf);
 #if WEBSOCKET_DEBUG
         var s = 'WebSocket onmessage, received data: ' + len + ' bytes of binary:';
-        for(var i = 0; i < Math.min(len, 256); ++i) s += ' ' + HEAPU8[buf+i].toString(16);
+        for (var i = 0; i < Math.min(len, 256); ++i) s += ' ' + HEAPU8[buf+i].toString(16);
         s += ', "';
-        for(var i = 0; i < Math.min(len, 256); ++i) s += (HEAPU8[buf+i] >= 32 && HEAPU8[buf+i] <= 127) ? String.fromCharCode(HEAPU8[buf+i]) : '\uFFFD';
+        for (var i = 0; i < Math.min(len, 256); ++i) s += (HEAPU8[buf+i] >= 32 && HEAPU8[buf+i] <= 127) ? String.fromCharCode(HEAPU8[buf+i]) : '\uFFFD';
         s += '"';
         if (len > 256) s + ' ... (' + (len - 256) + ' more bytes)';
 
@@ -355,9 +355,9 @@ var LibraryWebSocket = {
 
 #if WEBSOCKET_DEBUG
     var s = 'data: ' + dataLength + ' bytes of binary:';
-    for(var i = 0; i < Math.min(dataLength, 256); ++i) s += ' '+ HEAPU8[binaryData+i].toString(16);
+    for (var i = 0; i < Math.min(dataLength, 256); ++i) s += ' '+ HEAPU8[binaryData+i].toString(16);
     s += ', "';
-    for(var i = 0; i < Math.min(dataLength, 256); ++i) s += (HEAPU8[binaryData+i] >= 32 && HEAPU8[binaryData+i] <= 127) ? String.fromCharCode(HEAPU8[binaryData+i]) : '\uFFFD';
+    for (var i = 0; i < Math.min(dataLength, 256); ++i) s += (HEAPU8[binaryData+i] >= 32 && HEAPU8[binaryData+i] <= 127) ? String.fromCharCode(HEAPU8[binaryData+i]) : '\uFFFD';
     s += '"';
     if (dataLength > 256) s + ' ... (' + (dataLength - 256) + ' more bytes)';
 
@@ -434,7 +434,7 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG
     console.error('emscripten_websocket_deinitialize()');
 #endif
-    for(var i in WS.sockets) {
+    for (var i in WS.sockets) {
       var socket = WS.sockets[i];
       if (socket) {
         socket.close();

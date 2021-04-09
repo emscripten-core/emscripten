@@ -1,0 +1,2 @@
+emscripten_asm_const_int -> 42
+emscripten_asm_const_double -> 100.000000

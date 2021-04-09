@@ -66,7 +66,7 @@ You can also install a specific version by specifying it, for example,
 .. note:: When installing old versions from before the build infrastructure rewrite (anything before ``1.38.33``), you need to write something like ``./emsdk install sdk-1.38.20-64bit`` (add ``sdk-`` and ``-64bit``) as that was the naming convention at the time.
 
 
-There are also "tip-of-tree builds", which are the very latest code that passes integration tests on `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_. This is updated much more frequently than tagged releases, but may be less stable (we `tag releases manually <https://github.com/emscripten-core/emscripten/blob/master/docs/process.md#minor-version-updates-1xy-to-1xy1>`_ using a more careful procedure). Tip-of-tree builds may be useful for continuous integration that uses the emsdk (as Emscripten's GitHub CI does), and you may want to use it in your own CI as well, so that if you find a regression on your project you can report it and prevent it from reaching a tagged release. Tip-of-builds may also be useful if you want to test a feature that just landed but didn't reach a release yet. To use a tip-of-tree build, use the ``tot`` target, and note that you must specify the backend explicitly,
+There are also "tip-of-tree builds", which are the very latest code that passes integration tests on `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_. This is updated much more frequently than tagged releases, but may be less stable (we `tag releases manually <https://github.com/emscripten-core/emscripten/blob/main/docs/process.md#minor-version-updates-1xy-to-1xy1>`_ using a more careful procedure). Tip-of-tree builds may be useful for continuous integration that uses the emsdk (as Emscripten's GitHub CI does), and you may want to use it in your own CI as well, so that if you find a regression on your project you can report it and prevent it from reaching a tagged release. Tip-of-builds may also be useful if you want to test a feature that just landed but didn't reach a release yet. To use a tip-of-tree build, use the ``tot`` target, and note that you must specify the backend explicitly,
 
   ::
 
@@ -127,7 +127,7 @@ Linux
 
 .. note:: If you want to use your system's Node.js instead of the emsdk's, it may be ``node`` instead of ``nodejs``, and you can adjust the ``NODE_JS`` attribute of your ``.emscripten`` file to point to it.
 
-- *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches **emscripten-incoming** or **emscripten-master**:
+- *Git* is not installed automatically. Git is only needed if you want to use tools from a development branch.
 
   ::
 
@@ -166,7 +166,7 @@ Type the following in a command prompt ::
   # Activate PATH and other environment variables in the current terminal
   source ./emsdk_env.sh
 
-The package manager can do many other maintenance tasks ranging from fetching specific old versions of the SDK through to using the :ref:`versions of the tools on GitHub <emsdk-master-or-incoming-sdk>` (or even your own fork). Check out all the possibilities in the :ref:`emsdk_howto`.
+The package manager can do many other maintenance tasks ranging from fetching specific old versions of the SDK through to using the :ref:`versions of the tools on GitHub <emsdk-dev-sdk>` (or even your own fork). Check out all the possibilities in the :ref:`emsdk_howto`.
 
 .. _downloads-uninstall-the-sdk:
 
@@ -197,12 +197,12 @@ Installation using unofficial packages
     Emscripten that is supported by the Emscripten project, and the only one
     that we constantly test
     (`emsdk CI <https://github.com/emscripten-core/emsdk/blob/master/.circleci/config.yml>`_,
-    `Emscripten GitHub CI <https://github.com/emscripten-core/emscripten/blob/master/.circleci/config.yml>`_,
+    `Emscripten GitHub CI <https://github.com/emscripten-core/emscripten/blob/main/.circleci/config.yml>`_,
     `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_).
 
 While we don't officially support other ways of getting Emscripten, we definitely
 appreciate the efforts by third parties to
-`package Emscripten <https://github.com/emscripten-core/emscripten/blob/master/docs/packaging.md>`_
+`package Emscripten <https://github.com/emscripten-core/emscripten/blob/main/docs/packaging.md>`_
 for users' convenience, and we'd like to help out, please get in touch if
 you are such a packager!
 

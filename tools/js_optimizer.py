@@ -33,7 +33,7 @@ def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
 
-JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
+ACORN_OPTIMIZER = path_from_root('tools', 'acorn-optimizer.js')
 
 NUM_CHUNKS_PER_CORE = 3
 MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 512 * 1024) # configuring this is just for debugging purposes
@@ -67,9 +67,9 @@ def split_funcs(js, just_split=False):
   return funcs
 
 
-class Minifier(object):
-  """asm.js minification support. We calculate minification of
-  globals here, then pass that into the parallel js-optimizer.js runners which
+class Minifier:
+  """minification support. We calculate minification of
+  globals here, then pass that into the parallel acorn-optimizer.js runners which
   perform minification of locals.
   """
 
@@ -79,12 +79,12 @@ class Minifier(object):
     self.profiling_funcs = False
 
   def minify_shell(self, shell, minify_whitespace):
-    # Run through js-optimizer.js to find and minify the global symbols
+    # Run through acorn-optimizer.js to find and minify the global symbols
     # We send it the globals, which it parses at the proper time. JS decides how
     # to minify all global names, we receive a dictionary back, which is then
     # used by the function processors
 
-    shell = shell.replace('0.0', '13371337') # avoid uglify doing 0.0 => 0
+    shell = shell.replace('0.0', '13371337') # avoid optimizer doing 0.0 => 0
 
     # Find all globals in the JS functions code
 
@@ -101,7 +101,7 @@ class Minifier(object):
         f.write('\n')
         f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
 
-      cmd = config.NODE_JS + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata']
+      cmd = config.NODE_JS + [ACORN_OPTIMIZER, temp_file, 'minifyGlobals']
       if minify_whitespace:
         cmd.append('minifyWhitespace')
       output = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
@@ -128,36 +128,6 @@ start_funcs_marker = '// EMSCRIPTEN_START_FUNCS\n'
 end_funcs_marker = '// EMSCRIPTEN_END_FUNCS\n'
 start_asm_marker = '// EMSCRIPTEN_START_ASM\n'
 end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
-
-
-def run_on_chunk(command):
-  try:
-    if JS_OPTIMIZER in command: # XXX hackish
-      index = command.index(JS_OPTIMIZER)
-      filename = command[index + 1]
-    else:
-      filename = command[1]
-    if os.environ.get('EMCC_SAVE_OPT_TEMP') and os.environ.get('EMCC_SAVE_OPT_TEMP') != '0':
-      saved = 'save_' + os.path.basename(filename)
-      while os.path.exists(saved):
-        saved = 'input' + str(int(saved.replace('input', '').replace('.txt', '')) + 1) + '.txt'
-      print('running js optimizer command', ' '.join([c if c != filename else saved for c in command]), file=sys.stderr)
-      shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
-    if shared.EM_BUILD_VERBOSE >= 3:
-      print('run_on_chunk: ' + str(command), file=sys.stderr)
-    proc = shared.run_process(command, stdout=subprocess.PIPE)
-    output = proc.stdout
-    assert proc.returncode == 0, 'Error in optimizer (return code ' + str(proc.returncode) + '): ' + output
-    assert len(output) and not output.startswith('Assertion failed'), 'Error in optimizer: ' + output
-    filename = temp_files.get(os.path.basename(filename) + '.jo.js').name
-    with open(filename, 'w') as f:
-      f.write(output)
-    if DEBUG and not shared.WINDOWS:
-      print('.', file=sys.stderr) # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
-    return filename
-  except KeyboardInterrupt:
-    # avoid throwing keyboard interrupts from a child process
-    raise Exception()
 
 
 # Given a set of functions of form (ident, text), and a preferred chunk size,
@@ -231,7 +201,7 @@ def run_on_js(filename, passes, extra_info=None, just_split=False, just_concat=F
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
       if 'asm' not in passes:
         # can have Module[..] and inlining prevention code, push those to post
-        class Finals(object):
+        class Finals:
           buf = []
 
         def process(line):
@@ -295,7 +265,7 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('js_optimizer.split_to_chunks'):
     # if we are making source maps, we want our debug numbering to start from the
     # top of the file, so avoid breaking the JS into chunks
-    cores = building.get_num_cores()
+    cores = shared.get_num_cores()
 
     if not just_split:
       intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
@@ -329,30 +299,23 @@ EMSCRIPTEN_FUNCS();
 
   with ToolchainProfiler.profile_block('run_optimizer'):
     if len(filenames):
-      commands = [config.NODE_JS + [JS_OPTIMIZER, f, 'noPrintMetadata'] + passes for f in filenames]
+      commands = [config.NODE_JS + [ACORN_OPTIMIZER, f] + passes for f in filenames]
 
-      cores = min(cores, len(filenames))
-      if len(chunks) > 1 and cores >= 2:
-        # We can parallelize
-        if DEBUG:
-          print('splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size / (1024 * 1024.)), file=sys.stderr)
-        with ToolchainProfiler.profile_block('optimizer_pool'):
-          pool = building.get_multiprocessing_pool()
-          filenames = pool.map(run_on_chunk, commands, chunksize=1)
-      else:
-        # We can't parallize, but still break into chunks to avoid uglify/node memory issues
-        if len(chunks) > 1 and DEBUG:
-          print('splitting up js optimization into %d chunks' % (len(chunks)), file=sys.stderr)
-        filenames = [run_on_chunk(command) for command in commands]
-    else:
-      filenames = []
+      if os.environ.get('EMCC_SAVE_OPT_TEMP') and os.environ.get('EMCC_SAVE_OPT_TEMP') != '0':
+        for filename in filenames:
+          saved = 'save_' + os.path.basename(filename)
+          while os.path.exists(saved):
+            saved = 'input' + str(int(saved.replace('input', '').replace('.txt', '')) + 1) + '.txt'
+          shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
+
+      filenames = shared.run_multiple_processes(commands, route_stdout_to_temp_files_suffix='js_opt.jo.js')
 
     for filename in filenames:
       temp_files.note(filename)
 
   with ToolchainProfiler.profile_block('split_closure_cleanup'):
     if closure or cleanup:
-      # run on the shell code, everything but what we js-optimize
+      # run on the shell code, everything but what we acorn-optimize
       start_asm = '// EMSCRIPTEN_START_ASM\n'
       end_asm = '// EMSCRIPTEN_END_ASM\n'
       cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(wakaGlobal,wakaEnv,wakaBuffer)\n'

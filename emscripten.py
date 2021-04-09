@@ -23,7 +23,7 @@ from tools import diagnostics
 from tools import shared
 from tools import gen_struct_info
 from tools import webassembly
-from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
+from tools.shared import WINDOWS, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
 from tools.toolchain_profiler import ToolchainProfiler
 
 logger = logging.getLogger('emscripten')
@@ -44,10 +44,10 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
     exports_that_are_not_initializers += ['dynCalls = {}']
 
   declares = 'var ' + ',\n '.join(exports_that_are_not_initializers) + ';'
-  post = shared.do_replace(post, '<<< ASM_MODULE_EXPORTS_DECLARES >>>', declares)
+  post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
 
-  # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
-  post = shared.do_replace(post, '<<< ASM_MODULE_EXPORTS >>>', receiving)
+  # Generate assignments from all wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
+  post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS >>>', receiving)
   return post
 
 
@@ -113,14 +113,9 @@ def update_settings_glue(metadata, DEBUG):
   all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(metadata['exports']))
 
-  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [x[1:] for x in metadata['externs']]
+  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += metadata['externs']
   # With the wasm backend the set of implemented functions is identical to the set of exports
   shared.Settings.IMPLEMENTED_FUNCTIONS = [asmjs_mangle(x) for x in metadata['exports']]
-
-  if metadata['asmConsts']:
-    # emit the EM_ASM signature-reading helper function only if we have any EM_ASM
-    # functions in the module.
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$readAsmConstArgs']
 
   shared.Settings.BINARYEN_FEATURES = metadata['features']
   if shared.Settings.RELOCATABLE:
@@ -138,12 +133,11 @@ def update_settings_glue(metadata, DEBUG):
   # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
   shared.Settings.MODULE_EXPORTS = [(asmjs_mangle(f), f) for f in metadata['exports']]
 
-  if shared.Settings.STACK_OVERFLOW_CHECK:
-    if 'emscripten_stack_get_end' not in metadata['exports']:
-      logger.warning('STACK_OVERFLOW_CHECK disabled because emscripten stack helpers not exported')
-      shared.Settings.STACK_OVERFLOW_CHECK = 0
-    else:
-      shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+  if shared.Settings.STACK_OVERFLOW_CHECK and not shared.Settings.SIDE_MODULE:
+    shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+    # writeStackCookie and checkStackCookie both rely on emscripten_stack_get_end being
+    # exported.  In theory it should always be present since its defined in compiler-rt.
+    assert 'emscripten_stack_get_end' in metadata['exports']
 
 
 def apply_static_code_hooks(forwarded_json, code):
@@ -188,12 +182,11 @@ def set_memory(static_bump):
 def report_missing_symbols(all_implemented, pre):
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
-  missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)
+  missing = set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented
 
-  for requested in missing:
-    if ('function ' + asstr(requested) + '(') in pre:
-      continue
-    diagnostics.warning('undefined', 'undefined exported symbol: "%s"', requested)
+  for requested in sorted(missing):
+    if (f'function {requested}(') not in pre:
+      diagnostics.warning('undefined', f'undefined exported symbol: "{requested}"')
 
   # Special hanlding for the `_main` symbol
 
@@ -285,6 +278,10 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   update_settings_glue(metadata, DEBUG)
 
   if shared.Settings.SIDE_MODULE:
+    if metadata['asmConsts']:
+      exit_with_error('EM_ASM is not supported in side modules')
+    if metadata['emJsFuncs']:
+      exit_with_error('EM_JS is not supported in side modules')
     logger.debug('emscript: skipping remaining js glue generation')
     return
 
@@ -377,6 +374,8 @@ def remove_trailing_zeros(memfile):
 
 def finalize_wasm(infile, outfile, memfile, DEBUG):
   building.save_intermediate(infile, 'base.wasm')
+  # tell binaryen to look at the features section, and if there isn't one, to use MVP
+  # (which matches what llvm+lld has given us)
   args = ['--detect-features', '--minimize-wasm-changes']
 
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
@@ -391,8 +390,6 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
     building.save_intermediate(infile + '.map', 'base_wasm.map')
     args += ['--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(outfile) + '.map']
     modify_wasm = True
-  # tell binaryen to look at the features section, and if there isn't one, to use MVP
-  # (which matches what llvm+lld has given us)
   if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.ASYNCIFY_ADD or shared.Settings.ASYNCIFY_ADVISE or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.PROFILING_FUNCS:
     args.append('-g')
   if shared.Settings.WASM_BIGINT:
@@ -455,7 +452,6 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
 def create_asm_consts(metadata):
   asm_consts = {}
   for addr, const in metadata['asmConsts'].items():
-    const = asstr(const)
     const = trim_asm_const_body(const)
     args = []
     max_arity = 16
@@ -484,7 +480,7 @@ def create_em_js(forwarded_json, metadata):
     else:
       args = args.split(',')
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
-    func = 'function {}({}){}'.format(name, ','.join(arg_names), asstr(body))
+    func = 'function {}({}){}'.format(name, ','.join(arg_names), body)
     em_js_funcs.append(func)
     forwarded_json['Functions']['libraryFunctions'][name] = 1
 
@@ -740,7 +736,7 @@ def create_module(sending, receiving, invoke_funcs, metadata):
   receiving += create_named_globals(metadata)
   module = []
 
-  module.append('var asmLibraryArg = %s;\n' % (sending))
+  module.append('var asmLibraryArg = %s;\n' % sending)
   if shared.Settings.ASYNCIFY and shared.Settings.ASSERTIONS:
     module.append('Asyncify.instrumentWasmImports(asmLibraryArg);\n')
 
@@ -778,25 +774,19 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   for key, value in metadata_json.items():
     if key in legacy_keys:
       continue
-    # json.loads returns `unicode` for strings but other code in this file
-    # generally works with utf8 encoded `str` objects, and they don't alwasy
-    # mix well.  e.g. s.replace(x, y) will blow up is `s` a uts8 str containing
-    # non-ascii and either x or y are unicode objects.
-    # TODO(sbc): Remove this encoding if we switch to unicode elsewhere
-    # (specifically the glue returned from compile_settings)
-    if type(value) == list:
-      value = [asstr(v) for v in value]
     if key not in metadata:
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
+
+  if DEBUG:
+    logger.debug("Metadata parsed: " + pprint.pformat(metadata))
 
   # Support older metadata when asmConsts values were lists.  We only use the first element
   # nowadays
   # TODO(sbc): remove this once binaryen has been changed to only emit the single element
   metadata['asmConsts'] = {k: v[0] if type(v) is list else v for k, v in metadata['asmConsts'].items()}
-
-  if DEBUG:
-    logger.debug("Metadata parsed: " + pprint.pformat(metadata))
+  # TODO(sbc): Remove this once binaryen stopped adding the extra '_'
+  metadata['externs'] = [x[1:] if x[0] == '_' else x for x in metadata['externs']]
 
   # Calculate the subset of exports that were explicitly marked with llvm.used.
   # These are any exports that were not requested on the command line and are

@@ -190,7 +190,7 @@ if (require.main === module) {
       var optimizedSource = toUnixLineEnding(fs.readFileSync(opts._[i], 'utf-8'))
       var optimizedMappings = getMappings(optimizedSource);
       var newMappings = {};
-      // uglify processes the code between EMSCRIPTEN_START_FUNCS and
+      // the js optimizer processes the code between EMSCRIPTEN_START_FUNCS and
       // EMSCRIPTEN_END_FUNCS, so its line number maps are relative to those
       // markers. we correct for that here. +2 = 1 for the newline in the marker
       // and 1 to make it a 1-based index.

@@ -35,7 +35,7 @@ function splitter(array, filter) {
   return { leftIn: leftIn, splitOut: splitOut };
 }
 
-// Functions that start with '$' should not be imported to asm.js/wasm module.
+// Functions that start with '$' should not be exported to the wasm module.
 // They are intended to be exclusive to JS code only.
 function isJsOnlyIdentifier(ident) {
   return ident[0] == '$';
@@ -58,10 +58,11 @@ function stringifyWithFunctions(obj) {
 }
 
 // JSifier
-function JSify(data, functionsOnly) {
+function JSify(functionsOnly) {
   var mainPass = !functionsOnly;
+  var functionStubs = [];
 
-  var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
+  var itemsDict = { type: [], functionStub: [], function: [], globalVariablePostSet: [] };
 
   if (mainPass) {
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
@@ -81,7 +82,7 @@ function JSify(data, functionsOnly) {
       libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     }
     libFuncsToInclude.forEach((ident) => {
-      data.functionStubs.push({
+      functionStubs.push({
         identOrig: ident,
         identMangled: mangleCSymbolName(ident)
       });
@@ -231,8 +232,8 @@ function JSify(data, functionsOnly) {
         }
       }
 
-      // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be imported
-      // to asm.js/wasm module.
+      // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be exported
+      // to wasm module.
       if (LibraryManager.library[ident + '__import']) {
         Functions.libraryFunctions[finalName] = 1;
       }
@@ -250,7 +251,7 @@ function JSify(data, functionsOnly) {
         }
         if (postset && !addedLibraryItems[postsetId]) {
           addedLibraryItems[postsetId] = true;
-          itemsDict.GlobalVariablePostSet.push({
+          itemsDict.globalVariablePostSet.push({
             JS: postset + ';'
           });
         }
@@ -338,8 +339,8 @@ function JSify(data, functionsOnly) {
   // Final combiner
 
   function finalCombiner() {
-    var splitPostSets = splitter(itemsDict.GlobalVariablePostSet, (x) => x.ident && x.dependencies);
-    itemsDict.GlobalVariablePostSet = splitPostSets.leftIn;
+    var splitPostSets = splitter(itemsDict.globalVariablePostSet, (x) => x.ident && x.dependencies);
+    itemsDict.globalVariablePostSet = splitPostSets.leftIn;
     var orderedPostSets = splitPostSets.splitOut;
 
     var limit = orderedPostSets.length * orderedPostSets.length;
@@ -357,12 +358,12 @@ function JSify(data, functionsOnly) {
       }
     }
 
-    itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.concat(orderedPostSets);
+    itemsDict.globalVariablePostSet = itemsDict.globalVariablePostSet.concat(orderedPostSets);
 
     //
 
     if (!mainPass) {
-      var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
+      var generated = itemsDict.function.concat(itemsDict.type);
       print(generated.map((item) => item.JS).join('\n'));
       return;
     }
@@ -384,11 +385,9 @@ function JSify(data, functionsOnly) {
     var legalizedI64sDefault = legalizedI64s;
     legalizedI64s = false;
 
-    var globalsData = {functionStubs: []}
-    JSify(globalsData, true);
-    globalsData = null;
+    JSify(true);
 
-    var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
+    var generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
     generated.forEach((item) => print(indentify(item.JS || '', 2)));
 
     legalizedI64s = legalizedI64sDefault;
@@ -445,7 +444,7 @@ function JSify(data, functionsOnly) {
   // Data
 
   if (mainPass) {
-    data.functionStubs.forEach(functionStubHandler);
+    functionStubs.forEach(functionStubHandler);
   }
 
   finalCombiner();

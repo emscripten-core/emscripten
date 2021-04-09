@@ -13,10 +13,6 @@ function run() {
   emscriptenMemoryProfiler.onPreloadComplete();
 #endif
 
-#if STACK_OVERFLOW_CHECK >= 2
-  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
-#endif
-
   <<< ATMAINS >>>
 
 #if PROXY_TO_PTHREAD
@@ -75,6 +71,9 @@ function initRuntime(asm) {
 #if STACK_OVERFLOW_CHECK
   _emscripten_stack_init();
   writeStackCookie();
+#if STACK_OVERFLOW_CHECK >= 2
+  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+#endif
 #endif
 
 #if '___wasm_call_ctors' in IMPLEMENTED_FUNCTIONS
@@ -122,7 +121,7 @@ function loadWasmModuleToWorkers() {
 #endif
 
 #if DECLARE_ASM_MODULE_EXPORTS
-<<< ASM_MODULE_EXPORTS_DECLARES >>>
+<<< WASM_MODULE_EXPORTS_DECLARES >>>
 #endif
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
@@ -198,7 +197,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #if !DECLARE_ASM_MODULE_EXPORTS
   exportAsmFunctions(asm);
 #else
-  <<< ASM_MODULE_EXPORTS >>>
+  <<< WASM_MODULE_EXPORTS >>>
 #endif
   wasmTable = asm['__indirect_function_table'];
 #if ASSERTIONS

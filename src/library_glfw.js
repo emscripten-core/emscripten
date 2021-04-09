@@ -840,9 +840,9 @@ var LibraryGLFW = {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
 
-      switch(mode) {
+      switch (mode) {
         case 0x00033001: { // GLFW_CURSOR
-          switch(value) {
+          switch (value) {
             case 0x00034001: { // GLFW_CURSOR_NORMAL
               win.inputModes[mode] = value;
               Module['canvas'].removeEventListener('click', GLFW.onClickRequestPointerLock, true);

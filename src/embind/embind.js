@@ -923,7 +923,7 @@ var LibraryEmbind = {
     // TODO: Remove this completely once all function invokers are being dynamically generated.
     var needsDestructorStack = false;
 
-    for(var i = 1; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here.
+    for (var i = 1; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here.
         if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) { // The type does not define a destructor function - must use dynamic stack
             needsDestructorStack = true;
             break;
@@ -983,7 +983,7 @@ var LibraryEmbind = {
 #else
     var argsList = "";
     var argsListWired = "";
-    for(var i = 0; i < argCount - 2; ++i) {
+    for (var i = 0; i < argCount - 2; ++i) {
         argsList += (i!==0?", ":"")+"arg"+i;
         argsListWired += (i!==0?", ":"")+"arg"+i+"Wired";
     }
@@ -1016,7 +1016,7 @@ var LibraryEmbind = {
         invokerFnBody += "var thisWired = classParam.toWireType("+dtorStack+", this);\n";
     }
 
-    for(var i = 0; i < argCount - 2; ++i) {
+    for (var i = 0; i < argCount - 2; ++i) {
         invokerFnBody += "var arg"+i+"Wired = argType"+i+".toWireType("+dtorStack+", arg"+i+"); // "+argTypes[i+2].name+"\n";
         args1.push("argType"+i);
         args2.push(argTypes[i+2]);
@@ -1032,7 +1032,7 @@ var LibraryEmbind = {
     if (needsDestructorStack) {
         invokerFnBody += "runDestructors(destructors);\n";
     } else {
-        for(var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
+        for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
             var paramName = (i === 1 ? "thisWired" : ("arg"+(i - 2)+"Wired"));
             if (argTypes[i].destructorFunction !== null) {
                 invokerFnBody += paramName+"_dtor("+paramName+"); // "+argTypes[i].name+"\n";

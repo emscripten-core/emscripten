@@ -4,7 +4,7 @@
 bind.h (under-construction)
 ===========================
 
-The C++ APIs in `bind.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/bind.h>`_ define
+The C++ APIs in `bind.h <https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/bind.h>`_ define
 
 Guide documentation for this API can be found in :ref:`Embind`.
 
@@ -73,7 +73,7 @@ object ownership.
 
 .. cpp:type:: allow_raw_pointers
 
-   This policy is used to whitelist raw pointers.
+   This policy is used to allow raw pointers.
 
    .. cpp:type:: Transform::type
 
