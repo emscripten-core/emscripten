@@ -52,7 +52,7 @@ var LibraryDylink = {
   $GOTHandler: {
     'get': function(obj, symName) {
       if (!GOT[symName]) {
-        GOT[symName] = new WebAssembly.Global({value: 'i32', mutable: true});
+        GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
 #if DYLINK_DEBUG
         err("new GOT entry: " + symName);
 #endif
@@ -96,7 +96,7 @@ var LibraryDylink = {
 #endif
 
       if (!GOT[symName]) {
-        GOT[symName] = new WebAssembly.Global({value: 'i32', mutable: true});
+        GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
       }
       if (replace || GOT[symName].value == 0) {
         if (typeof value === 'function') {
@@ -220,6 +220,7 @@ var LibraryDylink = {
   // Dynamic version of shared.py:make_invoke.  This is needed for invokes
   // that originate from side modules since these are not known at JS
   // generation time.
+  $createInvokeFunction__deps: ['$dynCall', 'setThrew'],
   $createInvokeFunction: function(sig) {
     return function() {
       var sp = stackSave();
@@ -503,7 +504,7 @@ var LibraryDylink = {
         // to emscripten_tls_init), but secondary threads should not call static
         // constructors in general - emscripten_tls_init is the exception.
         if (ENVIRONMENT_IS_PTHREAD) {
-          init = moduleExports['emscripten_tls_init'];
+          var init = moduleExports['emscripten_tls_init'];
           assert(init);
 #if DYLINK_DEBUG
           out("adding to tlsInitFunctions: " + init);

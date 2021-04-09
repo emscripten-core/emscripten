@@ -74,6 +74,9 @@ var WasiLibrary = {
     return 0;
   },
 
+  // In normal (non-standalone) mode arguments are passed direclty
+  // to main, and the `mainArgs` global does not exist.
+#if STANDALONE_WASM
   args_sizes_get__sig: 'iii',
   args_sizes_get: function(pargc, pargv_buf_size) {
 #if MAIN_READS_PARAMS
@@ -105,6 +108,7 @@ var WasiLibrary = {
 #endif
     return 0;
   },
+#endif
 
   $checkWasiClock: function(clock_id) {
     return clock_id == {{{ cDefine('__WASI_CLOCKID_REALTIME') }}} ||

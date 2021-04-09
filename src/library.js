@@ -3671,7 +3671,7 @@ LibraryManager.library = {
   // These get set in emscripten.py during add_standard_wasm_imports, but are
   // included here so they don't show up as undefined symbols at js compile
   // time.
-  __stack_pointer: "new WebAssembly.Global({value: 'i32', mutable: true}, {{{ STACK_BASE }}})",
+  __stack_pointer: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, {{{ STACK_BASE }}})",
   // tell the memory segments where to place themselves
   __memory_base: '{{{ GLOBAL_BASE }}}',
   // the wasm backend reserves slot 0 for the NULL function pointer

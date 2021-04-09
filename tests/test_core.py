@@ -6,6 +6,7 @@
 import glob
 import hashlib
 import json
+import logging
 import os
 import random
 import re
@@ -29,6 +30,8 @@ from runner import NON_ZERO, WEBIDL_BINDER
 import clang_native
 
 # decorators for limiting which modes a test can run in
+
+logger = logging.getLogger("test_core")
 
 
 def wasm_simd(f):
@@ -263,9 +266,11 @@ class TestCoreBase(RunnerCore):
 
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
-    if '-g' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args):
-      self.emcc_args += ['--closure=1']
-      return True
+    if '--closure=1' not in self.emcc_args:
+      if '-g' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args):
+        self.emcc_args += ['--closure=1']
+        logger.debug('using closure compiler..')
+        return True
     return False
 
   def assertStartswith(self, output, prefix):
@@ -3579,6 +3584,7 @@ ok
 
   def dylink_testf(self, main, side, expected=None, force_c=False, main_emcc_args=[],
                    need_reverse=True, auto_load=True, main_module=1, **kwargs):
+    self.maybe_closure()
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.emcc_args.copy()
     if not expected:
@@ -3786,9 +3792,9 @@ ok
       #include "header.h"
       int main(int argc, char **argv) {
         charfunc f1 = emscripten_run_script;
-        f1("out('one')");
+        f1("console.log('one')");
         charfunc f2 = get();
-        f2("out('two')");
+        f2("console.log('two')");
         return 0;
       }
       ''',
