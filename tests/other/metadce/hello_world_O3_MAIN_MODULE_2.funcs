@@ -10,5 +10,3 @@ $legalstub$dynCall_jiji
 $main
 $sbrk
 $stackAlloc
-$stackRestore
-$stackSave

@@ -3,5 +3,3 @@ dynCall_jiji
 main
 malloc
 stackAlloc
-stackRestore
-stackSave

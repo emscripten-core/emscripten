@@ -37,9 +37,11 @@ var LibraryDylink = {
       sym = Module[asmjsMangle(symName)];
     }
 
+#if !DISABLE_EXCEPTION_CATCHING
     if (!sym && symName.indexOf('invoke_') == 0) {
       sym = createInvokeFunction(symName.split('_')[1]);
     }
+#endif
 
     return sym;
   },
@@ -217,9 +219,11 @@ var LibraryDylink = {
     loadedLibNames: {},
   },
 
+#if !DISABLE_EXCEPTION_CATCHING
   // Dynamic version of shared.py:make_invoke.  This is needed for invokes
   // that originate from side modules since these are not known at JS
   // generation time.
+  $createInvokeFunction__deps: ['$dynCall', '_setThrew'],
   $createInvokeFunction: function(sig) {
     return function() {
       var sp = stackSave();
@@ -232,6 +236,7 @@ var LibraryDylink = {
       }
     }
   },
+#endif
 
   // We support some amount of allocation during startup in the case of
   // dynamic linking, which needs to allocate memory for dynamic libraries that
@@ -363,7 +368,18 @@ var LibraryDylink = {
 
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
-  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler', '$getDylinkMetadata'],
+  $loadWebAssemblyModule__deps: [
+    '$loadDynamicLibrary',
+    '$getMemory',
+    '$relocateExports',
+    '$resolveGlobalSymbol',
+    '$GOTHandler',
+    '$getDylinkMetadata',
+#if !DISABLE_EXCEPTION_CATCHING
+    '$createInvokeFunction',
+#endif
+  ],
+
   $loadWebAssemblyModule: function(binary, flags) {
     var metadata = getDylinkMetadata(binary);
 #if ASSERTIONS
