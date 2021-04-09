@@ -1810,12 +1810,18 @@ def phase_linker_setup(options, state, newargs, settings_map):
     ]
 
   if settings.FILESYSTEM and not settings.BOOTSTRAPPING_STRUCT_INFO:
-    # to flush streams on FS exit, we need to be able to call fflush
-    # we only include it if the runtime is exitable, or when ASSERTIONS
-    # (ASSERTIONS will check that streams do not need to be flushed,
-    # helping people see when they should have enabled EXIT_RUNTIME)
-    if settings.EXIT_RUNTIME or settings.ASSERTIONS:
-      settings.EXPORTED_FUNCTIONS += ['_fflush']
+      # To flush streams on FS exit, we need to be able to call __stdio_exit,
+      # this is a streamlined fflush variant that avoids performing any unnecessary
+      # operations and which never unlocks the files or open file list, so we can
+      # be sure no other threads write new data to a stream's buffer after it's
+      # already flushed. This function is only included if the runtime is exitable.
+      if settings.EXIT_RUNTIME:
+        settings.EXPORTED_FUNCTIONS += ['___stdio_exit']
+      # Include the fflush function when ASSERTIONS is enabled.
+      # (ASSERTIONS will check that streams do not need to be flushed,
+      # helping people see when they should have enabled EXIT_RUNTIME)
+      if settings.ASSERTIONS:
+        settings.EXPORTED_FUNCTIONS += ['_fflush']
 
   if settings.SUPPORT_ERRNO and not settings.BOOTSTRAPPING_STRUCT_INFO:
     # so setErrNo JS library function can report errno back to C

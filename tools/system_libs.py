@@ -142,8 +142,8 @@ def get_wasm_libc_rt_files():
   # move all this stuff back into libc once we it LTO compatible.
   iprintf_files = files_in_path(
     path_components=['system', 'lib', 'libc', 'musl', 'src', 'stdio'],
-    filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
-               'printf.c', 'puts.c', '__lockfile.c'])
+    filenames=['__stdio_close.c', '__stdio_exit.c', '__towrite.c', '__overflow.c',
+               'fwrite.c', 'fputs.c', 'printf.c', 'puts.c', '__lockfile.c'])
   iprintf_files += files_in_path(
     path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
     filenames=['strlen.c'])
