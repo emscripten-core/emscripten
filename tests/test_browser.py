@@ -4305,6 +4305,24 @@ window.close = function() {
                          '-DEXPLICIT_SWAP=1',
                          '-DWEBGL_CONTEXT_VERSION=2'])
 
+  @requires_graphics_hardware
+  def test_webgl_sample_query(self):
+    cmd = ['-s', 'MAX_WEBGL_VERSION=2', '-lGL']
+    self.btest('webgl_sample_query.cpp', expected='0', args=cmd)
+
+  @requires_graphics_hardware
+  def test_webgl_timer_query(self):
+    for args in [
+        # EXT query entrypoints on WebGL 1.0
+        ['-s', 'MAX_WEBGL_VERSION'],
+        # builtin query entrypoints on WebGL 2.0
+        ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2'],
+        # EXT query entrypoints on a WebGL 1.0 context while built for WebGL 2.0
+        ['-s', 'MAX_WEBGL_VERSION=2'],
+      ]:
+      cmd = args + ['-lGL']
+      self.btest('webgl_timer_query.cpp', expected='0', args=cmd)
+
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware
   def test_webgl_offscreen_framebuffer(self):
