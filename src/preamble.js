@@ -345,9 +345,15 @@ assert(INITIAL_MEMORY == {{{INITIAL_MEMORY}}}, 'Detected runtime INITIAL_MEMORY 
 #endif // ASSERTIONS
 #endif // IMPORTED_MEMORY
 
-#include "runtime_init_table.js"
 #include "runtime_stack_check.js"
 #include "runtime_assertions.js"
+
+// Will be grown to correct side during createWasm.
+#if RELOCATABLE
+var wasmTable = new WebAssembly.Table({'initial': 0, 'element': 'anyfunc'});;
+#else
+var wasmTable;
+#endif
 
 var __ATPRERUN__  = []; // functions called before the runtime is initialized
 var __ATINIT__    = []; // functions called during startup
@@ -842,13 +848,12 @@ var splitModuleProxyHandler = {
 #endif
 
 #if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
-function instantiateSync(file, info) {
+function instantiateSync(file, info, receiveModule) {
   var instance;
-  var module;
-  var binary;
   try {
-    binary = getBinary(file);
+    var binary = getBinary(file);
 #if NODE_CODE_CACHING
+    var module;
     if (ENVIRONMENT_IS_NODE) {
       var v8 = require('v8');
       // Include the V8 version in the cache name, so that we don't try to
@@ -881,8 +886,11 @@ function instantiateSync(file, info) {
       nodeFS.writeFileSync(cachedCodeFile, v8.serialize(module));
     }
 #else // NODE_CODE_CACHING
-    module = new WebAssembly.Module(binary);
+    var module = new WebAssembly.Module(binary);
 #endif // NODE_CODE_CACHING
+    if (receiveModule) {
+      receiveModule(module)
+    }
     instance = new WebAssembly.Instance(module, info);
 #if USE_OFFSET_CONVERTER
     wasmOffsetConverter = new WasmOffsetConverter(binary, module);
@@ -900,7 +908,7 @@ function instantiateSync(file, info) {
 #if LOAD_SOURCE_MAP
   receiveSourceMapJSON(getSourceMap());
 #endif
-  return [instance, module];
+  return instance;
 }
 #endif
 
@@ -923,11 +931,29 @@ function createWasm() {
     'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
 #endif
   };
+
+  function receiveModule(module) {
+#if USE_PTHREADS
+    // We now have the Wasm module loaded up, keep a reference to the compiled
+    // module so we can post it to the workers.
+    wasmModule = module;
+#endif
+#if RELOCATABLE
+    var metadata = getDylinkMetadata(module);
+    // In RELOCATABLE mode we create the table in JS.
+    // __table_base of the main module is fixed at 1
+    var minTableSize = metadata.tableSize + 1;
+    wasmTable.grow(minTableSize);
+    if (metadata.neededDynlibs) {
+      dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
+    }
+#endif
+  }
+
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
-  /** @param {WebAssembly.Module=} module*/
-  function receiveInstance(instance, module) {
+  function receiveInstance(instance) {
     var exports = instance.exports;
 
 #if RELOCATABLE
@@ -943,13 +969,6 @@ function createWasm() {
 #endif
 
     Module['asm'] = exports;
-
-#if MAIN_MODULE
-    var metadata = getDylinkMetadata(module);
-    if (metadata.neededDynlibs) {
-      dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
-    }
-#endif
 
 #if !IMPORTED_MEMORY
     wasmMemory = Module['asm']['memory'];
@@ -991,8 +1010,6 @@ function createWasm() {
     exportAsmFunctions(exports);
 #endif
 #if USE_PTHREADS
-    // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
-    wasmModule = module;
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
     if (!ENVIRONMENT_IS_PTHREAD) {
 #if PTHREAD_POOL_SIZE
@@ -1046,25 +1063,21 @@ function createWasm() {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if USE_PTHREADS || RELOCATABLE
-    receiveInstance(result['instance'], result['module']);
-#else
-    // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
-    // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
     receiveInstance(result['instance']);
-#endif
   }
 
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
-      var result = WebAssembly.instantiate(binary, info);
+      // Now we have the binary
+      return WebAssembly.compile(binary).then(function (module) {
+        // Now we have the module
 #if USE_OFFSET_CONVERTER
-      result.then(function (instance) {
-        wasmOffsetConverter = new WasmOffsetConverter(binary, instance.module);
+        wasmOffsetConverter = new WasmOffsetConverter(binary, module);
         {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
-      });
 #endif // USE_OFFSET_CONVERTER
-      return result;
+        receiveModule(module);
+        return WebAssembly.instantiate(module, info);
+      });
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
 
@@ -1106,27 +1119,29 @@ function createWasm() {
 #endif
         typeof fetch === 'function') {
       return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
-        var result = WebAssembly.instantiateStreaming(response, info);
+        return WebAssembly.compileStreaming(response, info).then(function(module) {
 #if USE_OFFSET_CONVERTER
-        // This doesn't actually do another request, it only copies the Response object.
-        // Copying lets us consume it independently of WebAssembly.instantiateStreaming.
-        Promise.all([response.clone().arrayBuffer(), result]).then(function (results) {
-          wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(results[0]), results[1].module);
-          {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
-        }, function(reason) {
-          err('failed to initialize offset-converter: ' + reason);
-        });
-#endif
-        return result.then(receiveInstantiationResult, function(reason) {
-            // We expect the most common failure cause to be a bad MIME type for the binary,
-            // in which case falling back to ArrayBuffer instantiation should work.
-            err('wasm streaming compile failed: ' + reason);
-            err('falling back to ArrayBuffer instantiation');
-            return instantiateArrayBuffer(receiveInstantiationResult);
+          // This doesn't actually do another request, it only copies the Response object.
+          // Copying lets us consume it independently of WebAssembly.instantiateStreaming.
+          response.clone().arrayBuffer().then(function (buf) {
+            wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(buf), module);
+            {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
+          }, function(reason) {
+            err('failed to initialize offset-converter: ' + reason);
           });
+#endif
+          receiveModule(module);
+          return WebAssembly.instantiate(module);
+        }).then(receiveInstantiationResult, function(reason) {
+          // We expect the most common failure cause to be a bad MIME type for the binary,
+          // in which case falling back to ArrayBuffer instantiation should work.
+          err('wasm streaming compile failed: ' + reason);
+          err('falling back to ArrayBuffer instantiation');
+          return instantiateArrayBuffer(receiveInstance);
+        });
       });
     } else {
-      return instantiateArrayBuffer(receiveInstantiationResult);
+      return instantiateArrayBuffer(receiveInstance);
     }
   }
 #endif
@@ -1136,7 +1151,7 @@ function createWasm() {
   // to any other async startup actions they are performing.
   if (Module['instantiateWasm']) {
     try {
-      var exports = Module['instantiateWasm'](info, receiveInstance);
+      var exports = Module['instantiateWasm'](info, receiveInstance, receiveModule);
 #if ASYNCIFY
       exports = Asyncify.instrumentWasmExports(exports);
 #endif
@@ -1180,15 +1195,8 @@ function createWasm() {
 #endif
   return {}; // no exports yet; we'll fill them in later
 #else
-  var result = instantiateSync(wasmBinaryFile, info);
-#if USE_PTHREADS || MAIN_MODULE
-  receiveInstance(result[0], result[1]);
-#else
-  // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
-  // the above line no longer optimizes out down to the following line.
-  // When the regression is fixed, we can remove this if/else.
-  receiveInstance(result[0]);
-#endif
+  var instance = instantiateSync(wasmBinaryFile, info, receiveModule);
+  receiveInstance(instance);
   return Module['asm']; // exports were assigned here
 #endif
 }

@@ -118,12 +118,6 @@ def update_settings_glue(metadata, DEBUG):
   shared.Settings.IMPLEMENTED_FUNCTIONS = [asmjs_mangle(x) for x in metadata['exports']]
 
   shared.Settings.BINARYEN_FEATURES = metadata['features']
-  if shared.Settings.RELOCATABLE:
-    # When building relocatable output (e.g. MAIN_MODULE) the reported table
-    # size does not include the reserved slot at zero for the null pointer.
-    # Instead we use __table_base to offset the elements by 1.
-    if shared.Settings.INITIAL_TABLE == -1:
-      shared.Settings.INITIAL_TABLE = metadata['tableSize'] + 1
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.

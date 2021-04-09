@@ -67,10 +67,12 @@ WebAssembly = {
     this.exports = Module['__wasm2jsInstantiate__'](asmLibraryArg);
   },
 
-  instantiate: /** @suppress{checkTypes} */ function(binary, info) {
+  instantiate: /** @suppress{checkTypes} */ function(binary_or_module, info) {
     return {
       then: function(ok) {
-        var module = new WebAssembly.Module(binary);
+        // MINIMAL_RUNTIME passes the binary to instantiate
+#if MINIMAL_RUNTIME
+        var module = new WebAssembly.Module(binary_or_module);
         ok({
 #if USE_PTHREADS
           'module': module,
@@ -78,9 +80,21 @@ WebAssembly = {
           'instance': new WebAssembly.Instance(module)
         });
 #if ASSERTIONS || WASM == 2 // see postamble_minimal.js which uses .catch
-        // Emulate a simple WebAssembly.instantiate(..).then(()=>{}).catch(()=>{}) syntax.
+        // Emulate a simple WebAssembly.compile(..).then(()=>{}).catch(()=>{}) syntax.
         return { catch: function() {} };
 #endif
+#else
+        // normal runtime passes a compiled module
+        return ok(new WebAssembly.Instance(binary_or_module));
+#endif
+      }
+    };
+  },
+
+  compile: /** @suppress{checkTypes} */ function(binary) {
+    return {
+      then: function(ok) {
+        return ok(new WebAssembly.Module(binary));
       }
     };
   },

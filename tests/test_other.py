@@ -10063,8 +10063,6 @@ exec "$@"
     self.assertIn('Hello! answer: 42', result)
 
   def test_split_main_module(self):
-    initialTableSize = 16
-
     side_src = test_file('other', 'lib_hello.c')
     post_js = test_file('other', 'test_split_module.post.js')
 
@@ -10076,7 +10074,6 @@ exec "$@"
     self.emcc_args += ['-sSPLIT_MODULE=1', '-Wno-experimental']
     self.emcc_args += ['--embed-file', 'libhello.wasm']
     self.emcc_args += ['--post-js', post_js]
-    self.emcc_args += [f'-sINITIAL_TABLE={initialTableSize}']
 
     self.do_other_test('test_split_main_module.c')
 
@@ -10088,7 +10085,6 @@ exec "$@"
     self.run_process([wasm_split, '-g',
                       'test_split_main_module.wasm.orig',
                       '--export-prefix=%',
-                      f'--initial-table={initialTableSize}',
                       '--profile=profile.data',
                       '-o1', 'primary.wasm',
                       '-o2', 'secondary.wasm',

@@ -41,18 +41,14 @@ var err = threadPrintErr;
 this.alert = threadAlert;
 
 #if !MINIMAL_RUNTIME
-Module['instantiateWasm'] = function(info, receiveInstance) {
+Module['instantiateWasm'] = function(info, receiveInstance, receiveModule) {
+#if RELOCATABLE
+  receiveModule(Module['wasmModule']);
+#endif
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
   var instance = new WebAssembly.Instance(Module['wasmModule'], info);
-#if RELOCATABLE || MAIN_MODULE
-  receiveInstance(instance, Module['wasmModule']);
-#else
-  // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
-  // the above line no longer optimizes out down to the following line.
-  // When the regression is fixed, we can remove this if/else.
   receiveInstance(instance);
-#endif
   // We don't need the module anymore; new threads will be spawned from the main thread.
   Module['wasmModule'] = null;
   return instance.exports;
