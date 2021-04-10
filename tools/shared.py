@@ -326,10 +326,7 @@ def set_version_globals():
 
 def generate_sanity():
   sanity_file_content = EMSCRIPTEN_VERSION + '|' + config.LLVM_ROOT + '|' + get_clang_version()
-  if config.config_file:
-    config_data = open(config.config_file).read()
-  else:
-    config_data = config.EM_CONFIG
+  config_data = open(config.EM_CONFIG).read()
   checksum = binascii.crc32(config_data.encode())
   sanity_file_content += '|%#x\n' % checksum
   return sanity_file_content
@@ -355,7 +352,7 @@ def perform_sanity_checks():
     try:
       run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
     except Exception as e:
-      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.config_file_location(), str(e))
+      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG_CC, LLVM_AR, LLVM_NM]:
@@ -392,8 +389,6 @@ def check_sanity(force=False):
     return
 
   with ToolchainProfiler.profile_block('sanity'):
-    if not config.config_file:
-      return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
 
     sanity_file = Cache.get_path('sanity.txt')
@@ -502,7 +497,7 @@ class Configuration:
       try:
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
-        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.config_file_location())
+        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.EM_CONFIG)
 
       # Since the canonical temp directory is, by definition, the same
       # between all processes that run in DEBUG mode we need to use a multi
