@@ -3575,9 +3575,9 @@ ok
     if header:
       create_file('header.h', header)
 
-    return self.dylink_testf(main, side, expected, force_c, **kwargs)
+    return self.dylink_testf(main, side, expected, **kwargs)
 
-  def dylink_testf(self, main, side, expected=None, force_c=False, main_emcc_args=[],
+  def dylink_testf(self, main, side, expected=None, main_emcc_args=[],
                    need_reverse=True, auto_load=True, main_module=1, **kwargs):
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.emcc_args.copy()
@@ -3585,6 +3585,8 @@ ok
       outfile = shared.unsuffixed(main) + '.out'
       if os.path.exists(outfile):
         expected = open(outfile).read()
+
+    force_c = os.path.splitext(main)[1] == '.c'
 
     # side settings
     self.clear_setting('MAIN_MODULE')
@@ -3622,7 +3624,7 @@ ok
       # Test the reverse as well.  There we flip the role of the side module and main module.
       # - We add --no-entry since the side module doesn't have a `main`
       # - We set main_module to 1 since in most cases MAIN_MODULE=2 doesn't work when flipped.
-      self.dylink_testf(side, main, expected, force_c, main_emcc_args + ['--no-entry'],
+      self.dylink_testf(side, main, expected, main_emcc_args + ['--no-entry'],
                         need_reverse=False, main_module=1,  **kwargs)
 
   def do_basic_dylink_test(self, **kwargs):
@@ -4611,7 +4613,16 @@ res64 - external 64\n''', header='''
     # module
     main = test_file('core', 'test_dylink_weak_main.c')
     side = test_file('core', 'test_dylink_weak_side.c')
-    self.dylink_testf(main, side, force_c=True, need_reverse=False)
+    self.dylink_testf(main, side, need_reverse=False)
+
+  def test_dylink_setjmp(self):
+    # Verify that weakly symbols can be defined in both side module and main
+    # module
+    main = test_file('core', 'test_dylink_setjmp.c')
+    side = test_file('core', 'test_dylink_setjmp_side.c')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['abort'])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_abort', '_main', '_printf'])
+    self.dylink_testf(main, side, main_module=2, need_reverse=False)
 
   def test_random(self):
     src = r'''#include <stdlib.h>

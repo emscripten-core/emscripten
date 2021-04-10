@@ -1411,11 +1411,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.RELOCATABLE = 1
 
     if shared.Settings.RELOCATABLE:
+      if shared.Settings.SUPPORT_LONGJMP:
+        shared.Settings.EXPORTED_FUNCTIONS += ['_setThrew', '_saveSetjmp', '_emscripten_longjmp', '_testSetjmp']
+        shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_longjmp']
+        shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS += ['getTempRet0', 'setTempRet0']
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
           '$reportUndefinedSymbols',
           '$relocateExports',
           '$GOTHandler',
           '$getDylinkMetadata',
+          '$dynCall',
       ]
       if options.use_closure_compiler:
         exit_with_error('cannot use closure compiler on shared modules')
