@@ -83,11 +83,6 @@ def run_build_commands(commands):
   # headers are installed.  This prevents each sub-process from attempting
   # to setup the sysroot itself.
   ensure_sysroot()
-
-  for i in range(len(commands)):
-    # TODO(sbc): Remove this one we remove the test_em_config_env_var test
-    commands[i].append('-Wno-deprecated')
-
   shared.run_multiple_processes(commands, env=clean_env())
 
 
