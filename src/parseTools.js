@@ -57,13 +57,17 @@ function preprocess(text, filenameHint) {
           const trimmed = line.trim();
           if (trimmed[0] === '#') {
             const first = trimmed.split(' ', 1)[0];
-            if (first == '#if' || first == '#ifdef') {
+            if (first == '#if' || first == '#ifdef' || first == '#elif') {
               if (first == '#ifdef') {
                 warn('warning: use of #ifdef in js library.  Use #if instead.');
               }
-              const after = trimmed.substring(trimmed.indexOf(' '));
-              const truthy = !!eval(after);
-              showStack.push(truthy);
+              if (first == '#elif' && showStack.pop()) {
+                showStack.push(false);
+              } else {
+                const after = trimmed.substring(trimmed.indexOf(' '));
+                const truthy = !!eval(after);
+                showStack.push(truthy);
+              }
             } else if (first === '#include') {
               if (showStack.indexOf(false) === -1) {
                 let filename = line.substr(line.indexOf(' ') + 1);
