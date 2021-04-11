@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.17: 04/10/2021
+------------------
 - Specifying `EM_CONFIG` inline (python code in the environment variable itself)
   is no longer supported (#13855).  This has been long deprecated but finally
   completely removed.
