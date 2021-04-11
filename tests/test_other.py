@@ -7515,6 +7515,15 @@ end
     proc = test(check=True, extra=['-s', 'IGNORE_CLOSURE_COMPILER_ERRORS'])
     self.assertNotContained(WARNING, proc.stderr)
 
+  def test_full_js_library(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'INCLUDE_FULL_LIBRARY'])
+
+  def test_full_js_library_gl_emu(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'INCLUDE_FULL_LIBRARY', '-s', 'LEGACY_GL_EMULATION'])
+
+  def test_full_js_library_no_exception_throwing(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'INCLUDE_FULL_LIBRARY', '-s', 'DISABLE_EXCEPTION_THROWING'])
+
   def test_closure_full_js_library(self):
     # test for closure errors in the entire JS library
     # We must ignore various types of errors that are expected in this situation, as we

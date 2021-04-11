@@ -1401,6 +1401,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
       options.memory_init_file = False
 
+    # If we are including the entire JS library then we know for sure we will, by definition,
+    # require all the reverse dependencies.
+    if shared.Settings.INCLUDE_FULL_LIBRARY:
+      default_setting('REVERSE_DEPS', 'all')
+
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
       if shared.Settings.MAIN_MODULE == 1 or shared.Settings.SIDE_MODULE == 1:
         shared.Settings.LINKABLE = 1
