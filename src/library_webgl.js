@@ -3536,8 +3536,10 @@ var LibraryGL = {
   glBindVertexArrayOES: 'glBindVertexArray',
   glIsVertexArrayOES: 'glIsVertexArray',
 
+#if LEGACY_GL_EMULATION
   // GLU
 
+  gluPerspective__deps: ['$GLImmediate'],
   gluPerspective: function(fov, aspect, near, far) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
@@ -3546,6 +3548,7 @@ var LibraryGL = {
                                                GLImmediate.matrix[GLImmediate.currentMatrix]);
   },
 
+  gluLookAt__deps: ['$GLImmediate'],
   gluLookAt: function(ex, ey, ez, cx, cy, cz, ux, uy, uz) {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
@@ -3553,6 +3556,7 @@ var LibraryGL = {
         [cx, cy, cz], [ux, uy, uz]);
   },
 
+  gluProject__deps: ['$GLImmediate'],
   gluProject: function(objX, objY, objZ, model, proj, view, winX, winY, winZ) {
     // The algorithm for this functions comes from Mesa
 
@@ -3583,6 +3587,7 @@ var LibraryGL = {
     return 1 /* GL_TRUE */;
   },
 
+  gluUnProject__deps: ['$GLImmediate'],
   gluUnProject: function(winX, winY, winZ, model, proj, view, objX, objY, objZ) {
     var result = GLImmediate.matrixLib.mat4.unproject([winX, winY, winZ],
         {{{ makeHEAPView('F64', 'model', 'model+' + (16*8)) }}},
@@ -3604,6 +3609,7 @@ var LibraryGL = {
   gluOrtho2D: function(left, right, bottom, top) {
     _glOrtho(left, right, bottom, top, -1, 1);
   },
+#endif // LEGACY_GL_EMULATION
 
   // GLES2 emulation
 
