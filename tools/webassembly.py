@@ -6,7 +6,10 @@
 """Utilties for manipulating WebAssembly binaries from python.
 """
 
+from collections import namedtuple
+from enum import IntEnum
 import logging
+import os
 import sys
 
 from . import shared
@@ -36,13 +39,19 @@ EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 29)
 
 WASM_PAGE_SIZE = 65536
 
+HEADER_SIZE = 8
+
 
 def toLEB(num):
   return leb128.u.encode(num)
 
 
-def readLEB(iobuf):
+def readULEB(iobuf):
   return leb128.u.decode_reader(iobuf)[0]
+
+
+def readSLEB(iobuf):
+  return leb128.i.decode_reader(iobuf)[0]
 
 
 def add_emscripten_metadata(wasm_file):
@@ -94,10 +103,41 @@ def add_emscripten_metadata(wasm_file):
     f.write(orig[8:])
 
 
+class SecType(IntEnum):
+  CUSTOM = 0
+  TYPE = 1
+  IMPORT = 2
+  FUNCTION = 3
+  TABLE = 4
+  MEMORY = 5
+  EVENT = 13
+  GLOBAL = 6
+  EXPORT = 7
+  START = 8
+  ELEM = 9
+  DATACOUNT = 12
+  CODE = 10
+  DATA = 11
+
+
+class ExternType(IntEnum):
+  FUNC = 0
+  TABLE = 1
+  MEMORY = 2
+  GLOBAL = 3
+  EVENT = 4
+
+
+Section = namedtuple('Section', ['type', 'size', 'offset'])
+Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
+Import = namedtuple('Import', ['type', 'mod', 'field'])
+
+
 class Module:
   """Extremely minimal wasm module reader.  Currently only used
   for parsing the dylink section."""
   def __init__(self, filename):
+    self.size = os.path.getsize(filename)
     self.buf = open(filename, 'rb')
     magic = self.buf.read(4)
     version = self.buf.read(4)
@@ -110,38 +150,94 @@ class Module:
   def readByte(self):
     return self.buf.read(1)[0]
 
-  def readLEB(self):
-    return readLEB(self.buf)
+  def readULEB(self):
+    return readULEB(self.buf)
+
+  def readSLEB(self):
+    return readSLEB(self.buf)
 
   def readString(self):
-    size = self.readLEB()
+    size = self.readULEB()
     return self.buf.read(size).decode('utf-8')
+
+  def readLimits(self):
+    flags = self.readByte()
+    initial = self.readULEB()
+    maximum = 0
+    if flags & 0x1:
+      maximum = self.readULEB()
+    return Limits(flags, initial, maximum)
+
+  def seek(self, offset):
+    self.buf.seek(offset)
+
+  def sections(self):
+    """Generator that lazily returns sections from the wasm file."""
+    offset = HEADER_SIZE
+    while offset < self.size:
+      self.seek(offset)
+      section_type = SecType(self.readByte())
+      section_size = self.readULEB()
+      section_offset = self.buf.tell()
+      yield Section(section_type, section_size, section_offset)
+      offset = section_offset + section_size
 
 
 def parse_dylink_section(wasm_file):
   module = Module(wasm_file)
 
-  # Read the existing section data
-  section_type = module.readByte()
-  section_size = module.readLEB()
-  assert section_type == 0
-  section_end = module.buf.tell() + section_size
+  dylink_section = next(module.sections())
+  assert dylink_section.type == SecType.CUSTOM
+  section_size = dylink_section.size
+  section_offset = dylink_section.offset
+  section_end = section_offset + section_size
+  module.seek(section_offset)
   # section name
   section_name = module.readString()
   assert section_name == 'dylink'
-  mem_size = module.readLEB()
-  mem_align = module.readLEB()
-  table_size = module.readLEB()
-  table_align = module.readLEB()
+  mem_size = module.readULEB()
+  mem_align = module.readULEB()
+  table_size = module.readULEB()
+  table_align = module.readULEB()
 
   needed = []
-  needed_count = module.readLEB()
+  needed_count = module.readULEB()
   while needed_count:
     libname = module.readString()
     needed.append(libname)
     needed_count -= 1
 
   return (mem_size, mem_align, table_size, table_align, section_end, needed)
+
+
+def get_imports(wasm_file):
+  module = Module(wasm_file)
+  import_section = next((s for s in module.sections() if s.type == SecType.IMPORT), None)
+  if not import_section:
+    return []
+
+  module.seek(import_section.offset)
+  num_imports = module.readULEB()
+  imports = []
+  for i in range(num_imports):
+    mod = module.readString()
+    field = module.readString()
+    kind = ExternType(module.readByte())
+    imports.append(Import(kind, mod, field))
+    if kind == ExternType.FUNC:
+      module.readULEB()  # sig
+    elif kind == ExternType.GLOBAL:
+      module.readSLEB()  # global type
+      module.readByte()  # mutable
+    elif kind == ExternType.MEMORY:
+      module.readLimits()  # limits
+    elif kind == ExternType.TABLE:
+      module.readSLEB()  # table type
+      module.readLimits()  # limits
+    else:
+      assert False
+
+  return imports
 
 
 def update_dylink_section(wasm_file, extra_dynlibs):

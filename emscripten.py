@@ -114,8 +114,9 @@ def update_settings_glue(metadata, DEBUG):
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(metadata['exports']))
 
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += metadata['globalImports']
-  # With the wasm backend the set of implemented functions is identical to the set of exports
-  shared.Settings.IMPLEMENTED_FUNCTIONS = [asmjs_mangle(x) for x in metadata['exports']]
+
+  all_exports = metadata['exports'] + list(metadata['namedGlobals'].keys())
+  shared.Settings.IMPLEMENTED_FUNCTIONS = [asmjs_mangle(x) for x in all_exports]
 
   shared.Settings.BINARYEN_FEATURES = metadata['features']
   if shared.Settings.RELOCATABLE:
@@ -182,10 +183,10 @@ def set_memory(static_bump):
   shared.Settings.HEAP_BASE = align_memory(stack_high)
 
 
-def report_missing_symbols(all_implemented, pre):
+def report_missing_symbols(pre):
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
-  missing = set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented
+  missing = set(shared.Settings.USER_EXPORTED_FUNCTIONS) - set(shared.Settings.IMPLEMENTED_FUNCTIONS)
 
   for requested in sorted(missing):
     if (f'function {requested}(') not in pre:
@@ -203,7 +204,7 @@ def report_missing_symbols(all_implemented, pre):
     # maximum compatibility.
     return
 
-  if shared.Settings.EXPECT_MAIN and '_main' not in all_implemented:
+  if shared.Settings.EXPECT_MAIN and '_main' not in shared.Settings.IMPLEMENTED_FUNCTIONS:
     # For compatibility with the output of wasm-ld we use the same wording here in our
     # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
     exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
@@ -317,9 +318,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   if shared.Settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
-  all_exports = exports + list(metadata['namedGlobals'].keys())
-  all_exports = set([asmjs_mangle(e) for e in all_exports])
-  report_missing_symbols(all_exports, pre)
+  report_missing_symbols(pre)
 
   if not outfile_js:
     logger.debug('emscript: skipping remaining js glue generation')
