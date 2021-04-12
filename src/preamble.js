@@ -288,6 +288,8 @@ function updateGlobalBufferAndViews(buf) {
 }
 
 #if RELOCATABLE
+var symTab = {};
+
 var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, {{{ STACK_BASE }}});
 
 // To support such allocations during startup, track them on __heap_base and
@@ -295,7 +297,7 @@ var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, {{{ 
 // initialize sbrk (the main module is relocatable itself, and so it does not
 // have __heap_base hardcoded into it - it receives it from JS as an extern
 // global, basically).
-Module['___heap_base'] = {{{ HEAP_BASE }}};
+symTab['__heap_base'] = {{{ HEAP_BASE }}};
 #endif // RELOCATABLE
 
 var TOTAL_STACK = {{{ TOTAL_STACK }}};
@@ -949,6 +951,8 @@ function createWasm() {
     if (metadata.neededDynlibs) {
       dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
     }
+    mergeLibSymbols(asmLibraryArg, 'jslib');
+    mergeLibSymbols(exports, 'main');
 #endif
 
 #if !IMPORTED_MEMORY

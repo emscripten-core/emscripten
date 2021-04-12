@@ -10,7 +10,6 @@ var LibraryDylink = {
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
   },
 
-  $resolveGlobalSymbol__deps: ['$asmjsMangle'],
   $resolveGlobalSymbol: function(symName, direct) {
     var sym;
 #if !WASM_BIGINT
@@ -18,24 +17,20 @@ var LibraryDylink = {
       // First look for the orig$ symbol which is the symbols without
       // any legalization performed.   Here we look on the 'asm' object
       // to avoid any JS wrapping of the symbol.
-      sym = Module['asm']['orig$' + symName];
+      sym = symTab['orig$' + symName];
     }
 #endif
     // Then look for the unmangled name itself.
     if (!sym) {
-      sym = Module['asm'][symName];
+      sym = symTab[symName];
     }
     // fall back to the mangled name on the module object which could include
     // JavaScript functions and wrapped native functions.
 #if !WASM_BIGINT
     if (!sym && direct) {
-      sym = Module['_orig$' + symName];
+      sym = symTab['_orig$' + symName];
     }
 #endif
-
-    if (!sym) {
-      sym = Module[asmjsMangle(symName)];
-    }
 
     if (!sym && symName.indexOf('invoke_') == 0) {
       sym = createInvokeFunction(symName.split('_')[1]);
@@ -248,12 +243,12 @@ var LibraryDylink = {
 #endif
     if (runtimeInitialized)
       return _malloc(size);
-    var ret = Module['___heap_base'];
+    var ret = symTab['__heap_base'];
     var end = (ret + size + 15) & -16;
 #if ASSERTIONS
     assert(end <= HEAP8.length, 'failure to getMemory - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
 #endif
-    Module['___heap_base'] = end;
+    symTab['__heap_base'] = end;
     GOT['__heap_base'].value = end;
     return ret;
   },
@@ -330,28 +325,35 @@ var LibraryDylink = {
     return customSection;
   },
 
-  // Module.symbols <- libModule.symbols (flags.global handler)
+  // Merge symbols from a given library into the global symbol namespace (symTab) (flags.global handler)
   $mergeLibSymbols__deps: ['$asmjsMangle'],
-  $mergeLibSymbols: function(libModule, libName) {
+  $mergeLibSymbols: function(exports, libName) {
     // add symbols into global namespace TODO: weak linking etc.
-    for (var sym in libModule) {
-      if (!libModule.hasOwnProperty(sym)) {
+#if DYLINK_DEBUG
+    err("mergeLibSymbols: " + libName);
+#endif
+    for (var sym in exports) {
+      if (!exports.hasOwnProperty(sym)) {
         continue;
       }
 
-      // When RTLD_GLOBAL is enable, the symbols defined by this shared object will be made
+      // When RTLD_GLOBAL is enable, the symbols defined by each shared object will be made
       // available for symbol resolution of subsequently loaded shared objects.
       //
-      // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
-
-      var module_sym = asmjsMangle(sym);
-
-      if (!Module.hasOwnProperty(module_sym)) {
-        Module[module_sym] = libModule[sym];
+      // We copy the symbols from each module into the global symTab.
+      if (!symTab.hasOwnProperty(sym) || symTab[sym].stub) {
+        symTab[sym] = exports[sym];
       }
+
+      // Also export the mangled version on the Module object
+      // TODO(sbc): We should be able to avoid/remove this in the future.
+      if (!Module.hasOwnProperty(sym)) {
+        Module[asmjsMangle(sym)] = exports[sym];
+      }
+
 #if ASSERTIONS == 2
       else {
-        var curr = Module[sym], next = libModule[sym];
+        var curr = symTab[sym], next = exports[sym];
         // don't warn on functions - might be odr, linkonce_odr, etc.
         if (!(typeof curr === 'function' && typeof next === 'function')) {
           err("warning: symbol '" + sym + "' from '" + libName + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
@@ -359,6 +361,9 @@ var LibraryDylink = {
       }
 #endif
     }
+#if DYLINK_DEBUG
+    err("done mergeLibSymbols: " + libName);
+#endif
   },
 
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
@@ -382,8 +387,6 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
       err("loadModule: memoryBase=" + memoryBase);
 #endif
-      // prepare env imports
-      var env = asmLibraryArg;
       // TODO: use only __memory_base and __table_base, need to update asm.js backend
       var tableBase = wasmTable.length;
       wasmTable.grow(metadata.tableSize);
@@ -426,13 +429,6 @@ var LibraryDylink = {
         return resolved;
       }
 
-      // copy currently exported symbols so the new module can import them
-      for (var x in Module) {
-        if (!(x in env)) {
-          env[x] = Module[x];
-        }
-      }
-
       // TODO kill ↓↓↓ (except "symbols local to this module", it will likely be
       // not needed if we require that if A wants symbols from B it has to link
       // to B explicitly: similarly to -Wl,--no-undefined)
@@ -444,7 +440,7 @@ var LibraryDylink = {
       // to add the indirection for, without inspecting what A's imports
       // are. To do that here, we use a JS proxy (another option would
       // be to inspect the binary directly).
-      var proxyHandler = {
+      var envHandler = {
         'get': function(obj, prop) {
           // symbols that should be local to this module
           switch (prop) {
@@ -453,23 +449,23 @@ var LibraryDylink = {
             case '__table_base':
               return tableBase;
           }
-          if (prop in obj) {
-            return obj[prop]; // already present
+          if (prop in symTab) {
+            return symTab[prop]; // already present in symbol table
           }
           // otherwise this is regular function import - call it indirectly
           var resolved;
-          return obj[prop] = function() {
+          return function() {
             if (!resolved) resolved = resolveSymbol(prop, true);
             return resolved.apply(null, arguments);
           };
         }
       };
-      var proxy = new Proxy(env, proxyHandler);
+      var envProxy = new Proxy({}, envHandler);
       var info = {
-        'GOT.mem': new Proxy(asmLibraryArg, GOTHandler),
-        'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
-        'env': proxy,
-        {{{ WASI_MODULE_NAME }}}: proxy,
+        'GOT.mem': new Proxy(symTab, GOTHandler),
+        'GOT.func': new Proxy(symTab, GOTHandler),
+        'env': envProxy,
+        {{{ WASI_MODULE_NAME }}}: envProxy,
       };
 
       function postInstantiation(instance) {
@@ -578,7 +574,7 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$fetchBinary', '$isInternalSym', '$mergeLibSymbols'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$fetchBinary', '$isInternalSym', '$mergeLibSymbols'],
   $loadDynamicLibrary: function(lib, flags) {
     if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
       LDSO.loadedLibs[-1] = {
