@@ -375,6 +375,10 @@ var LibraryGLEmulation = {
             {{{ makeSetValue('params', '0', 'GLEmulation.MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support atleast 6
             return;
           }
+          case 0x0BA0: { // GL_MATRIX_MODE
+            {{{ makeSetValue('params', '0', 'GLImmediate.currentMatrix + 0x1700', 'i32') }}};
+            return;
+          }
         }
         glGetIntegerv(pname, params);
       };
@@ -658,6 +662,11 @@ var LibraryGLEmulation = {
           {{{ makeSetValue('params', '0', 'GLEmulation.fogDensity', 'float') }}};
         } else if (pname == 0xB65) { // GL_FOG_MODE
           {{{ makeSetValue('params', '0', 'GLEmulation.fogMode', 'float') }}};
+        } else if (pname == 0xB53) { // GL_LIGHT_MODEL_AMBIENT
+          {{{ makeSetValue('params', '0', 'GLEmulation.lightModelAmbient[0]', 'float') }}};
+          {{{ makeSetValue('params', '4', 'GLEmulation.lightModelAmbient[1]', 'float') }}};
+          {{{ makeSetValue('params', '8', 'GLEmulation.lightModelAmbient[2]', 'float') }}};
+          {{{ makeSetValue('params', '12', 'GLEmulation.lightModelAmbient[3]', 'float') }}};
         } else {
           glGetFloatv(pname, params);
         }
