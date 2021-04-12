@@ -24,19 +24,19 @@ float MajorRadius = 0.5f;
 float MinorRadius = 0.2f;
 
 void putVert(int i, int j) {
-	float wrapFrac = (j%NumPerWrap)/(float)NumPerWrap;
-	float phi = PI2*wrapFrac;
-	float theta = PI2*(i%NumWraps+wrapFrac)/(float)NumWraps;
-	float sinphi = sin(phi);
-	float cosphi = cos(phi);
-	float sintheta = sin(theta);
-	float costheta = cos(theta);
-	float y = MinorRadius*sinphi;
-	float r = MajorRadius + MinorRadius*cosphi;
-	float x = sintheta*r;
-	float z = costheta*r;
-	glNormal3f(sintheta*cosphi, sinphi, costheta*cosphi);
-	glVertex3f(x,y,z);
+  float wrapFrac = (j%NumPerWrap)/(float)NumPerWrap;
+  float phi = PI2*wrapFrac;
+  float theta = PI2*(i%NumWraps+wrapFrac)/(float)NumWraps;
+  float sinphi = sin(phi);
+  float cosphi = cos(phi);
+  float sintheta = sin(theta);
+  float costheta = cos(theta);
+  float y = MinorRadius*sinphi;
+  float r = MajorRadius + MinorRadius*cosphi;
+  float x = sintheta*r;
+  float z = costheta*r;
+  glNormal3f(sintheta*cosphi, sinphi, costheta*cosphi);
+  glVertex3f(x,y,z);
 }
 
 int main(int argc, char* argv[]) {
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
   glLightfv(GL_LIGHT0, GL_DIFFUSE,  light_diffuse);
   glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
   glLightfv(GL_LIGHT0, GL_POSITION, light_position);
-  
+
   glMaterialfv(GL_FRONT, GL_AMBIENT,   mat_ambient);
   glMaterialfv(GL_FRONT, GL_DIFFUSE,   mat_diffuse);
   glMaterialfv(GL_FRONT, GL_SPECULAR,  mat_specular);
@@ -90,25 +90,25 @@ int main(int argc, char* argv[]) {
   glEnable(GL_CLIP_PLANE0);
 
   glRotatef(30.0f, 1.0f, 0.0f, 0.0f);
-	glRotatef(60.0f, 0.0f, 1.0f, 0.0f);
+  glRotatef(60.0f, 0.0f, 1.0f, 0.0f);
 
   const GLdouble clip_plane[]   = {0.0, 0.0, -1.0, 0.4};
   glClipPlane(GL_CLIP_PLANE0, clip_plane);
 
 
   glColor3f(1.0f, 0.5f, 1.0f);
-	glBegin(GL_TRIANGLE_STRIP);
+  glBegin(GL_TRIANGLE_STRIP);
 
-	for (i=0; i<NumWraps; i++ ) {
-		for (j=0; j<NumPerWrap; j++) {
-			putVert(i,j);
-			putVert(i+1,j);
-		}
-	}
-	putVert(0,0);
-	putVert(1,0);
+  for (i=0; i<NumWraps; i++ ) {
+  for (j=0; j<NumPerWrap; j++) {
+  putVert(i,j);
+  putVert(i+1,j);
+  }
+  }
+  putVert(0,0);
+  putVert(1,0);
 
-	glEnd();
+  glEnd();
 
 
   SDL_GL_SwapWindow(window);

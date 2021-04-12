@@ -135,7 +135,7 @@ var LibraryGLEmulation = {
       GLEmulation.fogColor = new Float32Array(4);
 
       for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
-          GLEmulation.clipPlaneEquation[clipPlaneId] = new Float32Array(4);
+        GLEmulation.clipPlaneEquation[clipPlaneId] = new Float32Array(4);
       }
 
       // set defaults for GL_LIGHTING
@@ -147,10 +147,10 @@ var LibraryGLEmulation = {
       GLEmulation.materialEmission = new Float32Array([0.0, 0.0, 0.0, 1.0]);
 
       for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
-          GLEmulation.lightAmbient[lightId] = new Float32Array([0.0, 0.0, 0.0, 1.0]);
-          GLEmulation.lightDiffuse[lightId] = lightId ? new Float32Array([0.0, 0.0, 0.0, 1.0]) : new Float32Array([1.0, 1.0, 1.0, 1.0]);
-          GLEmulation.lightSpecular[lightId] = lightId ? new Float32Array([0.0, 0.0, 0.0, 1.0]) : new Float32Array([1.0, 1.0, 1.0, 1.0]);
-          GLEmulation.lightPosition[lightId] = new Float32Array([0.0, 0.0, 1.0, 0.0]);
+        GLEmulation.lightAmbient[lightId] = new Float32Array([0.0, 0.0, 0.0, 1.0]);
+        GLEmulation.lightDiffuse[lightId] = lightId ? new Float32Array([0.0, 0.0, 0.0, 1.0]) : new Float32Array([1.0, 1.0, 1.0, 1.0]);
+        GLEmulation.lightSpecular[lightId] = lightId ? new Float32Array([0.0, 0.0, 0.0, 1.0]) : new Float32Array([1.0, 1.0, 1.0, 1.0]);
+        GLEmulation.lightPosition[lightId] = new Float32Array([0.0, 0.0, 1.0, 0.0]);
       }
 
 
@@ -198,19 +198,19 @@ var LibraryGLEmulation = {
           }
           return;
         } else if ((cap >= 0x3000) && (cap < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
-            var clipPlaneId = cap - 0x3000;
-            if (GLEmulation.clipPlaneEnabled[clipPlaneId] != true) {
-              GLImmediate.currentRenderer = null; // clip plane parameter is part of the FFP shader state, we must re-lookup the renderer to use.
-              GLEmulation.clipPlaneEnabled[clipPlaneId] = true;
-            }
-            return;
+          var clipPlaneId = cap - 0x3000;
+          if (GLEmulation.clipPlaneEnabled[clipPlaneId] != true) {
+            GLImmediate.currentRenderer = null; // clip plane parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.clipPlaneEnabled[clipPlaneId] = true;
+          }
+          return;
         } else if ((cap >= 0x4000) && (cap < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
-            var lightId = cap - 0x4000;
-            if (GLEmulation.lightEnabled[lightId] != true) {
-              GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
-              GLEmulation.lightEnabled[lightId] = true;
-            }
-            return;
+          var lightId = cap - 0x4000;
+          if (GLEmulation.lightEnabled[lightId] != true) {
+            GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.lightEnabled[lightId] = true;
+          }
+          return;
         } else if (cap == 0xB50 /* GL_LIGHTING */) {
           if (GLEmulation.lightingEnabled != true) {
             GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
@@ -2090,13 +2090,13 @@ var LibraryGLEmulation = {
 
       // By clip plane mode
       for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
-          enabledAttributesKey = (enabledAttributesKey << 1) | GLEmulation.clipPlaneEnabled[clipPlaneId];
+        enabledAttributesKey = (enabledAttributesKey << 1) | GLEmulation.clipPlaneEnabled[clipPlaneId];
       }
 
       // By lighting mode and enabled lights
       enabledAttributesKey = (enabledAttributesKey << 1) | GLEmulation.lightingEnabled;
       for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
-          enabledAttributesKey = (enabledAttributesKey << 1) | (GLEmulation.lightingEnabled ? GLEmulation.lightEnabled[lightId] : 0);
+        enabledAttributesKey = (enabledAttributesKey << 1) | (GLEmulation.lightingEnabled ? GLEmulation.lightEnabled[lightId] : 0);
       }
 
       // By drawing mode:
@@ -2435,8 +2435,8 @@ var LibraryGLEmulation = {
           this.hasClipPlane = false;
           this.clipPlaneEquationLocation = [];
           for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
-              this.clipPlaneEquationLocation[clipPlaneId] = GLctx.getUniformLocation(this.program, 'u_clipPlaneEquation' + clipPlaneId);
-              this.hasClipPlane = (this.hasClipPlane || this.clipPlaneEquationLocation[clipPlaneId]);
+            this.clipPlaneEquationLocation[clipPlaneId] = GLctx.getUniformLocation(this.program, 'u_clipPlaneEquation' + clipPlaneId);
+            this.hasClipPlane = (this.hasClipPlane || this.clipPlaneEquationLocation[clipPlaneId]);
           }
 
           this.hasLighting = GLEmulation.lightingEnabled;
@@ -2621,7 +2621,7 @@ var LibraryGLEmulation = {
 
           if (this.hasClipPlane) {
             for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
-                if (this.clipPlaneEquationLocation[clipPlaneId]) GLctx.uniform4fv(this.clipPlaneEquationLocation[clipPlaneId], GLEmulation.clipPlaneEquation[clipPlaneId]);
+              if (this.clipPlaneEquationLocation[clipPlaneId]) GLctx.uniform4fv(this.clipPlaneEquationLocation[clipPlaneId], GLEmulation.clipPlaneEquation[clipPlaneId]);
             }
           }
 
@@ -3670,80 +3670,80 @@ var LibraryGLEmulation = {
   },
 
   glLightfv: function(light, pname, param) {
-      if ((light >= 0x4000) && (light < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
-          var lightId = light - 0x4000;
+    if ((light >= 0x4000) && (light < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
+      var lightId = light - 0x4000;
 
-          if (pname == 0x1200) { // GL_AMBIENT
-              GLEmulation.lightAmbient[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
-              GLEmulation.lightAmbient[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
-              GLEmulation.lightAmbient[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
-              GLEmulation.lightAmbient[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
-          } else if (pname == 0x1201) { // GL_DIFFUSE
-              GLEmulation.lightDiffuse[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
-              GLEmulation.lightDiffuse[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
-              GLEmulation.lightDiffuse[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
-              GLEmulation.lightDiffuse[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
-          } else if (pname == 0x1202) { // GL_SPECULAR
-              GLEmulation.lightSpecular[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
-              GLEmulation.lightSpecular[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
-              GLEmulation.lightSpecular[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
-              GLEmulation.lightSpecular[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
-          } else if (pname == 0x1203) { // GL_POSITION
-              GLEmulation.lightPosition[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
-              GLEmulation.lightPosition[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
-              GLEmulation.lightPosition[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
-              GLEmulation.lightPosition[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
+      if (pname == 0x1200) { // GL_AMBIENT
+        GLEmulation.lightAmbient[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
+        GLEmulation.lightAmbient[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
+        GLEmulation.lightAmbient[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
+        GLEmulation.lightAmbient[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
+      } else if (pname == 0x1201) { // GL_DIFFUSE
+        GLEmulation.lightDiffuse[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
+        GLEmulation.lightDiffuse[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
+        GLEmulation.lightDiffuse[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
+        GLEmulation.lightDiffuse[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
+      } else if (pname == 0x1202) { // GL_SPECULAR
+        GLEmulation.lightSpecular[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
+        GLEmulation.lightSpecular[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
+        GLEmulation.lightSpecular[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
+        GLEmulation.lightSpecular[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
+      } else if (pname == 0x1203) { // GL_POSITION
+        GLEmulation.lightPosition[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
+        GLEmulation.lightPosition[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
+        GLEmulation.lightPosition[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
+        GLEmulation.lightPosition[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
 
-              // multiply position with current modelviewmatrix
-              GLImmediate.matrixLib.mat4.multiplyVec4(GLImmediate.matrix[0], GLEmulation.lightPosition[lightId]);
-          } else {
-              throw 'glLightfv: TODO: ' + pname;
-          }
+        // multiply position with current modelviewmatrix
+        GLImmediate.matrixLib.mat4.multiplyVec4(GLImmediate.matrix[0], GLEmulation.lightPosition[lightId]);
+      } else {
+        throw 'glLightfv: TODO: ' + pname;
       }
+    }
   },
 
   glLightModelf: function(pname, param) {
-      if (pname == 0x0B52) { // GL_LIGHT_MODEL_TWO_SIDE
-          GLEmulation.lightModelTwoSide = (param != 0) ? true : false;
-      } else {
-          throw 'glLightModelf: TODO: ' + pname;
-      }
+    if (pname == 0x0B52) { // GL_LIGHT_MODEL_TWO_SIDE
+      GLEmulation.lightModelTwoSide = (param != 0) ? true : false;
+    } else {
+      throw 'glLightModelf: TODO: ' + pname;
+    }
   },
 
   glLightModelfv: function(pname, param) { // TODO: GL_LIGHT_MODEL_LOCAL_VIEWER
-      if (pname == 0x0B53) { // GL_LIGHT_MODEL_AMBIENT
-          GLEmulation.lightModelAmbient[0] = {{{ makeGetValue('param', '0', 'float') }}};
-          GLEmulation.lightModelAmbient[1] = {{{ makeGetValue('param', '4', 'float') }}};
-          GLEmulation.lightModelAmbient[2] = {{{ makeGetValue('param', '8', 'float') }}};
-          GLEmulation.lightModelAmbient[3] = {{{ makeGetValue('param', '12', 'float') }}};
-      } else {
-          throw 'glLightModelfv: TODO: ' + pname;
-      }
+    if (pname == 0x0B53) { // GL_LIGHT_MODEL_AMBIENT
+      GLEmulation.lightModelAmbient[0] = {{{ makeGetValue('param', '0', 'float') }}};
+      GLEmulation.lightModelAmbient[1] = {{{ makeGetValue('param', '4', 'float') }}};
+      GLEmulation.lightModelAmbient[2] = {{{ makeGetValue('param', '8', 'float') }}};
+      GLEmulation.lightModelAmbient[3] = {{{ makeGetValue('param', '12', 'float') }}};
+    } else {
+      throw 'glLightModelfv: TODO: ' + pname;
+    }
   },
 
   glMaterialfv: function(face, pname, param) {
-      if ((face != 0x0404) && (face != 0x0408)) { throw 'glMaterialfv: TODO' + face; } // only GL_FRONT and GL_FRONT_AND_BACK supported
+    if ((face != 0x0404) && (face != 0x0408)) { throw 'glMaterialfv: TODO' + face; } // only GL_FRONT and GL_FRONT_AND_BACK supported
 
-      if (pname == 0x1200) { // GL_AMBIENT
-          GLEmulation.materialAmbient[0] = {{{ makeGetValue('param', '0', 'float') }}};
-          GLEmulation.materialAmbient[1] = {{{ makeGetValue('param', '4', 'float') }}};
-          GLEmulation.materialAmbient[2] = {{{ makeGetValue('param', '8', 'float') }}};
-          GLEmulation.materialAmbient[3] = {{{ makeGetValue('param', '12', 'float') }}};
-      } else if (pname == 0x1201) { // GL_DIFFUSE
-          GLEmulation.materialDiffuse[0] = {{{ makeGetValue('param', '0', 'float') }}};
-          GLEmulation.materialDiffuse[1] = {{{ makeGetValue('param', '4', 'float') }}};
-          GLEmulation.materialDiffuse[2] = {{{ makeGetValue('param', '8', 'float') }}};
-          GLEmulation.materialDiffuse[3] = {{{ makeGetValue('param', '12', 'float') }}};
-      } else if (pname == 0x1202) { // GL_SPECULAR
-          GLEmulation.materialSpecular[0] = {{{ makeGetValue('param', '0', 'float') }}};
-          GLEmulation.materialSpecular[1] = {{{ makeGetValue('param', '4', 'float') }}};
-          GLEmulation.materialSpecular[2] = {{{ makeGetValue('param', '8', 'float') }}};
-          GLEmulation.materialSpecular[3] = {{{ makeGetValue('param', '12', 'float') }}};
-      } else if (pname == 0x1601) { // GL_SHININESS
-          GLEmulation.materialShininess[0] = {{{ makeGetValue('param', '0', 'float') }}};
-      } else {
-          throw 'glMaterialfv: TODO: ' + pname;
-      }
+    if (pname == 0x1200) { // GL_AMBIENT
+      GLEmulation.materialAmbient[0] = {{{ makeGetValue('param', '0', 'float') }}};
+      GLEmulation.materialAmbient[1] = {{{ makeGetValue('param', '4', 'float') }}};
+      GLEmulation.materialAmbient[2] = {{{ makeGetValue('param', '8', 'float') }}};
+      GLEmulation.materialAmbient[3] = {{{ makeGetValue('param', '12', 'float') }}};
+    } else if (pname == 0x1201) { // GL_DIFFUSE
+      GLEmulation.materialDiffuse[0] = {{{ makeGetValue('param', '0', 'float') }}};
+      GLEmulation.materialDiffuse[1] = {{{ makeGetValue('param', '4', 'float') }}};
+      GLEmulation.materialDiffuse[2] = {{{ makeGetValue('param', '8', 'float') }}};
+      GLEmulation.materialDiffuse[3] = {{{ makeGetValue('param', '12', 'float') }}};
+    } else if (pname == 0x1202) { // GL_SPECULAR
+      GLEmulation.materialSpecular[0] = {{{ makeGetValue('param', '0', 'float') }}};
+      GLEmulation.materialSpecular[1] = {{{ makeGetValue('param', '4', 'float') }}};
+      GLEmulation.materialSpecular[2] = {{{ makeGetValue('param', '8', 'float') }}};
+      GLEmulation.materialSpecular[3] = {{{ makeGetValue('param', '12', 'float') }}};
+    } else if (pname == 0x1601) { // GL_SHININESS
+      GLEmulation.materialShininess[0] = {{{ makeGetValue('param', '0', 'float') }}};
+    } else {
+      throw 'glMaterialfv: TODO: ' + pname;
+    }
   },
 
   glTexGeni: function() { throw 'glTexGeni: TODO' },
