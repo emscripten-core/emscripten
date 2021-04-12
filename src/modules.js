@@ -155,7 +155,7 @@ var LibraryManager = {
       libraries.push('library_webgl2.js');
     }
 
-    if (GL_EXPLICIT_UNIFORM_LOCATION) {
+    if (GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING) {
       libraries.push('library_c_preprocessor.js');
     }
 

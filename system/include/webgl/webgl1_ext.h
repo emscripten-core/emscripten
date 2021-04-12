@@ -339,3 +339,8 @@ WEBGL_APICALL void GL_APIENTRY glMultiDrawElementsInstancedWEBGL(GLenum mode, co
 #define GL_RGB16_SNORM_EXT 0x8F9A
 #define GL_RGBA16_SNORM_EXT 0x8F9B
 #endif /* EMSCRIPTEN_GL_EXT_texture_norm16 */
+
+// EMSCRIPTEN_explicit_uniform_location
+#ifndef GL_MAX_UNIFORM_LOCATIONS
+#define GL_MAX_UNIFORM_LOCATIONS          0x826E
+#endif

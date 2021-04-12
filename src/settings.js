@@ -494,6 +494,10 @@ var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0;
 // extension. See docs/EMSCRIPTEN_explicit_uniform_location.txt
 var GL_EXPLICIT_UNIFORM_LOCATION = 0;
 
+// If true, enables support for the EMSCRIPTEN_uniform_layout_binding WebGL
+// extension. See docs/EMSCRIPTEN_explicit_uniform_binding.txt
+var GL_EXPLICIT_UNIFORM_BINDING = 0;
+
 // Deprecated. Pass -s MAX_WEBGL_VERSION=2 to target WebGL 2.0.
 // [link]
 var USE_WEBGL2 = 0;
