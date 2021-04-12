@@ -20,6 +20,14 @@ void check_error() {
   }
 }
 
+void check(const char* input, int base) {
+  char* endptr = NULL;
+  long result = strtol(input, &endptr, base);
+  printf("strtol(\"%s\", 0, %d) = %ld\n", input, base, result);
+  printf("consumed %td bytes\n", endptr - input);
+  check_error();
+}
+
 int main() {
   const char* test_values[] = {
     "-9223372036854775809",
@@ -61,27 +69,17 @@ int main() {
     printf("\n");
   }
 
-  printf("strtol(\"0x12\", 0, 0) = %ld\n", strtol("0x12", 0, 0));
-  check_error();
-  printf("strtol(\"0x12\", 0, 10) = %ld\n", strtol("0x12", 0, 10));
-  check_error();
-  printf("strtol(\"012\", 0, 0) = %ld\n", strtol("012", 0, 0));
-  check_error();
-  printf("strtol(\"012\", 0, 10) = %ld\n", strtol("012", 0, 10));
-  check_error();
-  printf("strtol(\"0y12\", 0, 0) = %ld\n", strtol("0y12", 0, 0));
-  check_error();
-  printf("strtol(\"hello\", 0, 30) = %ld\n", strtol("hello", 0, 30));
-  check_error();
-  printf("strtol(\"hello\", 0, 10) = %ld\n", strtol("hello", 0, 10));
-  check_error();
-  printf("strtol(\"not-a-number\") = %ld\n", strtol("not-a-number", 0, 0));
-  check_error();
-
-  char str[] = "  0x12end";
-  printf("strtol(\"  0x12end\") = %ld\n", strtol(str, &endptr, 0));
-  printf("consumed %td bytes\n", endptr - str);
-  check_error();
+  check("0x12", 0);
+  check("0x12", 10);
+  check("012", 0);
+  check("012", 10);
+  check("0y12", 0);
+  check("hello", 30);
+  check("hello", 10);
+  check("not-a-number", 0);
+  check(" ", 0);
+  check("-", 0);
+  check("  0x12end", 0);
 
   return 0;
 }

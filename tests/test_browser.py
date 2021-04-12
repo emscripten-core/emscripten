@@ -20,11 +20,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.request import urlopen
 
 from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
-from runner import create_file, parameterized, ensure_dir, disabled, test_file
+from runner import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
 from tools import building
 from tools import shared
 from tools import system_libs
-from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE
+from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
 from tools.shared import try_delete, config
 
 
@@ -205,7 +205,7 @@ class browser(BrowserCore):
     # sourceContent when the maps are relative paths
     try_delete(html_file)
     try_delete(html_file + '.map')
-    self.compile_btest(['src.cpp', '-o', 'src.html', '-g4'])
+    self.compile_btest(['src.cpp', '-o', 'src.html', '-gsource-map'])
     self.assertExists(html_file)
     self.assertExists('src.wasm.map')
     webbrowser.open_new('file://' + html_file)
@@ -218,7 +218,7 @@ If manually bisecting:
 
   def test_emscripten_log(self):
     self.btest_exit(test_file('emscripten_log', 'emscripten_log.cpp'),
-                    args=['--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4'])
+                    args=['--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-gsource-map'])
 
   def test_preload_file(self):
     absolute_src_path = os.path.join(self.get_dir(), 'somefile.txt').replace('\\', '/')
@@ -2582,6 +2582,10 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest(test_file('webgl_shader_source_length.cpp'), args=opts + ['-lGL'], expected='0')
 
+  # Tests calling glGetString(GL_UNMASKED_VENDOR_WEBGL).
+  def test_webgl_unmasked_vendor_webgl(self):
+    self.btest(test_file('webgl_unmasked_vendor_webgl.c'), args=['-lGL'], expected='0')
+
   def test_webgl2(self):
     for opts in [
       ['-s', 'MIN_CHROME_VERSION=0'],
@@ -3420,9 +3424,7 @@ window.close = function() {
 
   def test_webidl(self):
     # see original in test_core.py
-    self.run_process([PYTHON, path_from_root('tools', 'webidl_binder.py'),
-                     test_file('webidl', 'test.idl'),
-                     'glue'])
+    self.run_process([WEBIDL_BINDER, test_file('webidl', 'test.idl'), 'glue'])
     self.assertExists('glue.cpp')
     self.assertExists('glue.js')
     for opts in [[], ['-O1'], ['-O2']]:
@@ -3648,7 +3650,7 @@ window.close = function() {
   def test_pthread_c11_threads(self):
     self.btest(test_file('pthread', 'test_pthread_c11_threads.c'),
                expected='0',
-               args=['-g4', '-std=gnu11', '-xc', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_MEMORY=64mb'])
+               args=['-gsource-map', '-std=gnu11', '-xc', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_MEMORY=64mb'])
 
   @requires_threads
   def test_pthread_pool_size_strict(self):
@@ -4062,7 +4064,7 @@ window.close = function() {
     self.btest(test_file('core', 'test_safe_stack.c'), expected='abort:stack overflow', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'TOTAL_STACK=64KB'])
 
   @parameterized({
-    'leak': ['test_pthread_lsan_leak', ['-g4']],
+    'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
     'no_leak': ['test_pthread_lsan_no_leak'],
   })
   @requires_threads
@@ -4071,7 +4073,7 @@ window.close = function() {
 
   @parameterized({
     # Reusing the LSan test files for ASan.
-    'leak': ['test_pthread_lsan_leak', ['-g4']],
+    'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
     'no_leak': ['test_pthread_lsan_no_leak'],
   })
   @requires_threads
@@ -4302,6 +4304,24 @@ window.close = function() {
                          '-DDRAW_ELEMENTS=' + str(drawElements),
                          '-DEXPLICIT_SWAP=1',
                          '-DWEBGL_CONTEXT_VERSION=2'])
+
+  @requires_graphics_hardware
+  def test_webgl_sample_query(self):
+    cmd = ['-s', 'MAX_WEBGL_VERSION=2', '-lGL']
+    self.btest('webgl_sample_query.cpp', expected='0', args=cmd)
+
+  @requires_graphics_hardware
+  def test_webgl_timer_query(self):
+    for args in [
+        # EXT query entrypoints on WebGL 1.0
+        ['-s', 'MAX_WEBGL_VERSION'],
+        # builtin query entrypoints on WebGL 2.0
+        ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2'],
+        # EXT query entrypoints on a WebGL 1.0 context while built for WebGL 2.0
+        ['-s', 'MAX_WEBGL_VERSION=2'],
+      ]:
+      cmd = args + ['-lGL']
+      self.btest('webgl_timer_query.cpp', expected='0', args=cmd)
 
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware
@@ -4930,7 +4950,7 @@ window.close = function() {
   @requires_threads
   def test_offset_converter(self, *args):
     try:
-      self.btest_exit(test_file('browser', 'test_offset_converter.c'), assert_returncode=1, args=['-s', 'USE_OFFSET_CONVERTER', '-g4', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
+      self.btest_exit(test_file('browser', 'test_offset_converter.c'), assert_returncode=1, args=['-s', 'USE_OFFSET_CONVERTER', '-gsource-map', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
     except Exception as e:
       # dump the wasm file; this is meant to help debug #10539 on the bots
       print(self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'), 'test.wasm', '-g', '--print', '-all'], stdout=PIPE).stdout)

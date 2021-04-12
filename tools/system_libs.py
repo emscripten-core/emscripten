@@ -83,11 +83,6 @@ def run_build_commands(commands):
   # headers are installed.  This prevents each sub-process from attempting
   # to setup the sysroot itself.
   ensure_sysroot()
-
-  for i in range(len(commands)):
-    # TODO(sbc): Remove this one we remove the test_em_config_env_var test
-    commands[i].append('-Wno-deprecated')
-
   shared.run_multiple_processes(commands, env=clean_env())
 
 
@@ -153,7 +148,7 @@ def get_wasm_libc_rt_files():
   return math_files + other_files + iprintf_files
 
 
-class Library(object):
+class Library:
   """
   `Library` is the base class of all system libraries.
 
@@ -539,7 +534,7 @@ class OptimizedAggressivelyForSizeLibrary(Library):
     return super(OptimizedAggressivelyForSizeLibrary, cls).get_default_variation(is_optz=shared.Settings.SHRINK_LEVEL >= 2, **kwargs)
 
 
-class exceptions(object):
+class exceptions:
   """
   This represents exception handling mode of Emscripten. Currently there are
   three modes of exception handling:
@@ -1425,7 +1420,7 @@ def handle_reverse_deps(input_files):
   warn_on_unexported_main(symbolses)
 
   if len(symbolses) == 0:
-    class Dummy(object):
+    class Dummy:
       defs = set()
       undefs = set()
     symbolses.append(Dummy())
@@ -1592,7 +1587,7 @@ def calculate(input_files, cxx, forced):
   return ret
 
 
-class Ports(object):
+class Ports:
   """emscripten-ports library management (https://github.com/emscripten-ports).
   """
 
@@ -1836,7 +1831,7 @@ def resolve_dependencies(port_set, settings):
         port_set.add(dep)
         add_deps(dep)
 
-  for port in list(port_set):
+  for port in port_set.copy():
     add_deps(port)
 
 

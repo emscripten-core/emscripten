@@ -18,6 +18,7 @@
 static unsigned long long strtox(const char *s, char **p, int base, unsigned long long lim) {
 	int neg=0;
 	unsigned long long y=0;
+	const char* orig = s;
 
 	if (base > 36) {
 		errno = EINVAL;
@@ -32,8 +33,11 @@ static unsigned long long strtox(const char *s, char **p, int base, unsigned lon
 		s++;
 	}
 
+	int found_digit = 0;
+
 	// Handle hex/octal prefix 0x/00
 	if ((base == 0 || base == 16) && *s=='0') {
+		found_digit = 1;
 		s++;
 		if ((*s|32)=='x') {
 			s++;
@@ -57,9 +61,16 @@ static unsigned long long strtox(const char *s, char **p, int base, unsigned lon
 			overflow = 1;
 			continue;
 		}
+		found_digit = 1;
 		y = y*base + val;
 	}
-	if (p) *p = (char*)s;
+	if (p) {
+		if (found_digit) {
+			*p = (char*)s;
+		} else {
+			*p = (char*)orig;
+		}
+	}
 	if (overflow) {
 		// We exit'd the above loop due to overflow
 		errno = ERANGE;

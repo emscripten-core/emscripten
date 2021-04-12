@@ -53,7 +53,7 @@ def try_delete(pathname):
     pass
 
 
-class TempFiles(object):
+class TempFiles:
   def __init__(self, tmpdir, save_debug_files):
     self.tmpdir = tmpdir
     self.save_debug_files = save_debug_files
@@ -76,7 +76,7 @@ class TempFiles(object):
       'with TempFiles.get_file(..) as filename:'.
     The file will be deleted immediately once the 'with' block is exited.
     """
-    class TempFileObject(object):
+    class TempFileObject:
       def __enter__(self_):
         self_.file = tempfile.NamedTemporaryFile(dir=self.tmpdir, suffix=suffix, delete=False)
         self_.file.close() # NamedTemporaryFile passes out open file handles, but callers prefer filenames (and open their own handles manually if needed)

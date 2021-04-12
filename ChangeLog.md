@@ -20,9 +20,29 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
-- Removed use of Python multiprocessing library because of stability issues. Added
-  new environment variable EM_PYTHON_MULTIPROCESSING=1 that can be enabled
-  to revert back to using Python multiprocessing. (#13493)
+
+2.0.17: 04/10/2021
+------------------
+- Specifying `EM_CONFIG` inline (python code in the environment variable itself)
+  is no longer supported (#13855).  This has been long deprecated but finally
+  completely removed.
+- Deprecate `-g4`, which is a little confusing as it does not do more than `-g3`
+  but instead emits source maps instead of DWARF. `-g4` will now warn. A new
+  flag `-gsource-map` enables source maps without warning.
+- In order to behave more like clang and gcc, emscripten no longer
+  supports some nonstandard methods of library lookup (that worked
+  unintentionally and were untested and not documented):
+    1. Linking with `-llibc` rather than `-lc` will no longer work.
+    2. Linking a library called `foo.a` via `-lfoo` will no longer work.
+       (libraries found via `-l` have to start with `lib`)
+- Use LLVM's new pass manager by default, as LLVM does. This changes a bunch of
+  things about how LLVM optimizes and inlines, so it may cause noticeable
+  changes in compile times, code size, and speed, either for better or for
+  worse. (#13427)
+- Removed use of Python multiprocessing library because of stability issues.
+  Added a new environment variable `EM_PYTHON_MULTIPROCESSING=1` that can be set
+  to revert back to using Python multiprocessing, in case there are reports of
+  regressions (that variable is intended to be temporary). (#13493)
 - Binaryen now always inlines single-use functions. This should reduce code size
   and improve performance (#13744).
 - Fix generating of symbol files with `--emit-symbol-map` for JS targets.
@@ -88,7 +108,7 @@ Current Trunk
 ------------------
 - Add new setting: `REVERSE_DEPS`. This can be used to control how emscripten
   decides which reverse dependecies to include.  See `settings.js` for more
-  information.  The default setting ('auto') is the transitional way emscripten
+  information.  The default setting ('auto') is the traditional way emscripten
   has worked in the past so there should be no change unless this options is
   actually used.  This option partially replaces the `EMCC_ONLY_FORCED_STDLIBS`
   environment variable which (among other things) essentially had the effect of

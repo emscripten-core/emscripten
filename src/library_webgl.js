@@ -197,9 +197,8 @@ var LibraryGL = {
     contexts: [],
 #endif
     offscreenCanvases: {}, // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their rendering control transferred to offscreen.
-    timerQueriesEXT: [],
+    queries: [], // on WebGL1 stores WebGLTimerQueryEXT, on WebGL2 WebGLQuery
 #if MAX_WEBGL_VERSION >= 2
-    queries: [],
     samplers: [],
     transformFeedbacks: [],
     syncs: [],
@@ -1091,7 +1090,23 @@ var LibraryGL = {
       __webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GLctx);
 #endif
 
-      GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
+#if MAX_WEBGL_VERSION >= 2
+      // On WebGL 2, EXT_disjoint_timer_query is replaced with an alternative
+      // that's based on core APIs, and exposes only the queryCounterEXT()
+      // entrypoint.
+      if (context.version >= 2) {
+        GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query_webgl2");
+      }
+
+      // However, Firefox exposes the WebGL 1 version on WebGL 2 as well and
+      // thus we look for the WebGL 1 version again if the WebGL 2 version
+      // isn't present. https://bugzilla.mozilla.org/show_bug.cgi?id=1328882
+      if (context.version < 2 || !GLctx.disjointTimerQueryExt)
+#endif
+      {
+        GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
+      }
+
       __webgl_enable_WEBGL_multi_draw(GLctx);
 
       // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
@@ -1118,67 +1133,72 @@ var LibraryGL = {
   glGetString__sig: 'ii',
   glGetString__deps: ['$stringToNewUTF8'],
   glGetString: function(name_) {
-    if (GL.stringCache[name_]) return GL.stringCache[name_];
-    var ret;
-    switch (name_) {
-      case 0x1F03 /* GL_EXTENSIONS */:
-        var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+    var ret = GL.stringCache[name_];
+    if (!ret) {
+      switch (name_) {
+        case 0x1F03 /* GL_EXTENSIONS */:
+          var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-        exts = exts.concat(exts.map(function(e) { return "GL_" + e; }));
+          exts = exts.concat(exts.map(function(e) { return "GL_" + e; }));
 #endif
-        ret = stringToNewUTF8(exts.join(' '));
-        break;
-      case 0x1F00 /* GL_VENDOR */:
-      case 0x1F01 /* GL_RENDERER */:
-      case 0x9245 /* UNMASKED_VENDOR_WEBGL */:
-      case 0x9246 /* UNMASKED_RENDERER_WEBGL */:
+          ret = stringToNewUTF8(exts.join(' '));
+          break;
+        case 0x1F00 /* GL_VENDOR */:
+        case 0x1F01 /* GL_RENDERER */:
+        case 0x9245 /* UNMASKED_VENDOR_WEBGL */:
+        case 0x9246 /* UNMASKED_RENDERER_WEBGL */:
 #if !GL_EMULATE_GLES_VERSION_STRING_FORMAT
-      case 0x1F02 /* GL_VERSION */:
-      case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
+        case 0x1F02 /* GL_VERSION */:
+        case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
 #endif
-        var s = GLctx.getParameter(name_);
-        if (!s) {
-          GL.recordError(0x500/*GL_INVALID_ENUM*/);
+          var s = GLctx.getParameter(name_);
+#if GL_TRACK_ERRORS
+          if (!s) {
+            GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
-          err('GL_INVALID_ENUM in glGetString: Received empty parameter for query name ' + name_ + '!'); // This occurs e.g. if one attempts GL_UNMASKED_VENDOR_WEBGL when it is not supported.
+            err('GL_INVALID_ENUM in glGetString: Received empty parameter for query name ' + name_ + '!'); // This occurs e.g. if one attempts GL_UNMASKED_VENDOR_WEBGL when it is not supported.
 #endif
-        }
-        ret = stringToNewUTF8(s);
-        break;
+          }
+#endif
+          ret = s && stringToNewUTF8(s);
+          break;
 
 #if GL_EMULATE_GLES_VERSION_STRING_FORMAT
-      case 0x1F02 /* GL_VERSION */:
-        var glVersion = GLctx.getParameter(0x1F02 /*GL_VERSION*/);
-        // return GLES version string corresponding to the version of the WebGL context
+        case 0x1F02 /* GL_VERSION */:
+          var glVersion = GLctx.getParameter(0x1F02 /*GL_VERSION*/);
+          // return GLES version string corresponding to the version of the WebGL context
 #if MAX_WEBGL_VERSION >= 2
-        if ({{{ isCurrentContextWebGL2() }}}) glVersion = 'OpenGL ES 3.0 (' + glVersion + ')';
-        else
+          if ({{{ isCurrentContextWebGL2() }}}) glVersion = 'OpenGL ES 3.0 (' + glVersion + ')';
+          else
 #endif
-        {
-          glVersion = 'OpenGL ES 2.0 (' + glVersion + ')';
-        }
-        ret = stringToNewUTF8(glVersion);
-        break;
-      case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
-        var glslVersion = GLctx.getParameter(0x8B8C /*GL_SHADING_LANGUAGE_VERSION*/);
-        // extract the version number 'N.M' from the string 'WebGL GLSL ES N.M ...'
-        var ver_re = /^WebGL GLSL ES ([0-9]\.[0-9][0-9]?)(?:$| .*)/;
-        var ver_num = glslVersion.match(ver_re);
-        if (ver_num !== null) {
-          if (ver_num[1].length == 3) ver_num[1] = ver_num[1] + '0'; // ensure minor version has 2 digits
-          glslVersion = 'OpenGL ES GLSL ES ' + ver_num[1] + ' (' + glslVersion + ')';
-        }
-        ret = stringToNewUTF8(glslVersion);
-        break;
+          {
+            glVersion = 'OpenGL ES 2.0 (' + glVersion + ')';
+          }
+          ret = stringToNewUTF8(glVersion);
+          break;
+        case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
+          var glslVersion = GLctx.getParameter(0x8B8C /*GL_SHADING_LANGUAGE_VERSION*/);
+          // extract the version number 'N.M' from the string 'WebGL GLSL ES N.M ...'
+          var ver_re = /^WebGL GLSL ES ([0-9]\.[0-9][0-9]?)(?:$| .*)/;
+          var ver_num = glslVersion.match(ver_re);
+          if (ver_num !== null) {
+            if (ver_num[1].length == 3) ver_num[1] = ver_num[1] + '0'; // ensure minor version has 2 digits
+            glslVersion = 'OpenGL ES GLSL ES ' + ver_num[1] + ' (' + glslVersion + ')';
+          }
+          ret = stringToNewUTF8(glslVersion);
+          break;
 #endif
-      default:
-        GL.recordError(0x500/*GL_INVALID_ENUM*/);
+#if GL_TRACK_ERRORS
+        default:
+          GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
-        err('GL_INVALID_ENUM in glGetString: Unknown parameter ' + name_ + '!');
+          err('GL_INVALID_ENUM in glGetString: Unknown parameter ' + name_ + '!');
 #endif
-        return 0;
+#endif
+          // fall through
+      }
+      GL.stringCache[name_] = ret;
     }
-    GL.stringCache[name_] = ret;
     return ret;
   },
 
@@ -1786,9 +1806,9 @@ var LibraryGL = {
         while (i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
         return;
       }
-      var id = GL.getNewId(GL.timerQueriesEXT);
+      var id = GL.getNewId(GL.queries);
       query.name = id;
-      GL.timerQueriesEXT[id] = query;
+      GL.queries[id] = query;
       {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
     }
   },
@@ -1797,16 +1817,16 @@ var LibraryGL = {
   glDeleteQueriesEXT: function(n, ids) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
-      var query = GL.timerQueriesEXT[id];
+      var query = GL.queries[id];
       if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
       GLctx.disjointTimerQueryExt['deleteQueryEXT'](query);
-      GL.timerQueriesEXT[id] = null;
+      GL.queries[id] = null;
     }
   },
 
   glIsQueryEXT__sig: 'ii',
   glIsQueryEXT: function(id) {
-    var query = GL.timerQueriesEXT[id];
+    var query = GL.queries[id];
     if (!query) return 0;
     return GLctx.disjointTimerQueryExt['isQueryEXT'](query);
   },
@@ -1814,9 +1834,9 @@ var LibraryGL = {
   glBeginQueryEXT__sig: 'vii',
   glBeginQueryEXT: function(target, id) {
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glBeginQueryEXT', 'id');
+    GL.validateGLObjectID(GL.queries, id, 'glBeginQueryEXT', 'id');
 #endif
-    GLctx.disjointTimerQueryExt['beginQueryEXT'](target, GL.timerQueriesEXT[id]);
+    GLctx.disjointTimerQueryExt['beginQueryEXT'](target, GL.queries[id]);
   },
 
   glEndQueryEXT__sig: 'vi',
@@ -1824,12 +1844,15 @@ var LibraryGL = {
     GLctx.disjointTimerQueryExt['endQueryEXT'](target);
   },
 
+  // This one is either from EXT_disjoint_timer_query on WebGL 1 (taking a
+  // WebGLTimerQueryEXT) or from EXT_disjoint_timer_query_webgl2 (taking a
+  // WebGLQuery)
   glQueryCounterEXT__sig: 'vii',
   glQueryCounterEXT: function(id, target) {
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glQueryCounterEXT', 'id');
+    GL.validateGLObjectID(GL.queries, id, 'glQueryCounterEXT', 'id');
 #endif
-    GLctx.disjointTimerQueryExt['queryCounterEXT'](GL.timerQueriesEXT[id], target);
+    GLctx.disjointTimerQueryExt['queryCounterEXT'](GL.queries[id], target);
   },
 
   glGetQueryivEXT__sig: 'viii',
@@ -1858,9 +1881,9 @@ var LibraryGL = {
       return;
     }
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glGetQueryObjectivEXT', 'id');
+    GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjectivEXT', 'id');
 #endif
-    var query = GL.timerQueriesEXT[id];
+    var query = GL.queries[id];
     var param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
     var ret;
     if (typeof param == 'boolean') {
@@ -1885,10 +1908,21 @@ var LibraryGL = {
       return;
     }
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glGetQueryObjecti64vEXT', 'id');
+    GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjecti64vEXT', 'id');
 #endif
-    var query = GL.timerQueriesEXT[id];
-    var param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
+    var query = GL.queries[id];
+    var param;
+#if MAX_WEBGL_VERSION >= 2
+    if (GL.currentContext.version < 2)
+#endif
+    {
+      param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
+    }
+#if MAX_WEBGL_VERSION >= 2
+    else {
+      param = GLctx['getQueryParameter'](query, pname);
+    }
+#endif
     var ret;
     if (typeof param == 'boolean') {
       ret = param ? 1 : 0;

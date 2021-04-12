@@ -46,7 +46,7 @@ _is_ar_cache = {}
 user_requested_exports = []
 
 
-class ObjectFileInfo(object):
+class ObjectFileInfo:
   def __init__(self, returncode, output, defs=set(), undefs=set(), commons=set()):
     self.returncode = returncode
     self.output = output
@@ -128,7 +128,7 @@ def unique_ordered(values):
     seen.add(value)
     return True
 
-  return list(filter(check, values))
+  return [v for v in values if check(v)]
 
 
 # clear caches. this is not normally needed, except if the clang/LLVM
@@ -452,11 +452,6 @@ def link_lld(args, target, external_symbol_list=None):
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
 
-  # LLVM has turned on the new pass manager by default, but it causes some code
-  # size regressions. For now, use the legacy one.
-  # https://github.com/emscripten-core/emscripten/issues/13427
-  cmd += ['--lto-legacy-pass-manager']
-
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
   if '--relocatable' not in args and '-r' not in args:
@@ -702,6 +697,8 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   # will be carried over to a later Closure run.
   if Settings.USE_CLOSURE_COMPILER:
     cmd += ['--closureFriendly']
+  if Settings.VERBOSE:
+    cmd += ['verbose']
   if not return_output:
     next = original_filename + '.jso.js'
     configuration.get_temp_files().note(next)
@@ -1435,10 +1432,11 @@ def get_binaryen_bin():
 
 def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
   cmd = [os.path.join(get_binaryen_bin(), tool)]
-  if outfile and tool == 'wasm-opt' and Settings.DEBUG_LEVEL != 3:
+  if outfile and tool == 'wasm-opt' and \
+     (Settings.DEBUG_LEVEL < 3 or shared.Settings.GENERATE_SOURCE_MAP):
     # remove any dwarf debug info sections, if the debug level is <3, as
-    # we don't need them; also remove them if we the level is 4, as then we
-    # want a source map, which is implemented separately from dwarf.
+    # we don't need them; also remove them if we use source maps (which are
+    # implemented separately from dwarf).
     # note that we add this pass first, so that it doesn't interfere with
     # the final set of passes (which may generate stack IR, and nothing
     # should be run after that)
