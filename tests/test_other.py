@@ -10107,7 +10107,7 @@ exec "$@"
     self.assertIn('Hello from lib!', result)
 
   def test_split_module_ex(self):
-    initialTableSize = 542
+    initialTableSize = 535
     self.set_setting('SPLIT_MODULE')
     self.set_setting('WASM', 1)
     self.set_setting('WASM_BIGINT')
@@ -10120,21 +10120,22 @@ exec "$@"
     self.set_setting('NO_EXIT_RUNTIME', 0)
     self.set_setting('GL_TRACK_ERRORS', 0)
     self.set_setting('WASM_OBJECT_FILES', 0)
-    self.set_setting('INCLUDE_FULL_LIBRARY', 1)
+    # self.set_setting('INCLUDE_FULL_LIBRARY', 1)
+    # self.emcc_args += ['-sMAIN_MODULE=2']
+    # Exception: FROZEN_CACHE is set, but cache file is missing: sysroot/lib/wasm32-emscripten/lto-pic/libgl-webgl2-full_es3.a
+    # self.emcc_args += ['-sUSE_WEBGL2']
+    # self.emcc_args += ['-sUSE_GLFW=3']
+    # self.emcc_args += ['-sFULL_ES3=1']
 
-    self.emcc_args += ['-g', '-Wno-experimental']
+    self.emcc_args += ['-Wno-experimental']
     self.emcc_args += ['-std=c++17']
     self.emcc_args += ['-D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR']
     self.emcc_args += ['--emit-symbol-map']
     self.emcc_args += ['--post-js', path_from_root('tests', 'other', 'test_split_module_ex.post.js')]
     self.emcc_args += ['-sEXTRA_EXPORTED_RUNTIME_METHODS=[allocate]']
-    self.emcc_args += ['-sUSE_WEBGL2']
-    self.emcc_args += ['-sUSE_GLFW=3']
-    self.emcc_args += ['-sFULL_ES3=1']
     self.emcc_args += ['-flto']
     self.emcc_args += ['-fPIC']
     self.emcc_args += ['-Oz']
-    self.emcc_args += ['-sMAIN_MODULE=2']
     self.emcc_args += [f'-sINITIAL_TABLE={initialTableSize}']
 
     create_file('mylib.js', '''

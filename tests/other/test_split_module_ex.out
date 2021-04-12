@@ -1,4 +1,4 @@
-wrote profile of 5532 bytes (allocated 5532 bytes)
+wrote profile of 5472 bytes (allocated 5472 bytes)
 Test exception handling: -1
 Test fnptr calling: 40
 Test accessing global var: 600 == 600
