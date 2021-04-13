@@ -31,15 +31,24 @@ function processMacros(text) {
 // Param filenameHint can be passed as a description to identify the file that is being processed, used
 // to locate errors for reporting and for html files to stop expansion between <style> and </style>.
 function preprocess(text, filenameHint) {
+  const IGNORE = 0;
+  const SHOW = 1;
+  // This state is entered after we have shown one of the block of an if/elif/else sequence.
+  // Once we enter this state we dont show any blocks or evaluate any
+  // conditions until the sequence ends.
+  const IGNORE_ALL = 2;
+  const showStack = [];
+  const showCurrentLine = () => showStack.every((x) => x == SHOW);
+
   currentlyParsedFilename = filenameHint;
+  const fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : '';
+  const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
+  let inStyle = false;
+  const lines = text.split('\n');
+  let ret = '';
+  let emptyLine = false;
+
   try {
-    const fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : '';
-    const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
-    let inStyle = false;
-    const lines = text.split('\n');
-    let ret = '';
-    const showStack = [];
-    let emptyLine = false;
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i];
       try {
@@ -57,15 +66,24 @@ function preprocess(text, filenameHint) {
           const trimmed = line.trim();
           if (trimmed[0] === '#') {
             const first = trimmed.split(' ', 1)[0];
-            if (first == '#if' || first == '#ifdef') {
+            if (first == '#if' || first == '#ifdef' || first == '#elif') {
               if (first == '#ifdef') {
                 warn('warning: use of #ifdef in js library.  Use #if instead.');
               }
+              if (first == '#elif') {
+                const curr = showStack.pop();
+                if (curr == SHOW || curr == IGNORE_ALL) {
+                  // If we showed to previous block we enter the IGNORE_ALL state
+                  // and stay there until endif is seen
+                  showStack.push(IGNORE_ALL);
+                  continue;
+                }
+              }
               const after = trimmed.substring(trimmed.indexOf(' '));
               const truthy = !!eval(after);
-              showStack.push(truthy);
+              showStack.push(truthy ? SHOW : IGNORE);
             } else if (first === '#include') {
-              if (showStack.indexOf(false) === -1) {
+              if (showCurrentLine()) {
                 let filename = line.substr(line.indexOf(' ') + 1);
                 if (filename.indexOf('"') === 0) {
                   filename = filename.substr(1, filename.length - 2);
@@ -80,7 +98,12 @@ function preprocess(text, filenameHint) {
               }
             } else if (first === '#else') {
               assert(showStack.length > 0);
-              showStack.push(!showStack.pop());
+              const curr = showStack.pop();
+              if (curr == IGNORE) {
+                showStack.push(SHOW);
+              } else {
+                showStack.push(IGNORE);
+              }
             } else if (first === '#endif') {
               assert(showStack.length > 0);
               showStack.pop();
@@ -88,7 +111,7 @@ function preprocess(text, filenameHint) {
               throw new Error(`Unknown preprocessor directive on line ${i}: ``${line}```);
             }
           } else {
-            if (showStack.indexOf(false) === -1) {
+            if (showCurrentLine()) {
               // Never emit more than one empty line at a time.
               if (emptyLine && !line) {
                 continue;
@@ -102,7 +125,7 @@ function preprocess(text, filenameHint) {
             }
           }
         } else { // !inStyle
-          if (showStack.indexOf(false) === -1) {
+          if (showCurrentLine()) {
             ret += line + '\n';
           }
         }
