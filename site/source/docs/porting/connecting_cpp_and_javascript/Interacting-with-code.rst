@@ -70,11 +70,11 @@ to prevent C++ name mangling.
 To compile this code run the following command in the Emscripten
 home directory::
 
-    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]'
+    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]'
 
 ``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the
 compiled code (everything else might be removed if it is not used), and
-``EXPORTED_RUNTIME_METHODS`` tells the compiler that we want to use the runtime
+``EXTRA_EXPORTED_RUNTIME_METHODS`` tells the compiler that we want to use the runtime
 functions ``ccall`` and ``cwrap`` (otherwise, it will not include them).
 
 .. note::
@@ -158,8 +158,8 @@ parameters to pass to the function:
      didn't see, like another script tag on the HTML or in the JS console like
      we did in this tutorial, then because of optimizations
      and minification you should export ccall from the runtime, using
-     ``EXPORTED_RUNTIME_METHODS``, for example using
-     ``-s 'EXPORTED_RUNTIME_METHODS=["ccall","cwrap"]'``,
+     ``EXTRA_EXPORTED_RUNTIME_METHODS``, for example using
+     ``-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall","cwrap"]'``,
      and call it on ``Module`` (which contains
      everything exported, in a safe way that is not influenced by minification
      or optimizations).
@@ -190,7 +190,7 @@ Compile the library with emcc:
 
 .. code:: bash
 
-    emcc api_example.c -o api_example.js -s MODULARIZE -s EXPORTED_RUNTIME_METHODS=['ccall']
+    emcc api_example.c -o api_example.js -s MODULARIZE -s EXTRA_EXPORTED_RUNTIME_METHODS=['ccall']
 
 Require the library and call its procedures from node:
 
