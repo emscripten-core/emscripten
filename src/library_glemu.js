@@ -259,8 +259,8 @@ var LibraryGLEmulation = {
           if (GLEmulation.lightingEnabled != false) {
             GLImmediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.lightingEnabled = false;
-        }
-        return;
+          }
+          return;
         } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glDisableClientState
