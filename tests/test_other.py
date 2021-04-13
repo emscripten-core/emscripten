@@ -1880,13 +1880,9 @@ int f() {
     self.assertContained('prepre\npre-run\nhello from main\n', self.run_js('a.out.js'))
 
   def test_extern_prepost(self):
-    create_file('extern-pre.js', '''
-      // I am an external pre.
-    ''')
-    create_file('extern-post.js', '''
-      // I am an external post.
-    ''')
-    self.run_process([EMCC, '-O2', test_file('hello_world.c'), '--extern-pre-js', 'extern-pre.js', '--extern-post-js', 'extern-post.js'])
+    create_file('extern-pre.js', '// I am an external pre.\n')
+    create_file('extern-post.js', '// I am an external post.\n')
+    self.run_process([EMCC, '-O2', test_file('hello_world.c'), '--extern-pre-js', 'extern-pre.js', '--extern-post-js', 'extern-post.js', '--closure=1'])
     # the files should be included, and externally - not as part of optimized
     # code, so they are the very first and last things, and they are not
     # minified.
