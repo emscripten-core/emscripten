@@ -7048,24 +7048,7 @@ someweirdtext
     # optimizer can deal with both types.
     map_filename = map_referent + '.map'
 
-    def encode_utf8(data):
-      if isinstance(data, dict):
-        for key in data:
-          data[key] = encode_utf8(data[key])
-        return data
-      elif isinstance(data, list):
-        for i in range(len(data)):
-          data[i] = encode_utf8(data[i])
-        return data
-      elif isinstance(data, type(u'')):
-        return data.encode('utf8')
-      else:
-        return data
-
     data = json.load(open(map_filename))
-    if str is bytes:
-      # Python 2 compatibility
-      data = encode_utf8(data)
     if hasattr(data, 'file'):
       # the file attribute is optional, but if it is present it needs to refer
       # the output file.
@@ -7079,9 +7062,6 @@ someweirdtext
     mappings = json.loads(self.run_js(
       path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
       args=[map_filename]))
-    if str is bytes:
-      # Python 2 compatibility
-      mappings = encode_utf8(mappings)
     seen_lines = set()
     for m in mappings:
       if m['source'] == 'src.cpp':

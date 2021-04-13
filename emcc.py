@@ -55,11 +55,7 @@ from tools import config
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
-try:
-  from urllib.parse import quote
-except ImportError:
-  # Python 2 compatibility
-  from urllib import quote
+from urllib.parse import quote
 
 logger = logging.getLogger('emcc')
 

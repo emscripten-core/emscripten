@@ -19,11 +19,7 @@ from tools import building, config
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
-try:
-  from tools import shared
-except ImportError:
-  # Python 2 circular import compatibility
-  import shared
+from tools import shared
 
 configuration = shared.configuration
 temp_files = configuration.get_temp_files()
