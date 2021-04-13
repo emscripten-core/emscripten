@@ -10,6 +10,7 @@ import logging
 import os
 import shutil
 import sys
+import urllib.request
 from glob import iglob
 
 from .toolchain_profiler import ToolchainProfiler
@@ -1736,14 +1737,8 @@ class Ports:
     def retrieve():
       # retrieve from remote server
       logger.info('retrieving port: ' + name + ' from ' + url)
-      try:
-        import requests
-        response = requests.get(url)
-        data = response.content
-      except ImportError:
-        from urllib.request import urlopen
-        f = urlopen(url)
-        data = f.read()
+      f = urllib.request.urlopen(url)
+      data = f.read()
 
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
