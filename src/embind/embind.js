@@ -499,6 +499,11 @@ var LibraryEmbind = {
         case 2: return signed ?
             function readS32FromPointer(pointer) { return HEAP32[pointer >> 2]; } :
             function readU32FromPointer(pointer) { return HEAPU32[pointer >> 2]; };
+#if WASM_BIGINT
+            case 3: return signed ?
+            function readS64FromPointer(pointer) { return HEAP64[pointer >> 3]; } :
+            function readU64FromPointer(pointer) { return HEAPU64[pointer >> 3]; };
+#endif
         default:
             throw new TypeError("Unknown integer type: " + name);
     }
@@ -584,6 +589,33 @@ var LibraryEmbind = {
     });
   },
 
+#if WASM_BIGINT
+  _embind_register_bigint__deps: [
+    '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
+  _embind_register_bigint: function(primitiveType, name, size) {
+    name = readLatin1String(name);
+
+    var shift = getShiftFromSize(size);
+
+    var isUnsignedType = (name.indexOf('u') != -1);
+
+    registerType(primitiveType, {
+        name: name,
+        'fromWireType': function (value) {
+          return value
+        },
+        'toWireType': function (destructors, value) {
+          return value
+        },
+        'argPackAdvance': 8,
+        'readValueFromPointer': integerReadValueFromPointer(name, shift, !isUnsignedType),
+        destructorFunction: null, // This type does not need a destructor
+    });
+  },
+#else
+  _embind_register_bigint__deps: [],
+  _embind_register_bigint: function(primitiveType, name, size) {},
+#endif
 
   _embind_register_float__deps: [
     'embind_repr', '$floatReadValueFromPointer', '$getShiftFromSize',

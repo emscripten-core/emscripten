@@ -62,6 +62,11 @@ namespace emscripten {
                 long minRange,
                 unsigned long maxRange);
 
+            void _embind_register_bigint(
+                TYPEID integerType,
+                const char* name,
+                size_t size);
+
             void _embind_register_float(
                 TYPEID floatType,
                 const char* name,

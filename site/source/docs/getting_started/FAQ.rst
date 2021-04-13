@@ -527,7 +527,7 @@ This is a limitation of the asm.js target in :term:`Clang`. This code is not cur
 How do I pass int64_t and uint64_t values from js into wasm functions?
 ======================================================================
 
-JS can't represent int64s, so what happens is that in exported functions (that you can call from JS) we "legalize" the types, by turning an i64 argument into two i32s (low and high bits), and an i64 return value becomes an i32, and you can access the high bits by calling a helper function called getTempRet0.
+If you build using the `-s WASM_BIGINT` flag, then `int64_t` and `uint64_t` will be represented as `bigint` values in JS. Without the `-s WASM_BIGINT` flag, the values will be represented as `number` in JS which can't represent int64s, so what happens is that in exported functions (that you can call from JS) we "legalize" the types, by turning an i64 argument into two i32s (low and high bits), and an i64 return value becomes an i32, and you can access the high bits by calling a helper function called getTempRet0.
 
 
 Can I use multiple Emscripten-compiled programs on one Web page?

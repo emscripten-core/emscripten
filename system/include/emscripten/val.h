@@ -190,6 +190,8 @@ namespace emscripten {
                 const void* p;
             } w[2];
             double d;
+            int64_t i;
+            uint64_t u;
         };
         static_assert(sizeof(GenericWireType) == 8, "GenericWireType must be 8 bytes");
         static_assert(alignof(GenericWireType) == 8, "GenericWireType must be 8-byte-aligned");
@@ -201,6 +203,16 @@ namespace emscripten {
 
         inline void writeGenericWireType(GenericWireType*& cursor, double wt) {
             cursor->d = wt;
+            ++cursor;
+        }
+
+        inline void writeGenericWireType(GenericWireType*& cursor, int64_t wt) {
+            cursor->i = wt;
+            ++cursor;
+        }
+
+        inline void writeGenericWireType(GenericWireType*& cursor, uint64_t wt) {
+            cursor->u = wt;
             ++cursor;
         }
 
