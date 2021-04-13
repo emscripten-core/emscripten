@@ -105,7 +105,7 @@ MINIMAL_HELLO_WORLD = [test_file('hello_world_em_asm.c'), '-O1', '-s', 'FILESYST
 class sanity(RunnerCore):
   @classmethod
   def setUpClass(cls):
-    super(sanity, cls).setUpClass()
+    super().setUpClass()
     # Unlike the other test suites we explicitly don't want to be skipping
     # the sanity checks here
     del os.environ['EMCC_SKIP_SANITY_CHECK']
@@ -126,16 +126,16 @@ class sanity(RunnerCore):
 
   @classmethod
   def tearDownClass(cls):
-    super(sanity, cls).tearDownClass()
+    super().tearDownClass()
     restore()
 
   def setUp(self):
-    super(sanity, self).setUp()
+    super().setUp()
     wipe()
     self.start_time = time.time()
 
   def tearDown(self):
-    super(sanity, self).tearDown()
+    super().tearDown()
     print('time:', time.time() - self.start_time)
 
   def do(self, command, env=None):

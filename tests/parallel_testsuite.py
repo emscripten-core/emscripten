@@ -34,7 +34,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
   """
 
   def __init__(self, max_cores):
-    super(ParallelTestSuite, self).__init__()
+    super().__init__()
     self.processes = None
     self.result_queue = None
     self.max_cores = max_cores
