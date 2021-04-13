@@ -579,7 +579,7 @@ class NoExceptLibrary(Library):
     return name
 
   @classmethod
-  def variations(cls, **kwargs):
+  def variations(cls, **kwargs):  # noqa
     combos = super().variations()
     return ([dict(eh_mode=exceptions.none, **combo) for combo in combos] +
             [dict(eh_mode=exceptions.emscripten, **combo) for combo in combos] +
