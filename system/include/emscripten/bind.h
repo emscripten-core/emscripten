@@ -1475,6 +1475,24 @@ namespace emscripten {
             return *this;
         }
 
+        template<typename... Args, typename ReturnType, typename... Policies>
+        EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(ReturnType (*factory)(Args...), Policies...) const {
+          using namespace internal;
+
+          // TODO: allows all raw pointers... policies need a rethink
+          typename WithPolicies<allow_raw_pointers, Policies...>::template ArgTypeList<ReturnType, Args...> args;
+          auto invoke = &Invoker<ReturnType, Args...>::invoke;
+          _embind_register_class_constructor(
+              TypeID<ClassType>::get(),
+              args.getCount(),
+              args.getTypes(),
+              getSignature(invoke),
+              reinterpret_cast<GenericFunction>(invoke),
+              reinterpret_cast<GenericFunction>(factory));
+
+          return *this;
+        }
+
         template<typename SmartPtr, typename... Args, typename... Policies>
         EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const {
             using namespace internal;

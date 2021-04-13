@@ -1277,6 +1277,17 @@ module({
             b.delete();
         });
 
+        test("functions as class constructors", function() {
+            var a = new cm.ConstructFromFunction({optionA: true});
+            assert.equal(true, a.optionA);
+
+            var b = new cm.ConstructFromFunction();
+            assert.equal(false, b.optionA);
+
+            a.delete();
+            b.delete();
+        });
+
         test("function objects as class methods", function() {
             var b = cm.ValHolder.makeValHolder("foo");
 
