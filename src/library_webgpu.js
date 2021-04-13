@@ -877,7 +877,7 @@ var LibraryWebGPU = {
       assert((bufferId != 0) + (samplerId != 0) + (textureViewId != 0) == 1);
 #endif
 
-      var binding = {{{ gpu.makeGetU32('entryPtr', C_STRUCTS.WGPUBindGroupLayoutEntry.binding) }}};
+      var binding = {{{ gpu.makeGetU32('entryPtr', C_STRUCTS.WGPUBindGroupEntry.binding) }}};
 
       if (bufferId != 0) {
         var size = undefined;
