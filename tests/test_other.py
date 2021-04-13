@@ -7529,10 +7529,10 @@ end
     # We must ignore various types of errors that are expected in this situation, as we
     # are including a lot of JS without corresponding compiled code for it. This still
     # lets us catch all other errors.
-    with env_modify({'EMCC_CLOSURE_ARGS': '--jscomp_off undefinedVars'}):
-      # USE_WEBGPU is specified here to make sure that it's closure-safe.
-      # It can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
-      self.run_process([EMCC, test_file('hello_world.c'), '-O1', '--closure=1', '-g1', '-s', 'INCLUDE_FULL_LIBRARY', '-s', 'USE_WEBGPU', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+
+    # USE_WEBGPU is specified here to make sure that it's closure-safe.
+    # It can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
+    self.run_process([EMCC, test_file('hello_world.c'), '-O1', '--closure=1', '-g1', '-s', 'INCLUDE_FULL_LIBRARY', '-s', 'USE_WEBGPU', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
 
   # Tests --closure-args command line flag
   def test_closure_externs(self):
@@ -10180,6 +10180,10 @@ exec "$@"
       # be clear this is what we are testing (and in case the default ever changes).
       cmd = [EMCC, function + '.c', '-O2', '--minify=0', '--profiling-funcs', '-Wno-incompatible-library-redeclaration', '-sREVERSE_DEPS=auto']
       print(f'compiling test program for: {function}')
+      if 'emscripten_get_compiler_setting' in function:
+        cmd.append('-sRETAIN_COMPILER_SETTINGS')
+      if 'emscripten_pc_get_function' in function:
+        cmd.append('-sUSE_OFFSET_CONVERTER')
       if 'embind' in function:
         cmd.append('--bind')
       if 'fetch' in function:
