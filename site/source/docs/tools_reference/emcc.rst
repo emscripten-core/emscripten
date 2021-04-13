@@ -132,7 +132,8 @@ Options that are modified or new in *emcc* are listed below:
   [compile+link]
   Preserve debug information.
 
-  - When compiling to object files, this is the same as in *Clang* and *gcc*, it adds debug information to the object files.
+  - When compiling to object files, this is the same as in *Clang* and *gcc*, it
+    adds DWARF debug information to the object files.
   - When linking, this is equivalent to :ref:`-g3 <emcc-g3>`.
 
 ``-gseparate-dwarf[=FILENAME]``
@@ -145,6 +146,12 @@ Options that are modified or new in *emcc* are listed below:
   debug file is, so that devtools can find it. You can use
   ``-s SEPARATE_DWARF_URL=URL`` to customize that location (this is useful if
   you want to host it on a different server, for example).
+
+.. _emcc-gsource-map:
+
+``-gsource-map``
+  When linking, generate a source map using LLVM debug information (which must
+  be present in object files, i.e., they should have been compiled with ``-g``).
 
 .. _emcc-gN:
 
@@ -170,16 +177,7 @@ Options that are modified or new in *emcc* are listed below:
     -
       .. _emcc-g3:
 
-      ``-g3``: When compiling to object files, keep debug info, including JS whitespace, function names, and LLVM debug info if any (this is the same as :ref:`-g <emcc-g>`).
-
-    .. _emcc-g4:
-
-    - ``-g4``: When linking, generate a source map using LLVM debug information (which must be present in object files, i.e., they should have been compiled with ``-g``).
-
-      .. note::
-
-        - Source maps allow you to view and debug the *C/C++ source code* in your browser's debugger!
-        - This debugging level may make compilation significantly slower (this is why we only do it on ``-g4``).
+      ``-g3``: When compiling to object files, keep debug info, including JS whitespace, function names, and LLVM debug info (DWARF) if any (this is the same as :ref:`-g <emcc-g>`).
 
 .. _emcc-profiling:
 
@@ -202,6 +200,8 @@ Options that are modified or new in *emcc* are listed below:
   Save a map file between the minified global names and the original function names. This allows you, for example, to reconstruct meaningful stack traces.
 
   .. note:: This is only relevant when :term:`minifying` global names, which happens in ``-O2`` and above, and when no ``-g`` option was specified to prevent minification.
+
+  .. note:: When used with ``-s WASM=2``, two symbol files are created. ``[name].js.symbols`` (with WASM symbols) and ``[name].wasm.js.symbols`` (with ASM.js symbols)
 
 .. _emcc-lto:
 

@@ -75,10 +75,10 @@ var LibraryManager = {
     ];
 
     if (!EXCEPTION_HANDLING) {
-      if (!DISABLE_EXCEPTION_THROWING) {
-        libraries.push('library_exceptions.js');
-      } else {
+      if (DISABLE_EXCEPTION_THROWING) {
         libraries.push('library_exceptions_stub.js');
+      } else {
+        libraries.push('library_exceptions.js');
       }
     }
 
@@ -153,6 +153,10 @@ var LibraryManager = {
 
     if (MAX_WEBGL_VERSION >= 2) {
       libraries.push('library_webgl2.js');
+    }
+
+    if (GL_EXPLICIT_UNIFORM_LOCATION) {
+      libraries.push('library_c_preprocessor.js');
     }
 
     if (LEGACY_GL_EMULATION) {

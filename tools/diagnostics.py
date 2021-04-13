@@ -155,7 +155,7 @@ def warn(msg, *args):
   diag(WARN, msg, *args)
 
 
-class WarningManager(object):
+class WarningManager:
   warnings = {}
 
   def add_warning(self, name, enabled=True, part_of_all=True, shared=False, error=False):

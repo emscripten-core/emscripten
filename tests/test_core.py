@@ -25,7 +25,7 @@ from tools import shared, building, config
 from runner import RunnerCore, path_from_root, requires_native_clang, test_file
 from runner import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
 from runner import env_modify, with_env_modify, disabled, node_pthreads
-from runner import NON_ZERO
+from runner import NON_ZERO, WEBIDL_BINDER
 import clang_native
 
 # decorators for limiting which modes a test can run in
@@ -37,6 +37,8 @@ def wasm_simd(f):
       self.skipTest('wasm simd only supported in d8 for now')
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
+    if '-O3' in self.emcc_args:
+      self.skipTest('SIMD tests are too slow with -O3 in the new LLVM pass manager, https://github.com/emscripten-core/emscripten/issues/13427')
     self.emcc_args.append('-msimd128')
     self.emcc_args.append('-fno-lax-vector-conversions')
     self.v8_args.append('--experimental-wasm-simd')
@@ -127,7 +129,7 @@ def sync(f):
 
 def also_with_noderawfs(func):
   def decorated(self):
-    orig_args = self.emcc_args[:]
+    orig_args = self.emcc_args.copy()
     func(self)
     print('noderawfs')
     self.emcc_args = orig_args + ['-DNODERAWFS']
@@ -1806,9 +1808,7 @@ int main() {
     self.banned_js_engines = [config.V8_ENGINE] # timer limitations in v8 shell
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
-
-    if self.run_name == 'asm2':
-      self.emcc_args += ['--closure=1'] # Use closure here for some additional coverage
+    self.maybe_closure()
     self.do_runf(test_file('emscripten_get_now.cpp'), 'Timer resolution is good')
 
   def test_emscripten_get_compiler_setting(self):
@@ -1943,6 +1943,9 @@ int main(int argc, char **argv) {
   def test_em_asm_arguments_side_effects(self):
     self.do_core_test('test_em_asm_arguments_side_effects.cpp')
     self.do_core_test('test_em_asm_arguments_side_effects.cpp', force_c=True)
+
+  def test_em_asm_direct(self):
+    self.do_core_test('test_em_asm_direct.c')
 
   @parameterized({
     '': ([], False),
@@ -3577,7 +3580,7 @@ ok
   def dylink_testf(self, main, side, expected=None, force_c=False, main_emcc_args=[],
                    need_reverse=True, auto_load=True, main_module=1, **kwargs):
     # Same as dylink_test but takes source code as filenames on disc.
-    old_args = self.emcc_args[:]
+    old_args = self.emcc_args.copy()
     if not expected:
       outfile = shared.unsuffixed(main) + '.out'
       if os.path.exists(outfile):
@@ -4737,12 +4740,6 @@ Have even and odd!
     self.do_core_test('test_strstr.c')
 
   def test_fnmatch(self):
-    # Run one test without assertions, for additional coverage
-    if self.run_name == 'asm2m':
-      i = self.emcc_args.index('ASSERTIONS=1')
-      assert i > 0 and self.emcc_args[i - 1] == '-s'
-      self.emcc_args[i] = 'ASSERTIONS=0'
-      print('flip assertions off')
     self.do_core_test('test_fnmatch.cpp')
 
   def test_sscanf(self):
@@ -4948,7 +4945,7 @@ Module = {
 
   def test_fgetc_ungetc(self):
     print('TODO: update this test once the musl ungetc-on-EOF-stream bug is fixed upstream and reaches us')
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       print(fs)
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
@@ -5257,7 +5254,7 @@ main( int argv, char ** argc ) {
 
   def test_fs_mmap(self):
     self.uses_es6 = True
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS', 'NODERAWFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
@@ -5306,7 +5303,7 @@ main( int argv, char ** argc ) {
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_access(self):
     self.uses_es6 = True
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
@@ -5345,7 +5342,7 @@ main( int argv, char ** argc ) {
 
   def test_unistd_truncate(self):
     self.uses_es6 = True
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
@@ -5384,7 +5381,7 @@ main( int argv, char ** argc ) {
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_unlink(self):
     self.clear()
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
@@ -5407,7 +5404,7 @@ main( int argv, char ** argc ) {
 
   def test_unistd_links(self):
     self.clear()
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       if WINDOWS and fs == 'NODEFS':
         print('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.', file=sys.stderr)
@@ -5434,7 +5431,7 @@ main( int argv, char ** argc ) {
   @also_with_wasm_bigint
   def test_unistd_io(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ERRNO_CODES'])
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       self.clear()
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
@@ -5444,7 +5441,7 @@ main( int argv, char ** argc ) {
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_misc(self):
-    orig_compiler_opts = self.emcc_args[:]
+    orig_compiler_opts = self.emcc_args.copy()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
@@ -5820,11 +5817,7 @@ return malloc(size);
   def test_cubescript(self):
     # uses register keyword
     self.emcc_args += ['-std=c++03', '-Wno-dynamic-class-memaccess']
-    if self.run_name == 'asm3':
-      self.emcc_args += ['--closure=1'] # Use closure here for some additional coverage
-
-    self.emcc_args = [x for x in self.emcc_args if x != '-g'] # remove -g, so we have one test without it by default
-
+    self.maybe_closure()
     self.emcc_args += ['-I', test_file('third_party', 'cubescript')]
 
     def test():
@@ -6072,8 +6065,8 @@ return malloc(size);
     self.maybe_closure()
 
     self.emcc_args.append('-Wno-shift-negative-value')
-    if self.run_name == 'asm2g':
-      self.emcc_args.append('-g4') # more source maps coverage
+    if '-g' in self.emcc_args:
+      self.emcc_args.append('-gsource-map') # more source maps coverage
 
     if use_cmake:
       make_args = []
@@ -6253,30 +6246,13 @@ return malloc(size);
   def test_fuzz(self):
     self.emcc_args += ['-I' + test_file('fuzz', 'include'), '-w']
 
-    skip_lto_tests = [
-      # LLVM LTO bug
-      '19.c', '18.cpp',
-      # puts exists before LTO, but is not used; LTO cleans it out, but then creates uses to it (printf=>puts) XXX https://llvm.org/bugs/show_bug.cgi?id=23814
-      '23.cpp'
-    ]
-
     def run_all(x):
       print(x)
       for name in sorted(glob.glob(test_file('fuzz', '*.c')) + glob.glob(test_file('fuzz', '*.cpp'))):
-        # if os.path.basename(name) != '4.c':
-        #   continue
         if 'newfail' in name:
           continue
         if os.path.basename(name).startswith('temp_fuzzcode'):
           continue
-        # pnacl legalization issue, see https://code.google.com/p/nativeclient/issues/detail?id=4027
-        if x == 'lto' and self.run_name in ['default'] and os.path.basename(name) in ['8.c']:
-          continue
-        if x == 'lto' and self.run_name == 'default' and os.path.basename(name) in skip_lto_tests:
-          continue
-        if x == 'lto' and os.path.basename(name) in ['21.c']:
-          continue # LLVM LTO bug
-
         print(name)
         if name.endswith('.cpp'):
           self.emcc_args.append('-std=c++03')
@@ -6382,7 +6358,7 @@ return malloc(size);
     'minimal_runtime': ['-s', 'MINIMAL_RUNTIME=1']
   })
   def test_dyncall_specific(self, *args):
-    emcc_args = self.emcc_args[:]
+    emcc_args = self.emcc_args.copy()
     cases = [
         ('DIRECT', []),
         ('DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]']),
@@ -6402,7 +6378,7 @@ return malloc(size);
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
     def test(output_prefix='', args=[], assert_returncode=0):
-      old = self.emcc_args[:]
+      old = self.emcc_args.copy()
       self.emcc_args += args
       src = test_file('core', 'getValue_setValue.cpp')
       expected = test_file('core', 'getValue_setValue' + output_prefix + '.out')
@@ -6430,7 +6406,7 @@ return malloc(size);
         if use_files:
           args += ['-DUSE_FILES']
         print(args)
-        old = self.emcc_args[:]
+        old = self.emcc_args.copy()
         self.emcc_args += args
         self.do_runf(test_file('core', 'FS_exports.cpp'),
                      (open(test_file('core', 'FS_exports' + output_prefix + '.out')).read(),
@@ -6453,7 +6429,7 @@ return malloc(size);
   def test_legacy_exported_runtime_numbers(self):
     # these used to be exported, but no longer are by default
     def test(output_prefix='', args=[], assert_returncode=0):
-      old = self.emcc_args[:]
+      old = self.emcc_args.copy()
       self.emcc_args += args
       src = test_file('core', 'legacy_exported_runtime_numbers.cpp')
       expected = test_file('core', 'legacy_exported_runtime_numbers%s.out' % output_prefix)
@@ -6983,17 +6959,13 @@ someweirdtext
   })
   @sync
   def test_webidl(self, mode, allow_memory_growth):
-    if self.run_name == 'asm2':
-      self.emcc_args += ['--closure=1', '-g1'] # extra testing
+    if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
       self.set_setting('MODULARIZE')
 
     # Force IDL checks mode
-    os.environ['IDL_CHECKS'] = mode
-
-    self.run_process([PYTHON, path_from_root('tools', 'webidl_binder.py'),
-                     test_file('webidl', 'test.idl'),
-                     'glue'])
+    with env_modify({'IDL_CHECKS': mode}):
+      self.run_process([WEBIDL_BINDER, test_file('webidl', 'test.idl'), 'glue'])
     self.assertExists('glue.cpp')
     self.assertExists('glue.js')
 
@@ -7006,7 +6978,7 @@ someweirdtext
     def post(filename):
       with open(filename, 'a') as f:
         f.write('\n\n')
-        if self.run_name == 'asm2':
+        if self.get_setting('MODULARIZE'):
           f.write('var TheModule = Module();\n')
         else:
           f.write('var TheModule = Module;\n')
@@ -7054,7 +7026,7 @@ someweirdtext
     wasm_filename = 'a.out.wasm'
     no_maps_filename = 'no-maps.out.js'
 
-    assert '-g4' not in self.emcc_args
+    assert '-gsource-map' not in self.emcc_args
     building.emcc('src.cpp', self.get_emcc_args(), out_filename)
     # the file name may find its way into the generated code, so make sure we
     # can do an apples-to-apples comparison by compiling with the same file name
@@ -7062,7 +7034,7 @@ someweirdtext
     with open(no_maps_filename) as f:
       no_maps_file = f.read()
     no_maps_file = re.sub(' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
-    self.emcc_args.append('-g4')
+    self.emcc_args.append('-gsource-map')
 
     building.emcc(os.path.abspath('src.cpp'),
                   self.get_emcc_args(),
@@ -8037,7 +8009,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
       'in main',
     ]),
-    'g4': ('-g4', [
+    'g4': ('-gsource-map', [
       ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
       'in main ',
       '.cpp:3:8'
@@ -8048,7 +8020,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-fsanitize=null', g_flag]
     self.set_setting('ALLOW_MEMORY_GROWTH')
 
-    if g_flag == '-g4':
+    if g_flag == '-gsource-map':
       if not self.is_wasm():
         self.skipTest('wasm2js has no source map support')
       elif '-Oz' in self.emcc_args:

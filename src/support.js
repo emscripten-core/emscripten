@@ -43,12 +43,6 @@ function getCompilerSetting(name) {
   if (!(name in compilerSettings)) return 'invalid compiler setting: ' + name;
   return compilerSettings[name];
 }
-#else // RETAIN_COMPILER_SETTINGS
-#if ASSERTIONS
-function getCompilerSetting(name) {
-  throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for getCompilerSetting or emscripten_get_compiler_setting to work';
-}
-#endif // ASSERTIONS
 #endif // RETAIN_COMPILER_SETTINGS
 
 #if USE_PTHREADS

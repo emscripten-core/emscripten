@@ -27,7 +27,7 @@ var LibraryPThreadStub = {
   pthread_cleanup_pop__sig: 'vi',
   pthread_cleanup_pop: function(execute) {
     assert(_pthread_cleanup_push.level == __ATEXIT__.length, 'cannot pop if something else added meanwhile!');
-    callback = __ATEXIT__.pop();
+    var callback = __ATEXIT__.pop();
     if (execute) {
       {{{ makeDynCall('vi', 'callback.func') }}}(callback.arg)
     }

@@ -143,6 +143,7 @@ var LibraryExceptions = {
       return {{{ makeGetValue('this.ptr', 'ptrSize', '*') }}};
     };
 
+#if !DISABLE_EXCEPTION_CATCHING
     // Get pointer which is expected to be received by catch clause in C++ code. It may be adjusted
     // when the pointer is casted to some of the exception object base classes (e.g. when virtual
     // inheritance is used). When a pointer is thrown this method should return the thrown pointer
@@ -170,6 +171,7 @@ var LibraryExceptions = {
     } else {
       this.ptr = ptr;
     }
+#endif
   },
 
   $exception_addRef: function (info) {
@@ -287,6 +289,7 @@ var LibraryExceptions = {
     return type;
   },
 
+#if !DISABLE_EXCEPTION_CATCHING
   __cxa_begin_catch__deps: ['$CatchInfo', '$exceptionCaught', '$exception_addRef',
                             '$uncaughtExceptionCount'],
   __cxa_begin_catch: function(ptr) {
@@ -336,6 +339,7 @@ var LibraryExceptions = {
 #endif
     return new CatchInfo(ptr).get_exception_ptr();
   },
+#endif
 
   __cxa_uncaught_exceptions__deps: ['$uncaughtExceptionCount'],
   __cxa_uncaught_exceptions: function() {
@@ -371,6 +375,7 @@ var LibraryExceptions = {
     ___cxa_rethrow();
   },
 
+#if !DISABLE_EXCEPTION_CATCHING
   // Finds a suitable catch clause for when an exception is thrown.
   // In normal compilers, this functionality is handled by the C++
   // 'personality' routine. This is passed a fairly complex structure
@@ -380,7 +385,7 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-  __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '$CatchInfo', '__resumeException'],
+  __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '$CatchInfo', '__resumeException', '__cxa_can_catch'],
   __cxa_find_matching_catch: function() {
     var thrown = exceptionLast;
     if (!thrown) {
@@ -440,8 +445,26 @@ var LibraryExceptions = {
     catchInfo.free();
     {{{ makeThrow('ptr') }}}
   },
+#endif
 };
 
+
+#if DISABLE_EXCEPTION_CATCHING
+[
+  '__cxa_begin_catch',
+  '__cxa_end_catch',
+  '__resumeException',
+  '__cxa_find_matching_catch',
+  '__cxa_get_exception_ptr',
+].forEach(function(name) {
+  LibraryExceptions[name] = function() { abort(); };
+#if !INCLUDE_FULL_LIBRARY
+  LibraryExceptions[name + '__deps'] = [function() {
+    error('DISABLE_EXCEPTION_CATCHING was set, which means no C++ exception catching support code is linked in, but such support is required by symbol `' + name + '`. Either link with DISABLE_EXCEPTION_CATCHING=0 (if you do want exception catching) or compile all source files with DISABLE_EXCEPTION_CATCHING=1 (the default) (so that no exception catching support code is required).');
+  }];
+#endif
+});
+#else
 // In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.
 // where the number specifies the number of arguments. In Emscripten, route all these to a single function '__cxa_find_matching_catch'
 // that variadically processes all of these functions using JS 'arguments' object.
@@ -450,5 +473,6 @@ addCxaCatch = function(n) {
   LibraryManager.library['__cxa_find_matching_catch_' + n + '__sig'] = new Array(n + 2).join('i');
   LibraryManager.library['__cxa_find_matching_catch_' + n + '__deps'] = LibraryExceptions['__cxa_find_matching_catch__deps'];
 };
+#endif
 
 mergeInto(LibraryManager.library, LibraryExceptions);

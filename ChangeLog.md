@@ -20,8 +20,36 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.17: 04/10/2021
+------------------
+- Specifying `EM_CONFIG` inline (python code in the environment variable itself)
+  is no longer supported (#13855).  This has been long deprecated but finally
+  completely removed.
+- Deprecate `-g4`, which is a little confusing as it does not do more than `-g3`
+  but instead emits source maps instead of DWARF. `-g4` will now warn. A new
+  flag `-gsource-map` enables source maps without warning.
+- In order to behave more like clang and gcc, emscripten no longer
+  supports some nonstandard methods of library lookup (that worked
+  unintentionally and were untested and not documented):
+    1. Linking with `-llibc` rather than `-lc` will no longer work.
+    2. Linking a library called `foo.a` via `-lfoo` will no longer work.
+       (libraries found via `-l` have to start with `lib`)
+- Use LLVM's new pass manager by default, as LLVM does. This changes a bunch of
+  things about how LLVM optimizes and inlines, so it may cause noticeable
+  changes in compile times, code size, and speed, either for better or for
+  worse. (#13427)
+- Removed use of Python multiprocessing library because of stability issues.
+  Added a new environment variable `EM_PYTHON_MULTIPROCESSING=1` that can be set
+  to revert back to using Python multiprocessing, in case there are reports of
+  regressions (that variable is intended to be temporary). (#13493)
 - Binaryen now always inlines single-use functions. This should reduce code size
   and improve performance (#13744).
+- Fix generating of symbol files with `--emit-symbol-map` for JS targets.
+  When `-s WASM=2` is used. Two symbols are generated:
+    - `[name].js.symbols` - storing Wasm mapping
+    - `[name].wasm.js.symbols` - storing JS mapping
+  In other cases a single `[name].js.symbols` file is created.
 
 2.0.16: 03/25/2021
 ------------------
@@ -80,7 +108,7 @@ Current Trunk
 ------------------
 - Add new setting: `REVERSE_DEPS`. This can be used to control how emscripten
   decides which reverse dependecies to include.  See `settings.js` for more
-  information.  The default setting ('auto') is the transitional way emscripten
+  information.  The default setting ('auto') is the traditional way emscripten
   has worked in the past so there should be no change unless this options is
   actually used.  This option partially replaces the `EMCC_ONLY_FORCED_STDLIBS`
   environment variable which (among other things) essentially had the effect of
@@ -119,7 +147,7 @@ Current Trunk
 ------------------
 - `emscripten/vr.h` and other remnants of WebVR support removed. (#13210, which
   is a followup to #10460)
-- Stop overriding CMake default flags based on build type. This will 
+- Stop overriding CMake default flags based on build type. This will
   result in builds that are more like CMake does on other platforms. You
   may notice that `RelWithDebInfo` will now include debug info (it did not
   before, which appears to have been an error), and that `Release` will
@@ -308,7 +336,7 @@ Current Trunk
   is encountered. This makes the Emscripten program behave more like a native
   program where the OS would terminate the process and no further code can be
   executed when an unhandled exception (e.g. out-of-bounds memory access) happens.
-  Once the program aborts any exported function calls will fail with a "program 
+  Once the program aborts any exported function calls will fail with a "program
   has already aborted" exception to prevent calls into code with a potentially
   corrupted program state.
 - Use `__indirect_function_table` as the import name for the table, which is

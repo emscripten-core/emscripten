@@ -103,8 +103,6 @@ UNSUPPORTED_LLD_FLAGS = {
     '-version-script': True,
 }
 
-LIB_PREFIXES = ('', 'lib')
-
 DEFAULT_ASYNCIFY_IMPORTS = [
   'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
@@ -192,7 +190,7 @@ def save_intermediate_with_wasm(name, wasm_binary):
   building.save_intermediate(wasm_binary, name + '.wasm')
 
 
-class TimeLogger(object):
+class TimeLogger:
   last = time.time()
 
   @staticmethod
@@ -221,7 +219,7 @@ class OFormat(Enum):
   BARE = 5
 
 
-class EmccOptions(object):
+class EmccOptions:
   def __init__(self):
     self.output_file = None
     self.post_link = False
@@ -387,7 +385,7 @@ def apply_settings(changes):
 
     if key == 'EXPORTED_FUNCTIONS':
       # used for warnings in emscripten.py
-      shared.Settings.USER_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
+      shared.Settings.USER_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS.copy()
 
     # TODO(sbc): Remove this legacy way.
     if key == 'WASM_OBJECT_FILES':
@@ -792,11 +790,6 @@ def get_cflags(options, user_args):
              '-D__unix',
              '-D__unix__']
 
-  # LLVM has turned on the new pass manager by default, but it causes some code
-  # size regressions. For now, use the legacy one.
-  # https://github.com/emscripten-core/emscripten/issues/13427
-  cflags += ['-flegacy-pass-manager']
-
   # Changes to default clang behavior
 
   # Implicit functions can cause horribly confusing function pointer type errors, see #2175
@@ -978,15 +971,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
 
-    newargs = list(args)
+    newargs = args.copy()
 
     # Scan and strip emscripten specific cmdline warning flags.
     # This needs to run before other cmdline flags have been parsed, so that
     # warnings are properly printed during arg parse.
     newargs = diagnostics.capture_warnings(newargs)
-
-    if not config.config_file:
-      diagnostics.warning('deprecated', 'Specifying EM_CONFIG as a python literal is deprecated. Please use a file instead.')
 
     for i in range(len(newargs)):
       if newargs[i] in ('-l', '-L', '-I'):
@@ -1022,9 +1012,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.memory_init_file = shared.Settings.OPT_LEVEL >= 2
 
     # TODO: support source maps with js_transform
-    if options.js_transform and shared.Settings.DEBUG_LEVEL >= 4:
+    if options.js_transform and shared.Settings.GENERATE_SOURCE_MAP:
       logger.warning('disabling source maps because a js transform is being done')
-      shared.Settings.DEBUG_LEVEL = 3
+      shared.Settings.GENERATE_SOURCE_MAP = 0
 
     explicit_settings_changes, newargs = parse_s_args(newargs)
     settings_changes += explicit_settings_changes
@@ -1077,43 +1067,29 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         skip = True
 
       if not arg.startswith('-'):
+        # we already removed -o <target>, so all these should be inputs
+        newargs[i] = ''
         # os.devnul should always be reported as existing but there is bug in windows
         # python before 3.8:
         # https://bugs.python.org/issue1311
         if not os.path.exists(arg) and arg != os.devnull:
           exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
         file_suffix = get_file_suffix(arg)
-        if file_suffix in SOURCE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS or building.is_ar(arg):
-          # we already removed -o <target>, so all these should be inputs
-          newargs[i] = ''
-          if file_suffix in SOURCE_ENDINGS or (has_dash_c and file_suffix == '.bc'):
-            input_files.append((i, arg))
-          elif file_suffix in HEADER_ENDINGS:
-            input_files.append((i, arg))
-            has_header_inputs = True
-          elif file_suffix in ASSEMBLY_ENDINGS or building.is_bitcode(arg) or building.is_ar(arg):
-            input_files.append((i, arg))
-          elif building.is_wasm(arg):
-            input_files.append((i, arg))
-          elif file_suffix in (STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
-            # if it's not, and it's a library, just add it to libs to find later
-            libname = unsuffixed_basename(arg)
-            for prefix in LIB_PREFIXES:
-              if not prefix:
-                continue
-              if libname.startswith(prefix):
-                libname = libname[len(prefix):]
-                break
-            libs.append((i, libname))
-        elif file_suffix in STATICLIB_ENDINGS:
-          if not building.is_ar(arg):
-            if building.is_bitcode(arg):
-              message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files use .bc or .o.'
-            else:
-              message = arg + ': Unknown format, not a static library!'
-            exit_with_error(message)
+        if file_suffix in HEADER_ENDINGS:
+          has_header_inputs = True
+        if file_suffix in STATICLIB_ENDINGS and not building.is_ar(arg):
+          if building.is_bitcode(arg):
+            message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files use .bc or .o.'
+          else:
+            message = arg + ': Unknown format, not a static library!'
+          exit_with_error(message)
+        if file_suffix in DYNAMICLIB_ENDINGS and not building.is_bitcode(arg) and not building.is_wasm(arg):
+          # For shared libraries that are neither bitcode nor wasm, assuming its local native
+          # library and attempt to find a library by the same name in our own library path.
+          # TODO(sbc): Do we really need this feature?  See test_other.py:test_local_link
+          libname = unsuffixed_basename(arg).lstrip('lib')
+          libs.append((i, libname))
         else:
-          newargs[i] = ''
           input_files.append((i, arg))
       elif arg.startswith('-L'):
         add_link_flag(i, arg)
@@ -1334,7 +1310,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('no input files')
 
     # Note the exports the user requested
-    building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
+    building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS.copy()
 
     def default_setting(name, new_default):
       if name not in settings_map:
@@ -1424,6 +1400,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       assert not shared.Settings.MAIN_MODULE
       # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
       options.memory_init_file = False
+
+    # If we are including the entire JS library then we know for sure we will, by definition,
+    # require all the reverse dependencies.
+    if shared.Settings.INCLUDE_FULL_LIBRARY:
+      default_setting('REVERSE_DEPS', 'all')
 
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
       if shared.Settings.MAIN_MODULE == 1 or shared.Settings.SIDE_MODULE == 1:
@@ -1873,7 +1854,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM_BIGINT:
       shared.Settings.LEGALIZE_JS_FFI = 0
 
-    shared.Settings.GENERATE_SOURCE_MAP = shared.Settings.DEBUG_LEVEL >= 4 and not shared.Settings.SINGLE_FILE
+    if shared.Settings.SINGLE_FILE:
+      shared.Settings.GENERATE_SOURCE_MAP = 0
 
     if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
       exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
@@ -1977,7 +1959,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.LINKABLE:
         exit_with_error('ASan does not support dynamic linking')
 
-    if sanitize and '-g4' in args:
+    if sanitize and shared.Settings.GENERATE_SOURCE_MAP:
       shared.Settings.LOAD_SOURCE_MAP = 1
 
     if shared.Settings.LOAD_SOURCE_MAP and shared.Settings.USE_PTHREADS:
@@ -2638,8 +2620,11 @@ def parse_args(newargs):
         if shared.Settings.DEBUG_LEVEL < 3:
           newargs[i] = ''
         else:
-          # for 3+, report -g to clang as -g4 is not accepted
+          # for 3+, report -g to clang as -g4 etc. are not accepted
           newargs[i] = '-g'
+          if shared.Settings.DEBUG_LEVEL == 4:
+            shared.Settings.GENERATE_SOURCE_MAP = 1
+            diagnostics.warning('deprecated', 'please replace -g4 with -gsource-map')
       else:
         if requested_level.startswith('force_dwarf'):
           exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
@@ -2655,6 +2640,9 @@ def parse_args(newargs):
             shared.Settings.SEPARATE_DWARF = requested_level.split('=')[1]
           else:
             shared.Settings.SEPARATE_DWARF = True
+        elif requested_level == 'source-map':
+          shared.Settings.GENERATE_SOURCE_MAP = 1
+          newargs[i] = '-g'
         # a non-integer level can be something like -gline-tables-only. keep
         # the flag for the clang frontend to emit the appropriate DWARF info.
         # set the emscripten debug level to 3 so that we do not remove that
@@ -2949,8 +2937,11 @@ def do_binaryen(target, options, wasm_target):
     if shared.Settings.WASM == 2:
       wasm2js_template = wasm_target + '.js'
       open(wasm2js_template, 'w').write(preprocess_wasm2js_script())
+      # generate secondary file for JS symbols
+      symbols_file_js = shared.replace_or_append_suffix(wasm2js_template, '.symbols') if options.emit_symbol_map else None
     else:
       wasm2js_template = final_js
+      symbols_file_js = shared.replace_or_append_suffix(target, '.symbols') if options.emit_symbol_map else None
 
     wasm2js = building.wasm2js(wasm2js_template,
                                wasm_target,
@@ -2958,7 +2949,8 @@ def do_binaryen(target, options, wasm_target):
                                minify_whitespace=minify_whitespace(),
                                use_closure_compiler=options.use_closure_compiler,
                                debug_info=debug_info,
-                               symbols_file=symbols_file)
+                               symbols_file=symbols_file,
+                               symbols_file_js=symbols_file_js)
 
     shared.configuration.get_temp_files().note(wasm2js)
 
@@ -3078,20 +3070,22 @@ else if (typeof exports === 'object')
 def module_export_name_substitution():
   global final_js
   logger.debug('Private module export name substitution with ' + shared.Settings.EXPORT_NAME)
-  src = open(final_js).read()
+  with open(final_js) as f:
+    src = f.read()
   final_js += '.module_export_name_substitution.js'
   if shared.Settings.MINIMAL_RUNTIME:
     # In MINIMAL_RUNTIME the Module object is always present to provide the .asm.js/.wasm content
     replacement = shared.Settings.EXPORT_NAME
   else:
     replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
+  src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
+  # For Node.js and other shell environments, create an unminified Module object so that
+  # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
+  if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.target_environment_may_be('node') or shared.Settings.target_environment_may_be('shell')):
+    src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
   with open(final_js, 'w') as f:
-    src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
-    # For Node.js and other shell environments, create an unminified Module object so that
-    # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-    if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.target_environment_may_be('node') or shared.Settings.target_environment_may_be('shell')):
-      src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
     f.write(src)
+  shared.configuration.get_temp_files().note(final_js)
   save_intermediate('module_export_name_substitution')
 
 
@@ -3303,25 +3297,22 @@ def worker_js_script(proxy_worker_filename):
 def process_libraries(libs, lib_dirs, temp_files):
   libraries = []
   consumed = []
-  suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
+  suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
 
   # Find library files
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
 
     found = False
-    for prefix in LIB_PREFIXES:
-      for suff in suffixes:
-        name = prefix + lib + suff
-        for lib_dir in lib_dirs:
-          path = os.path.join(lib_dir, name)
-          if os.path.exists(path):
-            logger.debug('found library "%s" at %s', lib, path)
-            temp_files.append((i, path))
-            consumed.append(i)
-            found = True
-            break
-        if found:
+    for suff in suffixes:
+      name = 'lib' + lib + suff
+      for lib_dir in lib_dirs:
+        path = os.path.join(lib_dir, name)
+        if os.path.exists(path):
+          logger.debug('found library "%s" at %s', lib, path)
+          temp_files.append((i, path))
+          consumed.append(i)
+          found = True
           break
       if found:
         break
@@ -3343,7 +3334,7 @@ def process_libraries(libs, lib_dirs, temp_files):
   return consumed
 
 
-class ScriptSource(object):
+class ScriptSource:
   def __init__(self):
     self.src = None # if set, we have a script to load with a src attribute
     self.inline = None # if set, we have the contents of a script to write inline in a script
