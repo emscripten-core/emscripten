@@ -897,7 +897,7 @@ var LibraryWebGPU = {
     };
 
     var device = WebGPU["mgrDevice"].get(deviceId);
-    device["createQuerySet"](descriptor);
+    return WebGPU.mgrQuerySet.create(device["createQuerySet"](desc));
   },
 
   wgpuDeviceCreateComputePipeline: function(deviceId, descriptor) {
