@@ -2244,8 +2244,8 @@ var LibraryGLEmulation = {
               }
             }
 
-            vsLightingDefs = '';
-            vsLightingPass = '';
+            var vsLightingDefs = '';
+            var vsLightingPass = '';
             if (GLEmulation.lightingEnabled) {
               vsLightingDefs += 'attribute vec3 a_normal;';
               vsLightingDefs += 'uniform mat3 u_normalMatrix;';
