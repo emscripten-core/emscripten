@@ -1418,7 +1418,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           '$relocateExports',
           '$GOTHandler',
           '$getDylinkMetadata',
+          '__heap_base',
+          '__stack_pointer',
       ]
+      # This needs to be exported on the Module object too so it's visible
+      # to side modules too.
+      shared.Settings.EXPORTED_FUNCTIONS += ['___heap_base']
       if options.use_closure_compiler:
         exit_with_error('cannot use closure compiler on shared modules')
       if shared.Settings.MINIMAL_RUNTIME:
