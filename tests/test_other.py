@@ -10156,7 +10156,7 @@ exec "$@"
     self.set_setting('NO_EXIT_RUNTIME', 0)
     self.set_setting('GL_TRACK_ERRORS', 0)
     self.set_setting('WASM_OBJECT_FILES', 0)
-    # self.set_setting('INCLUDE_FULL_LIBRARY', 1)
+    self.set_setting('INCLUDE_FULL_LIBRARY', 1) # https://github.com/emscripten-core/emscripten/issues/13794
     # self.emcc_args += ['-sMAIN_MODULE=2']
     # Exception: FROZEN_CACHE is set, but cache file is missing: sysroot/lib/wasm32-emscripten/lto-pic/libgl-webgl2-full_es3.a
     # self.emcc_args += ['-sUSE_WEBGL2']
