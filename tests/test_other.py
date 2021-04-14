@@ -1880,13 +1880,9 @@ int f() {
     self.assertContained('prepre\npre-run\nhello from main\n', self.run_js('a.out.js'))
 
   def test_extern_prepost(self):
-    create_file('extern-pre.js', '''
-      // I am an external pre.
-    ''')
-    create_file('extern-post.js', '''
-      // I am an external post.
-    ''')
-    self.run_process([EMCC, '-O2', test_file('hello_world.c'), '--extern-pre-js', 'extern-pre.js', '--extern-post-js', 'extern-post.js'])
+    create_file('extern-pre.js', '// I am an external pre.\n')
+    create_file('extern-post.js', '// I am an external post.\n')
+    self.run_process([EMCC, '-O2', test_file('hello_world.c'), '--extern-pre-js', 'extern-pre.js', '--extern-post-js', 'extern-post.js', '--closure=1'])
     # the files should be included, and externally - not as part of optimized
     # code, so they are the very first and last things, and they are not
     # minified.
@@ -7210,7 +7206,7 @@ int main() {
       self.assertEqual(wasm_data.count(b'dylink'), 1)
 
   @is_slow_test
-  def test_wasm_backend_lto(self):
+  def test_lto(self):
     # test building of non-wasm-object-files libraries, building with them, and running them
 
     src = test_file('hello_libcxx.cpp')
@@ -7243,10 +7239,10 @@ int main() {
       self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   @parameterized({
-    'except': [],
-    'noexcept': ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
+    'noexcept': [],
+    'except': ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
   })
-  def test_wasm_backend_lto_libcxx(self, *args):
+  def test_lto_libcxx(self, *args):
     self.run_process([EMXX, test_file('hello_libcxx.cpp'), '-flto'] + list(args))
 
   def test_lto_flags(self):
@@ -7529,10 +7525,10 @@ end
     # We must ignore various types of errors that are expected in this situation, as we
     # are including a lot of JS without corresponding compiled code for it. This still
     # lets us catch all other errors.
-    with env_modify({'EMCC_CLOSURE_ARGS': '--jscomp_off undefinedVars'}):
-      # USE_WEBGPU is specified here to make sure that it's closure-safe.
-      # It can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
-      self.run_process([EMCC, test_file('hello_world.c'), '-O1', '--closure=1', '-g1', '-s', 'INCLUDE_FULL_LIBRARY', '-s', 'USE_WEBGPU', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+
+    # USE_WEBGPU is specified here to make sure that it's closure-safe.
+    # It can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
+    self.run_process([EMCC, test_file('hello_world.c'), '-O1', '--closure=1', '-g1', '-s', 'INCLUDE_FULL_LIBRARY', '-s', 'USE_WEBGPU', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
 
   # Tests --closure-args command line flag
   def test_closure_externs(self):
@@ -7904,6 +7900,36 @@ int main() {
       self.assertIn('clang', str(f.read()))
     size_with_section = os.path.getsize('a.out.wasm')
     self.assertLess(size, size_with_section)
+
+  def test_js_preprocess(self):
+    # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
+    create_file('lib.js', '''
+#if MAIN_MODULE == 1
+console.error('JSLIB: MAIN_MODULE=1');
+#elif MAIN_MODULE == 2
+console.error('JSLIB: MAIN_MODULE=2');
+#elif EXIT_RUNTIME
+console.error('JSLIB: EXIT_RUNTIME');
+#else
+console.error('JSLIB: none of the above');
+#endif
+''')
+
+    err = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'], stderr=PIPE).stderr
+    self.assertContained('JSLIB: none of the above', err)
+    self.assertEqual(err.count('JSLIB'), 1)
+
+    err = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js', '-s', 'MAIN_MODULE'], stderr=PIPE).stderr
+    self.assertContained('JSLIB: MAIN_MODULE=1', err)
+    self.assertEqual(err.count('JSLIB'), 1)
+
+    err = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js', '-s', 'MAIN_MODULE=2'], stderr=PIPE).stderr
+    self.assertContained('JSLIB: MAIN_MODULE=2', err)
+    self.assertEqual(err.count('JSLIB'), 1)
+
+    err = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js', '-s', 'EXIT_RUNTIME'], stderr=PIPE).stderr
+    self.assertContained('JSLIB: EXIT_RUNTIME', err)
+    self.assertEqual(err.count('JSLIB'), 1)
 
   def test_html_preprocess(self):
     src_file = test_file('module', 'test_stdin.c')
@@ -8532,16 +8558,13 @@ int main () {
     wasm2js = ['-s', 'WASM=0', '--memory-init-file', '1']
 
     hello_world_sources = [test_file('small_hello_world.c'),
-                           '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]',
                            '-s', 'USES_DYNAMIC_ALLOC=0']
     random_printf_sources = [test_file('hello_random_printf.c'),
-                             '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]',
                              '-s', 'USES_DYNAMIC_ALLOC=0',
                              '-s', 'SINGLE_FILE']
     hello_webgl_sources = [test_file('minimal_webgl', 'main.cpp'),
                            test_file('minimal_webgl', 'webgl.c'),
                            '--js-library', test_file('minimal_webgl', 'library_js.js'),
-                           '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]',
                            '-s', 'USES_DYNAMIC_ALLOC', '-lwebgl.js',
                            '-s', 'MODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-s', 'MAX_WEBGL_VERSION=2']
@@ -9127,7 +9150,17 @@ int main(void) {
     self.assertGreater(enable_size, disable_size)
     self.assertEqual(disable_size, ignore_size)
 
-  def test_f_exception(self):
+  @parameterized({
+    # exceptions are off by default
+    'off':  ([], [], False),
+    # enabling exceptions at link and compile works
+    'on': (['-fexceptions'], ['-fexceptions'], True),
+    # just compile isn't enough as the JS runtime lacks support
+    'compile_only': (['-fexceptions'], [], False),
+    # just link isn't enough as codegen didn't emit exceptions support
+    'link_only': ([], ['-fexceptions'], False),
+  })
+  def test_f_exception(self, compile_flags, link_flags, expect_caught):
     create_file('src.cpp', r'''
       #include <stdio.h>
       int main () {
@@ -9139,21 +9172,15 @@ int main(void) {
         return 0;
       }
     ''')
-    for compile_flags, link_flags, expect_caught in [
-      # exceptions are off by default
-      ([], [], False),
-      # enabling exceptions at link and compile works
-      (['-fexceptions'], ['-fexceptions'], True),
-      # just compile isn't enough as the JS runtime lacks support
-      (['-fexceptions'], [], False),
-      # just link isn't enough as codegen didn't emit exceptions support
-      ([], ['-fexceptions'], False),
-    ]:
-      print(compile_flags, link_flags, expect_caught)
-      self.run_process([EMCC, 'src.cpp', '-c', '-o', 'src.o'] + compile_flags)
-      self.run_process([EMCC, 'src.o'] + link_flags)
-      result = self.run_js('a.out.js', assert_returncode=0 if expect_caught else NON_ZERO)
-      self.assertContainedIf('CAUGHT', result, expect_caught)
+    self.run_process([EMCC, 'src.cpp', '-c', '-o', 'src.o'] + compile_flags)
+    if compile_flags and not link_flags:
+      out = self.expect_fail([EMCC, 'src.o'] + link_flags)
+      self.assertContained('error: DISABLE_EXCEPTION_CATCHING was set, which means no C++ exception catching support code is linked in, but such support is required by symbol `__cxa_begin_catch`.', out)
+      return
+
+    self.run_process([EMCC, 'src.o'] + link_flags)
+    result = self.run_js('a.out.js', assert_returncode=0 if expect_caught else NON_ZERO)
+    self.assertContainedIf('CAUGHT', result, expect_caught)
 
   def test_assertions_on_internal_api_changes(self):
     create_file('src.c', r'''
@@ -10176,6 +10203,10 @@ exec "$@"
       # be clear this is what we are testing (and in case the default ever changes).
       cmd = [EMCC, function + '.c', '-O2', '--minify=0', '--profiling-funcs', '-Wno-incompatible-library-redeclaration', '-sREVERSE_DEPS=auto']
       print(f'compiling test program for: {function}')
+      if 'emscripten_get_compiler_setting' in function:
+        cmd.append('-sRETAIN_COMPILER_SETTINGS')
+      if 'emscripten_pc_get_function' in function:
+        cmd.append('-sUSE_OFFSET_CONVERTER')
       if 'embind' in function:
         cmd.append('--bind')
       if 'fetch' in function:

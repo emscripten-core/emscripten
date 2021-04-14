@@ -2344,7 +2344,7 @@ var LibraryOpenAL = {
       AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
       return 0; /* ALC_NONE */
     }
-    name = UTF8ToString(pEnumName);
+    var name = UTF8ToString(pEnumName);
     // See alGetEnumValue(), but basically behave the same as OpenAL-Soft
     switch (name) {
     case 'ALC_NO_ERROR': return 0;
@@ -2608,7 +2608,7 @@ var LibraryOpenAL = {
     }
     AL.paused = true;
 
-    for (ctxId in AL.contexts) {
+    for (var ctxId in AL.contexts) {
       var ctx = AL.contexts[ctxId];
       if (ctx.deviceId !== deviceId) {
         continue;
@@ -2636,7 +2636,7 @@ var LibraryOpenAL = {
     }
     AL.paused = false;
 
-    for (ctxId in AL.contexts) {
+    for (var ctxId in AL.contexts) {
       var ctx = AL.contexts[ctxId];
       if (ctx.deviceId !== deviceId) {
         continue;
@@ -2927,7 +2927,7 @@ var LibraryOpenAL = {
   alIsExtensionPresent__proxy: 'sync',
   alIsExtensionPresent__sig: 'ii',
   alIsExtensionPresent: function(pExtName) {
-    name = UTF8ToString(pExtName);
+    var name = UTF8ToString(pExtName);
 
     return AL.AL_EXTENSIONS[name] ? 1 : 0;
   },
@@ -2949,7 +2949,7 @@ var LibraryOpenAL = {
       AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
       return 0 /* AL_NONE */;
     }
-    name = UTF8ToString(pEnumName);
+    var name = UTF8ToString(pEnumName);
 
     switch (name) {
     // Spec doesn't clearly state that alGetEnumValue() is required to
@@ -3137,7 +3137,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    switch (pname) {
+    switch (param) {
     case 'AL_SOURCE_DISTANCE_MODEL':
       AL.currentCtx.sourceDistanceModel = false;
       AL.updateContextGlobal(AL.currentCtx);
@@ -3160,7 +3160,7 @@ var LibraryOpenAL = {
 #endif
       return 0;
     }
-    switch (pname) {
+    switch (param) {
     case 'AL_SOURCE_DISTANCE_MODEL':
       return AL.currentCtx.sourceDistanceModel ? 0 /* AL_FALSE */ : 1 /* AL_TRUE */;
     default:
@@ -4612,7 +4612,7 @@ var LibraryOpenAL = {
 
   alGetSource3i__proxy: 'sync',
   alGetSource3i__sig: 'viiiii',
-  alGetSource3i: function(source, param, pValue0, pValue1, pValue2) {
+  alGetSource3i: function(sourceId, param, pValue0, pValue1, pValue2) {
     var val = AL.getSourceParam('alGetSource3i', sourceId, param);
     if (val === null) {
       return;
@@ -4835,7 +4835,7 @@ var LibraryOpenAL = {
 
   alSourceiv__proxy: 'sync',
   alSourceiv__sig: 'viii',
-  alSourceiv: function(source, param, pValues) {
+  alSourceiv: function(sourceId, param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
       console.error('alSourceiv() called without a valid context');

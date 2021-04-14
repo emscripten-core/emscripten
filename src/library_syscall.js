@@ -1057,7 +1057,7 @@ var SyscallsLibrary = {
   __sys_setregid32__nothrow: true,
   __sys_setregid32__proxy: false,
   __sys_setregid32: function(ruid, euid) {
-    if (uid !== 0) return -{{{ cDefine('EPERM') }}};
+    if (ruid !== 0) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
   __sys_setuid32__sig: 'ii',
