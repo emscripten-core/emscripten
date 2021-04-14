@@ -799,10 +799,7 @@ var ASYNCIFY_DEBUG = 0;
 // [link]
 var EXPORTED_RUNTIME_METHODS = [];
 
-// Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
-// lets you remove methods that would be exported by default; setting values in
-// this list lets you add to the default list without modifying it.
-// [link]
+// Deprecated, use EXPORTED_RUNTIME_METHODS instead.
 var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
 // A list of incoming values on the Module object in JS that we care about. If

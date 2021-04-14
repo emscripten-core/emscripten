@@ -1177,6 +1177,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     shared.Settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
 
+    if shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS:
+      diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
+      shared.Settings.EXPORTED_RUNTIME_METHODS += shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS
+
     final_suffix = get_file_suffix(target)
 
     if has_dash_c or has_dash_S or has_dash_E or '-M' in newargs or '-MM' in newargs:
