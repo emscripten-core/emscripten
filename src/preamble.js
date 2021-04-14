@@ -1027,31 +1027,33 @@ function createWasm() {
   }
 #endif
 
+#if USE_OFFSET_CONVERTER
+  {{{ runOnMainThread("addRunDependency('offset-converter');") }}}
+#endif
+
+  // Prefer streaming instantiation if available.
+#if WASM_ASYNC_COMPILATION
 #if ASSERTIONS
   // Async compilation can be confusing when an error on the page overwrites Module
   // (for example, if the order of elements is wrong, and the one defining Module is
   // later), so we save Module and check it later.
   var trueModule = Module;
 #endif
-  function receiveInstantiatedSource(output) {
-    // 'output' is a WebAssemblyInstantiatedSource object which has both the module and instance.
+  function receiveInstantiationResult(result) {
+    // 'result' is a ResultObject object which has both the module and instance.
     // receiveInstance() will swap in the exports (to Module.asm) so they can be called
 #if ASSERTIONS
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
 #if USE_PTHREADS || RELOCATABLE
-    receiveInstance(output['instance'], output['module']);
+    receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
     // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
-    receiveInstance(output['instance']);
+    receiveInstance(result['instance']);
 #endif
   }
-
-#if USE_OFFSET_CONVERTER
-  {{{ runOnMainThread("addRunDependency('offset-converter');") }}}
-#endif
 
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
@@ -1094,8 +1096,6 @@ function createWasm() {
     });
   }
 
-  // Prefer streaming instantiation if available.
-#if WASM_ASYNC_COMPILATION
   function instantiateAsync() {
     if (!wasmBinary &&
         typeof WebAssembly.instantiateStreaming === 'function' &&
@@ -1117,16 +1117,16 @@ function createWasm() {
           err('failed to initialize offset-converter: ' + reason);
         });
 #endif
-        return result.then(receiveInstantiatedSource, function(reason) {
+        return result.then(receiveInstantiationResult, function(reason) {
             // We expect the most common failure cause to be a bad MIME type for the binary,
             // in which case falling back to ArrayBuffer instantiation should work.
             err('wasm streaming compile failed: ' + reason);
             err('falling back to ArrayBuffer instantiation');
-            return instantiateArrayBuffer(receiveInstantiatedSource);
+            return instantiateArrayBuffer(receiveInstantiationResult);
           });
       });
     } else {
-      return instantiateArrayBuffer(receiveInstantiatedSource);
+      return instantiateArrayBuffer(receiveInstantiationResult);
     }
   }
 #endif
