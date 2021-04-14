@@ -113,17 +113,19 @@ int main(int argc, char *argv[])
   struct {
     float unused1[4];
     float r;
+    float unused2[3];
   } red = { 0, 0, 0, 0, 0.3f };
   printf("sizeof(red)=%d\n", (int)sizeof(red));
 
   struct {
-    float unused2;
+    float unused1;
     float g;
+    float unused2[2];
   } green = { 0, 0.5f };
   printf("sizeof(green)=%d\n", (int)sizeof(green));
 
   struct {
-    float unused3[3];
+    float unused1[3];
     float b;
   } blue[2] = { { 0, 0, 0, 0.3f }, { 0, 0, 0.f, 0.6f } };
   printf("sizeof(blue[0])=%d\n", (int)sizeof(blue[0]));
