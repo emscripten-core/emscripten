@@ -10814,10 +10814,12 @@ exec "$@"
     self.assertContained('syntax for makeDynCall has changed', err)
 
   # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used
-  def test_closure_no_dynCalls_generated(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'])
-    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'ASYNCIFY', '--closure=1'])
-    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'ASYNCIFY', '-s', 'WASM_BIGINT', '--closure=1'])
+  @parameterized({
+    'plain': [[]],
+    'asyncify': [['-sASYNCIFY']],
+    'asyncify-bigint': [['-sASYNCIFY', '-sWASM_BIGINT']]})
+  def test_closure_no_dynCalls_generated(self, args):
+    self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'] + args)
 
   def test_post_link(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '--oformat=bare', '-o', 'bare.wasm'], stderr=PIPE).stderr

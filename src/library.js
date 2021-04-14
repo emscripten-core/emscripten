@@ -3279,21 +3279,21 @@ LibraryManager.library = {
           // Run the wasm function ptr with signature 'v'. If no function
           // with such signature was exported, this call does not need
           // to be emitted (and would confuse Closure)
-#if !DYNCALLS || hasLlvmExportedFunction('dynCall_v')
+#if !DYNCALLS || hasLLVMExportedFunction('dynCall_v')
           {{{ makeDynCall('v', 'func') }}}();
 #else
 #if ASSERTIONS
-          throw 'Internal Error! Attempted to invoke wasm function pointer with signature "v", but no such functions should have gotten exported!';
+          throw 'Internal Error! Attempted to invoke wasm function pointer with signature "v", but no such functions have gotten exported!';
 #endif
 #endif
         } else {
           // If any function with signature 'vi' was exported, run
           // the callback with that signature.
-#if !DYNCALLS || hasLlvmExportedFunction('dynCall_vi')
+#if !DYNCALLS || hasLLVMExportedFunction('dynCall_vi')
           {{{ makeDynCall('vi', 'func') }}}(callback.arg);
 #else
 #if ASSERTIONS
-          throw 'Internal Error! Attempted to invoke wasm function pointer with signature "vi", but no such functions should have gotten exported!';
+          throw 'Internal Error! Attempted to invoke wasm function pointer with signature "vi", but no such functions have gotten exported!';
 #endif
 #endif
         }

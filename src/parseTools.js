@@ -1073,7 +1073,7 @@ function hasExportedFunction(func) {
 }
 
 // Returns true if LLVM produced the given function into compiled code as a Wasm export.
-function hasLlvmExportedFunction(func) {
+function hasLLVMExportedFunction(func) {
   return LLVM_EXPORTS.indexOf(func) != -1;
 }
 
