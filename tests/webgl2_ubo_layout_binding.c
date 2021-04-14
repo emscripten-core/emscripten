@@ -86,6 +86,14 @@ int main(int argc, char *argv[])
   GLuint program = CreateProgram(vs, ps);
   glUseProgram(program);
 
+  int numBlocks;
+  glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCKS, &numBlocks);
+  for(int i = 0; i < numBlocks; ++i) {
+    int size = -1;
+    glGetActiveUniformBlockiv(program, i, GL_UNIFORM_BLOCK_DATA_SIZE, &size);
+    printf("Uniform block at index %d: size: %d\n", i, size);
+  }
+
   static const float vb[] = {
      -1.0f, -1.0f,
       1.0f, -1.0f,
@@ -106,16 +114,19 @@ int main(int argc, char *argv[])
     float unused1[4];
     float r;
   } red = { 0, 0, 0, 0, 0.3f };
+  printf("sizeof(red)=%d\n", (int)sizeof(red));
 
   struct {
     float unused2;
     float g;
   } green = { 0, 0.5f };
+  printf("sizeof(green)=%d\n", (int)sizeof(green));
 
   struct {
     float unused3[3];
     float b;
   } blue[2] = { { 0, 0, 0, 0.3f }, { 0, 0, 0.f, 0.6f } };
+  printf("sizeof(blue[0])=%d\n", (int)sizeof(blue[0]));
 
   GLuint bufs[4];
   glGenBuffers(4, bufs);
@@ -132,7 +143,7 @@ int main(int argc, char *argv[])
   glBindBufferBase(GL_UNIFORM_BUFFER, 5, bufs[1]);
   glBindBufferBase(GL_UNIFORM_BUFFER, 6, bufs[2]);
   glBindBufferBase(GL_UNIFORM_BUFFER, 7, bufs[3]);
-  glClearColor(0.3f,0.3f,0.3f,1);
+  glClearColor(0.1f,0.1f,0.1f,1);
   glClear(GL_COLOR_BUFFER_BIT);
   glDrawArrays(GL_TRIANGLES, 0, 6);
 
