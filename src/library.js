@@ -3412,17 +3412,19 @@ LibraryManager.library = {
     }
   },
 
-#if SHRINK_LEVEL == 0
+#if SHRINK_LEVEL == 0 && !RELOCATABLE
   // A mirror copy of contents of wasmTable in JS side, to avoid relatively
   // slow wasmTable.get() call. Only used when not compiling with -Os or -Oz.
-  _wasmTableMirror: [],
+  // TODO: This code currently assumes that the elements added to the wasm table are
+  // never removed, so cannot be enabled in RELOCATABLE builds.
+  $wasmTableMirror: [],
 
-  $wbind__deps: ['_wasmTableMirror'],
+  $wbind__deps: ['$wasmTableMirror'],
   $wbind: function(funcPtr) {
-    var func = __wasmTableMirror[funcPtr];
+    var func = wasmTableMirror[funcPtr];
     if (!func) {
-      if (funcPtr >= __wasmTableMirror.length) __wasmTableMirror.length = funcPtr + 1;
-      __wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
+      if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
+      wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
     }
     return func;
   },
