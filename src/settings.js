@@ -1756,15 +1756,6 @@ var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = 0;
 // [link]
 var USES_DYNAMIC_ALLOC = 1;
 
-// Advanced manual dead code elimination: Specifies the set of runtime JS
-// functions that should be imported to the wasm module.  Remove elements
-// from this list to make build smaller if some of these are not needed.  In
-// -O3/-Os builds, adjusting this is not necessary, as the Meta-DCE pass is
-// able to remove these, but if you doing a -O2 build or lower, then this can be
-// beneficial.
-// [link]
-var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
-
 // If true, compiler supports setjmp() and longjmp(). If false, these APIs are
 // not available.  If you are using C++ exceptions, but do not need
 // setjmp()+longjmp() API, then you can set this to 0 to save a little bit of
@@ -2033,5 +2024,6 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_SCRIPTS', [""], 'No longer needed'],
   ['WARN_UNALIGNED', [0, 1], 'No longer needed'],
   ['ASM_PRIMITIVE_VARS', [[]], 'No longer needed'],
-  ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older']
+  ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older'],
+  ['RUNTIME_FUNCS_TO_IMPORT', [[]], 'No longer needed'],
 ];

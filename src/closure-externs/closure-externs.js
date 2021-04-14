@@ -284,3 +284,9 @@ var registerProcessor = function(name, obj) {};
 var currentFrame;
 var currentTime;
 var sampleRate;
+
+/*
+ * WebGPU globals
+ */
+var GPUValidationError;
+var GPUOutOfMemoryError;

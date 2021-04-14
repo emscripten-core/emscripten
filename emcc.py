@@ -1401,6 +1401,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
       options.memory_init_file = False
 
+    # If we are including the entire JS library then we know for sure we will, by definition,
+    # require all the reverse dependencies.
+    if shared.Settings.INCLUDE_FULL_LIBRARY:
+      default_setting('REVERSE_DEPS', 'all')
+
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
       if shared.Settings.MAIN_MODULE == 1 or shared.Settings.SIDE_MODULE == 1:
         shared.Settings.LINKABLE = 1
@@ -3065,20 +3070,22 @@ else if (typeof exports === 'object')
 def module_export_name_substitution():
   global final_js
   logger.debug('Private module export name substitution with ' + shared.Settings.EXPORT_NAME)
-  src = open(final_js).read()
+  with open(final_js) as f:
+    src = f.read()
   final_js += '.module_export_name_substitution.js'
   if shared.Settings.MINIMAL_RUNTIME:
     # In MINIMAL_RUNTIME the Module object is always present to provide the .asm.js/.wasm content
     replacement = shared.Settings.EXPORT_NAME
   else:
     replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
+  src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
+  # For Node.js and other shell environments, create an unminified Module object so that
+  # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
+  if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.target_environment_may_be('node') or shared.Settings.target_environment_may_be('shell')):
+    src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
   with open(final_js, 'w') as f:
-    src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
-    # For Node.js and other shell environments, create an unminified Module object so that
-    # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-    if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.target_environment_may_be('node') or shared.Settings.target_environment_may_be('shell')):
-      src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
     f.write(src)
+  shared.configuration.get_temp_files().note(final_js)
   save_intermediate('module_export_name_substitution')
 
 
