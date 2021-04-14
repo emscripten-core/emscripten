@@ -53,7 +53,7 @@ var LibraryManager = {
   libraries: [],
 
   has: function(name) {
-    return this.libraries.indexOf(name) >= 0;
+    return this.libraries.includes(name);
   },
 
   load: function() {
@@ -109,7 +109,7 @@ var LibraryManager = {
 
       if (NODERAWFS) {
         // NODERAWFS requires NODEFS
-        if (SYSTEM_JS_LIBRARIES.indexOf('library_nodefs.js') < 0) {
+        if (!SYSTEM_JS_LIBRARIES.includes('library_nodefs.js')) {
           libraries.push('library_nodefs.js');
         }
         libraries.push('library_noderawfs.js');

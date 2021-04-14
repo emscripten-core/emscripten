@@ -299,7 +299,7 @@ function JSify(functionsOnly) {
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }
-      } else if (typeof snippet === 'string' && snippet.indexOf(';') == 0) {
+      } else if (typeof snippet === 'string' && snippet.startsWith(';')) {
         // In JS libraries
         //   foo: ';[code here verbatim]'
         //  emits
