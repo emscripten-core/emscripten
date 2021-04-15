@@ -16,7 +16,7 @@
 //
 // See https://github.com/emscripten-core/emscripten/wiki/Code-Generation-Modes/
 //
-// Note that the values here are the defaults which can be effect either
+// Note that the values here are the defaults which can be affected either
 // directly via `-s` flags or indirectly via other options (e.g. -O1,2,3)
 //
 // These flags should only have an effect when compiling to JS, so there

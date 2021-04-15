@@ -651,10 +651,6 @@ class SettingsManager:
     def __getitem__(cls, key):
       return cls.attrs[key]
 
-    @classmethod
-    def target_environment_may_be(self, environment):
-      return self.attrs['ENVIRONMENT'] == '' or environment in self.attrs['ENVIRONMENT'].split(',')
-
   __instance = None
 
   @staticmethod
