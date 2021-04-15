@@ -23,6 +23,9 @@
 LibraryManager.library = {
   // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
+  //
+  // These are trivial wrappers around runtime functions that make these symbols
+  // available to native code.
   // ==========================================================================
 
   getTempRet0__sig: 'i',
@@ -3316,12 +3319,8 @@ LibraryManager.library = {
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
+  $exportAsmFunctions__deps: ['$asmjsMangle'],
   $exportAsmFunctions: function(asm) {
-    var asmjsMangle = function(x) {
-      var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
-      return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
-    };
-
 #if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
     var global_object = (typeof process !== "undefined" ? global : this);
 #elif ENVIRONMENT_MAY_BE_NODE
@@ -3679,6 +3678,11 @@ LibraryManager.library = {
     func();
   },
 #endif
+
+  $asmjsMangle: function(x) {
+    var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
+    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+  },
 
 #if RELOCATABLE
   // These get set in emscripten.py during add_standard_wasm_imports, but are
