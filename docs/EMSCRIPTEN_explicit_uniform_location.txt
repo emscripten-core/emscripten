@@ -85,7 +85,7 @@ Overview
     example, if several compiler programs had a common shader uniform variable
     "vec4 fogColor", without explicit location qualifiers, C/C++ code would
     have to manage a mapping table that would track the uniform location of
-    fogColor in each shader program. Wiht explicit uniform locations, all shaders
+    fogColor in each shader program. With explicit uniform locations, all shaders
     can be compiled to locate fogColor in the same location index, thus greatly
     simplifying C/C++ engine code.
 
