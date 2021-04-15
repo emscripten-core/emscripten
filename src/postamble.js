@@ -143,10 +143,9 @@ function callMain(args) {
   if (!entryFunction) return;
 #endif
 
-#if MAIN_READS_PARAMS
-#if STANDALONE_WASM
+#if MAIN_READS_PARAMS && STANDALONE_WASM
   mainArgs = [thisProgram].concat(args)
-#else
+#elif MAIN_READS_PARAMS
   args = args || [];
 
   var argc = args.length+1;
@@ -156,7 +155,6 @@ function callMain(args) {
     HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
   }
   HEAP32[(argv >> 2) + argc] = 0;
-#endif // STANDALONE_WASM
 #else
   var argc = 0;
   var argv = 0;

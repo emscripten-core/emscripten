@@ -36,6 +36,7 @@ emsize
 emdump
 emprofile
 tools/file_packager
+tools/webidl_binder
 tests/runner
 '''.split()
 

@@ -135,7 +135,7 @@ var LibraryPThread = {
     setThreadName: function(pthreadPtr, name) {
       var profilerBlock = Atomics.load(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
       if (!profilerBlock) return;
-      stringToUTF8(name, profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}}, 32);
+      stringToUTF8(name, profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}}, {{{ cDefine('EM_THREAD_NAME_MAX') }}});
     },
 
     getThreadName: function(pthreadPtr) {
@@ -162,8 +162,6 @@ var LibraryPThread = {
       var status = (profilerBlock == 0) ? 0 : Atomics.load(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.threadStatus }}} ) >> 2);
       return PThread.threadStatusToString(status);
     },
-#else
-    setThreadStatus: function() {},
 #endif
 
     runExitHandlers: function() {
@@ -324,7 +322,9 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
       out("threadInit");
 #endif
+#if PTHREADS_PROFILING
       PThread.setThreadStatus(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
+#endif
       // Call thread init functions (these are the emscripten_tls_init for each
       // module loaded.
       for (var i in PThread.tlsInitFunctions) {
@@ -1344,8 +1344,7 @@ var LibraryPThread = {
 
   emscripten_receive_on_main_thread_js__deps: [
     'emscripten_proxy_to_main_thread_js',
-    'emscripten_receive_on_main_thread_js_callArgs',
-    '$readAsmConstArgs'],
+    'emscripten_receive_on_main_thread_js_callArgs'],
   emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
 #if WASM_BIGINT
     numCallArgs /= 2;

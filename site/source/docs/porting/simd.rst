@@ -35,6 +35,57 @@ When porting native SIMD code, it should be noted that because of portability co
 
 SIMD-related bug reports are tracked in the `Emscripten bug tracker with the label SIMD <https://github.com/emscripten-core/emscripten/issues?q=is%3Aopen+is%3Aissue+label%3ASIMD>`_.
 
+===========================
+Optimization considerations
+===========================
+
+When porting SIMD code to use WebAssembly SIMD, implementors should be aware of semantic differences between the host hardware and WebAssembly semantics; as acknowledged in the WebAssembly design documentation, "`this sometimes will lead to poor performance <https://github.com/WebAssembly/design/blob/master/Portability.md#assumptions-for-efficient-execution>`_." The following list outlines some WebAssembly SIMD instructions to look out for when performance tuning:
+
+.. list-table:: WebAssembly SIMD instructions with performance implications
+   :widths: 10 10 30
+   :header-rows: 1
+
+   * - WebAssembly SIMD instruction
+     - Hardware architecture
+     - Considerations
+
+   * - [i8x16|i16x8|i32x4|i64x2].[shl|shr_s|shr_u]
+     - x86, arm
+     - Use a constant shift amount to avoid extra instructions checking that it is in bounds.
+
+   * - i8x16.[shl|shr_s|shr_u]
+     - x86
+     - Included for orthogonality, these instructions have no equivalent x86 instruction and are emulated with `5-11 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L3446-L3510>`_ (i.e. using 16x8 shifts).
+  
+   * - i64x2.shr_s
+     - x86
+     - Included for orthogonality, this instruction has no equivalent x86 instruction and is emulated with `6 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L2807-L2825>`_.
+
+   * - i8x16.swizzle
+     - x86
+     - The zeroing behavior does not match x86 (i.e. this instruction zeroes when an index is out-of-range instead of when the most significant bit is 1); use a constant swizzle amount (or i8x16.shuffle) to avoid 3 extra x86 instructions in some runtimes.
+
+   * - [f32x4|f64x2].[min|max]
+     - x86
+     - As with the scalar versions, the NaN propagation semantics force runtimes to emulate with 8+ x86 instructions (e.g., see `v8's emulation <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L2661-L2699>`_; if possible, use [f32x4|f64x2].[pmin|pmax] instead (1 x86 instruction).
+
+   * - i32x4.trunc_sat_f32x4_[u|s]
+     - x86
+     - No equivalent x86 semantics; `emulated with 8-14 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L3035-L3062>`_.
+
+   * - i32x4.trunc_sat_f64x2_[u|s]_zero
+     - x86
+     - No equivalent x86 semantics; `emulated with 5-6 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/codegen/x64/macro-assembler-x64.cc#L2241-L2311>`_.
+
+   * - f32x4.convert_f32x4_u
+     - x86
+     - No equivalent x86 semantics; `emulated with 8 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L2591-L2604>`_.
+
+   * - [i8x16|i64x2].mul
+     - x86
+     - Included for orthogonality, these instructions have no equivalent x86 instruction and are `emulated with 10 x86 instructions in v8 <https://github.com/v8/v8/blob/b6520eda5eafc3b007a5641b37136dfc9d92f63d/src/compiler/backend/x64/code-generator-x64.cc#L2834-L2858>`_.
+
+
 =====================================================
 Compiling SIMD code targeting x86 SSE instruction set
 =====================================================

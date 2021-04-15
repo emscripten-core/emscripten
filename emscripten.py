@@ -113,14 +113,9 @@ def update_settings_glue(metadata, DEBUG):
   all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(metadata['exports']))
 
-  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [x[1:] for x in metadata['externs']]
+  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += metadata['externs']
   # With the wasm backend the set of implemented functions is identical to the set of exports
   shared.Settings.IMPLEMENTED_FUNCTIONS = [asmjs_mangle(x) for x in metadata['exports']]
-
-  if metadata['asmConsts']:
-    # emit the EM_ASM signature-reading helper function only if we have any EM_ASM
-    # functions in the module.
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$readAsmConstArgs']
 
   shared.Settings.BINARYEN_FEATURES = metadata['features']
   if shared.Settings.RELOCATABLE:
@@ -501,6 +496,10 @@ def add_standard_wasm_imports(send_items_map):
       memory_import += " || Module['wasmMemory']"
     send_items_map['memory'] = memory_import
 
+  if shared.Settings.SAFE_HEAP:
+    send_items_map['segfault'] = 'segfault'
+    send_items_map['alignfault'] = 'alignfault'
+
   # With the wasm backend __memory_base and __table_base are only needed for
   # relocatable output.
   if shared.Settings.RELOCATABLE:
@@ -511,7 +510,7 @@ def add_standard_wasm_imports(send_items_map):
     # the wasm backend reserves slot 0 for the NULL function pointer
     send_items_map['__table_base'] = '1'
   if shared.Settings.RELOCATABLE:
-    send_items_map['__stack_pointer'] = "__stack_pointer"
+    send_items_map['__stack_pointer'] = '__stack_pointer'
 
   if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
     # legalization of i64 support code may require these in some modes
@@ -617,13 +616,9 @@ def add_standard_wasm_imports(send_items_map):
 
 
 def create_sending(invoke_funcs, metadata):
-  basic_funcs = []
-  if shared.Settings.SAFE_HEAP:
-    basic_funcs += ['segfault', 'alignfault']
-
   em_js_funcs = list(metadata['emJsFuncs'].keys())
   declared_items = ['_' + item for item in metadata['declares']]
-  send_items = set(basic_funcs + invoke_funcs + em_js_funcs + declared_items)
+  send_items = set(invoke_funcs + em_js_funcs + declared_items)
 
   def fix_import_name(g):
     # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
@@ -741,7 +736,7 @@ def create_module(sending, receiving, invoke_funcs, metadata):
   receiving += create_named_globals(metadata)
   module = []
 
-  module.append('var asmLibraryArg = %s;\n' % (sending))
+  module.append('var asmLibraryArg = %s;\n' % sending)
   if shared.Settings.ASYNCIFY and shared.Settings.ASSERTIONS:
     module.append('Asyncify.instrumentWasmImports(asmLibraryArg);\n')
 
@@ -783,13 +778,15 @@ def load_metadata_wasm(metadata_raw, DEBUG):
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
 
+  if DEBUG:
+    logger.debug("Metadata parsed: " + pprint.pformat(metadata))
+
   # Support older metadata when asmConsts values were lists.  We only use the first element
   # nowadays
   # TODO(sbc): remove this once binaryen has been changed to only emit the single element
   metadata['asmConsts'] = {k: v[0] if type(v) is list else v for k, v in metadata['asmConsts'].items()}
-
-  if DEBUG:
-    logger.debug("Metadata parsed: " + pprint.pformat(metadata))
+  # TODO(sbc): Remove this once binaryen stopped adding the extra '_'
+  metadata['externs'] = [x[1:] if x[0] == '_' else x for x in metadata['externs']]
 
   # Calculate the subset of exports that were explicitly marked with llvm.used.
   # These are any exports that were not requested on the command line and are

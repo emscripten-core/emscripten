@@ -77,7 +77,7 @@ For example, to create the glue code files **glue.cpp** and **glue.js** for the 
 
 .. code-block:: bash
 
-    python tools/webidl_binder.py my_classes.idl glue
+    tools/webidl_binder my_classes.idl glue
 
 
 

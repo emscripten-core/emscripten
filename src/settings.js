@@ -491,6 +491,10 @@ var GL_POOL_TEMP_BUFFERS = 1;
 // [link]
 var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0;
 
+// If true, enables support for the EMSCRIPTEN_explicit_uniform_location WebGL
+// extension. See docs/EMSCRIPTEN_explicit_uniform_location.txt
+var GL_EXPLICIT_UNIFORM_LOCATION = 0;
+
 // Deprecated. Pass -s MAX_WEBGL_VERSION=2 to target WebGL 2.0.
 // [link]
 var USE_WEBGL2 = 0;
@@ -1752,15 +1756,6 @@ var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = 0;
 // [link]
 var USES_DYNAMIC_ALLOC = 1;
 
-// Advanced manual dead code elimination: Specifies the set of runtime JS
-// functions that should be imported to the wasm module.  Remove elements
-// from this list to make build smaller if some of these are not needed.  In
-// -O3/-Os builds, adjusting this is not necessary, as the Meta-DCE pass is
-// able to remove these, but if you doing a -O2 build or lower, then this can be
-// beneficial.
-// [link]
-var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
-
 // If true, compiler supports setjmp() and longjmp(). If false, these APIs are
 // not available.  If you are using C++ exceptions, but do not need
 // setjmp()+longjmp() API, then you can set this to 0 to save a little bit of
@@ -1836,8 +1831,8 @@ var DISABLE_EXCEPTION_THROWING = 0;
 var USE_OFFSET_CONVERTER = 0;
 
 // If set to 1, the JS compiler is run before wasm-ld so that the linker can
-// report undefined symbols within the binary.  Without this option that linker
-// doesn't know which symbols might be defined JS and so reporting of undefined
+// report undefined symbols within the binary.  Without this option the linker
+// doesn't know which symbols might be defined in JS so reporting of undefined
 // symbols is delayed until the JS compiler is run.
 // [link]
 var LLD_REPORT_UNDEFINED = 0;
@@ -1939,12 +1934,12 @@ var SPLIT_MODULE = 0;
 // How to calculate reverse dependencies (dependencies from JS functions to
 // native functions) prior to linking native code with wasm-ld.  This option
 // has three possible values:
-// 'auto': (default) inspect the object code passed to the linker (by running
-//         llvm-nm) all all inputs and use the map in deps_info.py to
-//         determines the set of additional dependencies.
+// 'auto': (default) Inspect the object code passed to the linker (by running
+//         llvm-nm on all input) and use the map in deps_info.py to determine
+//         the set of additional dependencies.
 // 'all' : Include the full set of possible reverse dependencies.
 // 'none': No reverse dependences will be added by emscriopten. Any reverse
-//         dependencies will be assumed to be explicitly add to
+//         dependencies will be assumed to be explicitly added to
 //         EXPORTED_FUNCTIONS and deps_info.py will be completely ignored.
 // While 'auto' will produce a minimal set (so is good for code size), 'all'
 // and 'none' will give faster link times, especially for very large projects
@@ -2029,5 +2024,6 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_SCRIPTS', [""], 'No longer needed'],
   ['WARN_UNALIGNED', [0, 1], 'No longer needed'],
   ['ASM_PRIMITIVE_VARS', [[]], 'No longer needed'],
-  ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older']
+  ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older'],
+  ['RUNTIME_FUNCS_TO_IMPORT', [[]], 'No longer needed'],
 ];
