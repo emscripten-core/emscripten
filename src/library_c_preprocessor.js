@@ -95,7 +95,7 @@ mergeInto(LibraryManager.library, {
         } else if (kind == 1) {
           // Lookahead for two-character operators.
           var op2 = exprString.substr(i, 2);
-          if (['<=', '>=', '==', '!=', '&&', '||'].indexOf(op2) >= 0) {
+          if (['<=', '>=', '==', '!=', '&&', '||'].includes(op2)) {
             out.push(op2);
             ++i;
           } else {

@@ -35,7 +35,7 @@ function isJsOnlyIdentifier(ident) {
 
 function escapeJSONKey(x) {
   if (/^[\d\w_]+$/.exec(x) || x[0] === '"' || x[0] === "'") return x;
-  assert(x.indexOf("'") < 0, 'cannot have internal single quotes in keys: ' + x);
+  assert(!x.includes("'"), 'cannot have internal single quotes in keys: ' + x);
   return "'" + x + "'";
 }
 

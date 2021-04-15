@@ -562,7 +562,7 @@ var LibraryEmbind = {
         };
     }
 
-    var isUnsignedType = (name.indexOf('unsigned') != -1);
+    var isUnsignedType = (name.includes('unsigned'));
 
     registerType(primitiveType, {
         name: name,
@@ -1075,7 +1075,7 @@ var LibraryEmbind = {
       return getDynCaller(signature, rawFunction);
 #else
 #if !WASM_BIGINT
-      if (signature.indexOf('j') != -1) {
+      if (signature.includes('j')) {
         return getDynCaller(signature, rawFunction);
       }
 #endif

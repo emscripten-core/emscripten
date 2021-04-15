@@ -520,8 +520,7 @@ function exportRuntime() {
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
     for (var name in EXPORTED_RUNTIME_METHODS_SET) {
-      if (runtimeElements.indexOf(name) < 0 &&
-          runtimeNumbers.indexOf(name) < 0) {
+      if (!runtimeElements.includes(name) && !runtimeNumbers.includes(name)) {
         printErr('warning: invalid item (maybe a typo?) in EXPORTED_RUNTIME_METHODS: ' + name);
       }
     }
