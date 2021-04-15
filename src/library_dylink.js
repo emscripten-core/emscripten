@@ -500,7 +500,7 @@ var LibraryDylink = {
 
         // initialize the module
 #if USE_PTHREADS
-        // The main thread does a full __post_instantiate (which includes a call
+        // The main thread does a full __wasm_call_ctors (which includes a call
         // to emscripten_tls_init), but secondary threads should not call static
         // constructors in general - emscripten_tls_init is the exception.
         if (ENVIRONMENT_IS_PTHREAD) {
@@ -512,7 +512,12 @@ var LibraryDylink = {
           PThread.tlsInitFunctions.push(init);
         } else {
 #endif
-          var init = moduleExports['__post_instantiate'];
+          var init = moduleExports['__wasm_call_ctors'];
+          // TODO(sbc): Remove this once extra check once the binaryen
+          // change propogates: https://github.com/WebAssembly/binaryen/pull/3811
+          if (!init) {
+            init = moduleExports['__post_instantiate'];
+          }
           if (init) {
             if (runtimeInitialized) {
               init();
