@@ -98,7 +98,7 @@ try {
 
   B.print('glue');
 } catch(err) {
-  if (err.toString().indexOf('Aborting compilation due to previous errors') != -1) {
+  if (err.toString().includes('Aborting compilation due to previous errors')) {
     // Compiler failed on user error, don't print the stacktrace in this case.
     printErr(err);
   } else {
