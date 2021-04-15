@@ -500,7 +500,7 @@ var LibraryEmbind = {
             function readS32FromPointer(pointer) { return HEAP32[pointer >> 2]; } :
             function readU32FromPointer(pointer) { return HEAPU32[pointer >> 2]; };
 #if WASM_BIGINT
-            case 3: return signed ?
+        case 3: return signed ?
             function readS64FromPointer(pointer) { return HEAP64[pointer >> 3]; } :
             function readU64FromPointer(pointer) { return HEAPU64[pointer >> 3]; };
 #endif
@@ -591,13 +591,18 @@ var LibraryEmbind = {
 
 #if WASM_BIGINT
   _embind_register_bigint__deps: [
-    '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
-  _embind_register_bigint: function(primitiveType, name, size) {
+    'embind_repr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
+  _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {
     name = readLatin1String(name);
 
     var shift = getShiftFromSize(size);
 
     var isUnsignedType = (name.indexOf('u') != -1);
+
+    // maxRange comes through as -1 for uint64_t (see issue 13902). Work around that temporarily
+    if (isUnsignedType) {
+      maxRange = 18446744073709551615n;
+    }
 
     registerType(primitiveType, {
         name: name,
@@ -605,6 +610,14 @@ var LibraryEmbind = {
           return value
         },
         'toWireType': function (destructors, value) {
+          if (typeof value === "number" || typeof value === "boolean") {
+            value = BigInt(value);
+          } else if (typeof value !== "bigint") {
+            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+          }
+          if (value < minRange || value > maxRange) {
+            throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+          }
           return value
         },
         'argPackAdvance': 8,
@@ -614,7 +627,7 @@ var LibraryEmbind = {
   },
 #else
   _embind_register_bigint__deps: [],
-  _embind_register_bigint: function(primitiveType, name, size) {},
+  _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {},
 #endif
 
   _embind_register_float__deps: [

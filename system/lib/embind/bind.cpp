@@ -58,7 +58,8 @@ template <typename T> static void register_integer(const char* name) {
 
 template <typename T> static void register_bigint(const char* name) {
   using namespace internal;
-  _embind_register_bigint(TypeID<T>::get(), name, sizeof(T));
+  _embind_register_bigint(TypeID<T>::get(), name, sizeof(T), std::numeric_limits<T>::min(),
+    std::numeric_limits<T>::max());
 }
 
 template <typename T> static void register_float(const char* name) {
