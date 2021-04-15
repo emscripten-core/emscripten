@@ -113,7 +113,7 @@ def update_settings_glue(metadata, DEBUG):
   all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(metadata['exports']))
 
-  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += metadata['externs']
+  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += metadata['globalImports']
   # With the wasm backend the set of implemented functions is identical to the set of exports
   shared.Settings.IMPLEMENTED_FUNCTIONS = [asmjs_mangle(x) for x in metadata['exports']]
 
@@ -612,7 +612,7 @@ def add_standard_wasm_imports(send_items_map):
 def create_sending(invoke_funcs, metadata):
   em_js_funcs = set(metadata['emJsFuncs'].keys())
   declares = [asmjs_mangle(d) for d in metadata['declares']]
-  externs = [asmjs_mangle(e) for e in metadata['externs']]
+  externs = [asmjs_mangle(e) for e in metadata['globalImports']]
   send_items = set(invoke_funcs + declares + externs)
   send_items.update(em_js_funcs)
 
@@ -753,7 +753,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
 
   metadata = {
     'declares': [],
-    'externs': [],
+    'globalImports': [],
     'staticBump': 0,
     'tableSize': 0,
     'exports': [],
@@ -764,7 +764,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'features': [],
     'mainReadsParams': 1,
   }
-  legacy_keys = set(['implementedFunctions', 'initializers', 'simd'])
+  legacy_keys = set(['implementedFunctions', 'initializers', 'simd', 'externs'])
 
   assert 'tableSize' in metadata_json.keys()
   for key, value in metadata_json.items():
@@ -774,15 +774,17 @@ def load_metadata_wasm(metadata_raw, DEBUG):
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
 
-  if DEBUG:
-    logger.debug("Metadata parsed: " + pprint.pformat(metadata))
+  # TODO(sbc): Remove this once binaryen change to globalImports has been around for a while.
+  if 'externs' in metadata_json:
+    metadata['globalImports'] = [x[1:] for x in metadata_json['externs']]
 
   # Support older metadata when asmConsts values were lists.  We only use the first element
   # nowadays
   # TODO(sbc): remove this once binaryen has been changed to only emit the single element
   metadata['asmConsts'] = {k: v[0] if type(v) is list else v for k, v in metadata['asmConsts'].items()}
-  # TODO(sbc): Remove this once binaryen stopped adding the extra '_'
-  metadata['externs'] = [x[1:] if x[0] == '_' else x for x in metadata['externs']]
+
+  if DEBUG:
+    logger.debug("Metadata parsed: " + pprint.pformat(metadata))
 
   # Calculate the subset of exports that were explicitly marked with llvm.used.
   # These are any exports that were not requested on the command line and are
