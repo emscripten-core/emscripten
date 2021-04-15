@@ -42,13 +42,15 @@ Current Trunk
 - Use LLVM's new pass manager by default, as LLVM does. This changes a bunch of
   things about how LLVM optimizes and inlines, so it may cause noticeable
   changes in compile times, code size, and speed, either for better or for
-  worse. (#13427)
+  worse. You can use the old pass manager (until LLVM removes it) by passing
+  `-flegacy-pass-manager` (#13427)
 - Removed use of Python multiprocessing library because of stability issues.
   Added a new environment variable `EM_PYTHON_MULTIPROCESSING=1` that can be set
   to revert back to using Python multiprocessing, in case there are reports of
   regressions (that variable is intended to be temporary). (#13493)
 - Binaryen now always inlines single-use functions. This should reduce code size
-  and improve performance (#13744).
+  and improve performance. If you prefer the old default, you can get that with
+  `-sBINARYEN_EXTRA_PASSES=--one-caller-inline-max-function-size=1` (#13744).
 - Fix generating of symbol files with `--emit-symbol-map` for JS targets.
   When `-s WASM=2` is used. Two symbols are generated:
     - `[name].js.symbols` - storing Wasm mapping
