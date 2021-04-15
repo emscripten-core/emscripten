@@ -190,7 +190,11 @@ above example code it needs to be rewritten as follows:
    instance["x"] = 20; // 20
    Module["MyClass"]["getStringFromInstance"](instance); // "hello"
    instance.delete();
-
+Note that this is only needed for code seen by the optimizer, for example as in
+``--pre-js`` or ``--post-js`` as mentioned above, or on ``EM_ASM`` or ``EM_JS``.
+For other code, that is not optimized by closure compiler, you do not need to
+make such changes. You also do not need it if you build without ``--closure 1``
+to enable the closure compiler.
 Memory management
 =================
 
