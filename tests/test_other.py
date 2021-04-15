@@ -1810,7 +1810,7 @@ int f() {
     # noInitialRun prevents run
     for no_initial_run, run_dep in [(0, 0), (1, 0), (0, 1)]:
       print(no_initial_run, run_dep)
-      args = ['-s', 'WASM_ASYNC_COMPILATION=0', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[callMain]']
+      args = ['-s', 'WASM_ASYNC_COMPILATION=0', '-s', 'EXPORTED_RUNTIME_METHODS=[callMain]']
       if no_initial_run:
         args += ['-s', 'INVOKE_RUN=0']
       if run_dep:
@@ -2518,7 +2518,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
                       '-o', 'test.js', '-O2', '--closure', '0',
                       '--pre-js', test_file('Module-exports', 'setup.js'),
                       '-s', 'EXPORTED_FUNCTIONS=[_bufferTest,_malloc,_free]',
-                      '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]',
+                      '-s', 'EXPORTED_RUNTIME_METHODS=[ccall,cwrap]',
                       '-s', 'WASM_ASYNC_COMPILATION=0'])
 
     # Check that compilation was successful
@@ -2543,7 +2543,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
                       '-o', 'test.js', '-O2', '--closure=1',
                       '--pre-js', test_file('Module-exports', 'setup.js'),
                       '-s', 'EXPORTED_FUNCTIONS=[_bufferTest,_malloc,_free]',
-                      '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap]',
+                      '-s', 'EXPORTED_RUNTIME_METHODS=[ccall,cwrap]',
                       '-s', 'WASM_ASYNC_COMPILATION=0'])
 
     # Check that compilation was successful
@@ -2591,8 +2591,8 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.assertContained(reference_error_text,
                          self.run_js('index.js', engine=config.NODE_JS, assert_returncode=NON_ZERO))
 
-  def test_extra_exported_methods(self):
-    # Test with node.js that the EXTRA_EXPORTED_RUNTIME_METHODS setting is considered by libraries
+  def test_exported_runtime_methods(self):
+    # Test with node.js that the EXPORTED_RUNTIME_METHODS setting is considered by libraries
     if config.NODE_JS not in config.JS_ENGINES:
       self.skipTest("node engine required for this test")
 
@@ -2612,7 +2612,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     reference_error_text = 'undefined'
 
     self.run_process([EMCC, 'count.c', '-s', 'FORCE_FILESYSTEM', '-s',
-                     'EXTRA_EXPORTED_RUNTIME_METHODS=[FS_writeFile]', '-o', 'count.js'])
+                     'EXPORTED_RUNTIME_METHODS=[FS_writeFile]', '-o', 'count.js'])
 
     # Check that the Module.FS_writeFile exists
     self.assertNotContained(reference_error_text,
@@ -2880,7 +2880,7 @@ EMSCRIPTEN_KEEPALIVE int myreade() {
     self.run_process([EMCC,
                       '-o', 'proxyfs_test.js', 'proxyfs_test.c',
                       '--embed-file', 'proxyfs_embed.txt', '--pre-js', 'proxyfs_pre.js',
-                      '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[ccall,cwrap,FS,PROXYFS]',
+                      '-s', 'EXPORTED_RUNTIME_METHODS=[ccall,cwrap,FS,PROXYFS]',
                       '-lproxyfs.js',
                       '-s', 'WASM_ASYNC_COMPILATION=0'])
     # Following shutil.copyfile just prevent 'require' of node.js from caching js-object.
@@ -4871,7 +4871,7 @@ This locale is not the C locale.
     test([], 'Module["', 'Module["waka')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], '', 'Module["addRunDependency')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=[addRunDependency]'], 'Module["addRunDependency', 'Module["waka')
-    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[addRunDependency]'], 'Module["addRunDependency', 'Module["waka')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXPORTED_RUNTIME_METHODS=[addRunDependency]'], 'Module["addRunDependency', 'Module["waka')
 
   def test_stat_fail_alongtheway(self):
     create_file('src.cpp', r'''
@@ -6516,10 +6516,10 @@ mergeInto(LibraryManager.library, {
         preRun: [function(module) { module.ENV.hello = 'world' }]
       };
     ''')
-    self.run_process([EMCC, 'src.cpp', '--pre-js', 'pre.js', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[ENV]'])
+    self.run_process([EMCC, 'src.cpp', '--pre-js', 'pre.js', '-s', 'EXPORTED_RUNTIME_METHODS=[ENV]'])
     self.assertContained('|world|', self.run_js('a.out.js'))
 
-    self.run_process([EMCC, 'src.cpp', '--pre-js', 'pre.js', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[ENV]', '-s', 'MODULARIZE'])
+    self.run_process([EMCC, 'src.cpp', '--pre-js', 'pre.js', '-s', 'EXPORTED_RUNTIME_METHODS=[ENV]', '-s', 'MODULARIZE'])
     output = self.run_process(config.NODE_JS + ['-e', 'require("./a.out.js")();'], stdout=PIPE, stderr=PIPE)
     self.assertContained('|world|', output.stdout)
 
@@ -6564,7 +6564,7 @@ mergeInto(LibraryManager.library, {
     self.assertNotContained(error, open('a.out.js').read())
 
   def test_warn_module_print_err(self):
-    error = 'was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)'
+    error = 'was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)'
 
     def test(contents, expected, args=[], assert_returncode=0):
       create_file('src.cpp', r'''
@@ -6584,7 +6584,7 @@ mergeInto(LibraryManager.library, {
     test("Module['printErr']('x')", error, assert_returncode=NON_ZERO)
 
     # when exported, all good
-    test("Module['print']('print'); Module['printErr']('err'); ", 'print\nerr', ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[print,printErr]'])
+    test("Module['print']('print'); Module['printErr']('err'); ", 'print\nerr', ['-s', 'EXPORTED_RUNTIME_METHODS=[print,printErr]'])
 
   def test_warn_unexported_main(self):
     WARNING = 'main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.'
@@ -7034,12 +7034,21 @@ int main() {
     self.run_metadce_test(filename, *args)
 
   # ensures runtime exports work, even with metadce
-  def test_extra_runtime_exports(self):
+  @parameterized({
+    '': (False,),
+    'legacy': (True,)
+  })
+  def test_exported_runtime_methods_metadce(self, use_legacy_name):
     exports = ['stackSave', 'stackRestore', 'stackAlloc', 'FS']
-    self.run_process([EMCC, test_file('hello_world.cpp'), '-Os', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=%s' % str(exports)])
+    setting_name = 'EXPORTED_RUNTIME_METHODS'
+    if use_legacy_name:
+      setting_name = 'EXTRA_EXPORTED_RUNTIME_METHODS'
+    err = self.run_process([EMCC, test_file('hello_world.cpp'), '-Os', '-s', '%s=%s' % (setting_name, ','.join(exports))], stderr=PIPE).stderr
+    if use_legacy_name:
+      self.assertContained('warning: EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead [-Wdeprecated]', err)
     js = open('a.out.js').read()
     for export in exports:
-      assert ('Module["%s"]' % export) in js, export
+      self.assertContained(f'Module["{export}"]', js)
 
   def test_legalize_js_ffi(self):
     # test disabling of JS FFI legalization
