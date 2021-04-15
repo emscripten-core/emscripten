@@ -43,7 +43,9 @@ Current Trunk
   things about how LLVM optimizes and inlines, so it may cause noticeable
   changes in compile times, code size, and speed, either for better or for
   worse. You can use the old pass manager (until LLVM removes it) by passing
-  `-flegacy-pass-manager` (#13427)
+  `-flegacy-pass-manager` (and `-Wl,--lto-legacy-pass-manager` when doing LTO)
+  (note however that neither workaround affects the building of system
+  libraries, unless you modify emscripten or build them manually). (#13427)
 - Removed use of Python multiprocessing library because of stability issues.
   Added a new environment variable `EM_PYTHON_MULTIPROCESSING=1` that can be set
   to revert back to using Python multiprocessing, in case there are reports of
