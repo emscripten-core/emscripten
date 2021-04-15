@@ -125,6 +125,8 @@ def update_settings_glue(metadata, DEBUG):
     if shared.Settings.INITIAL_TABLE == -1:
       shared.Settings.INITIAL_TABLE = metadata['tableSize'] + 1
 
+  shared.Settings.HAS_MAIN = shared.Settings.MAIN_MODULE or shared.Settings.STANDALONE_WASM or '_main' in shared.Settings.IMPLEMENTED_FUNCTIONS
+
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
   shared.Settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or shared.Settings.MAIN_MODULE
@@ -142,7 +144,8 @@ def update_settings_glue(metadata, DEBUG):
 
 def apply_static_code_hooks(forwarded_json, code):
   code = shared.do_replace(code, '<<< ATINITS >>>', str(forwarded_json['ATINITS']))
-  code = shared.do_replace(code, '<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
+  if shared.Settings.HAS_MAIN:
+    code = shared.do_replace(code, '<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
   if shared.Settings.EXIT_RUNTIME:
     code = shared.do_replace(code, '<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))
   return code

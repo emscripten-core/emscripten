@@ -395,6 +395,7 @@ function initRuntime() {
   callRuntimeCallbacks(__ATINIT__);
 }
 
+#if HAS_MAIN
 function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
@@ -405,6 +406,7 @@ function preMain() {
   <<< ATMAINS >>>
   callRuntimeCallbacks(__ATMAIN__);
 }
+#endif
 
 function exitRuntime() {
 #if STACK_OVERFLOW_CHECK
