@@ -161,7 +161,7 @@ def compile_settings():
   # Save settings to a file to work around v8 issue 1579
   with shared.configuration.get_temp_files().get_file('.txt') as settings_file:
     with open(settings_file, 'w') as s:
-      json.dump(shared.Settings.to_dict(), s, sort_keys=True)
+      json.dump(shared.Settings.dict(), s, sort_keys=True)
 
     # Call js compiler
     env = os.environ.copy()
