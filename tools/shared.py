@@ -602,13 +602,6 @@ class SettingsManager:
     def copy(cls, values):
       cls.attrs = values
 
-    @classmethod
-    def apply_opt_level(cls, opt_level, shrink_level=0, noisy=False):
-      if opt_level >= 1:
-        cls.attrs['ASSERTIONS'] = 0
-      if shrink_level >= 2:
-        cls.attrs['EVAL_CTORS'] = 1
-
     def keys(self):
       return self.attrs.keys()
 
@@ -681,6 +674,10 @@ class SettingsManager:
 
   def __getitem__(self, key):
     return self.instance()[key]
+
+
+def target_environment_may_be(environment):
+  return Settings.ENVIRONMENT == '' or environment in Settings.ENVIRONMENT.split(',')
 
 
 def verify_settings():

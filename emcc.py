@@ -1132,7 +1132,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.STRICT = int(strict_cmdline)
 
     # Apply optimization level settings
-    shared.Settings.apply_opt_level(opt_level=shared.Settings.OPT_LEVEL, shrink_level=shared.Settings.SHRINK_LEVEL, noisy=True)
+
+    if shared.Settings.OPT_LEVEL >= 1:
+      shared.Settings.ASSERTIONS = 0
+    if shared.Settings.SHRINK_LEVEL >= 2:
+      shared.Settings.EVAL_CTORS = 1
 
     # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
     # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
@@ -2042,7 +2046,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.NODE_CODE_CACHING:
       if shared.Settings.WASM_ASYNC_COMPILATION:
         exit_with_error('NODE_CODE_CACHING requires sync compilation (WASM_ASYNC_COMPILATION=0)')
-      if not shared.Settings.target_environment_may_be('node'):
+      if not shared.target_environment_may_be('node'):
         exit_with_error('NODE_CODE_CACHING only works in node, but target environments do not include it')
       if shared.Settings.SINGLE_FILE:
         exit_with_error('NODE_CODE_CACHING saves a file on the side and is not compatible with SINGLE_FILE')
@@ -3045,7 +3049,7 @@ function(%(EXPORT_NAME)s) {
       script_url = "import.meta.url"
     else:
       script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
-      if shared.Settings.target_environment_may_be('node'):
+      if shared.target_environment_may_be('node'):
         script_url_node = "if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;"
     src = '''
 var %(EXPORT_NAME)s = (function() {
@@ -3096,7 +3100,7 @@ def module_export_name_substitution():
   src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
   # For Node.js and other shell environments, create an unminified Module object so that
   # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-  if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.target_environment_may_be('node') or shared.Settings.target_environment_may_be('shell')):
+  if shared.Settings.MINIMAL_RUNTIME and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
     src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
   with open(final_js, 'w') as f:
     f.write(src)

@@ -16,9 +16,8 @@
 //
 // See https://github.com/emscripten-core/emscripten/wiki/Code-Generation-Modes/
 //
-// Note that the values here are the defaults in -O0, that is, unoptimized
-// mode. See apply_opt_level in tools/shared.py for how -O1,2,3 affect these
-// flags.
+// Note that the values here are the defaults which can be effect either
+// directly via `-s` flags or indirectly via other options (e.g. -O1,2,3)
 //
 // These flags should only have an effect when compiling to JS, so there
 // should not be a need to have them when just compiling source to
