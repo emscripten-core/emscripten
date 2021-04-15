@@ -654,19 +654,18 @@ def filter_out_duplicate_dynamic_libs(inputs):
 def process_dynamic_libs(dylibs):
   for dylib in dylibs:
     imports = webassembly.get_imports(dylib)
-    new_exports = []
-    for imp in imports:
-      if imp.kind not in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL):
-        continue
-      new_exports.append(imp.field)
-    logger.debug('Adding exports based on `%s`: %s', dylib, new_exports)
-    settings.EXPORTED_FUNCTIONS.extend(shared.asmjs_mangle(e) for e in new_exports)
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(new_exports)
-    building.user_requested_exports.update(shared.asmjs_mangle(e) for e in new_exports)
+    imports = [i.field for i in imports if i.kind in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL)]
+    settings.SIDE_MODULE_IMPORTS.extend(imports)
+    logger.debug('Adding symbols requirements from `%s`: %s', dylib, imports)
 
     exports = webassembly.get_exports(dylib)
     for export in exports:
       settings.SIDE_MODULE_EXPORTS.append(export.name)
+
+  mangled_imports = [shared.asmjs_mangle(e) for e in settings.SIDE_MODULE_IMPORTS]
+  settings.EXPORTED_FUNCTIONS.extend(mangled_imports)
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(settings.SIDE_MODULE_IMPORTS)
+  building.user_requested_exports.update(mangled_imports)
 
 
 def unmangle_symbols_from_cmdline(symbols):
@@ -1514,7 +1513,7 @@ def phase_setup(state):
     settings.RELOCATABLE = 1
 
   if settings.MAIN_MODULE:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getDylinkMetadata']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getDylinkMetadata', '$mergeLibSymbols']
 
   if settings.RELOCATABLE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
