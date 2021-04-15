@@ -2915,6 +2915,7 @@ LibraryManager.library = {
   },
 
   emscripten_get_compiler_setting: function(name) {
+#if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
@@ -2926,6 +2927,9 @@ LibraryManager.library = {
     var fullret = cache[fullname];
     if (fullret) return fullret;
     return cache[fullname] = allocate(intArrayFromString(ret + ''), ALLOC_NORMAL);
+#else
+    throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for getCompilerSetting or emscripten_get_compiler_setting to work';
+#endif
   },
 
   emscripten_has_asyncify: function() {
@@ -2948,7 +2952,7 @@ LibraryManager.library = {
   emscripten_generate_pc: function(frame) {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_generate_pc (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
-#endif
+#else
     var match;
 
     if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
@@ -2968,6 +2972,7 @@ LibraryManager.library = {
       // return 0 if we can't find any
       return 0;
     }
+#endif
   },
 
   // Returns a representation of a call site of the caller of this function, in a manner
@@ -3069,15 +3074,19 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', '$withBuiltinMalloc'
+  emscripten_pc_get_function__deps: [
+#if USE_OFFSET_CONVERTER
+    '$UNWIND_CACHE',
+    '$withBuiltinMalloc',
 #if MINIMAL_RUNTIME
-    , '$allocateUTF8'
+    '$allocateUTF8',
+#endif
 #endif
   ],
   emscripten_pc_get_function: function (pc) {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
-#endif
+#else
     var name;
     if (pc & 0x80000000) {
       // If this is a JavaScript function, try looking it up in the unwind cache.
@@ -3100,6 +3109,7 @@ LibraryManager.library = {
       _emscripten_pc_get_function.ret = allocateUTF8(name);
     });
     return _emscripten_pc_get_function.ret;
+#endif
   },
 
   emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
@@ -3304,12 +3314,10 @@ LibraryManager.library = {
       return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
     };
 
-#if ENVIRONMENT_MAY_BE_NODE
-#if ENVIRONMENT_MAY_BE_WEB
+#if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
     var global_object = (typeof process !== "undefined" ? global : this);
-#else
+#elif ENVIRONMENT_MAY_BE_NODE
     var global_object = global;
-#endif
 #else
     var global_object = this;
 #endif
@@ -3657,6 +3665,23 @@ LibraryManager.library = {
   $callUserCallback: function(func) {
     func();
   },
+#endif
+
+#if RELOCATABLE
+  // These get set in emscripten.py during add_standard_wasm_imports, but are
+  // included here so they don't show up as undefined symbols at js compile
+  // time.
+  __stack_pointer: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, {{{ STACK_BASE }}})",
+  // tell the memory segments where to place themselves
+  __memory_base: '{{{ GLOBAL_BASE }}}',
+  // the wasm backend reserves slot 0 for the NULL function pointer
+  __table_base: 1,
+  // To support such allocations during startup, track them on __heap_base and
+  // then when the main module is loaded it reads that value and uses it to
+  // initialize sbrk (the main module is relocatable itself, and so it does not
+  // have __heap_base hardcoded into it - it receives it from JS as an extern
+  // global, basically).
+  __heap_base: '{{{ HEAP_BASE }}}',
 #endif
 };
 

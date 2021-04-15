@@ -897,7 +897,7 @@ var LibraryWebGPU = {
     };
 
     var device = WebGPU["mgrDevice"].get(deviceId);
-    device["createQuerySet"](descriptor);
+    return WebGPU.mgrQuerySet.create(device["createQuerySet"](desc));
   },
 
   wgpuDeviceCreateComputePipeline: function(deviceId, descriptor) {
@@ -1582,7 +1582,7 @@ var LibraryWebGPU = {
   },
 
   wgpuComputePassEncoderWriteTimestamp: function(encoderId, querySetId, queryIndex) {
-    var pass = WebGPU.mgrComputePassEncoder.get(passId);
+    var pass = WebGPU.mgrComputePassEncoder.get(encoderId);
     var querySet = WebGPU.mgrQuerySet.get(querySetId);
     pass["writeTimestamp"](querySet, queryIndex);
   },
@@ -1716,7 +1716,7 @@ var LibraryWebGPU = {
   },
 
   wgpuRenderPassEncoderWriteTimestamp: function(encoderId, querySetId, queryIndex) {
-    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
+    var pass = WebGPU.mgrRenderPassEncoder.get(encoderId);
     var querySet = WebGPU.mgrQuerySet.get(querySetId);
     pass["writeTimestamp"](querySet, queryIndex);
   },

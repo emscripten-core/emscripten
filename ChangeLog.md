@@ -20,9 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- `EXTRA_EXPORTED_RUNTIME_METHODS` is deprecated in favor of just using
+  `EXPORTED_RUNTIME_METHODS`.
 
 2.0.17: 04/10/2021
 ------------------
+- Use of closure compiler (`--closure`) is now supported when using dynamic
+  linking (building with `-s MAIN_MODULE`) (#13880)
 - Specifying `EM_CONFIG` inline (python code in the environment variable itself)
   is no longer supported (#13855).  This has been long deprecated but finally
   completely removed.

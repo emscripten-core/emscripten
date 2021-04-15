@@ -496,17 +496,12 @@ def add_standard_wasm_imports(send_items_map):
       memory_import += " || Module['wasmMemory']"
     send_items_map['memory'] = memory_import
 
-  # With the wasm backend __memory_base and __table_base are only needed for
-  # relocatable output.
-  if shared.Settings.RELOCATABLE:
-    # tell the memory segments where to place themselves
-    send_items_map['__memory_base'] = str(shared.Settings.GLOBAL_BASE)
-    send_items_map['__indirect_function_table'] = 'wasmTable'
+  if shared.Settings.SAFE_HEAP:
+    send_items_map['segfault'] = 'segfault'
+    send_items_map['alignfault'] = 'alignfault'
 
-    # the wasm backend reserves slot 0 for the NULL function pointer
-    send_items_map['__table_base'] = '1'
   if shared.Settings.RELOCATABLE:
-    send_items_map['__stack_pointer'] = "__stack_pointer"
+    send_items_map['__indirect_function_table'] = 'wasmTable'
 
   if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
     # legalization of i64 support code may require these in some modes
@@ -612,13 +607,11 @@ def add_standard_wasm_imports(send_items_map):
 
 
 def create_sending(invoke_funcs, metadata):
-  basic_funcs = []
-  if shared.Settings.SAFE_HEAP:
-    basic_funcs += ['segfault', 'alignfault']
-
-  em_js_funcs = list(metadata['emJsFuncs'].keys())
-  declared_items = ['_' + item for item in metadata['declares']]
-  send_items = set(basic_funcs + invoke_funcs + em_js_funcs + declared_items)
+  em_js_funcs = set(metadata['emJsFuncs'].keys())
+  declares = [asmjs_mangle(d) for d in metadata['declares']]
+  externs = [asmjs_mangle(e) for e in metadata['externs']]
+  send_items = set(invoke_funcs + declares + externs)
+  send_items.update(em_js_funcs)
 
   def fix_import_name(g):
     # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
@@ -627,7 +620,7 @@ def create_sending(invoke_funcs, metadata):
     # strip them again here.
     # note that we don't do this for EM_JS functions (which, rarely, may have
     # a '_' prefix)
-    if g.startswith('_') and g not in metadata['emJsFuncs']:
+    if g.startswith('_') and g not in em_js_funcs:
       return g[1:]
     return g
 

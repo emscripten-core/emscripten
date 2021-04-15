@@ -753,7 +753,7 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
   return True
 
 
-def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None):
+def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   with ToolchainProfiler.profile_block('closure_compiler'):
     env = shared.env_with_node_in_path()
     user_args = []

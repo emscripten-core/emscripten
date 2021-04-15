@@ -6,6 +6,7 @@
 import glob
 import hashlib
 import json
+import logging
 import os
 import random
 import re
@@ -29,6 +30,8 @@ from runner import NON_ZERO, WEBIDL_BINDER
 import clang_native
 
 # decorators for limiting which modes a test can run in
+
+logger = logging.getLogger("test_core")
 
 
 def wasm_simd(f):
@@ -263,9 +266,11 @@ class TestCoreBase(RunnerCore):
 
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
-    if '-g' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args):
-      self.emcc_args += ['--closure=1']
-      return True
+    if '--closure=1' not in self.emcc_args:
+      if '-g' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args):
+        self.emcc_args += ['--closure=1']
+        logger.debug('using closure compiler..')
+        return True
     return False
 
   def assertStartswith(self, output, prefix):
@@ -1958,7 +1963,7 @@ int main(int argc, char **argv) {
       self.skipTest('main module support for non-wasm')
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('no dynamic library support in asan yet')
-    self.emcc_args += args + ['-s', 'EXPORTED_FUNCTIONS=[_main,_malloc]']
+    self.emcc_args += args + ['-s', 'EXPORTED_FUNCTIONS=_main,_malloc']
 
     self.do_core_test('test_em_js.cpp', force_c=force_c)
     self.assertContained("no args returning int", open('test_em_js.js').read())
@@ -3579,6 +3584,7 @@ ok
 
   def dylink_testf(self, main, side, expected=None, force_c=False, main_emcc_args=[],
                    need_reverse=True, auto_load=True, main_module=1, **kwargs):
+    self.maybe_closure()
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.emcc_args.copy()
     if not expected:
@@ -3786,9 +3792,9 @@ ok
       #include "header.h"
       int main(int argc, char **argv) {
         charfunc f1 = emscripten_run_script;
-        f1("out('one')");
+        f1("console.log('one')");
         charfunc f2 = get();
-        f2("out('two')");
+        f2("console.log('two')");
         return 0;
       }
       ''',
@@ -5117,14 +5123,14 @@ main( int argv, char ** argc ) {
   def test_utf(self):
     self.banned_js_engines = [config.SPIDERMONKEY_ENGINE] # only node handles utf well
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8'])
     self.do_core_test('test_utf.c')
 
   def test_utf32(self):
     if self.get_setting('MINIMAL_RUNTIME'):
       self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$UTF32ToString', '$stringToUTF32', '$lengthBytesUTF32'])
     else:
-      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
+      self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
     self.do_runf(test_file('utf32.cpp'), 'OK.')
     self.do_runf(test_file('utf32.cpp'), 'OK.', args=['-fshort-wchar'])
 
@@ -5135,19 +5141,19 @@ main( int argv, char ** argc ) {
     if self.get_setting('MINIMAL_RUNTIME'):
       self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$AsciiToString', '$stringToAscii', '$writeAsciiToMemory'])
     else:
-      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS',
+      self.set_setting('EXPORTED_RUNTIME_METHODS',
                        ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
     self.do_runf(test_file('utf8.cpp'), 'OK.')
 
   @also_with_wasm_bigint
   def test_utf8_textdecoder(self):
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     self.emcc_args += ['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt']
     self.do_runf(test_file('benchmark_utf8.cpp'), 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   def test_utf8_invalid(self):
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     for decoder_mode in [[], ['-s', 'TEXTDECODER']]:
       self.emcc_args += decoder_mode
       print(str(decoder_mode))
@@ -5156,7 +5162,7 @@ main( int argv, char ** argc ) {
   # Test that invalid character in UTF8 does not cause decoding to crash.
   @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_utf8_invalid(self):
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     self.set_setting('MINIMAL_RUNTIME')
     for decoder_mode in [False, True]:
       self.set_setting('TEXTDECODER', decoder_mode)
@@ -5164,7 +5170,7 @@ main( int argv, char ** argc ) {
       self.do_runf(test_file('utf8_invalid.cpp'), 'OK.')
 
   def test_utf16_textdecoder(self):
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF16ToString', 'stringToUTF16', 'lengthBytesUTF16'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF16ToString', 'stringToUTF16', 'lengthBytesUTF16'])
     self.emcc_args += ['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt']
     self.do_runf(test_file('benchmark_utf16.cpp'), 'OK.')
 
@@ -6128,7 +6134,7 @@ return malloc(size);
       out("Data: " + JSON.stringify(FileData.map(function(x) { return unSign(x, 8) })));
     };
     ''')
-    self.emcc_args += ['--pre-js', 'pre.js', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$unSign]']
+    self.emcc_args += ['--pre-js', 'pre.js', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$unSign']
 
     ppm_data = str(list(bytearray(open(test_file('poppler', 'ref.ppm'), 'rb').read())))
     self.do_run('', ppm_data.replace(' ', ''),
@@ -6302,7 +6308,7 @@ return malloc(size);
   @sync
   def test_ccall(self):
     self.emcc_args.append('-Wno-return-stack-address')
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     create_file('post.js', '''
       out('*');
       var ret;
@@ -6345,13 +6351,13 @@ return malloc(size);
       self.emcc_args += ['--closure=1']
       self.do_core_test('test_ccall.cpp')
 
-  def test_EXTRA_EXPORTED_RUNTIME_METHODS(self):
+  def test_EXPORTED_RUNTIME_METHODS(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
-    self.do_core_test('EXTRA_EXPORTED_RUNTIME_METHODS.c')
+    self.do_core_test('EXPORTED_RUNTIME_METHODS.c')
     # test dyncall (and other runtime methods in support.js) can be exported
     self.emcc_args += ['-DEXPORTED']
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
-    self.do_core_test('EXTRA_EXPORTED_RUNTIME_METHODS.c')
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
+    self.do_core_test('EXPORTED_RUNTIME_METHODS.c')
 
   @parameterized({
     '': [],
@@ -6361,13 +6367,13 @@ return malloc(size);
     emcc_args = self.emcc_args.copy()
     cases = [
         ('DIRECT', []),
-        ('DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]']),
+        ('DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall']),
       ]
     if 'MINIMAL_RUNTIME=1' not in args:
       cases += [
         ('EXPORTED', []),
-        ('EXPORTED_DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$dynCall]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[dynCall]']),
-        ('FROM_OUTSIDE', ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=[dynCall_iiji]'])
+        ('EXPORTED_DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall', '-s', 'EXPORTED_RUNTIME_METHODS=dynCall']),
+        ('FROM_OUTSIDE', ['-s', 'EXPORTED_RUNTIME_METHODS=dynCall_iiji'])
       ]
 
     for which, extra_args in cases:
@@ -6389,12 +6395,12 @@ return malloc(size);
     # keeps it alive through JSDCE
     test(args=['-DDIRECT'])
     # see that with assertions, we get a nice error message
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', [])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', [])
     self.set_setting('ASSERTIONS')
     test('_assert', assert_returncode=NON_ZERO)
     self.set_setting('ASSERTIONS', 0)
     # see that when we export them, things work on the module
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue'])
     test()
 
   def test_FS_exports(self):
@@ -6418,12 +6424,12 @@ return malloc(size);
       # keeps it alive through JSDCE
       test(args=['-DDIRECT', '-s', 'FORCE_FILESYSTEM'])
       # see that with assertions, we get a nice error message
-      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', [])
+      self.set_setting('EXPORTED_RUNTIME_METHODS', [])
       self.set_setting('ASSERTIONS')
       test('_assert', assert_returncode=NON_ZERO)
       self.set_setting('ASSERTIONS', 0)
       # see that when we export them, things work on the module
-      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['FS_createDataFile'])
+      self.set_setting('EXPORTED_RUNTIME_METHODS', ['FS_createDataFile'])
       test(args=['-s', 'FORCE_FILESYSTEM'])
 
   def test_legacy_exported_runtime_numbers(self):
@@ -6440,12 +6446,12 @@ return malloc(size);
     # keeps it alive through JSDCE
     test(args=['-DDIRECT'])
     # see that with assertions, we get a nice error message
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', [])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', [])
     self.set_setting('ASSERTIONS')
     test('_assert', assert_returncode=NON_ZERO)
     self.set_setting('ASSERTIONS', 0)
     # see that when we export them, things work on the module
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ALLOC_STACK'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_STACK'])
     test()
 
   def test_response_file(self):
@@ -6971,7 +6977,7 @@ someweirdtext
 
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=[_malloc,_free]', '--post-js', 'glue.js']
+    self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=_malloc,_free', '--post-js', 'glue.js']
     if allow_memory_growth:
       self.set_setting('ALLOW_MEMORY_GROWTH')
 
@@ -8478,7 +8484,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Tests Settings.ABORT_ON_WASM_EXCEPTIONS
   def test_abort_on_exceptions(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.emcc_args += ['--bind', '--post-js', test_file('core', 'test_abort_on_exception_post.js')]
     self.do_core_test('test_abort_on_exception.cpp')
 
