@@ -183,14 +183,16 @@ class other(RunnerCore):
     self.assertContained('Running sanity checks', proc.stderr)
 
   def test_emcc_generate_config(self):
-    for compiler in [EMCC, EMXX]:
-      config_path = './emscripten_config'
-      self.run_process([compiler, '--generate-config', config_path])
-      self.assertExists(config_path, 'A config file should have been created at %s' % config_path)
-      config_contents = read_file(config_path)
-      self.assertContained('EMSCRIPTEN_ROOT', config_contents)
-      self.assertContained('LLVM_ROOT', config_contents)
-      os.remove(config_path)
+    config_path = './emscripten_config'
+    with env_modify({'EM_CONFIG': config_path}):
+      for compiler in [EMCC, EMXX]:
+        self.assertNotExists(config_path)
+        self.run_process([compiler, '--generate-config'])
+        self.assertExists(config_path)
+        config_contents = read_file(config_path)
+        self.assertContained('EMSCRIPTEN_ROOT', config_contents)
+        self.assertContained('LLVM_ROOT', config_contents)
+        os.remove(config_path)
 
   def test_emcc_output_mjs(self):
     self.run_process([EMCC, '-o', 'hello_world.mjs', test_file('hello_world.c')])

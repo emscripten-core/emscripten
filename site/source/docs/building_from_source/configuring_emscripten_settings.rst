@@ -15,31 +15,36 @@ This article explains how to create and update the file when you are building Em
 Creating the compiler configuration file
 ========================================
 
-The settings file is created the first time a user runs :ref:`emcc <emccdoc>` (or any of the other Emscripten tools):
+A settings file is required to run :ref:`emcc <emccdoc>` (or any of the other
+Emscripten tools).  When you first run ``emcc`` it will direct you to the
+``--generate-config`` command line option which can be used to generate config
+file in the default location.
 
 1. Navigate to the directory where you cloned the Emscripten repository.
-2. Enter the command: 
+2. Enter the command:
 
-	::
-	
-		./emcc --help
+  ::
 
-	You should get a ``Welcome to Emscripten!`` message. Behind the scenes, Emscripten generates a file called ``.emscripten`` in your home folder.
-	
-	
-Emscripten makes a "best guess" at the correct locations for tools and updates the file appropriately. Where possible it will look for "system" apps (like Python and Java).
+    ./emcc --generate-config
+
+  You should get a ``An Emscripten settings file has been generated at:``
+  message, along with the contents of the config file.
+
+Emscripten makes a "best guess" at the correct locations for tools and updates
+the file appropriately. Where possible it will look for "system" apps (like
+Python and Java).
 
 In most cases it is necessary to edit the generated file and modify at least the
 ``LLVM_ROOT`` and ``BINARYEN_ROOT`` settings to point to the correct location of
 your local LLVM and Binaryen installations respectively.
 
+
 Locating the compiler configuration file (.emscripten)
 =======================================================
 
-The settings file (``.emscripten``) is created by default within the emscripten directory:
-
-In cases where the emscripten directory is read-only the users home directoy
-will be used:
+The settings file (``.emscripten``) is created by default within the emscripten
+directory (alongsize ``emcc`` itself).  In cases where the emscripten directory
+is read-only the users home directory will be used:
 
   - On Linux and macOS this file is named **~/.emscripten**, where ~ is the
     user's home directory.
@@ -54,7 +59,7 @@ Compiler configuration file-format
 
 .. note:: While the syntax is identical, the appearance of the default **.emscripten** file created by *emcc* is quite different than that created by :ref:`emsdk <compiler-configuration-file>`. This is because *emsdk* manages multiple target environments, and where possible hard codes the locations of those tools when a new environment is activated. The default file, by contrast, is managed by the user — and is designed to make that task as easy as possible.
 
-The file simply assigns paths to a number of *variables* representing the main tools used by Emscripten. For example, if the user installed python to the **C:/Python27/** directory, then the file might have the line: ::
+The file simply assigns paths to a number of *variables* representing the main tools used by Emscripten. For example, if the user installed python to the **C:\\Python38\\** directory, then the file might have the line: ::
 
 	PYTHON = 'C:\\Python38\\python.exe'
 	

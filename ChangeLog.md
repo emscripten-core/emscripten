@@ -26,6 +26,10 @@ See docs/process.md for more on how version tagging works.
    - `EMMAKEN_COMPILER` -> `LLVM_ROOT` in the config settings
    - `EMMAKEN_CFLAGS` -> `EMCC_CFLAGS`
    - `EMMAKEN_NO_SDK` -> standard `-nostdlib` and `-nostdinc` flags
+- emscripten will no longer automatically create a config file if it can't
+  find one in the configured location.  Instead, it will error out and point the
+  user to the `--generate-config` option, in case that is what they want.
+  (#13962)
 
 3.1.5 - 02/17/2022
 ------------------
