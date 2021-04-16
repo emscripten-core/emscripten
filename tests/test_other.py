@@ -9376,6 +9376,13 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     err = self.run_process([EMCC, test_file('hello_world.cpp'), '-c', '-lbar'], stderr=PIPE).stderr
     self.assertContained("warning: argument unused during compilation: '-lbar' [-Wunused-command-line-argument]", err)
 
+  def test_linker_input_unused(self):
+    self.run_process([EMCC, '-c', test_file('hello_world.cpp')])
+    err = self.run_process([EMCC, 'hello_world.o', '-c', '-o', 'out.o'], stderr=PIPE).stderr
+    self.assertContained("warning: hello_world.o: linker input file unused because linking not done [-Wunused-command-line-argument", err)
+    # In this case the compiler does not produce any output file.
+    self.assertNotExists('out.o')
+
   def test_non_wasm_without_wasm_in_vm(self):
     # Test that our non-wasm output does not depend on wasm support in the vm.
     self.run_process([EMCC, test_file('hello_world.cpp'), '-s', 'WASM=0'])

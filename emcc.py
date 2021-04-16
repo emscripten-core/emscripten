@@ -2093,22 +2093,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     settings.PROFILING_FUNCS = options.profiling_funcs
     settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
-    ## Compile source code to bitcode
-
-    logger.debug('compiling to bitcode')
-
-    temp_files = []
-
   # exit block 'parse arguments and setup'
   log_time('parse arguments and setup')
 
+  linker_inputs = []
   if options.post_link:
-    process_libraries(libs, lib_dirs, temp_files)
+    process_libraries(libs, lib_dirs, linker_inputs)
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
     post_link(options, input_files[0][1], wasm_target, target)
     return 0
 
+  ## Compile source code to object files
+  logger.debug('compiling inputs')
   with ToolchainProfiler.profile_block('compile inputs'):
     def is_link_flag(flag):
       if flag.startswith('-nostdlib'):
@@ -2202,7 +2199,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     def compile_source_file(i, input_file):
       logger.debug('compiling source file: ' + input_file)
       output_file = get_object_filename(input_file)
-      temp_files.append((i, output_file))
+      if not compile_only:
+        linker_inputs.append((i, output_file))
       if get_file_suffix(input_file) in ASSEMBLY_ENDINGS:
         cmd = get_clang_command_asm(input_file)
       else:
@@ -2221,11 +2219,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         compile_source_file(i, input_file)
       elif file_suffix in DYNAMICLIB_ENDINGS:
         logger.debug('using shared library: ' + input_file)
-        temp_files.append((i, input_file))
+        linker_inputs.append((i, input_file))
       elif building.is_ar(input_file):
         logger.debug('using static library: ' + input_file)
         ensure_archive_index(input_file)
-        temp_files.append((i, input_file))
+        linker_inputs.append((i, input_file))
       elif language_mode:
         compile_source_file(i, input_file)
       elif input_file == '-':
@@ -2233,7 +2231,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         # Default to assuming the inputs are object files and pass them to the linker
         logger.debug('using object file: ' + input_file)
-        temp_files.append((i, input_file))
+        linker_inputs.append((i, input_file))
 
   # exit block 'compile inputs'
   log_time('compile inputs')
@@ -2242,6 +2240,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     logger.debug('stopping after compile phase')
     for flag in link_flags:
       diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
+    for f in linker_inputs:
+      diagnostics.warning('unused-command-line-argument', "%s: linker input file unused because linking not done" % f[1])
     return 0
 
   if specified_target and specified_target.startswith('-'):
@@ -2255,17 +2255,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   link_flags = filter_link_flags(link_flags, using_lld)
 
   # Decide what we will link
-  consumed = process_libraries(libs, lib_dirs, temp_files)
+  consumed = process_libraries(libs, lib_dirs, linker_inputs)
   # Filter out libraries that are actually JS libs
   link_flags = [l for l in link_flags if l[0] not in consumed]
-  temp_files = filter_out_dynamic_libs(temp_files)
+  linker_inputs = filter_out_dynamic_libs(linker_inputs)
 
-  linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
+  linker_arguments = [val for _, val in sorted(linker_inputs + link_flags)]
 
   if link_to_object:
     with ToolchainProfiler.profile_block('linking to object file'):
-      logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + target)
-      building.link_to_object(linker_inputs, target)
+      logger.debug('link_to_object: ' + str(linker_arguments) + ' -> ' + target)
+      building.link_to_object(linker_arguments, target)
       logger.debug('stopping after linking to object file')
       return 0
 
@@ -2286,8 +2286,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # unless running in strict mode.
       if not settings.STRICT and '-nostdlib++' not in newargs:
         link_as_cxx = True
-      extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, link_as_cxx, forced=forced_stdlibs)
-    linker_inputs += extra_files_to_link
+      extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, link_as_cxx, forced=forced_stdlibs)
+    linker_arguments += extra_files_to_link
 
   # exit block 'calculate system libraries'
   log_time('calculate system libraries')
@@ -2305,7 +2305,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   settings.EXPORTED_FUNCTIONS = dedup_list(settings.EXPORTED_FUNCTIONS)
 
   with ToolchainProfiler.profile_block('link'):
-    logger.debug('linking: ' + str(linker_inputs))
+    logger.debug('linking: ' + str(linker_arguments))
 
     # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
     # if using the wasm backend, we might be using vanilla LLVM, which does not allow our
@@ -2315,10 +2315,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if settings.LLD_REPORT_UNDEFINED and settings.ERROR_ON_UNDEFINED_SYMBOLS:
       js_funcs = get_all_js_syms()
       log_time('JS symbol generation')
-    building.link_lld(linker_inputs, wasm_target, external_symbol_list=js_funcs)
+    building.link_lld(linker_arguments, wasm_target, external_symbol_list=js_funcs)
     # Special handling for when the user passed '-Wl,--version'.  In this case the linker
     # does not create the output file, but just prints its version and exits with 0.
-    if '--version' in linker_inputs:
+    if '--version' in linker_arguments:
       return 0
 
   # exit block 'link'
@@ -3331,7 +3331,7 @@ def worker_js_script(proxy_worker_filename):
   return web_gl_client_src + '\n' + proxy_client_src
 
 
-def process_libraries(libs, lib_dirs, temp_files):
+def process_libraries(libs, lib_dirs, linker_inputs):
   libraries = []
   consumed = []
   suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
@@ -3347,7 +3347,7 @@ def process_libraries(libs, lib_dirs, temp_files):
         path = os.path.join(lib_dir, name)
         if os.path.exists(path):
           logger.debug('found library "%s" at %s', lib, path)
-          temp_files.append((i, path))
+          linker_inputs.append((i, path))
           consumed.append(i)
           found = True
           break
