@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import difflib
-import json
 import os
 import re
 
@@ -96,18 +95,8 @@ class SettingsManager:
   def __init__(self):
     load_settings()
 
-  # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
-  # the reverse of load_settings, except for -Ox which is relevant there but not here
-  def serialize(self):
-    ret = []
-    for key, value in attrs.items():
-      if key == key.upper():  # this is a hack. all of our settings are ALL_CAPS, python internals are not
-        jsoned = json.dumps(value, sort_keys=True)
-        ret += ['-s', key + '=' + jsoned]
-    return ret
-
-  def to_dict(self):
-    return attrs.copy()
+  def dict(self):
+    return attrs
 
   def keys(self):
     return attrs.keys()
@@ -120,9 +109,6 @@ class SettingsManager:
 
   def __setattr__(self, attr, value):
     set_setting(attr, value)
-
-  def get(self, key):
-    return attrs.get(key)
 
   def __getitem__(self, key):
     return attrs[key]

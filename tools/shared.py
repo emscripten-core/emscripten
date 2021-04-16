@@ -7,6 +7,7 @@ from subprocess import PIPE
 import atexit
 import binascii
 import base64
+import json
 import logging
 import os
 import re
@@ -749,9 +750,13 @@ def safe_copy(src, dst):
 def read_and_preprocess(filename, expand_macros=False):
   temp_dir = get_emscripten_temp_dir()
   # Create a settings file with the current settings to pass to the JS preprocessor
-  # Note: Settings.serialize returns an array of -s options i.e. ['-s', '<setting1>', '-s', '<setting2>', ...]
-  #       we only want the actual settings, hence the [1::2] slice operation.
-  settings_str = "var " + ";\nvar ".join(Settings.serialize()[1::2])
+
+  settings_str = ''
+  for key, value in Settings.dict().items():
+    assert key == key.upper()  # should only ever be uppercase keys in settings
+    jsoned = json.dumps(value, sort_keys=True)
+    settings_str += f'var {key} = {jsoned};\n'
+
   settings_file = os.path.join(temp_dir, 'settings.js')
   with open(settings_file, 'w') as f:
     f.write(settings_str)
