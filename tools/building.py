@@ -334,12 +334,12 @@ def llvm_backend_args():
   return args
 
 
-def link_to_object(linker_inputs, target):
+def link_to_object(args, target):
   # link using lld unless LTO is requested (lld can't output LTO/bitcode object files).
   if not settings.LTO:
-    link_lld(linker_inputs + ['--relocatable'], target)
+    link_lld(args + ['--relocatable'], target)
   else:
-    link_bitcode(linker_inputs, target)
+    link_bitcode(args, target)
 
 
 def link_llvm(linker_inputs, target):
@@ -462,9 +462,10 @@ def link_lld(args, target, external_symbol_list=None):
   check_call(cmd)
 
 
-def link_bitcode(files, target, force_archive_contents=False):
+def link_bitcode(args, target, force_archive_contents=False):
   # "Full-featured" linking: looks into archives (duplicates lld functionality)
-  actual_files = []
+  input_files = [a for a in args if not a.startswith('-')]
+  files_to_link = []
   # Tracking unresolveds is necessary for .a linking, see below.
   # Specify all possible entry points to seed the linking process.
   # For a simple application, this would just be "main".
@@ -472,15 +473,12 @@ def link_bitcode(files, target, force_archive_contents=False):
   resolved_symbols = set()
   # Paths of already included object files from archives.
   added_contents = set()
-  has_ar = False
-  for f in files:
-    if not f.startswith('-'):
-      has_ar = has_ar or is_ar(make_paths_absolute(f))
+  has_ar = any(is_ar(make_paths_absolute(f)) for f in input_files)
 
   # If we have only one archive or the force_archive_contents flag is set,
   # then we will add every object file we see, regardless of whether it
   # resolves any undefined symbols.
-  force_add_all = len(files) == 1 or force_archive_contents
+  force_add_all = len(input_files) == 1 or force_archive_contents
 
   # Considers an object file for inclusion in the link. The object is included
   # if force_add=True or if the object provides a currently undefined symbol.
@@ -506,7 +504,7 @@ def link_bitcode(files, target, force_archive_contents=False):
       # removing newly resolved symbols.
       unresolved_symbols.update(new_symbols.undefs.difference(resolved_symbols))
       unresolved_symbols.difference_update(provided)
-      actual_files.append(f)
+      files_to_link.append(f)
     return do_add
 
   # Traverse a single archive. The object files are repeatedly scanned for
@@ -531,7 +529,7 @@ def link_bitcode(files, target, force_archive_contents=False):
     logger.debug('done running loop of archive %s' % (f))
     return added_any_objects
 
-  read_link_inputs([x for x in files if not x.startswith('-')])
+  read_link_inputs(input_files)
 
   # Rescan a group of archives until we don't find any more objects to link.
   def scan_archive_group(group):
@@ -546,41 +544,42 @@ def link_bitcode(files, target, force_archive_contents=False):
 
   current_archive_group = None
   in_whole_archive = False
-  for f in files:
-    absolute_path_f = make_paths_absolute(f)
-    if f.startswith('-'):
-      if f in ['--start-group', '-(']:
+  for a in args:
+    if a.startswith('-'):
+      if a in ['--start-group', '-(']:
         assert current_archive_group is None, 'Nested --start-group, missing --end-group?'
         current_archive_group = []
-      elif f in ['--end-group', '-)']:
+      elif a in ['--end-group', '-)']:
         assert current_archive_group is not None, '--end-group without --start-group'
         scan_archive_group(current_archive_group)
         current_archive_group = None
-      elif f in ['--whole-archive', '-whole-archive']:
+      elif a in ['--whole-archive', '-whole-archive']:
         in_whole_archive = True
-      elif f in ['--no-whole-archive', '-no-whole-archive']:
+      elif a in ['--no-whole-archive', '-no-whole-archive']:
         in_whole_archive = False
       else:
         # Command line flags should already be vetted by the time this method
         # is called, so this is an internal error
-        assert False, 'unsupported link flag: ' + f
-    elif is_ar(absolute_path_f):
-      # Extract object files from ar archives, and link according to gnu ld semantics
-      # (link in an entire .o from the archive if it supplies symbols still unresolved)
-      consider_archive(absolute_path_f, in_whole_archive or force_add_all)
-      # If we're inside a --start-group/--end-group section, add to the list
-      # so we can loop back around later.
-      if current_archive_group is not None:
-        current_archive_group.append(absolute_path_f)
-    elif is_bitcode(absolute_path_f):
-      if has_ar:
-        consider_object(f, force_add=True)
-      else:
-        # If there are no archives then we can simply link all valid object
-        # files and skip the symbol table stuff.
-        actual_files.append(f)
+        exit_with_error('unsupported link flag: %s', a)
     else:
-      exit_with_error('unknown file type: %s', f)
+      lib_path = make_paths_absolute(a)
+      if is_ar(lib_path):
+        # Extract object files from ar archives, and link according to gnu ld semantics
+        # (link in an entire .o from the archive if it supplies symbols still unresolved)
+        consider_archive(lib_path, in_whole_archive or force_add_all)
+        # If we're inside a --start-group/--end-group section, add to the list
+        # so we can loop back around later.
+        if current_archive_group is not None:
+          current_archive_group.append(lib_path)
+      elif is_bitcode(lib_path):
+        if has_ar:
+          consider_object(a, force_add=True)
+        else:
+          # If there are no archives then we can simply link all valid object
+          # files and skip the symbol table stuff.
+          files_to_link.append(a)
+      else:
+        exit_with_error('unknown file type: %s', a)
 
   # We have to consider the possibility that --start-group was used without a matching
   # --end-group; GNU ld permits this behavior and implicitly treats the end of the
@@ -594,10 +593,10 @@ def link_bitcode(files, target, force_archive_contents=False):
 
   # Finish link
   # tolerate people trying to link a.so a.so etc.
-  actual_files = unique_ordered(actual_files)
+  files_to_link = unique_ordered(files_to_link)
 
-  logger.debug('emcc: linking: %s to %s', actual_files, target)
-  link_llvm(actual_files, target)
+  logger.debug('emcc: linking: %s to %s', files_to_link, target)
+  link_llvm(files_to_link, target)
 
 
 def get_command_with_possible_response_file(cmd):
