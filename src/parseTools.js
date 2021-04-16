@@ -1301,7 +1301,7 @@ function addReadyPromiseAssertions(promise) {
 }
 
 function makeMalloc(source, param) {
-  if ('_malloc' in IMPLEMENTED_FUNCTIONS) {
+  if ('_malloc' in WASM_EXPORTS) {
     return `_malloc(${param})`;
   }
   // It should be impossible to call some functions without malloc being
