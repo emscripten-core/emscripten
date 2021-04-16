@@ -626,6 +626,19 @@ def is_dash_s_for_emcc(args, i):
   return arg.isidentifier() and arg.isupper()
 
 
+def process_dynamic_libs(dylibs):
+  for dylib in dylibs:
+    imports = webassembly.get_imports(dylib)
+    new_exports = []
+    for imp in imports:
+      if imp.type not in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL):
+        continue
+      new_exports.append(imp.field)
+    logger.debug('Adding exports based on `%s`: %s', dylib, new_exports)
+    shared.Settings.EXPORTED_FUNCTIONS.extend(shared.asmjs_mangle(e) for e in new_exports)
+    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(new_exports)
+
+
 def unmangle_symbols_from_cmdline(symbols):
   def unmangle(x):
     return x.replace('.', ' ').replace('#', '&').replace('?', ',')
@@ -1314,6 +1327,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     input_files = filter_out_dynamic_libs(input_files)
     input_files = filter_out_duplicate_dynamic_libs(input_files)
+
+    if shared.Settings.MAIN_MODULE:
+      dylibs = [i[1] for i in input_files if get_file_suffix(i[1]) in DYNAMICLIB_ENDINGS]
+      process_dynamic_libs(dylibs)
 
     if not input_files and not link_flags:
       exit_with_error('no input files')

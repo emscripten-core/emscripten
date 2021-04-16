@@ -345,6 +345,10 @@ var LibraryDylink = {
       //
       // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
 
+      if (!asmLibraryArg.hasOwnProperty(sym)) {
+        asmLibraryArg[sym] = libModule[sym];
+      }
+
       var module_sym = asmjsMangle(sym);
 
       if (!Module.hasOwnProperty(module_sym)) {
@@ -383,8 +387,6 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
       err("loadModule: memoryBase=" + memoryBase);
 #endif
-      // prepare env imports
-      var env = asmLibraryArg;
       // TODO: use only __memory_base and __table_base, need to update asm.js backend
       var tableBase = wasmTable.length;
       wasmTable.grow(metadata.tableSize);
@@ -427,13 +429,6 @@ var LibraryDylink = {
         return resolved;
       }
 
-      // copy currently exported symbols so the new module can import them
-      for (var x in Module) {
-        if (!(x in env)) {
-          env[x] = Module[x];
-        }
-      }
-
       // TODO kill ↓↓↓ (except "symbols local to this module", it will likely be
       // not needed if we require that if A wants symbols from B it has to link
       // to B explicitly: similarly to -Wl,--no-undefined)
@@ -465,7 +460,7 @@ var LibraryDylink = {
           };
         }
       };
-      var proxy = new Proxy(env, proxyHandler);
+      var proxy = new Proxy(asmLibraryArg, proxyHandler);
       var info = {
         'GOT.mem': new Proxy(asmLibraryArg, GOTHandler),
         'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
