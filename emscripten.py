@@ -113,9 +113,10 @@ def update_settings_glue(metadata, DEBUG):
   all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(metadata['exports']))
 
-  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += metadata['externs']
-  # With the wasm backend the set of implemented functions is identical to the set of exports
-  shared.Settings.IMPLEMENTED_FUNCTIONS = [asmjs_mangle(x) for x in metadata['exports']]
+  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += metadata['globalImports']
+
+  all_exports = metadata['exports'] + list(metadata['namedGlobals'].keys())
+  shared.Settings.IMPLEMENTED_FUNCTIONS = [asmjs_mangle(x) for x in all_exports]
 
   shared.Settings.BINARYEN_FEATURES = metadata['features']
   if shared.Settings.RELOCATABLE:
@@ -124,6 +125,8 @@ def update_settings_glue(metadata, DEBUG):
     # Instead we use __table_base to offset the elements by 1.
     if shared.Settings.INITIAL_TABLE == -1:
       shared.Settings.INITIAL_TABLE = metadata['tableSize'] + 1
+
+  shared.Settings.HAS_MAIN = shared.Settings.MAIN_MODULE or shared.Settings.STANDALONE_WASM or '_main' in shared.Settings.IMPLEMENTED_FUNCTIONS
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
@@ -142,7 +145,8 @@ def update_settings_glue(metadata, DEBUG):
 
 def apply_static_code_hooks(forwarded_json, code):
   code = shared.do_replace(code, '<<< ATINITS >>>', str(forwarded_json['ATINITS']))
-  code = shared.do_replace(code, '<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
+  if shared.Settings.HAS_MAIN:
+    code = shared.do_replace(code, '<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
   if shared.Settings.EXIT_RUNTIME:
     code = shared.do_replace(code, '<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))
   return code
@@ -179,10 +183,10 @@ def set_memory(static_bump):
   shared.Settings.HEAP_BASE = align_memory(stack_high)
 
 
-def report_missing_symbols(all_implemented, pre):
+def report_missing_symbols(pre):
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
-  missing = set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented
+  missing = set(shared.Settings.USER_EXPORTED_FUNCTIONS) - set(shared.Settings.IMPLEMENTED_FUNCTIONS)
 
   for requested in sorted(missing):
     if (f'function {requested}(') not in pre:
@@ -200,7 +204,7 @@ def report_missing_symbols(all_implemented, pre):
     # maximum compatibility.
     return
 
-  if shared.Settings.EXPECT_MAIN and '_main' not in all_implemented:
+  if shared.Settings.EXPECT_MAIN and '_main' not in shared.Settings.IMPLEMENTED_FUNCTIONS:
     # For compatibility with the output of wasm-ld we use the same wording here in our
     # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
     exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
@@ -314,9 +318,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   if shared.Settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
-  all_exports = exports + list(metadata['namedGlobals'].keys())
-  all_exports = set([asmjs_mangle(e) for e in all_exports])
-  report_missing_symbols(all_exports, pre)
+  report_missing_symbols(pre)
 
   if not outfile_js:
     logger.debug('emscript: skipping remaining js glue generation')
@@ -500,17 +502,8 @@ def add_standard_wasm_imports(send_items_map):
     send_items_map['segfault'] = 'segfault'
     send_items_map['alignfault'] = 'alignfault'
 
-  # With the wasm backend __memory_base and __table_base are only needed for
-  # relocatable output.
   if shared.Settings.RELOCATABLE:
-    # tell the memory segments where to place themselves
-    send_items_map['__memory_base'] = str(shared.Settings.GLOBAL_BASE)
     send_items_map['__indirect_function_table'] = 'wasmTable'
-
-    # the wasm backend reserves slot 0 for the NULL function pointer
-    send_items_map['__table_base'] = '1'
-  if shared.Settings.RELOCATABLE:
-    send_items_map['__stack_pointer'] = '__stack_pointer'
 
   if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
     # legalization of i64 support code may require these in some modes
@@ -616,9 +609,11 @@ def add_standard_wasm_imports(send_items_map):
 
 
 def create_sending(invoke_funcs, metadata):
-  em_js_funcs = list(metadata['emJsFuncs'].keys())
-  declared_items = ['_' + item for item in metadata['declares']]
-  send_items = set(invoke_funcs + em_js_funcs + declared_items)
+  em_js_funcs = set(metadata['emJsFuncs'].keys())
+  declares = [asmjs_mangle(d) for d in metadata['declares']]
+  externs = [asmjs_mangle(e) for e in metadata['globalImports']]
+  send_items = set(invoke_funcs + declares + externs)
+  send_items.update(em_js_funcs)
 
   def fix_import_name(g):
     # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
@@ -627,7 +622,7 @@ def create_sending(invoke_funcs, metadata):
     # strip them again here.
     # note that we don't do this for EM_JS functions (which, rarely, may have
     # a '_' prefix)
-    if g.startswith('_') and g not in metadata['emJsFuncs']:
+    if g.startswith('_') and g not in em_js_funcs:
       return g[1:]
     return g
 
@@ -757,7 +752,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
 
   metadata = {
     'declares': [],
-    'externs': [],
+    'globalImports': [],
     'staticBump': 0,
     'tableSize': 0,
     'exports': [],
@@ -768,7 +763,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'features': [],
     'mainReadsParams': 1,
   }
-  legacy_keys = set(['implementedFunctions', 'initializers', 'simd'])
+  legacy_keys = set(['implementedFunctions', 'initializers', 'simd', 'externs'])
 
   assert 'tableSize' in metadata_json.keys()
   for key, value in metadata_json.items():
@@ -778,15 +773,17 @@ def load_metadata_wasm(metadata_raw, DEBUG):
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
 
-  if DEBUG:
-    logger.debug("Metadata parsed: " + pprint.pformat(metadata))
+  # TODO(sbc): Remove this once binaryen change to globalImports has been around for a while.
+  if 'externs' in metadata_json:
+    metadata['globalImports'] = [x[1:] for x in metadata_json['externs']]
 
   # Support older metadata when asmConsts values were lists.  We only use the first element
   # nowadays
   # TODO(sbc): remove this once binaryen has been changed to only emit the single element
   metadata['asmConsts'] = {k: v[0] if type(v) is list else v for k, v in metadata['asmConsts'].items()}
-  # TODO(sbc): Remove this once binaryen stopped adding the extra '_'
-  metadata['externs'] = [x[1:] if x[0] == '_' else x for x in metadata['externs']]
+
+  if DEBUG:
+    logger.debug("Metadata parsed: " + pprint.pformat(metadata))
 
   # Calculate the subset of exports that were explicitly marked with llvm.used.
   # These are any exports that were not requested on the command line and are

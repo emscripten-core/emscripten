@@ -53,7 +53,7 @@ var LibraryManager = {
   libraries: [],
 
   has: function(name) {
-    return this.libraries.indexOf(name) >= 0;
+    return this.libraries.includes(name);
   },
 
   load: function() {
@@ -109,7 +109,7 @@ var LibraryManager = {
 
       if (NODERAWFS) {
         // NODERAWFS requires NODEFS
-        if (SYSTEM_JS_LIBRARIES.indexOf('library_nodefs.js') < 0) {
+        if (!SYSTEM_JS_LIBRARIES.includes('library_nodefs.js')) {
           libraries.push('library_nodefs.js');
         }
         libraries.push('library_noderawfs.js');
@@ -328,9 +328,7 @@ function cDefine(key) {
 	throw 'Missing C define ' + key + '! If you just added it to struct_info.json, you need to ./emcc --clear-cache';
 }
 
-var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS.concat(EXTRA_EXPORTED_RUNTIME_METHODS));
-EXPORTED_RUNTIME_METHODS = unset(EXPORTED_RUNTIME_METHODS_SET);
-EXTRA_EXPORTED_RUNTIME_METHODS = [];
+var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS);
 
 function isFSPrefixed(name) {
   return name.length > 3 && name[0] === 'F' && name[1] === 'S' && name[2] === '_';
@@ -381,9 +379,9 @@ function exportRuntime() {
         extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
       }
       if (!isNumber) {
-        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
+        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
       } else {
-        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Object.defineProperty(Module, "' + name + '", { configurable: true, get: function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
+        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Object.defineProperty(Module, "' + name + '", { configurable: true, get: function() { abort("\'' + name + '\' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
       }
     }
     return '';

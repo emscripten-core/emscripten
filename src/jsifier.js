@@ -15,14 +15,6 @@ var addedLibraryItems = {};
 // Each such proxied function is identified via an ordinal number (this is not the same namespace as function pointers in general).
 var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*/];
 
-// Used internally. set when there is a main() function.
-// Also set when in a linkable module, as the main() function might
-// arrive from a dynamically-linked library, and not necessarily
-// the current compilation unit.
-// Also set for STANDALONE_WASM since the _start function is needed to call
-// static ctors, even if there is no user main.
-var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || STANDALONE_WASM;
-
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
   return f[0] == '$' ? f.substr(1) : '_' + f;
@@ -299,7 +291,7 @@ function JSify(functionsOnly) {
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }
-      } else if (typeof snippet === 'string' && snippet.indexOf(';') == 0) {
+      } else if (typeof snippet === 'string' && snippet.startsWith(';')) {
         // In JS libraries
         //   foo: ';[code here verbatim]'
         //  emits

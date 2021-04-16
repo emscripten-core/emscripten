@@ -52,7 +52,7 @@ var LibraryDylink = {
   $GOTHandler: {
     'get': function(obj, symName) {
       if (!GOT[symName]) {
-        GOT[symName] = new WebAssembly.Global({value: 'i32', mutable: true});
+        GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
 #if DYLINK_DEBUG
         err("new GOT entry: " + symName);
 #endif
@@ -96,7 +96,7 @@ var LibraryDylink = {
 #endif
 
       if (!GOT[symName]) {
-        GOT[symName] = new WebAssembly.Global({value: 'i32', mutable: true});
+        GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
       }
       if (replace || GOT[symName].value == 0) {
         if (typeof value === 'function') {
@@ -220,6 +220,7 @@ var LibraryDylink = {
   // Dynamic version of shared.py:make_invoke.  This is needed for invokes
   // that originate from side modules since these are not known at JS
   // generation time.
+  $createInvokeFunction__deps: ['$dynCall', 'setThrew'],
   $createInvokeFunction: function(sig) {
     return function() {
       var sp = stackSave();
@@ -240,7 +241,7 @@ var LibraryDylink = {
   // use normally malloc from the main program to do these allocations).
 
   // Allocate memory even if malloc isn't ready yet.
-  $getMemory__deps: ['$GOT'],
+  $getMemory__deps: ['$GOT', '__heap_base'],
   $getMemory: function(size) {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
@@ -248,12 +249,12 @@ var LibraryDylink = {
 #endif
     if (runtimeInitialized)
       return _malloc(size);
-    var ret = Module['___heap_base'];
+    var ret = ___heap_base;
     var end = (ret + size + 15) & -16;
 #if ASSERTIONS
     assert(end <= HEAP8.length, 'failure to getMemory - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
 #endif
-    Module['___heap_base'] = end;
+    ___heap_base = end;
     GOT['__heap_base'].value = end;
     return ret;
   },
@@ -344,6 +345,10 @@ var LibraryDylink = {
       //
       // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
 
+      if (!asmLibraryArg.hasOwnProperty(sym)) {
+        asmLibraryArg[sym] = libModule[sym];
+      }
+
       var module_sym = asmjsMangle(sym);
 
       if (!Module.hasOwnProperty(module_sym)) {
@@ -382,8 +387,6 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
       err("loadModule: memoryBase=" + memoryBase);
 #endif
-      // prepare env imports
-      var env = asmLibraryArg;
       // TODO: use only __memory_base and __table_base, need to update asm.js backend
       var tableBase = wasmTable.length;
       wasmTable.grow(metadata.tableSize);
@@ -426,13 +429,6 @@ var LibraryDylink = {
         return resolved;
       }
 
-      // copy currently exported symbols so the new module can import them
-      for (var x in Module) {
-        if (!(x in env)) {
-          env[x] = Module[x];
-        }
-      }
-
       // TODO kill ↓↓↓ (except "symbols local to this module", it will likely be
       // not needed if we require that if A wants symbols from B it has to link
       // to B explicitly: similarly to -Wl,--no-undefined)
@@ -464,7 +460,7 @@ var LibraryDylink = {
           };
         }
       };
-      var proxy = new Proxy(env, proxyHandler);
+      var proxy = new Proxy(asmLibraryArg, proxyHandler);
       var info = {
         'GOT.mem': new Proxy(asmLibraryArg, GOTHandler),
         'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
@@ -499,11 +495,11 @@ var LibraryDylink = {
 
         // initialize the module
 #if USE_PTHREADS
-        // The main thread does a full __post_instantiate (which includes a call
+        // The main thread does a full __wasm_call_ctors (which includes a call
         // to emscripten_tls_init), but secondary threads should not call static
         // constructors in general - emscripten_tls_init is the exception.
         if (ENVIRONMENT_IS_PTHREAD) {
-          init = moduleExports['emscripten_tls_init'];
+          var init = moduleExports['emscripten_tls_init'];
           assert(init);
 #if DYLINK_DEBUG
           out("adding to tlsInitFunctions: " + init);
@@ -511,7 +507,12 @@ var LibraryDylink = {
           PThread.tlsInitFunctions.push(init);
         } else {
 #endif
-          var init = moduleExports['__post_instantiate'];
+          var init = moduleExports['__wasm_call_ctors'];
+          // TODO(sbc): Remove this once extra check once the binaryen
+          // change propogates: https://github.com/WebAssembly/binaryen/pull/3811
+          if (!init) {
+            init = moduleExports['__post_instantiate'];
+          }
           if (init) {
             if (runtimeInitialized) {
               init();

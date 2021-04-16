@@ -51,6 +51,7 @@ from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
 from tools import config
+from tools import settings
 
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
@@ -344,14 +345,14 @@ def apply_settings(changes):
   for key, value in changes.items():
     key, value = standardize_setting_change(key, value)
 
-    if key in shared.Settings.internal_settings:
+    if key in settings.internal_settings:
       exit_with_error('%s is an internal setting and cannot be set from command line', key)
 
     # map legacy settings which have aliases to the new names
     # but keep the original key so errors are correctly reported via the `setattr` below
     user_key = key
-    if key in shared.Settings.legacy_settings and key in shared.Settings.alt_names:
-      key = shared.Settings.alt_names[key]
+    if key in settings.legacy_settings and key in settings.alt_names:
+      key = settings.alt_names[key]
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
     if key in ('TOTAL_STACK', 'INITIAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_CAP',
@@ -623,6 +624,19 @@ def is_dash_s_for_emcc(args, i):
     arg = args[i][2:]
   arg = arg.split('=')[0]
   return arg.isidentifier() and arg.isupper()
+
+
+def process_dynamic_libs(dylibs):
+  for dylib in dylibs:
+    imports = webassembly.get_imports(dylib)
+    new_exports = []
+    for imp in imports:
+      if imp.type not in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL):
+        continue
+      new_exports.append(imp.field)
+    logger.debug('Adding exports based on `%s`: %s', dylib, new_exports)
+    shared.Settings.EXPORTED_FUNCTIONS.extend(shared.asmjs_mangle(e) for e in new_exports)
+    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(new_exports)
 
 
 def unmangle_symbols_from_cmdline(symbols):
@@ -1132,7 +1146,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.STRICT = int(strict_cmdline)
 
     # Apply optimization level settings
-    shared.Settings.apply_opt_level(opt_level=shared.Settings.OPT_LEVEL, shrink_level=shared.Settings.SHRINK_LEVEL, noisy=True)
+
+    if shared.Settings.OPT_LEVEL >= 1:
+      shared.Settings.ASSERTIONS = 0
+    if shared.Settings.SHRINK_LEVEL >= 2:
+      shared.Settings.EVAL_CTORS = 1
 
     # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
     # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
@@ -1176,6 +1194,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       target = default_target_name
 
     shared.Settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
+
+    if shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS:
+      diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
+      shared.Settings.EXPORTED_RUNTIME_METHODS += shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS
 
     final_suffix = get_file_suffix(target)
 
@@ -1222,7 +1244,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Apply user -jsD settings
     for s in user_js_defines:
-      shared.Settings.attrs[s[0]] = s[1]
+      shared.Settings[s[0]] = s[1]
 
     shared.verify_settings()
 
@@ -1305,6 +1327,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     input_files = filter_out_dynamic_libs(input_files)
     input_files = filter_out_duplicate_dynamic_libs(input_files)
+
+    if shared.Settings.MAIN_MODULE:
+      dylibs = [i[1] for i in input_files if get_file_suffix(i[1]) in DYNAMICLIB_ENDINGS]
+      process_dynamic_libs(dylibs)
 
     if not input_files and not link_flags:
       exit_with_error('no input files')
@@ -1418,9 +1444,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           '$relocateExports',
           '$GOTHandler',
           '$getDylinkMetadata',
+          '__heap_base',
+          '__stack_pointer',
       ]
-      if options.use_closure_compiler:
-        exit_with_error('cannot use closure compiler on shared modules')
+      # This needs to be exported on the Module object too so it's visible
+      # to side modules too.
+      shared.Settings.EXPORTED_FUNCTIONS += ['___heap_base']
       if shared.Settings.MINIMAL_RUNTIME:
         exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
       if shared.Settings.WASM2JS:
@@ -1492,13 +1521,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       ]
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
+      # The basic writeStackCookie/checkStackCookie mechanism just needs to know where the end
+      # of the stack is.
       shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_end', '_emscripten_stack_get_free']
+      if shared.Settings.STACK_OVERFLOW_CHECK == 2:
+        # The full checking done by binaryen's `StackCheck` pass also needs to know the base of the
+        # stack.
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base']
+
+      # We call one of these two functions during startup which caches the stack limits
+      # in wasm globals allowing get_base/get_free to be super fast.
+      # See compiler-rt/stack_limits.S.
       if shared.Settings.RELOCATABLE:
         shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_set_limits']
       else:
         shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_init']
-      if shared.Settings.STACK_OVERFLOW_CHECK == 2:
-        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base']
 
     if shared.Settings.MODULARIZE:
       if shared.Settings.PROXY_TO_WORKER:
@@ -2027,7 +2064,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.NODE_CODE_CACHING:
       if shared.Settings.WASM_ASYNC_COMPILATION:
         exit_with_error('NODE_CODE_CACHING requires sync compilation (WASM_ASYNC_COMPILATION=0)')
-      if not shared.Settings.target_environment_may_be('node'):
+      if not shared.target_environment_may_be('node'):
         exit_with_error('NODE_CODE_CACHING only works in node, but target environments do not include it')
       if shared.Settings.SINGLE_FILE:
         exit_with_error('NODE_CODE_CACHING saves a file on the side and is not compatible with SINGLE_FILE')
@@ -2789,7 +2826,7 @@ def parse_args(newargs):
         key, value = key.split('=')
       else:
         value = '1'
-      if key in shared.Settings.attrs:
+      if key in shared.Settings.keys():
         exit_with_error(arg + ': cannot change built-in settings values with a -jsD directive. Pass -s ' + key + '=' + value + ' instead!')
       user_js_defines += [(key, value)]
       newargs[i] = ''
@@ -3030,7 +3067,7 @@ function(%(EXPORT_NAME)s) {
       script_url = "import.meta.url"
     else:
       script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
-      if shared.Settings.target_environment_may_be('node'):
+      if shared.target_environment_may_be('node'):
         script_url_node = "if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;"
     src = '''
 var %(EXPORT_NAME)s = (function() {
@@ -3081,7 +3118,7 @@ def module_export_name_substitution():
   src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
   # For Node.js and other shell environments, create an unminified Module object so that
   # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-  if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.target_environment_may_be('node') or shared.Settings.target_environment_may_be('shell')):
+  if shared.Settings.MINIMAL_RUNTIME and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
     src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
   with open(final_js, 'w') as f:
     f.write(src)
