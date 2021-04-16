@@ -41,6 +41,8 @@ WASM_PAGE_SIZE = 65536
 
 HEADER_SIZE = 8
 
+LIMITS_HAS_MAX = 0x1
+
 
 def toLEB(num):
   return leb128.u.encode(num)
@@ -164,7 +166,7 @@ class Module:
     flags = self.readByte()
     initial = self.readULEB()
     maximum = 0
-    if flags & 0x1:
+    if flags & LIMITS_HAS_MAX:
       maximum = self.readULEB()
     return Limits(flags, initial, maximum)
 

@@ -24,7 +24,7 @@ Current Trunk
   `EXPORTED_RUNTIME_METHODS`.
 - When building with `MAIN_MODULE=2` the linker will now automatically include
   any symbols required by side modules found on the command line.  This means
-  that for many users of `MAIN_MODULE=2` it should not longer be necessary to
+  that for many users of `MAIN_MODULE=2` it should no longer be necessary to
   list explicit `EXPORTED_FUNCTIONS`.  Also, users of `MAIN_MODULE=1` with
   dynamic linking (not dlopen) who list all side modules on the command line,
   should be able to switch to `MAIN_MODULE=2` and get a reduction in code size.
