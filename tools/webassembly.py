@@ -13,6 +13,7 @@ import os
 import sys
 
 from . import shared
+from .settings import settings
 
 sys.path.append(shared.path_from_root('third_party'))
 
@@ -55,8 +56,8 @@ def readSLEB(iobuf):
 
 
 def add_emscripten_metadata(wasm_file):
-  mem_size = shared.Settings.INITIAL_MEMORY // WASM_PAGE_SIZE
-  global_base = shared.Settings.GLOBAL_BASE
+  mem_size = settings.INITIAL_MEMORY // WASM_PAGE_SIZE
+  global_base = settings.GLOBAL_BASE
 
   logger.debug('creating wasm emscripten metadata section with mem size %d' % mem_size)
   name = b'\x13emscripten_metadata' # section name, including prefixed size
@@ -84,7 +85,7 @@ def add_emscripten_metadata(wasm_file):
     # tempDoublePtr, always 0 in wasm backend
     toLEB(0) +
 
-    toLEB(int(shared.Settings.STANDALONE_WASM))
+    toLEB(int(settings.STANDALONE_WASM))
 
     # NB: more data can be appended here as long as you increase
     #     the EMSCRIPTEN_METADATA_MINOR

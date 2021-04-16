@@ -8488,7 +8488,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
     self.do_core_test('test_stack_get_free.c')
 
-  # Tests Settings.ABORT_ON_WASM_EXCEPTIONS
+  # Tests settings.ABORT_ON_WASM_EXCEPTIONS
   def test_abort_on_exceptions(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
