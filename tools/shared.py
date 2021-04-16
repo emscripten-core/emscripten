@@ -29,7 +29,7 @@ from . import cache, tempfiles, colored_logger
 from . import diagnostics
 from . import config
 from . import filelock
-from . import settings
+from .settings import settings
 
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
@@ -456,7 +456,7 @@ def replace_suffix(filename, new_suffix):
 # Retain the original naming scheme in traditional runtime.
 def replace_or_append_suffix(filename, new_suffix):
   assert new_suffix[0] == '.'
-  return replace_suffix(filename, new_suffix) if Settings.MINIMAL_RUNTIME else filename + new_suffix
+  return replace_suffix(filename, new_suffix) if settings.MINIMAL_RUNTIME else filename + new_suffix
 
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use the canonical
@@ -533,22 +533,22 @@ def apply_configuration():
 
 
 def target_environment_may_be(environment):
-  return Settings.ENVIRONMENT == '' or environment in Settings.ENVIRONMENT.split(',')
+  return settings.ENVIRONMENT == '' or environment in settings.ENVIRONMENT.split(',')
 
 
 def verify_settings():
-  if Settings.SAFE_HEAP not in [0, 1]:
+  if settings.SAFE_HEAP not in [0, 1]:
     exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
 
-  if not Settings.WASM:
+  if not settings.WASM:
     # When the user requests non-wasm output, we enable wasm2js. that is,
     # we still compile to wasm normally, but we compile the final output
     # to js.
-    Settings.WASM = 1
-    Settings.WASM2JS = 1
-  if Settings.WASM == 2:
+    settings.WASM = 1
+    settings.WASM2JS = 1
+  if settings.WASM == 2:
     # Requesting both Wasm and Wasm2JS support
-    Settings.WASM2JS = 1
+    settings.WASM2JS = 1
 
 
 def print_compiler_stage(cmd):
@@ -574,7 +574,7 @@ def is_c_symbol(name):
 def treat_as_user_function(name):
   if name.startswith('dynCall_'):
     return False
-  if name in Settings.WASM_SYSTEM_EXPORTS:
+  if name in settings.WASM_SYSTEM_EXPORTS:
     return False
   return True
 
@@ -618,7 +618,7 @@ class JS:
       js = f.read()
     # first, remove the license as there may be more than once
     processed_js = re.sub(JS.emscripten_license_regex, '', js)
-    if Settings.EMIT_EMSCRIPTEN_LICENSE:
+    if settings.EMIT_EMSCRIPTEN_LICENSE:
       processed_js = JS.emscripten_license + processed_js
     if processed_js != js:
       with open(js_target, 'w') as f:
@@ -638,7 +638,7 @@ class JS:
   @staticmethod
   def get_subresource_location(path, data_uri=None):
     if data_uri is None:
-      data_uri = Settings.SINGLE_FILE
+      data_uri = settings.SINGLE_FILE
     if data_uri:
       # if the path does not exist, then there is no data to encode
       if not os.path.exists(path):
@@ -652,7 +652,7 @@ class JS:
   @staticmethod
   def legalize_sig(sig):
     # with BigInt support all sigs are legal since we can use i64s.
-    if Settings.WASM_BIGINT:
+    if settings.WASM_BIGINT:
       return sig
     legal = [sig[0]]
     # a return of i64 is legalized into an i32 (and the high bits are
@@ -671,16 +671,16 @@ class JS:
   @staticmethod
   def is_legal_sig(sig):
     # with BigInt support all sigs are legal since we can use i64s.
-    if Settings.WASM_BIGINT:
+    if settings.WASM_BIGINT:
       return True
     return sig == JS.legalize_sig(sig)
 
   @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
-    if Settings.DYNCALLS or not JS.is_legal_sig(sig):
+    if settings.DYNCALLS or not JS.is_legal_sig(sig):
       args = ','.join(args)
-      if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
+      if not settings.MAIN_MODULE and not settings.SIDE_MODULE:
         # Optimize dynCall accesses in the case when not building with dynamic
         # linking enabled.
         return 'dynCall_%s(%s)' % (sig, args)
@@ -696,7 +696,7 @@ class JS:
     ret = 'return ' if sig[0] != 'v' else ''
     body = '%s%s;' % (ret, JS.make_dynCall(sig, args))
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
-    if Settings.SUPPORT_LONGJMP:
+    if settings.SUPPORT_LONGJMP:
       rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"
     else:
       rethrow = "if (e !== e+0) throw e;"
@@ -752,7 +752,7 @@ def read_and_preprocess(filename, expand_macros=False):
   # Create a settings file with the current settings to pass to the JS preprocessor
 
   settings_str = ''
-  for key, value in Settings.dict().items():
+  for key, value in settings.dict().items():
     assert key == key.upper()  # should only ever be uppercase keys in settings
     jsoned = json.dumps(value, sort_keys=True)
     settings_str += f'var {key} = {jsoned};\n'
@@ -826,7 +826,6 @@ FILE_PACKAGER = bat_suffix(path_from_root('tools', 'file_packager'))
 
 apply_configuration()
 
-Settings = settings.SettingsManager()
 verify_settings()
 Cache = cache.Cache(config.CACHE)
 

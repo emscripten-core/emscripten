@@ -7,6 +7,7 @@ import contextlib
 import logging
 import os
 from . import tempfiles, filelock, config, utils
+from .settings import settings
 
 logger = logging.getLogger('cache')
 
@@ -98,15 +99,15 @@ class Cache:
 
   def get_lib_dir(self, absolute):
     path = os.path.join(self.get_sysroot_dir(absolute=absolute), 'lib')
-    if shared.Settings.MEMORY64:
+    if settings.MEMORY64:
       path = os.path.join(path, 'wasm64-emscripten')
     else:
       path = os.path.join(path, 'wasm32-emscripten')
     # if relevant, use a subdir of the cache
     subdir = []
-    if shared.Settings.LTO:
+    if settings.LTO:
       subdir.append('lto')
-    if shared.Settings.RELOCATABLE:
+    if settings.RELOCATABLE:
       subdir.append('pic')
     if subdir:
       path = os.path.join(path, '-'.join(subdir))
@@ -160,6 +161,3 @@ class Cache:
       logger.info(' - ok')
 
     return cachename
-
-
-from . import shared
