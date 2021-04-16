@@ -51,6 +51,7 @@ from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
 from tools import config
+from tools import settings
 
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
@@ -344,14 +345,14 @@ def apply_settings(changes):
   for key, value in changes.items():
     key, value = standardize_setting_change(key, value)
 
-    if key in shared.Settings.internal_settings:
+    if key in settings.internal_settings:
       exit_with_error('%s is an internal setting and cannot be set from command line', key)
 
     # map legacy settings which have aliases to the new names
     # but keep the original key so errors are correctly reported via the `setattr` below
     user_key = key
-    if key in shared.Settings.legacy_settings and key in shared.Settings.alt_names:
-      key = shared.Settings.alt_names[key]
+    if key in settings.legacy_settings and key in settings.alt_names:
+      key = settings.alt_names[key]
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
     if key in ('TOTAL_STACK', 'INITIAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_CAP',
@@ -1230,7 +1231,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Apply user -jsD settings
     for s in user_js_defines:
-      shared.Settings.attrs[s[0]] = s[1]
+      shared.Settings[s[0]] = s[1]
 
     shared.verify_settings()
 
@@ -2808,7 +2809,7 @@ def parse_args(newargs):
         key, value = key.split('=')
       else:
         value = '1'
-      if key in shared.Settings.attrs:
+      if key in shared.Settings.keys():
         exit_with_error(arg + ': cannot change built-in settings values with a -jsD directive. Pass -s ' + key + '=' + value + ' instead!')
       user_js_defines += [(key, value)]
       newargs[i] = ''
