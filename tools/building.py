@@ -453,6 +453,11 @@ def link_lld(args, target, external_symbol_list=None):
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
 
+  # Wasm exception handling. This is a CodeGen option for the LLVM backend, so
+  # wasm-ld needs to take this for the LTO mode.
+  if settings.EXCEPTION_HANDLING:
+    cmd += ['-mllvm', '-exception-model=wasm']
+
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
   if '--relocatable' not in args and '-r' not in args:
