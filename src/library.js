@@ -35,6 +35,14 @@ LibraryManager.library = {
     {{{ makeSetTempRet0('$i') }}};
   },
 
+#if SAFE_HEAP
+  // Trivial wrappers around runtime functions that make these symbols available
+  // to native code.
+  segfault: function() { segfault(); },
+  alignfault: function() { alignfault(); },
+  ftfault: function() { ftfault(); },
+#endif
+
   // ==========================================================================
   // JavaScript <-> C string interop
   // ==========================================================================

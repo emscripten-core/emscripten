@@ -642,10 +642,14 @@ class libcompiler_rt(MTLibrary):
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
   src_files = glob_in_path(src_dir, '*.c')
-  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.S'))
-  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_limits.S'))
-  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_setjmp.c'))
-  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_exception_builtins.c'))
+  src_files += files_in_path(
+      path_components=['system', 'lib', 'compiler-rt'],
+      filenames=[
+        'stack_ops.S',
+        'stack_limits.S',
+        'emscripten_setjmp.c',
+        'emscripten_exception_builtins.c'
+      ])
 
 
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):

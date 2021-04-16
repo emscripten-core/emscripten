@@ -49,6 +49,18 @@ function stringifyWithFunctions(obj) {
   }
 }
 
+function isDefined(symName) {
+  if (symName in WASM_EXPORTS || symName in SIDE_MODULE_EXPORTS) {
+    return true;
+  }
+  // 'invoke_' symbols are created at runtime in libary_dylink.py so can
+  // always be considered as defined.
+  if (RELOCATABLE && symName.startsWith('_invoke_')) {
+    return true;
+  }
+  return false;
+}
+
 // JSifier
 function JSify(functionsOnly) {
   var mainPass = !functionsOnly;
@@ -147,7 +159,7 @@ function JSify(functionsOnly) {
       var noExport = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
-        if (!(finalName in WASM_EXPORTS) && !LINKABLE) {
+        if (!isDefined(finalName) && !LINKABLE) {
           var msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ' (referenced by ' + dependent + ')';
           if (ERROR_ON_UNDEFINED_SYMBOLS) {

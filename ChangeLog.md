@@ -28,6 +28,10 @@ Current Trunk
   list explicit `EXPORTED_FUNCTIONS`.  Also, users of `MAIN_MODULE=1` with
   dynamic linking (not dlopen) who list all side modules on the command line,
   should be able to switch to `MAIN_MODULE=2` and get a reduction in code size.
+- When building with `MAIN_MODULE` it is now possbile to warn or error on
+  undefined symbols assuming all the side modules are passed at link time.  This
+  means that for many projects it should now be possbile to enable
+  `ERROR_ON_UNDEFINED_SYMBOLS` along with `MAIN_MODULE`.
 
 2.0.17: 04/10/2021
 ------------------
