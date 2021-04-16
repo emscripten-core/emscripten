@@ -631,12 +631,16 @@ def process_dynamic_libs(dylibs):
     imports = webassembly.get_imports(dylib)
     new_exports = []
     for imp in imports:
-      if imp.type not in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL):
+      if imp.kind not in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL):
         continue
       new_exports.append(imp.field)
     logger.debug('Adding exports based on `%s`: %s', dylib, new_exports)
     settings.EXPORTED_FUNCTIONS.extend(shared.asmjs_mangle(e) for e in new_exports)
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(new_exports)
+
+    exports = webassembly.get_exports(dylib)
+    for export in exports:
+      settings.SIDE_MODULE_EXPORTS.append(shared.asmjs_mangle(export.name))
 
 
 def unmangle_symbols_from_cmdline(symbols):
@@ -1447,9 +1451,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           '__heap_base',
           '__stack_pointer',
       ]
-      # This needs to be exported on the Module object too so it's visible
-      # to side modules too.
-      settings.EXPORTED_FUNCTIONS += ['___heap_base']
+      settings.EXPORTED_FUNCTIONS += [
+          # This needs to be exported on the Module object too so it's visible
+          # to side modules too.
+          '___heap_base',
+          # Unconditional dependency in library_dylink.js
+          '_setThrew',
+      ]
       if settings.MINIMAL_RUNTIME:
         exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
       if settings.WASM2JS:

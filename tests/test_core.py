@@ -3594,6 +3594,7 @@ ok
 
     # side settings
     self.clear_setting('MAIN_MODULE')
+    self.clear_setting('ERROR_ON_UNDEFINED_SYMBOLS')
     self.set_setting('SIDE_MODULE')
     side_suffix = 'wasm' if self.is_wasm() else 'js'
     if isinstance(side, list):
@@ -3608,10 +3609,14 @@ ok
     self.set_setting('MAIN_MODULE', main_module)
     self.clear_setting('SIDE_MODULE')
     if auto_load:
+      # Normally we don't report undefined symbols when linking main modules but
+      # in this case we know all the side modules are specified on the command line.
+      # TODO(sbc): Make this the default one day
+      self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS')
       self.emcc_args += main_emcc_args
       self.emcc_args.append('liblib.so')
-      if force_c:
-        self.emcc_args.append('-nostdlib++')
+    if force_c:
+      self.emcc_args.append('-nostdlib++')
 
     if isinstance(main, list):
       # main is just a library

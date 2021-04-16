@@ -133,7 +133,8 @@ class ExternType(IntEnum):
 
 Section = namedtuple('Section', ['type', 'size', 'offset'])
 Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
-Import = namedtuple('Import', ['type', 'mod', 'field'])
+Import = namedtuple('Import', ['kind', 'module', 'field'])
+Export = namedtuple('Export', ['name', 'kind', 'index'])
 
 
 class Module:
@@ -211,6 +212,22 @@ def parse_dylink_section(wasm_file):
     needed_count -= 1
 
   return (mem_size, mem_align, table_size, table_align, section_end, needed)
+
+
+def get_exports(wasm_file):
+  module = Module(wasm_file)
+  export_section = next((s for s in module.sections() if s.type == SecType.EXPORT), None)
+
+  module.seek(export_section.offset)
+  num_exports = module.readULEB()
+  exports = []
+  for i in range(num_exports):
+    name = module.readString()
+    kind = ExternType(module.readByte())
+    index = module.readULEB()
+    exports.append(Export(name, kind, index))
+
+  return exports
 
 
 def get_imports(wasm_file):

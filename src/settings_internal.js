@@ -193,3 +193,5 @@ var HEAP_BASE = 0;
 // Also set for STANDALONE_WASM since the _start function is needed to call
 // static ctors, even if there is no user main.
 var HAS_MAIN = 0;
+
+var SIDE_MODULE_EXPORTS = [];

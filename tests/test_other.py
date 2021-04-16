@@ -10119,7 +10119,7 @@ exec "$@"
     self.assertIn('Hello! answer: 42', result)
 
   def test_split_main_module(self):
-    initialTableSize = 16
+    initialTableSize = 17
 
     side_src = test_file('other', 'lib_hello.c')
     post_js = test_file('other', 'test_split_module.post.js')
