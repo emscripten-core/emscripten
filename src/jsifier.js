@@ -134,7 +134,7 @@ function JSify(functionsOnly) {
       }
 
       // if the function was implemented in compiled code, we just need to export it so we can reach it from JS
-      if (finalName in IMPLEMENTED_FUNCTIONS) {
+      if (finalName in WASM_EXPORTS) {
         EXPORTED_FUNCTIONS[finalName] = 1;
         // stop here: we don't need to add anything from our js libraries, not even deps, compiled code is on it
         return '';
@@ -147,7 +147,7 @@ function JSify(functionsOnly) {
       var noExport = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
-        if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
+        if (!(finalName in WASM_EXPORTS) && !LINKABLE) {
           var msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ' (referenced by ' + dependent + ')';
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
