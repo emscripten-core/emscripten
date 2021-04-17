@@ -3607,13 +3607,14 @@ LibraryManager.library = {
 #if EXIT_RUNTIME || USE_PTHREADS
   $callUserCallback__deps: ['$maybeExit'],
 #endif
-  $callUserCallback: function(func, synchronous = false) {
+  $callUserCallback: function(func, synchronous) {
     if (ABORT) {
 #if ASSERTIONS
       err('user callback triggered after application aborted.  Ignoring.');
       return;
 #endif
     }
+    synchronous = synchronous || false;
     // For synchronous calls, let any exceptions propagate, and don't let the runtime exit.
     if (synchronous) {
       func();
