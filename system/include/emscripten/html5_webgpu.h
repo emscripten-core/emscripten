@@ -14,8 +14,15 @@ extern "C" {
 #endif
 
 typedef struct WGPUDeviceImpl* WGPUDevice;
+typedef struct WGPUBufferImpl* WGPUBuffer;
 
 WGPUDevice emscripten_webgpu_get_device(void);
+
+WGPUDevice emscripten_webgpu_import_device(struct EmJsHandle*);
+struct EmJsHandle* emscripten_webgpu_export_device(WGPUDevice);
+
+WGPUBuffer emscripten_webgpu_import_buffer(struct EmJsHandle*);
+struct EmJsHandle* emscripten_webgpu_export_buffer(WGPUBuffer);
 
 #ifdef __cplusplus
 } // ~extern "C"

@@ -9618,7 +9618,7 @@ int main() {
   # Compile-test for -s USE_WEBGPU=1 and library_webgpu.js.
   def test_webgpu_compiletest(self):
     for args in [[], ['-s', 'ASSERTIONS']]:
-      self.run_process([EMCC, test_file('webgpu_dummy.cpp'), '-s', 'USE_WEBGPU'] + args)
+      self.run_process([EMCC, test_file('webgpu_dummy.cpp'), '-s', 'USE_WEBGPU', '-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IMPORTS=["init_js_device"]'] + args)
 
   def test_signature_mismatch(self):
     create_file('a.c', 'void foo(); int main() { foo(); return 0; }')

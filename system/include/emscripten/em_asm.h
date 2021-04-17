@@ -14,9 +14,11 @@
 #define EM_ASM(...) EM_ASM_ERROR
 #define EM_ASM_INT(...) EM_ASM_ERROR
 #define EM_ASM_DOUBLE(...) EM_ASM_ERROR
+#define EM_ASM_JS_VAL(...) EM_ASM_ERROR
 #define MAIN_THREAD_EM_ASM(...) EM_ASM_ERROR
 #define MAIN_THREAD_EM_ASM_INT(...) EM_ASM_ERROR
 #define MAIN_THREAD_EM_ASM_DOUBLE(...) EM_ASM_ERROR
+#define MAIN_THREAD_EM_ASM_JS_VAL(...) EM_ASM_ERROR
 #define MAIN_THREAD_ASYNC_EM_ASM(...) EM_ASM_ERROR
 #define EM_ASM_(...) EM_ASM_ERROR
 #define EM_ASM_ARGS(...) EM_ASM_ERROR
@@ -43,6 +45,7 @@
     double: 'd', \
     int: 'i', \
     unsigned: 'i', \
+    struct EmJsHandle*: 'j', \
     default: 'i')
 
 // This indirection is needed to allow us to concatenate computed results, e.g.
@@ -111,6 +114,7 @@ template<> struct __em_asm_sig<long> { static const char value = 'i'; };
 template<> struct __em_asm_sig<unsigned long> { static const char value = 'i'; };
 template<> struct __em_asm_sig<bool> { static const char value = 'i'; };
 template<> struct __em_asm_sig<wchar_t> { static const char value = 'i'; };
+template<> struct __em_asm_sig<struct EmJsHandle*> { static const char value = 'j'; };
 template<typename T> struct __em_asm_sig<T*> { static const char value = 'i'; };
 
 // Explicit support for enums, they're passed as int via variadic arguments.
@@ -156,6 +160,9 @@ int emscripten_asm_const_int(const char* code, const char* arg_sigs, ...);
 __attribute__((nothrow))
 double emscripten_asm_const_double(const char* code, const char* arg_sigs, ...);
 
+__attribute__((nothrow)) struct EmJsHandle* emscripten_asm_const_js_val(
+  const char* code, const char* arg_sigs, ...);
+
 __attribute__((nothrow))
 int emscripten_asm_const_int_sync_on_main_thread(
   const char* code, const char* arg_sigs, ...);
@@ -163,9 +170,14 @@ __attribute__((nothrow))
 double emscripten_asm_const_double_sync_on_main_thread(
   const char* code, const char* arg_sigs, ...);
 
+__attribute__((nothrow)) struct EmJsHandle* emscripten_asm_const_js_val_sync_on_main_thread(
+  const char* code, const char* arg_sigs, ...);
+
 __attribute__((nothrow))
 void emscripten_asm_const_async_on_main_thread(
   const char* code, const char* arg_sigs, ...);
+
+void emscripten_unwrap_js_handle(struct EmJsHandle* handle);
 
 #ifdef __cplusplus
 }
@@ -190,6 +202,11 @@ void emscripten_asm_const_async_on_main_thread(
 // Runs the given JavaScript code on the calling thread (synchronously), and returns a double back.
 #define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
+// Runs the given JavaScript code on the calling thread (synchronously), and returns the id of a
+// wrapped JavaScript value back.
+#define EM_ASM_JS_VAL(code, ...)                                                                   \
+  emscripten_asm_const_js_val(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
+
 // Runs the given JavaScript code synchronously on the main browser thread, and returns no value back.
 // Call this function for example to access DOM elements in a pthread when building with -s USE_PTHREADS=1.
 // Avoid calling this function in performance sensitive code, because this will effectively sleep the
@@ -208,6 +225,12 @@ void emscripten_asm_const_async_on_main_thread(
 // Runs the given JavaScript code synchronously on the main browser thread, and returns a double back.
 // The same considerations apply as with MAIN_THREAD_EM_ASM().
 #define MAIN_THREAD_EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double_sync_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
+
+// Runs the given JavaScript code synchronously on the main browser thread, and returns the id of a
+// wrapped JavaScript value back.
+// The same considerations apply as with MAIN_THREAD_EM_ASM().
+#define MAIN_THREAD_EM_ASM_JS_VAL(code, ...)                                                       \
+  emscripten_asm_const_js_val_sync_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
 // Asynchronously dispatches the given JavaScript code to be run on the main browser thread.
 // If the calling thread is the main browser thread, then the specified JavaScript code is executed
