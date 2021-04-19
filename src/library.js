@@ -3622,7 +3622,6 @@ LibraryManager.library = {
       return;
 #endif
     }
-    synchronous = synchronous || false;
     // For synchronous calls, let any exceptions propagate, and don't let the runtime exit.
     if (synchronous) {
       func();
