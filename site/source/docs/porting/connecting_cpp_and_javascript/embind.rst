@@ -207,6 +207,9 @@ to automatically call the destructors on C++ objects.
 .. warning:: JavaScript code must explicitly delete any C++ object handles
    it has received, or the Emscripten heap will grow indefinitely.
 
+The :js:func:`delete()` JavaScript method is provided to manually signal that
+a C++ object is no longer needed and can be deleted:
+
 .. code:: javascript
 
     var x = new Module.MyClass;
@@ -216,6 +219,61 @@ to automatically call the destructors on C++ objects.
     var y = Module.myFunctionThatReturnsClassInstance();
     y.method();
     y.delete();
+
+.. note:: Both C++ objects constructed from the JavaScript side as well as
+    those returned from C++ methods must be explicitly deleted.
+
+
+.. tip:: The ``try`` … ``finally`` JavaScript construct can be used to guarantee
+    C++ object handles are deleted for all code paths, regardless of early
+    returns or errors thrown.
+
+.. code:: javascript
+
+    function myFunction() {
+        const x = new Module.MyClass;
+        try {
+            if (someCondition) {
+                return; // !
+            }
+            someFunctionThatMightThrow(); // oops
+            x.method();
+        } finally {
+            x.delete(); // will be called no matter what
+        }
+    }
+
+Cloning and Reference Counting
+------------------------------
+
+There are situations in which multiple long-lived portions of the
+JavaScript codebase need to hold on to the same C++ object for different
+amounts of time.
+
+To accomodate that use case, Emscripten provides a `reference counting`_
+mechanism in which multiple handles can be produced for the same underlying
+C++ object. Only when all handles have been deleted does the object get
+destroyed.
+
+The :js:func:`clone()` JavaScript method returns a new handle. It must
+eventually also be disposed with :js:func:`delete()`:
+
+.. code:: javascript
+
+    async function myLongRunningProcess(x, milliseconds) {
+        // sleep for the specified number of milliseconds
+        await new Promise(resolve => setTimeout(resolve, milliseconds));
+        x.method();
+        x.delete();
+    }
+
+    const y = new Module.MyClass;          // refCount = 1
+    myLongRunningProcess(y.clone(), 5000); // refCount = 2
+    myLongRunningProcess(y.clone(), 3000); // refCount = 3
+    y.delete();                            // refCount = 2
+
+    // (after 3000ms) refCount = 1
+    // (after 5000ms) refCount = 0 -> object is deleted
 
 Value types
 ===========
@@ -962,6 +1020,7 @@ real-world applications has proved to be more than acceptable.
 .. _Connecting C++ and JavaScript on the Web with Embind: http://chadaustin.me/2014/09/connecting-c-and-javascript-on-the-web-with-embind/
 .. _Boost.Python: http://www.boost.org/doc/libs/1_56_0/libs/python/doc/
 .. _finalizers: http://en.wikipedia.org/wiki/Finalizer
+.. _Reference Counting: https://en.wikipedia.org/wiki/Reference_counting
 .. _Boost.Python-like raw pointer policies: https://wiki.python.org/moin/boost.python/CallPolicy
 .. _Backbone.js: http://backbonejs.org/#Model-extend
 .. _Web Audio API: https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API
