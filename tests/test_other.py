@@ -10168,7 +10168,7 @@ exec "$@"
     self.assertExists('a.out.wasm')
     self.assertExists('a.out.wasm.orig')
     # train
-    ret = self.run_process(config.NODE_JS + ['a.out.js'], stdout=PIPE).stdout
+    self.run_process(config.NODE_JS + ['a.out.js'], stdout=PIPE).stdout
     self.assertExists('profile.data')
     # split
     wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
