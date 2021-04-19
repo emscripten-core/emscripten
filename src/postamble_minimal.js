@@ -7,7 +7,7 @@
 // === Auto-generated postamble setup entry stuff ===
 {{{ exportRuntime() }}}
 
-#if hasExportedFunction('_main') // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
+#if HAS_MAIN // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
 function run() {
 #if MEMORYPROFILER
   emscriptenMemoryProfiler.onPreloadComplete();
@@ -76,7 +76,7 @@ function initRuntime(asm) {
 #endif
 #endif
 
-#if '___wasm_call_ctors' in IMPLEMENTED_FUNCTIONS
+#if '___wasm_call_ctors' in WASM_EXPORTS
   asm['__wasm_call_ctors']();
 #endif
 

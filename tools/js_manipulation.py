@@ -3,12 +3,12 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from . import shared
+from .settings import settings
 
 
 def add_files_pre_js(user_pre_js, files_pre_js):
   # the normal thing is to just combine the pre-js content
-  if not shared.Settings.ASSERTIONS:
+  if not settings.ASSERTIONS:
     return files_pre_js + user_pre_js
 
   # if a user pre-js tramples the file code's changes to Module.preRun

@@ -1375,9 +1375,13 @@ var LibraryPThread = {
   },
 
   $establishStackSpace: function(stackTop, stackMax) {
+    // Set stack limits used by `emscripten/stack.h` function.  These limits are
+    // cached in wasm-side globals to make checks as fast as possible.
     _emscripten_stack_set_limits(stackTop, stackMax);
 #if STACK_OVERFLOW_CHECK >= 2
-    ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+    // Set stack limits used by binaryen's `StackCheck` pass.
+    // TODO(sbc): Can this be combined with the above.
+    ___set_stack_limits(stackTop, stackMax);
 #endif
 
     // Call inside wasm module to set up the stack frame for this pthread in wasm module scope

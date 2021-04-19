@@ -62,8 +62,8 @@ var EMBIND = 0;
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = 1;
 
-// List of functions implemented in compiled code; received from the backend.
-var IMPLEMENTED_FUNCTIONS = [];
+// List of symbols exported from compiled code
+var WASM_EXPORTS = [];
 
 // Name of the file containing the Fetch *.fetch.js, if relevant
 var FETCH_WORKER_FILE = '';
@@ -185,3 +185,13 @@ var GENERATE_SOURCE_MAP = 0;
 var STACK_BASE = 0;
 var STACK_MAX = 0;
 var HEAP_BASE = 0;
+
+// Used internally. set when there is a main() function.
+// Also set when in a linkable module, as the main() function might
+// arrive from a dynamically-linked library, and not necessarily
+// the current compilation unit.
+// Also set for STANDALONE_WASM since the _start function is needed to call
+// static ctors, even if there is no user main.
+var HAS_MAIN = 0;
+
+var SIDE_MODULE_EXPORTS = [];

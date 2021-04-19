@@ -173,6 +173,29 @@ shown below:
    Module.MyClass.getStringFromInstance(instance); // "hello"
    instance.delete();
 
+.. note:: The :term:`closure compiler` is unaware of the names of symbols that
+   are exposed to JavaScript via *Embind*. In order to prevent such symbols
+   from being renamed by the closure compiler in your own code (provided for
+   example by using the ``--pre-js`` or ``--post-js`` compiler flags) it is
+   necessary to annotate the code accordingly. Without such annotations, the
+   resulting JavaScript code will no longer match the symbol names used in the
+   *Embind* code and runtime errors will occur as a result.
+
+In order to prevent the closure compiler from renaming the symbols in the
+above example code it needs to be rewritten as follows:
+
+   var instance = new Module["MyClass"](10, "hello");
+   instance["incrementX"]();
+   instance["x"]; // 11
+   instance["x"] = 20; // 20
+   Module["MyClass"]["getStringFromInstance"](instance); // "hello"
+   instance.delete();
+
+Note that this is only needed for code seen by the optimizer, for example as in
+``--pre-js`` or ``--post-js`` as mentioned above, or on ``EM_ASM`` or ``EM_JS``.
+For other code, that is not optimized by closure compiler, you do not need to
+make such changes. You also do not need it if you build without ``--closure 1``
+to enable the closure compiler.
 
 Memory management
 =================

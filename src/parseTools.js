@@ -55,16 +55,16 @@ function preprocess(text, filenameHint) {
         if (line[line.length - 1] === '\r') {
           line = line.substr(0, line.length - 1); // Windows will have '\r' left over from splitting over '\r\n'
         }
-        if (isHtml && line.indexOf('<style') !== -1 && !inStyle) {
+        if (isHtml && line.includes('<style') && !inStyle) {
           inStyle = true;
         }
-        if (isHtml && line.indexOf('</style') !== -1 && inStyle) {
+        if (isHtml && line.includes('</style') && inStyle) {
           inStyle = false;
         }
 
         if (!inStyle) {
           const trimmed = line.trim();
-          if (trimmed[0] === '#') {
+          if (trimmed.startsWith('#')) {
             const first = trimmed.split(' ', 1)[0];
             if (first == '#if' || first == '#ifdef' || first == '#elif') {
               if (first == '#ifdef') {
@@ -85,7 +85,7 @@ function preprocess(text, filenameHint) {
             } else if (first === '#include') {
               if (showCurrentLine()) {
                 let filename = line.substr(line.indexOf(' ') + 1);
-                if (filename.indexOf('"') === 0) {
+                if (filename.startsWith('"')) {
                   filename = filename.substr(1, filename.length - 2);
                 }
                 const included = read(filename);
@@ -485,7 +485,7 @@ function ensureDot(value) {
   // if already dotted, or Infinity or NaN, nothing to do here
   // if smaller than 1 and running js opts, we always need to force a coercion
   // (0.001 will turn into 1e-3, which has no .)
-  if ((value.indexOf('.') >= 0 || /[IN]/.test(value))) return value;
+  if ((value.includes('.') || /[IN]/.test(value))) return value;
   const e = value.indexOf('e');
   if (e < 0) return value + '.0';
   return value.substr(0, e) + '.0' + value.substr(e);
@@ -1015,7 +1015,7 @@ function asmFFICoercion(value, type) {
 }
 
 function makeDynCall(sig, funcPtr) {
-  assert(sig.indexOf('j') == -1, 'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!');
+  assert(!sig.includes('j'), 'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!');
 
   const returnExpr = (sig[0] == 'v') ? '' : 'return';
 
@@ -1217,7 +1217,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
 function makeRemovedFSAssert(fsName) {
   if (!ASSERTIONS) return;
   const lower = fsName.toLowerCase();
-  if (SYSTEM_JS_LIBRARIES.indexOf('library_' + lower + '.js') >= 0) return '';
+  if (SYSTEM_JS_LIBRARIES.includes('library_' + lower + '.js')) return '';
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
@@ -1246,7 +1246,7 @@ function makeAsmImportsAccessInPthread(variable) {
 }
 
 function hasExportedFunction(func) {
-  return Object.keys(EXPORTED_FUNCTIONS).indexOf(func) != -1;
+  return Object.keys(EXPORTED_FUNCTIONS).includes(func);
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
@@ -1301,7 +1301,7 @@ function addReadyPromiseAssertions(promise) {
 }
 
 function makeMalloc(source, param) {
-  if ('_malloc' in IMPLEMENTED_FUNCTIONS) {
+  if ('_malloc' in WASM_EXPORTS) {
     return `_malloc(${param})`;
   }
   // It should be impossible to call some functions without malloc being

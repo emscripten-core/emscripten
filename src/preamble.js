@@ -184,12 +184,12 @@ function cwrap(ident, returnType, argTypes, opts) {
 #if ASSERTIONS
 // We used to include malloc/free by default in the past. Show a helpful error in
 // builds with assertions.
-#if !('_malloc' in IMPLEMENTED_FUNCTIONS)
+#if !('_malloc' in WASM_EXPORTS)
 function _malloc() {
   abort("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS");
 }
 #endif // malloc
-#if !('_free' in IMPLEMENTED_FUNCTIONS)
+#if !('_free' in WASM_EXPORTS)
 function _free() {
   // Show a helpful error since we used to include free by default in the past.
   abort("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS");
@@ -269,6 +269,14 @@ var HEAP_DATA_VIEW;
 var HEAP64;
 #endif
 
+#if USE_PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) {
+  // Grab imports from the pthread to local scope.
+  buffer = Module['buffer'];
+  // Note that not all runtime fields are imported above
+}
+#endif
+
 function updateGlobalBufferAndViews(buf) {
   buffer = buf;
 #if SUPPORT_BIG_ENDIAN
@@ -286,17 +294,6 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAP64'] = HEAP64 = new BigInt64Array(buf);
 #endif
 }
-
-#if RELOCATABLE
-var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, {{{ STACK_BASE }}});
-
-// To support such allocations during startup, track them on __heap_base and
-// then when the main module is loaded it reads that value and uses it to
-// initialize sbrk (the main module is relocatable itself, and so it does not
-// have __heap_base hardcoded into it - it receives it from JS as an extern
-// global, basically).
-Module['___heap_base'] = {{{ HEAP_BASE }}};
-#endif // RELOCATABLE
 
 var TOTAL_STACK = {{{ TOTAL_STACK }}};
 #if ASSERTIONS
@@ -398,6 +395,7 @@ function initRuntime() {
   callRuntimeCallbacks(__ATINIT__);
 }
 
+#if HAS_MAIN
 function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
@@ -408,6 +406,7 @@ function preMain() {
   <<< ATMAINS >>>
   callRuntimeCallbacks(__ATMAIN__);
 }
+#endif
 
 function exitRuntime() {
 #if STACK_OVERFLOW_CHECK
@@ -973,12 +972,8 @@ function createWasm() {
 #endif
 #endif
 
-#if '___wasm_call_ctors' in IMPLEMENTED_FUNCTIONS
+#if '___wasm_call_ctors' in WASM_EXPORTS
     addOnInit(Module['asm']['__wasm_call_ctors']);
-#endif
-
-#if USE_PTHREADS
-    PThread.tlsInitFunctions.push(Module['asm']['emscripten_tls_init']);
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
@@ -991,6 +986,7 @@ function createWasm() {
     exportAsmFunctions(exports);
 #endif
 #if USE_PTHREADS
+    PThread.tlsInitFunctions.push(Module['asm']['emscripten_tls_init']);
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
@@ -1027,31 +1023,33 @@ function createWasm() {
   }
 #endif
 
+#if USE_OFFSET_CONVERTER
+  {{{ runOnMainThread("addRunDependency('offset-converter');") }}}
+#endif
+
+  // Prefer streaming instantiation if available.
+#if WASM_ASYNC_COMPILATION
 #if ASSERTIONS
   // Async compilation can be confusing when an error on the page overwrites Module
   // (for example, if the order of elements is wrong, and the one defining Module is
   // later), so we save Module and check it later.
   var trueModule = Module;
 #endif
-  function receiveInstantiatedSource(output) {
-    // 'output' is a WebAssemblyInstantiatedSource object which has both the module and instance.
+  function receiveInstantiationResult(result) {
+    // 'result' is a ResultObject object which has both the module and instance.
     // receiveInstance() will swap in the exports (to Module.asm) so they can be called
 #if ASSERTIONS
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
 #if USE_PTHREADS || RELOCATABLE
-    receiveInstance(output['instance'], output['module']);
+    receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
     // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
-    receiveInstance(output['instance']);
+    receiveInstance(result['instance']);
 #endif
   }
-
-#if USE_OFFSET_CONVERTER
-  {{{ runOnMainThread("addRunDependency('offset-converter');") }}}
-#endif
 
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
@@ -1094,8 +1092,6 @@ function createWasm() {
     });
   }
 
-  // Prefer streaming instantiation if available.
-#if WASM_ASYNC_COMPILATION
   function instantiateAsync() {
     if (!wasmBinary &&
         typeof WebAssembly.instantiateStreaming === 'function' &&
@@ -1117,16 +1113,16 @@ function createWasm() {
           err('failed to initialize offset-converter: ' + reason);
         });
 #endif
-        return result.then(receiveInstantiatedSource, function(reason) {
+        return result.then(receiveInstantiationResult, function(reason) {
             // We expect the most common failure cause to be a bad MIME type for the binary,
             // in which case falling back to ArrayBuffer instantiation should work.
             err('wasm streaming compile failed: ' + reason);
             err('falling back to ArrayBuffer instantiation');
-            return instantiateArrayBuffer(receiveInstantiatedSource);
+            return instantiateArrayBuffer(receiveInstantiationResult);
           });
       });
     } else {
-      return instantiateArrayBuffer(receiveInstantiatedSource);
+      return instantiateArrayBuffer(receiveInstantiationResult);
     }
   }
 #endif
