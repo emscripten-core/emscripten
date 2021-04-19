@@ -27,12 +27,12 @@ LibraryManager.library = {
 
   getTempRet0__sig: 'i',
   getTempRet0: function() {
-    return {{{ makeGetTempRet0() }}};
+    return getTempRet0();
   },
 
   setTempRet0__sig: 'vi',
-  setTempRet0: function($i) {
-    {{{ makeSetTempRet0('$i') }}};
+  setTempRet0: function(val) {
+    setTempRet0(val);
   },
 
 #if SAFE_HEAP
