@@ -10158,6 +10158,24 @@ exec "$@"
     self.assertIn('Hello from main!', result)
     self.assertIn('Hello from lib!', result)
 
+  def test_wasm_split(self):
+    main_src = test_file('other', 'test_split_module.c')
+    post_js = test_file('other', 'test_split_module.post.js')
+    # build
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
+      self.run_process([EMCC, main_src, '-sMAIN_MODULE=2', '-sSPLIT_MODULE=1', '--post-js', post_js, '-Oz'])
+      # self.run_process([EMCC, main_src, '-sMAIN_MODULE=2', '-sSPLIT_MODULE=1', '--post-js', post_js])
+    self.assertExists('a.out.wasm')
+    self.assertExists('a.out.wasm.orig')
+    # train
+    ret = self.run_process(config.NODE_JS + ['a.out.js'], stdout=PIPE).stdout
+    self.assertExists('profile.data')
+    # split
+    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
+    self.run_process([wasm_split, '--enable-mutable-globals', '--export-prefix=%', 'a.out.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data'])
+    self.assertExists('primary.wasm')
+    self.assertExists('secondary.wasm')
+
   def test_gen_struct_info(self):
     # This tests is fragile and will need updating any time any of the refereced
     # structs or defines change.   However its easy to rebaseline with
