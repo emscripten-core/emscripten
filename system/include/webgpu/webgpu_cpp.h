@@ -226,19 +226,6 @@ namespace wgpu {
         Always = 0x00000008,
     };
 
-    enum class CompilationInfoRequestStatus : uint32_t {
-        Success = 0x00000000,
-        Error = 0x00000001,
-        DeviceLost = 0x00000002,
-        Unknown = 0x00000003,
-    };
-
-    enum class CompilationMessageType : uint32_t {
-        Error = 0x00000000,
-        Warning = 0x00000001,
-        Info = 0x00000002,
-    };
-
     enum class CreatePipelineAsyncStatus : uint32_t {
         Success = 0x00000000,
         Error = 0x00000001,
@@ -615,7 +602,6 @@ namespace wgpu {
 
     using Proc = WGPUProc;
     using BufferMapCallback = WGPUBufferMapCallback;
-    using CompilationInfoCallback = WGPUCompilationInfoCallback;
     using CreateComputePipelineAsyncCallback = WGPUCreateComputePipelineAsyncCallback;
     using CreateRenderPipelineAsyncCallback = WGPUCreateRenderPipelineAsyncCallback;
     using DeviceLostCallback = WGPUDeviceLostCallback;
@@ -656,7 +642,6 @@ namespace wgpu {
     struct Color;
     struct CommandBufferDescriptor;
     struct CommandEncoderDescriptor;
-    struct CompilationMessage;
     struct ComputePassDescriptor;
     struct CopyTextureForBrowserOptions;
     struct DeviceProperties;
@@ -696,7 +681,6 @@ namespace wgpu {
     struct BindGroupLayoutEntry;
     struct BlendState;
     struct ColorStateDescriptor;
-    struct CompilationInfo;
     struct ComputePipelineDescriptor;
     struct DepthStencilState;
     struct DepthStencilStateDescriptor;
@@ -1155,7 +1139,6 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
-        void GetCompilationInfo(CompilationInfoCallback callback, void * userdata) const;
 
       private:
         friend ObjectBase<ShaderModule, WGPUShaderModule>;
@@ -1280,13 +1263,6 @@ namespace wgpu {
     struct CommandEncoderDescriptor {
         ChainedStruct const * nextInChain = nullptr;
         char const * label = nullptr;
-    };
-
-    struct CompilationMessage {
-        char const * message = nullptr;
-        CompilationMessageType type;
-        uint64_t lineNum;
-        uint64_t linePos;
     };
 
     struct ComputePassDescriptor {
@@ -1583,11 +1559,6 @@ namespace wgpu {
         BlendComponent alphaBlend;
         BlendComponent colorBlend;
         ColorWriteMask writeMask = ColorWriteMask::All;
-    };
-
-    struct CompilationInfo {
-        uint32_t messageCount;
-        CompilationMessage const * messages;
     };
 
     struct ComputePipelineDescriptor {

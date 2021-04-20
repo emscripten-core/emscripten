@@ -123,25 +123,6 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(CompareFunction::NotEqual) == WGPUCompareFunction_NotEqual, "value mismatch for CompareFunction::NotEqual");
     static_assert(static_cast<uint32_t>(CompareFunction::Always) == WGPUCompareFunction_Always, "value mismatch for CompareFunction::Always");
 
-    // CompilationInfoRequestStatus
-
-    static_assert(sizeof(CompilationInfoRequestStatus) == sizeof(WGPUCompilationInfoRequestStatus), "sizeof mismatch for CompilationInfoRequestStatus");
-    static_assert(alignof(CompilationInfoRequestStatus) == alignof(WGPUCompilationInfoRequestStatus), "alignof mismatch for CompilationInfoRequestStatus");
-
-    static_assert(static_cast<uint32_t>(CompilationInfoRequestStatus::Success) == WGPUCompilationInfoRequestStatus_Success, "value mismatch for CompilationInfoRequestStatus::Success");
-    static_assert(static_cast<uint32_t>(CompilationInfoRequestStatus::Error) == WGPUCompilationInfoRequestStatus_Error, "value mismatch for CompilationInfoRequestStatus::Error");
-    static_assert(static_cast<uint32_t>(CompilationInfoRequestStatus::DeviceLost) == WGPUCompilationInfoRequestStatus_DeviceLost, "value mismatch for CompilationInfoRequestStatus::DeviceLost");
-    static_assert(static_cast<uint32_t>(CompilationInfoRequestStatus::Unknown) == WGPUCompilationInfoRequestStatus_Unknown, "value mismatch for CompilationInfoRequestStatus::Unknown");
-
-    // CompilationMessageType
-
-    static_assert(sizeof(CompilationMessageType) == sizeof(WGPUCompilationMessageType), "sizeof mismatch for CompilationMessageType");
-    static_assert(alignof(CompilationMessageType) == alignof(WGPUCompilationMessageType), "alignof mismatch for CompilationMessageType");
-
-    static_assert(static_cast<uint32_t>(CompilationMessageType::Error) == WGPUCompilationMessageType_Error, "value mismatch for CompilationMessageType::Error");
-    static_assert(static_cast<uint32_t>(CompilationMessageType::Warning) == WGPUCompilationMessageType_Warning, "value mismatch for CompilationMessageType::Warning");
-    static_assert(static_cast<uint32_t>(CompilationMessageType::Info) == WGPUCompilationMessageType_Info, "value mismatch for CompilationMessageType::Info");
-
     // CreatePipelineAsyncStatus
 
     static_assert(sizeof(CreatePipelineAsyncStatus) == sizeof(WGPUCreatePipelineAsyncStatus), "sizeof mismatch for CreatePipelineAsyncStatus");
@@ -709,20 +690,6 @@ namespace wgpu {
     static_assert(offsetof(CommandEncoderDescriptor, label) == offsetof(WGPUCommandEncoderDescriptor, label),
             "offsetof mismatch for CommandEncoderDescriptor::label");
 
-    // CompilationMessage
-
-    static_assert(sizeof(CompilationMessage) == sizeof(WGPUCompilationMessage), "sizeof mismatch for CompilationMessage");
-    static_assert(alignof(CompilationMessage) == alignof(WGPUCompilationMessage), "alignof mismatch for CompilationMessage");
-
-    static_assert(offsetof(CompilationMessage, message) == offsetof(WGPUCompilationMessage, message),
-            "offsetof mismatch for CompilationMessage::message");
-    static_assert(offsetof(CompilationMessage, type) == offsetof(WGPUCompilationMessage, type),
-            "offsetof mismatch for CompilationMessage::type");
-    static_assert(offsetof(CompilationMessage, lineNum) == offsetof(WGPUCompilationMessage, lineNum),
-            "offsetof mismatch for CompilationMessage::lineNum");
-    static_assert(offsetof(CompilationMessage, linePos) == offsetof(WGPUCompilationMessage, linePos),
-            "offsetof mismatch for CompilationMessage::linePos");
-
     // ComputePassDescriptor
 
     static_assert(sizeof(ComputePassDescriptor) == sizeof(WGPUComputePassDescriptor), "sizeof mismatch for ComputePassDescriptor");
@@ -1272,16 +1239,6 @@ namespace wgpu {
             "offsetof mismatch for ColorStateDescriptor::colorBlend");
     static_assert(offsetof(ColorStateDescriptor, writeMask) == offsetof(WGPUColorStateDescriptor, writeMask),
             "offsetof mismatch for ColorStateDescriptor::writeMask");
-
-    // CompilationInfo
-
-    static_assert(sizeof(CompilationInfo) == sizeof(WGPUCompilationInfo), "sizeof mismatch for CompilationInfo");
-    static_assert(alignof(CompilationInfo) == alignof(WGPUCompilationInfo), "alignof mismatch for CompilationInfo");
-
-    static_assert(offsetof(CompilationInfo, messageCount) == offsetof(WGPUCompilationInfo, messageCount),
-            "offsetof mismatch for CompilationInfo::messageCount");
-    static_assert(offsetof(CompilationInfo, messages) == offsetof(WGPUCompilationInfo, messages),
-            "offsetof mismatch for CompilationInfo::messages");
 
     // ComputePipelineDescriptor
 
@@ -2209,9 +2166,6 @@ namespace wgpu {
     static_assert(sizeof(ShaderModule) == sizeof(WGPUShaderModule), "sizeof mismatch for ShaderModule");
     static_assert(alignof(ShaderModule) == alignof(WGPUShaderModule), "alignof mismatch for ShaderModule");
 
-    void ShaderModule::GetCompilationInfo(CompilationInfoCallback callback, void * userdata) const {
-        wgpuShaderModuleGetCompilationInfo(Get(), callback, reinterpret_cast<void * >(userdata));
-    }
     void ShaderModule::WGPUReference(WGPUShaderModule handle) {
         if (handle != nullptr) {
             wgpuShaderModuleReference(handle);

@@ -1434,12 +1434,6 @@
                 "nextInChain",
                 "label"
             ],
-            "WGPUCompilationMessage": [
-                "message",
-                "type",
-                "lineNum",
-                "linePos"
-            ],
             "WGPUComputePassDescriptor": [
                 "nextInChain",
                 "label"
@@ -1668,10 +1662,6 @@
                 "alphaBlend",
                 "colorBlend",
                 "writeMask"
-            ],
-            "WGPUCompilationInfo": [
-                "messageCount",
-                "messages"
             ],
             "WGPUComputePipelineDescriptor": [
                 "nextInChain",
