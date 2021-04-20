@@ -6963,15 +6963,15 @@ int main() {
 
   @node_pthreads
   def test_metadce_minimal_pthreads(self):
-    self.run_metadce_test('minimal.c', ['-Oz', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'], [], [], 16135)
+    self.run_metadce_test('minimal.c', ['-Oz', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'], [], [], 15846)
 
   @parameterized({
-    'noexcept': (['-O2'],                    [], ['waka'], 127740), # noqa
+    'noexcept': (['-O2'],                    [], ['waka'], 124768), # noqa
     # exceptions increases code size significantly
-    'except':   (['-O2', '-fexceptions'],    [], ['waka'], 170231), # noqa
+    'except':   (['-O2', '-fexceptions'],    [], ['waka'], 166794), # noqa
     # exceptions does not pull in demangling by default, which increases code size
     'mangle':   (['-O2', '-fexceptions',
-                  '-s', 'DEMANGLE_SUPPORT'], [], ['waka'], 230258), # noqa
+                  '-s', 'DEMANGLE_SUPPORT'], [], ['waka'], 225597), # noqa
   })
   def test_metadce_cxx(self, *args):
     # do not check functions in this test as there are a lot of libc++ functions
@@ -6980,55 +6980,55 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args, check_funcs=False)
 
   @parameterized({
-    'O0': ([],      [], ['waka'], 11689), # noqa
-    'O1': (['-O1'], [], ['waka'],  2422), # noqa
-    'O2': (['-O2'], [], ['waka'],  2060), # noqa
-    'O3': (['-O3'], [], [],        1792), # noqa; in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'], [], [],        1781), # noqa
-    'Oz': (['-Oz'], [], [],        1305), # noqa
+    'O0': ([],      [], ['waka'], 11755), # noqa
+    'O1': (['-O1'], [], ['waka'],  2400), # noqa
+    'O2': (['-O2'], [], ['waka'],  2016), # noqa
+    'O3': (['-O3'], [], [],        1700), # noqa; in -O3, -Os and -Oz we metadce
+    'Os': (['-Os'], [], [],        1700), # noqa
+    'Oz': (['-Oz'], [], [],        1247), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
           (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],    [], [],     55), # noqa
     # we don't metadce with linkable code! other modules may want stuff
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [],  10297), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [],  10135), # noqa
   })
   def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
     'O3':                 ('mem.c', ['-O3'],
-                           [], [], 6100),         # noqa
+                           [], [], 5993),         # noqa
     # argc/argv support code etc. is in the wasm
     'O3_standalone':      ('mem.c', ['-O3', '-s', 'STANDALONE_WASM'],
-                           [], [], 6309),         # noqa
+                           [], [], 6243),         # noqa
     # without argc/argv, no support code for them is emitted
     'O3_standalone_narg': ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM'],
-                           [], [], 6309),         # noqa
+                           [], [], 6051),         # noqa
     # without main, no support code for argc/argv is emitted either
     'O3_standalone_lib':  ('mem_no_main.c', ['-O3', '-s', 'STANDALONE_WASM', '--no-entry'],
-                           [], [], 6309),         # noqa
+                           [], [], 6017),         # noqa
     # Growth support code is in JS, no significant change in the wasm
     'O3_grow':            ('mem.c', ['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
-                           [], [], 6098),         # noqa
+                           [], [], 5994),         # noqa
     # Growth support code is in the wasm
     'O3_grow_standalone': ('mem.c', ['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
-                           [], [], 6449),         # noqa
+                           [], [], 6320),         # noqa
     # without argc/argv, no support code for them is emitted, even with lto
     'O3_standalone_narg_flto':
                           ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM', '-flto'],
-                           [], [], 4971),         # noqa
+                           [], [], 4725),         # noqa
   })
   def test_metadce_mem(self, filename, *args):
     self.run_metadce_test(filename, *args)
 
   @parameterized({
     'O3':                 ('libcxxabi_message.cpp', ['-O3'],
-                           [], [], 99), # noqa
+                           [], [], 101), # noqa
     # argc/argv support code etc. is in the wasm
     'O3_standalone':      ('libcxxabi_message.cpp', ['-O3', '-s', 'STANDALONE_WASM'],
-                           [], [], 178), # noqa
+                           [], [], 181), # noqa
   })
   def test_metadce_libcxxabi_message(self, filename, *args):
     self.run_metadce_test(filename, *args)
