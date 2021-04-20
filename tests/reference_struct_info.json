@@ -840,6 +840,7 @@
             "adapterType": 20,
             "backendType": 24,
             "deviceID": 4,
+            "driverDescription": 16,
             "name": 12,
             "nextInChain": 0,
             "vendorID": 8
@@ -869,25 +870,31 @@
             "nextInChain": 0
         },
         "WGPUBindGroupLayoutEntry": {
-            "__size__": 104,
-            "binding": 0,
-            "buffer": 40,
-            "hasDynamicOffset": 12,
-            "minBufferBindingSize": 16,
-            "sampler": 64,
-            "storageTexture": 88,
-            "storageTextureFormat": 32,
-            "texture": 72,
-            "textureComponentType": 28,
-            "type": 8,
-            "viewDimension": 24,
-            "visibility": 4
+            "__size__": 112,
+            "binding": 4,
+            "buffer": 48,
+            "hasDynamicOffset": 16,
+            "minBufferBindingSize": 24,
+            "nextInChain": 0,
+            "sampler": 72,
+            "storageTexture": 96,
+            "storageTextureFormat": 40,
+            "texture": 80,
+            "textureComponentType": 36,
+            "type": 12,
+            "viewDimension": 32,
+            "visibility": 8
         },
         "WGPUBlendComponent": {
             "__size__": 12,
             "dstFactor": 8,
             "operation": 0,
             "srcFactor": 4
+        },
+        "WGPUBlendState": {
+            "__size__": 24,
+            "alpha": 12,
+            "color": 0
         },
         "WGPUBufferBindingLayout": {
             "__size__": 24,
@@ -924,6 +931,13 @@
             "nextInChain": 0,
             "writeMask": 32
         },
+        "WGPUColorTargetState": {
+            "__size__": 16,
+            "blend": 8,
+            "format": 4,
+            "nextInChain": 0,
+            "writeMask": 12
+        },
         "WGPUCommandBufferDescriptor": {
             "__size__": 8,
             "label": 4,
@@ -946,6 +960,25 @@
             "layout": 8,
             "nextInChain": 0
         },
+        "WGPUCopyTextureForBrowserOptions": {
+            "__size__": 8,
+            "flipY": 4,
+            "nextInChain": 0
+        },
+        "WGPUDepthStencilState": {
+            "__size__": 68,
+            "depthBias": 56,
+            "depthBiasClamp": 64,
+            "depthBiasSlopeScale": 60,
+            "depthCompare": 12,
+            "depthWriteEnabled": 8,
+            "format": 4,
+            "nextInChain": 0,
+            "stencilBack": 32,
+            "stencilFront": 16,
+            "stencilReadMask": 48,
+            "stencilWriteMask": 52
+        },
         "WGPUDepthStencilStateDescriptor": {
             "__size__": 56,
             "depthCompare": 12,
@@ -957,17 +990,41 @@
             "stencilReadMask": 48,
             "stencilWriteMask": 52
         },
+        "WGPUDeviceProperties": {
+            "__size__": 6,
+            "depthClamping": 5,
+            "multiPlanarFormats": 4,
+            "pipelineStatisticsQuery": 2,
+            "shaderFloat16": 1,
+            "textureCompressionBC": 0,
+            "timestampQuery": 3
+        },
         "WGPUExtent3D": {
-            "__size__": 12,
-            "depth": 8,
+            "__size__": 16,
+            "depth": 12,
+            "depthOrArrayLayers": 8,
             "height": 4,
             "width": 0
+        },
+        "WGPUExternalTextureDescriptor": {
+            "__size__": 12,
+            "format": 8,
+            "nextInChain": 0,
+            "plane0": 4
         },
         "WGPUFenceDescriptor": {
             "__size__": 16,
             "initialValue": 8,
             "label": 4,
             "nextInChain": 0
+        },
+        "WGPUFragmentState": {
+            "__size__": 20,
+            "entryPoint": 8,
+            "module": 4,
+            "nextInChain": 0,
+            "targetCount": 12,
+            "targets": 16
         },
         "WGPUImageCopyBuffer": {
             "__size__": 40,
@@ -987,6 +1044,13 @@
             "__size__": 4,
             "nextInChain": 0
         },
+        "WGPUMultisampleState": {
+            "__size__": 16,
+            "alphaToCoverageEnabled": 12,
+            "count": 4,
+            "mask": 8,
+            "nextInChain": 0
+        },
         "WGPUOrigin3D": {
             "__size__": 12,
             "x": 0,
@@ -999,6 +1063,19 @@
             "bindGroupLayouts": 12,
             "label": 4,
             "nextInChain": 0
+        },
+        "WGPUPrimitiveDepthClampingState": {
+            "__size__": 12,
+            "chain": 0,
+            "clampDepth": 8
+        },
+        "WGPUPrimitiveState": {
+            "__size__": 20,
+            "cullMode": 16,
+            "frontFace": 12,
+            "nextInChain": 0,
+            "stripIndexFormat": 8,
+            "topology": 4
         },
         "WGPUProgrammableStageDescriptor": {
             "__size__": 12,
@@ -1038,17 +1115,18 @@
             "nextInChain": 0,
             "sampleCount": 20
         },
-        "WGPURenderPassColorAttachmentDescriptor": {
-            "__size__": 48,
-            "attachment": 0,
+        "WGPURenderPassColorAttachment": {
+            "__size__": 56,
+            "attachment": 48,
             "clearColor": 16,
             "loadOp": 8,
             "resolveTarget": 4,
-            "storeOp": 12
+            "storeOp": 12,
+            "view": 0
         },
-        "WGPURenderPassDepthStencilAttachmentDescriptor": {
-            "__size__": 36,
-            "attachment": 0,
+        "WGPURenderPassDepthStencilAttachment": {
+            "__size__": 40,
+            "attachment": 36,
             "clearDepth": 12,
             "clearStencil": 28,
             "depthLoadOp": 4,
@@ -1056,7 +1134,8 @@
             "depthStoreOp": 8,
             "stencilLoadOp": 20,
             "stencilReadOnly": 32,
-            "stencilStoreOp": 24
+            "stencilStoreOp": 24,
+            "view": 0
         },
         "WGPURenderPassDescriptor": {
             "__size__": 24,
@@ -1084,6 +1163,17 @@
             "vertexStage": 12,
             "vertexState": 28
         },
+        "WGPURenderPipelineDescriptor2": {
+            "__size__": 76,
+            "depthStencil": 52,
+            "fragment": 72,
+            "label": 4,
+            "layout": 8,
+            "multisample": 56,
+            "nextInChain": 0,
+            "primitive": 32,
+            "vertex": 12
+        },
         "WGPUSamplerBindingLayout": {
             "__size__": 8,
             "nextInChain": 0,
@@ -1099,6 +1189,7 @@
             "lodMaxClamp": 36,
             "lodMinClamp": 32,
             "magFilter": 20,
+            "maxAnisotropy": 44,
             "minFilter": 24,
             "mipmapFilter": 28,
             "nextInChain": 0
@@ -1119,7 +1210,7 @@
             "chain": 0,
             "source": 8
         },
-        "WGPUStencilStateFaceDescriptor": {
+        "WGPUStencilFaceState": {
             "__size__": 16,
             "compare": 0,
             "depthFailOp": 8,
@@ -1168,13 +1259,13 @@
             "rowsPerImage": 20
         },
         "WGPUTextureDescriptor": {
-            "__size__": 40,
+            "__size__": 44,
             "dimension": 12,
-            "format": 28,
+            "format": 32,
             "label": 4,
-            "mipLevelCount": 32,
+            "mipLevelCount": 36,
             "nextInChain": 0,
-            "sampleCount": 36,
+            "sampleCount": 40,
             "size": 16,
             "usage": 8
         },
@@ -1190,18 +1281,26 @@
             "mipLevelCount": 20,
             "nextInChain": 0
         },
-        "WGPUVertexAttributeDescriptor": {
+        "WGPUVertexAttribute": {
             "__size__": 24,
             "format": 0,
             "offset": 8,
             "shaderLocation": 16
         },
-        "WGPUVertexBufferLayoutDescriptor": {
+        "WGPUVertexBufferLayout": {
             "__size__": 24,
             "arrayStride": 0,
             "attributeCount": 12,
             "attributes": 16,
             "stepMode": 8
+        },
+        "WGPUVertexState": {
+            "__size__": 20,
+            "bufferCount": 12,
+            "buffers": 16,
+            "entryPoint": 8,
+            "module": 4,
+            "nextInChain": 0
         },
         "WGPUVertexStateDescriptor": {
             "__size__": 16,
