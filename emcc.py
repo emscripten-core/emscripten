@@ -2903,13 +2903,12 @@ def do_binaryen(target, options, wasm_target):
                           wasm_target,
                           args=passes,
                           debug=intermediate_debug_info)
-  else:
+  elif strip_debug or strip_producers:
     # we are not running wasm-opt. if we need to strip certain sections
     # then do so using llvm-objcopy which is fast and does not rewrite the
     # code (which is better for debug info)
-    if strip_debug or strip_producers:
-      building.save_intermediate(wasm_target, 'pre-strip.wasm')
-      building.strip(wasm_target, wasm_target, debug=strip_debug, producers=strip_producers)
+    building.save_intermediate(wasm_target, 'pre-strip.wasm')
+    building.strip(wasm_target, wasm_target, debug=strip_debug, producers=strip_producers)
 
   if settings.EVAL_CTORS:
     building.save_intermediate(wasm_target, 'pre-ctors.wasm')

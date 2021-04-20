@@ -119,7 +119,13 @@ def update_settings_glue(metadata, DEBUG):
   all_exports = metadata['exports'] + list(metadata['namedGlobals'].keys())
   settings.WASM_EXPORTS = [asmjs_mangle(x) for x in all_exports]
 
-  settings.BINARYEN_FEATURES = metadata['features']
+  # start with the MVP features, and add any detected features.
+  settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata['features']
+  if settings.USE_PTHREADS:
+    assert '--enable-threads' in settings.BINARYEN_FEATURES
+  if settings.MEMORY64:
+    assert '--enable-memory64' in settings.BINARYEN_FEATURES
+
   if settings.RELOCATABLE:
     # When building relocatable output (e.g. MAIN_MODULE) the reported table
     # size does not include the reserved slot at zero for the null pointer.
@@ -379,7 +385,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
   building.save_intermediate(infile, 'base.wasm')
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
-  args = ['--detect-features', '--minimize-wasm-changes']
+  args = ['--minimize-wasm-changes']
 
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
   modify_wasm = False

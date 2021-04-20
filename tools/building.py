@@ -1389,14 +1389,12 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
 
 
 def get_binaryen_feature_flags():
-  # start with the MVP features, add the rest as needed
-  ret = ['--mvp-features']
-  if settings.USE_PTHREADS:
-    ret += ['--enable-threads']
-  if settings.MEMORY64:
-    ret += ['--enable-memory64']
-  ret += settings.BINARYEN_FEATURES
-  return ret
+  # settings.BINARYEN_FEATURES is empty unless features have been extracted by
+  # wasm-emscripten-finalize already.
+  if settings.BINARYEN_FEATURES:
+    return settings.BINARYEN_FEATURES
+  else:
+    return ['--detect-features']
 
 
 def check_binaryen(bindir):
@@ -1466,8 +1464,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   if debug:
     cmd += ['-g'] # preserve the debug info
   # if the features are not already handled, handle them
-  if '--detect-features' not in cmd:
-    cmd += get_binaryen_feature_flags()
+  cmd += get_binaryen_feature_flags()
   # if we are emitting a source map, every time we load and save the wasm
   # we must tell binaryen to update it
   if settings.GENERATE_SOURCE_MAP and outfile:
