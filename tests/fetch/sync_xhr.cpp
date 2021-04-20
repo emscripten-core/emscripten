@@ -7,12 +7,19 @@
 #include <stdio.h>
 #include <math.h>
 #include <assert.h>
+#include <emscripten.h>
 #include <emscripten/fetch.h>
 
-int result = 0;
+int result = -1;
 
 int main()
 {
+  // If an exception is thrown from the user callback, it bubbles up to self.onerror but is otherwise completely
+  // swallowed by xhr.send.
+  EM_ASM({self.onerror = function() {
+           console.log('Got error');
+           HEAP32[$0 >> 2] = 2;
+         };}, &result);
   emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "GET");
@@ -28,11 +35,7 @@ int main()
     assert(checksum == 0x08);
     emscripten_fetch_close(fetch);
 
-    if (result == 0) result = 1;
-#ifdef REPORT_RESULT
-    // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
-    MAYBE_REPORT_RESULT(result);
-#endif
+    if (result == -1) result = 0;
   };
 
   attr.onprogress = [](emscripten_fetch_t *fetch) {
@@ -49,12 +52,14 @@ int main()
   };
 
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
-  if (result == 0) {
-    result = 2;
+  if (result == -1) {
     printf("emscripten_fetch() failed to run synchronously!\n");
   }
-#ifdef REPORT_RESULT
-  // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
-  MAYBE_REPORT_RESULT(result);
-#endif
+  #ifndef __EMSCRIPTEN_PTHREADS__
+  // For proxy-to-worker mode (the only case where we can do sync xhr in main())
+  // Just use REPORT_RESULT
+  REPORT_RESULT(result);
+  #endif
+  // Otherwise test that the exit status gets returned correctly.
+  return result;
 }

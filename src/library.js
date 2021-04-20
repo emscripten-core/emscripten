@@ -27,13 +27,21 @@ LibraryManager.library = {
 
   getTempRet0__sig: 'i',
   getTempRet0: function() {
-    return {{{ makeGetTempRet0() }}};
+    return getTempRet0();
   },
 
   setTempRet0__sig: 'vi',
-  setTempRet0: function($i) {
-    {{{ makeSetTempRet0('$i') }}};
+  setTempRet0: function(val) {
+    setTempRet0(val);
   },
+
+#if SAFE_HEAP
+  // Trivial wrappers around runtime functions that make these symbols available
+  // to native code.
+  segfault: function() { segfault(); },
+  alignfault: function() { alignfault(); },
+  ftfault: function() { ftfault(); },
+#endif
 
   // ==========================================================================
   // JavaScript <-> C string interop
@@ -3607,12 +3615,17 @@ LibraryManager.library = {
 #if EXIT_RUNTIME || USE_PTHREADS
   $callUserCallback__deps: ['$maybeExit'],
 #endif
-  $callUserCallback: function(func) {
+  $callUserCallback: function(func, synchronous) {
     if (ABORT) {
 #if ASSERTIONS
       err('user callback triggered after application aborted.  Ignoring.');
       return;
 #endif
+    }
+    // For synchronous calls, let any exceptions propagate, and don't let the runtime exit.
+    if (synchronous) {
+      func();
+      return;
     }
     try {
       func();
@@ -3665,6 +3678,23 @@ LibraryManager.library = {
   $callUserCallback: function(func) {
     func();
   },
+#endif
+
+#if RELOCATABLE
+  // These get set in emscripten.py during add_standard_wasm_imports, but are
+  // included here so they don't show up as undefined symbols at js compile
+  // time.
+  __stack_pointer: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, {{{ STACK_BASE }}})",
+  // tell the memory segments where to place themselves
+  __memory_base: '{{{ GLOBAL_BASE }}}',
+  // the wasm backend reserves slot 0 for the NULL function pointer
+  __table_base: 1,
+  // To support such allocations during startup, track them on __heap_base and
+  // then when the main module is loaded it reads that value and uses it to
+  // initialize sbrk (the main module is relocatable itself, and so it does not
+  // have __heap_base hardcoded into it - it receives it from JS as an extern
+  // global, basically).
+  __heap_base: '{{{ HEAP_BASE }}}',
 #endif
 };
 

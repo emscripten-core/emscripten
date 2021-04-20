@@ -20,9 +20,23 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- `EXTRA_EXPORTED_RUNTIME_METHODS` is deprecated in favor of just using
+  `EXPORTED_RUNTIME_METHODS`.
+- When building with `MAIN_MODULE=2` the linker will now automatically include
+  any symbols required by side modules found on the command line.  This means
+  that for many users of `MAIN_MODULE=2` it should no longer be necessary to
+  list explicit `EXPORTED_FUNCTIONS`.  Also, users of `MAIN_MODULE=1` with
+  dynamic linking (not dlopen) who list all side modules on the command line,
+  should be able to switch to `MAIN_MODULE=2` and get a reduction in code size.
+- When building with `MAIN_MODULE` it is now possbile to warn or error on
+  undefined symbols assuming all the side modules are passed at link time.  This
+  means that for many projects it should now be possbile to enable
+  `ERROR_ON_UNDEFINED_SYMBOLS` along with `MAIN_MODULE`.
 
 2.0.17: 04/10/2021
 ------------------
+- Use of closure compiler (`--closure`) is now supported when using dynamic
+  linking (building with `-s MAIN_MODULE`) (#13880)
 - Specifying `EM_CONFIG` inline (python code in the environment variable itself)
   is no longer supported (#13855).  This has been long deprecated but finally
   completely removed.
@@ -38,13 +52,17 @@ Current Trunk
 - Use LLVM's new pass manager by default, as LLVM does. This changes a bunch of
   things about how LLVM optimizes and inlines, so it may cause noticeable
   changes in compile times, code size, and speed, either for better or for
-  worse. (#13427)
+  worse. You can use the old pass manager (until LLVM removes it) by passing
+  `-flegacy-pass-manager` (and `-Wl,--lto-legacy-pass-manager` when doing LTO)
+  (note however that neither workaround affects the building of system
+  libraries, unless you modify emscripten or build them manually). (#13427)
 - Removed use of Python multiprocessing library because of stability issues.
   Added a new environment variable `EM_PYTHON_MULTIPROCESSING=1` that can be set
   to revert back to using Python multiprocessing, in case there are reports of
   regressions (that variable is intended to be temporary). (#13493)
 - Binaryen now always inlines single-use functions. This should reduce code size
-  and improve performance (#13744).
+  and improve performance. If you prefer the old default, you can get that with
+  `-sBINARYEN_EXTRA_PASSES=--one-caller-inline-max-function-size=1` (#13744).
 - Fix generating of symbol files with `--emit-symbol-map` for JS targets.
   When `-s WASM=2` is used. Two symbols are generated:
     - `[name].js.symbols` - storing Wasm mapping

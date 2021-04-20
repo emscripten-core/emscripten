@@ -15,14 +15,6 @@ var addedLibraryItems = {};
 // Each such proxied function is identified via an ordinal number (this is not the same namespace as function pointers in general).
 var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*/];
 
-// Used internally. set when there is a main() function.
-// Also set when in a linkable module, as the main() function might
-// arrive from a dynamically-linked library, and not necessarily
-// the current compilation unit.
-// Also set for STANDALONE_WASM since the _start function is needed to call
-// static ctors, even if there is no user main.
-var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || STANDALONE_WASM;
-
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
   return f[0] == '$' ? f.substr(1) : '_' + f;
@@ -55,6 +47,18 @@ function stringifyWithFunctions(obj) {
   } else {
     return '{' + keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
   }
+}
+
+function isDefined(symName) {
+  if (symName in WASM_EXPORTS || symName in SIDE_MODULE_EXPORTS) {
+    return true;
+  }
+  // 'invoke_' symbols are created at runtime in libary_dylink.py so can
+  // always be considered as defined.
+  if (RELOCATABLE && symName.startsWith('_invoke_')) {
+    return true;
+  }
+  return false;
 }
 
 // JSifier
@@ -142,7 +146,7 @@ function JSify(functionsOnly) {
       }
 
       // if the function was implemented in compiled code, we just need to export it so we can reach it from JS
-      if (finalName in IMPLEMENTED_FUNCTIONS) {
+      if (finalName in WASM_EXPORTS) {
         EXPORTED_FUNCTIONS[finalName] = 1;
         // stop here: we don't need to add anything from our js libraries, not even deps, compiled code is on it
         return '';
@@ -155,7 +159,7 @@ function JSify(functionsOnly) {
       var noExport = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
-        if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
+        if (!isDefined(finalName) && !LINKABLE) {
           var msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ' (referenced by ' + dependent + ')';
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
@@ -299,7 +303,7 @@ function JSify(functionsOnly) {
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }
-      } else if (typeof snippet === 'string' && snippet.indexOf(';') == 0) {
+      } else if (typeof snippet === 'string' && snippet.startsWith(';')) {
         // In JS libraries
         //   foo: ';[code here verbatim]'
         //  emits
