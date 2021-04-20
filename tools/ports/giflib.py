@@ -16,7 +16,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('giflib', f'https://vorboss.dl.sourceforge.net/project/giflib/giflib-{VERSION}.tar.gz', f'giflib-{VERSION}', sha512hash=HASH)
+  ports.fetch_project('giflib', f'https://storage.googleapis.com/webassembly/emscripten-ports/giflib-{VERSION}.tar.gz', f'giflib-{VERSION}', sha512hash=HASH)
 
   def create(final):
     logging.info('building port: giflib')
