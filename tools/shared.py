@@ -258,7 +258,7 @@ def check_llvm_version():
   actual = get_clang_version()
   if EXPECTED_LLVM_VERSION in actual:
     return True
-  diagnostics.warning('version-check', 'LLVM version appears incorrect (seeing "%s", expected "%s")', actual, EXPECTED_LLVM_VERSION)
+  diagnostics.warning('version-check', 'LLVM version for clang executable "%s" appears incorrect (seeing "%s", expected "%s")', CLANG_CC, actual, EXPECTED_LLVM_VERSION)
   return False
 
 
