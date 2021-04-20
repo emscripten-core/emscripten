@@ -843,6 +843,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.fail('subprocess exited with non-zero return code(%d): `%s`' %
                   (e.returncode, shared.shlex_join(cmd)))
 
+  def emcc(self, filename, args=[], output_filename=None, **kwargs):
+    if output_filename is None:
+      output_filename = filename + '.o'
+    try_delete(output_filename)
+    self.run_process([EMCC, filename] + args + ['-o', output_filename], **kwargs)
+
   # Shared test code between main suite and others
 
   def expect_fail(self, cmd, **args):
