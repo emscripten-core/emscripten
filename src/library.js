@@ -3619,8 +3619,8 @@ LibraryManager.library = {
     if (ABORT) {
 #if ASSERTIONS
       err('user callback triggered after application aborted.  Ignoring.');
-      return;
 #endif
+      return;
     }
     // For synchronous calls, let any exceptions propagate, and don't let the runtime exit.
     if (synchronous) {
