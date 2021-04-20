@@ -883,7 +883,7 @@
             "viewDimension": 24,
             "visibility": 4
         },
-        "WGPUBlendDescriptor": {
+        "WGPUBlendComponent": {
             "__size__": 12,
             "dstFactor": 8,
             "operation": 0,

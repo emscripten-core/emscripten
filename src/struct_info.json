@@ -1379,6 +1379,7 @@
     // ===========================================
     {
         "file": "webgpu/webgpu.h",
+        "defines": [],
         "structs": {
             "WGPUChainedStruct": [
                 "next",
@@ -1389,6 +1390,7 @@
                 "deviceID",
                 "vendorID",
                 "name",
+                "driverDescription",
                 "adapterType",
                 "backendType"
             ],
@@ -1400,46 +1402,16 @@
                 "sampler",
                 "textureView"
             ],
+            "WGPUBlendComponent": [
+                "operation",
+                "srcFactor",
+                "dstFactor"
+            ],
             "WGPUBufferBindingLayout": [
                 "nextInChain",
                 "type",
                 "hasDynamicOffset",
                 "minBindingSize"
-            ],
-            "WGPUSamplerBindingLayout": [
-                "nextInChain",
-                "type"
-            ],
-            "WGPUTextureBindingLayout": [
-                "nextInChain",
-                "sampleType",
-                "viewDimension",
-                "multisampled"
-            ],
-            "WGPUStorageTextureBindingLayout": [
-                "nextInChain",
-                "access",
-                "format",
-                "viewDimension"
-            ],
-            "WGPUBindGroupLayoutEntry": [
-                "binding",
-                "visibility",
-                "type",
-                "hasDynamicOffset",
-                "minBufferBindingSize",
-                "viewDimension",
-                "textureComponentType",
-                "storageTextureFormat",
-                "buffer",
-                "sampler",
-                "texture",
-                "storageTexture"
-            ],
-            "WGPUBlendDescriptor": [
-                "operation",
-                "srcFactor",
-                "dstFactor"
             ],
             "WGPUBufferDescriptor": [
                 "nextInChain",
@@ -1462,14 +1434,38 @@
                 "nextInChain",
                 "label"
             ],
+            "WGPUCompilationMessage": [
+                "message",
+                "type",
+                "lineNum",
+                "linePos"
+            ],
             "WGPUComputePassDescriptor": [
                 "nextInChain",
                 "label"
             ],
+            "WGPUCopyTextureForBrowserOptions": [
+                "nextInChain",
+                "flipY"
+            ],
+            "WGPUDeviceProperties": [
+                "textureCompressionBC",
+                "shaderFloat16",
+                "pipelineStatisticsQuery",
+                "timestampQuery",
+                "multiPlanarFormats",
+                "depthClamping"
+            ],
             "WGPUExtent3D": [
                 "width",
                 "height",
+                "depthOrArrayLayers",
                 "depth"
+            ],
+            "WGPUExternalTextureDescriptor": [
+                "nextInChain",
+                "plane0",
+                "format"
             ],
             "WGPUFenceDescriptor": [
                 "nextInChain",
@@ -1478,6 +1474,12 @@
             ],
             "WGPUInstanceDescriptor": [
                 "nextInChain"
+            ],
+            "WGPUMultisampleState": [
+                "nextInChain",
+                "count",
+                "mask",
+                "alphaToCoverageEnabled"
             ],
             "WGPUOrigin3D": [
                 "x",
@@ -1489,6 +1491,17 @@
                 "label",
                 "bindGroupLayoutCount",
                 "bindGroupLayouts"
+            ],
+            "WGPUPrimitiveDepthClampingState": [
+                "chain",
+                "clampDepth"
+            ],
+            "WGPUPrimitiveState": [
+                "nextInChain",
+                "topology",
+                "stripIndexFormat",
+                "frontFace",
+                "cullMode"
             ],
             "WGPUProgrammableStageDescriptor": [
                 "nextInChain",
@@ -1523,8 +1536,8 @@
                 "depthStencilFormat",
                 "sampleCount"
             ],
-            "WGPURenderPassDepthStencilAttachmentDescriptor": [
-                "attachment",
+            "WGPURenderPassDepthStencilAttachment": [
+                "view",
                 "depthLoadOp",
                 "depthStoreOp",
                 "clearDepth",
@@ -1532,7 +1545,12 @@
                 "stencilLoadOp",
                 "stencilStoreOp",
                 "clearStencil",
-                "stencilReadOnly"
+                "stencilReadOnly",
+                "attachment"
+            ],
+            "WGPUSamplerBindingLayout": [
+                "nextInChain",
+                "type"
             ],
             "WGPUSamplerDescriptor": [
                 "nextInChain",
@@ -1545,7 +1563,8 @@
                 "mipmapFilter",
                 "lodMinClamp",
                 "lodMaxClamp",
-                "compare"
+                "compare",
+                "maxAnisotropy"
             ],
             "WGPUShaderModuleDescriptor": [
                 "nextInChain",
@@ -1560,11 +1579,17 @@
                 "chain",
                 "source"
             ],
-            "WGPUStencilStateFaceDescriptor": [
+            "WGPUStencilFaceState": [
                 "compare",
                 "failOp",
                 "depthFailOp",
                 "passOp"
+            ],
+            "WGPUStorageTextureBindingLayout": [
+                "nextInChain",
+                "access",
+                "format",
+                "viewDimension"
             ],
             "WGPUSurfaceDescriptor": [
                 "nextInChain",
@@ -1583,6 +1608,12 @@
                 "height",
                 "presentMode"
             ],
+            "WGPUTextureBindingLayout": [
+                "nextInChain",
+                "sampleType",
+                "viewDimension",
+                "multisampled"
+            ],
             "WGPUTextureDataLayout": [
                 "nextInChain",
                 "offset",
@@ -1600,7 +1631,7 @@
                 "arrayLayerCount",
                 "aspect"
             ],
-            "WGPUVertexAttributeDescriptor": [
+            "WGPUVertexAttribute": [
                 "format",
                 "offset",
                 "shaderLocation"
@@ -1612,16 +1643,24 @@
                 "entryCount",
                 "entries"
             ],
-            "WGPUBindGroupLayoutDescriptor": [
+            "WGPUBindGroupLayoutEntry": [
                 "nextInChain",
-                "label",
-                "entryCount",
-                "entries"
+                "binding",
+                "visibility",
+                "type",
+                "hasDynamicOffset",
+                "minBufferBindingSize",
+                "viewDimension",
+                "textureComponentType",
+                "storageTextureFormat",
+                "buffer",
+                "sampler",
+                "texture",
+                "storageTexture"
             ],
-            "WGPUImageCopyBuffer": [
-                "nextInChain",
-                "layout",
-                "buffer"
+            "WGPUBlendState": [
+                "color",
+                "alpha"
             ],
             "WGPUColorStateDescriptor": [
                 "nextInChain",
@@ -1630,11 +1669,28 @@
                 "colorBlend",
                 "writeMask"
             ],
+            "WGPUCompilationInfo": [
+                "messageCount",
+                "messages"
+            ],
             "WGPUComputePipelineDescriptor": [
                 "nextInChain",
                 "label",
                 "layout",
                 "computeStage"
+            ],
+            "WGPUDepthStencilState": [
+                "nextInChain",
+                "format",
+                "depthWriteEnabled",
+                "depthCompare",
+                "stencilFront",
+                "stencilBack",
+                "stencilReadMask",
+                "stencilWriteMask",
+                "depthBias",
+                "depthBiasSlopeScale",
+                "depthBiasClamp"
             ],
             "WGPUDepthStencilStateDescriptor": [
                 "nextInChain",
@@ -1646,12 +1702,10 @@
                 "stencilReadMask",
                 "stencilWriteMask"
             ],
-            "WGPURenderPassColorAttachmentDescriptor": [
-                "attachment",
-                "resolveTarget",
-                "loadOp",
-                "storeOp",
-                "clearColor"
+            "WGPUImageCopyBuffer": [
+                "nextInChain",
+                "layout",
+                "buffer"
             ],
             "WGPUImageCopyTexture": [
                 "nextInChain",
@@ -1659,6 +1713,14 @@
                 "mipLevel",
                 "origin",
                 "aspect"
+            ],
+            "WGPURenderPassColorAttachment": [
+                "view",
+                "resolveTarget",
+                "loadOp",
+                "storeOp",
+                "clearColor",
+                "attachment"
             ],
             "WGPUTextureDescriptor": [
                 "nextInChain",
@@ -1670,11 +1732,23 @@
                 "mipLevelCount",
                 "sampleCount"
             ],
-            "WGPUVertexBufferLayoutDescriptor": [
+            "WGPUVertexBufferLayout": [
                 "arrayStride",
                 "stepMode",
                 "attributeCount",
                 "attributes"
+            ],
+            "WGPUBindGroupLayoutDescriptor": [
+                "nextInChain",
+                "label",
+                "entryCount",
+                "entries"
+            ],
+            "WGPUColorTargetState": [
+                "nextInChain",
+                "format",
+                "blend",
+                "writeMask"
             ],
             "WGPURenderPassDescriptor": [
                 "nextInChain",
@@ -1684,11 +1758,25 @@
                 "depthStencilAttachment",
                 "occlusionQuerySet"
             ],
+            "WGPUVertexState": [
+                "nextInChain",
+                "module",
+                "entryPoint",
+                "bufferCount",
+                "buffers"
+            ],
             "WGPUVertexStateDescriptor": [
                 "nextInChain",
                 "indexFormat",
                 "vertexBufferCount",
                 "vertexBuffers"
+            ],
+            "WGPUFragmentState": [
+                "nextInChain",
+                "module",
+                "entryPoint",
+                "targetCount",
+                "targets"
             ],
             "WGPURenderPipelineDescriptor": [
                 "nextInChain",
@@ -1705,6 +1793,16 @@
                 "colorStates",
                 "sampleMask",
                 "alphaToCoverageEnabled"
+            ],
+            "WGPURenderPipelineDescriptor2": [
+                "nextInChain",
+                "label",
+                "layout",
+                "vertex",
+                "primitive",
+                "depthStencil",
+                "multisample",
+                "fragment"
             ]
         }
     }
