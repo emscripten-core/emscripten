@@ -601,24 +601,23 @@ var LibraryEmbind = {
 
     // maxRange comes through as -1 for uint64_t (see issue 13902). Work around that temporarily
     if (isUnsignedType) {
-      maxRange = 18446744073709551615n;
+      // Use string because acorn does recognize bigint literals
+      maxRange = (BigInt(1) << BigInt(64)) - BigInt(1);
     }
 
     registerType(primitiveType, {
         name: name,
         'fromWireType': function (value) {
-          return value
+          return value;
         },
         'toWireType': function (destructors, value) {
-          if (typeof value === "number" || typeof value === "boolean") {
-            value = BigInt(value);
-          } else if (typeof value !== "bigint") {
+          if (typeof value !== "bigint") {
             throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
           }
           if (value < minRange || value > maxRange) {
             throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
           }
-          return value
+          return value;
         },
         'argPackAdvance': 8,
         'readValueFromPointer': integerReadValueFromPointer(name, shift, !isUnsignedType),

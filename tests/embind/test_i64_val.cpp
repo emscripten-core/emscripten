@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <iostream>
+#include <sstream>
 #include <cmath>
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
@@ -36,11 +37,6 @@ void ensure(bool value)
     fail();
 }
 
-void ensure_not(bool value)
-{
-  ensure(!value);
-}
-
 void ensure_js(string js_code)
 {
   js_code.append(";");
@@ -51,25 +47,19 @@ void ensure_js(string js_code)
   }, js_code_pointer));
 }
 
-void ensure_js_not(string js_code)
-{
-  js_code.insert(0, "!( ");
-  js_code.append(" )");
-  ensure_js(js_code);
-}
-
-void throw_js_error(val js_error)
-{
-  js_error.throw_();
-}
-
-EMSCRIPTEN_BINDINGS(test_bindings)
-{
-  emscripten::function("throw_js_error", &throw_js_error);
+template <typename T>
+string compare_a_64_js(T value) {
+  stringstream ss;
+  ss << "a === " << value << "n";
+  return ss.str();
 }
 
 int main()
 {
+  const int64_t max_int64_t = numeric_limits<int64_t>::max();
+  const int64_t min_int64_t = numeric_limits<int64_t>::min();
+  const uint64_t max_uint64_t = numeric_limits<uint64_t>::max();
+
   printf("start\n");
 
   test("val(int64_t v)");
@@ -81,6 +71,24 @@ int main()
 
   val::global().set("a", val(int64_t(0x12345678aabbccddL)));
   ensure_js("a === 1311768467732155613n");
+  ensure(val::global()["a"].as<int64_t>() == 0x12345678aabbccddL);
+
+  test("val(uint64_t v)");
+  val::global().set("a", val(uint64_t(1234)));
+  ensure_js("a === 1234n");
+
+  val::global().set("a", val(max_uint64_t));
+  ensure_js(compare_a_64_js(max_uint64_t));
+  ensure(val::global()["a"].as<uint64_t>() == max_uint64_t);
+
+  test("val(int64_t v)");
+  val::global().set("a", val(max_int64_t));
+  ensure_js(compare_a_64_js(max_int64_t));
+  ensure(val::global()["a"].as<int64_t>() == max_int64_t);
+
+  val::global().set("a", val(min_int64_t));
+  ensure_js(compare_a_64_js(min_int64_t));
+  ensure(val::global()["a"].as<int64_t>() == min_int64_t);
 
   printf("end\n");
   return 0;

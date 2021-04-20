@@ -6898,6 +6898,13 @@ someweirdtext
     self.node_args += ['--experimental-wasm-bigint']
     self.do_run_in_out_file_test('embind', 'test_i64_val.cpp', assert_identical=True)
 
+  @no_wasm2js('wasm_bigint')
+  def test_embind_i64_binding(self):
+    self.set_setting('WASM_BIGINT')
+    self.emcc_args += ['--bind']
+    self.node_args += ['--experimental-wasm-bigint']
+    self.do_run_in_out_file_test('embind', 'test_i64_binding.cpp', assert_identical=True)
+
   def test_embind_no_rtti(self):
     create_file('main.cpp', r'''
       #include <emscripten.h>

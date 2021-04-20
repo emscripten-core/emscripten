@@ -65,6 +65,8 @@ namespace emscripten {
             EM_VAL _emval_get_property(EM_VAL object, EM_VAL key);
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
             EM_GENERIC_WIRE_TYPE _emval_as(EM_VAL value, TYPEID returnType, EM_DESTRUCTORS* destructors);
+            int64_t _emval_as_int64(EM_VAL value, TYPEID returnType);
+            uint64_t _emval_as_uint64(EM_VAL value, TYPEID returnType);
 
             bool _emval_equals(EM_VAL first, EM_VAL second);
             bool _emval_strictly_equals(EM_VAL first, EM_VAL second);
@@ -511,6 +513,30 @@ namespace emscripten {
                 &destructors);
             DestructorsRunner dr(destructors);
             return fromGenericWireType<T>(result);
+        }
+
+        template<>
+        int64_t as<int64_t>() const {
+            using namespace internal;
+
+            typedef BindingType<int64_t> BT;
+            typename WithPolicies<>::template ArgTypeList<int64_t> targetType;
+
+            return _emval_as_int64(
+                handle,
+                targetType.getTypes()[0]);
+        }
+
+        template<>
+        uint64_t as<uint64_t>() const {
+            using namespace internal;
+
+            typedef BindingType<uint64_t> BT;
+            typename WithPolicies<>::template ArgTypeList<uint64_t> targetType;
+
+            return  _emval_as_uint64(
+                handle,
+                targetType.getTypes()[0]);
         }
 
 // If code is not being compiled with GNU extensions enabled, typeof() is not a reserved keyword, so support that as a member function.
