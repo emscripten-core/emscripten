@@ -869,12 +869,12 @@ int main() {
       }
     ''')
 
-    building.emcc(lib_name, ['-shared'], output_filename='libA.so')
+    self.emcc(lib_name, ['-shared'], output_filename='libA.so')
 
-    building.emcc(a2_name, ['-r', '-L.', '-lA'])
-    building.emcc(b2_name, ['-r', '-L.', '-lA'])
+    self.emcc(a2_name, ['-r', '-L.', '-lA'])
+    self.emcc(b2_name, ['-r', '-L.', '-lA'])
 
-    building.emcc(main_name, ['-L.', '-lA', a2_name + '.o', b2_name + '.o'], output_filename='a.out.js')
+    self.emcc(main_name, ['-L.', '-lA', a2_name + '.o', b2_name + '.o'], output_filename='a.out.js')
 
     self.assertContained('result: 1', self.run_js('a.out.js'))
 
@@ -901,14 +901,14 @@ int main() {
     main_name = 'main.c'
     create_file(main_name, main)
 
-    building.emcc(a_name, ['-c']) # a.c.o
-    building.emcc(b_name, ['-c']) # b.c.o
-    building.emcc(c_name, ['-c']) # c.c.o
+    self.emcc(a_name, ['-c']) # a.c.o
+    self.emcc(b_name, ['-c']) # b.c.o
+    self.emcc(c_name, ['-c']) # c.c.o
     lib_name = 'libLIB.a'
     building.emar('cr', lib_name, [a_name + '.o', b_name + '.o']) # libLIB.a with a and b
 
     # a is in the lib AND in an .o, so should be ignored in the lib. We do still need b from the lib though
-    building.emcc(main_name, [a_name + '.o', c_name + '.o', '-L.', '-lLIB'], output_filename='a.out.js')
+    self.emcc(main_name, [a_name + '.o', c_name + '.o', '-L.', '-lLIB'], output_filename='a.out.js')
 
     self.assertContained('result: 62', self.run_js('a.out.js'))
 
@@ -926,7 +926,7 @@ int main() {
       }
     ''')
 
-    building.emcc(lib_src_name, ['-c']) # lib.c.o
+    self.emcc(lib_src_name, ['-c']) # lib.c.o
     lib_name = 'libLIB.a'
     building.emar('cr', lib_name, [lib_src_name + '.o']) # libLIB.a with lib.c.o
 
@@ -1028,8 +1028,8 @@ int f() {
         return 0;
       }
     ''')
-    building.emcc('libA.c', ['-shared'], output_filename='libA.so')
-    building.emcc('main.c', ['libA.so', 'libA.so'], output_filename='a.out.js')
+    self.emcc('libA.c', ['-shared'], output_filename='libA.so')
+    self.emcc('main.c', ['libA.so', 'libA.so'], output_filename='a.out.js')
     self.assertContained('result: 1', self.run_js('a.out.js'))
 
   def test_dot_a_all_contents_invalid(self):
@@ -1060,7 +1060,7 @@ int f() {
       };
     ''')
 
-    building.emcc('lib.c', ['-s', 'EXPORT_ALL', '-s', 'LINKABLE', '--pre-js', 'main.js'], output_filename='a.out.js')
+    self.emcc('lib.c', ['-s', 'EXPORT_ALL', '-s', 'LINKABLE', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libf1\nlibf2\n', self.run_js('a.out.js'))
 
   def test_export_all_and_exported_functions(self):
@@ -1083,11 +1083,11 @@ int f() {
     ''')
 
     # __get_daylight should not be linked by default, even with EXPORT_ALL
-    building.emcc('lib.c', ['-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
+    self.emcc('lib.c', ['-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('__get_daylight is not defined', err)
 
-    building.emcc('lib.c', ['-s', 'EXPORTED_FUNCTIONS=__get_daylight', '-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
+    self.emcc('lib.c', ['-s', 'EXPORTED_FUNCTIONS=__get_daylight', '-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libfunc\n', self.run_js('a.out.js'))
 
   def test_stdin(self):
@@ -1108,11 +1108,11 @@ int f() {
           os.system('cat in.txt | {} > out.txt'.format(cmd))
         self.assertContained('abcdef\nghijkl\neof', open('out.txt').read())
 
-    building.emcc(test_file('module', 'test_stdin.c'), output_filename='out.js')
+    self.emcc(test_file('module', 'test_stdin.c'), output_filename='out.js')
     create_file('in.txt', 'abcdef\nghijkl')
     run_test()
-    building.emcc(test_file('module', 'test_stdin.c'),
-                  ['-O2', '--closure=1'], output_filename='out.js')
+    self.emcc(test_file('module', 'test_stdin.c'),
+              ['-O2', '--closure=1'], output_filename='out.js')
     run_test()
 
   def test_ungetc_fscanf(self):
@@ -1135,7 +1135,7 @@ int f() {
       }
     ''')
     create_file('my_test.input', 'abc')
-    building.emcc('main.cpp', ['--embed-file', 'my_test.input'], output_filename='a.out.js')
+    self.emcc('main.cpp', ['--embed-file', 'my_test.input'], output_filename='a.out.js')
     self.assertContained('zyx', self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
   def test_abspaths(self):
@@ -1611,35 +1611,35 @@ int f() {
     self.assertContained('1234, 1234, 4321\n', self.run_js('a.out.js'))
 
   def test_sdl2_mixer_wav(self):
-    building.emcc(test_file('sdl2_mixer_wav.c'), ['-s', 'USE_SDL_MIXER=2'], output_filename='a.out.js')
+    self.emcc(test_file('sdl2_mixer_wav.c'), ['-s', 'USE_SDL_MIXER=2'], output_filename='a.out.js')
 
   def test_libpng(self):
     shutil.copyfile(test_file('third_party', 'libpng', 'pngtest.png'), 'pngtest.png')
-    building.emcc(test_file('third_party', 'libpng', 'pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_LIBPNG'], output_filename='a.out.js')
+    self.emcc(test_file('third_party', 'libpng', 'pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_LIBPNG'], output_filename='a.out.js')
     output = self.run_js('a.out.js')
     self.assertContained('libpng passes test', output)
 
   def test_giflib(self):
     shutil.copyfile(test_file('third_party', 'giflib', 'treescap.gif'), 'treescap.gif')
-    building.emcc(test_file('third_party', 'giflib', 'giftext.c'), ['--embed-file', 'treescap.gif', '-s', 'USE_GIFLIB'], output_filename='a.out.js')
+    self.emcc(test_file('third_party', 'giflib', 'giftext.c'), ['--embed-file', 'treescap.gif', '-s', 'USE_GIFLIB'], output_filename='a.out.js')
     self.assertContained('GIF file terminated normally', self.run_js('a.out.js', args=['treescap.gif']))
 
   def test_libjpeg(self):
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
-    building.emcc(test_file('jpeg_test.c'), ['--embed-file', 'screenshot.jpg', '-s', 'USE_LIBJPEG'], output_filename='a.out.js')
+    self.emcc(test_file('jpeg_test.c'), ['--embed-file', 'screenshot.jpg', '-s', 'USE_LIBJPEG'], output_filename='a.out.js')
     self.assertContained('Image is 600 by 450 with 3 components', self.run_js('a.out.js', args=['screenshot.jpg']))
 
   def test_bullet(self):
-    building.emcc(test_file('bullet_hello_world.cpp'), ['-s', 'USE_BULLET'], output_filename='a.out.js')
+    self.emcc(test_file('bullet_hello_world.cpp'), ['-s', 'USE_BULLET'], output_filename='a.out.js')
     self.assertContained('BULLET RUNNING', self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
   def test_vorbis(self):
     # This will also test if ogg compiles, because vorbis depends on ogg
-    building.emcc(test_file('vorbis_test.c'), ['-s', 'USE_VORBIS'], output_filename='a.out.js')
+    self.emcc(test_file('vorbis_test.c'), ['-s', 'USE_VORBIS'], output_filename='a.out.js')
     self.assertContained('ALL OK', self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
   def test_bzip2(self):
-    building.emcc(test_file('bzip2_test.c'), ['-s', 'USE_BZIP2=1'], output_filename='a.out.js')
+    self.emcc(test_file('bzip2_test.c'), ['-s', 'USE_BZIP2=1'], output_filename='a.out.js')
     self.assertContained("usage: unzcrash filename", self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
   def test_freetype(self):
@@ -1647,7 +1647,7 @@ int f() {
     # <emscripten_root>/tests/freetype to the compilation folder
     shutil.copy2(test_file('freetype', 'LiberationSansBold.ttf'), os.getcwd())
     # build test program with the font file embed in it
-    building.emcc(test_file('freetype_test.c'), ['-s', 'USE_FREETYPE', '--embed-file', 'LiberationSansBold.ttf'], output_filename='a.out.js')
+    self.emcc(test_file('freetype_test.c'), ['-s', 'USE_FREETYPE', '--embed-file', 'LiberationSansBold.ttf'], output_filename='a.out.js')
     # the test program will print an ascii representation of a bitmap where the
     # 'w' character has been rendered using the Liberation Sans Bold font
     expectedOutput = '                \n' + \
@@ -4994,7 +4994,7 @@ int main(void) {
 
   def test_require(self):
     inname = test_file('hello_world.c')
-    building.emcc(inname, args=['-s', 'ASSERTIONS=0'], output_filename='a.out.js')
+    self.emcc(inname, args=['-s', 'ASSERTIONS=0'], output_filename='a.out.js')
     output = self.run_process(config.NODE_JS + ['-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE)
     assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
 

@@ -641,13 +641,6 @@ def parse_symbols(output):
   return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
 
 
-def emcc(filename, args=[], output_filename=None, stdout=None, stderr=None, env=None):
-  if output_filename is None:
-    output_filename = filename + '.o'
-  try_delete(output_filename)
-  run_process([EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env)
-
-
 def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
   try_delete(output_filename)
   response_filename = response_file.create_response_file(filenames, TEMP_DIR)
