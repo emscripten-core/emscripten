@@ -25,7 +25,39 @@ int isUUID(char* p, int upper) {
         return 1;
     } else {
         return 0;
-    }   
+    }
+}
+
+void test_uuid(uuid_t uuid, uuid_t uuid1, uuid_t uuid2, uuid_t empty_uuid) {
+  assert(uuid_is_null(uuid) == 0);
+  assert(uuid_type(uuid) == UUID_TYPE_DCE_RANDOM);
+  assert(uuid_variant(uuid) == UUID_VARIANT_DCE);
+  assert((uuid[8] & 0xC0) == 0x80); // RFC-4122 variant marker
+
+  char *generated = (char *)malloc(37*sizeof(char));
+  uuid_unparse(uuid, generated);
+  assert(isUUID(generated, 0) == 1); // Check it's a valid lower case UUID string.
+  printf("\nuuid = %s\n", generated);
+
+  assert(uuid_parse(generated, uuid1) == 0); // Check the generated UUID parses correctly into a compact UUID.
+  assert(uuid_compare(uuid1, uuid) == 0);    // Compare the parsed UUID with the original.
+
+  uuid_unparse_lower(uuid, generated);
+  assert(isUUID(generated, 0) == 1); // Check it's a valid lower case UUID string.
+  printf("uuid = %s\n", generated);
+
+  uuid_unparse_upper(uuid, generated);
+  assert(isUUID(generated, 1) == 1); // Check it's a valid upper case UUID string.
+  printf("uuid = %s\n", generated);
+
+
+  uuid_copy(uuid2, uuid);
+  assert(uuid_compare(uuid2, uuid) == 0);
+
+  uuid_clear(uuid);
+  assert(uuid_compare(empty_uuid, uuid) == 0);
+
+  assert(uuid_is_null(uuid) == 1);
 }
 
 int main() {
@@ -34,36 +66,14 @@ int main() {
     uuid_t uuid2;
     uuid_t empty_uuid = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     uuid_generate(uuid);
+    test_uuid(uuid, uuid1, uuid2, empty_uuid);
 
-    assert(uuid_is_null(uuid) == 0);
-    assert(uuid_type(uuid) == UUID_TYPE_DCE_RANDOM);
-    assert(uuid_variant(uuid) == UUID_VARIANT_DCE);
-    assert((uuid[8] & 0xC0) == 0x80); // RFC-4122 variant marker
-
-    char *generated = (char *)malloc(37*sizeof(char));
-    uuid_unparse(uuid, generated);
-    assert(isUUID(generated, 0) == 1); // Check it's a valid lower case UUID string.
-    printf("\nuuid = %s\n", generated);
-
-    assert(uuid_parse(generated, uuid1) == 0); // Check the generated UUID parses correctly into a compact UUID.
-    assert(uuid_compare(uuid1, uuid) == 0);    // Compare the parsed UUID with the original.
-
-    uuid_unparse_lower(uuid, generated);
-    assert(isUUID(generated, 0) == 1); // Check it's a valid lower case UUID string.
-    printf("uuid = %s\n", generated);
-
-    uuid_unparse_upper(uuid, generated);
-    assert(isUUID(generated, 1) == 1); // Check it's a valid upper case UUID string.
-    printf("uuid = %s\n", generated);
-
-
-    uuid_copy(uuid2, uuid);
-    assert(uuid_compare(uuid2, uuid) == 0);
-
-    uuid_clear(uuid);
-    assert(uuid_compare(empty_uuid, uuid) == 0);
-
-    assert(uuid_is_null(uuid) == 1);
+    uuid_t uuid3;
+    uuid_t uuid4;
+    uuid_t uuid5;
+    uuid_t empty_uuid2 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    uuid_generate_random(uuid);
+    test_uuid(uuid3, uuid4, uuid5, empty_uuid2);
 
     // The following lets the browser test exit cleanly.
 #ifdef REPORT_RESULT
@@ -71,4 +81,3 @@ int main() {
 #endif
     exit(0);
 }
-
