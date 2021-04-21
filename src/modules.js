@@ -391,7 +391,7 @@ function exportRuntime() {
     return maybeExport(name, true);
   }
 
-  // All possible runtime elements to export
+  // All possible runtime elements that can be exported
   var runtimeElements = [
     'intArrayFromString',
     'intArrayToString',
@@ -432,7 +432,6 @@ function exportRuntime() {
     'removeFunction',
     'getFuncWrapper',
     'prettyPrint',
-    'makeBigInt',
     'dynCall',
     'getCompilerSetting',
     'print',
