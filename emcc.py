@@ -24,6 +24,10 @@ emcc can be influenced by a few environment variables:
 """
 
 
+from tools.toolchain_profiler import ToolchainProfiler
+if __name__ == '__main__':
+  ToolchainProfiler.record_process_start()
+
 import base64
 import json
 import logging
@@ -37,24 +41,28 @@ import time
 from enum import Enum
 from subprocess import PIPE
 
+from tools.response_file import substitute_response_files
+
+# read response files very early on so that all subsequent code that accesses
+# sys.argv will see the expanded content.
+try:
+  sys.argv = substitute_response_files(sys.argv)
+except IOError as e:
+  raise Exception('Unable to parse response files!\n' + str(e))
+
 import emscripten
 from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
 from tools.shared import do_replace
-from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
-from tools.toolchain_profiler import ToolchainProfiler
 from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
 from tools import config
 from tools.settings import settings
-
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
 
 from urllib.parse import quote
 

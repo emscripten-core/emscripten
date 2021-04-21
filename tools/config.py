@@ -268,7 +268,6 @@ if not EM_CONFIG:
 
 argv_cache = consume_argv('--cache')
 if argv_cache:
-  logger.fatal('got ' + argv_cache)
   CACHE = os.path.expanduser(argv_cache)
   os.environ['EM_CACHE'] = CACHE
 

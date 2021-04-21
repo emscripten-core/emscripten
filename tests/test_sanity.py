@@ -13,6 +13,7 @@ from subprocess import PIPE, STDOUT
 
 from runner import RunnerCore, path_from_root, env_modify, test_file
 from runner import create_file, ensure_dir, make_executable, with_env_modify
+from runner import parameterized
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
 from tools.shared import CANONICAL_TEMP_DIR
@@ -489,7 +490,11 @@ fi
     # Exactly one child process should have triggered libc build!
     self.assertEqual(num_times_libc_was_built, 1)
 
-  def test_emcc_cache_flag(self):
+  @parameterized({
+    '': [False],
+    'response_files': [True]
+  })
+  def test_emcc_cache_flag(self, use_response_files):
     restore_and_set_up()
 
     cache_dir_name = self.in_dir('emscripten_cache')
@@ -501,13 +506,22 @@ fi
         return 0;
       }
       ''')
-    self.run_process([EMCC, 'test.c', '--cache', cache_dir_name], stderr=PIPE)
+    args = ['--cache', cache_dir_name]
+    if use_response_files:
+      create_file('a.rsp', ' '.join(args))
+      args = ['@a.rsp']
+
+    self.run_process([EMCC, 'test.c'] + args, stderr=PIPE)
     # The cache directory must exist after the build
     self.assertTrue(os.path.exists(cache_dir_name))
     # The cache directory must contain a sysroot
     self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'sysroot')))
 
-  def test_emconfig(self):
+  @parameterized({
+    '': [False],
+    'response_files': [True]
+  })
+  def test_emconfig(self, use_response_files):
     restore_and_set_up()
 
     fd, custom_config_filename = tempfile.mkstemp(prefix='.emscripten_config_')
@@ -523,8 +537,14 @@ fi
 
     temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
 
+    args = ['--em-config', custom_config_filename]
+    if use_response_files:
+      rsp = os.path.join(temp_dir, 'a.rsp')
+      open(rsp, 'w').write(' '.join(args).replace('\\', '/'))
+      args = ['@' + rsp]
+
     with utils.chdir(temp_dir):
-      self.run_process([EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
+      self.run_process([EMCC] + args + MINIMAL_HELLO_WORLD + ['-O2'])
       result = self.run_js('a.out.js')
 
     self.assertContained('hello, world!', result)
