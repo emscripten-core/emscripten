@@ -489,6 +489,24 @@ fi
     # Exactly one child process should have triggered libc build!
     self.assertEqual(num_times_libc_was_built, 1)
 
+  def test_emcc_cache_flag(self):
+    restore_and_set_up()
+
+    cache_dir_name = self.in_dir('emscripten_cache')
+    self.assertFalse(os.path.exists(cache_dir_name))
+    create_file('test.c', r'''
+      #include <stdio.h>
+      int main() {
+        printf("hello, world!\n");
+        return 0;
+      }
+      ''')
+    self.run_process([EMCC, 'test.c', '--cache', cache_dir_name], stderr=PIPE)
+    # The cache directory must exist after the build
+    self.assertTrue(os.path.exists(cache_dir_name))
+    # The cache directory must contain a sysroot
+    self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'sysroot')))
+
   def test_emconfig(self):
     restore_and_set_up()
 
