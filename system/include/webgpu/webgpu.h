@@ -651,15 +651,6 @@ typedef struct WGPUQuerySetDescriptor {
     uint32_t pipelineStatisticsCount;
 } WGPUQuerySetDescriptor;
 
-typedef struct WGPURasterizationStateDescriptor {
-    WGPUChainedStruct const * nextInChain;
-    WGPUFrontFace frontFace;
-    WGPUCullMode cullMode;
-    int32_t depthBias;
-    float depthBiasSlopeScale;
-    float depthBiasClamp;
-} WGPURasterizationStateDescriptor;
-
 typedef struct WGPURenderBundleDescriptor {
     WGPUChainedStruct const * nextInChain;
     char const * label;
@@ -833,14 +824,6 @@ typedef struct WGPUBlendState {
     WGPUBlendComponent alpha;
 } WGPUBlendState;
 
-typedef struct WGPUColorStateDescriptor {
-    WGPUChainedStruct const * nextInChain;
-    WGPUTextureFormat format;
-    WGPUBlendComponent alphaBlend;
-    WGPUBlendComponent colorBlend;
-    WGPUColorWriteMaskFlags writeMask;
-} WGPUColorStateDescriptor;
-
 typedef struct WGPUComputePipelineDescriptor {
     WGPUChainedStruct const * nextInChain;
     char const * label;
@@ -861,17 +844,6 @@ typedef struct WGPUDepthStencilState {
     float depthBiasSlopeScale;
     float depthBiasClamp;
 } WGPUDepthStencilState;
-
-typedef struct WGPUDepthStencilStateDescriptor {
-    WGPUChainedStruct const * nextInChain;
-    WGPUTextureFormat format;
-    bool depthWriteEnabled;
-    WGPUCompareFunction depthCompare;
-    WGPUStencilFaceState stencilFront;
-    WGPUStencilFaceState stencilBack;
-    uint32_t stencilReadMask;
-    uint32_t stencilWriteMask;
-} WGPUDepthStencilStateDescriptor;
 
 typedef struct WGPUImageCopyBuffer {
     WGPUChainedStruct const * nextInChain;
@@ -943,13 +915,6 @@ typedef struct WGPUVertexState {
     uint32_t bufferCount;
     WGPUVertexBufferLayout const * buffers;
 } WGPUVertexState;
-
-typedef struct WGPUVertexStateDescriptor {
-    WGPUChainedStruct const * nextInChain;
-    WGPUIndexFormat indexFormat;
-    uint32_t vertexBufferCount;
-    WGPUVertexBufferLayout const * vertexBuffers;
-} WGPUVertexStateDescriptor;
 
 typedef struct WGPUFragmentState {
     WGPUChainedStruct const * nextInChain;

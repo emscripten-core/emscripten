@@ -748,24 +748,6 @@ namespace wgpu {
     static_assert(offsetof(QuerySetDescriptor, pipelineStatisticsCount) == offsetof(WGPUQuerySetDescriptor, pipelineStatisticsCount),
             "offsetof mismatch for QuerySetDescriptor::pipelineStatisticsCount");
 
-    // RasterizationStateDescriptor
-
-    static_assert(sizeof(RasterizationStateDescriptor) == sizeof(WGPURasterizationStateDescriptor), "sizeof mismatch for RasterizationStateDescriptor");
-    static_assert(alignof(RasterizationStateDescriptor) == alignof(WGPURasterizationStateDescriptor), "alignof mismatch for RasterizationStateDescriptor");
-
-    static_assert(offsetof(RasterizationStateDescriptor, nextInChain) == offsetof(WGPURasterizationStateDescriptor, nextInChain),
-            "offsetof mismatch for RasterizationStateDescriptor::nextInChain");
-    static_assert(offsetof(RasterizationStateDescriptor, frontFace) == offsetof(WGPURasterizationStateDescriptor, frontFace),
-            "offsetof mismatch for RasterizationStateDescriptor::frontFace");
-    static_assert(offsetof(RasterizationStateDescriptor, cullMode) == offsetof(WGPURasterizationStateDescriptor, cullMode),
-            "offsetof mismatch for RasterizationStateDescriptor::cullMode");
-    static_assert(offsetof(RasterizationStateDescriptor, depthBias) == offsetof(WGPURasterizationStateDescriptor, depthBias),
-            "offsetof mismatch for RasterizationStateDescriptor::depthBias");
-    static_assert(offsetof(RasterizationStateDescriptor, depthBiasSlopeScale) == offsetof(WGPURasterizationStateDescriptor, depthBiasSlopeScale),
-            "offsetof mismatch for RasterizationStateDescriptor::depthBiasSlopeScale");
-    static_assert(offsetof(RasterizationStateDescriptor, depthBiasClamp) == offsetof(WGPURasterizationStateDescriptor, depthBiasClamp),
-            "offsetof mismatch for RasterizationStateDescriptor::depthBiasClamp");
-
     // RenderBundleDescriptor
 
     static_assert(sizeof(RenderBundleDescriptor) == sizeof(WGPURenderBundleDescriptor), "sizeof mismatch for RenderBundleDescriptor");
@@ -1090,22 +1072,6 @@ namespace wgpu {
     static_assert(offsetof(BlendState, alpha) == offsetof(WGPUBlendState, alpha),
             "offsetof mismatch for BlendState::alpha");
 
-    // ColorStateDescriptor
-
-    static_assert(sizeof(ColorStateDescriptor) == sizeof(WGPUColorStateDescriptor), "sizeof mismatch for ColorStateDescriptor");
-    static_assert(alignof(ColorStateDescriptor) == alignof(WGPUColorStateDescriptor), "alignof mismatch for ColorStateDescriptor");
-
-    static_assert(offsetof(ColorStateDescriptor, nextInChain) == offsetof(WGPUColorStateDescriptor, nextInChain),
-            "offsetof mismatch for ColorStateDescriptor::nextInChain");
-    static_assert(offsetof(ColorStateDescriptor, format) == offsetof(WGPUColorStateDescriptor, format),
-            "offsetof mismatch for ColorStateDescriptor::format");
-    static_assert(offsetof(ColorStateDescriptor, alphaBlend) == offsetof(WGPUColorStateDescriptor, alphaBlend),
-            "offsetof mismatch for ColorStateDescriptor::alphaBlend");
-    static_assert(offsetof(ColorStateDescriptor, colorBlend) == offsetof(WGPUColorStateDescriptor, colorBlend),
-            "offsetof mismatch for ColorStateDescriptor::colorBlend");
-    static_assert(offsetof(ColorStateDescriptor, writeMask) == offsetof(WGPUColorStateDescriptor, writeMask),
-            "offsetof mismatch for ColorStateDescriptor::writeMask");
-
     // ComputePipelineDescriptor
 
     static_assert(sizeof(ComputePipelineDescriptor) == sizeof(WGPUComputePipelineDescriptor), "sizeof mismatch for ComputePipelineDescriptor");
@@ -1147,28 +1113,6 @@ namespace wgpu {
             "offsetof mismatch for DepthStencilState::depthBiasSlopeScale");
     static_assert(offsetof(DepthStencilState, depthBiasClamp) == offsetof(WGPUDepthStencilState, depthBiasClamp),
             "offsetof mismatch for DepthStencilState::depthBiasClamp");
-
-    // DepthStencilStateDescriptor
-
-    static_assert(sizeof(DepthStencilStateDescriptor) == sizeof(WGPUDepthStencilStateDescriptor), "sizeof mismatch for DepthStencilStateDescriptor");
-    static_assert(alignof(DepthStencilStateDescriptor) == alignof(WGPUDepthStencilStateDescriptor), "alignof mismatch for DepthStencilStateDescriptor");
-
-    static_assert(offsetof(DepthStencilStateDescriptor, nextInChain) == offsetof(WGPUDepthStencilStateDescriptor, nextInChain),
-            "offsetof mismatch for DepthStencilStateDescriptor::nextInChain");
-    static_assert(offsetof(DepthStencilStateDescriptor, format) == offsetof(WGPUDepthStencilStateDescriptor, format),
-            "offsetof mismatch for DepthStencilStateDescriptor::format");
-    static_assert(offsetof(DepthStencilStateDescriptor, depthWriteEnabled) == offsetof(WGPUDepthStencilStateDescriptor, depthWriteEnabled),
-            "offsetof mismatch for DepthStencilStateDescriptor::depthWriteEnabled");
-    static_assert(offsetof(DepthStencilStateDescriptor, depthCompare) == offsetof(WGPUDepthStencilStateDescriptor, depthCompare),
-            "offsetof mismatch for DepthStencilStateDescriptor::depthCompare");
-    static_assert(offsetof(DepthStencilStateDescriptor, stencilFront) == offsetof(WGPUDepthStencilStateDescriptor, stencilFront),
-            "offsetof mismatch for DepthStencilStateDescriptor::stencilFront");
-    static_assert(offsetof(DepthStencilStateDescriptor, stencilBack) == offsetof(WGPUDepthStencilStateDescriptor, stencilBack),
-            "offsetof mismatch for DepthStencilStateDescriptor::stencilBack");
-    static_assert(offsetof(DepthStencilStateDescriptor, stencilReadMask) == offsetof(WGPUDepthStencilStateDescriptor, stencilReadMask),
-            "offsetof mismatch for DepthStencilStateDescriptor::stencilReadMask");
-    static_assert(offsetof(DepthStencilStateDescriptor, stencilWriteMask) == offsetof(WGPUDepthStencilStateDescriptor, stencilWriteMask),
-            "offsetof mismatch for DepthStencilStateDescriptor::stencilWriteMask");
 
     // ImageCopyBuffer
 
@@ -1311,20 +1255,6 @@ namespace wgpu {
             "offsetof mismatch for VertexState::bufferCount");
     static_assert(offsetof(VertexState, buffers) == offsetof(WGPUVertexState, buffers),
             "offsetof mismatch for VertexState::buffers");
-
-    // VertexStateDescriptor
-
-    static_assert(sizeof(VertexStateDescriptor) == sizeof(WGPUVertexStateDescriptor), "sizeof mismatch for VertexStateDescriptor");
-    static_assert(alignof(VertexStateDescriptor) == alignof(WGPUVertexStateDescriptor), "alignof mismatch for VertexStateDescriptor");
-
-    static_assert(offsetof(VertexStateDescriptor, nextInChain) == offsetof(WGPUVertexStateDescriptor, nextInChain),
-            "offsetof mismatch for VertexStateDescriptor::nextInChain");
-    static_assert(offsetof(VertexStateDescriptor, indexFormat) == offsetof(WGPUVertexStateDescriptor, indexFormat),
-            "offsetof mismatch for VertexStateDescriptor::indexFormat");
-    static_assert(offsetof(VertexStateDescriptor, vertexBufferCount) == offsetof(WGPUVertexStateDescriptor, vertexBufferCount),
-            "offsetof mismatch for VertexStateDescriptor::vertexBufferCount");
-    static_assert(offsetof(VertexStateDescriptor, vertexBuffers) == offsetof(WGPUVertexStateDescriptor, vertexBuffers),
-            "offsetof mismatch for VertexStateDescriptor::vertexBuffers");
 
     // FragmentState
 

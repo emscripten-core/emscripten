@@ -1487,14 +1487,6 @@
                 "pipelineStatistics",
                 "pipelineStatisticsCount"
             ],
-            "WGPURasterizationStateDescriptor": [
-                "nextInChain",
-                "frontFace",
-                "cullMode",
-                "depthBias",
-                "depthBiasSlopeScale",
-                "depthBiasClamp"
-            ],
             "WGPURenderBundleDescriptor": [
                 "nextInChain",
                 "label"
@@ -1626,13 +1618,6 @@
                 "color",
                 "alpha"
             ],
-            "WGPUColorStateDescriptor": [
-                "nextInChain",
-                "format",
-                "alphaBlend",
-                "colorBlend",
-                "writeMask"
-            ],
             "WGPUComputePipelineDescriptor": [
                 "nextInChain",
                 "label",
@@ -1651,16 +1636,6 @@
                 "depthBias",
                 "depthBiasSlopeScale",
                 "depthBiasClamp"
-            ],
-            "WGPUDepthStencilStateDescriptor": [
-                "nextInChain",
-                "format",
-                "depthWriteEnabled",
-                "depthCompare",
-                "stencilFront",
-                "stencilBack",
-                "stencilReadMask",
-                "stencilWriteMask"
             ],
             "WGPUImageCopyBuffer": [
                 "nextInChain",
@@ -1723,12 +1698,6 @@
                 "entryPoint",
                 "bufferCount",
                 "buffers"
-            ],
-            "WGPUVertexStateDescriptor": [
-                "nextInChain",
-                "indexFormat",
-                "vertexBufferCount",
-                "vertexBuffers"
             ],
             "WGPUFragmentState": [
                 "nextInChain",

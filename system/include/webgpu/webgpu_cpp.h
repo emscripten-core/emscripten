@@ -589,7 +589,6 @@ namespace wgpu {
     struct PrimitiveState;
     struct ProgrammableStageDescriptor;
     struct QuerySetDescriptor;
-    struct RasterizationStateDescriptor;
     struct RenderBundleDescriptor;
     struct RenderBundleEncoderDescriptor;
     struct RenderPassDepthStencilAttachment;
@@ -613,10 +612,8 @@ namespace wgpu {
     struct BindGroupDescriptor;
     struct BindGroupLayoutEntry;
     struct BlendState;
-    struct ColorStateDescriptor;
     struct ComputePipelineDescriptor;
     struct DepthStencilState;
-    struct DepthStencilStateDescriptor;
     struct ImageCopyBuffer;
     struct ImageCopyTexture;
     struct RenderPassColorAttachment;
@@ -626,7 +623,6 @@ namespace wgpu {
     struct ColorTargetState;
     struct RenderPassDescriptor;
     struct VertexState;
-    struct VertexStateDescriptor;
     struct FragmentState;
     struct RenderPipelineDescriptor2;
 
@@ -1196,15 +1192,6 @@ namespace wgpu {
         uint32_t pipelineStatisticsCount = 0;
     };
 
-    struct RasterizationStateDescriptor {
-        ChainedStruct const * nextInChain = nullptr;
-        FrontFace frontFace = FrontFace::CCW;
-        CullMode cullMode = CullMode::None;
-        int32_t depthBias = 0;
-        float depthBiasSlopeScale = 0.0f;
-        float depthBiasClamp = 0.0f;
-    };
-
     struct RenderBundleDescriptor {
         ChainedStruct const * nextInChain = nullptr;
         char const * label = nullptr;
@@ -1385,14 +1372,6 @@ namespace wgpu {
         BlendComponent alpha;
     };
 
-    struct ColorStateDescriptor {
-        ChainedStruct const * nextInChain = nullptr;
-        TextureFormat format;
-        BlendComponent alphaBlend;
-        BlendComponent colorBlend;
-        ColorWriteMask writeMask = ColorWriteMask::All;
-    };
-
     struct ComputePipelineDescriptor {
         ChainedStruct const * nextInChain = nullptr;
         char const * label = nullptr;
@@ -1412,17 +1391,6 @@ namespace wgpu {
         int32_t depthBias = 0;
         float depthBiasSlopeScale = 0.0f;
         float depthBiasClamp = 0.0f;
-    };
-
-    struct DepthStencilStateDescriptor {
-        ChainedStruct const * nextInChain = nullptr;
-        TextureFormat format;
-        bool depthWriteEnabled = false;
-        CompareFunction depthCompare = CompareFunction::Always;
-        StencilFaceState stencilFront;
-        StencilFaceState stencilBack;
-        uint32_t stencilReadMask = 0xFFFFFFFF;
-        uint32_t stencilWriteMask = 0xFFFFFFFF;
     };
 
     struct ImageCopyBuffer {
@@ -1494,13 +1462,6 @@ namespace wgpu {
         char const * entryPoint;
         uint32_t bufferCount = 0;
         VertexBufferLayout const * buffers;
-    };
-
-    struct VertexStateDescriptor {
-        ChainedStruct const * nextInChain = nullptr;
-        IndexFormat indexFormat = IndexFormat::Undefined;
-        uint32_t vertexBufferCount = 0;
-        VertexBufferLayout const * vertexBuffers;
     };
 
     struct FragmentState {
