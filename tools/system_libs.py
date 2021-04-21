@@ -641,7 +641,8 @@ class libcompiler_rt(MTLibrary):
 
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
-  src_files = glob_in_path(src_dir, '*.c')
+  # gcc_personality_v0.c depends on libunwind, which don't include by default.
+  src_files = glob_in_path(src_dir, '*.c', excludes=['gcc_personality_v0.c'])
   src_files += files_in_path(
       path_components=['system', 'lib', 'compiler-rt'],
       filenames=[
@@ -690,7 +691,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'faccessat.c',
         # 'process' exclusion
-        'fork.c', 'vfork.c', 'posix_spawn.c', 'execve.c', 'waitid.c', 'system.c'
+        'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c'
     ]
 
     ignore += LIBC_SOCKETS

@@ -10339,3 +10339,17 @@ exec "$@"
     # Test that ERROR_ON_UNDEFINED_SYMBOLS works with MAIN_MODULE.
     self.run_process([EMCC, '-sMAIN_MODULE', '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('hello_world.c')])
     self.run_js('a.out.js')
+
+  @parameterized({
+    'main_module': ('-sRELOCATABLE',),
+    'linkable': ('-sLINKABLE',),
+    'relocatable': ('-sMAIN_MODULE',),
+  })
+  def test_check_undefined(self, flag):
+    # positive case: no undefined symbols
+    self.run_process([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('hello_world.c')])
+    self.run_js('a.out.js')
+
+    # negative case: foo is undefined in test_check_undefined.c
+    err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other', 'test_check_undefined.c')])
+    self.assertContained('undefined symbol: foo', err)
