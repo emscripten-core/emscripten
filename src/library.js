@@ -3226,7 +3226,7 @@ LibraryManager.library = {
   },
 
   $readAsmConstArgsArray: '=[]',
-  $readAsmConstArgs__deps: ['$readAsmConstArgsArray', '$JsValStore'],
+  $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
 #if ASSERTIONS
     // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
@@ -3241,15 +3241,13 @@ LibraryManager.library = {
     buf >>= 2;
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
-      assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/ || ch === 106 /*'j'*/);
+      assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/);
 #endif
       // A double takes two 32-bit slots, and must also be aligned - the backend
       // will emit padding to avoid that.
       var double = ch < 105;
       if (double && (buf & 1)) buf++;
-      var arg = double ? HEAPF64[buf++ >> 1] : HEAP32[buf];
-      if (ch === 106) arg = JsValStore.get(arg);
-      readAsmConstArgsArray.push(arg);
+      readAsmConstArgsArray.push(double ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
       ++buf;
     }
     return readAsmConstArgsArray;
@@ -3268,32 +3266,30 @@ LibraryManager.library = {
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
-  emscripten_asm_const_js_val__sig: 'iiii',
-  emscripten_asm_const_js_val__deps: ['emscripten_asm_const_int', '$JsValStore'],
-  emscripten_asm_const_js_val: function(code, sigPtr, argbuf) {
-    return JsValStore.add(_emscripten_asm_const_int(code, sigPtr, argbuf));
-  },
 
   $JsValStore: {
-    values: [undefined],
-    free_ids: [],
+    values: {},
     next_id: 1,
 
     add: function(js_val) {
-      const id = JsValStore.free_ids.length ? JsValStore.free_ids.pop() : JsValStore.next_id++;
+      var id;
+      do {
+        id = JsValStore.next_id++;
+        if (JsValStore.next_id > 2147483647) JsValStore.next_id = 1; // Wraparound signed int32.
+      } while (id in JsValStore.values);
+
       JsValStore.values[id] = js_val;
       return id;
     },
     remove: function(id) {
 #if ASSERTIONS
-      assert(JsValStore.free_ids.indexOf(id) === -1);
+      assert(id in JsValStore.values);
 #endif
-      JsValStore.values[id] = undefined;
-      JsValStore.free_ids.push(id);
+      delete JsValStore.values[id];
     },
     get: function(id) {
 #if ASSERTIONS
-      assert(id === 0 || (id < JsValStore.next_id && JsValStore.free_ids.indexOf(id) === -1));
+      assert(id === 0 || id in JsValStore.values);
 #endif
       return JsValStore.values[id];
     },
@@ -3341,11 +3337,6 @@ LibraryManager.library = {
   emscripten_asm_const_async_on_main_thread__deps: ['$mainThreadEM_ASM'],
   emscripten_asm_const_async_on_main_thread: function(code, sigPtr, argbuf) {
     return mainThreadEM_ASM(code, sigPtr, argbuf, 0);
-  },
-  emscripten_asm_const_js_val_sync_on_main_thread__sig: 'iiii',
-  emscripten_asm_const_js_val_sync_on_main_thread__deps: ['emscripten_asm_const_int_sync_on_main_thread', '$JsValStore'],
-  emscripten_asm_const_js_val_sync_on_main_thread: function(code, sigPtr, argbuf) {
-    return JsValStore.add(_emscripten_asm_const_int_sync_on_main_thread(code, sigPtr, argbuf));
   },
 
 #if !DECLARE_ASM_MODULE_EXPORTS

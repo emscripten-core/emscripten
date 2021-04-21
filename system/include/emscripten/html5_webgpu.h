@@ -13,16 +13,41 @@
 extern "C" {
 #endif
 
-typedef struct WGPUDeviceImpl* WGPUDevice;
-typedef struct WGPUBufferImpl* WGPUBuffer;
-
 WGPUDevice emscripten_webgpu_get_device(void);
 
-WGPUDevice emscripten_webgpu_import_device(struct EmJsHandle*);
-struct EmJsHandle* emscripten_webgpu_export_device(WGPUDevice);
+#define WEBGPU_MAKE_IMPORT_EXPORT(snake_case, CamelCase)      \
+  WGPU##CamelCase emscripten_webgpu_import_##snake_case(int); \
+  int emscripten_webgpu_export_##snake_case(WGPU##CamelCase);
 
-WGPUBuffer emscripten_webgpu_import_buffer(struct EmJsHandle*);
-struct EmJsHandle* emscripten_webgpu_export_buffer(WGPUBuffer);
+WEBGPU_MAKE_IMPORT_EXPORT(surface, Surface)
+WEBGPU_MAKE_IMPORT_EXPORT(swap_chain, SwapChain)
+
+WEBGPU_MAKE_IMPORT_EXPORT(device, Device)
+WEBGPU_MAKE_IMPORT_EXPORT(queue, Queue)
+WEBGPU_MAKE_IMPORT_EXPORT(fence, Fence)
+
+WEBGPU_MAKE_IMPORT_EXPORT(command_buffer, CommandBuffer)
+WEBGPU_MAKE_IMPORT_EXPORT(command_encoder, CommandEncoder)
+WEBGPU_MAKE_IMPORT_EXPORT(render_passEncoder, RenderPassEncoder)
+WEBGPU_MAKE_IMPORT_EXPORT(compute_passEncoder, ComputePassEncoder)
+
+WEBGPU_MAKE_IMPORT_EXPORT(bind_group, BindGroup)
+WEBGPU_MAKE_IMPORT_EXPORT(buffer, Buffer)
+WEBGPU_MAKE_IMPORT_EXPORT(sampler, Sampler)
+WEBGPU_MAKE_IMPORT_EXPORT(texture, Texture)
+WEBGPU_MAKE_IMPORT_EXPORT(texture_view, TextureView)
+WEBGPU_MAKE_IMPORT_EXPORT(query_set, QuerySet)
+
+WEBGPU_MAKE_IMPORT_EXPORT(bind_group_layout, BindGroupLayout)
+WEBGPU_MAKE_IMPORT_EXPORT(pipeline_layout, PipelineLayout)
+WEBGPU_MAKE_IMPORT_EXPORT(render_pipeline, RenderPipeline)
+WEBGPU_MAKE_IMPORT_EXPORT(compute_pipeline, ComputePipeline)
+WEBGPU_MAKE_IMPORT_EXPORT(shader_module, ShaderModule)
+
+WEBGPU_MAKE_IMPORT_EXPORT(render_bundle_encoder, RenderBundleEncoder)
+WEBGPU_MAKE_IMPORT_EXPORT(render_bundle, RenderBundle)
+
+#undef WEBGPU_MAKE_IMPORT_EXPORT
 
 #ifdef __cplusplus
 } // ~extern "C"

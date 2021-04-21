@@ -10,7 +10,35 @@
 #include <emscripten.h>
 #include <emscripten/html5_webgpu.h>
 
-EM_JS(struct EmJsHandle*, init_js_device, (), {
+class EmJsHandle {
+public:
+  EmJsHandle() : mHandle(0) {}
+  EmJsHandle(int handle) : mHandle(handle) {}
+  ~EmJsHandle() {
+    if (mHandle != 0) {
+      emscripten_unwrap_js_handle(mHandle);
+    }
+  }
+
+  EmJsHandle(const EmJsHandle&) = delete;
+  EmJsHandle& operator=(const EmJsHandle&) = delete;
+
+  EmJsHandle(EmJsHandle&& rhs) : mHandle(rhs.mHandle) { rhs.mHandle = 0; }
+
+  EmJsHandle& operator=(EmJsHandle&& rhs) {
+    int tmp = rhs.mHandle;
+    rhs.mHandle = this->mHandle;
+    this->mHandle = tmp;
+    return *this;
+  }
+
+  int Get() { return mHandle; }
+
+private:
+  int mHandle;
+};
+
+EM_JS(int, init_js_device, (), {
   return Asyncify.handleAsync(async () => {
     const adapter = await navigator.gpu.requestAdapter();
     const device = await adapter.requestDevice();
@@ -19,9 +47,8 @@ EM_JS(struct EmJsHandle*, init_js_device, (), {
 });
 
 wgpu::Device init_device() {
-  struct EmJsHandle* deviceHandle = init_js_device();
-  wgpu::Device device = wgpu::Device::Acquire(emscripten_webgpu_import_device(deviceHandle));
-  emscripten_unwrap_js_handle(deviceHandle);
+  EmJsHandle deviceHandle = EmJsHandle(init_js_device());
+  wgpu::Device device = wgpu::Device::Acquire(emscripten_webgpu_import_device(deviceHandle.Get()));
   return device;
 }
 
@@ -33,43 +60,39 @@ int main() {
   desc.usage = wgpu::BufferUsage::MapWrite | wgpu::BufferUsage::CopySrc;
   wgpu::Buffer buffer = device.CreateBuffer(&desc);
 
-  struct EmJsHandle* bufferHandle = emscripten_webgpu_export_buffer(buffer.Get());
+  EmJsHandle bufferHandle = EmJsHandle(emscripten_webgpu_export_buffer(buffer.Get()));
   EM_ASM(
     {
-      const b = $0;
+      const b = JsValStore.get($0);
       b.mapAsync(GPUMapMode.WRITE).then(() => {
         console.log('Mapping length', b.getMappedRange().byteLength);
         b.unmap();
       });
-    }, bufferHandle);
+    }, bufferHandle.Get());
 
-  struct EmJsHandle* deviceHandle = emscripten_webgpu_export_device(device.Get());
-  struct EmJsHandle* textureHandle = EM_ASM_JS_VAL(
+  EmJsHandle deviceHandle = EmJsHandle(emscripten_webgpu_export_device(device.Get()));
+  EmJsHandle textureHandle = EmJsHandle(EM_ASM_INT(
     {
-      const device = $0;
+      const device = JsValStore.get($0);
       const t = device.createTexture({
         size : [ 16, 16 ],
         usage : GPUTextureUsage.COPY_DST,
         format : 'rgba8unorm',
       });
-      return t;
+      return JsValStore.add(t);
     },
-    deviceHandle);
+    deviceHandle.Get()));
 
-  struct EmJsHandle* canvasHandle = EM_ASM_JS_VAL({ return document.createElement('canvas'); });
+  EmJsHandle canvasHandle =
+    EmJsHandle(EM_ASM_INT({ return JsValStore.add(document.createElement('canvas')); }));
   EM_ASM(
     {
-      const device = $0;
-      const canvas = $1;
-      const texture = $2;
+      const device = JsValStore.get($0);
+      const canvas = JsValStore.get($1);
+      const texture = JsValStore.get($2);
       console.log('Copy', canvas, 'to', texture, 'with', device);
-    }, deviceHandle, canvasHandle, textureHandle);
-
-  // TODO: Make managed wrappers for these so C++ code doesn't need to manually free.
-  emscripten_unwrap_js_handle(bufferHandle);
-  emscripten_unwrap_js_handle(deviceHandle);
-  emscripten_unwrap_js_handle(canvasHandle);
-  emscripten_unwrap_js_handle(textureHandle);
+    },
+    deviceHandle.Get(), canvasHandle.Get(), textureHandle.Get());
 
 #ifdef REPORT_RESULT
   REPORT_RESULT(0);
