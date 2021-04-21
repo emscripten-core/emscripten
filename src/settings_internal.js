@@ -14,6 +14,18 @@
 // An array of all symbols exported from the wasm module.
 var MODULE_EXPORTS = [];
 
+// List of symbols exported from compiled code
+// These are raw symbol names and are not mangled to include the leading
+// underscore.
+// TODO(sbc): unify with MODULE_EXPORTS above.
+var WASM_EXPORTS = [];
+
+// An array of all symbols exported from all the side modules specified on the
+// command line.
+// These are raw symbol names and are not mangled to include the leading
+// underscore.
+var SIDE_MODULE_EXPORTS = [];
+
 // stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
 
@@ -61,9 +73,6 @@ var EMBIND = 0;
 
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = 1;
-
-// List of symbols exported from compiled code
-var WASM_EXPORTS = [];
 
 // Name of the file containing the Fetch *.fetch.js, if relevant
 var FETCH_WORKER_FILE = '';
@@ -193,5 +202,3 @@ var HEAP_BASE = 0;
 // Also set for STANDALONE_WASM since the _start function is needed to call
 // static ctors, even if there is no user main.
 var HAS_MAIN = 0;
-
-var SIDE_MODULE_EXPORTS = [];

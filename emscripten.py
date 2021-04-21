@@ -116,8 +116,7 @@ def update_settings_glue(metadata, DEBUG):
 
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += metadata['globalImports']
 
-  all_exports = metadata['exports'] + list(metadata['namedGlobals'].keys())
-  settings.WASM_EXPORTS = [asmjs_mangle(x) for x in all_exports]
+  settings.WASM_EXPORTS = metadata['exports'] + list(metadata['namedGlobals'].keys())
 
   # start with the MVP features, and add any detected features.
   settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata['features']
@@ -133,7 +132,7 @@ def update_settings_glue(metadata, DEBUG):
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = metadata['tableSize'] + 1
 
-  settings.HAS_MAIN = settings.MAIN_MODULE or settings.STANDALONE_WASM or '_main' in settings.WASM_EXPORTS
+  settings.HAS_MAIN = settings.MAIN_MODULE or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
@@ -193,7 +192,7 @@ def set_memory(static_bump):
 def report_missing_symbols(pre):
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
-  missing = set(settings.USER_EXPORTED_FUNCTIONS) - set(settings.WASM_EXPORTS)
+  missing = set(settings.USER_EXPORTED_FUNCTIONS) - set(asmjs_mangle(e) for e in settings.WASM_EXPORTS)
 
   for requested in sorted(missing):
     if (f'function {requested}(') not in pre:
@@ -211,7 +210,7 @@ def report_missing_symbols(pre):
     # maximum compatibility.
     return
 
-  if settings.EXPECT_MAIN and '_main' not in settings.WASM_EXPORTS:
+  if settings.EXPECT_MAIN and 'main' not in settings.WASM_EXPORTS:
     # For compatibility with the output of wasm-ld we use the same wording here in our
     # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
     exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
