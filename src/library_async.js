@@ -193,7 +193,7 @@ mergeInto(LibraryManager.library, {
         var reachedAfterCallback = false;
         startAsync(function(handleSleepReturnValue) {
 #if ASSERTIONS
-          assert(!handleSleepReturnValue || typeof handleSleepReturnValue === 'number'); // old emterpretify API supported other stuff
+          assert(!handleSleepReturnValue || typeof handleSleepReturnValue === 'number' || typeof handleSleepReturnValue === 'boolean'); // old emterpretify API supported other stuff
 #endif
           if (ABORT) return;
           Asyncify.handleSleepReturnValue = handleSleepReturnValue || 0;
