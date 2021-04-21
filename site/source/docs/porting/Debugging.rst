@@ -26,11 +26,11 @@ Debug information
 
 The *emcc* :ref:`-g flag <emcc-g>` can be used to preserve debug information in the compiled output. By default, this option includes Clang / LLVM debug information in a DWARF format in the generated WebAssembly code and preserves white-space, function names and variable names in the generated JavaScript code.
 
-The flag can also be specified with one of five levels: :ref:`-g0 <emcc-g0>`, :ref:`-g1 <emcc-g1>`, :ref:`-g2 <emcc-g2>`, :ref:`-g3 <emcc-g3>` (default level), and :ref:`-g4 <emcc-g4>`. Each level builds on the last to provide progressively more debug information in the compiled output. See :ref:`Compiler debug information flags <debugging-debug-information-g>` for more details.
+The flag can also be specified with an integer level: :ref:`-g0 <emcc-g0>`, :ref:`-g1 <emcc-g1>`, :ref:`-g2 <emcc-g2>`, and :ref:`-g3 <emcc-g3>` (default level when setting ``-g``). Each level builds on the last to provide progressively more debug information in the compiled output. See :ref:`Compiler debug information flags <emcc-gN>` for more details.
 
-The :ref:`-g4 <emcc-g4>` option provides the most debug information — it generates source maps that allow you to view and debug the *C/C++ source code* in your browser's debugger on Firefox, Chrome or Safari!
+The :ref:`-gsource-map <emcc-gsource-map>` option is similar to ``-g2`` but also generates source maps that allow you to view and debug the *C/C++ source code* in your browser's debugger. Source maps are not as powerful as DWARF which was mentioned earlier (they contain only source location info), but they are currently more widely supported.
 
-.. note:: Some optimizations may be disabled when used in conjunction with the debug flags. For example, if you compile with ``-O3 -g4`` some of the normal ``-O3`` optimizations will be disabled in order to provide the requested debugging information.
+.. note:: Some optimizations may be disabled when used in conjunction with the debug flags. For example, if you compile with ``-O3 -g`` some of the normal ``-O3`` optimizations will be disabled in order to provide the requested debugging information, such as name minification.
 
 .. _debugging-EMCC_DEBUG:
 

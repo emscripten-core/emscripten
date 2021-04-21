@@ -108,7 +108,7 @@ function ready() {
 #if MODULARIZE && EXPORT_READY_PROMISE
   readyPromiseResolve(Module);
 #endif // MODULARIZE
-#if INVOKE_RUN && hasExportedFunction('_main')
+#if INVOKE_RUN && HAS_MAIN
 #if USE_PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD) {
 #endif

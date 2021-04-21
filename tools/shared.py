@@ -7,7 +7,6 @@ from subprocess import PIPE
 import atexit
 import binascii
 import base64
-import difflib
 import json
 import logging
 import os
@@ -30,6 +29,7 @@ from . import cache, tempfiles, colored_logger
 from . import diagnostics
 from . import config
 from . import filelock
+from .settings import settings
 
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
@@ -326,10 +326,7 @@ def set_version_globals():
 
 def generate_sanity():
   sanity_file_content = EMSCRIPTEN_VERSION + '|' + config.LLVM_ROOT + '|' + get_clang_version()
-  if config.config_file:
-    config_data = open(config.config_file).read()
-  else:
-    config_data = config.EM_CONFIG
+  config_data = open(config.EM_CONFIG).read()
   checksum = binascii.crc32(config_data.encode())
   sanity_file_content += '|%#x\n' % checksum
   return sanity_file_content
@@ -355,7 +352,7 @@ def perform_sanity_checks():
     try:
       run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
     except Exception as e:
-      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.config_file_location(), str(e))
+      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG_CC, LLVM_AR, LLVM_NM]:
@@ -392,8 +389,6 @@ def check_sanity(force=False):
     return
 
   with ToolchainProfiler.profile_block('sanity'):
-    if not config.config_file:
-      return # config stored directly in EM_CONFIG => skip sanity checks
     expected = generate_sanity()
 
     sanity_file = Cache.get_path('sanity.txt')
@@ -461,7 +456,7 @@ def replace_suffix(filename, new_suffix):
 # Retain the original naming scheme in traditional runtime.
 def replace_or_append_suffix(filename, new_suffix):
   assert new_suffix[0] == '.'
-  return replace_suffix(filename, new_suffix) if Settings.MINIMAL_RUNTIME else filename + new_suffix
+  return replace_suffix(filename, new_suffix) if settings.MINIMAL_RUNTIME else filename + new_suffix
 
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use the canonical
@@ -502,7 +497,7 @@ class Configuration:
       try:
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
-        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.config_file_location())
+        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.EM_CONFIG)
 
       # Since the canonical temp directory is, by definition, the same
       # between all processes that run in DEBUG mode we need to use a multi
@@ -537,170 +532,23 @@ def apply_configuration():
   TEMP_DIR = configuration.TEMP_DIR
 
 
-# Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
-class SettingsManager:
-
-  class __impl:
-    attrs = {}
-    internal_settings = set()
-
-    def __init__(self):
-      self.reset()
-
-    @classmethod
-    def reset(cls):
-      cls.attrs = {}
-
-      # Load the JS defaults into python.
-      settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
-      settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
-      # Variable TARGET_NOT_SUPPORTED is referenced by value settings.js (also beyond declaring it),
-      # so must pass it there explicitly.
-      exec(settings, {'attrs': cls.attrs})
-
-      settings = open(path_from_root('src', 'settings_internal.js')).read().replace('//', '#')
-      settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
-      internal_attrs = {}
-      exec(settings, {'attrs': internal_attrs})
-      cls.attrs.update(internal_attrs)
-
-      if 'EMCC_STRICT' in os.environ:
-        cls.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
-
-      # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
-      # details
-      cls.legacy_settings = {}
-      cls.alt_names = {}
-      for legacy in cls.attrs['LEGACY_SETTINGS']:
-        if len(legacy) == 2:
-          name, new_name = legacy
-          cls.legacy_settings[name] = (None, 'setting renamed to ' + new_name)
-          cls.alt_names[name] = new_name
-          cls.alt_names[new_name] = name
-          default_value = cls.attrs[new_name]
-        else:
-          name, fixed_values, err = legacy
-          cls.legacy_settings[name] = (fixed_values, err)
-          default_value = fixed_values[0]
-        assert name not in cls.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
-        if not cls.attrs['STRICT']:
-          cls.attrs[name] = default_value
-
-      cls.internal_settings = set(internal_attrs.keys())
-
-    # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
-    # the reverse of load_settings, except for -Ox which is relevant there but not here
-    @classmethod
-    def serialize(cls):
-      ret = []
-      for key, value in cls.attrs.items():
-        if key == key.upper():  # this is a hack. all of our settings are ALL_CAPS, python internals are not
-          jsoned = json.dumps(value, sort_keys=True)
-          ret += ['-s', key + '=' + jsoned]
-      return ret
-
-    @classmethod
-    def to_dict(cls):
-      return cls.attrs.copy()
-
-    @classmethod
-    def copy(cls, values):
-      cls.attrs = values
-
-    @classmethod
-    def apply_opt_level(cls, opt_level, shrink_level=0, noisy=False):
-      if opt_level >= 1:
-        cls.attrs['ASSERTIONS'] = 0
-      if shrink_level >= 2:
-        cls.attrs['EVAL_CTORS'] = 1
-
-    def keys(self):
-      return self.attrs.keys()
-
-    def __getattr__(self, attr):
-      if attr in self.attrs:
-        return self.attrs[attr]
-      else:
-        raise AttributeError("Settings object has no attribute '%s'" % attr)
-
-    def __setattr__(self, attr, value):
-      if attr == 'STRICT' and value:
-        for a in self.legacy_settings:
-          self.attrs.pop(a, None)
-
-      if attr in self.legacy_settings:
-        # TODO(sbc): Rather then special case this we should have STRICT turn on the
-        # legacy-settings warning below
-        if self.attrs['STRICT']:
-          exit_with_error('legacy setting used in strict mode: %s', attr)
-        fixed_values, error_message = self.legacy_settings[attr]
-        if fixed_values and value not in fixed_values:
-          exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
-        diagnostics.warning('legacy-settings', 'use of legacy setting: %s (%s)', attr, error_message)
-
-      if attr in self.alt_names:
-        alt_name = self.alt_names[attr]
-        self.attrs[alt_name] = value
-
-      if attr not in self.attrs:
-        msg = "Attempt to set a non-existent setting: '%s'\n" % attr
-        suggestions = difflib.get_close_matches(attr, list(self.attrs.keys()))
-        suggestions = [s for s in suggestions if s not in self.legacy_settings]
-        suggestions = ', '.join(suggestions)
-        if suggestions:
-          msg += ' - did you mean one of %s?\n' % suggestions
-        msg += " - perhaps a typo in emcc's  -s X=Y  notation?\n"
-        msg += ' - (see src/settings.js for valid values)'
-        exit_with_error(msg)
-
-      self.attrs[attr] = value
-
-    @classmethod
-    def get(cls, key):
-      return cls.attrs.get(key)
-
-    @classmethod
-    def __getitem__(cls, key):
-      return cls.attrs[key]
-
-    @classmethod
-    def target_environment_may_be(self, environment):
-      return self.attrs['ENVIRONMENT'] == '' or environment in self.attrs['ENVIRONMENT'].split(',')
-
-  __instance = None
-
-  @staticmethod
-  def instance():
-    if SettingsManager.__instance is None:
-      SettingsManager.__instance = SettingsManager.__impl()
-    return SettingsManager.__instance
-
-  def __getattr__(self, attr):
-    return getattr(self.instance(), attr)
-
-  def __setattr__(self, attr, value):
-    return setattr(self.instance(), attr, value)
-
-  def get(self, key):
-    return self.instance().get(key)
-
-  def __getitem__(self, key):
-    return self.instance()[key]
+def target_environment_may_be(environment):
+  return settings.ENVIRONMENT == '' or environment in settings.ENVIRONMENT.split(',')
 
 
 def verify_settings():
-  if Settings.SAFE_HEAP not in [0, 1]:
+  if settings.SAFE_HEAP not in [0, 1]:
     exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
 
-  if not Settings.WASM:
+  if not settings.WASM:
     # When the user requests non-wasm output, we enable wasm2js. that is,
     # we still compile to wasm normally, but we compile the final output
     # to js.
-    Settings.WASM = 1
-    Settings.WASM2JS = 1
-  if Settings.WASM == 2:
+    settings.WASM = 1
+    settings.WASM2JS = 1
+  if settings.WASM == 2:
     # Requesting both Wasm and Wasm2JS support
-    Settings.WASM2JS = 1
+    settings.WASM2JS = 1
 
 
 def print_compiler_stage(cmd):
@@ -726,7 +574,7 @@ def is_c_symbol(name):
 def treat_as_user_function(name):
   if name.startswith('dynCall_'):
     return False
-  if name in Settings.WASM_SYSTEM_EXPORTS:
+  if name in settings.WASM_SYSTEM_EXPORTS:
     return False
   return True
 
@@ -770,7 +618,7 @@ class JS:
       js = f.read()
     # first, remove the license as there may be more than once
     processed_js = re.sub(JS.emscripten_license_regex, '', js)
-    if Settings.EMIT_EMSCRIPTEN_LICENSE:
+    if settings.EMIT_EMSCRIPTEN_LICENSE:
       processed_js = JS.emscripten_license + processed_js
     if processed_js != js:
       with open(js_target, 'w') as f:
@@ -790,7 +638,7 @@ class JS:
   @staticmethod
   def get_subresource_location(path, data_uri=None):
     if data_uri is None:
-      data_uri = Settings.SINGLE_FILE
+      data_uri = settings.SINGLE_FILE
     if data_uri:
       # if the path does not exist, then there is no data to encode
       if not os.path.exists(path):
@@ -804,7 +652,7 @@ class JS:
   @staticmethod
   def legalize_sig(sig):
     # with BigInt support all sigs are legal since we can use i64s.
-    if Settings.WASM_BIGINT:
+    if settings.WASM_BIGINT:
       return sig
     legal = [sig[0]]
     # a return of i64 is legalized into an i32 (and the high bits are
@@ -823,16 +671,16 @@ class JS:
   @staticmethod
   def is_legal_sig(sig):
     # with BigInt support all sigs are legal since we can use i64s.
-    if Settings.WASM_BIGINT:
+    if settings.WASM_BIGINT:
       return True
     return sig == JS.legalize_sig(sig)
 
   @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
-    if Settings.DYNCALLS or not JS.is_legal_sig(sig):
+    if settings.DYNCALLS or not JS.is_legal_sig(sig):
       args = ','.join(args)
-      if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
+      if not settings.MAIN_MODULE and not settings.SIDE_MODULE:
         # Optimize dynCall accesses in the case when not building with dynamic
         # linking enabled.
         return 'dynCall_%s(%s)' % (sig, args)
@@ -848,7 +696,7 @@ class JS:
     ret = 'return ' if sig[0] != 'v' else ''
     body = '%s%s;' % (ret, JS.make_dynCall(sig, args))
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
-    if Settings.SUPPORT_LONGJMP:
+    if settings.SUPPORT_LONGJMP:
       rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"
     else:
       rethrow = "if (e !== e+0) throw e;"
@@ -902,9 +750,13 @@ def safe_copy(src, dst):
 def read_and_preprocess(filename, expand_macros=False):
   temp_dir = get_emscripten_temp_dir()
   # Create a settings file with the current settings to pass to the JS preprocessor
-  # Note: Settings.serialize returns an array of -s options i.e. ['-s', '<setting1>', '-s', '<setting2>', ...]
-  #       we only want the actual settings, hence the [1::2] slice operation.
-  settings_str = "var " + ";\nvar ".join(Settings.serialize()[1::2])
+
+  settings_str = ''
+  for key, value in settings.dict().items():
+    assert key == key.upper()  # should only ever be uppercase keys in settings
+    jsoned = json.dumps(value, sort_keys=True)
+    settings_str += f'var {key} = {jsoned};\n'
+
   settings_file = os.path.join(temp_dir, 'settings.js')
   with open(settings_file, 'w') as f:
     f.write(settings_str)
@@ -974,7 +826,6 @@ FILE_PACKAGER = bat_suffix(path_from_root('tools', 'file_packager'))
 
 apply_configuration()
 
-Settings = SettingsManager()
 verify_settings()
 Cache = cache.Cache(config.CACHE)
 

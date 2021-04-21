@@ -92,8 +92,7 @@ class Benchmarker():
       squared_times = [x * x for x in self.times]
       mean_of_squared = sum(squared_times) / len(self.times)
       std = math.sqrt(mean_of_squared - mean * mean)
-      sorted_times = self.times[:]
-      sorted_times.sort()
+      sorted_times = sorted(self.times)
       count = len(sorted_times)
       if count % 2 == 0:
         median = sum(sorted_times[count // 2 - 1:count // 2 + 1]) / 2
@@ -128,7 +127,7 @@ class NativeBenchmarker(Benchmarker):
     self.name = name
     self.cc = cc
     self.cxx = cxx
-    self.args = args[:]
+    self.args = args.copy()
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.parent = parent
@@ -179,11 +178,11 @@ class EmscriptenBenchmarker(Benchmarker):
   def __init__(self, name, engine, extra_args=[], env={}, binaryen_opts=[]):
     self.name = name
     self.engine = engine
-    self.extra_args = extra_args[:]
+    self.extra_args = extra_args.copy()
     self.env = os.environ.copy()
     for k, v in env.items():
       self.env[k] = v
-    self.binaryen_opts = binaryen_opts[:]
+    self.binaryen_opts = binaryen_opts.copy()
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.filename = filename
@@ -289,8 +288,8 @@ class CheerpBenchmarker(Benchmarker):
   def __init__(self, name, engine, args=[OPTIMIZATIONS], binaryen_opts=[]):
     self.name = name
     self.engine = engine
-    self.args = args[:]
-    self.binaryen_opts = binaryen_opts[:]
+    self.args = args.copy()
+    self.binaryen_opts = binaryen_opts.copy()
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     cheerp_args = [

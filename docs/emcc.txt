@@ -145,7 +145,7 @@ Options that are modified or new in *emcc* are listed below:
    [compile+link] Preserve debug information.
 
    * When compiling to object files, this is the same as in *Clang*
-     and *gcc*, it adds debug information to the object files.
+     and *gcc*, it adds DWARF debug information to the object files.
 
    * When linking, this is equivalent to -g3.
 
@@ -161,6 +161,11 @@ Options that are modified or new in *emcc* are listed below:
    customize that location (this is useful if you want to host it on a
    different server, for example).
 
+"-gsource-map"
+   When linking, generate a source map using LLVM debug information
+   (which must be present in object files, i.e., they should have been
+   compiled with "-g").
+
 "-g<level>"
    [compile+link] Controls the level of debuggability. Each level
    builds on the previous one:
@@ -173,19 +178,7 @@ Options that are modified or new in *emcc* are listed below:
 
       * "-g3": When compiling to object files, keep debug info,
         including JS whitespace, function names, and LLVM debug info
-        if any (this is the same as -g).
-
-      * "-g4": When linking, generate a source map using LLVM debug
-        information (which must be present in object files, i.e., they
-        should have been compiled with "-g").
-
-        Note:
-
-          * Source maps allow you to view and debug the *C/C++ source
-            code* in your browser's debugger!
-
-          * This debugging level may make compilation significantly
-            slower (this is why we only do it on "-g4").
+        (DWARF) if any (this is the same as -g).
 
 "--profiling"
    [same as -g2 if passed at compile time, otherwise applies at link]
