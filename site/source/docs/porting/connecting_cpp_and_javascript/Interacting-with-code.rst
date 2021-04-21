@@ -159,7 +159,7 @@ parameters to pass to the function:
      we did in this tutorial, then because of optimizations
      and minification you should export ccall from the runtime, using
      ``EXPORTED_RUNTIME_METHODS``, for example using
-     ``-s 'EXPORTED_RUNTIME_METHODS=["ccall","cwrap"]'``,
+     ``-s EXPORTED_RUNTIME_METHODS=ccall,cwrap``,
      and call it on ``Module`` (which contains
      everything exported, in a safe way that is not influenced by minification
      or optimizations).
@@ -190,7 +190,7 @@ Compile the library with emcc:
 
 .. code:: bash
 
-    emcc api_example.c -o api_example.js -s MODULARIZE -s EXPORTED_RUNTIME_METHODS=['ccall']
+    emcc api_example.c -o api_example.js -s MODULARIZE -s EXPORTED_RUNTIME_METHODS=ccall
 
 Require the library and call its procedures from node:
 

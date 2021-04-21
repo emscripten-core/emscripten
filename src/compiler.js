@@ -66,7 +66,8 @@ if (settingsFile) {
 
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
 EXCEPTION_CATCHING_ALLOWED = set(EXCEPTION_CATCHING_ALLOWED);
-IMPLEMENTED_FUNCTIONS = set(IMPLEMENTED_FUNCTIONS);
+WASM_EXPORTS = set(WASM_EXPORTS);
+SIDE_MODULE_EXPORTS = set(SIDE_MODULE_EXPORTS);
 INCOMING_MODULE_JS_API = set(INCOMING_MODULE_JS_API);
 
 RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
@@ -98,7 +99,7 @@ try {
 
   B.print('glue');
 } catch(err) {
-  if (err.toString().indexOf('Aborting compilation due to previous errors') != -1) {
+  if (err.toString().includes('Aborting compilation due to previous errors')) {
     // Compiler failed on user error, don't print the stacktrace in this case.
     printErr(err);
   } else {

@@ -6,7 +6,10 @@
 import os
 import re
 
-from tools.shared import Settings, path_from_root, unsuffixed, config, check_call, exit_with_error
+from tools.shared import unsuffixed, check_call
+from tools.settings import settings
+from tools.utils import path_from_root, exit_with_error
+from tools import config
 
 
 # map an emscripten-style signature letter to a wasm2c C type
@@ -74,7 +77,7 @@ def get_func_types(code):
 
 
 def do_wasm2c(infile):
-  assert Settings.STANDALONE_WASM
+  assert settings.STANDALONE_WASM
   WASM2C = config.NODE_JS + [path_from_root('node_modules', 'wasm2c', 'wasm2c.js')]
   WASM2C_DIR = path_from_root('node_modules', 'wasm2c')
   c_file = unsuffixed(infile) + '.wasm.c'
@@ -111,9 +114,9 @@ def do_wasm2c(infile):
   total = bundle_file(total, os.path.join(WASM2C_DIR, 'wasm-rt-impl.c'))
   # add the support code
   support_files = ['base']
-  if Settings.AUTODEBUG:
+  if settings.AUTODEBUG:
     support_files.append('autodebug')
-  if Settings.EXPECT_MAIN:
+  if settings.EXPECT_MAIN:
     # TODO: add an option for direct OS access. For now, do that when building
     #       an executable with main, as opposed to a library
     support_files.append('os')
@@ -190,17 +193,17 @@ IMPORT_IMPL(%(return_type)s, Z_envZ_invoke_%(sig)sZ_%(wabt_sig)s, (%(full_typed_
   # adjust sandboxing
   TRAP_OOB = 'TRAP(OOB)'
   assert total.count(TRAP_OOB) == 2
-  if Settings.WASM2C_SANDBOXING == 'full':
+  if settings.WASM2C_SANDBOXING == 'full':
     pass # keep it
-  elif Settings.WASM2C_SANDBOXING == 'none':
+  elif settings.WASM2C_SANDBOXING == 'none':
     total = total.replace(TRAP_OOB, '{}')
-  elif Settings.WASM2C_SANDBOXING == 'mask':
-    assert not Settings.ALLOW_MEMORY_GROWTH
-    assert (Settings.INITIAL_MEMORY & (Settings.INITIAL_MEMORY - 1)) == 0, 'poewr of 2'
+  elif settings.WASM2C_SANDBOXING == 'mask':
+    assert not settings.ALLOW_MEMORY_GROWTH
+    assert (settings.INITIAL_MEMORY & (settings.INITIAL_MEMORY - 1)) == 0, 'poewr of 2'
     total = total.replace(TRAP_OOB, '{}')
     MEM_ACCESS = '[addr]'
     assert total.count(MEM_ACCESS) == 3, '2 from wasm2c, 1 from runtime'
-    total = total.replace(MEM_ACCESS, '[addr & %d]' % (Settings.INITIAL_MEMORY - 1))
+    total = total.replace(MEM_ACCESS, '[addr & %d]' % (settings.INITIAL_MEMORY - 1))
   else:
     exit_with_error('bad sandboxing')
 

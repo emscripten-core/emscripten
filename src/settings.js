@@ -16,9 +16,8 @@
 //
 // See https://github.com/emscripten-core/emscripten/wiki/Code-Generation-Modes/
 //
-// Note that the values here are the defaults in -O0, that is, unoptimized
-// mode. See apply_opt_level in tools/shared.py for how -O1,2,3 affect these
-// flags.
+// Note that the values here are the defaults which can be affected either
+// directly via `-s` flags or indirectly via other options (e.g. -O1,2,3)
 //
 // These flags should only have an effect when compiling to JS, so there
 // should not be a need to have them when just compiling source to
@@ -799,10 +798,7 @@ var ASYNCIFY_DEBUG = 0;
 // [link]
 var EXPORTED_RUNTIME_METHODS = [];
 
-// Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
-// lets you remove methods that would be exported by default; setting values in
-// this list lets you add to the default list without modifying it.
-// [link]
+// Deprecated, use EXPORTED_RUNTIME_METHODS instead.
 var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
 // A list of incoming values on the Module object in JS that we care about. If

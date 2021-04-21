@@ -326,11 +326,11 @@ FS.staticInit();` +
         return 0;
       }
       // return 0 if any user, group or owner bits are set.
-      if (perms.indexOf('r') !== -1 && !(node.mode & {{{ cDefine('S_IRUGO') }}})) {
+      if (perms.includes('r') && !(node.mode & {{{ cDefine('S_IRUGO') }}})) {
         return {{{ cDefine('EACCES') }}};
-      } else if (perms.indexOf('w') !== -1 && !(node.mode & {{{ cDefine('S_IWUGO') }}})) {
+      } else if (perms.includes('w') && !(node.mode & {{{ cDefine('S_IWUGO') }}})) {
         return {{{ cDefine('EACCES') }}};
-      } else if (perms.indexOf('x') !== -1 && !(node.mode & {{{ cDefine('S_IXUGO') }}})) {
+      } else if (perms.includes('x') && !(node.mode & {{{ cDefine('S_IXUGO') }}})) {
         return {{{ cDefine('EACCES') }}};
       }
       return 0;
@@ -616,7 +616,7 @@ FS.staticInit();` +
         while (current) {
           var next = current.name_next;
 
-          if (mounts.indexOf(current.mount) !== -1) {
+          if (mounts.includes(current.mount)) {
             FS.destroyNode(current);
           }
 

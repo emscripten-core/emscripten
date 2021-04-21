@@ -131,7 +131,7 @@ var LibraryJSEvents = {
     eventHandlers: [],
 
 #if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
-    isInternetExplorer: function() { return navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0; },
+    isInternetExplorer: function() { return navigator.userAgent.includes('MSIE') || navigator.appVersion.indexOf('Trident/') > 0; },
 #endif
 
     // Removes all event handlers on the given DOM element of the given type. Pass in eventTypeString == undefined/null to remove all event handlers regardless of the type.

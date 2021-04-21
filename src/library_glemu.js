@@ -483,20 +483,20 @@ var LibraryGLEmulation = {
               source = 'uniform mat4 u_textureMatrix' + i + '; \n' + source;
             }
           }
-          if (source.indexOf('gl_FrontColor') >= 0) {
+          if (source.includes('gl_FrontColor')) {
             source = 'varying vec4 v_color; \n' +
                      source.replace(/gl_FrontColor/g, 'v_color');
           }
-          if (source.indexOf('gl_Color') >= 0) {
+          if (source.includes('gl_Color')) {
             source = 'attribute vec4 a_color; \n' +
                      source.replace(/gl_Color/g, 'a_color');
           }
-          if (source.indexOf('gl_Normal') >= 0) {
+          if (source.includes('gl_Normal')) {
             source = 'attribute vec3 a_normal; \n' +
                      source.replace(/gl_Normal/g, 'a_normal');
           }
           // fog
-          if (source.indexOf('gl_FogFragCoord') >= 0) {
+          if (source.includes('gl_FogFragCoord')) {
             source = 'varying float v_fogFragCoord;   \n' +
                      source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
           }
@@ -508,26 +508,26 @@ var LibraryGLEmulation = {
               source = 'varying vec4 v_texCoord' + i + ';   \n' + source;
             }
           }
-          if (source.indexOf('gl_Color') >= 0) {
+          if (source.includes('gl_Color')) {
             source = 'varying vec4 v_color; \n' + source.replace(/gl_Color/g, 'v_color');
           }
-          if (source.indexOf('gl_Fog.color') >= 0) {
+          if (source.includes('gl_Fog.color')) {
             source = 'uniform vec4 u_fogColor;   \n' +
                      source.replace(/gl_Fog.color/g, 'u_fogColor');
           }
-          if (source.indexOf('gl_Fog.end') >= 0) {
+          if (source.includes('gl_Fog.end')) {
             source = 'uniform float u_fogEnd;   \n' +
                      source.replace(/gl_Fog.end/g, 'u_fogEnd');
           }
-          if (source.indexOf('gl_Fog.scale') >= 0) {
+          if (source.includes('gl_Fog.scale')) {
             source = 'uniform float u_fogScale;   \n' +
                      source.replace(/gl_Fog.scale/g, 'u_fogScale');
           }
-          if (source.indexOf('gl_Fog.density') >= 0) {
+          if (source.includes('gl_Fog.density')) {
             source = 'uniform float u_fogDensity;   \n' +
                      source.replace(/gl_Fog.density/g, 'u_fogDensity');
           }
-          if (source.indexOf('gl_FogFragCoord') >= 0) {
+          if (source.includes('gl_FogFragCoord')) {
             source = 'varying float v_fogFragCoord;   \n' +
                      source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
           }
