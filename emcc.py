@@ -640,7 +640,7 @@ def process_dynamic_libs(dylibs):
 
     exports = webassembly.get_exports(dylib)
     for export in exports:
-      settings.SIDE_MODULE_EXPORTS.append(shared.asmjs_mangle(export.name))
+      settings.SIDE_MODULE_EXPORTS.append(export.name)
 
 
 def unmangle_symbols_from_cmdline(symbols):
