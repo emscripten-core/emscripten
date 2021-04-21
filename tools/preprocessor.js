@@ -48,7 +48,7 @@ load = function(f) {
 
 var settings_file = arguments_[0];
 var shell_file = arguments_[1];
-var process_macros = arguments_.indexOf('--expandMacros') >= 0;
+var process_macros = arguments_.includes('--expandMacros');
 
 load(settings_file)
 load('utility.js');
