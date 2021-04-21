@@ -748,18 +748,18 @@ class TestCoreBase(RunnerCore):
       }
     ''')
 
-    building.emcc('a1.c', ['-c'])
-    building.emcc('a2.c', ['-c'])
-    building.emcc('b1.c', ['-c'])
-    building.emcc('b2.c', ['-c'])
-    building.emcc('main.c', ['-c'])
+    self.emcc('a1.c', ['-c'])
+    self.emcc('a2.c', ['-c'])
+    self.emcc('b1.c', ['-c'])
+    self.emcc('b2.c', ['-c'])
+    self.emcc('main.c', ['-c'])
 
     building.emar('cr', 'liba.a', ['a1.c.o', 'a2.c.o'])
     building.emar('cr', 'libb.a', ['b1.c.o', 'b2.c.o'])
 
     building.link_to_object(['main.c.o', 'liba.a', 'libb.a'], 'all.o')
 
-    building.emcc('all.o', self.get_emcc_args(), 'all.js')
+    self.emcc('all.o', self.get_emcc_args(), 'all.js')
     self.do_run('all.js', 'result: 1', no_build=True)
 
   def test_if(self):
@@ -3891,7 +3891,6 @@ ok
 
   @needs_dylink
   def test_dylink_i64(self):
-    # Runs with main_module=1 due to undefined getTempRet0 otherwise
     self.dylink_test(r'''
       #include <stdio.h>
       #include <stdint.h>
@@ -3905,12 +3904,11 @@ ok
       int64_t sidey() {
         return 42;
       }
-    ''', 'other says 42.', force_c=True, main_module=1)
+    ''', 'other says 42.', force_c=True)
 
   @all_engines
   @needs_dylink
   def test_dylink_i64_b(self):
-    # Runs with main_module=1 due to undefined getTempRet0 otherwise
     self.dylink_test(r'''
       #include <stdio.h>
       #include <stdint.h>
@@ -3940,12 +3938,11 @@ ok
         x = 18 - x;
         return x;
       }
-    ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.', force_c=True, main_module=1)
+    ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.', force_c=True)
 
   @needs_dylink
   @also_with_wasm_bigint
   def test_dylink_i64_c(self):
-    # Runs with main_module=1 due to undefined getTempRet0 otherwise
     self.dylink_test(r'''
       #include <stdio.h>
       #include <inttypes.h>
@@ -3993,7 +3990,7 @@ res64 - external 64\n''', header='''
       #include <stdint.h>
       EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
-    ''', force_c=True, main_module=1)
+    ''', force_c=True)
 
   @needs_dylink
   @also_with_wasm_bigint
@@ -7059,7 +7056,7 @@ someweirdtext
     no_maps_filename = 'no-maps.out.js'
 
     assert '-gsource-map' not in self.emcc_args
-    building.emcc('src.cpp', self.get_emcc_args(), out_filename)
+    self.emcc('src.cpp', self.get_emcc_args(), out_filename)
     # the file name may find its way into the generated code, so make sure we
     # can do an apples-to-apples comparison by compiling with the same file name
     shutil.move(out_filename, no_maps_filename)
@@ -7068,10 +7065,10 @@ someweirdtext
     no_maps_file = re.sub(' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
     self.emcc_args.append('-gsource-map')
 
-    building.emcc(os.path.abspath('src.cpp'),
-                  self.get_emcc_args(),
-                  out_filename,
-                  stderr=PIPE)
+    self.emcc(os.path.abspath('src.cpp'),
+              self.get_emcc_args(),
+              out_filename,
+              stderr=PIPE)
     map_referent = out_filename if not self.is_wasm() else wasm_filename
     # after removing the @line and @sourceMappingURL comments, the build
     # result should be identical to the non-source-mapped debug version.
@@ -7147,7 +7144,7 @@ someweirdtext
     js_filename = 'a.out.js'
     wasm_filename = 'a.out.wasm'
 
-    building.emcc('src.cpp', self.get_emcc_args(), js_filename)
+    self.emcc('src.cpp', self.get_emcc_args(), js_filename)
 
     out = self.run_process([shared.LLVM_DWARFDUMP, wasm_filename, '-all'], stdout=PIPE).stdout
 
