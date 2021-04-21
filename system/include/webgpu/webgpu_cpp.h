@@ -155,19 +155,6 @@ namespace wgpu {
         OpenGLES = 0x00000006,
     };
 
-    enum class BindingType : uint32_t {
-        Undefined = 0x00000000,
-        UniformBuffer = 0x00000001,
-        StorageBuffer = 0x00000002,
-        ReadonlyStorageBuffer = 0x00000003,
-        Sampler = 0x00000004,
-        ComparisonSampler = 0x00000005,
-        SampledTexture = 0x00000006,
-        MultisampledTexture = 0x00000007,
-        ReadonlyStorageTexture = 0x00000008,
-        WriteonlyStorageTexture = 0x00000009,
-    };
-
     enum class BlendFactor : uint32_t {
         Zero = 0x00000000,
         One = 0x00000001,
@@ -182,12 +169,6 @@ namespace wgpu {
         SrcAlphaSaturated = 0x0000000A,
         Constant = 0x0000000B,
         OneMinusConstant = 0x0000000C,
-        SrcColor = 0x00000066,
-        OneMinusSrcColor = 0x00000067,
-        DstColor = 0x0000006A,
-        OneMinusDstColor = 0x0000006B,
-        BlendColor = 0x0000006F,
-        OneMinusBlendColor = 0x00000070,
     };
 
     enum class BlendOperation : uint32_t {
@@ -252,13 +233,6 @@ namespace wgpu {
         OutOfMemory = 0x00000002,
         Unknown = 0x00000003,
         DeviceLost = 0x00000004,
-    };
-
-    enum class FenceCompletionStatus : uint32_t {
-        Success = 0x00000000,
-        Error = 0x00000001,
-        Unknown = 0x00000002,
-        DeviceLost = 0x00000003,
     };
 
     enum class FilterMode : uint32_t {
@@ -366,8 +340,6 @@ namespace wgpu {
         All = 0x00000000,
         StencilOnly = 0x00000001,
         DepthOnly = 0x00000002,
-        Plane0Only = 0x00000003,
-        Plane1Only = 0x00000004,
     };
 
     enum class TextureComponentType : uint32_t {
@@ -439,7 +411,6 @@ namespace wgpu {
         BC6HRGBFloat = 0x00000034,
         BC7RGBAUnorm = 0x00000035,
         BC7RGBAUnormSrgb = 0x00000036,
-        R8BG8Biplanar420Unorm = 0x00000037,
     };
 
     enum class TextureSampleType : uint32_t {
@@ -493,36 +464,6 @@ namespace wgpu {
         Sint32x2 = 0x0000001C,
         Sint32x3 = 0x0000001D,
         Sint32x4 = 0x0000001E,
-        UChar2 = 0x00000065,
-        UChar4 = 0x00000066,
-        Char2 = 0x00000067,
-        Char4 = 0x00000068,
-        UChar2Norm = 0x00000069,
-        UChar4Norm = 0x0000006A,
-        Char2Norm = 0x0000006B,
-        Char4Norm = 0x0000006C,
-        UShort2 = 0x0000006D,
-        UShort4 = 0x0000006E,
-        Short2 = 0x0000006F,
-        Short4 = 0x00000070,
-        UShort2Norm = 0x00000071,
-        UShort4Norm = 0x00000072,
-        Short2Norm = 0x00000073,
-        Short4Norm = 0x00000074,
-        Half2 = 0x00000075,
-        Half4 = 0x00000076,
-        Float = 0x00000077,
-        Float2 = 0x00000078,
-        Float3 = 0x00000079,
-        Float4 = 0x0000007A,
-        UInt = 0x0000007B,
-        UInt2 = 0x0000007C,
-        UInt3 = 0x0000007D,
-        UInt4 = 0x0000007E,
-        Int = 0x0000007F,
-        Int2 = 0x00000080,
-        Int3 = 0x00000081,
-        Int4 = 0x00000082,
     };
 
 
@@ -570,7 +511,6 @@ namespace wgpu {
         Storage = 0x00000008,
         OutputAttachment = 0x00000010,
         RenderAttachment = 0x00000010,
-        Present = 0x00000020,
     };
 
 
@@ -606,7 +546,6 @@ namespace wgpu {
     using CreateRenderPipelineAsyncCallback = WGPUCreateRenderPipelineAsyncCallback;
     using DeviceLostCallback = WGPUDeviceLostCallback;
     using ErrorCallback = WGPUErrorCallback;
-    using FenceOnCompletionCallback = WGPUFenceOnCompletionCallback;
     using QueueWorkDoneCallback = WGPUQueueWorkDoneCallback;
 
     class BindGroup;
@@ -617,8 +556,6 @@ namespace wgpu {
     class ComputePassEncoder;
     class ComputePipeline;
     class Device;
-    class ExternalTexture;
-    class Fence;
     class Instance;
     class PipelineLayout;
     class QuerySet;
@@ -643,11 +580,7 @@ namespace wgpu {
     struct CommandBufferDescriptor;
     struct CommandEncoderDescriptor;
     struct ComputePassDescriptor;
-    struct CopyTextureForBrowserOptions;
-    struct DeviceProperties;
     struct Extent3D;
-    struct ExternalTextureDescriptor;
-    struct FenceDescriptor;
     struct InstanceDescriptor;
     struct MultisampleState;
     struct Origin3D;
@@ -695,41 +628,7 @@ namespace wgpu {
     struct VertexState;
     struct VertexStateDescriptor;
     struct FragmentState;
-    struct RenderPipelineDescriptor;
     struct RenderPipelineDescriptor2;
-
-    // BlendDescriptor is deprecated.
-    // Use BlendComponent instead.
-    using BlendDescriptor = BlendComponent;
-
-    // BufferCopyView is deprecated.
-    // Use ImageCopyBuffer instead.
-    using BufferCopyView = ImageCopyBuffer;
-
-    // RenderPassColorAttachmentDescriptor is deprecated.
-    // Use RenderPassColorAttachment instead.
-    using RenderPassColorAttachmentDescriptor = RenderPassColorAttachment;
-
-    // RenderPassDepthStencilAttachmentDescriptor is deprecated.
-    // Use RenderPassDepthStencilAttachment instead.
-    using RenderPassDepthStencilAttachmentDescriptor = RenderPassDepthStencilAttachment;
-
-    // StencilStateFaceDescriptor is deprecated.
-    // Use StencilFaceState instead.
-    using StencilStateFaceDescriptor = StencilFaceState;
-
-    // TextureCopyView is deprecated.
-    // Use ImageCopyTexture instead.
-    using TextureCopyView = ImageCopyTexture;
-
-    // VertexAttributeDescriptor is deprecated.
-    // Use VertexAttribute instead.
-    using VertexAttributeDescriptor = VertexAttribute;
-
-    // VertexBufferLayoutDescriptor is deprecated.
-    // Use VertexBufferLayout instead.
-    using VertexBufferLayoutDescriptor = VertexBufferLayout;
-
 
     template<typename Derived, typename CType>
     class ObjectBase {
@@ -930,18 +829,15 @@ namespace wgpu {
         CommandEncoder CreateCommandEncoder(CommandEncoderDescriptor const * descriptor = nullptr) const;
         ComputePipeline CreateComputePipeline(ComputePipelineDescriptor const * descriptor) const;
         void CreateComputePipelineAsync(ComputePipelineDescriptor const * descriptor, CreateComputePipelineAsyncCallback callback, void * userdata) const;
-        ExternalTexture CreateExternalTexture(ExternalTextureDescriptor const * externalTextureDescriptor) const;
         PipelineLayout CreatePipelineLayout(PipelineLayoutDescriptor const * descriptor) const;
         QuerySet CreateQuerySet(QuerySetDescriptor const * descriptor) const;
         RenderBundleEncoder CreateRenderBundleEncoder(RenderBundleEncoderDescriptor const * descriptor) const;
-        RenderPipeline CreateRenderPipeline(RenderPipelineDescriptor const * descriptor) const;
         RenderPipeline CreateRenderPipeline2(RenderPipelineDescriptor2 const * descriptor) const;
         void CreateRenderPipelineAsync(RenderPipelineDescriptor2 const * descriptor, CreateRenderPipelineAsyncCallback callback, void * userdata) const;
         Sampler CreateSampler(SamplerDescriptor const * descriptor = nullptr) const;
         ShaderModule CreateShaderModule(ShaderModuleDescriptor const * descriptor) const;
         SwapChain CreateSwapChain(Surface const& surface, SwapChainDescriptor const * descriptor) const;
         Texture CreateTexture(TextureDescriptor const * descriptor) const;
-        Queue GetDefaultQueue() const;
         Queue GetQueue() const;
         bool PopErrorScope(ErrorCallback callback, void * userdata) const;
         void PushErrorScope(ErrorFilter filter) const;
@@ -952,33 +848,6 @@ namespace wgpu {
         friend ObjectBase<Device, WGPUDevice>;
         static void WGPUReference(WGPUDevice handle);
         static void WGPURelease(WGPUDevice handle);
-    };
-
-    class ExternalTexture : public ObjectBase<ExternalTexture, WGPUExternalTexture> {
-      public:
-        using ObjectBase::ObjectBase;
-        using ObjectBase::operator=;
-
-        void Destroy() const;
-
-      private:
-        friend ObjectBase<ExternalTexture, WGPUExternalTexture>;
-        static void WGPUReference(WGPUExternalTexture handle);
-        static void WGPURelease(WGPUExternalTexture handle);
-    };
-
-    class Fence : public ObjectBase<Fence, WGPUFence> {
-      public:
-        using ObjectBase::ObjectBase;
-        using ObjectBase::operator=;
-
-        uint64_t GetCompletedValue() const;
-        void OnCompletion(uint64_t value, FenceOnCompletionCallback callback, void * userdata) const;
-
-      private:
-        friend ObjectBase<Fence, WGPUFence>;
-        static void WGPUReference(WGPUFence handle);
-        static void WGPURelease(WGPUFence handle);
     };
 
     class Instance : public ObjectBase<Instance, WGPUInstance> {
@@ -1024,10 +893,7 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
-        void CopyTextureForBrowser(ImageCopyTexture const * source, ImageCopyTexture const * destination, Extent3D const * copySize, CopyTextureForBrowserOptions const * options) const;
-        Fence CreateFence(FenceDescriptor const * descriptor = nullptr) const;
         void OnSubmittedWorkDone(uint64_t signalValue, QueueWorkDoneCallback callback, void * userdata) const;
-        void Signal(Fence const& fence, uint64_t signalValue) const;
         void Submit(uint32_t commandCount, CommandBuffer const * commands) const;
         void WriteBuffer(Buffer const& buffer, uint64_t bufferOffset, void const * data, size_t size) const;
         void WriteTexture(ImageCopyTexture const * destination, void const * data, size_t dataSize, TextureDataLayout const * dataLayout, Extent3D const * writeSize) const;
@@ -1270,37 +1136,10 @@ namespace wgpu {
         char const * label = nullptr;
     };
 
-    struct CopyTextureForBrowserOptions {
-        ChainedStruct const * nextInChain = nullptr;
-        bool flipY = false;
-    };
-
-    struct DeviceProperties {
-        bool textureCompressionBC = false;
-        bool shaderFloat16 = false;
-        bool pipelineStatisticsQuery = false;
-        bool timestampQuery = false;
-        bool multiPlanarFormats = false;
-        bool depthClamping = false;
-    };
-
     struct Extent3D {
         uint32_t width;
         uint32_t height = 1;
         uint32_t depthOrArrayLayers = 1;
-        uint32_t depth = 1;
-    };
-
-    struct ExternalTextureDescriptor {
-        ChainedStruct const * nextInChain = nullptr;
-        TextureView plane0;
-        TextureFormat format;
-    };
-
-    struct FenceDescriptor {
-        ChainedStruct const * nextInChain = nullptr;
-        char const * label = nullptr;
-        uint64_t initialValue = 0;
     };
 
     struct InstanceDescriptor {
@@ -1390,7 +1229,6 @@ namespace wgpu {
         StoreOp stencilStoreOp;
         uint32_t clearStencil = 0;
         bool stencilReadOnly = false;
-        TextureView attachment = nullptr;
     };
 
     struct SamplerBindingLayout {
@@ -1536,12 +1374,6 @@ namespace wgpu {
         ChainedStruct const * nextInChain = nullptr;
         uint32_t binding;
         ShaderStage visibility;
-        BindingType type = BindingType::Undefined;
-        bool hasDynamicOffset = false;
-        uint64_t minBufferBindingSize = 0;
-        TextureViewDimension viewDimension = TextureViewDimension::Undefined;
-        TextureComponentType textureComponentType = TextureComponentType::Float;
-        TextureFormat storageTextureFormat = TextureFormat::Undefined;
         BufferBindingLayout buffer;
         SamplerBindingLayout sampler;
         TextureBindingLayout texture;
@@ -1613,7 +1445,6 @@ namespace wgpu {
         LoadOp loadOp;
         StoreOp storeOp;
         Color clearColor;
-        TextureView attachment = nullptr;
     };
 
     struct TextureDescriptor {
@@ -1678,23 +1509,6 @@ namespace wgpu {
         char const * entryPoint;
         uint32_t targetCount;
         ColorTargetState const * targets;
-    };
-
-    struct RenderPipelineDescriptor {
-        ChainedStruct const * nextInChain = nullptr;
-        char const * label = nullptr;
-        PipelineLayout layout = nullptr;
-        ProgrammableStageDescriptor vertexStage;
-        ProgrammableStageDescriptor const * fragmentStage = nullptr;
-        VertexStateDescriptor const * vertexState = nullptr;
-        PrimitiveTopology primitiveTopology;
-        RasterizationStateDescriptor const * rasterizationState = nullptr;
-        uint32_t sampleCount = 1;
-        DepthStencilStateDescriptor const * depthStencilState = nullptr;
-        uint32_t colorStateCount;
-        ColorStateDescriptor const * colorStates;
-        uint32_t sampleMask = 0xFFFFFFFF;
-        bool alphaToCoverageEnabled = false;
     };
 
     struct RenderPipelineDescriptor2 {

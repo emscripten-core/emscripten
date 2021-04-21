@@ -1438,33 +1438,10 @@
                 "nextInChain",
                 "label"
             ],
-            "WGPUCopyTextureForBrowserOptions": [
-                "nextInChain",
-                "flipY"
-            ],
-            "WGPUDeviceProperties": [
-                "textureCompressionBC",
-                "shaderFloat16",
-                "pipelineStatisticsQuery",
-                "timestampQuery",
-                "multiPlanarFormats",
-                "depthClamping"
-            ],
             "WGPUExtent3D": [
                 "width",
                 "height",
-                "depthOrArrayLayers",
-                "depth"
-            ],
-            "WGPUExternalTextureDescriptor": [
-                "nextInChain",
-                "plane0",
-                "format"
-            ],
-            "WGPUFenceDescriptor": [
-                "nextInChain",
-                "label",
-                "initialValue"
+                "depthOrArrayLayers"
             ],
             "WGPUInstanceDescriptor": [
                 "nextInChain"
@@ -1539,8 +1516,7 @@
                 "stencilLoadOp",
                 "stencilStoreOp",
                 "clearStencil",
-                "stencilReadOnly",
-                "attachment"
+                "stencilReadOnly"
             ],
             "WGPUSamplerBindingLayout": [
                 "nextInChain",
@@ -1641,12 +1617,6 @@
                 "nextInChain",
                 "binding",
                 "visibility",
-                "type",
-                "hasDynamicOffset",
-                "minBufferBindingSize",
-                "viewDimension",
-                "textureComponentType",
-                "storageTextureFormat",
                 "buffer",
                 "sampler",
                 "texture",
@@ -1709,8 +1679,7 @@
                 "resolveTarget",
                 "loadOp",
                 "storeOp",
-                "clearColor",
-                "attachment"
+                "clearColor"
             ],
             "WGPUTextureDescriptor": [
                 "nextInChain",
@@ -1767,22 +1736,6 @@
                 "entryPoint",
                 "targetCount",
                 "targets"
-            ],
-            "WGPURenderPipelineDescriptor": [
-                "nextInChain",
-                "label",
-                "layout",
-                "vertexStage",
-                "fragmentStage",
-                "vertexState",
-                "primitiveTopology",
-                "rasterizationState",
-                "sampleCount",
-                "depthStencilState",
-                "colorStateCount",
-                "colorStates",
-                "sampleMask",
-                "alphaToCoverageEnabled"
             ],
             "WGPURenderPipelineDescriptor2": [
                 "nextInChain",

@@ -870,19 +870,13 @@
             "nextInChain": 0
         },
         "WGPUBindGroupLayoutEntry": {
-            "__size__": 112,
+            "__size__": 80,
             "binding": 4,
-            "buffer": 48,
-            "hasDynamicOffset": 16,
-            "minBufferBindingSize": 24,
+            "buffer": 16,
             "nextInChain": 0,
-            "sampler": 72,
-            "storageTexture": 96,
-            "storageTextureFormat": 40,
-            "texture": 80,
-            "textureComponentType": 36,
-            "type": 12,
-            "viewDimension": 32,
+            "sampler": 40,
+            "storageTexture": 64,
+            "texture": 48,
             "visibility": 8
         },
         "WGPUBlendComponent": {
@@ -960,11 +954,6 @@
             "layout": 8,
             "nextInChain": 0
         },
-        "WGPUCopyTextureForBrowserOptions": {
-            "__size__": 8,
-            "flipY": 4,
-            "nextInChain": 0
-        },
         "WGPUDepthStencilState": {
             "__size__": 68,
             "depthBias": 56,
@@ -990,33 +979,11 @@
             "stencilReadMask": 48,
             "stencilWriteMask": 52
         },
-        "WGPUDeviceProperties": {
-            "__size__": 6,
-            "depthClamping": 5,
-            "multiPlanarFormats": 4,
-            "pipelineStatisticsQuery": 2,
-            "shaderFloat16": 1,
-            "textureCompressionBC": 0,
-            "timestampQuery": 3
-        },
         "WGPUExtent3D": {
-            "__size__": 16,
-            "depth": 12,
+            "__size__": 12,
             "depthOrArrayLayers": 8,
             "height": 4,
             "width": 0
-        },
-        "WGPUExternalTextureDescriptor": {
-            "__size__": 12,
-            "format": 8,
-            "nextInChain": 0,
-            "plane0": 4
-        },
-        "WGPUFenceDescriptor": {
-            "__size__": 16,
-            "initialValue": 8,
-            "label": 4,
-            "nextInChain": 0
         },
         "WGPUFragmentState": {
             "__size__": 20,
@@ -1116,8 +1083,7 @@
             "sampleCount": 20
         },
         "WGPURenderPassColorAttachment": {
-            "__size__": 56,
-            "attachment": 48,
+            "__size__": 48,
             "clearColor": 16,
             "loadOp": 8,
             "resolveTarget": 4,
@@ -1125,8 +1091,7 @@
             "view": 0
         },
         "WGPURenderPassDepthStencilAttachment": {
-            "__size__": 40,
-            "attachment": 36,
+            "__size__": 36,
             "clearDepth": 12,
             "clearStencil": 28,
             "depthLoadOp": 4,
@@ -1145,23 +1110,6 @@
             "label": 4,
             "nextInChain": 0,
             "occlusionQuerySet": 20
-        },
-        "WGPURenderPipelineDescriptor": {
-            "__size__": 64,
-            "alphaToCoverageEnabled": 60,
-            "colorStateCount": 48,
-            "colorStates": 52,
-            "depthStencilState": 44,
-            "fragmentStage": 24,
-            "label": 4,
-            "layout": 8,
-            "nextInChain": 0,
-            "primitiveTopology": 32,
-            "rasterizationState": 36,
-            "sampleCount": 40,
-            "sampleMask": 56,
-            "vertexStage": 12,
-            "vertexState": 28
         },
         "WGPURenderPipelineDescriptor2": {
             "__size__": 76,
@@ -1259,13 +1207,13 @@
             "rowsPerImage": 20
         },
         "WGPUTextureDescriptor": {
-            "__size__": 44,
+            "__size__": 40,
             "dimension": 12,
-            "format": 32,
+            "format": 28,
             "label": 4,
-            "mipLevelCount": 36,
+            "mipLevelCount": 32,
             "nextInChain": 0,
-            "sampleCount": 40,
+            "sampleCount": 36,
             "size": 16,
             "usage": 8
         },
