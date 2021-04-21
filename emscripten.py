@@ -117,6 +117,9 @@ def update_settings_glue(metadata, DEBUG):
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += metadata['globalImports']
 
   settings.WASM_EXPORTS = metadata['exports'] + list(metadata['namedGlobals'].keys())
+  # Store function exports so that Closure and metadce can track these even in
+  # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
+  settings.WASM_FUNCTION_EXPORTS = metadata['exports']
 
   # start with the MVP features, and add any detected features.
   settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata['features']
@@ -137,10 +140,6 @@ def update_settings_glue(metadata, DEBUG):
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
   settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or settings.MAIN_MODULE
-
-  # Store exports for Closure compiler to be able to track these as globals in
-  # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
-  settings.MODULE_EXPORTS = [(asmjs_mangle(f), f) for f in metadata['exports']]
 
   if settings.STACK_OVERFLOW_CHECK and not settings.SIDE_MODULE:
     settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
