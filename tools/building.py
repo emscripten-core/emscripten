@@ -953,19 +953,6 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   extra_info = '{ "exports": [' + ','.join(map(lambda x: '["' + x[0] + '","' + x[1] + '"]', settings.MODULE_EXPORTS)) + ']}'
   txt = acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
   graph = json.loads(txt)
-  # add exports based on the backend output, that are not present in the JS
-  if not settings.DECLARE_ASM_MODULE_EXPORTS:
-    exports = set()
-    for item in graph:
-      if 'export' in item:
-        exports.add(item['export'])
-    for export, unminified in settings.MODULE_EXPORTS:
-      if export not in exports:
-        graph.append({
-          'export': export,
-          'name': 'emcc$export$' + export,
-          'reaches': []
-        })
   # ensure that functions expected to be exported to the outside are roots
   for item in graph:
     if 'export' in item:
