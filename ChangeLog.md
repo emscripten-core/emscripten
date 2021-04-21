@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- The `makeBigInt` function was removed from the emscripten runtime since it
+  had no internal users.
 - `EXTRA_EXPORTED_RUNTIME_METHODS` is deprecated in favor of just using
   `EXPORTED_RUNTIME_METHODS`.
 - When building with `MAIN_MODULE=2` the linker will now automatically include
