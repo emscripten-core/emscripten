@@ -782,9 +782,9 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
     # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
     # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
     # externs file for the exports, Closure is able to reason about the exports.
-    if settings.MODULE_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
+    if settings.WASM_FUNCTION_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
       # Generate an exports file that records all the exported symbols from the wasm module.
-      module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % i for i, j in settings.MODULE_EXPORTS])
+      module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_FUNCTION_EXPORTS])
       exports_file = configuration.get_temp_files().get('_module_exports.js')
       exports_file.write(module_exports_suppressions.encode())
       exports_file.close()
@@ -950,7 +950,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   logger.debug('running meta-DCE')
   temp_files = configuration.get_temp_files()
   # first, get the JS part of the graph
-  extra_info = '{ "exports": [' + ','.join(map(lambda x: '["' + x[0] + '","' + x[1] + '"]', settings.MODULE_EXPORTS)) + ']}'
+  extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in settings.WASM_FUNCTION_EXPORTS) + ']}'
   txt = acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
   graph = json.loads(txt)
   # ensure that functions expected to be exported to the outside are roots
