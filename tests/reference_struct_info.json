@@ -917,14 +917,6 @@
             "g": 8,
             "r": 0
         },
-        "WGPUColorStateDescriptor": {
-            "__size__": 36,
-            "alphaBlend": 8,
-            "colorBlend": 20,
-            "format": 4,
-            "nextInChain": 0,
-            "writeMask": 32
-        },
         "WGPUColorTargetState": {
             "__size__": 16,
             "blend": 8,
@@ -959,17 +951,6 @@
             "depthBias": 56,
             "depthBiasClamp": 64,
             "depthBiasSlopeScale": 60,
-            "depthCompare": 12,
-            "depthWriteEnabled": 8,
-            "format": 4,
-            "nextInChain": 0,
-            "stencilBack": 32,
-            "stencilFront": 16,
-            "stencilReadMask": 48,
-            "stencilWriteMask": 52
-        },
-        "WGPUDepthStencilStateDescriptor": {
-            "__size__": 56,
             "depthCompare": 12,
             "depthWriteEnabled": 8,
             "format": 4,
@@ -1058,15 +1039,6 @@
             "pipelineStatistics": 16,
             "pipelineStatisticsCount": 20,
             "type": 8
-        },
-        "WGPURasterizationStateDescriptor": {
-            "__size__": 24,
-            "cullMode": 8,
-            "depthBias": 12,
-            "depthBiasClamp": 20,
-            "depthBiasSlopeScale": 16,
-            "frontFace": 4,
-            "nextInChain": 0
         },
         "WGPURenderBundleDescriptor": {
             "__size__": 8,
@@ -1249,13 +1221,6 @@
             "entryPoint": 8,
             "module": 4,
             "nextInChain": 0
-        },
-        "WGPUVertexStateDescriptor": {
-            "__size__": 16,
-            "indexFormat": 4,
-            "nextInChain": 0,
-            "vertexBufferCount": 8,
-            "vertexBuffers": 12
         },
         "__wasi_fdstat_t": {
             "__size__": 24,
