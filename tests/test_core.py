@@ -5851,6 +5851,8 @@ return malloc(size);
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall', '-xc++'])
+    # Ignore deprecation errors for now
+    self.emcc_args.append('-Wno-error=deprecated-declarations')
     run()
     self.emcc_args.append('-funsigned-char')
     run()
