@@ -301,7 +301,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   # memory and global initializers
 
   if settings.RELOCATABLE:
-    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm)[0])
+    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm).mem_size)
     set_memory(static_bump)
     logger.debug('stack_base: %d, stack_max: %d, heap_base: %d', settings.STACK_BASE, settings.STACK_MAX, settings.HEAP_BASE)
 

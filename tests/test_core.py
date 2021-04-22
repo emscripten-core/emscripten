@@ -3617,12 +3617,13 @@ ok
     self.set_setting('MAIN_MODULE', 2)
     self.clear_setting('SIDE_MODULE')
     if auto_load:
-      # Normally we don't report undefined symbols when linking main modules but
-      # in this case we know all the side modules are specified on the command line.
-      # TODO(sbc): Make this the default one day
-      self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS')
       self.emcc_args += main_emcc_args
       self.emcc_args.append('liblib.so')
+    else:
+      # When not auto loading (i.e. when not specifying the side module on the
+      # command line) we need to disable warnings on undefined symbols.
+      self.set_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
+
     if force_c:
       self.emcc_args.append('-nostdlib++')
 
@@ -4466,7 +4467,8 @@ res64 - external 64\n''', header='''
   @needs_dylink
   def test_dylink_dso_needed(self):
     def do_run(src, expected_output, emcc_args=[]):
-      self.do_run(src + 'int main() { return test_main(); }', expected_output, emcc_args=emcc_args)
+      create_file('main.c', src + 'int main() { return test_main(); }')
+      self.do_runf('main.c', expected_output, emcc_args=emcc_args)
     self._test_dylink_dso_needed(do_run)
 
   @needs_dylink

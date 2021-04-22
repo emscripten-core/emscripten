@@ -904,28 +904,22 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         static ainit _;
       ''')
 
-    create_file('libb.cpp', r'''
+    create_file('libb.c', r'''
         #include <emscripten.h>
 
-        extern "C" {
         void afunc(const char *s);
-        EMSCRIPTEN_KEEPALIVE void bfunc();
-        }
 
-        void bfunc() {
+        EMSCRIPTEN_KEEPALIVE void bfunc() {
           afunc("b");
         }
       ''')
 
-    create_file('libc.cpp', r'''
+    create_file('libc.c', r'''
         #include <emscripten.h>
 
-        extern "C" {
         void afunc(const char *s);
-        EMSCRIPTEN_KEEPALIVE void cfunc();
-        }
 
-        void cfunc() {
+        EMSCRIPTEN_KEEPALIVE void cfunc() {
           afunc("c");
         }
       ''')
@@ -946,11 +940,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.run_process(cmdv)
 
     ccshared('liba.cpp')
-    ccshared('libb.cpp', ['liba' + so])
-    ccshared('libc.cpp', ['liba' + so])
+    ccshared('libb.c', ['liba' + so])
+    ccshared('libc.c', ['liba' + so])
 
     self.set_setting('MAIN_MODULE')
-    extra_args = ['libb' + so, 'libc' + so]
+    extra_args = ['-L.', 'libb' + so, 'libc' + so]
     do_run(r'''
       #ifdef __cplusplus
       extern "C" {
@@ -978,7 +972,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
       int test_main() {
         void *bdso, *cdso;
-        void (*bfunc)(), (*cfunc)();
+        void (*bfunc_ptr)(), (*cfunc_ptr)();
 
         // FIXME for RTLD_LOCAL binding symbols to loaded lib is not currently working
         bdso = dlopen("libb%(so)s", RTLD_NOW|RTLD_GLOBAL);
@@ -986,13 +980,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         cdso = dlopen("libc%(so)s", RTLD_NOW|RTLD_GLOBAL);
         assert(cdso != NULL);
 
-        bfunc = (void (*)())dlsym(bdso, "bfunc");
-        assert(bfunc != NULL);
-        cfunc = (void (*)())dlsym(cdso, "cfunc");
-        assert(cfunc != NULL);
+        bfunc_ptr = (void (*)())dlsym(bdso, "bfunc");
+        assert(bfunc_ptr != NULL);
+        cfunc_ptr = (void (*)())dlsym(cdso, "cfunc");
+        assert(cfunc_ptr != NULL);
 
-        bfunc();
-        cfunc();
+        bfunc_ptr();
+        cfunc_ptr();
         return 0;
       }
     ''' % locals(),

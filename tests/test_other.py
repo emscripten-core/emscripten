@@ -7226,6 +7226,30 @@ int main() {
       self.run_process([EMCC, '-s', 'MAIN_MODULE=2', 'main.c', '-Werror', target])
       self.run_js('a.out.js')
 
+  def test_side_module_missing(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'libside1.wasm'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'libside2.wasm', 'libside1.wasm'])
+    # When linking against `libside2.wasm` (which depends on libside1.wasm) that library path is used
+    # to locate `libside1.wasm`.  Expect the link to fail with an unmodified library path.
+    err = self.expect_fail([EMCC, '-s', 'MAIN_MODULE=2', test_file('hello_world.c'), 'libside2.wasm'])
+    self.assertContained('libside2.wasm: shared library dependency not found: `libside1.wasm`', err)
+
+    # But succeed if `.` is added the library path.
+    self.run_process([EMCC, '-s', 'MAIN_MODULE=2', test_file('hello_world.c'), '-L.', 'libside2.wasm'])
+
+  def test_side_module_transitive_deps(self):
+    # Build three side modules in a dependency chain
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'libside1.wasm'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'libside2.wasm', 'libside1.wasm'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'libside3.wasm', 'libside2.wasm'])
+
+    # Link should succeed if and only if the end of the chain can be found
+    final_link = [EMCC, '-s', 'MAIN_MODULE=2', test_file('hello_world.c'), '-L.', 'libside3.wasm']
+    self.run_process(final_link)
+    os.remove('libside1.wasm')
+    err = self.expect_fail(final_link)
+    self.assertContained('error: libside2.wasm: shared library dependency not found: `libside1.wasm`', err)
+
   @is_slow_test
   def test_lto(self):
     # test building of non-wasm-object-files libraries, building with them, and running them

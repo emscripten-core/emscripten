@@ -139,6 +139,7 @@ Section = namedtuple('Section', ['type', 'size', 'offset'])
 Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
 Import = namedtuple('Import', ['kind', 'module', 'field'])
 Export = namedtuple('Export', ['name', 'kind', 'index'])
+Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed'])
 
 
 class Module:
@@ -196,7 +197,6 @@ def parse_dylink_section(wasm_file):
 
   dylink_section = next(module.sections())
   assert dylink_section.type == SecType.CUSTOM
-  section_end = dylink_section.offset + dylink_section.size
   module.seek(dylink_section.offset)
   # section name
   section_name = module.readString()
@@ -213,7 +213,7 @@ def parse_dylink_section(wasm_file):
     needed.append(libname)
     needed_count -= 1
 
-  return (mem_size, mem_align, table_size, table_align, section_end, needed)
+  return Dylink(mem_size, mem_align, table_size, table_align, needed)
 
 
 def get_exports(wasm_file):
