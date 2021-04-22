@@ -61,12 +61,12 @@ if EMPROFILE:
 
   class ProfiledPopen(original_Popen):
     def __init__(self, args, *otherargs, **kwargs):
-      super(ProfiledPopen, self).__init__(args, *otherargs, **kwargs)
+      super().__init__(args, *otherargs, **kwargs)
       ToolchainProfiler.record_subprocess_spawn(self.pid, args)
 
     def communicate(self, *args, **kwargs):
       ToolchainProfiler.record_subprocess_wait(self.pid)
-      output = super(ProfiledPopen, self).communicate(*args, **kwargs)
+      output = super().communicate(*args, **kwargs)
       ToolchainProfiler.record_subprocess_finish(self.pid, self.returncode)
       return output
 

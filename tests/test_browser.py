@@ -148,14 +148,14 @@ requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CA
 class browser(BrowserCore):
   @classmethod
   def setUpClass(cls):
-    super(browser, cls).setUpClass()
+    super().setUpClass()
     cls.browser_timeout = 60
     print()
     print('Running the browser tests. Make sure the browser allows popups from localhost.')
     print()
 
   def setUp(self):
-    super(BrowserCore, self).setUp()
+    super().setUp()
     # avoid various compiler warnings that many browser tests currently generate
     self.emcc_args += [
       '-Wno-pointer-sign',

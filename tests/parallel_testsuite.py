@@ -34,7 +34,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
   """
 
   def __init__(self, max_cores):
-    super(ParallelTestSuite, self).__init__()
+    super().__init__()
     self.processes = None
     self.result_queue = None
     self.max_cores = max_cores
@@ -124,10 +124,7 @@ class BufferedParallelTestResult():
     result.stopTest(self.test)
 
   def startTest(self, test):
-    # Python 2 does not have perf_counter()
-    # TODO: remove when we remove Python 2 support
-    if hasattr(time, 'perf_counter'):
-      self.start_time = time.perf_counter()
+    self.start_time = time.perf_counter()
 
   def stopTest(self, test):
     # TODO(sbc): figure out a way to display this duration information again when
