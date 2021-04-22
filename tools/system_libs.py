@@ -965,7 +965,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
   # Without this we can't build libunwind since it will pickup the unwind.h
   # that is part of llvm (which is not compatible for some reason).
   includes = [['system', 'lib', 'libunwind', 'include']]
-  src_files = ['Unwind-wasm.cpp']
+  src_files = ['Unwind-wasm.c']
 
   def __init__(self, **kwargs):
     super(libunwind, self).__init__(**kwargs)
