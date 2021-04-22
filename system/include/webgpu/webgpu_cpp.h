@@ -954,7 +954,6 @@ namespace wgpu {
         void PopDebugGroup() const;
         void PushDebugGroup(char const * groupLabel) const;
         void SetBindGroup(uint32_t groupIndex, BindGroup const& group, uint32_t dynamicOffsetCount = 0, uint32_t const * dynamicOffsets = nullptr) const;
-        void SetBlendColor(Color const * color) const;
         void SetBlendConstant(Color const * color) const;
         void SetIndexBuffer(Buffer const& buffer, IndexFormat format, uint64_t offset = 0, uint64_t size = 0) const;
         void SetIndexBufferWithFormat(Buffer const& buffer, IndexFormat format, uint64_t offset = 0, uint64_t size = 0) const;

@@ -1780,9 +1780,6 @@ namespace wgpu {
     void RenderPassEncoder::SetBindGroup(uint32_t groupIndex, BindGroup const& group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets) const {
         wgpuRenderPassEncoderSetBindGroup(Get(), groupIndex, group.Get(), dynamicOffsetCount, reinterpret_cast<uint32_t const * >(dynamicOffsets));
     }
-    void RenderPassEncoder::SetBlendColor(Color const * color) const {
-        wgpuRenderPassEncoderSetBlendColor(Get(), reinterpret_cast<WGPUColor const * >(color));
-    }
     void RenderPassEncoder::SetBlendConstant(Color const * color) const {
         wgpuRenderPassEncoderSetBlendConstant(Get(), reinterpret_cast<WGPUColor const * >(color));
     }
