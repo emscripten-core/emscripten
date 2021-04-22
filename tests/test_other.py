@@ -7211,8 +7211,8 @@ int main() {
             print(engine)
             self.assertContained('hello, world!', self.run_js('out.wasm', engine=engine))
 
-  def test_wasm_targets_side_module(self):
-    # side modules do allow a wasm target
+  def test_side_module_naming(self):
+    # SIDE_MODULE should work with any arbirary filename
     for opts, target in [([], 'a.out.wasm'),
                          (['-o', 'lib.wasm'], 'lib.wasm'),
                          (['-o', 'lib.so'], 'lib.so'),
@@ -7220,12 +7220,14 @@ int main() {
       # specified target
       print('building: ' + target)
       self.clear()
-      self.run_process([EMCC, test_file('hello_world.cpp'), '-s', 'SIDE_MODULE', '-Werror'] + opts)
+      self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-Werror'] + opts)
       for x in os.listdir('.'):
         self.assertFalse(x.endswith('.js'))
-      self.assertTrue(building.is_wasm(target))
-      wasm_data = open(target, 'rb').read()
-      self.assertEqual(wasm_data.count(b'dylink'), 1)
+      self.assertTrue(building.is_wasm_dylib(target))
+
+      create_file('main.c', '')
+      self.run_process([EMCC, '-s', 'MAIN_MODULE=2', 'main.c', '-Werror', target])
+      self.run_js('a.out.js')
 
   @is_slow_test
   def test_lto(self):

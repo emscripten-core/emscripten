@@ -40,6 +40,10 @@ EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 29)
 
 WASM_PAGE_SIZE = 65536
 
+MAGIC = b'\0asm'
+
+VERSION = b'\x01\0\0\0'
+
 HEADER_SIZE = 8
 
 LIMITS_HAS_MAX = 0x1
@@ -145,8 +149,8 @@ class Module:
     self.buf = open(filename, 'rb')
     magic = self.buf.read(4)
     version = self.buf.read(4)
-    assert magic == b'\0asm'
-    assert version == b'\x01\0\0\0'
+    assert magic == MAGIC
+    assert version == VERSION
 
   def __del__(self):
     self.buf.close()
@@ -192,10 +196,8 @@ def parse_dylink_section(wasm_file):
 
   dylink_section = next(module.sections())
   assert dylink_section.type == SecType.CUSTOM
-  section_size = dylink_section.size
-  section_offset = dylink_section.offset
-  section_end = section_offset + section_size
-  module.seek(section_offset)
+  section_end = dylink_section.offset + dylink_section.size
+  module.seek(dylink_section.offset)
   # section name
   section_name = module.readString()
   assert section_name == 'dylink'
