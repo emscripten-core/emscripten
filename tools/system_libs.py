@@ -506,7 +506,7 @@ class MTLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_mt=settings.Settings.USE_PTHREADS, **kwargs)
+    return super().get_default_variation(is_mt=settings.USE_PTHREADS, **kwargs)
 
 
 class OptimizedAggressivelyForSizeLibrary(Library):
@@ -532,7 +532,7 @@ class OptimizedAggressivelyForSizeLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_optz=settings.Settings.SHRINK_LEVEL >= 2, **kwargs)
+    return super().get_default_variation(is_optz=settings.SHRINK_LEVEL >= 2, **kwargs)
 
 
 class exceptions:
@@ -630,7 +630,7 @@ class AsanInstrumentedLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_asan=settings.Settings.USE_ASAN, **kwargs)
+    return super().get_default_variation(is_asan=settings.USE_ASAN, **kwargs)
 
 
 class libcompiler_rt(MTLibrary):
@@ -864,7 +864,7 @@ class crt1(MuslInternalLibrary):
     return '.o'
 
   def can_use(self):
-    return super().can_use() and settings.Settings.STANDALONE_WASM
+    return super().can_use() and settings.STANDALONE_WASM
 
 
 class crt1_reactor(MuslInternalLibrary):
@@ -879,7 +879,7 @@ class crt1_reactor(MuslInternalLibrary):
     return '.o'
 
   def can_use(self):
-    return super().can_use() and settings.Settings.STANDALONE_WASM
+    return super().can_use() and settings.STANDALONE_WASM
 
 
 class crtbegin(Library):
@@ -1044,7 +1044,7 @@ class libmalloc(MTLibrary):
     return name
 
   def can_use(self):
-    return super().can_use() and settings.Settings.MALLOC != 'none'
+    return super().can_use() and settings.MALLOC != 'none'
 
   @classmethod
   def vary_on(cls):
@@ -1053,12 +1053,12 @@ class libmalloc(MTLibrary):
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
-      malloc=setting.Settings.MALLOC,
-      is_debug=setting.Settings.ASSERTIONS >= 2,
-      use_errno=setting.Settings.SUPPORT_ERRNO,
-      is_tracing=setting.Settings.EMSCRIPTEN_TRACING,
-      memvalidate='memvalidate' in setting.Settings.MALLOC,
-      verbose='verbose' in setting.Settings.MALLOC,
+      malloc=settings.MALLOC,
+      is_debug=settings.ASSERTIONS >= 2,
+      use_errno=settings.SUPPORT_ERRNO,
+      is_tracing=settings.EMSCRIPTEN_TRACING,
+      memvalidate='memvalidate' in settings.MALLOC,
+      verbose='verbose' in settings.MALLOC,
       **kwargs
     )
 
@@ -1130,10 +1130,10 @@ class libgl(MTLibrary):
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
-      is_legacy=setting.Settings.LEGACY_GL_EMULATION,
-      is_webgl2=setting.Settings.MAX_WEBGL_VERSION >= 2,
-      is_ofb=setting.Settings.OFFSCREEN_FRAMEBUFFER,
-      is_full_es3=setting.Settings.FULL_ES3,
+      is_legacy=settings.LEGACY_GL_EMULATION,
+      is_webgl2=settings.MAX_WEBGL_VERSION >= 2,
+      is_ofb=settings.OFFSCREEN_FRAMEBUFFER,
+      is_full_es3=settings.FULL_ES3,
       **kwargs
     )
 
@@ -1175,7 +1175,7 @@ class libembind(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(with_rtti=setting.Settings.USE_RTTI, **kwargs)
+    return super().get_default_variation(with_rtti=settings.USE_RTTI, **kwargs)
 
 
 class libfetch(MTLibrary):
@@ -1332,7 +1332,7 @@ class libstandalonewasm(MuslInternalLibrary):
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
-      is_mem_grow=setting.Settings.ALLOW_MEMORY_GROWTH,
+      is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
       **kwargs
     )
 

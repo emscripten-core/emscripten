@@ -15,11 +15,10 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(1, __rootpath__)
 
 from tools.toolchain_profiler import ToolchainProfiler
-from tools import building, config
+from tools import building, config, shared
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
-from tools import shared
 
 configuration = shared.configuration
 temp_files = configuration.get_temp_files()
