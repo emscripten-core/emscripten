@@ -159,7 +159,7 @@ function JSify(functionsOnly) {
       var noExport = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
-        if (!isDefined(ident) && !LINKABLE) {
+        if (!isDefined(ident)) {
           var msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ' (referenced by ' + dependent + ')';
           if (ERROR_ON_UNDEFINED_SYMBOLS) {

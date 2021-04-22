@@ -1438,12 +1438,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         settings.EXPORT_ALL = 1
       settings.RELOCATABLE = 1
 
+    if settings.MAIN_MODULE:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getDylinkMetadata']
+
     if settings.RELOCATABLE:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
           '$reportUndefinedSymbols',
           '$relocateExports',
           '$GOTHandler',
-          '$getDylinkMetadata',
           '__heap_base',
           '__stack_pointer',
       ]
@@ -1625,7 +1627,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if settings.SIDE_MODULE and settings.GLOBAL_BASE != -1:
       exit_with_error('Cannot set GLOBAL_BASE when building SIDE_MODULE')
 
-    if settings.RELOCATABLE:
+    if settings.RELOCATABLE or settings.LINKABLE:
       default_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
       default_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
 
