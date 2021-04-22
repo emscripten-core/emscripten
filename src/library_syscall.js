@@ -1450,7 +1450,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   // If a syscall uses FS, but !SYSCALLS_REQUIRE_FILESYSTEM, then the user
   // has disabled the filesystem or we have proven some other way that this will
   // not be called in practice, and do not need that code.
-  if (!SYSCALLS_REQUIRE_FILESYSTEM && t.indexOf('FS.') >= 0) {
+  if (!SYSCALLS_REQUIRE_FILESYSTEM && t.includes('FS.')) {
     t = modifyFunction(t, function(name, args, body) {
       return 'function ' + name + '(' + args + ') {\n' +
              (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');\n" : '') +
@@ -1458,7 +1458,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     });
   }
 
-  var isVariadic = !isWasi && t.indexOf(', varargs') != -1;
+  var isVariadic = !isWasi && t.includes(', varargs');
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
   var canThrow = false;
 #else

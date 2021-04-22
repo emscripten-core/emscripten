@@ -553,7 +553,7 @@ var LibraryGL = {
       // Hot GL functions are ones that you'd expect to find during render loops (render calls, dynamic resource uploads), cold GL functions are load time functions (shader compilation, texture/mesh creation)
       // Distinguishing between these two allows pinpointing locations of troublesome GL usage that might cause performance issues.
       for (var f in glCtx) {
-        if (typeof glCtx[f] !== 'function' || f.indexOf('real_') == 0) continue;
+        if (typeof glCtx[f] !== 'function' || f.startsWith('real_')) continue;
         this.hookWebGLFunction(f, glCtx);
       }
       // The above injection won't work for texImage2D and texSubImage2D, which have multiple overloads.
@@ -697,7 +697,7 @@ var LibraryGL = {
 #endif
             // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
             return (this.realGetSupportedExtensions() || []).filter(function(ext) {
-              return ext.indexOf('texture_half_float') == -1;
+              return !ext.includes('texture_half_float');
             });
           }
         }
@@ -1113,7 +1113,7 @@ var LibraryGL = {
       var exts = GLctx.getSupportedExtensions() || [];
       exts.forEach(function(ext) {
         // WEBGL_lose_context, WEBGL_debug_renderer_info and WEBGL_debug_shaders are not enabled by default.
-        if (ext.indexOf('lose_context') < 0 && ext.indexOf('debug') < 0) {
+        if (!ext.includes('lose_context') && !ext.includes('debug')) {
           // Call .getExtension() to enable that extension permanently.
           GLctx.getExtension(ext);
         }
@@ -2074,7 +2074,7 @@ var LibraryGL = {
     name = UTF8ToString(name);
 
 #if GL_ASSERTIONS
-    assert(name.indexOf(' ') == -1, 'Uniform names passed to glGetUniformLocation() should not contain spaces! (received "' + name + '")');
+    assert(!name.includes(' '), 'Uniform names passed to glGetUniformLocation() should not contain spaces! (received "' + name + '")');
 #endif
 
     program = GL.programs[program];
@@ -3016,15 +3016,15 @@ var LibraryGL = {
       // vertex and fragment shader versions need to match, and when compiling
       // the corresponding vertex shader, we would not know if that needed to
       // be compiled with or without the patch, so we must patch all shaders.
-      if (source.indexOf('#version 100') != -1) {
+      if (source.includes('#version 100')) {
         source = source.replace(/#extension GL_OES_standard_derivatives : enable/g, "");
         source = source.replace(/#extension GL_EXT_shader_texture_lod : enable/g, '');
         var prelude = '';
-        if (source.indexOf('gl_FragColor') != -1) {
+        if (source.includes('gl_FragColor')) {
           prelude += 'out mediump vec4 GL_FragColor;\n';
           source = source.replace(/gl_FragColor/g, 'GL_FragColor');
         }
-        if (source.indexOf('attribute') != -1) {
+        if (source.includes('attribute')) {
           source = source.replace(/attribute/g, 'in');
           source = source.replace(/varying/g, 'out');
         } else {
@@ -4006,7 +4006,7 @@ function createGLPassthroughFunctions(lib, funcs) {
         sig = 'v' + sigEnd;
       }
       var cName = name;
-      if (name.indexOf('[') >= 0) {
+      if (name.includes('[')) {
         cName = name.replace('[', '').replace(']', '');
         name = cName.substr(0, cName.length-1);
       }

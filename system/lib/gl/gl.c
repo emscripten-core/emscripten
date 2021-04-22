@@ -1707,13 +1707,14 @@ for line in open('a').readlines():
   RETURN_GL_EMU_FN(glScalef);
   RETURN_GL_EMU_FN(glTranslated);
   RETURN_GL_EMU_FN(glTranslatef);
+  RETURN_GL_EMU_FN(glClipPlane);
   RETURN_GL_EMU_FN(glDrawBuffer);
   RETURN_GL_EMU_FN(glReadBuffer);
   //RETURN_GL_EMU_FN(glLightf);
   //RETURN_GL_EMU_FN(glLighti);
   RETURN_GL_EMU_FN(glLightfv);
   //RETURN_GL_EMU_FN(glLightiv);
-  //RETURN_GL_EMU_FN(glLightModelf);
+  RETURN_GL_EMU_FN(glLightModelf);
   //RETURN_GL_EMU_FN(glLightModeli);
   RETURN_GL_EMU_FN(glLightModelfv);
   //RETURN_GL_EMU_FN(glLightModeliv);

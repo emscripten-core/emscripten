@@ -89,6 +89,7 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared
 from tools import system_libs
+from tools.settings import settings
 
 QUIET = (__name__ != '__main__')
 DEBUG = False
@@ -270,8 +271,8 @@ def inspect_headers(headers, cflags):
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd += ['-Wno-deprecated']
 
-  if shared.Settings.LTO:
-    cmd += ['-flto=' + shared.Settings.LTO]
+  if settings.LTO:
+    cmd += ['-flto=' + settings.LTO]
 
   show(shared.shlex_join(cmd))
   try:

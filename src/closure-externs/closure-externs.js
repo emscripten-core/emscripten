@@ -88,6 +88,11 @@ WebAssembly.Memory = function(memoryDescriptor) {};
 WebAssembly.Table = function(tableDescriptor) {};
 /**
  * @constructor
+ * @param {GlobalDescriptotr} globalDescriptor
+ */
+WebAssembly.Global = function(globalDescriptor) {};
+/**
+ * @constructor
  * @extends {Error}
  */
 WebAssembly.CompileError = function() {};
