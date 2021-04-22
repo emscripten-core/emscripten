@@ -1298,14 +1298,14 @@ def is_bitcode(filename):
 
 
 def is_wasm(filename):
-  if not os.path.exists(filename):
+  if not os.path.isfile(filename):
     return False
   header = open(filename, 'rb').read(webassembly.HEADER_SIZE)
   return header == webassembly.MAGIC + webassembly.VERSION
 
 
 def is_wasm_dylib(filename):
-  """Detech wasm dynamic libraries by the presence of the "dylink" custom section."""
+  """Detect wasm dynamic libraries by the presence of the "dylink" custom section."""
   if not is_wasm(filename):
     return False
   module = webassembly.Module(filename)
