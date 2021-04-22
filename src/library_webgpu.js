@@ -1575,10 +1575,10 @@ var LibraryWebGPU = {
       pass["setBindGroup"](groupIndex, group, offsets);
     }
   },
-  wgpuRenderPassEncoderSetBlendColor: function(passId, colorPtr) {
+  wgpuRenderPassEncoderSetBlendConstant: function(passId, colorPtr) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     var color = WebGPU.makeColor(colorPtr);
-    pass["setBlendColor"](color);
+    pass["setBlendConstant"](color);
   },
   wgpuRenderPassEncoderSetIndexBuffer: function(passId, bufferId, format, {{{ defineI64Param('offset') }}}, size) {
     {{{ receiveI64ParamAsI32s('offset') }}}
