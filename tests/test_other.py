@@ -6992,9 +6992,7 @@ int main() {
     # we don't metadce with linkable code! other modules may want stuff
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    # Temporarily disabled while https://github.com/WebAssembly/binaryen/pull/3831
-    # rolls in.
-    #'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [],  10135), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [],  10135), # noqa
   })
   def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
