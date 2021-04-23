@@ -139,13 +139,15 @@ int pthread_setspecific(pthread_key_t key, const void* value) {
 /*magic number to detect if we have not run yet*/
 #define PTHREAD_ONCE_MAGIC_ID 0x13579BDF
 
-int pthread_once(pthread_once_t* once_control, void (*init_routine)(void)) {
+int __pthread_once(pthread_once_t* once_control, void (*init_routine)(void)) {
   if (*once_control != PTHREAD_ONCE_MAGIC_ID) {
     init_routine();
     *once_control = PTHREAD_ONCE_MAGIC_ID;
   }
   return 0;
 }
+
+weak_alias(__pthread_once, pthread_once);
 
 int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex) {
   return 0;

@@ -11,14 +11,13 @@
 // and can be added/removed/renamed without fear of breaking out users.
 //
 
-// An array of all symbols exported from the wasm module.
-var MODULE_EXPORTS = [];
-
 // List of symbols exported from compiled code
 // These are raw symbol names and are not mangled to include the leading
 // underscore.
-// TODO(sbc): unify with MODULE_EXPORTS above.
 var WASM_EXPORTS = [];
+
+// Similar to above but only includes the functions symbols.
+var WASM_FUNCTION_EXPORTS = [];
 
 // An array of all symbols exported from all the side modules specified on the
 // command line.

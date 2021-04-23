@@ -23,6 +23,7 @@ emcc can be influenced by a few environment variables:
                    your system headers will be used.
 """
 
+from tools.toolchain_profiler import ToolchainProfiler
 
 import base64
 import json
@@ -36,6 +37,8 @@ import sys
 import time
 from enum import Enum
 from subprocess import PIPE
+from urllib.parse import quote
+
 
 import emscripten
 from tools import shared, system_libs
@@ -46,21 +49,11 @@ from tools.shared import do_replace
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
-from tools.toolchain_profiler import ToolchainProfiler
 from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
 from tools import config
 from tools.settings import settings
-
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
-
-try:
-  from urllib.parse import quote
-except ImportError:
-  # Python 2 compatibility
-  from urllib import quote
 
 logger = logging.getLogger('emcc')
 
@@ -626,6 +619,36 @@ def is_dash_s_for_emcc(args, i):
   return arg.isidentifier() and arg.isupper()
 
 
+def filter_out_dynamic_libs(options, inputs):
+
+  # Filters out "fake" dynamic libraries that are really just intermediate object files.
+  def check(input_file):
+    if get_file_suffix(input_file) in DYNAMICLIB_ENDINGS:
+      if not options.ignore_dynamic_linking:
+        diagnostics.warning('emcc', 'ignoring dynamic library %s because not compiling to JS or HTML, remember to link it when compiling to JS or HTML at the end', os.path.basename(input_file))
+      return False
+    else:
+      return True
+
+  return [f for f in inputs if check(f[1])]
+
+
+def filter_out_duplicate_dynamic_libs(inputs):
+  seen = set()
+
+  # Filter out duplicate "fake" shared libraries (intermediate object files).
+  # See test_core.py:test_redundant_link
+  def check(input_file):
+    if get_file_suffix(input_file) in DYNAMICLIB_ENDINGS:
+      abspath = os.path.abspath(input_file)
+      if abspath in seen:
+        return False
+      seen.add(abspath)
+    return True
+
+  return [f for f in inputs if check(f[1])]
+
+
 def process_dynamic_libs(dylibs):
   for dylib in dylibs:
     imports = webassembly.get_imports(dylib)
@@ -637,6 +660,7 @@ def process_dynamic_libs(dylibs):
     logger.debug('Adding exports based on `%s`: %s', dylib, new_exports)
     settings.EXPORTED_FUNCTIONS.extend(shared.asmjs_mangle(e) for e in new_exports)
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(new_exports)
+    building.user_requested_exports.extend(shared.asmjs_mangle(e) for e in new_exports)
 
     exports = webassembly.get_exports(dylib)
     for export in exports:
@@ -1135,6 +1159,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       elif arg == '-':
         input_files.append((i, arg))
         newargs[i] = ''
+
+    if not input_files and not link_flags:
+      exit_with_error('no input files')
+
     newargs = [a for a in newargs if a]
 
     settings_map = {}
@@ -1300,47 +1328,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('Explictly setting EXIT_RUNTIME not compatible with STANDALONE_WASM.  EXIT_RUNTIME will always be True for programs (with a main function) and False for reactors (not main function).')
       settings.EXIT_RUNTIME = settings.EXPECT_MAIN
 
-    def filter_out_dynamic_libs(inputs):
-      # If not compiling to JS, then we are compiling to an intermediate bitcode
-      # objects or library, so ignore dynamic linking, since multiple dynamic
-      # linkings can interfere with each other
-      if final_suffix not in EXECUTABLE_ENDINGS or options.ignore_dynamic_linking:
-        def check(input_file):
-          if get_file_suffix(input_file) in DYNAMICLIB_ENDINGS:
-            if not options.ignore_dynamic_linking:
-              diagnostics.warning('emcc', 'ignoring dynamic library %s because not compiling to JS or HTML, remember to link it when compiling to JS or HTML at the end', os.path.basename(input_file))
-            return False
-          else:
-            return True
-        return [f for f in inputs if check(f[1])]
-      return inputs
-
-    def filter_out_duplicate_dynamic_libs(inputs):
-      # Filter out duplicate shared libraries.
-      # See test_core.py:test_redundant_link
-      seen = set()
-      rtn = []
-      for i in inputs:
-        if get_file_suffix(i[1]) in DYNAMICLIB_ENDINGS and os.path.exists(i[1]):
-          abspath = os.path.abspath(i[1])
-          if abspath in seen:
-            continue
-          seen.add(abspath)
-        rtn.append(i)
-      return rtn
-
-    input_files = filter_out_dynamic_libs(input_files)
-    input_files = filter_out_duplicate_dynamic_libs(input_files)
-
-    if settings.MAIN_MODULE:
-      dylibs = [i[1] for i in input_files if get_file_suffix(i[1]) in DYNAMICLIB_ENDINGS]
-      process_dynamic_libs(dylibs)
-
-    if not input_files and not link_flags:
-      exit_with_error('no input files')
-
     # Note the exports the user requested
-    building.user_requested_exports = settings.EXPORTED_FUNCTIONS.copy()
+    building.user_requested_exports.update(settings.EXPORTED_FUNCTIONS)
 
     def default_setting(name, new_default):
       if name not in settings_map:
@@ -1442,12 +1431,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         settings.EXPORT_ALL = 1
       settings.RELOCATABLE = 1
 
+    if settings.MAIN_MODULE:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getDylinkMetadata']
+
     if settings.RELOCATABLE:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
           '$reportUndefinedSymbols',
           '$relocateExports',
           '$GOTHandler',
-          '$getDylinkMetadata',
           '__heap_base',
           '__stack_pointer',
       ]
@@ -1585,6 +1576,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if settings.USE_WEBGL2:
       settings.MAX_WEBGL_VERSION = 2
 
+    # MIN_WEBGL_VERSION=2 implies MAX_WEBGL_VERSION=2
+    if settings.MIN_WEBGL_VERSION == 2:
+      default_setting('MAX_WEBGL_VERSION', 2)
+
+    if settings.MIN_WEBGL_VERSION > settings.MAX_WEBGL_VERSION:
+      exit_with_error('MIN_WEBGL_VERSION must be smaller or equal to MAX_WEBGL_VERSION!')
+
     if not settings.GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS and settings.GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS:
       exit_with_error('-s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0 only makes sense with -s GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0!')
 
@@ -1629,7 +1627,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if settings.SIDE_MODULE and settings.GLOBAL_BASE != -1:
       exit_with_error('Cannot set GLOBAL_BASE when building SIDE_MODULE')
 
-    if settings.RELOCATABLE:
+    if settings.RELOCATABLE or settings.LINKABLE:
       default_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
       default_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
 
@@ -1731,8 +1729,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # kept alive through DCE.
       # TODO: Find a less hacky way to do this, perhaps by also scanning worker.js
       # for roots.
-      building.user_requested_exports.append('_emscripten_tls_init')
-      building.user_requested_exports.append('_emscripten_current_thread_process_queued_calls')
+      building.user_requested_exports.add('_emscripten_tls_init')
+      building.user_requested_exports.add('_emscripten_current_thread_process_queued_calls')
 
       # set location of worker.js
       settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
@@ -1769,7 +1767,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       settings.EXPORTED_FUNCTIONS += ['_memalign']
 
       if settings.MINIMAL_RUNTIME:
-        building.user_requested_exports += ['exit']
+        building.user_requested_exports.add('exit')
 
       if settings.PROXY_TO_PTHREAD:
         settings.EXPORTED_FUNCTIONS += ['_emscripten_proxy_main']
@@ -2266,7 +2264,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   consumed = process_libraries(libs, lib_dirs, linker_inputs)
   # Filter out libraries that are actually JS libs
   link_flags = [l for l in link_flags if l[0] not in consumed]
-  linker_inputs = filter_out_dynamic_libs(linker_inputs)
+
+  # If we are linking to an intermediate object then ignore other
+  # "fake" dynamic libraries, since otherwise we will end up with
+  # multiple copies in the final executable.
+  if link_to_object or options.ignore_dynamic_linking:
+    linker_inputs = filter_out_dynamic_libs(options, linker_inputs)
+  else:
+    linker_inputs = filter_out_duplicate_dynamic_libs(linker_inputs)
+
+  if settings.MAIN_MODULE:
+    dylibs = [i[1] for i in linker_inputs if get_file_suffix(i[1]) in DYNAMICLIB_ENDINGS]
+    process_dynamic_libs(dylibs)
 
   linker_arguments = [val for _, val in sorted(linker_inputs + link_flags)]
 
