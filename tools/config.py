@@ -242,10 +242,7 @@ user_home_config = os.path.expanduser('~/.emscripten')
 
 # read response files very early on so that all subsequent code that accesses
 # sys.argv will see the expanded content.
-try:
-  sys.argv = substitute_response_files(sys.argv)
-except IOError as e:
-  raise Exception('Unable to parse response files from command line ' + str(sys.argv) + '!\n' + str(e))
+sys.argv = substitute_response_files(sys.argv)
 
 
 def consume_argv(name):
