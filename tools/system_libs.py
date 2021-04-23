@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from .toolchain_profiler import ToolchainProfiler
+
 import glob
 import hashlib
 import itertools
@@ -12,7 +14,6 @@ import shutil
 import sys
 from glob import iglob
 
-from .toolchain_profiler import ToolchainProfiler
 from . import shared, building, ports, config, utils
 from . import deps_info, tempfiles
 from . import diagnostics

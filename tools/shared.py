@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from .toolchain_profiler import ToolchainProfiler
+
 from subprocess import PIPE
 import atexit
 import binascii
@@ -22,7 +24,6 @@ if sys.version_info < (3, 6):
   print('error: emscripten requires python 3.6 or above', file=sys.stderr)
   sys.exit(1)
 
-from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles, colored_logger
