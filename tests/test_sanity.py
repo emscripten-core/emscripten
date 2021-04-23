@@ -509,9 +509,13 @@ fi
       ''')
     args = ['--cache', cache_dir_name]
     if use_response_files:
-      args = ['@' + response_file.create_response_file(args, shared.TEMP_DIR)]
+      rsp = response_file.create_response_file(args, shared.TEMP_DIR)
+      args = ['@' + rsp]
 
     self.run_process([EMCC, 'test.c'] + args, stderr=PIPE)
+    if use_response_files:
+      os.remove(rsp)
+
     # The cache directory must exist after the build
     self.assertTrue(os.path.exists(cache_dir_name))
     # The cache directory must contain a sysroot
@@ -539,11 +543,15 @@ fi
 
     args = ['--em-config', custom_config_filename]
     if use_response_files:
-      args = ['@' + response_file.create_response_file(args, shared.TEMP_DIR)]
+      rsp = response_file.create_response_file(args, shared.TEMP_DIR)
+      args = ['@' + rsp]
 
     with utils.chdir(temp_dir):
       self.run_process([EMCC] + args + MINIMAL_HELLO_WORLD + ['-O2'])
       result = self.run_js('a.out.js')
+
+    if use_response_files:
+      os.remove(rsp)
 
     self.assertContained('hello, world!', result)
 
