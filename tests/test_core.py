@@ -1116,17 +1116,6 @@ int main() {
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_from_file(test_file('core', 'test_exceptions.cpp'), test_file('core', 'test_exceptions_caught.out'))
 
-  # We have LTO tests covered in 'wasmltoN' targets, but they don't run as a
-  # part of Emscripten CI, so we make a separate LTO test here.
-  @with_both_exception_handling
-  def test_exceptions_lto(self):
-    self.set_setting('EXCEPTION_DEBUG')
-    self.emcc_args += ['-flto']
-    self.maybe_closure()
-    for support_longjmp in [0, 1]:
-      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_run_from_file(test_file('core', 'test_exceptions.cpp'), test_file('core', 'test_exceptions_caught.out'))
-
   def test_exceptions_off(self):
     for support_longjmp in [0, 1]:
       self.set_setting('DISABLE_EXCEPTION_CATCHING')
