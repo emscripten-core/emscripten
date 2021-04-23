@@ -1329,7 +1329,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       settings.EXIT_RUNTIME = settings.EXPECT_MAIN
 
     # Note the exports the user requested
-    building.user_requested_exports = settings.EXPORTED_FUNCTIONS.copy()
+    building.user_requested_exports.update(settings.EXPORTED_FUNCTIONS)
 
     def default_setting(name, new_default):
       if name not in settings_map:
@@ -1729,8 +1729,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # kept alive through DCE.
       # TODO: Find a less hacky way to do this, perhaps by also scanning worker.js
       # for roots.
-      building.user_requested_exports.append('_emscripten_tls_init')
-      building.user_requested_exports.append('_emscripten_current_thread_process_queued_calls')
+      building.user_requested_exports.add('_emscripten_tls_init')
+      building.user_requested_exports.add('_emscripten_current_thread_process_queued_calls')
 
       # set location of worker.js
       settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
@@ -1767,7 +1767,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       settings.EXPORTED_FUNCTIONS += ['_memalign']
 
       if settings.MINIMAL_RUNTIME:
-        building.user_requested_exports += ['exit']
+        building.user_requested_exports.add('exit')
 
       if settings.PROXY_TO_PTHREAD:
         settings.EXPORTED_FUNCTIONS += ['_emscripten_proxy_main']

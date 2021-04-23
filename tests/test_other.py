@@ -10350,9 +10350,9 @@ exec "$@"
     self.run_js('a.out.js')
 
   @parameterized({
-    'main_module': ('-sRELOCATABLE',),
+    'relocatable': ('-sRELOCATABLE',),
     'linkable': ('-sLINKABLE',),
-    'relocatable': ('-sMAIN_MODULE',),
+    'main_module': ('-sMAIN_MODULE',),
   })
   def test_check_undefined(self, flag):
     # positive case: no undefined symbols

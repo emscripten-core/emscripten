@@ -45,7 +45,7 @@ nm_cache = {}
 ar_contents = {}
 _is_ar_cache = {}
 # the exports the user requested
-user_requested_exports = []
+user_requested_exports = set()
 
 
 class ObjectFileInfo:
