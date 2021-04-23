@@ -660,7 +660,7 @@ def process_dynamic_libs(dylibs):
     logger.debug('Adding exports based on `%s`: %s', dylib, new_exports)
     settings.EXPORTED_FUNCTIONS.extend(shared.asmjs_mangle(e) for e in new_exports)
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(new_exports)
-    building.user_requested_exports.extend(shared.asmjs_mangle(e) for e in new_exports)
+    building.user_requested_exports.update(shared.asmjs_mangle(e) for e in new_exports)
 
     exports = webassembly.get_exports(dylib)
     for export in exports:
