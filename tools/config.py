@@ -247,6 +247,7 @@ try:
 except IOError as e:
   raise Exception('Unable to parse response files from command line ' + str(sys.argv) + '!\n' + str(e))
 
+
 def consume_argv(name):
   value = None
   while name in sys.argv:
@@ -256,6 +257,7 @@ def consume_argv(name):
     value = sys.argv.pop(i + 1)
     del sys.argv[i]
   return value
+
 
 EM_CONFIG = consume_argv('--em-config')
 if not EM_CONFIG:

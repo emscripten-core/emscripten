@@ -16,7 +16,7 @@ from runner import create_file, ensure_dir, make_executable, with_env_modify
 from runner import parameterized
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
-from tools.shared import TEMP_DIR, CANONICAL_TEMP_DIR
+from tools.shared import CANONICAL_TEMP_DIR
 from tools.shared import try_delete, config
 from tools.shared import EXPECTED_LLVM_VERSION, Cache
 from tools import shared, system_libs, utils
