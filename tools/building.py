@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from .toolchain_profiler import ToolchainProfiler
+
 import json
 import logging
 import os
@@ -19,7 +21,6 @@ from . import response_file
 from . import shared
 from . import webassembly
 from . import config
-from .toolchain_profiler import ToolchainProfiler
 from .shared import CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY

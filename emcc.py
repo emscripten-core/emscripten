@@ -23,6 +23,7 @@ emcc can be influenced by a few environment variables:
                    your system headers will be used.
 """
 
+from tools.toolchain_profiler import ToolchainProfiler
 
 import base64
 import json
@@ -36,6 +37,8 @@ import sys
 import time
 from enum import Enum
 from subprocess import PIPE
+from urllib.parse import quote
+
 
 import emscripten
 from tools import shared, system_libs
@@ -46,17 +49,11 @@ from tools.shared import do_replace
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
-from tools.toolchain_profiler import ToolchainProfiler
 from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
 from tools import config
 from tools.settings import settings
-
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
-
-from urllib.parse import quote
 
 logger = logging.getLogger('emcc')
 

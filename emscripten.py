@@ -9,6 +9,8 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
+from tools.toolchain_profiler import ToolchainProfiler
+
 import os
 import json
 import subprocess
@@ -24,7 +26,6 @@ from tools import shared
 from tools import gen_struct_info
 from tools import webassembly
 from tools.shared import WINDOWS, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
-from tools.toolchain_profiler import ToolchainProfiler
 from tools.settings import settings
 
 logger = logging.getLogger('emscripten')

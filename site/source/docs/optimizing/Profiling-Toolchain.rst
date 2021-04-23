@@ -44,18 +44,6 @@ The output HTML filename can be chosen with the optional ``--outfile=myresults.h
 Instrumenting Python Scripts
 ============================
 
-In order for the toolchain to work, each "top level" Python script (a script that is directly called from the command line, or by a subprocess spawn) should have the following preamble in the beginning of the script:
-
-.. code-block:: python
-
-    from tools.toolchain_profiler import ToolchainProfiler
-    if __name__ == '__main__':
-      ToolchainProfiler.record_process_start()
-
-Additionally, at the end of the script when the script is about to exit, it should do so by explicitly calling either the ``sys.exit(<returncode>)`` function, or by calling the ``ToolchainProfiler.record_process_exit(<returncode>)`` function, whichever is more convenient for the script. The function ``ToolchainProfiler.record_process_exit()`` does not exit by itself, but only records that the process is quitting.
-
-These two blocks ensure that the toolchain profiler will be aware of all tool invocations that occur. In the graphed output, the process spawns will be shown in green color.
-
 Python Profiling Blocks
 -----------------------
 
