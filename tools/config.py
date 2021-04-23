@@ -7,6 +7,7 @@ import os
 import sys
 import logging
 from .utils import path_from_root, exit_with_error, __rootpath__, which
+from .response_file import substitute_response_files
 
 logger = logging.getLogger('shared')
 
@@ -239,6 +240,13 @@ emsdk_root = os.path.dirname(os.path.dirname(path_from_root()))
 emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
 user_home_config = os.path.expanduser('~/.emscripten')
 
+# read response files very early on so that all subsequent code that accesses
+# sys.argv will see the expanded content.
+try:
+  sys.argv = substitute_response_files(sys.argv)
+except IOError as e:
+  raise Exception('Unable to parse response files from command line ' + str(sys.argv) + '!\n' + str(e))
+
 def consume_argv(name):
   value = None
   while name in sys.argv:
@@ -268,7 +276,7 @@ if not EM_CONFIG:
 
 argv_cache = consume_argv('--cache')
 if argv_cache:
-  CACHE = os.path.expanduser(argv_cache)
+  CACHE = os.path.abspath(os.path.expanduser(argv_cache))
   os.environ['EM_CACHE'] = CACHE
 
 # We used to support inline EM_CONFIG.

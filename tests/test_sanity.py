@@ -16,10 +16,11 @@ from runner import create_file, ensure_dir, make_executable, with_env_modify
 from runner import parameterized
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
-from tools.shared import CANONICAL_TEMP_DIR
+from tools.shared import TEMP_DIR, CANONICAL_TEMP_DIR
 from tools.shared import try_delete, config
 from tools.shared import EXPECTED_LLVM_VERSION, Cache
 from tools import shared, system_libs, utils
+from tools import response_file
 
 SANITY_FILE = shared.Cache.get_path('sanity.txt')
 commands = [[EMCC], [path_from_root('tests', 'runner'), 'blahblah']]
@@ -508,8 +509,7 @@ fi
       ''')
     args = ['--cache', cache_dir_name]
     if use_response_files:
-      create_file('a.rsp', ' '.join(args))
-      args = ['@a.rsp']
+      args = ['@' + response_file.create_response_file(args, shared.TEMP_DIR)]
 
     self.run_process([EMCC, 'test.c'] + args, stderr=PIPE)
     # The cache directory must exist after the build
@@ -539,9 +539,7 @@ fi
 
     args = ['--em-config', custom_config_filename]
     if use_response_files:
-      rsp = os.path.join(temp_dir, 'a.rsp')
-      open(rsp, 'w').write(' '.join(args).replace('\\', '/'))
-      args = ['@' + rsp]
+      args = ['@' + response_file.create_response_file(args, shared.TEMP_DIR)]
 
     with utils.chdir(temp_dir):
       self.run_process([EMCC] + args + MINIMAL_HELLO_WORLD + ['-O2'])

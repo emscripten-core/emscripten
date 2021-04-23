@@ -41,15 +41,6 @@ import time
 from enum import Enum
 from subprocess import PIPE
 
-from tools.response_file import substitute_response_files
-
-# read response files very early on so that all subsequent code that accesses
-# sys.argv will see the expanded content.
-try:
-  sys.argv = substitute_response_files(sys.argv)
-except IOError as e:
-  raise Exception('Unable to parse response files!\n' + str(e))
-
 import emscripten
 from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
@@ -883,12 +874,6 @@ def run(args):
   misc_temp_files = shared.configuration.get_temp_files()
 
   # Handle some global flags
-
-  # read response files very early on
-  try:
-    args = substitute_response_files(args)
-  except IOError as e:
-    exit_with_error(e)
 
   if '--help' in args:
     # Documentation for emcc and its options must be updated in:
