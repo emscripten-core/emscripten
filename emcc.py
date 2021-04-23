@@ -1623,6 +1623,12 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.DYNCALLS and not settings.MINIMAL_RUNTIME:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
 
+  if not settings.DYNCALLS and not settings.BOOTSTRAPPING_STRUCT_INFO:
+    # The {{{ makeDynCall() }}} builtin macro depends on wbind() function but we don't have a mechanism to include
+    # a function into the build based on whether a function in parseTools.js is invoked, so include the function manually in every build.
+    # (to be DCEd away if not used)
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wbind']
+
   if settings.MAIN_MODULE:
     assert not settings.SIDE_MODULE
     if settings.MAIN_MODULE == 1:
