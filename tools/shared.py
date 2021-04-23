@@ -360,6 +360,7 @@ def perform_sanity_checks():
         exit_with_error('Cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 
 
+@ToolchainProfiler.profile_block('sanity')
 def check_sanity(force=False):
   """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
   and LLVM) exists.
@@ -388,36 +389,35 @@ def check_sanity(force=False):
     perform_sanity_checks()
     return
 
-  with ToolchainProfiler.profile_block('sanity'):
-    expected = generate_sanity()
+  expected = generate_sanity()
 
-    sanity_file = Cache.get_path('sanity.txt')
-    with Cache.lock():
-      if os.path.exists(sanity_file):
-        sanity_data = open(sanity_file).read()
-        if sanity_data != expected:
-          logger.debug('old sanity: %s' % sanity_data)
-          logger.debug('new sanity: %s' % expected)
-          logger.info('(Emscripten: config changed, clearing cache)')
-          Cache.erase()
-          # the check actually failed, so definitely write out the sanity file, to
-          # avoid others later seeing failures too
-          force = False
-        else:
-          if force:
-            logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
-          else:
-            logger.debug(f'sanity file up-to-date: {sanity_file}')
-            return # all is well
+  sanity_file = Cache.get_path('sanity.txt')
+  with Cache.lock():
+    if os.path.exists(sanity_file):
+      sanity_data = open(sanity_file).read()
+      if sanity_data != expected:
+        logger.debug('old sanity: %s' % sanity_data)
+        logger.debug('new sanity: %s' % expected)
+        logger.info('(Emscripten: config changed, clearing cache)')
+        Cache.erase()
+        # the check actually failed, so definitely write out the sanity file, to
+        # avoid others later seeing failures too
+        force = False
       else:
-        logger.debug(f'sanity file not found: {sanity_file}')
+        if force:
+          logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
+        else:
+          logger.debug(f'sanity file up-to-date: {sanity_file}')
+          return # all is well
+    else:
+      logger.debug(f'sanity file not found: {sanity_file}')
 
-      perform_sanity_checks()
+    perform_sanity_checks()
 
-      if not force:
-        # Only create/update this file if the sanity check succeeded, i.e., we got here
-        with open(sanity_file, 'w') as f:
-          f.write(expected)
+    if not force:
+      # Only create/update this file if the sanity check succeeded, i.e., we got here
+      with open(sanity_file, 'w') as f:
+        f.write(expected)
 
 
 # Some distributions ship with multiple llvm versions so they add

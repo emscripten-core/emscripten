@@ -8,6 +8,7 @@ import os
 import time
 import sys
 import tempfile
+from contextlib import ContextDecorator
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -191,7 +192,7 @@ if EMPROFILE:
       for b in ToolchainProfiler.block_stack[::-1]:
         ToolchainProfiler.exit_block(b)
 
-    class ProfileBlock:
+    class ProfileBlock(ContextDecorator):
       def __init__(self, block_name):
         self.block_name = block_name
 
@@ -240,8 +241,8 @@ else:
     def exit_block(block_name):
       pass
 
-    class ProfileBlock:
-      def __init__(self, block_name):
+    class ProfileBlock(ContextDecorator):
+      def __init__(self):
         pass
 
       def __enter__(self):
@@ -252,4 +253,4 @@ else:
 
     @staticmethod
     def profile_block(block_name):
-      return ToolchainProfiler.ProfileBlock(block_name)
+      return ToolchainProfiler.ProfileBlock()
