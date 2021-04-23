@@ -233,7 +233,7 @@ class sanity(RunnerCore):
           try_delete(default_config)
 
   def test_llvm(self):
-    LLVM_WARNING = 'LLVM version appears incorrect'
+    LLVM_WARNING = 'LLVM version for clang executable'
 
     restore_and_set_up()
 
