@@ -1583,6 +1583,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if settings.USE_WEBGL2:
       settings.MAX_WEBGL_VERSION = 2
 
+    # MIN_WEBGL_VERSION=2 implies MAX_WEBGL_VERSION=2
+    if settings.MIN_WEBGL_VERSION == 2:
+      default_setting('MAX_WEBGL_VERSION', 2)
+
+    if settings.MIN_WEBGL_VERSION > settings.MAX_WEBGL_VERSION:
+      exit_with_error('MIN_WEBGL_VERSION must be smaller or equal to MAX_WEBGL_VERSION!')
+
     if not settings.GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS and settings.GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS:
       exit_with_error('-s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0 only makes sense with -s GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0!')
 
