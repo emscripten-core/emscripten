@@ -796,7 +796,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in settings.EXPORTED_FUNCTIONS]
-  building.user_requested_exports += unexpected_exports
+  building.user_requested_exports.update(unexpected_exports)
 
   return metadata
 
