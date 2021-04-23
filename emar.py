@@ -6,29 +6,19 @@
 
 """Archive helper script
 
-This script acts as a frontend replacement for `ar`. See emcc.
-This is needed because, unlike a traditional linker, emscripten can't handle
-archive with duplicate member names.  This is because emscripten extracts
-archive to a temporary location and duplicate filenames will clobber each
-other in this case.
+This script acts as a frontend replacement for `llvm-ar`.
 """
-
-# TODO(sbc): Implement `ar x` within emscripten, in python, to avoid this issue
-# and delete this file.
 
 import sys
 
-from tools import shared
+from tools import shared, building
 
 
 #
 # Main run() function
 #
 def run():
-  # The wasm backend doesn't suffer from the same problem as fastcomp so it
-  # doesn't need the filename hashing.
-  cmd = [shared.LLVM_AR] + sys.argv[1:]
-  return shared.run_process(cmd, stdin=sys.stdin, check=False).returncode
+  return shared.run_process([shared.LLVM_AR] + building.get_command_with_possible_response_file(sys.argv[1:]), stdin=sys.stdin, check=False).returncode
 
 
 if __name__ == '__main__':
