@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from .toolchain_profiler import ToolchainProfiler
+
 import glob
 import hashlib
 import itertools
@@ -12,7 +14,6 @@ import shutil
 import sys
 from glob import iglob
 
-from .toolchain_profiler import ToolchainProfiler
 from . import shared, building, ports, config, utils
 from . import deps_info, tempfiles
 from . import diagnostics
@@ -73,7 +74,7 @@ def clean_env():
   # At least one port also uses autoconf (harfbuzz) so we also need to clear
   # CFLAGS/LDFLAGS which we don't want to effect the inner call to configure.
   safe_env = os.environ.copy()
-  for opt in ['CFLAGS', 'LDFLAGS', 'EMCC_CFLAGS', 'EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
+  for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS', 'EMCC_CFLAGS', 'EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
   return safe_env
@@ -969,6 +970,11 @@ class libcxx(NoExceptLibrary, MTLibrary):
 
 class libunwind(NoExceptLibrary, MTLibrary):
   name = 'libunwind'
+  # Because calls to _Unwind_CallPersonality are generated during LTO, libunwind
+  # can't currently be part of LTO.
+  # See https://bugs.llvm.org/show_bug.cgi?id=44353
+  force_object_files = True
+
   cflags = ['-Oz', '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
   src_dir = ['system', 'lib', 'libunwind', 'src']
   # Without this we can't build libunwind since it will pickup the unwind.h

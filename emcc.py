@@ -23,6 +23,7 @@ emcc can be influenced by a few environment variables:
                    your system headers will be used.
 """
 
+from tools.toolchain_profiler import ToolchainProfiler
 
 import base64
 import json
@@ -36,6 +37,8 @@ import sys
 import time
 from enum import Enum
 from subprocess import PIPE
+from urllib.parse import quote
+
 
 import emscripten
 from tools import shared, system_libs
@@ -46,17 +49,11 @@ from tools.shared import do_replace
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
-from tools.toolchain_profiler import ToolchainProfiler
 from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
 from tools import config
 from tools.settings import settings
-
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
-
-from urllib.parse import quote
 
 logger = logging.getLogger('emcc')
 
@@ -663,7 +660,7 @@ def process_dynamic_libs(dylibs):
     logger.debug('Adding exports based on `%s`: %s', dylib, new_exports)
     settings.EXPORTED_FUNCTIONS.extend(shared.asmjs_mangle(e) for e in new_exports)
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(new_exports)
-    building.user_requested_exports.extend(shared.asmjs_mangle(e) for e in new_exports)
+    building.user_requested_exports.update(shared.asmjs_mangle(e) for e in new_exports)
 
     exports = webassembly.get_exports(dylib)
     for export in exports:
@@ -1332,7 +1329,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       settings.EXIT_RUNTIME = settings.EXPECT_MAIN
 
     # Note the exports the user requested
-    building.user_requested_exports = settings.EXPORTED_FUNCTIONS.copy()
+    building.user_requested_exports.update(settings.EXPORTED_FUNCTIONS)
 
     def default_setting(name, new_default):
       if name not in settings_map:
@@ -1732,8 +1729,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # kept alive through DCE.
       # TODO: Find a less hacky way to do this, perhaps by also scanning worker.js
       # for roots.
-      building.user_requested_exports.append('_emscripten_tls_init')
-      building.user_requested_exports.append('_emscripten_current_thread_process_queued_calls')
+      building.user_requested_exports.add('_emscripten_tls_init')
+      building.user_requested_exports.add('_emscripten_current_thread_process_queued_calls')
 
       # set location of worker.js
       settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
@@ -1770,7 +1767,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       settings.EXPORTED_FUNCTIONS += ['_memalign']
 
       if settings.MINIMAL_RUNTIME:
-        building.user_requested_exports += ['exit']
+        building.user_requested_exports.add('exit')
 
       if settings.PROXY_TO_PTHREAD:
         settings.EXPORTED_FUNCTIONS += ['_emscripten_proxy_main']

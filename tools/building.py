@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from .toolchain_profiler import ToolchainProfiler
+
 import json
 import logging
 import os
@@ -19,7 +21,6 @@ from . import response_file
 from . import shared
 from . import webassembly
 from . import config
-from .toolchain_profiler import ToolchainProfiler
 from .shared import CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
@@ -44,7 +45,7 @@ nm_cache = {}
 ar_contents = {}
 _is_ar_cache = {}
 # the exports the user requested
-user_requested_exports = []
+user_requested_exports = set()
 
 
 class ObjectFileInfo:
@@ -452,6 +453,11 @@ def link_lld(args, target, external_symbol_list=None):
   cmd = [WASM_LD, '-o', target] + args
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
+
+  # Wasm exception handling. This is a CodeGen option for the LLVM backend, so
+  # wasm-ld needs to take this for the LTO mode.
+  if settings.EXCEPTION_HANDLING:
+    cmd += ['-mllvm', '-exception-model=wasm']
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
