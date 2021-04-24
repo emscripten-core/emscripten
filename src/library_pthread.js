@@ -477,7 +477,8 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
       out('Allocating a new web worker from ' + pthreadMainJs);
 #endif
-      PThread.unusedWorkers.push(new Worker(pthreadMainJs));
+      var workerName = 'pthread #' + PThread.unusedWorkers.length;
+      PThread.unusedWorkers.push(new Worker(pthreadMainJs, {'name' : workerName}));
     },
 
     getNewWorker: function() {
