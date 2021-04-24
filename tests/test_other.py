@@ -3103,47 +3103,48 @@ var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
     create_file('header.h', '#define X 5\n')
     self.run_process([EMCC, '-Werror', '-xc++-header', 'header.h'])
 
-  def test_precompiled_headers(self):
-    for suffix in ['gch', 'pch']:
-      print(suffix)
-      self.clear()
-      create_file('header.h', '#define X 5\n')
-      self.run_process([EMCC, '-xc++-header', 'header.h', '-c'])
-      self.assertExists('header.h.gch') # default output is gch
-      if suffix != 'gch':
-        self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
-        self.assertBinaryEqual('header.h.gch', 'header.h.' + suffix)
+  @parameterized({
+    'gch': ['gch'],
+    'pch': ['pch'],
+  })
+  def test_precompiled_headers(self, suffix):
+    create_file('header.h', '#define X 5\n')
+    self.run_process([EMCC, '-xc++-header', 'header.h', '-c'])
+    self.assertExists('header.h.gch') # default output is gch
+    if suffix != 'gch':
+      self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
+      self.assertBinaryEqual('header.h.gch', 'header.h.' + suffix)
 
-      create_file('src.cpp', r'''
+    create_file('src.cpp', r'''
 #include <stdio.h>
 int main() {
-  printf("|%d|\n", X);
-  return 0;
+printf("|%d|\n", X);
+return 0;
 }
 ''')
-      self.run_process([EMCC, 'src.cpp', '-include', 'header.h'])
+    self.run_process([EMCC, 'src.cpp', '-include', 'header.h'])
 
-      output = self.run_js('a.out.js')
-      self.assertContained('|5|', output)
+    output = self.run_js('a.out.js')
+    self.assertContained('|5|', output)
 
-      # also verify that the gch is actually used
-      err = self.run_process([EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
-      self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err)
-      # and sanity check it is not mentioned when not
-      try_delete('header.h.' + suffix)
-      err = self.run_process([EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
-      self.assertNotContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err.replace('\r\n', '\n'))
+    # also verify that the gch is actually used
+    err = self.run_process([EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
+    self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err)
+    # and sanity check it is not mentioned when not
+    try_delete('header.h.' + suffix)
+    err = self.run_process([EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
+    self.assertNotContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err.replace('\r\n', '\n'))
 
-      # with specified target via -o
-      try_delete('header.h.' + suffix)
-      self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'my.' + suffix])
-      self.assertExists('my.' + suffix)
+    # with specified target via -o
+    try_delete('header.h.' + suffix)
+    self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'my.' + suffix])
+    self.assertExists('my.' + suffix)
 
-      # -include-pch flag
-      self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
-      self.run_process([EMCC, 'src.cpp', '-include-pch', 'header.h.' + suffix])
-      output = self.run_js('a.out.js')
-      self.assertContained('|5|', output)
+    # -include-pch flag
+    self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
+    self.run_process([EMCC, 'src.cpp', '-include-pch', 'header.h.' + suffix])
+    output = self.run_js('a.out.js')
+    self.assertContained('|5|', output)
 
   def test_LEGACY_VM_SUPPORT(self):
     # when modern features are lacking, we can polyfill them or at least warn
