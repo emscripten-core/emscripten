@@ -135,7 +135,7 @@ var LibraryPThread = {
     setThreadName: function(pthreadPtr, name) {
       var profilerBlock = Atomics.load(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
       if (!profilerBlock) return;
-      stringToUTF8(name, profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}}, 32);
+      stringToUTF8(name, profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}}, {{{ cDefine('EM_THREAD_NAME_MAX') }}});
     },
 
     getThreadName: function(pthreadPtr) {
@@ -162,8 +162,6 @@ var LibraryPThread = {
       var status = (profilerBlock == 0) ? 0 : Atomics.load(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.threadStatus }}} ) >> 2);
       return PThread.threadStatusToString(status);
     },
-#else
-    setThreadStatus: function() {},
 #endif
 
     runExitHandlers: function() {
@@ -324,7 +322,9 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
       out("threadInit");
 #endif
+#if PTHREADS_PROFILING
       PThread.setThreadStatus(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
+#endif
       // Call thread init functions (these are the emscripten_tls_init for each
       // module loaded.
       for (var i in PThread.tlsInitFunctions) {
@@ -1344,8 +1344,7 @@ var LibraryPThread = {
 
   emscripten_receive_on_main_thread_js__deps: [
     'emscripten_proxy_to_main_thread_js',
-    'emscripten_receive_on_main_thread_js_callArgs',
-    '$readAsmConstArgs'],
+    'emscripten_receive_on_main_thread_js_callArgs'],
   emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
 #if WASM_BIGINT
     numCallArgs /= 2;
@@ -1376,9 +1375,13 @@ var LibraryPThread = {
   },
 
   $establishStackSpace: function(stackTop, stackMax) {
+    // Set stack limits used by `emscripten/stack.h` function.  These limits are
+    // cached in wasm-side globals to make checks as fast as possible.
     _emscripten_stack_set_limits(stackTop, stackMax);
 #if STACK_OVERFLOW_CHECK >= 2
-    ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+    // Set stack limits used by binaryen's `StackCheck` pass.
+    // TODO(sbc): Can this be combined with the above.
+    ___set_stack_limits(stackTop, stackMax);
 #endif
 
     // Call inside wasm module to set up the stack frame for this pthread in wasm module scope

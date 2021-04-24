@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <emscripten/heap.h>
 #include <stddef.h>
 
 size_t emscripten_get_heap_size() {

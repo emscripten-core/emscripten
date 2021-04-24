@@ -23,17 +23,28 @@
 LibraryManager.library = {
   // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
+  //
+  // These are trivial wrappers around runtime functions that make these symbols
+  // available to native code.
   // ==========================================================================
 
   getTempRet0__sig: 'i',
   getTempRet0: function() {
-    return {{{ makeGetTempRet0() }}};
+    return getTempRet0();
   },
 
   setTempRet0__sig: 'vi',
-  setTempRet0: function($i) {
-    {{{ makeSetTempRet0('$i') }}};
+  setTempRet0: function(val) {
+    setTempRet0(val);
   },
+
+#if SAFE_HEAP
+  // Trivial wrappers around runtime functions that make these symbols available
+  // to native code.
+  segfault: function() { segfault(); },
+  alignfault: function() { alignfault(); },
+  ftfault: function() { ftfault(); },
+#endif
 
   // ==========================================================================
   // JavaScript <-> C string interop
@@ -2915,6 +2926,7 @@ LibraryManager.library = {
   },
 
   emscripten_get_compiler_setting: function(name) {
+#if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
@@ -2926,6 +2938,9 @@ LibraryManager.library = {
     var fullret = cache[fullname];
     if (fullret) return fullret;
     return cache[fullname] = allocate(intArrayFromString(ret + ''), ALLOC_NORMAL);
+#else
+    throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for getCompilerSetting or emscripten_get_compiler_setting to work';
+#endif
   },
 
   emscripten_has_asyncify: function() {
@@ -2948,7 +2963,7 @@ LibraryManager.library = {
   emscripten_generate_pc: function(frame) {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_generate_pc (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
-#endif
+#else
     var match;
 
     if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
@@ -2968,6 +2983,7 @@ LibraryManager.library = {
       // return 0 if we can't find any
       return 0;
     }
+#endif
   },
 
   // Returns a representation of a call site of the caller of this function, in a manner
@@ -3069,15 +3085,19 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', '$withBuiltinMalloc'
+  emscripten_pc_get_function__deps: [
+#if USE_OFFSET_CONVERTER
+    '$UNWIND_CACHE',
+    '$withBuiltinMalloc',
 #if MINIMAL_RUNTIME
-    , '$allocateUTF8'
+    '$allocateUTF8',
+#endif
 #endif
   ],
   emscripten_pc_get_function: function (pc) {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
-#endif
+#else
     var name;
     if (pc & 0x80000000) {
       // If this is a JavaScript function, try looking it up in the unwind cache.
@@ -3100,6 +3120,7 @@ LibraryManager.library = {
       _emscripten_pc_get_function.ret = allocateUTF8(name);
     });
     return _emscripten_pc_get_function.ret;
+#endif
   },
 
   emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
@@ -3244,6 +3265,7 @@ LibraryManager.library = {
   },
 
   emscripten_asm_const_int__sig: 'iiii',
+  emscripten_asm_const_int__deps: ['$readAsmConstArgs'],
   emscripten_asm_const_int: function(code, sigPtr, argbuf) {
 #if RELOCATABLE
     code -= {{{ GLOBAL_BASE }}};
@@ -3255,6 +3277,8 @@ LibraryManager.library = {
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
+
+  $mainThreadEM_ASM__deps: ['$readAsmConstArgs'],
   $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
 #if RELOCATABLE
     code -= {{{ GLOBAL_BASE }}};
@@ -3295,18 +3319,12 @@ LibraryManager.library = {
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
+  $exportAsmFunctions__deps: ['$asmjsMangle'],
   $exportAsmFunctions: function(asm) {
-    var asmjsMangle = function(x) {
-      var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
-      return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
-    };
-
-#if ENVIRONMENT_MAY_BE_NODE
-#if ENVIRONMENT_MAY_BE_WEB
+#if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
     var global_object = (typeof process !== "undefined" ? global : this);
-#else
+#elif ENVIRONMENT_MAY_BE_NODE
     var global_object = global;
-#endif
 #else
     var global_object = this;
 #endif
@@ -3596,12 +3614,17 @@ LibraryManager.library = {
 #if EXIT_RUNTIME || USE_PTHREADS
   $callUserCallback__deps: ['$maybeExit'],
 #endif
-  $callUserCallback: function(func) {
+  $callUserCallback: function(func, synchronous) {
     if (ABORT) {
 #if ASSERTIONS
       err('user callback triggered after application aborted.  Ignoring.');
-      return;
 #endif
+      return;
+    }
+    // For synchronous calls, let any exceptions propagate, and don't let the runtime exit.
+    if (synchronous) {
+      func();
+      return;
     }
     try {
       func();
@@ -3654,6 +3677,28 @@ LibraryManager.library = {
   $callUserCallback: function(func) {
     func();
   },
+#endif
+
+  $asmjsMangle: function(x) {
+    var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
+    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+  },
+
+#if RELOCATABLE
+  // These get set in emscripten.py during add_standard_wasm_imports, but are
+  // included here so they don't show up as undefined symbols at js compile
+  // time.
+  __stack_pointer: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, {{{ STACK_BASE }}})",
+  // tell the memory segments where to place themselves
+  __memory_base: '{{{ GLOBAL_BASE }}}',
+  // the wasm backend reserves slot 0 for the NULL function pointer
+  __table_base: 1,
+  // To support such allocations during startup, track them on __heap_base and
+  // then when the main module is loaded it reads that value and uses it to
+  // initialize sbrk (the main module is relocatable itself, and so it does not
+  // have __heap_base hardcoded into it - it receives it from JS as an extern
+  // global, basically).
+  __heap_base: '{{{ HEAP_BASE }}}',
 #endif
 };
 

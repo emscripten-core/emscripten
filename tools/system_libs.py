@@ -17,6 +17,7 @@ from . import shared, building, ports, config, utils
 from . import deps_info, tempfiles
 from . import diagnostics
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
+from tools.settings import settings
 
 logger = logging.getLogger('system_libs')
 
@@ -57,12 +58,12 @@ def get_base_cflags(force_object_files=False):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
   flags = ['-g']
-  if shared.Settings.LTO and not force_object_files:
-    flags += ['-flto=' + shared.Settings.LTO]
-  if shared.Settings.RELOCATABLE:
+  if settings.LTO and not force_object_files:
+    flags += ['-flto=' + settings.LTO]
+  if settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
-  if shared.Settings.MEMORY64:
-    flags += ['-s', 'MEMORY64=' + str(shared.Settings.MEMORY64)]
+  if settings.MEMORY64:
+    flags += ['-s', 'MEMORY64=' + str(settings.MEMORY64)]
   return flags
 
 
@@ -83,11 +84,6 @@ def run_build_commands(commands):
   # headers are installed.  This prevents each sub-process from attempting
   # to setup the sysroot itself.
   ensure_sysroot()
-
-  for i in range(len(commands)):
-    # TODO(sbc): Remove this one we remove the test_em_config_env_var test
-    commands[i].append('-Wno-deprecated')
-
   shared.run_multiple_processes(commands, env=clean_env())
 
 
@@ -210,7 +206,7 @@ class Library:
 
     @classmethod
     def get_default_variation(cls, **kwargs):
-      return super().get_default_variation(my_parameter=shared.Settings.MY_PARAMETER, **kwargs)
+      return super().get_default_variation(my_parameter=settings.MY_PARAMETER, **kwargs)
 
   This allows the correct variation of the library to be selected when building
   code with Emscripten.
@@ -510,7 +506,7 @@ class MTLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(MTLibrary, cls).get_default_variation(is_mt=shared.Settings.USE_PTHREADS, **kwargs)
+    return super(MTLibrary, cls).get_default_variation(is_mt=settings.USE_PTHREADS, **kwargs)
 
 
 class OptimizedAggressivelyForSizeLibrary(Library):
@@ -536,7 +532,7 @@ class OptimizedAggressivelyForSizeLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(OptimizedAggressivelyForSizeLibrary, cls).get_default_variation(is_optz=shared.Settings.SHRINK_LEVEL >= 2, **kwargs)
+    return super(OptimizedAggressivelyForSizeLibrary, cls).get_default_variation(is_optz=settings.SHRINK_LEVEL >= 2, **kwargs)
 
 
 class exceptions:
@@ -591,9 +587,9 @@ class NoExceptLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    if shared.Settings.EXCEPTION_HANDLING:
+    if settings.EXCEPTION_HANDLING:
       eh_mode = exceptions.wasm
-    elif shared.Settings.DISABLE_EXCEPTION_CATCHING == 1:
+    elif settings.DISABLE_EXCEPTION_CATCHING == 1:
       eh_mode = exceptions.none
     else:
       eh_mode = exceptions.emscripten
@@ -634,7 +630,7 @@ class AsanInstrumentedLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(AsanInstrumentedLibrary, cls).get_default_variation(is_asan=shared.Settings.USE_ASAN, **kwargs)
+    return super(AsanInstrumentedLibrary, cls).get_default_variation(is_asan=settings.USE_ASAN, **kwargs)
 
 
 class libcompiler_rt(MTLibrary):
@@ -646,10 +642,14 @@ class libcompiler_rt(MTLibrary):
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
   src_files = glob_in_path(src_dir, '*.c')
-  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_ops.S'))
-  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'stack_limits.S'))
-  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_setjmp.c'))
-  src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'emscripten_exception_builtins.c'))
+  src_files += files_in_path(
+      path_components=['system', 'lib', 'compiler-rt'],
+      filenames=[
+        'stack_ops.S',
+        'stack_limits.S',
+        'emscripten_setjmp.c',
+        'emscripten_exception_builtins.c'
+      ])
 
 
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
@@ -864,7 +864,7 @@ class crt1(MuslInternalLibrary):
     return '.o'
 
   def can_use(self):
-    return super(crt1, self).can_use() and shared.Settings.STANDALONE_WASM
+    return super(crt1, self).can_use() and settings.STANDALONE_WASM
 
 
 class crt1_reactor(MuslInternalLibrary):
@@ -879,7 +879,7 @@ class crt1_reactor(MuslInternalLibrary):
     return '.o'
 
   def can_use(self):
-    return super(crt1_reactor, self).can_use() and shared.Settings.STANDALONE_WASM
+    return super(crt1_reactor, self).can_use() and settings.STANDALONE_WASM
 
 
 class crtbegin(Library):
@@ -1044,7 +1044,7 @@ class libmalloc(MTLibrary):
     return name
 
   def can_use(self):
-    return super(libmalloc, self).can_use() and shared.Settings.MALLOC != 'none'
+    return super(libmalloc, self).can_use() and settings.MALLOC != 'none'
 
   @classmethod
   def vary_on(cls):
@@ -1053,12 +1053,12 @@ class libmalloc(MTLibrary):
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super(libmalloc, cls).get_default_variation(
-      malloc=shared.Settings.MALLOC,
-      is_debug=shared.Settings.ASSERTIONS >= 2,
-      use_errno=shared.Settings.SUPPORT_ERRNO,
-      is_tracing=shared.Settings.EMSCRIPTEN_TRACING,
-      memvalidate='memvalidate' in shared.Settings.MALLOC,
-      verbose='verbose' in shared.Settings.MALLOC,
+      malloc=settings.MALLOC,
+      is_debug=settings.ASSERTIONS >= 2,
+      use_errno=settings.SUPPORT_ERRNO,
+      is_tracing=settings.EMSCRIPTEN_TRACING,
+      memvalidate='memvalidate' in settings.MALLOC,
+      verbose='verbose' in settings.MALLOC,
       **kwargs
     )
 
@@ -1130,10 +1130,10 @@ class libgl(MTLibrary):
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super(libgl, cls).get_default_variation(
-      is_legacy=shared.Settings.LEGACY_GL_EMULATION,
-      is_webgl2=shared.Settings.MAX_WEBGL_VERSION >= 2,
-      is_ofb=shared.Settings.OFFSCREEN_FRAMEBUFFER,
-      is_full_es3=shared.Settings.FULL_ES3,
+      is_legacy=settings.LEGACY_GL_EMULATION,
+      is_webgl2=settings.MAX_WEBGL_VERSION >= 2,
+      is_ofb=settings.OFFSCREEN_FRAMEBUFFER,
+      is_full_es3=settings.FULL_ES3,
       **kwargs
     )
 
@@ -1175,7 +1175,7 @@ class libembind(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(libembind, cls).get_default_variation(with_rtti=shared.Settings.USE_RTTI, **kwargs)
+    return super(libembind, cls).get_default_variation(with_rtti=settings.USE_RTTI, **kwargs)
 
 
 class libfetch(MTLibrary):
@@ -1332,7 +1332,7 @@ class libstandalonewasm(MuslInternalLibrary):
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super(libstandalonewasm, cls).get_default_variation(
-      is_mem_grow=shared.Settings.ALLOW_MEMORY_GROWTH,
+      is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
       **kwargs
     )
 
@@ -1381,9 +1381,9 @@ class libjsmath(Library):
 # confusing, so issue a warning.
 def warn_on_unexported_main(symbolses):
   # In STANDALONE_WASM we don't expect main to be explictly exported
-  if shared.Settings.STANDALONE_WASM:
+  if settings.STANDALONE_WASM:
     return
-  if '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
+  if '_main' not in settings.EXPORTED_FUNCTIONS:
     for symbols in symbolses:
       if 'main' in symbols.defs:
         logger.warning('main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.')
@@ -1391,18 +1391,18 @@ def warn_on_unexported_main(symbolses):
 
 
 def handle_reverse_deps(input_files):
-  if shared.Settings.REVERSE_DEPS == 'none':
+  if settings.REVERSE_DEPS == 'none':
     return
-  elif shared.Settings.REVERSE_DEPS == 'all':
+  elif settings.REVERSE_DEPS == 'all':
     # When not optimzing we add all possible reverse dependencies rather
     # than scanning the input files
     for symbols in deps_info.deps_info.values():
       for symbol in symbols:
-        shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(symbol))
+        settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(symbol))
     return
 
-  if shared.Settings.REVERSE_DEPS != 'auto':
-    shared.exit_with_error(f'invalid values for REVERSE_DEPS: {shared.Settings.REVERSE_DEPS}')
+  if settings.REVERSE_DEPS != 'auto':
+    shared.exit_with_error(f'invalid values for REVERSE_DEPS: {settings.REVERSE_DEPS}')
 
   added = set()
 
@@ -1415,7 +1415,7 @@ def handle_reverse_deps(input_files):
         for dep in deps:
           need.undefs.add(dep)
           logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
-          shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
+          settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
     if more:
       add_reverse_deps(need) # recurse to get deps of deps
 
@@ -1431,8 +1431,8 @@ def handle_reverse_deps(input_files):
     symbolses.append(Dummy())
 
   # depend on exported functions
-  for export in shared.Settings.EXPORTED_FUNCTIONS:
-    if shared.Settings.VERBOSE:
+  for export in settings.EXPORTED_FUNCTIONS:
+    if settings.VERBOSE:
       logger.debug('adding dependency on export %s' % export)
     symbolses[0].undefs.add(demangle_c_symbol_name(export))
 
@@ -1450,7 +1450,7 @@ def calculate(input_files, cxx, forced):
     # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
     # of the input files for reverse dependencies.
     diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` and/or `-s REVERSE_DEPS=none` depending on the desired result')
-    shared.Settings.REVERSE_DEPS = 'all'
+    settings.REVERSE_DEPS = 'all'
 
   handle_reverse_deps(input_files)
 
@@ -1481,14 +1481,14 @@ def calculate(input_files, cxx, forced):
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
     libs_to_link.append((lib.get_path(), need_whole_archive))
 
-  if shared.Settings.USE_PTHREADS:
+  if settings.USE_PTHREADS:
     add_library('crtbegin')
 
-  if shared.Settings.SIDE_MODULE:
+  if settings.SIDE_MODULE:
     return [l[0] for l in libs_to_link]
 
-  if shared.Settings.STANDALONE_WASM:
-    if shared.Settings.EXPECT_MAIN:
+  if settings.STANDALONE_WASM:
+    if settings.EXPECT_MAIN:
       add_library('crt1')
     else:
       add_library('crt1_reactor')
@@ -1502,20 +1502,20 @@ def calculate(input_files, cxx, forced):
     add_library('libc_rt_wasm')
     add_library('libcompiler_rt')
   else:
-    if shared.Settings.AUTO_NATIVE_LIBRARIES:
+    if settings.AUTO_NATIVE_LIBRARIES:
       add_library('libgl')
       add_library('libal')
       add_library('libhtml5')
 
-    sanitize = shared.Settings.USE_LSAN or shared.Settings.USE_ASAN or shared.Settings.UBSAN_RUNTIME
+    sanitize = settings.USE_LSAN or settings.USE_ASAN or settings.UBSAN_RUNTIME
 
     # JS math must come before anything else, so that it overrides the normal
     # libc math.
-    if shared.Settings.JS_MATH:
+    if settings.JS_MATH:
       add_library('libjsmath')
 
     # to override the normal libc printf, we must come before it
-    if shared.Settings.PRINTF_LONG_DOUBLE:
+    if settings.PRINTF_LONG_DOUBLE:
       add_library('libprintf_long_double')
 
     add_library('libc')
@@ -1524,29 +1524,29 @@ def calculate(input_files, cxx, forced):
       add_library('libc++')
     if cxx or sanitize:
       add_library('libc++abi')
-      if shared.Settings.EXCEPTION_HANDLING:
+      if settings.EXCEPTION_HANDLING:
         add_library('libunwind')
-    if shared.Settings.MALLOC != 'none':
+    if settings.MALLOC != 'none':
       add_library('libmalloc')
-    if shared.Settings.STANDALONE_WASM:
+    if settings.STANDALONE_WASM:
       add_library('libstandalonewasm')
     add_library('libc_rt_wasm')
 
-    if shared.Settings.USE_LSAN:
+    if settings.USE_LSAN:
       force_include.add('liblsan_rt')
       add_library('liblsan_rt')
 
-    if shared.Settings.USE_ASAN:
+    if settings.USE_ASAN:
       force_include.add('libasan_rt')
       add_library('libasan_rt')
       add_library('libasan_js')
 
-    if shared.Settings.UBSAN_RUNTIME == 1:
+    if settings.UBSAN_RUNTIME == 1:
       add_library('libubsan_minimal_rt_wasm')
-    elif shared.Settings.UBSAN_RUNTIME == 2:
+    elif settings.UBSAN_RUNTIME == 2:
       add_library('libubsan_rt')
 
-    if shared.Settings.USE_LSAN or shared.Settings.USE_ASAN:
+    if settings.USE_LSAN or settings.USE_ASAN:
       add_library('liblsan_common_rt')
 
     if sanitize:
@@ -1558,20 +1558,20 @@ def calculate(input_files, cxx, forced):
     # somehow figure out which of their object files will actually be linked in -
     # but only lld knows that). so just directly handle that here.
     if sanitize:
-      shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name('memset'))
+      settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name('memset'))
 
-    if shared.Settings.PROXY_POSIX_SOCKETS:
+    if settings.PROXY_POSIX_SOCKETS:
       add_library('libsockets_proxy')
     else:
       add_library('libsockets')
 
-    if shared.Settings.USE_WEBGPU:
+    if settings.USE_WEBGPU:
       add_library('libwebgpu_cpp')
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
   # shouldn't add any extra `--no-whole-archive` or we will undo the intent of building.link_ldd.
-  if shared.Settings.LINKABLE:
+  if settings.LINKABLE:
     return [l[0] for l in libs_to_link]
 
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
@@ -1800,7 +1800,7 @@ class Ports:
   @staticmethod
   def clear_project_build(name):
     port = ports.ports_by_name[name]
-    port.clear(Ports, shared.Settings, shared)
+    port.clear(Ports, settings, shared)
     shared.try_delete(os.path.join(Ports.get_build_dir(), name))
 
 
@@ -1836,7 +1836,7 @@ def resolve_dependencies(port_set, settings):
         port_set.add(dep)
         add_deps(dep)
 
-  for port in list(port_set):
+  for port in port_set.copy():
     add_deps(port)
 
 

@@ -197,9 +197,8 @@ var LibraryGL = {
     contexts: [],
 #endif
     offscreenCanvases: {}, // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their rendering control transferred to offscreen.
-    timerQueriesEXT: [],
+    queries: [], // on WebGL1 stores WebGLTimerQueryEXT, on WebGL2 WebGLQuery
 #if MAX_WEBGL_VERSION >= 2
-    queries: [],
     samplers: [],
     transformFeedbacks: [],
     syncs: [],
@@ -1091,7 +1090,23 @@ var LibraryGL = {
       __webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GLctx);
 #endif
 
-      GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
+#if MAX_WEBGL_VERSION >= 2
+      // On WebGL 2, EXT_disjoint_timer_query is replaced with an alternative
+      // that's based on core APIs, and exposes only the queryCounterEXT()
+      // entrypoint.
+      if (context.version >= 2) {
+        GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query_webgl2");
+      }
+
+      // However, Firefox exposes the WebGL 1 version on WebGL 2 as well and
+      // thus we look for the WebGL 1 version again if the WebGL 2 version
+      // isn't present. https://bugzilla.mozilla.org/show_bug.cgi?id=1328882
+      if (context.version < 2 || !GLctx.disjointTimerQueryExt)
+#endif
+      {
+        GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
+      }
+
       __webgl_enable_WEBGL_multi_draw(GLctx);
 
       // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
@@ -1791,9 +1806,9 @@ var LibraryGL = {
         while (i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
         return;
       }
-      var id = GL.getNewId(GL.timerQueriesEXT);
+      var id = GL.getNewId(GL.queries);
       query.name = id;
-      GL.timerQueriesEXT[id] = query;
+      GL.queries[id] = query;
       {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
     }
   },
@@ -1802,16 +1817,16 @@ var LibraryGL = {
   glDeleteQueriesEXT: function(n, ids) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
-      var query = GL.timerQueriesEXT[id];
+      var query = GL.queries[id];
       if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
       GLctx.disjointTimerQueryExt['deleteQueryEXT'](query);
-      GL.timerQueriesEXT[id] = null;
+      GL.queries[id] = null;
     }
   },
 
   glIsQueryEXT__sig: 'ii',
   glIsQueryEXT: function(id) {
-    var query = GL.timerQueriesEXT[id];
+    var query = GL.queries[id];
     if (!query) return 0;
     return GLctx.disjointTimerQueryExt['isQueryEXT'](query);
   },
@@ -1819,9 +1834,9 @@ var LibraryGL = {
   glBeginQueryEXT__sig: 'vii',
   glBeginQueryEXT: function(target, id) {
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glBeginQueryEXT', 'id');
+    GL.validateGLObjectID(GL.queries, id, 'glBeginQueryEXT', 'id');
 #endif
-    GLctx.disjointTimerQueryExt['beginQueryEXT'](target, GL.timerQueriesEXT[id]);
+    GLctx.disjointTimerQueryExt['beginQueryEXT'](target, GL.queries[id]);
   },
 
   glEndQueryEXT__sig: 'vi',
@@ -1829,12 +1844,15 @@ var LibraryGL = {
     GLctx.disjointTimerQueryExt['endQueryEXT'](target);
   },
 
+  // This one is either from EXT_disjoint_timer_query on WebGL 1 (taking a
+  // WebGLTimerQueryEXT) or from EXT_disjoint_timer_query_webgl2 (taking a
+  // WebGLQuery)
   glQueryCounterEXT__sig: 'vii',
   glQueryCounterEXT: function(id, target) {
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glQueryCounterEXT', 'id');
+    GL.validateGLObjectID(GL.queries, id, 'glQueryCounterEXT', 'id');
 #endif
-    GLctx.disjointTimerQueryExt['queryCounterEXT'](GL.timerQueriesEXT[id], target);
+    GLctx.disjointTimerQueryExt['queryCounterEXT'](GL.queries[id], target);
   },
 
   glGetQueryivEXT__sig: 'viii',
@@ -1863,9 +1881,9 @@ var LibraryGL = {
       return;
     }
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glGetQueryObjectivEXT', 'id');
+    GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjectivEXT', 'id');
 #endif
-    var query = GL.timerQueriesEXT[id];
+    var query = GL.queries[id];
     var param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
     var ret;
     if (typeof param == 'boolean') {
@@ -1890,10 +1908,21 @@ var LibraryGL = {
       return;
     }
 #if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glGetQueryObjecti64vEXT', 'id');
+    GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjecti64vEXT', 'id');
 #endif
-    var query = GL.timerQueriesEXT[id];
-    var param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
+    var query = GL.queries[id];
+    var param;
+#if MAX_WEBGL_VERSION >= 2
+    if (GL.currentContext.version < 2)
+#endif
+    {
+      param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
+    }
+#if MAX_WEBGL_VERSION >= 2
+    else {
+      param = GLctx['getQueryParameter'](query, pname);
+    }
+#endif
     var ret;
     if (typeof param == 'boolean') {
       ret = param ? 1 : 0;
@@ -3506,75 +3535,6 @@ var LibraryGL = {
   glDeleteVertexArraysOES: 'glDeleteVertexArrays',
   glBindVertexArrayOES: 'glBindVertexArray',
   glIsVertexArrayOES: 'glIsVertexArray',
-
-  // GLU
-
-  gluPerspective: function(fov, aspect, near, far) {
-    GLImmediate.matricesModified = true;
-    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrix[GLImmediate.currentMatrix] =
-      GLImmediate.matrixLib.mat4.perspective(fov, aspect, near, far,
-                                               GLImmediate.matrix[GLImmediate.currentMatrix]);
-  },
-
-  gluLookAt: function(ex, ey, ez, cx, cy, cz, ux, uy, uz) {
-    GLImmediate.matricesModified = true;
-    GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
-    GLImmediate.matrixLib.mat4.lookAt(GLImmediate.matrix[GLImmediate.currentMatrix], [ex, ey, ez],
-        [cx, cy, cz], [ux, uy, uz]);
-  },
-
-  gluProject: function(objX, objY, objZ, model, proj, view, winX, winY, winZ) {
-    // The algorithm for this functions comes from Mesa
-
-    var inVec = new Float32Array(4);
-    var outVec = new Float32Array(4);
-    GLImmediate.matrixLib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'model', 'model+' + (16*8)) }}},
-        [objX, objY, objZ, 1.0], outVec);
-    GLImmediate.matrixLib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'proj', 'proj+' + (16*8)) }}},
-        outVec, inVec);
-    if (inVec[3] == 0.0) {
-      return 0 /* GL_FALSE */;
-    }
-    inVec[0] /= inVec[3];
-    inVec[1] /= inVec[3];
-    inVec[2] /= inVec[3];
-    // Map x, y and z to range 0-1 */
-    inVec[0] = inVec[0] * 0.5 + 0.5;
-    inVec[1] = inVec[1] * 0.5 + 0.5;
-    inVec[2] = inVec[2] * 0.5 + 0.5;
-    // Map x, y to viewport
-    inVec[0] = inVec[0] * {{{ makeGetValue('view', 2*4, 'i32') }}} + {{{ makeGetValue('view', 0*4, 'i32') }}};
-    inVec[1] = inVec[1] * {{{ makeGetValue('view', 3*4, 'i32') }}} + {{{ makeGetValue('view', 1*4, 'i32') }}};
-
-    {{{ makeSetValue('winX', '0', 'inVec[0]', 'double') }}};
-    {{{ makeSetValue('winY', '0', 'inVec[1]', 'double') }}};
-    {{{ makeSetValue('winZ', '0', 'inVec[2]', 'double') }}};
-
-    return 1 /* GL_TRUE */;
-  },
-
-  gluUnProject: function(winX, winY, winZ, model, proj, view, objX, objY, objZ) {
-    var result = GLImmediate.matrixLib.mat4.unproject([winX, winY, winZ],
-        {{{ makeHEAPView('F64', 'model', 'model+' + (16*8)) }}},
-        {{{ makeHEAPView('F64', 'proj', 'proj+' + (16*8)) }}},
-        {{{ makeHEAPView('32', 'view', 'view+' + (4*4)) }}});
-
-    if (result === null) {
-      return 0 /* GL_FALSE */;
-    }
-
-    {{{ makeSetValue('objX', '0', 'result[0]', 'double') }}};
-    {{{ makeSetValue('objY', '0', 'result[1]', 'double') }}};
-    {{{ makeSetValue('objZ', '0', 'result[2]', 'double') }}};
-
-    return 1 /* GL_TRUE */;
-  },
-
-  gluOrtho2D__deps: ['glOrtho'],
-  gluOrtho2D: function(left, right, bottom, top) {
-    _glOrtho(left, right, bottom, top, -1, 1);
-  },
 
   // GLES2 emulation
 
