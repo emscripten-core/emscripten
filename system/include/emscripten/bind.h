@@ -1702,7 +1702,828 @@ namespace emscripten {
     };
 
     ////////////////////////////////////////////////////////////////////////////////
-    // VECTORS
+    // VECTORS (JavaScript Array style API)
+    ////////////////////////////////////////////////////////////////////////////////
+
+    namespace internal {
+        enum class vector_array_iterator_type {
+             KEYS, VALUES, ENTRIES,
+        };
+
+        template<typename VectorType>
+        struct VectorArrayValue {
+            VectorArrayValue()
+                : value(val::undefined())
+                , done(true) {}
+
+            ~VectorArrayValue() {}
+
+            val value;
+            bool done;
+        };
+
+        template<typename VectorType>
+        class VectorArrayIterator {
+        public:
+            VectorArrayIterator(const VectorType& v, vector_array_iterator_type t)
+                : vp(&v)
+                , index(0)
+                , type(t) {}
+
+            ~VectorArrayIterator() {}
+
+            const VectorArrayValue<VectorType> next() {
+                VectorArrayValue<VectorType> vav;
+                if (index < (ssize_t)vp->size()) {
+                    switch (type) {
+                        case vector_array_iterator_type::KEYS:
+                            vav.value = val(index);
+                            break;
+                        case vector_array_iterator_type::VALUES:
+                            vav.value = val(vp->at(index));
+                            break;
+                        case vector_array_iterator_type::ENTRIES:
+                            vav.value = val::array();
+                            vav.value.set(val(0), val(index));
+                            vav.value.set(val(1), val(vp->at(index)));
+                            break;
+                    }
+                    vav.done = false;
+                    index += 1;
+                }
+                return vav;
+            }
+
+            VectorArrayIterator<VectorType>& iterator() {
+                return *this;
+            }
+
+        private:
+            const VectorType* vp;
+            ssize_t index;
+            vector_array_iterator_type type;
+        };
+
+        template<typename VectorType>
+        struct VectorArrayAccess {
+            static VectorType from(
+                const val& array,
+                const val& callbackFn
+            ) {
+                return from(array, callbackFn, val::undefined());
+            }
+
+            static VectorType from(
+                const val& array,
+                const val& callbackFn,
+                const val& thisArg
+            ) {
+                ssize_t size = array["length"].as<ssize_t>();
+                VectorType vn;
+                vn.reserve(size);
+                for (ssize_t i = 0; i < size; ++i) {
+                    val entry = callbackFn.call<val>("call", thisArg, array[i], i);
+                    vn.push_back(entry.as<typename VectorType::value_type>());
+                }
+                return vn;
+            }
+
+            static VectorType concat(
+                const VectorType& v
+            ) {
+                return VectorType(v.begin(), v.end());
+            }
+
+            static VectorType concat(
+                const VectorType& v,
+                const VectorType& v0
+            ) {
+                VectorType vn;
+                vn.reserve(v.size() + v0.size());
+                vn.insert(vn.end(), v.begin(), v.end());
+                vn.insert(vn.end(), v0.begin(), v0.end());
+                return vn;
+            }
+
+            static VectorType& copyWithin(
+                VectorType& v,
+                ssize_t target
+            ) {
+                return copyWithin(v, target, 0, v.size());
+            }
+
+            static VectorType& copyWithin(
+                VectorType& v,
+                ssize_t target,
+                ssize_t start
+            ) {
+                return copyWithin(v, target, start, v.size());
+            }
+
+            static VectorType& copyWithin(
+                VectorType& v,
+                ssize_t target,
+                ssize_t start,
+                ssize_t end
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                if (target < 0) {
+                    target += size;
+                    if (target < 0) {
+                        target = 0;
+                    }
+                }
+                if (start < 0) {
+                    start += size;
+                    if (start < 0) {
+                        start = 0;
+                    }
+                }
+                if (end < 0) {
+                    end += size;
+                }
+                if (end > size) {
+                    end = size;
+                }
+                ssize_t length = std::min(size - target, end - start);
+                if (length > 0) {
+                    if (target < start) {
+                        std::copy(v.begin() + start, v.begin() + start + length, v.begin() + target);
+                    } else if (start < target) {
+                        std::copy_backward(v.begin() + start, v.begin() + start + length, v.begin() + target + length);
+                    }
+                }
+                return v;
+            }
+
+            static VectorArrayIterator<VectorType> entries(
+                const VectorType& v
+            ) {
+                return VectorArrayIterator<VectorType>(v, vector_array_iterator_type::ENTRIES);
+            }
+
+            static bool every(
+                const VectorType& v,
+                const val& callbackFn
+            ) {
+                return every(v, callbackFn, val::undefined());
+            }
+
+            static bool every(
+                const VectorType& v,
+                const val& callbackFn,
+                const val& thisArg
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                for (ssize_t i = 0; i < size; ++i) {
+                    if (!callbackFn.call<bool>("call", thisArg, v[i], i, v)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            static VectorType& fill(
+                VectorType& v,
+                const typename VectorType::value_type& value
+            ) {
+                return fill(v, value, 0, v.size());
+            }
+
+            static VectorType& fill(
+                VectorType& v,
+                const typename VectorType::value_type& value,
+                ssize_t start
+            ) {
+                return fill(v, value, start, v.size());
+            }
+
+            static VectorType& fill(
+                VectorType& v,
+                const typename VectorType::value_type& value,
+                ssize_t start,
+                ssize_t end
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                if (start < 0) {
+                    start += size;
+                    if (start < 0) {
+                        start = 0;
+                    }
+                }
+                if (end < 0) {
+                    end += size;
+                }
+                if (end > size) {
+                    end = size;
+                }
+                std::fill(v.begin() + start, v.begin() + end, value);
+                return v;
+            }
+
+            static VectorType filter(
+                const VectorType& v,
+                const val& callbackFn
+            ) {
+                return filter(v, callbackFn, val::undefined());
+            }
+
+            static VectorType filter(
+                const VectorType& v,
+                const val& callbackFn,
+                const val& thisArg
+            ) {
+                VectorType vn;
+                ssize_t size = (ssize_t)v.size();
+                for (ssize_t i = 0; i < size; ++i) {
+                    if (callbackFn.call<bool>("call", thisArg, v[i], i, v)) {
+                        vn.push_back(v[i]);
+                    }
+                }
+                return vn;
+            }
+
+            static val find(
+                const VectorType& v,
+                const val& callbackFn
+            ) {
+                return find(v, callbackFn, val::undefined());
+            }
+
+            static val find(
+                const VectorType& v,
+                const val& callbackFn,
+                const val& thisArg
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                for (ssize_t i = 0; i < size; ++i) {
+                    if (callbackFn.call<bool>("call", thisArg, v[i], i, v)) {
+                        return val(v[i]);
+                    }
+                }
+                return val::undefined();
+            }
+
+            static ssize_t findIndex(
+                const VectorType& v,
+                const val& callbackFn
+            ) {
+                return findIndex(v, callbackFn, val::undefined());
+            }
+
+            static ssize_t findIndex(
+                const VectorType& v,
+                const val& callbackFn,
+                const val& thisArg
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                for (ssize_t i = 0; i < size; ++i) {
+                    if (callbackFn.call<bool>("call", thisArg, v[i], i, v)) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
+            static void forEach(
+                VectorType& v,
+                const val& callbackFn
+            ) {
+                forEach(v, callbackFn, val::undefined());
+            }
+
+            static void forEach(
+                VectorType& v,
+                const val& callbackFn,
+                const val& thisArg
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                for (ssize_t i = 0; i < size; ++i) {
+                    callbackFn.call<void>("call", thisArg, v[i], i, v);
+                }
+            }
+
+            static val get(
+                const VectorType& v,
+                ssize_t index
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                if (index < 0) {
+                    index += size;
+                }
+                if (index >= 0 && index < size) {
+                    return val(v[index]);
+                }
+                return val::undefined();
+            }
+
+            static bool includes(
+                const VectorType& v,
+                const typename VectorType::value_type& value
+            ) {
+                return includes(v, value, 0);
+            }
+
+            static bool includes(
+                const VectorType& v,
+                const typename VectorType::value_type& value,
+                ssize_t start
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                if (start < 0) {
+                    start += size;
+                    if (start < 0) {
+                        start = 0;
+                    }
+                }
+                val number(val::global("Number"));
+                bool isNaN = number.call<bool>("isNaN", value);
+                for (ssize_t i = start; i < size; ++i) {
+                    if (val(v[i]).strictlyEquals(val(value))) {
+                        return true;
+                    }
+                    if (isNaN && number.call<bool>("isNaN", v[i])) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            static ssize_t indexOf(
+                const VectorType& v,
+                const typename VectorType::value_type& value
+            ) {
+                return indexOf(v, value, 0);
+            }
+
+            static ssize_t indexOf(
+                const VectorType& v,
+                const typename VectorType::value_type& value,
+                ssize_t start
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                if (start < 0) {
+                    start += size;
+                    if (start < 0) {
+                        start = 0;
+                    }
+                }
+                for (ssize_t i = start; i < size; ++i) {
+                    if (val(v[i]).strictlyEquals(val(value))) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
+            static std::string join(
+                const VectorType& v
+            ) {
+                return join(v, ",");
+            }
+
+            static std::string join(
+                const VectorType& v,
+                const std::string& separator
+            ) {
+                std::string s;
+                ssize_t size = (ssize_t)v.size();
+                if (size > 0) {
+                    s += val(v[0]).call<std::string>("toString");
+                    for (ssize_t i = 1; i < size; ++i) {
+                        s += separator;
+                        s += val(v[i]).call<std::string>("toString");
+                    }
+                }
+                return s;
+            }
+
+            static VectorArrayIterator<VectorType> keys(
+                const VectorType& v
+            ) {
+                return VectorArrayIterator<VectorType>(v, vector_array_iterator_type::KEYS);
+            }
+
+            static ssize_t lastIndexOf(
+                const VectorType& v,
+                const typename VectorType::value_type& value
+            ) {
+                return lastIndexOf(v, value, -1);
+            }
+
+            static ssize_t lastIndexOf(
+                const VectorType& v,
+                const typename VectorType::value_type& value,
+                ssize_t start
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                if (start < 0) {
+                    start += size;
+                }
+                if (start >= size) {
+                    start = size - 1;
+                }
+                for (ssize_t i = start; i >= 0; --i) {
+                    if (val(v[i]).strictlyEquals(val(value))) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
+            static val map(
+                const VectorType& v,
+                const val& callbackFn
+            ) {
+                return map(v, callbackFn, val::undefined());
+            }
+
+            static val map(
+                const VectorType& v,
+                const val& callbackFn,
+                const val& thisArg
+            ) {
+                val array = val::array();
+                ssize_t size = (ssize_t)v.size();
+                for (ssize_t i = 0; i < size; ++i) {
+                    val entry = callbackFn.call<val>("call", thisArg, v[i], i, v);
+                    array.call<void>("push", entry);
+                }
+                return array;
+            }
+
+            static val pop(
+                VectorType& v
+            ) {
+                if (v.size() > 0) {
+                    val e = val(v.back());
+                    v.pop_back();
+                    return e;
+                }
+                return val::undefined();
+            }
+
+            static size_t push(
+                VectorType& v,
+                const typename VectorType::value_type& value
+            ) {
+                v.push_back(value);
+                return (size_t)v.size();
+            }
+
+            static val reduce(
+                const VectorType& v,
+                const val& callbackFn
+            ) {
+                return reduce(v, callbackFn, val::undefined());
+            }
+
+            static val reduce(
+                const VectorType& v,
+                const val& callbackFn,
+                const val& initialValue
+            ) {
+                ssize_t i = 0;
+                ssize_t size = (ssize_t)v.size();
+                val accumulator = initialValue;
+                if (accumulator.isUndefined()) {
+                    if (size == 0) {
+                        val::global("TypeError").new_().throw_();
+                    }
+                    accumulator = val(v[i]);
+                    ++i;
+                }
+                for (; i < size; ++i) {
+                    accumulator = callbackFn.call<val>("call", val::undefined(), accumulator, v[i], i, v);
+                }
+                return accumulator;
+            }
+
+            static val reduceRight(
+                const VectorType& v,
+                const val& callbackFn
+            ) {
+                return reduceRight(v, callbackFn, val::undefined());
+            }
+
+            static val reduceRight(
+                const VectorType& v,
+                const val& callbackFn,
+                const val& initialValue
+            ) {
+                ssize_t i = (ssize_t)v.size() - 1;
+                val accumulator = initialValue;
+                if (accumulator.isUndefined()) {
+                    if (i < 0) {
+                        val::global("TypeError").new_().throw_();
+                    }
+                    accumulator = val(v[i]);
+                    --i;
+                }
+                for (; i >= 0; --i) {
+                    accumulator = callbackFn.call<val>("call", val::undefined(), accumulator, v[i], i, v);
+                }
+                return accumulator;
+            }
+
+            static VectorType& reverse(
+                VectorType& v
+            ) {
+                std::reverse(v.begin(), v.end());
+                return v;
+            }
+
+            static bool set(
+                VectorType& v,
+                ssize_t index,
+                const typename VectorType::value_type& value
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                if (index < 0) {
+                    index += size;
+                }
+                if (index >= 0 && index < size) {
+                    v[index] = value;
+                    return true;
+                }
+                return false;
+            }
+
+            static val shift(
+                VectorType& v
+            ) {
+                if (v.size() > 0) {
+                    val e = val(v.front());
+                    v.erase(v.begin());
+                    return e;
+                }
+                return val::undefined();
+            }
+
+            static VectorType slice(
+                const VectorType& v
+            ) {
+                return slice(v, 0, (ssize_t)v.size());
+            }
+
+            static VectorType slice(
+                const VectorType& v,
+                ssize_t start
+            ) {
+                return slice(v, start, (ssize_t)v.size());
+            }
+
+            static VectorType slice(
+                const VectorType& v,
+                ssize_t start,
+                ssize_t end
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                if (start < 0) {
+                    start += size;
+                    if (start < 0) {
+                        start = 0;
+                    }
+                }
+                if (end < 0) {
+                    end += size;
+                }
+                if (end > size) {
+                    end = size;
+                }
+                if (end > start) {
+                    return VectorType(v.begin() + start, v.begin() + end);
+                }
+                return VectorType();
+            }
+
+            static bool some(
+                const VectorType& v,
+                const val& callbackFn
+            ) {
+                return some(v, callbackFn, val::undefined());
+            }
+
+            static bool some(
+                const VectorType& v,
+                const val& callbackFn,
+                const val& thisArg
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                for (ssize_t i = 0; i < size; ++i) {
+                    if (callbackFn.call<bool>("call", thisArg, v[i], i, v)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            static VectorType& sort(
+                VectorType& v
+            ) {
+                std::stable_sort(v.begin(), v.end(), [](
+                    const typename VectorType::value_type& e1,
+                    const typename VectorType::value_type& e2
+                ) {
+                    val ev1(e1);
+                    val ev2(e2);
+                    if (ev1.isUndefined()) {
+                        return false;
+                    }
+                    if (ev2.isUndefined()) {
+                        return true;
+                    }
+                    std::string es1;
+                    if (ev1.isNull()) {
+                        es1 = "null";
+                    } else {
+                        es1 = ev1.call<std::string>("toString");
+                    }
+                    std::string es2;
+                    if (ev2.isNull()) {
+                        es2 = "null";
+                    } else {
+                        es2 = ev2.call<std::string>("toString");
+                    }
+                    return es1.compare(es2) < 0;
+                });
+                return v;
+            }
+
+            static VectorType& sort(
+                VectorType& v,
+                const val& callbackFn
+            ) {
+                std::stable_sort(v.begin(), v.end(), [callbackFn](
+                    const typename VectorType::value_type& e1,
+                    const typename VectorType::value_type& e2
+                ) {
+                    return callbackFn.call<int>("call", val::undefined(), e1, e2) < 0;
+                });
+                return v;
+            }
+
+            static VectorType splice(
+                VectorType& v,
+                ssize_t start
+            ) {
+                return splice(v, start, (ssize_t)v.size());
+            }
+
+            static VectorType splice(
+                VectorType& v,
+                ssize_t start,
+                ssize_t deleteCount
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                if (start < 0) {
+                    start += size;
+                    if (start < 0) {
+                        start = 0;
+                    }
+                }
+                if (start > size) {
+                    start = size;
+                }
+                deleteCount = std::min(deleteCount, size - start);
+                VectorType vn;
+                if (deleteCount > 0) {
+                    vn.insert(vn.end(), v.begin() + start, v.begin() + start + deleteCount);
+                    v.erase(v.begin() + start, v.begin() + start + deleteCount);
+                }
+                return vn;
+            }
+
+            static VectorType splice(
+                VectorType& v,
+                ssize_t start,
+                ssize_t deleteCount,
+                const typename VectorType::value_type& value
+            ) {
+                ssize_t size = (ssize_t)v.size();
+                if (start < 0) {
+                    start += size;
+                    if (start < 0) {
+                        start = 0;
+                    }
+                }
+                if (start > size) {
+                    start = size;
+                }
+                VectorType vn = splice(v, start, deleteCount);
+                v.insert(v.begin() + start, value);
+                return vn;
+            }
+
+            static std::string toLocaleString(
+                const VectorType& v
+            ) {
+                val array = val::array();
+                ssize_t size = (ssize_t)v.size();
+                for (ssize_t i = 0; i < size; ++i) {
+                    array.call<void>("push", val(v[i]).call<val>("toLocaleString"));
+                }
+                return array.call<std::string>("toLocaleString");
+            }
+
+            static size_t unshift(
+                VectorType& v,
+                const typename VectorType::value_type& value
+            ) {
+                v.insert(v.begin(), value);
+                return (size_t)v.size();
+            }
+
+            static VectorArrayIterator<VectorType> values(
+                const VectorType& v
+            ) {
+                return VectorArrayIterator<VectorType>(v, vector_array_iterator_type::VALUES);
+            }
+        };
+    }
+
+    template<typename T>
+    class_<std::vector<T>> vector(const char* vecName, const char* iterName, const char* valName) {
+        using namespace internal;
+        typedef std::vector<T> VecType;
+
+        value_object<VectorArrayValue<VecType>>(valName)
+            .field("value", &VectorArrayValue<VecType>::value)
+            .field("done", &VectorArrayValue<VecType>::done)
+            ;
+
+        class_<VectorArrayIterator<VecType>>(iterName)
+            .function("next", &VectorArrayIterator<VecType>::next)
+            .function("@@iterator", &VectorArrayIterator<VecType>::iterator)
+            ;
+
+        return class_<VecType>(vecName)
+            .template constructor<>()
+            .property("length", &VecType::size)
+            .class_function("from", select_overload<VecType(const val&)>(&vecFromJSArray))
+            .class_function("from", select_overload<VecType(const val&, const val&)>(&VectorArrayAccess<VecType>::from))
+            .class_function("from", select_overload<VecType(const val&, const val&, const val&)>(&VectorArrayAccess<VecType>::from))
+            .function("concat", select_overload<VecType(const VecType&)>(&VectorArrayAccess<VecType>::concat))
+            .function("concat", select_overload<VecType(const VecType&, const VecType&)>(&VectorArrayAccess<VecType>::concat))
+            .function("copyWithin", select_overload<VecType&(VecType&, ssize_t)>(&VectorArrayAccess<VecType>::copyWithin))
+            .function("copyWithin", select_overload<VecType&(VecType&, ssize_t, ssize_t)>(&VectorArrayAccess<VecType>::copyWithin))
+            .function("copyWithin", select_overload<VecType&(VecType&, ssize_t, ssize_t, ssize_t)>(&VectorArrayAccess<VecType>::copyWithin))
+            .function("entries", &VectorArrayAccess<VecType>::entries)
+            .function("every", select_overload<bool(const VecType&, const val&)>(&VectorArrayAccess<VecType>::every))
+            .function("every", select_overload<bool(const VecType&, const val&, const val&)>(&VectorArrayAccess<VecType>::every))
+            .function("filter", select_overload<VecType(const VecType&, const val&)>(&VectorArrayAccess<VecType>::filter))
+            .function("filter", select_overload<VecType(const VecType&, const val&, const val&)>(&VectorArrayAccess<VecType>::filter))
+            .function("find", select_overload<val(const VecType&, const val&)>(&VectorArrayAccess<VecType>::find))
+            .function("find", select_overload<val(const VecType&, const val&, const val&)>(&VectorArrayAccess<VecType>::find))
+            .function("findIndex", select_overload<ssize_t(const VecType&, const val&)>(&VectorArrayAccess<VecType>::findIndex))
+            .function("findIndex", select_overload<ssize_t(const VecType&, const val&, const val&)>(&VectorArrayAccess<VecType>::findIndex))
+            .function("fill", select_overload<VecType&(VecType&, const T&)>(&VectorArrayAccess<VecType>::fill))
+            .function("fill", select_overload<VecType&(VecType&, const T&, ssize_t)>(&VectorArrayAccess<VecType>::fill))
+            .function("fill", select_overload<VecType&(VecType&, const T&, ssize_t, ssize_t)>(&VectorArrayAccess<VecType>::fill))
+            .function("forEach", select_overload<void(VecType&, const val&)>(&VectorArrayAccess<VecType>::forEach))
+            .function("forEach", select_overload<void(VecType&, const val&, const val&)>(&VectorArrayAccess<VecType>::forEach))
+            .function("get", &VectorArrayAccess<VecType>::get)
+            .function("includes", select_overload<bool(const VecType&, const T&)>(&VectorArrayAccess<VecType>::includes))
+            .function("includes", select_overload<bool(const VecType&, const T&, ssize_t)>(&VectorArrayAccess<VecType>::includes))
+            .function("indexOf", select_overload<ssize_t(const VecType&, const T&)>(&VectorArrayAccess<VecType>::indexOf))
+            .function("indexOf", select_overload<ssize_t(const VecType&, const T&, ssize_t)>(&VectorArrayAccess<VecType>::indexOf))
+            .function("join", select_overload<std::string(const VecType&)>(&VectorArrayAccess<VecType>::join))
+            .function("join", select_overload<std::string(const VecType&, const std::string&)>(&VectorArrayAccess<VecType>::join))
+            .function("keys", &VectorArrayAccess<VecType>::keys)
+            .function("lastIndexOf", select_overload<ssize_t(const VecType&, const T&)>(&VectorArrayAccess<VecType>::lastIndexOf))
+            .function("lastIndexOf", select_overload<ssize_t(const VecType&, const T&, ssize_t)>(&VectorArrayAccess<VecType>::lastIndexOf))
+            .function("map", select_overload<val(const VecType&, const val&)>(&VectorArrayAccess<VecType>::map))
+            .function("map", select_overload<val(const VecType&, const val&, const val&)>(&VectorArrayAccess<VecType>::map))
+            .function("pop", &VectorArrayAccess<VecType>::pop)
+            .function("push", &VectorArrayAccess<VecType>::push)
+            .function("reduce", select_overload<val(const VecType&, const val&)>(&VectorArrayAccess<VecType>::reduce))
+            .function("reduce", select_overload<val(const VecType&, const val&, const val&)>(&VectorArrayAccess<VecType>::reduce))
+            .function("reduceRight", select_overload<val(const VecType&, const val&)>(&VectorArrayAccess<VecType>::reduceRight))
+            .function("reduceRight", select_overload<val(const VecType&, const val&, const val&)>(&VectorArrayAccess<VecType>::reduceRight))
+            .function("resize", select_overload<void(const size_t, const T&)>(&VecType::resize))
+            .function("reverse", &VectorArrayAccess<VecType>::reverse)
+            .function("set", &VectorArrayAccess<VecType>::set)
+            .function("shift", &VectorArrayAccess<VecType>::shift)
+            .function("slice", select_overload<VecType(const VecType&)>(&VectorArrayAccess<VecType>::slice))
+            .function("slice", select_overload<VecType(const VecType&, ssize_t)>(&VectorArrayAccess<VecType>::slice))
+            .function("slice", select_overload<VecType(const VecType&, ssize_t, ssize_t)>(&VectorArrayAccess<VecType>::slice))
+            .function("some", select_overload<bool(const VecType&, const val&)>(&VectorArrayAccess<VecType>::some))
+            .function("some", select_overload<bool(const VecType&, const val&, const val&)>(&VectorArrayAccess<VecType>::some))
+            .function("sort", select_overload<VecType&(VecType&)>(&VectorArrayAccess<VecType>::sort))
+            .function("sort", select_overload<VecType&(VecType&, const val&)>(&VectorArrayAccess<VecType>::sort))
+            .function("splice", select_overload<VecType(VecType&, ssize_t)>(&VectorArrayAccess<VecType>::splice))
+            .function("splice", select_overload<VecType(VecType&, ssize_t, ssize_t)>(&VectorArrayAccess<VecType>::splice))
+            .function("splice", select_overload<VecType(VecType&, ssize_t, ssize_t, const T&)>(&VectorArrayAccess<VecType>::splice))
+            .function("toLocaleString", select_overload<std::string(const VecType&)>(&VectorArrayAccess<VecType>::toLocaleString))
+            .function("toString", select_overload<std::string(const VecType&)>(&VectorArrayAccess<VecType>::join))
+            .function("unshift", &VectorArrayAccess<VecType>::unshift)
+            .function("values", &VectorArrayAccess<VecType>::values)
+            .function("@@iterator", &VectorArrayAccess<VecType>::values)
+            ;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // VECTORS (std::vector style API)
     ////////////////////////////////////////////////////////////////////////////////
 
     namespace internal {

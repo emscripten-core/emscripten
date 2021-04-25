@@ -79,7 +79,7 @@ int main()
   ensure_js_not("a instanceof Number");
   
   test("template<typename T> val array(const std::vector<T> vec)");
-  vector<val> vec1;
+  std::vector<val> vec1;
   vec1.push_back(val(11));
   vec1.push_back(val("a"));
   vec1.push_back(val::array());
@@ -91,7 +91,7 @@ int main()
   ensure_js_not("a[0] == 12");
   ensure_js("a[1] == 'a'");
   ensure_js("a[2] instanceof Array");
-  vector<int> vec2;
+  std::vector<int> vec2;
   vec2.push_back(0);
   vec2.push_back(1);
   vec2.push_back(3);

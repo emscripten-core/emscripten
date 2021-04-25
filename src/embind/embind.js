@@ -2103,6 +2103,10 @@ var LibraryEmbind = {
         classType = classType[0];
         var humanName = classType.name + '.' + methodName;
 
+        if (methodName.startsWith("@@")) {
+            methodName = Symbol[methodName.substring(2)];
+        }
+
         if (isPureVirtual) {
             classType.registeredClass.pureVirtualFunctions.push(methodName);
         }

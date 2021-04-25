@@ -1761,6 +1761,8 @@ EMSCRIPTEN_BINDINGS(tests) {
     register_vector<float>("FloatVector");
     register_vector<std::vector<int>>("IntegerVectorVector");
 
+    vector<double>("DoubleVector", "DoubleVectorIterator", "DoubleVectorValue");
+
     class_<DummyForPointer>("DummyForPointer");
 
     function("mallinfo", &emval_test_mallinfo);

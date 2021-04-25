@@ -1132,6 +1132,557 @@ module({
        });
     });
 
+    BaseFixture.extend("vector_as_array", function() {
+        test("length and resize", function() {
+            const vec = new cm.DoubleVector();
+            assert.equal(0, vec.length);
+            vec.resize(2, 0);
+            assert.equal(2, vec.length);
+            assert.equal(0, vec.get(0));
+            assert.equal(0, vec.get(1));
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("set and get", function() {
+            const vec = new cm.DoubleVector();
+            vec.resize(3, 2);
+            vec.set(0, 1);
+            vec.set(-1, 3);
+            assert.equal(1, vec.get(0));
+            assert.equal(2, vec.get(1));
+            assert.equal(3, vec.get(2));
+            assert.equal(3, vec.get(-1));
+            assert.equal(2, vec.get(-2));
+            assert.equal(1, vec.get(-3));
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("push, pop, shift, unshift", function() {
+            const vec = new cm.DoubleVector();
+            assert.equal(1, vec.push(3));
+            assert.equal(2, vec.unshift(2));
+            assert.equal(3, vec.push(4));
+            assert.equal(4, vec.unshift(1));
+            assert.equal(4, vec.length);
+            assert.equal(1, vec.get(0));
+            assert.equal(2, vec.get(1));
+            assert.equal(3, vec.get(2));
+            assert.equal(4, vec.get(3));
+            assert.equal(1, vec.shift());
+            assert.equal(4, vec.pop());
+            assert.equal(2, vec.shift());
+            assert.equal(3, vec.pop());
+            assert.equal(0, vec.length);
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("from", function() {
+            {
+                const vec = cm.DoubleVector.from([1, 2, 3]);
+                assert.equal(3, vec.length);
+                assert.equal(1, vec.get(0));
+                assert.equal(2, vec.get(1));
+                assert.equal(3, vec.get(2));
+                vec.delete();
+            }
+            {
+                const t = Object();
+                const vec = cm.DoubleVector.from('123', function(e, i) {
+                    // The syntax and polyfill disagree about the parameters here,
+                    // but the actual implementation for Array only includes the
+                    // element and index.
+                    assert.equal("string", typeof e);
+                    assert.equal("number", typeof i);
+                    assert.true(t === this);
+                    return Number(e);
+                }, t);
+                assert.equal(3, vec.length);
+                assert.equal(1, vec.get(0));
+                assert.equal(2, vec.get(1));
+                assert.equal(3, vec.get(2));
+                vec.delete();
+            }
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("join", function() {
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            assert.equal("1,2,3", vec.join());
+            assert.equal("1+2+3", vec.join("+"));
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("toString", function() {
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            assert.equal("1,2,3", vec.toString());
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("toLocaleString", function() {
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            assert.equal([1, 2, 3].toLocaleString(), vec.toLocaleString());
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("fill", function() {
+            const vec = new cm.DoubleVector();
+            vec.resize(3, 0);
+            assert.equal("1,1,1", vec.fill(1).toString());
+            assert.equal("1,2,2", vec.fill(2, 1).toString());
+            assert.equal("1,3,2", vec.fill(3, 1, 2).toString());
+            assert.equal("1,3,2", vec.fill(4, 1, 1).toString());
+            assert.equal("1,3,2", vec.fill(5, 3, 3).toString());
+            assert.equal("6,3,2", vec.fill(6, -3, -2).toString());
+            assert.equal("6,3,2", vec.fill(7, 3, 5).toString());
+            assert.equal("6,3,2", vec.toString());
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("reverse", function() {
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            assert.equal("1,2,3", vec.toString());
+            assert.equal("3,2,1", vec.reverse().toString());
+            assert.equal("3,2,1", vec.toString());
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("concat", function() {
+            const vec1 = cm.DoubleVector.from([1, 2]);
+            const vec2 = vec1.concat();
+            vec1.set(0, 3);
+            assert.equal("3,2", vec1.toString());
+            assert.equal("1,2", vec2.toString());
+            const vec3 = cm.DoubleVector.from([3, 4]);
+            const vec4 = vec2.concat(vec3);
+            assert.equal("1,2,3,4", vec4.toString());
+            vec1.delete();
+            vec2.delete();
+            vec3.delete();
+            vec4.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("copyWithin", function() {
+            {
+                const vec = cm.DoubleVector.from([1, 2, 3, 4, 5]);
+                assert.equal("1,2,3,1,2", vec.copyWithin(-2).toString());
+                vec.delete();
+            }
+            {
+                const vec = cm.DoubleVector.from([1, 2, 3, 4, 5]);
+                assert.equal("4,5,3,4,5", vec.copyWithin(0, 3).toString());
+                vec.delete();
+            }
+            {
+                const vec = cm.DoubleVector.from([1, 2, 3, 4, 5]);
+                assert.equal("4,2,3,4,5", vec.copyWithin(0, 3, 4).toString());
+                vec.delete();
+            }
+            {
+                const vec = cm.DoubleVector.from([1, 2, 3, 4, 5]);
+                assert.equal("1,2,3,3,4", vec.copyWithin(-2, -3, -1).toString());
+                assert.equal("1,2,3,3,4", vec.toString());
+                vec.delete();
+            }
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("slice", function() {
+            const vec1 = cm.DoubleVector.from([1, 2, 3, 4, 5]);
+            {
+                const vec2 = vec1.slice(2);
+                assert.equal("3,4,5", vec2.toString());
+                vec2.delete();
+            }
+            {
+                const vec2 = vec1.slice(2, 4);
+                assert.equal("3,4", vec2.toString());
+                vec2.delete();
+            }
+            {
+                const vec2 = vec1.slice(1, 5);
+                assert.equal("2,3,4,5", vec2.toString());
+                vec2.delete();
+            }
+            {
+                const vec2 = vec1.slice(-2);
+                assert.equal("4,5", vec2.toString());
+                vec2.delete();
+            }
+            {
+                const vec2 = vec1.slice(2, -1);
+                assert.equal("3,4", vec2.toString());
+                vec2.delete();
+            }
+            vec1.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("splice", function() {
+            {
+                const vec1 = cm.DoubleVector.from([2, 4, 6, 8]);
+                const vec2 = vec1.splice(2, 0, 5)
+                assert.equal("2,4,5,6,8", vec1.toString());
+                assert.equal("", vec2.toString());
+                vec1.delete();
+                vec2.delete();
+            }
+            {
+                const vec1 = cm.DoubleVector.from([2, 4, 5, 6, 8]);
+                const vec2 = vec1.splice(3, 1);
+                assert.equal("2,4,5,8", vec1.toString());
+                assert.equal("6", vec2.toString());
+                vec1.delete();
+                vec2.delete();
+            }
+            {
+                const vec1 = cm.DoubleVector.from([2, 4, 5, 8]);
+                const vec2 = vec1.splice(2, 1, 9);
+                assert.equal("2,4,9,8", vec1.toString());
+                assert.equal("5", vec2.toString());
+                vec1.delete();
+                vec2.delete();
+            }
+            {
+                const vec1 = cm.DoubleVector.from([2, 4, 9, 8]);
+                const vec2 = vec1.splice(0, 2, 7);
+                assert.equal("7,9,8", vec1.toString());
+                assert.equal("2,4", vec2.toString());
+                vec1.delete();
+                vec2.delete();
+            }
+            {
+                const vec1 = cm.DoubleVector.from([7, 1, 3, 9, 8]);
+                const vec2 = vec1.splice(2, 2);
+                assert.equal("7,1,8", vec1.toString());
+                assert.equal("3,9", vec2.toString());
+                vec1.delete();
+                vec2.delete();
+            }
+            {
+                const vec1 = cm.DoubleVector.from([2, 4, 6, 8]);
+                const vec2 = vec1.splice(-2, 1);
+                assert.equal("2,4,8", vec1.toString());
+                assert.equal("6", vec2.toString());
+                vec1.delete();
+                vec2.delete();
+            }
+            {
+                const vec1 = cm.DoubleVector.from([2, 4, 6, 8]);
+                const vec2 = vec1.splice(2);
+                assert.equal("2,4", vec1.toString());
+                assert.equal("6,8", vec2.toString());
+                vec1.delete();
+                vec2.delete();
+            }
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("entries", function() {
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            {
+                const it = vec.entries();
+                [[[0, 1], false], [[1, 2], false], [[2, 3], false], [undefined, true]].forEach(e => {
+                    const v = it.next();
+                    assert.deepEqual(e[0], v.value);
+                    assert.equal(e[1], v.done);
+                });
+                it.delete();
+            }
+            {
+                const expectedList = [[0, 1], [1, 2], [2, 3], 0];
+                for (const [i, e] of vec.entries()) {
+                    const expectedValues = expectedList.shift();
+                    assert.equal(expectedValues[0], i);
+                    assert.equal(expectedValues[1], e);
+                }
+                assert.equal(1, expectedList.length);
+            }
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("keys", function() {
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            {
+                const it = vec.keys();
+                [[0, false], [1, false], [2, false], [undefined, true]].forEach(e => {
+                    const v = it.next();
+                    assert.equal(e[0], v.value);
+                    assert.equal(e[1], v.done);
+                });
+                it.delete();
+            }
+            {
+                const expectedList = [0, 1, 2, 0];
+                for (const e of vec.keys()) {
+                    assert.equal(expectedList.shift(), e);
+                }
+                assert.equal(1, expectedList.length);
+            }
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("values", function() {
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            {
+                const it = vec.values();
+                [[1, false], [2, false], [3, false], [undefined, true]].forEach(e => {
+                    const v = it.next();
+                    assert.equal(e[0], v.value);
+                    assert.equal(e[1], v.done);
+                });
+                it.delete();
+            }
+            {
+                const expectedList = [1, 2, 3, 0];
+                for (const e of vec.values()) {
+                    assert.equal(expectedList.shift(), e);
+                }
+                assert.equal(1, expectedList.length);
+            }
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("iterator", function() {
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            const expectedList = [1, 2, 3, 0];
+            for (const e of vec) {
+                assert.equal(expectedList.shift(), e);
+            }
+            assert.equal(1, expectedList.length);
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("forEach", function() {
+            const expectedList = [[0, 1], [1, 2], [2, 3], 0];
+            const t = Object();
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            vec.forEach(function(e, i, v) {
+                const expectedValues = expectedList.shift();
+                assert.equal(expectedValues[0], i);
+                assert.equal(expectedValues[1], e);
+                assert.equal(e, v.get(i));
+                assert.true(t === this);
+            }, t);
+            assert.equal(1, expectedList.length);
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("every", function() {
+            const t = Object();
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            assert.true(vec.every(function(e, i, v) {
+                assert.equal("number", typeof e);
+                assert.equal("number", typeof i);
+                assert.equal(e, v.get(i));
+                assert.true(t === this);
+                return e < 4;
+            }, t));
+            assert.false(vec.every(function(e) {
+                return e < 3;
+            }));
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("some", function() {
+            const expectedList = [[0, 1], [1, 2], [2, 3], 0];
+            const t = Object();
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            assert.true(vec.some(function(e, i, v) {
+                assert.equal("number", typeof e);
+                assert.equal("number", typeof i);
+                assert.equal(e, v.get(i));
+                assert.true(t === this);
+                return e > 1;
+            }, t));
+            assert.false(vec.some(function(e) {
+                return e > 3;
+            }));
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("filter", function() {
+            const t = Object();
+            const vec = cm.DoubleVector.from([1, 2, 3, 4, 5]);
+            assert.equal("2,4", vec.filter(function(e, i, v) {
+                assert.equal("number", typeof e);
+                assert.equal("number", typeof i);
+                assert.equal(e, v.get(i));
+                assert.true(t === this);
+                return e % 2 == 0;
+            }, t).toString());
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("find", function() {
+            const t = Object();
+            const vec = cm.DoubleVector.from([1, 2, 3, 4, 5]);
+            assert.equal(2, vec.find(function(e, i, v) {
+                assert.equal("number", typeof e);
+                assert.equal("number", typeof i);
+                assert.equal(e, v.get(i));
+                assert.true(t === this);
+                return e % 2 == 0;
+            }, t));
+            assert.equal(undefined, vec.find(function(e, i, v) {
+                return e > 5;
+            }, t));
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("findIndex", function() {
+            const t = Object();
+            const vec = cm.DoubleVector.from([1, 2, 3, 4, 5]);
+            assert.equal(1, vec.findIndex(function(e, i, v) {
+                assert.equal("number", typeof e);
+                assert.equal("number", typeof i);
+                assert.equal(e, v.get(i));
+                assert.true(t === this);
+                return e % 2 == 0;
+            }, t));
+            assert.equal(-1, vec.findIndex(function(e, i, v) {
+                return e > 5;
+            }, t));
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("indexOf", function() {
+            const vec = cm.DoubleVector.from([1, 2, 3, 2, 1]);
+            assert.equal(1, vec.indexOf(2));
+            assert.equal(3, vec.indexOf(2, 2));
+            assert.equal(3, vec.indexOf(2, -3));
+            assert.equal(1, vec.indexOf(2, -6));
+            assert.equal(-1, vec.indexOf(4));
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("lastIndexOf", function() {
+            const vec = cm.DoubleVector.from([1, 2, 3, 2, 1]);
+            assert.equal(3, vec.lastIndexOf(2));
+            assert.equal(1, vec.lastIndexOf(2, 2));
+            assert.equal(1, vec.lastIndexOf(2, -3));
+            assert.equal(-1, vec.lastIndexOf(2, -6));
+            assert.equal(-1, vec.lastIndexOf(4));
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("includes", function() {
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            assert.true(vec.includes(2));
+            assert.false(vec.includes(4));
+            assert.false(vec.includes(3, 3));
+            assert.true(vec.includes(3, -1));
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("map", function() {
+            const t = Object();
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            const arr = vec.map(function(e, i, v) {
+                assert.equal("number", typeof e);
+                assert.equal("number", typeof i);
+                assert.equal(e, v.get(i));
+                assert.true(t === this);
+                return `[${i}:${e}]`;
+            }, t);
+            assert.equal("Array", arr.constructor.name);
+            assert.equal("[0:1] [1:2] [2:3]", arr.join(" "));
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("reduce", function() {
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            const a1 = vec.reduce(function(a, e, i, v) {
+                assert.equal("number", typeof a);
+                assert.equal("number", typeof e);
+                assert.equal("number", typeof i);
+                assert.equal(e, v.get(i));
+                return a - e;
+            });
+            assert.equal("number", typeof a1);
+            assert.equal(-4, a1);
+            const a2 = vec.reduce(function(a, e, i, v) {
+                assert.equal("bigint", typeof a);
+                assert.equal("number", typeof e);
+                assert.equal("number", typeof i);
+                assert.equal(e, v.get(i));
+                return a + BigInt(e);
+            }, 10n);
+            assert.equal("bigint", typeof a2);
+            assert.equal(16n, a2);
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("reduceRight", function() {
+            const vec = cm.DoubleVector.from([1, 2, 3]);
+            const a1 = vec.reduceRight(function(a, e, i, v) {
+                assert.equal("number", typeof a);
+                assert.equal("number", typeof e);
+                assert.equal("number", typeof i);
+                assert.equal(e, v.get(i));
+                return a - e;
+            });
+            assert.equal("number", typeof a1);
+            assert.equal(0, a1);
+            const a2 = vec.reduceRight(function(a, e, i, v) {
+                assert.equal("bigint", typeof a);
+                assert.equal("number", typeof e);
+                assert.equal("number", typeof i);
+                assert.equal(e, v.get(i));
+                return a + BigInt(e);
+            }, 10n);
+            assert.equal("bigint", typeof a2);
+            assert.equal(16n, a2);
+            vec.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("sort", function() {
+            {
+                const vec = cm.DoubleVector.from([1, 30, 4, 21, 100000]);
+                const s = vec.sort();
+                assert.equal("1,100000,21,30,4", s.toString());
+                assert.equal("1,100000,21,30,4", vec.toString());
+                vec.delete();
+            }
+            {
+                const vec = cm.DoubleVector.from([115, 215, 313, 414]);
+                const s = vec.sort(function(e1, e2) {
+                    assert.equal("number", typeof e1);
+                    assert.equal("number", typeof e2);
+                    return (e1 % 100) - (e2 % 100);
+                });
+                assert.equal("313,414,115,215", s.toString());
+                assert.equal("313,414,115,215", vec.toString());
+                vec.delete();
+            }
+            assert.equal(0, cm.count_emval_handles());
+        });
+    });
+
     BaseFixture.extend("functors", function() {
         test("can get and call function ptrs", function() {
             var ptr = cm.emval_test_get_function_ptr();
