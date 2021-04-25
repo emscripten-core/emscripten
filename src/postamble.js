@@ -453,10 +453,6 @@ function exit(status, implicit) {
     }
 #endif // ASSERTIONS
   } else {
-#if USE_PTHREADS
-    PThread.terminateAllThreads();
-#endif
-
     exitRuntime();
 
 #if expectToReceiveOnModule('onExit')
