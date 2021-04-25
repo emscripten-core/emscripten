@@ -5430,7 +5430,8 @@ int main(int argc, char** argv) {
     self.run_process([EMCC, '-O2', 'main.c', '-s', 'MAIN_MODULE', '-o', 'main.js', 'side.wasm'])
     self.run_js('main.js')
 
-    self.run_process([EMCC, '-O2', 'main.c', '-s', 'MAIN_MODULE', '-o', 'main2.js', '-s', 'RUNTIME_LINKED_LIBS=side.wasm'])
+    err = self.run_process([EMCC, '-O2', 'main.c', '-s', 'MAIN_MODULE', '-o', 'main2.js', '-s', 'RUNTIME_LINKED_LIBS=side.wasm'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: RUNTIME_LINKED_LIBS is deprecated', err)
     self.run_js('main2.js')
 
     self.assertBinaryEqual('main.wasm', 'main2.wasm')
