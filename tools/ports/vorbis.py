@@ -33,11 +33,15 @@ def get(ports, settings, shared):
                      ['-s', 'USE_OGG=1'], ['psytune', 'barkmel', 'tone', 'misc'])
     ports.install_header_dir(os.path.join(source_path, 'include', 'vorbis'))
 
-  return [shared.Cache.get_lib('libvorbis.a', create)]
+  return [
+    shared.Cache.get_lib('libvorbis.a', create),
+    shared.Cache.get_lib('libvorbisfile.a', create),
+  ]
 
 
 def clear(ports, settings, shared):
   shared.Cache.erase_lib('libvorbis.a')
+  shared.Cache.erase_lib('libvorbisfile.a')
 
 
 def process_dependencies(settings):

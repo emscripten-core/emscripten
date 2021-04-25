@@ -1640,6 +1640,13 @@ int f() {
     self.emcc(test_file('vorbis_test.c'), ['-s', 'USE_VORBIS'], output_filename='a.out.js')
     self.assertContained('ALL OK', self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
+  def test_vorbisfile(self):
+    shutil.copyfile(test_file('sounds', 'the_entertainer.ogg'), os.path.join(self.get_dir(), 'music.ogg'))
+    self.emcc(test_file('vorbisfile_test.c'), ['--embed-file', 'music.ogg', '-s', 'USE_VORBIS'], output_filename='a.out.js')
+    output = self.run_process(config.JS_ENGINES[0] + ['a.out.js', 'music.ogg'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertContained('Decoded length: 2677622 samples', output)
+    self.assertContained('ALL OK', output)
+
   def test_bzip2(self):
     self.emcc(test_file('bzip2_test.c'), ['-s', 'USE_BZIP2=1'], output_filename='a.out.js')
     self.assertContained("usage: unzcrash filename", self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
