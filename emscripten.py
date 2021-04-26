@@ -333,9 +333,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
     # In regular runtime, atinits etc. exist in the preamble part
     pre = apply_static_code_hooks(forwarded_json, pre)
 
-  # merge forwarded data
-  settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
-
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(metadata)
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
@@ -793,6 +790,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in settings.EXPORTED_FUNCTIONS]
   building.user_requested_exports.update(unexpected_exports)
+  settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
 
   return metadata
 
