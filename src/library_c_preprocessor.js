@@ -21,8 +21,20 @@ mergeInto(LibraryManager.library, {
     return out;
   },
 
+  // Finds the index of closing parens from the opening parens at arr[i].
+  // Used polymorphically for strings ("foo") and token arrays (['(', 'foo', ')']) as input.
+  $find_closing_parens_index: function(arr, i, opening='(', closing=')') {
+    for(var nesting = 0; i < arr.length; ++i) {
+      if (arr[i] == opening) ++nesting;
+      if (arr[i] == closing && --nesting == 0) {
+        return i;
+      }
+    }
+  },
+
   // Runs C preprocessor algorithm on the given code string.
   // Supported preprocessor directives: #if, #ifdef, #ifndef, #else, #elif, #endif, #define and #undef.
+  $preprocess_c_code__deps: ['$jstoi_q', '$find_closing_parens_index'],
   $preprocess_c_code: function(code) {
     var i = 0, // iterator over the input string
       len = code.length, // cache input length
@@ -46,17 +58,6 @@ mergeInto(LibraryManager.library, {
     function nextWhitespace(str, i) {
       while(!isWhitespace(str, i)) ++i;
       return i;
-    }
-
-    // Finds the index of closing parens ')' from the starting parens '(' at arr[i].
-    // Used polymorphically for strings ("foo") and token arrays (['(', 'foo', ')']) as input.
-    function findClosingParensIndex(arr, i) {
-      for(var nesting = 0; i < arr.length; ++i) {
-        if (arr[i] == '(') ++nesting;
-        if (arr[i] == ')' && --nesting == 0) {
-          return i;
-        }
-      }
     }
 
     // Returns an integer ID classification of the character at str[idx], used for tokenization purposes.
@@ -122,7 +123,7 @@ mergeInto(LibraryManager.library, {
               if (pp) {
                 var expanded = str.substring(lineStart, i);
                 if (str[j] == '(') {
-                  var closeParens = findClosingParensIndex(str, j);
+                  var closeParens = find_closing_parens_index(str, j);
 #if ASSERTIONS
                   assert(str[closeParens] == ')');
 #endif
@@ -162,7 +163,7 @@ mergeInto(LibraryManager.library, {
 
           if (operatorAndPriority == 13 /* parens '(' */) {
             // Find the closing parens position
-            var j = findClosingParensIndex(tokens, i);
+            var j = find_closing_parens_index(tokens, i);
             if (j) {
               tokens.splice(i, j+1-i, buildExprTree(tokens.slice(i+1, j)));
               return tokens;
@@ -201,7 +202,7 @@ mergeInto(LibraryManager.library, {
           if (tokens[i] == ')') throw 'Parsing failure, mismatched parentheses in parsing!' + tokens.toString();
           assert(operatorAndPriority == -1);
 #endif
-          var num = parseInt(tokens[i]);
+          var num = jstoi_q(tokens[i]);
           return [function() { return num; }]
         })(tokens);
       }

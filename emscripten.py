@@ -9,6 +9,8 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
+from tools.toolchain_profiler import ToolchainProfiler
+
 import os
 import json
 import subprocess
@@ -24,7 +26,6 @@ from tools import shared
 from tools import gen_struct_info
 from tools import webassembly
 from tools.shared import WINDOWS, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
-from tools.toolchain_profiler import ToolchainProfiler
 from tools.settings import settings
 
 logger = logging.getLogger('emscripten')
@@ -796,7 +797,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in settings.EXPORTED_FUNCTIONS]
-  building.user_requested_exports += unexpected_exports
+  building.user_requested_exports.update(unexpected_exports)
 
   return metadata
 
@@ -823,9 +824,9 @@ def normalize_line_endings(text):
 def generate_struct_info():
   generated_struct_info_name = 'generated_struct_info.json'
 
+  @ToolchainProfiler.profile_block('gen_struct_info')
   def generate_struct_info(out):
-    with ToolchainProfiler.profile_block('gen_struct_info'):
-      gen_struct_info.main(['-q', '-o', out])
+    gen_struct_info.main(['-q', '-o', out])
 
   settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
 

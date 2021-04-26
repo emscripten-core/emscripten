@@ -16,9 +16,6 @@ sys.path.insert(1, __rootpath__)
 
 from tools.toolchain_profiler import ToolchainProfiler
 from tools import building, config, shared
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
-
 
 configuration = shared.configuration
 temp_files = configuration.get_temp_files()
@@ -127,26 +124,26 @@ end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
 
 # Given a set of functions of form (ident, text), and a preferred chunk size,
 # generates a set of chunks for parallel processing and caching.
+@ToolchainProfiler.profile_block('chunkify')
 def chunkify(funcs, chunk_size):
-  with ToolchainProfiler.profile_block('chunkify'):
-    chunks = []
-    # initialize reasonably, the rest of the funcs we need to split out
-    curr = []
-    total_size = 0
-    for i in range(len(funcs)):
-      func = funcs[i]
-      curr_size = len(func[1])
-      if total_size + curr_size < chunk_size:
-        curr.append(func)
-        total_size += curr_size
-      else:
-        chunks.append(curr)
-        curr = [func]
-        total_size = curr_size
-    if curr:
+  chunks = []
+  # initialize reasonably, the rest of the funcs we need to split out
+  curr = []
+  total_size = 0
+  for i in range(len(funcs)):
+    func = funcs[i]
+    curr_size = len(func[1])
+    if total_size + curr_size < chunk_size:
+      curr.append(func)
+      total_size += curr_size
+    else:
       chunks.append(curr)
-      curr = None
-    return [''.join(func[1] for func in chunk) for chunk in chunks] # remove function names
+      curr = [func]
+      total_size = curr_size
+  if curr:
+    chunks.append(curr)
+    curr = None
+  return [''.join(func[1] for func in chunk) for chunk in chunks] # remove function names
 
 
 def run_on_js(filename, passes, extra_info=None, just_split=False, just_concat=False):
@@ -396,15 +393,14 @@ EMSCRIPTEN_FUNCS();
   return filename
 
 
+@ToolchainProfiler.profile_block('js_optimizer.run_on_js')
 def run(filename, passes, extra_info=None):
   just_split = 'receiveJSON' in passes
   just_concat = 'emitJSON' in passes
-  with ToolchainProfiler.profile_block('js_optimizer.run_on_js'):
-    return run_on_js(filename, passes, extra_info=extra_info, just_split=just_split, just_concat=just_concat)
+  return run_on_js(filename, passes, extra_info=extra_info, just_split=just_split, just_concat=just_concat)
 
 
 def main():
-  ToolchainProfiler.record_process_start()
   last = sys.argv[-1]
   if '{' in last:
     extra_info = json.loads(last)

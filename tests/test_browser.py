@@ -1243,6 +1243,15 @@ keydown(100);keyup(100); // trigger the end
   def test_webgl_explicit_uniform_location(self):
     self.btest('webgl_explicit_uniform_location.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_LOCATION=1', '-s', 'MIN_WEBGL_VERSION=2'])
 
+  @requires_graphics_hardware
+  def test_webgl_sampler_layout_binding(self):
+    self.btest('webgl_sampler_layout_binding.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1'])
+
+  @unittest.skip('needs to be fixed, see https://github.com/emscripten-core/emscripten/pull/13887#issuecomment-825804449')
+  @requires_graphics_hardware
+  def test_webgl2_ubo_layout_binding(self):
+    self.btest('webgl2_ubo_layout_binding.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1', '-s', 'MIN_WEBGL_VERSION=2'])
+
   # Test that -s GL_PREINITIALIZED_CONTEXT=1 works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
   def test_preinitialized_webgl_context(self):

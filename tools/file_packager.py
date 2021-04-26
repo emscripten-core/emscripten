@@ -64,10 +64,6 @@ import ctypes
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools.toolchain_profiler import ToolchainProfiler
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
-
 import posixpath
 from tools import shared
 from subprocess import PIPE

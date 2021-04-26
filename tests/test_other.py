@@ -7277,6 +7277,17 @@ int main() {
       seen_bitcode = building.is_bitcode('a.o')
       self.assertEqual(expect_bitcode, seen_bitcode, 'must emit LTO-capable bitcode when flags indicate so (%s)' % str(flags))
 
+  # We have LTO tests covered in 'wasmltoN' targets in test_core.py, but they
+  # don't run as a part of Emscripten CI, so we add a separate LTO test here.
+  def test_lto_wasm_exceptions(self):
+    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
+      self.skipTest('d8 required to run wasm eh tests')
+    self.set_setting('EXCEPTION_DEBUG')
+    self.emcc_args += ['-fwasm-exceptions', '-flto']
+    self.v8_args.append('--experimental-wasm-eh')
+    self.js_engines = [config.V8_ENGINE]
+    self.do_run_from_file(test_file('core', 'test_exceptions.cpp'), test_file('core', 'test_exceptions_caught.out'))
+
   def test_wasm_nope(self):
     for opts in [[], ['-O2']]:
       print(opts)
@@ -9777,9 +9788,9 @@ int main() {
 
   def test_emcc_size_parsing(self):
     create_file('foo.h', ' ')
-    err = self.expect_fail([EMCC, '-s', 'TOTAL_MEMORY=X'])
+    err = self.expect_fail([EMCC, '-s', 'TOTAL_MEMORY=X', 'foo.h'])
     self.assertContained('error: invalid byte size `X`.  Valid suffixes are: kb, mb, gb, tb', err)
-    err = self.expect_fail([EMCC, '-s', 'TOTAL_MEMORY=11PB'])
+    err = self.expect_fail([EMCC, '-s', 'TOTAL_MEMORY=11PB', 'foo.h'])
     self.assertContained('error: invalid byte size `11PB`.  Valid suffixes are: kb, mb, gb, tb', err)
 
   def test_native_call_before_init(self):
@@ -10350,9 +10361,9 @@ exec "$@"
     self.run_js('a.out.js')
 
   @parameterized({
-    'main_module': ('-sRELOCATABLE',),
+    'relocatable': ('-sRELOCATABLE',),
     'linkable': ('-sLINKABLE',),
-    'relocatable': ('-sMAIN_MODULE',),
+    'main_module': ('-sMAIN_MODULE',),
   })
   def test_check_undefined(self, flag):
     # positive case: no undefined symbols
