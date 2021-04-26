@@ -312,10 +312,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
     t = time.time()
 
   forwarded_json = json.loads(forwarded_data)
-  # For the wasm backend the implementedFunctions from compiler.js should
-  # always be empty. This only gets populated for __asm function when using
-  # the JS backend.
-  assert not forwarded_json['Functions']['implementedFunctions']
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 

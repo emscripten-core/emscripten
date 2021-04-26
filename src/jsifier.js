@@ -152,10 +152,6 @@ function JSify(functionsOnly) {
         return '';
       }
 
-      // Don't replace implemented functions with library ones (which can happen when we add dependencies).
-      // Note: We don't return the dependencies here. Be careful not to end up where this matters
-      if (finalName in Functions.implementedFunctions) return '';
-
       var noExport = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {

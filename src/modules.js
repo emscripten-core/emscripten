@@ -40,8 +40,6 @@ function genArgSequence(n) {
 }
 
 var Functions = {
-  // All functions that will be implemented in this file. Maps id to signature
-  implementedFunctions: {},
   // functions added from the library. value 2 means asmLibraryFunction
   libraryFunctions: {},
 };
@@ -290,26 +288,6 @@ var LibraryManager = {
 
     this.loaded = true;
   },
-
-  // Given an ident, see if it is an alias for something, and so forth, returning
-  // the earliest ancestor (the root)
-  getRootIdent: function(ident) {
-    if (!this.library) return null;
-    var ret = LibraryManager.library[ident];
-    if (!ret) return null;
-    var last = ident;
-    while (typeof ret === 'string') {
-      last = ret;
-      ret = LibraryManager.library[ret];
-    }
-    return last;
-  },
-
-  isStubFunction: function(ident) {
-    var libCall = LibraryManager.library[ident.substr(1)];
-    return typeof libCall === 'function' && libCall.toString().replace(/\s/g, '') === 'function(){}'
-                                         && !(ident in Functions.implementedFunctions);
-  }
 };
 
 if (!BOOTSTRAPPING_STRUCT_INFO) {
