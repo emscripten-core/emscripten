@@ -25,10 +25,6 @@ emcc can be influenced by a few environment variables:
 
 from tools.toolchain_profiler import ToolchainProfiler
 
-from tools.toolchain_profiler import ToolchainProfiler
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
-
 import base64
 import json
 import logging
@@ -57,8 +53,6 @@ from tools import wasm2c
 from tools import webassembly
 from tools import config
 from tools.settings import settings
-
-from urllib.parse import quote
 
 logger = logging.getLogger('emcc')
 
