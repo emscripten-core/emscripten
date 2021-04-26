@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- The `RUNTIME_LINKED_LIBS` setting is now deprecated.  It's better to simply
+  list dynamic library dependencies directly on the command line.
+
 2.0.18: 04/23/2021
 ------------------
 - The `makeBigInt` function was removed from the emscripten runtime since it
