@@ -9,6 +9,8 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
+from tools.toolchain_profiler import ToolchainProfiler
+
 import os
 import json
 import subprocess
@@ -24,7 +26,6 @@ from tools import shared
 from tools import gen_struct_info
 from tools import webassembly
 from tools.shared import WINDOWS, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
-from tools.toolchain_profiler import ToolchainProfiler
 from tools.settings import settings
 
 logger = logging.getLogger('emscripten')
@@ -116,8 +117,10 @@ def update_settings_glue(metadata, DEBUG):
 
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += metadata['globalImports']
 
-  all_exports = metadata['exports'] + list(metadata['namedGlobals'].keys())
-  settings.WASM_EXPORTS = [asmjs_mangle(x) for x in all_exports]
+  settings.WASM_EXPORTS = metadata['exports'] + list(metadata['namedGlobals'].keys())
+  # Store function exports so that Closure and metadce can track these even in
+  # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
+  settings.WASM_FUNCTION_EXPORTS = metadata['exports']
 
   # start with the MVP features, and add any detected features.
   settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata['features']
@@ -133,15 +136,11 @@ def update_settings_glue(metadata, DEBUG):
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = metadata['tableSize'] + 1
 
-  settings.HAS_MAIN = settings.MAIN_MODULE or settings.STANDALONE_WASM or '_main' in settings.WASM_EXPORTS
+  settings.HAS_MAIN = settings.MAIN_MODULE or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parametes.
   settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or settings.MAIN_MODULE
-
-  # Store exports for Closure compiler to be able to track these as globals in
-  # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
-  settings.MODULE_EXPORTS = [(asmjs_mangle(f), f) for f in metadata['exports']]
 
   if settings.STACK_OVERFLOW_CHECK and not settings.SIDE_MODULE:
     settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
@@ -193,7 +192,7 @@ def set_memory(static_bump):
 def report_missing_symbols(pre):
   # the initial list of missing functions are that the user explicitly exported
   # but were not implemented in compiled code
-  missing = set(settings.USER_EXPORTED_FUNCTIONS) - set(settings.WASM_EXPORTS)
+  missing = set(settings.USER_EXPORTED_FUNCTIONS) - set(asmjs_mangle(e) for e in settings.WASM_EXPORTS)
 
   for requested in sorted(missing):
     if (f'function {requested}(') not in pre:
@@ -211,7 +210,7 @@ def report_missing_symbols(pre):
     # maximum compatibility.
     return
 
-  if settings.EXPECT_MAIN and '_main' not in settings.WASM_EXPORTS:
+  if settings.EXPECT_MAIN and 'main' not in settings.WASM_EXPORTS:
     # For compatibility with the output of wasm-ld we use the same wording here in our
     # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
     exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
@@ -798,7 +797,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in settings.EXPORTED_FUNCTIONS]
-  building.user_requested_exports += unexpected_exports
+  building.user_requested_exports.update(unexpected_exports)
 
   return metadata
 
@@ -825,9 +824,9 @@ def normalize_line_endings(text):
 def generate_struct_info():
   generated_struct_info_name = 'generated_struct_info.json'
 
+  @ToolchainProfiler.profile_block('gen_struct_info')
   def generate_struct_info(out):
-    with ToolchainProfiler.profile_block('gen_struct_info'):
-      gen_struct_info.main(['-q', '-o', out])
+    gen_struct_info.main(['-q', '-o', out])
 
   settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
 

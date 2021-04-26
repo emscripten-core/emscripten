@@ -416,12 +416,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   @classmethod
   def setUpClass(cls):
-    super(RunnerCore, cls).setUpClass()
+    super().setUpClass()
     print('(checking sanity from test runner)') # do this after we set env stuff
     shared.check_sanity(force=True)
 
   def setUp(self):
-    super(RunnerCore, self).setUp()
+    super().setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
     self.node_args = []
@@ -1283,7 +1283,7 @@ class BrowserCore(RunnerCore):
   unresponsive_tests = 0
 
   def __init__(self, *args, **kwargs):
-    super(BrowserCore, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
 
   @staticmethod
   def browser_open(url):
@@ -1311,7 +1311,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def setUpClass(cls):
-    super(BrowserCore, cls).setUpClass()
+    super().setUpClass()
     cls.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
     cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser():
@@ -1326,7 +1326,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def tearDownClass(cls):
-    super(BrowserCore, cls).tearDownClass()
+    super().tearDownClass()
     if not has_browser():
       return
     cls.harness_server.terminate()

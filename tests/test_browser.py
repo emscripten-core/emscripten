@@ -148,14 +148,14 @@ requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CA
 class browser(BrowserCore):
   @classmethod
   def setUpClass(cls):
-    super(browser, cls).setUpClass()
+    super().setUpClass()
     cls.browser_timeout = 60
     print()
     print('Running the browser tests. Make sure the browser allows popups from localhost.')
     print()
 
   def setUp(self):
-    super(BrowserCore, self).setUp()
+    super().setUp()
     # avoid various compiler warnings that many browser tests currently generate
     self.emcc_args += [
       '-Wno-pointer-sign',
@@ -1242,6 +1242,15 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_webgl_explicit_uniform_location(self):
     self.btest('webgl_explicit_uniform_location.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_LOCATION=1', '-s', 'MIN_WEBGL_VERSION=2'])
+
+  @requires_graphics_hardware
+  def test_webgl_sampler_layout_binding(self):
+    self.btest('webgl_sampler_layout_binding.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1'])
+
+  @unittest.skip('needs to be fixed, see https://github.com/emscripten-core/emscripten/pull/13887#issuecomment-825804449')
+  @requires_graphics_hardware
+  def test_webgl2_ubo_layout_binding(self):
+    self.btest('webgl2_ubo_layout_binding.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1', '-s', 'MIN_WEBGL_VERSION=2'])
 
   # Test that -s GL_PREINITIALIZED_CONTEXT=1 works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware

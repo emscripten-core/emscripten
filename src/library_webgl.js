@@ -553,7 +553,7 @@ var LibraryGL = {
       // Hot GL functions are ones that you'd expect to find during render loops (render calls, dynamic resource uploads), cold GL functions are load time functions (shader compilation, texture/mesh creation)
       // Distinguishing between these two allows pinpointing locations of troublesome GL usage that might cause performance issues.
       for (var f in glCtx) {
-        if (typeof glCtx[f] !== 'function' || f.indexOf('real_') == 0) continue;
+        if (typeof glCtx[f] !== 'function' || f.startsWith('real_')) continue;
         this.hookWebGLFunction(f, glCtx);
       }
       // The above injection won't work for texImage2D and texSubImage2D, which have multiple overloads.
@@ -697,7 +697,7 @@ var LibraryGL = {
 #endif
             // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
             return (this.realGetSupportedExtensions() || []).filter(function(ext) {
-              return ext.indexOf('texture_half_float') == -1;
+              return !ext.includes('texture_half_float');
             });
           }
         }
@@ -1113,7 +1113,7 @@ var LibraryGL = {
       var exts = GLctx.getSupportedExtensions() || [];
       exts.forEach(function(ext) {
         // WEBGL_lose_context, WEBGL_debug_renderer_info and WEBGL_debug_shaders are not enabled by default.
-        if (ext.indexOf('lose_context') < 0 && ext.indexOf('debug') < 0) {
+        if (!ext.includes('lose_context') && !ext.includes('debug')) {
           // Call .getExtension() to enable that extension permanently.
           GLctx.getExtension(ext);
         }
@@ -2074,7 +2074,7 @@ var LibraryGL = {
     name = UTF8ToString(name);
 
 #if GL_ASSERTIONS
-    assert(name.indexOf(' ') == -1, 'Uniform names passed to glGetUniformLocation() should not contain spaces! (received "' + name + '")');
+    assert(!name.includes(' '), 'Uniform names passed to glGetUniformLocation() should not contain spaces! (received "' + name + '")');
 #endif
 
     program = GL.programs[program];
@@ -2955,7 +2955,7 @@ var LibraryGL = {
     var id = GL.getNewId(GL.shaders);
     GL.shaders[id] = GLctx.createShader(shaderType);
 
-#if GL_EXPLICIT_UNIFORM_LOCATION
+#if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
     // GL_VERTEX_SHADER = 0x8B31, GL_FRAGMENT_SHADER = 0x8B30
     GL.shaders[id].shaderType = shaderType&1?'vs':'fs';
 #endif
@@ -2996,8 +2996,8 @@ var LibraryGL = {
   },
 
   glShaderSource__sig: 'viiii',
-#if GL_EXPLICIT_UNIFORM_LOCATION
-  glShaderSource__deps: ['$preprocess_c_code', '$remove_cpp_comments_in_shaders'],
+#if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
+  glShaderSource__deps: ['$preprocess_c_code', '$remove_cpp_comments_in_shaders', '$jstoi_q', '$find_closing_parens_index'],
 #endif
   glShaderSource: function(shader, count, string, length) {
 #if GL_ASSERTIONS
@@ -3016,15 +3016,15 @@ var LibraryGL = {
       // vertex and fragment shader versions need to match, and when compiling
       // the corresponding vertex shader, we would not know if that needed to
       // be compiled with or without the patch, so we must patch all shaders.
-      if (source.indexOf('#version 100') != -1) {
+      if (source.includes('#version 100')) {
         source = source.replace(/#extension GL_OES_standard_derivatives : enable/g, "");
         source = source.replace(/#extension GL_EXT_shader_texture_lod : enable/g, '');
         var prelude = '';
-        if (source.indexOf('gl_FragColor') != -1) {
+        if (source.includes('gl_FragColor')) {
           prelude += 'out mediump vec4 GL_FragColor;\n';
           source = source.replace(/gl_FragColor/g, 'GL_FragColor');
         }
-        if (source.indexOf('attribute') != -1) {
+        if (source.includes('attribute')) {
           source = source.replace(/attribute/g, 'in');
           source = source.replace(/varying/g, 'out');
         } else {
@@ -3047,7 +3047,7 @@ var LibraryGL = {
     }
 #endif
 
-#if GL_EXPLICIT_UNIFORM_LOCATION
+#if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
 #if GL_DEBUG
     console.log('Input shader source: ' + source);
 #endif
@@ -3057,16 +3057,21 @@ var LibraryGL = {
 #if GL_DEBUG
     console.log('Shader source after preprocessing: ' + source);
 #endif
+#endif // ~GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
+
+#if GL_EXPLICIT_UNIFORM_LOCATION
     // Extract the layout(location = x) directives.
     var regex = /layout\s*\(\s*location\s*=\s*([-\d]+)\s*\)\s*(uniform\s+\w+\s+(\w+))/g, explicitUniformLocations = {}, match;
     while(match = regex.exec(source)) {
 #if GL_DEBUG
       console.dir(match);
 #endif
-      explicitUniformLocations[match[3]] = parseInt(match[1]);
-#if GL_ASSERTIONS
+      explicitUniformLocations[match[3]] = jstoi_q(match[1]);
+#if GL_TRACK_ERRORS
       if (!(explicitUniformLocations[match[3]] >= 0 && explicitUniformLocations[match[3]] < 1048576)) {
-        console.error('Specified an out of range layout(location=x) specifier "' + explicitUniformLocations[match[3]] + '"! (' + match[0] + ')');
+        console.error('Specified an out of range layout(location=x) directive "' + explicitUniformLocations[match[3]] + '"! (' + match[0] + ')');
+        GL.recordError(0x501 /* GL_INVALID_VALUE */);
+        return;
       }
 #endif
     }
@@ -3085,6 +3090,72 @@ var LibraryGL = {
 #endif
 
 #endif // ~GL_EXPLICIT_UNIFORM_LOCATION
+
+#if GL_EXPLICIT_UNIFORM_BINDING
+    // Extract the layout(binding = x) directives. Four types we need to handle:
+    // layout(binding = 3) uniform sampler2D mainTexture;
+    // layout(binding = 1, std140) uniform MainBlock { ... };
+    // layout(std140, binding = 1) uniform MainBlock { ... };
+    // layout(binding = 1) uniform MainBlock { ... };
+    var bindingRegex = /layout\s*\(.*?binding\s*=\s*([-\d]+).*?\)\s*uniform\s+(\w+)\s+(\w+)?/g, samplerBindings = {}, uniformBindings = {}, bindingMatch;
+    while(bindingMatch = bindingRegex.exec(source)) {
+      // We have a layout(binding=x) enabled uniform. Parse the array length of that uniform, if it is an array, i.e. a
+      //    layout(binding = 3) uniform sampler2D mainTexture[arrayLength];
+      // or 
+      //    layout(binding = 1, std140) uniform MainBlock { ... } name[arrayLength];
+      var arrayLength = 1;
+      for(var i = bindingMatch.index; i < source.length && source[i] != ';'; ++i) {
+        if (source[i] == '[') {
+          arrayLength = jstoi_q(source.slice(i+1));
+          break;
+        }
+        if (source[i] == '{') i = find_closing_parens_index(source, i, '{', '}') - 1;
+      }
+#if GL_DEBUG
+      console.dir(bindingMatch);
+#endif
+      var binding = jstoi_q(bindingMatch[1]);
+#if GL_TRACK_ERRORS
+      var bindingsType = 0x8872/*GL_MAX_TEXTURE_IMAGE_UNITS*/;
+#endif
+      if (bindingMatch[3] && bindingMatch[2].indexOf('sampler') != -1) {
+        samplerBindings[bindingMatch[3]] = [binding, arrayLength];
+      } else {
+#if GL_TRACK_ERRORS
+        bindingsType = 0x8A2E/*GL_MAX_COMBINED_UNIFORM_BLOCKS*/;
+#endif
+        uniformBindings[bindingMatch[2]] = [binding, arrayLength];
+      }
+#if GL_TRACK_ERRORS
+      var numBindingPoints = GLctx.getParameter(bindingsType);
+      if (!(binding >= 0 && binding + arrayLength <= numBindingPoints)) {
+        console.error('Specified an out of range layout(binding=x) directive "' + binding + '"! (' + bindingMatch[0] + '). Valid range is [0, ' + numBindingPoints + '-1]');
+        GL.recordError(0x501 /* GL_INVALID_VALUE */);
+        return;
+      }
+#endif
+    }
+
+    // Remove all the layout(binding = x) directives so that they do not make
+    // their way to the actual WebGL shader compiler. These regexes get quite hairy, check against
+    // https://regex101.com/ when working on these.
+    source = source.replace(/layout\s*\(.*?binding\s*=\s*([-\d]+).*?\)/g, ''); // "layout(binding = 3)" -> ""
+    source = source.replace(/(layout\s*\((.*?)),\s*binding\s*=\s*([-\d]+)\)/g, '$1)'); // "layout(std140, binding = 1)" -> "layout(std140)"
+    source = source.replace(/layout\s*\(\s*binding\s*=\s*([-\d]+)\s*,(.*?)\)/g, 'layout($2)'); // "layout(binding = 1, std140)" -> "layout(std140)"
+
+#if GL_DEBUG
+    console.log('Shader source after removing layout binding directives: ' + source);
+    console.log('Sampler binding locations recorded in the shader:');
+    console.dir(samplerBindings);
+    console.log('Uniform binding locations recorded in the shader:');
+    console.dir(uniformBindings);
+#endif
+
+    // Remember all the directives to be handled after glLinkProgram is called.
+    GL.shaders[shader].explicitSamplerBindings = samplerBindings;
+    GL.shaders[shader].explicitUniformBindings = uniformBindings;
+
+#endif // ~GL_EXPLICIT_UNIFORM_BINDING
 
     GLctx.shaderSource(GL.shaders[shader], source);
   },
@@ -3257,7 +3328,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glAttachShader', 'program');
     GL.validateGLObjectID(GL.shaders, shader, 'glAttachShader', 'shader');
 #endif
-#if GL_EXPLICIT_UNIFORM_LOCATION
+#if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
     program = GL.programs[program];
     shader = GL.shaders[shader];
     program[shader.shaderType] = shader;
@@ -3319,6 +3390,24 @@ var LibraryGL = {
       });
     });
 #endif
+
+#if GL_EXPLICIT_UNIFORM_BINDING
+    function copyKeys(dst, src) {
+      Object.keys(src).forEach((key) => {
+        dst[key] = src[key];
+      });
+    }
+    // Collect sampler and ubo binding locations from the vertex and fragment shaders.
+    program.explicitUniformBindings = {};
+    program.explicitSamplerBindings = {};
+    [program['vs'], program['fs']].forEach((s) => {
+      copyKeys(program.explicitUniformBindings, s.explicitUniformBindings);
+      copyKeys(program.explicitSamplerBindings, s.explicitSamplerBindings);
+    });
+    // Record that we need to apply these explicit bindings when glUseProgram() is
+    // first called on this program.
+    program.explicitProgramBindingsApplied = 0;
+#endif
   },
 
   glGetProgramInfoLog__sig: 'viiii',
@@ -3334,7 +3423,48 @@ var LibraryGL = {
     if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
 
+#if GL_EXPLICIT_UNIFORM_BINDING
+  // Applies the explicit sampler and ubo binding locations to the current program. This is done
+  // lazily the first time we glUseProgram() so that parallel shader compilation is not disturbed.
+  $webglApplyExplicitProgramBindings: function() {
+    var p = GLctx.currentProgram;
+    if (!p.explicitProgramBindingsApplied) {
+#if MAX_WEBGL_VERSION >= 2
+#if MIN_WEBGL_VERSION < 2
+      if (GL.currentContext.version >= 2) {
+#endif
+        Object.keys(p.explicitUniformBindings).forEach((ubo) => {
+          var bindings = p.explicitUniformBindings[ubo];
+          for(var i = 0; i < bindings[1]; ++i) {
+            var blockIndex = GLctx.getUniformBlockIndex(p, ubo + (bindings[1] > 1 ? '[' + i + ']' : ''));
+#if GL_DEBUG
+            console.log('Applying initial UBO binding point ' + (bindings[0]+i) + ' for UBO "' + (ubo + (bindings[1] > 1 ? '[' + i + ']' : '')) + '" at block index ' + blockIndex + ' ' + (bindings[1] > 1 ? ' (array index='+i+')' : ''));
+#endif
+            GLctx.uniformBlockBinding(p, blockIndex, bindings[0]+i);
+          }
+        });
+#if MIN_WEBGL_VERSION < 2
+      }
+#endif
+#endif
+      Object.keys(p.explicitSamplerBindings).forEach((sampler) => {
+        var bindings = p.explicitSamplerBindings[sampler];
+        for(var i = 0; i < bindings[1]; ++i) {
+#if GL_DEBUG
+          console.log('Applying initial sampler binding point ' + (bindings[0]+i) + ' for sampler "' + sampler + (i > 0 ? '['+i+']' : '') +  '"');
+#endif
+          GLctx.uniform1i(GLctx.getUniformLocation(p, sampler + (i ? '['+i+']' : '')), bindings[0]+i);
+        }
+      });
+      p.explicitProgramBindingsApplied = 1;
+    }
+  },
+#endif
+
   glUseProgram__sig: 'vi',
+#if GL_EXPLICIT_UNIFORM_BINDING
+  glUseProgram__deps: ['$webglApplyExplicitProgramBindings'],
+#endif
   glUseProgram: function(program) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glUseProgram', 'program');
@@ -3344,6 +3474,9 @@ var LibraryGL = {
     // Record the currently active program so that we can access the uniform
     // mapping table of that program.
     GLctx.currentProgram = program;
+#if GL_EXPLICIT_UNIFORM_BINDING
+    webglApplyExplicitProgramBindings();
+#endif
   },
 
   glValidateProgram__sig: 'vi',
@@ -4006,7 +4139,7 @@ function createGLPassthroughFunctions(lib, funcs) {
         sig = 'v' + sigEnd;
       }
       var cName = name;
-      if (name.indexOf('[') >= 0) {
+      if (name.includes('[')) {
         cName = name.replace('[', '').replace(']', '');
         name = cName.substr(0, cName.length-1);
       }

@@ -47,6 +47,8 @@ emsize = shared.bat_suffix(path_from_root('emsize'))
 wasm_dis = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 wasm_opt = os.path.join(building.get_binaryen_bin(), 'wasm-opt')
 
+EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
+
 
 class temp_directory():
   def __init__(self, dirname):
@@ -5428,7 +5430,8 @@ int main(int argc, char** argv) {
     self.run_process([EMCC, '-O2', 'main.c', '-s', 'MAIN_MODULE', '-o', 'main.js', 'side.wasm'])
     self.run_js('main.js')
 
-    self.run_process([EMCC, '-O2', 'main.c', '-s', 'MAIN_MODULE', '-o', 'main2.js', '-s', 'RUNTIME_LINKED_LIBS=side.wasm'])
+    err = self.run_process([EMCC, '-O2', 'main.c', '-s', 'MAIN_MODULE', '-o', 'main2.js', '-s', 'RUNTIME_LINKED_LIBS=side.wasm'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: RUNTIME_LINKED_LIBS is deprecated', err)
     self.run_js('main2.js')
 
     self.assertBinaryEqual('main.wasm', 'main2.wasm')
@@ -6843,7 +6846,7 @@ int main() {
   def assertFileContents(self, filename, contents):
     contents = contents.replace('\r', '')
 
-    if os.environ.get('EMTEST_REBASELINE'):
+    if EMTEST_REBASELINE:
       with open(filename, 'w') as f:
         f.write(contents)
       return
@@ -6856,13 +6859,13 @@ int main() {
     self.assertTextDataIdentical(expected_content, contents, message,
                                  filename, filename + '.new')
 
-  def run_metadce_test(self, filename, args, expected_exists, expected_not_exists, expected_size,
+  def run_metadce_test(self, filename, args, expected_exists, expected_not_exists, check_size=True,
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
     size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
     print('Running metadce test: %s:' % filename, args, expected_exists,
-          expected_not_exists, expected_size, check_sent, check_imports, check_exports, check_funcs)
+          expected_not_exists, check_sent, check_imports, check_exports, check_funcs)
     filename = test_file('other', 'metadce', filename)
 
     def clean_arg(arg):
@@ -6903,13 +6906,22 @@ int main() {
     for not_exists in expected_not_exists:
       self.assertNotIn(not_exists, sent)
 
-    if expected_size is not None:
+    if check_size:
+      size_file = expected_basename + '.size'
       # measure the wasm size without the name section
       self.run_process([wasm_opt, 'a.out.wasm', '--strip-debug', '--all-features', '-o', 'a.out.nodebug.wasm'])
       wasm_size = os.path.getsize('a.out.nodebug.wasm')
-      ratio = abs(wasm_size - expected_size) / float(expected_size)
-      print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_size, ratio))
-    self.assertLess(ratio, size_slack)
+      if EMTEST_REBASELINE:
+        with open(size_file, 'w') as f:
+          f.write(f'{wasm_size}\n')
+
+      with open(size_file) as f:
+        expected_size = int(f.read().strip())
+      delta = wasm_size - expected_size
+      ratio = abs(delta) / float(expected_size)
+      print('  seen wasm size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (wasm_size, expected_size, delta, ratio))
+      self.assertLess(ratio, size_slack)
+
     imports, exports, funcs = parse_wasm('a.out.wasm')
     imports.sort()
     exports.sort()
@@ -6949,13 +6961,13 @@ int main() {
       self.assertFileContents(filename, data)
 
   @parameterized({
-    'O0': ([],      [], ['waka'],   789), # noqa
-    'O1': (['-O1'], [], ['waka'],   264), # noqa
-    'O2': (['-O2'], [], ['waka'],   263), # noqa
+    'O0': ([],      [], ['waka']), # noqa
+    'O1': (['-O1'], [], ['waka']), # noqa
+    'O2': (['-O2'], [], ['waka']), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'], [], [],          74), # noqa
-    'Os': (['-Os'], [], [],          74), # noqa
-    'Oz': (['-Oz'], [], [],          74), # noqa
+    'O3': (['-O3'], [], []), # noqa
+    'Os': (['-Os'], [], []), # noqa
+    'Oz': (['-Oz'], [], []), # noqa
     'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 74), # noqa
   })
   def test_metadce_minimal(self, *args):
@@ -6963,15 +6975,15 @@ int main() {
 
   @node_pthreads
   def test_metadce_minimal_pthreads(self):
-    self.run_metadce_test('minimal.c', ['-Oz', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'], [], [], 15846)
+    self.run_metadce_test('minimal.c', ['-Oz', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'], [], [])
 
   @parameterized({
-    'noexcept': (['-O2'],                    [], ['waka'], 124768), # noqa
+    'noexcept': (['-O2'],                    [], ['waka']), # noqa
     # exceptions increases code size significantly
-    'except':   (['-O2', '-fexceptions'],    [], ['waka'], 166794), # noqa
+    'except':   (['-O2', '-fexceptions'],    [], ['waka']), # noqa
     # exceptions does not pull in demangling by default, which increases code size
     'mangle':   (['-O2', '-fexceptions',
-                  '-s', 'DEMANGLE_SUPPORT'], [], ['waka'], 225597), # noqa
+                  '-s', 'DEMANGLE_SUPPORT'], [], ['waka']), # noqa
   })
   def test_metadce_cxx(self, *args):
     # do not check functions in this test as there are a lot of libc++ functions
@@ -6980,55 +6992,55 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args, check_funcs=False)
 
   @parameterized({
-    'O0': ([],      [], ['waka'], 11755), # noqa
-    'O1': (['-O1'], [], ['waka'],  2400), # noqa
-    'O2': (['-O2'], [], ['waka'],  2016), # noqa
-    'O3': (['-O3'], [], [],        1700), # noqa; in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'], [], [],        1700), # noqa
-    'Oz': (['-Oz'], [], [],        1247), # noqa
+    'O0': ([],      [], ['waka']), # noqa
+    'O1': (['-O1'], [], ['waka']), # noqa
+    'O2': (['-O2'], [], ['waka']), # noqa
+    'O3': (['-O3'], [], []), # noqa; in -O3, -Os and -Oz we metadce
+    'Os': (['-Os'], [], []), # noqa
+    'Oz': (['-Oz'], [], []), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
-          (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],    [], [],     55), # noqa
+          (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],    [], []), # noqa
     # we don't metadce with linkable code! other modules may want stuff
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [],  10135), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], []), # noqa
   })
   def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
     'O3':                 ('mem.c', ['-O3'],
-                           [], [], 5993),         # noqa
+                           [], []),         # noqa
     # argc/argv support code etc. is in the wasm
     'O3_standalone':      ('mem.c', ['-O3', '-s', 'STANDALONE_WASM'],
-                           [], [], 6243),         # noqa
+                           [], []),         # noqa
     # without argc/argv, no support code for them is emitted
     'O3_standalone_narg': ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM'],
-                           [], [], 6051),         # noqa
+                           [], []),         # noqa
     # without main, no support code for argc/argv is emitted either
     'O3_standalone_lib':  ('mem_no_main.c', ['-O3', '-s', 'STANDALONE_WASM', '--no-entry'],
-                           [], [], 6017),         # noqa
+                           [], []),         # noqa
     # Growth support code is in JS, no significant change in the wasm
     'O3_grow':            ('mem.c', ['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
-                           [], [], 5994),         # noqa
+                           [], []),         # noqa
     # Growth support code is in the wasm
     'O3_grow_standalone': ('mem.c', ['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
-                           [], [], 6320),         # noqa
+                           [], []),         # noqa
     # without argc/argv, no support code for them is emitted, even with lto
     'O3_standalone_narg_flto':
                           ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM', '-flto'],
-                           [], [], 4725),         # noqa
+                           [], []),         # noqa
   })
   def test_metadce_mem(self, filename, *args):
     self.run_metadce_test(filename, *args)
 
   @parameterized({
     'O3':                 ('libcxxabi_message.cpp', ['-O3'],
-                           [], [], 101), # noqa
+                           [], []), # noqa
     # argc/argv support code etc. is in the wasm
     'O3_standalone':      ('libcxxabi_message.cpp', ['-O3', '-s', 'STANDALONE_WASM'],
-                           [], [], 181), # noqa
+                           [], []), # noqa
   })
   def test_metadce_libcxxabi_message(self, filename, *args):
     self.run_metadce_test(filename, *args)
@@ -7265,6 +7277,17 @@ int main() {
       self.run_process([EMCC, test_file('hello_world.cpp')] + flags + ['-c', '-o', 'a.o'])
       seen_bitcode = building.is_bitcode('a.o')
       self.assertEqual(expect_bitcode, seen_bitcode, 'must emit LTO-capable bitcode when flags indicate so (%s)' % str(flags))
+
+  # We have LTO tests covered in 'wasmltoN' targets in test_core.py, but they
+  # don't run as a part of Emscripten CI, so we add a separate LTO test here.
+  def test_lto_wasm_exceptions(self):
+    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
+      self.skipTest('d8 required to run wasm eh tests')
+    self.set_setting('EXCEPTION_DEBUG')
+    self.emcc_args += ['-fwasm-exceptions', '-flto']
+    self.v8_args.append('--experimental-wasm-eh')
+    self.js_engines = [config.V8_ENGINE]
+    self.do_run_from_file(test_file('core', 'test_exceptions.cpp'), test_file('core', 'test_exceptions_caught.out'))
 
   def test_wasm_nope(self):
     for opts in [[], ['-O2']]:
@@ -8610,7 +8633,7 @@ int main () {
     try:
       expected_results = json.loads(open(results_file, 'r').read())
     except Exception:
-      if not os.environ.get('EMTEST_REBASELINE'):
+      if not EMTEST_REBASELINE:
         raise
 
     args = [EMCC, '-o', 'a.html'] + args + sources
@@ -8679,7 +8702,7 @@ int main () {
       # happens in wasm2js, so it may be platform-nondeterminism in closure
       # compiler).
       # TODO: identify what is causing this. meanwhile allow some amount of slop
-      if not os.environ.get('EMTEST_REBASELINE'):
+      if not EMTEST_REBASELINE:
         if js:
           slop = 30
         else:
@@ -8700,7 +8723,7 @@ int main () {
     print('Total output size=' + str(total_output_size) + ' bytes, expected total size=' + str(total_expected_size) + ', delta=' + str(total_output_size - total_expected_size) + print_percent(total_output_size, total_expected_size))
     print('Total output size gzipped=' + str(total_output_size_gz) + ' bytes, expected total size gzipped=' + str(total_expected_size_gz) + ', delta=' + str(total_output_size_gz - total_expected_size_gz) + print_percent(total_output_size_gz, total_expected_size_gz))
 
-    if os.environ.get('EMTEST_REBASELINE'):
+    if EMTEST_REBASELINE:
       open(results_file, 'w').write(json.dumps(obtained_results, indent=2) + '\n')
     else:
       if total_output_size > total_expected_size:
@@ -9766,9 +9789,9 @@ int main() {
 
   def test_emcc_size_parsing(self):
     create_file('foo.h', ' ')
-    err = self.expect_fail([EMCC, '-s', 'TOTAL_MEMORY=X'])
+    err = self.expect_fail([EMCC, '-s', 'TOTAL_MEMORY=X', 'foo.h'])
     self.assertContained('error: invalid byte size `X`.  Valid suffixes are: kb, mb, gb, tb', err)
-    err = self.expect_fail([EMCC, '-s', 'TOTAL_MEMORY=11PB'])
+    err = self.expect_fail([EMCC, '-s', 'TOTAL_MEMORY=11PB', 'foo.h'])
     self.assertContained('error: invalid byte size `11PB`.  Valid suffixes are: kb, mb, gb, tb', err)
 
   def test_native_call_before_init(self):
@@ -10337,3 +10360,17 @@ exec "$@"
     # Test that ERROR_ON_UNDEFINED_SYMBOLS works with MAIN_MODULE.
     self.run_process([EMCC, '-sMAIN_MODULE', '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('hello_world.c')])
     self.run_js('a.out.js')
+
+  @parameterized({
+    'relocatable': ('-sRELOCATABLE',),
+    'linkable': ('-sLINKABLE',),
+    'main_module': ('-sMAIN_MODULE',),
+  })
+  def test_check_undefined(self, flag):
+    # positive case: no undefined symbols
+    self.run_process([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('hello_world.c')])
+    self.run_js('a.out.js')
+
+    # negative case: foo is undefined in test_check_undefined.c
+    err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other', 'test_check_undefined.c')])
+    self.assertContained('undefined symbol: foo', err)

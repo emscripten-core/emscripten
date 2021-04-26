@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from .toolchain_profiler import ToolchainProfiler
+
 import json
 import logging
 import os
@@ -19,7 +21,6 @@ from . import response_file
 from . import shared
 from . import webassembly
 from . import config
-from .toolchain_profiler import ToolchainProfiler
 from .shared import CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
@@ -44,7 +45,7 @@ nm_cache = {}
 ar_contents = {}
 _is_ar_cache = {}
 # the exports the user requested
-user_requested_exports = []
+user_requested_exports = set()
 
 
 class ObjectFileInfo:
@@ -453,6 +454,11 @@ def link_lld(args, target, external_symbol_list=None):
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
 
+  # Wasm exception handling. This is a CodeGen option for the LLVM backend, so
+  # wasm-ld needs to take this for the LTO mode.
+  if settings.EXCEPTION_HANDLING:
+    cmd += ['-mllvm', '-exception-model=wasm']
+
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
   if '--relocatable' not in args and '-r' not in args:
@@ -782,9 +788,9 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
     # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
     # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
     # externs file for the exports, Closure is able to reason about the exports.
-    if settings.MODULE_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
+    if settings.WASM_FUNCTION_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
       # Generate an exports file that records all the exported symbols from the wasm module.
-      module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % i for i, j in settings.MODULE_EXPORTS])
+      module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_FUNCTION_EXPORTS])
       exports_file = configuration.get_temp_files().get('_module_exports.js')
       exports_file.write(module_exports_suppressions.encode())
       exports_file.close()
@@ -950,22 +956,9 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   logger.debug('running meta-DCE')
   temp_files = configuration.get_temp_files()
   # first, get the JS part of the graph
-  extra_info = '{ "exports": [' + ','.join(map(lambda x: '["' + x[0] + '","' + x[1] + '"]', settings.MODULE_EXPORTS)) + ']}'
+  extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in settings.WASM_FUNCTION_EXPORTS) + ']}'
   txt = acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
   graph = json.loads(txt)
-  # add exports based on the backend output, that are not present in the JS
-  if not settings.DECLARE_ASM_MODULE_EXPORTS:
-    exports = set()
-    for item in graph:
-      if 'export' in item:
-        exports.add(item['export'])
-    for export, unminified in settings.MODULE_EXPORTS:
-      if export not in exports:
-        graph.append({
-          'export': export,
-          'name': 'emcc$export$' + export,
-          'reaches': []
-        })
   # ensure that functions expected to be exported to the outside are roots
   for item in graph:
     if 'export' in item:

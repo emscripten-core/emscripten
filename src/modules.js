@@ -155,7 +155,7 @@ var LibraryManager = {
       libraries.push('library_webgl2.js');
     }
 
-    if (GL_EXPLICIT_UNIFORM_LOCATION) {
+    if (GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING) {
       libraries.push('library_c_preprocessor.js');
     }
 
@@ -391,7 +391,7 @@ function exportRuntime() {
     return maybeExport(name, true);
   }
 
-  // All possible runtime elements to export
+  // All possible runtime elements that can be exported
   var runtimeElements = [
     'intArrayFromString',
     'intArrayToString',
@@ -432,7 +432,6 @@ function exportRuntime() {
     'removeFunction',
     'getFuncWrapper',
     'prettyPrint',
-    'makeBigInt',
     'dynCall',
     'getCompilerSetting',
     'print',
@@ -520,8 +519,7 @@ function exportRuntime() {
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
     for (var name in EXPORTED_RUNTIME_METHODS_SET) {
-      if (runtimeElements.indexOf(name) < 0 &&
-          runtimeNumbers.indexOf(name) < 0) {
+      if (!runtimeElements.includes(name) && !runtimeNumbers.includes(name)) {
         printErr('warning: invalid item (maybe a typo?) in EXPORTED_RUNTIME_METHODS: ' + name);
       }
     }

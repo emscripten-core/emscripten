@@ -35,7 +35,7 @@ function isJsOnlyIdentifier(ident) {
 
 function escapeJSONKey(x) {
   if (/^[\d\w_]+$/.exec(x) || x[0] === '"' || x[0] === "'") return x;
-  assert(x.indexOf("'") < 0, 'cannot have internal single quotes in keys: ' + x);
+  assert(!x.includes("'"), 'cannot have internal single quotes in keys: ' + x);
   return "'" + x + "'";
 }
 
@@ -55,7 +55,7 @@ function isDefined(symName) {
   }
   // 'invoke_' symbols are created at runtime in libary_dylink.py so can
   // always be considered as defined.
-  if (RELOCATABLE && symName.startsWith('_invoke_')) {
+  if (RELOCATABLE && symName.startsWith('invoke_')) {
     return true;
   }
   return false;
@@ -146,7 +146,7 @@ function JSify(functionsOnly) {
       }
 
       // if the function was implemented in compiled code, we just need to export it so we can reach it from JS
-      if (finalName in WASM_EXPORTS) {
+      if (ident in WASM_EXPORTS) {
         EXPORTED_FUNCTIONS[finalName] = 1;
         // stop here: we don't need to add anything from our js libraries, not even deps, compiled code is on it
         return '';
@@ -159,7 +159,7 @@ function JSify(functionsOnly) {
       var noExport = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
-        if (!isDefined(finalName) && !LINKABLE) {
+        if (!isDefined(ident)) {
           var msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ' (referenced by ' + dependent + ')';
           if (ERROR_ON_UNDEFINED_SYMBOLS) {

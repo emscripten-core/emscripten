@@ -184,12 +184,12 @@ function cwrap(ident, returnType, argTypes, opts) {
 #if ASSERTIONS
 // We used to include malloc/free by default in the past. Show a helpful error in
 // builds with assertions.
-#if !('_malloc' in WASM_EXPORTS)
+#if !('malloc' in WASM_EXPORTS)
 function _malloc() {
   abort("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS");
 }
 #endif // malloc
-#if !('_free' in WASM_EXPORTS)
+#if !('free' in WASM_EXPORTS)
 function _free() {
   // Show a helpful error since we used to include free by default in the past.
   abort("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS");
@@ -315,7 +315,7 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
 // Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
 if (ENVIRONMENT_IS_WEB) {
   window.addEventListener('error', function(e) {
-    if (e.message.indexOf('unwind') != -1) return;
+    if (e.message.includes('unwind')) return;
     console.error('Page threw an exception ' + e);
     Module['pageThrewException'] = true;
   });
@@ -890,8 +890,8 @@ function instantiateSync(file, info) {
   } catch (e) {
     var str = e.toString();
     err('failed to compile wasm module: ' + str);
-    if (str.indexOf('imported Memory') >= 0 ||
-        str.indexOf('memory import') >= 0) {
+    if (str.includes('imported Memory') ||
+        str.includes('memory import')) {
       err('Memory size incompatibility issues may be due to changing INITIAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set INITIAL_MEMORY at runtime to something smaller than it was at compile time).');
     }
     throw e;
@@ -972,7 +972,7 @@ function createWasm() {
 #endif
 #endif
 
-#if '___wasm_call_ctors' in WASM_EXPORTS
+#if '__wasm_call_ctors' in WASM_EXPORTS
     addOnInit(Module['asm']['__wasm_call_ctors']);
 #endif
 
