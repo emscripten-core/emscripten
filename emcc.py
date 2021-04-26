@@ -35,7 +35,7 @@ import shutil
 import stat
 import sys
 import time
-from enum import Enum
+from enum import Enum, unique, auto
 from subprocess import PIPE
 from urllib.parse import quote
 
@@ -189,12 +189,31 @@ def base64_encode(b):
   return b64.decode('ascii')
 
 
+@unique
 class OFormat(Enum):
-  WASM = 1
-  JS = 2
-  MJS = 3
-  HTML = 4
-  BARE = 5
+  WASM = auto()
+  JS = auto()
+  MJS = auto()
+  HTML = auto()
+  BARE = auto()
+
+
+class EmccState:
+  def __init__(self, args):
+    self.orig_args = args
+    # TODO(sbc): Replace the below 4 mode variables with a single mode enum
+    # Set to true if there are `.h` files passed on the command line
+    self.has_header_inputs = False
+    self.link_to_object = False
+    self.compile_only = False
+    self.preprocess_only = False
+    self.has_dash_c = False
+    self.has_dash_E = False
+    self.has_dash_S = False
+    self.libs = []
+    self.link_flags = []
+    self.lib_dirs = []
+    self.forced_stdlibs = []
 
 
 class EmccOptions:
@@ -863,6 +882,27 @@ def in_temp(name):
   return os.path.join(temp_dir, os.path.basename(name))
 
 
+def dedup_list(lst):
+  rtn = []
+  for item in lst:
+    if item not in rtn:
+      rtn.append(item)
+  return rtn
+
+
+def move_file(src, dst):
+  logging.debug('move: %s -> %s', src, dst)
+  if os.path.isdir(dst):
+    exit_with_error(f'cannot write output file `{dst}`: Is a directory')
+  src = os.path.abspath(src)
+  dst = os.path.abspath(dst)
+  if src == dst:
+    return
+  if dst == os.devnull:
+    return
+  shutil.move(src, dst)
+
+
 run_via_emxx = False
 
 
@@ -994,6 +1034,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # ---------------- End configs -------------
 
+  state = EmccState(args)
+
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
 
@@ -1086,31 +1128,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Find input files
 
-    # These three arrays are used to store arguments of different types for
-    # type-specific processing. In order to shuffle the arguments back together
-    # after processing, all of these arrays hold tuples (original_index, value).
-    # Note that the index part of the tuple can have a fractional part for input
-    # arguments that expand into multiple processed arguments, as in -Wl,-f1,-f2.
     input_files = []
-    libs = []
-    link_flags = []
-
-    has_header_inputs = False
-    lib_dirs = []
-
-    has_dash_c = '-c' in newargs
-    has_dash_S = '-S' in newargs
-    has_dash_E = '-E' in newargs
-
-    compile_only = has_dash_c or has_dash_S or has_dash_E
 
     def add_link_flag(i, f):
       if f.startswith('-l'):
-        libs.append((i, f[2:]))
+        state.libs.append((i, f[2:]))
       if f.startswith('-L'):
-        lib_dirs.append(f[2:])
+        state.lib_dirs.append(f[2:])
 
-      link_flags.append((i, f))
+      state.link_flags.append((i, f))
 
     # find input files with a simple heuristic. we should really analyze
     # based on a full understanding of gcc params, right now we just assume that
@@ -1141,7 +1167,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
         file_suffix = get_file_suffix(arg)
         if file_suffix in HEADER_ENDINGS:
-          has_header_inputs = True
+          state.has_header_inputs = True
         if file_suffix in STATICLIB_ENDINGS and not building.is_ar(arg):
           if building.is_bitcode(arg):
             message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files use .bc or .o.'
@@ -1153,7 +1179,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # library and attempt to find a library by the same name in our own library path.
           # TODO(sbc): Do we really need this feature?  See test_other.py:test_local_link
           libname = unsuffixed_basename(arg).lstrip('lib')
-          libs.append((i, libname))
+          state.libs.append((i, libname))
         else:
           input_files.append((i, arg))
       elif arg.startswith('-L'):
@@ -1183,12 +1209,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         input_files.append((i, arg))
         newargs[i] = ''
 
-    if not input_files and not link_flags:
+    if not input_files and not state.link_flags:
       exit_with_error('no input files')
 
     newargs = [a for a in newargs if a]
 
-    specified_target = options.output_file
+    state.has_dash_c = '-c' in newargs
+    state.has_dash_S = '-S' in newargs
+    state.has_dash_E = '-E' in newargs
+
+    state.preprocess_only = state.has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs
+    state.compile_only = state.has_dash_c or state.has_dash_S or state.has_header_inputs or state.preprocess_only
 
     if os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args:
       # configure tests want a more shell-like style, where we emit return codes on exit()
@@ -1204,9 +1235,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     else:
       default_target_name = 'a.out.js'
 
-    # specified_target is the user-specified one, target is what we will generate
-    if specified_target:
-      target = specified_target
+    # options.output_file is the user-specified one, target is what we will generate
+    if options.output_file:
+      target = options.output_file
       # check for the existence of the output directory now, to avoid having
       # to do so repeatedly when each of the various output files (.mem, .wasm,
       # etc) are written. This gives a more useful error message than the
@@ -1221,11 +1252,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     final_suffix = get_file_suffix(target)
 
-    if has_dash_c or has_dash_S or has_dash_E or '-M' in newargs or '-MM' in newargs:
-      if has_dash_c:
+    if state.has_dash_c or state.has_dash_S or state.has_dash_E or '-M' in newargs or '-MM' in newargs:
+      if state.has_dash_c:
         if '-emit-llvm' in newargs:
           options.default_object_extension = '.bc'
-      elif has_dash_S:
+      elif state.has_dash_S:
         if '-emit-llvm' in newargs:
           options.default_object_extension = '.ll'
         else:
@@ -1233,7 +1264,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       elif '-M' in newargs or '-MM' in newargs:
         options.default_object_extension = '.mout' # not bitcode, not js; but just dependency rule of the input file
 
-      if specified_target:
+      if options.output_file:
         if len(input_files) > 1:
           exit_with_error('cannot specify -o with -c/-S/-E/-M and multiple source files')
       else:
@@ -1478,7 +1509,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # so it won't think about generating native x86 SSE code.
     newargs = [x for x in newargs if x not in SIMD_INTEL_FEATURE_TOWER and x not in SIMD_NEON_FLAGS]
 
-    link_to_object = False
     if options.shared or options.relocatable:
       # Until we have a better story for actually producing runtime shared libraries
       # we support a compatibility mode where shared libraries are actually just
@@ -1489,7 +1519,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         if options.shared:
           diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file.  This is a form of emulation to support existing build systems.  If you want to build a runtime shared library use the SIDE_MODULE setting.')
-        link_to_object = True
+        state.link_to_object = True
 
     if settings.SUPPORT_BIG_ENDIAN:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
@@ -1555,10 +1585,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
       settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
 
-    forced_stdlibs = []
+    state.forced_stdlibs = []
 
     if settings.STB_IMAGE and final_suffix in EXECUTABLE_ENDINGS:
-      forced_stdlibs.append('libstb_image')
+      state.forced_stdlibs.append('libstb_image')
       settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
 
     if settings.USE_WEBGL2:
@@ -1575,7 +1605,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('-s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0 only makes sense with -s GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0!')
 
     if settings.ASMFS and final_suffix in EXECUTABLE_ENDINGS:
-      forced_stdlibs.append('libasmfs')
+      state.forced_stdlibs.append('libasmfs')
       settings.FILESYSTEM = 0
       settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
       settings.FETCH = 1
@@ -1589,7 +1619,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_emmalloc.js')))
 
     if settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
-      forced_stdlibs.append('libfetch')
+      state.forced_stdlibs.append('libfetch')
       settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_fetch.js')))
       if settings.USE_PTHREADS:
         settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
@@ -1602,7 +1632,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       settings.MAX_WEBGL_VERSION = max(2, settings.MAX_WEBGL_VERSION)
 
     if settings.EMBIND:
-      forced_stdlibs.append('libembind')
+      state.forced_stdlibs.append('libembind')
 
     settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
     if not settings.STANDALONE_WASM:
@@ -1829,7 +1859,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # When not declaring wasm module exports in outer scope one by one, disable minifying
     # wasm module export names so that the names can be passed directly to the outer scope.
     # Also, if using library_exports.js API, disable minification so that the feature can work.
-    if not settings.DECLARE_ASM_MODULE_EXPORTS or 'exports.js' in [x for _, x in libs]:
+    if not settings.DECLARE_ASM_MODULE_EXPORTS or 'exports.js' in [x for _, x in state.libs]:
       settings.MINIFY_ASMJS_EXPORT_NAMES = 0
 
     # Enable minification of wasm imports and exports when appropriate, if we
@@ -2093,7 +2123,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   linker_inputs = []
   if options.post_link:
-    process_libraries(libs, lib_dirs, linker_inputs)
+    process_libraries(state.libs, state.lib_dirs, linker_inputs)
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
     post_link(options, input_files[0][1], wasm_target, target)
@@ -2154,38 +2184,38 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return get_compiler(use_cxx(src_file)) + get_clang_flags() + compile_args + [src_file]
 
     # preprocessor-only (-E) support
-    if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
+    if state.preprocess_only:
       for input_file in [x[1] for x in input_files]:
         cmd = get_clang_command(input_file)
-        if specified_target:
-          cmd += ['-o', specified_target]
+        if options.output_file:
+          cmd += ['-o', options.output_file]
         # Do not compile, but just output the result from preprocessing stage or
         # output the dependency rule. Warning: clang and gcc behave differently
         # with -MF! (clang seems to not recognize it)
-        logger.debug(('just preprocessor ' if has_dash_E else 'just dependencies: ') + ' '.join(cmd))
+        logger.debug(('just preprocessor ' if state.has_dash_E else 'just dependencies: ') + ' '.join(cmd))
         shared.check_call(cmd)
       return 0
 
     # Precompiled headers support
-    if has_header_inputs:
+    if state.has_header_inputs:
       headers = [header for _, header in input_files]
       for header in headers:
         if not header.endswith(HEADER_ENDINGS):
           exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
         cmd = get_clang_command(header)
-        if specified_target:
-          cmd += ['-o', specified_target]
+        if options.output_file:
+          cmd += ['-o', options.output_file]
         logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
         shared.check_call(cmd)
         return 0
 
     def get_object_filename(input_file):
-      if compile_only:
+      if state.compile_only:
         # In compile-only mode we don't use any temp file.  The object files
         # are written directly to their final output locations.
-        if specified_target:
+        if options.output_file:
           assert len(input_files) == 1
-          return specified_target
+          return options.output_file
         else:
           return unsuffixed_basename(input_file) + options.default_object_extension
       else:
@@ -2194,13 +2224,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     def compile_source_file(i, input_file):
       logger.debug('compiling source file: ' + input_file)
       output_file = get_object_filename(input_file)
-      if not compile_only:
+      if not state.compile_only:
         linker_inputs.append((i, output_file))
       if get_file_suffix(input_file) in ASSEMBLY_ENDINGS:
         cmd = get_clang_command_asm(input_file)
       else:
         cmd = get_clang_command(input_file)
-      if not has_dash_c:
+      if not state.has_dash_c:
         cmd += ['-c']
       cmd += ['-o', output_file]
       shared.check_call(cmd)
@@ -2210,7 +2240,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
     for i, input_file in input_files:
       file_suffix = get_file_suffix(input_file)
-      if file_suffix in SOURCE_ENDINGS + ASSEMBLY_ENDINGS or (has_dash_c and file_suffix == '.bc'):
+      if file_suffix in SOURCE_ENDINGS + ASSEMBLY_ENDINGS or (state.has_dash_c and file_suffix == '.bc'):
         compile_source_file(i, input_file)
       elif file_suffix in DYNAMICLIB_ENDINGS:
         logger.debug('using shared library: ' + input_file)
@@ -2232,33 +2262,33 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # exit block 'compile inputs'
   ##########################################
 
-  if compile_only:
+  if state.compile_only:
     logger.debug('stopping after compile phase')
-    for flag in link_flags:
+    for flag in state.link_flags:
       diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
     for f in linker_inputs:
       diagnostics.warning('unused-command-line-argument', "%s: linker input file unused because linking not done" % f[1])
     return 0
 
-  if specified_target and specified_target.startswith('-'):
-    exit_with_error('invalid output filename: `%s`' % specified_target)
+  if options.output_file and options.output_file.startswith('-'):
+    exit_with_error('invalid output filename: `%s`' % options.output_file)
 
   ldflags = emsdk_ldflags(newargs)
   for f in ldflags:
     add_link_flag(sys.maxsize, f)
 
-  using_lld = not (link_to_object and settings.LTO)
-  link_flags = filter_link_flags(link_flags, using_lld)
+  using_lld = not (state.link_to_object and settings.LTO)
+  state.link_flags = filter_link_flags(state.link_flags, using_lld)
 
   # Decide what we will link
-  consumed = process_libraries(libs, lib_dirs, linker_inputs)
+  consumed = process_libraries(state.libs, state.lib_dirs, linker_inputs)
   # Filter out libraries that are actually JS libs
-  link_flags = [l for l in link_flags if l[0] not in consumed]
+  state.link_flags = [l for l in state.link_flags if l[0] not in consumed]
 
   # If we are linking to an intermediate object then ignore other
   # "fake" dynamic libraries, since otherwise we will end up with
   # multiple copies in the final executable.
-  if link_to_object or options.ignore_dynamic_linking:
+  if state.link_to_object or options.ignore_dynamic_linking:
     linker_inputs = filter_out_dynamic_libs(options, linker_inputs)
   else:
     linker_inputs = filter_out_duplicate_dynamic_libs(linker_inputs)
@@ -2267,11 +2297,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     dylibs = [i[1] for i in linker_inputs if get_file_suffix(i[1]) in DYNAMICLIB_ENDINGS]
     process_dynamic_libs(dylibs)
 
-  linker_arguments = [val for _, val in sorted(linker_inputs + link_flags)]
+  linker_arguments = [val for _, val in sorted(linker_inputs + state.link_flags)]
 
-  if link_to_object:
+  if state.link_to_object:
     with ToolchainProfiler.profile_block('linking to object file'):
-      logger.debug('link_to_object: ' + str(linker_arguments) + ' -> ' + target)
+      logger.debug('state.link_to_object: ' + str(linker_arguments) + ' -> ' + target)
       building.link_to_object(linker_arguments, target)
       logger.debug('stopping after linking to object file')
       return 0
@@ -2293,19 +2323,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # unless running in strict mode.
       if not settings.STRICT and '-nostdlib++' not in newargs:
         link_as_cxx = True
-      extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, link_as_cxx, forced=forced_stdlibs)
+      extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, link_as_cxx, forced=state.forced_stdlibs)
     linker_arguments += extra_files_to_link
 
   ##########################################
   # exit block 'calculate system libraries'
   ##########################################
-
-  def dedup_list(lst):
-    rtn = []
-    for item in lst:
-      if item not in rtn:
-        rtn.append(item)
-    return rtn
 
   # Make a final pass over settings.EXPORTED_FUNCTIONS to remove any
   # duplication between functions added by the driver/libraries and function
@@ -2343,19 +2366,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     post_link(options, wasm_target, wasm_target, target)
 
   return 0
-
-
-def move_file(src, dst):
-  logging.debug('move: %s -> %s', src, dst)
-  if os.path.isdir(dst):
-    exit_with_error(f'cannot write output file `{dst}`: Is a directory')
-  src = os.path.abspath(src)
-  dst = os.path.abspath(dst)
-  if src == dst:
-    return
-  if dst == os.devnull:
-    return
-  shutil.move(src, dst)
 
 
 def post_link(options, in_wasm, wasm_target, target):
