@@ -1061,6 +1061,45 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     explicit_settings_changes, newargs = parse_s_args(newargs)
     settings_changes += explicit_settings_changes
 
+    settings_map = {}
+    for s in settings_changes:
+      key, value = s.split('=', 1)
+      settings_map[key] = value
+
+    # Libraries are searched before settings_changes are applied, so apply the
+    # value for STRICT from command line already now.
+
+    strict_cmdline = settings_map.get('STRICT')
+    if strict_cmdline:
+      settings.STRICT = int(strict_cmdline)
+
+    # Apply optimization level settings
+
+    if settings.OPT_LEVEL >= 1:
+      settings.ASSERTIONS = 0
+    if settings.SHRINK_LEVEL >= 2:
+      settings.EVAL_CTORS = 1
+
+    # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
+    # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
+    if settings_map.get('WARN_ON_UNDEFINED_SYMBOLS') == '0':
+      settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
+
+    if settings.MINIMAL_RUNTIME or settings_map.get('MINIMAL_RUNTIME') in ('1', '2'):
+      # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
+
+    # Apply -s settings in newargs here (after optimization levels, so they can override them)
+    apply_settings(settings_map)
+
+    if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
+      diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
+      settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
+
+    if settings.RUNTIME_LINKED_LIBS:
+      diagnostics.warning('deprecated', 'RUNTIME_LINKED_LIBS is deprecated; you can simply list the libraries directly on the commandline now')
+      newargs += settings.RUNTIME_LINKED_LIBS
+
     # Find input files
 
     # These three arrays are used to store arguments of different types for
@@ -1165,37 +1204,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     newargs = [a for a in newargs if a]
 
-    settings_map = {}
-    for s in settings_changes:
-      key, value = s.split('=', 1)
-      settings_map[key] = value
-
-    # Libraries are searched before settings_changes are applied, so apply the
-    # value for STRICT from command line already now.
-
-    strict_cmdline = settings_map.get('STRICT')
-    if strict_cmdline:
-      settings.STRICT = int(strict_cmdline)
-
-    # Apply optimization level settings
-
-    if settings.OPT_LEVEL >= 1:
-      settings.ASSERTIONS = 0
-    if settings.SHRINK_LEVEL >= 2:
-      settings.EVAL_CTORS = 1
-
-    # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
-    # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
-    if settings_map.get('WARN_ON_UNDEFINED_SYMBOLS') == '0':
-      settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
-
-    if settings.MINIMAL_RUNTIME or settings_map.get('MINIMAL_RUNTIME') in ('1', '2'):
-      # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
-    # Apply -s settings in newargs here (after optimization levels, so they can override them)
-    apply_settings(settings_map)
-
     specified_target = options.output_file
 
     if os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args:
@@ -1226,10 +1234,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       target = default_target_name
 
     settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
-
-    if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
-      diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
-      settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
 
     final_suffix = get_file_suffix(target)
 
@@ -2924,10 +2928,6 @@ def do_binaryen(target, options, wasm_target):
     building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
-
-  # Add extra dylibs if needed.
-  if settings.RUNTIME_LINKED_LIBS:
-    webassembly.update_dylink_section(wasm_target, settings.RUNTIME_LINKED_LIBS)
 
   if settings.EMIT_EMSCRIPTEN_METADATA:
     diagnostics.warning('deprecated', 'We hope to remove support for EMIT_EMSCRIPTEN_METADATA. See https://github.com/emscripten-core/emscripten/issues/12231')
