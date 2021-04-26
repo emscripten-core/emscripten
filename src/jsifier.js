@@ -264,16 +264,6 @@ function JSify(functionsOnly) {
       if (redirectedIdent) {
         deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
       }
-      // In asm, dependencies implemented in C might be needed by JS library functions.
-      // We don't know yet if they are implemented in C or not. To be safe, export such
-      // special cases.
-      [LIBRARY_DEPS_TO_AUTOEXPORT].forEach((special) => {
-        deps.forEach((dep) => {
-          if (dep == special && !EXPORTED_FUNCTIONS[dep]) {
-            EXPORTED_FUNCTIONS[dep] = 1;
-          }
-        });
-      });
       if (VERBOSE) {
         printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
       }
@@ -442,7 +432,13 @@ function JSify(functionsOnly) {
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[1], shellFile)));
 
-    PassManager.serialize();
+    print('\n//FORWARDED_DATA:' + JSON.stringify({
+      Functions: Functions,
+      EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
+      ATINITS: ATINITS.join('\n'),
+      ATMAINS: ATMAINS.join('\n'),
+      ATEXITS: ATEXITS.join('\n'),
+    }));
   }
 
   // Data

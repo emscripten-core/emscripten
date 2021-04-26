@@ -184,22 +184,6 @@ def save_intermediate_with_wasm(name, wasm_binary):
   building.save_intermediate(wasm_binary, name + '.wasm')
 
 
-class TimeLogger:
-  last = time.time()
-
-  @staticmethod
-  def update():
-    TimeLogger.last = time.time()
-
-
-def log_time(name):
-  """Log out times for emcc stages"""
-  if DEBUG:
-    now = time.time()
-    logger.debug('emcc step "%s" took %.2f seconds', name, now - TimeLogger.last)
-    TimeLogger.update()
-
-
 def base64_encode(b):
   b64 = base64.b64encode(b)
   return b64.decode('ascii')
@@ -1061,6 +1045,45 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     explicit_settings_changes, newargs = parse_s_args(newargs)
     settings_changes += explicit_settings_changes
 
+    settings_map = {}
+    for s in settings_changes:
+      key, value = s.split('=', 1)
+      settings_map[key] = value
+
+    # Libraries are searched before settings_changes are applied, so apply the
+    # value for STRICT from command line already now.
+
+    strict_cmdline = settings_map.get('STRICT')
+    if strict_cmdline:
+      settings.STRICT = int(strict_cmdline)
+
+    # Apply optimization level settings
+
+    if settings.OPT_LEVEL >= 1:
+      settings.ASSERTIONS = 0
+    if settings.SHRINK_LEVEL >= 2:
+      settings.EVAL_CTORS = 1
+
+    # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
+    # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
+    if settings_map.get('WARN_ON_UNDEFINED_SYMBOLS') == '0':
+      settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
+
+    if settings.MINIMAL_RUNTIME or settings_map.get('MINIMAL_RUNTIME') in ('1', '2'):
+      # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
+
+    # Apply -s settings in newargs here (after optimization levels, so they can override them)
+    apply_settings(settings_map)
+
+    if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
+      diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
+      settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
+
+    if settings.RUNTIME_LINKED_LIBS:
+      diagnostics.warning('deprecated', 'RUNTIME_LINKED_LIBS is deprecated; you can simply list the libraries directly on the commandline now')
+      newargs += settings.RUNTIME_LINKED_LIBS
+
     # Find input files
 
     # These three arrays are used to store arguments of different types for
@@ -1165,37 +1188,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     newargs = [a for a in newargs if a]
 
-    settings_map = {}
-    for s in settings_changes:
-      key, value = s.split('=', 1)
-      settings_map[key] = value
-
-    # Libraries are searched before settings_changes are applied, so apply the
-    # value for STRICT from command line already now.
-
-    strict_cmdline = settings_map.get('STRICT')
-    if strict_cmdline:
-      settings.STRICT = int(strict_cmdline)
-
-    # Apply optimization level settings
-
-    if settings.OPT_LEVEL >= 1:
-      settings.ASSERTIONS = 0
-    if settings.SHRINK_LEVEL >= 2:
-      settings.EVAL_CTORS = 1
-
-    # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
-    # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
-    if settings_map.get('WARN_ON_UNDEFINED_SYMBOLS') == '0':
-      settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
-
-    if settings.MINIMAL_RUNTIME or settings_map.get('MINIMAL_RUNTIME') in ('1', '2'):
-      # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
-    # Apply -s settings in newargs here (after optimization levels, so they can override them)
-    apply_settings(settings_map)
-
     specified_target = options.output_file
 
     if os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args:
@@ -1226,10 +1218,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       target = default_target_name
 
     settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
-
-    if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
-      diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
-      settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
 
     final_suffix = get_file_suffix(target)
 
@@ -2099,8 +2087,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     settings.PROFILING_FUNCS = options.profiling_funcs
     settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
+  ##########################################
   # exit block 'parse arguments and setup'
-  log_time('parse arguments and setup')
+  ##########################################
 
   linker_inputs = []
   if options.post_link:
@@ -2239,8 +2228,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug('using object file: ' + input_file)
         linker_inputs.append((i, input_file))
 
+  ##########################################
   # exit block 'compile inputs'
-  log_time('compile inputs')
+  ##########################################
 
   if compile_only:
     logger.debug('stopping after compile phase')
@@ -2306,8 +2296,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, link_as_cxx, forced=forced_stdlibs)
     linker_arguments += extra_files_to_link
 
+  ##########################################
   # exit block 'calculate system libraries'
-  log_time('calculate system libraries')
+  ##########################################
 
   def dedup_list(lst):
     rtn = []
@@ -2330,16 +2321,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # TODO: we could check if this is a fastcomp build, and still speed things up here
     js_funcs = None
     if settings.LLD_REPORT_UNDEFINED and settings.ERROR_ON_UNDEFINED_SYMBOLS:
-      js_funcs = get_all_js_syms()
-      log_time('JS symbol generation')
+      with ToolchainProfiler.profile_block('JS symbol generation'):
+        js_funcs = get_all_js_syms()
     building.link_lld(linker_arguments, wasm_target, external_symbol_list=js_funcs)
     # Special handling for when the user passed '-Wl,--version'.  In this case the linker
     # does not create the output file, but just prints its version and exits with 0.
     if '--version' in linker_arguments:
       return 0
 
+  ##########################################
   # exit block 'link'
-  log_time('link')
+  ##########################################
 
   if target == os.devnull:
     # TODO(sbc): In theory we should really run the whole pipeline even if the output is
@@ -2393,8 +2385,9 @@ def post_link(options, in_wasm, wasm_target, target):
     emscripten.run(in_wasm, wasm_target, final_js, memfile)
     save_intermediate('original')
 
+  ##########################################
   # exit block 'emscript'
-  log_time('emscript)')
+  ##########################################
 
   with ToolchainProfiler.profile_block('source transforms'):
     # Embed and preload files
@@ -2441,8 +2434,9 @@ def post_link(options, in_wasm, wasm_target, target):
       shared.check_call(building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final_js)]))
       save_intermediate('transformed')
 
+  ##########################################
   # exit block 'source transforms'
-  log_time('source transforms')
+  ##########################################
 
   if memfile and not settings.MINIMAL_RUNTIME:
     # MINIMAL_RUNTIME doesn't use `var memoryInitializer` but instead expects Module['mem'] to
@@ -2455,12 +2449,12 @@ def post_link(options, in_wasm, wasm_target, target):
       open(final_js + '.mem.js', 'w').write(src)
       final_js += '.mem.js'
 
-    log_time('memory initializer')
+    ##########################################
+    # exit block 'memory initializer'
+    ##########################################
 
-  with ToolchainProfiler.profile_block('binaryen'):
-    do_binaryen(target, options, wasm_target)
+  do_binaryen(target, options, wasm_target)
 
-  log_time('binaryen')
   # If we are not emitting any JS then we are all done now
   if options.oformat == OFormat.WASM:
     return
@@ -2543,8 +2537,9 @@ def post_link(options, in_wasm, wasm_target, target):
     if options.executable:
       make_js_executable(js_target)
 
-  log_time('final emitting')
+  ##########################################
   # exit block 'final emitting'
+  ##########################################
 
   return 0
 
@@ -2881,6 +2876,7 @@ def parse_args(newargs):
   return options, settings_changes, user_js_defines, newargs
 
 
+@ToolchainProfiler.profile_block('binaryen')
 def do_binaryen(target, options, wasm_target):
   global final_js
   logger.debug('using binaryen')
@@ -2924,10 +2920,6 @@ def do_binaryen(target, options, wasm_target):
     building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
-
-  # Add extra dylibs if needed.
-  if settings.RUNTIME_LINKED_LIBS:
-    webassembly.update_dylink_section(wasm_target, settings.RUNTIME_LINKED_LIBS)
 
   if settings.EMIT_EMSCRIPTEN_METADATA:
     diagnostics.warning('deprecated', 'We hope to remove support for EMIT_EMSCRIPTEN_METADATA. See https://github.com/emscripten-core/emscripten/issues/12231')
