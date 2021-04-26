@@ -95,14 +95,22 @@ typedef struct { union { int __i[10]; volatile int __vi[10]; unsigned __s[10]; }
 
 #if defined(__NEED_pthread_mutex_t) && !defined(__DEFINED_pthread_mutex_t)
 typedef struct { union { int __i[7]; volatile int __vi[7]; volatile void *__p[7]; } __u; } pthread_mutex_t;
-typedef pthread_mutex_t mtx_t;
 #define __DEFINED_pthread_mutex_t
+#endif
+
+#if defined(__NEED_mtx_t) && !defined(__DEFINED_mtx_t)
+typedef struct { union { int __i[7]; volatile int __vi[7]; volatile void *__p[7]; } __u; } mtx_t;
+#define __DEFINED_mtx_t
 #endif
 
 #if defined(__NEED_pthread_cond_t) && !defined(__DEFINED_pthread_cond_t)
 typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12]; } __u; } pthread_cond_t;
-typedef pthread_cond_t cnd_t;
 #define __DEFINED_pthread_cond_t
+#endif
+
+#if defined(__NEED_cnd_t) && !defined(__DEFINED_cnd_t)
+typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12]; } __u; } cnd_t;
+#define __DEFINED_cnd_t
 #endif
 
 #if defined(__NEED_pthread_rwlock_t) && !defined(__DEFINED_pthread_rwlock_t)

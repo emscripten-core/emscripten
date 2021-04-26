@@ -33,7 +33,7 @@ var Types = {
 // Constructs an array ['a0', 'a1', 'a2', ..., 'a(n-1)']
 function genArgSequence(n) {
   var args = [];
-  for(var i = 0; i < n; ++i) {
+  for (var i = 0; i < n; ++i) {
     args.push('a'+i);
   }
   return args;
@@ -53,7 +53,7 @@ var LibraryManager = {
   libraries: [],
 
   has: function(name) {
-    return this.libraries.indexOf(name) >= 0;
+    return this.libraries.includes(name);
   },
 
   load: function() {
@@ -62,7 +62,6 @@ var LibraryManager = {
     // Core system libraries (always linked against)
     var libraries = [
       'library.js',
-      'library_stack.js',
       'library_formatString.js',
       'library_math.js',
       'library_path.js',
@@ -76,10 +75,10 @@ var LibraryManager = {
     ];
 
     if (!EXCEPTION_HANDLING) {
-      if (!DISABLE_EXCEPTION_THROWING) {
-        libraries.push('library_exceptions.js');
-      } else {
+      if (DISABLE_EXCEPTION_THROWING) {
         libraries.push('library_exceptions_stub.js');
+      } else {
+        libraries.push('library_exceptions.js');
       }
     }
 
@@ -110,7 +109,7 @@ var LibraryManager = {
 
       if (NODERAWFS) {
         // NODERAWFS requires NODEFS
-        if (SYSTEM_JS_LIBRARIES.indexOf('library_nodefs.js') < 0) {
+        if (!SYSTEM_JS_LIBRARIES.includes('library_nodefs.js')) {
           libraries.push('library_nodefs.js');
         }
         libraries.push('library_noderawfs.js');
@@ -156,6 +155,10 @@ var LibraryManager = {
       libraries.push('library_webgl2.js');
     }
 
+    if (GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING) {
+      libraries.push('library_c_preprocessor.js');
+    }
+
     if (LEGACY_GL_EMULATION) {
       libraries.push('library_glemu.js');
     }
@@ -168,10 +171,14 @@ var LibraryManager = {
     if (BOOTSTRAPPING_STRUCT_INFO) {
       libraries = [
         'library_bootstrap.js',
-        'library_stack.js',
         'library_formatString.js',
-        'library_stack_trace.js'
+        'library_stack_trace.js',
+        'library_int53.js',
       ];
+    }
+
+    if (SUPPORT_BIG_ENDIAN) {
+      libraries.push('library_little_endian_heap.js');
     }
 
     // Deduplicate libraries to avoid processing any library file multiple times
@@ -212,7 +219,8 @@ var LibraryManager = {
       }
     }
 
-    // apply synonyms. these are typically not speed-sensitive, and doing it this way makes it possible to not include hacks in the compiler
+    // apply synonyms. these are typically not speed-sensitive, and doing it
+    // this way makes it possible to not include hacks in the compiler
     // (and makes it simpler to switch between SDL versions, fastcomp and non-fastcomp, etc.).
     var lib = LibraryManager.library;
     libloop: for (var x in lib) {
@@ -233,22 +241,33 @@ var LibraryManager = {
         }
         if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.
         if (typeof lib[target] === 'undefined' || typeof lib[target] === 'function') {
-          // When functions are aliased, the alias target must provide a signature for the function so that an efficient form of forwarding can be implemented.
-          // Primarily read the signature on the alias, and secondarily on the target.
+          // When functions are aliased, a signature for the function must be
+          // provided so that an efficient form of forwarding can be
+          // implemented.
           function testStringType(sig) {
             if (typeof lib[sig] !== 'undefined' && typeof typeof lib[sig] !== 'string') {
               error(sig + ' should be a string! (was ' + typeof lib[sig]);
             }
           }
-          testStringType(x + '__sig');
-          testStringType(target + '__sig');
-          if (typeof lib[x + '__sig'] === 'string' && typeof lib[target + '__sig'] === 'string' && lib[x + '__sig'] != lib[target + '__sig']) {
-            error(x + '__sig (' + lib[x + '__sig'] + ')  differs from ' + target + '__sig (' + lib[target + '__sig'] + ')');
+          var aliasSig = x + '__sig';
+          var targetSig = target + '__sig';
+          testStringType(aliasSig);
+          testStringType(targetSig);
+          if (typeof lib[aliasSig] === 'string' && typeof lib[targetSig] === 'string' && lib[aliasSig] != lib[targetSig]) {
+            error(aliasSig + ' (' + lib[aliasSig] + ')  differs from ' + targetSig + ' (' + lib[targetSig] + ')');
           }
 
-          var sig = lib[x + '__sig'] || lib[target + '__sig'];
+          var sig = lib[aliasSig] || lib[targetSig];
           if (typeof sig !== 'string') {
-            error('Function ' + x + ' aliases to target function ' + target + ', but neither the alias or the target provide a signature. Please add a ' + target + "__sig: 'vifj...' annotation or a " + x + "__sig: 'vifj...' annotation to describe the type of function forwarding that is needed!");
+            error('Function ' + x + ' aliases to target function ' + target + ', but neither the alias or the target provide a signature. Please add a ' + targetSig + ": 'vifj...' annotation or a " + aliasSig + ": 'vifj...' annotation to describe the type of function forwarding that is needed!");
+          }
+
+          // If only one of the target or the alias specifies a sig then copy
+          // this signature to the other.
+          if (!lib[aliasSig]) {
+            lib[aliasSig] = lib[targetSig];
+          } else if (!lib[targetSig]) {
+            lib[targetSig] = lib[aliasSig];
           }
 
           if (typeof lib[target] !== 'function') {
@@ -309,9 +328,7 @@ function cDefine(key) {
 	throw 'Missing C define ' + key + '! If you just added it to struct_info.json, you need to ./emcc --clear-cache';
 }
 
-var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS.concat(EXTRA_EXPORTED_RUNTIME_METHODS));
-EXPORTED_RUNTIME_METHODS = unset(EXPORTED_RUNTIME_METHODS_SET);
-EXTRA_EXPORTED_RUNTIME_METHODS = [];
+var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS);
 
 function isFSPrefixed(name) {
   return name.length > 3 && name[0] === 'F' && name[1] === 'S' && name[2] === '_';
@@ -362,9 +379,9 @@ function exportRuntime() {
         extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
       }
       if (!isNumber) {
-        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
+        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
       } else {
-        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Object.defineProperty(Module, "' + name + '", { configurable: true, get: function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
+        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Object.defineProperty(Module, "' + name + '", { configurable: true, get: function() { abort("\'' + name + '\' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
       }
     }
     return '';
@@ -374,7 +391,7 @@ function exportRuntime() {
     return maybeExport(name, true);
   }
 
-  // All possible runtime elements to export
+  // All possible runtime elements that can be exported
   var runtimeElements = [
     'intArrayFromString',
     'intArrayToString',
@@ -415,7 +432,6 @@ function exportRuntime() {
     'removeFunction',
     'getFuncWrapper',
     'prettyPrint',
-    'makeBigInt',
     'dynCall',
     'getCompilerSetting',
     'print',
@@ -425,6 +441,14 @@ function exportRuntime() {
     'callMain',
     'abort',
   ];
+
+  if (USE_OFFSET_CONVERTER) {
+    runtimeElements.push('WasmOffsetConverter');
+  }
+
+  if (LOAD_SOURCE_MAP) {
+    runtimeElements.push('WasmSourceMap');
+  }
 
   // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
   // '$ which indicates they are JS methods.
@@ -495,8 +519,7 @@ function exportRuntime() {
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
     for (var name in EXPORTED_RUNTIME_METHODS_SET) {
-      if (runtimeElements.indexOf(name) < 0 &&
-          runtimeNumbers.indexOf(name) < 0) {
+      if (!runtimeElements.includes(name) && !runtimeNumbers.includes(name)) {
         printErr('warning: invalid item (maybe a typo?) in EXPORTED_RUNTIME_METHODS: ' + name);
       }
     }

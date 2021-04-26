@@ -29,7 +29,7 @@
 #define AL_FORMAT_STEREO_FLOAT32                 0x10011
 #endif
 
-static const char* alformat_string(ALenum format) {
+const char* alformat_string(ALenum format) {
     switch(format) {
     #define CASE(X) case X: return #X;
     CASE(AL_FORMAT_MONO8)
@@ -56,6 +56,9 @@ void end_test(int result) {
 #endif
 }
 
+#ifndef TEST_DURATION
+#define TEST_DURATION 8000000 // 8s -> 8000000us
+#endif
 #ifndef TEST_SAMPLERATE
 #define TEST_SAMPLERATE 44100
 #endif
@@ -63,7 +66,7 @@ void end_test(int result) {
 #define TEST_FORMAT AL_FORMAT_MONO16
 #endif
 #ifndef TEST_BUFFERSIZE
-#define TEST_BUFFERSIZE TEST_SAMPLERATE*8 // 8 seconds of data
+#define TEST_BUFFERSIZE TEST_SAMPLERATE * 50 / 1000 // 50ms buffer
 #endif
 
 // The "arg" pointer passed to iter().
@@ -85,15 +88,45 @@ typedef struct {
     ALuint source, buffer;
     ALCcontext *context;
     ALCdevice *playback_device;
+    size_t captured;
+    long long duration;
+    int recorded_size;
+    char * recorded;
 } App;
 
+App app = {
+    .is_playing_back = false,
+    .sample_rate = TEST_SAMPLERATE,
+    .format = TEST_FORMAT,
+    .buffer_size = TEST_BUFFERSIZE,
+    .captured = 0,
+    .duration = TEST_DURATION
+};
 
-static void iter(void *papp) {
-    App* const app = papp;
+// frames -> bytes
+int bytesForFrames(int frames) {
+    return frames * app.nchannels * app.sample_size;
+}
 
-    if(app->is_playing_back) {
+// usec -> frames
+int framesForDuration(long long usec) {
+    return (usec * app.sample_rate) / 1000000LL;
+}
+
+// usec -> bytes
+int bytesForDuration(long long usec) {
+    return bytesForFrames(framesForDuration(usec));
+}
+
+// frames -> usec
+long long durationForFrames(int frames) {
+    return frames * 1000000LL / app.sample_rate;
+}
+
+void iter() {
+    if(app.is_playing_back) {
         ALint state;
-        alGetSourcei(app->source, AL_SOURCE_STATE, &state);
+        alGetSourcei(app.source, AL_SOURCE_STATE, &state);
 
 #ifdef __EMSCRIPTEN__
         return;
@@ -102,37 +135,45 @@ static void iter(void *papp) {
             return;
 #endif
    
-        alDeleteSources(1, &app->source);
-        alDeleteBuffers(1, &app->buffer);
+        alDeleteSources(1, &app.source);
+        alDeleteBuffers(1, &app.buffer);
         alcMakeContextCurrent(NULL);
-        alcDestroyContext(app->context);
-        alcCloseDevice(app->playback_device); 
+        alcDestroyContext(app.context);
+        alcCloseDevice(app.playback_device); 
         end_test(EXIT_SUCCESS);
     }
 
     ALCint ncaptured = 0;
-    alcGetIntegerv(app->capture_device, ALC_CAPTURE_SAMPLES, 1, &ncaptured);
+    alcGetIntegerv(app.capture_device, ALC_CAPTURE_SAMPLES, 1, &ncaptured);
 
-    const ALCint WANTED_NCAPTURED = 7 * app->sample_rate;
-
-    if(ncaptured < WANTED_NCAPTURED)
+    // take samples when the buffer is at least filled for 1/3 of its size
+    if (ncaptured < app.buffer_size / 3)
         return;
+    
+    const int target = framesForDuration(app.duration);
+    ALCint readSize = ncaptured;
+    
+    // check if there are more frames than what's needed
+    if (app.captured + readSize > target)
+        readSize = target - app.captured;
 
-    size_t datasize = WANTED_NCAPTURED * app->nchannels * app->sample_size;
-
-    ALCubyte *data = malloc(datasize);
-    if(!data) {
-        fprintf(stderr, "Out of memory!\n");
-        end_test(EXIT_FAILURE);
-    }
-
-    alcCaptureSamples(app->capture_device, data, WANTED_NCAPTURED);
-    ALCenum err = alcGetError(app->capture_device);
+    alcCaptureSamples(app.capture_device, app.recorded + bytesForFrames(app.captured), readSize);
+    ALCenum err = alcGetError(app.capture_device);
     if(err != ALC_NO_ERROR) {
         fprintf(stderr, "alcCaptureSamples() yielded an error, but wasn't supposed to! (%x, %s)\n", err, alcGetString(NULL, err));
         end_test(EXIT_FAILURE);
     }
-
+    
+    app.captured += readSize;
+    
+    if (app.captured < target)
+        return;
+    else if (app.captured > target) {
+        fprintf(stderr, "Captured frames exeedes expectations!\n");
+        end_test(EXIT_FAILURE);
+    }
+    
+    
     // This was here to see if alcCaptureSamples() would reset the number of
     // available captured samples as a side-effect.
     // Turns out, it does (on Linux with OpenAL-Soft).
@@ -141,7 +182,7 @@ static void iter(void *papp) {
     /*
     {
         ALCint ncaptured_now = 0;
-        alcGetIntegerv(app->capture_device, ALC_CAPTURE_SAMPLES, 1, &ncaptured_now);
+        alcGetIntegerv(app.capture_device, ALC_CAPTURE_SAMPLES, 1, &ncaptured_now);
 
         printf(
             "For information, number of captured sample frames :\n"
@@ -152,40 +193,40 @@ static void iter(void *papp) {
     }
     */
 
-    alcCaptureStop(app->capture_device);
+    alcCaptureStop(app.capture_device);
 
 #ifdef __EMSCRIPTEN__
     // Restarting capture must zero the reported number of captured samples.
     // Works in our case because no processing takes place until the current
     // iteration yields to the javascript main loop.
-    alcCaptureStart(app->capture_device);
-    alcCaptureStop(app->capture_device);
+    alcCaptureStart(app.capture_device);
+    alcCaptureStop(app.capture_device);
     ALCint zeroed_ncaptured = 0xdead;
-    alcGetIntegerv(app->capture_device, ALC_CAPTURE_SAMPLES, 1, &zeroed_ncaptured);
+    alcGetIntegerv(app.capture_device, ALC_CAPTURE_SAMPLES, 1, &zeroed_ncaptured);
     if(zeroed_ncaptured) {
         fprintf(stderr, "Restarting capture didn't zero the reported number of available sample frames!\n");
     }
 #endif
 
-    ALCboolean could_close = alcCaptureCloseDevice(app->capture_device);
+    ALCboolean could_close = alcCaptureCloseDevice(app.capture_device);
     if(!could_close) {
-        fprintf(stderr, "Could not close device \"%s\"!\n", app->capture_device_name);
+        fprintf(stderr, "Could not close device \"%s\"!\n", app.capture_device_name);
         end_test(EXIT_FAILURE);
     }
 
     // We're not as careful with playback - this is already tested
     // elsewhere.
-    app->playback_device = alcOpenDevice(NULL);
-    assert(app->playback_device);
-    app->context = alcCreateContext(app->playback_device, NULL);
-    assert(app->context);
-    alcMakeContextCurrent(app->context);
-    alGenBuffers(1, &app->buffer);
-    alGenSources(1, &app->source);
-    alBufferData(app->buffer, app->format, data, datasize, app->sample_rate);
-    alSourcei(app->source, AL_BUFFER, app->buffer);
+    app.playback_device = alcOpenDevice(NULL);
+    assert(app.playback_device);
+    app.context = alcCreateContext(app.playback_device, NULL);
+    assert(app.context);
+    alcMakeContextCurrent(app.context);
+    alGenBuffers(1, &app.buffer);
+    alGenSources(1, &app.source);
+    alBufferData(app.buffer, app.format, app.recorded, app.recorded_size, app.sample_rate);
+    alSourcei(app.source, AL_BUFFER, app.buffer);
 
-    free(data);
+    free(app.recorded);
 
 #ifdef __EMSCRIPTEN__
     EM_ASM(
@@ -207,8 +248,8 @@ static void iter(void *papp) {
     );
 #endif
 
-    app->is_playing_back = true;
-    alSourcePlay(app->source);
+    app.is_playing_back = true;
+    alSourcePlay(app.source);
     printf(
         "You should now hear the captured audio data.\n"
 #ifdef __EMSCRIPTEN__
@@ -217,24 +258,16 @@ static void iter(void *papp) {
     );
 }
 
-
-static App app = {
-    .is_playing_back = false,
-    .sample_rate = TEST_SAMPLERATE,
-    .format = TEST_FORMAT,
-    .buffer_size = TEST_BUFFERSIZE
-};
-
 #ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
 #endif
-static void ignite() {
-
+void ignite() {
     app.capture_device_name = alcGetString(NULL, ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER);
 
     app.capture_device = alcCaptureOpenDevice(
         app.capture_device_name, app.sample_rate, app.format, app.buffer_size
     );
+    
     if(!app.capture_device) {
         ALCenum err = alcGetError(app.capture_device);
         fprintf(stderr, 
@@ -259,14 +292,22 @@ static void ignite() {
 #endif
     }
 
+    //allocate memory to store captured audio
+    app.recorded_size = bytesForDuration(app.duration);
+    app.recorded = malloc(app.recorded_size);
+    if(!app.recorded) {
+        fprintf(stderr, "Out of memory!\n");
+        end_test(EXIT_FAILURE);
+    }
+    
     alcCaptureStart(app.capture_device);
 
 #ifdef __EMSCRIPTEN__
-    emscripten_set_main_loop_arg(iter, &app, 0, 0);
+    emscripten_set_main_loop_arg(iter, NULL, 0, 0);
 #else
     for(;;) {
         iter(&app);
-        usleep(16666);
+        usleep(durationForFrames(app.buffer_size) / 3);
     }
 #endif
 }
@@ -277,7 +318,7 @@ int main() {
         "This test will attempt to capture %f seconds "
         "worth of audio data from your default audio "
         "input device, and then play it back.\n"
-        , TEST_BUFFERSIZE / (float) TEST_SAMPLERATE
+        , app.duration / 1000000.F
     );
 #ifdef __EMSCRIPTEN__
     printf(

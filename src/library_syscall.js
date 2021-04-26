@@ -25,20 +25,26 @@ var SyscallsLibrary = {
     umask: 0x1FF,  // S_IRWXU | S_IRWXG | S_IRWXO
 
     // shared utilities
-    calculateAt: function(dirfd, path) {
-      if (path[0] !== '/') {
-        // relative path
-        var dir;
-        if (dirfd === {{{ cDefine('AT_FDCWD') }}}) {
-          dir = FS.cwd();
-        } else {
-          var dirstream = FS.getStream(dirfd);
-          if (!dirstream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
-          dir = dirstream.path;
-        }
-        path = PATH.join2(dir, path);
+    calculateAt: function(dirfd, path, allowEmpty) {
+      if (path[0] === '/') {
+        return path;
       }
-      return path;
+      // relative path
+      var dir;
+      if (dirfd === {{{ cDefine('AT_FDCWD') }}}) {
+        dir = FS.cwd();
+      } else {
+        var dirstream = FS.getStream(dirfd);
+        if (!dirstream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
+        dir = dirstream.path;
+      }
+      if (path.length == 0) {
+        if (!allowEmpty) {
+          throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});;
+        }
+        return dir;
+      }
+      return PATH.join2(dir, path);
     },
 
     doStat: function(func, path, buf) {
@@ -279,10 +285,12 @@ var SyscallsLibrary = {
     if (len === info.len) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
       var stream = FS.getStream(info.fd);
-      if (info.prot & {{{ cDefine('PROT_WRITE') }}}) {
-        SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
+      if (stream) {
+        if (info.prot & {{{ cDefine('PROT_WRITE') }}}) {
+          SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
+        }
+        FS.munmap(stream);
       }
-      FS.munmap(stream);
 #else
 #if ASSERTIONS
       // Without FS support, only anonymous mappings are supported.
@@ -526,224 +534,233 @@ var SyscallsLibrary = {
     return -{{{ cDefine('EPERM') }}};
   },
 #if PROXY_POSIX_SOCKETS == 0
-  __sys_socketcall__deps: ['$SOCKFS', '$DNS', '_read_sockaddr', '_write_sockaddr'],
-  __sys_socketcall: function(call, socketvararg) {
+  $getSocketFromFD__deps: ['$SOCKFS', '$FS'],
+  $getSocketFromFD: function(fd) {
+    var socket = SOCKFS.getSocket(fd);
+    if (!socket) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
 #if SYSCALL_DEBUG
-      err('    (socketcall begin: "' + call + '")');
+    err('    (socket: "' + socket.path + '")');
 #endif
-    // socketcalls pass the rest of the arguments in a struct
-    SYSCALLS.varargs = socketvararg;
-
-    var getSocketFromFD = function() {
-      var socket = SOCKFS.getSocket(SYSCALLS.get());
-      if (!socket) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
+    return socket;
+  },
+  /** @param {boolean=} allowNull */
+  $getSocketAddress__deps: ['$readSockaddr'],
+  $getSocketAddress: function(addrp, addrlen, allowNull) {
+    if (allowNull && addrp === 0) return null;
+    var info = readSockaddr(addrp, addrlen);
+    if (info.errno) throw new FS.ErrnoError(info.errno);
+    info.addr = DNS.lookup_addr(info.addr) || info.addr;
 #if SYSCALL_DEBUG
-      err('    (socket: "' + socket.path + '")');
+    err('    (socketaddress: "' + [info.addr, info.port] + '")');
 #endif
-      return socket;
-    };
-    /** @param {boolean=} allowNull */
-    var getSocketAddress = function(allowNull) {
-      var addrp = SYSCALLS.get(), addrlen = SYSCALLS.get();
-      if (allowNull && addrp === 0) return null;
-      var info = __read_sockaddr(addrp, addrlen);
-      if (info.errno) throw new FS.ErrnoError(info.errno);
-      info.addr = DNS.lookup_addr(info.addr) || info.addr;
+    return info;
+  },
+  __sys_socket__deps: ['$SOCKFS'],
+  __sys_socket: function(domain, type, protocol) {
+    var sock = SOCKFS.createSocket(domain, type, protocol);
+#if ASSERTIONS
+    assert(sock.stream.fd < 64); // XXX ? select() assumes socket fd values are in 0..63
+#endif
+    return sock.stream.fd;
+  },
+  __sys_getsockname__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __sys_getsockname: function(fd, addr, addrlen) {
+    err("__sys_getsockname " + fd);
+    var sock = getSocketFromFD(fd);
+    // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
+    var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(sock.saddr || '0.0.0.0'), sock.sport, addrlen);
+#if ASSERTIONS
+    assert(!errno);
+#endif
+    return 0;
+  },
+  __sys_socketpair: function() {
 #if SYSCALL_DEBUG
-      err('    (socketaddress: "' + [info.addr, info.port] + '")');
+    err('unsupported syscall: __sys_socketpair');
 #endif
-      return info;
-    };
-
-    switch (call) {
-      case 1: { // socket
-        var domain = SYSCALLS.get(), type = SYSCALLS.get(), protocol = SYSCALLS.get();
-        var sock = SOCKFS.createSocket(domain, type, protocol);
+    return -{{{ cDefine('ENOSYS') }}};
+  },
+  __sys_setsockopt: function(fd) {
+    return -{{{ cDefine('ENOPROTOOPT') }}}; // The option is unknown at the level indicated.
+  },
+  __sys_getpeername__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __sys_getpeername: function(fd, addr, addrlen) {
+    var sock = getSocketFromFD(fd);
+    if (!sock.daddr) {
+      return -{{{ cDefine('ENOTCONN') }}}; // The socket is not connected.
+    }
+    var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(sock.daddr), sock.dport, addrlen);
 #if ASSERTIONS
-        assert(sock.stream.fd < 64); // XXX ? select() assumes socket fd values are in 0..63
+    assert(!errno);
 #endif
-        return sock.stream.fd;
-      }
-      case 2: { // bind
-        var sock = getSocketFromFD(), info = getSocketAddress();
-        sock.sock_ops.bind(sock, info.addr, info.port);
+    return 0;
+  },
+  __sys_connect__deps: ['$getSocketFromFD', '$getSocketAddress'],
+  __sys_connect: function(fd, addr, addrlen) {
+    var sock = getSocketFromFD(fd);
+    var info = getSocketAddress(addr, addrlen);
+    sock.sock_ops.connect(sock, info.addr, info.port);
+    return 0;
+  },
+  __sys_shutdown__deps: ['$getSocketFromFD'],
+  __sys_shutdown: function(fd, how) {
+    getSocketFromFD(fd);
+    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
+  },
+  __sys_accept4__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __sys_accept4: function(fd, addr, addrlen, flags) {
+    var sock = getSocketFromFD(fd);
+    var newsock = sock.sock_ops.accept(sock);
+    if (addr) {
+      var errno = writeSockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport, addrlen);
+#if ASSERTIONS
+      assert(!errno);
+#endif
+    }
+    return newsock.stream.fd;
+  },
+  __sys_bind__deps: ['$getSocketFromFD', '$getSocketAddress'],
+  __sys_bind: function(fd, addr, addrlen) {
+    var sock = getSocketFromFD(fd);
+    var info = getSocketAddress(addr, addrlen);
+    sock.sock_ops.bind(sock, info.addr, info.port);
+    return 0;
+  },
+  __sys_listen__deps: ['$getSocketFromFD'],
+  __sys_listen: function(fd, backlog) {
+    var sock = getSocketFromFD(fd);
+    sock.sock_ops.listen(sock, backlog);
+    return 0;
+  },
+  __sys_recvfrom__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __sys_recvfrom: function(fd, buf, len, flags, addr, addrlen) {
+    var sock = getSocketFromFD(fd);
+    var msg = sock.sock_ops.recvmsg(sock, len);
+    if (!msg) return 0; // socket is closed
+    if (addr) {
+      var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port, addrlen);
+#if ASSERTIONS
+      assert(!errno);
+#endif
+    }
+    HEAPU8.set(msg.buffer, buf);
+    return msg.buffer.byteLength;
+  },
+  __sys_sendto__deps: ['$getSocketFromFD', '$getSocketAddress'],
+  __sys_sendto: function(fd, message, length, flags, addr, addr_len) {
+    var sock = getSocketFromFD(fd);
+    var dest = getSocketAddress(addr, addr_len, true);
+    if (!dest) {
+      // send, no address provided
+      return FS.write(sock.stream, {{{ heapAndOffset('HEAP8', 'message') }}}, length);
+    } else {
+      // sendto an address
+      return sock.sock_ops.sendmsg(sock, {{{ heapAndOffset('HEAP8', 'message') }}}, length, dest.addr, dest.port);
+    }
+  },
+  __sys_getsockopt__deps: ['$getSocketFromFD'],
+  __sys_getsockopt: function(fd, level, optname, optval, optlen) {
+    var sock = getSocketFromFD(fd);
+    // Minimal getsockopt aimed at resolving https://github.com/emscripten-core/emscripten/issues/2211
+    // so only supports SOL_SOCKET with SO_ERROR.
+    if (level === {{{ cDefine('SOL_SOCKET') }}}) {
+      if (optname === {{{ cDefine('SO_ERROR') }}}) {
+        {{{ makeSetValue('optval', 0, 'sock.error', 'i32') }}};
+        {{{ makeSetValue('optlen', 0, 4, 'i32') }}};
+        sock.error = null; // Clear the error (The SO_ERROR option obtains and then clears this field).
         return 0;
-      }
-      case 3: { // connect
-        var sock = getSocketFromFD(), info = getSocketAddress();
-        sock.sock_ops.connect(sock, info.addr, info.port);
-        return 0;
-      }
-      case 4: { // listen
-        var sock = getSocketFromFD(), backlog = SYSCALLS.get();
-        sock.sock_ops.listen(sock, backlog);
-        return 0;
-      }
-      case 5: { // accept
-        var sock = getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
-        var newsock = sock.sock_ops.accept(sock);
-        if (addr) {
-          var errno = __write_sockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport, addrlen);
-#if ASSERTIONS
-          assert(!errno);
-#endif
-        }
-        return newsock.stream.fd;
-      }
-      case 6: { // getsockname
-        var sock = getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
-        // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
-        var errno = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.saddr || '0.0.0.0'), sock.sport, addrlen);
-#if ASSERTIONS
-        assert(!errno);
-#endif
-        return 0;
-      }
-      case 7: { // getpeername
-        var sock = getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
-        if (!sock.daddr) {
-          return -{{{ cDefine('ENOTCONN') }}}; // The socket is not connected.
-        }
-        var errno = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.daddr), sock.dport, addrlen);
-#if ASSERTIONS
-        assert(!errno);
-#endif
-        return 0;
-      }
-      case 11: { // sendto
-        var sock = getSocketFromFD(), message = SYSCALLS.get(), length = SYSCALLS.get(), flags = SYSCALLS.get(), dest = getSocketAddress(true);
-        if (!dest) {
-          // send, no address provided
-          return FS.write(sock.stream, {{{ heapAndOffset('HEAP8', 'message') }}}, length);
-        } else {
-          // sendto an address
-          return sock.sock_ops.sendmsg(sock, {{{ heapAndOffset('HEAP8', 'message') }}}, length, dest.addr, dest.port);
-        }
-      }
-      case 12: { // recvfrom
-        var sock = getSocketFromFD(), buf = SYSCALLS.get(), len = SYSCALLS.get(), flags = SYSCALLS.get(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
-        var msg = sock.sock_ops.recvmsg(sock, len);
-        if (!msg) return 0; // socket is closed
-        if (addr) {
-          var errno = __write_sockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port, addrlen);
-#if ASSERTIONS
-          assert(!errno);
-#endif
-        }
-        HEAPU8.set(msg.buffer, buf);
-        return msg.buffer.byteLength;
-      }
-      case 14: { // setsockopt
-        return -{{{ cDefine('ENOPROTOOPT') }}}; // The option is unknown at the level indicated.
-      }
-      case 15: { // getsockopt
-        var sock = getSocketFromFD(), level = SYSCALLS.get(), optname = SYSCALLS.get(), optval = SYSCALLS.get(), optlen = SYSCALLS.get();
-        // Minimal getsockopt aimed at resolving https://github.com/emscripten-core/emscripten/issues/2211
-        // so only supports SOL_SOCKET with SO_ERROR.
-        if (level === {{{ cDefine('SOL_SOCKET') }}}) {
-          if (optname === {{{ cDefine('SO_ERROR') }}}) {
-            {{{ makeSetValue('optval', 0, 'sock.error', 'i32') }}};
-            {{{ makeSetValue('optlen', 0, 4, 'i32') }}};
-            sock.error = null; // Clear the error (The SO_ERROR option obtains and then clears this field).
-            return 0;
-          }
-        }
-        return -{{{ cDefine('ENOPROTOOPT') }}}; // The option is unknown at the level indicated.
-      }
-      case 16: { // sendmsg
-        var sock = getSocketFromFD(), message = SYSCALLS.get(), flags = SYSCALLS.get();
-        var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
-        var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
-        // read the address and port to send to
-        var addr, port;
-        var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
-        var namelen = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_namelen, 'i32') }}};
-        if (name) {
-          var info = __read_sockaddr(name, namelen);
-          if (info.errno) return -info.errno;
-          port = info.port;
-          addr = DNS.lookup_addr(info.addr) || info.addr;
-        }
-        // concatenate scatter-gather arrays into one message buffer
-        var total = 0;
-        for (var i = 0; i < num; i++) {
-          total += {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
-        }
-        var view = new Uint8Array(total);
-        var offset = 0;
-        for (var i = 0; i < num; i++) {
-          var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, 'i8*') }}};
-          var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
-          for (var j = 0; j < iovlen; j++) {  
-            view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
-          }
-        }
-        // write the buffer
-        return sock.sock_ops.sendmsg(sock, view, 0, total, addr, port);
-      }
-      case 17: { // recvmsg
-        var sock = getSocketFromFD(), message = SYSCALLS.get(), flags = SYSCALLS.get();
-        var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, 'i8*') }}};
-        var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
-        // get the total amount of data we can read across all arrays
-        var total = 0;
-        for (var i = 0; i < num; i++) {
-          total += {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
-        }
-        // try to read total data
-        var msg = sock.sock_ops.recvmsg(sock, total);
-        if (!msg) return 0; // socket is closed
-
-        // TODO honor flags:
-        // MSG_OOB
-        // Requests out-of-band data. The significance and semantics of out-of-band data are protocol-specific.
-        // MSG_PEEK
-        // Peeks at the incoming message.
-        // MSG_WAITALL
-        // Requests that the function block until the full amount of data requested can be returned. The function may return a smaller amount of data if a signal is caught, if the connection is terminated, if MSG_PEEK was specified, or if an error is pending for the socket.
-
-        // write the source address out
-        var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
-        if (name) {
-          var errno = __write_sockaddr(name, sock.family, DNS.lookup_name(msg.addr), msg.port);
-#if ASSERTIONS
-          assert(!errno);
-#endif
-        }
-        // write the buffer out to the scatter-gather arrays
-        var bytesRead = 0;
-        var bytesRemaining = msg.buffer.byteLength;
-        for (var i = 0; bytesRemaining > 0 && i < num; i++) {
-          var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, 'i8*') }}};
-          var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
-          if (!iovlen) {
-            continue;
-          }
-          var length = Math.min(iovlen, bytesRemaining);
-          var buf = msg.buffer.subarray(bytesRead, bytesRead + length);
-          HEAPU8.set(buf, iovbase + bytesRead);
-          bytesRead += length;
-          bytesRemaining -= length;
-        }
-
-        // TODO set msghdr.msg_flags
-        // MSG_EOR
-        // End of record was received (if supported by the protocol).
-        // MSG_OOB
-        // Out-of-band data was received.
-        // MSG_TRUNC
-        // Normal data was truncated.
-        // MSG_CTRUNC
-
-        return bytesRead;
-      }
-      default: {
-#if SYSCALL_DEBUG
-        err('    (socketcall unknown call: ' + call + ')');
-#endif
-        return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
       }
     }
+    return -{{{ cDefine('ENOPROTOOPT') }}}; // The option is unknown at the level indicated.
+  },
+  __sys_sendmsg__deps: ['$getSocketFromFD', '$readSockaddr', '$DNS'],
+  __sys_sendmsg: function(fd, message, flags) {
+    var sock = getSocketFromFD(fd);
+    var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
+    var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
+    // read the address and port to send to
+    var addr, port;
+    var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
+    var namelen = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_namelen, 'i32') }}};
+    if (name) {
+      var info = readSockaddr(name, namelen);
+      if (info.errno) return -info.errno;
+      port = info.port;
+      addr = DNS.lookup_addr(info.addr) || info.addr;
+    }
+    // concatenate scatter-gather arrays into one message buffer
+    var total = 0;
+    for (var i = 0; i < num; i++) {
+      total += {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+    }
+    var view = new Uint8Array(total);
+    var offset = 0;
+    for (var i = 0; i < num; i++) {
+      var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, 'i8*') }}};
+      var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+      for (var j = 0; j < iovlen; j++) {  
+        view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
+      }
+    }
+    // write the buffer
+    return sock.sock_ops.sendmsg(sock, view, 0, total, addr, port);
+  },
+  __sys_recvmsg__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __sys_recvmsg: function(fd, message, flags) {
+    var sock = getSocketFromFD(fd);
+    var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, 'i8*') }}};
+    var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
+    // get the total amount of data we can read across all arrays
+    var total = 0;
+    for (var i = 0; i < num; i++) {
+      total += {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+    }
+    // try to read total data
+    var msg = sock.sock_ops.recvmsg(sock, total);
+    if (!msg) return 0; // socket is closed
+
+    // TODO honor flags:
+    // MSG_OOB
+    // Requests out-of-band data. The significance and semantics of out-of-band data are protocol-specific.
+    // MSG_PEEK
+    // Peeks at the incoming message.
+    // MSG_WAITALL
+    // Requests that the function block until the full amount of data requested can be returned. The function may return a smaller amount of data if a signal is caught, if the connection is terminated, if MSG_PEEK was specified, or if an error is pending for the socket.
+
+    // write the source address out
+    var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
+    if (name) {
+      var errno = writeSockaddr(name, sock.family, DNS.lookup_name(msg.addr), msg.port);
+#if ASSERTIONS
+      assert(!errno);
+#endif
+    }
+    // write the buffer out to the scatter-gather arrays
+    var bytesRead = 0;
+    var bytesRemaining = msg.buffer.byteLength;
+    for (var i = 0; bytesRemaining > 0 && i < num; i++) {
+      var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, 'i8*') }}};
+      var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+      if (!iovlen) {
+        continue;
+      }
+      var length = Math.min(iovlen, bytesRemaining);
+      var buf = msg.buffer.subarray(bytesRead, bytesRead + length);
+      HEAPU8.set(buf, iovbase + bytesRead);
+      bytesRead += length;
+      bytesRemaining -= length;
+    }
+
+    // TODO set msghdr.msg_flags
+    // MSG_EOR
+    // End of record was received (if supported by the protocol).
+    // MSG_OOB
+    // Out-of-band data was received.
+    // MSG_TRUNC
+    // Normal data was truncated.
+    // MSG_CTRUNC
+
+    return bytesRead;
   },
 #endif // ~PROXY_POSIX_SOCKETS==0
   __sys_setitimer__nothrow: true,
@@ -753,7 +770,7 @@ var SyscallsLibrary = {
   },
   __sys_wait4__proxy: false,
   __sys_wait4: function(pid, wstart, options, rusage) {
-    abort('cannot wait on child processes');
+    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
   __sys_setdomainname__nothrow: true,
   __sys_setdomainname__proxy: false,
@@ -775,7 +792,11 @@ var SyscallsLibrary = {
     copyString('nodename', 'emscripten');
     copyString('release', '1.0');
     copyString('version', '#1');
-    copyString('machine', 'x86-JS');
+#if MEMORY64 == 1
+    copyString('machine', 'wasm64');
+#else
+    copyString('machine', 'wasm32');
+#endif
     return 0;
   },
   __sys_mprotect__nothrow: true,
@@ -1036,7 +1057,7 @@ var SyscallsLibrary = {
   __sys_setregid32__nothrow: true,
   __sys_setregid32__proxy: false,
   __sys_setregid32: function(ruid, euid) {
-    if (uid !== 0) return -{{{ cDefine('EPERM') }}};
+    if (ruid !== 0) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
   __sys_setuid32__sig: 'ii',
@@ -1233,7 +1254,7 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    var mode = SYSCALLS.get();
+    var mode = varargs ? SYSCALLS.get() : 0;
     return FS.open(path, flags, mode).fd;
   },
   __sys_mkdirat: function(dirfd, path, mode) {
@@ -1267,11 +1288,12 @@ var SyscallsLibrary = {
   __sys_fstatat64: function(dirfd, path, buf, flags) {
     path = SYSCALLS.getStr(path);
     var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
-    flags = flags & (~{{{ cDefine('AT_SYMLINK_NOFOLLOW') }}});
+    var allowEmpty = flags & {{{ cDefine('AT_EMPTY_PATH') }}};
+    flags = flags & (~{{{ cDefine('AT_SYMLINK_NOFOLLOW') | cDefine('AT_EMPTY_PATH') }}});
 #if ASSERTIONS
     assert(!flags, flags);
 #endif
-    path = SYSCALLS.calculateAt(dirfd, path);
+    path = SYSCALLS.calculateAt(dirfd, path, allowEmpty);
     return SYSCALLS.doStat(nofollow ? FS.lstat : FS.stat, path, buf);
   },
   __sys_unlinkat: function(dirfd, path, flags) {
@@ -1324,7 +1346,6 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    mode = SYSCALLS.get();
     FS.chmod(path, mode);
     return 0;
   },
@@ -1352,7 +1373,7 @@ var SyscallsLibrary = {
 #if ASSERTIONS
     assert(flags === 0);
 #endif
-    path = SYSCALLS.calculateAt(dirfd, path);
+    path = SYSCALLS.calculateAt(dirfd, path, true);
     var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
     var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
     var atime = (seconds*1000) + (nanoseconds/(1000*1000));
@@ -1429,7 +1450,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   // If a syscall uses FS, but !SYSCALLS_REQUIRE_FILESYSTEM, then the user
   // has disabled the filesystem or we have proven some other way that this will
   // not be called in practice, and do not need that code.
-  if (!SYSCALLS_REQUIRE_FILESYSTEM && t.indexOf('FS.') >= 0) {
+  if (!SYSCALLS_REQUIRE_FILESYSTEM && t.includes('FS.')) {
     t = modifyFunction(t, function(name, args, body) {
       return 'function ' + name + '(' + args + ') {\n' +
              (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');\n" : '') +
@@ -1437,7 +1458,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     });
   }
 
-  var isVariadic = !isWasi && t.indexOf(', varargs') != -1;
+  var isVariadic = !isWasi && t.includes(', varargs');
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
   var canThrow = false;
 #else

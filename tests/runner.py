@@ -7,7 +7,7 @@
 """This is the Emscripten test runner. To run some tests, specify which tests
 you want, for example
 
-  python3 tests/runner.py asm1.test_hello_world
+  tests/runner asm1.test_hello_world
 
 There are many options for which tests to run and how to run them. For details,
 see
@@ -56,23 +56,17 @@ import clang_native
 import jsrun
 import parallel_testsuite
 from jsrun import NON_ZERO
-from tools.config import EM_CONFIG
-from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG
+from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import EM_BUILD_VERBOSE
-from tools.shared import asstr, get_canonical_temp_dir, try_delete
-from tools.shared import asbytes, Settings, config
+from tools.shared import get_canonical_temp_dir, try_delete
 from tools.utils import MACOS, WINDOWS
-from tools import shared, line_endings, building
+from tools import shared, line_endings, building, config
 
 
 def path_from_root(*pathelems):
+  """Construct a path relative to the emscripten root directory."""
   return os.path.join(__rootpath__, *pathelems)
-
-
-def delete_contents(pathname):
-  for entry in os.listdir(pathname):
-    try_delete(os.path.join(pathname, entry))
 
 
 sys.path.append(path_from_root('third_party/websockify'))
@@ -102,8 +96,23 @@ EMTEST_LACKS_NATIVE_CLANG = os.getenv('EMTEST_LACKS_NATIVE_CLANG')
 
 EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
 
+TEST_ROOT = path_from_root('tests')
+
+WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools', 'webidl_binder'))
+
+
 if EMTEST_VERBOSE:
   logging.root.setLevel(logging.DEBUG)
+
+
+def delete_contents(pathname):
+  for entry in os.listdir(pathname):
+    try_delete(os.path.join(pathname, entry))
+
+
+def test_file(*path_components):
+  """Construct a path relative to the emscripten "tests" directory."""
+  return os.path.join(TEST_ROOT, *path_components)
 
 
 # checks if browser testing is enabled
@@ -129,12 +138,12 @@ def skip_if(func, condition, explanation='', negate=False):
   return decorated
 
 
-def needs_dlfcn(func):
+def needs_dylink(func):
   assert callable(func)
 
   @wraps(func)
   def decorated(self):
-    self.check_dlfcn()
+    self.check_dylink()
     return func(self)
 
   return decorated
@@ -182,6 +191,18 @@ def requires_native_clang(func):
   return decorated
 
 
+def node_pthreads(f):
+  def decorated(self):
+    self.set_setting('USE_PTHREADS')
+    self.emcc_args += ['-Wno-pthreads-mem-growth']
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
+    self.js_engines = [config.NODE_JS]
+    self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+    f(self)
+  return decorated
+
+
 @contextlib.contextmanager
 def env_modify(updates):
   """A context manager that updates os.environ."""
@@ -213,17 +234,6 @@ def with_env_modify(updates):
   return decorated
 
 
-@contextlib.contextmanager
-def chdir(dir):
-  """A context manager that performs actions in the given directory."""
-  orig_cwd = os.getcwd()
-  os.chdir(dir)
-  try:
-    yield
-  finally:
-    os.chdir(orig_cwd)
-
-
 def ensure_dir(dirname):
   if not os.path.isdir(dirname):
     os.makedirs(dirname)
@@ -242,7 +252,7 @@ def limit_size(string, maxbytes=800000 * 20, maxlines=100000, max_line=5000):
   return string
 
 
-def create_test_file(name, contents, binary=False):
+def create_file(name, contents, binary=False):
   assert not os.path.isabs(name)
   mode = 'wb' if binary else 'w'
   with open(name, mode) as f:
@@ -380,17 +390,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def is_wasm(self):
     return self.get_setting('WASM') != 0
 
-  def check_dlfcn(self):
+  def check_dylink(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
-      self.skipTest('no dlfcn with memory growth (without wasm)')
-    if not self.get_setting('WASM'):
-      self.skipTest('no dynamic library support in wasm2js yet')
+      self.skipTest('no dynamic linking with memory growth (without wasm)')
+    if not self.is_wasm():
+      self.skipTest('no dynamic linking support in wasm2js yet')
     if '-fsanitize=address' in self.emcc_args:
-      self.skipTest('no dynamic library support in asan yet')
+      self.skipTest('no dynamic linking support in asan yet')
 
   def uses_memory_init_file(self):
-    if self.get_setting('SIDE_MODULE') or \
-      (self.get_setting('WASM') and not self.get_setting('WASM2JS')):
+    if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
       return False
     elif '--memory-init-file' in self.emcc_args:
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file') + 1])
@@ -407,12 +416,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   @classmethod
   def setUpClass(cls):
-    super(RunnerCore, cls).setUpClass()
+    super().setUpClass()
     print('(checking sanity from test runner)') # do this after we set env stuff
     shared.check_sanity(force=True)
 
   def setUp(self):
-    super(RunnerCore, self).setUp()
+    super().setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
     self.node_args = []
@@ -420,8 +429,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.env = {}
     self.temp_files_before_run = []
     self.uses_es6 = False
-    self.js_engines = list(config.JS_ENGINES)
-    self.wasm_engines = list(config.WASM_ENGINES)
+    self.js_engines = config.JS_ENGINES.copy()
+    self.wasm_engines = config.WASM_ENGINES.copy()
     self.banned_js_engines = []
     self.use_all_engines = EMTEST_ALL_ENGINES
 
@@ -463,7 +472,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       os.chdir(os.path.dirname(self.get_dir()))
       try_delete(self.get_dir())
 
-      if EMTEST_DETECT_TEMPFILE_LEAKS and not os.environ.get('EMCC_DEBUG'):
+      if EMTEST_DETECT_TEMPFILE_LEAKS and not DEBUG:
         temp_files_after_run = []
         for root, dirnames, filenames in os.walk(self.temp_dir):
           for dirname in dirnames:
@@ -489,10 +498,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
             print('leaked file: ' + f, file=sys.stderr)
           self.fail('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
 
-  def get_setting(self, key):
-    if key in self.settings_mods:
-      return self.settings_mods[key]
-    return Settings[key]
+  def get_setting(self, key, default=None):
+    return self.settings_mods.get(key, default)
 
   def set_setting(self, key, value=1):
     if value is None:
@@ -523,15 +530,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return os.path.join(self.get_dir(), *pathelems)
 
   def add_pre_run(self, code):
-    create_test_file('prerun.js', 'Module.preRun = function() { %s }' % code)
+    create_file('prerun.js', 'Module.preRun = function() { %s }' % code)
     self.emcc_args += ['--pre-js', 'prerun.js']
 
   def add_post_run(self, code):
-    create_test_file('postrun.js', 'Module.postRun = function() { %s }' % code)
+    create_file('postrun.js', 'Module.postRun = function() { %s }' % code)
     self.emcc_args += ['--pre-js', 'postrun.js']
 
   def add_on_exit(self, code):
-    create_test_file('onexit.js', 'Module.onExit = function() { %s }' % code)
+    create_file('onexit.js', 'Module.onExit = function() { %s }' % code)
     self.emcc_args += ['--pre-js', 'onexit.js']
 
   # returns the full list of arguments to pass to emcc
@@ -552,8 +559,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     es_check = shared.get_npm_cmd('es-check')
     # use --quiet once its available
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
+    es_check_env = os.environ.copy()
+    es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
     try:
-      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stderr=PIPE)
+      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stderr=PIPE, env=es_check_env)
     except subprocess.CalledProcessError as e:
       print(e.stderr)
       self.fail('es-check failed to verify ES5 output compliance')
@@ -570,12 +579,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # this if this issues is fixed.
       compiler = [EMCC, '-nostdlib++']
 
+    if force_c:
+      compiler.append('-xc')
+
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix
-    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + \
-        ['-I.', '-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
-        ['-I' + include for include in includes] + \
-        libraries
+    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + libraries
+    if shared.suffix(filename) not in ('.i', '.ii'):
+      # Add the location of the test file to include path.
+      cmd += ['-I.']
+      cmd += ['-I' + include for include in includes]
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
@@ -589,6 +602,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       src = open(output).read()
       # side memory init file, or an empty one in the js
       assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
+
+    return output
 
   def get_func(self, src, name):
     start = src.index('function ' + name + '(')
@@ -726,10 +741,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       fail_message += '\n' + msg
     self.fail(fail_message)
 
-  def assertIdenticalUrlEncoded(self, expected, actual, **kwargs):
-    """URL decodes the `actual` parameter before checking for equality."""
-    self.assertIdentical(expected, unquote(actual), **kwargs)
-
   def assertTextDataContained(self, text1, text2):
     text1 = text1.replace('\r\n', '\n')
     text2 = text2.replace('\r\n', '\n')
@@ -738,7 +749,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]:
       values = [values]
-    values = list(map(asstr, values))
     if callable(string):
       string = string()
 
@@ -784,7 +794,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                   configure_args=[], make=['make'], make_args=None,
                   env_init={}, cache_name_extra='', native=False):
     if make_args is None:
-      make_args = ['-j', str(building.get_num_cores())]
+      make_args = ['-j', str(shared.get_num_cores())]
 
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
@@ -808,17 +818,18 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return generated_libs
 
     print(f'<building and saving {cache_name} into cache>', file=sys.stderr)
+    if configure is not None:
+      # Avoid += so we don't mutate the default arg
+      configure = configure + configure_args
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
-                         configure_args, make, make_args, self.library_cache,
+                         make, make_args, self.library_cache,
                          cache_name, env_init=env_init, native=native, cflags=self.get_emcc_args())
 
   def clear(self):
-    for name in os.listdir(self.get_dir()):
-      try_delete(os.path.join(self.get_dir(), name))
+    delete_contents(self.get_dir())
     if EMSCRIPTEN_TEMP_DIR:
-      for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
-        try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
+      delete_contents(EMSCRIPTEN_TEMP_DIR)
 
   def run_process(self, cmd, check=True, **args):
     # Wrapper around shared.run_process.  This is desirable so that the tests
@@ -831,6 +842,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if check and e.returncode != 0:
         self.fail('subprocess exited with non-zero return code(%d): `%s`' %
                   (e.returncode, shared.shlex_join(cmd)))
+
+  def emcc(self, filename, args=[], output_filename=None, **kwargs):
+    if output_filename is None:
+      output_filename = filename + '.o'
+    try_delete(output_filename)
+    self.run_process([EMCC, filename] + args + ['-o', output_filename], **kwargs)
 
   # Shared test code between main suite and others
 
@@ -861,7 +878,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   # when run under broswer it excercises how dynamic linker handles concurrency
   # - because B and C are loaded in parallel.
   def _test_dylink_dso_needed(self, do_run):
-    create_test_file('liba.cpp', r'''
+    create_file('liba.cpp', r'''
         #include <stdio.h>
         #include <emscripten.h>
 
@@ -885,7 +902,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         static ainit _;
       ''')
 
-    create_test_file('libb.cpp', r'''
+    create_file('libb.cpp', r'''
         #include <emscripten.h>
 
         extern "C" {
@@ -898,7 +915,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         }
       ''')
 
-    create_test_file('libc.cpp', r'''
+    create_file('libc.cpp', r'''
         #include <emscripten.h>
 
         extern "C" {
@@ -915,7 +932,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # reset dylink-related options first.
     self.clear_setting('MAIN_MODULE')
     self.clear_setting('SIDE_MODULE')
-    self.clear_setting('RUNTIME_LINKED_LIBS')
 
     # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
     self.set_setting('INITIAL_MEMORY', '32mb')
@@ -923,21 +939,27 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     so = '.wasm' if self.is_wasm() else '.js'
 
     def ccshared(src, linkto=[]):
-      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so] + self.get_emcc_args()
-      cmdv += ['-s', 'SIDE_MODULE=1', '-s', 'RUNTIME_LINKED_LIBS=' + str(linkto)]
+      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so, '-s', 'SIDE_MODULE'] + self.get_emcc_args()
+      cmdv += linkto
       self.run_process(cmdv)
 
     ccshared('liba.cpp')
     ccshared('libb.cpp', ['liba' + so])
     ccshared('libc.cpp', ['liba' + so])
 
-    self.set_setting('MAIN_MODULE', 1)
-    self.set_setting('RUNTIME_LINKED_LIBS', ['libb' + so, 'libc' + so])
+    self.set_setting('MAIN_MODULE')
+    original_args = self.emcc_args.copy()
+    extra_args = ['libb' + so, 'libc' + so]
+    self.emcc_args += extra_args
     do_run(r'''
+      #ifdef __cplusplus
       extern "C" {
+      #endif
       void bfunc();
       void cfunc();
+      #ifdef __cplusplus
       }
+      #endif
 
       int test_main() {
         bfunc();
@@ -947,7 +969,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       ''',
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n')
 
-    self.set_setting('RUNTIME_LINKED_LIBS', [])
+    self.emcc_args = original_args
     for libname in ['liba', 'libb', 'libc']:
       self.emcc_args += ['--embed-file', libname + so]
     do_run(r'''
@@ -1008,7 +1030,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self._build_and_run(filename, open(expected_output_filename).read(), **kwargs)
 
   def do_run_in_out_file_test(self, *path, **kwargs):
-    srcfile = path_from_root(*path)
+    srcfile = test_file(*path)
     outfile = shared.unsuffixed(srcfile) + '.out'
     expected = open(outfile).read()
     self._build_and_run(srcfile, expected, **kwargs)
@@ -1050,7 +1072,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         # we indicate with None as the engine
         engines += [[None]]
     if len(engines) == 0:
-      self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
+      self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
       js_output = self.run_js(js_file, engine, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
@@ -1080,8 +1102,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
     self.emcc_args += [
-      '-I' + path_from_root('tests', 'third_party', 'freetype', 'include'),
-      '-I' + path_from_root('tests', 'third_party', 'poppler', 'include')
+      '-I' + test_file('third_party', 'freetype', 'include'),
+      '-I' + test_file('third_party', 'poppler', 'include')
     ]
 
     freetype = self.get_freetype_library()
@@ -1112,9 +1134,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def get_zlib_library(self):
     if WINDOWS:
       return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
-                              configure=[path_from_root('emconfigure.bat')],
-                              configure_args=['cmake', '.'],
-                              make=['mingw32-make'],
+                              configure=['cmake', '.'],
+                              make=['cmake', '--build', '.'],
                               make_args=[])
     return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'])
 
@@ -1158,7 +1179,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        self.wfile.write(open(path_from_root('tests', 'browser_harness.html'), 'rb').read())
+        self.wfile.write(open(test_file('browser_harness.html'), 'rb').read())
       elif 'report_' in self.path:
         # the test is reporting its result. first change dir away from the
         # test dir, as it will be deleted now that the test is finishing, and
@@ -1217,7 +1238,7 @@ def harness_server_func(in_queue, out_queue, port):
           assert in_queue.empty(), 'should not be any blockage - one test runs at a time'
           assert out_queue.empty(), 'the single response from the last test was read'
           # tell the browser to load the test
-          self.wfile.write(b'COMMAND:' + url)
+          self.wfile.write(b'COMMAND:' + url.encode('utf-8'))
           # move us to the right place to serve the files for the new test
           os.chdir(dir)
         else:
@@ -1262,7 +1283,7 @@ class BrowserCore(RunnerCore):
   unresponsive_tests = 0
 
   def __init__(self, *args, **kwargs):
-    super(BrowserCore, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
 
   @staticmethod
   def browser_open(url):
@@ -1290,7 +1311,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def setUpClass(cls):
-    super(BrowserCore, cls).setUpClass()
+    super().setUpClass()
     cls.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
     cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser():
@@ -1305,7 +1326,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def tearDownClass(cls):
-    super(BrowserCore, cls).tearDownClass()
+    super().tearDownClass()
     if not has_browser():
       return
     cls.harness_server.terminate()
@@ -1337,7 +1358,7 @@ class BrowserCore(RunnerCore):
     if expectedResult is not None:
       try:
         self.harness_in_queue.put((
-          asbytes('http://localhost:%s/%s' % (self.port, html_file)),
+          'http://localhost:%s/%s' % (self.port, html_file),
           self.get_dir()
         ))
         received_output = False
@@ -1362,8 +1383,9 @@ class BrowserCore(RunnerCore):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
           # verify the result, and try again if we should do so
+          output = unquote(output)
           try:
-            self.assertIdenticalUrlEncoded(expectedResult, output)
+            self.assertContained(expectedResult, output)
           except Exception as e:
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
@@ -1390,7 +1412,7 @@ class BrowserCore(RunnerCore):
     basename = os.path.basename(expected)
     shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
     with open('reftest.js', 'w') as out:
-      with open(path_from_root('tests', 'browser_reporting.js')) as reporting:
+      with open(test_file('browser_reporting.js')) as reporting:
         out.write('''
       function doReftest() {
         if (doReftest.done) return;
@@ -1494,20 +1516,20 @@ class BrowserCore(RunnerCore):
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
-    args += ['-s', 'IN_TEST_HARNESS=1']
+    args += ['-s', 'IN_TEST_HARNESS']
     if reporting != Reporting.NONE:
       # For basic reporting we inject JS helper funtions to report result back to server.
       args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
-               '--pre-js', path_from_root('tests', 'browser_reporting.js')]
+               '--pre-js', test_file('browser_reporting.js')]
       if reporting == Reporting.FULL:
         # If C reporting (i.e. REPORT_RESULT macro) is required
         # also compile in report_result.cpp and forice-include report_result.h
-        args += ['-I', path_from_root('tests'),
-                 '-include', path_from_root('tests', 'report_result.h'),
-                 path_from_root('tests', 'report_result.cpp')]
+        args += ['-I' + TEST_ROOT,
+                 '-include', test_file('report_result.h'),
+                 test_file('report_result.cpp')]
     self.run_process([EMCC] + self.get_emcc_args() + args)
 
-  def btest_exit(self, filename, expected, *args, **kwargs):
+  def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
       """Special case of btest that reports its result solely via exiting
       with a give result code.
 
@@ -1516,10 +1538,10 @@ class BrowserCore(RunnerCore):
       """
       self.set_setting('EXIT_RUNTIME')
       kwargs['reporting'] = Reporting.JS_ONLY
-      kwargs['expected'] = 'exit:%s' % expected
+      kwargs['expected'] = 'exit:%d' % assert_returncode
       return self.btest(filename, *args, **kwargs)
 
-  def btest(self, filename, expected=None, reference=None, force_c=False,
+  def btest(self, filename, expected=None, reference=None,
             reference_slack=0, manual_reference=False, post_build=None,
             args=None, message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
@@ -1528,24 +1550,17 @@ class BrowserCore(RunnerCore):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
-    # if we are provided the source and not a path, use that
-    filename_is_src = '\n' in filename
-    src = filename if filename_is_src else ''
-    original_args = args[:]
-    if filename_is_src:
-      filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
-      with open(filepath, 'w') as f:
-       f.write(src)
-    else:
-      filepath = path_from_root('tests', filename)
+    original_args = args.copy()
+    if not os.path.exists(filename):
+      filename = test_file(filename)
     if reference:
       self.reference = reference
       expected = [str(i) for i in range(0, reference_slack + 1)]
-      self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
+      self.reftest(test_file(reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
-        args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
+        args += ['--pre-js', 'reftest.js', '-s', 'GL_TESTING']
     outfile = 'test.html'
-    args = [filepath, '-o', outfile] + args
+    args += [filename, '-o', outfile]
     # print('all args:', args)
     try_delete(outfile)
     self.compile_btest(args, reporting=reporting)
@@ -1559,7 +1574,7 @@ class BrowserCore(RunnerCore):
     # Tests can opt into being run under asmjs as well
     if 'WASM=0' not in original_args and (also_asmjs or self.also_asmjs):
       print('WASM=0')
-      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
+      self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
                  original_args + ['-s', 'WASM=0'], message, also_proxied=False, timeout=timeout)
 
     if also_proxied:
@@ -1570,8 +1585,8 @@ class BrowserCore(RunnerCore):
         assert not post_build
         post_build = self.post_manual_reftest
       # run proxied
-      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], message, timeout=timeout)
+      self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
+                 original_args + ['--proxy-to-worker', '-s', 'GL_TESTING'], message, timeout=timeout)
 
 
 ###################################################################################################
@@ -1582,7 +1597,6 @@ def build_library(name,
                   output_dir,
                   generated_libs,
                   configure=['sh', './configure'],
-                  configure_args=[],
                   make=['make'],
                   make_args=[],
                   cache=None,
@@ -1599,10 +1613,9 @@ def build_library(name,
 
   if type(generated_libs) is not list:
     generated_libs = [generated_libs]
-  source_dir = path_from_root('tests', name.replace('_native', ''))
+  source_dir = test_file(name.replace('_native', ''))
 
-  temp_dir = build_dir
-  project_dir = os.path.join(temp_dir, name)
+  project_dir = os.path.join(build_dir, name)
   if os.path.exists(project_dir):
     shutil.rmtree(project_dir)
   shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
@@ -1615,14 +1628,16 @@ def build_library(name,
   for k, v in env_init.items():
     env[k] = v
   if configure:
+    if configure[0] == 'cmake':
+      configure = [EMCMAKE] + configure
+    else:
+      configure = [EMCONFIGURE] + configure
     try:
       with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
         with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
           stdout = out if EM_BUILD_VERBOSE < 2 else None
           stderr = err if EM_BUILD_VERBOSE < 1 else None
-          building.configure(configure + configure_args, env=env,
-                             stdout=stdout,
-                             stderr=stderr,
+          shared.run_process(configure, env=env, stdout=stdout, stderr=stderr,
                              cwd=project_dir)
     except subprocess.CalledProcessError:
       with open(os.path.join(project_dir, 'configure_out')) as f:
@@ -1649,8 +1664,8 @@ def build_library(name,
       with open_make_err('w') as make_err:
         stdout = make_out if EM_BUILD_VERBOSE < 2 else None
         stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-        building.make(make + make_args, stdout=stdout, stderr=stderr, env=env,
-                      cwd=project_dir)
+        shared.run_process(make + make_args, stdout=stdout, stderr=stderr, env=env,
+                           cwd=project_dir)
   except subprocess.CalledProcessError:
     with open_make_out() as f:
       print('-- make stdout --')
@@ -1672,7 +1687,7 @@ def build_library(name,
 
 
 def check_js_engines():
-  working_engines = list(filter(jsrun.check_engine, config.JS_ENGINES))
+  working_engines = [e for e in config.JS_ENGINES if jsrun.check_engine(e)]
   if len(working_engines) < len(config.JS_ENGINES):
     print('Not all the JS engines in JS_ENGINES appears to work.')
     exit(1)
@@ -1849,7 +1864,7 @@ def flattened_tests(loaded_tests):
 
 def suite_for_module(module, tests):
   suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest')
-  if not EMTEST_SAVE_DIR:
+  if not EMTEST_SAVE_DIR and not DEBUG:
     has_multiple_tests = len(tests) > 1
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_tests and has_multiple_cores:

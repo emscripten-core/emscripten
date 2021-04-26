@@ -4,7 +4,7 @@
 html5.h
 =======
 
-The C++ APIs in `html5.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/html5.h>`_ define the Emscripten low-level glue bindings to interact with HTML5 events from native code.
+The C++ APIs in `html5.h <https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/html5.h>`_ define the Emscripten low-level glue bindings to interact with HTML5 events from native code.
 
 .. tip:: The C++ APIs map closely to their :ref:`equivalent HTML5 JavaScript APIs <specifications-html5-api>`. The HTML5 specifications listed below provide additional detailed reference "over and above" the information provided in this document.
 
@@ -131,9 +131,9 @@ Test/Example code
 
 The HTML5 test code demonstrates how to use this API:
 
-  - `test_html5.c <https://github.com/emscripten-core/emscripten/blob/master/tests/test_html5.c>`_
-  - `test_html5_fullscreen.c <https://github.com/emscripten-core/emscripten/blob/master/tests/test_html5_fullscreen.c>`_
-  - `test_html5_mouse.c <https://github.com/emscripten-core/emscripten/blob/master/tests/test_html5_mouse.c>`_
+  - `test_html5_core.c <https://github.com/emscripten-core/emscripten/blob/main/tests/test_html5_core.c>`_
+  - `test_html5_fullscreen.c <https://github.com/emscripten-core/emscripten/blob/main/tests/test_html5_fullscreen.c>`_
+  - `test_html5_mouse.c <https://github.com/emscripten-core/emscripten/blob/main/tests/test_html5_mouse.c>`_
 
 
 General types

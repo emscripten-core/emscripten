@@ -20,9 +20,10 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(script_dir))))
 
 from tools import shared
+from tools import config
 
 # can add flags like --no-threads --ion-offthread-compile=off
-engine = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
+engine = eval('config.' + sys.argv[1]) if len(sys.argv) > 1 else config.JS_ENGINES[0]
 
 print('testing js engine', engine)
 
@@ -53,10 +54,6 @@ while 1:
     else:
       opts = '-Oz'
   print('opt level:', opts)
-
-  llvm_opts = []
-  if random.random() < 0.5:
-    llvm_opts = ['--llvm-opts', str(random.randint(0, 3))]
 
   print('Tried %d, notes: %s' % (tried, notes))
   print('1) Generate source')
@@ -114,7 +111,7 @@ while 1:
 
   def try_js(args=[]):
     shared.try_delete(filename + '.js')
-    js_args = [shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + llvm_opts + CSMITH_CFLAGS + args + ['-w']
+    js_args = [shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + CSMITH_CFLAGS + args + ['-w']
     if TEST_BINARYEN:
       if random.random() < 0.5:
         js_args += ['-g']

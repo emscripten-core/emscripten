@@ -18,11 +18,7 @@ other in this case.
 
 import sys
 
-from tools.toolchain_profiler import ToolchainProfiler
 from tools import shared
-
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
 
 
 #

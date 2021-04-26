@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 # This is free and unencumbered software released into the public domain.
 #
 # Anyone is free to copy, modify, publish, use, compile, sell, or
@@ -26,6 +25,10 @@
 
 # This software package was obtained from
 # https://github.com/benediktschmitt/py-filelock
+#
+# Local changes:
+# - Changed logger.info to logger.warn to avoid displaying logging
+#   information under normal emscripten usage.
 
 """
 A platform independent file lock that supports the with-statement.
@@ -34,6 +37,7 @@ A platform independent file lock that supports the with-statement.
 
 # Modules
 # ------------------------------------------------
+import logging
 import os
 import threading
 import time
@@ -72,7 +76,15 @@ __all__ = [
     "FileLock"
 ]
 
-__version__ = "2.0.6"
+__version__ = "3.0.12"
+
+
+_logger = None
+def logger():
+    """Returns the logger instance used in this module."""
+    global _logger
+    _logger = _logger or logging.getLogger(__name__)
+    return _logger
 
 
 # Exceptions
@@ -98,7 +110,30 @@ class Timeout(TimeoutError):
 
 # Classes
 # ------------------------------------------------
-class BaseFileLock(object):
+
+# This is a helper class which is returned by :meth:`BaseFileLock.acquire`
+# and wraps the lock to make sure __enter__ is not called twice when entering
+# the with statement.
+# If we would simply return *self*, the lock would be acquired again
+# in the *__enter__* method of the BaseFileLock, but not released again
+# automatically.
+#
+# :seealso: issue #37 (memory leak)
+class _Acquire_ReturnProxy:
+
+    def __init__(self, lock):
+        self.lock = lock
+        return None
+
+    def __enter__(self):
+        return self.lock
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.lock.release()
+        return None
+
+
+class BaseFileLock:
     """
     Implements the base class of a file lock.
     """
@@ -198,7 +233,7 @@ class BaseFileLock(object):
             with lock.acquire():
                 pass
 
-            # Or you use an equal try-finally construct:
+            # Or use an equivalent try-finally construct:
             lock.acquire()
             try:
                 pass
@@ -207,7 +242,7 @@ class BaseFileLock(object):
 
         :arg float timeout:
             The maximum time waited for the file lock.
-            If ``timeout <= 0``, there is no timeout and this method will
+            If ``timeout < 0``, there is no timeout and this method will
             block until the lock could be acquired.
             If ``timeout`` is None, the default :attr:`~timeout` is used.
 
@@ -232,18 +267,27 @@ class BaseFileLock(object):
         with self._thread_lock:
             self._lock_counter += 1
 
+        lock_id = id(self)
+        lock_filename = self._lock_file
+        start_time = time.time()
         try:
-            start_time = time.time()
             while True:
                 with self._thread_lock:
                     if not self.is_locked:
+                        logger().debug('Attempting to acquire lock %s on %s', lock_id, lock_filename)
                         self._acquire()
 
                 if self.is_locked:
+                    logger().debug('Lock %s acquired on %s', lock_id, lock_filename)
                     break
                 elif timeout >= 0 and time.time() - start_time > timeout:
+                    logger().debug('Timeout on acquiring lock %s on %s', lock_id, lock_filename)
                     raise Timeout(self._lock_file)
                 else:
+                    logger().debug(
+                        'Lock %s not acquired on %s, waiting %s seconds ...',
+                        lock_id, lock_filename, poll_intervall
+                    )
                     time.sleep(poll_intervall)
         except:
             # Something did go wrong, so decrement the counter.
@@ -251,26 +295,7 @@ class BaseFileLock(object):
                 self._lock_counter = max(0, self._lock_counter - 1)
 
             raise
-
-        # This class wraps the lock to make sure __enter__ is not called
-        # twiced when entering the with statement.
-        # If we would simply return *self*, the lock would be acquired again
-        # in the *__enter__* method of the BaseFileLock, but not released again
-        # automatically.
-        class ReturnProxy(object):
-
-            def __init__(self, lock):
-                self.lock = lock
-                return None
-
-            def __enter__(self):
-                return self.lock
-
-            def __exit__(self, exc_type, exc_value, traceback):
-                self.lock.release()
-                return None
-
-        return ReturnProxy(lock = self)
+        return _Acquire_ReturnProxy(lock = self)
 
     def release(self, force = False):
         """
@@ -291,8 +316,14 @@ class BaseFileLock(object):
                 self._lock_counter -= 1
 
                 if self._lock_counter == 0 or force:
+                    lock_id = id(self)
+                    lock_filename = self._lock_file
+
+                    logger().debug('Attempting to release lock %s on %s', lock_id, lock_filename)
                     self._release()
                     self._lock_counter = 0
+                    logger().debug('Lock %s released on %s', lock_id, lock_filename)
+
         return None
 
     def __enter__(self):
@@ -368,6 +399,10 @@ class UnixFileLock(BaseFileLock):
         return None
 
     def _release(self):
+        # Do not remove the lockfile:
+        #
+        #   https://github.com/benediktschmitt/py-filelock/issues/31
+        #   https://stackoverflow.com/questions/17708885/flock-removing-locked-file-without-race-condition
         fd = self._lock_file_fd
         self._lock_file_fd = None
         fcntl.flock(fd, fcntl.LOCK_UN)

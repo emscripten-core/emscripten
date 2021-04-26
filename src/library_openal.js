@@ -1577,7 +1577,7 @@ var LibraryOpenAL = {
       var err = c.mediaStreamError;
       if (err) {
 #if OPENAL_DEBUG
-        switch(err.name) {
+        switch (err.name) {
         case 'PermissionDeniedError':
           console.error(funcname+'() but the user denied access to the device');
           break;
@@ -1756,6 +1756,7 @@ var LibraryOpenAL = {
         return buffers[0].length;
       },
       capturePlayhead: 0, // current write position, in sample frames
+      captureReadhead: 0,
       capturedFrameCount: 0
     };
 
@@ -1772,7 +1773,7 @@ var LibraryOpenAL = {
       newCapture.mediaStream = mediaStream;
 
       var inputChannelCount = 1;
-      switch(newCapture.mediaStreamSourceNode.channelCountMode) {
+      switch (newCapture.mediaStreamSourceNode.channelCountMode) {
       case 'max':
         inputChannelCount = outputChannelCount;
         break;
@@ -1982,8 +1983,14 @@ var LibraryOpenAL = {
     // Also, spec says :
     //   Requesting more sample frames than are currently available is 
     //   an error.
+
+    var dstfreq = c.requestedSampleRate;
+    var srcfreq = c.audioCtx.sampleRate;
+
+    var fratio = srcfreq / dstfreq;
+    
     if (requestedFrameCount < 0
-    ||  requestedFrameCount > c.capturedFrameCount) 
+    ||  requestedFrameCount > (c.capturedFrameCount / fratio)) 
     {
   // if OPENAL_DEBUG
       console.error('alcCaptureSamples() with invalid bufferSize');
@@ -2004,7 +2011,7 @@ var LibraryOpenAL = {
 
     var setSample;
 
-    switch(c.requestedSampleType) {
+    switch (c.requestedSampleType) {
     case 'f32': setSample = setF32Sample; break;
     case 'i16': setSample = setI16Sample; break;
     case 'u8' : setSample = setU8Sample ; break;
@@ -2014,16 +2021,14 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-
-    var dstfreq = c.requestedSampleRate;
-    var srcfreq = c.audioCtx.sampleRate;
-
-    if (srcfreq == dstfreq) {
+    
+    // If fratio is an integer we don't need linear resampling, just skip samples
+    if (Math.floor(fratio) == fratio) {
       for (var i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
         for (var chan = 0; chan < c.buffers.length; ++chan, ++i) {
-          var src_i = (frame_i + c.capturePlayhead) % c.capturedFrameCount;
-          setSample(i, c.buffers[chan][src_i]);
+          setSample(i, c.buffers[chan][c.captureReadhead]);
         }
+        c.captureReadhead = (fratio + c.captureReadhead) % c.bufferFrameCapacity;
       }
     } else {
       // Perform linear resampling.
@@ -2032,23 +2037,16 @@ var LibraryOpenAL = {
       // We don't use OfflineAudioContexts for this: See the discussion at
       // https://github.com/jpernst/emscripten/issues/2#issuecomment-312729735
       // if you're curious about why.
-
-      var lerp = function(from, to, progress) {
-        return (1 - progress) * from + progress * to;
-      };
-
       for (var i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
-
-        var t = frame_i / dstfreq; // Most exact time for the current output sample
-        var src_i = (Math.floor(t*srcfreq) + c.capturePlayhead) % c.capturedFrameCount;
-        var src_next_i = (src_i+1) % c.capturedFrameCount;
-        var between = t*srcfreq - src_i; //(t - src_i/srcfreq) / ((src_i+1)/srcfreq - src_i/srcfreq);
-
+        var lefti = Math.floor(c.captureReadhead);
+        var righti = Math.ceil(c.captureReadhead);
+        var d = c.captureReadhead - lefti;
         for (var chan = 0; chan < c.buffers.length; ++chan, ++i) {
-          var cb = c.buffers[chan];
-          var sample = lerp(cb[src_i], cb[src_next_i], between);
-          setSample(i, sample);
+          var lefts = c.buffers[chan][lefti];
+          var rights = c.buffers[chan][righti];
+          setSample(i, (1 - d) * lefts + d * rights);
         }
+        c.captureReadhead = (c.captureReadhead + fratio) % c.bufferFrameCapacity;
       }
     }
 
@@ -2316,7 +2314,9 @@ var LibraryOpenAL = {
   },
 
   // The spec is vague about what these are actually supposed to do, and NOP is a reasonable implementation
+  alcProcessContext__sig: 'vi',
   alcProcessContext: function(contextId) {},
+  alcSuspendContext__sig: 'vi',
   alcSuspendContext: function(contextId) {},
 
   alcIsExtensionPresent__proxy: 'sync',
@@ -2325,20 +2325,6 @@ var LibraryOpenAL = {
     var name = UTF8ToString(pExtName);
 
     return AL.ALC_EXTENSIONS[name] ? 1 : 0;
-  },
-
-  alcGetProcAddress__deps: ['emscripten_GetAlcProcAddress'],
-  alcGetProcAddress__proxy: 'sync',
-  alcGetProcAddress__sig: 'iii',
-  alcGetProcAddress: function(deviceId, pProcName) {
-    if (!pProcName) {
-#if OPENAL_DEBUG
-      console.error('alcGetProcAddress() called with null name pointer');
-#endif
-      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
-      return 0; /* ALC_NONE */
-    }
-    return _emscripten_GetAlcProcAddress(pProcName);
   },
 
   alcGetEnumValue__proxy: 'sync',
@@ -2358,9 +2344,9 @@ var LibraryOpenAL = {
       AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
       return 0; /* ALC_NONE */
     }
-    name = UTF8ToString(pEnumName);
+    var name = UTF8ToString(pEnumName);
     // See alGetEnumValue(), but basically behave the same as OpenAL-Soft
-    switch(name) {
+    switch (name) {
     case 'ALC_NO_ERROR': return 0;
     case 'ALC_INVALID_DEVICE': return 0xA001;
     case 'ALC_INVALID_CONTEXT': return 0xA002;
@@ -2494,7 +2480,7 @@ var LibraryOpenAL = {
       return;
     }
 
-    switch(param) {
+    switch (param) {
     case 0x1000 /* ALC_MAJOR_VERSION */:
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
       break;
@@ -2622,7 +2608,7 @@ var LibraryOpenAL = {
     }
     AL.paused = true;
 
-    for (ctxId in AL.contexts) {
+    for (var ctxId in AL.contexts) {
       var ctx = AL.contexts[ctxId];
       if (ctx.deviceId !== deviceId) {
         continue;
@@ -2650,7 +2636,7 @@ var LibraryOpenAL = {
     }
     AL.paused = false;
 
-    for (ctxId in AL.contexts) {
+    for (var ctxId in AL.contexts) {
       var ctx = AL.contexts[ctxId];
       if (ctx.deviceId !== deviceId) {
         continue;
@@ -2941,29 +2927,9 @@ var LibraryOpenAL = {
   alIsExtensionPresent__proxy: 'sync',
   alIsExtensionPresent__sig: 'ii',
   alIsExtensionPresent: function(pExtName) {
-    name = UTF8ToString(pExtName);
+    var name = UTF8ToString(pExtName);
 
     return AL.AL_EXTENSIONS[name] ? 1 : 0;
-  },
-
-  alGetProcAddress__deps: ['emscripten_GetAlProcAddress'],
-  alGetProcAddress__proxy: 'sync',
-  alGetProcAddress__sig: 'vi',
-  alGetProcAddress: function(pProcName) {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      console.error('alGetProcAddress() called without a valid context');
-#endif
-      return;
-    }
-    if (!pProcName) {
-#if OPENAL_DEBUG
-      console.error('alcGetProcAddress() called with null name pointer');
-#endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
-      return 0; /* ALC_NONE */
-    }
-    return _emscripten_GetAlProcAddress(pProcName);
   },
 
   alGetEnumValue__proxy: 'sync',
@@ -2983,9 +2949,9 @@ var LibraryOpenAL = {
       AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
       return 0 /* AL_NONE */;
     }
-    name = UTF8ToString(pEnumName);
+    var name = UTF8ToString(pEnumName);
 
-    switch(name) {
+    switch (name) {
     // Spec doesn't clearly state that alGetEnumValue() is required to
     // support _only_ extension tokens.
     // We should probably follow OpenAL-Soft's example and support all
@@ -3171,7 +3137,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    switch (pname) {
+    switch (param) {
     case 'AL_SOURCE_DISTANCE_MODEL':
       AL.currentCtx.sourceDistanceModel = false;
       AL.updateContextGlobal(AL.currentCtx);
@@ -3194,7 +3160,7 @@ var LibraryOpenAL = {
 #endif
       return 0;
     }
-    switch (pname) {
+    switch (param) {
     case 'AL_SOURCE_DISTANCE_MODEL':
       return AL.currentCtx.sourceDistanceModel ? 0 /* AL_FALSE */ : 1 /* AL_TRUE */;
     default:
@@ -4646,7 +4612,7 @@ var LibraryOpenAL = {
 
   alGetSource3i__proxy: 'sync',
   alGetSource3i__sig: 'viiiii',
-  alGetSource3i: function(source, param, pValue0, pValue1, pValue2) {
+  alGetSource3i: function(sourceId, param, pValue0, pValue1, pValue2) {
     var val = AL.getSourceParam('alGetSource3i', sourceId, param);
     if (val === null) {
       return;
@@ -4869,7 +4835,7 @@ var LibraryOpenAL = {
 
   alSourceiv__proxy: 'sync',
   alSourceiv__sig: 'viii',
-  alSourceiv: function(source, param, pValues) {
+  alSourceiv: function(sourceId, param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
       console.error('alSourceiv() called without a valid context');

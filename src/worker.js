@@ -45,17 +45,33 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
   var instance = new WebAssembly.Instance(Module['wasmModule'], info);
+#if RELOCATABLE || MAIN_MODULE
+  receiveInstance(instance, Module['wasmModule']);
+#else
+  // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
+  // the above line no longer optimizes out down to the following line.
+  // When the regression is fixed, we can remove this if/else.
+  receiveInstance(instance);
+#endif
   // We don't need the module anymore; new threads will be spawned from the main thread.
   Module['wasmModule'] = null;
-#if LOAD_SOURCE_MAP
-  wasmSourceMap = resetPrototype(WasmSourceMap, wasmSourceMapData);
-#endif
-#if USE_OFFSET_CONVERTER
-  wasmOffsetConverter = resetPrototype(WasmOffsetConverter, wasmOffsetData);
-#endif
-  receiveInstance(instance); // The second 'module' parameter is intentionally null here, we don't need to keep a ref to the Module object from here.
   return instance.exports;
 };
+#endif
+
+#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
+// When using postMessage to send an object, it is processed by the structured clone algorithm.
+// The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
+// This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
+function resetPrototype(constructor, attrs) {
+  var object = Object.create(constructor.prototype);
+  for (var key in attrs) {
+    if (attrs.hasOwnProperty(key)) {
+      object[key] = attrs[key];
+    }
+  }
+  return object;
+}
 #endif
 
 #if LOAD_SOURCE_MAP
@@ -64,6 +80,15 @@ var wasmSourceMapData;
 #if USE_OFFSET_CONVERTER
 var wasmOffsetData;
 #endif
+
+function moduleLoaded() {
+#if LOAD_SOURCE_MAP
+  wasmSourceMap = resetPrototype(Module['WasmSourceMap'], wasmSourceMapData);
+#endif
+#if USE_OFFSET_CONVERTER
+  wasmOffsetConverter = resetPrototype(Module['WasmOffsetConverter'], wasmOffsetData);
+#endif
+}
 
 this.onmessage = function(e) {
   try {
@@ -82,6 +107,10 @@ this.onmessage = function(e) {
 #else
       Module['wasmModule'] = e.data.wasmModule;
 #endif // MINIMAL_RUNTIME
+
+#if MAIN_MODULE
+      Module['dynamicLibraries'] = e.data.dynamicLibraries;
+#endif
 
       {{{ makeAsmImportsAccessInPthread('wasmMemory') }}} = e.data.wasmMemory;
 
@@ -103,7 +132,7 @@ this.onmessage = function(e) {
         return {{{ EXPORT_NAME }}}.default(Module);
       }).then(function(instance) {
         Module = instance;
-        postMessage({ 'cmd': 'loaded' });
+        moduleLoaded();
       });
 #else
       if (typeof e.data.urlOrBlob === 'string') {
@@ -117,12 +146,12 @@ this.onmessage = function(e) {
 #if MINIMAL_RUNTIME
       {{{ EXPORT_NAME }}}(imports).then(function (instance) {
         Module = instance;
-        postMessage({ 'cmd': 'loaded' });
+        moduleLoaded();
       });
 #else
       {{{ EXPORT_NAME }}}(Module).then(function (instance) {
         Module = instance;
-        postMessage({ 'cmd': 'loaded' });
+        moduleLoaded();
       });
 #endif
 #endif
@@ -131,7 +160,7 @@ this.onmessage = function(e) {
       // MINIMAL_RUNTIME always compiled Wasm (&Wasm2JS) asynchronously, even in pthreads. But
       // regular runtime and asm.js are loaded synchronously, so in those cases
       // we are now loaded, and can post back to main thread.
-      postMessage({ 'cmd': 'loaded' });
+      moduleLoaded();
 #endif
 
 #endif
@@ -149,27 +178,24 @@ this.onmessage = function(e) {
       // threads see a somewhat coherent clock across each of them
       // (+/- 0.1msecs in testing).
       Module['__performance_now_clock_drift'] = performance.now() - e.data.time;
-      var threadInfoStruct = e.data.threadInfoStruct;
 
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      Module['__emscripten_thread_init'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
+      Module['__emscripten_thread_init'](e.data.threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
 
       // Establish the stack frame for this thread in global scope
       // The stack grows downwards
       var max = e.data.stackBase;
       var top = e.data.stackBase + e.data.stackSize;
 #if ASSERTIONS
-      assert(threadInfoStruct);
+      assert(e.data.threadInfoStruct);
       assert(top != 0);
       assert(max != 0);
       assert(top > max);
 #endif
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpace'](top, max);
-      Module['_emscripten_tls_init']();
-
       Module['PThread'].receiveObjectTransfer(e.data);
-      Module['PThread'].setThreadStatus(Module['_pthread_self'](), 1/*EM_THREAD_STATUS_RUNNING*/);
+      Module['PThread'].threadInit();
 
 #if EMBIND
       // Embind must initialize itself on all threads, as it generates support JS.
@@ -193,16 +219,21 @@ this.onmessage = function(e) {
 #if STACK_OVERFLOW_CHECK
         Module['checkStackCookie']();
 #endif
-#if !MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME
         // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
         // pthreads. To exit a pthread with live runtime, use the function
         // emscripten_unwind_to_js_event_loop() in the pthread body.
         // The thread might have finished without calling pthread_exit(). If so,
         // then perform the exit operation ourselves.
         // (This is a no-op if explicit pthread_exit() had been called prior.)
-        if (!Module['getNoExitRuntime']())
-#endif
+        Module['PThread'].threadExit(result);
+#else
+        if (Module['keepRuntimeAlive']()) {
+          Module['PThread'].setExitStatus(result);
+        } else {
           Module['PThread'].threadExit(result);
+        }
+#endif
       } catch(ex) {
         if (ex === 'Canceled!') {
           Module['PThread'].threadCancel();
@@ -220,13 +251,13 @@ this.onmessage = function(e) {
           // ExitStatus not present in MINIMAL_RUNTIME
 #if !MINIMAL_RUNTIME
           if (ex instanceof Module['ExitStatus']) {
-            if (Module['getNoExitRuntime']()) {
+            if (Module['keepRuntimeAlive']()) {
 #if ASSERTIONS
-              err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), staying alive due to noExitRuntime.');
+              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), staying alive due to noExitRuntime.');
 #endif
             } else {
 #if ASSERTIONS
-              err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), calling threadExit.');
+              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), calling threadExit.');
 #endif
               Module['PThread'].threadExit(ex.status);
             }
@@ -240,18 +271,18 @@ this.onmessage = function(e) {
 #if ASSERTIONS
         } else {
           // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
-          err('Pthread 0x' + threadInfoStruct.toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
+          err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
 #endif
         }
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
-      if (threadInfoStruct) {
+      if (Module['_pthread_self']()) {
         Module['PThread'].threadCancel();
       }
     } else if (e.data.target === 'setimmediate') {
       // no-op
     } else if (e.data.cmd === 'processThreadQueue') {
-      if (threadInfoStruct) { // If this thread is actually running?
+      if (Module['_pthread_self']()) { // If this thread is actually running?
         Module['_emscripten_current_thread_process_queued_calls']();
       }
     } else {

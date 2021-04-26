@@ -5,8 +5,8 @@
 
 import os
 
-TAG = 'version_22'
-HASH = 'c95b65f21a54835b5623236b15bbe54176682c97752d23905662ce7622eabdcc48c1bac71028147b5e4cc1e960df97fd5be9b5bbee540b57bd2644f0ca7e6023'
+TAG = 'version_23'
+HASH = '1c37152529d1a2ff159d0e6f950d49dca61f65b582a6bc45c4f027629c7b83325eff26240992884eb3c4f2754e4d7516ee3ab7b54829d2bf81f2968f317b4fbd'
 SUBDIR = 'SDL2-' + TAG
 
 
@@ -14,12 +14,15 @@ def needed(settings):
   return settings.USE_SDL == 2
 
 
+def get_lib_name(settings):
+  return 'libSDL2' + ('-mt' if settings.USE_PTHREADS else '') + '.a'
+
+
 def get(ports, settings, shared):
   # get the port
   ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
-  libname = ports.get_lib_name('libSDL2' + ('-mt' if settings.USE_PTHREADS else ''))
 
-  def create():
+  def create(final):
     # copy includes to a location so they can be used as 'SDL2/'
     source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'include')
     ports.install_headers(source_include_path, target='SDL2')
@@ -78,15 +81,13 @@ def get(ports, settings, shared):
       commands.append(command)
       o_s.append(o)
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'sdl2', libname)
     ports.create_lib(final, o_s)
-    return final
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libSDL2'))
+  shared.Cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):

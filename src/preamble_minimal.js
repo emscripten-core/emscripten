@@ -22,6 +22,12 @@ function abort(what) {
 #endif
 }
 
+#if SAFE_HEAP
+// Globals used by JS i64 conversions (see makeSetValue)
+var tempDouble;
+var tempI64;
+#endif
+
 var tempRet0 = 0;
 var setTempRet0 = function(value) {
   tempRet0 = value;
@@ -49,7 +55,7 @@ if (Module['doWasm2JS']) {
 
 #if SINGLE_FILE && WASM == 1 && !WASM2JS
 #include "base64Decode.js"
-Module['wasm'] = base64Decode('{{{ getQuoted("WASM_BINARY_DATA") }}}');
+Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #endif
 
 #include "runtime_functions.js"
@@ -58,11 +64,18 @@ Module['wasm'] = base64Decode('{{{ getQuoted("WASM_BINARY_DATA") }}}');
 var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64;
 var wasmMemory, buffer, wasmTable;
 
+#if SUPPORT_BIG_ENDIAN
+var HEAP_DATA_VIEW;
+#endif
+
 function updateGlobalBufferAndViews(b) {
 #if ASSERTIONS && USE_PTHREADS
   assert(b instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 #endif
   buffer = b;
+#if SUPPORT_BIG_ENDIAN
+  HEAP_DATA_VIEW = new DataView(b);
+#endif
   HEAP8 = new Int8Array(b);
   HEAP16 = new Int16Array(b);
   HEAP32 = new Int32Array(b);
@@ -120,7 +133,7 @@ var wasmOffsetConverter;
 var __ATEXIT__    = []; // functions called during shutdown
 #endif
 
-#if ASSERTIONS || SAFE_HEAP
+#if ASSERTIONS || SAFE_HEAP || USE_ASAN
 var runtimeInitialized = false;
 
 // This is always false in minimal_runtime - the runtime does not have a concept

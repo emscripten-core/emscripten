@@ -14,7 +14,7 @@ var LibraryHtml5WebGL = {
     var len = arr.length;
     var writeLength = dstLength < len ? dstLength : len;
     var heap = heapType ? HEAPF32 : HEAP32;
-    for(var i = 0; i < writeLength; ++i) {
+    for (var i = 0; i < writeLength; ++i) {
       heap[(dst >> 2) + i] = arr[i];
     }
     return len;
@@ -26,7 +26,7 @@ var LibraryHtml5WebGL = {
     assert(attributes);
 #endif
     var a = attributes >> 2;
-    for(var i = 0; i < ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.__size__ }}}>>2); ++i) {
+    for (var i = 0; i < ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.__size__ }}}>>2); ++i) {
       HEAP32[a+i] = 0;
     }
 
@@ -67,6 +67,9 @@ var LibraryHtml5WebGL = {
   emscripten_webgl_do_create_context__deps: [
 #if LibraryManager.has('library_webgl.js')
   '$GL',
+#endif
+#if (USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
+  'emscripten_sync_run_in_main_thread_2',
 #endif
   '$JSEvents', '_emscripten_webgl_power_preferences', '$findEventTarget', '$findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
@@ -336,7 +339,7 @@ var LibraryHtml5WebGL = {
     var context = GL.getContext(contextHandle);
     var extString = UTF8ToString(extension);
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-    if (extString.indexOf('GL_') == 0) extString = extString.substr(3); // Allow enabling extensions both with "GL_" prefix and without.
+    if (extString.startsWith('GL_')) extString = extString.substr(3); // Allow enabling extensions both with "GL_" prefix and without.
 #endif
 
 #if GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
@@ -365,7 +368,7 @@ var LibraryHtml5WebGL = {
          'WEBGL_draw_buffers',
          'WEBGL_multi_draw',
          'WEBGL_draw_instanced_base_vertex_base_instance',
-         'WEBGL_multi_draw_instanced_base_vertex_base_instance'].indexOf(extString) >= 0) {
+         'WEBGL_multi_draw_instanced_base_vertex_base_instance'].includes(extString)) {
       console.error('When building with -s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
                     + extString + '! Use one of the functions emscripten_webgl_enable_*() to enable it!');
     }
@@ -501,15 +504,16 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_get_uniform_d__sig: 'fii',
   emscripten_webgl_get_uniform_d__proxy: 'sync_on_current_webgl_context_thread',
+  emscripten_webgl_get_uniform_d__deps: ['$webglGetUniformLocation'],
   emscripten_webgl_get_uniform_d: function(program, location) {
-    return GLctx.getUniform(GL.programs[program], GL.uniforms[location]);
+    return GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location));
   },
 
   emscripten_webgl_get_uniform_v__sig: 'iiiiii',
   emscripten_webgl_get_uniform_v__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_uniform_v__deps: ['$writeGLArray'],
+  emscripten_webgl_get_uniform_v__deps: ['$writeGLArray', '$webglGetUniformLocation'],
   emscripten_webgl_get_uniform_v: function(program, location, dst, dstLength, dstType) {
-    return writeGLArray(GLctx.getUniform(GL.programs[program], GL.uniforms[location]), dst, dstLength, dstType);
+    return writeGLArray(GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location)), dst, dstLength, dstType);
   },
 
   emscripten_webgl_get_parameter_v__sig: 'iiiii',
@@ -557,7 +561,7 @@ function handleWebGLProxying(funcs) {
 
   function listOfNFunctionArgs(func) {
     var args = [];
-    for(var i = 0; i < func.length; ++i) {
+    for (var i = 0; i < func.length; ++i) {
       args.push('p' + i);
     }
     return args;
@@ -571,7 +575,7 @@ function handleWebGLProxying(funcs) {
   targetingOffscreenFramebuffer = true;
 #endif
 
-  for(var i in funcs) {
+  for (var i in funcs) {
     // Is this a function that takes GL context handle as first argument?
     var proxyContextHandle = funcs[i + '__proxy'] == 'sync_on_webgl_context_handle_thread';
 

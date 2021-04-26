@@ -18,9 +18,8 @@ static std::atomic<int> sum;
 
 void *ThreadMain(void *arg) {
   for (int i = 0; i < TOTAL; i++) {
-    sum++;
     // wait for a change, so we see interleaved processing.
-    int last = sum.load();
+    int last = ++sum;
     while (sum.load() == last) {}
   }
   pthread_exit((void*)TOTAL);
@@ -30,24 +29,20 @@ pthread_t thread[NUM_THREADS];
 
 void CreateThread(int i)
 {
-  static int counter = 1;
   int rc = pthread_create(&thread[i], nullptr, ThreadMain, (void*)i);
   assert(rc == 0);
 }
 
 void mainn() {
   static int main_adds = 0;
-  int worker_adds = sum.load() - main_adds;
-  sum++;
-  main_adds++;
+  int worker_adds = sum++ - main_adds++;
   printf("main iter %d : %d\n", main_adds, worker_adds);
   if (worker_adds == NUM_THREADS * TOTAL) {
     printf("done!\n");
 #ifndef ALLOW_SYNC
-  emscripten_cancel_main_loop();
-#else
-  exit(0);
+    emscripten_cancel_main_loop();
 #endif
+    exit(0);
   }
 }
 
@@ -64,4 +59,5 @@ int main() {
 #else
   while (1) mainn();
 #endif
+  return 0;
 }

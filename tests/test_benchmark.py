@@ -18,7 +18,8 @@ if __name__ == '__main__':
 import clang_native
 import jsrun
 import runner
-from tools.shared import run_process, path_from_root, PIPE, try_delete, EMCC, config
+from runner import TEST_ROOT, test_file
+from tools.shared import run_process, PIPE, try_delete, EMCC, config
 from tools import building
 
 # standard arguments for timing:
@@ -91,8 +92,7 @@ class Benchmarker():
       squared_times = [x * x for x in self.times]
       mean_of_squared = sum(squared_times) / len(self.times)
       std = math.sqrt(mean_of_squared - mean * mean)
-      sorted_times = self.times[:]
-      sorted_times.sort()
+      sorted_times = sorted(self.times)
       count = len(sorted_times)
       if count % 2 == 0:
         median = sum(sorted_times[count // 2 - 1:count // 2 + 1]) / 2
@@ -127,7 +127,7 @@ class NativeBenchmarker(Benchmarker):
     self.name = name
     self.cc = cc
     self.cxx = cxx
-    self.args = args[:]
+    self.args = args.copy()
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.parent = parent
@@ -178,11 +178,11 @@ class EmscriptenBenchmarker(Benchmarker):
   def __init__(self, name, engine, extra_args=[], env={}, binaryen_opts=[]):
     self.name = name
     self.engine = engine
-    self.extra_args = extra_args[:]
+    self.extra_args = extra_args.copy()
     self.env = os.environ.copy()
     for k, v in env.items():
       self.env[k] = v
-    self.binaryen_opts = binaryen_opts[:]
+    self.binaryen_opts = binaryen_opts.copy()
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.filename = filename
@@ -204,12 +204,12 @@ class EmscriptenBenchmarker(Benchmarker):
       OPTIMIZATIONS,
       '-s', 'INITIAL_MEMORY=256MB',
       '-s', 'FILESYSTEM=0',
-      '--closure', '1',
-      '-s', 'MINIMAL_RUNTIME=1',
+      '--closure=1',
+      '-s', 'MINIMAL_RUNTIME',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + emcc_args + LLVM_FEATURE_FLAGS + self.extra_args
-    if 'FORCE_FILESYSTEM=1' in cmd:
+    if 'FORCE_FILESYSTEM' in cmd:
       cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
     if PROFILING:
       cmd += ['--profiling-funcs']
@@ -241,7 +241,7 @@ class EmscriptenBenchmarker(Benchmarker):
 
 class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
   def __init__(self, name):
-    super(EmscriptenWasm2CBenchmarker, self).__init__(name, 'no engine needed')
+    super().__init__(name, 'no engine needed')
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     # wasm2c doesn't want minimal runtime which the normal emscripten
@@ -257,7 +257,7 @@ class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
     try:
       # wasm2c does not support anything beyond MVP
       LLVM_FEATURE_FLAGS = []
-      super(EmscriptenWasm2CBenchmarker, self).build(parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser)
+      super().build(parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser)
     finally:
       LLVM_FEATURE_FLAGS = old_flags
 
@@ -288,8 +288,8 @@ class CheerpBenchmarker(Benchmarker):
   def __init__(self, name, engine, args=[OPTIMIZATIONS], binaryen_opts=[]):
     self.name = name
     self.engine = engine
-    self.args = args[:]
-    self.binaryen_opts = binaryen_opts[:]
+    self.args = args.copy()
+    self.binaryen_opts = binaryen_opts.copy()
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     cheerp_args = [
@@ -393,7 +393,7 @@ class benchmark(runner.RunnerCore):
 
   @classmethod
   def setUpClass(cls):
-    super(benchmark, cls).setUpClass()
+    super().setUpClass()
 
     for benchmarker in benchmarkers:
       benchmarker.prepare()
@@ -717,7 +717,7 @@ class benchmark(runner.RunnerCore):
     self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS)
 
   def test_fannkuch(self):
-    src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(
+    src = open(test_file('fannkuch.cpp'), 'r').read().replace(
       'int n = argc > 1 ? atoi(argv[1]) : 0;',
       '''
         int n;
@@ -804,7 +804,7 @@ class benchmark(runner.RunnerCore):
     self.do_benchmark('corrections64', src, 'final:')
 
   def fasta(self, name, double_rep, emcc_args=[]):
-    src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', double_rep)
+    src = open(test_file('fasta.cpp'), 'r').read().replace('double', double_rep)
     src = src.replace('   const size_t n = ( argc > 1 ) ? atoi( argv[1] ) : 512;', '''
       int n;
       int arg = argc > 1 ? argv[1][0] - '0' : 3;
@@ -829,117 +829,117 @@ class benchmark(runner.RunnerCore):
     self.fasta('fasta_double', 'double')
 
   def test_skinning(self):
-    src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
+    src = open(test_file('skinning_test_no_simd.cpp'), 'r').read()
     self.do_benchmark('skinning', src, 'blah=0.000000')
 
   def test_havlak(self):
-    src = open(path_from_root('tests', 'havlak.cpp'), 'r').read()
+    src = open(test_file('havlak.cpp'), 'r').read()
     self.do_benchmark('havlak', src, 'Found', shared_args=['-std=c++11'])
 
   def test_base64(self):
-    src = open(path_from_root('tests', 'base64.cpp'), 'r').read()
+    src = open(test_file('base64.cpp'), 'r').read()
     self.do_benchmark('base64', src, 'decode')
 
   @non_core
   def test_life(self):
-    src = open(path_from_root('tests', 'life.c'), 'r').read()
+    src = open(test_file('life.c'), 'r').read()
     self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
 
   def test_zzz_linpack(self):
     def output_parser(output):
       mflops = re.search(r'Unrolled Double  Precision ([\d\.]+) Mflops', output).group(1)
       return 10000.0 / float(mflops)
-    self.do_benchmark('linpack_double', open(path_from_root('tests', 'benchmark', 'linpack2.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
+    self.do_benchmark('linpack_double', open(test_file('benchmark', 'linpack2.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
 
   # Benchmarks the synthetic performance of calling native functions.
   @non_core
   def test_native_functions(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('native_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
+    self.do_benchmark('native_functions', open(test_file('benchmark_ffis.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   # Benchmarks the synthetic performance of calling function pointers.
   @non_core
   def test_native_function_pointers(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('native_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
+    self.do_benchmark('native_functions', open(test_file('benchmark_ffis.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   # Benchmarks the synthetic performance of calling "foreign" JavaScript functions.
   @non_core
   def test_foreign_functions(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('foreign_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), 'Total time:', output_parser=output_parser, emcc_args=['--js-library', path_from_root('tests/benchmark_ffis.js')], shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
+    self.do_benchmark('foreign_functions', open(test_file('benchmark_ffis.cpp')).read(), 'Total time:', output_parser=output_parser, emcc_args=['--js-library', test_file('benchmark_ffis.js')], shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   @non_core
   def test_memcpy_128b(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memcpy_128b', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
+    self.do_benchmark('memcpy_128b', open(test_file('benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   @non_core
   def test_memcpy_4k(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memcpy_4k', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
+    self.do_benchmark('memcpy_4k', open(test_file('benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   @non_core
   def test_memcpy_16k(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memcpy_16k', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
+    self.do_benchmark('memcpy_16k', open(test_file('benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   @non_core
   def test_memcpy_1mb(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memcpy_1mb', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
+    self.do_benchmark('memcpy_1mb', open(test_file('benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   @non_core
   def test_memcpy_16mb(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memcpy_16mb', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
+    self.do_benchmark('memcpy_16mb', open(test_file('benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   @non_core
   def test_memset_128b(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memset_128b', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
+    self.do_benchmark('memset_128b', open(test_file('benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   @non_core
   def test_memset_4k(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memset_4k', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
+    self.do_benchmark('memset_4k', open(test_file('benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   @non_core
   def test_memset_16k(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memset_16k', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
+    self.do_benchmark('memset_16k', open(test_file('benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   @non_core
   def test_memset_1mb(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memset_1mb', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
+    self.do_benchmark('memset_1mb', open(test_file('benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   @non_core
   def test_memset_16mb(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memset_16mb', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
+    self.do_benchmark('memset_16mb', open(test_file('benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + TEST_ROOT])
 
   def test_matrix_multiply(self):
     def output_parser(output):
       return float(re.search(r'Total elapsed: ([\d\.]+)', output).group(1))
-    self.do_benchmark('matrix_multiply', open(path_from_root('tests', 'matrix_multiply.cpp')).read(), 'Total elapsed:', output_parser=output_parser, shared_args=['-I' + path_from_root('tests')])
+    self.do_benchmark('matrix_multiply', open(test_file('matrix_multiply.cpp')).read(), 'Total elapsed:', output_parser=output_parser, shared_args=['-I' + TEST_ROOT])
 
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
     self.emcc_args.remove('-Werror')
-    shutil.copyfile(path_from_root('tests', 'third_party', 'lua', benchmark + '.lua'), benchmark + '.lua')
+    shutil.copyfile(test_file('third_party', 'lua', benchmark + '.lua'), benchmark + '.lua')
 
     def lib_builder(name, native, env_init):
       ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
@@ -951,7 +951,7 @@ class benchmark(runner.RunnerCore):
 
     self.do_benchmark('lua_' + benchmark, '', expected,
                       force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],
-                      emcc_args=['--embed-file', benchmark + '.lua', '-s', 'FORCE_FILESYSTEM=1', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
+                      emcc_args=['--embed-file', benchmark + '.lua', '-s', 'FORCE_FILESYSTEM', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, native_exec=os.path.join('building', 'third_party', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser, args_processor=args_processor)
 
@@ -967,16 +967,16 @@ class benchmark(runner.RunnerCore):
 
   def test_zzz_zlib(self):
     self.emcc_args.remove('-Werror')
-    src = open(path_from_root('tests', 'benchmark', 'test_zlib_benchmark.c'), 'r').read()
+    src = open(test_file('benchmark', 'test_zlib_benchmark.c'), 'r').read()
 
     def lib_builder(name, native, env_init):
       return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('zlib', src, 'ok.',
-                      force_c=True, shared_args=['-I' + path_from_root('tests', 'third_party', 'zlib')], lib_builder=lib_builder)
+                      force_c=True, shared_args=['-I' + test_file('third_party', 'zlib')], lib_builder=lib_builder)
 
   def test_zzz_coremark(self):
-    src = open(path_from_root('tests', 'third_party', 'coremark', 'core_main.c'), 'r').read()
+    src = open(test_file('third_party', 'coremark', 'core_main.c'), 'r').read()
 
     def lib_builder(name, native, env_init):
       return self.get_library('third_party/coremark', [os.path.join('coremark.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
@@ -985,21 +985,21 @@ class benchmark(runner.RunnerCore):
       iters_sec = re.search(r'Iterations/Sec   : ([\d\.]+)', output).group(1)
       return 100000.0 / float(iters_sec)
 
-    self.do_benchmark('coremark', src, 'Correct operation validated.', shared_args=['-I' + path_from_root('tests', 'third_party', 'coremark')], lib_builder=lib_builder, output_parser=output_parser, force_c=True)
+    self.do_benchmark('coremark', src, 'Correct operation validated.', shared_args=['-I' + test_file('third_party', 'coremark')], lib_builder=lib_builder, output_parser=output_parser, force_c=True)
 
   def test_zzz_box2d(self):
-    src = open(path_from_root('tests', 'benchmark', 'test_box2d_benchmark.cpp')).read()
+    src = open(test_file('benchmark', 'test_box2d_benchmark.cpp')).read()
 
     def lib_builder(name, native, env_init):
       return self.get_library(os.path.join('third_party', 'box2d'), ['box2d.a'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
 
-    self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + path_from_root('tests', 'third_party', 'box2d')], lib_builder=lib_builder)
+    self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + test_file('third_party', 'box2d')], lib_builder=lib_builder)
 
   def test_zzz_bullet(self):
     self.emcc_args.remove('-Werror')
     self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']
-    src = open(path_from_root('tests', 'third_party', 'bullet', 'Demos', 'Benchmarks', 'BenchmarkDemo.cpp'), 'r').read()
-    src += open(path_from_root('tests', 'third_party', 'bullet', 'Demos', 'Benchmarks', 'main.cpp'), 'r').read()
+    src = open(test_file('third_party', 'bullet', 'Demos', 'Benchmarks', 'BenchmarkDemo.cpp'), 'r').read()
+    src += open(test_file('third_party', 'bullet', 'Demos', 'Benchmarks', 'main.cpp'), 'r').read()
 
     def lib_builder(name, native, env_init):
       return self.get_library(os.path.join('third_party', 'bullet'),
@@ -1014,22 +1014,22 @@ class benchmark(runner.RunnerCore):
                               configure_args=['--disable-demos', '--disable-dependency-tracking', '--host=i686-unknown-linux'], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('bullet', src, '\nok.\n',
-                      shared_args=['-I' + path_from_root('tests', 'third_party', 'bullet', 'src'), '-I' + path_from_root('tests', 'third_party', 'bullet', 'Demos', 'Benchmarks')],
+                      shared_args=['-I' + test_file('third_party', 'bullet', 'src'), '-I' + test_file('third_party', 'bullet', 'Demos', 'Benchmarks')],
                       lib_builder=lib_builder)
 
   def test_zzz_lzma(self):
-    src = open(path_from_root('tests', 'benchmark', 'test_lzma_benchmark.c'), 'r').read()
+    src = open(test_file('benchmark', 'test_lzma_benchmark.c'), 'r').read()
 
     def lib_builder(name, native, env_init):
       return self.get_library(os.path.join('third_party', 'lzma'), [os.path.join('lzma.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
 
-    self.do_benchmark('lzma', src, 'ok.', shared_args=['-I' + path_from_root('tests', 'third_party', 'lzma')], lib_builder=lib_builder)
+    self.do_benchmark('lzma', src, 'ok.', shared_args=['-I' + test_file('third_party', 'lzma')], lib_builder=lib_builder)
 
   def test_zzz_sqlite(self):
-    src = open(path_from_root('tests', 'third_party', 'sqlite', 'sqlite3.c'), 'r').read() + open(path_from_root('tests', 'sqlite', 'speedtest1.c'), 'r').read()
+    src = open(test_file('third_party', 'sqlite', 'sqlite3.c'), 'r').read() + open(test_file('sqlite', 'speedtest1.c'), 'r').read()
 
-    self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + path_from_root('tests', 'third_party', 'sqlite')],
-                      emcc_args=['-s', 'FILESYSTEM=1', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
+    self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + test_file('third_party', 'sqlite')],
+                      emcc_args=['-s', 'FILESYSTEM', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
                       force_c=True)
 
   def test_zzz_poppler(self):
@@ -1061,7 +1061,7 @@ class benchmark(runner.RunnerCore):
             var hash = 5381;
             var totalSize = 0;
             files.forEach(function(file) {
-              var data = MEMFS.getFileDataAsRegularArray(FS.root.contents[file]);
+              var data = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents[file]));
               for (var i = 0; i < data.length; i++) {
                 hash = ((hash << 5) + hash) ^ (data[i] & 0xff);
               }
@@ -1077,8 +1077,8 @@ class benchmark(runner.RunnerCore):
 
     # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
-                      shared_args=['-I' + path_from_root('tests', 'poppler', 'include'), '-I' + path_from_root('tests', 'freetype', 'include')],
-                      emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file',
-                                 path_from_root('tests', 'poppler', 'emscripten_html5.pdf') + '@input.pdf', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0',
+                      shared_args=['-I' + test_file('poppler', 'include'), '-I' + test_file('freetype', 'include')],
+                      emcc_args=['-s', 'FILESYSTEM', '--pre-js', 'pre.js', '--embed-file',
+                                 test_file('poppler', 'emscripten_html5.pdf') + '@input.pdf', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0',
                                  '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, skip_native=True)

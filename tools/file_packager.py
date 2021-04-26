@@ -64,10 +64,6 @@ import ctypes
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools.toolchain_profiler import ToolchainProfiler
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
-
 import posixpath
 from tools import shared
 from subprocess import PIPE
@@ -153,7 +149,7 @@ def add(mode, rootpathsrc, rootpathdst):
       elif DEBUG:
         print('Skipping file "%s" from inclusion in the emscripten '
               'virtual file system.' % fullname, file=sys.stderr)
-    del dirnames[:]
+    dirnames.clear()
     dirnames.extend(new_dirnames)
 
 
@@ -377,8 +373,8 @@ def main():
       for i in range(len(parts)):
         partial = '/'.join(parts[:i + 1])
         if partial not in partial_dirs:
-          code += ('''Module['FS_createPath']('/%s', '%s', true, true);\n'''
-                   % ('/'.join(parts[:i]), parts[i]))
+          code += ('''Module['FS_createPath'](%s, %s, true, true);\n'''
+                   % (json.dumps('/' + '/'.join(parts[:i])), json.dumps(parts[i])))
           partial_dirs.append(partial)
 
   if has_preloaded:
@@ -419,40 +415,41 @@ def main():
           Module['removeRunDependency']('fp ' + that.name);
   '''
 
-    # Data requests - for getting a block of data out of the big archive - have
-    # a similar API to XHRs
-    code += '''
-      /** @constructor */
-      function DataRequest(start, end, audio) {
-        this.start = start;
-        this.end = end;
-        this.audio = audio;
-      }
-      DataRequest.prototype = {
-        requests: {},
-        open: function(mode, name) {
-          this.name = name;
-          this.requests[name] = this;
-          Module['addRunDependency']('fp ' + this.name);
-        },
-        send: function() {},
-        onload: function() {
-          var byteArray = this.byteArray.subarray(this.start, this.end);
-          this.finish(byteArray);
-        },
-        finish: function(byteArray) {
-          var that = this;
-  %s
-          this.requests[this.name] = null;
-        }
-      };
-  %s
-    ''' % (create_preloaded if use_preload_plugins else create_data, '''
-          var files = metadata['files'];
-          for (var i = 0; i < files.length; ++i) {
-            new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio']).open('GET', files[i]['filename']);
+    if not lz4:
+        # Data requests - for getting a block of data out of the big archive - have
+        # a similar API to XHRs
+        code += '''
+          /** @constructor */
+          function DataRequest(start, end, audio) {
+            this.start = start;
+            this.end = end;
+            this.audio = audio;
           }
-  ''' if not lz4 else '')
+          DataRequest.prototype = {
+            requests: {},
+            open: function(mode, name) {
+              this.name = name;
+              this.requests[name] = this;
+              Module['addRunDependency']('fp ' + this.name);
+            },
+            send: function() {},
+            onload: function() {
+              var byteArray = this.byteArray.subarray(this.start, this.end);
+              this.finish(byteArray);
+            },
+            finish: function(byteArray) {
+              var that = this;
+      %s
+              this.requests[this.name] = null;
+            }
+          };
+      %s
+        ''' % (create_preloaded if use_preload_plugins else create_data, '''
+              var files = metadata['files'];
+              for (var i = 0; i < files.length; ++i) {
+                new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio']).open('GET', files[i]['filename']);
+              }
+      ''')
 
   counter = 0
   for file_ in data_files:
@@ -514,10 +511,10 @@ def main():
       use_data = '''
             var compressedData = %s;
             compressedData['data'] = byteArray;
-            assert(typeof LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
-            LZ4.loadPackage({ 'metadata': metadata, 'compressedData': compressedData });
+            assert(typeof Module.LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
+            Module.LZ4.loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
             Module['removeRunDependency']('datafile_%s');
-      ''' % (meta, shared.JS.escape_for_js_string(data_target))
+      ''' % (meta, "true" if use_preload_plugins else "false", shared.JS.escape_for_js_string(data_target))
 
     package_uuid = uuid.uuid4()
     package_name = data_target

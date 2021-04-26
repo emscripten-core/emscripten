@@ -1,9 +1,8 @@
 //===------------------------ UnwindRegistersSave.S -----------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -16,7 +15,7 @@
 #if defined(__i386__)
 
 #
-# extern int unw_getcontext(unw_context_t* thread_state)
+# extern int __unw_getcontext(unw_context_t* thread_state)
 #
 # On entry:
 #   +                       +
@@ -27,7 +26,7 @@
 #   +-----------------------+   <-- SP
 #   +                       +
 #
-DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
   push  %eax
   movl  8(%esp), %eax
   movl  %ebx,  4(%eax)
@@ -57,12 +56,12 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
 #elif defined(__x86_64__)
 
 #
-# extern int unw_getcontext(unw_context_t* thread_state)
+# extern int __unw_getcontext(unw_context_t* thread_state)
 #
 # On entry:
 #  thread_state pointer is in rdi
 #
-DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
 #if defined(_WIN64)
 #define PTR %rcx
 #define TMP %rdx
@@ -119,12 +118,12 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
 #elif defined(__mips__) && defined(_ABIO32) && _MIPS_SIM == _ABIO32
 
 #
-# extern int unw_getcontext(unw_context_t* thread_state)
+# extern int __unw_getcontext(unw_context_t* thread_state)
 #
 # On entry:
 #  thread_state pointer is in a0 ($4)
 #
-DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
   .set push
   .set noat
   .set noreorder
@@ -228,12 +227,12 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
 #elif defined(__mips64)
 
 #
-# extern int unw_getcontext(unw_context_t* thread_state)
+# extern int __unw_getcontext(unw_context_t* thread_state)
 #
 # On entry:
 #  thread_state pointer is in a0 ($4)
 #
-DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
   .set push
   .set noat
   .set noreorder
@@ -318,21 +317,21 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
 # elif defined(__mips__)
 
 #
-# extern int unw_getcontext(unw_context_t* thread_state)
+# extern int __unw_getcontext(unw_context_t* thread_state)
 #
 # Just trap for the time being.
-DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
   teq $0, $0
 
 #elif defined(__powerpc64__)
 
 //
-// extern int unw_getcontext(unw_context_t* thread_state)
+// extern int __unw_getcontext(unw_context_t* thread_state)
 //
 // On entry:
 //  thread_state pointer is in r3
 //
-DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
 
 // store register (GPR)
 #define PPC64_STR(n) \
@@ -563,7 +562,7 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
 // On entry:
 //  thread_state pointer is in r3
 //
-DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
   stw     %r0,   8(%r3)
   mflr    %r0
   stw     %r0,   0(%r3) // store lr as ssr0
@@ -698,16 +697,16 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
   blr
 
 
-#elif defined(__arm64__) || defined(__aarch64__)
+#elif defined(__aarch64__)
 
 //
-// extern int unw_getcontext(unw_context_t* thread_state)
+// extern int __unw_getcontext(unw_context_t* thread_state)
 //
 // On entry:
 //  thread_state pointer is in x0
 //
   .p2align 2
-DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
   stp    x0, x1,  [x0, #0x000]
   stp    x2, x3,  [x0, #0x010]
   stp    x4, x5,  [x0, #0x020]
@@ -751,11 +750,14 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
 #elif defined(__arm__) && !defined(__APPLE__)
 
 #if !defined(__ARM_ARCH_ISA_ARM)
+#if (__ARM_ARCH_ISA_THUMB == 2)
+  .syntax unified
+#endif
   .thumb
 #endif
 
 @
-@ extern int unw_getcontext(unw_context_t* thread_state)
+@ extern int __unw_getcontext(unw_context_t* thread_state)
 @
 @ On entry:
 @  thread_state pointer is in r0
@@ -764,10 +766,10 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
 @ EHABI #7.4.5 notes that in general all VRS registers should be restored
 @ however this is very hard to do for VFP registers because it is unknown
 @ to the library how many registers are implemented by the architecture.
-@ Instead, VFP registers are demand saved by logic external to unw_getcontext.
+@ Instead, VFP registers are demand saved by logic external to __unw_getcontext.
 @
   .p2align 2
-DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
 #if !defined(__ARM_ARCH_ISA_ARM) && __ARM_ARCH_ISA_THUMB == 1
   stm r0!, {r0-r7}
   mov r1, r8
@@ -808,7 +810,7 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
 #if defined(__ELF__)
   .fpu vfpv3-d16
 #endif
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm16saveVFPWithFSTMDEPy)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind13Registers_arm16saveVFPWithFSTMDEPv)
   vstmia r0, {d0-d15}
   JMP(lr)
 
@@ -822,7 +824,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm16saveVFPWithFSTMD
 #if defined(__ELF__)
   .fpu vfpv3-d16
 #endif
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm16saveVFPWithFSTMXEPy)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind13Registers_arm16saveVFPWithFSTMXEPv)
   vstmia r0, {d0-d15} @ fstmiax is deprecated in ARMv7+ and now behaves like vstmia
   JMP(lr)
 
@@ -836,7 +838,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm16saveVFPWithFSTMX
 #if defined(__ELF__)
   .fpu vfpv3
 #endif
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm9saveVFPv3EPy)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind13Registers_arm9saveVFPv3EPv)
   @ VFP and iwMMX instructions are only available when compiling with the flags
   @ that enable them. We do not want to do that in the library (because we do not
   @ want the compiler to generate instructions that access those) but this is
@@ -859,7 +861,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm9saveVFPv3EPy)
 #if defined(__ELF__)
   .arch armv5te
 #endif
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm9saveiWMMXEPy)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind13Registers_arm9saveiWMMXEPv)
   stcl p1, cr0, [r0], #8  @ wstrd wR0, [r0], #8
   stcl p1, cr1, [r0], #8  @ wstrd wR1, [r0], #8
   stcl p1, cr2, [r0], #8  @ wstrd wR2, [r0], #8
@@ -888,7 +890,7 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm9saveiWMMXEPy)
 #if defined(__ELF__)
   .arch armv5te
 #endif
-DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm16saveiWMMXControlEPj)
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind13Registers_arm16saveiWMMXControlEPj)
   stc2 p1, cr8, [r0], #4  @ wstrw wCGR0, [r0], #4
   stc2 p1, cr9, [r0], #4  @ wstrw wCGR1, [r0], #4
   stc2 p1, cr10, [r0], #4  @ wstrw wCGR2, [r0], #4
@@ -900,12 +902,12 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm16saveiWMMXControl
 #elif defined(__or1k__)
 
 #
-# extern int unw_getcontext(unw_context_t* thread_state)
+# extern int __unw_getcontext(unw_context_t* thread_state)
 #
 # On entry:
 #  thread_state pointer is in r3
 #
-DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
   l.sw       0(r3), r0
   l.sw       4(r3), r1
   l.sw       8(r3), r2
@@ -943,15 +945,61 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
   # zero epcr
   l.sw     132(r3), r0
 
-#elif defined(__sparc__)
-
+#elif defined(__hexagon__)
 #
 # extern int unw_getcontext(unw_context_t* thread_state)
 #
 # On entry:
+#  thread_state pointer is in r0
+#
+#define OFFSET(offset) (offset/4)
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
+  memw(r0+#32) = r8
+  memw(r0+#36) = r9
+  memw(r0+#40) = r10
+  memw(r0+#44) = r11
+
+  memw(r0+#48) = r12
+  memw(r0+#52) = r13
+  memw(r0+#56) = r14
+  memw(r0+#60) = r15
+
+  memw(r0+#64) = r16
+  memw(r0+#68) = r17
+  memw(r0+#72) = r18
+  memw(r0+#76) = r19
+
+  memw(r0+#80) = r20
+  memw(r0+#84) = r21
+  memw(r0+#88) = r22
+  memw(r0+#92) = r23
+
+  memw(r0+#96) = r24
+  memw(r0+#100) = r25
+  memw(r0+#104) = r26
+  memw(r0+#108) = r27
+
+  memw(r0+#112) = r28
+  memw(r0+#116) = r29
+  memw(r0+#120) = r30
+  memw(r0+#124) = r31
+  r1 = c4   // Predicate register
+  memw(r0+#128) = r1
+  r1 = memw(r30)           // *FP == Saved FP
+  r1 = r31
+  memw(r0+#132) = r1
+
+  jumpr r31
+
+#elif defined(__sparc__)
+
+#
+# extern int __unw_getcontext(unw_context_t* thread_state)
+#
+# On entry:
 #  thread_state pointer is in o0
 #
-DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
   ta 3
   add %o7, 8, %o7
   std %g0, [%o0 +   0]
@@ -972,7 +1020,90 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
   std %i6, [%o0 + 120]
   jmp %o7
    clr %o0                   // return UNW_ESUCCESS
+
+#elif defined(__riscv) && __riscv_xlen == 64
+
+#
+# extern int __unw_getcontext(unw_context_t* thread_state)
+#
+# On entry:
+#  thread_state pointer is in a0
+#
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
+  sd    x1, (8 * 0)(a0) // store ra as pc
+  sd    x1, (8 * 1)(a0)
+  sd    x2, (8 * 2)(a0)
+  sd    x3, (8 * 3)(a0)
+  sd    x4, (8 * 4)(a0)
+  sd    x5, (8 * 5)(a0)
+  sd    x6, (8 * 6)(a0)
+  sd    x7, (8 * 7)(a0)
+  sd    x8, (8 * 8)(a0)
+  sd    x9, (8 * 9)(a0)
+  sd    x10, (8 * 10)(a0)
+  sd    x11, (8 * 11)(a0)
+  sd    x12, (8 * 12)(a0)
+  sd    x13, (8 * 13)(a0)
+  sd    x14, (8 * 14)(a0)
+  sd    x15, (8 * 15)(a0)
+  sd    x16, (8 * 16)(a0)
+  sd    x17, (8 * 17)(a0)
+  sd    x18, (8 * 18)(a0)
+  sd    x19, (8 * 19)(a0)
+  sd    x20, (8 * 20)(a0)
+  sd    x21, (8 * 21)(a0)
+  sd    x22, (8 * 22)(a0)
+  sd    x23, (8 * 23)(a0)
+  sd    x24, (8 * 24)(a0)
+  sd    x25, (8 * 25)(a0)
+  sd    x26, (8 * 26)(a0)
+  sd    x27, (8 * 27)(a0)
+  sd    x28, (8 * 28)(a0)
+  sd    x29, (8 * 29)(a0)
+  sd    x30, (8 * 30)(a0)
+  sd    x31, (8 * 31)(a0)
+
+#if defined(__riscv_flen) && __riscv_flen == 64
+  fsd    f0, (8 * 32 + 8 * 0)(a0)
+  fsd    f1, (8 * 32 + 8 * 1)(a0)
+  fsd    f2, (8 * 32 + 8 * 2)(a0)
+  fsd    f3, (8 * 32 + 8 * 3)(a0)
+  fsd    f4, (8 * 32 + 8 * 4)(a0)
+  fsd    f5, (8 * 32 + 8 * 5)(a0)
+  fsd    f6, (8 * 32 + 8 * 6)(a0)
+  fsd    f7, (8 * 32 + 8 * 7)(a0)
+  fsd    f8, (8 * 32 + 8 * 8)(a0)
+  fsd    f9, (8 * 32 + 8 * 9)(a0)
+  fsd    f10, (8 * 32 + 8 * 10)(a0)
+  fsd    f11, (8 * 32 + 8 * 11)(a0)
+  fsd    f12, (8 * 32 + 8 * 12)(a0)
+  fsd    f13, (8 * 32 + 8 * 13)(a0)
+  fsd    f14, (8 * 32 + 8 * 14)(a0)
+  fsd    f15, (8 * 32 + 8 * 15)(a0)
+  fsd    f16, (8 * 32 + 8 * 16)(a0)
+  fsd    f17, (8 * 32 + 8 * 17)(a0)
+  fsd    f18, (8 * 32 + 8 * 18)(a0)
+  fsd    f19, (8 * 32 + 8 * 19)(a0)
+  fsd    f20, (8 * 32 + 8 * 20)(a0)
+  fsd    f21, (8 * 32 + 8 * 21)(a0)
+  fsd    f22, (8 * 32 + 8 * 22)(a0)
+  fsd    f23, (8 * 32 + 8 * 23)(a0)
+  fsd    f24, (8 * 32 + 8 * 24)(a0)
+  fsd    f25, (8 * 32 + 8 * 25)(a0)
+  fsd    f26, (8 * 32 + 8 * 26)(a0)
+  fsd    f27, (8 * 32 + 8 * 27)(a0)
+  fsd    f28, (8 * 32 + 8 * 28)(a0)
+  fsd    f29, (8 * 32 + 8 * 29)(a0)
+  fsd    f30, (8 * 32 + 8 * 30)(a0)
+  fsd    f31, (8 * 32 + 8 * 31)(a0)
 #endif
+
+  li     a0, 0  // return UNW_ESUCCESS
+  ret           // jump to ra
+#endif
+
+  WEAK_ALIAS(__unw_getcontext, unw_getcontext)
+
 #endif /* !defined(__USING_SJLJ_EXCEPTIONS__) */
 
 NO_EXEC_STACK_DIRECTIVE

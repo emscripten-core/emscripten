@@ -53,7 +53,7 @@ void *threadMain(void *arg)
     emscripten_current_thread_process_queued_calls();
   }
 #else
-  EM_ASM(noExitRuntime = true);
+  emscripten_exit_with_live_runtime();
 #endif
   return 0;
 }
@@ -66,5 +66,5 @@ int main()
   int rc = pthread_create(&thread, NULL, threadMain, 0);
   assert(rc == 0);
 
-  EM_ASM(noExitRuntime = true);
+  emscripten_exit_with_live_runtime();
 }

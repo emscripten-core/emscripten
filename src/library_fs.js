@@ -251,6 +251,9 @@ FS.staticInit();` +
       return FS.lookup(parent, name);
     },
     createNode: function(parent, name, mode, rdev) {
+#if ASSERTIONS
+      assert(typeof parent === 'object')
+#endif
       var node = new FS.FSNode(parent, name, mode, rdev);
 
       FS.hashAddNode(node);
@@ -323,11 +326,11 @@ FS.staticInit();` +
         return 0;
       }
       // return 0 if any user, group or owner bits are set.
-      if (perms.indexOf('r') !== -1 && !(node.mode & {{{ cDefine('S_IRUGO') }}})) {
+      if (perms.includes('r') && !(node.mode & {{{ cDefine('S_IRUGO') }}})) {
         return {{{ cDefine('EACCES') }}};
-      } else if (perms.indexOf('w') !== -1 && !(node.mode & {{{ cDefine('S_IWUGO') }}})) {
+      } else if (perms.includes('w') && !(node.mode & {{{ cDefine('S_IWUGO') }}})) {
         return {{{ cDefine('EACCES') }}};
-      } else if (perms.indexOf('x') !== -1 && !(node.mode & {{{ cDefine('S_IXUGO') }}})) {
+      } else if (perms.includes('x') && !(node.mode & {{{ cDefine('S_IXUGO') }}})) {
         return {{{ cDefine('EACCES') }}};
       }
       return 0;
@@ -613,7 +616,7 @@ FS.staticInit();` +
         while (current) {
           var next = current.name_next;
 
-          if (mounts.indexOf(current.mount) !== -1) {
+          if (mounts.includes(current.mount)) {
             FS.destroyNode(current);
           }
 
@@ -1345,13 +1348,14 @@ FS.staticInit();` +
       FS.mkdir('/dev/shm/tmp');
     },
     createSpecialDirectories: function() {
-      // create /proc/self/fd which allows /proc/self/fd/6 => readlink gives the name of the stream for fd 6 (see test_unistd_ttyname)
+      // create /proc/self/fd which allows /proc/self/fd/6 => readlink gives the
+      // name of the stream for fd 6 (see test_unistd_ttyname)
       FS.mkdir('/proc');
-      FS.mkdir('/proc/self');
+      var proc_self = FS.mkdir('/proc/self');
       FS.mkdir('/proc/self/fd');
       FS.mount({
         mount: function() {
-          var node = FS.createNode('/proc/self', 'fd', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, {{{ cDefine('S_IXUGO') }}});
+          var node = FS.createNode(proc_self, 'fd', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, {{{ cDefine('S_IXUGO') }}});
           node.node_ops = {
             lookup: function(parent, name) {
               var fd = +name;
@@ -1755,7 +1759,7 @@ FS.staticInit();` +
         Object.defineProperties(lazyArray, {
           length: {
             get: /** @this{Object} */ function() {
-              if(!this.lengthKnown) {
+              if (!this.lengthKnown) {
                 this.cacheLength();
               }
               return this._length;
@@ -1763,7 +1767,7 @@ FS.staticInit();` +
           },
           chunkSize: {
             get: /** @this{Object} */ function() {
-              if(!this.lengthKnown) {
+              if (!this.lengthKnown) {
                 this.cacheLength();
               }
               return this._chunkSize;

@@ -89,18 +89,9 @@ mergeInto(LibraryManager.library, {
       // add the new node to the parent
       if (parent) {
         parent.contents[name] = node;
+        parent.timestamp = node.timestamp;
       }
       return node;
-    },
-
-    // Given a file node, returns its file data converted to a regular JS array. You should treat this as read-only.
-    getFileDataAsRegularArray: function(node) {
-      if (node.contents && node.contents.subarray) {
-        var arr = [];
-        for (var i = 0; i < node.usedBytes; ++i) arr.push(node.contents[i]);
-        return arr; // Returns a copy of the original data.
-      }
-      return node.contents; // No-op, the file contents are already in a JS array. Return as-is.
     },
 
     // Given a file node, returns its file data converted to a typed array.
@@ -128,7 +119,6 @@ mergeInto(LibraryManager.library, {
       var oldContents = node.contents;
       node.contents = new Uint8Array(newCapacity); // Allocate new storage.
       if (node.usedBytes > 0) node.contents.set(oldContents.subarray(0, node.usedBytes), 0); // Copy old data over to the new storage.
-      return;
     },
 
     // Performs an exact resize of the backing file storage to the given size, if the size is not exactly this, the storage is fully reallocated.
@@ -140,22 +130,14 @@ mergeInto(LibraryManager.library, {
       if (newSize == 0) {
         node.contents = null; // Fully decommit when requesting a resize to zero.
         node.usedBytes = 0;
-        return;
-      }
-      if (!node.contents || node.contents.subarray) { // Resize a typed array if that is being used as the backing store.
+      } else {
         var oldContents = node.contents;
         node.contents = new Uint8Array(newSize); // Allocate new storage.
         if (oldContents) {
           node.contents.set(oldContents.subarray(0, Math.min(newSize, node.usedBytes))); // Copy old data over to the new storage.
         }
         node.usedBytes = newSize;
-        return;
       }
-      // Backing with a JS array.
-      if (!node.contents) node.contents = [];
-      if (node.contents.length > newSize) node.contents.length = newSize;
-      else while (node.contents.length < newSize) node.contents.push(0);
-      node.usedBytes = newSize;
     },
 
     node_ops: {
@@ -220,12 +202,15 @@ mergeInto(LibraryManager.library, {
         }
         // do the internal rewiring
         delete old_node.parent.contents[old_node.name];
+        old_node.parent.timestamp = Date.now()
         old_node.name = new_name;
         new_dir.contents[new_name] = old_node;
+        new_dir.timestamp = old_node.parent.timestamp;
         old_node.parent = new_dir;
       },
       unlink: function(parent, name) {
         delete parent.contents[name];
+        parent.timestamp = Date.now();
       },
       rmdir: function(parent, name) {
         var node = FS.lookupNode(parent, name);
@@ -233,6 +218,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
         }
         delete parent.contents[name];
+        parent.timestamp = Date.now();
       },
       readdir: function(node) {
         var entries = ['.', '..'];
@@ -348,9 +334,10 @@ mergeInto(LibraryManager.library, {
         stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
       },
       mmap: function(stream, address, length, position, prot, flags) {
-        // We don't currently support location hints for the address of the mapping
-        assert(address === 0);
-
+        if (address !== 0) {
+          // We don't currently support location hints for the address of the mapping
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+        }
         if (!FS.isFile(stream.node.mode)) {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }

@@ -15,7 +15,7 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/fetch.h>
 #include <emscripten/threading.h>
-#include <libc/fcntl.h>
+#include <fcntl.h>
 #include <math.h>
 #include <string.h>
 #include <sys/stat.h>

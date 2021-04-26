@@ -131,7 +131,8 @@
             "O_WRONLY",
             "AT_FDCWD",
             "AT_SYMLINK_NOFOLLOW",
-            "AT_REMOVEDIR"
+            "AT_REMOVEDIR",
+            "AT_EMPTY_PATH"
         ],
         "structs": {
             "flock": [
@@ -198,6 +199,19 @@
         }
     },
     {
+        "file": "sys/time.h",
+        "structs": {
+            "timezone": [
+                "tz_minuteswest",
+                "tz_dsttime"
+            ],
+            "timeval": [
+                "tv_sec",
+                "tv_usec"
+            ]
+        }
+    },
+    {
         "file": "time.h",
         "defines": [
             ["li", "CLOCKS_PER_SEC"],
@@ -207,10 +221,6 @@
             "CLOCK_MONOTONIC_RAW"
         ],
         "structs": {
-            "timezone": [
-                "tz_minuteswest",
-                "tz_dsttime"
-            ],
             "tm": [
                 "tm_sec",
                 "tm_min",
@@ -241,10 +251,6 @@
             "timespec": [
                 "tv_sec",
                 "tv_nsec"
-            ],
-            "timeval": [
-                "tv_sec",
-                "tv_usec"
             ]
         }
     },
@@ -506,169 +512,10 @@
     {
         "file": "unistd.h",
         "defines": [
-            "_SC_XOPEN_LEGACY",
-            "_SC_XOPEN_VERSION",
-            "_SC_BC_DIM_MAX",
-            "_CS_POSIX_V6_LP64_OFF64_LIBS",
-            "_PC_REC_MIN_XFER_SIZE",
-            "_SC_V6_ILP32_OFFBIG",
-            "_SC_MEMLOCK",
-            "_SC_THREADS",
-            "_PC_SOCK_MAXBUF",
-            "_SC_THREAD_KEYS_MAX",
-            "_SC_2_PBS",
-            "_SC_TRACE_INHERIT",
-            "_SC_REGEXP",
-            "_CS_POSIX_V6_LP64_OFF64_CFLAGS",
-            "_SC_VERSION",
-            "_PC_CHOWN_RESTRICTED",
-            "_SC_MQ_PRIO_MAX",
-            "_SC_PAGE_SIZE",
-            "_SC_PHYS_PAGES",
-            "_SC_BARRIERS",
-            "_SC_2_LOCALEDEF",
-            "_SC_STREAM_MAX",
-            "_SC_TIMERS",
-            "_PC_PATH_MAX",
-            "_SC_SPORADIC_SERVER",
-            "_SC_NPROCESSORS_ONLN",
-            "_CS_POSIX_V6_LPBIG_OFFBIG_LIBS",
-            "_PC_MAX_INPUT",
-            "_SC_CLK_TCK",
-            "_SC_AIO_MAX",
-            "_SC_THREAD_PRIO_INHERIT",
-            "_PC_2_SYMLINKS",
-            "_SC_SPAWN",
-            "_CS_POSIX_V6_ILP32_OFF32_LDFLAGS",
-            "_CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS",
-            "_SC_TRACE_SYS_MAX",
-            "_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS",
-            "_SC_AIO_PRIO_DELTA_MAX",
-            "_SC_MONOTONIC_CLOCK",
-            "_SC_XOPEN_ENH_I18N",
-            "_SC_SPIN_LOCKS",
-            "_SC_XOPEN_SHM",
-            "_PC_LINK_MAX",
-            "_SC_FSYNC",
-            "_SC_GETGR_R_SIZE_MAX",
-            "_SC_TRACE_NAME_MAX",
-            "_SC_BC_BASE_MAX",
-            "_SC_XOPEN_STREAMS",
-            "_SC_GETPW_R_SIZE_MAX",
-            "_SC_CPUTIME",
-            "_SC_XBS5_ILP32_OFFBIG",
-            "_SC_TRACE_EVENT_FILTER",
-            "_SC_OPEN_MAX",
-            "_SC_2_FORT_RUN",
-            "_SC_RE_DUP_MAX",
-            "_SC_THREAD_PRIO_PROTECT",
-            "_SC_2_PBS_CHECKPOINT",
-            "_SC_XBS5_LPBIG_OFFBIG",
-            "_SC_SHARED_MEMORY_OBJECTS",
-            "_PC_ALLOC_SIZE_MIN",
-            "_SC_READER_WRITER_LOCKS",
-            "_SC_MEMLOCK_RANGE",
-            "_SC_PRIORITY_SCHEDULING",
-            "_PC_VDISABLE",
-            "_SC_MESSAGE_PASSING",
-            "_SC_THREAD_ATTR_STACKADDR",
-            "_SC_THREAD_THREADS_MAX",
-            "_SC_LOGIN_NAME_MAX",
-            "_SC_2_C_BIND",
-            "_PC_NO_TRUNC",
-            "_SC_SHELL",
-            "_SC_V6_LP64_OFF64",
-            "_CS_GNU_LIBC_VERSION",
-            "_SC_SEM_VALUE_MAX",
-            "_SC_MQ_OPEN_MAX",
-            "_SC_HOST_NAME_MAX",
-            "_SC_THREAD_STACK_MIN",
-            "_SC_TIMEOUTS",
-            "_SC_CHILD_MAX",
-            "_SC_2_PBS_MESSAGE",
-            "_SC_2_C_DEV",
-            "_SC_TIMER_MAX",
-            "_SC_SYMLOOP_MAX",
-            "_PC_REC_XFER_ALIGN",
-            "_SC_REALTIME_SIGNALS",
-            "_PC_ASYNC_IO",
-            "_SC_MAPPED_FILES",
             "_SC_NGROUPS_MAX",
-            "_SC_SEMAPHORES",
-            "_SC_TRACE_LOG",
-            "_CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS",
-            "_CS_POSIX_V6_LP64_OFF64_LDFLAGS",
-            "_SC_THREAD_DESTRUCTOR_ITERATIONS",
-            "_SC_TRACE_EVENT_NAME_MAX",
-            "_SC_BC_STRING_MAX",
-            "_SC_2_SW_DEV",
-            "_SC_ARG_MAX",
-            "_SC_THREAD_PRIORITY_SCHEDULING",
-            "_SC_THREAD_CPUTIME",
-            "_CS_POSIX_V6_ILP32_OFF32_LIBS",
-            "_SC_SYNCHRONIZED_IO",
-            "_CS_POSIX_V6_ILP32_OFF32_CFLAGS",
-            "_SC_MEMORY_PROTECTION",
-            "_PC_PRIO_IO",
-            "_SC_V6_LPBIG_OFFBIG",
-            "_SC_EXPR_NEST_MAX",
-            "_CS_POSIX_V6_ILP32_OFFBIG_CFLAGS",
-            "_PC_REC_MAX_XFER_SIZE",
-            "_SC_DELAYTIMER_MAX",
-            "W_OK",
             "R_OK",
-            "_SC_XOPEN_CRYPT",
-            "_SC_XBS5_LP64_OFF64",
-            "_SC_SIGQUEUE_MAX",
-            "_SC_TZNAME_MAX",
-            "_CS_PATH",
-            "_PC_MAX_CANON",
-            "_SC_THREAD_SAFE_FUNCTIONS",
-            "_PC_NAME_MAX",
-            "_SC_TRACE_USER_EVENT_MAX",
-            "_SC_RAW_SOCKETS",
-            "_SC_RTSIG_MAX",
-            "_SC_PRIORITIZED_IO",
-            "_SC_XOPEN_UNIX",
-            "_PC_REC_INCR_XFER_SIZE",
-            "_PC_FILESIZEBITS",
-            "_SC_XBS5_ILP32_OFF32",
-            "_CS_GNU_LIBPTHREAD_VERSION",
-            "_SC_2_PBS_LOCATE",
-            "_SC_V6_ILP32_OFF32",
-            "_PC_SYNC_IO",
-            "_SC_2_UPE",
-            "_SC_SEM_NSEMS_MAX",
-            "_SC_IOV_MAX",
-            "_SC_TRACE",
-            "_CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS",
-            "_SC_LINE_MAX",
-            "_CS_POSIX_V6_ILP32_OFFBIG_LIBS",
-            "_SC_2_FORT_DEV",
-            "_SC_ATEXIT_MAX",
-            "_SC_SAVED_IDS",
-            "_SC_2_PBS_TRACK",
-            "_SC_THREAD_PROCESS_SHARED",
-            "_SC_JOB_CONTROL",
-            "_SC_IPV6",
-            "_SC_ADVISORY_INFO",
-            "_SC_XOPEN_REALTIME_THREADS",
-            "_PC_SYMLINK_MAX",
-            "X_OK",
-            "_SC_COLL_WEIGHTS_MAX",
-            "_SC_CLOCK_SELECTION",
-            "_SC_XOPEN_REALTIME",
-            "_PC_PIPE_BUF",
-            "_SC_2_PBS_ACCOUNTING",
-            "_SC_THREAD_SPORADIC_SERVER",
-            "_SC_THREAD_ATTR_STACKSIZE",
-            "_SC_2_VERSION",
-            "_SC_TYPED_MEMORY_OBJECTS",
-            "_SC_ASYNCHRONOUS_IO",
-            "_SC_2_CHAR_TERM",
-            "_SC_AIO_LISTIO_MAX",
-            "_SC_BC_SCALE_MAX",
-            "_SC_TTY_NAME_MAX"
+            "W_OK",
+            "X_OK"
         ]
     },
     {
@@ -792,7 +639,9 @@
             "EBADR",
             "EISCONN",
             "ENOTBLK",
-            "EOVERFLOW"
+            "EOVERFLOW",
+            "EACCES",
+            "EEXIST"
         ]
     },
     {
@@ -865,13 +714,6 @@
         ]
     },
     {
-        "file": "arpa/tftp.h",
-        "defines": [
-            "EACCES",
-            "EEXIST"
-        ]
-    },
-    {
         "file": "sys/stat.h",
         "defines": [
             "S_IALLUGO",
@@ -882,7 +724,7 @@
         ]
     },
     {
-        "file": "bits/mman.h",
+        "file": "sys/mman.h",
         "defines": [
             "MAP_ANONYMOUS",
             "MAP_FAILED",
@@ -1414,87 +1256,8 @@
             ]
         }
     },
-    // ===========================================
-    // emscripten VR library
-    // ===========================================
-    {
-        "file": "emscripten/vr.h",
-        "defines": [
-            "VR_EYE_LEFT",
-            "VR_EYE_RIGHT",
-
-            "VR_POSE_POSITION",
-            "VR_POSE_LINEAR_VELOCITY",
-            "VR_POSE_LINEAR_ACCELERATION",
-            "VR_POSE_ORIENTATION",
-            "VR_POSE_ANGULAR_VELOCITY",
-            "VR_POSE_ANGULAR_ACCELERATION"
-        ],
-        "structs": {
-            "VRVector3": [
-              "x",
-              "y",
-              "z"
-            ],
-            "VRQuaternion": [
-              "x",
-              "y",
-              "z",
-              "w"
-            ],
-            "VRPose": [
-                { "position": [ "x", "y", "z" ] },
-                { "linearVelocity": [ "x", "y", "z" ] },
-                { "linearAcceleration": [ "x", "y", "z" ] },
-                { "orientation": [ "x", "y", "z", "w" ] },
-                { "angularVelocity": [ "x", "y", "z" ] },
-                { "angularAcceleration": [ "x", "y", "z" ] },
-                "poseFlags"
-            ],
-            "VRFrameData": [
-                "leftProjectionMatrix",
-                "leftViewMatrix",
-                "rightProjectionMatrix",
-                "rightViewMatrix",
-                { "pose": [
-                    { "position": [ "x", "y", "z" ] },
-                    { "linearVelocity": [ "x", "y", "z" ] },
-                    { "linearAcceleration": [ "x", "y", "z" ] },
-                    { "orientation": [ "x", "y", "z", "w" ] },
-                    { "angularVelocity": [ "x", "y", "z" ] },
-                    { "angularAcceleration": [ "x", "y", "z" ] },
-                    "poseFlags"
-                ] },
-                "timestamp"
-            ],
-            "VREyeParameters": [
-                { "offset": [ "x", "y", "z" ] },
-                "renderWidth",
-                "renderHeight"
-            ],
-            "VRDisplayCapabilities": [
-                "hasPosition",
-                "hasExternalDisplay",
-                "canPresent",
-                "maxLayers"
-            ],
-            "VRLayerInit": [
-                "source",
-                "leftBounds",
-                "rightBounds"
-            ]
-        }
-    },
     {
         "file": "emscripten/threading.h",
-        "structs": {
-            "thread_profiler_block": [
-                "threadStatus",
-                "currentStatusStartTime",
-                "timeSpentInStatus",
-                "name"
-            ]
-        },
         "defines": [
             "EM_PROXIED_PTHREAD_CREATE",
             "EM_PROXIED_CREATE_CONTEXT",
@@ -1523,37 +1286,6 @@
             "EM_FUNC_SIG_PARAM_B",
             "EM_FUNC_SIG_PARAM_F2I"
             ]
-    },
-    {
-        "file": "../lib/libc/musl/src/internal/pthread_impl.h",
-        "structs": {
-            "pthread": [
-              "threadStatus",
-              "threadExitCode",
-              "profilerBlock",
-              "self",
-              "tsd",
-              "tsd_used",
-              "detached",
-              "stack",
-              "stack_size",
-              "attr",
-              "robust_list",
-              "tid",
-              "canceldisable",
-              "cancelasync",
-              "locale"
-            ]
-        },
-        "defines": ["__ATTRP_C11_THREAD"]
-    },
-    {
-        "file": "../lib/libc/musl/src/internal/libc.h",
-        "structs": {
-            "libc": [
-              "global_locale"
-            ]
-        }
     },
     {
         "file": "wasi/api.h",
@@ -1643,7 +1375,7 @@
     // ===========================================
     // WebGPU
     //   NOTE: This can be (mostly) auto-generated:
-    //   https://dawn.googlesource.com/dawn/+/refs/heads/master/generator/templates/webgpu_struct_info.json
+    //   https://dawn.googlesource.com/dawn/+/refs/heads/main/generator/templates/webgpu_struct_info.json
     // ===========================================
     {
         "file": "webgpu/webgpu.h",
@@ -1668,6 +1400,28 @@
                 "sampler",
                 "textureView"
             ],
+            "WGPUBufferBindingLayout": [
+                "nextInChain",
+                "type",
+                "hasDynamicOffset",
+                "minBindingSize"
+            ],
+            "WGPUSamplerBindingLayout": [
+                "nextInChain",
+                "type"
+            ],
+            "WGPUTextureBindingLayout": [
+                "nextInChain",
+                "sampleType",
+                "viewDimension",
+                "multisampled"
+            ],
+            "WGPUStorageTextureBindingLayout": [
+                "nextInChain",
+                "access",
+                "format",
+                "viewDimension"
+            ],
             "WGPUBindGroupLayoutEntry": [
                 "binding",
                 "visibility",
@@ -1676,7 +1430,11 @@
                 "minBufferBindingSize",
                 "viewDimension",
                 "textureComponentType",
-                "storageTextureFormat"
+                "storageTextureFormat",
+                "buffer",
+                "sampler",
+                "texture",
+                "storageTexture"
             ],
             "WGPUBlendDescriptor": [
                 "operation",
@@ -1860,7 +1618,7 @@
                 "entryCount",
                 "entries"
             ],
-            "WGPUBufferCopyView": [
+            "WGPUImageCopyBuffer": [
                 "nextInChain",
                 "layout",
                 "buffer"
@@ -1895,11 +1653,12 @@
                 "storeOp",
                 "clearColor"
             ],
-            "WGPUTextureCopyView": [
+            "WGPUImageCopyTexture": [
                 "nextInChain",
                 "texture",
                 "mipLevel",
-                "origin"
+                "origin",
+                "aspect"
             ],
             "WGPUTextureDescriptor": [
                 "nextInChain",

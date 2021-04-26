@@ -178,7 +178,9 @@ mergeInto(LibraryManager.library, {
 
     handleSleep: function(startAsync) {
       if (ABORT) return;
+#if !MINIMAL_RUNTIME
       noExitRuntime = true;
+#endif
 #if ASYNCIFY_DEBUG
       err('ASYNCIFY: handleSleep ' + Asyncify.state);
 #endif
@@ -453,7 +455,9 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(oldFiber, newFiber) {
     if (ABORT) return;
+#if !MINIMAL_RUNTIME
     noExitRuntime = true;
+#endif
 #if ASYNCIFY_DEBUG
     err('ASYNCIFY/FIBER: swap', oldFiber, '->', newFiber, 'state:', Asyncify.state);
 #endif

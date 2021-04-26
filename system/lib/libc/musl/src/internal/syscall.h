@@ -87,7 +87,6 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 #define __syscall_cp(...) __SYSCALL_DISP(__syscall_cp,__VA_ARGS__)
 #else // __EMSCRIPTEN__
 #define __syscall_cp(...) __syscall(__VA_ARGS__)
-#define SYSCALL_USE_SOCKETCALL
 #endif // __EMSCRIPTEN__
 
 #define syscall_cp(...) __syscall_ret(__syscall_cp(__VA_ARGS__))
@@ -250,6 +249,12 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 #define __SC_accept4     18
 #define __SC_recvmmsg    19
 #define __SC_sendmmsg    20
+
+/* This is valid only because all socket syscalls are made via
+￼ * socketcall, which always fills unused argument slots with zeros. */
+#ifndef SYS_accept
+#define SYS_accept SYS_accept4
+#endif
 
 #ifndef __EMSCRIPTEN__
 #ifdef SYS_open

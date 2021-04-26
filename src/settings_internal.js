@@ -11,8 +11,19 @@
 // and can be added/removed/renamed without fear of breaking out users.
 //
 
-// An array of all symbols exported from asm.js/wasm module.
-var MODULE_EXPORTS = [];
+// List of symbols exported from compiled code
+// These are raw symbol names and are not mangled to include the leading
+// underscore.
+var WASM_EXPORTS = [];
+
+// Similar to above but only includes the functions symbols.
+var WASM_FUNCTION_EXPORTS = [];
+
+// An array of all symbols exported from all the side modules specified on the
+// command line.
+// These are raw symbol names and are not mangled to include the leading
+// underscore.
+var SIDE_MODULE_EXPORTS = [];
 
 // stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
@@ -62,9 +73,6 @@ var EMBIND = 0;
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = 1;
 
-// List of functions implemented in compiled code; received from the backend.
-var IMPLEMENTED_FUNCTIONS = [];
-
 // Name of the file containing the Fetch *.fetch.js, if relevant
 var FETCH_WORKER_FILE = '';
 
@@ -98,9 +106,6 @@ var PROFILING_FUNCS = 0;
 // Whether we are emitting a symbol map. You should not modify this.
 var EMIT_SYMBOL_MAP = 0;
 
-// tracks the list of EM_ASM signatures that are proxied between threads.
-var PROXIED_FUNCTION_SIGNATURES = [];
-
 // List of function explicitly exported by user on the command line.
 var USER_EXPORTED_FUNCTIONS = [];
 
@@ -118,9 +123,6 @@ var MEM_INIT_IN_WASM = 0;
 // If set to 1, src/base64Utils.js will be included in the bundle.
 // This is set internally when needed (SINGLE_FILE)
 var SUPPORT_BASE64_EMBEDDING = 0;
-
-// the total initial wasm table size, only used in RELOCATABLE mode
-var WASM_TABLE_SIZE = 0;
 
 // the possible environments the code may run in.
 var ENVIRONMENT_MAY_BE_WEB = 1;
@@ -144,7 +146,7 @@ var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
 // Wasm backend symbols that are considered system symbols and don't
 // have the normal C symbol name mangled applied (== prefix with an underscore)
 // (Also implicily on this list is any function that starts with string "dynCall_")
-var WASM_SYSTEM_EXPORTS = ['setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore'];
+var WASM_SYSTEM_EXPORTS = ['stackAlloc', 'stackSave', 'stackRestore'];
 
 // Internal: value of -flto argument (either full or thin)
 var LTO = 0;
@@ -178,12 +180,24 @@ var EXPECT_MAIN = 1;
 // MODULARIZE, and returned from the factory function.
 var EXPORT_READY_PROMISE = 1;
 
-var USE_LEGACY_DYNCALLS = 0;
-
 // struct_info that is either generated or cached
 var STRUCT_INFO = '';
 
-// If true, building against Emscripten's asm.js/wasm heap memory profiler.
+// If true, building against Emscripten's wasm heap memory profiler.
 var MEMORYPROFILER = 0;
 
 var GENERATE_SOURCE_MAP = 0;
+
+// Memory layout.  These are only used/set in RELOCATABLE builds.  Otherwise
+// memory layout is fixed in the wasm binary at link time.
+var STACK_BASE = 0;
+var STACK_MAX = 0;
+var HEAP_BASE = 0;
+
+// Used internally. set when there is a main() function.
+// Also set when in a linkable module, as the main() function might
+// arrive from a dynamically-linked library, and not necessarily
+// the current compilation unit.
+// Also set for STANDALONE_WASM since the _start function is needed to call
+// static ctors, even if there is no user main.
+var HAS_MAIN = 0;

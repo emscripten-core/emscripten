@@ -143,10 +143,9 @@ function callMain(args) {
   if (!entryFunction) return;
 #endif
 
-#if MAIN_READS_PARAMS
-#if STANDALONE_WASM
+#if MAIN_READS_PARAMS && STANDALONE_WASM
   mainArgs = [thisProgram].concat(args)
-#else
+#elif MAIN_READS_PARAMS
   args = args || [];
 
   var argc = args.length+1;
@@ -156,7 +155,6 @@ function callMain(args) {
     HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
   }
   HEAP32[(argv >> 2) + argc] = 0;
-#endif // STANDALONE_WASM
 #else
   var argc = 0;
   var argv = 0;
@@ -185,15 +183,19 @@ function callMain(args) {
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
 #endif
 
-    // In PROXY_TO_PTHREAD builds, we should never exit the runtime below, as execution is asynchronously handed
-    // off to a pthread.
-#if !PROXY_TO_PTHREAD
+    // In PROXY_TO_PTHREAD builds, we should never exit the runtime below, as
+    // execution is asynchronously handed off to a pthread.
+#if PROXY_TO_PTHREAD
+#if ASSERTIONS
+    assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
+#endif
+#else
 #if ASYNCIFY
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
-    if (!noExitRuntime) {
+    if (!keepRuntimeAlive()) {
 #endif // ASYNCIFY
-    // if we're not running an evented main loop, it's time to exit
+      // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
 #if ASYNCIFY
     }
@@ -206,7 +208,6 @@ function callMain(args) {
       return;
     } else if (e == 'unwind') {
       // running an evented main loop, don't immediately exit
-      noExitRuntime = true;
       return;
     } else {
       var toLog = e;
@@ -228,6 +229,25 @@ function callMain(args) {
 }
 #endif // HAS_MAIN
 
+#if STACK_OVERFLOW_CHECK
+function stackCheckInit() {
+  // This is normally called automatically during __wasm_call_ctors but need to
+  // get these values before even running any of the ctors so we call it redundantly
+  // here.
+  // TODO(sbc): Move writeStackCookie to native to to avoid this.
+#if RELOCATABLE
+  _emscripten_stack_set_limits({{{ STACK_BASE }}}, {{{ STACK_MAX }}});
+#else
+  _emscripten_stack_init();
+#endif
+  writeStackCookie();
+}
+#endif
+
+#if RELOCATABLE
+var dylibsLoaded = false;
+#endif
+
 /** @type {function(Array=)} */
 function run(args) {
   args = args || arguments_;
@@ -240,21 +260,53 @@ function run(args) {
   }
 
 #if STACK_OVERFLOW_CHECK
-  // This is normally called automatically during __wasm_call_ctors but need to
-  // get these values before even running any of the ctors so we call it redundantly
-  // here.
-  // TODO(sbc): Move writeStackCookie to native to to avoid this.
-#if RELOCATABLE
-  _emscripten_stack_set_limits({{{ getQuoted('STACK_BASE') }}}, {{{ getQuoted('STACK_MAX') }}});
-#else
-  _emscripten_stack_init();
+  stackCheckInit();
 #endif
-  writeStackCookie();
+
+#if RELOCATABLE
+  if (!dylibsLoaded) {
+  // Loading of dynamic libraries needs to happen on each thread, so we can't
+  // use the normal __ATPRERUN__ mechanism.
+#if MAIN_MODULE
+    preloadDylibs();
+#else
+    reportUndefinedSymbols();
+#endif
+    dylibsLoaded = true;
+
+    // Loading dylibs can add run dependencies.
+    if (runDependencies > 0) {
+#if RUNTIME_LOGGING
+      err('preloadDylibs added run() dependencies, not running yet');
+#endif
+      return;
+    }
+  }
+#endif
+
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) {
+#if MODULARIZE
+    // The promise resolve function typically gets called as part of the execution
+    // of `doRun` below. The workers/pthreads don't execute `doRun` so the
+    // creation promise can be resolved, marking the pthread-Module as initialized.
+    readyPromiseResolve(Module);
+#endif // MODULARIZE
+    initRuntime();
+    postMessage({ 'cmd': 'loaded' });
+    return;
+  }
 #endif
 
   preRun();
 
-  if (runDependencies > 0) return; // a preRun added a dependency, run will be called later
+  // a preRun added a dependency, run will be called later
+  if (runDependencies > 0) {
+#if RUNTIME_LOGGING
+    err('run() called, but dependencies remain, so not running');
+#endif
+    return;
+  }
 
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
@@ -267,7 +319,9 @@ function run(args) {
 
     initRuntime();
 
+#if HAS_MAIN
     preMain();
+#endif
 
 #if MODULARIZE
     readyPromiseResolve(Module);
@@ -363,6 +417,8 @@ function checkUnflushedContent() {
 
 /** @param {boolean|number=} implicit */
 function exit(status, implicit) {
+  EXITSTATUS = status;
+
 #if ASSERTIONS
 #if EXIT_RUNTIME == 0
   checkUnflushedContent();
@@ -373,7 +429,7 @@ function exit(status, implicit) {
   // don't need to do anything here and can just leave. if the status is
   // non-zero, though, then we need to report it.
   // (we may have warned about this earlier, if a situation justifies doing so)
-  if (implicit && noExitRuntime && status === 0) {
+  if (implicit && keepRuntimeAlive() && status === 0) {
     return;
   }
 
@@ -391,20 +447,20 @@ function exit(status, implicit) {
       throw new ExitStatus(status);
     } else {
 #if ASSERTIONS
-      err('main thead called exit: noExitRuntime=' + noExitRuntime);
+      err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
 #endif
     }
   }
 #endif
 
-  if (noExitRuntime) {
+  if (keepRuntimeAlive()) {
 #if ASSERTIONS
     // if exit() was called, we may warn the user if the runtime isn't actually being shut down
     if (!implicit) {
 #if EXIT_RUNTIME == 0
       var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
 #else
-      var msg = 'program exited (with status: ' + status + '), but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
+      var msg = 'program exited (with status: ' + status + '), but keepRuntimeAlive() is set (counter=' + runtimeKeepaliveCounter + ') due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
 #endif // EXIT_RUNTIME
 #if MODULARIZE
       readyPromiseReject(msg);
@@ -416,8 +472,6 @@ function exit(status, implicit) {
 #if USE_PTHREADS
     PThread.terminateAllThreads();
 #endif
-
-    EXITSTATUS = status;
 
     exitRuntime();
 
@@ -454,32 +508,21 @@ if (Module['noInitialRun']) shouldRunNow = false;
 
 #endif // HAS_MAIN
 
-#if EXIT_RUNTIME == 0
 #if USE_PTHREADS
-// EXIT_RUNTIME=0 only applies to the default behavior of the main browser
-// thread.
-// The default behaviour for pthreads is always to exit once they return
-// from their entry point (or call pthread_exit).  If we set noExitRuntime
-// to true here on pthreads they would never complete and attempt to
-// pthread_join to them would block forever.
-// pthreads can still choose to set `noExitRuntime` explicitly, or
-// call emscripten_unwind_to_js_event_loop to extend their lifetime beyond
-// their main function.  See comment in src/worker.js for more.
-noExitRuntime = !ENVIRONMENT_IS_PTHREAD;
-#else
-noExitRuntime = true;
-#endif
-#endif
-
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
-  run();
-} else {
+if (ENVIRONMENT_IS_PTHREAD) {
+  // The default behaviour for pthreads is always to exit once they return
+  // from their entry point (or call pthread_exit).  If we set noExitRuntime
+  // to true here on pthreads they would never complete and attempt to
+  // pthread_join to them would block forever.
+  // pthreads can still choose to set `noExitRuntime` explicitly, or
+  // call emscripten_unwind_to_js_event_loop to extend their lifetime beyond
+  // their main function.  See comment in src/worker.js for more.
+  noExitRuntime = false;
   PThread.initWorker();
 }
-#else
+#endif
+
 run();
-#endif // USE_PTHREADS
 
 #if BUILD_AS_WORKER
 
