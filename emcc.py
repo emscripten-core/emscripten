@@ -418,9 +418,8 @@ def get_all_js_syms():
     emscripten.generate_struct_info()
     glue, forwarded_data = emscripten.compile_settings()
     forwarded_json = json.loads(forwarded_data)
-    library_fns = forwarded_json['Functions']['libraryFunctions']
     library_fns_list = []
-    for name in library_fns:
+    for name in forwarded_json['libraryFunctions']:
       if shared.is_c_symbol(name):
         name = shared.demangle_c_symbol_name(name)
         library_fns_list.append(name)
