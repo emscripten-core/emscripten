@@ -3229,7 +3229,7 @@ v1.21.8: 7/28/2014
 
 v1.21.7: 7/25/2014
 ------------------
- - Added new environment varaible EMCC_ONLY_FORCED_STDLIBS which can be used to
+ - Added new environment variable EMCC_ONLY_FORCED_STDLIBS which can be used to
    restrict to only linking to the chosen set of Emscripten-provided libraries.
    (See also EMCC_FORCE_STDLIBS)
  - Adjusted argv[0] and environment variables USER, HOME, LANG and _ to report a
