@@ -3283,7 +3283,7 @@ window.close = function() {
   # ASYNCIFY_IMPORTS.
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
-    'normal': (['-s', 'ASYNCIFY_IMPORTS=[sync_tunnel]'],), # noqa
+    'normal': (['-s', 'ASYNCIFY_IMPORTS=[sync_tunnel, sync_tunnel_bool]'],), # noqa
     'response': (['-s', 'ASYNCIFY_IMPORTS=@filey.txt'],), # noqa
     'nothing': (['-DBAD'],), # noqa
     'empty_list': (['-DBAD', '-s', 'ASYNCIFY_IMPORTS=[]'],), # noqa
