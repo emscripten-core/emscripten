@@ -932,13 +932,6 @@ var RETAIN_COMPILER_SETTINGS = 0;
 // [link]
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 
-// This list is also used to determine auto-exporting of library dependencies
-// (i.e., functions that might be dependencies of JS library functions, that if
-// so we must export so that if they are implemented in C they will be
-// accessible, in ASM_JS mode).
-// [link]
-var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy'];
-
 // Include all JS library functions instead of the sum of
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + any functions used by the generated code.
 // This is needed when dynamically loading (i.e. dlopen) modules that make use
@@ -2023,4 +2016,5 @@ var LEGACY_SETTINGS = [
   ['ASM_PRIMITIVE_VARS', [[]], 'No longer needed'],
   ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older'],
   ['RUNTIME_FUNCS_TO_IMPORT', [[]], 'No longer needed'],
+  ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
 ];
