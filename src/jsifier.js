@@ -432,7 +432,13 @@ function JSify(functionsOnly) {
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[1], shellFile)));
 
-    PassManager.serialize();
+    print('\n//FORWARDED_DATA:' + JSON.stringify({
+      Functions: Functions,
+      EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
+      ATINITS: ATINITS.join('\n'),
+      ATMAINS: ATMAINS.join('\n'),
+      ATEXITS: ATEXITS.join('\n'),
+    }));
   }
 
   // Data
