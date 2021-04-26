@@ -39,10 +39,8 @@ function genArgSequence(n) {
   return args;
 }
 
-var Functions = {
-  // functions added from the library. value 2 means asmLibraryFunction
-  libraryFunctions: {},
-};
+// List of functions that were added from the library.
+var libraryFunctions = [];
 
 var LibraryManager = {
   library: null,
@@ -507,4 +505,3 @@ function exportRuntime() {
   exports = exports.filter(function(name) { return name != '' });
   return exports.join('\n');
 }
-

@@ -337,7 +337,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
 
   asm_consts = create_asm_consts(metadata)
-  em_js_funcs = create_em_js(forwarded_json, metadata)
+  em_js_funcs = create_em_js(metadata)
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
   asm_const_map = 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
   pre = pre.replace(
@@ -472,7 +472,7 @@ def create_asm_consts(metadata):
   return asm_consts
 
 
-def create_em_js(forwarded_json, metadata):
+def create_em_js(metadata):
   em_js_funcs = []
   separator = '<::>'
   for name, raw in metadata.get('emJsFuncs', {}).items():
@@ -486,7 +486,6 @@ def create_em_js(forwarded_json, metadata):
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
     func = 'function {}({}){}'.format(name, ','.join(arg_names), body)
     em_js_funcs.append(func)
-    forwarded_json['Functions']['libraryFunctions'][name] = 1
 
   return em_js_funcs
 

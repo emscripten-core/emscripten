@@ -219,7 +219,7 @@ function JSify(functionsOnly) {
           // In asm, we need to know about library functions. If there is a target, though, then no
           // need to consider this a library function - we will call directly to it anyhow
           if (!redirectedIdent && (typeof target == 'function')) {
-            Functions.libraryFunctions[finalName] = 1;
+            libraryFunctions.push(finalName);
           }
         }
       } else if (typeof snippet === 'object') {
@@ -228,14 +228,14 @@ function JSify(functionsOnly) {
         isFunction = true;
         snippet = processLibraryFunction(snippet, ident, finalName);
         if (!isJsOnlyIdentifier(ident[0])) {
-          Functions.libraryFunctions[finalName] = 1;
+          libraryFunctions.push(finalName);
         }
       }
 
       // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be exported
       // to wasm module.
       if (LibraryManager.library[ident + '__import']) {
-        Functions.libraryFunctions[finalName] = 1;
+        libraryFunctions.push(finalName);
       }
 
       if (ONLY_CALC_JS_SYMBOLS)
@@ -429,7 +429,7 @@ function JSify(functionsOnly) {
     print(processMacros(preprocess(shellParts[1], shellFile)));
 
     print('\n//FORWARDED_DATA:' + JSON.stringify({
-      Functions: Functions,
+      libraryFunctions: libraryFunctions,
       EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: ATMAINS.join('\n'),
