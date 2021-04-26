@@ -553,9 +553,8 @@ def get_all_js_syms():
     library_syms = read_file(filename).splitlines()
 
     # Limit of the overall size of the cache to 100 files.
-    # This code will get test coverage once we make LLD_REPORT_UNDEFINED the default
-    # since under those circumstances a full test run of `other` or `core` generates
-    # ~1000 unique symbol lists.
+    # This code will get test coverage since a full test run of `other` or `core`
+    # generates ~1000 unique symbol lists.
     cache_limit = 100
     root = cache.get_path('symbol_lists')
     if len(os.listdir(root)) > cache_limit:
@@ -1898,10 +1897,7 @@ def phase_linker_setup(options, state, newargs):
     if not settings.PURE_WASI and '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
       default_setting('STACK_OVERFLOW_CHECK', max(settings.ASSERTIONS, settings.STACK_OVERFLOW_CHECK))
 
-  if settings.LLD_REPORT_UNDEFINED or settings.STANDALONE_WASM:
-    # Reporting undefined symbols at wasm-ld time requires us to know if we have a `main` function
-    # or not, as does standalone wasm mode.
-    # TODO(sbc): Remove this once this becomes the default
+  if settings.STANDALONE_WASM:
     settings.IGNORE_MISSING_MAIN = 0
 
   # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also

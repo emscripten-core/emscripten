@@ -1917,12 +1917,13 @@ var USE_OFFSET_CONVERTER = false;
 // This is enabled automatically when using -g4 with sanitizers.
 var LOAD_SOURCE_MAP = false;
 
-// If set to 1, the JS compiler is run before wasm-ld so that the linker can
-// report undefined symbols within the binary.  Without this option the linker
-// doesn't know which symbols might be defined in JS so reporting of undefined
-// symbols is delayed until the JS compiler is run.
+// If set to 0, delay undefined symbol report until after wasm-ld runs.  This
+// avoids running the the JS compiler prior to wasm-ld, but reduces the amount
+// of information in the undefined symbol message (Since JS compiler cannot
+// report the name of the object file that contains the reference to the
+// undefined symbol).
 // [link]
-var LLD_REPORT_UNDEFINED = false;
+var LLD_REPORT_UNDEFINED = true;
 
 // Default to c++ mode even when run as `emcc` rather then `emc++`.
 // When this is disabled `em++` is required when compiling and linking C++
