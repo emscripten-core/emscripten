@@ -1237,10 +1237,6 @@ function makeAsmImportsAccessInPthread(variable) {
   return variable;
 }
 
-function hasExportedFunction(func) {
-  return Object.keys(EXPORTED_FUNCTIONS).includes(func);
-}
-
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
