@@ -19,8 +19,9 @@ synchronous way.
 
 See the
 `Asyncify introduction blogpost <https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html>`_
-for general background and details of how it works internally. The following
-expands on the Emscripten examples from that post.
+for general background and details of how it works internally (you can also view
+`this talk about Asyncify <https://www.youtube.com/watch?v=qQOP6jqZqf8>`_).
+The following expands on the Emscripten examples from that post.
 
 .. _yielding_to_main_loop:
 
