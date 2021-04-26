@@ -4,18 +4,34 @@
 # found in the LICENSE file.
 
 import atexit
-import subprocess
+import logging
 import os
-import time
 import sys
+import subprocess
 import tempfile
+import time
 from contextlib import ContextDecorator
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+logger = logging.getLogger('profiler')
 
 from tools import response_file
 
 EMPROFILE = int(os.getenv('EMPROFILE', '0'))
+
+
+class Logger(ContextDecorator):
+  def __init__(self, name):
+    self.name = name
+
+  def __enter__(self):
+    self.start = time.time()
+
+  def __exit__(self, type, value, traceback):
+    # When a block ends debug log the total duration.
+    now = time.time()
+    logger.debug('block "%s" took %.2f seconds', self.name, now - self.start)
+
 
 if EMPROFILE:
   original_sys_exit = sys.exit
@@ -198,8 +214,9 @@ if EMPROFILE:
       for b in ToolchainProfiler.block_stack[::-1]:
         ToolchainProfiler.exit_block(b)
 
-    class ProfileBlock(ContextDecorator):
+    class ProfileBlock(Logger):
       def __init__(self, block_name):
+        super().__init__(block_name)
         self.block_name = block_name
 
       def __enter__(self):
@@ -228,16 +245,6 @@ else:
     def exit_block(block_name):
       pass
 
-    class ProfileBlock(ContextDecorator):
-      def __init__(self):
-        pass
-
-      def __enter__(self):
-        pass
-
-      def __exit__(self, type, value, traceback):
-        pass
-
     @staticmethod
     def profile_block(block_name):
-      return ToolchainProfiler.ProfileBlock()
+      return Logger(block_name)
