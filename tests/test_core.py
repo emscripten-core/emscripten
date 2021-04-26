@@ -5852,7 +5852,6 @@ return malloc(size);
 
   @wasm_simd
   @is_slow_test
-  @disabled("https://github.com/emscripten-core/emscripten/issues/13991")
   def test_wasm_builtin_simd(self):
     # Improves test readability
     self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-format']
