@@ -143,7 +143,7 @@ class Cache:
     if config.FROZEN_CACHE:
       # Raise an exception here rather than exit_with_error since in practice this
       # should never happen
-      raise Exception('FROZEN_CACHE is set, but cache file is missing: %s' % shortname)
+      raise Exception('FROZEN_CACHE is set, but cache file is missing: "%s" (in cache root path "%s")' % (shortname, self.dirname))
 
     with self.lock():
       if os.path.exists(cachename) and not force:
