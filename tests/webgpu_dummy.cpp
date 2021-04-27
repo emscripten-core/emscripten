@@ -16,7 +16,7 @@ public:
   EmJsHandle(int handle) : mHandle(handle) {}
   ~EmJsHandle() {
     if (mHandle != 0) {
-      emscripten_unwrap_js_handle(mHandle);
+      emscripten_release_js_handle(mHandle);
     }
   }
 

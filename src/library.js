@@ -3267,40 +3267,6 @@ LibraryManager.library = {
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
 
-  $JsValStore: {
-    values: {},
-    next_id: 1,
-
-    add: function(js_val) {
-      var id;
-      do {
-        id = JsValStore.next_id++;
-        if (JsValStore.next_id > 2147483647) JsValStore.next_id = 1; // Wraparound signed int32.
-      } while (id in JsValStore.values);
-
-      JsValStore.values[id] = js_val;
-      return id;
-    },
-    remove: function(id) {
-#if ASSERTIONS
-      assert(id in JsValStore.values);
-#endif
-      delete JsValStore.values[id];
-    },
-    get: function(id) {
-#if ASSERTIONS
-      assert(id === 0 || id in JsValStore.values);
-#endif
-      return JsValStore.values[id];
-    },
-  },
-
-  emscripten_unwrap_js_handle__sig: 'ii',
-  emscripten_unwrap_js_handle__deps: ['$JsValStore'],
-  emscripten_unwrap_js_handle: function(id) {
-    JsValStore.remove(id);
-  },
-
   $mainThreadEM_ASM__deps: ['$readAsmConstArgs'],
   $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
 #if RELOCATABLE

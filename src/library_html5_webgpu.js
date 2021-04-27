@@ -22,6 +22,39 @@
 
 
 var LibraryHTML5WebGPU = {
+  $JsValStore: {
+    values: {},
+    next_id: 1,
+
+    add: function (js_val) {
+      var id;
+      do {
+        id = JsValStore.next_id++;
+        if (JsValStore.next_id > 2147483647) JsValStore.next_id = 1; // Wraparound signed int32.
+      } while (id in JsValStore.values);
+
+      JsValStore.values[id] = js_val;
+      return id;
+    },
+    remove: function (id) {
+#if ASSERTIONS
+      assert(id in JsValStore.values);
+#endif
+      delete JsValStore.values[id];
+    },
+    get: function (id) {
+#if ASSERTIONS
+      assert(id === 0 || id in JsValStore.values);
+#endif
+      return JsValStore.values[id];
+    },
+  },
+
+  emscripten_release_js_handle__deps: ['$JsValStore'],
+  emscripten_release_js_handle: function (id) {
+    JsValStore.remove(id);
+  },
+
   // TODO(kainino0x): make it possible to actually create devices through webgpu.h
   emscripten_webgpu_get_device__deps: ['$WebGPU'],
   emscripten_webgpu_get_device: function() {
@@ -41,8 +74,8 @@ var LibraryHTML5WebGPU = {
 
 {{{ html5_gpu.makeImportExport('command_buffer', 'CommandBuffer') }}}
 {{{ html5_gpu.makeImportExport('command_encoder', 'CommandEncoder') }}}
-{{{ html5_gpu.makeImportExport('render_passEncoder', 'RenderPassEncoder') }}}
-{{{ html5_gpu.makeImportExport('compute_passEncoder', 'ComputePassEncoder') }}}
+{{{ html5_gpu.makeImportExport('render_pass_encoder', 'RenderPassEncoder') }}}
+{{{ html5_gpu.makeImportExport('compute_pass_encoder', 'ComputePassEncoder') }}}
 
 {{{ html5_gpu.makeImportExport('bind_group', 'BindGroup') }}}
 {{{ html5_gpu.makeImportExport('buffer', 'Buffer') }}}

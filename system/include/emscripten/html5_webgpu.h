@@ -15,6 +15,8 @@ extern "C" {
 
 WGPUDevice emscripten_webgpu_get_device(void);
 
+void emscripten_release_js_handle(int js_handle);
+
 #define WEBGPU_MAKE_IMPORT_EXPORT(snake_case, CamelCase)      \
   WGPU##CamelCase emscripten_webgpu_import_##snake_case(int); \
   int emscripten_webgpu_export_##snake_case(WGPU##CamelCase);

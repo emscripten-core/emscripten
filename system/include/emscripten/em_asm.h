@@ -167,8 +167,6 @@ __attribute__((nothrow))
 void emscripten_asm_const_async_on_main_thread(
   const char* code, const char* arg_sigs, ...);
 
-void emscripten_unwrap_js_handle(int js_handle);
-
 #ifdef __cplusplus
 }
 #endif // __cplusplus
