@@ -46,7 +46,6 @@ from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
 from tools.shared import do_replace
-from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
 from tools import js_manipulation
@@ -926,12 +925,6 @@ def run(args):
   misc_temp_files = shared.configuration.get_temp_files()
 
   # Handle some global flags
-
-  # read response files very early on
-  try:
-    args = substitute_response_files(args)
-  except IOError as e:
-    exit_with_error(e)
 
   if '--help' in args:
     # Documentation for emcc and its options must be updated in:

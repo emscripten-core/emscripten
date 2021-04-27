@@ -7,6 +7,7 @@ import os
 import sys
 import logging
 from .utils import path_from_root, exit_with_error, __rootpath__, which
+from .response_file import substitute_response_files
 
 logger = logging.getLogger('shared')
 
@@ -224,7 +225,7 @@ This command will now exit. When you are done editing those paths, re-run it.
 
 embedded_config = path_from_root('.emscripten')
 # For compatibility with `emsdk --embedded` mode also look two levels up.  The
-# layout of the emsdk puts emcc two levels below emsdk.  For exmaple:
+# layout of the emsdk puts emcc two levels below emsdk.  For example:
 #  - emsdk/upstream/emscripten/emcc
 #  - emsdk/emscipten/1.38.31/emcc
 # However `emsdk --embedded` stores the config file in the emsdk root.
@@ -239,26 +240,46 @@ emsdk_root = os.path.dirname(os.path.dirname(path_from_root()))
 emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
 user_home_config = os.path.expanduser('~/.emscripten')
 
-if '--em-config' in sys.argv:
-  i = sys.argv.index('--em-config')
-  if len(sys.argv) <= i + 1:
-    exit_with_error('--em-config must be followed by a filename')
-  EM_CONFIG = sys.argv.pop(i + 1)
-  del sys.argv[i]
-elif 'EM_CONFIG' in os.environ:
-  EM_CONFIG = os.environ['EM_CONFIG']
-elif os.path.exists(embedded_config):
-  EM_CONFIG = embedded_config
-elif os.path.exists(emsdk_embedded_config):
-  EM_CONFIG = emsdk_embedded_config
-elif os.path.exists(user_home_config):
-  EM_CONFIG = user_home_config
-else:
-  if root_is_writable():
-    generate_config(embedded_config, first_time=True)
+# read response files very early on so that all subsequent code that accesses
+# sys.argv will see the expanded content.
+try:
+  sys.argv = substitute_response_files(sys.argv)
+except IOError as e:
+  exit_with_error(e)
+
+
+def consume_argv(name):
+  value = None
+  while name in sys.argv:
+    i = sys.argv.index(name)
+    if len(sys.argv) <= i + 1:
+      exit_with_error(name + ' must be followed by a filename')
+    value = sys.argv.pop(i + 1)
+    del sys.argv[i]
+  return value
+
+
+EM_CONFIG = consume_argv('--em-config')
+if not EM_CONFIG:
+  if 'EM_CONFIG' in os.environ:
+    EM_CONFIG = os.environ['EM_CONFIG']
+  elif os.path.exists(embedded_config):
+    EM_CONFIG = embedded_config
+  elif os.path.exists(emsdk_embedded_config):
+    EM_CONFIG = emsdk_embedded_config
+  elif os.path.exists(user_home_config):
+    EM_CONFIG = user_home_config
   else:
-    generate_config(user_home_config, first_time=True)
-  sys.exit(0)
+    if root_is_writable():
+      generate_config(embedded_config, first_time=True)
+    else:
+      generate_config(user_home_config, first_time=True)
+    sys.exit(0)
+
+argv_cache = consume_argv('--cache')
+if argv_cache:
+  CACHE = os.path.abspath(os.path.expanduser(argv_cache))
+  os.environ['EM_CACHE'] = CACHE
 
 # We used to support inline EM_CONFIG.
 if '\n' in EM_CONFIG:
