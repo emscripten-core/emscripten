@@ -3291,7 +3291,7 @@ window.close = function() {
   # ASYNCIFY_IMPORTS.
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
-    'normal': (['-s', 'ASYNCIFY_IMPORTS=[sync_tunnel]'],), # noqa
+    'normal': (['-s', 'ASYNCIFY_IMPORTS=[sync_tunnel, sync_tunnel_bool]'],), # noqa
     'response': (['-s', 'ASYNCIFY_IMPORTS=@filey.txt'],), # noqa
     'nothing': (['-DBAD'],), # noqa
     'empty_list': (['-DBAD', '-s', 'ASYNCIFY_IMPORTS=[]'],), # noqa
@@ -3299,7 +3299,7 @@ window.close = function() {
   })
   def test_async_returnvalue(self, args):
     if '@' in str(args):
-      create_file('filey.txt', '["sync_tunnel"]')
+      create_file('filey.txt', '["sync_tunnel", "sync_tunnel_bool"]')
     self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS'])
 
   def test_async_stack_overflow(self):
