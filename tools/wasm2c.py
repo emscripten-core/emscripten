@@ -47,9 +47,9 @@ def get_func_types(code):
     We look for this pattern:
 
     static void init_func_types(void) {
-      func_types[0] = WASM_RT_ADD_PREFIX(wasm_rt_register_func_type)(3, 1, WASM_RT_I32, WASM_RT_I32, WASM_RT_I32, WASM_RT_I32);
-      func_types[1] = WASM_RT_ADD_PREFIX(wasm_rt_register_func_type)(1, 1, WASM_RT_I32, WASM_RT_I32);
-      func_types[2] = WASM_RT_ADD_PREFIX(wasm_rt_register_func_type)(0, 0);
+      func_types[0] = wasm_rt_register_func_type(3, 1, WASM_RT_I32, WASM_RT_I32, WASM_RT_I32, WASM_RT_I32);
+      func_types[1] = wasm_rt_register_func_type(1, 1, WASM_RT_I32, WASM_RT_I32);
+      func_types[2] = wasm_rt_register_func_type(0, 0);
     }
 
     We return a map of signatures names to their index.
@@ -58,7 +58,7 @@ def get_func_types(code):
   if not init_func_types:
     return {}
   ret = {}
-  for entry in re.findall(r'func_types\[(\d+)\] = WASM_RT_ADD_PREFIX(wasm_rt_register_func_type)\((\d+), (\d+),? ?([^)]+)?\);', init_func_types[0]):
+  for entry in re.findall(r'func_types\[(\d+)\] = wasm_rt_register_func_type\((\d+), (\d+),? ?([^)]+)?\);', init_func_types[0]):
     index, params, results, types = entry
     index = int(index)
     params = int(params)
@@ -155,7 +155,7 @@ extern void wasmbox_init(void);
     type_index = all_func_types[sig]
 
     invokes.append(r'''
-IMPORT_IMPL(%(return_type)s, WASM_RT_ADD_PREFIX(Z_envZ_invoke_%(sig)sZ_%(wabt_sig)s), (%(full_typed_args)s), {
+IMPORT_IMPL(%(return_type)s, Z_envZ_invoke_%(sig)sZ_%(wabt_sig)s, (%(full_typed_args)s), {
   VERBOSE_LOG("invoke\n"); // waka
   u32 sp = WASM_RT_ADD_PREFIX(Z_stackSaveZ_iv)();
   if (next_setjmp >= MAX_SETJMP_STACK) {
