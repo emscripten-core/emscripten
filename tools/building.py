@@ -1298,8 +1298,23 @@ def is_bitcode(filename):
 
 
 def is_wasm(filename):
-  magic = open(filename, 'rb').read(4)
-  return magic == b'\0asm'
+  if not os.path.exists(filename):
+    return False
+  header = open(filename, 'rb').read(webassembly.HEADER_SIZE)
+  return header == webassembly.MAGIC + webassembly.VERSION
+
+
+def is_wasm_dylib(filename):
+  """Detech wasm dynamic libraries by the presence of the "dylink" custom section."""
+  if not is_wasm(filename):
+    return False
+  module = webassembly.Module(filename)
+  section = next(module.sections())
+  if section.type == webassembly.SecType.CUSTOM:
+    module.seek(section.offset)
+    if module.readString() == 'dylink':
+      return True
+  return False
 
 
 # Given the name of a special Emscripten-implemented system library, returns an

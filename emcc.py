@@ -624,7 +624,7 @@ def filter_out_dynamic_libs(options, inputs):
 
   # Filters out "fake" dynamic libraries that are really just intermediate object files.
   def check(input_file):
-    if get_file_suffix(input_file) in DYNAMICLIB_ENDINGS:
+    if get_file_suffix(input_file) in DYNAMICLIB_ENDINGS and not building.is_wasm_dylib(input_file):
       if not options.ignore_dynamic_linking:
         diagnostics.warning('emcc', 'ignoring dynamic library %s because not compiling to JS or HTML, remember to link it when compiling to JS or HTML at the end', os.path.basename(input_file))
       return False
@@ -640,7 +640,7 @@ def filter_out_duplicate_dynamic_libs(inputs):
   # Filter out duplicate "fake" shared libraries (intermediate object files).
   # See test_core.py:test_redundant_link
   def check(input_file):
-    if get_file_suffix(input_file) in DYNAMICLIB_ENDINGS:
+    if get_file_suffix(input_file) in DYNAMICLIB_ENDINGS and not building.is_wasm_dylib(input_file):
       abspath = os.path.abspath(input_file)
       if abspath in seen:
         return False
@@ -1080,7 +1080,7 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
     linker_inputs = filter_out_duplicate_dynamic_libs(linker_inputs)
 
   if settings.MAIN_MODULE:
-    dylibs = [i[1] for i in linker_inputs if get_file_suffix(i[1]) in DYNAMICLIB_ENDINGS]
+    dylibs = [i[1] for i in linker_inputs if building.is_wasm_dylib(i[1])]
     process_dynamic_libs(dylibs)
 
   linker_arguments = [val for _, val in sorted(linker_inputs + state.link_flags)]
