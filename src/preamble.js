@@ -422,6 +422,9 @@ function exitRuntime() {
   PThread.runExitHandlers();
 #endif
 #endif
+#if ASYNCIFY && ASSERTIONS
+  Asyncify.checkStateAfterExitRuntime();
+#endif
   runtimeExited = true;
 }
 
