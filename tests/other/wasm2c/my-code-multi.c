@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+// Note the prefixing (a_, b_) on all functions from the two libraries.
+
 extern void a_wasmbox_init(void);
 extern void b_wasmbox_init(void);
 

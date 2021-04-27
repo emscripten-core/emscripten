@@ -9632,6 +9632,8 @@ int main() {
       self.run_process([EMCC,
                         test_file('other', 'wasm2c', f'unsafe-library-{lib}.c'),
                         '-O3', '-o', f'lib{lib}.wasm', '-s', 'WASM2C', '--no-entry'])
+      # build with a different WASM_RT_MODULE_PREFIX for each library, so that
+      # they do not have colliding symbols
       self.run_process([CLANG_CC, f'lib{lib}.wasm.c', '-O3', '-c',
                         f'-DWASM_RT_MODULE_PREFIX={lib}_'] +
                        clang_native.get_clang_native_args(),
