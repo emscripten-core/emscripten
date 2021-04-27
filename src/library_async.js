@@ -84,6 +84,11 @@ mergeInto(LibraryManager.library, {
         })(x);
       }
     },
+
+    checkStateAfterExitRuntime: function() {
+      assert(Asyncify.state === Asyncify.State.None,
+            'Asyncify cannot be done during or after the runtime exits');
+    },
 #endif
 
     instrumentWasmExports: function(exports) {

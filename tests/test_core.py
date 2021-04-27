@@ -7510,6 +7510,12 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('ASSERTIONS')
     self.do_core_test('asyncify_assertions.cpp')
 
+  def test_asyncify_during_exit(self):
+    self.set_setting('ASYNCIFY')
+    self.set_setting('ASSERTIONS')
+    self.set_setting('EXIT_RUNTIME', 1)
+    self.do_core_test('asyncify_during_exit.cpp', assert_returncode=1)
+
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
