@@ -189,14 +189,13 @@ def set_memory(static_bump):
   settings.HEAP_BASE = align_memory(stack_high)
 
 
-def report_missing_symbols(pre):
-  # the initial list of missing functions are that the user explicitly exported
-  # but were not implemented in compiled code
-  missing = set(settings.USER_EXPORTED_FUNCTIONS) - set(asmjs_mangle(e) for e in settings.WASM_EXPORTS)
-
-  for requested in sorted(missing):
-    if (f'function {requested}(') not in pre:
-      diagnostics.warning('undefined', f'undefined exported symbol: "{requested}"')
+def report_missing_symbols(js_library_funcs):
+  # Report any symbol that was explicitly exported but is present neither
+  # as a native function nor as a JS library function.
+  defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_library_funcs)
+  missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
+  for symbol in sorted(missing):
+    diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
 
   # Special hanlding for the `_main` symbol
 
@@ -320,7 +319,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   if settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
-  report_missing_symbols(pre)
+  report_missing_symbols(forwarded_json['libraryFunctions'])
 
   if not outfile_js:
     logger.debug('emscript: skipping remaining js glue generation')
