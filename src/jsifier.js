@@ -145,10 +145,8 @@ function JSify(functionsOnly) {
         return '';
       }
 
-      // if the function was implemented in compiled code, we just need to export it so we can reach it from JS
+      // if the function was implemented in compiled code, there is no need to include the js version
       if (ident in WASM_EXPORTS) {
-        EXPORTED_FUNCTIONS[finalName] = 1;
-        // stop here: we don't need to add anything from our js libraries, not even deps, compiled code is on it
         return '';
       }
 
@@ -430,7 +428,6 @@ function JSify(functionsOnly) {
 
     print('\n//FORWARDED_DATA:' + JSON.stringify({
       libraryFunctions: libraryFunctions,
-      EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: ATMAINS.join('\n'),
       ATEXITS: ATEXITS.join('\n'),
