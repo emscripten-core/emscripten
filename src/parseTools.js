@@ -1069,12 +1069,12 @@ function hasExportedFunction(func) {
 
 // Returns true if the given function is exported out in the generated JS Module object.
 function hasExportedFunction(func) {
-  return Object.keys(EXPORTED_FUNCTIONS).indexOf(func) != -1;
+  return Object.keys(EXPORTED_FUNCTIONS).includes(func);
 }
 
 // Returns true if LLVM produced the given function into compiled code as a Wasm export.
 function hasLLVMExportedFunction(func) {
-  return LLVM_EXPORTS.indexOf(func) != -1;
+  return LLVM_EXPORTS.includes(func);
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,

@@ -10818,7 +10818,7 @@ exec "$@"
     'plain': [[]],
     'asyncify': [['-sASYNCIFY']],
     'asyncify_bigint': [['-sASYNCIFY', '-sWASM_BIGINT']]})
-  def test_closure_no_dynCalls_generated(self, args):
+  def test_closure_safe(self, args):
     self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'] + args)
 
   def test_post_link(self):
