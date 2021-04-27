@@ -76,7 +76,7 @@ function initRuntime(asm) {
 #endif
 #endif
 
-#if '__wasm_call_ctors' in WASM_EXPORTS
+#if hasExportedFunction('___wasm_call_ctors')
   asm['__wasm_call_ctors']();
 #endif
 
