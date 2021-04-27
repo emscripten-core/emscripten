@@ -8574,9 +8574,9 @@ wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
-lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1})
-asan = make_run('asan', emcc_args=['-fsanitize=address', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': '500mb'})
-asani = make_run('asani', emcc_args=['-fsanitize=address', '-O2', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
+lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '-g'], settings={'ALLOW_MEMORY_GROWTH': 1})
+asan = make_run('asan', emcc_args=['-fsanitize=address', '-g'], settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': '500mb'})
+asani = make_run('asani', emcc_args=['-fsanitize=address', '-g', '--pre-js', test_file('asan-no-leak.js')],
                  settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': '500mb'})
 
 # Experimental modes (not tested by CI)
