@@ -47,9 +47,9 @@ def get_func_types(code):
     We look for this pattern:
 
     static void init_func_types(void) {
-      func_types[0] = wasm_rt_register_func_type(3, 1, WASM_RT_I32, WASM_RT_I32, WASM_RT_I32, WASM_RT_I32);
-      func_types[1] = wasm_rt_register_func_type(1, 1, WASM_RT_I32, WASM_RT_I32);
-      func_types[2] = wasm_rt_register_func_type(0, 0);
+      func_types[0] = WASM_RT_ADD_PREFIX(wasm_rt_register_func_type)(3, 1, WASM_RT_I32, WASM_RT_I32, WASM_RT_I32, WASM_RT_I32);
+      func_types[1] = WASM_RT_ADD_PREFIX(wasm_rt_register_func_type)(1, 1, WASM_RT_I32, WASM_RT_I32);
+      func_types[2] = WASM_RT_ADD_PREFIX(wasm_rt_register_func_type)(0, 0);
     }
 
     We return a map of signatures names to their index.
@@ -58,7 +58,7 @@ def get_func_types(code):
   if not init_func_types:
     return {}
   ret = {}
-  for entry in re.findall(r'func_types\[(\d+)\] = wasm_rt_register_func_type\((\d+), (\d+),? ?([^)]+)?\);', init_func_types[0]):
+  for entry in re.findall(r'func_types\[(\d+)\] = WASM_RT_ADD_PREFIX(wasm_rt_register_func_type)\((\d+), (\d+),? ?([^)]+)?\);', init_func_types[0]):
     index, params, results, types = entry
     index = int(index)
     params = int(params)
@@ -155,9 +155,9 @@ extern void wasmbox_init(void);
     type_index = all_func_types[sig]
 
     invokes.append(r'''
-IMPORT_IMPL(%(return_type)s, Z_envZ_invoke_%(sig)sZ_%(wabt_sig)s, (%(full_typed_args)s), {
+IMPORT_IMPL(%(return_type)s, WASM_RT_ADD_PREFIX(Z_envZ_invoke_%(sig)sZ_%(wabt_sig)s), (%(full_typed_args)s), {
   VERBOSE_LOG("invoke\n"); // waka
-  u32 sp = Z_stackSaveZ_iv();
+  u32 sp = WASM_RT_ADD_PREFIX(Z_stackSaveZ_iv)();
   if (next_setjmp >= MAX_SETJMP_STACK) {
     abort_with_message("too many nested setjmps");
   }
@@ -169,8 +169,8 @@ IMPORT_IMPL(%(return_type)s, Z_envZ_invoke_%(sig)sZ_%(wabt_sig)s, (%(full_typed_
     /* if we got here, no longjmp or exception happened, we returned normally */
   } else {
     /* A longjmp or an exception took us here. */
-    Z_stackRestoreZ_vi(sp);
-    Z_setThrewZ_vii(1, 0);
+    WASM_RT_ADD_PREFIX(Z_stackRestoreZ_vi)(sp);
+    WASM_RT_ADD_PREFIX(Z_setThrewZ_vii)(1, 0);
   }
   next_setjmp--;
   %(return)s
@@ -206,6 +206,29 @@ IMPORT_IMPL(%(return_type)s, Z_envZ_invoke_%(sig)sZ_%(wabt_sig)s, (%(full_typed_
     total = total.replace(MEM_ACCESS, '[addr & %d]' % (settings.INITIAL_MEMORY - 1))
   else:
     exit_with_error('bad sandboxing')
+
+  # adjust prefixing: emit simple output that works with multiple libraries,
+  # each compiled into its own single .c file, by adding 'static' in some places
+  # TODO: decide on the proper pattern for this in an upstream discussion in
+  #       wasm2c; another option would be to prefix all these things.
+  for rep in [
+    'uint32_t wasm_rt_register_func_type(',
+    'void wasm_rt_trap(',
+    'void wasm_rt_allocate_memory(',
+    'uint32_t wasm_rt_grow_memory(',
+    'void wasm_rt_allocate_table(',
+    'jmp_buf g_jmp_buf',
+    'uint32_t g_func_type_count',
+    'FuncType* g_func_types',
+    'uint32_t wasm_rt_call_stack_depth',
+    'uint32_t g_saved_call_stack_depth',
+  ]:
+    # remove 'extern' from declaration
+    total = total.replace('extern ' + rep, rep)
+    # add 'static' to implementation
+    old = total
+    total = total.replace(rep, 'static ' + rep)
+    assert old != total, f'did not find "{rep}"'
 
   # write out the final file
   with open(c_file, 'w') as out:

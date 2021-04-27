@@ -9625,6 +9625,29 @@ int main() {
     with open(test_file('other', 'wasm2c', 'output.txt')) as f:
       self.assertEqual(output, f.read())
 
+  @requires_native_clang
+  def test_wasm2c_multi_lib(self):
+    # compile two libraries to object files
+    for lib in ['a', 'b']:
+      self.run_process([EMCC,
+                        test_file('other', 'wasm2c', f'unsafe-library-{lib}.c'),
+                        '-O3', '-o', f'lib{lib}.wasm', '-s', 'WASM2C', '--no-entry'])
+      self.run_process([CLANG_CC, f'lib{lib}.wasm.c', '-O3', '-c',
+                        f'-DWASM_RT_MODULE_PREFIX={lib}_'] +
+                       clang_native.get_clang_native_args(),
+                       env=clang_native.get_clang_native_env())
+
+    # compile the main program with the wasmboxed libraries
+    self.run_process([CLANG_CC,
+                      test_file('other', 'wasm2c', 'my-code-multi.c'),
+                      'liba.wasm.o', 'libb.wasm.o',
+                      '-O3', '-o', 'program.exe'] +
+                     clang_native.get_clang_native_args(),
+                     env=clang_native.get_clang_native_env())
+    output = self.run_process([os.path.abspath('program.exe')], stdout=PIPE).stdout
+    with open(test_file('other', 'wasm2c', 'output-multi.txt')) as f:
+      self.assertEqual(output, f.read())
+
   @parameterized({
     'wasm2js': (['-s', 'WASM=0'], ''),
     'modularize': (['-s', 'MODULARIZE'], 'Module()'),
