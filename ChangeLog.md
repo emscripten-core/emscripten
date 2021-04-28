@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 2.0.21
 ------
+- The WebAssembly linker (`wasm-ld`) now performes string tail merging on any
+  static string data in your program.   This has long been part of the native
+  ELF linker and should not be observable in well-behaved programs.  This
+  behavior can be disabled by passing `-Wl,-O0`.
 
 2.0.20: 05/04/2021
 ------------------

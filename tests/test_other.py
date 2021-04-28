@@ -8930,7 +8930,7 @@ int main () {
     f = test('printf("%f", *(double*)unknown_value);')
     lf = test('printf("%Lf", *(long double*)unknown_value);')
     both = test('printf("%d", *(int*)unknown_value); printf("%Lf", *(long double*)unknown_value);')
-    print(i, f, lf, both)
+    print(f'int:{i} float:{f} double:{lf}: both{both}')
 
     # iprintf is much smaller than printf with float support
     self.assertGreater(i, f - 3400)
@@ -8939,7 +8939,7 @@ int main () {
     self.assertGreater(f, lf - 900)
     self.assertLess(f, lf - 500)
     # both is a little bigger still
-    self.assertGreater(lf, both - 100)
+    self.assertGreater(lf, both - 110)
     self.assertLess(lf, both - 50)
 
   @parameterized({
