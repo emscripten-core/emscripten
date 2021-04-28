@@ -592,6 +592,11 @@ def asmjs_mangle(name):
     return name
 
 
+def reconfigure_cache():
+  global Cache
+  Cache = cache.Cache(config.CACHE)
+
+
 class JS:
   emscripten_license = '''\
 /**

@@ -521,11 +521,7 @@ fi
     # The cache directory must contain a sysroot
     self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'sysroot')))
 
-  @parameterized({
-    '': [False],
-    'response_files': [True]
-  })
-  def test_emconfig(self, use_response_files):
+  def test_emconfig(self):
     restore_and_set_up()
 
     fd, custom_config_filename = tempfile.mkstemp(prefix='.emscripten_config_')
@@ -541,17 +537,9 @@ fi
 
     temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
 
-    args = ['--em-config', custom_config_filename]
-    if use_response_files:
-      rsp = response_file.create_response_file(args, shared.TEMP_DIR)
-      args = ['@' + rsp]
-
     with utils.chdir(temp_dir):
-      self.run_process([EMCC] + args + MINIMAL_HELLO_WORLD + ['-O2'])
+      self.run_process([EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
       result = self.run_js('a.out.js')
-
-    if use_response_files:
-      os.remove(rsp)
 
     self.assertContained('hello, world!', result)
 
