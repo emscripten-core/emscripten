@@ -99,6 +99,9 @@ def with_both_exception_handling(f):
         self.skipTest('wasm2js does not support wasm exceptions')
       if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
         self.skipTest('d8 required to run wasm eh tests')
+      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
+      if '-fsanitize=address' in self.emcc_args:
+        self.skipTest('Wasm EH does not work with asan yet')
       self.emcc_args.append('-fwasm-exceptions')
       self.v8_args.append('--experimental-wasm-eh')
       self.js_engines = [config.V8_ENGINE]
