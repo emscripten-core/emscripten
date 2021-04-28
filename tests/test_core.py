@@ -5096,7 +5096,6 @@ main( int argv, char ** argc ) {
   def test_stat_mknod(self):
     self.do_runf(test_file('stat', 'test_mknod.c'), 'success')
 
-  @no_safe_heap('https://github.com/emscripten-core/emscripten/issues/12433')
   def test_fcntl(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl', 'test_fcntl.c')
