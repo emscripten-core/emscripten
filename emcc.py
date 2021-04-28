@@ -46,6 +46,7 @@ from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
 from tools.shared import do_replace
+from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
 from tools import js_manipulation
@@ -925,6 +926,12 @@ def run(args):
   misc_temp_files = shared.configuration.get_temp_files()
 
   # Handle some global flags
+
+  # read response files very early on
+  try:
+    args = substitute_response_files(args)
+  except IOError as e:
+    exit_with_error(e)
 
   if '--help' in args:
     # Documentation for emcc and its options must be updated in:
@@ -2757,6 +2764,9 @@ def parse_args(newargs):
       diagnostics.warning('legacy-settings', '--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
     elif check_flag('--jcache'):
       logger.error('jcache is no longer supported')
+    elif check_arg('--cache'):
+      config.CACHE = os.path.normpath(consume_arg())
+      shared.reconfigure_cache()
     elif check_flag('--clear-cache'):
       logger.info('clearing cache as requested by --clear-cache')
       shared.Cache.erase()
