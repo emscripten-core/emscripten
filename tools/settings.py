@@ -10,6 +10,34 @@ import re
 from .utils import path_from_root, exit_with_error
 from . import diagnostics
 
+# Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
+MEM_SIZE_SETTINGS = (
+    'TOTAL_STACK',
+    'INITIAL_MEMORY',
+    'MEMORY_GROWTH_LINEAR_STEP',
+    'MEMORY_GROWTH_GEOMETRIC_CAP',
+    'GL_MAX_TEMP_BUFFER_SIZE',
+    'MAXIMUM_MEMORY',
+    'DEFAULT_PTHREAD_STACK_SIZE'
+)
+
+# Subset of settings that apply at compile time.
+# (Keep in sync with [compile] comments in settings.js)
+COMPILE_TIME_SETTINGS = (
+    'MEMORY64',
+    'INLINING_LIMIT',
+    'DISABLE_EXCEPTION_CATCHING',
+    'EXCEPTION_CATCHING_ALLOWED',
+    'MAIN_MODULE',
+    'SIDE_MODULE',
+    'RELOCATABLE',
+    'STRICT',
+    'EMSCRIPTEN_TRACING',
+    'USE_PTHREADS',
+    'SUPPORT_LONGJMP',
+    'DEFAULT_TO_CXX',
+)
+
 
 class SettingsManager:
   attrs = {}

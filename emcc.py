@@ -50,7 +50,7 @@ from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
 from tools import config
-from tools.settings import settings
+from tools.settings import settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 
 logger = logging.getLogger('emcc')
 
@@ -348,8 +348,7 @@ def apply_settings(changes):
       key = settings.alt_names[key]
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
-    if key in ('TOTAL_STACK', 'INITIAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_CAP',
-               'GL_MAX_TEMP_BUFFER_SIZE', 'MAXIMUM_MEMORY', 'DEFAULT_PTHREAD_STACK_SIZE'):
+    if key in MEM_SIZE_SETTINGS:
       value = str(expand_byte_size_suffixes(value))
 
     if value and value[0] == '@':
@@ -1048,6 +1047,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
     for f in linker_inputs:
       diagnostics.warning('unused-command-line-argument', "%s: linker input file unused because linking not done" % f[1])
+
     return 0
 
   if options.output_file and options.output_file.startswith('-'):
@@ -1323,7 +1323,11 @@ def phase_setup(state):
   state.preprocess_only = state.has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs
   state.compile_only = state.has_dash_c or state.has_dash_S or state.has_header_inputs or state.preprocess_only
 
-  if not state.compile_only:
+  if state.compile_only:
+    for key in settings_map:
+      if key not in COMPILE_TIME_SETTINGS:
+        diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
+  else:
     ldflags = emsdk_ldflags(newargs)
     for f in ldflags:
       add_link_flag(sys.maxsize, f)

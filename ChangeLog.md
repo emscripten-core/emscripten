@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Emscripten will now warn when linker-only `-s` settings are specified in
+  compile-only (`-c`) mode.  Just like with clang itself, this warning can be
+  disabled using the flag: `-Wno-unused-command-line-argument`.
 - When building with `-s MAIN_MODULE` emscripten will now error on undefined
   symbol by default.  This matches the behvious of clang/gcc/msvc.  This
   requires that your side modules be present on the command line.  If you do not
