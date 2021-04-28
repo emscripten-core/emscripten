@@ -18,9 +18,6 @@ emcc can be influenced by a few environment variables:
                (by default /tmp/emscripten_temp). "2" will save additional emcc-*
                steps, that would normally not be separately produced (so this
                slows down compilation).
-
-  EMMAKEN_NO_SDK - Will tell emcc *not* to use the emscripten headers. Instead
-                   your system headers will be used.
 """
 
 from tools.toolchain_profiler import ToolchainProfiler
@@ -710,9 +707,6 @@ def parse_s_args(args):
 
 
 def emsdk_ldflags(user_args):
-  if os.environ.get('EMMAKEN_NO_SDK'):
-    return []
-
   library_paths = [
      shared.Cache.get_lib_dir(absolute=True)
   ]
@@ -843,9 +837,6 @@ def get_cflags(options, user_args):
   cflags += ['-Werror=implicit-function-declaration']
 
   system_libs.add_ports_cflags(cflags, settings)
-
-  if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
-    return cflags
 
   cflags += emsdk_cflags(user_args)
   return cflags
@@ -1003,6 +994,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:
     args += shlex.split(EMMAKEN_CFLAGS)
+
+  if 'EMMAKEN_NO_SDK' in os.environ:
+    args.append('-nostdlib')
+    args.append('-nostdinc')
+    diagnostics.warning('deprecated', 'EMMAKEN_NO_SDK is deprecated.  Please use the standard `-nostdinc` and/or `-nostdlib` options')
 
   # ---------------- End configs -------------
   state = EmccState(args)
