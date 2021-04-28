@@ -1948,6 +1948,14 @@ def install_system_headers(stamp):
     dest = os.path.join(target_include_dir, dest)
     copytree_exist_ok(src, dest)
 
+  pkgconfig_src = shared.path_from_root('system', 'lib', 'pkgconfig')
+  pkgconfig_dest = shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
+  copytree_exist_ok(pkgconfig_src, pkgconfig_dest)
+
+  bin_src = shared.path_from_root('system', 'bin')
+  bin_dest = shared.Cache.get_sysroot_dir('bin')
+  copytree_exist_ok(bin_src, bin_dest)
+
   # Create a stamp file that signal the the header have been installed
   # Removing this file, or running `emcc --clear-cache` or running
   # `./embuilder build sysroot --force` will cause the re-installation of

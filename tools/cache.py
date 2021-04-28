@@ -89,16 +89,19 @@ class Cache:
   def get_path(self, name):
     return os.path.join(self.dirname, name)
 
-  def get_sysroot_dir(self, absolute):
+  def get_sysroot(self, absolute):
     if absolute:
       return os.path.join(self.dirname, 'sysroot')
     return 'sysroot'
 
   def get_include_dir(self):
-    return os.path.join(self.get_sysroot_dir(absolute=True), 'include')
+    return self.get_sysroot_dir('include')
+
+  def get_sysroot_dir(self, *parts):
+    return os.path.join(self.get_sysroot(absolute=True), *parts)
 
   def get_lib_dir(self, absolute):
-    path = os.path.join(self.get_sysroot_dir(absolute=absolute), 'lib')
+    path = os.path.join(self.get_sysroot(absolute=absolute), 'lib')
     if settings.MEMORY64:
       path = os.path.join(path, 'wasm64-emscripten')
     else:

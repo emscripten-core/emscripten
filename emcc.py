@@ -730,7 +730,7 @@ def emsdk_ldflags(user_args):
 
 
 def emsdk_cflags(user_args):
-  cflags = ['--sysroot=' + shared.Cache.get_sysroot_dir(absolute=True)]
+  cflags = ['--sysroot=' + shared.Cache.get_sysroot(absolute=True)]
 
   def array_contains_any_of(hay, needles):
     for n in needles:
