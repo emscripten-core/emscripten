@@ -393,7 +393,7 @@ _mm_cvtpd_epi32(__m128d __a)
     else
       m[i] = (int)0x80000000;
   }
-  return (__m128i) { m[0], m[1], 0, 0 };
+  return (__m128i)wasm_i32x4_make(m[0], m[1], 0, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
@@ -441,7 +441,7 @@ _mm_cvttpd_epi32(__m128d __a)
     else
       m[i] = (int)0x80000000;
   }
-  return (__m128i) { m[0], m[1], 0, 0 };
+  return (__m128i)wasm_i32x4_make(m[0], m[1], 0, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
@@ -1058,7 +1058,7 @@ _mm_cvttsd_si64(__m128d __a)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepi32_ps(__m128i __a)
 {
-  return (__m128)wasm_f32x4_convert_i32x4(__a);
+  return (__m128)wasm_f32x4_convert_i32x4((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
@@ -1247,7 +1247,7 @@ _mm_setr_epi8(char b0, char b1, char b2, char b3, char b4, char b5, char b6, cha
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_setzero_si128(void)
 {
-  return wasm_i64x2_const(0, 0);
+  return (__m128i)wasm_i64x2_const(0, 0);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
@@ -1366,23 +1366,23 @@ _mm_mfence(void)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_packs_epi16(__m128i __a, __m128i __b)
 {
-  return (__m128i)wasm_i8x16_narrow_i16x8(__a, __b);
+  return (__m128i)wasm_i8x16_narrow_i16x8((v128_t)__a, (v128_t)__b);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_packs_epi32(__m128i __a, __m128i __b)
 {
-  return (__m128i)wasm_i16x8_narrow_i32x4(__a, __b);
+  return (__m128i)wasm_i16x8_narrow_i32x4((v128_t)__a, (v128_t)__b);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_packus_epi16(__m128i __a, __m128i __b)
 {
-  return (__m128i)wasm_u8x16_narrow_i16x8(__a, __b);
+  return (__m128i)wasm_u8x16_narrow_i16x8((v128_t)__a, (v128_t)__b);
 }
 
 #define _mm_extract_epi16(__a, __imm) wasm_u16x8_extract_lane((v128_t)(__a), (__imm) & 7)
-#define _mm_insert_epi16(__a, __b, __imm) wasm_i16x8_replace_lane((v128_t)(__a), (__imm) & 7, (__b))
+#define _mm_insert_epi16(__a, __b, __imm) ((__m128i)wasm_i16x8_replace_lane((v128_t)(__a), (__imm) & 7, (__b)))
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_movemask_epi8(__m128i __a)
@@ -1472,7 +1472,7 @@ _mm_unpacklo_epi64(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_move_epi64(__m128i __a)
 {
-  return wasm_i64x2_shuffle(__a, wasm_i64x2_const(0, 0), 0, 2);
+  return (__m128i)wasm_i64x2_shuffle(__a, wasm_i64x2_const(0, 0), 0, 2);
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
