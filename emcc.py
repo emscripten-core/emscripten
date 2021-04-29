@@ -2998,17 +2998,23 @@ def phase_binaryen(target, options, wasm_target):
   if final_js and options.use_closure_compiler:
     run_closure_compiler()
 
-  symbols_file = shared.replace_or_append_suffix(target, '.symbols') if options.emit_symbol_map else None
+  symbols_file = None
+  if options.emit_symbol_map:
+    symbols_file = shared.replace_or_append_suffix(target, '.symbols')
 
   if settings.WASM2JS:
+    symbols_file_js = None
     if settings.WASM == 2:
       wasm2js_template = wasm_target + '.js'
-      open(wasm2js_template, 'w').write(preprocess_wasm2js_script())
+      with open(wasm2js_template, 'w') as f:
+        f.write(preprocess_wasm2js_script())
       # generate secondary file for JS symbols
-      symbols_file_js = shared.replace_or_append_suffix(wasm2js_template, '.symbols') if options.emit_symbol_map else None
+      if options.emit_symbol_map:
+        symbols_file_js = shared.replace_or_append_suffix(wasm2js_template, '.symbols')
     else:
       wasm2js_template = final_js
-      symbols_file_js = shared.replace_or_append_suffix(target, '.symbols') if options.emit_symbol_map else None
+      if options.emit_symbol_map:
+        symbols_file_js = shared.replace_or_append_suffix(target, '.symbols')
 
     wasm2js = building.wasm2js(wasm2js_template,
                                wasm_target,
