@@ -11,11 +11,6 @@
 #include <errno.h>
 #include <pthread.h>
 
-static void destr_function(void *arg)
-{
-    // Not implemented yet in Emscripten
-}
-
 int main(void)
 {
     pthread_key_t key = 0;
@@ -26,7 +21,7 @@ int main(void)
     assert(pthread_key_delete(key) != 0);
     assert(pthread_getspecific(key) == NULL);
 
-    rv = pthread_key_create(&key, &destr_function);
+    rv = pthread_key_create(&key, NULL);
     printf("pthread_key_create = %d\n", rv);
     assert(rv == 0);
 
@@ -49,7 +44,7 @@ int main(void)
     assert(data2 == NULL);
     printf("pthread_getspecific = %p\n", data2);
 
-    rv = pthread_key_create(&key, &destr_function);
+    rv = pthread_key_create(&key, NULL);
     data2 = pthread_getspecific(key);
     printf("pthread_getspecific after key recreate = %p\n", data2);
     assert(data2 == NULL);
@@ -66,7 +61,7 @@ int main(void)
     printf("pthread_setspecific for value NULL = %d\n", rv);
     assert(rv == EINVAL);
 
-    rv = pthread_key_create(&key, &destr_function);
+    rv = pthread_key_create(&key, NULL);
     assert(rv == 0);
     rv = pthread_key_delete(key);
     printf("pthread_key_delete just after created = %d\n", rv);
@@ -91,7 +86,7 @@ int main(void)
             rv = pthread_key_delete(keys[i]);
             assert(rv == 0);
         }
-	free (keys);
+        free (keys);
     }
 
     return 0;
