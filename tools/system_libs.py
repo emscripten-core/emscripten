@@ -775,6 +775,9 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'thrd_sleep.c',
           'thrd_yield.c',
           'call_once.c',
+          'tss_create.c',
+          'tss_delete.c',
+          'tss_set.c',
         ])
 
     libc_files += glob_in_path(['system', 'lib', 'libc', 'compat'], '*.c')

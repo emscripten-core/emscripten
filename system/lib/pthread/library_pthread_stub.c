@@ -75,7 +75,7 @@ static size_t max_tls_entries = 0;
 struct entry_t { const void* value; int allocated; };
 static struct entry_t* tls_entries = NULL;
 
-int pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
+int __pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
   if (key == 0)
     return EINVAL;
   if (!max_tls_entries) {
@@ -106,7 +106,7 @@ int pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
   return 0;
 }
 
-int pthread_key_delete(pthread_key_t key) {
+int __pthread_key_delete(pthread_key_t key) {
   if (key == 0 || key > num_tls_entries)
     return EINVAL;
   struct entry_t* e = &tls_entries[key - 1];
@@ -116,6 +116,9 @@ int pthread_key_delete(pthread_key_t key) {
   e->allocated = 0;
   return 0;
 }
+
+weak_alias(__pthread_key_delete, pthread_key_delete);
+weak_alias(__pthread_key_create, pthread_key_create);
 
 void* pthread_getspecific(pthread_key_t key) {
   if (key == 0 || key > num_tls_entries)
