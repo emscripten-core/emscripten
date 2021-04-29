@@ -709,10 +709,10 @@ _mm_mulhi_epi16(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_mulhi_epu16(__m128i __a, __m128i __b)
 {
-  const v128_t lo = wasm_i32x4_mul(wasm_i32x4_widen_low_u16x8((v128_t)__a),
-                                   wasm_i32x4_widen_low_u16x8((v128_t)__b));
-  const v128_t hi = wasm_i32x4_mul(wasm_i32x4_widen_high_u16x8((v128_t)__a),
-                                   wasm_i32x4_widen_high_u16x8((v128_t)__b));
+  const v128_t lo = wasm_i32x4_mul(wasm_u32x4_extend_low_u16x8((v128_t)__a),
+                                   wasm_u32x4_extend_low_u16x8((v128_t)__b));
+  const v128_t hi = wasm_i32x4_mul(wasm_u32x4_extend_high_u16x8((v128_t)__a),
+                                   wasm_u32x4_extend_high_u16x8((v128_t)__b));
   return (__m128i)wasm_v16x8_shuffle(lo, hi, 1, 3, 5, 7, 9, 11, 13, 15);
 }
 
