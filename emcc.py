@@ -18,9 +18,6 @@ emcc can be influenced by a few environment variables:
                (by default /tmp/emscripten_temp). "2" will save additional emcc-*
                steps, that would normally not be separately produced (so this
                slows down compilation).
-
-  EMMAKEN_NO_SDK - Will tell emcc *not* to use the emscripten headers. Instead
-                   your system headers will be used.
 """
 
 from tools.toolchain_profiler import ToolchainProfiler
@@ -1010,6 +1007,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:
     args += shlex.split(EMMAKEN_CFLAGS)
+
+  if 'EMMAKEN_NO_SDK' in os.environ:
+    diagnostics.warning('deprecated', 'We hope to deprecated EMMAKEN_NO_SDK.  See https://github.com/emscripten-core/emscripten/issues/14050 if use use this feature.')
 
   # ---------------- End configs -------------
   state = EmccState(args)

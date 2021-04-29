@@ -604,8 +604,6 @@ Environment variables
 
    * "EMMAKEN_JUST_CONFIGURE" [other]
 
-   * "EMMAKEN_NO_SDK" [compile+link]
-
    * "EMCC_AUTODEBUG" [compile+link]
 
    * "EMCC_CFLAGS" [compile+link]

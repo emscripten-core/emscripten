@@ -7578,10 +7578,9 @@ end
     self.run_process([EMCC, test, '--closure=1', '--closure-args', '--externs "' + externs + '"'])
 
   def test_toolchain_profiler(self):
-    environ = os.environ.copy()
-    environ['EMPROFILE'] = '1'
-    # replaced subprocess functions should not cause errors
-    self.run_process([EMCC, test_file('hello_world.c')], env=environ)
+    with env_modify({'EMPROFILE': '1'}):
+      # replaced subprocess functions should not cause errors
+      self.run_process([EMCC, test_file('hello_world.c')])
 
   def test_noderawfs(self):
     fopen_write = open(test_file('asmfs', 'fopen_write.cpp')).read()
@@ -10402,3 +10401,9 @@ exec "$@"
     # negative case: foo is undefined in test_check_undefined.c
     err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other', 'test_check_undefined.c')])
     self.assertContained('undefined symbol: foo', err)
+
+  def test_EMMAKEN_NO_SDK(self):
+    with env_modify({'EMMAKEN_NO_SDK': '1'}):
+      err = self.expect_fail([EMCC, test_file('hello_world.c')])
+      self.assertContained("warning: We hope to deprecated EMMAKEN_NO_SDK", err)
+      self.assertContained("fatal error: 'stdio.h' file not found", err)
