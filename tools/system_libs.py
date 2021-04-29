@@ -1469,7 +1469,7 @@ def warn_on_unexported_main(symbolses):
     return
   if '_main' not in settings.EXPORTED_FUNCTIONS:
     for symbols in symbolses:
-      if 'main' in symbols.defs:
+      if 'main' in symbols['defs']:
         logger.warning('main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.')
         return
 
@@ -1493,11 +1493,11 @@ def handle_reverse_deps(input_files):
   def add_reverse_deps(need):
     more = False
     for ident, deps in deps_info.get_deps_info().items():
-      if ident in need.undefs and ident not in added:
+      if ident in need['undefs'] and ident not in added:
         added.add(ident)
         more = True
         for dep in deps:
-          need.undefs.add(dep)
+          need['undefs'].add(dep)
           logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
           settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
     if more:
@@ -1509,16 +1509,13 @@ def handle_reverse_deps(input_files):
   warn_on_unexported_main(symbolses)
 
   if len(symbolses) == 0:
-    class Dummy:
-      defs = set()
-      undefs = set()
-    symbolses.append(Dummy())
+    symbolses.append({'defs': set(), 'undefs': set()})
 
   # depend on exported functions
   for export in settings.EXPORTED_FUNCTIONS:
     if settings.VERBOSE:
       logger.debug('adding dependency on export %s' % export)
-    symbolses[0].undefs.add(demangle_c_symbol_name(export))
+    symbolses[0]['undefs'].add(demangle_c_symbol_name(export))
 
   for symbols in symbolses:
     add_reverse_deps(symbols)
