@@ -80,6 +80,21 @@ Overview
     This extension adds support for specifying layout location qualifiers in
     GLSL shaders in OpenGL and OpenGL ES programs compiled via Emscripten.
 
+    The main benefit of layout location qualifiers in shaders is to enable
+    aligning shader uniforms across multiple compiled shader programs. For
+    example, if several compiler programs had a common shader uniform variable
+    "vec4 fogColor", without explicit location qualifiers, C/C++ code would
+    have to manage a mapping table that would track the uniform location of
+    fogColor in each shader program. With explicit uniform locations, all shaders
+    can be compiled to locate fogColor in the same location index, thus greatly
+    simplifying C/C++ engine code.
+
+    In sibling specifications, support for explicit uniform locations exist in
+    OpenGL ES 3.1 and Desktop OpenGL 4.3 core specifications. Additionally,
+    Desktop OpenGL 3.3 and newer may support the ARB_explicit_uniform_location
+    extension that also offers the same functionality as this extension
+    EMSCRIPTEN_explicit_uniform_location does.
+
 New Procedures and Functions
 
     None.

@@ -24,13 +24,7 @@ def path_from_root(*pathelems):
 
 
 def safe_ensure_dirs(dirname):
-  try:
-    os.makedirs(dirname)
-  except OSError:
-    # Python 2 compatibility: makedirs does not support exist_ok parameter
-    # Ignore error for already existing dirname as exist_ok does
-    if not os.path.isdir(dirname):
-      raise
+  os.makedirs(dirname, exist_ok=True)
 
 
 @contextlib.contextmanager

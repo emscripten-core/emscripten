@@ -11,8 +11,19 @@
 // and can be added/removed/renamed without fear of breaking out users.
 //
 
-// An array of all symbols exported from the wasm module.
-var MODULE_EXPORTS = [];
+// List of symbols exported from compiled code
+// These are raw symbol names and are not mangled to include the leading
+// underscore.
+var WASM_EXPORTS = [];
+
+// Similar to above but only includes the functions symbols.
+var WASM_FUNCTION_EXPORTS = [];
+
+// An array of all symbols exported from all the side modules specified on the
+// command line.
+// These are raw symbol names and are not mangled to include the leading
+// underscore.
+var SIDE_MODULE_EXPORTS = [];
 
 // stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
@@ -61,9 +72,6 @@ var EMBIND = 0;
 
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = 1;
-
-// List of functions implemented in compiled code; received from the backend.
-var IMPLEMENTED_FUNCTIONS = [];
 
 // Name of the file containing the Fetch *.fetch.js, if relevant
 var FETCH_WORKER_FILE = '';
@@ -138,7 +146,7 @@ var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
 // Wasm backend symbols that are considered system symbols and don't
 // have the normal C symbol name mangled applied (== prefix with an underscore)
 // (Also implicily on this list is any function that starts with string "dynCall_")
-var WASM_SYSTEM_EXPORTS = ['setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore'];
+var WASM_SYSTEM_EXPORTS = ['stackAlloc', 'stackSave', 'stackRestore'];
 
 // Internal: value of -flto argument (either full or thin)
 var LTO = 0;

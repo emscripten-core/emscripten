@@ -9,6 +9,7 @@ $dlmalloc
 $legalstub$dynCall_jiji
 $main
 $sbrk
+$setThrew
 $stackAlloc
 $stackRestore
 $stackSave

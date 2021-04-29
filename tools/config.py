@@ -142,6 +142,19 @@ def parse_config_file():
     elif key in config:
       globals()[key] = config[key]
 
+  # Handle legacy environment variables that were previously honored by the
+  # default config file.
+  LEGACY_ENV_VARS = {
+    'LLVM': 'EM_LLVM_ROOT',
+    'BINARYEN': 'EM_BINARYEN_ROOT',
+    'NODE': 'EM_NODE_JS',
+  }
+  for key, new_key in LEGACY_ENV_VARS.items():
+    env_value = os.environ.get(key)
+    if env_value and new_key not in os.environ:
+      logger.warning(f'warning: honoring legacy environment variable `{key}`.  Please switch to using `{new_key}` instead`')
+      globals()[new_key] = env_value
+
   # Certain keys are mandatory
   for key in ('LLVM_ROOT', 'NODE_JS', 'BINARYEN_ROOT'):
     if key not in config:
@@ -211,7 +224,7 @@ This command will now exit. When you are done editing those paths, re-run it.
 
 embedded_config = path_from_root('.emscripten')
 # For compatibility with `emsdk --embedded` mode also look two levels up.  The
-# layout of the emsdk puts emcc two levels below emsdk.  For exmaple:
+# layout of the emsdk puts emcc two levels below emsdk.  For example:
 #  - emsdk/upstream/emscripten/emcc
 #  - emsdk/emscipten/1.38.31/emcc
 # However `emsdk --embedded` stores the config file in the emsdk root.

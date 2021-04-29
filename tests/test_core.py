@@ -99,6 +99,9 @@ def with_both_exception_handling(f):
         self.skipTest('wasm2js does not support wasm exceptions')
       if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
         self.skipTest('d8 required to run wasm eh tests')
+      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
+      if '-fsanitize=address' in self.emcc_args:
+        self.skipTest('Wasm EH does not work with asan yet')
       self.emcc_args.append('-fwasm-exceptions')
       self.v8_args.append('--experimental-wasm-eh')
       self.js_engines = [config.V8_ENGINE]
@@ -748,18 +751,18 @@ class TestCoreBase(RunnerCore):
       }
     ''')
 
-    building.emcc('a1.c', ['-c'])
-    building.emcc('a2.c', ['-c'])
-    building.emcc('b1.c', ['-c'])
-    building.emcc('b2.c', ['-c'])
-    building.emcc('main.c', ['-c'])
+    self.emcc('a1.c', ['-c'])
+    self.emcc('a2.c', ['-c'])
+    self.emcc('b1.c', ['-c'])
+    self.emcc('b2.c', ['-c'])
+    self.emcc('main.c', ['-c'])
 
     building.emar('cr', 'liba.a', ['a1.c.o', 'a2.c.o'])
     building.emar('cr', 'libb.a', ['b1.c.o', 'b2.c.o'])
 
     building.link_to_object(['main.c.o', 'liba.a', 'libb.a'], 'all.o')
 
-    building.emcc('all.o', self.get_emcc_args(), 'all.js')
+    self.emcc('all.o', self.get_emcc_args(), 'all.js')
     self.do_run('all.js', 'result: 1', no_build=True)
 
   def test_if(self):
@@ -3594,6 +3597,7 @@ ok
 
     # side settings
     self.clear_setting('MAIN_MODULE')
+    self.clear_setting('ERROR_ON_UNDEFINED_SYMBOLS')
     self.set_setting('SIDE_MODULE')
     side_suffix = 'wasm' if self.is_wasm() else 'js'
     if isinstance(side, list):
@@ -3608,10 +3612,14 @@ ok
     self.set_setting('MAIN_MODULE', main_module)
     self.clear_setting('SIDE_MODULE')
     if auto_load:
+      # Normally we don't report undefined symbols when linking main modules but
+      # in this case we know all the side modules are specified on the command line.
+      # TODO(sbc): Make this the default one day
+      self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS')
       self.emcc_args += main_emcc_args
       self.emcc_args.append('liblib.so')
-      if force_c:
-        self.emcc_args.append('-nostdlib++')
+    if force_c:
+      self.emcc_args.append('-nostdlib++')
 
     if isinstance(main, list):
       # main is just a library
@@ -3886,7 +3894,6 @@ ok
 
   @needs_dylink
   def test_dylink_i64(self):
-    # Runs with main_module=1 due to undefined getTempRet0 otherwise
     self.dylink_test(r'''
       #include <stdio.h>
       #include <stdint.h>
@@ -3900,12 +3907,11 @@ ok
       int64_t sidey() {
         return 42;
       }
-    ''', 'other says 42.', force_c=True, main_module=1)
+    ''', 'other says 42.', force_c=True)
 
   @all_engines
   @needs_dylink
   def test_dylink_i64_b(self):
-    # Runs with main_module=1 due to undefined getTempRet0 otherwise
     self.dylink_test(r'''
       #include <stdio.h>
       #include <stdint.h>
@@ -3935,12 +3941,11 @@ ok
         x = 18 - x;
         return x;
       }
-    ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.', force_c=True, main_module=1)
+    ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.', force_c=True)
 
   @needs_dylink
   @also_with_wasm_bigint
   def test_dylink_i64_c(self):
-    # Runs with main_module=1 due to undefined getTempRet0 otherwise
     self.dylink_test(r'''
       #include <stdio.h>
       #include <inttypes.h>
@@ -3988,7 +3993,7 @@ res64 - external 64\n''', header='''
       #include <stdint.h>
       EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
-    ''', force_c=True, main_module=1)
+    ''', force_c=True)
 
   @needs_dylink
   @also_with_wasm_bigint
@@ -5091,7 +5096,6 @@ main( int argv, char ** argc ) {
   def test_stat_mknod(self):
     self.do_runf(test_file('stat', 'test_mknod.c'), 'success')
 
-  @no_safe_heap('https://github.com/emscripten-core/emscripten/issues/12433')
   def test_fcntl(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl', 'test_fcntl.c')
@@ -5864,6 +5868,8 @@ return malloc(size);
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall', '-xc++'])
+    # Ignore deprecation errors for now
+    self.emcc_args.append('-Wno-error=deprecated-declarations')
     run()
     self.emcc_args.append('-funsigned-char')
     run()
@@ -7040,7 +7046,7 @@ someweirdtext
     no_maps_filename = 'no-maps.out.js'
 
     assert '-gsource-map' not in self.emcc_args
-    building.emcc('src.cpp', self.get_emcc_args(), out_filename)
+    self.emcc('src.cpp', self.get_emcc_args(), out_filename)
     # the file name may find its way into the generated code, so make sure we
     # can do an apples-to-apples comparison by compiling with the same file name
     shutil.move(out_filename, no_maps_filename)
@@ -7049,10 +7055,10 @@ someweirdtext
     no_maps_file = re.sub(' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
     self.emcc_args.append('-gsource-map')
 
-    building.emcc(os.path.abspath('src.cpp'),
-                  self.get_emcc_args(),
-                  out_filename,
-                  stderr=PIPE)
+    self.emcc(os.path.abspath('src.cpp'),
+              self.get_emcc_args(),
+              out_filename,
+              stderr=PIPE)
     map_referent = out_filename if not self.is_wasm() else wasm_filename
     # after removing the @line and @sourceMappingURL comments, the build
     # result should be identical to the non-source-mapped debug version.
@@ -7061,24 +7067,7 @@ someweirdtext
     # optimizer can deal with both types.
     map_filename = map_referent + '.map'
 
-    def encode_utf8(data):
-      if isinstance(data, dict):
-        for key in data:
-          data[key] = encode_utf8(data[key])
-        return data
-      elif isinstance(data, list):
-        for i in range(len(data)):
-          data[i] = encode_utf8(data[i])
-        return data
-      elif isinstance(data, type(u'')):
-        return data.encode('utf8')
-      else:
-        return data
-
     data = json.load(open(map_filename))
-    if str is bytes:
-      # Python 2 compatibility
-      data = encode_utf8(data)
     if hasattr(data, 'file'):
       # the file attribute is optional, but if it is present it needs to refer
       # the output file.
@@ -7092,9 +7081,6 @@ someweirdtext
     mappings = json.loads(self.run_js(
       path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
       args=[map_filename]))
-    if str is bytes:
-      # Python 2 compatibility
-      mappings = encode_utf8(mappings)
     seen_lines = set()
     for m in mappings:
       if m['source'] == 'src.cpp':
@@ -7128,7 +7114,7 @@ someweirdtext
     js_filename = 'a.out.js'
     wasm_filename = 'a.out.wasm'
 
-    building.emcc('src.cpp', self.get_emcc_args(), js_filename)
+    self.emcc('src.cpp', self.get_emcc_args(), js_filename)
 
     out = self.run_process([shared.LLVM_DWARFDUMP, wasm_filename, '-all'], stdout=PIPE).stdout
 
@@ -7525,6 +7511,12 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
     self.set_setting('ASSERTIONS')
     self.do_core_test('asyncify_assertions.cpp')
+
+  def test_asyncify_during_exit(self):
+    self.set_setting('ASYNCIFY')
+    self.set_setting('ASSERTIONS')
+    self.set_setting('EXIT_RUNTIME', 1)
+    self.do_core_test('asyncify_during_exit.cpp', assert_returncode=1)
 
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm2js('TODO: lazy loading in wasm2js')
@@ -8488,7 +8480,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('TOTAL_STACK', 4 * 1024 * 1024)
     self.do_core_test('test_stack_get_free.c')
 
-  # Tests Settings.ABORT_ON_WASM_EXCEPTIONS
+  # Tests settings.ABORT_ON_WASM_EXCEPTIONS
   def test_abort_on_exceptions(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])

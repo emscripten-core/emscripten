@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from .toolchain_profiler import ToolchainProfiler
+
 from subprocess import PIPE
 import atexit
 import binascii
@@ -22,14 +24,13 @@ if sys.version_info < (3, 6):
   print('error: emscripten requires python 3.6 or above', file=sys.stderr)
   sys.exit(1)
 
-from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles, colored_logger
 from . import diagnostics
 from . import config
 from . import filelock
-from . import settings
+from .settings import settings
 
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
@@ -258,7 +259,7 @@ def check_llvm_version():
   actual = get_clang_version()
   if EXPECTED_LLVM_VERSION in actual:
     return True
-  diagnostics.warning('version-check', 'LLVM version appears incorrect (seeing "%s", expected "%s")', actual, EXPECTED_LLVM_VERSION)
+  diagnostics.warning('version-check', 'LLVM version for clang executable "%s" appears incorrect (seeing "%s", expected "%s")', CLANG_CC, actual, EXPECTED_LLVM_VERSION)
   return False
 
 
@@ -360,6 +361,7 @@ def perform_sanity_checks():
         exit_with_error('Cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 
 
+@ToolchainProfiler.profile_block('sanity')
 def check_sanity(force=False):
   """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
   and LLVM) exists.
@@ -388,36 +390,35 @@ def check_sanity(force=False):
     perform_sanity_checks()
     return
 
-  with ToolchainProfiler.profile_block('sanity'):
-    expected = generate_sanity()
+  expected = generate_sanity()
 
-    sanity_file = Cache.get_path('sanity.txt')
-    with Cache.lock():
-      if os.path.exists(sanity_file):
-        sanity_data = open(sanity_file).read()
-        if sanity_data != expected:
-          logger.debug('old sanity: %s' % sanity_data)
-          logger.debug('new sanity: %s' % expected)
-          logger.info('(Emscripten: config changed, clearing cache)')
-          Cache.erase()
-          # the check actually failed, so definitely write out the sanity file, to
-          # avoid others later seeing failures too
-          force = False
-        else:
-          if force:
-            logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
-          else:
-            logger.debug(f'sanity file up-to-date: {sanity_file}')
-            return # all is well
+  sanity_file = Cache.get_path('sanity.txt')
+  with Cache.lock():
+    if os.path.exists(sanity_file):
+      sanity_data = open(sanity_file).read()
+      if sanity_data != expected:
+        logger.debug('old sanity: %s' % sanity_data)
+        logger.debug('new sanity: %s' % expected)
+        logger.info('(Emscripten: config changed, clearing cache)')
+        Cache.erase()
+        # the check actually failed, so definitely write out the sanity file, to
+        # avoid others later seeing failures too
+        force = False
       else:
-        logger.debug(f'sanity file not found: {sanity_file}')
+        if force:
+          logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
+        else:
+          logger.debug(f'sanity file up-to-date: {sanity_file}')
+          return # all is well
+    else:
+      logger.debug(f'sanity file not found: {sanity_file}')
 
-      perform_sanity_checks()
+    perform_sanity_checks()
 
-      if not force:
-        # Only create/update this file if the sanity check succeeded, i.e., we got here
-        with open(sanity_file, 'w') as f:
-          f.write(expected)
+    if not force:
+      # Only create/update this file if the sanity check succeeded, i.e., we got here
+      with open(sanity_file, 'w') as f:
+        f.write(expected)
 
 
 # Some distributions ship with multiple llvm versions so they add
@@ -456,7 +457,7 @@ def replace_suffix(filename, new_suffix):
 # Retain the original naming scheme in traditional runtime.
 def replace_or_append_suffix(filename, new_suffix):
   assert new_suffix[0] == '.'
-  return replace_suffix(filename, new_suffix) if Settings.MINIMAL_RUNTIME else filename + new_suffix
+  return replace_suffix(filename, new_suffix) if settings.MINIMAL_RUNTIME else filename + new_suffix
 
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use the canonical
@@ -533,22 +534,22 @@ def apply_configuration():
 
 
 def target_environment_may_be(environment):
-  return Settings.ENVIRONMENT == '' or environment in Settings.ENVIRONMENT.split(',')
+  return settings.ENVIRONMENT == '' or environment in settings.ENVIRONMENT.split(',')
 
 
 def verify_settings():
-  if Settings.SAFE_HEAP not in [0, 1]:
+  if settings.SAFE_HEAP not in [0, 1]:
     exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
 
-  if not Settings.WASM:
+  if not settings.WASM:
     # When the user requests non-wasm output, we enable wasm2js. that is,
     # we still compile to wasm normally, but we compile the final output
     # to js.
-    Settings.WASM = 1
-    Settings.WASM2JS = 1
-  if Settings.WASM == 2:
+    settings.WASM = 1
+    settings.WASM2JS = 1
+  if settings.WASM == 2:
     # Requesting both Wasm and Wasm2JS support
-    Settings.WASM2JS = 1
+    settings.WASM2JS = 1
 
 
 def print_compiler_stage(cmd):
@@ -574,7 +575,7 @@ def is_c_symbol(name):
 def treat_as_user_function(name):
   if name.startswith('dynCall_'):
     return False
-  if name in Settings.WASM_SYSTEM_EXPORTS:
+  if name in settings.WASM_SYSTEM_EXPORTS:
     return False
   return True
 
@@ -589,6 +590,11 @@ def asmjs_mangle(name):
     return '_' + name
   else:
     return name
+
+
+def reconfigure_cache():
+  global Cache
+  Cache = cache.Cache(config.CACHE)
 
 
 class JS:
@@ -618,7 +624,7 @@ class JS:
       js = f.read()
     # first, remove the license as there may be more than once
     processed_js = re.sub(JS.emscripten_license_regex, '', js)
-    if Settings.EMIT_EMSCRIPTEN_LICENSE:
+    if settings.EMIT_EMSCRIPTEN_LICENSE:
       processed_js = JS.emscripten_license + processed_js
     if processed_js != js:
       with open(js_target, 'w') as f:
@@ -638,7 +644,7 @@ class JS:
   @staticmethod
   def get_subresource_location(path, data_uri=None):
     if data_uri is None:
-      data_uri = Settings.SINGLE_FILE
+      data_uri = settings.SINGLE_FILE
     if data_uri:
       # if the path does not exist, then there is no data to encode
       if not os.path.exists(path):
@@ -652,7 +658,7 @@ class JS:
   @staticmethod
   def legalize_sig(sig):
     # with BigInt support all sigs are legal since we can use i64s.
-    if Settings.WASM_BIGINT:
+    if settings.WASM_BIGINT:
       return sig
     legal = [sig[0]]
     # a return of i64 is legalized into an i32 (and the high bits are
@@ -671,16 +677,16 @@ class JS:
   @staticmethod
   def is_legal_sig(sig):
     # with BigInt support all sigs are legal since we can use i64s.
-    if Settings.WASM_BIGINT:
+    if settings.WASM_BIGINT:
       return True
     return sig == JS.legalize_sig(sig)
 
   @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
-    if Settings.DYNCALLS or not JS.is_legal_sig(sig):
+    if settings.DYNCALLS or not JS.is_legal_sig(sig):
       args = ','.join(args)
-      if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
+      if not settings.MAIN_MODULE and not settings.SIDE_MODULE:
         # Optimize dynCall accesses in the case when not building with dynamic
         # linking enabled.
         return 'dynCall_%s(%s)' % (sig, args)
@@ -696,7 +702,7 @@ class JS:
     ret = 'return ' if sig[0] != 'v' else ''
     body = '%s%s;' % (ret, JS.make_dynCall(sig, args))
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
-    if Settings.SUPPORT_LONGJMP:
+    if settings.SUPPORT_LONGJMP:
       rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"
     else:
       rethrow = "if (e !== e+0) throw e;"
@@ -744,7 +750,8 @@ def safe_copy(src, dst):
     return
   if dst == os.devnull:
     return
-  shutil.copyfile(src, dst)
+  # Copies data and permission bits, but not other metadata such as timestamp
+  shutil.copy(src, dst)
 
 
 def read_and_preprocess(filename, expand_macros=False):
@@ -752,7 +759,7 @@ def read_and_preprocess(filename, expand_macros=False):
   # Create a settings file with the current settings to pass to the JS preprocessor
 
   settings_str = ''
-  for key, value in Settings.dict().items():
+  for key, value in settings.dict().items():
     assert key == key.upper()  # should only ever be uppercase keys in settings
     jsoned = json.dumps(value, sort_keys=True)
     settings_str += f'var {key} = {jsoned};\n'
@@ -826,7 +833,6 @@ FILE_PACKAGER = bat_suffix(path_from_root('tools', 'file_packager'))
 
 apply_configuration()
 
-Settings = settings.SettingsManager()
 verify_settings()
 Cache = cache.Cache(config.CACHE)
 

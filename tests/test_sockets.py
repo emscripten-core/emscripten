@@ -159,7 +159,7 @@ class sockets(BrowserCore):
 
   @classmethod
   def setUpClass(cls):
-    super(sockets, cls).setUpClass()
+    super().setUpClass()
     print()
     print('Running the socket tests. Make sure the browser allows popups from localhost.')
     print()

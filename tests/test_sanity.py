@@ -13,12 +13,14 @@ from subprocess import PIPE, STDOUT
 
 from runner import RunnerCore, path_from_root, env_modify, test_file
 from runner import create_file, ensure_dir, make_executable, with_env_modify
+from runner import parameterized
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
 from tools.shared import CANONICAL_TEMP_DIR
 from tools.shared import try_delete, config
 from tools.shared import EXPECTED_LLVM_VERSION, Cache
 from tools import shared, system_libs, utils
+from tools import response_file
 
 SANITY_FILE = shared.Cache.get_path('sanity.txt')
 commands = [[EMCC], [path_from_root('tests', 'runner'), 'blahblah']]
@@ -105,7 +107,7 @@ MINIMAL_HELLO_WORLD = [test_file('hello_world_em_asm.c'), '-O1', '-s', 'FILESYST
 class sanity(RunnerCore):
   @classmethod
   def setUpClass(cls):
-    super(sanity, cls).setUpClass()
+    super().setUpClass()
     # Unlike the other test suites we explicitly don't want to be skipping
     # the sanity checks here
     del os.environ['EMCC_SKIP_SANITY_CHECK']
@@ -126,16 +128,16 @@ class sanity(RunnerCore):
 
   @classmethod
   def tearDownClass(cls):
-    super(sanity, cls).tearDownClass()
+    super().tearDownClass()
     restore()
 
   def setUp(self):
-    super(sanity, self).setUp()
+    super().setUp()
     wipe()
     self.start_time = time.time()
 
   def tearDown(self):
-    super(sanity, self).tearDown()
+    super().tearDown()
     print('time:', time.time() - self.start_time)
 
   def do(self, command, env=None):
@@ -233,7 +235,7 @@ class sanity(RunnerCore):
           try_delete(default_config)
 
   def test_llvm(self):
-    LLVM_WARNING = 'LLVM version appears incorrect'
+    LLVM_WARNING = 'LLVM version for clang executable'
 
     restore_and_set_up()
 
@@ -488,6 +490,36 @@ fi
     self.assertExists(os.path.join(cache_dir_name, libname))
     # Exactly one child process should have triggered libc build!
     self.assertEqual(num_times_libc_was_built, 1)
+
+  @parameterized({
+    '': [False],
+    'response_files': [True]
+  })
+  def test_emcc_cache_flag(self, use_response_files):
+    restore_and_set_up()
+
+    cache_dir_name = self.in_dir('emscripten_cache')
+    self.assertFalse(os.path.exists(cache_dir_name))
+    create_file('test.c', r'''
+      #include <stdio.h>
+      int main() {
+        printf("hello, world!\n");
+        return 0;
+      }
+      ''')
+    args = ['--cache', cache_dir_name]
+    if use_response_files:
+      rsp = response_file.create_response_file(args, shared.TEMP_DIR)
+      args = ['@' + rsp]
+
+    self.run_process([EMCC, 'test.c'] + args, stderr=PIPE)
+    if use_response_files:
+      os.remove(rsp)
+
+    # The cache directory must exist after the build
+    self.assertTrue(os.path.exists(cache_dir_name))
+    # The cache directory must contain a sysroot
+    self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'sysroot')))
 
   def test_emconfig(self):
     restore_and_set_up()

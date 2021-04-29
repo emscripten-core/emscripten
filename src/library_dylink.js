@@ -5,11 +5,6 @@
 
 var LibraryDylink = {
 #if RELOCATABLE
-  $asmjsMangle: function(x) {
-    var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
-    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
-  },
-
   $resolveGlobalSymbol__deps: ['$asmjsMangle'],
   $resolveGlobalSymbol: function(symName, direct) {
     var sym;
@@ -37,7 +32,7 @@ var LibraryDylink = {
       sym = Module[asmjsMangle(symName)];
     }
 
-    if (!sym && symName.indexOf('invoke_') == 0) {
+    if (!sym && symName.startsWith('invoke_')) {
       sym = createInvokeFunction(symName.split('_')[1]);
     }
 
@@ -68,7 +63,7 @@ var LibraryDylink = {
       '__wasm_apply_data_relocs',
       '__dso_handle',
       '__set_stack_limits'
-    ].indexOf(symName) != -1
+    ].includes(symName)
 #if SPLIT_MODULE
         // Exports synthesized by wasm-split should be prefixed with '%'
         || symName[0] == '%'
@@ -89,7 +84,7 @@ var LibraryDylink = {
       var replace = false;
       var value = exports[symName];
 #if !WASM_BIGINT
-      if (symName.indexOf('orig$') == 0) {
+      if (symName.startsWith('orig$')) {
         symName = symName.split('$')[1];
         replace = true;
       }

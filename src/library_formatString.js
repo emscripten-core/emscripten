@@ -358,7 +358,7 @@ mergeInto(LibraryManager.library, {
               var parts = argText.split('e');
               if (isGeneral && !flagAlternative) {
                 // Discard trailing zeros and periods.
-                while (parts[0].length > 1 && parts[0].indexOf('.') != -1 &&
+                while (parts[0].length > 1 && parts[0].includes('.') &&
                        (parts[0].slice(-1) == '0' || parts[0].slice(-1) == '.')) {
                   parts[0] = parts[0].slice(0, -1);
                 }

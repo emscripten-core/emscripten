@@ -396,7 +396,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if not self.is_wasm():
       self.skipTest('no dynamic linking support in wasm2js yet')
     if '-fsanitize=address' in self.emcc_args:
-      self.skipTest('no dynamic linking support in asan yet')
+      self.skipTest('no dynamic linking support in ASan yet')
+    if '-fsanitize=leak' in self.emcc_args:
+      self.skipTest('no dynamic linking support in LSan yet')
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
@@ -416,12 +418,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   @classmethod
   def setUpClass(cls):
-    super(RunnerCore, cls).setUpClass()
+    super().setUpClass()
     print('(checking sanity from test runner)') # do this after we set env stuff
     shared.check_sanity(force=True)
 
   def setUp(self):
-    super(RunnerCore, self).setUp()
+    super().setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
     self.node_args = []
@@ -842,6 +844,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if check and e.returncode != 0:
         self.fail('subprocess exited with non-zero return code(%d): `%s`' %
                   (e.returncode, shared.shlex_join(cmd)))
+
+  def emcc(self, filename, args=[], output_filename=None, **kwargs):
+    if output_filename is None:
+      output_filename = filename + '.o'
+    try_delete(output_filename)
+    self.run_process([EMCC, filename] + args + ['-o', output_filename], **kwargs)
 
   # Shared test code between main suite and others
 
@@ -1277,7 +1285,7 @@ class BrowserCore(RunnerCore):
   unresponsive_tests = 0
 
   def __init__(self, *args, **kwargs):
-    super(BrowserCore, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
 
   @staticmethod
   def browser_open(url):
@@ -1305,7 +1313,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def setUpClass(cls):
-    super(BrowserCore, cls).setUpClass()
+    super().setUpClass()
     cls.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
     cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser():
@@ -1320,7 +1328,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def tearDownClass(cls):
-    super(BrowserCore, cls).tearDownClass()
+    super().tearDownClass()
     if not has_browser():
       return
     cls.harness_server.terminate()
