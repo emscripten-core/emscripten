@@ -26,7 +26,6 @@ WEBGPU_MAKE_IMPORT_EXPORT(swap_chain, SwapChain)
 
 WEBGPU_MAKE_IMPORT_EXPORT(device, Device)
 WEBGPU_MAKE_IMPORT_EXPORT(queue, Queue)
-WEBGPU_MAKE_IMPORT_EXPORT(fence, Fence)
 
 WEBGPU_MAKE_IMPORT_EXPORT(command_buffer, CommandBuffer)
 WEBGPU_MAKE_IMPORT_EXPORT(command_encoder, CommandEncoder)
