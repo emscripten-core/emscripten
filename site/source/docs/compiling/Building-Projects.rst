@@ -73,6 +73,28 @@ WebAssembly.
   not the native system compiler. If *emcc* is not used, you may need to modify
   the configure or cmake scripts.
 
+.. _building-projects-with-cmake:
+
+Using CMake with Emscripten
+==================================
+
+If you have not already, first, you have to install and activate the SDK tag you wish to use, and after, you must add the environment variables in your terminal.
+
+.. code-block:: bash
+
+  ./emsdk install latest  # Download and install the latest SDK. You probably already did this!
+  ./emsdk activate latest # Make the "latest" SDK "active" for the current user
+  source ./emsdk_env.sh   # Activate PATH and other environment variables in the existing terminal
+  
+After activating the environment variables, you will have the `emcmake` utility available on the terminal. You always should use `emcmake` before any CMake invocation. It will pass to CMake the correct toolchain for building your projects.  
+
+.. code-block:: bash
+
+  mkdir build && cd build
+  emcmake cmake ..
+  make
+
+Do not use `emmake` before `make` with CMake generated makefiles.
 
 .. _building-projects-build-outputs:
 
