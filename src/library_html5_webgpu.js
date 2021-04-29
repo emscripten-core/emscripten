@@ -50,8 +50,8 @@ var LibraryHTML5WebGPU = {
     },
   },
 
-  emscripten_release_js_handle__deps: ['$JsValStore'],
-  emscripten_release_js_handle: function (id) {
+  emscripten_webgpu_release_js_handle__deps: ['$JsValStore'],
+  emscripten_webgpu_release_js_handle: function (id) {
     JsValStore.remove(id);
   },
 
