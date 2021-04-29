@@ -759,13 +759,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         '__unmapself.c',
         # Empty files, simply ignore them.
         'syscall_cp.c', 'tls.c',
-        # TODO: Comment out (or support) within upcoming musl upgrade. See #12216.
-        # 'pthread_setname_np.c',
-        # TODO: No longer exists in the latest musl version.
-        '__futex.c',
-        # TODO: Could be supported in the upcoming musl upgrade
-        'lock_ptc.c', 'pthread_getattr_np.c',
-        # 'pthread_setattr_default_np.c',
+        # TODO: Support this, see #12216.
+        'pthread_setname_np.c',
         # TODO: These could be moved away from JS in the upcoming musl upgrade.
         'pthread_cancel.c', 'pthread_detach.c',
         'pthread_join.c', 'pthread_testcancel.c',
