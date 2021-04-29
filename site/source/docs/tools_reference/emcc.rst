@@ -517,7 +517,6 @@ Environment variables
   - ``EMMAKEN_CFLAGS`` [compile+link]
   - ``EMMAKEN_COMPILER`` [compile+link] Deprecated. Avoid using.
   - ``EMMAKEN_JUST_CONFIGURE`` [other]
-  - ``EMMAKEN_NO_SDK`` [compile+link]
   - ``EMCC_AUTODEBUG`` [compile+link]
   - ``EMCC_CFLAGS`` [compile+link]
   - ``EMCC_CORES`` [general]
