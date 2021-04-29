@@ -169,11 +169,11 @@ _mm_maskstore_ps(float *__mem_addr, __m128i __mask, __m128 __a)
 }
 
 #define _mm_permute_pd(__a, __imm) __extension__ ({ \
-  (__m128d)wasm_v64x2_shuffle((__m128d)(__a), (__m128d)(__a), \
+  (__m128d)wasm_i64x2_shuffle((__m128d)(__a), (__m128d)(__a), \
                               ((__imm) & 1), (((__imm) >> 1) & 1)); })
 
 #define _mm_permute_ps(__a, __imm) __extension__ ({ \
-  (__m128)wasm_v32x4_shuffle((__m128)(__a), (__m128)(__a), \
+  (__m128)wasm_i32x4_shuffle((__m128)(__a), (__m128)(__a), \
                              ((__imm) & 3), (((__imm) >> 2) & 3), \
                              (((__imm) >> 4) & 3), (((__imm) >> 6) & 3)); })
 

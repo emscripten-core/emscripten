@@ -153,7 +153,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_sfence
      - ⚠️ A full barrier in multithreaded builds.
    * - _mm_shuffle_ps
-     - 🟡 wasm_v32x4_shuffle. VM must guess type.
+     - 🟡 wasm_i32x4_shuffle. VM must guess type.
    * - _mm_storer_ps
      - 💡 Virtual. Shuffle + Simd store.
    * - _mm_store_ps1 (_mm_store1_ps)
