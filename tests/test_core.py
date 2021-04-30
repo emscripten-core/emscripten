@@ -3594,7 +3594,7 @@ ok
     return self.dylink_testf(main, side, expected, force_c, **kwargs)
 
   def dylink_testf(self, main, side, expected=None, force_c=False, main_emcc_args=[],
-                   need_reverse=True, auto_load=True, main_module=2, **kwargs):
+                   need_reverse=True, auto_load=True, **kwargs):
     self.maybe_closure()
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.emcc_args.copy()
@@ -3617,7 +3617,7 @@ ok
     shutil.move(out_file, 'liblib.so')
 
     # main settings
-    self.set_setting('MAIN_MODULE', main_module)
+    self.set_setting('MAIN_MODULE', 2)
     self.clear_setting('SIDE_MODULE')
     if auto_load:
       # Normally we don't report undefined symbols when linking main modules but
@@ -3644,7 +3644,7 @@ ok
       # Test the reverse as well.  There we flip the role of the side module and main module.
       # - We add --no-entry since the side module doesn't have a `main`
       self.dylink_testf(side, main, expected, force_c, main_emcc_args + ['--no-entry'],
-                        need_reverse=False, main_module=main_module, **kwargs)
+                        need_reverse=False, **kwargs)
 
   def do_basic_dylink_test(self, **kwargs):
     self.dylink_test(r'''
@@ -4329,8 +4329,6 @@ res64 - external 64\n''', header='''
   @with_both_exception_handling
   @needs_dylink
   def test_dylink_raii_exceptions(self):
-    # MAIN_MODULE=1 still needed in this test due to:
-    # https://github.com/emscripten-core/emscripten/issues/13786
     self.dylink_test(main=r'''
       #include <stdio.h>
       extern int side();
@@ -4357,7 +4355,7 @@ res64 - external 64\n''', header='''
         volatile ifdi p = func_with_special_sig;
         return p(2.18281, 3.14159, 42);
       }
-    ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'], main_module=1)
+    ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
 
   @needs_dylink
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
@@ -4599,12 +4597,9 @@ res64 - external 64\n''', header='''
     }
     '''
 
-    # MAIN_MODULE=1 still needed in this test due to:
-    # https://github.com/emscripten-core/emscripten/issues/13786
     self.dylink_test(main=main,
                      side=side,
                      header=header,
-                     main_module=1,
                      expected='success')
 
   @needs_dylink
@@ -8499,6 +8494,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_gl_main_module(self):
     self.set_setting('MAIN_MODULE')
     self.do_runf(test_file('core', 'test_gl_get_proc_address.c'))
+
+  @needs_dylink
+  def test_main_module_js_symbol(self):
+    self.set_setting('MAIN_MODULE', 2)
+    self.emcc_args += ['--js-library', test_file('core', 'test_main_module_js_symbol.js')]
+    self.do_runf(test_file('core', 'test_main_module_js_symbol.c'))
 
   def test_REVERSE_DEPS(self):
     create_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)&connect; }')

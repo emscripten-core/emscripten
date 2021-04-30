@@ -956,16 +956,27 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   logger.debug('running meta-DCE')
   temp_files = configuration.get_temp_files()
   # first, get the JS part of the graph
-  extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in settings.WASM_FUNCTION_EXPORTS) + ']}'
+  if settings.MAIN_MODULE:
+    # For the main module we include all exports as possible roots, not just function exports.
+    # This means that any usages of data symbols within the JS or in the side modules can/will keep
+    # these exports alive on the wasm module.
+    # This is important today for weak data symbols that are defined by the main and the side module
+    # (i.e.  RTTI info).  We want to make sure the main module's symbols get added to asmLibraryArg
+    # when the main module is loaded.  If this doesn't happen then the symbols in the side module
+    # will take precedence.
+    exports = settings.WASM_EXPORTS
+  else:
+    exports = settings.WASM_FUNCTION_EXPORTS
+  extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
+
   txt = acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
   graph = json.loads(txt)
   # ensure that functions expected to be exported to the outside are roots
+  required_symbols = user_requested_exports.union(set(settings.SIDE_MODULE_IMPORTS))
   for item in graph:
     if 'export' in item:
-      export = item['export']
-      # wasm backend's exports are prefixed differently inside the wasm
-      export = asmjs_mangle(export)
-      if export in user_requested_exports or settings.EXPORT_ALL:
+      export = asmjs_mangle(item['export'])
+      if settings.EXPORT_ALL or export in required_symbols:
         item['root'] = True
   # in standalone wasm, always export the memory
   if not settings.IMPORTED_MEMORY:

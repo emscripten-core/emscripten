@@ -951,6 +951,7 @@ function createWasm() {
     if (metadata.neededDynlibs) {
       dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
     }
+    mergeLibSymbols(exports, 'main')
 #endif
 
 #if !IMPORTED_MEMORY
