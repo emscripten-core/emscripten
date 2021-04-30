@@ -2685,11 +2685,11 @@ var LibraryJSEvents = {
     '}\n' +
     'if (typeof setImmediate === "undefined" && typeof addEventListener === "function") {\n' +
       'addEventListener("message", __setImmediate_cb, true);\n' +
-      'setImmediate = function(func) {\n' +
+      'globalThis.setImmediate = function(func) {\n' +
         'postMessage(__setImmediate_message_id, "*");\n' +
         'return __setImmediate_id_counter + __setImmediate_queue.push(func) - 1;\n' +
       '}\n' +
-      'clearImmediate = /**@type{function(number=)}*/(function(id) {\n' +
+      'globalThis.clearImmediate = /**@type{function(number=)}*/(function(id) {\n' +
         'var index = id - __setImmediate_id_counter;\n' +
         'if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = function() {};\n' + // must preserve the order and count of elements in the queue, so replace the pending callback with an empty function
       '})\n' +
