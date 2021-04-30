@@ -1807,7 +1807,7 @@ def phase_setup(state):
     ]
     # Some of these symbols are using by worker.js but otherwise unreferenced.
     # Because emitDCEGraph only considered the main js file, and not worker.js
-    # we have explictly mark these symbols as user-exported so that they will
+    # we have explicitly mark these symbols as user-exported so that they will
     # kept alive through DCE.
     # TODO: Find a less hacky way to do this, perhaps by also scanning worker.js
     # for roots.
@@ -2797,7 +2797,7 @@ def parse_args(newargs):
       if os.path.isabs(path_name) and not is_valid_abspath(options, path_name):
         # Of course an absolute path to a non-system-specific library or header
         # is fine, and you can ignore this warning. The danger are system headers
-        # that are e.g. x86 specific and nonportable. The emscripten bundled
+        # that are e.g. x86 specific and non-portable. The emscripten bundled
         # headers are modified to be portable, local system ones are generally not.
         diagnostics.warning(
             'absolute-paths', '-I or -L of an absolute path "' + arg +
