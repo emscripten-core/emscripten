@@ -21,7 +21,7 @@
 // recognize the type at least.
 typedef float __m64 __attribute__((__vector_size__(8), __aligned__(8)));
 typedef __f32x4 __m128;
-typedef __i32x4 __m128i;
+typedef v128_t __m128i;
 
 #define __f32x4_shuffle(__a, __b, __c0, __c1, __c2, __c3)                   \
   ((v128_t)(__builtin_shufflevector((__f32x4)(__a), (__f32x4)(__b), __c0,   \
