@@ -1237,8 +1237,17 @@ function makeAsmImportsAccessInPthread(variable) {
   return variable;
 }
 
+function _asmjsDemangle(symbol) {
+  if (symbol in WASM_SYSTEM_EXPORTS) {
+    return symbol;
+  }
+  // Strip leading "_"
+  assert(symbol.startsWith('_'));
+  return symbol.substr(1);
+}
+
 function hasExportedFunction(func) {
-  return Object.keys(EXPORTED_FUNCTIONS).includes(func);
+  return Object.keys(WASM_EXPORTS).includes(_asmjsDemangle(func));
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
@@ -1293,7 +1302,7 @@ function addReadyPromiseAssertions(promise) {
 }
 
 function makeMalloc(source, param) {
-  if ('malloc' in WASM_EXPORTS) {
+  if (hasExportedFunction('_malloc')) {
     return `_malloc(${param})`;
   }
   // It should be impossible to call some functions without malloc being

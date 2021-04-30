@@ -1247,7 +1247,6 @@ keydown(100);keyup(100); // trigger the end
   def test_webgl_sampler_layout_binding(self):
     self.btest('webgl_sampler_layout_binding.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1'])
 
-  @unittest.skip('needs to be fixed, see https://github.com/emscripten-core/emscripten/pull/13887#issuecomment-825804449')
   @requires_graphics_hardware
   def test_webgl2_ubo_layout_binding(self):
     self.btest('webgl2_ubo_layout_binding.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1', '-s', 'MIN_WEBGL_VERSION=2'])
@@ -3292,7 +3291,7 @@ window.close = function() {
   # ASYNCIFY_IMPORTS.
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
-    'normal': (['-s', 'ASYNCIFY_IMPORTS=[sync_tunnel]'],), # noqa
+    'normal': (['-s', 'ASYNCIFY_IMPORTS=[sync_tunnel, sync_tunnel_bool]'],), # noqa
     'response': (['-s', 'ASYNCIFY_IMPORTS=@filey.txt'],), # noqa
     'nothing': (['-DBAD'],), # noqa
     'empty_list': (['-DBAD', '-s', 'ASYNCIFY_IMPORTS=[]'],), # noqa
@@ -3300,7 +3299,7 @@ window.close = function() {
   })
   def test_async_returnvalue(self, args):
     if '@' in str(args):
-      create_file('filey.txt', '["sync_tunnel"]')
+      create_file('filey.txt', '["sync_tunnel", "sync_tunnel_bool"]')
     self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS'])
 
   def test_async_stack_overflow(self):

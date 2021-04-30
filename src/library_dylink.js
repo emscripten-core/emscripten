@@ -11,23 +11,19 @@ var LibraryDylink = {
 #if !WASM_BIGINT
     if (direct) {
       // First look for the orig$ symbol which is the symbols without
-      // any legalization performed.   Here we look on the 'asm' object
-      // to avoid any JS wrapping of the symbol.
-      sym = Module['asm']['orig$' + symName];
+      // any legalization performed.
+      sym = asmLibraryArg['orig$' + symName];
     }
 #endif
-    // Then look for the unmangled name itself.
     if (!sym) {
-      sym = Module['asm'][symName];
+      sym = asmLibraryArg[symName];
     }
-    // fall back to the mangled name on the module object which could include
-    // JavaScript functions and wrapped native functions.
-#if !WASM_BIGINT
-    if (!sym && direct) {
-      sym = Module['_orig$' + symName];
-    }
-#endif
 
+    // Check for the symbol on the Module object.  This is the only
+    // way to dynamically access JS library symbols that were not
+    // referenced by the main module (and therefore not part of the
+    // initial set of symbols included in asmLibraryArg when it
+    // was declared.
     if (!sym) {
       sym = Module[asmjsMangle(symName)];
     }
@@ -328,10 +324,10 @@ var LibraryDylink = {
 
   // Module.symbols <- libModule.symbols (flags.global handler)
   $mergeLibSymbols__deps: ['$asmjsMangle'],
-  $mergeLibSymbols: function(libModule, libName) {
+  $mergeLibSymbols: function(exports, libName) {
     // add symbols into global namespace TODO: weak linking etc.
-    for (var sym in libModule) {
-      if (!libModule.hasOwnProperty(sym)) {
+    for (var sym in exports) {
+      if (!exports.hasOwnProperty(sym)) {
         continue;
       }
 
@@ -341,23 +337,24 @@ var LibraryDylink = {
       // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
 
       if (!asmLibraryArg.hasOwnProperty(sym)) {
-        asmLibraryArg[sym] = libModule[sym];
-      }
-
-      var module_sym = asmjsMangle(sym);
-
-      if (!Module.hasOwnProperty(module_sym)) {
-        Module[module_sym] = libModule[sym];
+        asmLibraryArg[sym] = exports[sym];
       }
 #if ASSERTIONS == 2
       else {
-        var curr = Module[sym], next = libModule[sym];
+        var curr = asmLibraryArg[sym], next = exports[sym];
         // don't warn on functions - might be odr, linkonce_odr, etc.
         if (!(typeof curr === 'function' && typeof next === 'function')) {
           err("warning: symbol '" + sym + "' from '" + libName + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
         }
       }
 #endif
+
+      // Export native export on the Module object.
+      // TODO(sbc): Do all users want this?  Should we skip this by default?
+      var module_sym = asmjsMangle(sym);
+      if (!Module.hasOwnProperty(module_sym)) {
+        Module[module_sym] = exports[sym];
+      }
     }
   },
 
@@ -436,7 +433,7 @@ var LibraryDylink = {
       // are. To do that here, we use a JS proxy (another option would
       // be to inspect the binary directly).
       var proxyHandler = {
-        'get': function(obj, prop) {
+        'get': function(stubs, prop) {
           // symbols that should be local to this module
           switch (prop) {
             case '__memory_base':
@@ -444,21 +441,26 @@ var LibraryDylink = {
             case '__table_base':
               return tableBase;
           }
-          if (prop in obj) {
-            return obj[prop]; // already present
+          if (prop in asmLibraryArg) {
+            // No stub needed, symbol already exists in symbol table
+            return asmLibraryArg[prop];
           }
-          // otherwise this is regular function import - call it indirectly
-          var resolved;
-          return obj[prop] = function() {
-            if (!resolved) resolved = resolveSymbol(prop, true);
-            return resolved.apply(null, arguments);
-          };
+          // Return a stub function that will resolve the symbol
+          // when first called.
+          if (!(prop in stubs)) {
+            var resolved;
+            stubs[prop] = function() {
+              if (!resolved) resolved = resolveSymbol(prop, true);
+              return resolved.apply(null, arguments);
+            };
+          }
+          return stubs[prop];
         }
       };
-      var proxy = new Proxy(asmLibraryArg, proxyHandler);
+      var proxy = new Proxy({}, proxyHandler);
       var info = {
-        'GOT.mem': new Proxy(asmLibraryArg, GOTHandler),
-        'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
+        'GOT.mem': new Proxy({}, GOTHandler),
+        'GOT.func': new Proxy({}, GOTHandler),
         'env': proxy,
         {{{ WASI_MODULE_NAME }}}: proxy,
       };

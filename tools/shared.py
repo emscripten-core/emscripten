@@ -50,7 +50,7 @@ logger = logging.getLogger('shared')
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
 diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
-# unused diagnositic flags.  TODO(sbc): remove at some point
+# unused diagnostic flags.  TODO(sbc): remove at some point
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('experimental')
 diagnostics.add_warning('invalid-input')
@@ -82,7 +82,7 @@ def shlex_join(cmd):
 
 
 def run_process(cmd, check=True, input=None, *args, **kw):
-  """Runs a subpocess returning the exit code.
+  """Runs a subprocess returning the exit code.
 
   By default this function will raise an exception on failure.  Therefor this should only be
   used if you want to handle such failures.  For most subprocesses, failures are not recoverable
@@ -592,6 +592,11 @@ def asmjs_mangle(name):
     return name
 
 
+def reconfigure_cache():
+  global Cache
+  Cache = cache.Cache(config.CACHE)
+
+
 class JS:
   emscripten_license = '''\
 /**
@@ -724,7 +729,7 @@ def suffix(name):
 
 
 def unsuffixed(name):
-  """Return the filename without the extention.
+  """Return the filename without the extension.
 
   If there are multiple extensions this strips only the final one.
   """
@@ -745,7 +750,8 @@ def safe_copy(src, dst):
     return
   if dst == os.devnull:
     return
-  shutil.copyfile(src, dst)
+  # Copies data and permission bits, but not other metadata such as timestamp
+  shutil.copy(src, dst)
 
 
 def read_and_preprocess(filename, expand_macros=False):

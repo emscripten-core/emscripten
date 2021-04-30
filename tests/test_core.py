@@ -99,6 +99,9 @@ def with_both_exception_handling(f):
         self.skipTest('wasm2js does not support wasm exceptions')
       if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
         self.skipTest('d8 required to run wasm eh tests')
+      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
+      if '-fsanitize=address' in self.emcc_args:
+        self.skipTest('Wasm EH does not work with asan yet')
       self.emcc_args.append('-fwasm-exceptions')
       self.v8_args.append('--experimental-wasm-eh')
       self.js_engines = [config.V8_ENGINE]
@@ -2411,6 +2414,14 @@ The current type of b is: 9
   def test_pthread_dispatch_after_exit(self):
     self.do_run_in_out_file_test('pthread', 'test_pthread_dispatch_after_exit.c')
 
+  @node_pthreads
+  def test_pthread_thread_local_storage(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PTHREAD_POOL_SIZE', 8)
+    self.set_setting('INITIAL_MEMORY', '300mb')
+    self.do_run_in_out_file_test('pthread', 'test_pthread_thread_local_storage.cpp')
+
   def test_tcgetattr(self):
     self.do_runf(test_file('termios', 'test_tcgetattr.c'), 'success')
 
@@ -3583,7 +3594,7 @@ ok
     return self.dylink_testf(main, side, expected, force_c, **kwargs)
 
   def dylink_testf(self, main, side, expected=None, force_c=False, main_emcc_args=[],
-                   need_reverse=True, auto_load=True, main_module=2, **kwargs):
+                   need_reverse=True, auto_load=True, **kwargs):
     self.maybe_closure()
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.emcc_args.copy()
@@ -3606,7 +3617,7 @@ ok
     shutil.move(out_file, 'liblib.so')
 
     # main settings
-    self.set_setting('MAIN_MODULE', main_module)
+    self.set_setting('MAIN_MODULE', 2)
     self.clear_setting('SIDE_MODULE')
     if auto_load:
       # Normally we don't report undefined symbols when linking main modules but
@@ -3633,7 +3644,7 @@ ok
       # Test the reverse as well.  There we flip the role of the side module and main module.
       # - We add --no-entry since the side module doesn't have a `main`
       self.dylink_testf(side, main, expected, force_c, main_emcc_args + ['--no-entry'],
-                        need_reverse=False, main_module=main_module, **kwargs)
+                        need_reverse=False, **kwargs)
 
   def do_basic_dylink_test(self, **kwargs):
     self.dylink_test(r'''
@@ -4318,8 +4329,6 @@ res64 - external 64\n''', header='''
   @with_both_exception_handling
   @needs_dylink
   def test_dylink_raii_exceptions(self):
-    # MAIN_MODULE=1 still needed in this test due to:
-    # https://github.com/emscripten-core/emscripten/issues/13786
     self.dylink_test(main=r'''
       #include <stdio.h>
       extern int side();
@@ -4346,7 +4355,7 @@ res64 - external 64\n''', header='''
         volatile ifdi p = func_with_special_sig;
         return p(2.18281, 3.14159, 42);
       }
-    ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'], main_module=1)
+    ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
 
   @needs_dylink
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
@@ -4588,12 +4597,9 @@ res64 - external 64\n''', header='''
     }
     '''
 
-    # MAIN_MODULE=1 still needed in this test due to:
-    # https://github.com/emscripten-core/emscripten/issues/13786
     self.dylink_test(main=main,
                      side=side,
                      header=header,
-                     main_module=1,
                      expected='success')
 
   @needs_dylink
@@ -5093,7 +5099,6 @@ main( int argv, char ** argc ) {
   def test_stat_mknod(self):
     self.do_runf(test_file('stat', 'test_mknod.c'), 'success')
 
-  @no_safe_heap('https://github.com/emscripten-core/emscripten/issues/12433')
   def test_fcntl(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl', 'test_fcntl.c')
@@ -7510,6 +7515,12 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('ASSERTIONS')
     self.do_core_test('asyncify_assertions.cpp')
 
+  def test_asyncify_during_exit(self):
+    self.set_setting('ASYNCIFY')
+    self.set_setting('ASSERTIONS')
+    self.set_setting('EXIT_RUNTIME', 1)
+    self.do_core_test('asyncify_during_exit.cpp', assert_returncode=1)
+
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
@@ -8483,6 +8494,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_gl_main_module(self):
     self.set_setting('MAIN_MODULE')
     self.do_runf(test_file('core', 'test_gl_get_proc_address.c'))
+
+  @needs_dylink
+  def test_main_module_js_symbol(self):
+    self.set_setting('MAIN_MODULE', 2)
+    self.emcc_args += ['--js-library', test_file('core', 'test_main_module_js_symbol.js')]
+    self.do_runf(test_file('core', 'test_main_module_js_symbol.c'))
 
   def test_REVERSE_DEPS(self):
     create_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)&connect; }')

@@ -84,6 +84,11 @@ mergeInto(LibraryManager.library, {
         })(x);
       }
     },
+
+    checkStateAfterExitRuntime: function() {
+      assert(Asyncify.state === Asyncify.State.None,
+            'Asyncify cannot be done during or after the runtime exits');
+    },
 #endif
 
     instrumentWasmExports: function(exports) {
@@ -193,7 +198,7 @@ mergeInto(LibraryManager.library, {
         var reachedAfterCallback = false;
         startAsync(function(handleSleepReturnValue) {
 #if ASSERTIONS
-          assert(!handleSleepReturnValue || typeof handleSleepReturnValue === 'number'); // old emterpretify API supported other stuff
+          assert(!handleSleepReturnValue || typeof handleSleepReturnValue === 'number' || typeof handleSleepReturnValue === 'boolean'); // old emterpretify API supported other stuff
 #endif
           if (ABORT) return;
           Asyncify.handleSleepReturnValue = handleSleepReturnValue || 0;

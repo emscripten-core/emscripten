@@ -145,16 +145,10 @@ function JSify(functionsOnly) {
         return '';
       }
 
-      // if the function was implemented in compiled code, we just need to export it so we can reach it from JS
+      // if the function was implemented in compiled code, there is no need to include the js version
       if (ident in WASM_EXPORTS) {
-        EXPORTED_FUNCTIONS[finalName] = 1;
-        // stop here: we don't need to add anything from our js libraries, not even deps, compiled code is on it
         return '';
       }
-
-      // Don't replace implemented functions with library ones (which can happen when we add dependencies).
-      // Note: We don't return the dependencies here. Be careful not to end up where this matters
-      if (finalName in Functions.implementedFunctions) return '';
 
       var noExport = false;
 
@@ -223,7 +217,7 @@ function JSify(functionsOnly) {
           // In asm, we need to know about library functions. If there is a target, though, then no
           // need to consider this a library function - we will call directly to it anyhow
           if (!redirectedIdent && (typeof target == 'function')) {
-            Functions.libraryFunctions[finalName] = 1;
+            libraryFunctions.push(finalName);
           }
         }
       } else if (typeof snippet === 'object') {
@@ -232,14 +226,14 @@ function JSify(functionsOnly) {
         isFunction = true;
         snippet = processLibraryFunction(snippet, ident, finalName);
         if (!isJsOnlyIdentifier(ident[0])) {
-          Functions.libraryFunctions[finalName] = 1;
+          libraryFunctions.push(finalName);
         }
       }
 
       // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be exported
       // to wasm module.
       if (LibraryManager.library[ident + '__import']) {
-        Functions.libraryFunctions[finalName] = 1;
+        libraryFunctions.push(finalName);
       }
 
       if (ONLY_CALC_JS_SYMBOLS)
@@ -264,16 +258,6 @@ function JSify(functionsOnly) {
       if (redirectedIdent) {
         deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
       }
-      // In asm, dependencies implemented in C might be needed by JS library functions.
-      // We don't know yet if they are implemented in C or not. To be safe, export such
-      // special cases.
-      [LIBRARY_DEPS_TO_AUTOEXPORT].forEach((special) => {
-        deps.forEach((dep) => {
-          if (dep == special && !EXPORTED_FUNCTIONS[dep]) {
-            EXPORTED_FUNCTIONS[dep] = 1;
-          }
-        });
-      });
       if (VERBOSE) {
         printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
       }
@@ -442,7 +426,12 @@ function JSify(functionsOnly) {
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[1], shellFile)));
 
-    PassManager.serialize();
+    print('\n//FORWARDED_DATA:' + JSON.stringify({
+      libraryFunctions: libraryFunctions,
+      ATINITS: ATINITS.join('\n'),
+      ATMAINS: ATMAINS.join('\n'),
+      ATEXITS: ATEXITS.join('\n'),
+    }));
   }
 
   // Data

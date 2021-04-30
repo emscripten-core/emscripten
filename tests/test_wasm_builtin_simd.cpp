@@ -70,7 +70,7 @@ i32x4 TESTFN i32x4_shuffle_reverse(i32x4 vec) {
   return __builtin_shufflevector(vec, vec, 3, 2, 1, 0);
 }
 i8x16 TESTFN v8x16_swizzle(i8x16 x, i8x16 y) {
-  return __builtin_wasm_swizzle_v8x16(x, y);
+  return __builtin_wasm_swizzle_i8x16(x, y);
 }
 i8x16 TESTFN i8x16_splat(int32_t x) {
   return (i8x16) {x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x};

@@ -3061,7 +3061,7 @@ var LibraryGL = {
 
 #if GL_EXPLICIT_UNIFORM_LOCATION
     // Extract the layout(location = x) directives.
-    var regex = /layout\s*\(\s*location\s*=\s*([-\d]+)\s*\)\s*(uniform\s+\w+\s+(\w+))/g, explicitUniformLocations = {}, match;
+    var regex = /layout\s*\(\s*location\s*=\s*(-?\d+)\s*\)\s*(uniform\s+\w+\s+(\w+))/g, explicitUniformLocations = {}, match;
     while(match = regex.exec(source)) {
 #if GL_DEBUG
       console.dir(match);
@@ -3097,7 +3097,7 @@ var LibraryGL = {
     // layout(binding = 1, std140) uniform MainBlock { ... };
     // layout(std140, binding = 1) uniform MainBlock { ... };
     // layout(binding = 1) uniform MainBlock { ... };
-    var bindingRegex = /layout\s*\(.*?binding\s*=\s*([-\d]+).*?\)\s*uniform\s+(\w+)\s+(\w+)?/g, samplerBindings = {}, uniformBindings = {}, bindingMatch;
+    var bindingRegex = /layout\s*\(.*?binding\s*=\s*(-?\d+).*?\)\s*uniform\s+(\w+)\s+(\w+)?/g, samplerBindings = {}, uniformBindings = {}, bindingMatch;
     while(bindingMatch = bindingRegex.exec(source)) {
       // We have a layout(binding=x) enabled uniform. Parse the array length of that uniform, if it is an array, i.e. a
       //    layout(binding = 3) uniform sampler2D mainTexture[arrayLength];
@@ -3373,8 +3373,8 @@ var LibraryGL = {
 
 #if GL_EXPLICIT_UNIFORM_LOCATION
     // Collect explicit uniform locations from the vertex and fragment shaders.
-    [program['vs'], program['fs']].forEach((s) => {
-      Object.keys(s.explicitUniformLocations).forEach((shaderLocation) => {
+    [program['vs'], program['fs']].forEach(function(s) {
+      Object.keys(s.explicitUniformLocations).forEach(function(shaderLocation) {
         var loc = s.explicitUniformLocations[shaderLocation];
         // Record each explicit uniform location temporarily as a non-array uniform
         // with size=1, this is not true, but on the first glGetUniformLocation() call
@@ -3393,14 +3393,14 @@ var LibraryGL = {
 
 #if GL_EXPLICIT_UNIFORM_BINDING
     function copyKeys(dst, src) {
-      Object.keys(src).forEach((key) => {
+      Object.keys(src).forEach(function(key) {
         dst[key] = src[key];
       });
     }
     // Collect sampler and ubo binding locations from the vertex and fragment shaders.
     program.explicitUniformBindings = {};
     program.explicitSamplerBindings = {};
-    [program['vs'], program['fs']].forEach((s) => {
+    [program['vs'], program['fs']].forEach(function(s) {
       copyKeys(program.explicitUniformBindings, s.explicitUniformBindings);
       copyKeys(program.explicitSamplerBindings, s.explicitSamplerBindings);
     });
@@ -3433,7 +3433,7 @@ var LibraryGL = {
 #if MIN_WEBGL_VERSION < 2
       if (GL.currentContext.version >= 2) {
 #endif
-        Object.keys(p.explicitUniformBindings).forEach((ubo) => {
+        Object.keys(p.explicitUniformBindings).forEach(function(ubo) {
           var bindings = p.explicitUniformBindings[ubo];
           for(var i = 0; i < bindings[1]; ++i) {
             var blockIndex = GLctx.getUniformBlockIndex(p, ubo + (bindings[1] > 1 ? '[' + i + ']' : ''));
@@ -3447,7 +3447,7 @@ var LibraryGL = {
       }
 #endif
 #endif
-      Object.keys(p.explicitSamplerBindings).forEach((sampler) => {
+      Object.keys(p.explicitSamplerBindings).forEach(function(sampler) {
         var bindings = p.explicitSamplerBindings[sampler];
         for(var i = 0; i < bindings[1]; ++i) {
 #if GL_DEBUG

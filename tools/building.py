@@ -171,12 +171,12 @@ def get_building_env(cflags=[]):
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
   env['HOST_CC'] = CLANG_CC
   env['HOST_CXX'] = CLANG_CXX
-  env['HOST_CFLAGS'] = "-W" # if set to nothing, CFLAGS is used, which we don't want
-  env['HOST_CXXFLAGS'] = "-W" # if set to nothing, CXXFLAGS is used, which we don't want
-  env['PKG_CONFIG_LIBDIR'] = path_from_root('system', 'local', 'lib', 'pkgconfig') + os.path.pathsep + path_from_root('system', 'lib', 'pkgconfig')
+  env['HOST_CFLAGS'] = '-W' # if set to nothing, CFLAGS is used, which we don't want
+  env['HOST_CXXFLAGS'] = '-W' # if set to nothing, CXXFLAGS is used, which we don't want
+  env['PKG_CONFIG_LIBDIR'] = shared.Cache.get_sysroot_dir('local', 'lib', 'pkgconfig') + os.path.pathsep + shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
   env['PKG_CONFIG_PATH'] = os.environ.get('EM_PKG_CONFIG_PATH', '')
   env['EMSCRIPTEN'] = path_from_root()
-  env['PATH'] = path_from_root('system', 'bin') + os.pathsep + env['PATH']
+  env['PATH'] = shared.Cache.get_sysroot_dir('bin') + os.pathsep + env['PATH']
   env['CROSS_COMPILE'] = path_from_root('em') # produces /path/to/emscripten/em , which then can have 'cc', 'ar', etc appended to it
   return env
 
@@ -956,16 +956,27 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   logger.debug('running meta-DCE')
   temp_files = configuration.get_temp_files()
   # first, get the JS part of the graph
-  extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in settings.WASM_FUNCTION_EXPORTS) + ']}'
+  if settings.MAIN_MODULE:
+    # For the main module we include all exports as possible roots, not just function exports.
+    # This means that any usages of data symbols within the JS or in the side modules can/will keep
+    # these exports alive on the wasm module.
+    # This is important today for weak data symbols that are defined by the main and the side module
+    # (i.e.  RTTI info).  We want to make sure the main module's symbols get added to asmLibraryArg
+    # when the main module is loaded.  If this doesn't happen then the symbols in the side module
+    # will take precedence.
+    exports = settings.WASM_EXPORTS
+  else:
+    exports = settings.WASM_FUNCTION_EXPORTS
+  extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
+
   txt = acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
   graph = json.loads(txt)
   # ensure that functions expected to be exported to the outside are roots
+  required_symbols = user_requested_exports.union(set(settings.SIDE_MODULE_IMPORTS))
   for item in graph:
     if 'export' in item:
-      export = item['export']
-      # wasm backend's exports are prefixed differently inside the wasm
-      export = asmjs_mangle(export)
-      if export in user_requested_exports or settings.EXPORT_ALL:
+      export = asmjs_mangle(item['export'])
+      if settings.EXPORT_ALL or export in required_symbols:
         item['root'] = True
   # in standalone wasm, always export the memory
   if not settings.IMPORTED_MEMORY:
@@ -1298,8 +1309,23 @@ def is_bitcode(filename):
 
 
 def is_wasm(filename):
-  magic = open(filename, 'rb').read(4)
-  return magic == b'\0asm'
+  if not os.path.isfile(filename):
+    return False
+  header = open(filename, 'rb').read(webassembly.HEADER_SIZE)
+  return header == webassembly.MAGIC + webassembly.VERSION
+
+
+def is_wasm_dylib(filename):
+  """Detect wasm dynamic libraries by the presence of the "dylink" custom section."""
+  if not is_wasm(filename):
+    return False
+  module = webassembly.Module(filename)
+  section = next(module.sections())
+  if section.type == webassembly.SecType.CUSTOM:
+    module.seek(section.offset)
+    if module.readString() == 'dylink':
+      return True
+  return False
 
 
 # Given the name of a special Emscripten-implemented system library, returns an

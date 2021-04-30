@@ -74,7 +74,7 @@ def clean_env():
   # At least one port also uses autoconf (harfbuzz) so we also need to clear
   # CFLAGS/LDFLAGS which we don't want to effect the inner call to configure.
   safe_env = os.environ.copy()
-  for opt in ['CFLAGS', 'LDFLAGS', 'EMCC_CFLAGS', 'EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
+  for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS', 'EMCC_CFLAGS', 'EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
   return safe_env
@@ -775,6 +775,9 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'thrd_sleep.c',
           'thrd_yield.c',
           'call_once.c',
+          'tss_create.c',
+          'tss_delete.c',
+          'tss_set.c',
         ])
 
     libc_files += glob_in_path(['system', 'lib', 'libc', 'compat'], '*.c')
@@ -1947,6 +1950,14 @@ def install_system_headers(stamp):
     src = shared.path_from_root('system', *src)
     dest = os.path.join(target_include_dir, dest)
     copytree_exist_ok(src, dest)
+
+  pkgconfig_src = shared.path_from_root('system', 'lib', 'pkgconfig')
+  pkgconfig_dest = shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
+  copytree_exist_ok(pkgconfig_src, pkgconfig_dest)
+
+  bin_src = shared.path_from_root('system', 'bin')
+  bin_dest = shared.Cache.get_sysroot_dir('bin')
+  copytree_exist_ok(bin_src, bin_dest)
 
   # Create a stamp file that signal the the header have been installed
   # Removing this file, or running `emcc --clear-cache` or running

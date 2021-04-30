@@ -25,6 +25,10 @@ var WASM_FUNCTION_EXPORTS = [];
 // underscore.
 var SIDE_MODULE_EXPORTS = [];
 
+// All symbols imported by side modules.  These are symbols that the main
+// module (or other side modules) will need to provide.
+var SIDE_MODULE_IMPORTS = [];
+
 // stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
 

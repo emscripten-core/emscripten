@@ -3103,47 +3103,48 @@ var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
     create_file('header.h', '#define X 5\n')
     self.run_process([EMCC, '-Werror', '-xc++-header', 'header.h'])
 
-  def test_precompiled_headers(self):
-    for suffix in ['gch', 'pch']:
-      print(suffix)
-      self.clear()
-      create_file('header.h', '#define X 5\n')
-      self.run_process([EMCC, '-xc++-header', 'header.h', '-c'])
-      self.assertExists('header.h.gch') # default output is gch
-      if suffix != 'gch':
-        self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
-        self.assertBinaryEqual('header.h.gch', 'header.h.' + suffix)
+  @parameterized({
+    'gch': ['gch'],
+    'pch': ['pch'],
+  })
+  def test_precompiled_headers(self, suffix):
+    create_file('header.h', '#define X 5\n')
+    self.run_process([EMCC, '-xc++-header', 'header.h', '-c'])
+    self.assertExists('header.h.gch') # default output is gch
+    if suffix != 'gch':
+      self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
+      self.assertBinaryEqual('header.h.gch', 'header.h.' + suffix)
 
-      create_file('src.cpp', r'''
+    create_file('src.cpp', r'''
 #include <stdio.h>
 int main() {
-  printf("|%d|\n", X);
-  return 0;
+printf("|%d|\n", X);
+return 0;
 }
 ''')
-      self.run_process([EMCC, 'src.cpp', '-include', 'header.h'])
+    self.run_process([EMCC, 'src.cpp', '-include', 'header.h'])
 
-      output = self.run_js('a.out.js')
-      self.assertContained('|5|', output)
+    output = self.run_js('a.out.js')
+    self.assertContained('|5|', output)
 
-      # also verify that the gch is actually used
-      err = self.run_process([EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
-      self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err)
-      # and sanity check it is not mentioned when not
-      try_delete('header.h.' + suffix)
-      err = self.run_process([EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
-      self.assertNotContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err.replace('\r\n', '\n'))
+    # also verify that the gch is actually used
+    err = self.run_process([EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
+    self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err)
+    # and sanity check it is not mentioned when not
+    try_delete('header.h.' + suffix)
+    err = self.run_process([EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
+    self.assertNotContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err.replace('\r\n', '\n'))
 
-      # with specified target via -o
-      try_delete('header.h.' + suffix)
-      self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'my.' + suffix])
-      self.assertExists('my.' + suffix)
+    # with specified target via -o
+    try_delete('header.h.' + suffix)
+    self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'my.' + suffix])
+    self.assertExists('my.' + suffix)
 
-      # -include-pch flag
-      self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
-      self.run_process([EMCC, 'src.cpp', '-include-pch', 'header.h.' + suffix])
-      output = self.run_js('a.out.js')
-      self.assertContained('|5|', output)
+    # -include-pch flag
+    self.run_process([EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
+    self.run_process([EMCC, 'src.cpp', '-include-pch', 'header.h.' + suffix])
+    output = self.run_js('a.out.js')
+    self.assertContained('|5|', output)
 
   def test_LEGACY_VM_SUPPORT(self):
     # when modern features are lacking, we can polyfill them or at least warn
@@ -5133,7 +5134,7 @@ print(os.environ.get('NM'))
       [['--cflags', '--libs'], '-s USE_SDL=2'],
     ]:
       print(args, expected)
-      out = self.run_process([PYTHON, path_from_root('system', 'bin', 'sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
+      out = self.run_process([PYTHON, shared.Cache.get_sysroot_dir('bin', 'sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
       self.assertContained(expected, out)
       print('via emmake')
       out = self.run_process([emmake, 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
@@ -5430,7 +5431,8 @@ int main(int argc, char** argv) {
     self.run_process([EMCC, '-O2', 'main.c', '-s', 'MAIN_MODULE', '-o', 'main.js', 'side.wasm'])
     self.run_js('main.js')
 
-    self.run_process([EMCC, '-O2', 'main.c', '-s', 'MAIN_MODULE', '-o', 'main2.js', '-s', 'RUNTIME_LINKED_LIBS=side.wasm'])
+    err = self.run_process([EMCC, '-O2', 'main.c', '-s', 'MAIN_MODULE', '-o', 'main2.js', '-s', 'RUNTIME_LINKED_LIBS=side.wasm'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: RUNTIME_LINKED_LIBS is deprecated', err)
     self.run_js('main2.js')
 
     self.assertBinaryEqual('main.wasm', 'main2.wasm')
@@ -7209,8 +7211,8 @@ int main() {
             print(engine)
             self.assertContained('hello, world!', self.run_js('out.wasm', engine=engine))
 
-  def test_wasm_targets_side_module(self):
-    # side modules do allow a wasm target
+  def test_side_module_naming(self):
+    # SIDE_MODULE should work with any arbirary filename
     for opts, target in [([], 'a.out.wasm'),
                          (['-o', 'lib.wasm'], 'lib.wasm'),
                          (['-o', 'lib.so'], 'lib.so'),
@@ -7218,12 +7220,14 @@ int main() {
       # specified target
       print('building: ' + target)
       self.clear()
-      self.run_process([EMCC, test_file('hello_world.cpp'), '-s', 'SIDE_MODULE', '-Werror'] + opts)
+      self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-Werror'] + opts)
       for x in os.listdir('.'):
         self.assertFalse(x.endswith('.js'))
-      self.assertTrue(building.is_wasm(target))
-      wasm_data = open(target, 'rb').read()
-      self.assertEqual(wasm_data.count(b'dylink'), 1)
+      self.assertTrue(building.is_wasm_dylib(target))
+
+      create_file('main.c', '')
+      self.run_process([EMCC, '-s', 'MAIN_MODULE=2', 'main.c', '-Werror', target])
+      self.run_js('a.out.js')
 
   @is_slow_test
   def test_lto(self):
@@ -7574,10 +7578,9 @@ end
     self.run_process([EMCC, test, '--closure=1', '--closure-args', '--externs "' + externs + '"'])
 
   def test_toolchain_profiler(self):
-    environ = os.environ.copy()
-    environ['EMPROFILE'] = '1'
-    # replaced subprocess functions should not cause errors
-    self.run_process([EMCC, test_file('hello_world.c')], env=environ)
+    with env_modify({'EMPROFILE': '1'}):
+      # replaced subprocess functions should not cause errors
+      self.run_process([EMCC, test_file('hello_world.c')])
 
   def test_noderawfs(self):
     fopen_write = open(test_file('asmfs', 'fopen_write.cpp')).read()
@@ -9623,6 +9626,31 @@ int main() {
     with open(test_file('other', 'wasm2c', 'output.txt')) as f:
       self.assertEqual(output, f.read())
 
+  @requires_native_clang
+  def test_wasm2c_multi_lib(self):
+    # compile two libraries to object files
+    for lib in ['a', 'b']:
+      self.run_process([EMCC,
+                        test_file('other', 'wasm2c', f'unsafe-library-{lib}.c'),
+                        '-O3', '-o', f'lib{lib}.wasm', '-s', 'WASM2C', '--no-entry'])
+      # build with a different WASM_RT_MODULE_PREFIX for each library, so that
+      # they do not have colliding symbols
+      self.run_process([CLANG_CC, f'lib{lib}.wasm.c', '-O3', '-c',
+                        f'-DWASM_RT_MODULE_PREFIX={lib}_'] +
+                       clang_native.get_clang_native_args(),
+                       env=clang_native.get_clang_native_env())
+
+    # compile the main program with the wasmboxed libraries
+    self.run_process([CLANG_CC,
+                      test_file('other', 'wasm2c', 'my-code-multi.c'),
+                      'liba.wasm.o', 'libb.wasm.o',
+                      '-O3', '-o', 'program.exe'] +
+                     clang_native.get_clang_native_args(),
+                     env=clang_native.get_clang_native_env())
+    output = self.run_process([os.path.abspath('program.exe')], stdout=PIPE).stdout
+    with open(test_file('other', 'wasm2c', 'output-multi.txt')) as f:
+      self.assertEqual(output, f.read())
+
   @parameterized({
     'wasm2js': (['-s', 'WASM=0'], ''),
     'modularize': (['-s', 'MODULARIZE'], 'Module()'),
@@ -10373,3 +10401,9 @@ exec "$@"
     # negative case: foo is undefined in test_check_undefined.c
     err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other', 'test_check_undefined.c')])
     self.assertContained('undefined symbol: foo', err)
+
+  def test_EMMAKEN_NO_SDK(self):
+    with env_modify({'EMMAKEN_NO_SDK': '1'}):
+      err = self.expect_fail([EMCC, test_file('hello_world.c')])
+      self.assertContained("warning: We hope to deprecated EMMAKEN_NO_SDK", err)
+      self.assertContained("fatal error: 'stdio.h' file not found", err)

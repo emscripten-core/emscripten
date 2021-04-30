@@ -20,10 +20,15 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- The `RUNTIME_LINKED_LIBS` setting is now deprecated.  It's better to simply
+  list dynamic library dependencies directly on the command line.
+
 2.0.18: 04/23/2021
 ------------------
 - The `makeBigInt` function was removed from the emscripten runtime since it
   had no internal users.
+- Restored support for --cache command line flag to configure location of the
+  Emscripten cache root directory.
 - `EXTRA_EXPORTED_RUNTIME_METHODS` is deprecated in favor of just using
   `EXPORTED_RUNTIME_METHODS`.
 - When building with `MAIN_MODULE=2` the linker will now automatically include
@@ -3227,7 +3232,7 @@ v1.21.8: 7/28/2014
 
 v1.21.7: 7/25/2014
 ------------------
- - Added new environment varaible EMCC_ONLY_FORCED_STDLIBS which can be used to
+ - Added new environment variable EMCC_ONLY_FORCED_STDLIBS which can be used to
    restrict to only linking to the chosen set of Emscripten-provided libraries.
    (See also EMCC_FORCE_STDLIBS)
  - Adjusted argv[0] and environment variables USER, HOME, LANG and _ to report a

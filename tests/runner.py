@@ -396,7 +396,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if not self.is_wasm():
       self.skipTest('no dynamic linking support in wasm2js yet')
     if '-fsanitize=address' in self.emcc_args:
-      self.skipTest('no dynamic linking support in asan yet')
+      self.skipTest('no dynamic linking support in ASan yet')
+    if '-fsanitize=leak' in self.emcc_args:
+      self.skipTest('no dynamic linking support in LSan yet')
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
