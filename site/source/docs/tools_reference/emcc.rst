@@ -96,12 +96,21 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: If no value is specifed it will default to ``1``.
 
-  .. note:: For options that are lists, you need quotation marks (") around the list in most shells (to avoid errors being raised). Two examples are shown below:
+  .. note:: Lists can be specified without or without quotes around each element and with or without brackets around the list.  For example all the following are equivelent:
 
     ::
 
-      -s RUNTIME_LINKED_LIBS="['liblib.so']"
-      -s "RUNTIME_LINKED_LIBS=['liblib.so']"
+      -s EXPORTED_FUNCTIONS=foo,bar
+      -s EXPORTED_FUNCTIONS="foo","bar"
+      -s EXPORTED_FUNCTIONS=["foo","bar"]
+      -s EXPORTED_FUNCTIONS=[foo,bar]
+
+  .. note:: For lists that include brackets or quote, you need quotation marks (") around the list in most shells (to avoid errors being raised). Two examples are shown below:
+
+    ::
+
+      -s EXPORTED_FUNCTIONS="['liblib.so']"
+      -s "EXPORTED_FUNCTIONS=['liblib.so']"
 
   You can also specify that the value of an option will be read from a specified JSON-formatted file. For example, the following option sets the ``EXPORTED_FUNCTIONS`` option with the contents of the file at **path/to/file**.
 
@@ -123,7 +132,8 @@ Options that are modified or new in *emcc* are listed below:
   [compile+link]
   Preserve debug information.
 
-  - When compiling to object files, this is the same as in *Clang* and *gcc*, it adds debug information to the object files.
+  - When compiling to object files, this is the same as in *Clang* and *gcc*, it
+    adds DWARF debug information to the object files.
   - When linking, this is equivalent to :ref:`-g3 <emcc-g3>`.
 
 ``-gseparate-dwarf[=FILENAME]``
@@ -136,6 +146,12 @@ Options that are modified or new in *emcc* are listed below:
   debug file is, so that devtools can find it. You can use
   ``-s SEPARATE_DWARF_URL=URL`` to customize that location (this is useful if
   you want to host it on a different server, for example).
+
+.. _emcc-gsource-map:
+
+``-gsource-map``
+  When linking, generate a source map using LLVM debug information (which must
+  be present in object files, i.e., they should have been compiled with ``-g``).
 
 .. _emcc-gN:
 
@@ -161,16 +177,7 @@ Options that are modified or new in *emcc* are listed below:
     -
       .. _emcc-g3:
 
-      ``-g3``: When compiling to object files, keep debug info, including JS whitespace, function names, and LLVM debug info if any (this is the same as :ref:`-g <emcc-g>`).
-
-    .. _emcc-g4:
-
-    - ``-g4``: When linking, generate a source map using LLVM debug information (which must be present in object files, i.e., they should have been compiled with ``-g``).
-
-      .. note::
-
-        - Source maps allow you to view and debug the *C/C++ source code* in your browser's debugger!
-        - This debugging level may make compilation significantly slower (this is why we only do it on ``-g4``).
+      ``-g3``: When compiling to object files, keep debug info, including JS whitespace, function names, and LLVM debug info (DWARF) if any (this is the same as :ref:`-g <emcc-g>`).
 
 .. _emcc-profiling:
 
@@ -194,22 +201,7 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: This is only relevant when :term:`minifying` global names, which happens in ``-O2`` and above, and when no ``-g`` option was specified to prevent minification.
 
-.. _emcc-llvm-opts:
-
-``--llvm-opts <level>``
-  [compile+link]
-  Enables LLVM optimizations, relevant when we call the LLVM optimizer (which is done when building source files to object code). Possible ``level`` values are:
-
-    - ``0``: No LLVM optimizations (default in -O0).
-    - ``1``: LLVM ``-O1`` optimizations (default in -O1).
-    - ``2``: LLVM ``-O2`` optimizations.
-    - ``3``: LLVM ``-O3`` optimizations (default in -O2+).
-
-  You can also specify arbitrary LLVM options, e.g.::
-
-    --llvm-opts "['-O3', '-somethingelse']"
-
-  You normally don't need to specify this option, as ``-O`` with an optimization level will set a good value.
+  .. note:: When used with ``-s WASM=2``, two symbol files are created. ``[name].js.symbols`` (with WASM symbols) and ``[name].wasm.js.symbols`` (with ASM.js symbols)
 
 .. _emcc-lto:
 
@@ -535,11 +527,13 @@ Environment variables
   - ``EMCC_ONLY_FORCED_STDLIBS`` [link]
   - ``EMCC_LOCAL_PORTS`` [compile+link]
   - ``EMCC_STDERR_FILE`` [general]
-  - ``EMCC_CLOSURE_ARGS`` : [link] arguments to be passed to *Closure Compiler*
+  - ``EMCC_CLOSURE_ARGS`` [link] arguments to be passed to *Closure Compiler*
   - ``EMCC_STRICT`` [general]
   - ``EMCC_SKIP_SANITY_CHECK`` [general]
   - ``EM_IGNORE_SANITY`` [general]
   - ``EM_CONFIG`` [general]
+  - ``EM_LLVM_ROOT`` [compile+link]
+  - ``_EMCC_CCACHE`` [general] Internal setting that is set to 1 by emsdk when integrating with ccache compiler frontend
 
 Search for 'os.environ' in `emcc.py <https://github.com/emscripten-core/emscripten/blob/main/emcc.py>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
 

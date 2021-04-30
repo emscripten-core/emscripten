@@ -89,6 +89,7 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared
 from tools import system_libs
+from tools.settings import settings
 
 QUIET = (__name__ != '__main__')
 DEBUG = False
@@ -270,12 +271,12 @@ def inspect_headers(headers, cflags):
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd += ['-Wno-deprecated']
 
-  if shared.Settings.LTO:
-    cmd += ['-flto=' + shared.Settings.LTO]
+  if settings.LTO:
+    cmd += ['-flto=' + settings.LTO]
 
   show(shared.shlex_join(cmd))
   try:
-    subprocess.check_call(cmd)
+    subprocess.check_call(cmd, env=system_libs.clean_env())
   except subprocess.CalledProcessError as e:
     sys.stderr.write('FAIL: Compilation failed!: %s\n' % e.cmd)
     sys.exit(1)
@@ -284,11 +285,12 @@ def inspect_headers(headers, cflags):
   show('Calling generated program... ' + js_file[1])
   info = shared.run_js_tool(js_file[1], stdout=shared.PIPE).splitlines()
 
-  # Remove all temporary files.
-  os.unlink(src_file[1])
+  if not DEBUG:
+    # Remove all temporary files.
+    os.unlink(src_file[1])
 
-  if os.path.exists(js_file[1]):
-    os.unlink(js_file[1])
+    if os.path.exists(js_file[1]):
+      os.unlink(js_file[1])
 
   # Parse the output of the program into a dict.
   return parse_c_output(info)

@@ -7,14 +7,10 @@
 // === Auto-generated postamble setup entry stuff ===
 {{{ exportRuntime() }}}
 
-#if hasExportedFunction('_main') // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
+#if HAS_MAIN // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
 function run() {
 #if MEMORYPROFILER
   emscriptenMemoryProfiler.onPreloadComplete();
-#endif
-
-#if STACK_OVERFLOW_CHECK >= 2
-  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
 
   <<< ATMAINS >>>
@@ -75,9 +71,12 @@ function initRuntime(asm) {
 #if STACK_OVERFLOW_CHECK
   _emscripten_stack_init();
   writeStackCookie();
+#if STACK_OVERFLOW_CHECK >= 2
+  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+#endif
 #endif
 
-#if '___wasm_call_ctors' in IMPLEMENTED_FUNCTIONS
+#if '__wasm_call_ctors' in WASM_EXPORTS
   asm['__wasm_call_ctors']();
 #endif
 

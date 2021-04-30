@@ -621,18 +621,26 @@ namespace wgpu {
     struct VertexAttributeDescriptor;
     struct BindGroupDescriptor;
     struct BindGroupLayoutEntry;
-    struct BufferCopyView;
+    struct ImageCopyBuffer;
     struct ColorStateDescriptor;
     struct ComputePipelineDescriptor;
     struct DepthStencilStateDescriptor;
     struct RenderPassColorAttachmentDescriptor;
-    struct TextureCopyView;
+    struct ImageCopyTexture;
     struct TextureDescriptor;
     struct VertexBufferLayoutDescriptor;
     struct BindGroupLayoutDescriptor;
     struct RenderPassDescriptor;
     struct VertexStateDescriptor;
     struct RenderPipelineDescriptor;
+
+    // BufferCopyView is deprecated.
+    // Use ImageCopyBuffer instead.
+    using BufferCopyView = ImageCopyBuffer;
+
+    // TextureCopyView is deprecated.
+    // Use ImageCopyTexture instead.
+    using TextureCopyView = ImageCopyTexture;
 
     template<typename Derived, typename CType>
     class ObjectBase {
@@ -772,9 +780,9 @@ namespace wgpu {
         ComputePassEncoder BeginComputePass(ComputePassDescriptor const * descriptor = nullptr) const;
         RenderPassEncoder BeginRenderPass(RenderPassDescriptor const * descriptor) const;
         void CopyBufferToBuffer(Buffer const& source, uint64_t sourceOffset, Buffer const& destination, uint64_t destinationOffset, uint64_t size) const;
-        void CopyBufferToTexture(BufferCopyView const * source, TextureCopyView const * destination, Extent3D const * copySize) const;
-        void CopyTextureToBuffer(TextureCopyView const * source, BufferCopyView const * destination, Extent3D const * copySize) const;
-        void CopyTextureToTexture(TextureCopyView const * source, TextureCopyView const * destination, Extent3D const * copySize) const;
+        void CopyBufferToTexture(ImageCopyBuffer const * source, ImageCopyTexture const * destination, Extent3D const * copySize) const;
+        void CopyTextureToBuffer(ImageCopyTexture const * source, ImageCopyBuffer const * destination, Extent3D const * copySize) const;
+        void CopyTextureToTexture(ImageCopyTexture const * source, ImageCopyTexture const * destination, Extent3D const * copySize) const;
         CommandBuffer Finish(CommandBufferDescriptor const * descriptor = nullptr) const;
         void InsertDebugMarker(char const * markerLabel) const;
         void PopDebugGroup() const;
@@ -915,7 +923,7 @@ namespace wgpu {
         void Signal(Fence const& fence, uint64_t signalValue) const;
         void Submit(uint32_t commandCount, CommandBuffer const * commands) const;
         void WriteBuffer(Buffer const& buffer, uint64_t bufferOffset, void const * data, size_t size) const;
-        void WriteTexture(TextureCopyView const * destination, void const * data, size_t dataSize, TextureDataLayout const * dataLayout, Extent3D const * writeSize) const;
+        void WriteTexture(ImageCopyTexture const * destination, void const * data, size_t dataSize, TextureDataLayout const * dataLayout, Extent3D const * writeSize) const;
 
       private:
         friend ObjectBase<Queue, WGPUQueue>;
@@ -1391,7 +1399,7 @@ namespace wgpu {
         StorageTextureBindingLayout storageTexture;
     };
 
-    struct BufferCopyView {
+    struct ImageCopyBuffer {
         ChainedStruct const * nextInChain = nullptr;
         TextureDataLayout layout;
         Buffer buffer;
@@ -1431,7 +1439,7 @@ namespace wgpu {
         Color clearColor;
     };
 
-    struct TextureCopyView {
+    struct ImageCopyTexture {
         ChainedStruct const * nextInChain = nullptr;
         Texture texture;
         uint32_t mipLevel = 0;

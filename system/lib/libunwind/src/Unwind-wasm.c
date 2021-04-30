@@ -4,8 +4,6 @@
 
 #ifdef __USING_WASM_EXCEPTIONS__
 
-extern "C" {
-
 _Unwind_Reason_Code __gxx_personality_wasm0(int version, _Unwind_Action actions,
                                             uint64_t exceptionClass,
                                             _Unwind_Exception *unwind_exception,
@@ -106,8 +104,6 @@ _Unwind_GetLanguageSpecificData(struct _Unwind_Context *context) {
 _LIBUNWIND_EXPORT uintptr_t
 _Unwind_GetRegionStart(struct _Unwind_Context *context) {
   return 0;
-}
-
 }
 
 #endif

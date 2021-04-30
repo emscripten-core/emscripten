@@ -16,7 +16,7 @@ __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
 from tools.shared import PYTHON, WINDOWS, CLANG_CXX, EMCC, PIPE, V8_ENGINE
-from tools.shared import path_from_root, run_process
+from tools.shared import path_from_root, run_process, test_file
 import clang_native
 
 temp_dir = tempfile.mkdtemp()
@@ -292,12 +292,12 @@ def run_benchmark(benchmark_file, results_file, build_args):
 if __name__ == '__main__':
     suite = sys.argv[1].lower() if len(sys.argv) == 2 else None
     if suite in ['sse', 'sse1']:
-        run_benchmark(path_from_root('tests', 'sse', 'benchmark_sse1.cpp'), 'results_sse1.html', ['-msse'])
+        run_benchmark(test_file('sse', 'benchmark_sse1.cpp'), 'results_sse1.html', ['-msse'])
     elif suite == 'sse2':
-        run_benchmark(path_from_root('tests', 'sse', 'benchmark_sse2.cpp'), 'results_sse2.html', ['-msse2'])
+        run_benchmark(test_file('sse', 'benchmark_sse2.cpp'), 'results_sse2.html', ['-msse2'])
     elif suite == 'sse3':
-        run_benchmark(path_from_root('tests', 'sse', 'benchmark_sse3.cpp'), 'results_sse3.html', ['-msse3'])
+        run_benchmark(test_file('sse', 'benchmark_sse3.cpp'), 'results_sse3.html', ['-msse3'])
     elif suite == 'ssse3':
-        run_benchmark(path_from_root('tests', 'sse', 'benchmark_ssse3.cpp'), 'results_ssse3.html', ['-mssse3'])
+        run_benchmark(test_file('sse', 'benchmark_ssse3.cpp'), 'results_ssse3.html', ['-mssse3'])
     else:
         raise Exception('Usage: python tests/benchmark_sse.py sse1|sse2|sse3')

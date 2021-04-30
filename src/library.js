@@ -23,17 +23,28 @@
 LibraryManager.library = {
   // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
+  //
+  // These are trivial wrappers around runtime functions that make these symbols
+  // available to native code.
   // ==========================================================================
 
   getTempRet0__sig: 'i',
   getTempRet0: function() {
-    return {{{ makeGetTempRet0() }}};
+    return getTempRet0();
   },
 
   setTempRet0__sig: 'vi',
-  setTempRet0: function($i) {
-    {{{ makeSetTempRet0('$i') }}};
+  setTempRet0: function(val) {
+    setTempRet0(val);
   },
+
+#if SAFE_HEAP
+  // Trivial wrappers around runtime functions that make these symbols available
+  // to native code.
+  segfault: function() { segfault(); },
+  alignfault: function() { alignfault(); },
+  ftfault: function() { ftfault(); },
+#endif
 
   // ==========================================================================
   // JavaScript <-> C string interop
@@ -118,106 +129,6 @@ LibraryManager.library = {
     return -1;
   },
 
-  fpathconf__deps: ['$setErrNo'],
-  fpathconf__proxy: 'sync',
-  fpathconf__sig: 'iii',
-  fpathconf: function(fildes, name) {
-    // long fpathconf(int fildes, int name);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/encrypt.html
-    // NOTE: The first parameter is ignored, so pathconf == fpathconf.
-    // The constants here aren't real values. Just mimicking glibc.
-    switch (name) {
-      case {{{ cDefine('_PC_LINK_MAX') }}}:
-        return 32000;
-      case {{{ cDefine('_PC_MAX_CANON') }}}:
-      case {{{ cDefine('_PC_MAX_INPUT') }}}:
-      case {{{ cDefine('_PC_NAME_MAX') }}}:
-        return 255;
-      case {{{ cDefine('_PC_PATH_MAX') }}}:
-      case {{{ cDefine('_PC_PIPE_BUF') }}}:
-      case {{{ cDefine('_PC_REC_MIN_XFER_SIZE') }}}:
-      case {{{ cDefine('_PC_REC_XFER_ALIGN') }}}:
-      case {{{ cDefine('_PC_ALLOC_SIZE_MIN') }}}:
-        return 4096;
-      case {{{ cDefine('_PC_CHOWN_RESTRICTED') }}}:
-      case {{{ cDefine('_PC_NO_TRUNC') }}}:
-      case {{{ cDefine('_PC_2_SYMLINKS') }}}:
-        return 1;
-      case {{{ cDefine('_PC_VDISABLE') }}}:
-        return 0;
-      case {{{ cDefine('_PC_SYNC_IO') }}}:
-      case {{{ cDefine('_PC_ASYNC_IO') }}}:
-      case {{{ cDefine('_PC_PRIO_IO') }}}:
-      case {{{ cDefine('_PC_SOCK_MAXBUF') }}}:
-      case {{{ cDefine('_PC_REC_INCR_XFER_SIZE') }}}:
-      case {{{ cDefine('_PC_REC_MAX_XFER_SIZE') }}}:
-      case {{{ cDefine('_PC_SYMLINK_MAX') }}}:
-        return -1;
-      case {{{ cDefine('_PC_FILESIZEBITS') }}}:
-        return 64;
-    }
-    setErrNo({{{ cDefine('EINVAL') }}});
-    return -1;
-  },
-  pathconf: 'fpathconf',
-
-  confstr__deps: ['$setErrNo', '$ENV'],
-  confstr__proxy: 'sync',
-  confstr__sig: 'iiii',
-  confstr: function(name, buf, len) {
-    // size_t confstr(int name, char *buf, size_t len);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/confstr.html
-    var value;
-    switch (name) {
-      case {{{ cDefine('_CS_PATH') }}}:
-        value = ENV['PATH'] || '/';
-        break;
-      case {{{ cDefine('_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS') }}}:
-        // Mimicking glibc.
-        value = 'POSIX_V6_ILP32_OFF32\nPOSIX_V6_ILP32_OFFBIG';
-        break;
-      case {{{ cDefine('_CS_GNU_LIBC_VERSION') }}}:
-        // This JS implementation was tested against this glibc version.
-        value = 'glibc 2.14';
-        break;
-      case {{{ cDefine('_CS_GNU_LIBPTHREAD_VERSION') }}}:
-        // We don't support pthreads.
-        value = '';
-        break;
-      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFF32_LIBS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFFBIG_LIBS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_LP64_OFF64_CFLAGS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_LP64_OFF64_LDFLAGS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_LP64_OFF64_LIBS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_LPBIG_OFFBIG_LIBS') }}}:
-        value = '';
-        break;
-      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFF32_CFLAGS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFF32_LDFLAGS') }}}:
-      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS') }}}:
-        value = '-m32';
-        break;
-      case {{{ cDefine('_CS_POSIX_V6_ILP32_OFFBIG_CFLAGS') }}}:
-        value = '-m32 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64';
-        break;
-      default:
-        setErrNo({{{ cDefine('EINVAL') }}});
-        return 0;
-    }
-    if (len == 0 || buf == 0) {
-      return value.length + 1;
-    } else {
-      var length = Math.min(len, value.length);
-      for (var i = 0; i < length; i++) {
-        {{{ makeSetValue('buf', 'i', 'value.charCodeAt(i)', 'i8') }}};
-      }
-      if (len > length) {{{ makeSetValue('buf', 'i++', '0', 'i8') }}};
-      return i;
-    }
-  },
-
   execve__deps: ['$setErrNo'],
   execve__sig: 'iiii',
   execve: function(path, argv, envp) {
@@ -280,165 +191,16 @@ LibraryManager.library = {
     }
   },
 
-  sysconf__deps: ['$setErrNo'],
-  sysconf__proxy: 'sync',
-  sysconf__sig: 'ii',
-  sysconf: function(name) {
-    // long sysconf(int name);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
-    switch(name) {
-      case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ POSIX_PAGE_SIZE }}};
-      case {{{ cDefine('_SC_PHYS_PAGES') }}}:
+  emscripten_get_heap_max: function() {
 #if ALLOW_MEMORY_GROWTH
 #if MAXIMUM_MEMORY == -1 // no maximum set, assume the best
-        var maxHeapSize = 4*1024*1024*1024;
+    return 4*1024*1024*1024;
 #else
-        var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
+    return {{{ MAXIMUM_MEMORY }}};
 #endif
 #else // no growth
-        var maxHeapSize = HEAPU8.length;
-#endif
-        return maxHeapSize / {{{ POSIX_PAGE_SIZE }}};
-      case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
-      case {{{ cDefine('_SC_BARRIERS') }}}:
-      case {{{ cDefine('_SC_ASYNCHRONOUS_IO') }}}:
-      case {{{ cDefine('_SC_CLOCK_SELECTION') }}}:
-      case {{{ cDefine('_SC_CPUTIME') }}}:
-      case {{{ cDefine('_SC_FSYNC') }}}:
-      case {{{ cDefine('_SC_IPV6') }}}:
-      case {{{ cDefine('_SC_MAPPED_FILES') }}}:
-      case {{{ cDefine('_SC_MEMLOCK') }}}:
-      case {{{ cDefine('_SC_MEMLOCK_RANGE') }}}:
-      case {{{ cDefine('_SC_MEMORY_PROTECTION') }}}:
-      case {{{ cDefine('_SC_MESSAGE_PASSING') }}}:
-      case {{{ cDefine('_SC_MONOTONIC_CLOCK') }}}:
-      case {{{ cDefine('_SC_PRIORITIZED_IO') }}}:
-      case {{{ cDefine('_SC_PRIORITY_SCHEDULING') }}}:
-      case {{{ cDefine('_SC_RAW_SOCKETS') }}}:
-      case {{{ cDefine('_SC_READER_WRITER_LOCKS') }}}:
-      case {{{ cDefine('_SC_REALTIME_SIGNALS') }}}:
-      case {{{ cDefine('_SC_SEMAPHORES') }}}:
-      case {{{ cDefine('_SC_SHARED_MEMORY_OBJECTS') }}}:
-      case {{{ cDefine('_SC_SPAWN') }}}:
-      case {{{ cDefine('_SC_SPIN_LOCKS') }}}:
-      case {{{ cDefine('_SC_SYNCHRONIZED_IO') }}}:
-      case {{{ cDefine('_SC_THREAD_ATTR_STACKADDR') }}}:
-      case {{{ cDefine('_SC_THREAD_ATTR_STACKSIZE') }}}:
-      case {{{ cDefine('_SC_THREAD_CPUTIME') }}}:
-      case {{{ cDefine('_SC_THREAD_PROCESS_SHARED') }}}:
-      case {{{ cDefine('_SC_THREAD_SAFE_FUNCTIONS') }}}:
-      case {{{ cDefine('_SC_THREADS') }}}:
-      case {{{ cDefine('_SC_TIMEOUTS') }}}:
-      case {{{ cDefine('_SC_TIMERS') }}}:
-      case {{{ cDefine('_SC_VERSION') }}}:
-      case {{{ cDefine('_SC_2_C_BIND') }}}:
-      case {{{ cDefine('_SC_2_C_DEV') }}}:
-      case {{{ cDefine('_SC_2_CHAR_TERM') }}}:
-      case {{{ cDefine('_SC_2_LOCALEDEF') }}}:
-      case {{{ cDefine('_SC_2_SW_DEV') }}}:
-      case {{{ cDefine('_SC_2_VERSION') }}}:
-        return 200809;
-      case {{{ cDefine('_SC_MQ_OPEN_MAX') }}}:
-      case {{{ cDefine('_SC_XOPEN_STREAMS') }}}:
-      case {{{ cDefine('_SC_XBS5_LP64_OFF64') }}}:
-      case {{{ cDefine('_SC_XBS5_LPBIG_OFFBIG') }}}:
-      case {{{ cDefine('_SC_AIO_LISTIO_MAX') }}}:
-      case {{{ cDefine('_SC_AIO_MAX') }}}:
-      case {{{ cDefine('_SC_SPORADIC_SERVER') }}}:
-      case {{{ cDefine('_SC_THREAD_SPORADIC_SERVER') }}}:
-      case {{{ cDefine('_SC_TRACE') }}}:
-      case {{{ cDefine('_SC_TRACE_EVENT_FILTER') }}}:
-      case {{{ cDefine('_SC_TRACE_EVENT_NAME_MAX') }}}:
-      case {{{ cDefine('_SC_TRACE_INHERIT') }}}:
-      case {{{ cDefine('_SC_TRACE_LOG') }}}:
-      case {{{ cDefine('_SC_TRACE_NAME_MAX') }}}:
-      case {{{ cDefine('_SC_TRACE_SYS_MAX') }}}:
-      case {{{ cDefine('_SC_TRACE_USER_EVENT_MAX') }}}:
-      case {{{ cDefine('_SC_TYPED_MEMORY_OBJECTS') }}}:
-      case {{{ cDefine('_SC_V6_LP64_OFF64') }}}:
-      case {{{ cDefine('_SC_V6_LPBIG_OFFBIG') }}}:
-      case {{{ cDefine('_SC_2_FORT_DEV') }}}:
-      case {{{ cDefine('_SC_2_FORT_RUN') }}}:
-      case {{{ cDefine('_SC_2_PBS') }}}:
-      case {{{ cDefine('_SC_2_PBS_ACCOUNTING') }}}:
-      case {{{ cDefine('_SC_2_PBS_CHECKPOINT') }}}:
-      case {{{ cDefine('_SC_2_PBS_LOCATE') }}}:
-      case {{{ cDefine('_SC_2_PBS_MESSAGE') }}}:
-      case {{{ cDefine('_SC_2_PBS_TRACK') }}}:
-      case {{{ cDefine('_SC_2_UPE') }}}:
-      case {{{ cDefine('_SC_THREAD_THREADS_MAX') }}}:
-      case {{{ cDefine('_SC_SEM_NSEMS_MAX') }}}:
-      case {{{ cDefine('_SC_SYMLOOP_MAX') }}}:
-      case {{{ cDefine('_SC_TIMER_MAX') }}}:
-      case {{{ cDefine('_SC_THREAD_PRIO_INHERIT') }}}:
-      case {{{ cDefine('_SC_THREAD_PRIO_PROTECT') }}}:
-      case {{{ cDefine('_SC_THREAD_PRIORITY_SCHEDULING') }}}:
-        return -1;
-      case {{{ cDefine('_SC_V6_ILP32_OFF32') }}}:
-      case {{{ cDefine('_SC_V6_ILP32_OFFBIG') }}}:
-      case {{{ cDefine('_SC_JOB_CONTROL') }}}:
-      case {{{ cDefine('_SC_REGEXP') }}}:
-      case {{{ cDefine('_SC_SAVED_IDS') }}}:
-      case {{{ cDefine('_SC_SHELL') }}}:
-      case {{{ cDefine('_SC_XBS5_ILP32_OFF32') }}}:
-      case {{{ cDefine('_SC_XBS5_ILP32_OFFBIG') }}}:
-      case {{{ cDefine('_SC_XOPEN_CRYPT') }}}:
-      case {{{ cDefine('_SC_XOPEN_ENH_I18N') }}}:
-      case {{{ cDefine('_SC_XOPEN_LEGACY') }}}:
-      case {{{ cDefine('_SC_XOPEN_REALTIME') }}}:
-      case {{{ cDefine('_SC_XOPEN_REALTIME_THREADS') }}}:
-      case {{{ cDefine('_SC_XOPEN_SHM') }}}:
-      case {{{ cDefine('_SC_XOPEN_UNIX') }}}:
-        return 1;
-      case {{{ cDefine('_SC_THREAD_KEYS_MAX') }}}:
-      case {{{ cDefine('_SC_IOV_MAX') }}}:
-      case {{{ cDefine('_SC_GETGR_R_SIZE_MAX') }}}:
-      case {{{ cDefine('_SC_GETPW_R_SIZE_MAX') }}}:
-      case {{{ cDefine('_SC_OPEN_MAX') }}}:
-        return 1024;
-      case {{{ cDefine('_SC_RTSIG_MAX') }}}:
-      case {{{ cDefine('_SC_EXPR_NEST_MAX') }}}:
-      case {{{ cDefine('_SC_TTY_NAME_MAX') }}}:
-        return 32;
-      case {{{ cDefine('_SC_ATEXIT_MAX') }}}:
-      case {{{ cDefine('_SC_DELAYTIMER_MAX') }}}:
-      case {{{ cDefine('_SC_SEM_VALUE_MAX') }}}:
-        return 2147483647;
-      case {{{ cDefine('_SC_SIGQUEUE_MAX') }}}:
-      case {{{ cDefine('_SC_CHILD_MAX') }}}:
-        return 47839;
-      case {{{ cDefine('_SC_BC_SCALE_MAX') }}}:
-      case {{{ cDefine('_SC_BC_BASE_MAX') }}}:
-        return 99;
-      case {{{ cDefine('_SC_LINE_MAX') }}}:
-      case {{{ cDefine('_SC_BC_DIM_MAX') }}}:
-        return 2048;
-      case {{{ cDefine('_SC_ARG_MAX') }}}: return 2097152;
-      case {{{ cDefine('_SC_NGROUPS_MAX') }}}: return 65536;
-      case {{{ cDefine('_SC_MQ_PRIO_MAX') }}}: return 32768;
-      case {{{ cDefine('_SC_RE_DUP_MAX') }}}: return 32767;
-      case {{{ cDefine('_SC_THREAD_STACK_MIN') }}}: return 16384;
-      case {{{ cDefine('_SC_BC_STRING_MAX') }}}: return 1000;
-      case {{{ cDefine('_SC_XOPEN_VERSION') }}}: return 700;
-      case {{{ cDefine('_SC_LOGIN_NAME_MAX') }}}: return 256;
-      case {{{ cDefine('_SC_COLL_WEIGHTS_MAX') }}}: return 255;
-      case {{{ cDefine('_SC_CLK_TCK') }}}: return 100;
-      case {{{ cDefine('_SC_HOST_NAME_MAX') }}}: return 64;
-      case {{{ cDefine('_SC_AIO_PRIO_DELTA_MAX') }}}: return 20;
-      case {{{ cDefine('_SC_STREAM_MAX') }}}: return 16;
-      case {{{ cDefine('_SC_TZNAME_MAX') }}}: return 6;
-      case {{{ cDefine('_SC_THREAD_DESTRUCTOR_ITERATIONS') }}}: return 4;
-      case {{{ cDefine('_SC_NPROCESSORS_ONLN') }}}: {
-        if (typeof navigator === 'object') return navigator['hardwareConcurrency'] || 1;
-        return 1;
-      }
-    }
-    setErrNo({{{ cDefine('EINVAL') }}});
-    return -1;
-  },
-
-  emscripten_get_heap_size: function() {
     return HEAPU8.length;
+#endif
   },
 
 #if ABORTING_MALLOC
@@ -487,7 +249,7 @@ LibraryManager.library = {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
-  emscripten_resize_heap__deps: ['emscripten_get_heap_size'
+  emscripten_resize_heap__deps: ['emscripten_resize_heap' // Dummy depend on itself to allow following ','s to match up.
 #if ASSERTIONS == 2
   , 'emscripten_get_now'
 #endif
@@ -499,9 +261,8 @@ LibraryManager.library = {
 #endif
   ],
   emscripten_resize_heap: function(requestedSize) {
-#if CAN_ADDRESS_2GB
+    var oldSize = HEAPU8.length;
     requestedSize = requestedSize >>> 0;
-#endif
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
     abortOnCannotGrowMemory(requestedSize);
@@ -509,7 +270,6 @@ LibraryManager.library = {
     return false; // malloc will report failure
 #endif // ABORTING_MALLOC
 #else // ALLOW_MEMORY_GROWTH == 0
-    var oldSize = _emscripten_get_heap_size();
     // With pthreads, races can happen (another thread might increase the size in between), so return a failure, and let the caller retry.
 #if USE_PTHREADS
     if (requestedSize <= oldSize) {
@@ -558,7 +318,7 @@ LibraryManager.library = {
 
     // Loop through potential heap size increases. If we attempt a too eager reservation that fails, cut down on the
     // attempted size and reserve a smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
-    for(var cutDown = 1; cutDown <= 4; cutDown *= 2) {
+    for (var cutDown = 1; cutDown <= 4; cutDown *= 2) {
 #if MEMORY_GROWTH_LINEAR_STEP == -1
       var overGrownHeapSize = oldSize * (1 + {{{ MEMORY_GROWTH_GEOMETRIC_STEP }}} / cutDown); // ensure geometric growth
 #if MEMORY_GROWTH_GEOMETRIC_CAP
@@ -723,6 +483,8 @@ LibraryManager.library = {
     return limit;
   },
 
+#if SHRINK_LEVEL < 2 // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm variant, so we should never emit emscripten_memcpy_big() in the build.
+
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101 || STANDALONE_WASM
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
   // has outdated information for Safari, saying it would not support it.
@@ -744,6 +506,8 @@ LibraryManager.library = {
   emscripten_memcpy_big: function(dest, src, num) {
     HEAPU8.copyWithin(dest, src, src + num);
   },
+#endif
+
 #endif
 
   // ==========================================================================
@@ -912,9 +676,10 @@ LibraryManager.library = {
   },
   __localtime_r: 'localtime_r',
 
-  asctime_r__deps: ['mktime'],
-  asctime_r__sig: 'iii',
-  asctime_r: function(tmPtr, buf) {
+  // musl-internal function used to implement both `asctime` and `asctime_r`
+  __asctime__deps: ['mktime'],
+  __asctime__sig: 'iii',
+  __asctime: function(tmPtr, buf) {
     var date = {
       tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
       tm_min: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
@@ -941,13 +706,12 @@ LibraryManager.library = {
     stringToUTF8(s, buf, 26);
     return buf;
   },
-  __asctime_r: 'asctime_r',
 
-  ctime_r__deps: ['localtime_r', 'asctime_r'],
+  ctime_r__deps: ['localtime_r', '__asctime'],
   ctime_r__sig: 'iii',
   ctime_r: function(time, buf) {
     var stack = stackSave();
-    var rv = _asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
+    var rv = ___asctime(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
     stackRestore(stack);
     return rv;
   },
@@ -1038,7 +802,7 @@ LibraryManager.library = {
   _addDays__deps: ['_isLeapYear', '_MONTH_DAYS_LEAP', '_MONTH_DAYS_REGULAR'],
   _addDays: function(date, days) {
     var newDate = new Date(date.getTime());
-    while(days > 0) {
+    while (days > 0) {
       var leap = __isLeapYear(newDate.getFullYear());
       var currentMonth = newDate.getMonth();
       var daysInCurrentMonth = (leap ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR)[currentMonth];
@@ -1375,7 +1139,7 @@ LibraryManager.library = {
       }
     };
     for (var rule in EXPANSION_RULES_2) {
-      if (pattern.indexOf(rule) >= 0) {
+      if (pattern.includes(rule)) {
         pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_2[rule](date));
       }
     }
@@ -2103,7 +1867,7 @@ LibraryManager.library = {
       return [0, 0, 0, 0, 0, 0, 0, 0];
     }
     // Z placeholder to keep track of zeros when splitting the string on ":"
-    if (str.indexOf("::") === 0) {
+    if (str.startsWith("::")) {
       str = str.replace("::", "Z:"); // leading zeros case
     } else {
       str = str.replace("::", ":Z:");
@@ -2201,8 +1965,8 @@ LibraryManager.library = {
       if (parts[5] === 0) {
         str = "::";
         //special case IPv6 addresses
-        if(v4part === "0.0.0.0") v4part = ""; // any/unspecified address
-        if(v4part === "0.0.0.1") v4part = "1";// loopback address
+        if (v4part === "0.0.0.0") v4part = ""; // any/unspecified address
+        if (v4part === "0.0.0.1") v4part = "1";// loopback address
         str += v4part;
         return str;
       }
@@ -3041,7 +2805,7 @@ LibraryManager.library = {
     if (flags & 128 /*EM_LOG_FUNC_PARAMS*/) {
       // To get the actual parameters to the functions, traverse the stack via the unfortunately deprecated 'arguments.callee' method, if it works:
       stack_args = traverseStack(arguments);
-      while (stack_args[1].indexOf('_emscripten_') >= 0)
+      while (stack_args[1].includes('_emscripten_'))
         stack_args = traverseStack(stack_args[0]);
     }
 
@@ -3162,6 +2926,7 @@ LibraryManager.library = {
   },
 
   emscripten_get_compiler_setting: function(name) {
+#if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
@@ -3173,6 +2938,9 @@ LibraryManager.library = {
     var fullret = cache[fullname];
     if (fullret) return fullret;
     return cache[fullname] = allocate(intArrayFromString(ret + ''), ALLOC_NORMAL);
+#else
+    throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for getCompilerSetting or emscripten_get_compiler_setting to work';
+#endif
   },
 
   emscripten_has_asyncify: function() {
@@ -3195,7 +2963,7 @@ LibraryManager.library = {
   emscripten_generate_pc: function(frame) {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_generate_pc (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
-#endif
+#else
     var match;
 
     if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
@@ -3215,6 +2983,7 @@ LibraryManager.library = {
       // return 0 if we can't find any
       return 0;
     }
+#endif
   },
 
   // Returns a representation of a call site of the caller of this function, in a manner
@@ -3316,15 +3085,19 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', '$withBuiltinMalloc'
+  emscripten_pc_get_function__deps: [
+#if USE_OFFSET_CONVERTER
+    '$UNWIND_CACHE',
+    '$withBuiltinMalloc',
 #if MINIMAL_RUNTIME
-    , '$allocateUTF8'
+    '$allocateUTF8',
+#endif
 #endif
   ],
   emscripten_pc_get_function: function (pc) {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
-#endif
+#else
     var name;
     if (pc & 0x80000000) {
       // If this is a JavaScript function, try looking it up in the unwind cache.
@@ -3347,6 +3120,7 @@ LibraryManager.library = {
       _emscripten_pc_get_function.ret = allocateUTF8(name);
     });
     return _emscripten_pc_get_function.ret;
+#endif
   },
 
   emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
@@ -3491,6 +3265,7 @@ LibraryManager.library = {
   },
 
   emscripten_asm_const_int__sig: 'iiii',
+  emscripten_asm_const_int__deps: ['$readAsmConstArgs'],
   emscripten_asm_const_int: function(code, sigPtr, argbuf) {
 #if RELOCATABLE
     code -= {{{ GLOBAL_BASE }}};
@@ -3502,6 +3277,8 @@ LibraryManager.library = {
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_double: 'emscripten_asm_const_int',
+
+  $mainThreadEM_ASM__deps: ['$readAsmConstArgs'],
   $mainThreadEM_ASM: function(code, sigPtr, argbuf, sync) {
 #if RELOCATABLE
     code -= {{{ GLOBAL_BASE }}};
@@ -3542,18 +3319,12 @@ LibraryManager.library = {
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
+  $exportAsmFunctions__deps: ['$asmjsMangle'],
   $exportAsmFunctions: function(asm) {
-    var asmjsMangle = function(x) {
-      var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
-      return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
-    };
-
-#if ENVIRONMENT_MAY_BE_NODE
-#if ENVIRONMENT_MAY_BE_WEB
+#if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
     var global_object = (typeof process !== "undefined" ? global : this);
-#else
+#elif ENVIRONMENT_MAY_BE_NODE
     var global_object = global;
-#endif
 #else
     var global_object = this;
 #endif
@@ -3724,7 +3495,7 @@ LibraryManager.library = {
   $getDynCaller__deps: ['$dynCall'],
   $getDynCaller: function(sig, ptr) {
 #if ASSERTIONS && !DYNCALLS
-    assert(sig.indexOf('j') >= 0, 'getDynCaller should only be called with i64 sigs')
+    assert(sig.includes('j'), 'getDynCaller should only be called with i64 sigs')
 #endif
     var argCache = [];
     return function() {
@@ -3745,7 +3516,7 @@ LibraryManager.library = {
     // Without WASM_BIGINT support we cannot directly call function with i64 as
     // part of thier signature, so we rely the dynCall functions generated by
     // wasm-emscripten-finalize
-    if (sig.indexOf('j') != -1) {
+    if (sig.includes('j')) {
       return dynCallLegacy(sig, ptr, args);
     }
 #endif
@@ -3757,7 +3528,7 @@ LibraryManager.library = {
   },
 
   $callRuntimeCallbacks: function(callbacks) {
-    while(callbacks.length > 0) {
+    while (callbacks.length > 0) {
       var callback = callbacks.shift();
       if (typeof callback == 'function') {
         callback(Module); // Pass the module as the first argument.
@@ -3843,12 +3614,17 @@ LibraryManager.library = {
 #if EXIT_RUNTIME || USE_PTHREADS
   $callUserCallback__deps: ['$maybeExit'],
 #endif
-  $callUserCallback: function(func) {
+  $callUserCallback: function(func, synchronous) {
     if (ABORT) {
 #if ASSERTIONS
       err('user callback triggered after application aborted.  Ignoring.');
-      return;
 #endif
+      return;
+    }
+    // For synchronous calls, let any exceptions propagate, and don't let the runtime exit.
+    if (synchronous) {
+      func();
+      return;
     }
     try {
       func();
@@ -3901,6 +3677,28 @@ LibraryManager.library = {
   $callUserCallback: function(func) {
     func();
   },
+#endif
+
+  $asmjsMangle: function(x) {
+    var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
+    return x.indexOf('dynCall_') == 0 || unmangledSymbols.includes(x) ? x : '_' + x;
+  },
+
+#if RELOCATABLE
+  // These get set in emscripten.py during add_standard_wasm_imports, but are
+  // included here so they don't show up as undefined symbols at js compile
+  // time.
+  __stack_pointer: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, {{{ STACK_BASE }}})",
+  // tell the memory segments where to place themselves
+  __memory_base: '{{{ GLOBAL_BASE }}}',
+  // the wasm backend reserves slot 0 for the NULL function pointer
+  __table_base: 1,
+  // To support such allocations during startup, track them on __heap_base and
+  // then when the main module is loaded it reads that value and uses it to
+  // initialize sbrk (the main module is relocatable itself, and so it does not
+  // have __heap_base hardcoded into it - it receives it from JS as an extern
+  // global, basically).
+  __heap_base: '{{{ HEAP_BASE }}}',
 #endif
 };
 

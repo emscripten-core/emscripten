@@ -6,6 +6,9 @@
 
 import sys
 from tools import building
+from tools import shared
+from tools import config
+from tools import utils
 from subprocess import CalledProcessError
 
 
@@ -22,8 +25,40 @@ variables so that emcc etc. are used. Typical usage:
 ''', file=sys.stderr)
     return 1
 
+  args = sys.argv[1:]
+  env = building.get_building_env()
+
+  def has_substr(args, substr):
+    return any(substr in s for s in args)
+
+  # Append the Emscripten toolchain file if the user didn't specify one.
+  if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
+    args.append('-DCMAKE_TOOLCHAIN_FILE=' + utils.path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
+  node_js = config.NODE_JS
+
+  if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
+    node_js = config.NODE_JS[0].replace('"', '\"')
+    args.append('-DCMAKE_CROSSCOMPILING_EMULATOR="%s"' % node_js)
+
+  # On Windows specify MinGW Makefiles or ninja if we have them and no other
+  # toolchain was specified, to keep CMake from pulling in a native Visual
+  # Studio, or Unix Makefiles.
+  if utils.WINDOWS and '-G' not in args:
+    if utils.which('mingw32-make'):
+      args += ['-G', 'MinGW Makefiles']
+    elif utils.which('ninja'):
+      args += ['-G', 'Ninja']
+
+  # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles
+  # is being used. This happens quite often, so do this automatically on
+  # behalf of the user. See
+  # http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
+  if utils.WINDOWS and 'MinGW Makefiles' in args:
+    env = building.remove_sh_exe_from_path(env)
+
+  print('configure: ' + shared.shlex_join(args), file=sys.stderr)
   try:
-    building.configure(sys.argv[1:])
+    shared.check_call(args, env=env)
     return 0
   except CalledProcessError as e:
     return e.returncode

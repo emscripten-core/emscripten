@@ -154,7 +154,7 @@ For more information about compiler optimization options see :ref:`Optimizing-Co
 Emscripten Test Suite and Benchmarks
 ====================================
 
-Emscripten has a comprehensive test suite, which covers virtually all Emscripten functionality. These tests are an excellent resource for developers as they provide practical examples of most features, and are known to build successfully on the master branch.
+Emscripten has a comprehensive test suite, which covers virtually all Emscripten functionality. These tests are an excellent resource for developers as they provide practical examples of most features, and are known to build successfully on the ``main`` branch.
 
 See :ref:`emscripten-test-suite` for more information.
 

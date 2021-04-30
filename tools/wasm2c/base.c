@@ -102,7 +102,7 @@ ret (*name) params = _##name;
 
 static void abort_with_message(const char* message) {
   fprintf(stderr, "%s\n", message);
-  abort();
+  TRAP(UNREACHABLE);
 }
 
 // Maintain a stack of setjmps, each jump taking us back to the last invoke.

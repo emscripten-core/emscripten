@@ -240,28 +240,30 @@ var LibraryBrowser = {
       Module['preloadPlugins'].push(audioPlugin);
 
 #if MAIN_MODULE
-      var wasmPlugin = {};
-      wasmPlugin['asyncWasmLoadPromise'] = new Promise(
-        function(resolve, reject) { return resolve(); });
-      wasmPlugin['canHandle'] = function(name) {
-        return !Module.noWasmDecoding && name.endsWith('.so');
-      };
-      wasmPlugin['handle'] = function(byteArray, name, onload, onerror) {
-        // loadWebAssemblyModule can not load modules out-of-order, so rather
-        // than just running the promises in parallel, this makes a chain of
-        // promises to run in series.
-        this['asyncWasmLoadPromise'] = this['asyncWasmLoadPromise'].then(
-          function() {
-            return loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true});
-          }).then(
-            function(module) {
-              Module['preloadedWasm'][name] = module;
-              onload();
-            },
-            function(err) {
-              console.warn("Couldn't instantiate wasm: " + name + " '" + err + "'");
-              onerror();
-            });
+      // Use string keys here to avoid minification since the plugin consumer
+      // also uses string keys.
+      var wasmPlugin = {
+        'asyncWasmLoadPromise': new Promise(function(resolve, reject) { return resolve(); }),
+        'canHandle': function(name) {
+          return !Module.noWasmDecoding && name.endsWith('.so')
+        },
+        'handle': function(byteArray, name, onload, onerror) {
+          // loadWebAssemblyModule can not load modules out-of-order, so rather
+          // than just running the promises in parallel, this makes a chain of
+          // promises to run in series.
+          this['asyncWasmLoadPromise'] = this['asyncWasmLoadPromise'].then(
+            function() {
+              return loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true});
+            }).then(
+              function(module) {
+                Module['preloadedWasm'][name] = module;
+                onload();
+              },
+              function(err) {
+                console.warn("Couldn't instantiate wasm: " + name + " '" + err + "'");
+                onerror();
+              });
+        }
       };
       Module['preloadPlugins'].push(wasmPlugin);
 #endif // MAIN_MODULE
@@ -514,7 +516,7 @@ var LibraryBrowser = {
     },
 
     getUserMedia: function(func) {
-      if(!window.getUserMedia) {
+      if (!window.getUserMedia) {
         window.getUserMedia = navigator['getUserMedia'] ||
                               navigator['mozGetUserMedia'];
       }
@@ -558,7 +560,7 @@ var LibraryBrowser = {
           break;
         case 'wheel':
           delta = event.deltaY
-          switch(event.deltaMode) {
+          switch (event.deltaMode) {
             case 0:
               // DOM_DELTA_PIXEL: 100 pixels make up a step
               delta /= 100;
@@ -1556,6 +1558,7 @@ var LibraryBrowser = {
     }
   },
 
+#if BUILD_AS_WORKER
   emscripten_worker_respond_provisionally__proxy: 'sync',
   emscripten_worker_respond_provisionally__sig: 'vii',
   emscripten_worker_respond_provisionally: function(data, size) {
@@ -1588,6 +1591,7 @@ var LibraryBrowser = {
       postMessage(transferObject);
     }
   },
+#endif
 
   emscripten_get_worker_queue_size__proxy: 'sync',
   emscripten_get_worker_queue_size__sig: 'i',

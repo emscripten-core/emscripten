@@ -840,9 +840,9 @@ var LibraryGLFW = {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
 
-      switch(mode) {
+      switch (mode) {
         case 0x00033001: { // GLFW_CURSOR
-          switch(value) {
+          switch (value) {
             case 0x00034001: { // GLFW_CURSOR_NORMAL
               win.inputModes[mode] = value;
               Module['canvas'].removeEventListener('click', GLFW.onClickRequestPointerLock, true);
@@ -1200,11 +1200,11 @@ var LibraryGLFW = {
       GLFW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
     }
 
-    if (GLFW.extensions.indexOf(extension) != -1) return 1;
+    if (GLFW.extensions.includes(extension)) return 1;
 
     // extensions from GLEmulations do not come unprefixed
     // so, try with prefix
-    return (GLFW.extensions.indexOf("GL_" + extension) != -1);
+    return (GLFW.extensions.includes("GL_" + extension));
   },
 
   glfwSwapInterval__deps: ['emscripten_set_main_loop_timing'],
@@ -1844,7 +1844,7 @@ var LibraryGLFW = {
   },
 
   glfwCreateThread: function(fun, arg) {
-    {{{ makeDynCall('vi', 'str') }}}(fun, arg);
+    {{{ makeDynCall('vi', 'fun') }}}(arg);
     // One single thread
     return 0;
   },

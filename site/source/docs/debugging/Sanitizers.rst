@@ -154,7 +154,7 @@ Consider ``buffer_overflow.c``:
 
 .. code-block:: console
 
-  $ emcc -g4 -fsanitize=address -s ALLOW_MEMORY_GROWTH buffer_overflow.c
+  $ emcc -gsource-map -fsanitize=address -s ALLOW_MEMORY_GROWTH buffer_overflow.c
   $ node a.out.js
   =================================================================
   ==42==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x02965e5a at pc 0x000015f0 bp 0x02965a30 sp 0x02965a30
@@ -193,7 +193,7 @@ Consider ``use_after_free.cpp``:
 
 .. code-block:: console
 
-  $ em++ -g4 -fsanitize=address -s ALLOW_MEMORY_GROWTH use_after_free.cpp
+  $ em++ -gsource-map -fsanitize=address -s ALLOW_MEMORY_GROWTH use_after_free.cpp
   $ node a.out.js
   =================================================================
   ==42==ERROR: AddressSanitizer: heap-use-after-free on address 0x03203e40 at pc 0x00000c1b bp 0x02965e70 sp 0x02965e7c
@@ -238,7 +238,7 @@ Consider ``leak.cpp``:
 
 .. code-block:: console
 
-  $ em++ -g4 -fsanitize=address -s ALLOW_MEMORY_GROWTH -s EXIT_RUNTIME leak.cpp
+  $ em++ -gsource-map -fsanitize=address -s ALLOW_MEMORY_GROWTH -s EXIT_RUNTIME leak.cpp
   $ node a.out.js
 
   =================================================================
@@ -317,7 +317,7 @@ can cause traps. Hence, it is not enabled by default.
 
 .. code-block:: console
 
-  $ emcc -g4 -fsanitize=address -s ALLOW_MEMORY_GROWTH=1 use_after_return.c
+  $ emcc -gsource-map -fsanitize=address -s ALLOW_MEMORY_GROWTH=1 use_after_return.c
   $ node a.out.js
   =================================================================
   ==42==ERROR: AddressSanitizer: stack-use-after-return on address 0x02a95010 at pc 0x00000d90 bp 0x02965f70 sp 0x02965f7c
