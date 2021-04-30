@@ -31,43 +31,61 @@ function processMacros(text) {
 // Param filenameHint can be passed as a description to identify the file that is being processed, used
 // to locate errors for reporting and for html files to stop expansion between <style> and </style>.
 function preprocess(text, filenameHint) {
+  const IGNORE = 0;
+  const SHOW = 1;
+  // This state is entered after we have shown one of the block of an if/elif/else sequence.
+  // Once we enter this state we dont show any blocks or evaluate any
+  // conditions until the sequence ends.
+  const IGNORE_ALL = 2;
+  const showStack = [];
+  const showCurrentLine = () => showStack.every((x) => x == SHOW);
+
   currentlyParsedFilename = filenameHint;
+  const fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : '';
+  const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
+  let inStyle = false;
+  const lines = text.split('\n');
+  let ret = '';
+  let emptyLine = false;
+
   try {
-    const fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : '';
-    const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
-    let inStyle = false;
-    const lines = text.split('\n');
-    let ret = '';
-    const showStack = [];
-    let emptyLine = false;
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i];
       try {
         if (line[line.length - 1] === '\r') {
           line = line.substr(0, line.length - 1); // Windows will have '\r' left over from splitting over '\r\n'
         }
-        if (isHtml && line.indexOf('<style') !== -1 && !inStyle) {
+        if (isHtml && line.includes('<style') && !inStyle) {
           inStyle = true;
         }
-        if (isHtml && line.indexOf('</style') !== -1 && inStyle) {
+        if (isHtml && line.includes('</style') && inStyle) {
           inStyle = false;
         }
 
         if (!inStyle) {
           const trimmed = line.trim();
-          if (trimmed[0] === '#') {
+          if (trimmed.startsWith('#')) {
             const first = trimmed.split(' ', 1)[0];
-            if (first == '#if' || first == '#ifdef') {
+            if (first == '#if' || first == '#ifdef' || first == '#elif') {
               if (first == '#ifdef') {
                 warn('warning: use of #ifdef in js library.  Use #if instead.');
               }
+              if (first == '#elif') {
+                const curr = showStack.pop();
+                if (curr == SHOW || curr == IGNORE_ALL) {
+                  // If we showed to previous block we enter the IGNORE_ALL state
+                  // and stay there until endif is seen
+                  showStack.push(IGNORE_ALL);
+                  continue;
+                }
+              }
               const after = trimmed.substring(trimmed.indexOf(' '));
               const truthy = !!eval(after);
-              showStack.push(truthy);
+              showStack.push(truthy ? SHOW : IGNORE);
             } else if (first === '#include') {
-              if (showStack.indexOf(false) === -1) {
+              if (showCurrentLine()) {
                 let filename = line.substr(line.indexOf(' ') + 1);
-                if (filename.indexOf('"') === 0) {
+                if (filename.startsWith('"')) {
                   filename = filename.substr(1, filename.length - 2);
                 }
                 const included = read(filename);
@@ -80,7 +98,12 @@ function preprocess(text, filenameHint) {
               }
             } else if (first === '#else') {
               assert(showStack.length > 0);
-              showStack.push(!showStack.pop());
+              const curr = showStack.pop();
+              if (curr == IGNORE) {
+                showStack.push(SHOW);
+              } else {
+                showStack.push(IGNORE);
+              }
             } else if (first === '#endif') {
               assert(showStack.length > 0);
               showStack.pop();
@@ -88,7 +111,7 @@ function preprocess(text, filenameHint) {
               throw new Error(`Unknown preprocessor directive on line ${i}: ``${line}```);
             }
           } else {
-            if (showStack.indexOf(false) === -1) {
+            if (showCurrentLine()) {
               // Never emit more than one empty line at a time.
               if (emptyLine && !line) {
                 continue;
@@ -102,7 +125,7 @@ function preprocess(text, filenameHint) {
             }
           }
         } else { // !inStyle
-          if (showStack.indexOf(false) === -1) {
+          if (showCurrentLine()) {
             ret += line + '\n';
           }
         }
@@ -462,7 +485,7 @@ function ensureDot(value) {
   // if already dotted, or Infinity or NaN, nothing to do here
   // if smaller than 1 and running js opts, we always need to force a coercion
   // (0.001 will turn into 1e-3, which has no .)
-  if ((value.indexOf('.') >= 0 || /[IN]/.test(value))) return value;
+  if ((value.includes('.') || /[IN]/.test(value))) return value;
   const e = value.indexOf('e');
   if (e < 0) return value + '.0';
   return value.substr(0, e) + '.0' + value.substr(e);
@@ -856,25 +879,17 @@ function getHeapForType(type, unsigned) {
   assert(false, 'bad heap type: ' + type);
 }
 
-function makeGetTempRet0() {
-  return '(getTempRet0() | 0)';
-}
-
-function makeSetTempRet0(value) {
-  return 'setTempRet0((' + value + ') | 0)';
-}
-
 // Takes a pair of return values, stashes one in tempRet0 and returns the other.
 // Should probably be renamed to `makeReturn64` but keeping this old name in
 // case external JS library code uses this name.
 function makeStructuralReturn(values) {
   assert(values.length == 2);
-  return makeSetTempRet0(values[1]) + '; return ' + asmCoercion(values[0], 'i32');
+  return 'setTempRet0(' + values[1] + '); return ' + asmCoercion(values[0], 'i32');
 }
 
 function makeThrow(what) {
-  if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING == 1) {
-    what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch."';
+  if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
+    what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s NO_DISABLE_EXCEPTION_CATCHING or -s EXCEPTION_CATCHING_ALLOWED=[..] to catch."';
     if (MAIN_MODULE) {
       what += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
     }
@@ -992,7 +1007,7 @@ function asmFFICoercion(value, type) {
 }
 
 function makeDynCall(sig, funcPtr) {
-  assert(sig.indexOf('j') == -1, 'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!');
+  assert(!sig.includes('j'), 'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!');
 
   const returnExpr = (sig[0] == 'v') ? '' : 'return';
 
@@ -1194,7 +1209,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
 function makeRemovedFSAssert(fsName) {
   if (!ASSERTIONS) return;
   const lower = fsName.toLowerCase();
-  if (SYSTEM_JS_LIBRARIES.indexOf('library_' + lower + '.js') >= 0) return '';
+  if (SYSTEM_JS_LIBRARIES.includes('library_' + lower + '.js')) return '';
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
@@ -1222,8 +1237,17 @@ function makeAsmImportsAccessInPthread(variable) {
   return variable;
 }
 
+function _asmjsDemangle(symbol) {
+  if (symbol in WASM_SYSTEM_EXPORTS) {
+    return symbol;
+  }
+  // Strip leading "_"
+  assert(symbol.startsWith('_'));
+  return symbol.substr(1);
+}
+
 function hasExportedFunction(func) {
-  return Object.keys(EXPORTED_FUNCTIONS).indexOf(func) != -1;
+  return Object.keys(WASM_EXPORTS).includes(_asmjsDemangle(func));
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
@@ -1278,7 +1302,7 @@ function addReadyPromiseAssertions(promise) {
 }
 
 function makeMalloc(source, param) {
-  if ('_malloc' in IMPLEMENTED_FUNCTIONS) {
+  if (hasExportedFunction('_malloc')) {
     return `_malloc(${param})`;
   }
   // It should be impossible to call some functions without malloc being

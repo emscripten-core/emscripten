@@ -104,37 +104,55 @@ Bisecting
 If you find a regression, bisection is often the fastest way to figure out what
 went wrong. This is true not just for finding an actual regression in Emscripten
 but also if your project stopped working when you upgrade, and you need to
-investigate if it's an Emscripten regression or something else.
+investigate if it's an Emscripten regression or something else. The rest of
+this section covers bisection on Emscripten itself. It is hopefully useful for
+both people using Emscripten as well as Emscripten developers.
 
-The normal ``git bisect`` workflow can work if you just need to bisect a single
-repository. For example, you can bisect only on the emscripten repo if you are on
-a range that all works with the same versions of LLVM and Binaryen (which was
-mentioned earlier, are two separate codebases that are depended on).
+If you have a large bisection range - for example, that covers more than one
+version of Emscripten - then you probably have changes across multiple repos
+(Emscripten, LLVM, and Binaryen). In that case the easiest and fastest thing
+is to bisect using **emsdk builds**. Each step of the bisection will download
+a build produced by the emscripten releases builders. Using this approach you
+don't need to compile anything yourself, so it can be very fast!
 
-If you have a large bisection range, you generally can't bisect a single repo.
-You can still bisect, though! To do that you need the emsdk and to understand
-how the
+To do this, you need a basic understanding of Emscripten's
 `release process <https://github.com/emscripten-core/emscripten/blob/main/docs/process.md#release-processes>`_
-works for all the repos together. The key "trick" is that::
+The key idea is that::
 
-     emsdk install tot
+     emsdk install [HASH]
 
-can install an arbitrary build of emscripten: it installs the one identified
-in ``emscripten-releases-tot.txt``. You can therefore bisect on the
-`releases repo <https://chromium.googlesource.com/emscripten-releases>`_ which
-has a DEPS file that specifies what version of all the various repos are
-in which release. At each bisection step in this repo the git hash identifies a
-particular `tot` release (which when it was built, was tip-of-tree).
+can install an arbitrary build of emscripten from any point in the past (assuming
+the build succeeded). Each build is identified by a hash (a long string of numbers
+and characters), which is a hash of a commit in the
+`releases repo <https://chromium.googlesource.com/emscripten-releases>`_.
+The mapping of Emscripten release numbers to such hashes is tracked by
+`emscripten-releases-tags.txt in the emsdk repo <https://github.com/emscripten-core/emsdk/blob/master/emscripten-releases-tags.txt>`_.
 
-For the actual bisection you can use
-`git bisect <https://git-scm.com/docs/git-bisect>`_. Each step in will download
-a complete build which is not a trivial download. However, at least the number
-of such steps will be logarithmic!
+With that background, the bisection process would look like this:
 
-This bisects down to a single commit in the releases repo. That commit will
-generally update a single sub-repo from one commit to another. That will often
-be a very short list or even a single commit. If it's more than one, you can
-bisect there while using a fixed build for the other repos.
+1. Find the hashes to bisect between. You may already know them if you found
+   the problem on ``tot`` builds. If instead you only know Emscripten version
+   numbers, use ``emscripten-releases-tags.txt`` to find the hashes.
+2. Using those hashes, do a normal ``git bisect`` on the ``emscripten-releases``
+   repo.
+3. In each step of the bisection, download the binary build for the current
+   commit hash (in the ``emscripten-releases`` repo that you are bisecting on)
+   using ``emsdk install HASH``. Then test your code and do
+   ``git bisect good`` or ``git bisect bad`` accordingly, and keep bisecting
+   until you find the first bad commit.
+
+The first bad commit is a single change in the releases repo. That commit will
+generally update a single sub-repo (Emscripten, LLVM, or Binaryen) to add
+one or more new changes. Often that list will be very short or even a single
+commit, and you can see which actual commit caused the problem. When filing
+a bug, mentioning such a bisection result can greatly speed things up (even if
+that commit contains multiple changes).
+
+If that commit contains multiple changes then you can optionally bisect
+further on the specific repo (as all the changes will normally be in just
+one of them, with the others kept fixed). Doing this will require rebuilding
+locally, which was not needed in the main bisection described in this
+section.
 
 See also
 ========

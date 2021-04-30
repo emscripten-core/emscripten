@@ -162,7 +162,7 @@ var emscriptenCpuProfiler = {
         accumulatedFrameTimeInsideMainLoop: function(startX, numSamples) {
           var total = 0;
           numSamples = Math.min(numSamples, this.frametimesInsideMainLoop.length);
-          for(var i = 0; i < numSamples; ++i) {
+          for (var i = 0; i < numSamples; ++i) {
             var x = (startX + i) % this.frametimesInsideMainLoop.length;
             if (this.frametimesInsideMainLoop[x]) total += this.frametimesInsideMainLoop[x];
           }
@@ -171,7 +171,7 @@ var emscriptenCpuProfiler = {
         accumulatedFrameTimeOutsideMainLoop: function(startX, numSamples) {
           var total = 0;
           numSamples = Math.min(numSamples, this.frametimesInsideMainLoop.length);
-          for(var i = 0; i < numSamples; ++i) {
+          for (var i = 0; i < numSamples; ++i) {
             var x = (startX + i) % this.frametimesInsideMainLoop.length;
             if (this.frametimesOutsideMainLoop[x]) total += this.frametimesOutsideMainLoop[x];
           }
@@ -201,7 +201,7 @@ var emscriptenCpuProfiler = {
       if (sect.traceable && timeInSection > this.logWebGLCallsSlowerThan) {
         var funcs = new Error().stack.toString().split('\n');
         var cs = '';
-        for(var i = 2; i < 5 && i < funcs.length; ++i) {
+        for (var i = 2; i < 5 && i < funcs.length; ++i) {
           if (i != 2) cs += ' <- ';
           var fn = funcs[i];
           var at = fn.indexOf('@');
@@ -232,7 +232,7 @@ var emscriptenCpuProfiler = {
     if (this.insideMainLoopRecursionCounter != 0) return;
 
     // Aggregate total times spent in each section to memory store to wait until the next stats UI redraw period.
-    for(var i = 0; i < this.sections.length; ++i) {
+    for (var i = 0; i < this.sections.length; ++i) {
       var sect = this.sections[i];
       if (!sect) continue;
       sect.frametimesInsideMainLoop[this.currentHistogramX] = sect.accumulatedTimeInsideMainLoop;
@@ -351,7 +351,7 @@ var emscriptenCpuProfiler = {
       document.getElementById('trace_limit').onkeydown = function(e) { if (e.which == 13 || e.keycode == 13) emscriptenCpuProfiler.enableTraceWebGL(); else emscriptenCpuProfiler.disableTraceWebGL(); };
       cpuprofiler = document.getElementById('cpuprofiler');
 
-      if (location.search.indexOf('expandhelp') != -1) this.toggleHelpTextVisible();
+      if (location.search.includes('expandhelp')) this.toggleHelpTextVisible();
     }
     
     this.canvas = document.getElementById('cpuprofiler_canvas');
@@ -417,7 +417,7 @@ var emscriptenCpuProfiler = {
 
   drawBar: function drawBar(x) {
     var timeSpentInSectionsInsideMainLoop = 0;
-    for(var i = 0; i < this.sections.length; ++i) {
+    for (var i = 0; i < this.sections.length; ++i) {
       var sect = this.sections[i];
       if (!sect) continue;
       timeSpentInSectionsInsideMainLoop += sect.frametimesInsideMainLoop[x];
@@ -428,7 +428,7 @@ var emscriptenCpuProfiler = {
     y -= h;
     this.drawContext.fillStyle = this.colorCpuTimeSpentInUserCode;
     this.drawContext.fillRect(x, y, 1, h);
-    for(var i = 0; i < this.sections.length; ++i) {
+    for (var i = 0; i < this.sections.length; ++i) {
       var sect = this.sections[i];
       if (!sect) continue;
       h = (sect.frametimesInsideMainLoop[x] + sect.frametimesOutsideMainLoop[x]) * scale;
@@ -470,9 +470,9 @@ var emscriptenCpuProfiler = {
 
     // Also poll to autodetect if there is an Emscripten GL canvas available that we could hook into. This is a bit clumsy, but there's no good location to get an event after GL context has been created, so
     // need to resort to polling.
-    if (location.search.indexOf('webglprofiler') != -1 && !this.automaticallyHookedWebGLProfiler) {
+    if (location.search.includes('webglprofiler') && !this.automaticallyHookedWebGLProfiler) {
       this.hookWebGL();
-      if (location.search.indexOf('tracegl') != -1) {
+      if (location.search.includes('tracegl')) {
         var res = location.search.match(/tracegl=(\d+)/);
         var traceGl = res[1];
         document.getElementById('trace_limit').value = traceGl;
@@ -513,18 +513,18 @@ var emscriptenCpuProfiler = {
     var l9 = ['copyTexSubImage3D'];
     var l10 = ['blitFramebuffer', 'texImage3D', 'compressedTexSubImage3D'];
     var l11 = ['texSubImage3D'];
-    if (l0.indexOf(f) != -1) return 0;
-    if (l1.indexOf(f) != -1) return 1;
-    if (l2.indexOf(f) != -1) return 2;
-    if (l3.indexOf(f) != -1) return 3;
-    if (l4.indexOf(f) != -1) return 4;
-    if (l5.indexOf(f) != -1) return 5;
-    if (l6.indexOf(f) != -1) return 6;
-    if (l7.indexOf(f) != -1) return 7;
-    if (l8.indexOf(f) != -1) return 8;
-    if (l9.indexOf(f) != -1) return 9;
-    if (l10.indexOf(f) != -1) return 10;
-    if (l11.indexOf(f) != -1) return 11;
+    if (l0.includes(f)) return 0;
+    if (l1.includes(f)) return 1;
+    if (l2.includes(f)) return 2;
+    if (l3.includes(f)) return 3;
+    if (l4.includes(f)) return 4;
+    if (l5.includes(f)) return 5;
+    if (l6.includes(f)) return 6;
+    if (l7.includes(f)) return 7;
+    if (l8.includes(f)) return 8;
+    if (l9.includes(f)) return 9;
+    if (l10.includes(f)) return 10;
+    if (l11.includes(f)) return 11;
     console.warn('Unexpected WebGL function ' + f);
   },
 
@@ -537,7 +537,7 @@ var emscriptenCpuProfiler = {
 
   toggleHookWebGL: function(glCtx) {
     if (!glCtx) glCtx = this.detectWebGLContext();
-    if (this.hookedWebGLContexts.indexOf(glCtx) != -1) this.unhookWebGL(glCtx);
+    if (this.hookedWebGLContexts.includes(glCtx)) this.unhookWebGL(glCtx);
     else this.hookWebGL(glCtx);
   },
 
@@ -566,8 +566,8 @@ var emscriptenCpuProfiler = {
     this.hookedWebGLContexts.splice(this.hookedWebGLContexts.indexOf(glCtx), 1);
     document.getElementById("toggle_webgl_profile").style.background = '#E1E1E1';
 
-    for(var f in glCtx) {
-      if (typeof glCtx[f] !== 'function' || f.indexOf('real_') == 0) continue;
+    for (var f in glCtx) {
+      if (typeof glCtx[f] !== 'function' || f.startsWith('real_')) continue;
       var realf = 'real_' + f;
       glCtx[f] = glCtx[realf];
       delete glCtx[realf];
@@ -576,12 +576,12 @@ var emscriptenCpuProfiler = {
 
   hookWebGLFunction: function(f, glCtx) {
     var this_ = this;
-    var section = (this_.hotGLFunctions.indexOf(f) != -1 || f.indexOf('uniform') == 0 || f.indexOf('vertexAttrib') == 0) ? 0 : 1;
+    var section = (this_.hotGLFunctions.incudes(f) || f.startsWith('uniform') || f.startsWith('vertexAttrib')) ? 0 : 1;
     var realf = 'real_' + f;
     glCtx[realf] = glCtx[f];
     var numArgs = this_.webGLFunctionLength(f); // On Firefox & Chrome, could do "glCtx[realf].length", but that doesn't work on Edge, which always reports 0.
     // Accessing 'arguments' is super slow, so to avoid overhead, statically reason the number of arguments.
-    switch(numArgs) {
+    switch (numArgs) {
       case 0: glCtx[f] = function webgl_0() { this_.enterSection(section); var ret = glCtx[realf](); this_.endSection(section); return ret; }; break;
       case 1: glCtx[f] = function webgl_1(a1) { this_.enterSection(section); var ret =  glCtx[realf](a1); this_.endSection(section); return ret; }; break;
       case 2: glCtx[f] = function webgl_2(a1, a2) { this_.enterSection(section); var ret =  glCtx[realf](a1, a2); this_.endSection(section); return ret; }; break;
@@ -616,8 +616,8 @@ var emscriptenCpuProfiler = {
     // Distinguishing between these two allows pinpointing locations of troublesome GL usage that might cause performance issues.
     this.createSection(0, 'Hot GL', this.colorHotGLFunction, /*traceable=*/true);
     this.createSection(1, 'Cold GL', this.colorColdGLFunction, /*traceable=*/true);
-    for(var f in glCtx) {
-      if (typeof glCtx[f] !== 'function' || f.indexOf('real_') == 0) continue;
+    for (var f in glCtx) {
+      if (typeof glCtx[f] !== 'function' || f.startsWith('real_')) continue;
       this.hookWebGLFunction(f, glCtx);
     }
     var this_ = this;

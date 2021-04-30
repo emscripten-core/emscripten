@@ -23,6 +23,7 @@ var LibraryPThread = {
     unusedWorkers: [],
     // Contains all Workers that are currently hosting an active pthread.
     runningWorkers: [],
+    tlsInitFunctions: [],
     initMainThreadBlock: function() {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD);
@@ -31,7 +32,7 @@ var LibraryPThread = {
 #if PTHREAD_POOL_SIZE
       var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
       // Start loading up the Worker pool, if requested.
-      for(var i = 0; i < pthreadPoolSize; ++i) {
+      for (var i = 0; i < pthreadPoolSize; ++i) {
         PThread.allocateUnusedWorker();
       }
 #endif
@@ -87,7 +88,7 @@ var LibraryPThread = {
       // worker.js is not compiled together with us, and must access certain
       // things.
       PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
-      PThread['setThreadStatus'] = PThread.setThreadStatus;
+      PThread['threadInit'] = PThread.threadInit;
       PThread['threadCancel'] = PThread.threadCancel;
       PThread['threadExit'] = PThread.threadExit;
       PThread['setExitStatus'] = PThread.setExitStatus;
@@ -134,7 +135,7 @@ var LibraryPThread = {
     setThreadName: function(pthreadPtr, name) {
       var profilerBlock = Atomics.load(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
       if (!profilerBlock) return;
-      stringToUTF8(name, profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}}, 32);
+      stringToUTF8(name, profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}}, {{{ cDefine('EM_THREAD_NAME_MAX') }}});
     },
 
     getThreadName: function(pthreadPtr) {
@@ -144,7 +145,7 @@ var LibraryPThread = {
     },
 
     threadStatusToString: function(threadStatus) {
-      switch(threadStatus) {
+      switch (threadStatus) {
         case 0: return "not yet started";
         case 1: return "running";
         case 2: return "sleeping";
@@ -161,8 +162,6 @@ var LibraryPThread = {
       var status = (profilerBlock == 0) ? 0 : Atomics.load(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.threadStatus }}} ) >> 2);
       return PThread.threadStatusToString(status);
     },
-#else
-    setThreadStatus: function() {},
 #endif
 
     runExitHandlers: function() {
@@ -318,7 +317,20 @@ var LibraryPThread = {
       }
 #endif
     },
-
+    // Called by worker.js each time a thread is started.
+    threadInit: function() {
+#if PTHREADS_DEBUG
+      out("threadInit");
+#endif
+#if PTHREADS_PROFILING
+      PThread.setThreadStatus(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
+#endif
+      // Call thread init functions (these are the emscripten_tls_init for each
+      // module loaded.
+      for (var i in PThread.tlsInitFunctions) {
+        PThread.tlsInitFunctions[i]();
+      }
+    },
     // Loads the WebAssembly module into the given list of Workers.
     // onFinishedLoading: A callback function that will be called once all of
     //                    the workers have been initialized and are
@@ -479,9 +491,8 @@ var LibraryPThread = {
         + '\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-s PTHREAD_POOL_SIZE_STRICT=2`.'
 #endif
         );
-#else
-        err('No available workers in the PThread pool');
-#endif
+#endif // ASSERTIONS
+
 #if PTHREAD_POOL_SIZE_STRICT == 2
         // Don't return a Worker, which will translate into an EAGAIN error.
         return;
@@ -495,7 +506,7 @@ var LibraryPThread = {
 
     busySpinWait: function(msecs) {
       var t = performance.now() + msecs;
-      while(performance.now() < t) {
+      while (performance.now() < t) {
         ;
       }
     }
@@ -1333,8 +1344,7 @@ var LibraryPThread = {
 
   emscripten_receive_on_main_thread_js__deps: [
     'emscripten_proxy_to_main_thread_js',
-    'emscripten_receive_on_main_thread_js_callArgs',
-    '$readAsmConstArgs'],
+    'emscripten_receive_on_main_thread_js_callArgs'],
   emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
 #if WASM_BIGINT
     numCallArgs /= 2;
@@ -1365,9 +1375,13 @@ var LibraryPThread = {
   },
 
   $establishStackSpace: function(stackTop, stackMax) {
+    // Set stack limits used by `emscripten/stack.h` function.  These limits are
+    // cached in wasm-side globals to make checks as fast as possible.
     _emscripten_stack_set_limits(stackTop, stackMax);
 #if STACK_OVERFLOW_CHECK >= 2
-    ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+    // Set stack limits used by binaryen's `StackCheck` pass.
+    // TODO(sbc): Can this be combined with the above.
+    ___set_stack_limits(stackTop, stackMax);
 #endif
 
     // Call inside wasm module to set up the stack frame for this pthread in wasm module scope

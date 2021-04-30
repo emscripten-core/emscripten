@@ -7,6 +7,7 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared
 from tools import line_endings
+from tools.settings import settings
 
 logger = logging.getLogger('minimal_runtime_shell')
 
@@ -18,8 +19,8 @@ def generate_minimal_runtime_load_statement(target_basename):
 
   # Depending on whether streaming Wasm compilation is enabled or not, the minimal sized code to download Wasm looks a bit different.
   # Expand {{{ DOWNLOAD_WASM }}} block from here (if we added #define support, this could be done in the template directly)
-  if shared.Settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION:
-    if shared.Settings.MIN_SAFARI_VERSION != shared.Settings.TARGET_NOT_SUPPORTED or shared.Settings.ENVIRONMENT_MAY_BE_NODE or shared.Settings.MIN_FIREFOX_VERSION < 58 or shared.Settings.MIN_CHROME_VERSION < 61:
+  if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION:
+    if settings.MIN_SAFARI_VERSION != settings.TARGET_NOT_SUPPORTED or settings.ENVIRONMENT_MAY_BE_NODE or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
       # Firefox 52 added Wasm support, but only Firefox 58 added compileStreaming.
       # Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming.
       # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
@@ -28,9 +29,9 @@ def generate_minimal_runtime_load_statement(target_basename):
     else:
       # WebAssembly.compileStreaming() is unconditionally supported:
       download_wasm = "WebAssembly.compileStreaming(fetch('%s'))" % (target_basename + '.wasm')
-  elif shared.Settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
+  elif settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
     # Same compatibility story as above for https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-    if shared.Settings.MIN_SAFARI_VERSION != shared.Settings.TARGET_NOT_SUPPORTED or shared.Settings.ENVIRONMENT_MAY_BE_NODE or shared.Settings.MIN_FIREFOX_VERSION < 58 or shared.Settings.MIN_CHROME_VERSION < 61:
+    if settings.MIN_SAFARI_VERSION != settings.TARGET_NOT_SUPPORTED or settings.ENVIRONMENT_MAY_BE_NODE or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
       download_wasm = "!WebAssembly.instantiateStreaming && binary('%s')" % (target_basename + '.wasm')
     else:
       # WebAssembly.instantiateStreaming() is unconditionally supported, so we do not download wasm in the .html file,
@@ -42,35 +43,35 @@ def generate_minimal_runtime_load_statement(target_basename):
   files_to_load = ["script('%s')" % (target_basename + '.js')] # Main JS file always in first entry
 
   # Download separate memory initializer file .mem
-  if shared.Settings.MEM_INIT_METHOD == 1 and not shared.Settings.MEM_INIT_IN_WASM:
-    if shared.Settings.MODULARIZE:
+  if settings.MEM_INIT_METHOD == 1 and not settings.MEM_INIT_IN_WASM:
+    if settings.MODULARIZE:
       modularize_imports += ['mem: r[%d]' % len(files_to_load)]
     else:
       then_statements += ["Module.mem = r[%d];" % len(files_to_load)]
     files_to_load += ["binary('%s')" % (target_basename + '.mem')]
 
   # Download .wasm file
-  if shared.Settings.WASM == 1 or not download_wasm:
-    if shared.Settings.MODULARIZE:
+  if settings.WASM == 1 or not download_wasm:
+    if settings.MODULARIZE:
       modularize_imports += ['wasm: r[%d]' % len(files_to_load)]
     else:
       then_statements += ["Module.wasm = r[%d];" % len(files_to_load)]
     if download_wasm:
       files_to_load += [download_wasm]
 
-  if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
+  if settings.MODULARIZE and settings.USE_PTHREADS:
     modularize_imports += ["worker: '{{{ PTHREAD_WORKER_FILE }}}'"]
 
   # Download Wasm2JS code if target browser does not support WebAssembly
-  if shared.Settings.WASM == 2:
-    if shared.Settings.MODULARIZE:
+  if settings.WASM == 2:
+    if settings.MODULARIZE:
       modularize_imports += ['wasm: supportsWasm ? r[%d] : 0' % len(files_to_load)]
     else:
       then_statements += ["if (supportsWasm) Module.wasm = r[%d];" % len(files_to_load)]
     files_to_load += ["supportsWasm ? %s : script('%s')" % (download_wasm, target_basename + '.wasm.js')]
 
   # Execute compiled output when building with MODULARIZE
-  if shared.Settings.MODULARIZE:
+  if settings.MODULARIZE:
     then_statements += ['''// Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this" directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
   var js = r[0];\n  js({ %s });''' % ',\n  '.join(modularize_imports)]
 
@@ -120,18 +121,18 @@ def generate_minimal_runtime_load_statement(target_basename):
 
   # Only one file to download - no need to use Promise.all()
   if len(files_to_load) == 1:
-    if shared.Settings.MODULARIZE:
+    if settings.MODULARIZE:
       return script_xhr + files_to_load[0] + ".then((js) => {\n  js();\n});"
     else:
       return script_xhr + files_to_load[0] + ";"
 
-  if not shared.Settings.MODULARIZE:
+  if not settings.MODULARIZE:
     # If downloading multiple files like .wasm or .mem, those need to be loaded in
     # before we can add the main runtime script to the DOM, so convert the main .js
     # script load from direct script() load to a binary() load so we can still
     # immediately start the download, but can control when we add the script to the
     # DOM.
-    if shared.Settings.USE_PTHREADS:
+    if settings.USE_PTHREADS:
       script_load = "script(url)"
     else:
       script_load = "script(url).then(() => { URL.revokeObjectURL(url) });"
@@ -157,7 +158,7 @@ def generate_minimal_runtime_load_statement(target_basename):
 def generate_minimal_runtime_html(target, options, js_target, target_basename):
   logger.debug('generating HTML for minimal runtime')
   shell = open(options.shell_path, 'r').read()
-  if shared.Settings.SINGLE_FILE:
+  if settings.SINGLE_FILE:
     # No extra files needed to download in a SINGLE_FILE build.
     shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', '')
   else:
@@ -172,11 +173,11 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
     shared.exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
 
   shell = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)
-  shell = shell.replace('{{{ EXPORT_NAME }}}', shared.Settings.EXPORT_NAME)
-  shell = shell.replace('{{{ PTHREAD_WORKER_FILE }}}', shared.Settings.PTHREAD_WORKER_FILE)
+  shell = shell.replace('{{{ EXPORT_NAME }}}', settings.EXPORT_NAME)
+  shell = shell.replace('{{{ PTHREAD_WORKER_FILE }}}', settings.PTHREAD_WORKER_FILE)
 
   # In SINGLE_FILE build, embed the main .js file into the .html output
-  if shared.Settings.SINGLE_FILE:
+  if settings.SINGLE_FILE:
     js_contents = open(js_target).read()
     shared.try_delete(js_target)
   else:

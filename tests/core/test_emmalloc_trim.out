@@ -21,15 +21,15 @@ sbrk 2: 0x2902000
 3rd trim: 1
 dynamic heap 3: 33656832
 free dynamic memory 3: 102400
-unclaimed heap memory 3: 2108518400
-sbrk 3: 0x251a000
+unclaimed heap memory 3: 2104422400
+sbrk 3: 0x2902000
 4th trim: 0
 dynamic heap 4: 33656832
 free dynamic memory 4: 102400
-unclaimed heap memory 4: 2108518400
-sbrk 4: 0x251a000
+unclaimed heap memory 4: 2104422400
+sbrk 4: 0x2902000
 5th trim: 1
 dynamic heap 5: 33558528
 free dynamic memory 5: 0
-unclaimed heap memory 5: 2108616704
-sbrk 5: 0x2502000
+unclaimed heap memory 5: 2104422400
+sbrk 5: 0x2902000

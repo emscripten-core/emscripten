@@ -202,12 +202,24 @@ consumed 20 bytes
 ERR ERANGE
 
 strtol("0x12", 0, 0) = 18
+consumed 4 bytes
 strtol("0x12", 0, 10) = 0
+consumed 1 bytes
 strtol("012", 0, 0) = 10
+consumed 3 bytes
 strtol("012", 0, 10) = 12
+consumed 3 bytes
 strtol("0y12", 0, 0) = 0
+consumed 1 bytes
 strtol("hello", 0, 30) = 14167554
+consumed 5 bytes
 strtol("hello", 0, 10) = 0
-strtol("not-a-number") = 0
-strtol("  0x12end") = 302
+consumed 0 bytes
+strtol("not-a-number", 0, 0) = 0
+consumed 0 bytes
+strtol(" ", 0, 0) = 0
+consumed 0 bytes
+strtol("-", 0, 0) = 0
+consumed 0 bytes
+strtol("  0x12end", 0, 0) = 302
 consumed 7 bytes

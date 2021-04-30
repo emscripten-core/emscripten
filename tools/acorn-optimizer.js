@@ -696,6 +696,14 @@ function emitDCEGraph(ast) {
               emptyOut(node); // ignore this in the second pass; this does not root
               return;
             }
+            if (value.right.type === 'Literal') {
+              // this is
+              //  var x = Module['x'] = 1234;
+              // this form occurs when global addresses are exported from the
+              // module.  It doesn't constitute a usage.
+              assert(typeof value.right.value === 'number');
+              emptyOut(node);
+            }
           }
         }
       }
@@ -843,7 +851,9 @@ function emitDCEGraph(ast) {
             // example, we might call Module.dynCall_vi in library code, but it
             // won't exist in a standalone (non-JS) build anyhow. We can ignore
             // it in that case as the JS won't be used, but warn to be safe.
-            warnOnce('metadce: missing declaration for ' + reached);
+            if (verbose) {
+              console.warn('metadce: missing declaration for ' + reached);
+            }
           }
         }
       }
@@ -1837,6 +1847,7 @@ try {
 
 var minifyWhitespace = false;
 var noPrint = false;
+var verbose = false;
 
 var registry = {
   JSDCE: JSDCE,
@@ -1846,6 +1857,7 @@ var registry = {
   applyDCEGraphRemovals: applyDCEGraphRemovals,
   minifyWhitespace: function() { minifyWhitespace = true },
   noPrint: function() { noPrint = true },
+  verbose: function() { verbose = true },
   last: function() {}, // TODO: remove 'last' in the python driver code
   dump: function() { dump(ast) },
   littleEndianHeap: littleEndianHeap,

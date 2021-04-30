@@ -44,6 +44,8 @@ void emscripten_builtin_free(void *ptr);
 // allocated with one of the emmalloc memory allocation functions (malloc, memalign, ...).
 // If called with size == 0, the pointer ptr is freed, and a null pointer is returned. If
 // called with null ptr, a new pointer is allocated.
+// If there is not enough memory, the old memory block is not freed and null pointer is
+// returned.
 void *realloc(void *ptr, size_t size);
 void *emmalloc_realloc(void *ptr, size_t size);
 

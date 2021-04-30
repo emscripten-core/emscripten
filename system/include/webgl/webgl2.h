@@ -108,6 +108,10 @@ WEBGL_APICALL void GL_APIENTRY emscripten_glInvalidateSubFramebuffer (GLenum tar
 WEBGL_APICALL void GL_APIENTRY emscripten_glTexStorage2D (GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height);
 WEBGL_APICALL void GL_APIENTRY emscripten_glTexStorage3D (GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth);
 WEBGL_APICALL void GL_APIENTRY emscripten_glGetInternalformativ (GLenum target, GLenum internalformat, GLenum pname, GLsizei bufSize, GLint *params);
+WEBGL_APICALL void GL_APIENTRY emscripten_glGetBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, void *data);
+
+// WebGL 2 functions that do not exist in GLES3.0:
+WEBGL_APICALL void GL_APIENTRY glGetBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, void *data);
 
 // Extensions:
 WEBGL_APICALL void GL_APIENTRY emscripten_glVertexAttribDivisorNV(GLuint index, GLuint divisor);

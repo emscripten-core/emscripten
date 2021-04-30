@@ -15,9 +15,11 @@ running multiple build commands in parallel, confusion can occur).
 import argparse
 import logging
 import sys
+import time
 
 from tools import shared
 from tools import system_libs
+from tools.settings import settings
 import emscripten
 
 
@@ -50,6 +52,7 @@ MINIMAL_TASKS = [
     'libhtml5',
     'libsockets',
     'libc_rt_wasm',
+    'libc_rt_wasm-optz',
     'struct_info',
     'libstandalonewasm',
     'crt1',
@@ -104,13 +107,16 @@ Issuing 'embuilder.py build ALL' causes each task to be built.
 
 def build_port(port_name):
   if force:
-    system_libs.clear_port(port_name, shared.Settings)
+    system_libs.clear_port(port_name, settings)
 
-  system_libs.build_port(port_name, shared.Settings)
+  system_libs.build_port(port_name, settings)
 
 
 def main():
   global force
+
+  all_build_start_time = time.time()
+
   parser = argparse.ArgumentParser(description=__doc__,
                                    formatter_class=argparse.RawDescriptionHelpFormatter,
                                    epilog=get_help())
@@ -134,10 +140,10 @@ def main():
   shared.check_sanity()
 
   if args.lto:
-    shared.Settings.LTO = "full"
+    settings.LTO = "full"
 
   if args.pic:
-    shared.Settings.RELOCATABLE = 1
+    settings.RELOCATABLE = 1
 
   if args.force:
     force = True
@@ -165,6 +171,7 @@ def main():
     print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:
     logger.info('building and verifying ' + what)
+    start_time = time.time()
     if what in SYSTEM_LIBRARIES:
       library = SYSTEM_LIBRARIES[what]
       if force:
@@ -181,9 +188,9 @@ def main():
     elif what == 'icu':
       build_port('icu')
     elif what == 'zlib':
-      shared.Settings.USE_ZLIB = 1
+      settings.USE_ZLIB = 1
       build_port('zlib')
-      shared.Settings.USE_ZLIB = 0
+      settings.USE_ZLIB = 0
     elif what == 'bzip2':
       build_port('bzip2')
     elif what == 'bullet':
@@ -201,46 +208,46 @@ def main():
     elif what == 'sdl2':
       build_port('sdl2')
     elif what == 'sdl2-mt':
-      shared.Settings.USE_PTHREADS = 1
+      settings.USE_PTHREADS = 1
       build_port('sdl2')
-      shared.Settings.USE_PTHREADS = 0
+      settings.USE_PTHREADS = 0
     elif what == 'sdl2-gfx':
       build_port('sdl2_gfx')
     elif what == 'sdl2-image':
       build_port('sdl2_image')
     elif what == 'sdl2-image-png':
-      shared.Settings.SDL2_IMAGE_FORMATS = ["png"]
+      settings.SDL2_IMAGE_FORMATS = ["png"]
       build_port('sdl2_image')
-      shared.Settings.SDL2_IMAGE_FORMATS = []
+      settings.SDL2_IMAGE_FORMATS = []
     elif what == 'sdl2-image-jpg':
-      shared.Settings.SDL2_IMAGE_FORMATS = ["jpg"]
+      settings.SDL2_IMAGE_FORMATS = ["jpg"]
       build_port('sdl2_image')
-      shared.Settings.SDL2_IMAGE_FORMATS = []
+      settings.SDL2_IMAGE_FORMATS = []
     elif what == 'sdl2-net':
       build_port('sdl2_net')
     elif what == 'sdl2-mixer':
-      old_formats = shared.Settings.SDL2_MIXER_FORMATS
-      shared.Settings.SDL2_MIXER_FORMATS = []
+      old_formats = settings.SDL2_MIXER_FORMATS
+      settings.SDL2_MIXER_FORMATS = []
       build_port('sdl2_mixer')
-      shared.Settings.SDL2_MIXER_FORMATS = old_formats
+      settings.SDL2_MIXER_FORMATS = old_formats
     elif what == 'sdl2-mixer-ogg':
-      old_formats = shared.Settings.SDL2_MIXER_FORMATS
-      shared.Settings.SDL2_MIXER_FORMATS = ["ogg"]
+      old_formats = settings.SDL2_MIXER_FORMATS
+      settings.SDL2_MIXER_FORMATS = ["ogg"]
       build_port('sdl2_mixer')
-      shared.Settings.SDL2_MIXER_FORMATS = old_formats
+      settings.SDL2_MIXER_FORMATS = old_formats
     elif what == 'sdl2-mixer-mp3':
-      old_formats = shared.Settings.SDL2_MIXER_FORMATS
-      shared.Settings.SDL2_MIXER_FORMATS = ["mp3"]
+      old_formats = settings.SDL2_MIXER_FORMATS
+      settings.SDL2_MIXER_FORMATS = ["mp3"]
       build_port('sdl2_mixer')
-      shared.Settings.SDL2_MIXER_FORMATS = old_formats
+      settings.SDL2_MIXER_FORMATS = old_formats
     elif what == 'freetype':
       build_port('freetype')
     elif what == 'harfbuzz':
       build_port('harfbuzz')
     elif what == 'harfbuzz-mt':
-      shared.Settings.USE_PTHREADS = 1
+      settings.USE_PTHREADS = 1
       build_port('harfbuzz')
-      shared.Settings.USE_PTHREADS = 0
+      settings.USE_PTHREADS = 0
     elif what == 'sdl2-ttf':
       build_port('sdl2_ttf')
     elif what == 'cocos2d':
@@ -248,9 +255,9 @@ def main():
     elif what == 'regal':
       build_port('regal')
     elif what == 'regal-mt':
-      shared.Settings.USE_PTHREADS = 1
+      settings.USE_PTHREADS = 1
       build_port('regal')
-      shared.Settings.USE_PTHREADS = 0
+      settings.USE_PTHREADS = 0
     elif what == 'boost_headers':
       build_port('boost_headers')
     elif what == 'mpg123':
@@ -259,7 +266,13 @@ def main():
       logger.error('unfamiliar build target: ' + what)
       return 1
 
-    logger.info('...success')
+    time_taken = time.time() - start_time
+    logger.info('...success. Took %s(%.2fs)' % (('%02d:%02d mins ' % (time_taken // 60, time_taken % 60) if time_taken >= 60 else ''), time_taken))
+
+  if len(tasks) > 1:
+    all_build_time_taken = time.time() - all_build_start_time
+    logger.info('Built %d targets in %s(%.2fs)' % (len(tasks), ('%02d:%02d mins ' % (all_build_time_taken // 60, all_build_time_taken % 60) if all_build_time_taken >= 60 else ''), all_build_time_taken))
+
   return 0
 
 

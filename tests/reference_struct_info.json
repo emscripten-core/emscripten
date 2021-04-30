@@ -237,6 +237,7 @@
         "EM_PROXIED_RESIZE_OFFSCREENCANVAS": 657457152,
         "EM_QUEUED_CALL_MAX_ARGS": 11,
         "EM_QUEUED_JS_CALL_MAX_ARGS": 20,
+        "EM_THREAD_NAME_MAX": 32,
         "EM_THREAD_STATUS_FINISHED": 6,
         "EM_THREAD_STATUS_NOTSTARTED": 0,
         "EM_THREAD_STATUS_RUNNING": 1,
@@ -452,166 +453,7 @@
         "W_OK": 2,
         "X_OK": 1,
         "YESEXPR": 327680,
-        "_CS_GNU_LIBC_VERSION": 2,
-        "_CS_GNU_LIBPTHREAD_VERSION": 3,
-        "_CS_PATH": 0,
-        "_CS_POSIX_V6_ILP32_OFF32_CFLAGS": 1116,
-        "_CS_POSIX_V6_ILP32_OFF32_LDFLAGS": 1117,
-        "_CS_POSIX_V6_ILP32_OFF32_LIBS": 1118,
-        "_CS_POSIX_V6_ILP32_OFFBIG_CFLAGS": 1120,
-        "_CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS": 1121,
-        "_CS_POSIX_V6_ILP32_OFFBIG_LIBS": 1122,
-        "_CS_POSIX_V6_LP64_OFF64_CFLAGS": 1124,
-        "_CS_POSIX_V6_LP64_OFF64_LDFLAGS": 1125,
-        "_CS_POSIX_V6_LP64_OFF64_LIBS": 1126,
-        "_CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS": 1128,
-        "_CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS": 1129,
-        "_CS_POSIX_V6_LPBIG_OFFBIG_LIBS": 1130,
-        "_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS": 1,
-        "_PC_2_SYMLINKS": 20,
-        "_PC_ALLOC_SIZE_MIN": 18,
-        "_PC_ASYNC_IO": 10,
-        "_PC_CHOWN_RESTRICTED": 6,
-        "_PC_FILESIZEBITS": 13,
-        "_PC_LINK_MAX": 0,
-        "_PC_MAX_CANON": 1,
-        "_PC_MAX_INPUT": 2,
-        "_PC_NAME_MAX": 3,
-        "_PC_NO_TRUNC": 7,
-        "_PC_PATH_MAX": 4,
-        "_PC_PIPE_BUF": 5,
-        "_PC_PRIO_IO": 11,
-        "_PC_REC_INCR_XFER_SIZE": 14,
-        "_PC_REC_MAX_XFER_SIZE": 15,
-        "_PC_REC_MIN_XFER_SIZE": 16,
-        "_PC_REC_XFER_ALIGN": 17,
-        "_PC_SOCK_MAXBUF": 12,
-        "_PC_SYMLINK_MAX": 19,
-        "_PC_SYNC_IO": 9,
-        "_PC_VDISABLE": 8,
-        "_SC_2_CHAR_TERM": 95,
-        "_SC_2_C_BIND": 47,
-        "_SC_2_C_DEV": 48,
-        "_SC_2_FORT_DEV": 49,
-        "_SC_2_FORT_RUN": 50,
-        "_SC_2_LOCALEDEF": 52,
-        "_SC_2_PBS": 168,
-        "_SC_2_PBS_ACCOUNTING": 169,
-        "_SC_2_PBS_CHECKPOINT": 175,
-        "_SC_2_PBS_LOCATE": 170,
-        "_SC_2_PBS_MESSAGE": 171,
-        "_SC_2_PBS_TRACK": 172,
-        "_SC_2_SW_DEV": 51,
-        "_SC_2_UPE": 97,
-        "_SC_2_VERSION": 46,
-        "_SC_ADVISORY_INFO": 132,
-        "_SC_AIO_LISTIO_MAX": 23,
-        "_SC_AIO_MAX": 24,
-        "_SC_AIO_PRIO_DELTA_MAX": 25,
-        "_SC_ARG_MAX": 0,
-        "_SC_ASYNCHRONOUS_IO": 12,
-        "_SC_ATEXIT_MAX": 87,
-        "_SC_BARRIERS": 133,
-        "_SC_BC_BASE_MAX": 36,
-        "_SC_BC_DIM_MAX": 37,
-        "_SC_BC_SCALE_MAX": 38,
-        "_SC_BC_STRING_MAX": 39,
-        "_SC_CHILD_MAX": 1,
-        "_SC_CLK_TCK": 2,
-        "_SC_CLOCK_SELECTION": 137,
-        "_SC_COLL_WEIGHTS_MAX": 40,
-        "_SC_CPUTIME": 138,
-        "_SC_DELAYTIMER_MAX": 26,
-        "_SC_EXPR_NEST_MAX": 42,
-        "_SC_FSYNC": 15,
-        "_SC_GETGR_R_SIZE_MAX": 69,
-        "_SC_GETPW_R_SIZE_MAX": 70,
-        "_SC_HOST_NAME_MAX": 180,
-        "_SC_IOV_MAX": 60,
-        "_SC_IPV6": 235,
-        "_SC_JOB_CONTROL": 7,
-        "_SC_LINE_MAX": 43,
-        "_SC_LOGIN_NAME_MAX": 71,
-        "_SC_MAPPED_FILES": 16,
-        "_SC_MEMLOCK": 17,
-        "_SC_MEMLOCK_RANGE": 18,
-        "_SC_MEMORY_PROTECTION": 19,
-        "_SC_MESSAGE_PASSING": 20,
-        "_SC_MONOTONIC_CLOCK": 149,
-        "_SC_MQ_OPEN_MAX": 27,
-        "_SC_MQ_PRIO_MAX": 28,
         "_SC_NGROUPS_MAX": 3,
-        "_SC_NPROCESSORS_ONLN": 84,
-        "_SC_OPEN_MAX": 4,
-        "_SC_PAGE_SIZE": 30,
-        "_SC_PHYS_PAGES": 85,
-        "_SC_PRIORITIZED_IO": 13,
-        "_SC_PRIORITY_SCHEDULING": 10,
-        "_SC_RAW_SOCKETS": 236,
-        "_SC_READER_WRITER_LOCKS": 153,
-        "_SC_REALTIME_SIGNALS": 9,
-        "_SC_REGEXP": 155,
-        "_SC_RE_DUP_MAX": 44,
-        "_SC_RTSIG_MAX": 31,
-        "_SC_SAVED_IDS": 8,
-        "_SC_SEMAPHORES": 21,
-        "_SC_SEM_NSEMS_MAX": 32,
-        "_SC_SEM_VALUE_MAX": 33,
-        "_SC_SHARED_MEMORY_OBJECTS": 22,
-        "_SC_SHELL": 157,
-        "_SC_SIGQUEUE_MAX": 34,
-        "_SC_SPAWN": 159,
-        "_SC_SPIN_LOCKS": 154,
-        "_SC_SPORADIC_SERVER": 160,
-        "_SC_STREAM_MAX": 5,
-        "_SC_SYMLOOP_MAX": 173,
-        "_SC_SYNCHRONIZED_IO": 14,
-        "_SC_THREADS": 67,
-        "_SC_THREAD_ATTR_STACKADDR": 77,
-        "_SC_THREAD_ATTR_STACKSIZE": 78,
-        "_SC_THREAD_CPUTIME": 139,
-        "_SC_THREAD_DESTRUCTOR_ITERATIONS": 73,
-        "_SC_THREAD_KEYS_MAX": 74,
-        "_SC_THREAD_PRIORITY_SCHEDULING": 79,
-        "_SC_THREAD_PRIO_INHERIT": 80,
-        "_SC_THREAD_PRIO_PROTECT": 81,
-        "_SC_THREAD_PROCESS_SHARED": 82,
-        "_SC_THREAD_SAFE_FUNCTIONS": 68,
-        "_SC_THREAD_SPORADIC_SERVER": 161,
-        "_SC_THREAD_STACK_MIN": 75,
-        "_SC_THREAD_THREADS_MAX": 76,
-        "_SC_TIMEOUTS": 164,
-        "_SC_TIMERS": 11,
-        "_SC_TIMER_MAX": 35,
-        "_SC_TRACE": 181,
-        "_SC_TRACE_EVENT_FILTER": 182,
-        "_SC_TRACE_EVENT_NAME_MAX": 242,
-        "_SC_TRACE_INHERIT": 183,
-        "_SC_TRACE_LOG": 184,
-        "_SC_TRACE_NAME_MAX": 243,
-        "_SC_TRACE_SYS_MAX": 244,
-        "_SC_TRACE_USER_EVENT_MAX": 245,
-        "_SC_TTY_NAME_MAX": 72,
-        "_SC_TYPED_MEMORY_OBJECTS": 165,
-        "_SC_TZNAME_MAX": 6,
-        "_SC_V6_ILP32_OFF32": 176,
-        "_SC_V6_ILP32_OFFBIG": 177,
-        "_SC_V6_LP64_OFF64": 178,
-        "_SC_V6_LPBIG_OFFBIG": 179,
-        "_SC_VERSION": 29,
-        "_SC_XBS5_ILP32_OFF32": 125,
-        "_SC_XBS5_ILP32_OFFBIG": 126,
-        "_SC_XBS5_LP64_OFF64": 127,
-        "_SC_XBS5_LPBIG_OFFBIG": 128,
-        "_SC_XOPEN_CRYPT": 92,
-        "_SC_XOPEN_ENH_I18N": 93,
-        "_SC_XOPEN_LEGACY": 129,
-        "_SC_XOPEN_REALTIME": 130,
-        "_SC_XOPEN_REALTIME_THREADS": 131,
-        "_SC_XOPEN_SHM": 94,
-        "_SC_XOPEN_STREAMS": 246,
-        "_SC_XOPEN_UNIX": 91,
-        "_SC_XOPEN_VERSION": 89,
         "__ATTRP_C11_THREAD": -1,
         "__WASI_CLOCKID_MONOTONIC": 1,
         "__WASI_CLOCKID_PROCESS_CPUTIME_ID": 2,
@@ -998,6 +840,7 @@
             "adapterType": 20,
             "backendType": 24,
             "deviceID": 4,
+            "driverDescription": 16,
             "name": 12,
             "nextInChain": 0,
             "vendorID": 8
@@ -1027,25 +870,25 @@
             "nextInChain": 0
         },
         "WGPUBindGroupLayoutEntry": {
-            "__size__": 104,
-            "binding": 0,
-            "buffer": 40,
-            "hasDynamicOffset": 12,
-            "minBufferBindingSize": 16,
-            "sampler": 64,
-            "storageTexture": 88,
-            "storageTextureFormat": 32,
-            "texture": 72,
-            "textureComponentType": 28,
-            "type": 8,
-            "viewDimension": 24,
-            "visibility": 4
+            "__size__": 80,
+            "binding": 4,
+            "buffer": 16,
+            "nextInChain": 0,
+            "sampler": 40,
+            "storageTexture": 64,
+            "texture": 48,
+            "visibility": 8
         },
-        "WGPUBlendDescriptor": {
+        "WGPUBlendComponent": {
             "__size__": 12,
             "dstFactor": 8,
             "operation": 0,
             "srcFactor": 4
+        },
+        "WGPUBlendState": {
+            "__size__": 24,
+            "alpha": 12,
+            "color": 0
         },
         "WGPUBufferBindingLayout": {
             "__size__": 24,
@@ -1053,12 +896,6 @@
             "minBindingSize": 16,
             "nextInChain": 0,
             "type": 4
-        },
-        "WGPUBufferCopyView": {
-            "__size__": 40,
-            "buffer": 32,
-            "layout": 8,
-            "nextInChain": 0
         },
         "WGPUBufferDescriptor": {
             "__size__": 32,
@@ -1080,13 +917,12 @@
             "g": 8,
             "r": 0
         },
-        "WGPUColorStateDescriptor": {
-            "__size__": 36,
-            "alphaBlend": 8,
-            "colorBlend": 20,
+        "WGPUColorTargetState": {
+            "__size__": 16,
+            "blend": 8,
             "format": 4,
             "nextInChain": 0,
-            "writeMask": 32
+            "writeMask": 12
         },
         "WGPUCommandBufferDescriptor": {
             "__size__": 8,
@@ -1110,8 +946,11 @@
             "layout": 8,
             "nextInChain": 0
         },
-        "WGPUDepthStencilStateDescriptor": {
-            "__size__": 56,
+        "WGPUDepthStencilState": {
+            "__size__": 68,
+            "depthBias": 56,
+            "depthBiasClamp": 64,
+            "depthBiasSlopeScale": 60,
             "depthCompare": 12,
             "depthWriteEnabled": 8,
             "format": 4,
@@ -1123,18 +962,41 @@
         },
         "WGPUExtent3D": {
             "__size__": 12,
-            "depth": 8,
+            "depthOrArrayLayers": 8,
             "height": 4,
             "width": 0
         },
-        "WGPUFenceDescriptor": {
-            "__size__": 16,
-            "initialValue": 8,
-            "label": 4,
+        "WGPUFragmentState": {
+            "__size__": 20,
+            "entryPoint": 8,
+            "module": 4,
+            "nextInChain": 0,
+            "targetCount": 12,
+            "targets": 16
+        },
+        "WGPUImageCopyBuffer": {
+            "__size__": 40,
+            "buffer": 32,
+            "layout": 8,
             "nextInChain": 0
+        },
+        "WGPUImageCopyTexture": {
+            "__size__": 28,
+            "aspect": 24,
+            "mipLevel": 8,
+            "nextInChain": 0,
+            "origin": 12,
+            "texture": 4
         },
         "WGPUInstanceDescriptor": {
             "__size__": 4,
+            "nextInChain": 0
+        },
+        "WGPUMultisampleState": {
+            "__size__": 16,
+            "alphaToCoverageEnabled": 12,
+            "count": 4,
+            "mask": 8,
             "nextInChain": 0
         },
         "WGPUOrigin3D": {
@@ -1149,6 +1011,19 @@
             "bindGroupLayouts": 12,
             "label": 4,
             "nextInChain": 0
+        },
+        "WGPUPrimitiveDepthClampingState": {
+            "__size__": 12,
+            "chain": 0,
+            "clampDepth": 8
+        },
+        "WGPUPrimitiveState": {
+            "__size__": 20,
+            "cullMode": 16,
+            "frontFace": 12,
+            "nextInChain": 0,
+            "stripIndexFormat": 8,
+            "topology": 4
         },
         "WGPUProgrammableStageDescriptor": {
             "__size__": 12,
@@ -1165,15 +1040,6 @@
             "pipelineStatisticsCount": 20,
             "type": 8
         },
-        "WGPURasterizationStateDescriptor": {
-            "__size__": 24,
-            "cullMode": 8,
-            "depthBias": 12,
-            "depthBiasClamp": 20,
-            "depthBiasSlopeScale": 16,
-            "frontFace": 4,
-            "nextInChain": 0
-        },
         "WGPURenderBundleDescriptor": {
             "__size__": 8,
             "label": 4,
@@ -1188,17 +1054,16 @@
             "nextInChain": 0,
             "sampleCount": 20
         },
-        "WGPURenderPassColorAttachmentDescriptor": {
+        "WGPURenderPassColorAttachment": {
             "__size__": 48,
-            "attachment": 0,
             "clearColor": 16,
             "loadOp": 8,
             "resolveTarget": 4,
-            "storeOp": 12
+            "storeOp": 12,
+            "view": 0
         },
-        "WGPURenderPassDepthStencilAttachmentDescriptor": {
+        "WGPURenderPassDepthStencilAttachment": {
             "__size__": 36,
-            "attachment": 0,
             "clearDepth": 12,
             "clearStencil": 28,
             "depthLoadOp": 4,
@@ -1206,7 +1071,8 @@
             "depthStoreOp": 8,
             "stencilLoadOp": 20,
             "stencilReadOnly": 32,
-            "stencilStoreOp": 24
+            "stencilStoreOp": 24,
+            "view": 0
         },
         "WGPURenderPassDescriptor": {
             "__size__": 24,
@@ -1217,22 +1083,16 @@
             "nextInChain": 0,
             "occlusionQuerySet": 20
         },
-        "WGPURenderPipelineDescriptor": {
-            "__size__": 64,
-            "alphaToCoverageEnabled": 60,
-            "colorStateCount": 48,
-            "colorStates": 52,
-            "depthStencilState": 44,
-            "fragmentStage": 24,
+        "WGPURenderPipelineDescriptor2": {
+            "__size__": 76,
+            "depthStencil": 52,
+            "fragment": 72,
             "label": 4,
             "layout": 8,
+            "multisample": 56,
             "nextInChain": 0,
-            "primitiveTopology": 32,
-            "rasterizationState": 36,
-            "sampleCount": 40,
-            "sampleMask": 56,
-            "vertexStage": 12,
-            "vertexState": 28
+            "primitive": 32,
+            "vertex": 12
         },
         "WGPUSamplerBindingLayout": {
             "__size__": 8,
@@ -1249,6 +1109,7 @@
             "lodMaxClamp": 36,
             "lodMinClamp": 32,
             "magFilter": 20,
+            "maxAnisotropy": 44,
             "minFilter": 24,
             "mipmapFilter": 28,
             "nextInChain": 0
@@ -1269,7 +1130,7 @@
             "chain": 0,
             "source": 8
         },
-        "WGPUStencilStateFaceDescriptor": {
+        "WGPUStencilFaceState": {
             "__size__": 16,
             "compare": 0,
             "depthFailOp": 8,
@@ -1310,14 +1171,6 @@
             "sampleType": 4,
             "viewDimension": 8
         },
-        "WGPUTextureCopyView": {
-            "__size__": 28,
-            "aspect": 24,
-            "mipLevel": 8,
-            "nextInChain": 0,
-            "origin": 12,
-            "texture": 4
-        },
         "WGPUTextureDataLayout": {
             "__size__": 24,
             "bytesPerRow": 16,
@@ -1348,25 +1201,26 @@
             "mipLevelCount": 20,
             "nextInChain": 0
         },
-        "WGPUVertexAttributeDescriptor": {
+        "WGPUVertexAttribute": {
             "__size__": 24,
             "format": 0,
             "offset": 8,
             "shaderLocation": 16
         },
-        "WGPUVertexBufferLayoutDescriptor": {
+        "WGPUVertexBufferLayout": {
             "__size__": 24,
             "arrayStride": 0,
             "attributeCount": 12,
             "attributes": 16,
             "stepMode": 8
         },
-        "WGPUVertexStateDescriptor": {
-            "__size__": 16,
-            "indexFormat": 4,
-            "nextInChain": 0,
-            "vertexBufferCount": 8,
-            "vertexBuffers": 12
+        "WGPUVertexState": {
+            "__size__": 20,
+            "bufferCount": 12,
+            "buffers": 16,
+            "entryPoint": 8,
+            "module": 4,
+            "nextInChain": 0
         },
         "__wasi_fdstat_t": {
             "__size__": 24,

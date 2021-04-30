@@ -15,14 +15,6 @@ var addedLibraryItems = {};
 // Each such proxied function is identified via an ordinal number (this is not the same namespace as function pointers in general).
 var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*/];
 
-// Used internally. set when there is a main() function.
-// Also set when in a linkable module, as the main() function might
-// arrive from a dynamically-linked library, and not necessarily
-// the current compilation unit.
-// Also set for STANDALONE_WASM since the _start function is needed to call
-// static ctors, even if there is no user main.
-var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || STANDALONE_WASM;
-
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
   return f[0] == '$' ? f.substr(1) : '_' + f;
@@ -43,7 +35,7 @@ function isJsOnlyIdentifier(ident) {
 
 function escapeJSONKey(x) {
   if (/^[\d\w_]+$/.exec(x) || x[0] === '"' || x[0] === "'") return x;
-  assert(x.indexOf("'") < 0, 'cannot have internal single quotes in keys: ' + x);
+  assert(!x.includes("'"), 'cannot have internal single quotes in keys: ' + x);
   return "'" + x + "'";
 }
 
@@ -57,11 +49,24 @@ function stringifyWithFunctions(obj) {
   }
 }
 
-// JSifier
-function JSify(data, functionsOnly) {
-  var mainPass = !functionsOnly;
+function isDefined(symName) {
+  if (symName in WASM_EXPORTS || symName in SIDE_MODULE_EXPORTS) {
+    return true;
+  }
+  // 'invoke_' symbols are created at runtime in libary_dylink.py so can
+  // always be considered as defined.
+  if (RELOCATABLE && symName.startsWith('invoke_')) {
+    return true;
+  }
+  return false;
+}
 
-  var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
+// JSifier
+function JSify(functionsOnly) {
+  var mainPass = !functionsOnly;
+  var functionStubs = [];
+
+  var itemsDict = { type: [], functionStub: [], function: [], globalVariablePostSet: [] };
 
   if (mainPass) {
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
@@ -81,7 +86,7 @@ function JSify(data, functionsOnly) {
       libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     }
     libFuncsToInclude.forEach((ident) => {
-      data.functionStubs.push({
+      functionStubs.push({
         identOrig: ident,
         identMangled: mangleCSymbolName(ident)
       });
@@ -140,21 +145,15 @@ function JSify(data, functionsOnly) {
         return '';
       }
 
-      // if the function was implemented in compiled code, we just need to export it so we can reach it from JS
-      if (finalName in IMPLEMENTED_FUNCTIONS) {
-        EXPORTED_FUNCTIONS[finalName] = 1;
-        // stop here: we don't need to add anything from our js libraries, not even deps, compiled code is on it
+      // if the function was implemented in compiled code, there is no need to include the js version
+      if (ident in WASM_EXPORTS) {
         return '';
       }
-
-      // Don't replace implemented functions with library ones (which can happen when we add dependencies).
-      // Note: We don't return the dependencies here. Be careful not to end up where this matters
-      if (finalName in Functions.implementedFunctions) return '';
 
       var noExport = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
-        if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
+        if (!isDefined(ident)) {
           var msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ' (referenced by ' + dependent + ')';
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
@@ -218,7 +217,7 @@ function JSify(data, functionsOnly) {
           // In asm, we need to know about library functions. If there is a target, though, then no
           // need to consider this a library function - we will call directly to it anyhow
           if (!redirectedIdent && (typeof target == 'function')) {
-            Functions.libraryFunctions[finalName] = 1;
+            libraryFunctions.push(finalName);
           }
         }
       } else if (typeof snippet === 'object') {
@@ -227,14 +226,14 @@ function JSify(data, functionsOnly) {
         isFunction = true;
         snippet = processLibraryFunction(snippet, ident, finalName);
         if (!isJsOnlyIdentifier(ident[0])) {
-          Functions.libraryFunctions[finalName] = 1;
+          libraryFunctions.push(finalName);
         }
       }
 
       // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be exported
       // to wasm module.
       if (LibraryManager.library[ident + '__import']) {
-        Functions.libraryFunctions[finalName] = 1;
+        libraryFunctions.push(finalName);
       }
 
       if (ONLY_CALC_JS_SYMBOLS)
@@ -250,7 +249,7 @@ function JSify(data, functionsOnly) {
         }
         if (postset && !addedLibraryItems[postsetId]) {
           addedLibraryItems[postsetId] = true;
-          itemsDict.GlobalVariablePostSet.push({
+          itemsDict.globalVariablePostSet.push({
             JS: postset + ';'
           });
         }
@@ -259,16 +258,6 @@ function JSify(data, functionsOnly) {
       if (redirectedIdent) {
         deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
       }
-      // In asm, dependencies implemented in C might be needed by JS library functions.
-      // We don't know yet if they are implemented in C or not. To be safe, export such
-      // special cases.
-      [LIBRARY_DEPS_TO_AUTOEXPORT].forEach((special) => {
-        deps.forEach((dep) => {
-          if (dep == special && !EXPORTED_FUNCTIONS[dep]) {
-            EXPORTED_FUNCTIONS[dep] = 1;
-          }
-        });
-      });
       if (VERBOSE) {
         printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
       }
@@ -298,7 +287,7 @@ function JSify(data, functionsOnly) {
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }
-      } else if (typeof snippet === 'string' && snippet.indexOf(';') == 0) {
+      } else if (typeof snippet === 'string' && snippet.startsWith(';')) {
         // In JS libraries
         //   foo: ';[code here verbatim]'
         //  emits
@@ -338,8 +327,8 @@ function JSify(data, functionsOnly) {
   // Final combiner
 
   function finalCombiner() {
-    var splitPostSets = splitter(itemsDict.GlobalVariablePostSet, (x) => x.ident && x.dependencies);
-    itemsDict.GlobalVariablePostSet = splitPostSets.leftIn;
+    var splitPostSets = splitter(itemsDict.globalVariablePostSet, (x) => x.ident && x.dependencies);
+    itemsDict.globalVariablePostSet = splitPostSets.leftIn;
     var orderedPostSets = splitPostSets.splitOut;
 
     var limit = orderedPostSets.length * orderedPostSets.length;
@@ -357,12 +346,12 @@ function JSify(data, functionsOnly) {
       }
     }
 
-    itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.concat(orderedPostSets);
+    itemsDict.globalVariablePostSet = itemsDict.globalVariablePostSet.concat(orderedPostSets);
 
     //
 
     if (!mainPass) {
-      var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
+      var generated = itemsDict.function.concat(itemsDict.type);
       print(generated.map((item) => item.JS).join('\n'));
       return;
     }
@@ -384,11 +373,9 @@ function JSify(data, functionsOnly) {
     var legalizedI64sDefault = legalizedI64s;
     legalizedI64s = false;
 
-    var globalsData = {functionStubs: []}
-    JSify(globalsData, true);
-    globalsData = null;
+    JSify(true);
 
-    var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
+    var generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
     generated.forEach((item) => print(indentify(item.JS || '', 2)));
 
     legalizedI64s = legalizedI64sDefault;
@@ -439,13 +426,18 @@ function JSify(data, functionsOnly) {
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[1], shellFile)));
 
-    PassManager.serialize();
+    print('\n//FORWARDED_DATA:' + JSON.stringify({
+      libraryFunctions: libraryFunctions,
+      ATINITS: ATINITS.join('\n'),
+      ATMAINS: ATMAINS.join('\n'),
+      ATEXITS: ATEXITS.join('\n'),
+    }));
   }
 
   // Data
 
   if (mainPass) {
-    data.functionStubs.forEach(functionStubHandler);
+    functionStubs.forEach(functionStubHandler);
   }
 
   finalCombiner();

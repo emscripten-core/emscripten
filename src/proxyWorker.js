@@ -135,7 +135,7 @@ window.close = function window_close() {
 
 window.alert = function(text) {
   err('alert forever: ' + text);
-  while (1){};
+  while (1) {};
 };
 
 window.scrollX = window.scrollY = 0; // TODO: proxy these
@@ -165,7 +165,7 @@ var webGLWorker = new WebGLWorker();
 var document = new EventListener();
 
 document.createElement = function document_createElement(what) {
-  switch(what) {
+  switch (what) {
     case 'canvas': {
       var canvas = new EventListener();
       canvas.ensureData = function canvas_ensureData() {

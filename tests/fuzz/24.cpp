@@ -4808,5 +4808,5 @@ XXX percentage an existing variable is used: 85.1
 ********************* end of statistics **********************/
 
 
-// /usr/bin/python /media/alon/2f9a30d7-6124-42d9-87c5-3c80cb70ec54/home/alon/Dev/emscripten/emcc -O3 --llvm-opts 3 newfail_11275_1.cpp -I /home/alon/Dev/csmith/runtime -s ALLOW_MEMORY_GROWTH=1 -s EMTERPRETIFY=1 -s EMTERPRETIFY_WHITELIST='["_main"]'
+// /usr/bin/python /media/alon/2f9a30d7-6124-42d9-87c5-3c80cb70ec54/home/alon/Dev/emscripten/emcc -O3 newfail_11275_1.cpp -I /home/alon/Dev/csmith/runtime -s ALLOW_MEMORY_GROWTH=1 -s EMTERPRETIFY=1 -s EMTERPRETIFY_WHITELIST='["_main"]'
 

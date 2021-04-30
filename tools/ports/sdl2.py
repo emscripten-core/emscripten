@@ -5,8 +5,8 @@
 
 import os
 
-TAG = 'version_22'
-HASH = 'c95b65f21a54835b5623236b15bbe54176682c97752d23905662ce7622eabdcc48c1bac71028147b5e4cc1e960df97fd5be9b5bbee540b57bd2644f0ca7e6023'
+TAG = 'version_23'
+HASH = '1c37152529d1a2ff159d0e6f950d49dca61f65b582a6bc45c4f027629c7b83325eff26240992884eb3c4f2754e4d7516ee3ab7b54829d2bf81f2968f317b4fbd'
 SUBDIR = 'SDL2-' + TAG
 
 
@@ -38,7 +38,7 @@ def get(ports, settings, shared):
     dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_dropevents.c events/SDL_events.c
     events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c
     events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c
-    joystick/SDL_gamecontroller.c joystick/SDL_joystick.c libm/e_atan2.c libm/e_log.c libm/e_pow.c
+    joystick/SDL_gamecontroller.c joystick/SDL_joystick.c libm/e_atan2.c libm/e_exp.c libm/e_log.c libm/e_pow.c
     libm/e_rem_pio2.c libm/e_sqrt.c libm/k_cos.c libm/k_rem_pio2.c libm/k_sin.c libm/k_tan.c
     libm/s_atan.c libm/s_copysign.c libm/s_cos.c libm/s_fabs.c libm/s_floor.c libm/s_scalbn.c
     libm/s_sin.c libm/s_tan.c power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c

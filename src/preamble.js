@@ -19,6 +19,10 @@ Module.realPrint = out;
 out = err = function(){};
 #endif
 
+#if RELOCATABLE
+{{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]', true) }}}
+#endif
+
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
 {{{ makeModuleReceiveWithVar('noExitRuntime', undefined, EXIT_RUNTIME ? 'false' : 'true') }}}
 
@@ -180,12 +184,12 @@ function cwrap(ident, returnType, argTypes, opts) {
 #if ASSERTIONS
 // We used to include malloc/free by default in the past. Show a helpful error in
 // builds with assertions.
-#if !('_malloc' in IMPLEMENTED_FUNCTIONS)
+#if !hasExportedFunction('_malloc')
 function _malloc() {
   abort("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS");
 }
 #endif // malloc
-#if !('_free' in IMPLEMENTED_FUNCTIONS)
+#if !hasExportedFunction('_free')
 function _free() {
   // Show a helpful error since we used to include free by default in the past.
   abort("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS");
@@ -212,11 +216,7 @@ function allocate(slab, allocator) {
 #endif
 
   if (allocator == ALLOC_STACK) {
-#if DECLARE_ASM_MODULE_EXPORTS
     ret = stackAlloc(slab.length);
-#else
-    ret = (typeof stackAlloc !== 'undefined' ? stackAlloc : null)(slab.length);
-#endif
   } else {
     ret = {{{ makeMalloc('allocate', 'slab.length') }}};
   }
@@ -269,6 +269,14 @@ var HEAP_DATA_VIEW;
 var HEAP64;
 #endif
 
+#if USE_PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) {
+  // Grab imports from the pthread to local scope.
+  buffer = Module['buffer'];
+  // Note that not all runtime fields are imported above
+}
+#endif
+
 function updateGlobalBufferAndViews(buf) {
   buffer = buf;
 #if SUPPORT_BIG_ENDIAN
@@ -286,17 +294,6 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAP64'] = HEAP64 = new BigInt64Array(buf);
 #endif
 }
-
-#if RELOCATABLE
-var __stack_pointer = new WebAssembly.Global({value: 'i32', mutable: true}, {{{ STACK_BASE }}});
-
-// To support such allocations during startup, track them on __heap_base and
-// then when the main module is loaded it reads that value and uses it to
-// initialize sbrk (the main module is relocatable itself, and so it does not
-// have __heap_base hardcoded into it - it receives it from JS as an extern
-// global, basically).
-Module['___heap_base'] = {{{ HEAP_BASE }}};
-#endif // RELOCATABLE
 
 var TOTAL_STACK = {{{ TOTAL_STACK }}};
 #if ASSERTIONS
@@ -318,7 +315,7 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
 // Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
 if (ENVIRONMENT_IS_WEB) {
   window.addEventListener('error', function(e) {
-    if (e.message.indexOf('unwind') != -1) return;
+    if (e.message.includes('unwind')) return;
     console.error('Page threw an exception ' + e);
     Module['pageThrewException'] = true;
   });
@@ -358,13 +355,6 @@ var __ATPOSTRUN__ = []; // functions called after the main() is called
 var runtimeInitialized = false;
 var runtimeExited = false;
 
-#if '___wasm_call_ctors' in IMPLEMENTED_FUNCTIONS
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD)
-#endif
-__ATINIT__.push({ func: function() { ___wasm_call_ctors() } });
-#endif
-
 function preRun() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
@@ -392,7 +382,7 @@ function initRuntime() {
   runtimeInitialized = true;
 
 #if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+  if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
@@ -405,6 +395,7 @@ function initRuntime() {
   callRuntimeCallbacks(__ATINIT__);
 }
 
+#if HAS_MAIN
 function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
@@ -415,6 +406,7 @@ function preMain() {
   <<< ATMAINS >>>
   callRuntimeCallbacks(__ATMAIN__);
 }
+#endif
 
 function exitRuntime() {
 #if STACK_OVERFLOW_CHECK
@@ -429,6 +421,9 @@ function exitRuntime() {
 #if USE_PTHREADS
   PThread.runExitHandlers();
 #endif
+#endif
+#if ASYNCIFY && ASSERTIONS
+  Asyncify.checkStateAfterExitRuntime();
 #endif
   runtimeExited = true;
 }
@@ -669,11 +664,12 @@ function createExportWrapper(name, fixedasm) {
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
-// When DISABLE_EXCEPTION_CATCHING != 1 `abortWrapperDepth` counts the recursion
-// level of the wrapper function so that we only handle exceptions at the top level
-// letting the exception mechanics work uninterrupted at the inner level.
-// Additionally, `abortWrapperDepth` is also manually incremented in callMain so that
-// we know to ignore exceptions from there since they're handled by callMain directly.
+// When exception catching is enabled (!DISABLE_EXCEPTION_CATCHING)
+// `abortWrapperDepth` counts the recursion level of the wrapper function so
+// that we only handle exceptions at the top level letting the exception
+// mechanics work uninterrupted at the inner level.  Additionally,
+// `abortWrapperDepth` is also manually incremented in callMain so that we know
+// to ignore exceptions from there since they're handled by callMain directly.
 var abortWrapperDepth = 0;
 
 // Creates a wrapper in a closure so that each wrapper gets it's own copy of 'original'
@@ -684,7 +680,7 @@ function makeAbortWrapper(original) {
       throw "program has already aborted!";
     }
 
-#if DISABLE_EXCEPTION_CATCHING != 1
+#if !DISABLE_EXCEPTION_CATCHING
     abortWrapperDepth += 1;
 #endif
     try {
@@ -703,7 +699,7 @@ function makeAbortWrapper(original) {
 
       abort("unhandled exception: " + [e, e.stack]);
     }
-#if DISABLE_EXCEPTION_CATCHING != 1
+#if !DISABLE_EXCEPTION_CATCHING
     finally {
       abortWrapperDepth -= 1;
     }
@@ -897,8 +893,8 @@ function instantiateSync(file, info) {
   } catch (e) {
     var str = e.toString();
     err('failed to compile wasm module: ' + str);
-    if (str.indexOf('imported Memory') >= 0 ||
-        str.indexOf('memory import') >= 0) {
+    if (str.includes('imported Memory') ||
+        str.includes('memory import')) {
       err('Memory size incompatibility issues may be due to changing INITIAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set INITIAL_MEMORY at runtime to something smaller than it was at compile time).');
     }
     throw e;
@@ -950,6 +946,14 @@ function createWasm() {
 
     Module['asm'] = exports;
 
+#if MAIN_MODULE
+    var metadata = getDylinkMetadata(module);
+    if (metadata.neededDynlibs) {
+      dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
+    }
+    mergeLibSymbols(exports, 'main')
+#endif
+
 #if !IMPORTED_MEMORY
     wasmMemory = Module['asm']['memory'];
 #if ASSERTIONS
@@ -972,6 +976,10 @@ function createWasm() {
 #endif
 #endif
 
+#if hasExportedFunction('___wasm_call_ctors')
+    addOnInit(Module['asm']['__wasm_call_ctors']);
+#endif
+
 #if ABORT_ON_WASM_EXCEPTIONS
     instrumentWasmTableWithAbort();
 #endif
@@ -982,6 +990,7 @@ function createWasm() {
     exportAsmFunctions(exports);
 #endif
 #if USE_PTHREADS
+    PThread.tlsInitFunctions.push(Module['asm']['emscripten_tls_init']);
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
@@ -1018,44 +1027,44 @@ function createWasm() {
   }
 #endif
 
+#if USE_OFFSET_CONVERTER
+  {{{ runOnMainThread("addRunDependency('offset-converter');") }}}
+#endif
+
+  // Prefer streaming instantiation if available.
+#if WASM_ASYNC_COMPILATION
 #if ASSERTIONS
   // Async compilation can be confusing when an error on the page overwrites Module
   // (for example, if the order of elements is wrong, and the one defining Module is
   // later), so we save Module and check it later.
   var trueModule = Module;
 #endif
-  function receiveInstantiatedSource(output) {
-    // 'output' is a WebAssemblyInstantiatedSource object which has both the module and instance.
+  function receiveInstantiationResult(result) {
+    // 'result' is a ResultObject object which has both the module and instance.
     // receiveInstance() will swap in the exports (to Module.asm) so they can be called
 #if ASSERTIONS
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if USE_PTHREADS
-    receiveInstance(output['instance'], output['module']);
+#if USE_PTHREADS || RELOCATABLE
+    receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
     // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
-    receiveInstance(output['instance']);
+    receiveInstance(result['instance']);
 #endif
   }
 
-#if USE_OFFSET_CONVERTER
-  {{{ runOnMainThread("addRunDependency('offset-converter');") }}}
-#endif
-
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
-#if USE_OFFSET_CONVERTER
       var result = WebAssembly.instantiate(binary, info);
+#if USE_OFFSET_CONVERTER
       result.then(function (instance) {
         wasmOffsetConverter = new WasmOffsetConverter(binary, instance.module);
         {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
       });
-      return result;
-#else // USE_OFFSET_CONVERTER
-      return WebAssembly.instantiate(binary, info);
 #endif // USE_OFFSET_CONVERTER
+      return result;
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
 
@@ -1087,8 +1096,6 @@ function createWasm() {
     });
   }
 
-  // Prefer streaming instantiation if available.
-#if WASM_ASYNC_COMPILATION
   function instantiateAsync() {
     if (!wasmBinary &&
         typeof WebAssembly.instantiateStreaming === 'function' &&
@@ -1110,16 +1117,16 @@ function createWasm() {
           err('failed to initialize offset-converter: ' + reason);
         });
 #endif
-        return result.then(receiveInstantiatedSource, function(reason) {
+        return result.then(receiveInstantiationResult, function(reason) {
             // We expect the most common failure cause to be a bad MIME type for the binary,
             // in which case falling back to ArrayBuffer instantiation should work.
             err('wasm streaming compile failed: ' + reason);
             err('falling back to ArrayBuffer instantiation');
-            return instantiateArrayBuffer(receiveInstantiatedSource);
+            return instantiateArrayBuffer(receiveInstantiationResult);
           });
       });
     } else {
-      return instantiateArrayBuffer(receiveInstantiatedSource);
+      return instantiateArrayBuffer(receiveInstantiationResult);
     }
   }
 #endif
@@ -1174,7 +1181,14 @@ function createWasm() {
   return {}; // no exports yet; we'll fill them in later
 #else
   var result = instantiateSync(wasmBinaryFile, info);
+#if USE_PTHREADS || MAIN_MODULE
   receiveInstance(result[0], result[1]);
+#else
+  // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
+  // the above line no longer optimizes out down to the following line.
+  // When the regression is fixed, we can remove this if/else.
+  receiveInstance(result[0]);
+#endif
   return Module['asm']; // exports were assigned here
 #endif
 }
