@@ -208,12 +208,14 @@ var LibraryExceptions = {
 
   // Exceptions
   __cxa_allocate_exception__deps: ['$ExceptionInfoAttrs'],
+  __cxa_allocate_exception__sig: 'vi',
   __cxa_allocate_exception: function(size) {
     // Thrown object is prepended by exception metadata block
     return _malloc(size + ExceptionInfoAttrs.SIZE) + ExceptionInfoAttrs.SIZE;
   },
 
   __cxa_free_exception__deps: ['$ExceptionInfo'],
+  __cxa_free_exception__sig: 'vi',
   __cxa_free_exception: function(ptr) {
 #if ABORTING_MALLOC || ASSERTIONS
     try {
