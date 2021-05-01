@@ -1541,7 +1541,6 @@ def phase_setup(state):
   # various settings require sbrk() access
   if settings.DETERMINISTIC or \
      settings.EMSCRIPTEN_TRACING or \
-     settings.MALLOC == 'emmalloc' or \
      settings.SAFE_HEAP or \
      settings.MEMORYPROFILER:
     settings.EXPORTED_FUNCTIONS += ['_sbrk']
@@ -1678,9 +1677,6 @@ def phase_setup(state):
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
   if not settings.USES_DYNAMIC_ALLOC:
     settings.MALLOC = 'none'
-
-  if settings.MALLOC == 'emmalloc':
-    settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_emmalloc.js')))
 
   if settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
     state.forced_stdlibs.append('libfetch')
