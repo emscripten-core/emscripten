@@ -153,7 +153,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_sfence
      - ⚠️ A full barrier in multithreaded builds.
    * - _mm_shuffle_ps
-     - 🟡 wasm_v32x4_shuffle. VM must guess type.
+     - 🟡 wasm_i32x4_shuffle. VM must guess type.
    * - _mm_storer_ps
      - 💡 Virtual. Shuffle + Simd store.
    * - _mm_store_ps1 (_mm_store1_ps)
@@ -922,13 +922,13 @@ The following table highlights the availability and expected performance of diff
    * - _mm_cvtepi8_epi64
      - ⚠️ emulated with two SIMD widens+const+cmp+shuffle
    * - _mm_cvtepu16_epi32
-     - ✅ wasm_i32x4_widen_low_u16x8
+     - ✅ wasm_u32x4_extend_low_u16x8
    * - _mm_cvtepu16_epi64
      - ⚠️ emulated with SIMD const+two shuffles
    * - _mm_cvtepu32_epi64
      - ⚠️ emulated with SIMD const+shuffle
    * - _mm_cvtepu8_epi16
-     - ✅ wasm_i16x8_widen_low_u8x16
+     - ✅ wasm_u16x8_extend_low_u8x16
    * - _mm_cvtepu8_epi32
      - ⚠️ emulated with two SIMD widens
    * - _mm_cvtepu8_epi64
