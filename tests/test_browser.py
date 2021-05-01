@@ -5109,6 +5109,9 @@ window.close = function() {
   def test_assert_failure(self):
     self.btest(test_file('browser', 'test_assert_failure.c'), 'abort:Assertion failed: false && "this is a test"')
 
+  def test_full_js_library_strict(self):
+    self.btest_exit(test_file('hello_world.c'), args=['-sINCLUDE_FULL_LIBRARY', '-sSTRICT_JS'])
+
 
 EMRUN = path_from_root('emrun')
 
