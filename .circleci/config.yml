@@ -153,7 +153,9 @@ commands:
           name: Install brew package dependencies
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: brew install python3 cmake
+          command: |
+            brew list cmake || brew install cmake
+            brew list python3 || brew install python3
       - run:
           name: run tests
           command: |
@@ -477,7 +479,9 @@ jobs:
           name: Install brew package dependencies
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: brew install python3 cmake
+          command: |
+            brew list cmake || brew install cmake
+            brew list python3 || brew install python3
       - checkout
       - build
       # note we do *not* build all libraries and freeze the cache; as we run
