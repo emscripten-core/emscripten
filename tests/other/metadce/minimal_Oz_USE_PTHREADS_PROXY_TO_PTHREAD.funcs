@@ -12,6 +12,7 @@ $__wasm_init_memory
 $_do_call
 $_emscripten_call_on_thread
 $_emscripten_do_dispatch_to_thread
+$_emscripten_do_dispatch_to_thread_global
 $_emscripten_thread_init
 $_main_thread
 $a_cas
@@ -32,6 +33,7 @@ $emscripten_stack_set_limits
 $emscripten_sync_run_in_main_thread
 $emscripten_sync_run_in_main_thread
 $emscripten_tls_init
+$emscripten_wait_for_call_v
 $free_tls
 $init_mparams
 $sbrk
