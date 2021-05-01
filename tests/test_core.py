@@ -4471,8 +4471,8 @@ res64 - external 64\n''', header='''
 
   @needs_dylink
   def test_dylink_dso_needed(self):
-    def do_run(src, expected_output):
-      self.do_run(src + 'int main() { return test_main(); }', expected_output)
+    def do_run(src, expected_output, emcc_args=[]):
+      self.do_run(src + 'int main() { return test_main(); }', expected_output, emcc_args=emcc_args)
     self._test_dylink_dso_needed(do_run)
 
   @needs_dylink
@@ -5895,8 +5895,7 @@ return malloc(size);
     self.run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse1', stdout=PIPE).stdout
 
-    orig_args = self.emcc_args
-    self.emcc_args = orig_args + ['-I' + test_file('sse'), '-msse']
+    self.emcc_args += ['-I' + test_file('sse'), '-msse']
     self.maybe_closure()
 
     self.do_runf(src, native_result)
@@ -5911,8 +5910,7 @@ return malloc(size);
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse2', stdout=PIPE).stdout
 
-    orig_args = self.emcc_args
-    self.emcc_args = orig_args + ['-I' + test_file('sse'), '-msse2', '-Wno-argument-outside-range']
+    self.emcc_args += ['-I' + test_file('sse'), '-msse2', '-Wno-argument-outside-range']
     self.maybe_closure()
     self.do_runf(src, native_result)
 
@@ -5924,8 +5922,7 @@ return malloc(size);
     self.run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse3', stdout=PIPE).stdout
 
-    orig_args = self.emcc_args
-    self.emcc_args = orig_args + ['-I' + test_file('sse'), '-msse3', '-Wno-argument-outside-range']
+    self.emcc_args += ['-I' + test_file('sse'), '-msse3', '-Wno-argument-outside-range']
     self.maybe_closure()
     self.do_runf(src, native_result)
 
@@ -5937,8 +5934,7 @@ return malloc(size);
     self.run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_ssse3', stdout=PIPE).stdout
 
-    orig_args = self.emcc_args
-    self.emcc_args = orig_args + ['-I' + test_file('sse'), '-mssse3', '-Wno-argument-outside-range']
+    self.emcc_args += ['-I' + test_file('sse'), '-mssse3', '-Wno-argument-outside-range']
     self.maybe_closure()
     self.do_runf(src, native_result)
 
@@ -5951,8 +5947,7 @@ return malloc(size);
     self.run_process([shared.CLANG_CXX, src, '-msse4.1', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse4_1', stdout=PIPE).stdout
 
-    orig_args = self.emcc_args
-    self.emcc_args = orig_args + ['-I' + test_file('sse'), '-msse4.1', '-Wno-argument-outside-range']
+    self.emcc_args += ['-I' + test_file('sse'), '-msse4.1', '-Wno-argument-outside-range']
     self.maybe_closure()
     self.do_runf(src, native_result)
 
@@ -5964,8 +5959,7 @@ return malloc(size);
     self.run_process([shared.CLANG_CXX, src, '-msse4.2', '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse4_2', stdout=PIPE).stdout
 
-    orig_args = self.emcc_args
-    self.emcc_args = orig_args + ['-I' + test_file('sse'), '-msse4.2', '-Wno-argument-outside-range']
+    self.emcc_args += ['-I' + test_file('sse'), '-msse4.2', '-Wno-argument-outside-range']
     self.maybe_closure()
     self.do_runf(src, native_result)
 
@@ -5977,8 +5971,7 @@ return malloc(size);
     self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_avx', stdout=PIPE).stdout
 
-    orig_args = self.emcc_args
-    self.emcc_args = orig_args + ['-I' + test_file('sse'), '-mavx', '-Wno-argument-outside-range']
+    self.emcc_args += ['-I' + test_file('sse'), '-mavx', '-Wno-argument-outside-range']
     self.maybe_closure()
     self.do_runf(src, native_result)
 
@@ -6380,7 +6373,6 @@ return malloc(size);
     'minimal_runtime': ['-s', 'MINIMAL_RUNTIME=1']
   })
   def test_dyncall_specific(self, *args):
-    emcc_args = self.emcc_args.copy()
     cases = [
         ('DIRECT', []),
         ('DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall']),
@@ -6394,18 +6386,14 @@ return malloc(size);
 
     for which, extra_args in cases:
       print(str(args) + ' ' + which)
-      self.emcc_args = emcc_args + ['-D' + which] + list(args) + extra_args
-      self.do_core_test('dyncall_specific.c')
+      self.do_core_test('dyncall_specific.c', emcc_args=['-D' + which] + list(args) + extra_args)
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
     def test(output_prefix='', args=[], assert_returncode=0):
-      old = self.emcc_args.copy()
-      self.emcc_args += args
       src = test_file('core', 'getValue_setValue.cpp')
       expected = test_file('core', 'getValue_setValue' + output_prefix + '.out')
-      self.do_run_from_file(src, expected, assert_returncode=assert_returncode)
-      self.emcc_args = old
+      self.do_run_from_file(src, expected, assert_returncode=assert_returncode, emcc_args=args)
 
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
@@ -6428,13 +6416,10 @@ return malloc(size);
         if use_files:
           args += ['-DUSE_FILES']
         print(args)
-        old = self.emcc_args.copy()
-        self.emcc_args += args
         self.do_runf(test_file('core', 'FS_exports.cpp'),
                      (open(test_file('core', 'FS_exports' + output_prefix + '.out')).read(),
                       open(test_file('core', 'FS_exports' + output_prefix + '_2.out')).read()),
-                     assert_returncode=assert_returncode)
-        self.emcc_args = old
+                     assert_returncode=assert_returncode, emcc_args=args)
 
       # see that direct usage (not on module) works. we don't export, but the use
       # keeps it alive through JSDCE

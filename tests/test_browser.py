@@ -3515,7 +3515,7 @@ window.close = function() {
     if inworker:
       self.emcc_args += ['--proxy-to-worker']
 
-    def do_run(src, expected_output):
+    def do_run(src, expected_output, emcc_args=[]):
       # XXX there is no infrastructure (yet ?) to retrieve stdout from browser in tests.
       # -> do the assert about expected output inside browser.
       #
@@ -3543,7 +3543,7 @@ window.close = function() {
           return rtn;
         }
       ''' % expected_output)
-      self.btest_exit(self.in_dir('test_dylink_dso_needed.c'), args=self.get_emcc_args() + ['--post-js', 'post.js'])
+      self.btest_exit(self.in_dir('test_dylink_dso_needed.c'), args=self.get_emcc_args() + ['--post-js', 'post.js'] + emcc_args)
 
     self._test_dylink_dso_needed(do_run)
 
