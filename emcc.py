@@ -34,6 +34,7 @@ import sys
 import time
 from enum import Enum, unique, auto
 from subprocess import PIPE
+from pathlib import Path
 from urllib.parse import quote
 
 
@@ -356,7 +357,7 @@ def apply_settings(changes):
       filename = value[1:]
       if not os.path.exists(filename):
         exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
-      value = open(filename).read()
+      value = Path(filename).read_text()
     else:
       value = value.replace('\\', '\\\\')
 
@@ -583,7 +584,7 @@ def get_binaryen_passes():
 
 
 def make_js_executable(script):
-  src = open(script).read()
+  src = Path(script).read_text()
   cmd = shared.shlex_join(config.JS_ENGINE)
   if not os.path.isabs(config.JS_ENGINE[0]):
     # TODO: use whereis etc. And how about non-*NIX?
@@ -954,7 +955,7 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
     if os.path.exists(shared.path_from_root('.git')):
       revision = run_process(['git', 'rev-parse', 'HEAD'], stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.strip()
     elif os.path.exists(shared.path_from_root('emscripten-revision.txt')):
-      revision = open(shared.path_from_root('emscripten-revision.txt')).read().strip()
+      revision = Path(shared.path_from_root('emscripten-revision.txt')).read_text().strip()
     if revision:
       revision = ' (%s)' % revision
     print('''%s%s
@@ -1115,19 +1116,19 @@ def phase_setup(state):
     diagnostics.warning('experimental', '--oformat=base/--post-link are experimental and subject to change.')
 
   if options.emrun:
-    options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
-    options.post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
+    options.pre_js += Path(shared.path_from_root('src', 'emrun_prejs.js')).read_text() + '\n'
+    options.post_js += Path(shared.path_from_root('src', 'emrun_postjs.js')).read_text() + '\n'
     # emrun mode waits on program exit
     settings.EXIT_RUNTIME = 1
 
   if options.cpu_profiler:
-    options.post_js += open(shared.path_from_root('src', 'cpuprofiler.js')).read() + '\n'
+    options.post_js += Path(shared.path_from_root('src', 'cpuprofiler.js')).read_text() + '\n'
 
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
 
   if options.thread_profiler:
-    options.post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
+    options.post_js += Path(shared.path_from_root('src', 'threadprofiler.js')).read_text() + '\n'
 
   if options.memory_init_file is None:
     options.memory_init_file = settings.OPT_LEVEL >= 2
@@ -2446,7 +2447,7 @@ def phase_source_transforms(options, target):
   # Apply pre and postjs files
   if final_js and (options.pre_js or options.post_js):
     logger.debug('applying pre/postjses')
-    src = open(final_js).read()
+    src = Path(final_js).read_text()
     final_js += '.pp.js'
     with open(final_js, 'w') as f:
       # pre-js code goes right after the Module integration code (so it
@@ -2472,9 +2473,9 @@ def phase_memory_initializer(memfile):
   # is set the memory initializer url.
   global final_js
 
-  src = open(final_js).read()
+  src = Path(final_js).read_text()
   src = do_replace(src, '// {{MEM_INITIALIZER}}', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
-  open(final_js + '.mem.js', 'w').write(src)
+  Path(final_js + '.mem.js').write_text(src)
   final_js += '.mem.js'
 
 
@@ -2497,7 +2498,7 @@ def phase_final_emitting(options, target, wasm_target, memfile):
     # Minify the worker.js file in optimized builds
     if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
       minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
-      open(worker_output, 'w').write(minified_worker)
+      Path(worker_output).write_text(minified_worker)
 
   # track files that will need native eols
   generated_text_files_with_native_eols = []
@@ -2518,7 +2519,7 @@ def phase_final_emitting(options, target, wasm_target, memfile):
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
     logger.debug('applying extern pre/postjses')
-    src = open(final_js).read()
+    src = Path(final_js).read_text()
     final_js += '.epp.js'
     with open(final_js, 'w') as f:
       f.write(fix_windows_newlines(options.extern_pre_js))
@@ -2654,13 +2655,13 @@ def parse_args(newargs):
     elif check_arg('--js-transform'):
       options.js_transform = consume_arg()
     elif check_arg('--pre-js'):
-      options.pre_js += open(consume_arg_file()).read() + '\n'
+      options.pre_js += Path(consume_arg_file()).read_text() + '\n'
     elif check_arg('--post-js'):
-      options.post_js += open(consume_arg_file()).read() + '\n'
+      options.post_js += Path(consume_arg_file()).read_text() + '\n'
     elif check_arg('--extern-pre-js'):
-      options.extern_pre_js += open(consume_arg_file()).read() + '\n'
+      options.extern_pre_js += Path(consume_arg_file()).read_text() + '\n'
     elif check_arg('--extern-post-js'):
-      options.extern_post_js += open(consume_arg_file()).read() + '\n'
+      options.extern_post_js += Path(consume_arg_file()).read_text() + '\n'
     elif check_arg('--compiler-wrapper'):
       config.COMPILER_WRAPPER = consume_arg()
     elif check_flag('--post-link'):
@@ -3052,10 +3053,10 @@ def phase_binaryen(target, options, wasm_target):
 
   # replace placeholder strings with correct subresource locations
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
-    js = open(final_js).read()
+    js = Path(final_js).read_text()
 
     if settings.MINIMAL_RUNTIME:
-      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(open(wasm_target, 'rb').read()))
+      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(Path(wasm_target).read_bytes()))
     else:
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', shared.JS.get_subresource_location(wasm_target))
     shared.try_delete(wasm_target)
@@ -3066,7 +3067,7 @@ def phase_binaryen(target, options, wasm_target):
 def modularize():
   global final_js
   logger.debug('Modularizing, assigning to var ' + settings.EXPORT_NAME)
-  src = open(final_js).read()
+  src = Path(final_js).read_text()
 
   return_value = settings.EXPORT_NAME
   if settings.WASM_ASYNC_COMPILATION:
@@ -3261,7 +3262,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   if settings.SINGLE_FILE:
     js_contents = script.inline or ''
     if script.src:
-      js_contents += open(js_target).read()
+      js_contents += Path(js_target).read_text()
     shared.try_delete(js_target)
     script.src = None
     script.inline = js_contents
@@ -3354,13 +3355,13 @@ def generate_worker_js(target, js_target, target_basename):
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 
   target_contents = worker_js_script(proxy_worker_filename)
-  open(target, 'w').write(target_contents)
+  Path(target).write_text(target_contents)
 
 
 def worker_js_script(proxy_worker_filename):
-  web_gl_client_src = open(shared.path_from_root('src', 'webGLClient.js')).read()
-  idb_store_src = open(shared.path_from_root('src', 'IDBStore.js')).read()
-  proxy_client_src = open(shared.path_from_root('src', 'proxyClient.js')).read()
+  web_gl_client_src = Path(shared.path_from_root('src', 'webGLClient.js')).read_text()
+  idb_store_src = Path(shared.path_from_root('src', 'IDBStore.js')).read_text()
+  proxy_client_src = Path(shared.path_from_root('src', 'proxyClient.js')).read_text()
   proxy_client_src = do_replace(proxy_client_src, '{{{ filename }}}', proxy_worker_filename)
   proxy_client_src = do_replace(proxy_client_src, '{{{ IDBStore.js }}}', idb_store_src)
   return web_gl_client_src + '\n' + proxy_client_src
