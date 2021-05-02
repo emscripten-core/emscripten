@@ -1164,10 +1164,6 @@ def phase_setup(state):
   if settings_map.get('WARN_ON_UNDEFINED_SYMBOLS') == '0':
     settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
 
-  if settings.MINIMAL_RUNTIME or settings_map.get('MINIMAL_RUNTIME') in ('1', '2'):
-    # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   apply_settings(settings_map)
 
