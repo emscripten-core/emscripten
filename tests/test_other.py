@@ -119,10 +119,7 @@ class other(RunnerCore):
     self.assertTrue(building.is_wasm(filename))
 
   def do_other_test(self, testname, emcc_args=[], **kwargs):
-    orig_args = self.emcc_args
-    self.emcc_args += emcc_args
-    self.do_run_in_out_file_test('other', testname, **kwargs)
-    self.emcc_args = orig_args
+    self.do_run_in_out_file_test('other', testname, emcc_args=emcc_args, **kwargs)
 
   # Another utility to run a test in this suite. This receives a source file
   # to compile, with optional compiler and execution flags.
