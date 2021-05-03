@@ -1167,19 +1167,15 @@ def phase_setup(state):
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   apply_settings(settings_map)
 
-  if os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in state.orig_args:
+  autoconf = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in state.orig_args
+
+  if autoconf:
     # configure tests want a more shell-like style, where we emit return codes on exit()
     settings.EXIT_RUNTIME = 1
     # use node.js raw filesystem access, to behave just like a native executable
     settings.NODERAWFS = 1
     # Add `#!` line to output JS and make it executable.
     options.executable = True
-    # Autoconf expects the executable output file to be called `a.out`
-    default_target_name = 'a.out'
-  elif settings.SIDE_MODULE:
-    default_target_name = 'a.out.wasm'
-  else:
-    default_target_name = 'a.out.js'
 
   # options.output_file is the user-specified one, target is what we will generate
   if options.output_file:
@@ -1191,8 +1187,13 @@ def phase_setup(state):
     dirname = os.path.dirname(target)
     if dirname and not os.path.isdir(dirname):
       exit_with_error("specified output file (%s) is in a directory that does not exist" % target)
+  elif autoconf:
+    # Autoconf expects the executable output file to be called `a.out`
+    target = 'a.out'
+  elif settings.SIDE_MODULE:
+    target = 'a.out.wasm'
   else:
-    target = default_target_name
+    target = 'a.out.js'
 
   settings.TARGET_BASENAME = unsuffixed_basename(target)
 
@@ -1321,12 +1322,8 @@ def phase_setup(state):
         options.default_object_extension = '.s'
     elif '-M' in newargs or '-MM' in newargs:
       options.default_object_extension = '.mout' # not bitcode, not js; but just dependency rule of the input file
-
-    if options.output_file:
-      if len(input_files) > 1:
-        exit_with_error('cannot specify -o with -c/-S/-E/-M and multiple source files')
-    else:
-      target = unsuffixed_basename(target) + options.default_object_extension
+    if options.output_file and len(input_files) > 1:
+      exit_with_error('cannot specify -o with -c/-S/-E/-M and multiple source files')
 
   # If no output format was sepecific we try to imply the format based on
   # the output filename extension.
