@@ -2045,6 +2045,9 @@ var LibraryGL = {
   // the currently active shader in this GL context.
   $webglGetUniformLocation: function(location) {
     var p = GLctx.currentProgram;
+    if (!p) {
+      return null;
+    }
     var webglLoc = p.uniformLocsById[location];
     // p.uniformLocsById[location] stores either an integer, or a WebGLUniformLocation.
 
