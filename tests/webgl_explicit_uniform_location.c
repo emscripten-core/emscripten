@@ -9,10 +9,7 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <GLES2/gl2.h>
-
-#ifndef GL_MAX_UNIFORM_LOCATIONS
-#define GL_MAX_UNIFORM_LOCATIONS          0x826E
-#endif
+#include <webgl/webgl1_ext.h>
 
 GLuint CompileShader(GLenum type, const char *src)
 {
@@ -29,7 +26,6 @@ GLuint CreateProgram(GLuint vertexShader, GLuint fragmentShader)
    glAttachShader(program, vertexShader);
    glAttachShader(program, fragmentShader);
    glBindAttribLocation(program, 0, "apos");
-   glBindAttribLocation(program, 1, "acolor");
    glLinkProgram(program);
    return program;
 }
@@ -53,8 +49,7 @@ int main(int argc, char *argv[])
     " // layout(location = -1) uniform mat4 proj; // Invalid usage, check this is preprocessed away\n"
     " /* layout(location = 100000000) uniform mat4 proj; Invalid usage, check this is preprocessed away */\n"
     "layout(location = 0) in vec4 pos; // Make sure attribute layout locations don't get removed by preprocessor\n"
-    "out vec4 v_pos;\n"
-    "void main() { v_pos = pos; gl_Position = view*world*pos; }");
+    "void main() { gl_Position = view*world*pos; }");
 
   GLuint ps = CompileShader(GL_FRAGMENT_SHADER,
     "#version 300 es\n"
@@ -64,7 +59,6 @@ int main(int argc, char *argv[])
     "LOCATION(11) uniform vec4 color2;\n"
     "layout(location = 18) uniform vec3 colors[3];\n"
     "layout(location = 24) uniform vec3 colors2[3];\n"
-    "in vec4 v_pos;\n"
     "LOCATION(0) out highp vec4 SV_TARGET0; // Make sure MRT output locations don't get removed by preprocessor\n"
     "void main() { SV_TARGET0 = vec4(color,1) + color2 + vec4(colors[0].r, colors[1].g, colors[2].b, 1) + vec4(colors2[0].r, colors2[1].g, colors2[2].b, 1); }");
 

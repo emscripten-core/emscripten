@@ -494,6 +494,10 @@ var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0;
 // extension. See docs/EMSCRIPTEN_explicit_uniform_location.txt
 var GL_EXPLICIT_UNIFORM_LOCATION = 0;
 
+// If true, enables support for the EMSCRIPTEN_uniform_layout_binding WebGL
+// extension. See docs/EMSCRIPTEN_explicit_uniform_binding.txt
+var GL_EXPLICIT_UNIFORM_BINDING = 0;
+
 // Deprecated. Pass -s MAX_WEBGL_VERSION=2 to target WebGL 2.0.
 // [link]
 var USE_WEBGL2 = 0;
@@ -928,13 +932,6 @@ var RETAIN_COMPILER_SETTINGS = 0;
 // [link]
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 
-// This list is also used to determine auto-exporting of library dependencies
-// (i.e., functions that might be dependencies of JS library functions, that if
-// so we must export so that if they are implemented in C they will be
-// accessible, in ASM_JS mode).
-// [link]
-var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy'];
-
 // Include all JS library functions instead of the sum of
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + any functions used by the generated code.
 // This is needed when dynamically loading (i.e. dlopen) modules that make use
@@ -969,10 +966,7 @@ var MAIN_MODULE = 0;
 // [compile+link]
 var SIDE_MODULE = 0;
 
-// If this is a shared object (MAIN_MODULE == 1 || SIDE_MODULE == 1), then we
-// will link these at runtime. They must have been built with SIDE_MODULE == 1.
-// In most cases it is simpler to pass the filenames directly on the commandline
-// instead.
+// Deprecated, list shared libraries directly on the command line instead.
 // [link]
 var RUNTIME_LINKED_LIBS = [];
 
@@ -2022,4 +2016,5 @@ var LEGACY_SETTINGS = [
   ['ASM_PRIMITIVE_VARS', [[]], 'No longer needed'],
   ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older'],
   ['RUNTIME_FUNCS_TO_IMPORT', [[]], 'No longer needed'],
+  ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
 ];

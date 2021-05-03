@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from .toolchain_profiler import ToolchainProfiler
+
 import json
 import logging
 import os
@@ -19,7 +21,6 @@ from . import response_file
 from . import shared
 from . import webassembly
 from . import config
-from .toolchain_profiler import ToolchainProfiler
 from .shared import CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
@@ -44,7 +45,7 @@ nm_cache = {}
 ar_contents = {}
 _is_ar_cache = {}
 # the exports the user requested
-user_requested_exports = []
+user_requested_exports = set()
 
 
 class ObjectFileInfo:
@@ -170,12 +171,12 @@ def get_building_env(cflags=[]):
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
   env['HOST_CC'] = CLANG_CC
   env['HOST_CXX'] = CLANG_CXX
-  env['HOST_CFLAGS'] = "-W" # if set to nothing, CFLAGS is used, which we don't want
-  env['HOST_CXXFLAGS'] = "-W" # if set to nothing, CXXFLAGS is used, which we don't want
-  env['PKG_CONFIG_LIBDIR'] = path_from_root('system', 'local', 'lib', 'pkgconfig') + os.path.pathsep + path_from_root('system', 'lib', 'pkgconfig')
+  env['HOST_CFLAGS'] = '-W' # if set to nothing, CFLAGS is used, which we don't want
+  env['HOST_CXXFLAGS'] = '-W' # if set to nothing, CXXFLAGS is used, which we don't want
+  env['PKG_CONFIG_LIBDIR'] = shared.Cache.get_sysroot_dir('local', 'lib', 'pkgconfig') + os.path.pathsep + shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
   env['PKG_CONFIG_PATH'] = os.environ.get('EM_PKG_CONFIG_PATH', '')
   env['EMSCRIPTEN'] = path_from_root()
-  env['PATH'] = path_from_root('system', 'bin') + os.pathsep + env['PATH']
+  env['PATH'] = shared.Cache.get_sysroot_dir('bin') + os.pathsep + env['PATH']
   env['CROSS_COMPILE'] = path_from_root('em') # produces /path/to/emscripten/em , which then can have 'cc', 'ar', etc appended to it
   return env
 
@@ -452,6 +453,11 @@ def link_lld(args, target, external_symbol_list=None):
   cmd = [WASM_LD, '-o', target] + args
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
+
+  # Wasm exception handling. This is a CodeGen option for the LLVM backend, so
+  # wasm-ld needs to take this for the LTO mode.
+  if settings.EXCEPTION_HANDLING:
+    cmd += ['-mllvm', '-exception-model=wasm']
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
@@ -782,9 +788,9 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
     # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
     # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
     # externs file for the exports, Closure is able to reason about the exports.
-    if settings.MODULE_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
+    if settings.WASM_FUNCTION_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
       # Generate an exports file that records all the exported symbols from the wasm module.
-      module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % i for i, j in settings.MODULE_EXPORTS])
+      module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_FUNCTION_EXPORTS])
       exports_file = configuration.get_temp_files().get('_module_exports.js')
       exports_file.write(module_exports_suppressions.encode())
       exports_file.close()
@@ -950,29 +956,27 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
   logger.debug('running meta-DCE')
   temp_files = configuration.get_temp_files()
   # first, get the JS part of the graph
-  extra_info = '{ "exports": [' + ','.join(map(lambda x: '["' + x[0] + '","' + x[1] + '"]', settings.MODULE_EXPORTS)) + ']}'
+  if settings.MAIN_MODULE:
+    # For the main module we include all exports as possible roots, not just function exports.
+    # This means that any usages of data symbols within the JS or in the side modules can/will keep
+    # these exports alive on the wasm module.
+    # This is important today for weak data symbols that are defined by the main and the side module
+    # (i.e.  RTTI info).  We want to make sure the main module's symbols get added to asmLibraryArg
+    # when the main module is loaded.  If this doesn't happen then the symbols in the side module
+    # will take precedence.
+    exports = settings.WASM_EXPORTS
+  else:
+    exports = settings.WASM_FUNCTION_EXPORTS
+  extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
+
   txt = acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
   graph = json.loads(txt)
-  # add exports based on the backend output, that are not present in the JS
-  if not settings.DECLARE_ASM_MODULE_EXPORTS:
-    exports = set()
-    for item in graph:
-      if 'export' in item:
-        exports.add(item['export'])
-    for export, unminified in settings.MODULE_EXPORTS:
-      if export not in exports:
-        graph.append({
-          'export': export,
-          'name': 'emcc$export$' + export,
-          'reaches': []
-        })
   # ensure that functions expected to be exported to the outside are roots
+  required_symbols = user_requested_exports.union(set(settings.SIDE_MODULE_IMPORTS))
   for item in graph:
     if 'export' in item:
-      export = item['export']
-      # wasm backend's exports are prefixed differently inside the wasm
-      export = asmjs_mangle(export)
-      if export in user_requested_exports or settings.EXPORT_ALL:
+      export = asmjs_mangle(item['export'])
+      if settings.EXPORT_ALL or export in required_symbols:
         item['root'] = True
   # in standalone wasm, always export the memory
   if not settings.IMPORTED_MEMORY:
@@ -1305,8 +1309,23 @@ def is_bitcode(filename):
 
 
 def is_wasm(filename):
-  magic = open(filename, 'rb').read(4)
-  return magic == b'\0asm'
+  if not os.path.isfile(filename):
+    return False
+  header = open(filename, 'rb').read(webassembly.HEADER_SIZE)
+  return header == webassembly.MAGIC + webassembly.VERSION
+
+
+def is_wasm_dylib(filename):
+  """Detect wasm dynamic libraries by the presence of the "dylink" custom section."""
+  if not is_wasm(filename):
+    return False
+  module = webassembly.Module(filename)
+  section = next(module.sections())
+  if section.type == webassembly.SecType.CUSTOM:
+    module.seek(section.offset)
+    if module.readString() == 'dylink':
+      return True
+  return False
 
 
 # Given the name of a special Emscripten-implemented system library, returns an

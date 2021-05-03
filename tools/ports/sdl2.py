@@ -38,7 +38,7 @@ def get(ports, settings, shared):
     dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_dropevents.c events/SDL_events.c
     events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c
     events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c
-    joystick/SDL_gamecontroller.c joystick/SDL_joystick.c libm/e_atan2.c libm/e_log.c libm/e_pow.c
+    joystick/SDL_gamecontroller.c joystick/SDL_joystick.c libm/e_atan2.c libm/e_exp.c libm/e_log.c libm/e_pow.c
     libm/e_rem_pio2.c libm/e_sqrt.c libm/k_cos.c libm/k_rem_pio2.c libm/k_sin.c libm/k_tan.c
     libm/s_atan.c libm/s_copysign.c libm/s_cos.c libm/s_fabs.c libm/s_floor.c libm/s_scalbn.c
     libm/s_sin.c libm/s_tan.c power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c

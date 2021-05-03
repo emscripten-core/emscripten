@@ -224,7 +224,7 @@ This command will now exit. When you are done editing those paths, re-run it.
 
 embedded_config = path_from_root('.emscripten')
 # For compatibility with `emsdk --embedded` mode also look two levels up.  The
-# layout of the emsdk puts emcc two levels below emsdk.  For exmaple:
+# layout of the emsdk puts emcc two levels below emsdk.  For example:
 #  - emsdk/upstream/emscripten/emcc
 #  - emsdk/emscipten/1.38.31/emcc
 # However `emsdk --embedded` stores the config file in the emsdk root.

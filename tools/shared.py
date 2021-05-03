@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from .toolchain_profiler import ToolchainProfiler
+
 from subprocess import PIPE
 import atexit
 import binascii
@@ -22,7 +24,6 @@ if sys.version_info < (3, 6):
   print('error: emscripten requires python 3.6 or above', file=sys.stderr)
   sys.exit(1)
 
-from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles, colored_logger
@@ -49,7 +50,7 @@ logger = logging.getLogger('shared')
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
 diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
-# unused diagnositic flags.  TODO(sbc): remove at some point
+# unused diagnostic flags.  TODO(sbc): remove at some point
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('experimental')
 diagnostics.add_warning('invalid-input')
@@ -81,7 +82,7 @@ def shlex_join(cmd):
 
 
 def run_process(cmd, check=True, input=None, *args, **kw):
-  """Runs a subpocess returning the exit code.
+  """Runs a subprocess returning the exit code.
 
   By default this function will raise an exception on failure.  Therefor this should only be
   used if you want to handle such failures.  For most subprocesses, failures are not recoverable
@@ -258,7 +259,7 @@ def check_llvm_version():
   actual = get_clang_version()
   if EXPECTED_LLVM_VERSION in actual:
     return True
-  diagnostics.warning('version-check', 'LLVM version appears incorrect (seeing "%s", expected "%s")', actual, EXPECTED_LLVM_VERSION)
+  diagnostics.warning('version-check', 'LLVM version for clang executable "%s" appears incorrect (seeing "%s", expected "%s")', CLANG_CC, actual, EXPECTED_LLVM_VERSION)
   return False
 
 
@@ -360,6 +361,7 @@ def perform_sanity_checks():
         exit_with_error('Cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 
 
+@ToolchainProfiler.profile_block('sanity')
 def check_sanity(force=False):
   """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
   and LLVM) exists.
@@ -388,36 +390,35 @@ def check_sanity(force=False):
     perform_sanity_checks()
     return
 
-  with ToolchainProfiler.profile_block('sanity'):
-    expected = generate_sanity()
+  expected = generate_sanity()
 
-    sanity_file = Cache.get_path('sanity.txt')
-    with Cache.lock():
-      if os.path.exists(sanity_file):
-        sanity_data = open(sanity_file).read()
-        if sanity_data != expected:
-          logger.debug('old sanity: %s' % sanity_data)
-          logger.debug('new sanity: %s' % expected)
-          logger.info('(Emscripten: config changed, clearing cache)')
-          Cache.erase()
-          # the check actually failed, so definitely write out the sanity file, to
-          # avoid others later seeing failures too
-          force = False
-        else:
-          if force:
-            logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
-          else:
-            logger.debug(f'sanity file up-to-date: {sanity_file}')
-            return # all is well
+  sanity_file = Cache.get_path('sanity.txt')
+  with Cache.lock():
+    if os.path.exists(sanity_file):
+      sanity_data = open(sanity_file).read()
+      if sanity_data != expected:
+        logger.debug('old sanity: %s' % sanity_data)
+        logger.debug('new sanity: %s' % expected)
+        logger.info('(Emscripten: config changed, clearing cache)')
+        Cache.erase()
+        # the check actually failed, so definitely write out the sanity file, to
+        # avoid others later seeing failures too
+        force = False
       else:
-        logger.debug(f'sanity file not found: {sanity_file}')
+        if force:
+          logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
+        else:
+          logger.debug(f'sanity file up-to-date: {sanity_file}')
+          return # all is well
+    else:
+      logger.debug(f'sanity file not found: {sanity_file}')
 
-      perform_sanity_checks()
+    perform_sanity_checks()
 
-      if not force:
-        # Only create/update this file if the sanity check succeeded, i.e., we got here
-        with open(sanity_file, 'w') as f:
-          f.write(expected)
+    if not force:
+      # Only create/update this file if the sanity check succeeded, i.e., we got here
+      with open(sanity_file, 'w') as f:
+        f.write(expected)
 
 
 # Some distributions ship with multiple llvm versions so they add
@@ -591,6 +592,11 @@ def asmjs_mangle(name):
     return name
 
 
+def reconfigure_cache():
+  global Cache
+  Cache = cache.Cache(config.CACHE)
+
+
 class JS:
   emscripten_license = '''\
 /**
@@ -723,7 +729,7 @@ def suffix(name):
 
 
 def unsuffixed(name):
-  """Return the filename without the extention.
+  """Return the filename without the extension.
 
   If there are multiple extensions this strips only the final one.
   """
@@ -744,7 +750,8 @@ def safe_copy(src, dst):
     return
   if dst == os.devnull:
     return
-  shutil.copyfile(src, dst)
+  # Copies data and permission bits, but not other metadata such as timestamp
+  shutil.copy(src, dst)
 
 
 def read_and_preprocess(filename, expand_macros=False):

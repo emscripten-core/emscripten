@@ -40,6 +40,10 @@ EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 29)
 
 WASM_PAGE_SIZE = 65536
 
+MAGIC = b'\0asm'
+
+VERSION = b'\x01\0\0\0'
+
 HEADER_SIZE = 8
 
 LIMITS_HAS_MAX = 0x1
@@ -145,8 +149,8 @@ class Module:
     self.buf = open(filename, 'rb')
     magic = self.buf.read(4)
     version = self.buf.read(4)
-    assert magic == b'\0asm'
-    assert version == b'\x01\0\0\0'
+    assert magic == MAGIC
+    assert version == VERSION
 
   def __del__(self):
     self.buf.close()
@@ -192,10 +196,8 @@ def parse_dylink_section(wasm_file):
 
   dylink_section = next(module.sections())
   assert dylink_section.type == SecType.CUSTOM
-  section_size = dylink_section.size
-  section_offset = dylink_section.offset
-  section_end = section_offset + section_size
-  module.seek(section_offset)
+  section_end = dylink_section.offset + dylink_section.size
+  module.seek(dylink_section.offset)
   # section name
   section_name = module.readString()
   assert section_name == 'dylink'
@@ -258,58 +260,3 @@ def get_imports(wasm_file):
       assert False
 
   return imports
-
-
-def update_dylink_section(wasm_file, extra_dynlibs):
-  # A wasm shared library has a special "dylink" section, see tools-conventions repo.
-  # This function updates this section, adding extra dynamic library dependencies.
-
-  mem_size, mem_align, table_size, table_align, section_end, needed = parse_dylink_section(wasm_file)
-
-  section_name = b'\06dylink' # section name, including prefixed size
-  contents = (toLEB(mem_size) + toLEB(mem_align) +
-              toLEB(table_size) + toLEB(0))
-
-  # we extend "dylink" section with information about which shared libraries
-  # our shared library needs. This is similar to DT_NEEDED entries in ELF.
-  #
-  # In theory we could avoid doing this, since every import in wasm has
-  # "module" and "name" attributes, but currently emscripten almost always
-  # uses just "env" for "module". This way we have to embed information about
-  # required libraries for the dynamic linker somewhere, and "dylink" section
-  # seems to be the most relevant place.
-  #
-  # Binary format of the extension:
-  #
-  #   needed_dynlibs_count        varuint32       ; number of needed shared libraries
-  #   needed_dynlibs_entries      dynlib_entry*   ; repeated dynamic library entries as described below
-  #
-  # dynlib_entry:
-  #
-  #   dynlib_name_len             varuint32       ; length of dynlib_name_str in bytes
-  #   dynlib_name_str             bytes           ; name of a needed dynamic library: valid UTF-8 byte sequence
-  #
-  # a proposal has been filed to include the extension into "dylink" specification:
-  # https://github.com/WebAssembly/tool-conventions/pull/77
-  needed += extra_dynlibs
-  contents += toLEB(len(needed))
-  for dyn_needed in needed:
-    dyn_needed = dyn_needed.encode('utf-8')
-    contents += toLEB(len(dyn_needed))
-    contents += dyn_needed
-
-  orig = open(wasm_file, 'rb').read()
-  file_header = orig[:8]
-  file_remainder = orig[section_end:]
-
-  section_size = len(section_name) + len(contents)
-  with open(wasm_file, 'wb') as f:
-    # copy magic number and version
-    f.write(file_header)
-    # write the special section
-    f.write(b'\0') # user section is code 0
-    f.write(toLEB(section_size))
-    f.write(section_name)
-    f.write(contents)
-    # copy rest of binary
-    f.write(file_remainder)

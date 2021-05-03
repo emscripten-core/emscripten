@@ -339,7 +339,7 @@ var LibraryHtml5WebGL = {
     var context = GL.getContext(contextHandle);
     var extString = UTF8ToString(extension);
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-    if (extString.indexOf('GL_') == 0) extString = extString.substr(3); // Allow enabling extensions both with "GL_" prefix and without.
+    if (extString.startsWith('GL_')) extString = extString.substr(3); // Allow enabling extensions both with "GL_" prefix and without.
 #endif
 
 #if GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
@@ -368,7 +368,7 @@ var LibraryHtml5WebGL = {
          'WEBGL_draw_buffers',
          'WEBGL_multi_draw',
          'WEBGL_draw_instanced_base_vertex_base_instance',
-         'WEBGL_multi_draw_instanced_base_vertex_base_instance'].indexOf(extString) >= 0) {
+         'WEBGL_multi_draw_instanced_base_vertex_base_instance'].includes(extString)) {
       console.error('When building with -s GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
                     + extString + '! Use one of the functions emscripten_webgl_enable_*() to enable it!');
     }

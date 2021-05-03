@@ -396,7 +396,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if not self.is_wasm():
       self.skipTest('no dynamic linking support in wasm2js yet')
     if '-fsanitize=address' in self.emcc_args:
-      self.skipTest('no dynamic linking support in asan yet')
+      self.skipTest('no dynamic linking support in ASan yet')
+    if '-fsanitize=leak' in self.emcc_args:
+      self.skipTest('no dynamic linking support in LSan yet')
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
@@ -416,12 +418,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   @classmethod
   def setUpClass(cls):
-    super(RunnerCore, cls).setUpClass()
+    super().setUpClass()
     print('(checking sanity from test runner)') # do this after we set env stuff
     shared.check_sanity(force=True)
 
   def setUp(self):
-    super(RunnerCore, self).setUp()
+    super().setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
     self.node_args = []
@@ -569,7 +571,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   # Build JavaScript code from source code
   def build(self, filename, libraries=[], includes=[], force_c=False,
-            post_build=None, js_outfile=True):
+            post_build=None, js_outfile=True, emcc_args=[]):
     suffix = '.js' if js_outfile else '.wasm'
     if shared.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
       compiler = [EMXX]
@@ -584,7 +586,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     dirname, basename = os.path.split(filename)
     output = shared.unsuffixed(basename) + suffix
-    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + libraries
+    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + emcc_args + libraries
     if shared.suffix(filename) not in ('.i', '.ii'):
       # Add the location of the test file to include path.
       cmd += ['-I.']
@@ -948,9 +950,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ccshared('libc.cpp', ['liba' + so])
 
     self.set_setting('MAIN_MODULE')
-    original_args = self.emcc_args.copy()
     extra_args = ['libb' + so, 'libc' + so]
-    self.emcc_args += extra_args
     do_run(r'''
       #ifdef __cplusplus
       extern "C" {
@@ -967,9 +967,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         return 0;
       }
       ''',
-           'a: loaded\na: b (prev: (null))\na: c (prev: b)\n')
+           'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', emcc_args=extra_args)
 
-    self.emcc_args = original_args
     for libname in ['liba', 'libb', 'libc']:
       self.emcc_args += ['--embed-file', libname + so]
     do_run(r'''
@@ -1041,14 +1040,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      js_engines=None, post_build=None, libraries=[],
                      includes=[],
                      assert_returncode=0, assert_identical=False, assert_all=False,
-                     check_for_error=True, force_c=False):
+                     check_for_error=True, force_c=False, emcc_args=[]):
     logger.debug(f'_build_and_run: {filename}')
 
     if no_build:
       js_file = filename
     else:
       self.build(filename, libraries=libraries, includes=includes, post_build=post_build,
-                 force_c=force_c)
+                 force_c=force_c, emcc_args=emcc_args)
       js_file = shared.unsuffixed(os.path.basename(filename)) + '.js'
     self.assertExists(js_file)
 
@@ -1283,7 +1282,7 @@ class BrowserCore(RunnerCore):
   unresponsive_tests = 0
 
   def __init__(self, *args, **kwargs):
-    super(BrowserCore, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
 
   @staticmethod
   def browser_open(url):
@@ -1311,7 +1310,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def setUpClass(cls):
-    super(BrowserCore, cls).setUpClass()
+    super().setUpClass()
     cls.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
     cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser():
@@ -1326,7 +1325,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def tearDownClass(cls):
-    super(BrowserCore, cls).tearDownClass()
+    super().tearDownClass()
     if not has_browser():
       return
     cls.harness_server.terminate()

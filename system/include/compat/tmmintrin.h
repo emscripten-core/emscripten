@@ -39,8 +39,8 @@ _mm_abs_epi32(__m128i __a)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_hadd_epi16(__m128i __a, __m128i __b)
 {
-  return _mm_add_epi16((__m128i)wasm_v16x8_shuffle(__a, __b, 0, 2, 4, 6, 8, 10, 12, 14),
-                       (__m128i)wasm_v16x8_shuffle(__a, __b, 1, 3, 5, 7, 9, 11, 13, 15));
+  return _mm_add_epi16((__m128i)wasm_i16x8_shuffle(__a, __b, 0, 2, 4, 6, 8, 10, 12, 14),
+                       (__m128i)wasm_i16x8_shuffle(__a, __b, 1, 3, 5, 7, 9, 11, 13, 15));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
@@ -53,15 +53,15 @@ _mm_hadd_epi32(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_hadds_epi16(__m128i __a, __m128i __b)
 {
-  return _mm_adds_epi16((__m128i)wasm_v16x8_shuffle(__a, __b, 0, 2, 4, 6, 8, 10, 12, 14),
-                        (__m128i)wasm_v16x8_shuffle(__a, __b, 1, 3, 5, 7, 9, 11, 13, 15));
+  return _mm_adds_epi16((__m128i)wasm_i16x8_shuffle(__a, __b, 0, 2, 4, 6, 8, 10, 12, 14),
+                        (__m128i)wasm_i16x8_shuffle(__a, __b, 1, 3, 5, 7, 9, 11, 13, 15));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_hsub_epi16(__m128i __a, __m128i __b)
 {
-  return _mm_sub_epi16((__m128i)wasm_v16x8_shuffle(__a, __b, 0, 2, 4, 6, 8, 10, 12, 14),
-                       (__m128i)wasm_v16x8_shuffle(__a, __b, 1, 3, 5, 7, 9, 11, 13, 15));
+  return _mm_sub_epi16((__m128i)wasm_i16x8_shuffle(__a, __b, 0, 2, 4, 6, 8, 10, 12, 14),
+                       (__m128i)wasm_i16x8_shuffle(__a, __b, 1, 3, 5, 7, 9, 11, 13, 15));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
@@ -75,8 +75,8 @@ _mm_hsub_epi32(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_hsubs_epi16(__m128i __a, __m128i __b)
 {
-  return _mm_subs_epi16((__m128i)wasm_v16x8_shuffle(__a, __b, 0, 2, 4, 6, 8, 10, 12, 14),
-                        (__m128i)wasm_v16x8_shuffle(__a, __b, 1, 3, 5, 7, 9, 11, 13, 15));
+  return _mm_subs_epi16((__m128i)wasm_i16x8_shuffle(__a, __b, 0, 2, 4, 6, 8, 10, 12, 14),
+                        (__m128i)wasm_i16x8_shuffle(__a, __b, 1, 3, 5, 7, 9, 11, 13, 15));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
@@ -99,7 +99,7 @@ _mm_mulhrs_epi16(__m128i __a, __m128i __b)
   __hi = wasm_i32x4_add(__hi, __inc);
   __lo = wasm_i32x4_add(__lo, __lo);
   __hi = wasm_i32x4_add(__hi, __hi);
-  return (__m128i)wasm_v16x8_shuffle(__lo, __hi, 1, 3, 5, 7, 9, 11, 13, 15);
+  return (__m128i)wasm_i16x8_shuffle(__lo, __hi, 1, 3, 5, 7, 9, 11, 13, 15);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))

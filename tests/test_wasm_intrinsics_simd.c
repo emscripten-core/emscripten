@@ -90,16 +90,16 @@ v128_t TESTFN f64x2_make(double first) {
   return wasm_f64x2_make(first, 2.);
 }
 v128_t TESTFN i8x16_shuffle_interleave_bytes(v128_t x, v128_t y) {
-  return wasm_v8x16_shuffle(x, y, 0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31);
+  return wasm_i8x16_shuffle(x, y, 0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31);
 }
 v128_t TESTFN i16x8_shuffle_reverse(v128_t vec) {
-  return wasm_v16x8_shuffle(vec, vec, 7, 6, 5, 4, 3, 2, 1, 0);
+  return wasm_i16x8_shuffle(vec, vec, 7, 6, 5, 4, 3, 2, 1, 0);
 }
 v128_t TESTFN i32x4_shuffle_reverse(v128_t vec) {
-  return wasm_v32x4_shuffle(vec, vec, 3, 2, 1, 0);
+  return wasm_i32x4_shuffle(vec, vec, 3, 2, 1, 0);
 }
 v128_t TESTFN i64x2_shuffle_reverse(v128_t vec) {
-  return wasm_v64x2_shuffle(vec, vec, 1, 0);
+  return wasm_i64x2_shuffle(vec, vec, 1, 0);
 }
 
 v128_t TESTFN v8x16_swizzle(v128_t x, v128_t y) {
@@ -614,10 +614,10 @@ v128_t TESTFN i16x8_widen_high_i8x16_s(v128_t a) {
   return wasm_i16x8_widen_high_i8x16(a);
 }
 v128_t TESTFN i16x8_widen_low_i8x16_u(v128_t a) {
-  return wasm_i16x8_widen_low_u8x16(a);
+  return wasm_u16x8_extend_low_u8x16(a);
 }
 v128_t TESTFN i16x8_widen_high_i8x16_u(v128_t a) {
-  return wasm_i16x8_widen_high_u8x16(a);
+  return wasm_u16x8_extend_high_u8x16(a);
 }
 v128_t TESTFN i32x4_widen_low_i16x8_s(v128_t a) {
   return wasm_i32x4_widen_low_i16x8(a);
@@ -626,10 +626,10 @@ v128_t TESTFN i32x4_widen_high_i16x8_s(v128_t a) {
   return wasm_i32x4_widen_high_i16x8(a);
 }
 v128_t TESTFN i32x4_widen_low_i16x8_u(v128_t a) {
-  return wasm_i32x4_widen_low_u16x8(a);
+  return wasm_u32x4_extend_low_u16x8(a);
 }
 v128_t TESTFN i32x4_widen_high_i16x8_u(v128_t a) {
-  return wasm_i32x4_widen_high_u16x8(a);
+  return wasm_u32x4_extend_high_u16x8(a);
 }
 
 static int failures = 0;

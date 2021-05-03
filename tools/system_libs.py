@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from .toolchain_profiler import ToolchainProfiler
+
 import glob
 import hashlib
 import itertools
@@ -10,9 +12,9 @@ import logging
 import os
 import shutil
 import sys
+from enum import IntEnum, auto
 from glob import iglob
 
-from .toolchain_profiler import ToolchainProfiler
 from . import shared, building, ports, config, utils
 from . import deps_info, tempfiles
 from . import diagnostics
@@ -73,7 +75,7 @@ def clean_env():
   # At least one port also uses autoconf (harfbuzz) so we also need to clear
   # CFLAGS/LDFLAGS which we don't want to effect the inner call to configure.
   safe_env = os.environ.copy()
-  for opt in ['CFLAGS', 'LDFLAGS', 'EMCC_CFLAGS', 'EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
+  for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS', 'EMCC_CFLAGS', 'EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
   return safe_env
@@ -486,56 +488,56 @@ class Library:
 class MTLibrary(Library):
   def __init__(self, **kwargs):
     self.is_mt = kwargs.pop('is_mt')
-    super(MTLibrary, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def get_cflags(self):
-    cflags = super(MTLibrary, self).get_cflags()
+    cflags = super().get_cflags()
     if self.is_mt:
       cflags += ['-s', 'USE_PTHREADS']
     return cflags
 
   def get_base_name(self):
-    name = super(MTLibrary, self).get_base_name()
+    name = super().get_base_name()
     if self.is_mt:
       name += '-mt'
     return name
 
   @classmethod
   def vary_on(cls):
-    return super(MTLibrary, cls).vary_on() + ['is_mt']
+    return super().vary_on() + ['is_mt']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(MTLibrary, cls).get_default_variation(is_mt=settings.USE_PTHREADS, **kwargs)
+    return super().get_default_variation(is_mt=settings.USE_PTHREADS, **kwargs)
 
 
 class OptimizedAggressivelyForSizeLibrary(Library):
   def __init__(self, **kwargs):
     self.is_optz = kwargs.pop('is_optz')
-    super(OptimizedAggressivelyForSizeLibrary, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def get_base_name(self):
-    name = super(OptimizedAggressivelyForSizeLibrary, self).get_base_name()
+    name = super().get_base_name()
     if self.is_optz:
       name += '-optz'
     return name
 
   def get_cflags(self):
-    cflags = super(OptimizedAggressivelyForSizeLibrary, self).get_cflags()
+    cflags = super().get_cflags()
     if self.is_optz:
       cflags += ['-DEMSCRIPTEN_OPTIMIZE_FOR_OZ']
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super(OptimizedAggressivelyForSizeLibrary, cls).vary_on() + ['is_optz']
+    return super().vary_on() + ['is_optz']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(OptimizedAggressivelyForSizeLibrary, cls).get_default_variation(is_optz=settings.SHRINK_LEVEL >= 2, **kwargs)
+    return super().get_default_variation(is_optz=settings.SHRINK_LEVEL >= 2, **kwargs)
 
 
-class exceptions:
+class Exceptions(IntEnum):
   """
   This represents exception handling mode of Emscripten. Currently there are
   three modes of exception handling:
@@ -548,52 +550,52 @@ class exceptions:
     is meant to be fast. You need to use a VM that has the EH support to use
     this. This is not fully working yet and still experimental.
   """
-  none = 0
-  emscripten = 1
-  wasm = 2
+  NONE = auto()
+  EMSCRIPTEN = auto()
+  WASM = auto()
 
 
 class NoExceptLibrary(Library):
   def __init__(self, **kwargs):
     self.eh_mode = kwargs.pop('eh_mode')
-    super(NoExceptLibrary, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def get_cflags(self):
-    cflags = super(NoExceptLibrary, self).get_cflags()
-    if self.eh_mode == exceptions.none:
+    cflags = super().get_cflags()
+    if self.eh_mode == Exceptions.NONE:
       cflags += ['-fno-exceptions']
-    elif self.eh_mode == exceptions.emscripten:
+    elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
-    elif self.eh_mode == exceptions.wasm:
+    elif self.eh_mode == Exceptions.WASM:
       cflags += ['-fwasm-exceptions']
     return cflags
 
   def get_base_name(self):
-    name = super(NoExceptLibrary, self).get_base_name()
+    name = super().get_base_name()
     # TODO Currently emscripten-based exception is the default mode, thus no
     # suffixes. Change the default to wasm exception later.
-    if self.eh_mode == exceptions.none:
+    if self.eh_mode == Exceptions.NONE:
       name += '-noexcept'
-    elif self.eh_mode == exceptions.wasm:
+    elif self.eh_mode == Exceptions.WASM:
       name += '-except'
     return name
 
   @classmethod
-  def variations(cls, **kwargs):
-    combos = super(NoExceptLibrary, cls).variations()
-    return ([dict(eh_mode=exceptions.none, **combo) for combo in combos] +
-            [dict(eh_mode=exceptions.emscripten, **combo) for combo in combos] +
-            [dict(eh_mode=exceptions.wasm, **combo) for combo in combos])
+  def variations(cls, **kwargs):  # noqa
+    combos = super().variations()
+    return ([dict(eh_mode=Exceptions.NONE, **combo) for combo in combos] +
+            [dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos] +
+            [dict(eh_mode=Exceptions.WASM, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     if settings.EXCEPTION_HANDLING:
-      eh_mode = exceptions.wasm
+      eh_mode = Exceptions.WASM
     elif settings.DISABLE_EXCEPTION_CATCHING == 1:
-      eh_mode = exceptions.none
+      eh_mode = Exceptions.NONE
     else:
-      eh_mode = exceptions.emscripten
-    return super(NoExceptLibrary, cls).get_default_variation(eh_mode=eh_mode, **kwargs)
+      eh_mode = Exceptions.EMSCRIPTEN
+    return super().get_default_variation(eh_mode=eh_mode, **kwargs)
 
 
 class MuslInternalLibrary(Library):
@@ -610,27 +612,27 @@ class MuslInternalLibrary(Library):
 class AsanInstrumentedLibrary(Library):
   def __init__(self, **kwargs):
     self.is_asan = kwargs.pop('is_asan', False)
-    super(AsanInstrumentedLibrary, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def get_cflags(self):
-    cflags = super(AsanInstrumentedLibrary, self).get_cflags()
+    cflags = super().get_cflags()
     if self.is_asan:
       cflags += ['-fsanitize=address']
     return cflags
 
   def get_base_name(self):
-    name = super(AsanInstrumentedLibrary, self).get_base_name()
+    name = super().get_base_name()
     if self.is_asan:
       name += '-asan'
     return name
 
   @classmethod
   def vary_on(cls):
-    return super(AsanInstrumentedLibrary, cls).vary_on() + ['is_asan']
+    return super().vary_on() + ['is_asan']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(AsanInstrumentedLibrary, cls).get_default_variation(is_asan=settings.USE_ASAN, **kwargs)
+    return super().get_default_variation(is_asan=settings.USE_ASAN, **kwargs)
 
 
 class libcompiler_rt(MTLibrary):
@@ -641,7 +643,8 @@ class libcompiler_rt(MTLibrary):
 
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
-  src_files = glob_in_path(src_dir, '*.c')
+  # gcc_personality_v0.c depends on libunwind, which don't include by default.
+  src_files = glob_in_path(src_dir, '*.c', excludes=['gcc_personality_v0.c'])
   src_files += files_in_path(
       path_components=['system', 'lib', 'compiler-rt'],
       filenames=[
@@ -690,7 +693,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'faccessat.c',
         # 'process' exclusion
-        'fork.c', 'vfork.c', 'posix_spawn.c', 'execve.c', 'waitid.c', 'system.c'
+        'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c'
     ]
 
     ignore += LIBC_SOCKETS
@@ -728,7 +731,15 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # Allowed files from ignored modules
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
-        filenames=['clock_settime.c', 'asctime.c', 'ctime.c', 'gmtime.c', 'localtime.c', 'nanosleep.c'])
+        filenames=[
+          'clock_settime.c',
+          'asctime_r.c',
+          'asctime.c',
+          'ctime.c',
+          'gmtime.c',
+          'localtime.c',
+          'nanosleep.c'
+        ])
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'legacy'],
         filenames=['getpagesize.c', 'err.c'])
@@ -765,6 +776,9 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'thrd_sleep.c',
           'thrd_yield.c',
           'call_once.c',
+          'tss_create.c',
+          'tss_delete.c',
+          'tss_set.c',
         ])
 
     libc_files += glob_in_path(['system', 'lib', 'libc', 'compat'], '*.c')
@@ -864,7 +878,7 @@ class crt1(MuslInternalLibrary):
     return '.o'
 
   def can_use(self):
-    return super(crt1, self).can_use() and settings.STANDALONE_WASM
+    return super().can_use() and settings.STANDALONE_WASM
 
 
 class crt1_reactor(MuslInternalLibrary):
@@ -879,7 +893,7 @@ class crt1_reactor(MuslInternalLibrary):
     return '.o'
 
   def can_use(self):
-    return super(crt1_reactor, self).can_use() and settings.STANDALONE_WASM
+    return super().can_use() and settings.STANDALONE_WASM
 
 
 class crtbegin(Library):
@@ -905,15 +919,15 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
     ]
 
   def get_cflags(self):
-    cflags = super(libcxxabi, self).get_cflags()
+    cflags = super().get_cflags()
     cflags.append('-DNDEBUG')
     if not self.is_mt:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
-    if self.eh_mode == exceptions.none:
+    if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
-    elif self.eh_mode == exceptions.emscripten:
+    elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
-    elif self.eh_mode == exceptions.wasm:
+    elif self.eh_mode == Exceptions.WASM:
       cflags.append('-D__USING_WASM_EXCEPTIONS__')
     return cflags
 
@@ -934,9 +948,9 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp'
     ]
-    if self.eh_mode == exceptions.none:
+    if self.eh_mode == Exceptions.NONE:
       filenames += ['cxa_noexception.cpp']
-    elif self.eh_mode == exceptions.wasm:
+    elif self.eh_mode == Exceptions.WASM:
       filenames += [
         'cxa_exception.cpp',
         'cxa_personality.cpp'
@@ -960,29 +974,34 @@ class libcxx(NoExceptLibrary, MTLibrary):
 
 class libunwind(NoExceptLibrary, MTLibrary):
   name = 'libunwind'
+  # Because calls to _Unwind_CallPersonality are generated during LTO, libunwind
+  # can't currently be part of LTO.
+  # See https://bugs.llvm.org/show_bug.cgi?id=44353
+  force_object_files = True
+
   cflags = ['-Oz', '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
   src_dir = ['system', 'lib', 'libunwind', 'src']
   # Without this we can't build libunwind since it will pickup the unwind.h
   # that is part of llvm (which is not compatible for some reason).
   includes = [['system', 'lib', 'libunwind', 'include']]
-  src_files = ['Unwind-wasm.cpp']
+  src_files = ['Unwind-wasm.c']
 
   def __init__(self, **kwargs):
-    super(libunwind, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def can_use(self):
-    return super(libunwind, self).can_use() and self.eh_mode == exceptions.wasm
+    return super().can_use() and self.eh_mode == Exceptions.WASM
 
   def get_cflags(self):
-    cflags = super(libunwind, self).get_cflags()
+    cflags = super().get_cflags()
     cflags.append('-DNDEBUG')
     if not self.is_mt:
       cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
-    if self.eh_mode == exceptions.none:
+    if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
-    elif self.eh_mode == exceptions.emscripten:
+    elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
-    elif self.eh_mode == exceptions.wasm:
+    elif self.eh_mode == Exceptions.WASM:
       cflags.append('-D__USING_WASM_EXCEPTIONS__')
     return cflags
 
@@ -1003,7 +1022,7 @@ class libmalloc(MTLibrary):
     self.verbose = kwargs.pop('verbose')
     self.is_debug = kwargs.pop('is_debug') or self.memvalidate or self.verbose
 
-    super(libmalloc, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def get_files(self):
     malloc_base = self.malloc.replace('-memvalidate', '').replace('-verbose', '').replace('-debug', '')
@@ -1014,7 +1033,7 @@ class libmalloc(MTLibrary):
     return [malloc, sbrk]
 
   def get_cflags(self):
-    cflags = super(libmalloc, self).get_cflags()
+    cflags = super().get_cflags()
     if self.memvalidate:
       cflags += ['-DEMMALLOC_MEMVALIDATE']
     if self.verbose:
@@ -1033,7 +1052,7 @@ class libmalloc(MTLibrary):
     return 'lib%s' % self.malloc
 
   def get_base_name(self):
-    name = super(libmalloc, self).get_base_name()
+    name = super().get_base_name()
     if self.is_debug and not self.memvalidate and not self.verbose:
       name += '-debug'
     if not self.use_errno:
@@ -1044,15 +1063,15 @@ class libmalloc(MTLibrary):
     return name
 
   def can_use(self):
-    return super(libmalloc, self).can_use() and settings.MALLOC != 'none'
+    return super().can_use() and settings.MALLOC != 'none'
 
   @classmethod
   def vary_on(cls):
-    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'memvalidate', 'verbose']
+    return super().vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'memvalidate', 'verbose']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(libmalloc, cls).get_default_variation(
+    return super().get_default_variation(
       malloc=settings.MALLOC,
       is_debug=settings.ASSERTIONS >= 2,
       use_errno=settings.SUPPORT_ERRNO,
@@ -1064,7 +1083,7 @@ class libmalloc(MTLibrary):
 
   @classmethod
   def variations(cls):
-    combos = super(libmalloc, cls).variations()
+    combos = super().variations()
     return ([dict(malloc='dlmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']] +
             [dict(malloc='emmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']] +
             [dict(malloc='emmalloc-memvalidate-verbose', **combo) for combo in combos if combo['memvalidate'] and combo['verbose']] +
@@ -1097,10 +1116,10 @@ class libgl(MTLibrary):
       # Don't use append or += here, otherwise we end up adding to
       # the class member.
       self.src_files = self.src_files + ['webgl2.c']
-    super(libgl, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def get_base_name(self):
-    name = super(libgl, self).get_base_name()
+    name = super().get_base_name()
     if self.is_legacy:
       name += '-emu'
     if self.is_webgl2:
@@ -1112,7 +1131,7 @@ class libgl(MTLibrary):
     return name
 
   def get_cflags(self):
-    cflags = super(libgl, self).get_cflags()
+    cflags = super().get_cflags()
     if self.is_legacy:
       cflags += ['-DLEGACY_GL_EMULATION=1']
     if self.is_webgl2:
@@ -1125,11 +1144,11 @@ class libgl(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super(libgl, cls).vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb', 'is_full_es3']
+    return super().vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb', 'is_full_es3']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(libgl, cls).get_default_variation(
+    return super().get_default_variation(
       is_legacy=settings.LEGACY_GL_EMULATION,
       is_webgl2=settings.MAX_WEBGL_VERSION >= 2,
       is_ofb=settings.OFFSCREEN_FRAMEBUFFER,
@@ -1152,20 +1171,20 @@ class libembind(Library):
 
   def __init__(self, **kwargs):
     self.with_rtti = kwargs.pop('with_rtti', False)
-    super(libembind, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def get_cflags(self):
-    cflags = super(libembind, self).get_cflags()
+    cflags = super().get_cflags()
     if not self.with_rtti:
       cflags += ['-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super(libembind, cls).vary_on() + ['with_rtti']
+    return super().vary_on() + ['with_rtti']
 
   def get_base_name(self):
-    name = super(libembind, self).get_base_name()
+    name = super().get_base_name()
     if self.with_rtti:
       name += '-rtti'
     return name
@@ -1175,7 +1194,7 @@ class libembind(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(libembind, cls).get_default_variation(with_rtti=settings.USE_RTTI, **kwargs)
+    return super().get_default_variation(with_rtti=settings.USE_RTTI, **kwargs)
 
 
 class libfetch(MTLibrary):
@@ -1310,16 +1329,16 @@ class libstandalonewasm(MuslInternalLibrary):
 
   def __init__(self, **kwargs):
     self.is_mem_grow = kwargs.pop('is_mem_grow')
-    super(libstandalonewasm, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
   def get_base_name(self):
-    name = super(libstandalonewasm, self).get_base_name()
+    name = super().get_base_name()
     if self.is_mem_grow:
       name += '-memgrow'
     return name
 
   def get_cflags(self):
-    cflags = super(libstandalonewasm, self).get_cflags()
+    cflags = super().get_cflags()
     cflags += ['-DNDEBUG']
     if self.is_mem_grow:
       cflags += ['-D__EMSCRIPTEN_MEMORY_GROWTH__=1']
@@ -1327,11 +1346,11 @@ class libstandalonewasm(MuslInternalLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super(libstandalonewasm, cls).vary_on() + ['is_mem_grow']
+    return super().vary_on() + ['is_mem_grow']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(libstandalonewasm, cls).get_default_variation(
+    return super().get_default_variation(
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
       **kwargs
     )
@@ -1350,7 +1369,6 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__tm_to_secs.c',
                    '__tz.c',
                    '__year_to_secs.c',
-                   'asctime_r.c',
                    'clock.c',
                    'clock_gettime.c',
                    'ctime_r.c',
@@ -1934,6 +1952,14 @@ def install_system_headers(stamp):
     dest = os.path.join(target_include_dir, dest)
     copytree_exist_ok(src, dest)
 
+  pkgconfig_src = shared.path_from_root('system', 'lib', 'pkgconfig')
+  pkgconfig_dest = shared.Cache.get_sysroot_dir('lib', 'pkgconfig')
+  copytree_exist_ok(pkgconfig_src, pkgconfig_dest)
+
+  bin_src = shared.path_from_root('system', 'bin')
+  bin_dest = shared.Cache.get_sysroot_dir('bin')
+  copytree_exist_ok(bin_src, bin_dest)
+
   # Create a stamp file that signal the the header have been installed
   # Removing this file, or running `emcc --clear-cache` or running
   # `./embuilder build sysroot --force` will cause the re-installation of
@@ -1943,6 +1969,6 @@ def install_system_headers(stamp):
   return stamp
 
 
+@ToolchainProfiler.profile_block('ensure_sysroot')
 def ensure_sysroot():
-  with ToolchainProfiler.profile_block('ensure_sysroot'):
-    shared.Cache.get('sysroot_install.stamp', install_system_headers, what='system headers')
+  shared.Cache.get('sysroot_install.stamp', install_system_headers, what='system headers')

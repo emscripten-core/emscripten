@@ -148,14 +148,14 @@ requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CA
 class browser(BrowserCore):
   @classmethod
   def setUpClass(cls):
-    super(browser, cls).setUpClass()
+    super().setUpClass()
     cls.browser_timeout = 60
     print()
     print('Running the browser tests. Make sure the browser allows popups from localhost.')
     print()
 
   def setUp(self):
-    super(BrowserCore, self).setUp()
+    super().setUp()
     # avoid various compiler warnings that many browser tests currently generate
     self.emcc_args += [
       '-Wno-pointer-sign',
@@ -1242,6 +1242,14 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_webgl_explicit_uniform_location(self):
     self.btest('webgl_explicit_uniform_location.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_LOCATION=1', '-s', 'MIN_WEBGL_VERSION=2'])
+
+  @requires_graphics_hardware
+  def test_webgl_sampler_layout_binding(self):
+    self.btest('webgl_sampler_layout_binding.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1'])
+
+  @requires_graphics_hardware
+  def test_webgl2_ubo_layout_binding(self):
+    self.btest('webgl2_ubo_layout_binding.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1', '-s', 'MIN_WEBGL_VERSION=2'])
 
   # Test that -s GL_PREINITIALIZED_CONTEXT=1 works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
@@ -3283,7 +3291,7 @@ window.close = function() {
   # ASYNCIFY_IMPORTS.
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
-    'normal': (['-s', 'ASYNCIFY_IMPORTS=[sync_tunnel]'],), # noqa
+    'normal': (['-s', 'ASYNCIFY_IMPORTS=[sync_tunnel, sync_tunnel_bool]'],), # noqa
     'response': (['-s', 'ASYNCIFY_IMPORTS=@filey.txt'],), # noqa
     'nothing': (['-DBAD'],), # noqa
     'empty_list': (['-DBAD', '-s', 'ASYNCIFY_IMPORTS=[]'],), # noqa
@@ -3291,7 +3299,7 @@ window.close = function() {
   })
   def test_async_returnvalue(self, args):
     if '@' in str(args):
-      create_file('filey.txt', '["sync_tunnel"]')
+      create_file('filey.txt', '["sync_tunnel", "sync_tunnel_bool"]')
     self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS'])
 
   def test_async_stack_overflow(self):
@@ -3507,7 +3515,7 @@ window.close = function() {
     if inworker:
       self.emcc_args += ['--proxy-to-worker']
 
-    def do_run(src, expected_output):
+    def do_run(src, expected_output, emcc_args=[]):
       # XXX there is no infrastructure (yet ?) to retrieve stdout from browser in tests.
       # -> do the assert about expected output inside browser.
       #
@@ -3535,7 +3543,7 @@ window.close = function() {
           return rtn;
         }
       ''' % expected_output)
-      self.btest_exit(self.in_dir('test_dylink_dso_needed.c'), args=self.get_emcc_args() + ['--post-js', 'post.js'])
+      self.btest_exit(self.in_dir('test_dylink_dso_needed.c'), args=self.get_emcc_args() + ['--post-js', 'post.js'] + emcc_args)
 
     self._test_dylink_dso_needed(do_run)
 
