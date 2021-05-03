@@ -1822,11 +1822,10 @@ int main() {
   def test_emscripten_get_compiler_setting(self):
     src = test_file('core', 'emscripten_get_compiler_setting.c')
     output = shared.unsuffixed(src) + '.out'
-    old = self.get_setting('ASSERTIONS', 1)
     # with assertions, a nice message is shown
     self.set_setting('ASSERTIONS')
     self.do_runf(src, 'You must build with -s RETAIN_COMPILER_SETTINGS=1', assert_returncode=NON_ZERO)
-    self.set_setting('ASSERTIONS', old)
+    self.clear_setting('ASSERTIONS')
     self.set_setting('RETAIN_COMPILER_SETTINGS')
     self.do_runf(src, open(output).read().replace('waka', shared.EMSCRIPTEN_VERSION))
 
@@ -2625,8 +2624,6 @@ The current type of b is: 9
   @needs_dylink
   def test_dlfcn_missing(self):
     self.set_setting('MAIN_MODULE')
-    if self.has_changed_setting('ASSERTIONS'):
-      self.skipTest('test needs to customize ASSERTIONS')
     self.set_setting('ASSERTIONS')
     src = r'''
       #include <dlfcn.h>
@@ -4253,11 +4250,10 @@ res64 - external 64\n''', header='''
 
     test('libc++')
     test('1')
-    if not self.has_changed_setting('ASSERTIONS'):
-      self.set_setting('ASSERTIONS', 0)
-      test('', expect_pass=False, need_reverse=False)
-      self.set_setting('ASSERTIONS')
-      test('', expect_pass=False, need_reverse=False)
+    self.set_setting('ASSERTIONS', 0)
+    test('', expect_pass=False, need_reverse=False)
+    self.set_setting('ASSERTIONS')
+    test('', expect_pass=False, need_reverse=False)
 
   @needs_dylink
   @with_env_modify({'EMCC_FORCE_STDLIBS': 'libc++'})
@@ -4361,8 +4357,7 @@ res64 - external 64\n''', header='''
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
   def test_dylink_hyper_dupe(self):
     self.set_setting('INITIAL_MEMORY', '64mb')
-    if not self.has_changed_setting('ASSERTIONS'):
-      self.set_setting('ASSERTIONS', 2)
+    self.set_setting('ASSERTIONS', 2)
 
     # test hyper-dynamic linking, and test duplicate warnings
     create_file('third.cpp', r'''
@@ -4430,10 +4425,9 @@ res64 - external 64\n''', header='''
                      # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
                      need_reverse=not self.is_wasm())
 
-    if not self.has_changed_setting('ASSERTIONS'):
-      print('check warnings')
-      full = self.run_js('src.js')
-      self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
+    print('check warnings')
+    full = self.run_js('src.js')
+    self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
 
   @needs_dylink
   def test_dylink_load_compiled_side_module(self):
@@ -6114,10 +6108,10 @@ return malloc(size);
         '-Wno-shift-negative-value',
         '-Wno-format'
     ]
-    asserts = self.get_setting('ASSERTIONS', 0)
 
     # extra testing for ASSERTIONS == 2
-    self.set_setting('ASSERTIONS', 2 if use_cmake else asserts)
+    if use_cmake:
+      self.set_setting('ASSERTIONS', 2)
 
     self.do_runf(test_file('third_party', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'),
                  [open(test_file('bullet', 'output.txt')).read(), # different roundings
@@ -6602,10 +6596,9 @@ return malloc(size);
     # ensure function names are preserved
     self.emcc_args += ['--profiling-funcs']
     self.do_core_test('test_demangle_stacks.cpp', assert_returncode=NON_ZERO)
-    if not self.has_changed_setting('ASSERTIONS'):
-      print('without assertions, the stack is not printed, but a message suggesting assertions is')
-      self.set_setting('ASSERTIONS', 0)
-      self.do_core_test('test_demangle_stacks_noassert.cpp', assert_returncode=NON_ZERO)
+    print('without assertions, the stack is not printed, but a message suggesting assertions is')
+    self.set_setting('ASSERTIONS', 0)
+    self.do_core_test('test_demangle_stacks_noassert.cpp', assert_returncode=NON_ZERO)
 
   def test_demangle_stacks_symbol_map(self):
     # disable aggressive inlining in binaryen
