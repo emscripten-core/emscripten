@@ -295,3 +295,8 @@ var sampleRate;
  */
 var GPUValidationError;
 var GPUOutOfMemoryError;
+
+/*
+ * See #13965
+ */
+var id;

@@ -796,7 +796,7 @@ var LibraryJSEvents = {
       var e = ev || event;
 
       var nodeName = JSEvents.getNodeNameForTarget(e.target);
-      var id = (e.target.id && typeof e.target.id === 'string') ? e.target.id : '';
+      var id = e.target.id ? e.target.id : '';
 
 #if USE_PTHREADS
       var focusEvent = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}} ) : JSEvents.focusEvent;
