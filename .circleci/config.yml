@@ -41,9 +41,9 @@ commands:
       - run:
           name: install emsdk
           command: |
-            curl -# -L -o ~/emsdk-master.tar.gz https://github.com/emscripten-core/emsdk/archive/master.tar.gz
-            tar -C ~ -xf ~/emsdk-master.tar.gz
-            mv ~/emsdk-master ~/emsdk
+            curl -# -L -o ~/emsdk-main.tar.gz https://github.com/emscripten-core/emsdk/archive/main.tar.gz
+            tar -C ~ -xf ~/emsdk-main.tar.gz
+            mv ~/emsdk-main ~/emsdk
             cd ~/emsdk
             ./emsdk update-tags
             ./emsdk install tot-upstream
