@@ -194,7 +194,7 @@ LibraryManager.library = {
   emscripten_get_heap_max: function() {
 #if ALLOW_MEMORY_GROWTH
 #if MAXIMUM_MEMORY == -1 // no maximum set, assume the best
-    return 4*1024*1024*1024;
+    return 4*1024*1024*1024 - {{{ WASM_PAGE_SIZE }}};
 #else
     return {{{ MAXIMUM_MEMORY }}};
 #endif
