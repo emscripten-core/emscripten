@@ -99,6 +99,7 @@
 })(); }}}
 
 var LibraryWebGPU = {
+  $WebGPU__postset: 'WebGPU.initManagers();',
   $WebGPU: {
     initManagers: function() {
       if (this["mgrDevice"]) return;
