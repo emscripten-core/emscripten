@@ -20,6 +20,17 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- Emscripten will now warn when linker-only `-s` settings are specified in
+  compile-only (`-c`) mode.  Just like with clang itself, this warning can be
+  disabled using the flag: `-Wno-unused-command-line-argument`.
+- When building with `-s MAIN_MODULE` emscripten will now error on undefined
+  symbol by default.  This matches the behvious of clang/gcc/msvc.  This
+  requires that your side modules be present on the command line.  If you do not
+  specify your side modules on the command line (either direcly or via
+  `RUNTIME_LINKED_LIBS`) you may need to add `-s WARN_ON_UNDEFINED_SYMBOLS=0` to
+  avoid errors about symbol that are missing at link time (but present in your
+  side modules provided at runtime).  We hope that this case is not common and
+  most users are building with side modules listed on the command line (#14060).
 - The `RUNTIME_LINKED_LIBS` setting is now deprecated.  It's better to simply
   list dynamic library dependencies directly on the command line.
 

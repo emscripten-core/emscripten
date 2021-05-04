@@ -1722,7 +1722,12 @@ int f() {
     cmd += ['-Wno-undefined']
     self.run_process(cmd)
 
-  def test_undefined_symbols(self):
+  @parameterized({
+    'warn': ('WARN',),
+    'error': ('ERROR',),
+    'ignore': (None,)
+  })
+  def test_undefined_symbols(self, action):
     create_file('main.cpp', r'''
       #include <stdio.h>
       #include <SDL.h>
@@ -1742,35 +1747,34 @@ int f() {
       ''')
 
     for args in ([], ['-O1'], ['-s', 'MAX_WEBGL_VERSION=2']):
-      for action in ('WARN', 'ERROR', None):
-        for value in ([0, 1]):
-          try_delete('a.out.js')
-          print('checking "%s" %s=%s' % (args, action, value))
-          extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
-          proc = self.run_process([EMCC, 'main.cpp'] + extra + args, stderr=PIPE, check=False)
-          print(proc.stderr)
-          if value or action is None:
-            # The default is that we error in undefined symbols
-            self.assertContained('error: undefined symbol: something', proc.stderr)
-            self.assertContained('error: undefined symbol: elsey', proc.stderr)
-            check_success = False
-          elif action == 'ERROR' and not value:
-            # Error disables, should only warn
-            self.assertContained('warning: undefined symbol: something', proc.stderr)
-            self.assertContained('warning: undefined symbol: elsey', proc.stderr)
-            self.assertNotContained('undefined symbol: emscripten_', proc.stderr)
-            check_success = True
-          elif action == 'WARN' and not value:
-            # Disabled warning should imply disabling errors
-            self.assertNotContained('undefined symbol', proc.stderr)
-            check_success = True
+      for value in ([0, 1]):
+        try_delete('a.out.js')
+        print('checking "%s" %s' % (args, value))
+        extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
+        proc = self.run_process([EMCC, 'main.cpp'] + extra + args, stderr=PIPE, check=False)
+        print(proc.stderr)
+        if value or action is None:
+          # The default is that we error in undefined symbols
+          self.assertContained('error: undefined symbol: something', proc.stderr)
+          self.assertContained('error: undefined symbol: elsey', proc.stderr)
+          check_success = False
+        elif action == 'ERROR' and not value:
+          # Error disables, should only warn
+          self.assertContained('warning: undefined symbol: something', proc.stderr)
+          self.assertContained('warning: undefined symbol: elsey', proc.stderr)
+          self.assertNotContained('undefined symbol: emscripten_', proc.stderr)
+          check_success = True
+        elif action == 'WARN' and not value:
+          # Disabled warning should imply disabling errors
+          self.assertNotContained('undefined symbol', proc.stderr)
+          check_success = True
 
-          if check_success:
-            self.assertEqual(proc.returncode, 0)
-            self.assertTrue(os.path.exists('a.out.js'))
-          else:
-            self.assertNotEqual(proc.returncode, 0)
-            self.assertFalse(os.path.exists('a.out.js'))
+        if check_success:
+          self.assertEqual(proc.returncode, 0)
+          self.assertTrue(os.path.exists('a.out.js'))
+        else:
+          self.assertNotEqual(proc.returncode, 0)
+          self.assertFalse(os.path.exists('a.out.js'))
 
   def test_GetProcAddress_LEGACY_GL_EMULATION(self):
     # without legacy gl emulation, getting a proc from there should fail
@@ -7225,6 +7229,30 @@ int main() {
       create_file('main.c', '')
       self.run_process([EMCC, '-s', 'MAIN_MODULE=2', 'main.c', '-Werror', target])
       self.run_js('a.out.js')
+
+  def test_side_module_missing(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'libside1.wasm'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'libside2.wasm', 'libside1.wasm'])
+    # When linking against `libside2.wasm` (which depends on libside1.wasm) that library path is used
+    # to locate `libside1.wasm`.  Expect the link to fail with an unmodified library path.
+    err = self.expect_fail([EMCC, '-s', 'MAIN_MODULE=2', test_file('hello_world.c'), 'libside2.wasm'])
+    self.assertContained('libside2.wasm: shared library dependency not found: `libside1.wasm`', err)
+
+    # But succeed if `.` is added the library path.
+    self.run_process([EMCC, '-s', 'MAIN_MODULE=2', test_file('hello_world.c'), '-L.', 'libside2.wasm'])
+
+  def test_side_module_transitive_deps(self):
+    # Build three side modules in a dependency chain
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'libside1.wasm'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'libside2.wasm', 'libside1.wasm'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'libside3.wasm', 'libside2.wasm'])
+
+    # Link should succeed if and only if the end of the chain can be found
+    final_link = [EMCC, '-s', 'MAIN_MODULE=2', test_file('hello_world.c'), '-L.', 'libside3.wasm']
+    self.run_process(final_link)
+    os.remove('libside1.wasm')
+    err = self.expect_fail(final_link)
+    self.assertContained('error: libside2.wasm: shared library dependency not found: `libside1.wasm`', err)
 
   @is_slow_test
   def test_lto(self):
