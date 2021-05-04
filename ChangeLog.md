@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+- The version string reported by `-v`/`--version` now includes a `-git` suffix
+  (e.g. `2.0.19-git`) when running from git checkout (to help distinguish
+  unreleased git versions from official releases) (#14092).
 
 2.0.19: 05/04/2021
 ------------------
