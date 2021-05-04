@@ -1412,4 +1412,8 @@ size_t emmalloc_compute_free_dynamic_memory_fragmentation_map(size_t freeMemoryS
   return numFreeMemoryRegions;
 }
 
+size_t emmalloc_unclaimed_heap_memory(void) {
+  return emscripten_get_heap_max() - (size_t)sbrk(0);
+}
+
 } // extern "C"
