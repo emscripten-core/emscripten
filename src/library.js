@@ -193,11 +193,9 @@ LibraryManager.library = {
 
   emscripten_get_heap_max: function() {
 #if ALLOW_MEMORY_GROWTH
-#if MAXIMUM_MEMORY == -1 // no maximum set, assume the best
-    return 4*1024*1024*1024;
-#else
-    return {{{ MAXIMUM_MEMORY }}};
-#endif
+    // Handle the case of 4GB (which would wrap to 0 in the return value) by
+    // returning up to 4GB - one wasm page.
+    return {{{ Math.min(MAXIMUM_MEMORY, FOUR_GB - WASM_PAGE_SIZE) }}};
 #else // no growth
     return HEAPU8.length;
 #endif
@@ -295,16 +293,12 @@ LibraryManager.library = {
     // 4. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
     //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
 
-#if MAXIMUM_MEMORY != -1
-    // A limit was set for how much we can grow. We should not exceed that
+    // A limit is set for how much we can grow. We should not exceed that
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
     // In CAN_ADDRESS_2GB mode, stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate full 4GB Wasm memories, the size will wrap
     // back to 0 bytes in Wasm side for any code that deals with heap sizes, which would require special casing all heap size related code to treat
     // 0 specially.
-    var maxHeapSize = {{{ Math.min(MAXIMUM_MEMORY, 4294967296 - WASM_PAGE_SIZE) }}};
-#else
-    var maxHeapSize = {{{ (CAN_ADDRESS_2GB ? 4294967296 : 2147483648) - WASM_PAGE_SIZE }}};
-#endif
+    var maxHeapSize = {{{ Math.min(MAXIMUM_MEMORY, FOUR_GB - WASM_PAGE_SIZE) }}};
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
       err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
