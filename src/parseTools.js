@@ -7,6 +7,8 @@
 // Various tools for parsing LLVM. Utilities of various sorts, that are
 // specific to Emscripten (and hence not in utility.js).
 
+const FOUR_GB = 4 * 1024 * 1024 * 1024;
+
 let currentlyParsedFilename = '';
 
 // Does simple 'macro' substitution, using Django-like syntax,

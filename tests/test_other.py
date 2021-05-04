@@ -10432,3 +10432,21 @@ exec "$@"
       err = self.expect_fail([EMCC, test_file('hello_world.c')])
       self.assertContained("warning: We hope to deprecated EMMAKEN_NO_SDK", err)
       self.assertContained("fatal error: 'stdio.h' file not found", err)
+
+  @parameterized({
+    'default': ('', '2147483648'),
+    '1GB': ('-sMAXIMUM_MEMORY=1GB', '1073741824'),
+    # for 4GB we return 1 wasm page less than 4GB, as 4GB cannot fit in a 32bit
+    # integer
+    '4GB': ('-sMAXIMUM_MEMORY=4GB', '4294901760'),
+  })
+  def test_emscripten_get_heap_max(self, arg, expected):
+    create_file('get.c', r'''
+      #include <emscripten/heap.h>
+      #include <stdio.h>
+      int main() {
+        printf("max: |%zu|\n", emscripten_get_heap_max());
+      }
+    ''')
+    self.run_process([EMCC, 'get.c', '-s', 'ALLOW_MEMORY_GROWTH', arg])
+    self.assertContained(f'max: |{expected}|', self.run_js('a.out.js'))
