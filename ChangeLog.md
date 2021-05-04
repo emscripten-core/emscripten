@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 Current Trunk
 -------------
+
+2.0.19: 05/04/2021
+------------------
 - Emscripten will now warn when linker-only `-s` settings are specified in
   compile-only (`-c`) mode.  Just like with clang itself, this warning can be
   disabled using the flag: `-Wno-unused-command-line-argument`.
