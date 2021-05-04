@@ -3447,9 +3447,6 @@ window.close = function() {
 
   @requires_sync_compilation
   def test_dynamic_link(self):
-    create_file('pre.js', '''
-      Module.dynamicLibraries = ['side.wasm'];
-    ''')
     create_file('main.cpp', r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -3485,23 +3482,17 @@ window.close = function() {
       }
     ''')
     self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL'])
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '-s', 'EXPORT_ALL', 'side.wasm'])
 
     print('wasm in worker (we can read binary data synchronously there)')
 
-    create_file('pre.js', '''
-      var Module = { dynamicLibraries: ['side.wasm'] };
-  ''')
     self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL'])
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '--pre-js', 'pre.js', '--proxy-to-worker', '-s', 'EXPORT_ALL'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '--proxy-to-worker', '-s', 'EXPORT_ALL', 'side.wasm'])
 
     print('wasm (will auto-preload since no sync binary reading)')
 
-    create_file('pre.js', '''
-      Module.dynamicLibraries = ['side.wasm'];
-  ''')
     # same wasm side module works
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '-s', 'EXPORT_ALL', 'side.wasm'])
 
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
@@ -3550,9 +3541,6 @@ window.close = function() {
   @requires_graphics_hardware
   @requires_sync_compilation
   def test_dynamic_link_glemu(self):
-    create_file('pre.js', '''
-      Module.dynamicLibraries = ['side.wasm'];
-  ''')
     create_file('main.cpp', r'''
       #include <stdio.h>
       #include <string.h>
@@ -3577,13 +3565,10 @@ window.close = function() {
     ''')
     self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-lSDL', '-s', 'EXPORT_ALL'])
 
-    self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE', '-O2', '-s', 'LEGACY_GL_EMULATION', '-lSDL', '-lGL', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL'])
+    self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE', '-O2', '-s', 'LEGACY_GL_EMULATION', '-lSDL', '-lGL', '-s', 'EXPORT_ALL', 'side.wasm'])
 
   def test_dynamic_link_many(self):
     # test asynchronously loading two side modules during startup
-    create_file('pre.js', '''
-      Module.dynamicLibraries = ['side1.wasm', 'side2.wasm'];
-    ''')
     create_file('main.c', r'''
       int side1();
       int side2();
@@ -3600,7 +3585,7 @@ window.close = function() {
     self.run_process([EMCC, 'side1.c', '-s', 'SIDE_MODULE', '-o', 'side1.wasm'])
     self.run_process([EMCC, 'side2.c', '-s', 'SIDE_MODULE', '-o', 'side2.wasm'])
     self.btest_exit(self.in_dir('main.c'), assert_returncode=3,
-                    args=['-s', 'MAIN_MODULE', '--pre-js', 'pre.js'])
+                    args=['-s', 'MAIN_MODULE', 'side1.wasm', 'side2.wasm'])
 
   def test_dynamic_link_pthread_many(self):
     # Test asynchronously loading two side modules during startup
