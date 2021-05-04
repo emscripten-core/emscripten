@@ -1722,7 +1722,12 @@ int f() {
     cmd += ['-Wno-undefined']
     self.run_process(cmd)
 
-  def test_undefined_symbols(self):
+  @parameterized({
+    'warn': ('WARN',),
+    'error': ('ERROR',),
+    'ignore': (None,)
+  })
+  def test_undefined_symbols(self, action):
     create_file('main.cpp', r'''
       #include <stdio.h>
       #include <SDL.h>
@@ -1742,35 +1747,34 @@ int f() {
       ''')
 
     for args in ([], ['-O1'], ['-s', 'MAX_WEBGL_VERSION=2']):
-      for action in ('WARN', 'ERROR', None):
-        for value in ([0, 1]):
-          try_delete('a.out.js')
-          print('checking "%s" %s=%s' % (args, action, value))
-          extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
-          proc = self.run_process([EMCC, 'main.cpp'] + extra + args, stderr=PIPE, check=False)
-          print(proc.stderr)
-          if value or action is None:
-            # The default is that we error in undefined symbols
-            self.assertContained('error: undefined symbol: something', proc.stderr)
-            self.assertContained('error: undefined symbol: elsey', proc.stderr)
-            check_success = False
-          elif action == 'ERROR' and not value:
-            # Error disables, should only warn
-            self.assertContained('warning: undefined symbol: something', proc.stderr)
-            self.assertContained('warning: undefined symbol: elsey', proc.stderr)
-            self.assertNotContained('undefined symbol: emscripten_', proc.stderr)
-            check_success = True
-          elif action == 'WARN' and not value:
-            # Disabled warning should imply disabling errors
-            self.assertNotContained('undefined symbol', proc.stderr)
-            check_success = True
+      for value in ([0, 1]):
+        try_delete('a.out.js')
+        print('checking "%s" %s' % (args, value))
+        extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
+        proc = self.run_process([EMCC, 'main.cpp'] + extra + args, stderr=PIPE, check=False)
+        print(proc.stderr)
+        if value or action is None:
+          # The default is that we error in undefined symbols
+          self.assertContained('error: undefined symbol: something', proc.stderr)
+          self.assertContained('error: undefined symbol: elsey', proc.stderr)
+          check_success = False
+        elif action == 'ERROR' and not value:
+          # Error disables, should only warn
+          self.assertContained('warning: undefined symbol: something', proc.stderr)
+          self.assertContained('warning: undefined symbol: elsey', proc.stderr)
+          self.assertNotContained('undefined symbol: emscripten_', proc.stderr)
+          check_success = True
+        elif action == 'WARN' and not value:
+          # Disabled warning should imply disabling errors
+          self.assertNotContained('undefined symbol', proc.stderr)
+          check_success = True
 
-          if check_success:
-            self.assertEqual(proc.returncode, 0)
-            self.assertTrue(os.path.exists('a.out.js'))
-          else:
-            self.assertNotEqual(proc.returncode, 0)
-            self.assertFalse(os.path.exists('a.out.js'))
+        if check_success:
+          self.assertEqual(proc.returncode, 0)
+          self.assertTrue(os.path.exists('a.out.js'))
+        else:
+          self.assertNotEqual(proc.returncode, 0)
+          self.assertFalse(os.path.exists('a.out.js'))
 
   def test_GetProcAddress_LEGACY_GL_EMULATION(self):
     # without legacy gl emulation, getting a proc from there should fail

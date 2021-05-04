@@ -167,6 +167,7 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
           # support in order for JS to have a chance to run this without trapping
           # when it sees an i64 on the ffi.
           self.set_setting('WASM_BIGINT')
+          self.emcc_args.append('-Wno-unused-command-line-argument')
           # if we are impure, disallow all wasm engines
           if impure:
             self.wasm_engines = []
@@ -6114,6 +6115,7 @@ return malloc(size);
     # extra testing for ASSERTIONS == 2
     if use_cmake:
       self.set_setting('ASSERTIONS', 2)
+      self.emcc_args.append('-Wno-unused-command-line-argument')
 
     self.do_runf(test_file('third_party', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'),
                  [open(test_file('bullet', 'output.txt')).read(), # different roundings
@@ -8504,6 +8506,10 @@ def make_run(name, emcc_args, settings=None, env=None):
     env = {}
   if settings is None:
     settings = {}
+  if settings:
+    # Until we create a way to specify link-time settings separately from compile-time settings
+    # we need to pass this flag here to avoid warnings from compile-only commands.
+    emcc_args.append('-Wno-unused-command-line-argument')
 
   TT = type(name, (TestCoreBase,), dict(run_name=name, env=env, __module__=__name__))  # noqa
 
