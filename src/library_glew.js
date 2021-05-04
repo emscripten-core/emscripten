@@ -103,12 +103,12 @@ var LibraryGLEW = {
         GLEW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
       }
 
-      if (GLEW.extensions.indexOf(name) != -1)
+      if (GLEW.extensions.includes(name))
         return 1;
 
       // extensions from GLEmulations do not come unprefixed
       // so, try with prefix
-      return (GLEW.extensions.indexOf("GL_" + name) != -1);
+      return (GLEW.extensions.includes("GL_" + name));
     },
   },
 

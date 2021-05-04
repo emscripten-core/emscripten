@@ -148,14 +148,14 @@ requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CA
 class browser(BrowserCore):
   @classmethod
   def setUpClass(cls):
-    super(browser, cls).setUpClass()
+    super().setUpClass()
     cls.browser_timeout = 60
     print()
     print('Running the browser tests. Make sure the browser allows popups from localhost.')
     print()
 
   def setUp(self):
-    super(BrowserCore, self).setUp()
+    super().setUp()
     # avoid various compiler warnings that many browser tests currently generate
     self.emcc_args += [
       '-Wno-pointer-sign',
@@ -1242,6 +1242,14 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_webgl_explicit_uniform_location(self):
     self.btest('webgl_explicit_uniform_location.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_LOCATION=1', '-s', 'MIN_WEBGL_VERSION=2'])
+
+  @requires_graphics_hardware
+  def test_webgl_sampler_layout_binding(self):
+    self.btest('webgl_sampler_layout_binding.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1'])
+
+  @requires_graphics_hardware
+  def test_webgl2_ubo_layout_binding(self):
+    self.btest('webgl2_ubo_layout_binding.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1', '-s', 'MIN_WEBGL_VERSION=2'])
 
   # Test that -s GL_PREINITIALIZED_CONTEXT=1 works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
@@ -3283,7 +3291,7 @@ window.close = function() {
   # ASYNCIFY_IMPORTS.
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
-    'normal': (['-s', 'ASYNCIFY_IMPORTS=[sync_tunnel]'],), # noqa
+    'normal': (['-s', 'ASYNCIFY_IMPORTS=[sync_tunnel, sync_tunnel_bool]'],), # noqa
     'response': (['-s', 'ASYNCIFY_IMPORTS=@filey.txt'],), # noqa
     'nothing': (['-DBAD'],), # noqa
     'empty_list': (['-DBAD', '-s', 'ASYNCIFY_IMPORTS=[]'],), # noqa
@@ -3291,7 +3299,7 @@ window.close = function() {
   })
   def test_async_returnvalue(self, args):
     if '@' in str(args):
-      create_file('filey.txt', '["sync_tunnel"]')
+      create_file('filey.txt', '["sync_tunnel", "sync_tunnel_bool"]')
     self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS'])
 
   def test_async_stack_overflow(self):
@@ -3439,9 +3447,6 @@ window.close = function() {
 
   @requires_sync_compilation
   def test_dynamic_link(self):
-    create_file('pre.js', '''
-      Module.dynamicLibraries = ['side.wasm'];
-    ''')
     create_file('main.cpp', r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -3477,23 +3482,17 @@ window.close = function() {
       }
     ''')
     self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL'])
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '-s', 'EXPORT_ALL', 'side.wasm'])
 
     print('wasm in worker (we can read binary data synchronously there)')
 
-    create_file('pre.js', '''
-      var Module = { dynamicLibraries: ['side.wasm'] };
-  ''')
     self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL'])
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '--pre-js', 'pre.js', '--proxy-to-worker', '-s', 'EXPORT_ALL'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '--proxy-to-worker', '-s', 'EXPORT_ALL', 'side.wasm'])
 
     print('wasm (will auto-preload since no sync binary reading)')
 
-    create_file('pre.js', '''
-      Module.dynamicLibraries = ['side.wasm'];
-  ''')
     # same wasm side module works
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '-s', 'EXPORT_ALL', 'side.wasm'])
 
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
@@ -3507,7 +3506,7 @@ window.close = function() {
     if inworker:
       self.emcc_args += ['--proxy-to-worker']
 
-    def do_run(src, expected_output):
+    def do_run(src, expected_output, emcc_args=[]):
       # XXX there is no infrastructure (yet ?) to retrieve stdout from browser in tests.
       # -> do the assert about expected output inside browser.
       #
@@ -3535,16 +3534,13 @@ window.close = function() {
           return rtn;
         }
       ''' % expected_output)
-      self.btest_exit(self.in_dir('test_dylink_dso_needed.c'), args=self.get_emcc_args() + ['--post-js', 'post.js'])
+      self.btest_exit(self.in_dir('test_dylink_dso_needed.c'), args=self.get_emcc_args() + ['--post-js', 'post.js'] + emcc_args)
 
     self._test_dylink_dso_needed(do_run)
 
   @requires_graphics_hardware
   @requires_sync_compilation
   def test_dynamic_link_glemu(self):
-    create_file('pre.js', '''
-      Module.dynamicLibraries = ['side.wasm'];
-  ''')
     create_file('main.cpp', r'''
       #include <stdio.h>
       #include <string.h>
@@ -3569,13 +3565,10 @@ window.close = function() {
     ''')
     self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-lSDL', '-s', 'EXPORT_ALL'])
 
-    self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE', '-O2', '-s', 'LEGACY_GL_EMULATION', '-lSDL', '-lGL', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL'])
+    self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE', '-O2', '-s', 'LEGACY_GL_EMULATION', '-lSDL', '-lGL', '-s', 'EXPORT_ALL', 'side.wasm'])
 
   def test_dynamic_link_many(self):
     # test asynchronously loading two side modules during startup
-    create_file('pre.js', '''
-      Module.dynamicLibraries = ['side1.wasm', 'side2.wasm'];
-    ''')
     create_file('main.c', r'''
       int side1();
       int side2();
@@ -3592,7 +3585,7 @@ window.close = function() {
     self.run_process([EMCC, 'side1.c', '-s', 'SIDE_MODULE', '-o', 'side1.wasm'])
     self.run_process([EMCC, 'side2.c', '-s', 'SIDE_MODULE', '-o', 'side2.wasm'])
     self.btest_exit(self.in_dir('main.c'), assert_returncode=3,
-                    args=['-s', 'MAIN_MODULE', '--pre-js', 'pre.js'])
+                    args=['-s', 'MAIN_MODULE', 'side1.wasm', 'side2.wasm'])
 
   def test_dynamic_link_pthread_many(self):
     # Test asynchronously loading two side modules during startup
@@ -4487,7 +4480,7 @@ window.close = function() {
   @requires_threads
   def test_fetch_sync_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest('fetch/sync_xhr.cpp', expected='1', args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/sync_xhr.cpp', args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
@@ -4507,7 +4500,7 @@ window.close = function() {
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest('fetch/sync_xhr.cpp',
-               expected='1',
+               expected='0',
                args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '--proxy-to-worker'],
                also_asmjs=True)
 

@@ -13,6 +13,7 @@ import os
 import sys
 
 from . import shared
+from .settings import settings
 
 sys.path.append(shared.path_from_root('third_party'))
 
@@ -39,7 +40,13 @@ EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 29)
 
 WASM_PAGE_SIZE = 65536
 
+MAGIC = b'\0asm'
+
+VERSION = b'\x01\0\0\0'
+
 HEADER_SIZE = 8
+
+LIMITS_HAS_MAX = 0x1
 
 
 def toLEB(num):
@@ -55,8 +62,8 @@ def readSLEB(iobuf):
 
 
 def add_emscripten_metadata(wasm_file):
-  mem_size = shared.Settings.INITIAL_MEMORY // WASM_PAGE_SIZE
-  global_base = shared.Settings.GLOBAL_BASE
+  mem_size = settings.INITIAL_MEMORY // WASM_PAGE_SIZE
+  global_base = settings.GLOBAL_BASE
 
   logger.debug('creating wasm emscripten metadata section with mem size %d' % mem_size)
   name = b'\x13emscripten_metadata' # section name, including prefixed size
@@ -84,7 +91,7 @@ def add_emscripten_metadata(wasm_file):
     # tempDoublePtr, always 0 in wasm backend
     toLEB(0) +
 
-    toLEB(int(shared.Settings.STANDALONE_WASM))
+    toLEB(int(settings.STANDALONE_WASM))
 
     # NB: more data can be appended here as long as you increase
     #     the EMSCRIPTEN_METADATA_MINOR
@@ -130,7 +137,9 @@ class ExternType(IntEnum):
 
 Section = namedtuple('Section', ['type', 'size', 'offset'])
 Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
-Import = namedtuple('Import', ['type', 'mod', 'field'])
+Import = namedtuple('Import', ['kind', 'module', 'field'])
+Export = namedtuple('Export', ['name', 'kind', 'index'])
+Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed'])
 
 
 class Module:
@@ -141,8 +150,8 @@ class Module:
     self.buf = open(filename, 'rb')
     magic = self.buf.read(4)
     version = self.buf.read(4)
-    assert magic == b'\0asm'
-    assert version == b'\x01\0\0\0'
+    assert magic == MAGIC
+    assert version == VERSION
 
   def __del__(self):
     self.buf.close()
@@ -164,7 +173,7 @@ class Module:
     flags = self.readByte()
     initial = self.readULEB()
     maximum = 0
-    if flags & 0x1:
+    if flags & LIMITS_HAS_MAX:
       maximum = self.readULEB()
     return Limits(flags, initial, maximum)
 
@@ -188,10 +197,7 @@ def parse_dylink_section(wasm_file):
 
   dylink_section = next(module.sections())
   assert dylink_section.type == SecType.CUSTOM
-  section_size = dylink_section.size
-  section_offset = dylink_section.offset
-  section_end = section_offset + section_size
-  module.seek(section_offset)
+  module.seek(dylink_section.offset)
   # section name
   section_name = module.readString()
   assert section_name == 'dylink'
@@ -207,7 +213,23 @@ def parse_dylink_section(wasm_file):
     needed.append(libname)
     needed_count -= 1
 
-  return (mem_size, mem_align, table_size, table_align, section_end, needed)
+  return Dylink(mem_size, mem_align, table_size, table_align, needed)
+
+
+def get_exports(wasm_file):
+  module = Module(wasm_file)
+  export_section = next((s for s in module.sections() if s.type == SecType.EXPORT), None)
+
+  module.seek(export_section.offset)
+  num_exports = module.readULEB()
+  exports = []
+  for i in range(num_exports):
+    name = module.readString()
+    kind = ExternType(module.readByte())
+    index = module.readULEB()
+    exports.append(Export(name, kind, index))
+
+  return exports
 
 
 def get_imports(wasm_file):
@@ -238,58 +260,3 @@ def get_imports(wasm_file):
       assert False
 
   return imports
-
-
-def update_dylink_section(wasm_file, extra_dynlibs):
-  # A wasm shared library has a special "dylink" section, see tools-conventions repo.
-  # This function updates this section, adding extra dynamic library dependencies.
-
-  mem_size, mem_align, table_size, table_align, section_end, needed = parse_dylink_section(wasm_file)
-
-  section_name = b'\06dylink' # section name, including prefixed size
-  contents = (toLEB(mem_size) + toLEB(mem_align) +
-              toLEB(table_size) + toLEB(0))
-
-  # we extend "dylink" section with information about which shared libraries
-  # our shared library needs. This is similar to DT_NEEDED entries in ELF.
-  #
-  # In theory we could avoid doing this, since every import in wasm has
-  # "module" and "name" attributes, but currently emscripten almost always
-  # uses just "env" for "module". This way we have to embed information about
-  # required libraries for the dynamic linker somewhere, and "dylink" section
-  # seems to be the most relevant place.
-  #
-  # Binary format of the extension:
-  #
-  #   needed_dynlibs_count        varuint32       ; number of needed shared libraries
-  #   needed_dynlibs_entries      dynlib_entry*   ; repeated dynamic library entries as described below
-  #
-  # dynlib_entry:
-  #
-  #   dynlib_name_len             varuint32       ; length of dynlib_name_str in bytes
-  #   dynlib_name_str             bytes           ; name of a needed dynamic library: valid UTF-8 byte sequence
-  #
-  # a proposal has been filed to include the extension into "dylink" specification:
-  # https://github.com/WebAssembly/tool-conventions/pull/77
-  needed += extra_dynlibs
-  contents += toLEB(len(needed))
-  for dyn_needed in needed:
-    dyn_needed = dyn_needed.encode('utf-8')
-    contents += toLEB(len(dyn_needed))
-    contents += dyn_needed
-
-  orig = open(wasm_file, 'rb').read()
-  file_header = orig[:8]
-  file_remainder = orig[section_end:]
-
-  section_size = len(section_name) + len(contents)
-  with open(wasm_file, 'wb') as f:
-    # copy magic number and version
-    f.write(file_header)
-    # write the special section
-    f.write(b'\0') # user section is code 0
-    f.write(toLEB(section_size))
-    f.write(section_name)
-    f.write(contents)
-    # copy rest of binary
-    f.write(file_remainder)

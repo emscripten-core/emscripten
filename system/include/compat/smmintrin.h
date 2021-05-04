@@ -427,13 +427,13 @@ _mm_cvtepi32_epi64(__m128i __a)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepu8_epi16(__m128i __a)
 {
-  return (__m128i)wasm_i16x8_widen_low_u8x16((v128_t)__a);
+  return (__m128i)wasm_u16x8_extend_low_u8x16((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepu8_epi32(__m128i __a)
 {
-  return (__m128i)wasm_i32x4_widen_low_u16x8(wasm_i16x8_widen_low_u8x16((v128_t)__a));
+  return (__m128i)wasm_u32x4_extend_low_u16x8(wasm_i16x8_widen_low_u8x16((v128_t)__a));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
@@ -446,7 +446,7 @@ _mm_cvtepu8_epi64(__m128i __a)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepu16_epi32(__m128i __a)
 {
-  return (__m128i)wasm_i32x4_widen_low_u16x8((v128_t)__a);
+  return (__m128i)wasm_u32x4_extend_low_u16x8((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))

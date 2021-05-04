@@ -57,11 +57,11 @@ Requirements:
 How:
 
 1. Open a PR for the emsdk to update
-   [emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/master/emscripten-releases-tags.txt),
+   [emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.txt),
    adding the version and the hash. Updating the "latest" tag there to the new
    release is possible, but can also be deferred if you want to do more testing
    before users fetching "latest" get this release.
-2. Run [update_bazel_workspace.sh](https://github.com/emscripten-core/emsdk/blob/master/scripts/update_bazel_workspace.sh).
+2. Run [update_bazel_workspace.sh](https://github.com/emscripten-core/emsdk/blob/main/scripts/update_bazel_workspace.sh).
    This will update the bazel toolchain based on the new "latest" tag in emscripten-releases-tags.txt.
 3. Tag the emsdk repo as well, on the commit that does the update, after it
    lands on master.

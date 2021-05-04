@@ -34,11 +34,11 @@ typedef signed long ssize_t;
 
 #define TRAP(x) (wasm_rt_trap(WASM_RT_TRAP_##x), 0)
 
-#define MEMACCESS(addr) ((void*)&Z_memory->data[addr])
+#define MEMACCESS(addr) ((void*)&WASM_RT_ADD_PREFIX(Z_memory)->data[addr])
 
 #undef MEMCHECK
 #define MEMCHECK(a, t)  \
-  if (UNLIKELY((a) + sizeof(t) > Z_memory->size)) TRAP(OOB)
+  if (UNLIKELY((a) + sizeof(t) > WASM_RT_ADD_PREFIX(Z_memory)->size)) TRAP(OOB)
 
 #undef DEFINE_LOAD
 #define DEFINE_LOAD(name, t1, t2, t3)              \
@@ -94,7 +94,7 @@ static ret _##name params { \
   VERBOSE_LOG("[import: " #name "]\n"); \
   body \
 } \
-ret (*name) params = _##name;
+ret (*WASM_RT_ADD_PREFIX(name)) params = _##name;
 
 #define STUB_IMPORT_IMPL(ret, name, params, returncode) IMPORT_IMPL(ret, name, params, { return returncode; });
 
@@ -127,7 +127,7 @@ IMPORT_IMPL(void, Z_envZ_emscripten_longjmpZ_vii, (u32 buf, u32 value), {
   if (next_setjmp == 0) {
     abort_with_message("longjmp without setjmp");
   }
-  Z_setThrewZ_vii(buf, value ? value : 1);
+  WASM_RT_ADD_PREFIX(Z_setThrewZ_vii)(buf, value ? value : 1);
   longjmp(setjmp_stack[next_setjmp - 1], 1);
 });
 

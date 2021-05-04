@@ -879,20 +879,12 @@ function getHeapForType(type, unsigned) {
   assert(false, 'bad heap type: ' + type);
 }
 
-function makeGetTempRet0() {
-  return '(getTempRet0() | 0)';
-}
-
-function makeSetTempRet0(value) {
-  return 'setTempRet0((' + value + ') | 0)';
-}
-
 // Takes a pair of return values, stashes one in tempRet0 and returns the other.
 // Should probably be renamed to `makeReturn64` but keeping this old name in
 // case external JS library code uses this name.
 function makeStructuralReturn(values) {
   assert(values.length == 2);
-  return makeSetTempRet0(values[1]) + '; return ' + asmCoercion(values[0], 'i32');
+  return 'setTempRet0(' + values[1] + '); return ' + asmCoercion(values[0], 'i32');
 }
 
 function makeThrow(what) {
@@ -1245,8 +1237,17 @@ function makeAsmImportsAccessInPthread(variable) {
   return variable;
 }
 
+function _asmjsDemangle(symbol) {
+  if (symbol in WASM_SYSTEM_EXPORTS) {
+    return symbol;
+  }
+  // Strip leading "_"
+  assert(symbol.startsWith('_'));
+  return symbol.substr(1);
+}
+
 function hasExportedFunction(func) {
-  return Object.keys(EXPORTED_FUNCTIONS).includes(func);
+  return Object.keys(WASM_EXPORTS).includes(_asmjsDemangle(func));
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
@@ -1301,7 +1302,7 @@ function addReadyPromiseAssertions(promise) {
 }
 
 function makeMalloc(source, param) {
-  if ('_malloc' in IMPLEMENTED_FUNCTIONS) {
+  if (hasExportedFunction('_malloc')) {
     return `_malloc(${param})`;
   }
   // It should be impossible to call some functions without malloc being

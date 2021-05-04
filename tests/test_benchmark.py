@@ -241,7 +241,7 @@ class EmscriptenBenchmarker(Benchmarker):
 
 class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
   def __init__(self, name):
-    super(EmscriptenWasm2CBenchmarker, self).__init__(name, 'no engine needed')
+    super().__init__(name, 'no engine needed')
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     # wasm2c doesn't want minimal runtime which the normal emscripten
@@ -257,7 +257,7 @@ class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
     try:
       # wasm2c does not support anything beyond MVP
       LLVM_FEATURE_FLAGS = []
-      super(EmscriptenWasm2CBenchmarker, self).build(parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser)
+      super().build(parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser)
     finally:
       LLVM_FEATURE_FLAGS = old_flags
 
@@ -393,7 +393,7 @@ class benchmark(runner.RunnerCore):
 
   @classmethod
   def setUpClass(cls):
-    super(benchmark, cls).setUpClass()
+    super().setUpClass()
 
     for benchmarker in benchmarkers:
       benchmarker.prepare()

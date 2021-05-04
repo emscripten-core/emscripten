@@ -83,8 +83,8 @@ var emscriptenMemoryProfiler = {
   truncDec: function truncDec(f) {
     f = f || 0;
     var str = f.toFixed(2);
-    if (str.indexOf('.00', str.length-3) !== -1) return str.substr(0, str.length-3);
-    else if (str.indexOf('0', str.length-1) !== -1) return str.substr(0, str.length-1);
+    if (str.includes('.00', str.length-3)) return str.substr(0, str.length-3);
+    else if (str.includes('0', str.length-1)) return str.substr(0, str.length-1);
     else return str;
   },
 
@@ -262,10 +262,10 @@ var emscriptenMemoryProfiler = {
       stackAlloc = hookedStackAlloc;
     }
 
-    if (location.search.toLowerCase().indexOf('trackbytes=') != -1) {
+    if (location.search.toLowerCase().includes('trackbytes=')) {
       emscriptenMemoryProfiler.trackedCallstackMinSizeBytes = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackbytes=') + 'trackbytes='.length), undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
     }
-    if (location.search.toLowerCase().indexOf('trackcount=') != -1) {
+    if (location.search.toLowerCase().includes('trackcount=')) {
       emscriptenMemoryProfiler.trackedCallstackMinAllocCount = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackcount=') + 'trackcount='.length), undefined);
     }
 

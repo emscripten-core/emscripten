@@ -196,7 +196,7 @@ Installation using unofficial packages
 .. note:: The `emsdk` is the only officially supported way to use
     Emscripten that is supported by the Emscripten project, and the only one
     that we constantly test
-    (`emsdk CI <https://github.com/emscripten-core/emsdk/blob/master/.circleci/config.yml>`_,
+    (`emsdk CI <https://github.com/emscripten-core/emsdk/blob/main/.circleci/config.yml>`_,
     `Emscripten GitHub CI <https://github.com/emscripten-core/emscripten/blob/main/.circleci/config.yml>`_,
     `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_).
 
