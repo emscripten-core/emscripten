@@ -9722,6 +9722,9 @@ int main() {
   def test_lld_report_undefined_exceptions(self):
     self.run_process([EMCC, '-sLLD_REPORT_UNDEFINED', '-fwasm-exceptions', test_file('hello_libcxx.cpp')])
 
+  def test_lld_report_undefined_main_module(self):
+    self.run_process([EMCC, '-sLLD_REPORT_UNDEFINED', '-sMAIN_MODULE=2', test_file('hello_world.c')])
+
   def test_4GB(self):
     stderr = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', 'INITIAL_MEMORY=2GB'])
     self.assertContained('INITIAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
