@@ -1414,7 +1414,7 @@ def handle_reverse_deps(input_files):
   elif settings.REVERSE_DEPS == 'all':
     # When not optimzing we add all possible reverse dependencies rather
     # than scanning the input files
-    for symbols in deps_info.deps_info.values():
+    for symbols in deps_info.get_deps_info().values():
       for symbol in symbols:
         settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(symbol))
     return
@@ -1426,7 +1426,7 @@ def handle_reverse_deps(input_files):
 
   def add_reverse_deps(need):
     more = False
-    for ident, deps in deps_info.deps_info.items():
+    for ident, deps in deps_info.get_deps_info().items():
       if ident in need.undefs and ident not in added:
         added.add(ident)
         more = True

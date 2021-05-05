@@ -48,7 +48,9 @@
 # TODO: Move all __deps from src/library*.js to deps_info, and use that single source of info
 #       both here and in the JS compiler.
 
-deps_info = {
+from tools.settings import settings
+
+_deps_info = {
   'Mix_LoadWAV_RW': ['fileno'],
   'SDL_CreateRGBSurface': ['malloc', 'free'],
   'SDL_GL_GetProcAddress': ['malloc'],
@@ -60,7 +62,6 @@ deps_info = {
   'SDL_malloc': ['malloc', 'free'],
   '__cxa_allocate_exception': ['malloc'],
   '__cxa_end_catch': ['setThrew', 'free'],
-  '__cxa_begin_catch': ['__cxa_is_pointer_type'],
   '__cxa_free_exception': ['free'],
   '_embind_register_class': ['free'],
   '_embind_register_enum_value': ['free'],
@@ -101,7 +102,6 @@ deps_info = {
   'emscripten_set_batterylevelchange_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_beforeunload_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_blur_callback_on_thread': ['malloc', 'free'],
-  'emscripten_set_canvas_element_size_calling_thread': ['_emscripten_call_on_thread'],
   'emscripten_set_click_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_dblclick_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_devicemotion_callback_on_thread': ['malloc', 'free'],
@@ -122,7 +122,6 @@ deps_info = {
   'emscripten_set_mouseout_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_mouseover_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_mouseup_callback_on_thread': ['malloc', 'free'],
-  'emscripten_set_offscreencanvas_size_on_target_thread': ['_emscripten_call_on_thread', 'malloc', 'free'],
   'emscripten_set_offscreencanvas_size_on_target_thread_js': ['malloc', 'free'],
   'emscripten_set_orientationchange_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_pointerlockchange_callback_on_thread': ['malloc', 'free'],
@@ -196,3 +195,12 @@ deps_info = {
   'wgpuBufferGetConstMappedRange': ['malloc', 'free'],
   'emscripten_glGetString': ['malloc'],
 }
+
+
+def get_deps_info():
+  if not settings.EXCEPTION_HANDLING and not settings.DISABLE_EXCEPTION_CATCHING:
+    _deps_info['__cxa_begin_catch'] = ['__cxa_is_pointer_type']
+  if settings.USE_PTHREADS:
+    _deps_info['emscripten_set_canvas_element_size_calling_thread'] = ['_emscripten_call_on_thread']
+    _deps_info['emscripten_set_offscreencanvas_size_on_target_thread'] = ['_emscripten_call_on_thread', 'malloc', 'free']
+  return _deps_info
