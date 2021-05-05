@@ -537,21 +537,6 @@ def target_environment_may_be(environment):
   return settings.ENVIRONMENT == '' or environment in settings.ENVIRONMENT.split(',')
 
 
-def verify_settings():
-  if settings.SAFE_HEAP not in [0, 1]:
-    exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
-
-  if not settings.WASM:
-    # When the user requests non-wasm output, we enable wasm2js. that is,
-    # we still compile to wasm normally, but we compile the final output
-    # to js.
-    settings.WASM = 1
-    settings.WASM2JS = 1
-  if settings.WASM == 2:
-    # Requesting both Wasm and Wasm2JS support
-    settings.WASM2JS = 1
-
-
 def print_compiler_stage(cmd):
   """Emulate the '-v' of clang/gcc by printing the name of the sub-command
   before executing it."""
@@ -833,7 +818,6 @@ FILE_PACKAGER = bat_suffix(path_from_root('tools', 'file_packager'))
 
 apply_configuration()
 
-verify_settings()
 Cache = cache.Cache(config.CACHE)
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
