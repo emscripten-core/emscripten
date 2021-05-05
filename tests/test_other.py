@@ -9716,6 +9716,12 @@ int main() {
     self.assertContained('wasm-ld: error:', stderr)
     self.assertContained('main_0.o: undefined symbol: foo', stderr)
 
+  def test_lld_report_undefined_reverse_deps(self):
+    self.run_process([EMCC, '-sLLD_REPORT_UNDEFINED', '-sREVERSE_DEPS=all', test_file('hello_world.c')])
+
+  def test_lld_report_undefined_exceptions(self):
+    self.run_process([EMCC, '-sLLD_REPORT_UNDEFINED', '-fwasm-exceptions', test_file('hello_libcxx.cpp')])
+
   def test_4GB(self):
     stderr = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', 'INITIAL_MEMORY=2GB'])
     self.assertContained('INITIAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
@@ -10274,8 +10280,8 @@ exec "$@"
     # When debugging set this valud to the function that you want to start
     # with.  All symbols prior will be skipped over.
     start_at = None
-    assert not start_at or start_at in deps_info.deps_info
-    for function, deps in deps_info.deps_info.items():
+    assert not start_at or start_at in deps_info.get_deps_info()
+    for function, deps in deps_info.get_deps_info().items():
       if start_at:
         if function == start_at:
           start_at = None

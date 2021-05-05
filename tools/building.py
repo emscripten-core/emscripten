@@ -407,8 +407,8 @@ def lld_flags_for_executable(external_symbol_list):
     # Export these two section start symbols so that we can extact the string
     # data that they contain.
     cmd += [
-      '--export', '__start_em_asm',
-      '--export', '__stop_em_asm',
+      '--export-if-defined', '__start_em_asm',
+      '--export-if-defined', '__stop_em_asm',
       '-z', 'stack-size=%s' % settings.TOTAL_STACK,
       '--initial-memory=%d' % settings.INITIAL_MEMORY,
     ]
