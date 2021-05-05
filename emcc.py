@@ -964,20 +964,13 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
     return 0
 
   if '--version' in args:
-    # if the emscripten folder is not a git repo, don't run git show - that can
-    # look up and find the revision in a parent directory that is a git repo
-    revision = ''
-    if os.path.exists(shared.path_from_root('.git')):
-      revision = run_process(['git', 'rev-parse', 'HEAD'], stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.strip()
-    elif os.path.exists(shared.path_from_root('emscripten-revision.txt')):
-      revision = open(shared.path_from_root('emscripten-revision.txt')).read().strip()
-    if revision:
-      revision = ' (%s)' % revision
-    print('''%s%s
+
+    print(version_string())
+    print('''\
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  ''' % (version_string(), revision))
+''')
     return 0
 
   if run_via_emxx:
@@ -2575,7 +2568,16 @@ def phase_final_emitting(options, target, wasm_target, memfile):
 
 
 def version_string():
-  return 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION
+  # if the emscripten folder is not a git repo, don't run git show - that can
+  # look up and find the revision in a parent directory that is a git repo
+  revision = ''
+  if os.path.exists(shared.path_from_root('.git')):
+    revision = run_process(['git', 'rev-parse', 'HEAD'], stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.strip()
+  elif os.path.exists(shared.path_from_root('emscripten-revision.txt')):
+    revision = open(shared.path_from_root('emscripten-revision.txt')).read().strip()
+  if revision:
+    revision = '-git (%s)' % revision
+  return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {shared.EMSCRIPTEN_VERSION}{revision}'
 
 
 def parse_args(newargs):
