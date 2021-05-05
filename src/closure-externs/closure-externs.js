@@ -297,6 +297,6 @@ var GPUValidationError;
 var GPUOutOfMemoryError;
 
 /*
- * See #13965
+ * Avoid closure minifying anything to "id". See #13965
  */
 var id;
