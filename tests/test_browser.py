@@ -1357,7 +1357,7 @@ keydown(100);keyup(100); // trigger the end
 
     # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
     print('normal')
-    out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4', '--closure', '1'])
+    out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
     open('files.js', 'wb').write(out)
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM', '--closure', '1'])
     print('    opts')
