@@ -3679,20 +3679,25 @@ LibraryManager.library = {
   },
 
 #if RELOCATABLE
-  // These get set in emscripten.py during add_standard_wasm_imports, but are
-  // included here so they don't show up as undefined symbols at js compile
-  // time.
+  // Globals that are normally exported from the wasm module but in relocatable
+  // mode are created here and imported by the module.
+  // Mark with `__import` so these are usable from native code.  This is needed
+  // because, by default, only functions can be be imported.
   __stack_pointer: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, {{{ STACK_BASE }}})",
+  __stack_pointer__import: true,
   // tell the memory segments where to place themselves
   __memory_base: '{{{ GLOBAL_BASE }}}',
+  __memory_base__import: true,
   // the wasm backend reserves slot 0 for the NULL function pointer
   __table_base: 1,
+  __table_base__import: true,
   // To support such allocations during startup, track them on __heap_base and
   // then when the main module is loaded it reads that value and uses it to
   // initialize sbrk (the main module is relocatable itself, and so it does not
   // have __heap_base hardcoded into it - it receives it from JS as an extern
   // global, basically).
   __heap_base: '{{{ HEAP_BASE }}}',
+  __heap_base__import: true,
 #endif
 };
 
