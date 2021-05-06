@@ -312,7 +312,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     'cxx': [EMXX]})
   def test_emcc_4(self, compiler):
     # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
-    for params, opt_level, obj_params, closure, has_malloc in [ # obj_params are used after compiling first
+    # link_param are used after compiling first
+    for params, opt_level, link_params, closure, has_malloc in [
       (['-o', 'something.js'],                          0, None, 0, 1),
       (['-o', 'something.js', '-O0', '-g'],             0, None, 0, 0),
       (['-o', 'something.js', '-O1'],                   1, None, 0, 0),
@@ -338,23 +339,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       (['-s', 'WASM=0', '-o', 'something.js', '-Os'],                   2, None, 0, 1),
       (['-s', 'WASM=0', '-o', 'something.js', '-O3'],                   3, None, 0, 1),
       # and, test compiling to bitcode first
-      (['-s', 'WASM=0', '-c', '-o', 'something.o'],        0, ['-s', 'WASM=0'],        0, 0),
-      (['-s', 'WASM=0', '-c', '-o', 'something.o', '-O0'], 0, ['-s', 'WASM=0'],        0, 0),
-      (['-s', 'WASM=0', '-c', '-o', 'something.o', '-O1'], 1, ['-s', 'WASM=0', '-O1'], 0, 0),
-      (['-s', 'WASM=0', '-c', '-o', 'something.o', '-O2'], 2, ['-s', 'WASM=0', '-O2'], 0, 0),
-      (['-s', 'WASM=0', '-c', '-o', 'something.o', '-O3'], 3, ['-s', 'WASM=0', '-O3'], 0, 0),
-      (['-s', 'WASM=0', '-O1', '-c', '-o', 'something.o'], 1, ['-s', 'WASM=0'],        0, 0),
+      (['-flto', '-c', '-o', 'something.o'],        0, [],      0, 0),
+      (['-flto', '-c', '-o', 'something.o', '-O0'], 0, [],      0, 0),
+      (['-flto', '-c', '-o', 'something.o', '-O1'], 1, ['-O1'], 0, 0),
+      (['-flto', '-c', '-o', 'something.o', '-O2'], 2, ['-O2'], 0, 0),
+      (['-flto', '-c', '-o', 'something.o', '-O3'], 3, ['-O3'], 0, 0),
+      (['-flto', '-O1', '-c', '-o', 'something.o'], 1, [],      0, 0),
     ]:
-      print(params, opt_level, obj_params, closure, has_malloc)
+      print(params, opt_level, link_params, closure, has_malloc)
       self.clear()
       keep_debug = '-g' in params
       args = [compiler, test_file('hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params
       print('..', args)
       output = self.run_process(args, stdout=PIPE, stderr=PIPE)
       assert len(output.stdout) == 0, output.stdout
-      if obj_params is not None:
+      if link_params is not None:
         self.assertExists('something.o', output.stderr)
-        obj_args = [compiler, 'something.o', '-o', 'something.js'] + obj_params
+        obj_args = [compiler, 'something.o', '-o', 'something.js'] + link_params
         print('....', obj_args)
         output = self.run_process(obj_args, stdout=PIPE, stderr=PIPE)
       self.assertExists('something.js', output.stderr)
