@@ -168,6 +168,9 @@ EM_JS(void, test_c_preprocessor, (void), {
 	test('#extension GL_EXT_shader_texture_lod : enable\n', '#extension GL_EXT_shader_texture_lod : enable\n'); // Test that GLSL preprocessor macros are preserved
 	test('#version 300 es\n', '#version 300 es\n'); // Test that GLSL preprocessor macros are preserved
 	test('#pragma foo\n', '#pragma foo\n'); // Test that GLSL preprocessor macros are preserved
+
+	test('#define FOO() bar\nFOO()\n', 'bar\n'); // Test preprocessor macros that do not take in any parameters
+
 	if (numFailed) throw numFailed + ' tests failed!';
 });
 
