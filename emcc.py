@@ -50,7 +50,7 @@ from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
 from tools import config
-from tools.settings import settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
+from tools.settings import settings, MEM_SIZE_SETTINGS
 
 logger = logging.getLogger('emcc')
 
@@ -1317,9 +1317,12 @@ def phase_setup(state):
   state.compile_only = state.has_dash_c or state.has_dash_S or state.has_header_inputs or state.preprocess_only
 
   if state.compile_only:
-    for key in settings_map:
-      if key not in COMPILE_TIME_SETTINGS:
-        diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
+    # TODO(sbc): Re-enable these warnings once we are sure we don't have any false
+    # positives.  See: https://github.com/emscripten-core/emscripten/pull/14109
+    pass
+    # for key in settings_map:
+    #   if key not in COMPILE_TIME_SETTINGS:
+    #     diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
   else:
     ldflags = emsdk_ldflags(newargs)
     for f in ldflags:
