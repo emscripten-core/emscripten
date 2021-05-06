@@ -1887,6 +1887,7 @@ def get_ports_libs(settings):
 
   for port in dependency_order(needed):
     if port.needed(settings):
+      port.linker_setup(Ports, settings)
       # ports return their output files, which will be linked, or a txt file
       ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
 
@@ -1907,7 +1908,7 @@ def add_ports_cflags(args, settings): # noqa: U100
 
   needed = get_needed_ports(settings)
 
-  # Now get (i.e. build) the ports independency order.  This is important because the
+  # Now get (i.e. build) the ports in dependency order.  This is important because the
   # headers from one ports might be needed before we can build the next.
   for port in dependency_order(needed):
     port.get(Ports, settings, shared)
