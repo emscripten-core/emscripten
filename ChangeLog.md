@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.20
+2.0.21
 ------
+
+2.0.20: 05/04/2021
+------------------
 - This ChangeLog and the `emscripten-version.txt` file that is checked into
   the repository now reflect the next, upcoming, release once a release is
   made.  Previously they would continue to reflect the old release until after
