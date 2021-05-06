@@ -12,7 +12,8 @@
 static uint32_t setjmpId = 0;
 
 typedef struct TableEntry {
-  uint32_t id, label;
+  uintptr_t id;
+  uint32_t label;
 } TableEntry;
 
 extern void setTempRet0(uint32_t value);
@@ -44,9 +45,9 @@ TableEntry* saveSetjmp(uint32_t* env, uint32_t label, TableEntry* table, uint32_
 }
 
 uint32_t testSetjmp(uint32_t id, TableEntry* table, uint32_t size) {
-  uint32_t i = 0, curr;
+  uint32_t i = 0;
   while (i < size) {
-    uint32_t curr = table[i].id;
+    uintptr_t curr = table[i].id;
     if (curr == 0) break;
     if (curr == id) {
       return table[i].label;

@@ -11,10 +11,10 @@
 
 #include <threads.h>
 
-thread_local int __THREW__ = 0;
+thread_local uintptr_t __THREW__ = 0;
 thread_local int __threwValue = 0;
 
-void setThrew(int threw, int value) {
+void setThrew(uintptr_t threw, int value) {
   if (__THREW__ == 0) {
     __THREW__ = threw;
     __threwValue = value;

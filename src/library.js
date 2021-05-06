@@ -1527,6 +1527,7 @@ LibraryManager.library = {
   longjmp__sig: 'vii',
 #if SUPPORT_LONGJMP
   longjmp: function(env, value) {
+    {{{ from64('env') }}};
     _setThrew(env, value || 1);
     throw 'longjmp';
   },
