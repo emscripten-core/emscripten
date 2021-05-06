@@ -9941,7 +9941,7 @@ int main () {
     # Tests that explicitly exported `_main` does not fail, even though `_start` is the entry
     # point.
     # We should consider making this a warning since the `_main` export is redundant.
-    self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=_main', '-sSTANDALONE_WASM', '-c', test_file('core', 'test_hello_world.c')])
+    self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=_main', '-sSTANDALONE_WASM', test_file('core', 'test_hello_world.c')])
 
   def test_missing_malloc_export(self):
     # we used to include malloc by default. show a clear error in builds with
