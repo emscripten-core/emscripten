@@ -259,6 +259,7 @@ def inspect_headers(headers, cflags):
                                   '-nostdlib',
                                   compiler_rt,
                                   '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
+                                  '-s', 'LLD_REPORT_UNDEFINED=1',
                                   '-s', 'STRICT',
                                   # Use SINGLE_FILE=1 so there is only a single
                                   # file to cleanup.

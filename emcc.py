@@ -1767,7 +1767,7 @@ def phase_setup(state):
       '$stackTrace'
     ]
 
-  if settings.FILESYSTEM:
+  if settings.FILESYSTEM and not settings.BOOTSTRAPPING_STRUCT_INFO:
     # to flush streams on FS exit, we need to be able to call fflush
     # we only include it if the runtime is exitable, or when ASSERTIONS
     # (ASSERTIONS will check that streams do not need to be flushed,
@@ -1775,7 +1775,7 @@ def phase_setup(state):
     if settings.EXIT_RUNTIME or settings.ASSERTIONS:
       settings.EXPORTED_FUNCTIONS += ['_fflush']
 
-  if settings.SUPPORT_ERRNO:
+  if settings.SUPPORT_ERRNO and not settings.BOOTSTRAPPING_STRUCT_INFO:
     # so setErrNo JS library function can report errno back to C
     settings.EXPORTED_FUNCTIONS += ['___errno_location']
 
