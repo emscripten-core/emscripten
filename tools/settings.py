@@ -26,8 +26,9 @@ MEM_SIZE_SETTINGS = (
 COMPILE_TIME_SETTINGS = (
     'MEMORY64',
     'INLINING_LIMIT',
-    'DISABLE_EXCEPTION_CATCHING',
     'EXCEPTION_CATCHING_ALLOWED',
+    'DISABLE_EXCEPTION_CATCHING',
+    'DISABLE_EXCEPTION_THROWING',
     'MAIN_MODULE',
     'SIDE_MODULE',
     'RELOCATABLE',
@@ -36,6 +37,31 @@ COMPILE_TIME_SETTINGS = (
     'USE_PTHREADS',
     'SUPPORT_LONGJMP',
     'DEFAULT_TO_CXX',
+    'WASM_OBJECT_FILES',
+
+    # All port-related settings are valid at compile time
+    'USE_SDL',
+    'USE_LIBPNG',
+    'USE_BULLET',
+    'USE_ZLIB',
+    'USE_BZIP2',
+    'USE_VORBIS',
+    'USE_COCOS2D',
+    'USE_ICU',
+    'USE_MODPLUG',
+    'USE_SDL_MIXER',
+    'USE_SDL_IMAGE',
+    'USE_SDL_TTF',
+    'USE_SDL_NET',
+    'USE_SDL_GFX',
+    'USE_LIBJPEG',
+    'USE_OGG',
+    'USE_REGAL',
+    'USE_BOOST_HEADERS',
+    'USE_HARFBUZZ',
+    'USE_MPG123',
+    'USE_GIFLIB',
+    'USE_FREETYPE',
 )
 
 
