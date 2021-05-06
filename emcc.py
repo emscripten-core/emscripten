@@ -1366,7 +1366,18 @@ def phase_setup(state):
   for s in user_js_defines:
     settings[s[0]] = s[1]
 
-  shared.verify_settings()
+  if settings.SAFE_HEAP not in [0, 1]:
+    exit_with_error('emcc: SAFE_HEAP must be 0 or 1')
+
+  if not settings.WASM:
+    # When the user requests non-wasm output, we enable wasm2js. that is,
+    # we still compile to wasm normally, but we compile the final output
+    # to js.
+    settings.WASM = 1
+    settings.WASM2JS = 1
+  if settings.WASM == 2:
+    # Requesting both Wasm and Wasm2JS support
+    settings.WASM2JS = 1
 
   if (options.oformat == OFormat.WASM or settings.PURE_WASI) and not settings.SIDE_MODULE:
     # if the output is just a wasm file, it will normally be a standalone one,
