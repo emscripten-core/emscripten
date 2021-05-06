@@ -350,12 +350,12 @@ def link_llvm(linker_inputs, target):
   check_call(cmd)
 
 
-def lld_flags_for_executable(external_symbol_list):
+def lld_flags_for_executable(external_symbols):
   cmd = []
-  if external_symbol_list:
+  if external_symbols:
     undefs = configuration.get_temp_files().get('.undefined').name
     with open(undefs, 'w') as f:
-      f.write('\n'.join(external_symbol_list))
+      f.write('\n'.join(external_symbols))
     cmd.append('--allow-undefined-file=%s' % undefs)
   else:
     cmd.append('--allow-undefined')
@@ -384,9 +384,9 @@ def lld_flags_for_executable(external_symbol_list):
     c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
     # Strip the leading underscores
     c_exports = [demangle_c_symbol_name(e) for e in c_exports]
-    if external_symbol_list:
+    if external_symbols:
       # Filter out symbols external/JS symbols
-      c_exports = [e for e in c_exports if e not in external_symbol_list]
+      c_exports = [e for e in c_exports if e not in external_symbols]
     for export in c_exports:
       cmd += ['--export', export]
 
@@ -432,7 +432,7 @@ def lld_flags_for_executable(external_symbol_list):
   return cmd
 
 
-def link_lld(args, target, external_symbol_list=None):
+def link_lld(args, target, external_symbols=None):
   if not os.path.exists(WASM_LD):
     exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
   # runs lld to link things.
@@ -462,7 +462,7 @@ def link_lld(args, target, external_symbol_list=None):
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
   if '--relocatable' not in args and '-r' not in args:
-    cmd += lld_flags_for_executable(external_symbol_list)
+    cmd += lld_flags_for_executable(external_symbols)
 
   cmd = get_command_with_possible_response_file(cmd)
   check_call(cmd)

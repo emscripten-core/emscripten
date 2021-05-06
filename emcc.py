@@ -417,6 +417,7 @@ def ensure_archive_index(archive_file):
     run_process([shared.LLVM_RANLIB, archive_file])
 
 
+@ToolchainProfiler.profile_block('JS symbol generation')
 def get_all_js_syms():
   # Runs the js compiler to generate a list of all symbols available in the JS
   # libraries.  This must be done separately for each linker invokation since the
@@ -433,16 +434,16 @@ def get_all_js_syms():
     emscripten.generate_struct_info()
     glue, forwarded_data = emscripten.compile_settings()
     forwarded_json = json.loads(forwarded_data)
-    library_fns_list = []
+    library_syms = set()
     for name in forwarded_json['libraryFunctions']:
       if shared.is_c_symbol(name):
         name = shared.demangle_c_symbol_name(name)
-        library_fns_list.append(name)
+        library_syms.add(name)
   finally:
     settings.ONLY_CALC_JS_SYMBOLS = False
     settings.INCLUDE_FULL_LIBRARY = old_full
 
-  return library_fns_list
+  return library_syms
 
 
 def filter_link_flags(flags, using_lld):
@@ -2383,11 +2384,10 @@ def phase_link(linker_arguments, wasm_target):
   # if using the wasm backend, we might be using vanilla LLVM, which does not allow our
   # fastcomp deferred linking opts.
   # TODO: we could check if this is a fastcomp build, and still speed things up here
-  js_funcs = None
+  js_syms = None
   if settings.LLD_REPORT_UNDEFINED and settings.ERROR_ON_UNDEFINED_SYMBOLS:
-    with ToolchainProfiler.profile_block('JS symbol generation'):
-      js_funcs = get_all_js_syms()
-  building.link_lld(linker_arguments, wasm_target, external_symbol_list=js_funcs)
+    js_syms = get_all_js_syms()
+  building.link_lld(linker_arguments, wasm_target, external_symbols=js_syms)
 
 
 @ToolchainProfiler.profile_block('post_link')
