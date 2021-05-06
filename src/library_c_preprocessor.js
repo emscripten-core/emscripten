@@ -273,13 +273,14 @@ mergeInto(LibraryManager.library, {
         break;
       case 'undef': delete defs[expression]; break;
       default:
-        if (directive == 'version' || directive == 'pragma' || directive == 'extension') { // GLSL shader compiler specific #directives.
-          out += expandMacros(code, lineStart, i) + '\n';
-        } else {
+        if (directive != 'version' && directive != 'pragma' && directive != 'extension') { // GLSL shader compiler specific #directives.
 #if ASSERTIONS
           console.error('Unrecognized preprocessor directive #' + directive + '!');
 #endif
         }
+
+        // Unknown preprocessor macro, just pass through the line to output.
+        out += expandMacros(code, lineStart, i) + '\n';
       }
     }
     return out;
