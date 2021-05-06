@@ -164,6 +164,10 @@ EM_JS(void, test_c_preprocessor, (void), {
 	test('#define FOO 0\n#undef FOO\n#if defined(FOO)\nA\n#endif', "");  // Test defined() macro after #undef
 
 	test('#define SAMPLE_TEXTURE_2D texture \nvec4 c = SAMPLE_TEXTURE_2D(tex, texCoord);\n', 'vec4 c = texture(tex, texCoord);\n'); // Test expanding a non-macro to a macro-like call site
+
+	test('#extension GL_EXT_shader_texture_lod : enable\n', '#extension GL_EXT_shader_texture_lod : enable\n'); // Test that GLSL preprocessor macros are preserved
+	test('#version 300 es\n', '#version 300 es\n'); // Test that GLSL preprocessor macros are preserved
+	test('#pragma foo\n', '#pragma foo\n'); // Test that GLSL preprocessor macros are preserved
 	if (numFailed) throw numFailed + ' tests failed!';
 });
 

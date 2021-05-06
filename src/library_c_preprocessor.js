@@ -273,7 +273,7 @@ mergeInto(LibraryManager.library, {
         break;
       case 'undef': delete defs[expression]; break;
       default:
-        if (directive == 'version' || directive == 'pragma') { // GLSL shader compiler specific #directives.
+        if (directive == 'version' || directive == 'pragma' || directive == 'extension') { // GLSL shader compiler specific #directives.
           out += expandMacros(code, lineStart, i) + '\n';
         } else {
 #if ASSERTIONS

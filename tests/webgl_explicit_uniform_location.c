@@ -63,6 +63,8 @@ int main(int argc, char *argv[])
     "LOCATION(0) out highp vec4 SV_TARGET0; // Make sure MRT output locations don't get removed by preprocessor\n"
     "void main() { SV_TARGET0 = vec4(color,1) + color2 + vec4(colors[0].r, colors[1].g, colors[2].b, 1) + vec4(colors2[0].r, colors2[1].g, colors2[2].b, 1); }");
 
+    "#extension GL_EXT_shader_texture_lod : enable\n" // Make sure we don't get confused by GLSL preprocessor macros
+
   GLuint program = glCreateProgram();
   glAttachShader(program, vs);
   glAttachShader(program, ps);
