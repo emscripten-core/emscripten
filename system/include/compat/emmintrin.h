@@ -1382,7 +1382,7 @@ _mm_packus_epi16(__m128i __a, __m128i __b)
 }
 
 #define _mm_extract_epi16(__a, __imm) wasm_u16x8_extract_lane((v128_t)(__a), (__imm) & 7)
-#define _mm_insert_epi16(__a, __b, __imm) (wasm_i16x8_replace_lane((__a), (__imm) & 7, (__b)))
+#define _mm_insert_epi16(__a, __b, __imm) wasm_i16x8_replace_lane((__a), (__imm) & 7, (__b))
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_movemask_epi8(__m128i __a)
