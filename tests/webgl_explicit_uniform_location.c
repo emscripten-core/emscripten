@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
   emscripten_webgl_init_context_attributes(&attr);
   attr.majorVersion = 2;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
+  assert(ctx);
   emscripten_webgl_make_context_current(ctx);
 
   GLint maxUniformLocations = 0;
@@ -119,6 +120,19 @@ int main(int argc, char *argv[])
   assert(data[1] == 178);
   assert(data[2] == 204);
   assert(data[3] == 255);
+
+  // Test that setting program zero is allowed
+  glUseProgram(0);
+  assert(!glGetError());
+
+  // Test that calling glGetUniformLocation() without an active program should report a GL_INVALID_VALUE.
+  glGetUniformLocation(0, "colors[0]");
+  assert(glGetError() == GL_INVALID_VALUE);
+
+  // Test that calling glUniform*() without an active program should report a GL_INVALID_OPERATION.
+  assert(!glGetError());
+  glUniform4f(11/*color2*/, 0.2f, 0.2f, 0.3f, 1.f);
+  assert(glGetError() == GL_INVALID_OPERATION);
 
   printf("Test passed!\n");
 #ifdef REPORT_RESULT
