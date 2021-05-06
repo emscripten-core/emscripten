@@ -163,6 +163,7 @@ EM_JS(void, test_c_preprocessor, (void), {
 	test('#define FOO 0\n#if defined(FOO)\nA\n#endif', "A\n");  // Test defined() macro
 	test('#define FOO 0\n#undef FOO\n#if defined(FOO)\nA\n#endif', "");  // Test defined() macro after #undef
 
+	test('#define SAMPLE_TEXTURE_2D texture \nvec4 c = SAMPLE_TEXTURE_2D(tex, texCoord);\n', 'vec4 c = texture(tex, texCoord);\n'); // Test expanding a non-macro to a macro-like call site
 	if (numFailed) throw numFailed + ' tests failed!';
 });
 

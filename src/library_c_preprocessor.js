@@ -84,16 +84,16 @@ mergeInto(LibraryManager.library, {
       var out = [], len = exprString.length;
       for(var i = 0; i <= len; ++i) {
         var kind = classifyChar(exprString, i);
-        if (kind == 2 || kind == 3) { // a character or a number
+        if (kind == 2/*0-9*/ || kind == 3/*a-z*/) { // a character or a number
           for(var j = i+1; j <= len; ++j) {
             var kind2 = classifyChar(exprString, j);
-            if (kind2 != kind && (kind2 != 2 || kind != 3)) { // parse number sequence "423410", and identifier sequence "FOO32BAR"
+            if (kind2 != kind && (kind2 != 2/*0-9*/ || kind != 3/*a-z*/)) { // parse number sequence "423410", and identifier sequence "FOO32BAR"
               out.push(exprString.substring(i, j));
               i = j-1;
               break;
             }
           }
-        } else if (kind == 1) {
+        } else if (kind == 1/*operator symbol*/) {
           // Lookahead for two-character operators.
           var op2 = exprString.substr(i, 2);
           if (['<=', '>=', '==', '!=', '&&', '||'].includes(op2)) {
@@ -114,21 +114,21 @@ mergeInto(LibraryManager.library, {
       var out = '';
       for(var i = lineStart; i < lineEnd; ++i) {
         var kind = classifyChar(str, i);
-        if (kind == 3) {
+        if (kind == 3/*a-z*/) {
           for(var j = i + 1; j <= lineEnd; ++j) {
             var kind2 = classifyChar(str, j);
-            if (kind2 != 2 && kind2 != 3) {
+            if (kind2 != 2/*0-9*/ && kind2 != 3/*a-z*/) {
               var symbol = str.substring(i, j);
               var pp = defs[symbol];
               if (pp) {
                 var expanded = str.substring(lineStart, i);
-                if (str[j] == '(') {
+                if (pp.length && str[j] == '(') { // Expanding a macro? (#define FOO(X) ...)
                   var closeParens = find_closing_parens_index(str, j);
 #if ASSERTIONS
                   assert(str[closeParens] == ')');
 #endif
                   expanded += pp(str.substring(j+1, closeParens).split(',')) + str.substring(closeParens+1, lineEnd);
-                } else {
+                } else { // Expanding a non-macro (#define FOO BAR)
                   expanded += pp() + str.substring(j, lineEnd);
                 }
                 return expandMacros(expanded, 0);
