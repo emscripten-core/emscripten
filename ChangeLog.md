@@ -29,6 +29,8 @@ See docs/process.md for more on how version tagging works.
 - The version string reported by `-v`/`--version` now includes a `-git` suffix
   (e.g. `2.0.19-git`) when running from git checkout (to help distinguish
   unreleased git versions from official releases) (#14092).
+- Temporarily back out new `-Wunused-command-line-argument` warnings introduced
+  in 2.0.19.
 
 2.0.19: 05/04/2021
 ------------------
