@@ -25,10 +25,11 @@ Debugging in the browser
 :ref:`Emcc <emccdoc>` can ouptut debug information in two formats, either as
 DWARF symbols or as source maps. Both allow you to view and debug the *C/C++
 source code* in a browser's debugger. DWARF offers the most precise and detailed
-debugging experience and is suppored in Chrome with an `extension
-<https://goo.gle/wasm-debugging-extension>`. Source maps are more widely
-supported in Firefox, Chrome, and Safari, but unlike DWARF they cannot be used
-to inspect variables, for example.
+debugging experience and is supported as an experiment in Chrome with an
+`extension <https://goo.gle/wasm-debugging-extension>`. See `here
+<https://developer.chrome.com/blog/wasm-debugging-2020/>` for a detailed usage
+guide. Source maps are more widely supported in Firefox, Chrome, and Safari, but
+unlike DWARF they cannot be used to inspect variables, for example.
 
 :ref:`Emcc <emccdoc>` strips out most of the debug information from
 :ref:`optimized builds <Optimizing-Code>` by default. DWARF can be produced with
