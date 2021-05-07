@@ -5853,27 +5853,15 @@ return malloc(size);
     self.do_core_test('test_relocatable_void_function.c')
 
   @wasm_simd
-  @is_slow_test
-  def test_wasm_builtin_simd(self):
-    # Improves test readability
-    self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-format']
-    self.do_runf(test_file('test_wasm_builtin_simd.cpp'), 'Success!')
-    self.build(test_file('test_wasm_builtin_simd.cpp'))
-
-  @wasm_simd
-  @is_slow_test
   def test_wasm_intrinsics_simd(self):
     def run():
       self.do_runf(test_file('test_wasm_intrinsics_simd.c'), 'Success!')
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall', '-xc++'])
-    # Ignore deprecation errors for now
-    self.emcc_args.append('-Wno-error=deprecated-declarations')
     run()
     self.emcc_args.append('-funsigned-char')
     run()
-    self.build(test_file('test_wasm_intrinsics_simd.c'))
 
   # Tests invoking the NEON SIMD API via arm_neon.h header
   @wasm_simd
