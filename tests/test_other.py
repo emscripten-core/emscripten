@@ -10236,32 +10236,21 @@ exec "$@"
   def test_split_module_ex(self):
     initialTableSize = 5632
     self.set_setting('SPLIT_MODULE')
-    self.set_setting('WASM', 1)
     self.set_setting('WASM_BIGINT')
-    self.set_setting('EVAL_CTORS', 0)
     self.set_setting('INLINING_LIMIT', 1)
     self.set_setting('FORCE_FILESYSTEM', 1)
-    self.set_setting('LEGACY_GL_EMULATION', 0)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.set_setting('ALLOW_MEMORY_GROWTH', 1)
-    self.set_setting('NO_EXIT_RUNTIME', 0)
-    self.set_setting('GL_TRACK_ERRORS', 0)
-    self.set_setting('WASM_OBJECT_FILES', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.set_setting('INCLUDE_FULL_LIBRARY', 1) # https://github.com/emscripten-core/emscripten/issues/13794
-    self.emcc_args += ['-sMAIN_MODULE=2']
-    # Exception: FROZEN_CACHE is set, but cache file is missing: sysroot/lib/wasm32-emscripten/lto-pic/libgl-webgl2-full_es3.a
-    # self.emcc_args += ['-sUSE_WEBGL2']
-    # self.emcc_args += ['-sUSE_GLFW=3']
-    # self.emcc_args += ['-sFULL_ES3=1']
+    self.set_setting('MAIN_MODULE', 2)
 
     self.emcc_args += ['-Wno-experimental']
     self.emcc_args += ['-std=c++17']
     self.emcc_args += ['-D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR']
-    self.emcc_args += ['--emit-symbol-map']
+    self.emcc_args += ['-Wno-deprecated-declarations']
     self.emcc_args += ['--post-js', path_from_root('tests', 'other', 'test_split_module_ex.post.js')]
-    self.emcc_args += ['-sEXPORTED_RUNTIME_METHODS=[allocate]']
     self.emcc_args += ['-flto']
-    self.emcc_args += ['-fPIC']
     self.emcc_args += ['-Oz']
     self.emcc_args += [f'-sINITIAL_TABLE={initialTableSize}']
 

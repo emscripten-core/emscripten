@@ -1,6 +1,6 @@
-wrote profile of 5632 bytes (allocated 5632 bytes)
 Test exception handling: -1
-Test fnptr calling: 40
+Test c++17 std::auto_ptr support: 1
+Test fnptr calling: 41
 Test accessing global var: 600 == 600
 Test js_call: 50
 fn_throws_exception argument too large.
