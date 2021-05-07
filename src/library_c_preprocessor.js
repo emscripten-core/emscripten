@@ -222,8 +222,9 @@ mergeInto(LibraryManager.library, {
       for(var j = lineStart; j < i && isWhitespace(code, j); ++j);
 
       // Is this a non-preprocessor directive line?
+      var thisLineIsInActivePreprocessingBlock = stack[stack.length-1];
       if (code[j] != '#') { // non-preprocessor line?
-        if (stack[stack.length-1]) {
+        if (thisLineIsInActivePreprocessingBlock) {
           out += expandMacros(code, lineStart, i) + '\n';
         }
         continue;
@@ -247,31 +248,33 @@ mergeInto(LibraryManager.library, {
       case 'else': stack[stack.length-1] = 1-stack[stack.length-1]; break;
       case 'endif': stack.pop(); break;
       case 'define':
-        // This could either be a macro with input args (#define MACRO(x,y) x+y), or a direct expansion #define FOO 2,
-        // figure out which.
-        var macroStart = expression.indexOf('(');
-        var firstWs = nextWhitespace(expression, 0);
-        if (firstWs < macroStart) macroStart = 0;
-        if (macroStart > 0) { // #define MACRO( x , y , z ) <statement of x,y and z>
-          var macroEnd = expression.indexOf(')', macroStart);
-          let params = expression.substring(macroStart+1, macroEnd).split(',').map(x => x.trim());
-          let value = tokenize(expression.substring(macroEnd+1).trim())
-          defs[expression.substring(0, macroStart)] = function(args) {
-            var ret = '';
-            value.forEach((x) => {
-              var argIndex = params.indexOf(x);
-              ret += (argIndex >= 0) ? args[argIndex] : x;
-            });
-            return ret;
-          };
-        } else { // #define FOO (x + y + z)
-          let value = expandMacros(expression.substring(firstWs+1).trim(), 0);
-          defs[expression.substring(0, firstWs)] = function() {
-            return value;
-          };
+        if (thisLineIsInActivePreprocessingBlock) {
+          // This could either be a macro with input args (#define MACRO(x,y) x+y), or a direct expansion #define FOO 2,
+          // figure out which.
+          var macroStart = expression.indexOf('(');
+          var firstWs = nextWhitespace(expression, 0);
+          if (firstWs < macroStart) macroStart = 0;
+          if (macroStart > 0) { // #define MACRO( x , y , z ) <statement of x,y and z>
+            var macroEnd = expression.indexOf(')', macroStart);
+            let params = expression.substring(macroStart+1, macroEnd).split(',').map(x => x.trim());
+            let value = tokenize(expression.substring(macroEnd+1).trim())
+            defs[expression.substring(0, macroStart)] = function(args) {
+              var ret = '';
+              value.forEach((x) => {
+                var argIndex = params.indexOf(x);
+                ret += (argIndex >= 0) ? args[argIndex] : x;
+              });
+              return ret;
+            };
+          } else { // #define FOO (x + y + z)
+            let value = expandMacros(expression.substring(firstWs+1).trim(), 0);
+            defs[expression.substring(0, firstWs)] = function() {
+              return value;
+            };
+          }
         }
         break;
-      case 'undef': delete defs[expression]; break;
+      case 'undef': if (thisLineIsInActivePreprocessingBlock) delete defs[expression]; break;
       default:
         if (directive != 'version' && directive != 'pragma' && directive != 'extension') { // GLSL shader compiler specific #directives.
 #if ASSERTIONS

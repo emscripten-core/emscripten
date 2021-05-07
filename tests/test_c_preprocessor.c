@@ -171,6 +171,9 @@ EM_JS(void, test_c_preprocessor, (void), {
 
 	test('#define FOO() bar\nFOO()\n', 'bar\n'); // Test preprocessor macros that do not take in any parameters
 
+	test('#define FOO 1\n#if FOO\n#define BAR this_is_right\n#else\n#define BAR this_is_wrong\n#endif\nBAR',
+	     'this_is_right\n');
+
 	if (numFailed) throw numFailed + ' tests failed!';
 });
 
