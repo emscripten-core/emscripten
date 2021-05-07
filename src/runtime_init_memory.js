@@ -25,7 +25,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
     wasmMemory = new WebAssembly.Memory({
       'initial': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}}
 #if ALLOW_MEMORY_GROWTH
-#if MAXIMUM_MEMORY != -1
+#if MAXIMUM_MEMORY != FOUR_GB
       ,
       'maximum': {{{ MAXIMUM_MEMORY }}} / {{{ WASM_PAGE_SIZE }}}
 #endif

@@ -21,7 +21,7 @@
 // recognize the type at least.
 typedef float __m64 __attribute__((__vector_size__(8), __aligned__(8)));
 typedef __f32x4 __m128;
-typedef __i32x4 __m128i;
+typedef v128_t __m128i;
 
 #define __f32x4_shuffle(__a, __b, __c0, __c1, __c2, __c3)                   \
   ((v128_t)(__builtin_shufflevector((__f32x4)(__a), (__f32x4)(__b), __c0,   \
@@ -186,24 +186,6 @@ _mm_storeu_ps(float *__p, __m128 __a)
     __m128 __v;
   } __attribute__((__packed__, __may_alias__));
   ((struct __unaligned *)__p)->__v = __a;
-}
-
-static __inline__ void __attribute__((__always_inline__, __nodebug__))
-_mm_storeu_si16(void *__p, __m128i __a)
-{
-  struct __unaligned {
-    unsigned short __u;
-  } __attribute__((__packed__, __may_alias__));
-  ((struct __unaligned *)__p)->__u = ((__u16x8)__a)[0];
-}
-
-static __inline__ void __attribute__((__always_inline__, __nodebug__))
-_mm_storeu_si64(void *__p, __m128i __a)
-{
-  struct __unaligned {
-    unsigned long long __u;
-  } __attribute__((__packed__, __may_alias__));
-  ((struct __unaligned *)__p)->__u = ((__u64x2)__a)[0];
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))

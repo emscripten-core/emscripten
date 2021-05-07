@@ -1,4 +1,4 @@
-# from http://mxr.mozilla.org/mozilla-central/source/dom/bindings/parser/WebIDL.py
+# from https://hg.mozilla.org/mozilla-central/file/tip/dom/bindings/parser/WebIDL.py
 # rev 501baeb3a034
 
 # This Source Code Form is subject to the terms of the Mozilla Public

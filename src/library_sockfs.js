@@ -21,15 +21,15 @@ mergeInto(LibraryManager.library, {
       // For more documentation see system/include/emscripten/emscripten.h
       Module['websocket']._callbacks = {};
       Module['websocket']['on'] = /** @this{Object} */ function(event, callback) {
-	    if ('function' === typeof callback) {
-		  this._callbacks[event] = callback;
+        if ('function' === typeof callback) {
+          this._callbacks[event] = callback;
         }
-	    return this;
+        return this;
       };
 
       Module['websocket'].emit = /** @this{Object} */ function(event, param) {
-	    if ('function' === typeof this._callbacks[event]) {
-		  this._callbacks[event].call(this, param);
+        if ('function' === typeof this._callbacks[event]) {
+          this._callbacks[event].call(this, param);
         }
       };
 
@@ -732,6 +732,9 @@ mergeInto(LibraryManager.library, {
    * Passing a NULL callback function to a emscripten_set_socket_*_callback call
    * will deregister the callback registered for that Event.
    */
+#if !MINIMAL_RUNTIME
+  $_setNetworkCallback__deps: ['$runtimeKeepalivePush'],
+#endif
   $_setNetworkCallback: function(event, userData, callback) {
     function _callback(data) {
       try {
@@ -753,7 +756,9 @@ mergeInto(LibraryManager.library, {
       }
     };
 
-    noExitRuntime = true;
+    // FIXME(sbc): This has no corresponding Pop so will currently keep the
+    // runtime alive indefinitely.
+    {{{ runtimeKeepalivePush() }}}
     Module['websocket']['on'](event, callback ? _callback : null);
   },
   emscripten_set_socket_error_callback__deps: ['$_setNetworkCallback'],

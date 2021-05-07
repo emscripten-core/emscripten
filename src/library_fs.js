@@ -326,11 +326,11 @@ FS.staticInit();` +
         return 0;
       }
       // return 0 if any user, group or owner bits are set.
-      if (perms.indexOf('r') !== -1 && !(node.mode & {{{ cDefine('S_IRUGO') }}})) {
+      if (perms.includes('r') && !(node.mode & {{{ cDefine('S_IRUGO') }}})) {
         return {{{ cDefine('EACCES') }}};
-      } else if (perms.indexOf('w') !== -1 && !(node.mode & {{{ cDefine('S_IWUGO') }}})) {
+      } else if (perms.includes('w') && !(node.mode & {{{ cDefine('S_IWUGO') }}})) {
         return {{{ cDefine('EACCES') }}};
-      } else if (perms.indexOf('x') !== -1 && !(node.mode & {{{ cDefine('S_IXUGO') }}})) {
+      } else if (perms.includes('x') && !(node.mode & {{{ cDefine('S_IXUGO') }}})) {
         return {{{ cDefine('EACCES') }}};
       }
       return 0;
@@ -616,7 +616,7 @@ FS.staticInit();` +
         while (current) {
           var next = current.name_next;
 
-          if (mounts.indexOf(current.mount) !== -1) {
+          if (mounts.includes(current.mount)) {
             FS.destroyNode(current);
           }
 
@@ -1759,7 +1759,7 @@ FS.staticInit();` +
         Object.defineProperties(lazyArray, {
           length: {
             get: /** @this{Object} */ function() {
-              if(!this.lengthKnown) {
+              if (!this.lengthKnown) {
                 this.cacheLength();
               }
               return this._length;
@@ -1767,7 +1767,7 @@ FS.staticInit();` +
           },
           chunkSize: {
             get: /** @this{Object} */ function() {
-              if(!this.lengthKnown) {
+              if (!this.lengthKnown) {
                 this.cacheLength();
               }
               return this._chunkSize;
@@ -1993,7 +1993,7 @@ FS.staticInit();` +
   // Allocate memory for an mmap operation. This allocates space of the right
   // page-aligned size, and clears the padding.
   $mmapAlloc: function(size) {
-    var alignedSize = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
+    var alignedSize = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
     var ptr = {{{ makeMalloc('mmapAlloc', 'alignedSize') }}};
     while (size < alignedSize) HEAP8[ptr + size++] = 0;
     return ptr;

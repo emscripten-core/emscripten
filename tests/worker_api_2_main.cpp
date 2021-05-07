@@ -37,7 +37,7 @@ void c3(char *data, int size, void *arg) { // tests calls different in different
     c3_8++;
     assert(calls == 1);
   }
-  if (c3_7 && c3_7) { // note: racey, responses from 2 workers here
+  if (c3_7 && c3_8) { // note: racey, responses from 2 workers here
     emscripten_destroy_worker(w1);
     REPORT_RESULT(11);
     emscripten_force_exit(0);

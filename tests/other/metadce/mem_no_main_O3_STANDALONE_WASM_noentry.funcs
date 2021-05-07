@@ -1,4 +1,3 @@
 $__wasm_call_ctors
-$dlmalloc
 $foo
 $sbrk

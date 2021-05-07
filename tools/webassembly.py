@@ -6,11 +6,21 @@
 """Utilties for manipulating WebAssembly binaries from python.
 """
 
+from collections import namedtuple
+from enum import IntEnum
 import logging
+import os
+import sys
 
 from . import shared
+from .settings import settings
+
+sys.path.append(shared.path_from_root('third_party'))
+
+import leb128
 
 logger = logging.getLogger('shared')
+
 
 # For the Emscripten-specific WASM metadata section, follows semver, changes
 # whenever metadata section changes structure.
@@ -30,38 +40,30 @@ EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 29)
 
 WASM_PAGE_SIZE = 65536
 
+MAGIC = b'\0asm'
 
-def toLEB(x):
-  assert x >= 0, 'TODO: signed'
-  ret = []
-  while 1:
-    byte = x & 127
-    x >>= 7
-    more = x != 0
-    if more:
-      byte = byte | 128
-    ret.append(byte)
-    if not more:
-      break
-  return bytearray(ret)
+VERSION = b'\x01\0\0\0'
+
+HEADER_SIZE = 8
+
+LIMITS_HAS_MAX = 0x1
 
 
-def readLEB(buf, offset):
-  result = 0
-  shift = 0
-  while True:
-    byte = bytearray(buf[offset:offset + 1])[0]
-    offset += 1
-    result |= (byte & 0x7f) << shift
-    if not (byte & 0x80):
-      break
-    shift += 7
-  return (result, offset)
+def toLEB(num):
+  return leb128.u.encode(num)
+
+
+def readULEB(iobuf):
+  return leb128.u.decode_reader(iobuf)[0]
+
+
+def readSLEB(iobuf):
+  return leb128.i.decode_reader(iobuf)[0]
 
 
 def add_emscripten_metadata(wasm_file):
-  mem_size = shared.Settings.INITIAL_MEMORY // WASM_PAGE_SIZE
-  global_base = shared.Settings.GLOBAL_BASE
+  mem_size = settings.INITIAL_MEMORY // WASM_PAGE_SIZE
+  global_base = settings.GLOBAL_BASE
 
   logger.debug('creating wasm emscripten metadata section with mem size %d' % mem_size)
   name = b'\x13emscripten_metadata' # section name, including prefixed size
@@ -89,7 +91,7 @@ def add_emscripten_metadata(wasm_file):
     # tempDoublePtr, always 0 in wasm backend
     toLEB(0) +
 
-    toLEB(int(shared.Settings.STANDALONE_WASM))
+    toLEB(int(settings.STANDALONE_WASM))
 
     # NB: more data can be appended here as long as you increase
     #     the EMSCRIPTEN_METADATA_MINOR
@@ -108,78 +110,153 @@ def add_emscripten_metadata(wasm_file):
     f.write(orig[8:])
 
 
+class SecType(IntEnum):
+  CUSTOM = 0
+  TYPE = 1
+  IMPORT = 2
+  FUNCTION = 3
+  TABLE = 4
+  MEMORY = 5
+  EVENT = 13
+  GLOBAL = 6
+  EXPORT = 7
+  START = 8
+  ELEM = 9
+  DATACOUNT = 12
+  CODE = 10
+  DATA = 11
+
+
+class ExternType(IntEnum):
+  FUNC = 0
+  TABLE = 1
+  MEMORY = 2
+  GLOBAL = 3
+  EVENT = 4
+
+
+Section = namedtuple('Section', ['type', 'size', 'offset'])
+Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
+Import = namedtuple('Import', ['kind', 'module', 'field'])
+Export = namedtuple('Export', ['name', 'kind', 'index'])
+Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed'])
+
+
+class Module:
+  """Extremely minimal wasm module reader.  Currently only used
+  for parsing the dylink section."""
+  def __init__(self, filename):
+    self.size = os.path.getsize(filename)
+    self.buf = open(filename, 'rb')
+    magic = self.buf.read(4)
+    version = self.buf.read(4)
+    assert magic == MAGIC
+    assert version == VERSION
+
+  def __del__(self):
+    self.buf.close()
+
+  def readByte(self):
+    return self.buf.read(1)[0]
+
+  def readULEB(self):
+    return readULEB(self.buf)
+
+  def readSLEB(self):
+    return readSLEB(self.buf)
+
+  def readString(self):
+    size = self.readULEB()
+    return self.buf.read(size).decode('utf-8')
+
+  def readLimits(self):
+    flags = self.readByte()
+    initial = self.readULEB()
+    maximum = 0
+    if flags & LIMITS_HAS_MAX:
+      maximum = self.readULEB()
+    return Limits(flags, initial, maximum)
+
+  def seek(self, offset):
+    self.buf.seek(offset)
+
+  def sections(self):
+    """Generator that lazily returns sections from the wasm file."""
+    offset = HEADER_SIZE
+    while offset < self.size:
+      self.seek(offset)
+      section_type = SecType(self.readByte())
+      section_size = self.readULEB()
+      section_offset = self.buf.tell()
+      yield Section(section_type, section_size, section_offset)
+      offset = section_offset + section_size
+
+
 def parse_dylink_section(wasm_file):
-  wasm = open(wasm_file, 'rb').read()
-  section_name = b'\06dylink' # section name, including prefixed size
+  module = Module(wasm_file)
 
-  # Read the existing section data
-  offset = 8
-  assert wasm[offset] == 0
-  offset += 1
-  size, offset = readLEB(wasm, offset)
-  section_end = offset + size
-  section = wasm[offset:section_end]
+  dylink_section = next(module.sections())
+  assert dylink_section.type == SecType.CUSTOM
+  module.seek(dylink_section.offset)
   # section name
-  assert section.startswith(section_name)
-  offset = len(section_name)
-  mem_size, offset = readLEB(section, offset)
-  mem_align, offset = readLEB(section, offset)
-  table_size, offset = readLEB(section, offset)
-  table_align, offset = readLEB(section, offset)
+  section_name = module.readString()
+  assert section_name == 'dylink'
+  mem_size = module.readULEB()
+  mem_align = module.readULEB()
+  table_size = module.readULEB()
+  table_align = module.readULEB()
 
-  return (mem_size, mem_align, table_size, table_align, section_end)
+  needed = []
+  needed_count = module.readULEB()
+  while needed_count:
+    libname = module.readString()
+    needed.append(libname)
+    needed_count -= 1
+
+  return Dylink(mem_size, mem_align, table_size, table_align, needed)
 
 
-def add_dylink_section(wasm_file, needed_dynlibs):
-  # A wasm shared library has a special "dylink" section, see tools-conventions repo.
-  # This function adds this section to the beginning on the given file.
+def get_exports(wasm_file):
+  module = Module(wasm_file)
+  export_section = next((s for s in module.sections() if s.type == SecType.EXPORT), None)
 
-  mem_size, mem_align, table_size, table_align, section_end = parse_dylink_section(wasm_file)
-  logger.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
+  module.seek(export_section.offset)
+  num_exports = module.readULEB()
+  exports = []
+  for i in range(num_exports):
+    name = module.readString()
+    kind = ExternType(module.readByte())
+    index = module.readULEB()
+    exports.append(Export(name, kind, index))
 
-  section_name = b'\06dylink' # section name, including prefixed size
-  contents = (toLEB(mem_size) + toLEB(mem_align) +
-              toLEB(table_size) + toLEB(0))
+  return exports
 
-  # we extend "dylink" section with information about which shared libraries
-  # our shared library needs. This is similar to DT_NEEDED entries in ELF.
-  #
-  # In theory we could avoid doing this, since every import in wasm has
-  # "module" and "name" attributes, but currently emscripten almost always
-  # uses just "env" for "module". This way we have to embed information about
-  # required libraries for the dynamic linker somewhere, and "dylink" section
-  # seems to be the most relevant place.
-  #
-  # Binary format of the extension:
-  #
-  #   needed_dynlibs_count        varuint32       ; number of needed shared libraries
-  #   needed_dynlibs_entries      dynlib_entry*   ; repeated dynamic library entries as described below
-  #
-  # dynlib_entry:
-  #
-  #   dynlib_name_len             varuint32       ; length of dynlib_name_str in bytes
-  #   dynlib_name_str             bytes           ; name of a needed dynamic library: valid UTF-8 byte sequence
-  #
-  # a proposal has been filed to include the extension into "dylink" specification:
-  # https://github.com/WebAssembly/tool-conventions/pull/77
-  contents += toLEB(len(needed_dynlibs))
-  for dyn_needed in needed_dynlibs:
-    dyn_needed = bytes(shared.asbytes(dyn_needed))
-    contents += toLEB(len(dyn_needed))
-    contents += dyn_needed
 
-  orig = open(wasm_file, 'rb').read()
-  file_header = orig[:8]
-  file_remainder = orig[section_end:]
+def get_imports(wasm_file):
+  module = Module(wasm_file)
+  import_section = next((s for s in module.sections() if s.type == SecType.IMPORT), None)
+  if not import_section:
+    return []
 
-  section_size = len(section_name) + len(contents)
-  with open(wasm_file, 'wb') as f:
-    # copy magic number and version
-    f.write(file_header)
-    # write the special section
-    f.write(b'\0') # user section is code 0
-    f.write(toLEB(section_size))
-    f.write(section_name)
-    f.write(contents)
-    # copy rest of binary
-    f.write(file_remainder)
+  module.seek(import_section.offset)
+  num_imports = module.readULEB()
+  imports = []
+  for i in range(num_imports):
+    mod = module.readString()
+    field = module.readString()
+    kind = ExternType(module.readByte())
+    imports.append(Import(kind, mod, field))
+    if kind == ExternType.FUNC:
+      module.readULEB()  # sig
+    elif kind == ExternType.GLOBAL:
+      module.readSLEB()  # global type
+      module.readByte()  # mutable
+    elif kind == ExternType.MEMORY:
+      module.readLimits()  # limits
+    elif kind == ExternType.TABLE:
+      module.readSLEB()  # table type
+      module.readLimits()  # limits
+    else:
+      assert False
+
+  return imports

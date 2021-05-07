@@ -49,7 +49,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libbz2.a')
+  shared.Cache.erase_lib('libbz2.a')
 
 
 def process_args(ports):

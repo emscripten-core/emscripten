@@ -1577,7 +1577,7 @@ var LibraryOpenAL = {
       var err = c.mediaStreamError;
       if (err) {
 #if OPENAL_DEBUG
-        switch(err.name) {
+        switch (err.name) {
         case 'PermissionDeniedError':
           console.error(funcname+'() but the user denied access to the device');
           break;
@@ -1773,7 +1773,7 @@ var LibraryOpenAL = {
       newCapture.mediaStream = mediaStream;
 
       var inputChannelCount = 1;
-      switch(newCapture.mediaStreamSourceNode.channelCountMode) {
+      switch (newCapture.mediaStreamSourceNode.channelCountMode) {
       case 'max':
         inputChannelCount = outputChannelCount;
         break;
@@ -2011,7 +2011,7 @@ var LibraryOpenAL = {
 
     var setSample;
 
-    switch(c.requestedSampleType) {
+    switch (c.requestedSampleType) {
     case 'f32': setSample = setF32Sample; break;
     case 'i16': setSample = setI16Sample; break;
     case 'u8' : setSample = setU8Sample ; break;
@@ -2327,20 +2327,6 @@ var LibraryOpenAL = {
     return AL.ALC_EXTENSIONS[name] ? 1 : 0;
   },
 
-  alcGetProcAddress__deps: ['emscripten_GetAlcProcAddress'],
-  alcGetProcAddress__proxy: 'sync',
-  alcGetProcAddress__sig: 'iii',
-  alcGetProcAddress: function(deviceId, pProcName) {
-    if (!pProcName) {
-#if OPENAL_DEBUG
-      console.error('alcGetProcAddress() called with null name pointer');
-#endif
-      AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
-      return 0; /* ALC_NONE */
-    }
-    return _emscripten_GetAlcProcAddress(pProcName);
-  },
-
   alcGetEnumValue__proxy: 'sync',
   alcGetEnumValue__sig: 'iii',
   alcGetEnumValue: function(deviceId, pEnumName) {
@@ -2358,9 +2344,9 @@ var LibraryOpenAL = {
       AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
       return 0; /* ALC_NONE */
     }
-    name = UTF8ToString(pEnumName);
+    var name = UTF8ToString(pEnumName);
     // See alGetEnumValue(), but basically behave the same as OpenAL-Soft
-    switch(name) {
+    switch (name) {
     case 'ALC_NO_ERROR': return 0;
     case 'ALC_INVALID_DEVICE': return 0xA001;
     case 'ALC_INVALID_CONTEXT': return 0xA002;
@@ -2494,7 +2480,7 @@ var LibraryOpenAL = {
       return;
     }
 
-    switch(param) {
+    switch (param) {
     case 0x1000 /* ALC_MAJOR_VERSION */:
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
       break;
@@ -2622,7 +2608,7 @@ var LibraryOpenAL = {
     }
     AL.paused = true;
 
-    for (ctxId in AL.contexts) {
+    for (var ctxId in AL.contexts) {
       var ctx = AL.contexts[ctxId];
       if (ctx.deviceId !== deviceId) {
         continue;
@@ -2650,7 +2636,7 @@ var LibraryOpenAL = {
     }
     AL.paused = false;
 
-    for (ctxId in AL.contexts) {
+    for (var ctxId in AL.contexts) {
       var ctx = AL.contexts[ctxId];
       if (ctx.deviceId !== deviceId) {
         continue;
@@ -2941,29 +2927,9 @@ var LibraryOpenAL = {
   alIsExtensionPresent__proxy: 'sync',
   alIsExtensionPresent__sig: 'ii',
   alIsExtensionPresent: function(pExtName) {
-    name = UTF8ToString(pExtName);
+    var name = UTF8ToString(pExtName);
 
     return AL.AL_EXTENSIONS[name] ? 1 : 0;
-  },
-
-  alGetProcAddress__deps: ['emscripten_GetAlProcAddress'],
-  alGetProcAddress__proxy: 'sync',
-  alGetProcAddress__sig: 'vi',
-  alGetProcAddress: function(pProcName) {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      console.error('alGetProcAddress() called without a valid context');
-#endif
-      return;
-    }
-    if (!pProcName) {
-#if OPENAL_DEBUG
-      console.error('alcGetProcAddress() called with null name pointer');
-#endif
-      AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
-      return 0; /* ALC_NONE */
-    }
-    return _emscripten_GetAlProcAddress(pProcName);
   },
 
   alGetEnumValue__proxy: 'sync',
@@ -2983,9 +2949,9 @@ var LibraryOpenAL = {
       AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
       return 0 /* AL_NONE */;
     }
-    name = UTF8ToString(pEnumName);
+    var name = UTF8ToString(pEnumName);
 
-    switch(name) {
+    switch (name) {
     // Spec doesn't clearly state that alGetEnumValue() is required to
     // support _only_ extension tokens.
     // We should probably follow OpenAL-Soft's example and support all
@@ -3171,7 +3137,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    switch (pname) {
+    switch (param) {
     case 'AL_SOURCE_DISTANCE_MODEL':
       AL.currentCtx.sourceDistanceModel = false;
       AL.updateContextGlobal(AL.currentCtx);
@@ -3194,7 +3160,7 @@ var LibraryOpenAL = {
 #endif
       return 0;
     }
-    switch (pname) {
+    switch (param) {
     case 'AL_SOURCE_DISTANCE_MODEL':
       return AL.currentCtx.sourceDistanceModel ? 0 /* AL_FALSE */ : 1 /* AL_TRUE */;
     default:
@@ -4646,7 +4612,7 @@ var LibraryOpenAL = {
 
   alGetSource3i__proxy: 'sync',
   alGetSource3i__sig: 'viiiii',
-  alGetSource3i: function(source, param, pValue0, pValue1, pValue2) {
+  alGetSource3i: function(sourceId, param, pValue0, pValue1, pValue2) {
     var val = AL.getSourceParam('alGetSource3i', sourceId, param);
     if (val === null) {
       return;
@@ -4869,7 +4835,7 @@ var LibraryOpenAL = {
 
   alSourceiv__proxy: 'sync',
   alSourceiv__sig: 'viii',
-  alSourceiv: function(source, param, pValues) {
+  alSourceiv: function(sourceId, param, pValues) {
     if (!AL.currentCtx) {
 #if OPENAL_DEBUG
       console.error('alSourceiv() called without a valid context');

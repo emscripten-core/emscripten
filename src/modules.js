@@ -33,18 +33,14 @@ var Types = {
 // Constructs an array ['a0', 'a1', 'a2', ..., 'a(n-1)']
 function genArgSequence(n) {
   var args = [];
-  for(var i = 0; i < n; ++i) {
+  for (var i = 0; i < n; ++i) {
     args.push('a'+i);
   }
   return args;
 }
 
-var Functions = {
-  // All functions that will be implemented in this file. Maps id to signature
-  implementedFunctions: {},
-  // functions added from the library. value 2 means asmLibraryFunction
-  libraryFunctions: {},
-};
+// List of functions that were added from the library.
+var libraryFunctions = [];
 
 var LibraryManager = {
   library: null,
@@ -53,7 +49,7 @@ var LibraryManager = {
   libraries: [],
 
   has: function(name) {
-    return this.libraries.indexOf(name) >= 0;
+    return this.libraries.includes(name);
   },
 
   load: function() {
@@ -62,7 +58,6 @@ var LibraryManager = {
     // Core system libraries (always linked against)
     var libraries = [
       'library.js',
-      'library_stack.js',
       'library_formatString.js',
       'library_math.js',
       'library_path.js',
@@ -76,10 +71,10 @@ var LibraryManager = {
     ];
 
     if (!EXCEPTION_HANDLING) {
-      if (!DISABLE_EXCEPTION_THROWING) {
-        libraries.push('library_exceptions.js');
-      } else {
+      if (DISABLE_EXCEPTION_THROWING) {
         libraries.push('library_exceptions_stub.js');
+      } else {
+        libraries.push('library_exceptions.js');
       }
     }
 
@@ -110,7 +105,7 @@ var LibraryManager = {
 
       if (NODERAWFS) {
         // NODERAWFS requires NODEFS
-        if (SYSTEM_JS_LIBRARIES.indexOf('library_nodefs.js') < 0) {
+        if (!SYSTEM_JS_LIBRARIES.includes('library_nodefs.js')) {
           libraries.push('library_nodefs.js');
         }
         libraries.push('library_noderawfs.js');
@@ -156,6 +151,10 @@ var LibraryManager = {
       libraries.push('library_webgl2.js');
     }
 
+    if (GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING) {
+      libraries.push('library_c_preprocessor.js');
+    }
+
     if (LEGACY_GL_EMULATION) {
       libraries.push('library_glemu.js');
     }
@@ -168,11 +167,14 @@ var LibraryManager = {
     if (BOOTSTRAPPING_STRUCT_INFO) {
       libraries = [
         'library_bootstrap.js',
-        'library_stack.js',
         'library_formatString.js',
         'library_stack_trace.js',
         'library_int53.js',
       ];
+    }
+
+    if (SUPPORT_BIG_ENDIAN) {
+      libraries.push('library_little_endian_heap.js');
     }
 
     // Deduplicate libraries to avoid processing any library file multiple times
@@ -284,26 +286,6 @@ var LibraryManager = {
 
     this.loaded = true;
   },
-
-  // Given an ident, see if it is an alias for something, and so forth, returning
-  // the earliest ancestor (the root)
-  getRootIdent: function(ident) {
-    if (!this.library) return null;
-    var ret = LibraryManager.library[ident];
-    if (!ret) return null;
-    var last = ident;
-    while (typeof ret === 'string') {
-      last = ret;
-      ret = LibraryManager.library[ret];
-    }
-    return last;
-  },
-
-  isStubFunction: function(ident) {
-    var libCall = LibraryManager.library[ident.substr(1)];
-    return typeof libCall === 'function' && libCall.toString().replace(/\s/g, '') === 'function(){}'
-                                         && !(ident in Functions.implementedFunctions);
-  }
 };
 
 if (!BOOTSTRAPPING_STRUCT_INFO) {
@@ -322,9 +304,7 @@ function cDefine(key) {
 	throw 'Missing C define ' + key + '! If you just added it to struct_info.json, you need to ./emcc --clear-cache';
 }
 
-var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS.concat(EXTRA_EXPORTED_RUNTIME_METHODS));
-EXPORTED_RUNTIME_METHODS = unset(EXPORTED_RUNTIME_METHODS_SET);
-EXTRA_EXPORTED_RUNTIME_METHODS = [];
+var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS);
 
 function isFSPrefixed(name) {
   return name.length > 3 && name[0] === 'F' && name[1] === 'S' && name[2] === '_';
@@ -375,9 +355,9 @@ function exportRuntime() {
         extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
       }
       if (!isNumber) {
-        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
+        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
       } else {
-        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Object.defineProperty(Module, "' + name + '", { configurable: true, get: function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
+        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Object.defineProperty(Module, "' + name + '", { configurable: true, get: function() { abort("\'' + name + '\' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
       }
     }
     return '';
@@ -387,7 +367,7 @@ function exportRuntime() {
     return maybeExport(name, true);
   }
 
-  // All possible runtime elements to export
+  // All possible runtime elements that can be exported
   var runtimeElements = [
     'intArrayFromString',
     'intArrayToString',
@@ -428,7 +408,6 @@ function exportRuntime() {
     'removeFunction',
     'getFuncWrapper',
     'prettyPrint',
-    'makeBigInt',
     'dynCall',
     'getCompilerSetting',
     'print',
@@ -516,8 +495,7 @@ function exportRuntime() {
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
     for (var name in EXPORTED_RUNTIME_METHODS_SET) {
-      if (runtimeElements.indexOf(name) < 0 &&
-          runtimeNumbers.indexOf(name) < 0) {
+      if (!runtimeElements.includes(name) && !runtimeNumbers.includes(name)) {
         printErr('warning: invalid item (maybe a typo?) in EXPORTED_RUNTIME_METHODS: ' + name);
       }
     }
@@ -527,35 +505,3 @@ function exportRuntime() {
   exports = exports.filter(function(name) { return name != '' });
   return exports.join('\n');
 }
-
-var PassManager = {
-  serialize: function() {
-    print('\n//FORWARDED_DATA:' + JSON.stringify({
-      Functions: Functions,
-      EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
-      ATINITS: ATINITS.join('\n'),
-      ATMAINS: ATMAINS.join('\n'),
-      ATEXITS: ATEXITS.join('\n'),
-    }));
-  },
-  load: function(json) {
-    var data = JSON.parse(json);
-    for (var i in data.Types) {
-      Types[i] = data.Types[i];
-    }
-    for (var i in data.Variables) {
-      Variables[i] = data.Variables[i];
-    }
-    for (var i in data.Functions) {
-      Functions[i] = data.Functions[i];
-    }
-    EXPORTED_FUNCTIONS = data.EXPORTED_FUNCTIONS;
-    /*
-    print('\n//LOADED_DATA:' + JSON.stringify({
-      Types: Types,
-      Variables: Variables,
-      Functions: Functions
-    }));
-    */
-  }
-};

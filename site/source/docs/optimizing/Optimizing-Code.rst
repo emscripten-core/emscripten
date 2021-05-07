@@ -29,7 +29,7 @@ The optimization level you should use depends mostly on the current stage of dev
 
 .. note::
 
-  -  The meanings of the *emcc* optimization flags (``-O1, -O2`` etc.) are similar to *gcc*, *clang*, and other compilers, but also different because optimizing asm.js and WebAssembly includes some additional types of optimizations. The mapping of the *emcc* levels to the LLVM bitcode optimization levels is documented in the reference.
+  -  The meanings of the *emcc* optimization flags (``-O1, -O2`` etc.) are similar to *gcc*, *clang*, and other compilers, but also different because optimizing WebAssembly includes some additional types of optimizations. The mapping of the *emcc* levels to the LLVM bitcode optimization levels is documented in the reference.
 
 How Emscripten optimizes
 ========================
@@ -37,59 +37,43 @@ How Emscripten optimizes
 Compiling source files to object files works as you'd expect in a native build system that uses clang and LLVM. When linking object files to the final executable, Emscripten does additional optimizations as well depending on the optimization level:
 
 - For wasm, the Binaryen optimizer is run. Binaryen does both general-purpose optimizations to the wasm that LLVM does not, and also does some whole-program optimization. (Note that Binaryen's whole-program optimizations may do things like inlining, which can be surprising in some cases as LLVM IR attributes like ``noinline`` have been lost at this point.)
-- For asm.js, the Emscripten asm.js optimizer is run.
 - JavaScript is generated at this phase, and is optimized by Emscripten's JS optimizer. Optionally you can also run :ref:`the closure compiler <emcc-closure>`, which is highly recommended for code size.
 - Emscripten also optimizes the combined wasm+JS, by minifying imports and exports between them, and by running meta-dce which removes unused code in cycles that span the two worlds.
 
 Link Times
 ==========
 
-To skip extra optimization work at link time, link with ``-O0`` or ``-O1``. It
-is ok to link with those flags even if the source files were compiled with a
-different optimization level.
+To skip extra optimization work at link time, link with ``-O0`` or ``-O1``. In
+those modes Emscripten focuses on faster iteration times. (Note that it is ok
+to link with those flags even if the source files were compiled with a different
+optimization level.)
 
-``-O0`` will do no optimization work at link time. ``-O1`` will do very minimal
-optimizations, and does not have the assertions that ``-O0`` does by default,
-so it can be useful for a build that links very quickly but also runs reasonably
-fast. (Of course, for a final release build, it is usually worth linking with
-something like ``-O3 --closure 1`` for full optimizations.)
+To also skip non-optimization work at link time, link with ``-s WASM_BIGINT``.
+Enabling BigInt support removes the need for Emscripten to "legalize" the wasm
+to handle ``i64`` values on the JS/Wasm boundary (as with BigInts ``i64`` values
+are legal, and require no extra processing).
 
-In some cases Emscripten can avoid modifying the wasm binary that is produced by
-the linker (``wasm-ld``). That will give you the fastest possible link times.
-All Emscripten does in such a build is generate the JavaScript support code,
-while leaving the WebAssembly output from the linker unmodified.
+Some link flags add additional work at the link stage that can slow things down.
+For example ``-g`` enables DWARF support, flags like ``-s SAFE_HEAP`` will require
+JS post-processing, and flags like ``-s ASYNCIFY`` will require wasm
+post-processing. To ensure your flags allow the fastest possible link, in which
+the wasm is not modified after ``wasm-ld``, build with
+``-s ERROR_ON_WASM_CHANGES_AFTER_LINK``. With that option you will get an error
+during link if Emscripten must perform changes to the Wasm. For example, if you
+didn't pass ``-s WASM_BIGINT`` then it will tell you that legalization forces
+it to change the Wasm. You will also get an error if you build with ``-O2`` or
+above, as the Binaryen optimizer would normally be run.
 
-Specifically, as of Emscripten 2.0.7, if you build with either ``-O0`` or
-``-O1`` then the only thing Emscripten needs to do to the wasm file is legalize
-it. This can be avoided by enabling BigInt integration which renders legalization
-unnecessary (as when using BigInts we can represent ``i64`` values properly
-without legalization). To do that, build with
-
-.. code-block:: bash
-
-  emcc -s WASM_BIGINT
-
-You can also ensure you get that speedup:
-
-.. code-block:: bash
-
-  emcc -s WASM_BIGINT -s ERROR_ON_WASM_CHANGES_AFTER_LINK
-
-``ERROR_ON_WASM_CHANGES_AFTER_LINK`` will, as the name implies, show an error
-during link if Emscripten must perform changes to the Wasm. If you remove that
-``-s WASM_BIGINT``, it will tell you that legalization forces it to change the
-wasm. You will also get an error if you build with ``-O2`` or above, as the
-Binaryen optimizer would normally be run.
 
 Advanced compiler settings
 ==========================
 
-There are several flags you can :ref:`pass to the compiler <emcc-s-option-value>` to affect code generation, which will also affect performance — for example :ref:`DISABLE_EXCEPTION_CATCHING <optimizing-code-exception-catching>`. These are documented in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_. Some of these will be directly affected by the optimization settings (you can find out which ones by searching for ``apply_opt_level`` in `tools/shared.py <https://github.com/emscripten-core/emscripten/blob/1.29.12/tools/shared.py#L958>`_).
+There are several flags you can :ref:`pass to the compiler <emcc-s-option-value>` to affect code generation, which will also affect performance — for example :ref:`DISABLE_EXCEPTION_CATCHING <optimizing-code-exception-catching>`. These are documented in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_.
 
 WebAssembly
 ===========
 
-Emscripten will emit WebAssembly by default. You can switch that off with ``-s WASM=0`` (and then emscripten emits asm.js), which is necessary if you want the output to run in places where wasm support is not present yet, but the downside is larger and slower code.
+Emscripten will emit WebAssembly by default. You can switch that off with ``-s WASM=0`` (in which case emscripten emit JavaScript), which is necessary if you want the output to run in places where wasm support is not present yet, but the downside is larger and slower code.
 
 .. _optimizing-code-size:
 
@@ -105,7 +89,7 @@ Trading off code size and performance
 
 You may wish to build the less performance-sensitive source files in your project using :ref:`-Os <emcc-Os>` or :ref:`-Oz <emcc-Oz>` and the remainder using :ref:`-O2 <emcc-O2>` (:ref:`-Os <emcc-Os>` and :ref:`-Oz <emcc-Oz>` are similar to :ref:`-O2 <emcc-O2>`, but reduce code size at the expense of performance. :ref:`-Oz <emcc-Oz>` reduces code size more than :ref:`-Os <emcc-Os>`.)
 
-Separately, you can do the final link/build command with ``-Os`` or ``-Oz`` to make the compiler focus more on code size when generating WebAssembly/asm.js.
+Separately, you can do the final link/build command with ``-Os`` or ``-Oz`` to make the compiler focus more on code size when generating WebAssembly module.
 
 Miscellaneous code size tips
 ----------------------------
@@ -154,9 +138,9 @@ Other optimization issues
 C++ exceptions
 --------------
 
-Catching C++ exceptions (specifically, emitting catch blocks) is turned off by default in ``-O1`` (and above). Due to how asm.js/wasm currently implement exceptions, this makes the code much smaller and faster (eventually, wasm should gain native support for exceptions, and not have this issue).
+Catching C++ exceptions (specifically, emitting catch blocks) is turned off by default in ``-O1`` (and above). Due to how WebAssembly currently implement exceptions, this makes the code much smaller and faster (eventually, wasm should gain native support for exceptions, and not have this issue).
 
-To re-enable exceptions in optimized code, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_).
+To re-enable exceptions in optimized code, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_).
 
 .. note:: When exception catching is disabled, a thrown exception terminates the application. In other words, an exception is still thrown, but it isn't caught.
 
@@ -170,7 +154,7 @@ C++ run-time type info support (dynamic casts, etc.) adds overhead that is somet
 Memory Growth
 -------------
 
-Building with ``-s ALLOW_MEMORY_GROWTH=1`` allows the total amount of memory used to change depending on the demands of the application. This is useful for apps that don't know ahead of time how much they will need, but it disables asm.js optimizations. In WebAssembly, however, there should be little or no overhead.
+Building with ``-s ALLOW_MEMORY_GROWTH=1`` allows the total amount of memory used to change depending on the demands of the application. This is useful for apps that don't know ahead of time how much they will need.
 
 Viewing code optimization passes
 --------------------------------
@@ -207,5 +191,3 @@ Emscripten-compiled code can currently achieve approximately half the speed of a
 
 -  :ref:`Building-Projects` is a two-stage process: compiling source code files to LLVM **and** generating JavaScript from LLVM. Did you build using the same optimization values in **both** steps (``-O2`` or ``-O3``)?
 -  Test on multiple browsers. If performance is acceptable on one browser and significantly poorer on another, then :ref:`file a bug report <bug-reports>`, noting the problem browser and other relevant information.
-- Does the code *validate* in Firefox (look for "Successfully compiled asm.js code" in the web console). If you see a validation error when using an up-to-date version of Firefox and Emscripten then please :ref:`file a bug report <bug-reports>`.
-

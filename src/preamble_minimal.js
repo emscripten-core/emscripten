@@ -64,11 +64,18 @@ Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64;
 var wasmMemory, buffer, wasmTable;
 
+#if SUPPORT_BIG_ENDIAN
+var HEAP_DATA_VIEW;
+#endif
+
 function updateGlobalBufferAndViews(b) {
 #if ASSERTIONS && USE_PTHREADS
   assert(b instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 #endif
   buffer = b;
+#if SUPPORT_BIG_ENDIAN
+  HEAP_DATA_VIEW = new DataView(b);
+#endif
   HEAP8 = new Int8Array(b);
   HEAP16 = new Int16Array(b);
   HEAP32 = new Int32Array(b);
@@ -83,14 +90,14 @@ function updateGlobalBufferAndViews(b) {
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
-#if ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != -1
+#if ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != FOUR_GB
   var wasmMaximumMemory = {{{ MAXIMUM_MEMORY >>> 16 }}};
 #else
   var wasmMaximumMemory = {{{ INITIAL_MEMORY >>> 16}}};
 #endif
   wasmMemory = new WebAssembly.Memory({
     'initial': {{{ INITIAL_MEMORY >>> 16 }}}
-#if USE_PTHREADS || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != -1
+#if USE_PTHREADS || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != FOUR_GB
     , 'maximum': wasmMaximumMemory
 #endif
 #if USE_PTHREADS
@@ -126,7 +133,7 @@ var wasmOffsetConverter;
 var __ATEXIT__    = []; // functions called during shutdown
 #endif
 
-#if ASSERTIONS || SAFE_HEAP
+#if ASSERTIONS || SAFE_HEAP || USE_ASAN
 var runtimeInitialized = false;
 
 // This is always false in minimal_runtime - the runtime does not have a concept

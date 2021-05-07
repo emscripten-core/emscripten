@@ -313,7 +313,7 @@ Emscripten does dead code elimination of functions that are not called from the 
 
 To make sure a C function remains available to be called from normal JavaScript, it must be added to the `EXPORTED_FUNCTIONS <https://github.com/emscripten-core/emscripten/blob/1.29.12/src/settings.js#L388>`_ using the *emcc* command line. For example, to prevent functions ``my_func()`` and ``main()`` from being removed/renamed, run *emcc* with: ::
 
-  emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']"  ...
+  emcc -s EXPORTED_FUNCTIONS=_main,_my_func  ...
 
 .. note::
 
@@ -374,17 +374,17 @@ Another alternative is to wrap the generated code (or your other code) in a clos
 Why do I get ``TypeError: Module.someThing is not a function``?
 ===============================================================
 
-The ``Module`` object will contain exported methods. For something to appear there, you should add it to ``EXPORTED_FUNCTIONS`` for compiled code, or ``EXTRA_EXPORTED_RUNTIME_METHODS`` for a runtime method (like ``getValue``). For example,
+The ``Module`` object will contain exported methods. For something to appear there, you should add it to ``EXPORTED_FUNCTIONS`` for compiled code, or ``EXPORTED_RUNTIME_METHODS`` for a runtime method (like ``getValue``). For example,
 
  ::
 
-  emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']" ...
+  emcc -s EXPORTED_FUNCTIONS=_main,_my_func ...
 
 would export a C method ``my_func`` (in addition to ``main``, in this example). And
 
  ::
 
-  emcc -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall']" ...
+  emcc -s EXPORTED_RUNTIME_METHODS=ccall ...
 
 will export ``ccall``. In both cases you can then access the exported function on the ``Module`` object.
 
@@ -409,7 +409,7 @@ with
 
   x = stackAlloc(10);
 
-.. note:: The above will work for code in a ``--pre-js`` or JS library, that is, code that is compiled together with the emscripten output. If you try to access ``Runtime.*`` methods from outside the compiled code, then you must export that function (using ``EXTRA_EXPORTED_RUNTIME_METHODS``), and use it on the Module object, see :ref:`that FAQ entry<faq-export-stuff>`.
+.. note:: The above will work for code in a ``--pre-js`` or JS library, that is, code that is compiled together with the emscripten output. If you try to access ``Runtime.*`` methods from outside the compiled code, then you must export that function (using ``EXPORTED_RUNTIME_METHODS``), and use it on the Module object, see :ref:`that FAQ entry<faq-export-stuff>`.
 
 
 Why do I get a ``NameError`` or ``a problem occurred in evaluating content after a "-s"`` when I use a ``-s`` option?
@@ -420,20 +420,20 @@ That may occur when running something like
 ::
 
   # this fails on most Linuxes
-  emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']
+  emcc a.c -s EXPORTED_RUNTIME_METHODS=['addOnPostRun']
 
   # this fails on macOS
-  emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
+  emcc a.c -s EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
 
 You may need to quote things like this:
 
 ::
 
   # this works in the shell on most Linuxes and on macOS
-  emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
+  emcc a.c -s "EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
 
   # or you may need something like this in a Makefile
-  emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
+  emcc a.c -s EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
 
 The proper syntax depends on the OS and shell you are in, and if you are writing
 in a Makefile, etc. Things like spaces may also matter in some shells, for
@@ -442,7 +442,7 @@ example you may need to avoid empty spaces between list items:
 ::
 
   # this works in the shell on most Linuxes and on macOS
-  emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['foo','bar']"
+  emcc a.c -s "EXPORTED_RUNTIME_METHODS=['foo','bar']"
 
 (note there is no space after the ``,``).
 
@@ -451,7 +451,7 @@ For simplicity, you may want to use a **response file**, that is,
 ::
 
   # this works in the shell on most Linuxes and on macOS
-  emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=@extra.txt"
+  emcc a.c -s "EXPORTED_RUNTIME_METHODS=@extra.txt"
 
 and then ``extra.txt`` can be a plain file that contains ``['foo','bar']``. This
 avoids any issues with the shell environment parsing the string.
@@ -527,7 +527,7 @@ This is a limitation of the asm.js target in :term:`Clang`. This code is not cur
 How do I pass int64_t and uint64_t values from js into wasm functions?
 ======================================================================
 
-JS can't represent int64s, so what happens is that in exported functions (that you can call from JS) we "legalize" the types, by turning an i64 argument into two i32s (low and high bits), and an i64 return value becomes an i32, and you can access the high bits by calling a helper function called getTempRet0.
+If you build using the `-s WASM_BIGINT` flag, then `int64_t` and `uint64_t` will be represented as `bigint` values in JS. Without the `-s WASM_BIGINT` flag, the values will be represented as `number` in JS which can't represent int64s, so what happens is that in exported functions (that you can call from JS) we "legalize" the types, by turning an i64 argument into two i32s (low and high bits), and an i64 return value becomes an i32, and you can access the high bits by calling a helper function called getTempRet0.
 
 
 Can I use multiple Emscripten-compiled programs on one Web page?

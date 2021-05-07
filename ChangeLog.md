@@ -18,11 +18,152 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-Current Trunk
--------------
+2.0.21
+------
+
+2.0.20: 05/04/2021
+------------------
+- This ChangeLog and the `emscripten-version.txt` file that is checked into
+  the repository now reflect the next, upcoming, release once a release is
+  made.  Previously they would continue to reflect the old release until after
+  we decide to cut the release.  Switching to this method allow for a slightly
+  simpler release process that also allows us to tag a version that contains
+  the correct version information.
+- The version string reported by `-v`/`--version` now includes a `-git` suffix
+  (e.g. `2.0.19-git`) when running from git checkout (to help distinguish
+  unreleased git versions from official releases) (#14092).
+- Temporarily back out new `-Wunused-command-line-argument` warnings introduced
+  in 2.0.19.
+
+2.0.19: 05/04/2021
+------------------
+- Emscripten will now warn when linker-only `-s` settings are specified in
+  compile-only (`-c`) mode.  Just like with clang itself, this warning can be
+  disabled using the flag: `-Wno-unused-command-line-argument`.
+- When building with `-s MAIN_MODULE` emscripten will now error on undefined
+  symbol by default.  This matches the behvious of clang/gcc/msvc.  This
+  requires that your side modules be present on the command line.  If you do not
+  specify your side modules on the command line (either direcly or via
+  `RUNTIME_LINKED_LIBS`) you may need to add `-s WARN_ON_UNDEFINED_SYMBOLS=0` to
+  avoid errors about symbol that are missing at link time (but present in your
+  side modules provided at runtime).  We hope that this case is not common and
+  most users are building with side modules listed on the command line (#14060).
+- The `RUNTIME_LINKED_LIBS` setting is now deprecated.  It's better to simply
+  list dynamic library dependencies directly on the command line.
+
+2.0.18: 04/23/2021
+------------------
+- The `makeBigInt` function was removed from the emscripten runtime since it
+  had no internal users.
+- Restored support for --cache command line flag to configure location of the
+  Emscripten cache root directory.
+- `EXTRA_EXPORTED_RUNTIME_METHODS` is deprecated in favor of just using
+  `EXPORTED_RUNTIME_METHODS`.
+- When building with `MAIN_MODULE=2` the linker will now automatically include
+  any symbols required by side modules found on the command line.  This means
+  that for many users of `MAIN_MODULE=2` it should no longer be necessary to
+  list explicit `EXPORTED_FUNCTIONS`.  Also, users of `MAIN_MODULE=1` with
+  dynamic linking (not dlopen) who list all side modules on the command line,
+  should be able to switch to `MAIN_MODULE=2` and get a reduction in code size.
+- When building with `MAIN_MODULE` it is now possbile to warn or error on
+  undefined symbols assuming all the side modules are passed at link time.  This
+  means that for many projects it should now be possbile to enable
+  `ERROR_ON_UNDEFINED_SYMBOLS` along with `MAIN_MODULE`.
+
+2.0.17: 04/10/2021
+------------------
+- Use of closure compiler (`--closure`) is now supported when using dynamic
+  linking (building with `-s MAIN_MODULE`) (#13880)
+- Specifying `EM_CONFIG` inline (python code in the environment variable itself)
+  is no longer supported (#13855).  This has been long deprecated but finally
+  completely removed.
+- Deprecate `-g4`, which is a little confusing as it does not do more than `-g3`
+  but instead emits source maps instead of DWARF. `-g4` will now warn. A new
+  flag `-gsource-map` enables source maps without warning.
+- In order to behave more like clang and gcc, emscripten no longer
+  supports some nonstandard methods of library lookup (that worked
+  unintentionally and were untested and not documented):
+    1. Linking with `-llibc` rather than `-lc` will no longer work.
+    2. Linking a library called `foo.a` via `-lfoo` will no longer work.
+       (libraries found via `-l` have to start with `lib`)
+- Use LLVM's new pass manager by default, as LLVM does. This changes a bunch of
+  things about how LLVM optimizes and inlines, so it may cause noticeable
+  changes in compile times, code size, and speed, either for better or for
+  worse. You can use the old pass manager (until LLVM removes it) by passing
+  `-flegacy-pass-manager` (and `-Wl,--lto-legacy-pass-manager` when doing LTO)
+  (note however that neither workaround affects the building of system
+  libraries, unless you modify emscripten or build them manually). (#13427)
+- Removed use of Python multiprocessing library because of stability issues.
+  Added a new environment variable `EM_PYTHON_MULTIPROCESSING=1` that can be set
+  to revert back to using Python multiprocessing, in case there are reports of
+  regressions (that variable is intended to be temporary). (#13493)
+- Binaryen now always inlines single-use functions. This should reduce code size
+  and improve performance. If you prefer the old default, you can get that with
+  `-sBINARYEN_EXTRA_PASSES=--one-caller-inline-max-function-size=1` (#13744).
+- Fix generating of symbol files with `--emit-symbol-map` for JS targets.
+  When `-s WASM=2` is used. Two symbols are generated:
+    - `[name].js.symbols` - storing Wasm mapping
+    - `[name].wasm.js.symbols` - storing JS mapping
+  In other cases a single `[name].js.symbols` file is created.
+
+2.0.16: 03/25/2021
+------------------
+- Lists that are passed on the command line can now skip the opening an closing
+  braces, allowing for simpler, more readable settings.  e.g.
+    `-s EXPORTED_FUNCTIONS=foo,bar`
+- Remove/deprecate no longer used `--llvm-opts` command line option.  Any
+  arguments not processed by emcc will be passed through to clang directly
+  these days.
+- Values returned from `sysconf` now more closely match the definitions found in
+  header files and in upstream musl (#13713).
+- `DISABLE_EXCEPTION_CATCHING=2` is now deprecated since it can be inferred from
+  the presence of the `EXCEPTION_CATCHING_ALLOWED` list.  This makes
+  `DISABLE_EXCEPTION_CATCHING` a simple binary option (0 or 1) which defaults to
+  0 which will be set to 1 internally if `EXCEPTION_CATCHING_ALLOWED` list is
+  specified.
+- Values returned from `pathconf` now match the definitions found in header files
+  and/or upstream musl:
+    _PC_LINK_MAX 3200 -> 8
+    _PC_SYNC_IO -1 -> 1
+    _PC_REC_INCR_XFER_SIZE -1 -> 4096
+    _PC_REC_MAX_XFER_SIZE -1 -> 4096
+    _PC_SYMLINK_MAX -1 -> 255
+- Added support for wrapping emcc and em++ via ccache: install Emscripten port
+  of ccache via emsdk, or from https://github.com/juj/ccache/tree/emscripten,
+  and run explicitly with "ccache emcc ..." after installing, or automatically
+  just with "emcc ..." after activating ccache via emsdk (#13498).
+- Added support to use a custom set of substitution characters . # and ? to
+  ease passing arrays of C symbols on the command line to ASYNCIFY_* settings.
+  (#13477)
+- In MINIMAL_RUNTIME build mode, errno support will now be disabled by default
+  due to the code size that it adds. (MINIMAL_RUNTIME=1 implies SUPPORT_ERRNO=0
+  by default) Pass -s SUPPORT_ERRNO=1 to enable errno support if necessary.
+- Using EM_ASM and EM_JS in a side module will now result in an error (since
+  this is not implemented yet).  This could effect users were previously
+  inadvertently including (but not actually using) EM_ASM or EM_JS functions in
+  side modules (#13649).
+- Remove dependency on Uglify by finishing the rewrite of passes to acorn
+ (#13636, #13621).
+- Primary development branch switched from `master` to `main`.
+
+2.0.15: 03/05/2021
+------------------
+- Calls to `newlocale` (and `new std::locale` in C++) with arbirary names will
+  now succeed.  This is the behaviour of musl libc which emscripten had
+  previously inadvertently disabled.
+- System libraries are now compiled with debug info (`-g`).  This doesn't
+  affect release builds (builds without `-g`) but allows DWARF debugging of
+  types defined in system libraries such as C++ STL types (#13078).
+- uname machine field is now either wasm32 or wasm64 instead of x86-JS (#13440)
+- Several pthreads exit-related fixes (#12985) (#10524).
+- Fix IDBFS syncing with existing directories (#13574).
+- Add libmodplug port and allow mod files to be played in SDL2 (#13478).
+
+2.0.14: 02/14/2021
+------------------
 - Add new setting: `REVERSE_DEPS`. This can be used to control how emscripten
   decides which reverse dependecies to include.  See `settings.js` for more
-  information.  The default setting ('auto') is the transitional way emscripten
+  information.  The default setting ('auto') is the traditional way emscripten
   has worked in the past so there should be no change unless this options is
   actually used.  This option partially replaces the `EMCC_ONLY_FORCED_STDLIBS`
   environment variable which (among other things) essentially had the effect of
@@ -61,7 +202,7 @@ Current Trunk
 ------------------
 - `emscripten/vr.h` and other remnants of WebVR support removed. (#13210, which
   is a followup to #10460)
-- Stop overriding CMake default flags based on build type. This will 
+- Stop overriding CMake default flags based on build type. This will
   result in builds that are more like CMake does on other platforms. You
   may notice that `RelWithDebInfo` will now include debug info (it did not
   before, which appears to have been an error), and that `Release` will
@@ -250,7 +391,7 @@ Current Trunk
   is encountered. This makes the Emscripten program behave more like a native
   program where the OS would terminate the process and no further code can be
   executed when an unhandled exception (e.g. out-of-bounds memory access) happens.
-  Once the program aborts any exported function calls will fail with a "program 
+  Once the program aborts any exported function calls will fail with a "program
   has already aborted" exception to prevent calls into code with a potentially
   corrupted program state.
 - Use `__indirect_function_table` as the import name for the table, which is
@@ -3119,7 +3260,7 @@ v1.21.8: 7/28/2014
 
 v1.21.7: 7/25/2014
 ------------------
- - Added new environment varaible EMCC_ONLY_FORCED_STDLIBS which can be used to
+ - Added new environment variable EMCC_ONLY_FORCED_STDLIBS which can be used to
    restrict to only linking to the chosen set of Emscripten-provided libraries.
    (See also EMCC_FORCE_STDLIBS)
  - Adjusted argv[0] and environment variables USER, HOME, LANG and _ to report a

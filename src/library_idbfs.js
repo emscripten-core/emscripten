@@ -169,7 +169,7 @@ mergeInto(LibraryManager.library, {
     storeLocalEntry: function(path, entry, callback) {
       try {
         if (FS.isDir(entry['mode'])) {
-          FS.mkdir(path, entry['mode']);
+          FS.mkdirTree(path, entry['mode']);
         } else if (FS.isFile(entry['mode'])) {
           FS.writeFile(path, entry['contents'], { canOwn: true });
         } else {
@@ -239,9 +239,7 @@ mergeInto(LibraryManager.library, {
 
       var remove = [];
       Object.keys(dst.entries).forEach(function (key) {
-        var e = dst.entries[key];
-        var e2 = src.entries[key];
-        if (!e2) {
+        if (!src.entries[key]) {
           remove.push(key);
           total++;
         }

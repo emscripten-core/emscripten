@@ -6,7 +6,8 @@
 import os
 import shutil
 import logging
-from tools import building
+
+from tools import system_libs
 
 TAG = '1.7.5'
 HASH = 'c2c13fc97bb74f0f13092b07804f7087e948bce49793f48b62c2c24a5792523acc0002840bebf21829172bb2e7c3df9f9625250aec6c786a55489667dd04d6a0'
@@ -24,26 +25,26 @@ def get_lib_name(settings):
 
 def get(ports, settings, shared):
   ports.fetch_project('harfbuzz', 'https://github.com/harfbuzz/harfbuzz/releases/download/' +
-                      TAG + '/harfbuzz-' + TAG + '.tar.bz2', 'harfbuzz-' + TAG, is_tarbz2=True, sha512hash=HASH)
+                      TAG + '/harfbuzz-' + TAG + '.tar.bz2', 'harfbuzz-' + TAG, sha512hash=HASH)
 
   def create(final):
     logging.info('building port: harfbuzz')
     ports.clear_project_build('harfbuzz')
 
     source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + TAG)
-    dest_path = os.path.join(ports.get_build_dir(), 'harfbuzz')
+    build_path = os.path.join(ports.get_build_dir(), 'harfbuzz')
 
     freetype_lib = shared.Cache.get_path(shared.Cache.get_lib_name('libfreetype.a'))
     freetype_include = os.path.join(ports.get_include_dir(), 'freetype2', 'freetype')
     freetype_include_dirs = freetype_include + ';' + os.path.join(freetype_include, 'config')
 
-    configure_args = [
+    cmake_cmd = [
+      shared.EMCMAKE,
       'cmake',
-      '-G', 'Unix Makefiles',
-      '-B' + dest_path,
+      '-B' + build_path,
       '-H' + source_path,
       '-DCMAKE_BUILD_TYPE=Release',
-      '-DCMAKE_INSTALL_PREFIX=' + dest_path,
+      '-DCMAKE_INSTALL_PREFIX=' + build_path,
       '-DFREETYPE_INCLUDE_DIRS=' + freetype_include_dirs,
       '-DFREETYPE_LIBRARY=' + freetype_lib,
       '-DHB_HAVE_FREETYPE=ON'
@@ -58,21 +59,21 @@ def get(ports, settings, shared):
       extra_cflags.append('-pthread')
 
     if len(extra_cflags):
-      configure_args += ['-DCMAKE_CXX_FLAGS="{}"'.format(' '.join(extra_cflags))]
-      configure_args += ['-DCMAKE_C_FLAGS="{}"'.format(' '.join(extra_cflags))]
+      cmake_cmd += ['-DCMAKE_CXX_FLAGS="{}"'.format(' '.join(extra_cflags))]
+      cmake_cmd += ['-DCMAKE_C_FLAGS="{}"'.format(' '.join(extra_cflags))]
 
-    building.configure(configure_args)
-    building.make(['make', '-j%d' % building.get_num_cores(), '-C' + dest_path, 'install'])
+    shared.run_process(cmake_cmd, env=system_libs.clean_env())
+    shared.run_process(['cmake', '--build', build_path, '--target', 'install'])
 
-    ports.install_header_dir(os.path.join(dest_path, 'include', 'harfbuzz'))
+    ports.install_header_dir(os.path.join(build_path, 'include', 'harfbuzz'))
 
-    shutil.copyfile(os.path.join(dest_path, 'libharfbuzz.a'), final)
+    shutil.copyfile(os.path.join(build_path, 'libharfbuzz.a'), final)
 
   return [shared.Cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(get_lib_name(settings))
+  shared.Cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):

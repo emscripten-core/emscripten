@@ -37,7 +37,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libvorbis.a')
+  shared.Cache.erase_lib('libvorbis.a')
 
 
 def process_dependencies(settings):

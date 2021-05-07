@@ -89,6 +89,7 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared
 from tools import system_libs
+from tools.settings import settings
 
 QUIET = (__name__ != '__main__')
 DEBUG = False
@@ -193,7 +194,7 @@ def gen_inspect_code(path, struct, code):
   c_ascent(code)
 
 
-def inspect_headers(headers, cpp_opts):
+def inspect_headers(headers, cflags):
   code = ['#include <stdio.h>', '#include <stddef.h>']
   for header in headers:
     code.append('#include "' + header['name'] + '"')
@@ -226,9 +227,9 @@ def inspect_headers(headers, cpp_opts):
   code.append('}')
 
   # Write the source code to a temporary file.
-  src_file = tempfile.mkstemp('.c')
+  src_file = tempfile.mkstemp('.c', text=True)
   show('Generating C code... ' + src_file[1])
-  os.write(src_file[0], shared.asbytes('\n'.join(code)))
+  os.write(src_file[0], '\n'.join(code).encode())
 
   js_file = tempfile.mkstemp('.js')
 
@@ -249,19 +250,20 @@ def inspect_headers(headers, cpp_opts):
   info = []
   # Compile the program.
   show('Compiling generated code...')
+
   # -Oz optimizes enough to avoid warnings on code size/num locals
-  cmd = [shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1],
-                                    '-O0',
-                                    '-Werror',
-                                    '-Wno-format',
-                                    '-nostdlib',
-                                    compiler_rt,
-                                    '-I', shared.path_from_root(),
-                                    '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
-                                    '-s', 'STRICT',
-                                    # Use SINGLE_FILE=1 so there is only a single
-                                    # file to cleanup.
-                                    '-s', 'SINGLE_FILE']
+  cmd = [shared.EMCC] + cflags + ['-o', js_file[1], src_file[1],
+                                  '-O0',
+                                  '-Werror',
+                                  '-Wno-format',
+                                  '-nostdlib',
+                                  compiler_rt,
+                                  '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
+                                  '-s', 'LLD_REPORT_UNDEFINED=1',
+                                  '-s', 'STRICT',
+                                  # Use SINGLE_FILE=1 so there is only a single
+                                  # file to cleanup.
+                                  '-s', 'SINGLE_FILE']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
@@ -270,12 +272,12 @@ def inspect_headers(headers, cpp_opts):
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd += ['-Wno-deprecated']
 
-  if shared.Settings.LTO:
-    cmd += ['-flto=' + shared.Settings.LTO]
+  if settings.LTO:
+    cmd += ['-flto=' + settings.LTO]
 
   show(shared.shlex_join(cmd))
   try:
-    subprocess.check_call(cmd)
+    subprocess.check_call(cmd, env=system_libs.clean_env())
   except subprocess.CalledProcessError as e:
     sys.stderr.write('FAIL: Compilation failed!: %s\n' % e.cmd)
     sys.exit(1)
@@ -284,11 +286,12 @@ def inspect_headers(headers, cpp_opts):
   show('Calling generated program... ' + js_file[1])
   info = shared.run_js_tool(js_file[1], stdout=shared.PIPE).splitlines()
 
-  # Remove all temporary files.
-  os.unlink(src_file[1])
+  if not DEBUG:
+    # Remove all temporary files.
+    os.unlink(src_file[1])
 
-  if os.path.exists(js_file[1]):
-    os.unlink(js_file[1])
+    if os.path.exists(js_file[1]):
+      os.unlink(js_file[1])
 
   # Parse the output of the program into a dict.
   return parse_c_output(info)
@@ -306,13 +309,13 @@ def merge_info(target, src):
     target['structs'][key] = value
 
 
-def inspect_code(headers, cpp_opts):
+def inspect_code(headers, cflags):
   if not DEBUG:
-    info = inspect_headers(headers, cpp_opts)
+    info = inspect_headers(headers, cflags)
   else:
     info = {'defines': {}, 'structs': {}}
     for header in headers:
-      merge_info(info, inspect_headers([header], cpp_opts))
+      merge_info(info, inspect_headers([header], cflags))
   return info
 
 
@@ -391,17 +394,21 @@ def main(args):
   QUIET = args.quiet
 
   # Avoid parsing problems due to gcc specifc syntax.
-  cpp_opts = ['-D_GNU_SOURCE']
+  cflags = ['-D_GNU_SOURCE']
 
   # Add the user options to the list as well.
   for path in args.includes:
-    cpp_opts.append('-I' + path)
+    cflags.append('-I' + path)
 
   for arg in args.defines:
-    cpp_opts.append('-D' + arg)
+    cflags.append('-D' + arg)
 
   for arg in args.undefines:
-    cpp_opts.append('-U' + arg)
+    cflags.append('-U' + arg)
+
+  internal_cflags = [
+    '-I' + shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'),
+  ]
 
   # Look for structs in all passed headers.
   info = {'defines': {}, 'structs': {}}
@@ -410,7 +417,11 @@ def main(args):
     # This is a JSON file, parse it.
     header_files = parse_json(f)
     # Inspect all collected structs.
-    info_fragment = inspect_code(header_files, cpp_opts)
+    if 'internal' in f:
+      use_cflags = cflags + internal_cflags
+    else:
+      use_cflags = cflags
+    info_fragment = inspect_code(header_files, use_cflags)
     merge_info(info, info_fragment)
 
   output_json(info, args.output)

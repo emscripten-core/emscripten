@@ -16,9 +16,8 @@
 //
 // See https://github.com/emscripten-core/emscripten/wiki/Code-Generation-Modes/
 //
-// Note that the values here are the defaults in -O0, that is, unoptimized
-// mode. See apply_opt_level in tools/shared.py for how -O1,2,3 affect these
-// flags.
+// Note that the values here are the defaults which can be affected either
+// directly via `-s` flags or indirectly via other options (e.g. -O1,2,3)
 //
 // These flags should only have an effect when compiling to JS, so there
 // should not be a need to have them when just compiling source to
@@ -67,12 +66,15 @@ var ASSERTIONS = 1;
 var RUNTIME_LOGGING = 0;
 
 // Chooses what kind of stack smash checks to emit to generated code:
+// Building with ASSERTIONS=1 causes STACK_OVERFLOW_CHECK default to 1.
+// Since ASSERTIONS=1 is the default at -O0, which itself is the default
+// optimization level this means that this setting also effectively
+// defaults 1, absent any other settings.
 // 0: Stack overflows are not checked.
 // 1: Adds a security cookie at the top of the stack, which is checked at end of
 //    each tick and at exit (practically zero performance overhead)
-//    -s ASSERTIONS=1 automatically enables -s STACK_OVERFLOW_CHECK=1.
-// 2: Same as above, but also adds an explicit check for allocate() calls which
-//    call ALLOC_STACK. Has a small performance cost.
+// 2: Same as above, but also runs a binaryen pass which adds a check to all
+//    stack pointer assignments. Has a small performance cost.
 // [link]
 var STACK_OVERFLOW_CHECK = 0;
 
@@ -171,8 +173,6 @@ var INITIAL_MEMORY = 16777216;
 // relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
 // INITIAL_MEMORY is the final size of memory anyhow.
 //
-// If this value is -1, it means there is no specified limit.
-//
 // Note that the default value here is 2GB, which means that by default if you
 // enable memory growth then we can grow up to 2GB but no higher. 2GB is a
 // natural limit for several reasons:
@@ -185,22 +185,20 @@ var INITIAL_MEMORY = 16777216;
 //     people to opt into >2GB+ heaps rather than get a build that may not
 //     work on all VMs.
 //
+// To use more than 2GB, set this to something higher, like 4GB.
+//
 // (This option was formerly called WASM_MEM_MAX and BINARYEN_MEM_MAX.)
 // [link]
 var MAXIMUM_MEMORY = 2147483648;
 
 // If false, we abort with an error if we try to allocate more memory than
 // we can (INITIAL_MEMORY). If true, we will grow the memory arrays at
-// runtime, seamlessly and dynamically. This has a performance cost in asm.js,
-// both during the actual growth and in general (the latter is because in
-// that case we must be careful about optimizations, in particular the
-// eliminator), but in wasm it is efficient and should be used whenever relevant.
+// runtime, seamlessly and dynamically. 
 // See https://code.google.com/p/v8/issues/detail?id=3907 regarding
 // memory growth performance in chrome.
 // Note that growing memory means we replace the JS typed array views, as
-// once created they cannot be resized. (This happens both in asm.js and in
-// wasm - in wasm we can grow the Memory, but still need to create new
-// views for JS.)
+// once created they cannot be resized. (In wasm we can grow the Memory, but
+// still need to create new views for JS.)
 // Setting this option on will disable ABORTING_MALLOC, in other words,
 // ALLOW_MEMORY_GROWTH enables fully standard behavior, of both malloc
 // returning 0 when it fails, and also of being able to allocate more
@@ -278,7 +276,7 @@ var CLOSURE_WARNINGS = 'quiet';
 // [link]
 var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 
-// If set to 1, each asm.js/wasm module export is individually declared with a
+// If set to 1, each wasm module export is individually declared with a
 // JavaScript "var" definition. This is the simple and recommended approach.
 // However, this does increase code size (especially if you have many such
 // exports), which can be avoided in an unsafe way by setting this to 0. In that
@@ -291,12 +289,16 @@ var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 // [link]
 var DECLARE_ASM_MODULE_EXPORTS = 1;
 
-// A limit on inlining. If 0, we will inline normally in LLVM and closure. If
-// greater than 0, we will *not* inline in LLVM, and we will prevent inlining of
-// functions of this size or larger in closure. 50 is a reasonable setting if
-// you do not want inlining
-// [compile+link]
+// If 0, prevents inlining if set to 1. If 0, we will inline normally in LLVM.
+// This does not affect the inlining policy in Binaryen.
+// [compile]
 var INLINING_LIMIT = 0;
+
+// If set to 1, perform acorn pass that converts each HEAP access into a
+// function call that uses DataView to enforce LE byte order for HEAP buffer;
+// This makes generated JavaScript run on BE as well as LE machines. (If 0, only
+// LE systems are supported). Does not affect generated wasm.
+var SUPPORT_BIG_ENDIAN = 0;
 
 // Check each write to the heap, for example, this will give a clear
 // error on what would be segfaults in a native build (like dereferencing
@@ -488,6 +490,14 @@ var GL_POOL_TEMP_BUFFERS = 1;
 // [link]
 var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0;
 
+// If true, enables support for the EMSCRIPTEN_explicit_uniform_location WebGL
+// extension. See docs/EMSCRIPTEN_explicit_uniform_location.txt
+var GL_EXPLICIT_UNIFORM_LOCATION = 0;
+
+// If true, enables support for the EMSCRIPTEN_uniform_layout_binding WebGL
+// extension. See docs/EMSCRIPTEN_explicit_uniform_binding.txt
+var GL_EXPLICIT_UNIFORM_BINDING = 0;
+
 // Deprecated. Pass -s MAX_WEBGL_VERSION=2 to target WebGL 2.0.
 // [link]
 var USE_WEBGL2 = 0;
@@ -556,23 +566,19 @@ var USE_WEBGPU = 0;
 // [link]
 var STB_IMAGE = 0;
 
-// If WORKAROUND_IOS_9_RIGHT_SHIFT_BUG==1, work around Safari/WebKit bug in iOS 9.3.5: https://bugs.webkit.org/show_bug.cgi?id=151514 where computing "a >> b" or "a >>> b" in
-// JavaScript would erroneously output 0 when a!=0 and b==0, after suitable JIT compiler optimizations have been applied to a function at runtime (bug does not
-// occur in debug builds). Fix was landed in https://trac.webkit.org/changeset/196591/webkit on Feb 15th 2016. iOS 9.3.5 was released on August 25 2016, but
-// oddly did not have the fix. iOS Safari 10.3.3 was released on July 19 2017, that no longer has the issue. Unknown which released version between these was the
-// first to contain the fix, though notable is that iOS 9.3.5 and iOS 10.3.3 are the two consecutive "end-of-life" versions of iOS that users are likely
-// to be on, e.g. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 all had end-of-life at iOS 9.3.5 (tested to be affected),
-// and iPad 4, iPhone 5 and iPhone 5c all had end-of-life at iOS 10.3.3 (confirmed not affected).
-// If you do not care about old iOS 9 support, keep this disabled.
-// [link]
-var WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0;
-
 // From Safari 8 (where WebGL was introduced to Safari) onwards, OES_texture_half_float and OES_texture_half_float_linear extensions
 // are broken and do not function correctly, when used as source textures.
 // See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
 // https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
 // [link]
 var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = 0;
+
+// Workaround Safari WebGL issue: After successfully acquiring WebGL context on a canvas,
+// calling .getContext() will always return that context independent of which 'webgl' or 'webgl2'
+// context version was passed. See https://bugs.webkit.org/show_bug.cgi?id=222758 and
+// https://github.com/emscripten-core/emscripten/issues/13295.
+// Set this to 0 to force-disable the workaround if you know the issue will not affect you.
+var GL_WORKAROUND_SAFARI_GETCONTEXT_BUG = 1;
 
 // Use JavaScript math functions like Math.tan. This saves code size as we can avoid shipping
 // compiled musl code. However, it can be significantly slower as it calls out to JS. It
@@ -589,7 +595,6 @@ var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 // the highest possible probability of the code working everywhere, even in rare old
 // browsers and shell environments. Specifically:
 //  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-s POLYFILL_OLD_MATH_FUNCTIONS=1)
-//  * Work around iOS 9 right shift bug (-s WORKAROUND_IOS_9_RIGHT_SHIFT_BUG=1)
 //  * Work around old Chromium WebGL 1 bug (-s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
 //  * Disable WebAssembly. (Must be paired with -s WASM=0)
 //  * Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
@@ -643,22 +648,23 @@ var LZ4 = 0;
 // currently (in the future, wasm should improve that). When exceptions are
 // disabled, if an exception actually happens then it will not be caught
 // and the program will halt (so this will not introduce silent failures).
-// There are 3 specific modes here:
-// DISABLE_EXCEPTION_CATCHING = 0 - generate code to actually catch exceptions
-// DISABLE_EXCEPTION_CATCHING = 1 - disable exception catching at all
-// DISABLE_EXCEPTION_CATCHING = 2 - disable exception catching, but enables
-//                                  catching in list of allowed functions
+//
 // XXX note that this removes *catching* of exceptions, which is the main
 //     issue for speed, but you should build source files with
 //     -fno-exceptions to really get rid of all exceptions code overhead,
 //     as it may contain thrown exceptions that are never caught (e.g.
 //     just using std::vector can have that). -fno-rtti may help as well.
 //
+// This option is mutually exclusive with EXCEPTION_CATCHING_ALLOWED.
+//
 // [compile+link] - affects user code at compile and system libraries at link
 var DISABLE_EXCEPTION_CATCHING = 1;
 
-// Enables catching exception in the listed functions only, if
-// DISABLE_EXCEPTION_CATCHING = 2 is set
+// Enables catching exception but only in the listed functions.  This
+// option acts like a more precise version of `DISABLE_EXCEPTION_CATCHING=0`.
+//
+// This option is mutually exclusive with DISABLE_EXCEPTION_CATCHING.
+//
 // [compile+link] - affects user code at compile and system libraries at link
 var EXCEPTION_CATCHING_ALLOWED = [];
 
@@ -720,6 +726,7 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // to know you got this right), so this is not recommended unless you
 // really know what are doing, and need to optimize every bit of speed
 // and size.
+//
 // The names in this list are names from the WebAssembly Names section. The
 // wasm backend will emit those names in *human-readable* form instead of
 // typical C++ mangling. For example, you should write Struct::func()
@@ -731,7 +738,23 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // changes which would mean a single list couldn't work for both -O0 and -O1
 // builds, etc.). You can inspect the wasm binary to look for the actual names,
 // either directly or using wasm-objdump or wasm-dis, etc.
+//
 // Simple '*' wildcard matching is supported.
+//
+// To avoid dealing with limitations in operating system shells or build system
+// escaping, the following substitutions can be made:
+// - ' ' -> '.',
+// - '&' -> '#',
+// - ',' -> '?'.
+//
+// That is, the function
+//    "foo(char const*, int&)" can be inputted as
+//    "foo(char.const*?.int#)" on the command line instead.
+//
+// Note: Whitespace is part of the function signature! I.e.
+//    "foo(char const *, int &)" will not match "foo(char const*, int&)", and
+// neither would "foo(const char*, int &)".
+//
 // [link]
 var ASYNCIFY_REMOVE = [];
 
@@ -779,10 +802,7 @@ var ASYNCIFY_DEBUG = 0;
 // [link]
 var EXPORTED_RUNTIME_METHODS = [];
 
-// Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
-// lets you remove methods that would be exported by default; setting values in
-// this list lets you add to the default list without modifying it.
-// [link]
+// Deprecated, use EXPORTED_RUNTIME_METHODS instead.
 var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
 // A list of incoming values on the Module object in JS that we care about. If
@@ -912,13 +932,6 @@ var RETAIN_COMPILER_SETTINGS = 0;
 // [link]
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 
-// This list is also used to determine auto-exporting of library dependencies
-// (i.e., functions that might be dependencies of JS library functions, that if
-// so we must export so that if they are implemented in C they will be
-// accessible, in ASM_JS mode).
-// [link]
-var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy'];
-
 // Include all JS library functions instead of the sum of
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + any functions used by the generated code.
 // This is needed when dynamically loading (i.e. dlopen) modules that make use
@@ -953,8 +966,7 @@ var MAIN_MODULE = 0;
 // [compile+link]
 var SIDE_MODULE = 0;
 
-// If this is a shared object (MAIN_MODULE == 1 || SIDE_MODULE == 1), then we
-// will link these at runtime. They must have been built with SIDE_MODULE == 1.
+// Deprecated, list shared libraries directly on the command line instead.
 // [link]
 var RUNTIME_LINKED_LIBS = [];
 
@@ -1194,7 +1206,7 @@ var DYNAMIC_EXECUTION = 1;
 var BOOTSTRAPPING_STRUCT_INFO = 0;
 
 // Add some calls to emscripten tracing APIs
-// [link]
+// [compile+link]
 var EMSCRIPTEN_TRACING = 0;
 
 // Specify the GLFW version that is being linked against.  Only relevant, if you
@@ -1312,8 +1324,8 @@ var EMIT_EMSCRIPTEN_LICENSE = 0;
 
 // Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
 // to automatically demote i64 to i32 and promote f32 to f64. This is necessary
-// in order to interface with JavaScript, both for asm.js and wasm.  For
-// non-web/non-JS embeddings, setting this to 0 may be desirable.
+// in order to interface with JavaScript.  For non-web/non-JS embeddings, setting
+// this to 0 may be desirable.
 // [link]
 var LEGALIZE_JS_FFI = 1;
 
@@ -1406,6 +1418,10 @@ var USE_HARFBUZZ = 0;
 // [link]
 var USE_COCOS2D = 0;
 
+// 1 = use libmodplug from emscripten-ports
+// [link]
+var USE_MODPLUG = 0;
+
 // Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm, tga, xcf, xpm, xv
 // [link]
 var SDL2_IMAGE_FORMATS = [];
@@ -1450,6 +1466,23 @@ var USE_PTHREADS = 0;
 // [link] - affects generated JS runtime code at link time
 var PTHREAD_POOL_SIZE = '';
 
+// Normally, applications can create new threads even when the pool is empty.
+// When application breaks out to the JS event loop before trying to block on
+// the thread via `pthread_join` or any other blocking primitive,
+// an extra Worker will be created and the thread callback will be executed.
+// However, breaking out to the event loop requires custom modifications to
+// the code to adapt it to the Web, and not something that works for
+// off-the-shelf apps. Those apps without any modifications are most likely
+// to deadlock. This setting ensures that, instead of a risking a deadlock,
+// they get a runtime EAGAIN error instead that can at least be gracefully
+// handled from the C / C++ side.
+// Values:
+//  - `0` - disable warnings on thread pool exhaustion
+//  - `1` - enable warnings on thread pool exhaustion (default)
+//  - `2` - make thread pool exhaustion a hard error
+// [link]
+var PTHREAD_POOL_SIZE_STRICT = 1;
+
 // If your application does not need the ability to synchronously create
 // threads, but it would still like to opportunistically speed up initial thread
 // startup time by prewarming a pool of Workers, you can specify the size of
@@ -1470,10 +1503,10 @@ var PTHREAD_POOL_DELAY_LOAD = 0;
 // size on Linux/x86-32 for a new thread is 2 megabytes, so follow the same
 // convention. Use pthread_attr_setstacksize() at thread creation time to
 // explicitly specify the stack size, in which case this value is ignored. Note
-// that the asm.js/wasm function call control flow stack is separate from this
+// that the wasm function call control flow stack is separate from this
 // stack, and this stack only contains certain function local variables, such as
 // those that have their addresses taken, or ones that are too large to fit as
-// local vars in asm.js/wasm code.
+// local vars in wasm code.
 // [link]
 var DEFAULT_PTHREAD_STACK_SIZE = 2*1024*1024;
 
@@ -1501,9 +1534,9 @@ var PTHREADS_DEBUG = 0;
 // compile step much slower.
 //
 // This basically runs the ctors during compile time, seeing if they execute
-// safely in a sandbox. Any ffi access out of asm.js causes failure, as it could
+// safely in a sandbox. Any ffi access out of wasm causes failure, as it could
 // do something nondeterministic and/or alter some other state we don't see. If
-// all the global ctor does is pure computation inside asm.js, it should be ok.
+// all the global ctor does is pure computation inside wasm, it should be ok.
 // Run with EMCC_DEBUG=1 in the env to see logging, and errors when it fails to
 // eval (you'll see a message, or a stack trace; in the latter case, the
 // functions on the stack should give you an idea of what ffi was called and
@@ -1522,7 +1555,7 @@ var PTHREADS_DEBUG = 0;
 // enough for e.g. libc++ iostream ctors. It is just hard to do at the LLVM IR
 // level - LLVM IR is complex and getting more complex, this would require
 // GlobalOpt to have a full interpreter, plus a way to write back into LLVM IR
-// global objects.  At the asm.js level, however, everything has been lowered
+// global objects.  At the wasm level, however, everything has been lowered
 // into a simple low level, and we also just need to write bytes into an array,
 // so this is easy for us to do, but not for LLVM. A further issue for LLVM is
 // that it doesn't know that we will not link in further code, so it only tries
@@ -1534,7 +1567,8 @@ var EVAL_CTORS = 0;
 // Is enabled, use the JavaScript TextDecoder API for string marshalling.
 // Enabled by default, set this to 0 to disable.
 // If set to 2, we assume TextDecoder is present and usable, and do not emit
-// any JS code to fall back if it is missing.
+// any JS code to fall back if it is missing. In single threaded -Oz build modes,
+// TEXTDECODER defaults to value == 2 to save code size.
 // [link]
 var TEXTDECODER = 1;
 
@@ -1587,7 +1621,7 @@ var FETCH_DEBUG = 0;
 var FETCH = 0;
 
 // If set to 1, uses the multithreaded filesystem that is implemented within the
-// asm.js module, using emscripten_fetch. Implies -s FETCH=1.
+// wasm module, using emscripten_fetch. Implies -s FETCH=1.
 // [link]
 var ASMFS = 0;
 
@@ -1628,7 +1662,10 @@ var MIN_FIREFOX_VERSION = 65;
 // Specifies the oldest version of desktop Safari to target. Version is encoded
 // in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
 // Safari 12.0.0 was released on September 17, 2018, bundled with macOS 10.14.0
-// Mojave
+// Mojave.
+// NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
+// older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
+// see https://github.com/emscripten-core/emscripten/pull/7191.
 // [link]
 var MIN_SAFARI_VERSION = 120000;
 
@@ -1657,6 +1694,7 @@ var MIN_CHROME_VERSION = 75;
 // bit of generated code size in applications that do not care about
 // POSIX errno variable. Setting this to 0 also requires using --closure
 // for effective code size optimizations to take place.
+// In MINIMAL_RUNTIME builds, this option defaults to 0.
 // [link]
 var SUPPORT_ERRNO = 1;
 
@@ -1708,15 +1746,6 @@ var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = 0;
 // [link]
 var USES_DYNAMIC_ALLOC = 1;
 
-// Advanced manual dead code elimination: Specifies the set of runtime JS
-// functions that should be imported to the asm.js/wasm module.  Remove elements
-// from this list to make build smaller if some of these are not needed.  In
-// Wasm -O3/-Os builds, adjusting this is not necessary, as the Meta-DCE pass is
-// able to remove these, but if you are targeting asm.js or doing a -O2 build or
-// lower, then this can be beneficial.
-// [link]
-var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
-
 // If true, compiler supports setjmp() and longjmp(). If false, these APIs are
 // not available.  If you are using C++ exceptions, but do not need
 // setjmp()+longjmp() API, then you can set this to 0 to save a little bit of
@@ -1724,7 +1753,6 @@ var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
 // [compile+link] - at compile time this enables the transformations needed for
 // longjmp support at codegen time, while at link it allows linking in the
 // library support.
-// [link]
 var SUPPORT_LONGJMP = 1;
 
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior.
@@ -1792,8 +1820,8 @@ var DISABLE_EXCEPTION_THROWING = 0;
 var USE_OFFSET_CONVERTER = 0;
 
 // If set to 1, the JS compiler is run before wasm-ld so that the linker can
-// report undefined symbols within the binary.  Without this option that linker
-// doesn't know which symbols might be defined JS and so reporting of undefined
+// report undefined symbols within the binary.  Without this option the linker
+// doesn't know which symbols might be defined in JS so reporting of undefined
 // symbols is delayed until the JS compiler is run.
 // [link]
 var LLD_REPORT_UNDEFINED = 0;
@@ -1819,6 +1847,14 @@ var PRINTF_LONG_DOUBLE = 0;
 // which avoids trampling a C file).
 // [link]
 var WASM2C = 0;
+
+// Experimental sandboxing mode, see
+// https://kripken.github.io/blog/wasm/2020/07/27/wasmboxc.html
+//
+//  * full: Normal full wasm2c sandboxing. This uses a signal handler if it can.
+//  * mask: Masks loads and stores.
+//  * none: No sandboxing at all.
+var WASM2C_SANDBOXING = 'full';
 
 // Setting this affects the path emitted in the wasm that refers to the DWARF
 // file, in -gseparate-dwarf mode. This allows the debugging file to be hosted
@@ -1887,16 +1923,17 @@ var SPLIT_MODULE = 0;
 // How to calculate reverse dependencies (dependencies from JS functions to
 // native functions) prior to linking native code with wasm-ld.  This option
 // has three possible values:
-// 'auto': (default) inspect the object code passed to the linker (by running
-//         llvm-nm) all all inputs and use the map in deps_info.py to
-//         determines the set of additional dependencies.
+// 'auto': (default) Inspect the object code passed to the linker (by running
+//         llvm-nm on all input) and use the map in deps_info.py to determine
+//         the set of additional dependencies.
 // 'all' : Include the full set of possible reverse dependencies.
 // 'none': No reverse dependences will be added by emscriopten. Any reverse
-//         dependencies will be assumed to be explicitly add to
+//         dependencies will be assumed to be explicitly added to
 //         EXPORTED_FUNCTIONS and deps_info.py will be completely ignored.
 // While 'auto' will produce a minimal set (so is good for code size), 'all'
 // and 'none' will give faster link times, especially for very large projects
 // (since they both avoid the running of llvm-nm on all linker inputs).
+// [link]
 var REVERSE_DEPS = 'auto';
 
 //===========================================
@@ -1936,7 +1973,7 @@ var LEGACY_SETTINGS = [
   ['BUILD_AS_SHARED_LIB', [0], 'Starting from Emscripten 1.38.16, no longer available (https://github.com/emscripten-core/emscripten/pull/7433)'],
   ['SAFE_SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SAFE_SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
   ['SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
-  ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-s WASM=1 - default), or to asm.js (-s WASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
+  ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-s WASM=1 - default), or to JavaScript (-s WASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
   ['BINARYEN_TRAP_MODE', [-1], 'The wasm backend does not support a trap mode (it always clamps, in effect)'],
   ['PRECISE_I64_MATH', [1, 2], 'Starting from Emscripten 1.38.26, PRECISE_I64_MATH is always enabled (https://github.com/emscripten-core/emscripten/pull/7935)'],
   ['MEMFS_APPEND_TO_TYPED_ARRAYS', [1], 'Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918)'],
@@ -1976,4 +2013,7 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_SCRIPTS', [""], 'No longer needed'],
   ['WARN_UNALIGNED', [0, 1], 'No longer needed'],
   ['ASM_PRIMITIVE_VARS', [[]], 'No longer needed'],
+  ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older'],
+  ['RUNTIME_FUNCS_TO_IMPORT', [[]], 'No longer needed'],
+  ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
 ];

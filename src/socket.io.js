@@ -664,7 +664,7 @@ var io = ('undefined' === typeof module ? {} : module.exports);
   "use strict";
 
   // use native JSON if it's available
-  if (nativeJSON && nativeJSON.parse){
+  if (nativeJSON && nativeJSON.parse) {
     return exports.JSON = {
       parse: nativeJSON.parse
     , stringify: nativeJSON.stringify
@@ -1732,7 +1732,7 @@ var io = ('undefined' === typeof module ? {} : module.exports);
                   while (remaining.length > 0 && remaining.splice(0,1)[0] !=
                          self.transport.name) {}
 
-                    if (remaining.length){
+                    if (remaining.length) {
                       connect(remaining);
                     } else {
                       self.publish('connect_failed');
@@ -2256,7 +2256,7 @@ var io = ('undefined' === typeof module ? {} : module.exports);
         break;
 
       case 'error':
-        if (packet.advice){
+        if (packet.advice) {
           this.socket.onError(packet);
         } else {
           if (packet.reason == 'unauthorized') {
@@ -3146,7 +3146,7 @@ var swfobject=function(){var D="undefined",r="object",S="Shockwave Flash",W="Sho
         this.onreadystatechange = empty;
         self.posting = false;
 
-        if (this.status == 200){
+        if (this.status == 200) {
           self.socket.setBuffer(false);
         } else {
           self.onClose();
@@ -3361,7 +3361,7 @@ var swfobject=function(){var D="undefined",r="object",S="Shockwave Flash",W="Sho
    */
 
   HTMLFile.prototype.destroy = function () {
-    if (this.iframe){
+    if (this.iframe) {
       try {
         this.iframe.src = 'about:blank';
       } catch(e){}
@@ -3395,7 +3395,7 @@ var swfobject=function(){var D="undefined",r="object",S="Shockwave Flash",W="Sho
    */
 
   HTMLFile.check = function (socket) {
-    if (typeof window != "undefined" && (['Active'].concat('Object').join('X')) in window){
+    if (typeof window != "undefined" && (['Active'].concat('Object').join('X')) in window) {
       try {
         var a = new window[(['Active'].concat('Object').join('X'))]('htmlfile');
         return a && io.Transport.XHR.check(socket);

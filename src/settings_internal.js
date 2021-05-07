@@ -11,8 +11,23 @@
 // and can be added/removed/renamed without fear of breaking out users.
 //
 
-// An array of all symbols exported from asm.js/wasm module.
-var MODULE_EXPORTS = [];
+// List of symbols exported from compiled code
+// These are raw symbol names and are not mangled to include the leading
+// underscore.
+var WASM_EXPORTS = [];
+
+// Similar to above but only includes the functions symbols.
+var WASM_FUNCTION_EXPORTS = [];
+
+// An array of all symbols exported from all the side modules specified on the
+// command line.
+// These are raw symbol names and are not mangled to include the leading
+// underscore.
+var SIDE_MODULE_EXPORTS = [];
+
+// All symbols imported by side modules.  These are symbols that the main
+// module (or other side modules) will need to provide.
+var SIDE_MODULE_IMPORTS = [];
 
 // stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
@@ -62,9 +77,6 @@ var EMBIND = 0;
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = 1;
 
-// List of functions implemented in compiled code; received from the backend.
-var IMPLEMENTED_FUNCTIONS = [];
-
 // Name of the file containing the Fetch *.fetch.js, if relevant
 var FETCH_WORKER_FILE = '';
 
@@ -74,9 +86,8 @@ var WASI_MODULE_NAME = "wasi_snapshot_preview1";
 // (internal, use -lfoo or -lfoo.js to link to Emscripten system JS libraries)
 var SYSTEM_JS_LIBRARIES = [];
 
-// This will contain the emscripten version. You should not modify this. This
-// and the following few settings are useful in combination with
-// RETAIN_COMPILER_SETTINGS
+// This will contain the emscripten version. This can be useful in combination
+// with RETAIN_COMPILER_SETTINGS
 var EMSCRIPTEN_VERSION = '';
 
 // Will be set to 0 if -fno-rtti is used on the command line.
@@ -138,7 +149,7 @@ var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
 // Wasm backend symbols that are considered system symbols and don't
 // have the normal C symbol name mangled applied (== prefix with an underscore)
 // (Also implicily on this list is any function that starts with string "dynCall_")
-var WASM_SYSTEM_EXPORTS = ['setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore'];
+var WASM_SYSTEM_EXPORTS = ['stackAlloc', 'stackSave', 'stackRestore'];
 
 // Internal: value of -flto argument (either full or thin)
 var LTO = 0;
@@ -175,7 +186,7 @@ var EXPORT_READY_PROMISE = 1;
 // struct_info that is either generated or cached
 var STRUCT_INFO = '';
 
-// If true, building against Emscripten's asm.js/wasm heap memory profiler.
+// If true, building against Emscripten's wasm heap memory profiler.
 var MEMORYPROFILER = 0;
 
 var GENERATE_SOURCE_MAP = 0;
@@ -185,3 +196,11 @@ var GENERATE_SOURCE_MAP = 0;
 var STACK_BASE = 0;
 var STACK_MAX = 0;
 var HEAP_BASE = 0;
+
+// Used internally. set when there is a main() function.
+// Also set when in a linkable module, as the main() function might
+// arrive from a dynamically-linked library, and not necessarily
+// the current compilation unit.
+// Also set for STANDALONE_WASM since the _start function is needed to call
+// static ctors, even if there is no user main.
+var HAS_MAIN = 0;

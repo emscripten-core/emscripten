@@ -3,7 +3,7 @@
     // libc - internal
     // ===========================================
     {
-        "file": "system/lib/libc/musl/src/internal/pthread_impl.h",
+        "file": "pthread_impl.h",
         "structs": {
             "pthread": [
               "threadStatus",
@@ -20,12 +20,21 @@
               "canceldisable",
               "cancelasync",
               "locale"
+            ],
+            "thread_profiler_block": [
+                "threadStatus",
+                "currentStatusStartTime",
+                "timeSpentInStatus",
+                "name"
             ]
         },
-        "defines": ["__ATTRP_C11_THREAD"]
+        "defines": [
+          "__ATTRP_C11_THREAD",
+          "EM_THREAD_NAME_MAX"
+        ]
     },
     {
-        "file": "system/lib/libc/musl/src/internal/libc.h",
+        "file": "libc.h",
         "structs": {
             "libc": [
               "global_locale"

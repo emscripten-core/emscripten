@@ -237,7 +237,7 @@ var SyscallsLibrary = {
     var allocated = false;
 
     // addr argument must be page aligned if MAP_FIXED flag is set.
-    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % {{{ POSIX_PAGE_SIZE }}}) !== 0) {
+    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % {{{ WASM_PAGE_SIZE }}}) !== 0) {
       return -{{{ cDefine('EINVAL') }}};
     }
 
@@ -245,7 +245,7 @@ var SyscallsLibrary = {
     // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
     // In this case fd argument is ignored.
     if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
-      ptr = _memalign({{{ POSIX_PAGE_SIZE }}}, len);
+      ptr = _memalign({{{ WASM_PAGE_SIZE }}}, len);
       if (!ptr) return -{{{ cDefine('ENOMEM') }}};
       _memset(ptr, 0, len);
       allocated = true;
@@ -770,7 +770,7 @@ var SyscallsLibrary = {
   },
   __sys_wait4__proxy: false,
   __sys_wait4: function(pid, wstart, options, rusage) {
-    abort('cannot wait on child processes');
+    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
   __sys_setdomainname__nothrow: true,
   __sys_setdomainname__proxy: false,
@@ -792,7 +792,11 @@ var SyscallsLibrary = {
     copyString('nodename', 'emscripten');
     copyString('release', '1.0');
     copyString('version', '#1');
-    copyString('machine', 'x86-JS');
+#if MEMORY64 == 1
+    copyString('machine', 'wasm64');
+#else
+    copyString('machine', 'wasm32');
+#endif
     return 0;
   },
   __sys_mprotect__nothrow: true,
@@ -1053,7 +1057,7 @@ var SyscallsLibrary = {
   __sys_setregid32__nothrow: true,
   __sys_setregid32__proxy: false,
   __sys_setregid32: function(ruid, euid) {
-    if (uid !== 0) return -{{{ cDefine('EPERM') }}};
+    if (ruid !== 0) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
   __sys_setuid32__sig: 'ii',
@@ -1250,7 +1254,7 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    var mode = SYSCALLS.get();
+    var mode = varargs ? SYSCALLS.get() : 0;
     return FS.open(path, flags, mode).fd;
   },
   __sys_mkdirat: function(dirfd, path, mode) {
@@ -1342,7 +1346,6 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    mode = SYSCALLS.get();
     FS.chmod(path, mode);
     return 0;
   },
@@ -1370,7 +1373,7 @@ var SyscallsLibrary = {
 #if ASSERTIONS
     assert(flags === 0);
 #endif
-    path = SYSCALLS.calculateAt(dirfd, path);
+    path = SYSCALLS.calculateAt(dirfd, path, true);
     var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
     var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
     var atime = (seconds*1000) + (nanoseconds/(1000*1000));
@@ -1447,7 +1450,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   // If a syscall uses FS, but !SYSCALLS_REQUIRE_FILESYSTEM, then the user
   // has disabled the filesystem or we have proven some other way that this will
   // not be called in practice, and do not need that code.
-  if (!SYSCALLS_REQUIRE_FILESYSTEM && t.indexOf('FS.') >= 0) {
+  if (!SYSCALLS_REQUIRE_FILESYSTEM && t.includes('FS.')) {
     t = modifyFunction(t, function(name, args, body) {
       return 'function ' + name + '(' + args + ') {\n' +
              (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');\n" : '') +
@@ -1455,7 +1458,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     });
   }
 
-  var isVariadic = !isWasi && t.indexOf(', varargs') != -1;
+  var isVariadic = !isWasi && t.includes(', varargs');
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
   var canThrow = false;
 #else

@@ -17,7 +17,7 @@ function setValue(ptr, value, type, noSafe) {
   if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
 #if SAFE_HEAP
   if (noSafe) {
-    switch(type) {
+    switch (type) {
       case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1', undefined, undefined, undefined, '1') }}}; break;
       case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8', undefined, undefined, undefined, '1') }}}; break;
       case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16', undefined, undefined, undefined, '1') }}}; break;
@@ -29,7 +29,7 @@ function setValue(ptr, value, type, noSafe) {
     }
   } else {
 #endif
-    switch(type) {
+    switch (type) {
       case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1') }}}; break;
       case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
       case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
@@ -52,7 +52,7 @@ function getValue(ptr, type, noSafe) {
   if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
 #if SAFE_HEAP
   if (noSafe) {
-    switch(type) {
+    switch (type) {
       case 'i1': return {{{ makeGetValue('ptr', '0', 'i1', undefined, undefined, undefined, undefined, '1') }}};
       case 'i8': return {{{ makeGetValue('ptr', '0', 'i8', undefined, undefined, undefined, undefined, '1') }}};
       case 'i16': return {{{ makeGetValue('ptr', '0', 'i16', undefined, undefined, undefined, undefined, '1') }}};
@@ -64,7 +64,7 @@ function getValue(ptr, type, noSafe) {
     }
   } else {
 #endif
-    switch(type) {
+    switch (type) {
       case 'i1': return {{{ makeGetValue('ptr', '0', 'i1') }}};
       case 'i8': return {{{ makeGetValue('ptr', '0', 'i8') }}};
       case 'i16': return {{{ makeGetValue('ptr', '0', 'i16') }}};

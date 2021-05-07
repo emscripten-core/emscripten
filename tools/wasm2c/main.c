@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
     printf("[wasm trap %d, halting]\n", trap_code);
     return 1;
   } else {
-    Z__startZ_vv();
+    WASM_RT_ADD_PREFIX(Z__startZ_vv)();
   }
   return 0;
 }
