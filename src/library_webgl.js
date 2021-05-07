@@ -3495,9 +3495,12 @@ var LibraryGL = {
     GLctx.useProgram(program);
     // Record the currently active program so that we can access the uniform
     // mapping table of that program.
-    GLctx.currentProgram = program;
 #if GL_EXPLICIT_UNIFORM_BINDING
-    webglApplyExplicitProgramBindings();
+    if ((GLctx.currentProgram = program)) {
+      webglApplyExplicitProgramBindings();
+    }
+#else
+    GLctx.currentProgram = program;
 #endif
   },
 

@@ -187,6 +187,10 @@ int main(int argc, char *argv[])
   assert(glGetError());
   assert(!glGetError());
 
+  // Test that glUseProgram(0) succeeds without errors.
+  glUseProgram(0);
+  assert(!glGetError());
+
   printf("Test passed!\n");
 #ifdef REPORT_RESULT
   REPORT_RESULT(1);
