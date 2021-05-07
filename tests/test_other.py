@@ -312,7 +312,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     'cxx': [EMXX]})
   def test_emcc_4(self, compiler):
     # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
-    for params, opt_level, obj_params, closure, has_malloc in [ # obj_params are used after compiling first
+    # link_param are used after compiling first
+    for params, opt_level, link_params, closure, has_malloc in [
       (['-o', 'something.js'],                          0, None, 0, 1),
       (['-o', 'something.js', '-O0', '-g'],             0, None, 0, 0),
       (['-o', 'something.js', '-O1'],                   1, None, 0, 0),
@@ -338,23 +339,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       (['-s', 'WASM=0', '-o', 'something.js', '-Os'],                   2, None, 0, 1),
       (['-s', 'WASM=0', '-o', 'something.js', '-O3'],                   3, None, 0, 1),
       # and, test compiling to bitcode first
-      (['-s', 'WASM=0', '-c', '-o', 'something.o'],        0, ['-s', 'WASM=0'],        0, 0),
-      (['-s', 'WASM=0', '-c', '-o', 'something.o', '-O0'], 0, ['-s', 'WASM=0'],        0, 0),
-      (['-s', 'WASM=0', '-c', '-o', 'something.o', '-O1'], 1, ['-s', 'WASM=0', '-O1'], 0, 0),
-      (['-s', 'WASM=0', '-c', '-o', 'something.o', '-O2'], 2, ['-s', 'WASM=0', '-O2'], 0, 0),
-      (['-s', 'WASM=0', '-c', '-o', 'something.o', '-O3'], 3, ['-s', 'WASM=0', '-O3'], 0, 0),
-      (['-s', 'WASM=0', '-O1', '-c', '-o', 'something.o'], 1, ['-s', 'WASM=0'],        0, 0),
+      (['-flto', '-c', '-o', 'something.o'],        0, [],      0, 0),
+      (['-flto', '-c', '-o', 'something.o', '-O0'], 0, [],      0, 0),
+      (['-flto', '-c', '-o', 'something.o', '-O1'], 1, ['-O1'], 0, 0),
+      (['-flto', '-c', '-o', 'something.o', '-O2'], 2, ['-O2'], 0, 0),
+      (['-flto', '-c', '-o', 'something.o', '-O3'], 3, ['-O3'], 0, 0),
+      (['-flto', '-O1', '-c', '-o', 'something.o'], 1, [],      0, 0),
     ]:
-      print(params, opt_level, obj_params, closure, has_malloc)
+      print(params, opt_level, link_params, closure, has_malloc)
       self.clear()
       keep_debug = '-g' in params
       args = [compiler, test_file('hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params
       print('..', args)
       output = self.run_process(args, stdout=PIPE, stderr=PIPE)
       assert len(output.stdout) == 0, output.stdout
-      if obj_params is not None:
+      if link_params is not None:
         self.assertExists('something.o', output.stderr)
-        obj_args = [compiler, 'something.o', '-o', 'something.js'] + obj_params
+        obj_args = [compiler, 'something.o', '-o', 'something.js'] + link_params
         print('....', obj_args)
         output = self.run_process(obj_args, stdout=PIPE, stderr=PIPE)
       self.assertExists('something.js', output.stderr)
@@ -7163,10 +7164,10 @@ int main() {
       result = self.run_js('a.out.js').strip()
       self.assertEqual(result, f'{expected}, errno: 0')
 
-    run([], 1024)
-    run(['-s', 'INITIAL_MEMORY=32MB'], 2048)
-    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH'], (2 * 1024 * 1024 * 1024) // 16384)
-    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'WASM=0'], (2 * 1024 * 1024 * 1024) // 16384)
+    run([], 256)
+    run(['-s', 'INITIAL_MEMORY=32MB'], 512)
+    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH'], (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE)
+    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'WASM=0'], (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE)
 
   def test_wasm_target_and_STANDALONE_WASM(self):
     # STANDALONE_WASM means we never minify imports and exports.
@@ -7572,13 +7573,13 @@ end
     self.assertNotContained(WARNING, proc.stderr)
 
   def test_full_js_library(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'INCLUDE_FULL_LIBRARY'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'])
 
   def test_full_js_library_gl_emu(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'INCLUDE_FULL_LIBRARY', '-s', 'LEGACY_GL_EMULATION'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sLEGACY_GL_EMULATION'])
 
   def test_full_js_library_no_exception_throwing(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'INCLUDE_FULL_LIBRARY', '-s', 'DISABLE_EXCEPTION_THROWING'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sDISABLE_EXCEPTION_THROWING'])
 
   def test_closure_full_js_library(self):
     # test for closure errors in the entire JS library
@@ -9716,6 +9717,15 @@ int main() {
     self.assertContained('wasm-ld: error:', stderr)
     self.assertContained('main_0.o: undefined symbol: foo', stderr)
 
+  def test_lld_report_undefined_reverse_deps(self):
+    self.run_process([EMCC, '-sLLD_REPORT_UNDEFINED', '-sREVERSE_DEPS=all', test_file('hello_world.c')])
+
+  def test_lld_report_undefined_exceptions(self):
+    self.run_process([EMCC, '-sLLD_REPORT_UNDEFINED', '-fwasm-exceptions', test_file('hello_libcxx.cpp')])
+
+  def test_lld_report_undefined_main_module(self):
+    self.run_process([EMCC, '-sLLD_REPORT_UNDEFINED', '-sMAIN_MODULE=2', test_file('hello_world.c')])
+
   def test_4GB(self):
     stderr = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', 'INITIAL_MEMORY=2GB'])
     self.assertContained('INITIAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
@@ -9931,7 +9941,7 @@ int main () {
     # Tests that explicitly exported `_main` does not fail, even though `_start` is the entry
     # point.
     # We should consider making this a warning since the `_main` export is redundant.
-    self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=_main', '-sSTANDALONE_WASM', '-c', test_file('core', 'test_hello_world.c')])
+    self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=_main', '-sSTANDALONE_WASM', test_file('core', 'test_hello_world.c')])
 
   def test_missing_malloc_export(self):
     # we used to include malloc by default. show a clear error in builds with
@@ -10320,8 +10330,8 @@ exec "$@"
     # When debugging set this valud to the function that you want to start
     # with.  All symbols prior will be skipped over.
     start_at = None
-    assert not start_at or start_at in deps_info.deps_info
-    for function, deps in deps_info.deps_info.items():
+    assert not start_at or start_at in deps_info.get_deps_info()
+    for function, deps in deps_info.get_deps_info().items():
       if start_at:
         if function == start_at:
           start_at = None
@@ -10478,3 +10488,21 @@ exec "$@"
       err = self.expect_fail([EMCC, test_file('hello_world.c')])
       self.assertContained("warning: We hope to deprecated EMMAKEN_NO_SDK", err)
       self.assertContained("fatal error: 'stdio.h' file not found", err)
+
+  @parameterized({
+    'default': ('', '2147483648'),
+    '1GB': ('-sMAXIMUM_MEMORY=1GB', '1073741824'),
+    # for 4GB we return 1 wasm page less than 4GB, as 4GB cannot fit in a 32bit
+    # integer
+    '4GB': ('-sMAXIMUM_MEMORY=4GB', '4294901760'),
+  })
+  def test_emscripten_get_heap_max(self, arg, expected):
+    create_file('get.c', r'''
+      #include <emscripten/heap.h>
+      #include <stdio.h>
+      int main() {
+        printf("max: |%zu|\n", emscripten_get_heap_max());
+      }
+    ''')
+    self.run_process([EMCC, 'get.c', '-s', 'ALLOW_MEMORY_GROWTH', arg])
+    self.assertContained(f'max: |{expected}|', self.run_js('a.out.js'))

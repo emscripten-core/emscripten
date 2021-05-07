@@ -86,9 +86,8 @@ var WASI_MODULE_NAME = "wasi_snapshot_preview1";
 // (internal, use -lfoo or -lfoo.js to link to Emscripten system JS libraries)
 var SYSTEM_JS_LIBRARIES = [];
 
-// This will contain the emscripten version. You should not modify this. This
-// and the following few settings are useful in combination with
-// RETAIN_COMPILER_SETTINGS
+// This will contain the emscripten version. This can be useful in combination
+// with RETAIN_COMPILER_SETTINGS
 var EMSCRIPTEN_VERSION = '';
 
 // Will be set to 0 if -fno-rtti is used on the command line.

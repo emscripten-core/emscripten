@@ -173,8 +173,6 @@ var INITIAL_MEMORY = 16777216;
 // relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
 // INITIAL_MEMORY is the final size of memory anyhow.
 //
-// If this value is -1, it means there is no specified limit.
-//
 // Note that the default value here is 2GB, which means that by default if you
 // enable memory growth then we can grow up to 2GB but no higher. 2GB is a
 // natural limit for several reasons:
@@ -186,6 +184,8 @@ var INITIAL_MEMORY = 16777216;
 //     has support started to appear. As support is limited, it's safer for
 //     people to opt into >2GB+ heaps rather than get a build that may not
 //     work on all VMs.
+//
+// To use more than 2GB, set this to something higher, like 4GB.
 //
 // (This option was formerly called WASM_MEM_MAX and BINARYEN_MEM_MAX.)
 // [link]

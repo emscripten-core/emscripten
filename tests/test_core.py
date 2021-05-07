@@ -22,7 +22,7 @@ if __name__ == '__main__':
 from tools.shared import try_delete, PIPE
 from tools.shared import PYTHON, EMCC, EMAR
 from tools.utils import WINDOWS, MACOS
-from tools import shared, building, config
+from tools import shared, building, config, webassembly
 from runner import RunnerCore, path_from_root, requires_native_clang, test_file
 from runner import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
 from runner import env_modify, with_env_modify, disabled, node_pthreads
@@ -5387,9 +5387,9 @@ main( int argv, char ** argc ) {
   def test_unistd_sysconf_phys_pages(self):
     filename = test_file('unistd', 'sysconf_phys_pages.c')
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
-      expected = (2 * 1024 * 1024 * 1024) // 16384
+      expected = (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE
     else:
-      expected = 16 * 1024 * 1024 // 16384
+      expected = 16 * 1024 * 1024 // webassembly.WASM_PAGE_SIZE
     self.do_runf(filename, str(expected) + ', errno: 0')
 
   def test_unistd_login(self):
@@ -6894,6 +6894,20 @@ someweirdtext
   def test_embind_val(self):
     self.emcc_args += ['--bind']
     self.do_run_in_out_file_test('embind', 'test_val.cpp')
+
+  @no_wasm2js('wasm_bigint')
+  def test_embind_i64_val(self):
+    self.set_setting('WASM_BIGINT')
+    self.emcc_args += ['--bind']
+    self.node_args += ['--experimental-wasm-bigint']
+    self.do_run_in_out_file_test('embind', 'test_i64_val.cpp', assert_identical=True)
+
+  @no_wasm2js('wasm_bigint')
+  def test_embind_i64_binding(self):
+    self.set_setting('WASM_BIGINT')
+    self.emcc_args += ['--bind']
+    self.node_args += ['--experimental-wasm-bigint']
+    self.do_run_in_out_file_test('embind', 'test_i64_binding.cpp', assert_identical=True)
 
   def test_embind_no_rtti(self):
     create_file('main.cpp', r'''

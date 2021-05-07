@@ -7,6 +7,8 @@
 // Various tools for parsing LLVM. Utilities of various sorts, that are
 // specific to Emscripten (and hence not in utility.js).
 
+const FOUR_GB = 4 * 1024 * 1024 * 1024;
+
 let currentlyParsedFilename = '';
 
 // Does simple 'macro' substitution, using Django-like syntax,
@@ -1106,13 +1108,6 @@ function makeRetainedCompilerSettings() {
 
 // In wasm, the heap size must be a multiple of 64KiB.
 const WASM_PAGE_SIZE = 65536;
-
-// Page size reported by some POSIX calls, mostly filesystem. This does not
-// depend on the memory page size which differs between wasm and asm.js, and
-// makes us report a consistent value despite the compile target. However,
-// perhaps we should unify all the page sizes (especially after fastcomp is
-// gone TODO).
-const POSIX_PAGE_SIZE = 16384;
 
 // Receives a function as text, and a function that constructs a modified
 // function, to which we pass the parsed-out name, arguments, and body of the

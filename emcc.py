@@ -50,7 +50,7 @@ from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
 from tools import config
-from tools.settings import settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
+from tools.settings import settings, MEM_SIZE_SETTINGS
 
 logger = logging.getLogger('emcc')
 
@@ -964,20 +964,13 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
     return 0
 
   if '--version' in args:
-    # if the emscripten folder is not a git repo, don't run git show - that can
-    # look up and find the revision in a parent directory that is a git repo
-    revision = ''
-    if os.path.exists(shared.path_from_root('.git')):
-      revision = run_process(['git', 'rev-parse', 'HEAD'], stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.strip()
-    elif os.path.exists(shared.path_from_root('emscripten-revision.txt')):
-      revision = open(shared.path_from_root('emscripten-revision.txt')).read().strip()
-    if revision:
-      revision = ' (%s)' % revision
-    print('''%s%s
+
+    print(version_string())
+    print('''\
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  ''' % (version_string(), revision))
+''')
     return 0
 
   if run_via_emxx:
@@ -1324,9 +1317,12 @@ def phase_setup(state):
   state.compile_only = state.has_dash_c or state.has_dash_S or state.has_header_inputs or state.preprocess_only
 
   if state.compile_only:
-    for key in settings_map:
-      if key not in COMPILE_TIME_SETTINGS:
-        diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
+    # TODO(sbc): Re-enable these warnings once we are sure we don't have any false
+    # positives.  See: https://github.com/emscripten-core/emscripten/pull/14109
+    pass
+    # for key in settings_map:
+    #   if key not in COMPILE_TIME_SETTINGS:
+    #     diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
   else:
     ldflags = emsdk_ldflags(newargs)
     for f in ldflags:
@@ -1373,7 +1369,18 @@ def phase_setup(state):
   for s in user_js_defines:
     settings[s[0]] = s[1]
 
-  shared.verify_settings()
+  if settings.SAFE_HEAP not in [0, 1]:
+    exit_with_error('emcc: SAFE_HEAP must be 0 or 1')
+
+  if not settings.WASM:
+    # When the user requests non-wasm output, we enable wasm2js. that is,
+    # we still compile to wasm normally, but we compile the final output
+    # to js.
+    settings.WASM = 1
+    settings.WASM2JS = 1
+  if settings.WASM == 2:
+    # Requesting both Wasm and Wasm2JS support
+    settings.WASM2JS = 1
 
   if (options.oformat == OFormat.WASM or settings.PURE_WASI) and not settings.SIDE_MODULE:
     # if the output is just a wasm file, it will normally be a standalone one,
@@ -1555,7 +1562,6 @@ def phase_setup(state):
   # various settings require sbrk() access
   if settings.DETERMINISTIC or \
      settings.EMSCRIPTEN_TRACING or \
-     settings.MALLOC == 'emmalloc' or \
      settings.SAFE_HEAP or \
      settings.MEMORYPROFILER:
     settings.EXPORTED_FUNCTIONS += ['_sbrk']
@@ -1693,9 +1699,6 @@ def phase_setup(state):
   if not settings.USES_DYNAMIC_ALLOC:
     settings.MALLOC = 'none'
 
-  if settings.MALLOC == 'emmalloc':
-    settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_emmalloc.js')))
-
   if settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
     state.forced_stdlibs.append('libfetch')
     settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_fetch.js')))
@@ -1764,7 +1767,7 @@ def phase_setup(state):
       '$stackTrace'
     ]
 
-  if settings.FILESYSTEM:
+  if settings.FILESYSTEM and not settings.BOOTSTRAPPING_STRUCT_INFO:
     # to flush streams on FS exit, we need to be able to call fflush
     # we only include it if the runtime is exitable, or when ASSERTIONS
     # (ASSERTIONS will check that streams do not need to be flushed,
@@ -1772,7 +1775,7 @@ def phase_setup(state):
     if settings.EXIT_RUNTIME or settings.ASSERTIONS:
       settings.EXPORTED_FUNCTIONS += ['_fflush']
 
-  if settings.SUPPORT_ERRNO:
+  if settings.SUPPORT_ERRNO and not settings.BOOTSTRAPPING_STRUCT_INFO:
     # so setErrNo JS library function can report errno back to C
     settings.EXPORTED_FUNCTIONS += ['___errno_location']
 
@@ -2579,7 +2582,16 @@ def phase_final_emitting(options, target, wasm_target, memfile):
 
 
 def version_string():
-  return 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION
+  # if the emscripten folder is not a git repo, don't run git show - that can
+  # look up and find the revision in a parent directory that is a git repo
+  revision = ''
+  if os.path.exists(shared.path_from_root('.git')):
+    revision = run_process(['git', 'rev-parse', 'HEAD'], stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.strip()
+  elif os.path.exists(shared.path_from_root('emscripten-revision.txt')):
+    revision = open(shared.path_from_root('emscripten-revision.txt')).read().strip()
+  if revision:
+    revision = '-git (%s)' % revision
+  return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {shared.EMSCRIPTEN_VERSION}{revision}'
 
 
 def parse_args(newargs):

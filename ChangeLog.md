@@ -18,8 +18,25 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-Current Trunk
--------------
+2.0.21
+------
+
+2.0.20: 05/04/2021
+------------------
+- This ChangeLog and the `emscripten-version.txt` file that is checked into
+  the repository now reflect the next, upcoming, release once a release is
+  made.  Previously they would continue to reflect the old release until after
+  we decide to cut the release.  Switching to this method allow for a slightly
+  simpler release process that also allows us to tag a version that contains
+  the correct version information.
+- The version string reported by `-v`/`--version` now includes a `-git` suffix
+  (e.g. `2.0.19-git`) when running from git checkout (to help distinguish
+  unreleased git versions from official releases) (#14092).
+- Temporarily back out new `-Wunused-command-line-argument` warnings introduced
+  in 2.0.19.
+
+2.0.19: 05/04/2021
+------------------
 - Emscripten will now warn when linker-only `-s` settings are specified in
   compile-only (`-c`) mode.  Just like with clang itself, this warning can be
   disabled using the flag: `-Wno-unused-command-line-argument`.

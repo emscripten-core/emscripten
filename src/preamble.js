@@ -267,6 +267,7 @@ var HEAP_DATA_VIEW;
 
 #if WASM_BIGINT
 var HEAP64;
+var HEAPU64;
 #endif
 
 #if USE_PTHREADS
@@ -292,6 +293,7 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 #if WASM_BIGINT
   Module['HEAP64'] = HEAP64 = new BigInt64Array(buf);
+  Module['HEAPU64'] = HEAPU64 = new BigUint64Array(buf);
 #endif
 }
 
