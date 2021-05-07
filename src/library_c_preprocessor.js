@@ -109,7 +109,7 @@ mergeInto(LibraryManager.library, {
 
     // Expands preprocessing macros on substring str[lineStart...lineEnd]
     function expandMacros(str, lineStart, lineEnd) {
-      if (!lineEnd) lineEnd = str.length;
+      if (lineEnd === undefined) lineEnd = str.length;
       var len = str.length;
       var out = '';
       for(var i = lineStart; i < lineEnd; ++i) {
@@ -235,7 +235,6 @@ mergeInto(LibraryManager.library, {
       var space = nextWhitespace(code, j);
       var directive = code.substring(j+1, space);
       var expression = code.substring(space, i).trim();
-
       switch(directive) {
       case 'if':
         var tokens = tokenize(expandMacros(expression, 0));

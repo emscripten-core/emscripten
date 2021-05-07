@@ -171,8 +171,9 @@ EM_JS(void, test_c_preprocessor, (void), {
 
 	test('#define FOO() bar\nFOO()\n', 'bar\n'); // Test preprocessor macros that do not take in any parameters
 
-	test('#define FOO 1\n#if FOO\n#define BAR this_is_right\n#else\n#define BAR this_is_wrong\n#endif\nBAR',
-	     'this_is_right\n');
+	test('#define FOO 1\n#if FOO\n#define BAR this_is_right\n#else\n#define BAR this_is_wrong\n#endif\nBAR', 'this_is_right\n'); // Test nested #defines in both sides of an #if-#else block.
+
+	test('\n#define FOO 1\nFOO\n', '\n1\n'); // Test that preprocessor is not confused by an input that starts with a \n
 
 	if (numFailed) throw numFailed + ' tests failed!';
 });
