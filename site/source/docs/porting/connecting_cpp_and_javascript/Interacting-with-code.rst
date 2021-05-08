@@ -683,7 +683,7 @@ so you cannot simply do this:
 
    function func() {
      var ptr = callSomething(len);               // if memory grows ...
-     return HEAPU8.subarray(buffer, buffer+len); // ... this will fail
+     return HEAPU8.subarray(ptr, ptr+len); // ... this will fail
    }
 
 Here, if `callSomething` calls `malloc` and returns the allocated
