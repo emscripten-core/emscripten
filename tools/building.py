@@ -390,6 +390,9 @@ def lld_flags_for_executable(external_symbols):
     for export in c_exports:
       cmd += ['--export', export]
 
+    for export in settings.EXPORT_IF_DEFINED:
+      cmd.append('--export-if-defined=' + export)
+
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')
     if settings.SIDE_MODULE:
@@ -407,8 +410,6 @@ def lld_flags_for_executable(external_symbols):
     # Export these two section start symbols so that we can extact the string
     # data that they contain.
     cmd += [
-      '--export-if-defined', '__start_em_asm',
-      '--export-if-defined', '__stop_em_asm',
       '-z', 'stack-size=%s' % settings.TOTAL_STACK,
       '--initial-memory=%d' % settings.INITIAL_MEMORY,
     ]
