@@ -2400,10 +2400,9 @@ def phase_post_link(options, in_wasm, wasm_target, target):
   settings.TARGET_BASENAME = unsuffixed_basename(target)
 
   if options.oformat in (OFormat.JS, OFormat.MJS):
-    js_target = target
+    settings.TARGET_JS_NAME = target
   else:
-    js_target = get_secondary_target(target, '.js')
-  settings.TARGET_JS_NAME = js_target
+    settings.TARGET_JS_NAME = get_secondary_target(target, '.js')
 
   if settings.MEM_INIT_IN_WASM:
     memfile = None
