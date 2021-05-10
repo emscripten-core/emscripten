@@ -2543,12 +2543,11 @@ def phase_final_emitting(options, target, wasm_target, memfile):
   # Unmangle previously mangled `import.meta` references in both main code and libraries.
   # See also: `preprocess` in parseTools.js.
   if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
-    with open(final_js, 'r+') as f:
-      src = f.read()
-      src = src.replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
-      f.seek(0)
-      f.write(src)
-      f.truncate()
+    src = open(final_js).read()
+    final_js += '.esmeta.js'
+    with open(final_js, 'w') as f:
+      f.write(src.replace('EMSCRIPTEN$IMPORT$META', 'import.meta'))
+    save_intermediate('es6-import-meta')
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
