@@ -3399,7 +3399,7 @@ var LibraryGL = {
       Object.keys(s.explicitUniformLocations).forEach(function(shaderLocation) {
         var loc = s.explicitUniformLocations[shaderLocation];
         // Record each explicit uniform location temporarily as a non-array uniform
-        // with size=1, this is not true, but on the first glGetUniformLocation() call
+        // with size=1. This is not true, but on the first glGetUniformLocation() call
         // the array sizes will get populated to correct sizes.
         program.uniformSizeAndIdsByName[shaderLocation] = [1, loc];
 #if GL_DEBUG
@@ -3408,7 +3408,7 @@ var LibraryGL = {
 
         // Make sure we will never automatically assign locations within the range
         // used for explicit layout(location=x) variables.
-        program.uniformIdCounter = Math.max(program.uniformIdCounter, loc);
+        program.uniformIdCounter = Math.max(program.uniformIdCounter, loc + 1);
       });
     });
 #endif

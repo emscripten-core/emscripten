@@ -134,6 +134,24 @@ int main(int argc, char *argv[])
   glUniform4f(11/*color2*/, 0.2f, 0.2f, 0.3f, 1.f);
   assert(glGetError() == GL_INVALID_OPERATION);
 
+  // Test that explicit and implicit uniform location numberings do not collide
+  GLuint program2 = glCreateProgram();
+  glAttachShader(program2, CompileShader(GL_VERTEX_SHADER,
+    "#version 300 es\n"
+    "uniform mat4 world;\n"
+    "layout(location = 1) uniform mat4 view;\n" // Should get an automatically assigned location that starts numbering after the highest location that is used explicitly (at 2)
+    "layout(location = 0) in vec4 pos;\n"
+    "void main() { gl_Position = view*world*pos; }"));
+  glAttachShader(program2, CompileShader(GL_FRAGMENT_SHADER,
+    "#version 300 es\n"
+    "out highp vec4 outColor;\n"
+    "void main() { outColor = vec4(0,0,0,1); }"));
+  glLinkProgram(program2);
+  assert(glGetError() == GL_NO_ERROR && "Shader program link failed");
+
+  assert(glGetUniformLocation(program2, "world") == 2);
+  assert(glGetUniformLocation(program2, "view") == 1);
+
   printf("Test passed!\n");
 #ifdef REPORT_RESULT
   REPORT_RESULT(1);
