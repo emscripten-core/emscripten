@@ -3083,15 +3083,15 @@ var LibraryGL = {
 
 #if GL_EXPLICIT_UNIFORM_LOCATION
     // Extract the layout(location = x) directives.
-    var regex = /layout\s*\(\s*location\s*=\s*(-?\d+)\s*\)\s*(uniform\s+\w+\s+(\w+))/g, explicitUniformLocations = {}, match;
+    var regex = /layout\s*\(\s*location\s*=\s*(-?\d+)\s*\)\s*(uniform\s+((lowp|mediump|highp)\s+)?\w+\s+(\w+))/g, explicitUniformLocations = {}, match;
     while(match = regex.exec(source)) {
 #if GL_DEBUG
       console.dir(match);
 #endif
-      explicitUniformLocations[match[3]] = jstoi_q(match[1]);
+      explicitUniformLocations[match[5]] = jstoi_q(match[1]);
 #if GL_TRACK_ERRORS
-      if (!(explicitUniformLocations[match[3]] >= 0 && explicitUniformLocations[match[3]] < 1048576)) {
-        console.error('Specified an out of range layout(location=x) directive "' + explicitUniformLocations[match[3]] + '"! (' + match[0] + ')');
+      if (!(explicitUniformLocations[match[5]] >= 0 && explicitUniformLocations[match[5]] < 1048576)) {
+        console.error('Specified an out of range layout(location=x) directive "' + explicitUniformLocations[match[5]] + '"! (' + match[0] + ')');
         GL.recordError(0x501 /* GL_INVALID_VALUE */);
         return;
       }

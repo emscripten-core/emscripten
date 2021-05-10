@@ -56,9 +56,9 @@ int main(int argc, char *argv[])
     "#version 300 es\n"
     "precision lowp float;\n"
     "#define LOCATION(x) layout(location=x)\n"
-    "LOCATION(8) uniform vec3 color;\n"
-    "LOCATION(11) uniform vec4 color2;\n"
-    "layout(location = 18) uniform vec3 colors[3];\n"
+    "LOCATION(8) uniform highp vec3 color;\n"
+    "LOCATION(11) uniform mediump vec4 color2;\n"
+    "layout(location = 18) uniform lowp vec3 colors[3];\n"
     "layout(location = 24) uniform vec3 colors2[3];\n"
     "LOCATION(0) out highp vec4 SV_TARGET0; // Make sure MRT output locations don't get removed by preprocessor\n"
     "void main() { SV_TARGET0 = vec4(color,1) + color2 + vec4(colors[0].r, colors[1].g, colors[2].b, 1) + vec4(colors2[0].r, colors2[1].g, colors2[2].b, 1); }");
