@@ -168,8 +168,8 @@ self.onmessage = function(e) {
 #endif
 
 #if MODULARIZE && EXPORT_ES6
-      import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {
-        return {{{ EXPORT_NAME }}}.default(Module);
+      import(e.data.urlOrBlob).then(function(exports) {
+        return exports.default(Module);
       }).then(function(instance) {
         Module = instance;
         moduleLoaded();

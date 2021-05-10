@@ -1886,7 +1886,7 @@ def phase_setup(state):
       include_and_export('keepRuntimeAlive')
 
     if settings.MODULARIZE:
-      if settings.EXPORT_NAME == 'Module':
+      if not settings.EXPORT_ES6 and settings.EXPORT_NAME == 'Module':
         exit_with_error('pthreads + MODULARIZE currently require you to set -s EXPORT_NAME=Something (see settings.js) to Something != Module, so that the .worker.js file can work')
 
       # MODULARIZE+USE_PTHREADS mode requires extra exports out to Module so that worker.js
