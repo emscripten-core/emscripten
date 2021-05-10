@@ -1229,7 +1229,7 @@ function makeAsmImportsAccessInPthread(variable) {
     return `imports['${variable}']`;
   }
   // In non-MODULARIZE builds, can access the imports from global scope.
-  return variable;
+  return `self.${variable}`;
 }
 
 function _asmjsDemangle(symbol) {
