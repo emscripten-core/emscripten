@@ -78,15 +78,11 @@ WebAssembly.
 Using CMake with Emscripten
 ==================================
 
-If you have not already, first, you have to install and activate the SDK tag you wish to use, and after, you must add the environment variables in your terminal.
+If you have not already, first, you have to install and activate the SDK tag you wish to use. 
+Make sure emcc and other tools are in your PATH already (e.g. using ``source ./emsdk_env.sh``).
 
-.. code-block:: bash
-
-  ./emsdk install latest  # Download and install the latest SDK. You probably already did this!
-  ./emsdk activate latest # Make the "latest" SDK "active" for the current user
-  source ./emsdk_env.sh   # Activate PATH and other environment variables in the existing terminal
-  
-After activating the environment variables, you will have the `emcmake` utility available on the terminal. You always should use `emcmake` before any CMake invocation. It will pass to CMake the correct toolchain for building your projects.  
+Once you have the ``emcmake`` utility available on your terminal, use it before any CMake invocation. 
+It will pass to CMake the correct toolchain for building your projects.  
 
 .. code-block:: bash
 
@@ -94,7 +90,7 @@ After activating the environment variables, you will have the `emcmake` utility 
   emcmake cmake ..
   make
 
-Do not use `emmake` before `make` with CMake generated makefiles.
+There is no need to use ``emmake`` on a makefile generated from cmake.
 
 .. _building-projects-build-outputs:
 
