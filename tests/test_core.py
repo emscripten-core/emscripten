@@ -22,7 +22,7 @@ if __name__ == '__main__':
 from tools.shared import try_delete, PIPE
 from tools.shared import PYTHON, EMCC, EMAR
 from tools.utils import WINDOWS, MACOS
-from tools import shared, building, config
+from tools import shared, building, config, webassembly
 from runner import RunnerCore, path_from_root, requires_native_clang, test_file
 from runner import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
 from runner import env_modify, with_env_modify, disabled, node_pthreads
@@ -3676,6 +3676,11 @@ ok
     self.do_basic_dylink_test()
 
   @needs_dylink
+  def test_dylink_basics_lld_report_undefined(self):
+    self.set_setting('LLD_REPORT_UNDEFINED')
+    self.do_basic_dylink_test()
+
+  @needs_dylink
   def test_dylink_no_export(self):
     self.set_setting('NO_DECLARE_ASM_MODULE_EXPORTS')
     self.do_basic_dylink_test()
@@ -4631,6 +4636,42 @@ res64 - external 64\n''', header='''
     side = test_file('core', 'test_dylink_weak_side.c')
     self.dylink_testf(main, side, force_c=True, need_reverse=False)
 
+  @node_pthreads
+  @needs_dylink
+  def test_dylink_tls(self):
+    # We currently can't export TLS symbols from module since we don't have
+    # and ABI for signaling which exports are TLS and which are regular
+    # data exports.
+
+    # TODO(sbc): Add tests that depend on importing/exported TLS symbols
+    # once we figure out how to do that.
+    create_file('main.c', r'''
+      #include <stdio.h>
+
+      _Thread_local int foo = 10;
+
+      void sidey();
+
+      int main(int argc, char const *argv[]) {
+        printf("main TLS: %d\n", foo);
+        sidey();
+        return 0;
+      }
+    ''')
+    create_file('side.c', r'''
+      #include <stdio.h>
+
+      _Thread_local int bar = 11;
+
+      void sidey() {
+        printf("side TLS: %d\n", bar);
+      }
+    ''')
+    self.emcc_args.append('-Wno-experimental')
+    self.dylink_testf('main.c', 'side.c',
+                      expected='main TLS: 10\nside TLS: 11\n',
+                      need_reverse=False)
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
@@ -5387,9 +5428,9 @@ main( int argv, char ** argc ) {
   def test_unistd_sysconf_phys_pages(self):
     filename = test_file('unistd', 'sysconf_phys_pages.c')
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
-      expected = (2 * 1024 * 1024 * 1024) // 16384
+      expected = (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE
     else:
-      expected = 16 * 1024 * 1024 // 16384
+      expected = 16 * 1024 * 1024 // webassembly.WASM_PAGE_SIZE
     self.do_runf(filename, str(expected) + ', errno: 0')
 
   def test_unistd_login(self):
@@ -5853,27 +5894,15 @@ return malloc(size);
     self.do_core_test('test_relocatable_void_function.c')
 
   @wasm_simd
-  @is_slow_test
-  def test_wasm_builtin_simd(self):
-    # Improves test readability
-    self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-format']
-    self.do_runf(test_file('test_wasm_builtin_simd.cpp'), 'Success!')
-    self.build(test_file('test_wasm_builtin_simd.cpp'))
-
-  @wasm_simd
-  @is_slow_test
   def test_wasm_intrinsics_simd(self):
     def run():
       self.do_runf(test_file('test_wasm_intrinsics_simd.c'), 'Success!')
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall', '-xc++'])
-    # Ignore deprecation errors for now
-    self.emcc_args.append('-Wno-error=deprecated-declarations')
     run()
     self.emcc_args.append('-funsigned-char')
     run()
-    self.build(test_file('test_wasm_intrinsics_simd.c'))
 
   # Tests invoking the NEON SIMD API via arm_neon.h header
   @wasm_simd
@@ -6894,6 +6923,20 @@ someweirdtext
   def test_embind_val(self):
     self.emcc_args += ['--bind']
     self.do_run_in_out_file_test('embind', 'test_val.cpp')
+
+  @no_wasm2js('wasm_bigint')
+  def test_embind_i64_val(self):
+    self.set_setting('WASM_BIGINT')
+    self.emcc_args += ['--bind']
+    self.node_args += ['--experimental-wasm-bigint']
+    self.do_run_in_out_file_test('embind', 'test_i64_val.cpp', assert_identical=True)
+
+  @no_wasm2js('wasm_bigint')
+  def test_embind_i64_binding(self):
+    self.set_setting('WASM_BIGINT')
+    self.emcc_args += ['--bind']
+    self.node_args += ['--experimental-wasm-bigint']
+    self.do_run_in_out_file_test('embind', 'test_i64_binding.cpp', assert_identical=True)
 
   def test_embind_no_rtti(self):
     create_file('main.cpp', r'''

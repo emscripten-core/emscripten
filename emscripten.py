@@ -814,6 +814,11 @@ def normalize_line_endings(text):
 
 
 def generate_struct_info():
+  # If we are running in BOOTSTRAPPING_STRUCT_INFO we don't populate STRUCT_INFO
+  # otherwise that would lead to infinite recursion.
+  if settings.BOOTSTRAPPING_STRUCT_INFO:
+    return
+
   generated_struct_info_name = 'generated_struct_info.json'
 
   @ToolchainProfiler.profile_block('gen_struct_info')
@@ -824,7 +829,6 @@ def generate_struct_info():
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile):
-  if not settings.BOOTSTRAPPING_STRUCT_INFO:
-    generate_struct_info()
+  generate_struct_info()
 
   emscript(in_wasm, out_wasm, outfile_js, memfile, shared.DEBUG)
