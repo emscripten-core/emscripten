@@ -1206,14 +1206,6 @@ def phase_setup(state):
   else:
     target = 'a.out.js'
 
-  if options.oformat in (OFormat.JS, OFormat.MJS):
-    js_target = target
-  else:
-    js_target = get_secondary_target(target, '.js')
-  settings.TARGET_JS_NAME = js_target
-
-  settings.TARGET_BASENAME = unsuffixed_basename(target)
-
   if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
     diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
     settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
@@ -2404,6 +2396,14 @@ def phase_post_link(options, in_wasm, wasm_target, target):
 
   if options.oformat != OFormat.WASM:
     final_js = in_temp(target_basename + '.js')
+
+  settings.TARGET_BASENAME = unsuffixed_basename(target)
+
+  if options.oformat in (OFormat.JS, OFormat.MJS):
+    js_target = target
+  else:
+    js_target = get_secondary_target(target, '.js')
+  settings.TARGET_JS_NAME = js_target
 
   if settings.MEM_INIT_IN_WASM:
     memfile = None
