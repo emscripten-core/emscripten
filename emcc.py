@@ -1206,7 +1206,8 @@ def phase_setup(state):
   else:
     target = 'a.out.js'
 
-  settings.TARGET_BASENAME = unsuffixed_basename(target)
+  settings.TARGET_BASENAME_WITH_EXT = os.path.basename(target)
+  settings.TARGET_BASENAME = unsuffixed(settings.TARGET_BASENAME_WITH_EXT)
 
   if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
     diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
@@ -2533,6 +2534,16 @@ def phase_final_emitting(options, target, wasm_target, memfile):
     # here, so that it will not confuse the hacky script.
     shared.JS.handle_license(final_js)
     shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), final_js])
+
+  # Unmangle previously mangled `import.meta` references in both main code and libraries.
+  # See also: `preprocess` in parseTools.js.
+  if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
+    with open(final_js, 'r+') as f:
+      src = f.read()
+      src = src.replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
+      f.seek(0)
+      f.write(src)
+      f.truncate()
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:

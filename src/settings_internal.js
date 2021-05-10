@@ -32,6 +32,9 @@ var SIDE_MODULE_IMPORTS = [];
 // stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
 
+// stores the base name of the output file with extension (TARGET_BASENAME.js or TARGET_BASENAME.mjs)
+var TARGET_BASENAME_WITH_EXT = '';
+
 // Indicates that the syscalls (which we see statically) indicate that they need
 // full filesystem support. Otherwise, when just a small subset are used, we can
 // get away without including the full filesystem - in particular, if open() is
