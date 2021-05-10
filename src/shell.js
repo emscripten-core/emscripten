@@ -83,7 +83,12 @@ var quit_ = function(status, toThrow) {
 
 #if ENVIRONMENT && ENVIRONMENT.indexOf(',') < 0
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
+#if USE_PTHREADS && ENVIRONMENT_MAY_BE_NODE
+// node+pthreads always supports workers; detect which we are at runtime
+var ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
+#else
 var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT === 'worker' }}};
+#endif
 var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT === 'node' }}};
 var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT === 'shell' }}};
 #else // ENVIRONMENT
