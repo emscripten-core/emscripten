@@ -1206,8 +1206,13 @@ def phase_setup(state):
   else:
     target = 'a.out.js'
 
-  settings.TARGET_BASENAME_WITH_EXT = os.path.basename(target)
-  settings.TARGET_BASENAME = unsuffixed(settings.TARGET_BASENAME_WITH_EXT)
+  if options.oformat in (OFormat.JS, OFormat.MJS):
+    js_target = target
+  else:
+    js_target = get_secondary_target(target, '.js')
+  settings.TARGET_JS_NAME = js_target
+
+  settings.TARGET_BASENAME = unsuffixed_basename(target)
 
   if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
     diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
@@ -2558,10 +2563,7 @@ def phase_final_emitting(options, target, wasm_target, memfile):
 
   shared.JS.handle_license(final_js)
 
-  if options.oformat in (OFormat.JS, OFormat.MJS):
-    js_target = target
-  else:
-    js_target = get_secondary_target(target, '.js')
+  js_target = settings.TARGET_JS_NAME
 
   # The JS is now final. Move it to its final location
   move_file(final_js, js_target)
