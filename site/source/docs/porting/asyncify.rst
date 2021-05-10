@@ -162,7 +162,7 @@ To run this example, first compile it with
 
 ::
 
-    ./emcc example.c -O3 -o a.html -s ASYNCIFY -s 'ASYNCIFY_IMPORTS=["do_fetch"]'
+    emcc example.c -O3 -o a.html -s ASYNCIFY -s 'ASYNCIFY_IMPORTS=["do_fetch"]'
 
 Note that you must tell the compiler that ``do_fetch()`` can do an
 asynchronous operation, using ``ASYNCIFY_IMPORTS``, otherwise it won't
@@ -228,7 +228,7 @@ You can build this with
 
 ::
 
-    ../emcc example.c -s ASYNCIFY=1 -s 'ASYNCIFY_IMPORTS=["get_digest_size"]' -o a.html -O2
+    emcc example.c -s ASYNCIFY=1 -s 'ASYNCIFY_IMPORTS=["get_digest_size"]' -o a.html -O2
 
 This example calls the Promise-returning ``window.crypto.subtle()`` API (the
 example is based off of
