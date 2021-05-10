@@ -4560,6 +4560,9 @@ res64 - external 64\n''', header='''
     # in the another module.
     # Each module will define its own copy of certain COMDAT symbols such as
     # each classs's typeinfo, but at runtime they should both use the same one.
+    # Use LLD_REPORT_UNDEFINED to test that it works as expected with weak/COMDAT
+    # symbols.
+    self.set_setting('LLD_REPORT_UNDEFINED')
     header = '''
     #include <cstddef>
 
@@ -8375,6 +8378,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-Wno-experimental')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_PTHREADS')
+    self.set_setting('LLD_REPORT_UNDEFINED')
     self.set_setting('PTHREAD_POOL_SIZE=2')
     main = test_file('core', 'pthread', 'test_pthread_dylink.c')
     side = test_file('core', 'pthread', 'test_pthread_dylink_side.c')
