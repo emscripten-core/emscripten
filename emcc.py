@@ -2160,7 +2160,6 @@ def phase_setup(state):
       '_setThrew',
     ]
 
-
   if settings.ASYNCIFY:
     if not settings.ASYNCIFY_IGNORE_INDIRECT:
       # if we are not ignoring indirect calls, then we must treat invoke_* as if
