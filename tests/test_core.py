@@ -7516,7 +7516,7 @@ Module['onRuntimeInitialized'] = function() {
 
     # use of ASYNCIFY_* options may require intermediate debug info. that should
     # not end up emitted in the final binary
-    if  self.is_wasm():
+    if self.is_wasm():
       with open('test_asyncify_lists.wasm', 'rb') as f:
         binary = f.read()
       # there should be no name section
