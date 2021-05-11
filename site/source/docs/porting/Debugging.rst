@@ -23,13 +23,13 @@ Debugging in the browser
 =================
 
 :ref:`Emcc <emccdoc>` can ouptut debug information in two formats, either as
-DWARF symbols or as source maps. Both allow you to view and debug the *C/C++
-source code* in a browser's debugger. DWARF offers the most precise and detailed
-debugging experience and is supported as an experiment in Chrome with an
-`extension <https://goo.gle/wasm-debugging-extension>`. See `here
-<https://developer.chrome.com/blog/wasm-debugging-2020/>` for a detailed usage
-guide. Source maps are more widely supported in Firefox, Chrome, and Safari, but
-unlike DWARF they cannot be used to inspect variables, for example.
+DWARF symbols or as source maps. Both allow you to view and debug the
+*C/C++ source code* in a browser's debugger. DWARF offers the most precise and
+detailed debugging experience and is supported as an experiment in Chrome with
+an `extension <https://goo.gle/wasm-debugging-extension>`. See
+`here <https://developer.chrome.com/blog/wasm-debugging-2020/>` for a detailed
+usage guide. Source maps are more widely supported in Firefox, Chrome, and
+Safari, but unlike DWARF they cannot be used to inspect variables, for example.
 
 :ref:`Emcc <emccdoc>` strips out most of the debug information from
 :ref:`optimized builds <Optimizing-Code>` by default. DWARF can be produced with
@@ -43,22 +43,23 @@ white-space, function names, and variable names,
 .. tip:: Even for medium-sized projects, DWARF debug information can be of
   substantial size and negatively impact the page performance, particularly
   compiling and loading of the module. Debug information can also be emitted in
-  a file on the side instead with the :ref:`-gseparate-dwarf
-  <emcc-gseparate-dwarf>` option! The debug information size also affects the
-  linking time, because the debug information in all object files needs to be
-  linked as well. Passing the ``-gsplit-dwarf`` option can help here, which
-  causes clang to leave debug information scattered across object files. That
-  debug information needs to be linked into a DWARF package file (``.dwp``)
-  using the ``llvm-dwp`` tool then, but that could happen in parallel to the
-  linking of the compiled output! A compatible version should be part of your
-  emscripten distribution, for example in ``$EMSDK/upstream/bin/llvm-dwp``. When
-  running it after linking, it's as simple as ``llvm-dwp -e foo.wasm -o
-  foo.wasm.dwp``, or ``llvm-dwp -e foo.debug.wasm -o foo.debug.wasm.dwp`` when
-  used together with ``-gseparate-dwarf`` (the dwp file should have the same
-  file name as the main symbol file with an extra ``.dwp`` extension).
+  a file on the side instead with the
+  :ref:`-gseparate-dwarf <emcc-gseparate-dwarf>` option! The debug information
+  size also affects the linking time, because the debug information in all
+  object files needs to be linked as well. Passing the ``-gsplit-dwarf`` option
+  can help here, which causes clang to leave debug information scattered across
+  object files. That debug information needs to be linked into a DWARF package
+  file (``.dwp``) using the ``llvm-dwp`` tool then, but that could happen in
+  parallel to the linking of the compiled output! A compatible version should
+  be part of your emscripten distribution, for example in
+  ``$EMSDK/upstream/bin/llvm-dwp``. When running it after linking, it's as
+  simple as ``llvm-dwp -e foo.wasm -o foo.wasm.dwp``, or ``llvm-dwp -e
+  foo.debug.wasm -o foo.debug.wasm.dwp`` when used together with
+  ``-gseparate-dwarf`` (the dwp file should have the same file name as the main
+  symbol file with an extra ``.dwp`` extension).
 
-The ``-g`` flag can also be specified with an integer levels: :ref:`-g0
-<emcc-g0>`, :ref:`-g1 <emcc-g1>`, :ref:`-g2 <emcc-g2>` (default with
+The ``-g`` flag can also be specified with an integer levels:
+:ref:`-g0 <emcc-g0>`, :ref:`-g1 <emcc-g1>`, :ref:`-g2 <emcc-g2>` (default with
 ``-gsource-map``), and :ref:`-g3 <emcc-g3>` (default with ``-g``). Each level
 builds on the last to provide progressively more debug information in the
 compiled output.
