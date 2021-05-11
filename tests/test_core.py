@@ -6004,6 +6004,17 @@ return malloc(size);
     self.maybe_closure()
     self.do_runf(src, native_result)
 
+  @wasm_simd
+  def test_sse_diagnostics(self):
+    self.emcc_args.remove('-Werror')
+    src = test_file('sse', 'test_sse1.cpp')
+
+    p = self.run_process(
+            [shared.EMXX, src, '-msse', '-D__EMSCRIPTEN_SIMD_COMPAT_SLOW'] +
+                self.get_emcc_args(main_file=True),
+            capture_output=True)
+    self.assertContained('Instruction emulated via slow path.', p.stderr)
+
   @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
     self.emcc_args += ['-I' + test_file('third_party', 'libiberty')]
