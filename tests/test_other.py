@@ -196,10 +196,9 @@ class other(RunnerCore):
 
   def test_emcc_output_worker_mjs(self):
     self.run_process([EMCC, '-o', 'hello_world.mjs', '-pthread', '-O1',
-                      test_file('hello_world.c'),
-                      '-s', 'EXPORT_NAME=FooModule'])
+                      test_file('hello_world.c')])
     with open('hello_world.mjs') as f:
-      self.assertContained('export default FooModule;', f.read())
+      self.assertContained('export default Module;', f.read())
     with open('hello_world.worker.js') as f:
       self.assertContained('import(', f.read())
 
