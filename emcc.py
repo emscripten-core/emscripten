@@ -2412,9 +2412,11 @@ def phase_post_link(options, in_wasm, wasm_target, target):
   settings.TARGET_BASENAME = unsuffixed_basename(target)
 
   if options.oformat in (OFormat.JS, OFormat.MJS):
-    settings.TARGET_JS_NAME = target
+    settings.TARGET_JS_PATH = target
   else:
-    settings.TARGET_JS_NAME = get_secondary_target(target, '.js')
+    settings.TARGET_JS_PATH = get_secondary_target(target, '.js')
+
+  settings.TARGET_JS_NAME = os.path.basename(settings.TARGET_JS_PATH)
 
   if settings.MEM_INIT_IN_WASM:
     memfile = None
@@ -2573,7 +2575,7 @@ def phase_final_emitting(options, target, wasm_target, memfile):
 
   shared.JS.handle_license(final_js)
 
-  js_target = settings.TARGET_JS_NAME
+  js_target = settings.TARGET_JS_PATH
 
   # The JS is now final. Move it to its final location
   move_file(final_js, js_target)
