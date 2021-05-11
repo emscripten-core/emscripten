@@ -35,9 +35,6 @@ var EXPORT_IF_DEFINED = [];
 // stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
 
-// stores the relative path of the output JS file
-var TARGET_JS_PATH = '';
-
 // stores the base name (with extension) of the output JS file
 var TARGET_JS_NAME = '';
 
