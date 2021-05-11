@@ -201,7 +201,7 @@ class other(RunnerCore):
     with open('subdir/hello_world.mjs') as f:
       src = f.read()
       self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
-      self.assertContained('export default FooModule;', src)
+      self.assertContained('export default Module;', src)
     with open('subdir/hello_world.worker.js') as f:
       self.assertContained('import("./hello_world.mjs")', f.read())
 
