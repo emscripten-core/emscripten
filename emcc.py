@@ -3119,10 +3119,14 @@ def phase_binaryen(target, options, wasm_target):
     wasm2c.do_wasm2c(wasm_target)
 
   # intermediate debug info will definitely no longer be used, and we can stop
-  # tracking it
+  # tracking it.
   if debug_info:
     intermediate_debug_info -= 1
   assert intermediate_debug_info == 0
+  # strip debug info if it was not already stripped by a
+  # previous command
+  if not debug_info and '-g' in building.last_writing_binaryen_cmd:
+    building.run_wasm_opt(wasm_target, wasm_target)
 
   # replace placeholder strings with correct subresource locations
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
