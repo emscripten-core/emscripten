@@ -3036,6 +3036,13 @@ def phase_binaryen(target, options, wasm_target):
   if settings.ASYNCIFY_LAZY_LOAD_CODE:
     building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
+  # remove intermediate debug info if we don't need it any more
+  # TODO: more complex logic here could avoid needing to run wasm-opt just for
+  #       this, if we instead calculated which is the last command to run, and
+  #       told it to not emit debug info.
+  if intermediate_debug_info and not debug_info:
+    building.run_wasm_opt(wasm_target, wasm_target)
+
   def preprocess_wasm2js_script():
     return read_and_preprocess(shared.path_from_root('src', 'wasm2js.js'), expand_macros=True)
 
