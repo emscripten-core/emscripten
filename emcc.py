@@ -2956,9 +2956,19 @@ def phase_binaryen(target, options, wasm_target):
     logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
   # whether we need to emit -g (function name debug info) in the final wasm
   debug_info = settings.DEBUG_LEVEL >= 2 or options.profiling_funcs
-  # whether we need to emit -g in the intermediate binaryen invocations (but not necessarily at the very end).
-  # this is necessary for emitting a symbol map at the end.
-  intermediate_debug_info = bool(debug_info or options.emit_symbol_map or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.ASYNCIFY_ADD)
+  # whether we need to emit -g in the intermediate binaryen invocations (but not
+  # necessarily at the very end). this is necessary for emitting a symbol map at
+  # the end. we track the number of causes for needing intermdiate debug info so
+  # that we can stop emitting it when possible - in particular, that is
+  # important so that we stop emitting it before the end, and it is not in the
+  # final binary (if it shouldn't be)
+  intermediate_debug_info = 0
+  if debug_info:
+    intermediate_debug_info += 1
+  if options.emit_symbol_map:
+    intermediate_debug_info += 1
+  if settings.ASYNCIFY:
+    intermediate_debug_info += 1
   # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
   # also strips the Names section. so to emit just the Names section we don't
   # tell wasm-ld to strip anything, and we do it here.
@@ -2980,6 +2990,10 @@ def phase_binaryen(target, options, wasm_target):
                           wasm_target,
                           args=passes,
                           debug=intermediate_debug_info)
+    # if asyncify is used, we just applied it, and no longer need debug info
+    # just because of it
+    if settings.ASYNCIFY:
+      intermediate_debug_info -= 1
   elif strip_debug or strip_producers:
     # we are not running wasm-opt. if we need to strip certain sections
     # then do so using llvm-objcopy which is fast and does not rewrite the
@@ -3036,13 +3050,6 @@ def phase_binaryen(target, options, wasm_target):
   if settings.ASYNCIFY_LAZY_LOAD_CODE:
     building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
-  # remove intermediate debug info if we don't need it any more
-  # TODO: more complex logic here could avoid needing to run wasm-opt just for
-  #       this, if we instead calculated which is the last command to run, and
-  #       told it to not emit debug info.
-  if intermediate_debug_info and not debug_info:
-    building.run_wasm_opt(wasm_target, wasm_target)
-
   def preprocess_wasm2js_script():
     return read_and_preprocess(shared.path_from_root('src', 'wasm2js.js'), expand_macros=True)
 
@@ -3098,15 +3105,24 @@ def phase_binaryen(target, options, wasm_target):
   # this will also remove debug info if we only kept it around in the intermediate invocations.
   # note that if we aren't emitting a binary (like in wasm2js) then we don't
   # have anything to do here.
-  if options.emit_symbol_map and os.path.exists(wasm_target):
-    building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=debug_info)
-    save_intermediate_with_wasm('symbolmap', wasm_target)
+  if options.emit_symbol_map:
+    if os.path.exists(wasm_target):
+      building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=debug_info)
+      save_intermediate_with_wasm('symbolmap', wasm_target)
+
+    intermediate_debug_info -= 1
 
   if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
     building.emit_debug_on_side(wasm_target, settings.SEPARATE_DWARF)
 
   if settings.WASM2C:
     wasm2c.do_wasm2c(wasm_target)
+
+  # intermediate debug info will definitely no longer be used, and we can stop
+  # tracking it
+  if debug_info:
+    intermediate_debug_info -= 1
+  assert intermediate_debug_info == 0
 
   # replace placeholder strings with correct subresource locations
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
