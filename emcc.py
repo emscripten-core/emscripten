@@ -3123,8 +3123,7 @@ def phase_binaryen(target, options, wasm_target):
   if debug_info:
     intermediate_debug_info -= 1
   assert intermediate_debug_info == 0
-  # strip debug info if it was not already stripped by a
-  # previous command
+  # strip debug info if it was not already stripped by the last command
   if not debug_info and '-g' in building.last_writing_binaryen_cmd and os.path.exists(wasm_target):
     building.run_wasm_opt(wasm_target, wasm_target)
 
