@@ -195,12 +195,15 @@ class other(RunnerCore):
     # self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   def test_emcc_output_worker_mjs(self):
-    self.run_process([EMCC, '-o', 'hello_world.mjs', '-pthread', '-O1',
+    os.mkdir('subdir')
+    self.run_process([EMCC, '-o', 'subdir/hello_world.mjs', '-pthread', '-O1',
                       test_file('hello_world.c')])
-    with open('hello_world.mjs') as f:
-      self.assertContained('export default Module;', f.read())
-    with open('hello_world.worker.js') as f:
-      self.assertContained('import(', f.read())
+    with open('subdir/hello_world.mjs') as f:
+      src = f.read()
+      self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
+      self.assertContained('export default Module;', src)
+    with open('subdir/hello_world.worker.js') as f:
+      self.assertContained('import("./hello_world.mjs")', f.read())
 
   def test_export_es6_implies_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'EXPORT_ES6=1'])
