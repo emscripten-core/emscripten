@@ -360,11 +360,6 @@ def lld_flags_for_executable(external_symbols):
   else:
     cmd.append('--allow-undefined')
 
-  # Disable string merging in the linker, at least until we there is
-  # an upstream fix for https://bugs.llvm.org/show_bug.cgi?id=50291.
-  # (-O level only effect string merging in wasm-ld today).
-  cmd.append('-O0')
-
   if settings.IMPORTED_MEMORY:
     cmd.append('--import-memory')
 
@@ -446,6 +441,11 @@ def link_lld(args, target, external_symbols=None):
   # semantics are more like the windows linker where there is no need for
   # grouping.
   args = [a for a in args if a not in ('--start-group', '--end-group')]
+
+  # Disable string merging in the linker, at least until we there is
+  # an upstream fix for https://bugs.llvm.org/show_bug.cgi?id=50291.
+  # (-O level only effect string merging in wasm-ld today).
+  args.append('-O0')
 
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.

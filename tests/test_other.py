@@ -197,8 +197,7 @@ class other(RunnerCore):
   def test_emcc_output_worker_mjs(self):
     os.mkdir('subdir')
     self.run_process([EMCC, '-o', 'subdir/hello_world.mjs', '-pthread', '-O1',
-                      test_file('hello_world.c'),
-                      '-s', 'EXPORT_NAME=FooModule'])
+                      test_file('hello_world.c')])
     with open('subdir/hello_world.mjs') as f:
       src = f.read()
       self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
