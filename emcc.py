@@ -2957,8 +2957,9 @@ def phase_binaryen(target, options, wasm_target):
   # whether we need to emit -g (function name debug info) in the final wasm
   debug_info = settings.DEBUG_LEVEL >= 2 or options.profiling_funcs
   # whether we need to emit -g in the intermediate binaryen invocations (but not
-  # necessarily at the very end). this is necessary for emitting a symbol map at
-  # the end. we track the number of causes for needing intermdiate debug info so
+  # necessarily at the very end). this is necessary if we depend on debug info
+  # during compilation, even if we do not emit it at the end.
+  # we track the number of causes for needing intermdiate debug info so
   # that we can stop emitting it when possible - in particular, that is
   # important so that we stop emitting it before the end, and it is not in the
   # final binary (if it shouldn't be)
