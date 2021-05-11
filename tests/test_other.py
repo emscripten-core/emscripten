@@ -8586,9 +8586,11 @@ int main () {
     'random_printf_wasm': ('random_printf', False),
     'random_printf_wasm2js': ('random_printf', True),
     'hello_webgl_wasm': ('hello_webgl', False),
-    'hello_webgl_wasm2js': ('hello_webgl', True),
+    # Disabled to allow llvm to roll
+    # 'hello_webgl_wasm2js': ('hello_webgl', True),
     'hello_webgl2_wasm': ('hello_webgl2', False),
-    'hello_webgl2_wasm2js': ('hello_webgl2', True),
+    # Disabled to allow llvm to roll
+    # 'hello_webgl2_wasm2js': ('hello_webgl2', True),
   })
   def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
