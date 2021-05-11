@@ -84,16 +84,16 @@ mergeInto(LibraryManager.library, {
       var out = [], len = exprString.length;
       for(var i = 0; i <= len; ++i) {
         var kind = classifyChar(exprString, i);
-        if (kind == 2 || kind == 3) { // a character or a number
+        if (kind == 2/*0-9*/ || kind == 3/*a-z*/) { // a character or a number
           for(var j = i+1; j <= len; ++j) {
             var kind2 = classifyChar(exprString, j);
-            if (kind2 != kind && (kind2 != 2 || kind != 3)) { // parse number sequence "423410", and identifier sequence "FOO32BAR"
+            if (kind2 != kind && (kind2 != 2/*0-9*/ || kind != 3/*a-z*/)) { // parse number sequence "423410", and identifier sequence "FOO32BAR"
               out.push(exprString.substring(i, j));
               i = j-1;
               break;
             }
           }
-        } else if (kind == 1) {
+        } else if (kind == 1/*operator symbol*/) {
           // Lookahead for two-character operators.
           var op2 = exprString.substr(i, 2);
           if (['<=', '>=', '==', '!=', '&&', '||'].includes(op2)) {
@@ -109,26 +109,26 @@ mergeInto(LibraryManager.library, {
 
     // Expands preprocessing macros on substring str[lineStart...lineEnd]
     function expandMacros(str, lineStart, lineEnd) {
-      if (!lineEnd) lineEnd = str.length;
+      if (lineEnd === undefined) lineEnd = str.length;
       var len = str.length;
       var out = '';
       for(var i = lineStart; i < lineEnd; ++i) {
         var kind = classifyChar(str, i);
-        if (kind == 3) {
+        if (kind == 3/*a-z*/) {
           for(var j = i + 1; j <= lineEnd; ++j) {
             var kind2 = classifyChar(str, j);
-            if (kind2 != 2 && kind2 != 3) {
+            if (kind2 != 2/*0-9*/ && kind2 != 3/*a-z*/) {
               var symbol = str.substring(i, j);
               var pp = defs[symbol];
               if (pp) {
                 var expanded = str.substring(lineStart, i);
-                if (str[j] == '(') {
+                if (pp.length && str[j] == '(') { // Expanding a macro? (#define FOO(X) ...)
                   var closeParens = find_closing_parens_index(str, j);
 #if ASSERTIONS
                   assert(str[closeParens] == ')');
 #endif
                   expanded += pp(str.substring(j+1, closeParens).split(',')) + str.substring(closeParens+1, lineEnd);
-                } else {
+                } else { // Expanding a non-macro (#define FOO BAR)
                   expanded += pp() + str.substring(j, lineEnd);
                 }
                 return expandMacros(expanded, 0);
@@ -222,8 +222,9 @@ mergeInto(LibraryManager.library, {
       for(var j = lineStart; j < i && isWhitespace(code, j); ++j);
 
       // Is this a non-preprocessor directive line?
+      var thisLineIsInActivePreprocessingBlock = stack[stack.length-1];
       if (code[j] != '#') { // non-preprocessor line?
-        if (stack[stack.length-1]) {
+        if (thisLineIsInActivePreprocessingBlock) {
           out += expandMacros(code, lineStart, i) + '\n';
         }
         continue;
@@ -234,7 +235,6 @@ mergeInto(LibraryManager.library, {
       var space = nextWhitespace(code, j);
       var directive = code.substring(j+1, space);
       var expression = code.substring(space, i).trim();
-
       switch(directive) {
       case 'if':
         var tokens = tokenize(expandMacros(expression, 0));
@@ -247,39 +247,42 @@ mergeInto(LibraryManager.library, {
       case 'else': stack[stack.length-1] = 1-stack[stack.length-1]; break;
       case 'endif': stack.pop(); break;
       case 'define':
-        // This could either be a macro with input args (#define MACRO(x,y) x+y), or a direct expansion #define FOO 2,
-        // figure out which.
-        var macroStart = expression.indexOf('(');
-        var firstWs = nextWhitespace(expression, 0);
-        if (firstWs < macroStart) macroStart = 0;
-        if (macroStart > 0) { // #define MACRO( x , y , z ) <statement of x,y and z>
-          var macroEnd = expression.indexOf(')', macroStart);
-          let params = expression.substring(macroStart+1, macroEnd).split(',').map(x => x.trim());
-          let value = tokenize(expression.substring(macroEnd+1).trim())
-          defs[expression.substring(0, macroStart)] = function(args) {
-            var ret = '';
-            value.forEach((x) => {
-              var argIndex = params.indexOf(x);
-              ret += (argIndex >= 0) ? args[argIndex] : x;
-            });
-            return ret;
-          };
-        } else { // #define FOO (x + y + z)
-          let value = expandMacros(expression.substring(firstWs+1).trim(), 0);
-          defs[expression.substring(0, firstWs)] = function() {
-            return value;
-          };
+        if (thisLineIsInActivePreprocessingBlock) {
+          // This could either be a macro with input args (#define MACRO(x,y) x+y), or a direct expansion #define FOO 2,
+          // figure out which.
+          var macroStart = expression.indexOf('(');
+          var firstWs = nextWhitespace(expression, 0);
+          if (firstWs < macroStart) macroStart = 0;
+          if (macroStart > 0) { // #define MACRO( x , y , z ) <statement of x,y and z>
+            var macroEnd = expression.indexOf(')', macroStart);
+            let params = expression.substring(macroStart+1, macroEnd).split(',').map(x => x.trim());
+            let value = tokenize(expression.substring(macroEnd+1).trim())
+            defs[expression.substring(0, macroStart)] = function(args) {
+              var ret = '';
+              value.forEach((x) => {
+                var argIndex = params.indexOf(x);
+                ret += (argIndex >= 0) ? args[argIndex] : x;
+              });
+              return ret;
+            };
+          } else { // #define FOO (x + y + z)
+            let value = expandMacros(expression.substring(firstWs+1).trim(), 0);
+            defs[expression.substring(0, firstWs)] = function() {
+              return value;
+            };
+          }
         }
         break;
-      case 'undef': delete defs[expression]; break;
+      case 'undef': if (thisLineIsInActivePreprocessingBlock) delete defs[expression]; break;
       default:
-        if (directive == 'version' || directive == 'pragma') { // GLSL shader compiler specific #directives.
-          out += expandMacros(code, lineStart, i) + '\n';
-        } else {
+        if (directive != 'version' && directive != 'pragma' && directive != 'extension') { // GLSL shader compiler specific #directives.
 #if ASSERTIONS
           console.error('Unrecognized preprocessor directive #' + directive + '!');
 #endif
         }
+
+        // Unknown preprocessor macro, just pass through the line to output.
+        out += expandMacros(code, lineStart, i) + '\n';
       }
     }
     return out;

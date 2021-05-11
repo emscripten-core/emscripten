@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
   emscripten_webgl_init_context_attributes(&attr);
   attr.majorVersion = 2;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
+  assert(ctx);
   emscripten_webgl_make_context_current(ctx);
 
   GLint maxUniformLocations = 0;
@@ -55,9 +56,9 @@ int main(int argc, char *argv[])
     "#version 300 es\n"
     "precision lowp float;\n"
     "#define LOCATION(x) layout(location=x)\n"
-    "LOCATION(8) uniform vec3 color;\n"
-    "LOCATION(11) uniform vec4 color2;\n"
-    "layout(location = 18) uniform vec3 colors[3];\n"
+    "LOCATION(8) uniform highp vec3 color;\n"
+    "LOCATION(11) uniform mediump vec4 color2;\n"
+    "layout(location = 18) uniform lowp vec3 colors[3];\n"
     "layout(location = 24) uniform vec3 colors2[3];\n"
     "LOCATION(0) out highp vec4 SV_TARGET0; // Make sure MRT output locations don't get removed by preprocessor\n"
     "void main() { SV_TARGET0 = vec4(color,1) + color2 + vec4(colors[0].r, colors[1].g, colors[2].b, 1) + vec4(colors2[0].r, colors2[1].g, colors2[2].b, 1); }");
@@ -119,6 +120,37 @@ int main(int argc, char *argv[])
   assert(data[1] == 178);
   assert(data[2] == 204);
   assert(data[3] == 255);
+
+  // Test that setting program zero is allowed
+  glUseProgram(0);
+  assert(!glGetError());
+
+  // Test that calling glGetUniformLocation() without an active program should report a GL_INVALID_VALUE.
+  glGetUniformLocation(0, "colors[0]");
+  assert(glGetError() == GL_INVALID_VALUE);
+
+  // Test that calling glUniform*() without an active program should report a GL_INVALID_OPERATION.
+  assert(!glGetError());
+  glUniform4f(11/*color2*/, 0.2f, 0.2f, 0.3f, 1.f);
+  assert(glGetError() == GL_INVALID_OPERATION);
+
+  // Test that explicit and implicit uniform location numberings do not collide
+  GLuint program2 = glCreateProgram();
+  glAttachShader(program2, CompileShader(GL_VERTEX_SHADER,
+    "#version 300 es\n"
+    "uniform mat4 world;\n"
+    "layout(location = 1) uniform mat4 view;\n" // Should get an automatically assigned location that starts numbering after the highest location that is used explicitly (at 2)
+    "layout(location = 0) in vec4 pos;\n"
+    "void main() { gl_Position = view*world*pos; }"));
+  glAttachShader(program2, CompileShader(GL_FRAGMENT_SHADER,
+    "#version 300 es\n"
+    "out highp vec4 outColor;\n"
+    "void main() { outColor = vec4(0,0,0,1); }"));
+  glLinkProgram(program2);
+  assert(glGetError() == GL_NO_ERROR && "Shader program link failed");
+
+  assert(glGetUniformLocation(program2, "world") == 2);
+  assert(glGetUniformLocation(program2, "view") == 1);
 
   printf("Test passed!\n");
 #ifdef REPORT_RESULT
