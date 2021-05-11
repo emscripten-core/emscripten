@@ -29,8 +29,14 @@ var SIDE_MODULE_EXPORTS = [];
 // module (or other side modules) will need to provide.
 var SIDE_MODULE_IMPORTS = [];
 
+// Like EXPORTED_FUNCTIONS, but will not error if symbol is missing
+var EXPORT_IF_DEFINED = [];
+
 // stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
+
+// stores the base name (with extension) of the output JS file
+var TARGET_JS_NAME = '';
 
 // Indicates that the syscalls (which we see statically) indicate that they need
 // full filesystem support. Otherwise, when just a small subset are used, we can

@@ -70,7 +70,7 @@ to prevent C++ name mangling.
 To compile this code run the following command in the Emscripten
 home directory::
 
-    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]'
+    emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]'
 
 ``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the
 compiled code (everything else might be removed if it is not used), and
@@ -683,7 +683,7 @@ so you cannot simply do this:
 
    function func() {
      var ptr = callSomething(len);               // if memory grows ...
-     return HEAPU8.subarray(buffer, buffer+len); // ... this will fail
+     return HEAPU8.subarray(ptr, ptr+len); // ... this will fail
    }
 
 Here, if `callSomething` calls `malloc` and returns the allocated

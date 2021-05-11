@@ -168,7 +168,7 @@ self.onmessage = function(e) {
 #endif
 
 #if MODULARIZE && EXPORT_ES6
-      import(e.data.urlOrBlob).then(function(exports) {
+      (e.data.urlOrBlob ? import(e.data.urlOrBlob) : import('./{{{ TARGET_JS_NAME }}}')).then(function(exports) {
         return exports.default(Module);
       }).then(function(instance) {
         Module = instance;

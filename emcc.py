@@ -667,19 +667,28 @@ def process_dynamic_libs(dylibs, lib_dirs):
 
   dylibs += extras
   for dylib in dylibs:
+    exports = webassembly.get_exports(dylib)
+    exports = set(e.name for e in exports)
+    settings.SIDE_MODULE_EXPORTS.extend(exports)
+
     imports = webassembly.get_imports(dylib)
     imports = [i.field for i in imports if i.kind in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL)]
-    settings.SIDE_MODULE_IMPORTS.extend(imports)
+    # For now we ignore `invoke_` functions imported by side modules and rely
+    # on the dynamic linker to create them on the fly.
+    # TODO(sbc): Integrate with metadata['invokeFuncs'] that comes from the
+    # main module to avoid creating new invoke functions at runtime.
+    imports = set(i for i in imports if not i.startswith('invoke_'))
+    weak_imports = imports.intersection(exports)
+    strong_imports = imports.difference(exports)
     logger.debug('Adding symbols requirements from `%s`: %s', dylib, imports)
 
-    exports = webassembly.get_exports(dylib)
-    for export in exports:
-      settings.SIDE_MODULE_EXPORTS.append(export.name)
-
-  mangled_imports = [shared.asmjs_mangle(e) for e in settings.SIDE_MODULE_IMPORTS]
-  settings.EXPORTED_FUNCTIONS.extend(mangled_imports)
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(settings.SIDE_MODULE_IMPORTS)
-  building.user_requested_exports.update(mangled_imports)
+    mangled_imports = [shared.asmjs_mangle(e) for e in imports]
+    mangled_strong_imports = [shared.asmjs_mangle(e) for e in strong_imports]
+    settings.SIDE_MODULE_IMPORTS.extend(mangled_imports)
+    settings.EXPORTED_FUNCTIONS.extend(mangled_strong_imports)
+    settings.EXPORT_IF_DEFINED.extend(weak_imports)
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(strong_imports)
+    building.user_requested_exports.update(mangled_strong_imports)
 
 
 def unmangle_symbols_from_cmdline(symbols):
@@ -1206,8 +1215,6 @@ def phase_setup(state):
   else:
     target = 'a.out.js'
 
-  settings.TARGET_BASENAME = unsuffixed_basename(target)
-
   if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
     diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
     settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
@@ -1732,6 +1739,9 @@ def phase_setup(state):
   if settings.SIDE_MODULE:
     default_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
     default_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
+  else:
+    settings.EXPORT_IF_DEFINED.append('__start_em_asm')
+    settings.EXPORT_IF_DEFINED.append('__stop_em_asm')
 
   if 'DISABLE_EXCEPTION_CATCHING' in settings_map and 'EXCEPTION_CATCHING_ALLOWED' in settings_map:
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
@@ -2399,6 +2409,13 @@ def phase_post_link(options, in_wasm, wasm_target, target):
   if options.oformat != OFormat.WASM:
     final_js = in_temp(target_basename + '.js')
 
+  settings.TARGET_BASENAME = unsuffixed_basename(target)
+
+  if options.oformat in (OFormat.JS, OFormat.MJS):
+    settings.TARGET_JS_NAME = target
+  else:
+    settings.TARGET_JS_NAME = get_secondary_target(target, '.js')
+
   if settings.MEM_INIT_IN_WASM:
     memfile = None
   else:
@@ -2534,6 +2551,15 @@ def phase_final_emitting(options, target, wasm_target, memfile):
     shared.JS.handle_license(final_js)
     shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), final_js])
 
+  # Unmangle previously mangled `import.meta` references in both main code and libraries.
+  # See also: `preprocess` in parseTools.js.
+  if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
+    src = open(final_js).read()
+    final_js += '.esmeta.js'
+    with open(final_js, 'w') as f:
+      f.write(src.replace('EMSCRIPTEN$IMPORT$META', 'import.meta'))
+    save_intermediate('es6-import-meta')
+
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
     logger.debug('applying extern pre/postjses')
@@ -2547,10 +2573,7 @@ def phase_final_emitting(options, target, wasm_target, memfile):
 
   shared.JS.handle_license(final_js)
 
-  if options.oformat in (OFormat.JS, OFormat.MJS):
-    js_target = target
-  else:
-    js_target = get_secondary_target(target, '.js')
+  js_target = settings.TARGET_JS_NAME
 
   # The JS is now final. Move it to its final location
   move_file(final_js, js_target)
