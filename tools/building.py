@@ -360,6 +360,11 @@ def lld_flags_for_executable(external_symbols):
   else:
     cmd.append('--allow-undefined')
 
+  # Disable string merging in the linker, at least until we there is
+  # an upstream fix for https://bugs.llvm.org/show_bug.cgi?id=50291.
+  # (-O level only effect string merging in wasm-ld today).
+  cmd.append('-O0')
+
   if settings.IMPORTED_MEMORY:
     cmd.append('--import-memory')
 
