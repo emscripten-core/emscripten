@@ -6010,9 +6010,9 @@ return malloc(size);
     src = test_file('sse', 'test_sse1.cpp')
 
     p = self.run_process(
-            [shared.EMXX, src, '-msse', '-D__EMSCRIPTEN_SIMD_COMPAT_SLOW'] +
-                self.get_emcc_args(main_file=True),
-            capture_output=True)
+      [shared.EMXX, src, '-msse', '-D__EMSCRIPTEN_SIMD_COMPAT_SLOW'] +
+      self.get_emcc_args(main_file=True),
+      capture_output=True)
     self.assertContained('Instruction emulated via slow path.', p.stderr)
 
   @no_asan('call stack exceeded on some versions of node')
