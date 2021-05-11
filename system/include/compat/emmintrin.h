@@ -365,19 +365,19 @@ _mm_ucomineq_sd(__m128d __a, __m128d __b)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_cvtpd_ps(__m128d __a)
 {
-  return wasm_f32x4_demote_f64x2_zero(__a);
+  return (v128_t)wasm_f32x4_demote_f64x2_zero((v128_t)__a);
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cvtps_pd(__m128 __a)
 {
-  return wasm_f64x2_promote_low_f32x4(__a);
+  return (v128_t)wasm_f64x2_promote_low_f32x4((v128_t)__a);
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepi32_pd(__m128i __a)
 {
-  return wasm_f64x2_convert_low_i32x4(__a);
+  return (v128_t)wasm_f64x2_convert_low_i32x4((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
