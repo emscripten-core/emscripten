@@ -26,6 +26,9 @@ int emscripten_has_threading_support(void);
 // Returns the number of logical cores on the system.
 int emscripten_num_logical_cores(void);
 
+// Returns the thread pool size on the system.
+int emscripten_thread_pool_size(void);
+
 // Configures the number of logical cores on the system. This can be called at
 // startup to specify the number of cores emscripten_num_logical_cores()
 // reports. The Emscripten system itself does not use this value internally

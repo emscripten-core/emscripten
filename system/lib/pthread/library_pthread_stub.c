@@ -16,6 +16,8 @@ void emscripten_force_num_logical_cores(int cores) {
   // no-op, in singlethreaded builds we will always report exactly one core.
 }
 
+int emscripten_thread_pool_size() { return 0; }
+
 int emscripten_futex_wait(
   volatile void /*uint32_t*/* addr, uint32_t val, double maxWaitMilliseconds) {
   // nop

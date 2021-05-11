@@ -660,6 +660,18 @@ var LibraryPThread = {
     return navigator['hardwareConcurrency'];
   },
 
+  emscripten_thread_pool_size: function() {
+#if PTHREAD_POOL_SIZE
+    const pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
+    if (pthreadPoolSize > _emscripten_num_logical_cores()) {
+      err('PTHREAD_POOL_SIZE is bigger than emscripten_num_logical_cores()!');
+    }
+    return pthreadPoolSize;
+#else
+    return 0;
+#endif
+  },
+
   {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['$spawnThread', 'pthread_self', 'memalign', 'emscripten_sync_run_in_main_thread_4'],
   {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
