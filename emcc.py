@@ -1037,7 +1037,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     process_libraries(state.libs, state.lib_dirs, [])
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
-    phase_post_link(options, input_files[0][1], wasm_target, target, state)
+    phase_post_link(options, state, input_files[0][1], wasm_target, target)
     return 0
 
   ## Compile source code to object files
@@ -1082,7 +1082,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # Perform post-link steps (unless we are running bare mode)
   if options.oformat != OFormat.BARE:
-    phase_post_link(options, wasm_target, wasm_target, target, state)
+    phase_post_link(options, state, wasm_target, wasm_target, target)
 
   return 0
 
@@ -2401,7 +2401,7 @@ def phase_link(linker_arguments, wasm_target):
 
 
 @ToolchainProfiler.profile_block('post_link')
-def phase_post_link(options, in_wasm, wasm_target, target, state):
+def phase_post_link(options, state, in_wasm, wasm_target, target):
   global final_js
 
   target_basename = unsuffixed_basename(target)
@@ -2436,7 +2436,7 @@ def phase_post_link(options, in_wasm, wasm_target, target, state):
 
   # If we are not emitting any JS then we are all done now
   if options.oformat != OFormat.WASM:
-    phase_final_emitting(options, target, wasm_target, memfile, state)
+    phase_final_emitting(options, state, target, wasm_target, memfile)
 
 
 @ToolchainProfiler.profile_block('emscript')
@@ -2517,7 +2517,7 @@ def phase_memory_initializer(memfile):
 
 
 @ToolchainProfiler.profile_block('final emitting')
-def phase_final_emitting(options, target, wasm_target, memfile, state):
+def phase_final_emitting(options, state, target, wasm_target, memfile):
   global final_js
 
   # Remove some trivial whitespace
