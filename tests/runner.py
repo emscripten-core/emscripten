@@ -27,7 +27,6 @@ import difflib
 import fnmatch
 import glob
 import hashlib
-import json
 import logging
 import math
 import multiprocessing
@@ -518,11 +517,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ret = []
     for key, value in self.settings_mods.items():
       if value == 1:
-        ret += ['-s', key]
-      elif type(value) == str:
-        ret += ['-s', f'{key}={value}']
+        ret.append(f'-s{key}')
+      elif type(value) == list:
+        ret.append(f'-s{key}={",".join(value)}')
       else:
-        ret += ['-s', f'{key}={json.dumps(value)}']
+        ret.append(f'-s{key}={value}')
     return ret
 
   def get_dir(self):
