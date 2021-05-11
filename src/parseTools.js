@@ -33,6 +33,14 @@ function processMacros(text) {
 // Param filenameHint can be passed as a description to identify the file that is being processed, used
 // to locate errors for reporting and for html files to stop expansion between <style> and </style>.
 function preprocess(text, filenameHint) {
+  if (EXPORT_ES6 && USE_ES6_IMPORT_META) {
+    // `eval`, Terser and Closure don't support module syntax; to allow it,
+    // we need to temporarily replace `import.meta` usages with placeholders
+    // during preprocess phase, and back after all the other ops.
+    // See also: `phase_final_emitting` in emcc.py.
+    text = text.replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META');
+  }
+
   const IGNORE = 0;
   const SHOW = 1;
   // This state is entered after we have shown one of the block of an if/elif/else sequence.

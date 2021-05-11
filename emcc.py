@@ -1215,8 +1215,6 @@ def phase_setup(state):
   else:
     target = 'a.out.js'
 
-  settings.TARGET_BASENAME = unsuffixed_basename(target)
-
   if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
     diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
     settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
@@ -2411,6 +2409,13 @@ def phase_post_link(options, in_wasm, wasm_target, target):
   if options.oformat != OFormat.WASM:
     final_js = in_temp(target_basename + '.js')
 
+  settings.TARGET_BASENAME = unsuffixed_basename(target)
+
+  if options.oformat in (OFormat.JS, OFormat.MJS):
+    settings.TARGET_JS_NAME = target
+  else:
+    settings.TARGET_JS_NAME = get_secondary_target(target, '.js')
+
   if settings.MEM_INIT_IN_WASM:
     memfile = None
   else:
@@ -2546,6 +2551,15 @@ def phase_final_emitting(options, target, wasm_target, memfile):
     shared.JS.handle_license(final_js)
     shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), final_js])
 
+  # Unmangle previously mangled `import.meta` references in both main code and libraries.
+  # See also: `preprocess` in parseTools.js.
+  if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
+    src = open(final_js).read()
+    final_js += '.esmeta.js'
+    with open(final_js, 'w') as f:
+      f.write(src.replace('EMSCRIPTEN$IMPORT$META', 'import.meta'))
+    save_intermediate('es6-import-meta')
+
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
     logger.debug('applying extern pre/postjses')
@@ -2559,10 +2573,7 @@ def phase_final_emitting(options, target, wasm_target, memfile):
 
   shared.JS.handle_license(final_js)
 
-  if options.oformat in (OFormat.JS, OFormat.MJS):
-    js_target = target
-  else:
-    js_target = get_secondary_target(target, '.js')
+  js_target = settings.TARGET_JS_NAME
 
   # The JS is now final. Move it to its final location
   move_file(final_js, js_target)

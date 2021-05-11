@@ -746,10 +746,15 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
+#if EXPORT_ES6
+// Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
+var wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).toString();
+#else
 var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
 if (!isDataURI(wasmBinaryFile)) {
   wasmBinaryFile = locateFile(wasmBinaryFile);
 }
+#endif
 
 function getBinary(file) {
   try {
@@ -809,7 +814,7 @@ function getBinaryPromise() {
     }
 #endif
   }
-    
+
   // Otherwise, getBinary should be able to get it synchronously
   return Promise.resolve().then(function() { return getBinary(wasmBinaryFile); });
 }
