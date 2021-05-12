@@ -902,9 +902,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_blendv_ps
      - ⚠️ emulated with a SIMD shr+and+andnot+or
    * - _mm_ceil_pd
-     - ❌ scalarized
+     - ✅ wasm_f64x2_ceil
    * - _mm_ceil_ps
-     - ❌ scalarized
+     - ✅ wasm_f32x4_ceil
    * - _mm_ceil_sd
      - ❌ scalarized
    * - _mm_ceil_ss
@@ -948,9 +948,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_extract_ps
      - ✅ wasm_i32x4_extract_lane
    * - _mm_floor_pd
-     - ❌ scalarized
+     - ✅ wasm_f64x2_floor
    * - _mm_floor_ps
-     - ❌ scalarized
+     - ✅ wasm_f32x4_floor
    * - _mm_floor_sd
      - ❌ scalarized
    * - _mm_floor_ss
@@ -1007,21 +1007,21 @@ The following table highlights the availability and expected performance of diff
      - ❌ scalarized
    * - _mm_testc_si128
      - ❌ scalarized
-   * - _mm_test_nzc_si128
+   * - _mm_testnzc_si128
      - ❌ scalarized
    * - _mm_testz_si128
      - ❌ scalarized
 
 The following table highlights the availability and expected performance of different SSE4.2 intrinsics. Refer to `Intel Intrinsics Guide on SSE4.2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_2>`_.
 
-.. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h>
+.. list-table:: x86 SSE4.2 intrinsics available via #include <nmmintrin.h>
    :widths: 20 30
    :header-rows: 1
 
    * - Intrinsic name
      - WebAssembly SIMD support
    * - _mm_cmpgt_epi64
-     - ❌ scalarized
+     - ✅ wasm_i64x2_gt
 
 ⚫ The SSE4.2 functions that deal with string comparisons and CRC calculations are not available:
  - _mm_cmpestra, _mm_cmpestrc, _mm_cmpestri, _mm_cmpestrm, _mm_cmpestro, _mm_cmpestrs, _mm_cmpestrz, _mm_cmpistra, _mm_cmpistrc, _mm_cmpistri, _mm_cmpistrm, _mm_cmpistro, _mm_cmpistrs, _mm_cmpistrz, _mm_crc32_u16, _mm_crc32_u32, _mm_crc32_u64, _mm_crc32_u8
