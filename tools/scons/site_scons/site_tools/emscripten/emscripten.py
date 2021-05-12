@@ -41,7 +41,7 @@ def generate(env, emscripten_path=None, **kw):
   env.Replace(CC=os.path.join(emscPath, "emcc"))
   env.Replace(CXX=os.path.join(emscPath, "em++"))
   # LINK uses smark_link by default which will choose
-  # eith emcc or em++ depending on if there are any C++ sources
+  # either emcc or em++ depending on if there are any C++ sources
   # in the program, so no need to change that.
   # SHLINK and LDMODULE should use LINK so no
   # need to change them here
