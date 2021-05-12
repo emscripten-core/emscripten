@@ -351,6 +351,7 @@ def apply_settings(changes):
     if key in MEM_SIZE_SETTINGS:
       value = str(expand_byte_size_suffixes(value))
 
+    filename = None
     if value and value[0] == '@':
       filename = value[1:]
       if not os.path.exists(filename):
@@ -362,10 +363,14 @@ def apply_settings(changes):
     existing = getattr(settings, user_key, None)
     expect_list = type(existing) == list
 
-    try:
-      value = parse_value(value, expect_list)
-    except Exception as e:
-      exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
+    if filename and expect_list and value.strip()[0] != '[':
+      # Prefer simpler one-line-per value parser
+      value = parse_symbol_list_file(value)
+    else:
+      try:
+        value = parse_value(value, expect_list)
+      except Exception as e:
+        exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
 
     # Do some basic type checking by comparing to the existing settings.
     # Sadly we can't do this generically in the SettingsManager since there are settings
@@ -3527,6 +3532,15 @@ def is_valid_abspath(options, path_name):
     if in_directory(valid_abspath, path_name):
       return True
   return False
+
+
+def parse_symbol_list_file(contents):
+  """Parse contents of one-symbol-per-line response file.  This format can by used
+  with, for example, -sEXPORTED_FUNCTIONS=@filename and avoids the need for any
+  kind of quoting or escaping.
+  """
+  values = contents.splitlines()
+  return [v.strip() for v in values]
 
 
 def parse_value(text, expect_list):
