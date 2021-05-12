@@ -16,8 +16,7 @@ executors:
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
-      # Currently pinned to 9.1.146 due to https://bugs.chromium.org/p/v8/issues/detail?id=11581
-      V8_VERSION: "9.1.146"
+      V8_VERSION: "9.1.269"
   mac:
     environment:
       EMSDK_NOTTY: "1"
