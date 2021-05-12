@@ -1450,6 +1450,7 @@ def get_binaryen_bin():
 # is used for knowing whether we need to strip debug info at the very end.
 last_writing_binaryen_cmd = None
 
+
 def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
   cmd = [os.path.join(get_binaryen_bin(), tool)]
   if outfile and tool == 'wasm-opt' and \
