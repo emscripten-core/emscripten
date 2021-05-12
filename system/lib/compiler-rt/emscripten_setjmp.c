@@ -9,7 +9,10 @@
 #include <stdlib.h>
 #include <setjmp.h>
 
-static uint32_t setjmpId = 0;
+// 0 - Nothing thrown
+// 1 - Exception thrown
+// Other values - jmpbuf pointer in the case that longjmp was thrown
+static uintptr_t setjmpId = 0;
 
 typedef struct TableEntry {
   uintptr_t id;
@@ -18,7 +21,7 @@ typedef struct TableEntry {
 
 extern void setTempRet0(uint32_t value);
 
-TableEntry* saveSetjmp(uint32_t* env, uint32_t label, TableEntry* table, uint32_t size) {
+TableEntry* saveSetjmp(uintptr_t* env, uint32_t label, TableEntry* table, uint32_t size) {
   // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
   // prevents relooping anyhow, so slowness is to be expected. And typical case
   // is 1 setjmp per invocation, or less.
@@ -44,7 +47,7 @@ TableEntry* saveSetjmp(uint32_t* env, uint32_t label, TableEntry* table, uint32_
   return table;
 }
 
-uint32_t testSetjmp(uint32_t id, TableEntry* table, uint32_t size) {
+uint32_t testSetjmp(uintptr_t id, TableEntry* table, uint32_t size) {
   uint32_t i = 0;
   while (i < size) {
     uintptr_t curr = table[i].id;
@@ -55,4 +58,9 @@ uint32_t testSetjmp(uint32_t id, TableEntry* table, uint32_t size) {
     i++;
   }
   return 0;
+}
+
+void emscripten_longjmp(uintptr_t env, int val) {
+  setThrew(env, val || 1);
+  emscripten_throw_longjmp();
 }
