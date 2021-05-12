@@ -2987,14 +2987,14 @@ def phase_binaryen(target, options, wasm_target):
     if strip_producers:
       passes += ['--strip-producers']
     building.save_intermediate(wasm_target, 'pre-byn.wasm')
+    # if asyncify is used, we will use it in the next stage, and so if it is
+    # the only reason we need intermediate debug info, we can stop keeping it
+    if settings.ASYNCIFY:
+      intermediate_debug_info -= 1
     building.run_wasm_opt(wasm_target,
                           wasm_target,
                           args=passes,
                           debug=intermediate_debug_info)
-    # if asyncify is used, we just applied it, and no longer need debug info
-    # just because of it
-    if settings.ASYNCIFY:
-      intermediate_debug_info -= 1
   elif strip_debug or strip_producers:
     # we are not running wasm-opt. if we need to strip certain sections
     # then do so using llvm-objcopy which is fast and does not rewrite the
@@ -3107,11 +3107,10 @@ def phase_binaryen(target, options, wasm_target):
   # note that if we aren't emitting a binary (like in wasm2js) then we don't
   # have anything to do here.
   if options.emit_symbol_map:
-    if os.path.exists(wasm_target):
-      building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=debug_info)
-      save_intermediate_with_wasm('symbolmap', wasm_target)
-
     intermediate_debug_info -= 1
+    if os.path.exists(wasm_target):
+      building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
+      save_intermediate_with_wasm('symbolmap', wasm_target)
 
   if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
     building.emit_debug_on_side(wasm_target, settings.SEPARATE_DWARF)
@@ -3119,8 +3118,8 @@ def phase_binaryen(target, options, wasm_target):
   if settings.WASM2C:
     wasm2c.do_wasm2c(wasm_target)
 
-  # intermediate debug info will definitely no longer be used, and we can stop
-  # tracking it.
+  # we have finished emitting the wasm, and so intermediate debug info will
+  # definitely no longer be used tracking it.
   if debug_info:
     intermediate_debug_info -= 1
   assert intermediate_debug_info == 0
