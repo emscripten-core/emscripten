@@ -16,7 +16,7 @@
 #error "SSE instruction set not enabled"
 #endif
 
-#ifdef __EMSCRIPTEN_SIMD_COMPAT_SLOW
+#ifdef WASM_SIMD_COMPAT_SLOW
 #define DIAGNOSE_SLOW diagnose_if(1, "Instruction emulated via slow path.", "warning")
 #else
 #define DIAGNOSE_SLOW
