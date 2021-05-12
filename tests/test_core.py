@@ -6007,7 +6007,7 @@ return malloc(size);
   @wasm_simd
   def test_sse_diagnostics(self):
     self.emcc_args.remove('-Werror')
-    src = test_file('sse', 'test_sse1.cpp')
+    src = test_file('sse', 'test_sse_diagnostic.cpp')
 
     p = self.run_process(
       [shared.EMXX, src, '-msse', '-D__EMSCRIPTEN_SIMD_COMPAT_SLOW'] + self.get_emcc_args(main_file=True),
