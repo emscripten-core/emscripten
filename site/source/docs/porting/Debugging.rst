@@ -20,7 +20,7 @@ This article describes the main tools and settings provided by Emscripten for de
 .. _debugging-debug-information-g:
 
 Debugging in the browser
-=================
+========================
 
 :ref:`Emcc <emccdoc>` can ouptut debug information in two formats, either as
 DWARF symbols or as source maps. Both allow you to view and debug the
