@@ -17,7 +17,7 @@ from tools import config
 from tools.shared import EMCC
 import test_posixtest_browser
 
-testsuite_root = path_from_root('tests', 'third_party', 'posixtestsuite')
+testsuite_root = path_from_root('tests/third_party/posixtestsuite')
 
 
 class posixtest(RunnerCore):
