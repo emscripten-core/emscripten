@@ -110,7 +110,7 @@ var MEM_INIT_METHOD = false;
 // assertions are on, we will assert on not exceeding this, otherwise,
 // it will fail silently.
 // [link]
-var TOTAL_STACK = 5*1024*1024;
+var TOTAL_STACK = 1*1024*1024;
 
 // What malloc()/free() to use, out of
 //  * dlmalloc - a powerful general-purpose malloc
@@ -1582,7 +1582,7 @@ var PTHREAD_POOL_DELAY_LOAD = false;
 // those that have their addresses taken, or ones that are too large to fit as
 // local vars in wasm code.
 // [link]
-var DEFAULT_PTHREAD_STACK_SIZE = 2*1024*1024;
+var DEFAULT_PTHREAD_STACK_SIZE = 1*1024*1024;
 
 // True when building with --threadprofiler
 // [link]

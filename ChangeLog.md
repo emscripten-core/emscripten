@@ -601,6 +601,14 @@ See docs/process.md for more on how version tagging works.
 
 2.0.21: 05/18/2021
 ------------------
+------
+- Default shadow stack size used by emscripten reduced from 5Mb to 1Mb.  Anyone
+  running into issues can restore the old size using `-sTOTAL_STACK=5Mb`.  Since
+  windows has max stack of 1Mb and since WebAssembly stack usage should be less
+  than on native platforms (since its only used for address taken values) it
+  seems like 1Mb might still be on the high side here.  For reference, llvm
+  (`wasm-ld`) use 64kb as the default stack size.  `DEFAULT_PTHREAD_STACK_SIZE`
+  was also reduced from 2Mb to 1Mb to match primary stack.
 - Options such as EXPORTED_FUNCTIONS that can take a response file containing
   list of symbols can now use a simple one-symbol-per-line format.  This new
   format is much simpler and doesn't require commas between symbols, opening
