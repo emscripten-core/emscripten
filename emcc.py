@@ -2009,7 +2009,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # Require explicit -lfoo.js flags to link with JS libraries.
     settings.AUTO_JS_LIBRARIES = 0
 
-  if settings.MODULARIZE and settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
+  if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
+     settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
      (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
     exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
@@ -3493,18 +3494,33 @@ class ScriptSource:
     """Use this if you want to modify the script and need it to be inline."""
     if self.src is None:
       return
-    self.inline = '''
-          var script = document.createElement('script');
-          script.src = "%s";
-          document.body.appendChild(script);
-''' % self.src
+    quoted_src = quote(self.src)
+    if settings.EXPORT_ES6:
+      self.inline = f'''
+        import("./{quoted_src}").then(exports => exports.default(Module))
+      '''
+    else:
+      self.inline = f'''
+            var script = document.createElement('script');
+            script.src = "{quoted_src}";
+            document.body.appendChild(script);
+      '''
     self.src = None
 
   def replacement(self):
     """Returns the script tag to replace the {{{ SCRIPT }}} tag in the target"""
     assert (self.src or self.inline) and not (self.src and self.inline)
     if self.src:
-      return '<script async type="text/javascript" src="%s"></script>' % quote(self.src)
+      quoted_src = quote(self.src)
+      if settings.EXPORT_ES6:
+        return f'''
+        <script type="module">
+          import initModule from "./{quoted_src}";
+          initModule(Module);
+        </script>
+        '''
+      else:
+        return f'<script async type="text/javascript" src="{quoted_src}"></script>'
     else:
       return '<script>\n%s\n</script>' % self.inline
 

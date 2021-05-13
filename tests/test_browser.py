@@ -172,6 +172,9 @@ class browser(BrowserCore):
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-lSDL', '-lGL'])
     self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-s', 'USE_SDL', '-lGL']) # is the default anyhow
 
+  def test_sdl1_es6(self):
+    self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-s', 'USE_SDL', '-lGL', '-s', 'EXPORT_ES6'])
+
   # Deliberately named as test_zzz_* to make this test the last one
   # as this test may take the focus away from the main test window
   # by opening a new window and possibly not closing it.
