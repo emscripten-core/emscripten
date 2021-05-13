@@ -27,7 +27,6 @@ import difflib
 import fnmatch
 import glob
 import hashlib
-import json
 import logging
 import math
 import multiprocessing
@@ -118,6 +117,13 @@ def test_file(*path_components):
 # checks if browser testing is enabled
 def has_browser():
   return EMTEST_BROWSER != '0'
+
+
+def compiler_for(filename, force_c=False):
+  if shared.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
+    return EMXX
+  else:
+    return EMCC
 
 
 # Generic decorator that calls a function named 'condition' on the test class and
@@ -518,11 +524,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ret = []
     for key, value in self.settings_mods.items():
       if value == 1:
-        ret += ['-s', key]
-      elif type(value) == str:
-        ret += ['-s', f'{key}={value}']
+        ret.append(f'-s{key}')
+      elif type(value) == list:
+        ret.append(f'-s{key}={",".join(value)}')
       else:
-        ret += ['-s', f'{key}={json.dumps(value)}']
+        ret.append(f'-s{key}={value}')
     return ret
 
   def get_dir(self):
@@ -573,13 +579,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def build(self, filename, libraries=[], includes=[], force_c=False,
             post_build=None, js_outfile=True, emcc_args=[]):
     suffix = '.js' if js_outfile else '.wasm'
-    if shared.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
-      compiler = [EMXX]
-    else:
+    compiler = [compiler_for(filename, force_c)]
+    if compiler[0] == EMCC:
       # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
       # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
       # this if this issues is fixed.
-      compiler = [EMCC, '-nostdlib++']
+      compiler.append('-nostdlib++')
 
     if force_c:
       compiler.append('-xc')
@@ -849,7 +854,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    self.run_process([EMCC, filename] + args + ['-o', output_filename], **kwargs)
+    self.run_process([compiler_for(filename), filename] + args + ['-o', output_filename], **kwargs)
 
   # Shared test code between main suite and others
 

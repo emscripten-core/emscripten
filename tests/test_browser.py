@@ -21,7 +21,6 @@ from urllib.request import urlopen
 
 from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from runner import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from tools import building
 from tools import shared
 from tools import system_libs
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
@@ -4948,12 +4947,7 @@ window.close = function() {
 
   @requires_threads
   def test_offset_converter(self, *args):
-    try:
-      self.btest_exit(test_file('browser', 'test_offset_converter.c'), assert_returncode=1, args=['-s', 'USE_OFFSET_CONVERTER', '-gsource-map', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
-    except Exception as e:
-      # dump the wasm file; this is meant to help debug #10539 on the bots
-      print(self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'), 'test.wasm', '-g', '--print', '-all'], stdout=PIPE).stdout)
-      raise e
+    self.btest_exit(test_file('browser', 'test_offset_converter.c'), assert_returncode=1, args=['-s', 'USE_OFFSET_CONVERTER', '-gsource-map', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):

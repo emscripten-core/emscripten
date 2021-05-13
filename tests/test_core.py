@@ -3676,6 +3676,11 @@ ok
     self.do_basic_dylink_test()
 
   @needs_dylink
+  def test_dylink_basics_lld_report_undefined(self):
+    self.set_setting('LLD_REPORT_UNDEFINED')
+    self.do_basic_dylink_test()
+
+  @needs_dylink
   def test_dylink_no_export(self):
     self.set_setting('NO_DECLARE_ASM_MODULE_EXPORTS')
     self.do_basic_dylink_test()
@@ -4555,6 +4560,9 @@ res64 - external 64\n''', header='''
     # in the another module.
     # Each module will define its own copy of certain COMDAT symbols such as
     # each classs's typeinfo, but at runtime they should both use the same one.
+    # Use LLD_REPORT_UNDEFINED to test that it works as expected with weak/COMDAT
+    # symbols.
+    self.set_setting('LLD_REPORT_UNDEFINED')
     header = '''
     #include <cstddef>
 
@@ -4630,6 +4638,42 @@ res64 - external 64\n''', header='''
     main = test_file('core', 'test_dylink_weak_main.c')
     side = test_file('core', 'test_dylink_weak_side.c')
     self.dylink_testf(main, side, force_c=True, need_reverse=False)
+
+  @node_pthreads
+  @needs_dylink
+  def test_dylink_tls(self):
+    # We currently can't export TLS symbols from module since we don't have
+    # and ABI for signaling which exports are TLS and which are regular
+    # data exports.
+
+    # TODO(sbc): Add tests that depend on importing/exported TLS symbols
+    # once we figure out how to do that.
+    create_file('main.c', r'''
+      #include <stdio.h>
+
+      _Thread_local int foo = 10;
+
+      void sidey();
+
+      int main(int argc, char const *argv[]) {
+        printf("main TLS: %d\n", foo);
+        sidey();
+        return 0;
+      }
+    ''')
+    create_file('side.c', r'''
+      #include <stdio.h>
+
+      _Thread_local int bar = 11;
+
+      void sidey() {
+        printf("side TLS: %d\n", bar);
+      }
+    ''')
+    self.emcc_args.append('-Wno-experimental')
+    self.dylink_testf('main.c', 'side.c',
+                      expected='main TLS: 10\nside TLS: 11\n',
+                      need_reverse=False)
 
   def test_random(self):
     src = r'''#include <stdlib.h>
@@ -5853,27 +5897,15 @@ return malloc(size);
     self.do_core_test('test_relocatable_void_function.c')
 
   @wasm_simd
-  @is_slow_test
-  def test_wasm_builtin_simd(self):
-    # Improves test readability
-    self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-format']
-    self.do_runf(test_file('test_wasm_builtin_simd.cpp'), 'Success!')
-    self.build(test_file('test_wasm_builtin_simd.cpp'))
-
-  @wasm_simd
-  @is_slow_test
   def test_wasm_intrinsics_simd(self):
     def run():
       self.do_runf(test_file('test_wasm_intrinsics_simd.c'), 'Success!')
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall', '-xc++'])
-    # Ignore deprecation errors for now
-    self.emcc_args.append('-Wno-error=deprecated-declarations')
     run()
     self.emcc_args.append('-funsigned-char')
     run()
-    self.build(test_file('test_wasm_intrinsics_simd.c'))
 
   # Tests invoking the NEON SIMD API via arm_neon.h header
   @wasm_simd
@@ -5971,6 +6003,16 @@ return malloc(size);
     self.emcc_args += ['-I' + test_file('sse'), '-mavx', '-Wno-argument-outside-range']
     self.maybe_closure()
     self.do_runf(src, native_result)
+
+  @wasm_simd
+  def test_sse_diagnostics(self):
+    self.emcc_args.remove('-Werror')
+    src = test_file('sse', 'test_sse_diagnostic.cpp')
+
+    p = self.run_process(
+      [shared.EMXX, src, '-msse', '-DWASM_SIMD_COMPAT_SLOW'] + self.get_emcc_args(),
+      stderr=PIPE)
+    self.assertContained('Instruction emulated via slow path.', p.stderr)
 
   @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
@@ -8341,6 +8383,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-Wno-experimental')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_PTHREADS')
+    self.set_setting('LLD_REPORT_UNDEFINED')
     self.set_setting('PTHREAD_POOL_SIZE=2')
     main = test_file('core', 'pthread', 'test_pthread_dylink.c')
     side = test_file('core', 'pthread', 'test_pthread_dylink_side.c')

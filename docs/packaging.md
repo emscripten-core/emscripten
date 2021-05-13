@@ -126,7 +126,7 @@ Prebuilt libraries
 
 Ideally a packaged installation can include a fully populated cache directory
 containing pre-built libraries.  If you want to do this you can use
-`./embuilder build ALL` to populate the cache directory.  You can them ship the
+`embuilder build ALL` to populate the cache directory.  You can them ship the
 `cache` directory inside the emscripten directory.  When shipping the cache
 directory on a multi-user system where users cannot modify the `cache` you need
 to be sure that all possible configurations of the libraries are built.
