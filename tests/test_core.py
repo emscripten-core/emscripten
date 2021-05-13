@@ -8276,6 +8276,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_create(self):
     self.set_setting('EXIT_RUNTIME')
+    # test that the node environment can be specified by itself, and that still
+    # works with pthreads (even though we did not specify 'node,worker')
+    self.set_setting('ENVIRONMENT', 'node')
     self.do_run_in_out_file_test('core', 'pthread', 'create.cpp')
 
   @node_pthreads
@@ -8284,6 +8287,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '64mb')
+    # test that the node and worker environments can be specified
+    self.set_setting('ENVIRONMENT', 'node,worker')
     self.do_run_in_out_file_test('pthread', 'test_pthread_c11_threads.c')
 
   @node_pthreads
