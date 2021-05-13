@@ -678,7 +678,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     # musl modules
     ignore = [
-        'ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux',
+        'ipc', 'passwd', 'signal', 'sched', 'ipc', 'time', 'linux',
         'aio', 'exit', 'legacy', 'mq', 'search', 'setjmp', 'env',
         'ldso'
     ]
@@ -712,6 +712,65 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strlen.c'),
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_fcntl.c'),
       ]
+
+    if self.is_mt:
+      ignore += [
+        'clone.c', '__lock.c',
+        'pthread_cleanup_push.c', 'pthread_create.c',
+        'pthread_kill.c', 'pthread_sigmask.c',
+        '__set_thread_area.c', 'synccall.c',
+        '__syscall_cp.c', '__tls_get_addr.c',
+        '__unmapself.c',
+        # Empty files, simply ignore them.
+        'syscall_cp.c', 'tls.c',
+        # TODO: Comment out (or support) within upcoming musl upgrade. See #12216.
+        # 'pthread_setname_np.c',
+        # TODO: No longer exists in the latest musl version.
+        '__futex.c',
+        # TODO: Could be supported in the upcoming musl upgrade
+        'lock_ptc.c', 'pthread_getattr_np.c',
+        # 'pthread_setattr_default_np.c',
+        # TODO: These could be moved away from JS in the upcoming musl upgrade.
+        'pthread_cancel.c', 'pthread_detach.c',
+        'pthread_join.c', 'pthread_testcancel.c',
+        # TODO: Support C11 condition variable and mutex library functions.
+        'cnd_broadcast.c',
+        'cnd_destroy.c',
+        'cnd_init.c',
+        'cnd_signal.c',
+        'cnd_timedwait.c',
+        'cnd_wait.c',
+        'mtx_destroy.c',
+        'mtx_init.c',
+        'mtx_lock.c',
+        'mtx_timedlock.c',
+        'mtx_trylock.c',
+        'mtx_unlock.c',
+      ]
+      libc_files += files_in_path(
+        path_components=['system', 'lib', 'pthread'],
+        filenames=[
+          'library_pthread.c',
+          'emscripten_thread_state.s',
+        ])
+    else:
+      ignore += ['thread']
+      libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
+        filenames=[
+          'pthread_self.c',
+          # C11 thread library functions
+          'thrd_create.c',
+          'thrd_exit.c',
+          'thrd_join.c',
+          'thrd_sleep.c',
+          'thrd_yield.c',
+          'call_once.c',
+          'tss_create.c',
+          'tss_delete.c',
+          'tss_set.c',
+        ])
+      libc_files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
 
     # These are included in wasm_libc_rt instead
     ignore += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
@@ -765,73 +824,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         path_components=['system', 'lib', 'pthread'],
         filenames=['emscripten_atomic.c'])
 
-    libc_files += files_in_path(
-        path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
-        filenames=[
-          'pthread_self.c',
-          # C11 thread library functions
-          'thrd_create.c',
-          'thrd_exit.c',
-          'thrd_join.c',
-          'thrd_sleep.c',
-          'thrd_yield.c',
-          'call_once.c',
-          'tss_create.c',
-          'tss_delete.c',
-          'tss_set.c',
-        ])
-
     libc_files += glob_in_path(['system', 'lib', 'libc', 'compat'], '*.c')
-
-    if self.is_mt:
-      libc_files += files_in_path(
-        path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
-        filenames=[
-          'pthread_attr_destroy.c', 'pthread_condattr_setpshared.c',
-          'pthread_mutex_lock.c', 'pthread_spin_destroy.c', 'pthread_attr_get.c',
-          'pthread_cond_broadcast.c', 'pthread_mutex_setprioceiling.c',
-          'pthread_spin_init.c', 'pthread_attr_init.c', 'pthread_cond_destroy.c',
-          'pthread_mutex_timedlock.c', 'pthread_spin_lock.c',
-          'pthread_attr_setdetachstate.c', 'pthread_cond_init.c',
-          'pthread_mutex_trylock.c', 'pthread_spin_trylock.c',
-          'pthread_attr_setguardsize.c', 'pthread_cond_signal.c',
-          'pthread_mutex_unlock.c', 'pthread_spin_unlock.c',
-          'pthread_attr_setinheritsched.c', 'pthread_cond_timedwait.c',
-          'pthread_once.c', 'sem_destroy.c', 'pthread_attr_setschedparam.c',
-          'pthread_cond_wait.c', 'pthread_rwlockattr_destroy.c', 'sem_getvalue.c',
-          'pthread_attr_setschedpolicy.c', 'pthread_equal.c', 'pthread_rwlockattr_init.c',
-          'sem_init.c', 'pthread_attr_setscope.c', 'pthread_getspecific.c',
-          'pthread_rwlockattr_setpshared.c', 'sem_open.c', 'pthread_attr_setstack.c',
-          'pthread_key_create.c', 'pthread_rwlock_destroy.c', 'sem_post.c',
-          'pthread_attr_setstacksize.c', 'pthread_mutexattr_destroy.c',
-          'pthread_rwlock_init.c', 'sem_timedwait.c', 'pthread_barrierattr_destroy.c',
-          'pthread_mutexattr_init.c', 'pthread_rwlock_rdlock.c', 'sem_trywait.c',
-          'pthread_barrierattr_init.c', 'pthread_mutexattr_setprotocol.c',
-          'pthread_rwlock_timedrdlock.c', 'sem_unlink.c',
-          'pthread_barrierattr_setpshared.c', 'pthread_mutexattr_setpshared.c',
-          'pthread_rwlock_timedwrlock.c', 'sem_wait.c', 'pthread_barrier_destroy.c',
-          'pthread_mutexattr_setrobust.c', 'pthread_rwlock_tryrdlock.c',
-          '__timedwait.c', 'pthread_barrier_init.c', 'pthread_mutexattr_settype.c',
-          'pthread_rwlock_trywrlock.c', 'vmlock.c', 'pthread_barrier_wait.c',
-          'pthread_mutex_consistent.c', 'pthread_rwlock_unlock.c', '__wait.c',
-          'pthread_condattr_destroy.c', 'pthread_mutex_destroy.c',
-          'pthread_rwlock_wrlock.c', 'pthread_condattr_init.c',
-          'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c',
-          'pthread_condattr_setclock.c', 'pthread_mutex_init.c',
-          'pthread_setspecific.c', 'pthread_setcancelstate.c',
-          'pthread_getconcurrency.c', 'pthread_setconcurrency.c',
-          'pthread_getschedparam.c', 'pthread_setschedparam.c',
-          'pthread_setschedprio.c', 'pthread_atfork.c',
-          'pthread_getcpuclockid.c',
-        ])
-      libc_files += files_in_path(
-        path_components=['system', 'lib', 'pthread'],
-        filenames=[
-          'library_pthread.c',
-          'emscripten_thread_state.s',
-        ])
-    else:
-      libc_files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
 
     return libc_files
 
