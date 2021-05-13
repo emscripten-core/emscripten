@@ -3860,6 +3860,11 @@ ok
                                                        (int)&emscripten_run_script );
                                        }''')
     self.set_setting('MAIN_MODULE', 1)
+    # also test main module with 4GB of memory. we need to emit a "maximum"
+    # clause then, even though 4GB is the maximum; see
+    # https://github.com/emscripten-core/emscripten/issues/14130
+    self.set_setting('ALLOW_MEMORY_GROWTH', '1')
+    self.set_setting('MAXIMUM_MEMORY', '4GB')
     self.do_runf('test_sig.c', '')
 
   @needs_dylink
