@@ -2168,10 +2168,18 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
   if not settings.DISABLE_EXCEPTION_CATCHING:
-    # If not for LTO builds, we could handle these by adding deps_info.py
-    # entries for __cxa_find_matching_catch_* functions.  However, under
-    # LTO these symbols don't exist prior the linking.
-    settings.EXPORTED_FUNCTIONS += ['___cxa_is_pointer_type', '___cxa_can_catch']
+    settings.EXPORTED_FUNCTIONS += [
+      # If not for LTO builds, we could handle these by adding deps_info.py
+      # entries for __cxa_find_matching_catch_* functions.  However, under
+      # LTO these symbols don't exist prior the linking.
+      '___cxa_is_pointer_type',
+      '___cxa_can_catch',
+
+      # Emscripten exception handling can generate invoke calls, and they call
+      # setThrew(). We cannot handle this using deps_info as the invokes are not
+      # emitted because of library function usage, but by codegen itself.
+      '_setThrew',
+    ]
 
   if settings.ASYNCIFY:
     if not settings.ASYNCIFY_IGNORE_INDIRECT:

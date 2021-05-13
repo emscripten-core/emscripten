@@ -9242,6 +9242,30 @@ int main(void) {
     result = self.run_js('a.out.js', assert_returncode=0 if expect_caught else NON_ZERO)
     self.assertContainedIf('CAUGHT', result, expect_caught)
 
+  def test_exceptions_with_closure_and_without_catching(self):
+    # using invokes will require setThrew(), and closure will error if it is not
+    # defined. this test checks that we define it even without catching any
+    # exceptions (if we did catch exceptions, that would include library code
+    # that would use setThrew() anyhow)
+    create_file('src.cpp', r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      struct A {
+        ~A() {
+          puts("~A");
+        }
+      };
+
+      int main() {
+        // Construct an instance of a class with a destructor, which will cause the
+        // use of invokes to ensure its destructor runs.
+        A a;
+        throw 5;
+      }
+      ''')
+    self.run_process([EMCC, 'src.cpp', '-fexceptions', '--closure=1'])
+
   def test_assertions_on_internal_api_changes(self):
     create_file('src.c', r'''
       #include <emscripten.h>
