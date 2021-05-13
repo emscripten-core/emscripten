@@ -856,6 +856,11 @@ def get_cflags(options, user_args):
              '-D__unix',
              '-D__unix__']
 
+  # When wasm EH is enabled, we use the legacy pass manager because the new pass
+  # manager + wasm EH has some known bugs. TODO Use the new pass manager.
+  if settings.EXCEPTION_HANDLING:
+    cflags += ['-flegacy-pass-manager']
+
   # Changes to default clang behavior
 
   # Implicit functions can cause horribly confusing function pointer type errors, see #2175
