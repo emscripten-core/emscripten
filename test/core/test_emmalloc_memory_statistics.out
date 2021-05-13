@@ -1,7 +1,7 @@
-1
-validate_memory_regions: 0
-dynamic_heap_size: 106971424
-free_dynamic_memory: 4210892
+valid allocs: 1
+emmalloc_validate_memory_regions: 0
+emmalloc_dynamic_heap_size      : 106971424
+emmalloc_free_dynamic_memory    : 4210892
 numFreeMemoryRegions: 3
 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 
-unclaimed_heap_memory: 21999616
+emmalloc_unclaimed_heap_memory  : 27176960
