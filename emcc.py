@@ -34,6 +34,7 @@ import sys
 import time
 from enum import Enum, unique, auto
 from subprocess import PIPE
+from urllib.parse import quote
 
 
 import emscripten
@@ -3493,33 +3494,33 @@ class ScriptSource:
     """Use this if you want to modify the script and need it to be inline."""
     if self.src is None:
       return
+    quoted_src = quote(self.src)
     if settings.EXPORT_ES6:
-      template = '''
-        import("./%s").then(exports => exports.default(Module))
+      self.inline = f'''
+        import("./{quoted_src}").then(exports => exports.default(Module))
       '''
     else:
-      template = '''
+      self.inline = f'''
             var script = document.createElement('script');
-            script.src = "%s";
+            script.src = "{quoted_src}";
             document.body.appendChild(script);
       '''
-    self.inline = template % self.src
     self.src = None
 
   def replacement(self):
     """Returns the script tag to replace the {{{ SCRIPT }}} tag in the target"""
     assert (self.src or self.inline) and not (self.src and self.inline)
     if self.src:
+      quoted_src = quote(self.src)
       if settings.EXPORT_ES6:
-        template = '''
+        return f'''
         <script type="module">
-          import initModule from "./%s";
+          import initModule from "./{quoted_src}";
           initModule(Module);
         </script>
         '''
       else:
-        template = '<script async type="text/javascript" src="%s"></script>'
-      return template % self.src
+        return f'<script async type="text/javascript" src="{quoted_src}"></script>'
     else:
       return '<script>\n%s\n</script>' % self.inline
 
