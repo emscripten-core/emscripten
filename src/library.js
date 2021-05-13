@@ -1521,11 +1521,20 @@ LibraryManager.library = {
   gnu_dev_minor: 'minor',
 
   // ==========================================================================
-  // setjmp / longjmp support
+  // setjmp.h
   // ==========================================================================
 
   _emscripten_throw_longjmp__sig: 'v',
   _emscripten_throw_longjmp: function() { throw 'longjmp'; },
+#if !SUPPORT_LONGJMP
+  longjmp__deps: [function() {
+    error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)');
+  }],
+  // will never be emitted, as the dep errors at compile time
+  longjmp: function(env, value) {
+    abort('longjmp not supported');
+  },
+#endif
 
   // ==========================================================================
   // sys/wait.h

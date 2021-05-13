@@ -9,6 +9,7 @@
  * See: https://llvm.org/doxygen/WebAssemblyLowerEmscriptenEHSjLj_8cpp.html
  */
 
+#include <stdint.h>
 #include <threads.h>
 
 thread_local uintptr_t __THREW__ = 0;
