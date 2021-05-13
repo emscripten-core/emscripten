@@ -138,20 +138,16 @@ var funs = {
     return -1;
   },
 #if SUPPORT_LONGJMP
-#if ASSERTIONS
-  siglongjmp__deps: ['longjmp'],
   siglongjmp: function(env, value) {
+#if ASSERTIONS
     // We cannot wrap the sigsetjmp, but I hope that
     // in most cases siglongjmp will be called later.
 
     // siglongjmp can be called very many times, so don't flood the stderr.
     warnOnce("Calling longjmp() instead of siglongjmp()");
-    _longjmp(env, value);
-  },
-#else
-  siglongjmp__sig: 'vii',
-  siglongjmp: 'longjmp',
 #endif
+    _emscripten_longjmp(env, value);
+  },
 #endif
 
   sigpending: function(set) {

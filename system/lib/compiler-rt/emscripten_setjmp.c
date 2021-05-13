@@ -21,7 +21,7 @@ typedef struct TableEntry {
 
 extern void setTempRet0(uint32_t value);
 extern void setThrew(uintptr_t threw, int value);
-extern void emscripten_throw_longjmp(); // defined in src/library.js
+extern void _emscripten_throw_longjmp(); // defined in src/library.js
 
 TableEntry* saveSetjmp(uintptr_t* env, uint32_t label, TableEntry* table, uint32_t size) {
   // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
