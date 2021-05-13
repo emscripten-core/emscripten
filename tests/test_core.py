@@ -44,6 +44,7 @@ def wasm_simd(f):
       self.skipTest('SIMD tests are too slow with -O3 in the new LLVM pass manager, https://github.com/emscripten-core/emscripten/issues/13427')
     self.emcc_args.append('-msimd128')
     self.emcc_args.append('-fno-lax-vector-conversions')
+    self.v8_args.append('--experimental-wasm-simd')
     self.js_engines = [config.V8_ENGINE]
     f(self)
   return decorated
