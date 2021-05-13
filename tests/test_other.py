@@ -9264,7 +9264,7 @@ int main(void) {
         throw 5;
       }
       ''')
-    self.run_process([EMCC, 'src.cpp', '-fexceptions', '--closure', '1'])
+    self.run_process([EMCC, 'src.cpp', '-fexceptions', '--closure=1'])
 
   def test_assertions_on_internal_api_changes(self):
     create_file('src.c', r'''
