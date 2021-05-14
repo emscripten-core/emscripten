@@ -1,12 +1,10 @@
 #include <pthread.h>
 #include <time.h>
 #include <errno.h>
-#ifdef __EMSCRIPTEN__
-#include <math.h>
-#else
+#ifndef __EMSCRIPTEN__
 #include "futex.h"
-#endif
 #include "syscall.h"
+#endif
 #include "pthread_impl.h"
 
 #ifndef __EMSCRIPTEN__

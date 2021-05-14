@@ -9,7 +9,7 @@ var LibraryPThread = {
   $PThread__deps: ['_emscripten_thread_init',
                    'emscripten_register_main_browser_thread_id',
                    '$ERRNO_CODES', 'emscripten_futex_wake', '$killThread',
-                   '$cancelThread', '$cleanupThread',
+                   '$cancelThread', '$cleanupThread'
 #if USE_ASAN || USE_LSAN
                    , '$withBuiltinMalloc'
 #endif
@@ -51,14 +51,20 @@ var LibraryPThread = {
       for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[tb/4+i] = 0;
 
       // The pthread struct has a field that points to itself - this is used as
-        // a magic ID to detect whether the pthread_t structure is 'alive'.
+      // a magic ID to detect whether the pthread_t structure is 'alive'.
       {{{ makeSetValue('tb', C_STRUCTS.pthread.self, 'tb', 'i32') }}};
+
+      // pthread struct prev and next should initially point to itself (see __init_tp in musl),
+      // this is used by pthread_key_delete for deleting thread-specific data.
+      {{{ makeSetValue('tb', C_STRUCTS.pthread.prev, 'tb', 'i32') }}};
+      {{{ makeSetValue('tb', C_STRUCTS.pthread.next, 'tb', 'i32') }}};
 
       // pthread struct robust_list head should point to itself.
       var headPtr = tb + {{{ C_STRUCTS.pthread.robust_list }}};
       {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
 
       // Allocate memory for thread-local storage.
+      // TODO(kleisauke): Could we use __pthread_tsd_main instead (see musl source)?
       var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') * 4 }}});
       for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) HEAPU32[tlsMemory/4+i] = 0;
       Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
@@ -178,22 +184,17 @@ var LibraryPThread = {
     runExitHandlersAndDeinitThread: function(tb, exitCode) {
       // Disable all cancellation so that executing the cleanup handlers won't trigger another JS
       // canceled exception to be thrown.
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2, 1/*PTHREAD_CANCEL_DISABLE*/);
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.cancelasync }}} ) >> 2, 0/*PTHREAD_CANCEL_DEFERRED*/);
+      Atomics.store(HEAPU8, (tb + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2, 1/*PTHREAD_CANCEL_DISABLE*/);
+      Atomics.store(HEAPU8, (tb + {{{ C_STRUCTS.pthread.cancelasync }}} ) >> 2, 0/*PTHREAD_CANCEL_DEFERRED*/);
       PThread.runExitHandlers();
 
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.result }}} ) >> 2, exitCode);
+
       // When we publish this, the main thread is free to deallocate the thread object and we are done.
-      // Therefore set _pthread_self = 0; above to 'release' the object in this worker thread.
-      // Mark the thread as no longer running.
-      var detach_state = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.detach_state }}} ) >> 2);
-      if (detach_state == {{{ cDefine('DT_DETACHED') }}}) {
-        PThread.setDetachState(tb, {{{ cDefine('DT_EXITED') }}});
-      } else {
-        PThread.setDetachState(tb, {{{ cDefine('DT_EXITING') }}});
-        // wake any threads that might be waiting for us to exit
-        _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.detach_state }}}, {{{ cDefine('INT_MAX') }}});
-      }
+      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.detach_state }}} ) >> 2, {{{ cDefine('DT_EXITED') }}}); // Mark the thread as no longer running.
+
+      // Wake any joiner.
+      _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.detach_state }}}, {{{ cDefine('INT_MAX') }}});
 
       // Not hosting a pthread anymore in this worker, reset the info structures to null.
       __emscripten_thread_init(0, 0, 0); // Unregister the thread block inside the wasm module.
@@ -219,36 +220,6 @@ var LibraryPThread = {
           postMessage({ 'cmd': 'exit' });
         }
       }
-    },
-
-#if ASSERTIONS
-    detachStateToString: function(state) {
-      if (state === {{{ cDefine('DT_EXITED') }}}) return 'DT_EXITED';
-      if (state === {{{ cDefine('DT_EXITING') }}}) return 'DT_EXITING';
-      if (state === {{{ cDefine('DT_JOINABLE') }}}) return 'DT_JOINABLE';
-      if (state === {{{ cDefine('DT_DETACHED') }}}) return 'DT_DETACHED';
-      assert(false);
-    },
-#endif
-
-    setDetachState: function(thread, newstate) {
-#if PTHREADS_DEBUG
-      var oldstate = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2);
-      var oldname = PThread.detachStateToString(oldstate);
-      var newname = PThread.detachStateToString(newstate);
-      console.log('thread 0x' + thread.toString(16) + ' state change: ' + oldname + ' -> ' + newname);
-#endif
-      Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2, newstate);
-    },
-
-    swapDetachState: function(thread, oldstate, newstate) {
-#if PTHREADS_DEBUG
-      var oldstate = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2);
-      var oldname = PThread.detachStateToString(oldstate);
-      var newname = PThread.detachStateToString(newstate);
-      console.log('thread 0x' + thread.toString(16) + ' state change (swap): ' + oldname + ' -> ' + newname);
-#endif
-      return Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detach_state }}} ) >> 2, oldstate, newstate);
     },
 
     terminateAllThreads: function() {
@@ -415,12 +386,10 @@ var LibraryPThread = {
         } else if (cmd === 'alert') {
           alert('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (cmd === 'exit') {
-          if (worker.pthread) {
-            var detach_state = Atomics.load(HEAPU32, (worker.pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2);
-            // Only if it is fully exited can we return a worker the pool
-            if (detach_state == {{{ cDefine('DT_EXITED') }}}) {
-              PThread.returnWorkerToPool(worker);
-            }
+          // Detect whether the pthread_t structure is 'alive', it might have already been cleaned up
+          var alive = worker.pthread && Atomics.load(HEAPU32, (worker.pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.self }}}) >> 2);
+          if (alive) {
+            PThread.returnWorkerToPool(worker);
           }
         } else if (cmd === 'exitProcess') {
           // A pthread has requested to exit the whole application process (runtime).
@@ -629,19 +598,17 @@ var LibraryPThread = {
       worker: worker,
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
-      initialState: {{{ cDefine('DT_JOINABLE') }}},
       allocatedOwnStack: threadParams.allocatedOwnStack,
       // Info area for this thread in Emscripten HEAP (shared)
       threadInfoStruct: threadParams.pthread_ptr
     };
     var tis = pthread.threadInfoStruct >> 2;
     // spawnThread is always called with a zero-initialized thread struct so
-    // no need to set any valudes to zero here.
-    PThread.setDetachState(pthread.threadInfoStruct, threadParams.initialState);
-    // Init thread-local-storage memory array.
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tsd }}} >> 2), tlsMemory);
-    // Main thread ID.
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tid }}} >> 2), pthread.threadInfoStruct);
+    // no need to set any values to zero here.
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.detach_state }}} >> 2), threadParams.detachState);
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tsd }}} >> 2), tlsMemory); // Init thread-local-storage memory array.
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tid }}} >> 2), pthread.threadInfoStruct); // Main thread ID.
+
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack_size }}} >> 2), threadParams.stackSize);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack }}} >> 2), stackHigh);
 
@@ -711,7 +678,7 @@ var LibraryPThread = {
     // Deduce which WebGL canvases (HTMLCanvasElements or OffscreenCanvases) should be passed over to the
     // Worker that hosts the spawned pthread.
     // Comma-delimited list of CSS selectors that must identify canvases by IDs: "#canvas1, #canvas2, ..."
-    var transferredCanvasNames = attr ? {{{ makeGetValue('attr', 36, 'i32') }}} : 0;
+    var transferredCanvasNames = attr ? {{{ makeGetValue('attr', 36/*_a_transferredcanvases*/, 'i32') }}} : 0;
 #if OFFSCREENCANVASES_TO_PTHREAD
     // Proxied canvases string pointer -1 is used as a special token to fetch
     // whatever canvases were passed to build in -s
@@ -818,14 +785,14 @@ var LibraryPThread = {
     var stackSize = 0;
     var stackBase = 0;
     // Default thread state is DT_JOINABLE, i.e. start as not detached.
-    var initialState = {{{ cDefine('DT_JOINABLE') }}};
+    var detachState = {{{ cDefine('DT_JOINABLE') }}};
     // When musl creates C11 threads it passes __ATTRP_C11_THREAD (-1) which
     // treat as if it was NULL.
     if (attr && attr != {{{ cDefine('__ATTRP_C11_THREAD') }}}) {
       stackSize = {{{ makeGetValue('attr', 0/*_a_stacksize*/, 'i32') }}};
       stackBase = {{{ makeGetValue('attr', 8/*_a_stackaddr*/, 'i32') }}};
       if ({{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}}) {
-        initialState = {{{ cDefine('DT_DETACHED') }}};
+        detachState = {{{ cDefine('DT_DETACHED') }}};
       }
     } else {
       // According to
@@ -857,6 +824,11 @@ var LibraryPThread = {
     // magic ID to detect whether the pthread_t structure is 'alive'.
     {{{ makeSetValue('threadInfoStruct', C_STRUCTS.pthread.self, 'threadInfoStruct', 'i32') }}};
 
+    // pthread struct prev and next should point to itself - this is used by
+    // pthread_key_delete for deleting thread-specific data.
+    {{{ makeSetValue('threadInfoStruct', C_STRUCTS.pthread.prev, 0, 'i32') }}};
+    {{{ makeSetValue('threadInfoStruct', C_STRUCTS.pthread.next, 'threadInfoStruct', 'i32') }}};
+
     // pthread struct robust_list head should point to itself.
     var headPtr = threadInfoStruct + {{{ C_STRUCTS.pthread.robust_list }}};
     {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
@@ -874,7 +846,7 @@ var LibraryPThread = {
       stackBase: stackBase,
       stackSize: stackSize,
       allocatedOwnStack: allocatedOwnStack,
-      initialState: initialState,
+      detachState: detachState,
       startRoutine: start_routine,
       pthread_ptr: threadInfoStruct,
       arg: arg,

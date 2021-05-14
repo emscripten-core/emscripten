@@ -1,7 +1,3 @@
-#ifdef __EMSCRIPTEN__
-#include <math.h>
-#endif
-
 #include "pthread_impl.h"
 
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv)

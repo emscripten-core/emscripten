@@ -10,9 +10,11 @@
 #include "syscall.h"
 #include "atomic.h"
 #ifdef __EMSCRIPTEN__
+#include <math.h>
 #include <emscripten/threading.h>
-#endif
+#else
 #include "futex.h"
+#endif
 
 #include "pthread_arch.h"
 
@@ -35,12 +37,10 @@ typedef struct thread_profiler_block {
 #endif
 
 struct pthread {
-// XXX Emscripten: Need some custom thread control structures.
+// XXX Emscripten: Need a custom thread control structure.
 #ifdef __EMSCRIPTEN__
-	// Note: The specific order of these fields is important, since these are accessed
-	// by direct pointer arithmetic in worker.js.
-	int threadExitCode; // Thread exit code.
-	thread_profiler_block * _Atomic profilerBlock; // If --threadprofiler is enabled, this pointer is allocated to contain internal information about the thread state for profiling purposes.
+	// If --threadprofiler is enabled, this pointer is allocated to contain internal information about the thread state for profiling purposes.
+	thread_profiler_block * _Atomic profilerBlock;
 #endif
 
 	/* Part 1 -- these fields may be external or
@@ -200,23 +200,28 @@ hidden int __timedwait_cp(volatile int *, int, clockid_t, const struct timespec 
 hidden void __wait(volatile int *, volatile int *, int, int);
 static inline void __wake(volatile void *addr, int cnt, int priv)
 {
+#ifdef __EMSCRIPTEN__
+	(void)priv;
+	emscripten_futex_wake(addr, cnt < 0 ? INT_MAX : cnt);
+#else
 	if (priv) priv = FUTEX_PRIVATE;
 	if (cnt<0) cnt = INT_MAX;
-#ifdef __EMSCRIPTEN__
-	emscripten_futex_wake(addr, cnt);
-#else
 	__syscall(SYS_futex, addr, FUTEX_WAKE|priv, cnt) != -ENOSYS ||
 	__syscall(SYS_futex, addr, FUTEX_WAKE, cnt);
 #endif
 }
-#ifndef __EMSCRIPTEN__
+
 static inline void __futexwait(volatile void *addr, int val, int priv)
 {
+#ifdef __EMSCRIPTEN__
+	(void)priv;
+	emscripten_futex_wait((void*)addr, val, INFINITY);
+#else
 	if (priv) priv = FUTEX_PRIVATE;
 	__syscall(SYS_futex, addr, FUTEX_WAIT|priv, val, 0) != -ENOSYS ||
 	__syscall(SYS_futex, addr, FUTEX_WAIT, val, 0);
-}
 #endif
+}
 
 hidden void __acquire_ptc(void);
 hidden void __release_ptc(void);
@@ -241,10 +246,4 @@ extern hidden unsigned __default_guardsize;
 
 #define __ATTRP_C11_THREAD ((void*)(uintptr_t)-1)
 
-#ifdef __EMSCRIPTEN__
-void __emscripten_init_pthread(pthread_t thread);
-#ifndef __EMSCRIPTEN_PTHREADS__
-pthread_t __emscripten_pthread_stub(void);
-#endif
-#endif
 #endif

@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <emscripten/threading.h>
+#include "../../system/lib/libc/musl/src/include/features.h"
 #include "../../system/lib/libc/musl/src/internal/pthread_impl.h"
 
 #define NUM_THREADS  1
