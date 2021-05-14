@@ -2858,7 +2858,10 @@ def parse_args(newargs):
     elif check_flag('--jcache'):
       logger.error('jcache is no longer supported')
     elif check_arg('--cache'):
-      config.CACHE = os.path.normpath(consume_arg())
+      cache_path = consume_arg()
+      if not os.path.isabs(cache_path):
+        exit_with_error('--cache must be an absolute path')
+      config.CACHE = os.path.normpath(cache_path)
       shared.reconfigure_cache()
     elif check_flag('--clear-cache'):
       logger.info('clearing cache as requested by --clear-cache')
