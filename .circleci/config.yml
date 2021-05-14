@@ -207,24 +207,12 @@ commands:
             DISPLAY: ":0"
           command: |
             export EMTEST_BROWSER="$HOME/firefox/firefox -headless -profile $HOME/tmp-firefox-profile/"
-            # Start an X session. Openbox might be optional for now, but
-            # an ICCCM/EWMH compliant window manager is potentially needed
-            # for tests with fullscreen toggling (if we move to a headless
-            # browser, this may not be needed eventually).
-            TMPDIR=`mktemp -d`
-            mkfifo $TMPDIR/fifo
-            echo "echo -n > $TMPDIR/fifo" > $TMPDIR/autostart
-            EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
-            cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
-            rm -r $TMPDIR
             tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
             echo "-----"
             echo "Running emrun tests"
             echo "-----"
             # test_no_browser seems to cause the xsession to go down when run in github CI.
             tests/runner emrun skip:emrun.test_no_browser
-            openbox --exit
-            wait || true # wait for startx to shutdown cleanly, or not
   test-chrome:
     description: "Runs emscripten browser tests under chrome"
     steps:
