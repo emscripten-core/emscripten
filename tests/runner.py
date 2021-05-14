@@ -43,6 +43,7 @@ import tempfile
 import time
 import unittest
 import webbrowser
+from pathlib import Path
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import unquote, unquote_plus
 
@@ -65,7 +66,7 @@ from tools import shared, line_endings, building, config
 
 def path_from_root(*pathelems):
   """Construct a path relative to the emscripten root directory."""
-  return os.path.join(__rootpath__, *pathelems)
+  return str(Path(__rootpath__, *pathelems))
 
 
 sys.path.append(path_from_root('third_party/websockify'))
@@ -111,7 +112,7 @@ def delete_contents(pathname):
 
 def test_file(*path_components):
   """Construct a path relative to the emscripten "tests" directory."""
-  return os.path.join(TEST_ROOT, *path_components)
+  return str(Path(TEST_ROOT, *path_components))
 
 
 # checks if browser testing is enabled
@@ -241,8 +242,8 @@ def with_env_modify(updates):
 
 
 def ensure_dir(dirname):
-  if not os.path.isdir(dirname):
-    os.makedirs(dirname)
+  dirname = Path(dirname)
+  dirname.mkdir(parents=True, exist_ok=True)
 
 
 def limit_size(string, maxbytes=800000 * 20, maxlines=100000, max_line=5000):
@@ -259,14 +260,16 @@ def limit_size(string, maxbytes=800000 * 20, maxlines=100000, max_line=5000):
 
 
 def create_file(name, contents, binary=False):
-  assert not os.path.isabs(name)
-  mode = 'wb' if binary else 'w'
-  with open(name, mode) as f:
-    f.write(contents)
+  name = Path(name)
+  assert not name.is_absolute()
+  if binary:
+    name.write_bytes(contents)
+  else:
+    name.write_text(contents)
 
 
 def make_executable(name):
-  os.chmod(name, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+  Path(name).chmod(stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
 
 # The core test modes
@@ -595,7 +598,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if shared.suffix(filename) not in ('.i', '.ii'):
       # Add the location of the test file to include path.
       cmd += ['-I.']
-      cmd += ['-I' + include for include in includes]
+      cmd += ['-I' + str(include) for include in includes]
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
@@ -1100,8 +1103,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
     self.emcc_args += [
-      '-I' + test_file('third_party', 'freetype', 'include'),
-      '-I' + test_file('third_party', 'poppler', 'include')
+      '-I' + test_file('third_party/freetype/include'),
+      '-I' + test_file('third_party/poppler/include')
     ]
 
     freetype = self.get_freetype_library()
@@ -1613,10 +1616,11 @@ def build_library(name,
     generated_libs = [generated_libs]
   source_dir = test_file(name.replace('_native', ''))
 
-  project_dir = os.path.join(build_dir, name)
+  project_dir = Path(build_dir, name)
   if os.path.exists(project_dir):
     shutil.rmtree(project_dir)
-  shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
+  # Useful in debugging sometimes to comment this out, and two lines above
+  shutil.copytree(source_dir, project_dir)
 
   generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
   if native:
