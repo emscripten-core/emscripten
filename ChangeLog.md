@@ -24,6 +24,9 @@ See docs/process.md for more on how version tagging works.
   static string data in your program.   This has long been part of the native
   ELF linker and should not be observable in well-behaved programs.  This
   behavior can be disabled by passing `-Wl,-O0`.
+- The functions `fork`, `vfork`, `posix_spawn` and `system` now fail with
+  the errno value `ENOSYS` (52) rather than `EAGAIN` (6).  This is more
+  correct, since they will never work and attempting to retry won't help.
 
 2.0.20: 05/04/2021
 ------------------
