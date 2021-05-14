@@ -70,7 +70,7 @@ var LibraryManager = {
       'library_dylink.js'
     ];
 
-    if (!EXCEPTION_HANDLING) {
+    if (LINK_AS_CXX && !EXCEPTION_HANDLING) {
       if (DISABLE_EXCEPTION_THROWING) {
         libraries.push('library_exceptions_stub.js');
       } else {

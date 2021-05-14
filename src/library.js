@@ -3351,6 +3351,7 @@ LibraryManager.library = {
     return Number(str);
   },
 
+#if LINK_AS_CXX
   // libunwind
 
   _Unwind_Backtrace__deps: ['emscripten_get_callstack_js'],
@@ -3380,6 +3381,7 @@ LibraryManager.library = {
   _Unwind_DeleteException: function(ex) {
     err('TODO: Unwind_DeleteException');
   },
+#endif
 
   // autodebugging
 

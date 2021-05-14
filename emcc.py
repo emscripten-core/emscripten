@@ -2420,12 +2420,12 @@ def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, new
     # Ports are always linked into the main module, never the size module.
     extra_files_to_link += system_libs.get_ports_libs(settings)
   if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-    link_as_cxx = run_via_emxx
+    settings.LINK_AS_CXX = run_via_emxx
     # Traditionally we always link as C++.  For compatibility we continue to do that,
     # unless running in strict mode.
     if not settings.STRICT and '-nostdlib++' not in newargs:
-      link_as_cxx = True
-    extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, link_as_cxx, forced=state.forced_stdlibs)
+      settings.LINK_AS_CXX = True
+    extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, forced=state.forced_stdlibs)
   linker_arguments.extend(extra_files_to_link)
 
 
