@@ -24,6 +24,9 @@ See docs/process.md for more on how version tagging works.
   static string data in your program.   This has long been part of the native
   ELF linker and should not be observable in well-behaved programs.  This
   behavior can be disabled by passing `-Wl,-O0`.
+- The functions `fork`, `vfork`, `posix_spawn` and `system` now fail with
+  the errno value `ENOSYS` (52) rather than `EAGAIN` (6).  This is more
+  correct, since they will never work and attempting to retry won't help.
 - `EXPORT_ES6` will now emit static URLs for main WebAssembly file as well
   as for helper Worker used by `-pthread` that can be statically detected
   by modern bundlers at build time. In particular, you no longer have to set
