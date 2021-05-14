@@ -30,9 +30,9 @@ See docs/process.md for more on how version tagging works.
   `Module.locateFile` hook and `Module.mainScriptUrlOrBlob` settings -
   both bundlers and browsers should pick up the required files automatically.
   Note: this doesn't yet cover other use-cases that emit external files,
-  such as dynamic linking, `--proxy-to-worker`, external memory etc.
-- `EXPORT_ES6` can now be used in combination with `-o [filename].html`.
-- `EXPORT_ES6` no longer requires setting custom `EXPORT_NAME` too.
+  such as dynamic linking, `--proxy-to-worker`, external memory etc. (#14135)
+- `EXPORT_ES6` can now be used in combination with `-o [filename].html`. (#14165)
+- `EXPORT_ES6` no longer requires setting custom `EXPORT_NAME` too. (#14139)
 
 2.0.20: 05/04/2021
 ------------------
