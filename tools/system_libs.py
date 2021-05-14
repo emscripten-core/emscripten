@@ -726,10 +726,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
         'alarm.c', 'syscall.c', 'popen.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
-        'faccessat.c', 'getentropy.c',
+        'faccessat.c', 'fopencookie.c', 'getentropy.c', 'getrandom.c',
         # 'process' exclusion
         'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
-        '_Fork.c',
+        'fexecve.c', '_Fork.c',
     ]
 
     ignore += LIBC_SOCKETS
