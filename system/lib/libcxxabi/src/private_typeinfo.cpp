@@ -1290,7 +1290,15 @@ __base_class_type_info::search_below_dst(__dynamic_cast_info* info,
 
 // XXX EMSCRIPTEN
 
-#ifdef __USING_EMSCRIPTEN_EXCEPTIONS__
+#ifndef __USING_WASM_EXCEPTIONS__
+
+// These functions are used by the emscripten-style exception handling
+// mechanism.
+// Note that they need to be included even in the `-noexcept` build of
+// libc++abi to support the case where some parts of a project are built
+// with exception catching enabled, but at link time exception catching
+// is disabled.  In this case dependencies to these functions (and the JS
+// functions which call them) will still exist in the final build.
 extern "C" {
 
 int __cxa_can_catch(__shim_type_info* catchType, __shim_type_info* excpType, void **thrown) {

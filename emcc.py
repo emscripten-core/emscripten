@@ -2185,9 +2185,10 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if not settings.DISABLE_EXCEPTION_CATCHING:
     settings.EXPORTED_FUNCTIONS += [
-      # If not for LTO builds, we could handle these by adding deps_info.py
-      # entries for __cxa_find_matching_catch_* functions.  However, under
-      # LTO these symbols don't exist prior the linking.
+      # For normal builds the entries in deps_info.py are enough to include
+      # these symbols whenever __cxa_find_matching_catch_* functions are
+      # found.  However, under LTO these symbols don't exist prior to linking
+      # so we include then unconditionally when exceptions are enabled.
       '___cxa_is_pointer_type',
       '___cxa_can_catch',
 
