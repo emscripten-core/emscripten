@@ -70,7 +70,7 @@ int __pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec
 #ifndef __EMSCRIPTEN__
 	if (type&8) return pthread_mutex_timedlock_pi(m, at);
 #endif
-	
+
 	int spins = 100;
 	while (spins-- && m->_m_lock && !m->_m_waiters) a_spin();
 

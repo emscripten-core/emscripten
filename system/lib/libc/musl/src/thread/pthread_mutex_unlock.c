@@ -8,11 +8,17 @@ int __pthread_mutex_unlock(pthread_mutex_t *m)
 	int type = m->_m_type & 15;
 	int priv = (m->_m_type & 128) ^ 128;
 	int new = 0;
+#ifndef __EMSCRIPTEN__ // XXX Emscripten PI mutexes are unsupported (see musl commit 54ca677983d47529bab8752315ac1a2b49888870)
 	int old;
+#endif
 
 	if (type != PTHREAD_MUTEX_NORMAL) {
 		self = __pthread_self();
+#ifdef __EMSCRIPTEN__ // XXX Emscripten PI mutexes are unsupported (see musl commit 54ca677983d47529bab8752315ac1a2b49888870)
+		int old = m->_m_lock;
+#else
 		old = m->_m_lock;
+#endif
 		int own = old & 0x3fffffff;
 		if (own != self->tid)
 			return EPERM;
@@ -30,7 +36,7 @@ int __pthread_mutex_unlock(pthread_mutex_t *m)
 		if (next != &self->robust_list.head) *(volatile void *volatile *)
 			((char *)next - sizeof(void *)) = prev;
 	}
-#ifdef __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__ // XXX Emscripten PI mutexes are unsupported (see musl commit 54ca677983d47529bab8752315ac1a2b49888870)
 	cont = a_swap(&m->_m_lock, new);
 #else
 	if (type&8) {
