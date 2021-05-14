@@ -30,6 +30,9 @@ See docs/process.md for more on how version tagging works.
   desirable.  Folks that were previously using `CMAKE_INSTALL_PREFIX` to build
   their own secondary sysroot may be able to simplify their build system by
   removing this completely and relying on the new default.
+- Reinstated the warning on linker-only `-s` settings passed when not linking
+  (i.e. when compiling with `-c`).  As before this can disabled with
+  `-Wno-unused-command-line-argument` (#14182).
 
 2.0.23
 ------
