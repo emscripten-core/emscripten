@@ -27,6 +27,7 @@ from tools import shared, building, config, webassembly
 from runner import RunnerCore, path_from_root, requires_native_clang, test_file
 from runner import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
 from runner import env_modify, with_env_modify, disabled, node_pthreads
+from runner import read_file, read_binary
 from runner import NON_ZERO, WEBIDL_BINDER
 import clang_native
 
@@ -282,8 +283,7 @@ class TestCoreBase(RunnerCore):
     self.assertEqual(prefix, output[:len(prefix)])
 
   def verify_in_strict_mode(self, filename):
-    with open(filename) as infile:
-      js = infile.read()
+    js = read_file(filename)
     filename += '.strict.js'
     with open(filename, 'w') as outfile:
       outfile.write('"use strict";\n' + js)
@@ -322,7 +322,7 @@ class TestCoreBase(RunnerCore):
   def test_hello_world(self):
     self.do_core_test('test_hello_world.c')
     # must not emit this unneeded internal thing
-    self.assertNotContained('EMSCRIPTEN_GENERATED_FUNCTIONS', open('test_hello_world.js').read())
+    self.assertNotContained('EMSCRIPTEN_GENERATED_FUNCTIONS', read_file('test_hello_world.js'))
 
   @sync
   def test_wasm_synchronous_compilation(self):
@@ -868,10 +868,10 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'none')
     self.emcc_args += ['-fno-builtin'] + list(args)
 
-    self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() +
-                open(path_from_root('system', 'lib', 'sbrk.c')).read() +
-                open(test_file('core/test_emmalloc.cpp')).read(),
-                open(test_file('core/test_emmalloc.out')).read())
+    self.do_run(read_file(path_from_root('system/lib/emmalloc.cpp')) +
+                read_file(path_from_root('system/lib/sbrk.c')) +
+                read_file(test_file('core/test_emmalloc.cpp')),
+                read_file(test_file('core/test_emmalloc.out')))
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
@@ -1829,7 +1829,7 @@ int main() {
     self.do_runf(src, 'You must build with -s RETAIN_COMPILER_SETTINGS=1', assert_returncode=NON_ZERO)
     self.clear_setting('ASSERTIONS')
     self.set_setting('RETAIN_COMPILER_SETTINGS')
-    self.do_runf(src, open(output).read().replace('waka', shared.EMSCRIPTEN_VERSION))
+    self.do_runf(src, read_file(output).replace('waka', shared.EMSCRIPTEN_VERSION))
 
   def test_emscripten_has_asyncify(self):
     src = r'''
@@ -1854,7 +1854,7 @@ int main() {
 
     if self.emcc_args == []:
       # opts will eliminate the comments
-      out = open('src.js').read()
+      out = read_file('src.js')
       for i in range(1, 5):
         assert ('comment%d' % i) in out
 
@@ -1874,8 +1874,8 @@ int main() {
     self.do_core_test('test_inlinejs3.c')
 
     print('no debugger, check validation')
-    src = open(src).read().replace('emscripten_debugger();', '')
-    self.do_run(src, open(output).read())
+    src = read_file(src).replace('emscripten_debugger();', '')
+    self.do_run(src, read_file(output))
 
   def test_inlinejs4(self):
     self.do_run(r'''
@@ -1914,10 +1914,10 @@ int main(int argc, char **argv) {
   # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
   @no_asan('Cannot use ASan: test depends exactly on heap size')
   def test_main_thread_em_asm(self):
-    src = open(test_file('core/test_em_asm_2.cpp')).read()
+    src = read_file(test_file('core/test_em_asm_2.cpp'))
     create_file('src.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
-    expected_result = open(test_file('core/test_em_asm_2.out')).read()
+    expected_result = read_file(test_file('core/test_em_asm_2.out'))
     create_file('result.out', expected_result.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
     self.do_run_from_file('src.cpp', 'result.out')
@@ -1970,7 +1970,7 @@ int main(int argc, char **argv) {
     self.emcc_args += args + ['-s', 'EXPORTED_FUNCTIONS=_main,_malloc']
 
     self.do_core_test('test_em_js.cpp', force_c=force_c)
-    self.assertContained("no args returning int", open('test_em_js.js').read())
+    self.assertContained("no args returning int", read_file('test_em_js.js'))
 
   def test_runtime_stacksave(self):
     self.do_runf(test_file('core/test_runtime_stacksave.c'), 'success')
@@ -2002,12 +2002,12 @@ int main(int argc, char **argv) {
 
     # Fail without memory growth
     self.do_runf(src, 'OOM', assert_returncode=NON_ZERO)
-    fail = open('test_memorygrowth.js').read()
+    fail = read_file('test_memorygrowth.js')
 
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
-    win = open('test_memorygrowth.js').read()
+    win = read_file('test_memorygrowth.js')
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
@@ -2040,12 +2040,12 @@ int main(int argc, char **argv) {
 
     # Fail without memory growth
     self.do_runf(src, 'OOM', assert_returncode=NON_ZERO)
-    fail = open('test_memorygrowth_2.js').read()
+    fail = read_file('test_memorygrowth_2.js')
 
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
-    win = open('test_memorygrowth_2.js').read()
+    win = read_file('test_memorygrowth_2.js')
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
@@ -2611,7 +2611,7 @@ The current type of b is: 9
     create_file('lib_so_pre.js', '''
     if (!Module['preRun']) Module['preRun'] = [];
     Module['preRun'].push(function() { FS.createDataFile('/', 'liblib.so', %s, true, false, false); });
-''' % str(list(bytearray(open('liblib.so', 'rb').read()))))
+''' % str(list(bytearray(read_binary('liblib.so')))))
     self.emcc_args += ['--pre-js', 'lib_so_pre.js']
 
   def build_dlfcn_lib(self, filename):
@@ -3600,7 +3600,7 @@ ok
     if not expected:
       outfile = shared.unsuffixed(main) + '.out'
       if os.path.exists(outfile):
-        expected = open(outfile).read()
+        expected = read_file(outfile)
 
     # side settings
     self.clear_setting('MAIN_MODULE')
@@ -4545,20 +4545,20 @@ res64 - external 64\n''', header='''
     self.emcc_args += ['-Wno-shift-negative-value', '-I' + test_file('third_party/zlib')]
     self.set_setting('RELOCATABLE')
     zlib_archive = self.get_zlib_library()
-    self.dylink_test(main=open(test_file('third_party/zlib/example.c')).read(),
+    self.dylink_test(main=read_file(test_file('third_party/zlib/example.c')),
                      side=zlib_archive,
-                     expected=open(test_file('core/test_zlib.out')).read(),
+                     expected=read_file(test_file('core/test_zlib.out')),
                      force_c=True)
 
   # @needs_dylink
   # def test_dylink_bullet(self):
   #   self.emcc_args += ['-I' + test_file('bullet/src')]
   #   side = self.get_bullet_library(self, True)
-  #   self.dylink_test(main=open(test_file('bullet/Demos/HelloWorld/HelloWorld.cpp')).read(),
+  #   self.dylink_test(main=read_file(test_file('bullet/Demos/HelloWorld/HelloWorld.cpp')),
   #                    side=side,
-  #                    expected=[open(test_file('bullet/output.txt')).read(), # different roundings
-  #                              open(test_file('bullet/output2.txt')).read(),
-  #                              open(test_file('bullet/output3.txt')).read()])
+  #                    expected=[read_file(test_file('bullet/output.txt')), # different roundings
+  #                              read_file(test_file('bullet/output2.txt')),
+  #                              read_file(test_file('bullet/output3.txt'))])
 
   @needs_dylink
   def test_dylink_rtti(self):
@@ -5266,9 +5266,9 @@ main( int argv, char ** argc ) {
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.uses_es6 = True
-    self.add_pre_run(open(test_file('filesystem/src.js')).read())
+    self.add_pre_run(read_file(test_file('filesystem/src.js')))
     src = 'int main() {return 0;}\n'
-    expected = open(test_file('filesystem/output.txt')).read()
+    expected = read_file(test_file('filesystem/output.txt'))
     self.do_run(src, expected)
 
   @also_with_noderawfs
@@ -5529,14 +5529,14 @@ main( int argv, char ** argc ) {
     self.do_core_test('test_unary_literal.cpp')
 
   def test_env(self):
-    expected = open(test_file('env/output.txt')).read()
+    expected = read_file(test_file('env/output.txt'))
     self.do_runf(test_file('env/src.c'), [
       expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src.js')).replace('\\', '/'), # node, can find itself properly
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
     ])
 
   def test_environ(self):
-    expected = open(test_file('env/output-mini.txt')).read()
+    expected = read_file(test_file('env/output-mini.txt'))
     self.do_runf(test_file('env/src-mini.c'), [
       expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src-mini.js')).replace('\\', '/'), # node, can find itself properly
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
@@ -5729,8 +5729,8 @@ int main(void) {
     # TODO: Should we remove this test?
     self.skipTest('Relies on double value rounding, extremely sensitive')
 
-    src = open(test_file('raytrace.cpp')).read().replace('double', 'float')
-    output = open(test_file('raytrace.ppm')).read()
+    src = read_file(test_file('raytrace.cpp')).replace('double', 'float')
+    output = read_file(test_file('raytrace.ppm'))
     self.do_run(src, output, args=['3', '16'])
 
   def test_fasta(self):
@@ -5739,7 +5739,7 @@ int main(void) {
                (50, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''')]
 
     old = self.emcc_args
-    orig_src = open(test_file('fasta.cpp')).read()
+    orig_src = read_file(test_file('fasta.cpp'))
 
     def test(extra_args):
       self.emcc_args = old + extra_args
@@ -5769,7 +5769,7 @@ int main(void) {
     # needed with typed arrays
     self.set_setting('INITIAL_MEMORY', '128mb')
 
-    src = open(path_from_root('system', 'lib', 'dlmalloc.c')).read() + '\n\n\n' + open(test_file('dlmalloc_test.c')).read()
+    src = read_file(path_from_root('system/lib/dlmalloc.c')) + '\n\n\n' + read_file(test_file('dlmalloc_test.c'))
     self.do_run(src, '*1,0*', args=['200', '1'], force_c=True)
     self.do_run('src.js', '*400,0*', args=['400', '400'], force_c=True, no_build=True)
 
@@ -5794,7 +5794,7 @@ int main(void) {
       self.do_run(None, '*400,0*', ['400', '400'], no_build=True)
 
       # The same for new and all its variants
-      src = open(test_file('new.cpp')).read()
+      src = read_file(test_file('new.cpp'))
       for new, delete in [
         ('malloc(100)', 'free'),
         ('new char[100]', 'delete[]'),
@@ -5813,7 +5813,7 @@ int main(void) {
   @no_asan('asan also changes malloc, and that ends up linking in new twice')
   def test_dlmalloc_partial(self):
     # present part of the symbols of dlmalloc, not all
-    src = open(test_file('new.cpp')).read().replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''
+    src = read_file(test_file('new.cpp')).replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''
 #include <new>
 
 void *
@@ -6042,7 +6042,7 @@ return malloc(size);
   @is_slow_test
   def test_freetype(self):
     self.add_pre_run("FS.createDataFile('/', 'font.ttf', %s, true, false, false);" % str(
-      list(bytearray(open(test_file('freetype/LiberationSansBold.ttf'), 'rb').read()))
+      list(bytearray(read_binary(test_file('freetype/LiberationSansBold.ttf'))))
     ))
 
     # Not needed for js, but useful for debugging
@@ -6072,7 +6072,7 @@ return malloc(size);
 
     print('[issue 324 case 3]')
     self.do_run('main_3.js',
-                open(test_file('freetype/ref_4.txt')).read(),
+                read_file(test_file('freetype/ref_4.txt')),
                 args=['font.ttf', 'ea', '40', '32', '0'],
                 no_build=True)
 
@@ -6105,10 +6105,10 @@ return malloc(size);
        #define SQLITE_INT64_TYPE long long int
        #define SQLITE_THREADSAFE 0
     '''
-    src += open(test_file('third_party/sqlite/sqlite3.c')).read()
-    src += open(test_file('sqlite/benchmark.c')).read()
+    src += read_file(test_file('third_party/sqlite/sqlite3.c'))
+    src += read_file(test_file('sqlite/benchmark.c'))
     self.do_run(src,
-                open(test_file('sqlite/benchmark.txt')).read(),
+                read_file(test_file('sqlite/benchmark.txt')),
                 includes=[test_file('sqlite')],
                 force_c=True)
 
@@ -6166,10 +6166,10 @@ return malloc(size);
       self.emcc_args.append('-Wno-unused-command-line-argument')
 
     self.do_runf(test_file('third_party/bullet/Demos/HelloWorld/HelloWorld.cpp'),
-                 [open(test_file('bullet/output.txt')).read(), # different roundings
-                  open(test_file('bullet/output2.txt')).read(),
-                  open(test_file('bullet/output3.txt')).read(),
-                  open(test_file('bullet/output4.txt')).read()],
+                 [read_file(test_file('bullet/output.txt')), # different roundings
+                  read_file(test_file('bullet/output2.txt')),
+                  read_file(test_file('bullet/output3.txt')),
+                  read_file(test_file('bullet/output4.txt'))],
                  libraries=self.get_bullet_library(use_cmake),
                  includes=[test_file('third_party/bullet/src')])
 
@@ -6177,7 +6177,7 @@ return malloc(size);
   @needs_make('depends on freetype')
   @is_slow_test
   def test_poppler(self):
-    pdf_data = open(test_file('poppler/paper.pdf'), 'rb').read()
+    pdf_data = read_binary(test_file('poppler/paper.pdf'))
     create_file('paper.pdf.js', str(list(bytearray(pdf_data))))
 
     create_file('pre.js', '''
@@ -6191,7 +6191,7 @@ return malloc(size);
     ''')
     self.emcc_args += ['--pre-js', 'pre.js', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$unSign']
 
-    ppm_data = str(list(bytearray(open(test_file('poppler/ref.ppm'), 'rb').read())))
+    ppm_data = str(list(bytearray(read_binary(test_file('poppler/ref.ppm')))))
     self.do_run('', ppm_data.replace(' ', ''),
                 libraries=self.get_poppler_library(),
                 args=['-scale-to', '512', 'paper.pdf', 'filename'])
@@ -6218,7 +6218,7 @@ return malloc(size);
       self.emcc_args = [x for x in self.emcc_args if x != '-g']
 
       original_j2k = test_file('openjpeg/syntensity_lobby_s.j2k')
-      image_bytes = list(bytearray(open(original_j2k, 'rb').read()))
+      image_bytes = list(bytearray(read_binary(original_j2k)))
       create_file('pre.js', """
         Module.preRun = function() { FS.createDataFile('/', 'image.j2k', %s, true, false, false); };
         Module.postRun = function() {
@@ -6249,7 +6249,7 @@ return malloc(size);
         js_data = [x if x >= 0 else 256 + x for x in js_data] # Our output may be signed, so unsign it
 
         # Get the correct output
-        true_data = bytearray(open(test_file('openjpeg/syntensity_lobby_s.raw'), 'rb').read())
+        true_data = bytearray(read_binary(test_file('openjpeg/syntensity_lobby_s.raw')))
 
         # Compare them
         assert(len(js_data) == len(true_data))
@@ -6318,7 +6318,7 @@ return malloc(size);
         if name.endswith('.cpp'):
           self.emcc_args.append('-std=c++03')
         self.do_runf(test_file('fuzz', name),
-                     open(test_file('fuzz', name + '.txt')).read())
+                     read_file(test_file('fuzz', name + '.txt')))
         if name.endswith('.cpp'):
           self.emcc_args.remove('-std=c++03')
 
@@ -6463,8 +6463,8 @@ return malloc(size);
           args += ['-DUSE_FILES']
         print(args)
         self.do_runf(test_file('core/FS_exports.cpp'),
-                     (open(test_file('core/FS_exports' + output_prefix + '.out')).read(),
-                      open(test_file('core/FS_exports' + output_prefix + '_2.out')).read()),
+                     (read_file(test_file('core/FS_exports' + output_prefix + '.out')),
+                      read_file(test_file('core/FS_exports' + output_prefix + '_2.out'))),
                      assert_returncode=assert_returncode, emcc_args=args)
 
       # see that direct usage (not on module) works. we don't export, but the use
@@ -6539,7 +6539,7 @@ return malloc(size);
 
     self.set_setting('EXPORTED_FUNCTIONS', '@exps')
     self.do_run(src, '''waka 5!''')
-    assert 'other_function' in open('src.js').read()
+    assert 'other_function' in read_file('src.js')
 
   def test_large_exported_response(self):
     src = r'''
@@ -6574,7 +6574,7 @@ return malloc(size);
 
     self.set_setting('EXPORTED_FUNCTIONS', '@large_exported_response.json')
     self.do_run(src, 'waka 4999!')
-    self.assertContained('_exported_func_from_response_file_1', open('src.js').read())
+    self.assertContained('_exported_func_from_response_file_1', read_file('src.js'))
 
   @sync
   def test_add_function(self):
@@ -7053,7 +7053,7 @@ someweirdtext
           f.write("var isMemoryGrowthAllowed = true;")
         else:
           f.write("var isMemoryGrowthAllowed = false;")
-        f.write(open(test_file('webidl/post.js')).read())
+        f.write(read_file(test_file('webidl/post.js')))
         f.write('\n\n')
 
     output = test_file('webidl/output_%s.txt' % mode)
@@ -7097,8 +7097,7 @@ someweirdtext
     # the file name may find its way into the generated code, so make sure we
     # can do an apples-to-apples comparison by compiling with the same file name
     shutil.move(out_filename, no_maps_filename)
-    with open(no_maps_filename) as f:
-      no_maps_file = f.read()
+    no_maps_file = read_file(no_maps_filename)
     no_maps_file = re.sub(' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
     self.emcc_args.append('-gsource-map')
 
@@ -7126,7 +7125,7 @@ someweirdtext
       # needs to containt valid source text.
       self.assertTextDataIdentical(src, data['sourcesContent'][0])
     mappings = json.loads(self.run_js(
-      path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
+      path_from_root('tools/source-maps/sourcemap2json.js'),
       args=[map_filename]))
     seen_lines = set()
     for m in mappings:
@@ -7589,9 +7588,9 @@ Module['onRuntimeInitialized'] = function() {
       # out more than half
       self.assertLess(first_size, 0.6 * second_size)
 
-    with open('emscripten_lazy_load_code.wasm', 'rb') as f:
-      with open('emscripten_lazy_load_code.wasm.lazy.wasm', 'rb') as g:
-        self.assertNotEqual(f.read(), g.read())
+    wasm1 = read_binary('emscripten_lazy_load_code.wasm')
+    wasm2 = read_binary('emscripten_lazy_load_code.wasm.lazy.wasm')
+    self.assertNotEqual(wasm1, wasm2)
 
     # attempts to "break" the wasm by adding an unreachable in $foo_end. returns whether we found it.
     def break_wasm(name):
@@ -7658,8 +7657,8 @@ Module['onRuntimeInitialized'] = function() {
     expect_memory_init_file = self.uses_memory_init_file()
     if expect_memory_init_file:
       self.assertExists('test_hello_world.js.mem')
-      with open('test_hello_world.js.mem', 'rb') as f:
-        self.assertTrue(f.read()[-1] != b'\0')
+      mem = read_binary('test_hello_world.js.mem')
+      self.assertTrue(mem[-1] != b'\0')
     else:
       self.assertNotExists('test_hello_world.js.mem')
 
@@ -7671,7 +7670,7 @@ Module['onRuntimeInitialized'] = function() {
     # see that running as wasm works
     self.do_core_test('test_hello_world.c')
     # run wasm2js, bundle the code, and use the wasm2js path
-    cmd = [PYTHON, path_from_root('tools', 'maybe_wasm2js.py'), 'test_hello_world.js', 'test_hello_world.wasm']
+    cmd = [PYTHON, path_from_root('tools/maybe_wasm2js.py'), 'test_hello_world.js', 'test_hello_world.wasm']
     if is_optimizing(self.emcc_args):
       cmd += ['-O2']
     self.run_process(cmd, stdout=open('do_wasm2js.js', 'w')).stdout
@@ -7699,7 +7698,7 @@ Module['onRuntimeInitialized'] = function() {
     os.rename('a.out.wasm.js.unused', 'a.out.wasm.js')
 
     # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
-    open('b.out.js', 'w').write('WebAssembly = undefined;\n' + open('a.out.js', 'r').read())
+    open('b.out.js', 'w').write('WebAssembly = undefined;\n' + read_file('a.out.js'))
     os.remove('a.out.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
     self.assertContained('hello!', self.run_js('b.out.js'))
 
@@ -7846,7 +7845,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     def test(assert_returncode=0):
       self.do_core_test('test_hello_world.c', assert_returncode=assert_returncode)
-      js = open('test_hello_world.js').read()
+      js = read_file('test_hello_world.js')
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
 
     for engine in config.JS_ENGINES:
@@ -7892,7 +7891,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
     self.do_runf(test_file('declare_asm_module_exports.cpp'), 'jsFunction: 1')
-    js = open('declare_asm_module_exports.js').read()
+    js = read_file('declare_asm_module_exports.js')
     occurances = js.count('cFunction')
     if is_optimizing(self.emcc_args) and '-g' not in self.emcc_args:
       # In optimized builds only the single reference cFunction that exists in the EM_ASM should exist
@@ -8079,8 +8078,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
         self.skipTest('-Oz breaks stack traces')
 
     def modify_env(filename):
-      with open(filename) as f:
-        contents = f.read()
+      contents = read_file(filename)
       contents = 'Module = {UBSAN_OPTIONS: "print_stacktrace=1"};' + contents
       with open(filename, 'w') as f:
         f.write(contents)
