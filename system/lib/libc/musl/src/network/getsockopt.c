@@ -1,10 +1,15 @@
 #include <sys/socket.h>
+#ifndef __EMSCRIPTEN__ // XXX Emscripten revert musl commit 51fd67fcbfa598e2fe1885b517451b84c0bfe3b7
 #include <sys/time.h>
 #include <errno.h>
+#endif
 #include "syscall.h"
 
 int getsockopt(int fd, int level, int optname, void *restrict optval, socklen_t *restrict optlen)
 {
+#ifdef __EMSCRIPTEN__ // XXX Emscripten revert musl commit 51fd67fcbfa598e2fe1885b517451b84c0bfe3b7
+	return socketcall(getsockopt, fd, level, optname, optval, optlen, 0);
+#else
 	long tv32[2];
 	struct timeval *tv;
 
@@ -38,4 +43,5 @@ int getsockopt(int fd, int level, int optname, void *restrict optval, socklen_t 
 		}
 	}
 	return __syscall_ret(r);
+#endif
 }
