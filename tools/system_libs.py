@@ -1069,12 +1069,12 @@ class libc(MuslInternalLibrary,
         'proto.c',
         'syscall.c', 'popen.c', 'pclose.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
-        'getentropy.c',
+        'fopencookie.c', 'getentropy.c', 'getrandom.c',
         'getauxval.c',
         'lookup_name.c',
         # 'process' exclusion
         'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
-        '_Fork.c',
+        'fexecve.c', '_Fork.c',
         # 'env' exclusion
         '__reset_tls.c', '__init_tls.c', '__libc_start_main.c', '__stack_chk_fail.c',
     ]
