@@ -671,9 +671,10 @@ def process_dynamic_libs(dylibs, lib_dirs):
       path = find_library(needed, lib_dirs)
       if path:
         extras.append(path)
+        seen.add(needed)
       else:
         exit_with_error(f'{dylib}: shared library dependency not found: `{needed}`')
-      to_process.append(needed)
+      to_process.append(path)
 
   dylibs += extras
   for dylib in dylibs:
