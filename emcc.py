@@ -2190,10 +2190,13 @@ def phase_linker_setup(options, state, newargs, settings_map):
       # LTO these symbols don't exist prior the linking.
       '___cxa_is_pointer_type',
       '___cxa_can_catch',
-
-      # Emscripten exception handling can generate invoke calls, and they call
-      # setThrew(). We cannot handle this using deps_info as the invokes are not
-      # emitted because of library function usage, but by codegen itself.
+    ]
+  if not settings.DISABLE_EXCEPTION_CATCHING or settings.SUPPORT_LONGJMP:
+    settings.EXPORTED_FUNCTIONS += [
+      # Emscripten exception handling and setjmp/longjmp handling can generate
+      # invoke calls, and they call setThrew(). We cannot handle this using
+      # deps_info as the invokes are not emitted because of library function
+      # usage, but by codegen itself.
       '_setThrew',
     ]
 
