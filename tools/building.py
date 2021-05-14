@@ -458,7 +458,9 @@ def link_lld(args, target, external_symbols=None):
   # Wasm exception handling. This is a CodeGen option for the LLVM backend, so
   # wasm-ld needs to take this for the LTO mode.
   # When wasm EH is enabled, we use the legacy pass manager because the new pass
-  # manager + wasm EH has some known bugs. TODO Use the new pass manager.
+  # manager + wasm EH has some known bugs. See
+  # https://github.com/emscripten-core/emscripten/issues/14180.
+  # TODO Switch to the new pass manager.
   if settings.EXCEPTION_HANDLING:
     cmd += ['-mllvm', '-exception-model=wasm', '--lto-legacy-pass-manager']
 
