@@ -22,6 +22,7 @@ from urllib.request import urlopen
 
 from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from runner import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
+from runner import read_file
 from tools import shared
 from tools import system_libs
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
@@ -73,9 +74,8 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
 
 
 def shell_with_script(shell_file, output_file, replacement):
-  with open(path_from_root('src', shell_file)) as input:
-    with open(output_file, 'w') as output:
-      output.write(input.read().replace('{{{ SCRIPT }}}', replacement))
+  shell = read_file(path_from_root('src', shell_file))
+  create_file(output_file, shell.replace('{{{ SCRIPT }}}', replacement))
 
 
 def is_chrome():
@@ -574,7 +574,7 @@ If manually bisecting:
     # change the file package base dir to look in a "cdn". note that normally
     # you would add this in your own custom html file etc., and not by
     # modifying the existing shell in this manner
-    create_file('shell.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
+    create_file('shell.html', read_file(path_from_root('src', 'shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
     create_file('main.cpp', r'''
       #include <stdio.h>
       #include <string.h>
@@ -658,7 +658,7 @@ If manually bisecting:
     test()
 
     # TODO: CORS, test using a full url for locateFile
-    # create_file('shell.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
+    # create_file('shell.html', read_file(path_from_root('src', 'shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
     # test()
 
   def test_dev_random(self):
@@ -756,7 +756,7 @@ If manually bisecting:
   def post_manual_reftest(self, reference=None):
     self.reftest(test_file(self.reference if reference is None else reference))
 
-    html = open('test.html').read()
+    html = read_file('test.html')
     html = html.replace('</body>', '''
 <script>
 function assert(x, y) { if (!x) throw 'assertion failed ' + y }
@@ -772,7 +772,7 @@ window.close = function() {
   }, 1000);
 };
 </script>
-</body>''' % open('reftest.js').read())
+</body>''' % read_file('reftest.js'))
     create_file('test.html', html)
 
   def test_sdl_canvas_proxy(self):
@@ -840,7 +840,7 @@ window.close = function() {
     ''')
 
     def post():
-      html = open('test.html').read()
+      html = read_file('test.html')
       html = html.replace('</body>', '''
 <script>
 function keydown(c) {
@@ -872,7 +872,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_keydown_preventdefault_proxy(self):
     def post():
-      html = open('test.html').read()
+      html = read_file('test.html')
       html = html.replace('</body>', '''
 <script>
 function keydown(c) {
@@ -1715,8 +1715,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest('hello_world_gles_deriv.c', reference='gears.png', reference_slack=2,
                args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'],
                message='You should see animating gears.')
-    with open('test.html') as f:
-      assert 'gl-matrix' not in f.read(), 'Should not include glMatrix when not needed'
+    assert 'gl-matrix' not in read_file('test.html'), 'Should not include glMatrix when not needed'
 
   @requires_graphics_hardware
   def test_glbook(self):
@@ -2497,7 +2496,7 @@ void *getBindBuffer() {
     # require('crypto').randomBytes and window.crypto.getRandomValues doesn't get minified out.
     self.run_process([EMCC, '-O2', '--closure=1', test_file('uuid/test.c'), '-o', 'test.js', '-luuid'])
 
-    test_js_closure = open('test.js').read()
+    test_js_closure = read_file('test.js')
 
     # Check that test.js compiled with --closure 1 contains ").randomBytes" and "window.crypto.getRandomValues"
     assert ").randomBytes" in test_js_closure
@@ -3049,7 +3048,7 @@ Module["preRun"].push(function () {
   @requires_graphics_hardware
   def test_sdl2_canvas_proxy(self):
     def post():
-      html = open('test.html').read()
+      html = read_file('test.html')
       html = html.replace('</body>', '''
 <script>
 function assert(x, y) { if (!x) throw 'assertion failed ' + y }
@@ -3065,7 +3064,7 @@ window.close = function() {
   }, 1000);
 };
 </script>
-</body>''' % open('reftest.js').read())
+</body>''' % read_file('reftest.js'))
       create_file('test.html', html)
 
     create_file('data.txt', 'datum')
@@ -3157,7 +3156,7 @@ window.close = function() {
   def test_sdl2_gl_frames_swap(self):
     def post_build(*args):
       self.post_manual_reftest(*args)
-      html = open('test.html').read()
+      html = read_file('test.html')
       html2 = html.replace('''Module['postRun'] = doReftest;''', '') # we don't want the very first frame
       assert html != html2
       create_file('test.html', html2)
@@ -3639,7 +3638,7 @@ window.close = function() {
   # pthreads tests
 
   def prep_no_SAB(self):
-    create_file('html.html', open(path_from_root('src', 'shell_minimal.html')).read().replace('''<body>''', '''<body>
+    create_file('html.html', read_file(path_from_root('src', 'shell_minimal.html')).replace('''<body>''', '''<body>
       <script>
         SharedArrayBuffer = undefined;
         Atomics = undefined;
@@ -3949,14 +3948,14 @@ window.close = function() {
     ''')
 
     # Test that it is possible to define "Module.locateFile" string to locate where worker.js will be loaded from.
-    create_file('shell.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
+    create_file('shell.html', read_file(path_from_root('src', 'shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
     self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-o', 'test.html'])
     shutil.move('test.worker.js', Path('cdn/test.worker.js'))
     shutil.copyfile('test.html.mem', Path('cdn/test.html.mem'))
     self.run_browser('test.html', '', '/report_result?1')
 
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
-    create_file('shell2.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.worker.js") return "cdn/test.worker.js"; else return filename; }, '))
+    create_file('shell2.html', read_file(path_from_root('src', 'shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.worker.js") return "cdn/test.worker.js"; else return filename; }, '))
     self.compile_btest(['main.cpp', '--shell-file', 'shell2.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-o', 'test2.html'])
     try_delete('test.worker.js')
     self.run_browser('test2.html', '', '/report_result?1')
@@ -4120,7 +4119,7 @@ window.close = function() {
 
   @requires_threads
   def test_main_thread_em_asm_blocking(self):
-    create_file('page.html', open(test_file('browser/test_em_asm_blocking.html')).read())
+    create_file('page.html', read_file(test_file('browser/test_em_asm_blocking.html')))
 
     self.compile_btest([test_file('browser/test_em_asm_blocking.cpp'), '-O2', '-o', 'wasm.js', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
     self.run_browser('page.html', '', '/report_result?8')
@@ -4216,7 +4215,7 @@ window.close = function() {
   def test_wasm_locate_file(self):
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     ensure_dir('cdn')
-    create_file('shell2.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
+    create_file('shell2.html', read_file(path_from_root('src', 'shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
     self.compile_btest([test_file('browser_test_hello_world.c'), '--shell-file', 'shell2.html', '-o', 'test.html'])
     shutil.move('test.wasm', Path('cdn/test.wasm'))
     self.run_browser('test.html', '', '/report_result?0')
@@ -4792,7 +4791,7 @@ window.close = function() {
         return 0;
       }
     ''')
-    create_file('shell.html', open(path_from_root('src', 'shell.html')).read().replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
+    create_file('shell.html', read_file(path_from_root('src', 'shell.html')).replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
     self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-o', 'test.html'])
     self.run_browser('test.html', None, '/report_result?0')
 
@@ -4808,7 +4807,7 @@ window.close = function() {
     ensure_dir('subdir')
     shutil.move('test.js', Path('subdir/test.js'))
     shutil.move('test.wasm', Path('subdir/test.wasm'))
-    src = open('test.html').read()
+    src = read_file('test.html')
     # Make sure JS is loaded from subdirectory
     create_file('test-subdir.html', src.replace('test.js', 'subdir/test.js'))
     self.run_browser('test-subdir.html', None, '/report_result?0')
@@ -4966,7 +4965,7 @@ window.close = function() {
       os.rename('test.wasm.js.unused', 'test.wasm.js')
 
       # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
-      html = open('test.html', 'r').read()
+      html = read_file('test.html')
       html = html.replace('<body>', '<body><script>delete WebAssembly;</script>')
       open('test.html', 'w').write(html)
       os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
@@ -5184,8 +5183,8 @@ class emrun(RunnerCore):
       print(shared.shlex_join(args))
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)
-      stdout = open(self.in_dir('stdout.txt'), 'r').read()
-      stderr = open(self.in_dir('stderr.txt'), 'r').read()
+      stdout = read_file(self.in_dir('stdout.txt'))
+      stderr = read_file(self.in_dir('stderr.txt'))
       self.assertContained('argc: 4', stdout)
       self.assertContained('argv[3]: --3', stdout)
       self.assertContained('hello, world!', stdout)
