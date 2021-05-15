@@ -9238,13 +9238,10 @@ int main(void) {
       }
     ''')
     self.run_process([EMXX, 'src.cpp', '-c', '-o', 'src.o'] + compile_flags)
-    if compile_flags and not link_flags:
-      out = self.expect_fail([EMXX, 'src.o'] + link_flags)
-      self.assertContained('error: DISABLE_EXCEPTION_CATCHING was set, which means no C++ exception catching support code is linked in, but such support is required by symbol `__cxa_begin_catch`.', out)
-      return
-
     self.run_process([EMXX, 'src.o'] + link_flags)
     result = self.run_js('a.out.js', assert_returncode=0 if expect_caught else NON_ZERO)
+    if not expect_caught:
+      self.assertContainedIf('exception catching is disabled, this exception cannot be caught', result, expect_caught)
     self.assertContainedIf('CAUGHT', result, expect_caught)
 
   def test_exceptions_with_closure_and_without_catching(self):
