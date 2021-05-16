@@ -70,6 +70,17 @@ int main(int argc, char *argv[])
   assert(glGetError() == GL_NO_ERROR && "Shader program link failed");
   glUseProgram(program);
 
+  // Test that we can call glGetUniformfv() on a prebound location.
+  float val[4];
+  memset(val, -1, sizeof(val));
+  glGetUniformfv(program, 11, val);
+  assert(val[0] == 0 && val[1] == 0 && val[2] == 0 && val[3] == 0);
+
+  // Test that we can call glGetUniformfv() on an array location.
+  memset(val, -1, sizeof(val));
+  glGetUniformfv(program, 19, val);
+  assert(val[0] == 0 && val[1] == 0 && val[2] == 0);
+
   assert(glGetUniformLocation(program, "world") == 42);
   assert(glGetUniformLocation(program, "view") == 0);
   assert(glGetUniformLocation(program, "color") == 8);
