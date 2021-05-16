@@ -3084,7 +3084,7 @@ var LibraryGL = {
 #endif
     // Remove comments and C-preprocess the input shader first, so that we can appropriately
     // parse the layout location directives.
-    source = preprocess_c_code(remove_cpp_comments_in_shaders(source));
+    source = preprocess_c_code(remove_cpp_comments_in_shaders(source), { 'GL_FRAGMENT_PRECISION_HIGH': function() { return 1; }});
 #if GL_DEBUG
     console.log('Shader source after preprocessing: ' + source);
 #endif

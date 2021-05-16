@@ -45,8 +45,12 @@ int main(int argc, char *argv[])
 
   GLuint vs = CompileShader(GL_VERTEX_SHADER,
     "#version 300 es\n"
+    "#ifdef GL_FRAGMENT_PRECISION_HIGH\n" // GL_FRAGMENT_PRECISION_HIGH is a predefined variable
     "layout(location = 42) uniform mat4 world;\n"
+    "#endif\n"
+    "#if GL_FRAGMENT_PRECISION_HIGH\n"
     "layout(location = 0) uniform mat4 view;\n"
+    "#endif\n"
     " // layout(location = -1) uniform mat4 proj; // Invalid usage, check this is preprocessed away\n"
     " /* layout(location = 100000000) uniform mat4 proj; Invalid usage, check this is preprocessed away */\n"
     "layout(location = 0) in vec4 pos; // Make sure attribute layout locations don't get removed by preprocessor\n"
