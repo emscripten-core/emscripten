@@ -2061,7 +2061,7 @@ var LibraryGL = {
 
       // If an integer, we have not yet bound the location, so do it now. The integer value specifies the array index
       // we should bind to.
-      if (webglLoc >= 0) {
+      if (typeof webglLoc === 'number') {
         p.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(p, p.uniformArrayNamesById[location] + (webglLoc > 0 ? '[' + webglLoc + ']' : ''));
       }
       // Else an already cached WebGLUniformLocation, return it.
