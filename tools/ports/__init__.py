@@ -27,6 +27,8 @@ def read_ports():
       assert hasattr(port, a), 'port %s is missing %s' % (port, a)
     if not hasattr(port, 'process_dependencies'):
       port.process_dependencies = lambda x: 0
+    if not hasattr(port, 'linker_setup'):
+      port.linker_setup = lambda x, y: 0
     if not hasattr(port, 'deps'):
       port.deps = []
 

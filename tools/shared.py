@@ -69,6 +69,7 @@ diagnostics.add_warning('pthreads-mem-growth')
 
 # TODO(sbc): Investigate switching to shlex.quote
 def shlex_quote(arg):
+  arg = os.fspath(arg)
   if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
     return '"' + arg.replace('"', '\\"') + '"'
 

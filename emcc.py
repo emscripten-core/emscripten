@@ -50,7 +50,7 @@ from tools import js_manipulation
 from tools import wasm2c
 from tools import webassembly
 from tools import config
-from tools.settings import settings, MEM_SIZE_SETTINGS
+from tools.settings import settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 
 logger = logging.getLogger('emcc')
 
@@ -211,6 +211,15 @@ class EmccState:
     self.link_flags = []
     self.lib_dirs = []
     self.forced_stdlibs = []
+
+
+def add_link_flag(state, i, f):
+  if f.startswith('-l'):
+    state.libs.append((i, f[2:]))
+  if f.startswith('-L'):
+    state.lib_dirs.append(f[2:])
+
+  state.link_flags.append((i, f))
 
 
 class EmccOptions:
@@ -861,6 +870,13 @@ def get_cflags(options, user_args):
              '-D__unix',
              '-D__unix__']
 
+  # When wasm EH is enabled, we use the legacy pass manager because the new pass
+  # manager + wasm EH has some known bugs. See
+  # https://github.com/emscripten-core/emscripten/issues/14180.
+  # TODO Switch to the new pass manager.
+  if settings.EXCEPTION_HANDLING:
+    cflags += ['-flegacy-pass-manager']
+
   # Changes to default clang behavior
 
   # Implicit functions can cause horribly confusing function pointer type errors, see #2175
@@ -1037,9 +1053,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ## Process argument and setup the compiler
   state = EmccState(args)
   options, newargs, settings_map = phase_parse_arguments(state)
+
+  # For internal consistency, ensure we don't attempt or read or write any link time
+  # settings until we reach the linking phase.
+  settings.limit_settings(COMPILE_TIME_SETTINGS)
+
   newargs, input_files = phase_setup(options, state, newargs, settings_map)
 
   if options.post_link:
+    settings.limit_settings(None)
     target, wasm_target = phase_linker_setup(options, state, newargs, settings_map)
     process_libraries(state.libs, state.lib_dirs, [])
     if len(input_files) != 1:
@@ -1048,8 +1070,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return 0
 
   ## Compile source code to object files
-  linker_inputs = []
-  phase_compile_inputs(options, state, newargs, input_files, linker_inputs)
+  linker_inputs = phase_compile_inputs(options, state, newargs, input_files)
 
   if state.compile_only:
     logger.debug('stopping after compile phase')
@@ -1059,6 +1080,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       diagnostics.warning('unused-command-line-argument', "%s: linker input file unused because linking not done" % f[1])
 
     return 0
+
+  # We have now passed the compile phase, allow reading/writing of all settings.
+  settings.limit_settings(None)
 
   if options.output_file and options.output_file.startswith('-'):
     exit_with_error('invalid output filename: `%s`' % options.output_file)
@@ -1146,29 +1170,6 @@ def phase_parse_arguments(state):
   if options.post_link or options.oformat == OFormat.BARE:
     diagnostics.warning('experimental', '--oformat=base/--post-link are experimental and subject to change.')
 
-  if options.emrun:
-    options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
-    options.post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
-    # emrun mode waits on program exit
-    settings.EXIT_RUNTIME = 1
-
-  if options.cpu_profiler:
-    options.post_js += open(shared.path_from_root('src', 'cpuprofiler.js')).read() + '\n'
-
-  if options.memory_profiler:
-    settings.MEMORYPROFILER = 1
-
-  if options.thread_profiler:
-    options.post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
-
-  if options.memory_init_file is None:
-    options.memory_init_file = settings.OPT_LEVEL >= 2
-
-  # TODO: support source maps with js_transform
-  if options.js_transform and settings.GENERATE_SOURCE_MAP:
-    logger.warning('disabling source maps because a js transform is being done')
-    settings.GENERATE_SOURCE_MAP = 0
-
   explicit_settings_changes, newargs = parse_s_args(newargs)
   settings_changes += explicit_settings_changes
 
@@ -1210,14 +1211,6 @@ def phase_setup(options, state, newargs, settings_map):
   # Note that the index part of the tuple can have a fractional part for input
   # arguments that expand into multiple processed arguments, as in -Wl,-f1,-f2.
   input_files = []
-
-  def add_link_flag(i, f):
-    if f.startswith('-l'):
-      state.libs.append((i, f[2:]))
-    if f.startswith('-L'):
-      state.lib_dirs.append(f[2:])
-
-    state.link_flags.append((i, f))
 
   # find input files with a simple heuristic. we should really analyze
   # based on a full understanding of gcc params, right now we just assume that
@@ -1264,10 +1257,10 @@ def phase_setup(options, state, newargs, settings_map):
       else:
         input_files.append((i, arg))
     elif arg.startswith('-L'):
-      add_link_flag(i, arg)
+      add_link_flag(state, i, arg)
       newargs[i] = ''
     elif arg.startswith('-l'):
-      add_link_flag(i, arg)
+      add_link_flag(state, i, arg)
       newargs[i] = ''
     elif arg.startswith('-Wl,'):
       # Multiple comma separated link flags can be specified. Create fake
@@ -1275,10 +1268,10 @@ def phase_setup(options, state, newargs, settings_map):
       # (4, a), (4.25, b), (4.5, c), (4.75, d)
       link_flags_to_add = arg.split(',')[1:]
       for flag_index, flag in enumerate(link_flags_to_add):
-        add_link_flag(i + float(flag_index) / len(link_flags_to_add), flag)
+        add_link_flag(state, i + float(flag_index) / len(link_flags_to_add), flag)
       newargs[i] = ''
     elif arg == '-Xlinker':
-      add_link_flag(i + 1, newargs[i + 1])
+      add_link_flag(state, i + 1, newargs[i + 1])
       newargs[i] = ''
       newargs[i + 1] = ''
     elif arg == '-s':
@@ -1312,10 +1305,6 @@ def phase_setup(options, state, newargs, settings_map):
     # for key in settings_map:
     #   if key not in COMPILE_TIME_SETTINGS:
     #     diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
-  else:
-    ldflags = emsdk_ldflags(newargs)
-    for f in ldflags:
-      add_link_flag(sys.maxsize, f)
 
   if state.has_dash_c or state.has_dash_S or state.has_dash_E or '-M' in newargs or '-MM' in newargs:
     if state.has_dash_c:
@@ -1366,6 +1355,33 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.NODERAWFS = 1
     # Add `#!` line to output JS and make it executable.
     options.executable = True
+
+  ldflags = emsdk_ldflags(newargs)
+  for f in ldflags:
+    add_link_flag(state, sys.maxsize, f)
+
+  if options.emrun:
+    options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
+    options.post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
+    # emrun mode waits on program exit
+    settings.EXIT_RUNTIME = 1
+
+  if options.cpu_profiler:
+    options.post_js += open(shared.path_from_root('src', 'cpuprofiler.js')).read() + '\n'
+
+  if options.memory_profiler:
+    settings.MEMORYPROFILER = 1
+
+  if options.thread_profiler:
+    options.post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
+
+  if options.memory_init_file is None:
+    options.memory_init_file = settings.OPT_LEVEL >= 2
+
+  # TODO: support source maps with js_transform
+  if options.js_transform and settings.GENERATE_SOURCE_MAP:
+    logger.warning('disabling source maps because a js transform is being done')
+    settings.GENERATE_SOURCE_MAP = 0
 
   # options.output_file is the user-specified one, target is what we will generate
   if options.output_file:
@@ -2014,7 +2030,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # Require explicit -lfoo.js flags to link with JS libraries.
     settings.AUTO_JS_LIBRARIES = 0
 
-  if settings.MODULARIZE and settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
+  if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
+     settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
      (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
     exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
@@ -2172,10 +2189,19 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
   if not settings.DISABLE_EXCEPTION_CATCHING:
-    # If not for LTO builds, we could handle these by adding deps_info.py
-    # entries for __cxa_find_matching_catch_* functions.  However, under
-    # LTO these symbols don't exist prior the linking.
-    settings.EXPORTED_FUNCTIONS += ['___cxa_is_pointer_type', '___cxa_can_catch']
+    settings.EXPORTED_FUNCTIONS += [
+      # For normal builds the entries in deps_info.py are enough to include
+      # these symbols whenever __cxa_find_matching_catch_* functions are
+      # found.  However, under LTO these symbols don't exist prior to linking
+      # so we include then unconditionally when exceptions are enabled.
+      '___cxa_is_pointer_type',
+      '___cxa_can_catch',
+
+      # Emscripten exception handling can generate invoke calls, and they call
+      # setThrew(). We cannot handle this using deps_info as the invokes are not
+      # emitted because of library function usage, but by codegen itself.
+      '_setThrew',
+    ]
 
   if settings.ASYNCIFY:
     if not settings.ASYNCIFY_IGNORE_INDIRECT:
@@ -2240,7 +2266,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
 
 @ToolchainProfiler.profile_block('compile inputs')
-def phase_compile_inputs(options, state, newargs, input_files, linker_inputs):
+def phase_compile_inputs(options, state, newargs, input_files):
   def is_link_flag(flag):
     if flag.startswith('-nostdlib'):
       return True
@@ -2317,7 +2343,7 @@ def phase_compile_inputs(options, state, newargs, input_files, linker_inputs):
       # with -MF! (clang seems to not recognize it)
       logger.debug(('just preprocessor ' if state.has_dash_E else 'just dependencies: ') + ' '.join(cmd))
       shared.check_call(cmd)
-    return
+    return []
 
   # Precompiled headers support
   if state.has_header_inputs:
@@ -2330,8 +2356,9 @@ def phase_compile_inputs(options, state, newargs, input_files, linker_inputs):
         cmd += ['-o', options.output_file]
       logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
       shared.check_call(cmd)
-      return
+      return []
 
+  linker_inputs = []
   seen_names = {}
 
   def uniquename(name):
@@ -2388,6 +2415,8 @@ def phase_compile_inputs(options, state, newargs, input_files, linker_inputs):
       logger.debug('using object file: ' + input_file)
       linker_inputs.append((i, input_file))
 
+  return linker_inputs
+
 
 @ToolchainProfiler.profile_block('calculate system libraries')
 def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, newargs):
@@ -2397,12 +2426,12 @@ def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, new
     # Ports are always linked into the main module, never the size module.
     extra_files_to_link += system_libs.get_ports_libs(settings)
   if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-    link_as_cxx = run_via_emxx
+    settings.LINK_AS_CXX = run_via_emxx
     # Traditionally we always link as C++.  For compatibility we continue to do that,
     # unless running in strict mode.
     if not settings.STRICT and '-nostdlib++' not in newargs:
-      link_as_cxx = True
-    extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, link_as_cxx, forced=state.forced_stdlibs)
+      settings.LINK_AS_CXX = True
+    extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, forced=state.forced_stdlibs)
   linker_arguments.extend(extra_files_to_link)
 
 
@@ -3498,18 +3527,33 @@ class ScriptSource:
     """Use this if you want to modify the script and need it to be inline."""
     if self.src is None:
       return
-    self.inline = '''
-          var script = document.createElement('script');
-          script.src = "%s";
-          document.body.appendChild(script);
-''' % self.src
+    quoted_src = quote(self.src)
+    if settings.EXPORT_ES6:
+      self.inline = f'''
+        import("./{quoted_src}").then(exports => exports.default(Module))
+      '''
+    else:
+      self.inline = f'''
+            var script = document.createElement('script');
+            script.src = "{quoted_src}";
+            document.body.appendChild(script);
+      '''
     self.src = None
 
   def replacement(self):
     """Returns the script tag to replace the {{{ SCRIPT }}} tag in the target"""
     assert (self.src or self.inline) and not (self.src and self.inline)
     if self.src:
-      return '<script async type="text/javascript" src="%s"></script>' % quote(self.src)
+      quoted_src = quote(self.src)
+      if settings.EXPORT_ES6:
+        return f'''
+        <script type="module">
+          import initModule from "./{quoted_src}";
+          initModule(Module);
+        </script>
+        '''
+      else:
+        return f'<script async type="text/javascript" src="{quoted_src}"></script>'
     else:
       return '<script>\n%s\n</script>' % self.inline
 
