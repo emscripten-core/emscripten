@@ -493,13 +493,17 @@ fi
     self.assertEqual(num_times_libc_was_built, 1)
 
   @parameterized({
-    '': [False],
-    'response_files': [True]
+    '': [False, False],
+    'response_files': [True, False],
+    'relative': [False, True]
   })
-  def test_emcc_cache_flag(self, use_response_files):
+  def test_emcc_cache_flag(self, use_response_files, relative):
     restore_and_set_up()
 
-    cache_dir_name = self.in_dir('emscripten_cache')
+    if relative:
+      cache_dir_name = 'emscripten_cache'
+    else:
+      cache_dir_name = self.in_dir('emscripten_cache')
     self.assertFalse(os.path.exists(cache_dir_name))
     create_file('test.c', r'''
       #include <stdio.h>
