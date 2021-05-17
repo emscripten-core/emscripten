@@ -6218,12 +6218,16 @@ high = 1234
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_dash_s_response_file_string(self):
-    create_file('response_file', '"MyModule"\n')
-    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORT_NAME=@response_file'])
+    create_file('response_file.txt', 'MyModule\n')
+    create_file('response_file.json', '"MyModule"\n')
+    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORT_NAME=@response_file.txt'])
+    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORT_NAME=@response_file.json'])
 
   def test_dash_s_response_file_list(self):
-    create_file('response_file', '["_main", "_malloc"]\n')
-    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@response_file'])
+    create_file('response_file.txt', '_main\n_malloc\n')
+    create_file('response_file.json', '["_main", "_malloc"]\n')
+    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@response_file.txt'])
+    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@response_file.json'])
 
   def test_dash_s_response_file_misssing(self):
     err = self.expect_fail([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@foo'])
@@ -8095,12 +8099,19 @@ test_module().then((test_module_instance) => {
         void c() { printf("c\n"); }
         void d() { printf("d\n"); }
       ''')
-    create_file('response', r'''[
+    create_file('response.json', '''\
+[
 "_a",
 "_b",
 "_c",
 "_d"
 ]
+''')
+    create_file('response.txt', '''\
+_a
+_b
+_c
+_d
 ''')
 
     for export_arg, expected in [
@@ -8115,7 +8126,9 @@ test_module().then((test_module_instance) => {
       # extra space at end - should be ignored
       ("EXPORTED_FUNCTIONS=['_a', '_b', '_c', '_d' ]", ''),
       # extra newline in response file - should be ignored
-      ("EXPORTED_FUNCTIONS=@response", ''),
+      ("EXPORTED_FUNCTIONS=@response.json", ''),
+      # Simple one-per-line response file format
+      ("EXPORTED_FUNCTIONS=@response.txt", ''),
       # stray slash
       ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''undefined exported symbol: "\\\\'_c'"'''),
       # stray slash
@@ -8132,6 +8145,9 @@ test_module().then((test_module_instance) => {
       print(proc.stderr)
       if not expected:
         self.assertFalse(proc.stderr)
+        js = open('a.out.js').read()
+        for sym in ('_a', '_b', '_c', '_d'):
+          self.assertContained(f'var {sym} = ', js)
       else:
         self.assertNotEqual(proc.returncode, 0)
         self.assertContained(expected, proc.stderr)
@@ -8143,16 +8159,18 @@ test_module().then((test_module_instance) => {
     self.assertContained('Try to quote the entire argument', proc.stderr)
 
   def test_asyncify_response_file(self):
-    return self.skipTest(' TODO remove the support for multiple binaryen versions warning output ("function name" vs "pattern" etc).')
     create_file('a.txt', r'''[
   "DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)"
 ]
 ''')
-    proc = self.run_process([EMCC, test_file('hello_world.c'), '-s', 'ASYNCIFY', '-s', "ASYNCIFY_ONLY=@a.txt"], stdout=PIPE, stderr=PIPE)
-    # we should parse the response file properly, and then issue a proper warning for the missing function
-    self.assertContained(
-        'Asyncify onlylist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
-        proc.stderr)
+
+    create_file('b.txt', 'DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)')
+    for file in ('a.txt', 'b.txt'):
+      proc = self.run_process([EMCC, test_file('hello_world.c'), '-sASYNCIFY', f'-sASYNCIFY_ONLY=@{file}'], stdout=PIPE, stderr=PIPE)
+      # we should parse the response file properly, and then issue a proper warning for the missing function
+      self.assertContained(
+          'Asyncify onlylist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
+          proc.stderr)
 
   def test_asyncify_advise(self):
     src = test_file('other/asyncify_advise.c')

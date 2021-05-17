@@ -3299,7 +3299,7 @@ window.close = function() {
   })
   def test_async_returnvalue(self, args):
     if '@' in str(args):
-      create_file('filey.txt', '["sync_tunnel", "sync_tunnel_bool"]')
+      create_file('filey.txt', 'sync_tunnel\nsync_tunnel_bool\n')
     self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/async_returnvalue.js')] + args + ['-s', 'ASSERTIONS'])
 
   def test_async_stack_overflow(self):
