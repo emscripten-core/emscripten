@@ -4,7 +4,7 @@
 Pthreads support
 ==============================
 
-.. note:: Browsers are `currently shipping <https://webassembly.org/roadmap/>`_ SharedArrayBuffer gated behind Cross Origin Opener Policy (COOP) and Cross Origin Embedder Policy (COEP) headers. Pthreads code will not work in deployed environment unless these headers are correctly set. For more information click `this <https://web.dev/coop-coep>`_
+.. note:: Browsers `that have implemented and enabled <https://webassembly.org/roadmap/>`_ SharedArrayBuffer, are gating it behind Cross Origin Opener Policy (COOP) and Cross Origin Embedder Policy (COEP) headers. Pthreads code will not work in deployed environment unless these headers are correctly set. For more information click `this <https://web.dev/coop-coep>`_
 
 Emscripten has support for multithreading using SharedArrayBuffer in browsers. That API allows sharing memory between the main thread and web workers as well as atomic operations for synchronization, which enables Emscripten to implement support for the Pthreads (POSIX threads) API. This support is considered stable in Emscripten.
 
