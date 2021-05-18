@@ -1616,6 +1616,10 @@ int f() {
     # symbols in the library (because LINKABLE includes the entire library).
     self.emcc(test_file('sdl2_misc.c'), ['-sLINKABLE', '-sUSE_SDL=2'], output_filename='a.out.js')
 
+  def test_sdl2_gfx_linkable(self):
+    # Same as above but for sdl2_gfx library
+    self.emcc(test_file('sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
+
   def test_libpng(self):
     shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
     self.emcc(test_file('third_party/libpng/pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_LIBPNG'], output_filename='a.out.js')
