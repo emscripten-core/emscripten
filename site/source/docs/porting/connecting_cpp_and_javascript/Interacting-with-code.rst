@@ -688,7 +688,10 @@ so you cannot simply do this:
      // This may grow memory, which would invalidate all views.
      maybeGrow();
 
-     // If we grew, this use of an invalidated view will fail.
+     // If we grew, this use of an invalidated view will fail. Failure in this
+     // case will return undefined, the same as reading out of bounds from a
+     // typed array. If the operation were someView.subarray(), however, then it
+     // would throw an error.
      return someView[z];
    }
 
