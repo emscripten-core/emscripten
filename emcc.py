@@ -2877,7 +2877,7 @@ def parse_args(newargs):
       config.CACHE = os.path.normpath(consume_arg())
       shared.reconfigure_cache()
     elif check_flag('--clear-cache'):
-      logger.info('clearing cache as requested by --clear-cache')
+      logger.info('clearing cache as requested by --clear-cache: `%s`', shared.Cache.dirname)
       shared.Cache.erase()
       shared.check_sanity(force=True) # this is a good time for a sanity check
       should_exit = True

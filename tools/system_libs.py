@@ -1916,13 +1916,15 @@ def show_ports():
 
 # Once we require python 3.8 we can use shutil.copytree with
 # dirs_exist_ok=True and remove this function.
-def copytree_exist_ok(src, dest):
-  with utils.chdir(src):
-    for dirname, dirs, files in os.walk('.'):
-      destdir = os.path.join(dest, dirname)
-      utils.safe_ensure_dirs(destdir)
-      for f in files:
-        shared.safe_copy(os.path.join(src, dirname, f), os.path.join(destdir, f))
+def copytree_exist_ok(src, dst):
+  os.makedirs(dst, exist_ok=True)
+  for entry in os.scandir(src):
+    srcname = os.path.join(src, entry.name)
+    dstname = os.path.join(dst, entry.name)
+    if entry.is_dir():
+      copytree_exist_ok(srcname, dstname)
+    else:
+      shared.safe_copy(srcname, dstname)
 
 
 def install_system_headers(stamp):
