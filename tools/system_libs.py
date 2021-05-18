@@ -1451,7 +1451,7 @@ def handle_reverse_deps(input_files):
     add_reverse_deps(symbols)
 
 
-def calculate(input_files, cxx, forced):
+def calculate(input_files, forced):
   # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
   # for unresolved symbols in your project files, which can speed up linking, but if you do not have
   # the proper list of actually needed libraries, errors can occur. See below for how we must
@@ -1531,9 +1531,9 @@ def calculate(input_files, cxx, forced):
 
     add_library('libc')
     add_library('libcompiler_rt')
-    if cxx:
+    if settings.LINK_AS_CXX:
       add_library('libc++')
-    if cxx or sanitize:
+    if settings.LINK_AS_CXX or sanitize:
       add_library('libc++abi')
       if settings.EXCEPTION_HANDLING:
         add_library('libunwind')
@@ -1916,13 +1916,15 @@ def show_ports():
 
 # Once we require python 3.8 we can use shutil.copytree with
 # dirs_exist_ok=True and remove this function.
-def copytree_exist_ok(src, dest):
-  with utils.chdir(src):
-    for dirname, dirs, files in os.walk('.'):
-      destdir = os.path.join(dest, dirname)
-      utils.safe_ensure_dirs(destdir)
-      for f in files:
-        shared.safe_copy(os.path.join(src, dirname, f), os.path.join(destdir, f))
+def copytree_exist_ok(src, dst):
+  os.makedirs(dst, exist_ok=True)
+  for entry in os.scandir(src):
+    srcname = os.path.join(src, entry.name)
+    dstname = os.path.join(dst, entry.name)
+    if entry.is_dir():
+      copytree_exist_ok(srcname, dstname)
+    else:
+      shared.safe_copy(srcname, dstname)
 
 
 def install_system_headers(stamp):

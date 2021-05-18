@@ -188,6 +188,9 @@ def base64_encode(b):
 
 @unique
 class OFormat(Enum):
+  # Output a relocatable object file.  We use this
+  # today for `-r` and `-shared`.
+  OBJECT = auto()
   WASM = auto()
   JS = auto()
   MJS = auto()
@@ -195,15 +198,19 @@ class OFormat(Enum):
   BARE = auto()
 
 
+@unique
+class Mode(Enum):
+  PREPROCESS_ONLY = auto()
+  PCH = auto()
+  COMPILE_ONLY = auto()
+  POST_LINK_ONLY = auto()
+  COMPILE_AND_LINK = auto()
+
+
 class EmccState:
   def __init__(self, args):
+    self.mode = Mode.COMPILE_AND_LINK
     self.orig_args = args
-    # TODO(sbc): Replace the below 4 mode variables with a single mode enum
-    # Set to true if there are `.h` files passed on the command line
-    self.has_header_inputs = False
-    self.link_to_object = False
-    self.compile_only = False
-    self.preprocess_only = False
     self.has_dash_c = False
     self.has_dash_E = False
     self.has_dash_S = False
@@ -360,6 +367,7 @@ def apply_settings(changes):
     if key in MEM_SIZE_SETTINGS:
       value = str(expand_byte_size_suffixes(value))
 
+    filename = None
     if value and value[0] == '@':
       filename = value[1:]
       if not os.path.exists(filename):
@@ -371,10 +379,14 @@ def apply_settings(changes):
     existing = getattr(settings, user_key, None)
     expect_list = type(existing) == list
 
-    try:
-      value = parse_value(value, expect_list)
-    except Exception as e:
-      exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
+    if filename and expect_list and value.strip()[0] != '[':
+      # Prefer simpler one-line-per value parser
+      value = parse_symbol_list_file(value)
+    else:
+      try:
+        value = parse_value(value, expect_list)
+      except Exception as e:
+        exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
 
     # Do some basic type checking by comparing to the existing settings.
     # Sadly we can't do this generically in the SettingsManager since there are settings
@@ -1055,7 +1067,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   newargs, input_files = phase_setup(options, state, newargs, settings_map)
 
-  if options.post_link:
+  if state.mode == Mode.POST_LINK_ONLY:
     settings.limit_settings(None)
     target, wasm_target = phase_linker_setup(options, state, newargs, settings_map)
     process_libraries(state.libs, state.lib_dirs, [])
@@ -1067,7 +1079,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ## Compile source code to object files
   linker_inputs = phase_compile_inputs(options, state, newargs, input_files)
 
-  if state.compile_only:
+  if state.mode != Mode.COMPILE_AND_LINK:
     logger.debug('stopping after compile phase')
     for flag in state.link_flags:
       diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
@@ -1087,7 +1099,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # Link object files using wasm-ld or llvm-link (for bitcode linking)
   linker_arguments = phase_calculate_linker_inputs(options, state, linker_inputs)
 
-  if state.link_to_object:
+  if options.oformat == OFormat.OBJECT:
     with ToolchainProfiler.profile_block('linking to object file'):
       logger.debug('link_to_object: ' + str(linker_arguments) + ' -> ' + target)
       building.link_to_object(linker_arguments, target)
@@ -1115,9 +1127,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   return 0
 
 
-@ToolchainProfiler.profile_block('calc linker inputs')
+@ToolchainProfiler.profile_block('calculate linker inputs')
 def phase_calculate_linker_inputs(options, state, linker_inputs):
-  using_lld = not (state.link_to_object and settings.LTO)
+  using_lld = not (options.oformat == OFormat.OBJECT and settings.LTO)
   state.link_flags = filter_link_flags(state.link_flags, using_lld)
 
   # Decide what we will link
@@ -1128,7 +1140,7 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   # If we are linking to an intermediate object then ignore other
   # "fake" dynamic libraries, since otherwise we will end up with
   # multiple copies in the final executable.
-  if state.link_to_object or options.ignore_dynamic_linking:
+  if options.oformat == OFormat.OBJECT or options.ignore_dynamic_linking:
     linker_inputs = filter_out_dynamic_libs(options, linker_inputs)
   else:
     linker_inputs = filter_out_duplicate_dynamic_libs(linker_inputs)
@@ -1211,6 +1223,7 @@ def phase_setup(options, state, newargs, settings_map):
   # based on a full understanding of gcc params, right now we just assume that
   # what is left contains no more |-x OPT| things
   skip = False
+  has_header_inputs = False
   for i in range(len(newargs)):
     if skip:
       skip = False
@@ -1236,7 +1249,7 @@ def phase_setup(options, state, newargs, settings_map):
         exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
       file_suffix = get_file_suffix(arg)
       if file_suffix in HEADER_ENDINGS:
-        state.has_header_inputs = True
+        has_header_inputs = True
       if file_suffix in STATICLIB_ENDINGS and not building.is_ar(arg):
         if building.is_bitcode(arg):
           message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files use .bc or .o.'
@@ -1290,18 +1303,22 @@ def phase_setup(options, state, newargs, settings_map):
   state.has_dash_c = '-c' in newargs
   state.has_dash_S = '-S' in newargs
   state.has_dash_E = '-E' in newargs
-  state.preprocess_only = state.has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs
-  state.compile_only = state.has_dash_c or state.has_dash_S or state.has_header_inputs or state.preprocess_only
 
-  if state.compile_only:
+  if options.post_link:
+    state.mode = Mode.POST_LINK_ONLY
+  elif state.has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
+    state.mode = Mode.PREPROCESS_ONLY
+  elif has_header_inputs:
+    state.mode = Mode.PCH
+  elif state.has_dash_c or state.has_dash_S:
+    state.mode = Mode.COMPILE_ONLY
+
+  if state.mode in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
     # TODO(sbc): Re-enable these warnings once we are sure we don't have any false
     # positives.  See: https://github.com/emscripten-core/emscripten/pull/14109
-    pass
     # for key in settings_map:
     #   if key not in COMPILE_TIME_SETTINGS:
     #     diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
-
-  if state.has_dash_c or state.has_dash_S or state.has_dash_E or '-M' in newargs or '-MM' in newargs:
     if state.has_dash_c:
       if '-emit-llvm' in newargs:
         options.default_object_extension = '.bc'
@@ -1404,6 +1421,18 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   # If no output format was sepecific we try to imply the format based on
   # the output filename extension.
+  if not options.oformat and (options.shared or options.relocatable):
+    # Until we have a better story for actually producing runtime shared libraries
+    # we support a compatibility mode where shared libraries are actually just
+    # object files linked with `wasm-ld --relocatable` or `llvm-link` in the case
+    # of LTO.
+    if final_suffix in EXECUTABLE_ENDINGS:
+      diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix (%s) when building object files.' % final_suffix)
+    else:
+      if options.shared:
+        diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file.  This is a form of emulation to support existing build systems.  If you want to build a runtime shared library use the SIDE_MODULE setting.')
+      options.oformat = OFormat.OBJECT
+
   if not options.oformat:
     if settings.SIDE_MODULE or final_suffix == '.wasm':
       options.oformat = OFormat.WASM
@@ -1651,21 +1680,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
   settings.ASYNCIFY_ONLY = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ONLY)
 
-  if options.shared or options.relocatable:
-    # Until we have a better story for actually producing runtime shared libraries
-    # we support a compatibility mode where shared libraries are actually just
-    # object files linked with `wasm-ld --relocatable` or `llvm-link` in the case
-    # of LTO.
-    if final_suffix in EXECUTABLE_ENDINGS:
-      diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix (%s) when building object files.' % final_suffix)
-    else:
-      if options.shared:
-        diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file.  This is a form of emulation to support existing build systems.  If you want to build a runtime shared library use the SIDE_MODULE setting.')
-      state.link_to_object = True
-
-  if not state.link_to_object and not state.compile_only:
-    if final_suffix in ('.o', '.bc', '.so', '.dylib') and not settings.SIDE_MODULE:
-      diagnostics.warning('emcc', 'generating an executable with an object extension (%s).  If you meant to build an object file please use `-c, `-r`, or `-shared`' % final_suffix)
+  if state.mode == Mode.COMPILE_AND_LINK and final_suffix in ('.o', '.bc', '.so', '.dylib') and not settings.SIDE_MODULE:
+    diagnostics.warning('emcc', 'generating an executable with an object extension (%s).  If you meant to build an object file please use `-c, `-r`, or `-shared`' % final_suffix)
 
   if settings.SUPPORT_BIG_ENDIAN:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
@@ -2185,9 +2201,10 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if not settings.DISABLE_EXCEPTION_CATCHING:
     settings.EXPORTED_FUNCTIONS += [
-      # If not for LTO builds, we could handle these by adding deps_info.py
-      # entries for __cxa_find_matching_catch_* functions.  However, under
-      # LTO these symbols don't exist prior the linking.
+      # For normal builds the entries in deps_info.py are enough to include
+      # these symbols whenever __cxa_find_matching_catch_* functions are
+      # found.  However, under LTO these symbols don't exist prior to linking
+      # so we include then unconditionally when exceptions are enabled.
       '___cxa_is_pointer_type',
       '___cxa_can_catch',
 
@@ -2327,7 +2344,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return get_compiler(use_cxx(src_file)) + get_clang_flags() + compile_args + [src_file]
 
   # preprocessor-only (-E) support
-  if state.preprocess_only:
+  if state.mode == Mode.PREPROCESS_ONLY:
     for input_file in [x[1] for x in input_files]:
       cmd = get_clang_command(input_file)
       if options.output_file:
@@ -2340,7 +2357,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return []
 
   # Precompiled headers support
-  if state.has_header_inputs:
+  if state.mode == Mode.PCH:
     headers = [header for _, header in input_files]
     for header in headers:
       if not header.endswith(HEADER_ENDINGS):
@@ -2361,7 +2378,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return unsuffixed(name) + '_' + seen_names[name] + shared.suffix(name)
 
   def get_object_filename(input_file):
-    if state.compile_only:
+    if state.mode == Mode.COMPILE_ONLY:
       # In compile-only mode we don't use any temp file.  The object files
       # are written directly to their final output locations.
       if options.output_file:
@@ -2375,7 +2392,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
   def compile_source_file(i, input_file):
     logger.debug('compiling source file: ' + input_file)
     output_file = get_object_filename(input_file)
-    if not state.compile_only:
+    if state.mode not in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
       linker_inputs.append((i, output_file))
     if get_file_suffix(input_file) in ASSEMBLY_ENDINGS:
       cmd = get_clang_command_asm(input_file)
@@ -2420,12 +2437,12 @@ def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, new
     # Ports are always linked into the main module, never the size module.
     extra_files_to_link += system_libs.get_ports_libs(settings)
   if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-    link_as_cxx = run_via_emxx
+    settings.LINK_AS_CXX = run_via_emxx
     # Traditionally we always link as C++.  For compatibility we continue to do that,
     # unless running in strict mode.
     if not settings.STRICT and '-nostdlib++' not in newargs:
-      link_as_cxx = True
-    extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, link_as_cxx, forced=state.forced_stdlibs)
+      settings.LINK_AS_CXX = True
+    extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, forced=state.forced_stdlibs)
   linker_arguments.extend(extra_files_to_link)
 
 
@@ -2657,14 +2674,17 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
 def version_string():
   # if the emscripten folder is not a git repo, don't run git show - that can
   # look up and find the revision in a parent directory that is a git repo
-  revision = ''
+  revision_suffix = ''
   if os.path.exists(shared.path_from_root('.git')):
-    revision = run_process(['git', 'rev-parse', 'HEAD'], stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.strip()
+    git_rev = run_process(
+      ['git', 'rev-parse', 'HEAD'],
+      stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.strip()
+    revision_suffix = '-git (%s)' % git_rev
   elif os.path.exists(shared.path_from_root('emscripten-revision.txt')):
-    revision = open(shared.path_from_root('emscripten-revision.txt')).read().strip()
-  if revision:
-    revision = '-git (%s)' % revision
-  return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {shared.EMSCRIPTEN_VERSION}{revision}'
+    with open(shared.path_from_root('emscripten-revision.txt')) as f:
+      git_rev = f.read().strip()
+    revision_suffix = ' (%s)' % git_rev
+  return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {shared.EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
 def parse_args(newargs):
@@ -2868,7 +2888,7 @@ def parse_args(newargs):
       config.CACHE = os.path.normpath(consume_arg())
       shared.reconfigure_cache()
     elif check_flag('--clear-cache'):
-      logger.info('clearing cache as requested by --clear-cache')
+      logger.info('clearing cache as requested by --clear-cache: `%s`', shared.Cache.dirname)
       shared.Cache.erase()
       shared.check_sanity(force=True) # this is a good time for a sanity check
       should_exit = True
@@ -3570,6 +3590,15 @@ def is_valid_abspath(options, path_name):
     if in_directory(valid_abspath, path_name):
       return True
   return False
+
+
+def parse_symbol_list_file(contents):
+  """Parse contents of one-symbol-per-line response file.  This format can by used
+  with, for example, -sEXPORTED_FUNCTIONS=@filename and avoids the need for any
+  kind of quoting or escaping.
+  """
+  values = contents.splitlines()
+  return [v.strip() for v in values]
 
 
 def parse_value(text, expect_list):

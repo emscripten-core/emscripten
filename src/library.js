@@ -171,7 +171,7 @@ LibraryManager.library = {
     // pid_t fork(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fork.html
     // We don't support multiple processes.
-    setErrNo({{{ cDefine('EAGAIN') }}});
+    setErrNo({{{ cDefine('ENOSYS') }}});
     return -1;
   },
   vfork: 'fork',
@@ -411,7 +411,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
     if (!command) return 0; // no shell available
-    setErrNo({{{ cDefine('EAGAIN') }}});
+    setErrNo({{{ cDefine('ENOSYS') }}});
     return -1;
   },
 
@@ -3351,6 +3351,7 @@ LibraryManager.library = {
     return Number(str);
   },
 
+#if LINK_AS_CXX
   // libunwind
 
   _Unwind_Backtrace__deps: ['emscripten_get_callstack_js'],
@@ -3380,6 +3381,7 @@ LibraryManager.library = {
   _Unwind_DeleteException: function(ex) {
     err('TODO: Unwind_DeleteException');
   },
+#endif
 
   // autodebugging
 
