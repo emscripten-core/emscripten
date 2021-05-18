@@ -153,6 +153,9 @@ function JSify(functionsOnly) {
       var noExport = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
+        if (ONLY_CALC_JS_SYMBOLS) {
+          return;
+        }
         if (!isDefined(ident)) {
           var msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ' (referenced by ' + dependent + ')';

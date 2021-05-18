@@ -21,24 +21,7 @@ MEM_SIZE_SETTINGS = (
     'DEFAULT_PTHREAD_STACK_SIZE'
 )
 
-# Subset of settings that apply at compile time.
-# (Keep in sync with [compile] comments in settings.js)
-COMPILE_TIME_SETTINGS = (
-    'MEMORY64',
-    'INLINING_LIMIT',
-    'EXCEPTION_CATCHING_ALLOWED',
-    'DISABLE_EXCEPTION_CATCHING',
-    'DISABLE_EXCEPTION_THROWING',
-    'MAIN_MODULE',
-    'SIDE_MODULE',
-    'RELOCATABLE',
-    'STRICT',
-    'EMSCRIPTEN_TRACING',
-    'USE_PTHREADS',
-    'SUPPORT_LONGJMP',
-    'DEFAULT_TO_CXX',
-    'WASM_OBJECT_FILES',
-
+PORTS_SETTINGS = (
     # All port-related settings are valid at compile time
     'USE_SDL',
     'USE_LIBPNG',
@@ -62,11 +45,45 @@ COMPILE_TIME_SETTINGS = (
     'USE_MPG123',
     'USE_GIFLIB',
     'USE_FREETYPE',
+    'SDL2_MIXER_FORMATS',
+    'SDL2_IMAGE_FORMATS',
 )
+
+# Subset of settings that apply at compile time.
+# (Keep in sync with [compile] comments in settings.js)
+COMPILE_TIME_SETTINGS = (
+    'MEMORY64',
+    'INLINING_LIMIT',
+    'DISABLE_EXCEPTION_CATCHING',
+    'DISABLE_EXCEPTION_THROWING',
+    'MAIN_MODULE',
+    'SIDE_MODULE',
+    'RELOCATABLE',
+    'STRICT',
+    'EMSCRIPTEN_TRACING',
+    'USE_PTHREADS',
+    'SUPPORT_LONGJMP',
+    'DEFAULT_TO_CXX',
+    'WASM_OBJECT_FILES',
+
+    # Internal settings used during compilation
+    'EXCEPTION_CATCHING_ALLOWED',
+    'EXCEPTION_HANDLING',
+    'LTO',
+    'OPT_LEVEL',
+    'DEBUG_LEVEL',
+
+    # This is legacy setting that we happen to handle very early on
+    'RUNTIME_LINKED_LIBS',
+    # TODO: should not be here
+    'AUTO_ARCHIVE_INDEXES',
+    'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE',
+) + PORTS_SETTINGS
 
 
 class SettingsManager:
   attrs = {}
+  allowed_settings = []
   legacy_settings = {}
   alt_names = {}
   internal_settings = set()
@@ -76,6 +93,7 @@ class SettingsManager:
     self.legacy_settings.clear()
     self.alt_names.clear()
     self.internal_settings.clear()
+    self.allowed_settings.clear()
 
     # Load the JS defaults into python.
     settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
@@ -118,13 +136,24 @@ class SettingsManager:
   def keys(self):
     return self.attrs.keys()
 
+  def limit_settings(self, allowed):
+    self.allowed_settings.clear()
+    if allowed:
+      self.allowed_settings.extend(allowed)
+
   def __getattr__(self, attr):
+    if self.allowed_settings:
+      assert attr in self.allowed_settings, f"internal error: attempt to read setting '{attr}' while in limited settings mode"
+
     if attr in self.attrs:
       return self.attrs[attr]
     else:
-      raise AttributeError("no such setting: '%s'" % attr)
+      raise AttributeError(f"no such setting: '{attr}'")
 
   def __setattr__(self, name, value):
+    if self.allowed_settings:
+      assert name in self.allowed_settings, f"internal error: attempt to write setting '{name}' while in limited settings mode"
+
     if name == 'STRICT' and value:
       for a in self.legacy_settings:
         self.attrs.pop(a, None)

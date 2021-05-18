@@ -789,12 +789,10 @@ var ASYNCIFY_LAZY_LOAD_CODE = 0;
 var ASYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
-// quite a lot here, but have removed them all, so this option is redundant
-// given that EXTRA_EXPORTED_RUNTIME_METHODS exists, and so this option exists
-// only for backwards compatibility. You should use
-// EXTRA_EXPORTED_RUNTIME_METHODS for things you want to export from the
-// runtime.  Note that methods on this list are only exported if they are
-// included (either automatically from linking, or due to being in
+// quite a lot here, but have removed them all. You should use
+// EXPORTED_RUNTIME_METHODS for things you want to export from the runtime. Note
+// that methods on this list are only exported if they are included (either
+// automatically from linking, or due to being in
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).
 // Note that the name may be slightly misleading, as this is for any JS library
 // element, and not just methods. For example, we can export the FS object by

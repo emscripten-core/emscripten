@@ -219,7 +219,7 @@ Conversion functions — strings, pointers and arrays
   :param str: A JavaScript ``String`` object.
   :type str: String
   :param outPtr: Pointer to data copied from ``str``, encoded in encoded in UTF32LE format and null-terminated.
-  :param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as `maxBytesToWrite >= 4`` so that there is space for the null terminator.
+  :param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as ``maxBytesToWrite >= 4`` so that there is space for the null terminator.
 
 
 

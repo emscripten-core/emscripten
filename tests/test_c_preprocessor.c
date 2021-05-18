@@ -163,6 +163,18 @@ EM_JS(void, test_c_preprocessor, (void), {
 	test('#define FOO 0\n#if defined(FOO)\nA\n#endif', "A\n");  // Test defined() macro
 	test('#define FOO 0\n#undef FOO\n#if defined(FOO)\nA\n#endif', "");  // Test defined() macro after #undef
 
+	test('#define SAMPLE_TEXTURE_2D texture \nvec4 c = SAMPLE_TEXTURE_2D(tex, texCoord);\n', 'vec4 c = texture(tex, texCoord);\n'); // Test expanding a non-macro to a macro-like call site
+
+	test('#extension GL_EXT_shader_texture_lod : enable\n', '#extension GL_EXT_shader_texture_lod : enable\n'); // Test that GLSL preprocessor macros are preserved
+	test('#version 300 es\n', '#version 300 es\n'); // Test that GLSL preprocessor macros are preserved
+	test('#pragma foo\n', '#pragma foo\n'); // Test that GLSL preprocessor macros are preserved
+
+	test('#define FOO() bar\nFOO()\n', 'bar\n'); // Test preprocessor macros that do not take in any parameters
+
+	test('#define FOO 1\n#if FOO\n#define BAR this_is_right\n#else\n#define BAR this_is_wrong\n#endif\nBAR', 'this_is_right\n'); // Test nested #defines in both sides of an #if-#else block.
+
+	test('\n#define FOO 1\nFOO\n', '\n1\n'); // Test that preprocessor is not confused by an input that starts with a \n
+
 	if (numFailed) throw numFailed + ' tests failed!';
 });
 

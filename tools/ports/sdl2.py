@@ -90,7 +90,7 @@ def clear(ports, settings, shared):
   shared.Cache.erase_lib(get_lib_name(settings))
 
 
-def process_dependencies(settings):
+def linker_setup(ports, settings):
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$autoResumeAudioContext', '$dynCall']
 
 
