@@ -45,8 +45,12 @@ int main(int argc, char *argv[])
 
   GLuint vs = CompileShader(GL_VERTEX_SHADER,
     "#version 300 es\n"
+    "#ifdef GL_FRAGMENT_PRECISION_HIGH\n" // GL_FRAGMENT_PRECISION_HIGH is a predefined variable
     "layout(location = 42) uniform mat4 world;\n"
+    "#endif\n"
+    "#if GL_FRAGMENT_PRECISION_HIGH\n"
     "layout(location = 0) uniform mat4 view;\n"
+    "#endif\n"
     " // layout(location = -1) uniform mat4 proj; // Invalid usage, check this is preprocessed away\n"
     " /* layout(location = 100000000) uniform mat4 proj; Invalid usage, check this is preprocessed away */\n"
     "layout(location = 0) in vec4 pos; // Make sure attribute layout locations don't get removed by preprocessor\n"
@@ -69,6 +73,17 @@ int main(int argc, char *argv[])
   glLinkProgram(program);
   assert(glGetError() == GL_NO_ERROR && "Shader program link failed");
   glUseProgram(program);
+
+  // Test that we can call glGetUniformfv() on a prebound location.
+  float val[4];
+  memset(val, -1, sizeof(val));
+  glGetUniformfv(program, 11, val);
+  assert(val[0] == 0 && val[1] == 0 && val[2] == 0 && val[3] == 0);
+
+  // Test that we can call glGetUniformfv() on an array location.
+  memset(val, -1, sizeof(val));
+  glGetUniformfv(program, 19, val);
+  assert(val[0] == 0 && val[1] == 0 && val[2] == 0);
 
   assert(glGetUniformLocation(program, "world") == 42);
   assert(glGetUniformLocation(program, "view") == 0);
