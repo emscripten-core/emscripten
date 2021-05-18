@@ -43,6 +43,10 @@ See docs/process.md for more on how version tagging works.
   such as dynamic linking, `--proxy-to-worker`, external memory etc. (#14135)
 - `EXPORT_ES6` can now be used in combination with `-o [filename].html`. (#14165)
 - `EXPORT_ES6` no longer requires setting custom `EXPORT_NAME` too. (#14139)
+- New diagnostics allow Emscripten to issue warnings when using Intel SIMD
+  intrinsics (from xmmintrin.h) which have slow emulations rather than fast
+  WebAssembly equivalents. To enable them, define WASM_SIMD_COMPAT_SLOW
+  in the preprocessor (#14152)
 
 2.0.20: 05/04/2021
 ------------------
