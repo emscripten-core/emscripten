@@ -1445,11 +1445,9 @@ def get_binaryen_bin():
   return rtn
 
 
-# track whether the last binaryen command stripped debug info. we strip debug
-# info when we know we can do so, and if the last command did so, we do not need
-# an extra step just for that.
-# note that this only tracks binaryen commands that write an output.
-binaryen_stripped_binary = False
+# track whether the last binaryen command kept debug info around. this is used
+# to see whether we need to do an extra step at the end to strip it.
+binaryen_kept_debug_info = False
 
 
 def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
@@ -1497,8 +1495,8 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   ret = check_call(cmd, stdout=stdout).stdout
   if outfile:
     save_intermediate(outfile, '%s.wasm' % tool)
-    global binaryen_stripped_binary
-    binaryen_stripped_binary = '-g' not in cmd
+    global binaryen_kept_debug_info
+    binaryen_kept_debug_info = '-g' in cmd
   return ret
 
 
