@@ -442,11 +442,6 @@ def link_lld(args, target, external_symbols=None):
   # grouping.
   args = [a for a in args if a not in ('--start-group', '--end-group')]
 
-  # Disable string merging in the linker, at least until we there is
-  # an upstream fix for https://bugs.llvm.org/show_bug.cgi?id=50291.
-  # (-O level only effect string merging in wasm-ld today).
-  args.append('-O0')
-
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.
   if settings.LINKABLE:
@@ -462,8 +457,12 @@ def link_lld(args, target, external_symbols=None):
 
   # Wasm exception handling. This is a CodeGen option for the LLVM backend, so
   # wasm-ld needs to take this for the LTO mode.
+  # When wasm EH is enabled, we use the legacy pass manager because the new pass
+  # manager + wasm EH has some known bugs. See
+  # https://github.com/emscripten-core/emscripten/issues/14180.
+  # TODO Switch to the new pass manager.
   if settings.EXCEPTION_HANDLING:
-    cmd += ['-mllvm', '-exception-model=wasm']
+    cmd += ['-mllvm', '-exception-model=wasm', '--lto-legacy-pass-manager']
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable

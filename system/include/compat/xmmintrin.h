@@ -16,6 +16,12 @@
 #error "SSE instruction set not enabled"
 #endif
 
+#ifdef WASM_SIMD_COMPAT_SLOW
+#define DIAGNOSE_SLOW diagnose_if(1, "Instruction emulated via slow path.", "warning")
+#else
+#define DIAGNOSE_SLOW
+#endif
+
 // Emscripten SIMD support doesn't support MMX/float32x2/__m64.
 // However, we support loading and storing 2-vectors, so
 // recognize the type at least.
@@ -74,13 +80,13 @@ _mm_load_ps(const float *__p)
   return *(__m128*)__p;
 }
 
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_loadl_pi(__m128 __a, const void /*__m64*/ *__p)
 {
   return (__m128)__f32x4_shuffle(wasm_f32x4_make(((float*)__p)[0], ((float*)__p)[1], 0.f, 0.f), __a, 0, 1, 6, 7);
 }
 
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_loadh_pi(__m128 __a, const void /*__m64*/ *__p)
 {
   return (__m128)__f32x4_shuffle(__a, wasm_f32x4_make(((float*)__p)[0], ((float*)__p)[1], 0.f, 0.f), 0, 1, 4, 5);
@@ -106,13 +112,13 @@ _mm_load_ps1(const float *__p)
 }
 #define _mm_load1_ps _mm_load_ps1
 
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_load_ss(const float *__p)
 {
   return (__m128)wasm_f32x4_make(*__p, 0.f, 0.f, 0.f);
 }
 
-static __inline__ void __attribute__((__always_inline__, __nodebug__))
+static __inline__ void __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_storel_pi(__m64 *__p, __m128 __a)
 {
   *__p = (__m64) { __a[0], __a[1] };
@@ -121,7 +127,7 @@ _mm_storel_pi(__m64 *__p, __m128 __a)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_movehl_ps(__m128 __a, __m128 __b);
 
-static __inline__ void __attribute__((__always_inline__, __nodebug__))
+static __inline__ void __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_storeh_pi(__m64 *__p, __m128 __a)
 {
   _mm_storel_pi(__p, _mm_movehl_ps(__a, __a));
@@ -284,13 +290,13 @@ _mm_max_ss(__m128 __a, __m128 __b)
   return _mm_move_ss(__a, _mm_max_ps(__a, __b));
 }
 
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_rcp_ps(__m128 __a)
 {
     return (__m128)wasm_f32x4_div((v128_t)_mm_set1_ps(1.0f), (v128_t)__a);
 }
 
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_rcp_ss(__m128 __a)
 {
   return _mm_move_ss(__a, _mm_rcp_ps(__a));
@@ -416,24 +422,24 @@ _mm_cmpgt_ss(__m128 __a, __m128 __b)
   return _mm_move_ss(__a, _mm_cmpgt_ps(__a, __b));
 }
 
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__)) _mm_cmpord_ps(__m128 __a, __m128 __b)
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW)) _mm_cmpord_ps(__m128 __a, __m128 __b)
 {
   return (__m128)wasm_v128_and(wasm_f32x4_eq((v128_t)__a, (v128_t)__a),
                                wasm_f32x4_eq((v128_t)__b, (v128_t)__b));
 }
 
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__)) _mm_cmpord_ss(__m128 __a, __m128 __b)
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW)) _mm_cmpord_ss(__m128 __a, __m128 __b)
 {
   return _mm_move_ss(__a, _mm_cmpord_ps(__a, __b));
 }
 
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__)) _mm_cmpunord_ps(__m128 __a, __m128 __b)
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW)) _mm_cmpunord_ps(__m128 __a, __m128 __b)
 {
   return (__m128)wasm_v128_or(wasm_f32x4_ne((v128_t)__a, (v128_t)__a),
                               wasm_f32x4_ne((v128_t)__b, (v128_t)__b));
 }
 
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__)) _mm_cmpunord_ss(__m128 __a, __m128 __b)
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW)) _mm_cmpunord_ss(__m128 __a, __m128 __b)
 {
   return _mm_move_ss(__a, _mm_cmpunord_ps(__a, __b));
 }
@@ -522,79 +528,79 @@ _mm_cmpnlt_ss(__m128 __a, __m128 __b)
   return _mm_move_ss(__a, _mm_cmpnlt_ps(__a, __b));
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_comieq_ss(__m128 __a, __m128 __b)
 {
   return wasm_f32x4_extract_lane(__a, 0) == wasm_f32x4_extract_lane(__b, 0);
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_comige_ss(__m128 __a, __m128 __b)
 {
   return wasm_f32x4_extract_lane(__a, 0) >= wasm_f32x4_extract_lane(__b, 0);
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_comigt_ss(__m128 __a, __m128 __b)
 {
   return wasm_f32x4_extract_lane(__a, 0) > wasm_f32x4_extract_lane(__b, 0);
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_comile_ss(__m128 __a, __m128 __b)
 {
   return wasm_f32x4_extract_lane(__a, 0) <= wasm_f32x4_extract_lane(__b, 0);
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_comilt_ss(__m128 __a, __m128 __b)
 {
   return wasm_f32x4_extract_lane(__a, 0) < wasm_f32x4_extract_lane(__b, 0);
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_comineq_ss(__m128 __a, __m128 __b)
 {
   return wasm_f32x4_extract_lane(__a, 0) != wasm_f32x4_extract_lane(__b, 0);
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_ucomieq_ss(__m128 __a, __m128 __b)
 {
   return wasm_f32x4_extract_lane(__a, 0) == wasm_f32x4_extract_lane(__b, 0);
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_ucomige_ss(__m128 __a, __m128 __b)
 {
   return wasm_f32x4_extract_lane(__a, 0) >= wasm_f32x4_extract_lane(__b, 0);
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_ucomigt_ss(__m128 __a, __m128 __b)
 {
   return wasm_f32x4_extract_lane(__a, 0) > wasm_f32x4_extract_lane(__b, 0);
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_ucomile_ss(__m128 __a, __m128 __b)
 {
   return wasm_f32x4_extract_lane(__a, 0) <= wasm_f32x4_extract_lane(__b, 0);
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_ucomilt_ss(__m128 __a, __m128 __b)
 {
   return wasm_f32x4_extract_lane(__a, 0) < wasm_f32x4_extract_lane(__b, 0);
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_ucomineq_ss(__m128 __a, __m128 __b)
 {
   return wasm_f32x4_extract_lane(__a, 0) != wasm_f32x4_extract_lane(__b, 0);
 }
 
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_cvtsi32_ss(__m128 __a, int __b)
 {
   __f32x4 __v = (__f32x4)__a;
@@ -603,7 +609,7 @@ _mm_cvtsi32_ss(__m128 __a, int __b)
 }
 #define _mm_cvt_si2ss _mm_cvtsi32_ss
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__)) _mm_cvtss_si32(__m128 __a)
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW)) _mm_cvtss_si32(__m128 __a)
 {
   int x = lrint(((__f32x4)__a)[0]);
   if (x != 0 || fabsf(((__f32x4)__a)[0]) < 2.f)
@@ -613,7 +619,7 @@ static __inline__ int __attribute__((__always_inline__, __nodebug__)) _mm_cvtss_
 }
 #define _mm_cvt_ss2si _mm_cvtss_si32
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__)) _mm_cvttss_si32(__m128 __a)
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW)) _mm_cvttss_si32(__m128 __a)
 {
   int x = lrint(((__f32x4)__a)[0]);
   if (x != 0 || fabsf(((__f32x4)__a)[0]) < 2.f)
@@ -623,7 +629,7 @@ static __inline__ int __attribute__((__always_inline__, __nodebug__)) _mm_cvttss
 }
 #define _mm_cvtt_ss2si _mm_cvttss_si32
 
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_cvtsi64_ss(__m128 __a, long long __b)
 {
   __f32x4 __v = (__f32x4)__a;
@@ -631,7 +637,7 @@ _mm_cvtsi64_ss(__m128 __a, long long __b)
   return (__m128)__v;
 }
 
-static __inline__ long long __attribute__((__always_inline__, __nodebug__))
+static __inline__ long long __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_cvtss_si64(__m128 __a)
 {
   if (isnan(((__f32x4)__a)[0]) || isinf(((__f32x4)__a)[0])) return 0x8000000000000000LL;
@@ -642,7 +648,7 @@ _mm_cvtss_si64(__m128 __a)
     return 0x8000000000000000LL;
 }
 
-static __inline__ long long __attribute__((__always_inline__, __nodebug__))
+static __inline__ long long __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_cvttss_si64(__m128 __a)
 {
   if (isnan(((__f32x4)__a)[0]) || isinf(((__f32x4)__a)[0])) return 0x8000000000000000LL;
