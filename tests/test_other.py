@@ -3617,6 +3617,23 @@ EM_ASM({ _middle() });
         self.assertContained(UNMINIFIED_HEAP8, js)
         self.assertContained(UNMINIFIED_MIDDLE, js)
 
+  @parameterized({
+    '': [[]],
+    # bigint support is interesting to test here because it changes which
+    # binaryen tools get run, which can affect how debug info is kept around
+    'bigint': [['-sWASM_BIGINT']],
+  })
+  def test_symbol_map_output_size(self, args):
+    # build with and without a symbol map and verify that the sizes are the
+    # same. using a symbol map should add the map on the side, but not increase
+    # the build size.
+    # -Oz is used here to run as many optimizations as possible, to check for
+    # any difference in how the optimizer operates
+    self.run_process([EMCC, test_file('hello_world.c'), '-Oz', '-o', 'test1.js'] + args)
+    self.run_process([EMCC, test_file('hello_world.c'), '-Oz', '-o', 'test2.js', '--emit-symbol-map'] + args)
+    self.assertEqual(os.path.getsize('test1.js'), os.path.getsize('test2.js'))
+    self.assertEqual(os.path.getsize('test1.wasm'), os.path.getsize('test2.wasm'))
+
   def test_bc_to_bc(self):
     # emcc should 'process' bitcode to bitcode. build systems can request this if
     # e.g. they assume our 'executable' extension is bc, and compile an .o to a .bc
