@@ -3619,7 +3619,7 @@ EM_ASM({ _middle() });
 
   @parameterized({
     '': [[]],
-    # bigint support is interested to test here because it changes which
+    # bigint support is interesting to test here because it changes which
     # binaryen tools get run, which can affect how debug info is kept around
     'bigint': [['-sWASM_BIGINT']],
   })
