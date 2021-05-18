@@ -3180,8 +3180,8 @@ def phase_binaryen(target, options, wasm_target):
     intermediate_debug_info -= 1
   assert intermediate_debug_info == 0
   # strip debug info if it was not already stripped by the last command
-  if not debug_info and building.last_writing_binaryen_cmd is not None and \
-     '-g' in building.last_writing_binaryen_cmd and os.path.exists(wasm_target):
+  if not debug_info and not building.binaryen_stripped_binary and \
+     building.os.path.exists(wasm_target):
     building.run_wasm_opt(wasm_target, wasm_target)
 
   # replace placeholder strings with correct subresource locations
