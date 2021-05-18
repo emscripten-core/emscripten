@@ -18,7 +18,10 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.21
+2.0.22
+-----
+
+2.0.21: 05/18/2021
 ------
 - Options such as EXPORTED_FUNCTIONS that can take a response file containing
   list of symbols can now use a simple one-symbol-per-line format.  This new
