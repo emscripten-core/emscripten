@@ -1,8 +1,8 @@
 {
   "private": true,
   "devDependencies": {
-    "es-check": "^5.1.0",
-    "eslint": "^7.18.0",
+    "es-check": "^5.2.3",
+    "eslint": "^7.26.0",
     "eslint-config-google": "^0.14.0",
     "ws": "~0.4.28"
   },
