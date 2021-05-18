@@ -2663,14 +2663,17 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
 def version_string():
   # if the emscripten folder is not a git repo, don't run git show - that can
   # look up and find the revision in a parent directory that is a git repo
-  revision = ''
+  revision_suffix = ''
   if os.path.exists(shared.path_from_root('.git')):
-    revision = run_process(['git', 'rev-parse', 'HEAD'], stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.strip()
+    git_rev = run_process(
+      ['git', 'rev-parse', 'HEAD'],
+      stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.strip()
+    revision_suffix = '-git (%s)' % git_rev
   elif os.path.exists(shared.path_from_root('emscripten-revision.txt')):
-    revision = open(shared.path_from_root('emscripten-revision.txt')).read().strip()
-  if revision:
-    revision = '-git (%s)' % revision
-  return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {shared.EMSCRIPTEN_VERSION}{revision}'
+    with open(shared.path_from_root('emscripten-revision.txt')) as f:
+      git_rev = f.read().strip()
+    revision_suffix = ' (%s)' % git_rev
+  return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {shared.EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
 def parse_args(newargs):
