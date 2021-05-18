@@ -32,21 +32,22 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  // Runs C preprocessor algorithm on the given code string.
+  // Runs C preprocessor algorithm on the given string 'code'.
   // Supported preprocessor directives: #if, #ifdef, #ifndef, #else, #elif, #endif, #define and #undef.
+  // predefs: Specifies a dictionary of { 'key1': function(arg0, arg1) {...}, 'key2': ... } of predefined preprocessing variables
   $preprocess_c_code__deps: ['$jstoi_q', '$find_closing_parens_index'],
-  $preprocess_c_code: function(code) {
+  $preprocess_c_code: function(code, defs) {
     var i = 0, // iterator over the input string
       len = code.length, // cache input length
       out = '', // generates the preprocessed output string
-      stack = [1], // preprocessing stack (state of active/inactive #ifdef/#else blocks we are currently inside)
-      defs = { // a mapping 'symbolname' -> function(args) which evaluates the given cpp macro, e.g. #define FOO(x) x+10.
-      'defined': function(args) { // built-in "#if defined(x)"" macro.
+      stack = [1]; // preprocessing stack (state of active/inactive #ifdef/#else blocks we are currently inside)
+    // a mapping 'symbolname' -> function(args) which evaluates the given cpp macro, e.g. #define FOO(x) x+10.
+    defs = defs || {};
+    defs['defined'] = function(args) { // built-in "#if defined(x)"" macro.
 #if ASSERTIONS
-        assert(args.length == 1);
+      assert(args.length == 1);
 #endif
-        return defs[args[0]] ? 1 : 0;
-      }
+      return defs[args[0]] ? 1 : 0;
     };
 
     // Returns true if str[i] is whitespace.

@@ -43,6 +43,7 @@ import tempfile
 import time
 import unittest
 import webbrowser
+from pathlib import Path
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import unquote, unquote_plus
 
@@ -65,7 +66,7 @@ from tools import shared, line_endings, building, config
 
 def path_from_root(*pathelems):
   """Construct a path relative to the emscripten root directory."""
-  return os.path.join(__rootpath__, *pathelems)
+  return str(Path(__rootpath__, *pathelems))
 
 
 sys.path.append(path_from_root('third_party/websockify'))
@@ -97,7 +98,7 @@ EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
 
 TEST_ROOT = path_from_root('tests')
 
-WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools', 'webidl_binder'))
+WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
 
 if EMTEST_VERBOSE:
@@ -111,7 +112,15 @@ def delete_contents(pathname):
 
 def test_file(*path_components):
   """Construct a path relative to the emscripten "tests" directory."""
-  return os.path.join(TEST_ROOT, *path_components)
+  return str(Path(TEST_ROOT, *path_components))
+
+
+def read_file(*path_components):
+  return Path(*path_components).read_text()
+
+
+def read_binary(*path_components):
+  return Path(*path_components).read_bytes()
 
 
 # checks if browser testing is enabled
@@ -241,8 +250,8 @@ def with_env_modify(updates):
 
 
 def ensure_dir(dirname):
-  if not os.path.isdir(dirname):
-    os.makedirs(dirname)
+  dirname = Path(dirname)
+  dirname.mkdir(parents=True, exist_ok=True)
 
 
 def limit_size(string, maxbytes=800000 * 20, maxlines=100000, max_line=5000):
@@ -259,14 +268,16 @@ def limit_size(string, maxbytes=800000 * 20, maxlines=100000, max_line=5000):
 
 
 def create_file(name, contents, binary=False):
-  assert not os.path.isabs(name)
-  mode = 'wb' if binary else 'w'
-  with open(name, mode) as f:
-    f.write(contents)
+  name = Path(name)
+  assert not name.is_absolute()
+  if binary:
+    name.write_bytes(contents)
+  else:
+    name.write_text(contents)
 
 
 def make_executable(name):
-  os.chmod(name, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+  Path(name).chmod(stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
 
 # The core test modes
@@ -595,7 +606,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if shared.suffix(filename) not in ('.i', '.ii'):
       # Add the location of the test file to include path.
       cmd += ['-I.']
-      cmd += ['-I' + include for include in includes]
+      cmd += ['-I' + str(include) for include in includes]
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
@@ -606,7 +617,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       post_build(output)
 
     if js_outfile and self.uses_memory_init_file():
-      src = open(output).read()
+      src = read_file(output)
       # side memory init file, or an empty one in the js
       assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
@@ -633,8 +644,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     start_off = 0
     end_off = 0
 
-    with open(javascript_file, 'rt') as f:
-      blob = "".join(f.readlines())
+    js = read_file(javascript_file)
+    blob = "".join(js.splitlines())
 
     start_off = blob.find(start_tok) + len(start_tok)
     end_off = blob.find(end_tok)
@@ -684,8 +695,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if not filename.endswith('.wasm'):
       self.assertEqual(line_endings.check_line_endings(filename), 0)
 
-    out = open(stdout, 'r').read()
-    err = open(stderr, 'r').read()
+    out = read_file(stdout)
+    err = read_file(stderr)
     if output_nicerizer:
       ret = output_nicerizer(out, err)
     else:
@@ -787,8 +798,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def assertBinaryEqual(self, file1, file2):
     self.assertEqual(os.path.getsize(file1),
                      os.path.getsize(file2))
-    self.assertEqual(open(file1, 'rb').read(),
-                     open(file2, 'rb').read())
+    self.assertEqual(read_binary(file1),
+                     read_binary(file2))
 
   library_cache = {}
 
@@ -1025,12 +1036,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   ## Just like `do_run` but with filename of expected output
   def do_run_from_file(self, filename, expected_output_filename, **kwargs):
-    self._build_and_run(filename, open(expected_output_filename).read(), **kwargs)
+    self._build_and_run(filename, read_file(expected_output_filename), **kwargs)
 
   def do_run_in_out_file_test(self, *path, **kwargs):
     srcfile = test_file(*path)
     outfile = shared.unsuffixed(srcfile) + '.out'
-    expected = open(outfile).read()
+    expected = read_file(outfile)
     self._build_and_run(srcfile, expected, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
@@ -1100,8 +1111,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
     self.emcc_args += [
-      '-I' + test_file('third_party', 'freetype', 'include'),
-      '-I' + test_file('third_party', 'poppler', 'include')
+      '-I' + test_file('third_party/freetype/include'),
+      '-I' + test_file('third_party/poppler/include')
     ]
 
     freetype = self.get_freetype_library()
@@ -1177,7 +1188,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        self.wfile.write(open(test_file('browser_harness.html'), 'rb').read())
+        self.wfile.write(read_binary(test_file('browser_harness.html')))
       elif 'report_' in self.path:
         # the test is reporting its result. first change dir away from the
         # test dir, as it will be deleted now that the test is finishing, and
@@ -1409,9 +1420,9 @@ class BrowserCore(RunnerCore):
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     basename = os.path.basename(expected)
     shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
+    reporting = read_file(test_file('browser_reporting.js'))
     with open('reftest.js', 'w') as out:
-      with open(test_file('browser_reporting.js')) as reporting:
-        out.write('''
+      out.write('''
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;
@@ -1507,7 +1518,7 @@ class BrowserCore(RunnerCore):
           setTimeout(realDoReftest, 1);
         };
       }
-''' % (reporting.read(), basename, int(manually_trigger)))
+''' % (reporting, basename, int(manually_trigger)))
 
   def compile_btest(self, args, reporting=Reporting.FULL):
     # Inject support code for reporting results. This adds an include a header so testcases can
@@ -1613,10 +1624,11 @@ def build_library(name,
     generated_libs = [generated_libs]
   source_dir = test_file(name.replace('_native', ''))
 
-  project_dir = os.path.join(build_dir, name)
+  project_dir = Path(build_dir, name)
   if os.path.exists(project_dir):
     shutil.rmtree(project_dir)
-  shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
+  # Useful in debugging sometimes to comment this out, and two lines above
+  shutil.copytree(source_dir, project_dir)
 
   generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
   if native:
@@ -1638,14 +1650,12 @@ def build_library(name,
           shared.run_process(configure, env=env, stdout=stdout, stderr=stderr,
                              cwd=project_dir)
     except subprocess.CalledProcessError:
-      with open(os.path.join(project_dir, 'configure_out')) as f:
-        print('-- configure stdout --')
-        print(f.read())
-        print('-- end configure stdout --')
-      with open(os.path.join(project_dir, 'configure_err')) as f:
-        print('-- configure stderr --')
-        print(f.read())
-        print('-- end configure stderr --')
+      print('-- configure stdout --')
+      print(read_file(Path(project_dir, 'configure_out')))
+      print('-- end configure stdout --')
+      print('-- configure stderr --')
+      print(read_file(Path(project_dir, 'configure_err')))
+      print('-- end configure stderr --')
       raise
 
   def open_make_out(mode='r'):
@@ -1679,7 +1689,7 @@ def build_library(name,
     cache[cache_name] = []
     for f in generated_libs:
       basename = os.path.basename(f)
-      cache[cache_name].append((basename, open(f, 'rb').read()))
+      cache[cache_name].append((basename, read_binary(f)))
 
   return generated_libs
 

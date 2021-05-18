@@ -1451,7 +1451,7 @@ def handle_reverse_deps(input_files):
     add_reverse_deps(symbols)
 
 
-def calculate(input_files, cxx, forced):
+def calculate(input_files, forced):
   # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
   # for unresolved symbols in your project files, which can speed up linking, but if you do not have
   # the proper list of actually needed libraries, errors can occur. See below for how we must
@@ -1531,9 +1531,9 @@ def calculate(input_files, cxx, forced):
 
     add_library('libc')
     add_library('libcompiler_rt')
-    if cxx:
+    if settings.LINK_AS_CXX:
       add_library('libc++')
-    if cxx or sanitize:
+    if settings.LINK_AS_CXX or sanitize:
       add_library('libc++abi')
       if settings.EXCEPTION_HANDLING:
         add_library('libunwind')

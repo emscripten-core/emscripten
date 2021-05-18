@@ -23,6 +23,7 @@ import time
 import tempfile
 import unittest
 import uuid
+from pathlib import Path
 from subprocess import PIPE, STDOUT
 
 if __name__ == '__main__':
@@ -34,7 +35,7 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, EMCMAKE, 
 from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from runner import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from runner import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
-from runner import compiler_for
+from runner import compiler_for, read_file, read_binary
 from tools import shared, building, utils, deps_info
 import jsrun
 import clang_native
@@ -45,8 +46,8 @@ scons_path = utils.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
-wasm_dis = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
-wasm_opt = os.path.join(building.get_binaryen_bin(), 'wasm-opt')
+wasm_dis = Path(building.get_binaryen_bin(), 'wasm-dis')
+wasm_opt = Path(building.get_binaryen_bin(), 'wasm-opt')
 
 EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
 
@@ -181,15 +182,14 @@ class other(RunnerCore):
       config_path = './emscripten_config'
       self.run_process([compiler, '--generate-config', config_path])
       self.assertExists(config_path, 'A config file should have been created at %s' % config_path)
-      config_contents = open(config_path).read()
+      config_contents = read_file(config_path)
       self.assertContained('EMSCRIPTEN_ROOT', config_contents)
       self.assertContained('LLVM_ROOT', config_contents)
       os.remove(config_path)
 
   def test_emcc_output_mjs(self):
     self.run_process([EMCC, '-o', 'hello_world.mjs', test_file('hello_world.c')])
-    with open('hello_world.mjs') as f:
-      output = f.read()
+    output = read_file('hello_world.mjs')
     self.assertContained('export default Module;', output)
     # TODO(sbc): Test that this is actually runnable.  We currently don't have
     # any tests for EXPORT_ES6 but once we do this should be enabled.
@@ -199,17 +199,16 @@ class other(RunnerCore):
     os.mkdir('subdir')
     self.run_process([EMCC, '-o', 'subdir/hello_world.mjs', '-pthread', '-O1',
                       test_file('hello_world.c')])
-    with open('subdir/hello_world.mjs') as f:
-      src = f.read()
-      self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
-      self.assertContained('export default Module;', src)
-    with open('subdir/hello_world.worker.js') as f:
-      self.assertContained('import("./hello_world.mjs")', f.read())
+    src = read_file('subdir/hello_world.mjs')
+    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
+    self.assertContained('export default Module;', src)
+    src = read_file('subdir/hello_world.worker.js')
+    self.assertContained('import("./hello_world.mjs")', src)
 
   def test_export_es6_implies_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'EXPORT_ES6=1'])
-    with open('a.out.js') as f:
-      self.assertContained('export default Module;', f.read())
+    src = read_file('a.out.js')
+    self.assertContained('export default Module;', src)
 
   def test_export_es6_requires_modularize(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', 'EXPORT_ES6=1', '-s', 'MODULARIZE=0'])
@@ -294,12 +293,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
     # emcc [..] -o [path] ==> should work with absolute paths
-    for path in [os.path.abspath(os.path.join('..', 'file1.js')), os.path.join('b_dir', 'file2.js')]:
+    for path in [os.path.abspath(Path('../file1.js')), Path('b_dir/file2.js')]:
       print(path)
       os.chdir(self.get_dir())
       self.clear()
       print(os.listdir(os.getcwd()))
-      ensure_dir(os.path.join('a_dir', 'b_dir'))
+      ensure_dir(Path('a_dir/b_dir'))
       os.chdir('a_dir')
       # use single file so we don't have more files to clean up
       self.run_process([compiler, test_file('hello_world' + suffix), '-o', path, '-s', 'SINGLE_FILE'])
@@ -366,7 +365,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Verify optimization level etc. in the generated code
       # XXX these are quite sensitive, and will need updating when code generation changes
-      generated = open('something.js').read()
+      generated = read_file('something.js')
       main = self.get_func(generated, '_main') if 'function _main' in generated else generated
       assert 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 should be used by default'
       assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
@@ -473,7 +472,7 @@ f.close()
 
     err = self.run_process([EMCC, test_file('hello_world.c'), '-gsource-map', '--js-transform', '%s t.py' % (PYTHON)], stderr=PIPE).stderr
     self.assertContained('disabling source maps because a js transform is being done', err)
-    self.assertIn('transformed!', open('a.out.js').read())
+    self.assertIn('transformed!', read_file('a.out.js'))
 
   def test_js_mem_file(self):
     for opts in [0, 1, 2, 3]:
@@ -536,9 +535,8 @@ f.close()
   def test_emsize(self):
     # test binaryen generated by running:
     #   emcc tests/hello_world.c -Oz --closure 1 -o tests/other/test_emsize.js
-    with open(test_file('other', 'test_emsize.out')) as expected_output:
-      expected = expected_output.read()
-    cmd = [emsize, test_file('other', 'test_emsize.js')]
+    expected = read_file(test_file('other/test_emsize.out'))
+    cmd = [emsize, test_file('other/test_emsize.js')]
     for command in [cmd, cmd + ['-format=sysv']]:
       output = self.run_process(cmd, stdout=PIPE).stdout
       self.assertContained(expected, output)
@@ -600,19 +598,19 @@ f.close()
         # Run through node, if CMake produced a .js file.
         if output_file.endswith('.js'):
           ret = self.run_process(config.NODE_JS + [tempdirname + '/' + output_file], stdout=PIPE).stdout
-          self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt').read().strip(), ret.strip())
+          self.assertTextDataIdentical(read_file(cmakelistsdir + '/out.txt').strip(), ret.strip())
 
   # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten toolchain match with the actual language features that Clang supports.
   # If we update LLVM version and this test fails, copy over the new advertised features from Clang and place them to cmake/Modules/Platform/Emscripten.cmake.
   @no_windows('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
   def test_cmake_compile_features(self):
     with temp_directory(self.get_dir()):
-      cmd = ['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CXX, test_file('cmake', 'stdproperty')]
+      cmd = ['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CXX, test_file('cmake/stdproperty')]
       print(str(cmd))
       native_features = self.run_process(cmd, stdout=PIPE).stdout
 
     with temp_directory(self.get_dir()):
-      cmd = [EMCMAKE, 'cmake', test_file('cmake', 'stdproperty')]
+      cmd = [EMCMAKE, 'cmake', test_file('cmake/stdproperty')]
       print(str(cmd))
       emscripten_features = self.run_process(cmd, stdout=PIPE).stdout
 
@@ -628,7 +626,7 @@ f.close()
     for args in [[], ['-DNO_GNU_EXTENSIONS=1']]:
       self.clear()
       # Use ninja generator here since we assume its always installed on our build/test machines.
-      configure = [EMCMAKE, 'cmake', test_file('cmake', 'cmake_with_emval')] + args
+      configure = [EMCMAKE, 'cmake', test_file('cmake/cmake_with_emval')] + args
       if WINDOWS:
         configure += ['-G', 'Ninja']
       print(str(configure))
@@ -646,12 +644,12 @@ f.close()
   # Tests that the Emscripten CMake toolchain option
   def test_cmake_bitcode_static_libraries(self):
     # Test that this option produces an error
-    err = self.expect_fail([EMCMAKE, 'cmake', test_file('cmake', 'static_lib'), '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON'])
+    err = self.expect_fail([EMCMAKE, 'cmake', test_file('cmake/static_lib'), '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON'])
     self.assertContained('EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES is not compatible with the', err)
 
   # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
   def test_cmake_emscripten_version(self):
-    self.run_process([EMCMAKE, 'cmake', test_file('cmake', 'emscripten_version')])
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/emscripten_version')])
 
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
@@ -964,8 +962,8 @@ int main() {
   def test_whole_archive(self):
     # Verify that -Wl,--whole-archive includes the static constructor from the
     # otherwise unreferenced library.
-    self.run_process([EMCC, '-c', '-o', 'main.o', test_file('test_whole_archive', 'main.c')])
-    self.run_process([EMCC, '-c', '-o', 'testlib.o', test_file('test_whole_archive', 'testlib.c')])
+    self.run_process([EMCC, '-c', '-o', 'main.o', test_file('test_whole_archive/main.c')])
+    self.run_process([EMCC, '-c', '-o', 'testlib.o', test_file('test_whole_archive/testlib.c')])
     self.run_process([EMAR, 'crs', 'libtest.a', 'testlib.o'])
 
     self.run_process([EMCC, '-Wl,--whole-archive', 'libtest.a', '-Wl,--no-whole-archive', 'main.o'])
@@ -1106,12 +1104,12 @@ int f() {
           os.system('type "in.txt" | {} >out.txt'.format(cmd))
         else: # posix
           os.system('cat in.txt | {} > out.txt'.format(cmd))
-        self.assertContained('abcdef\nghijkl\neof', open('out.txt').read())
+        self.assertContained('abcdef\nghijkl\neof', read_file('out.txt'))
 
-    self.emcc(test_file('module', 'test_stdin.c'), output_filename='out.js')
+    self.emcc(test_file('module/test_stdin.c'), output_filename='out.js')
     create_file('in.txt', 'abcdef\nghijkl')
     run_test()
-    self.emcc(test_file('module', 'test_stdin.c'),
+    self.emcc(test_file('module/test_stdin.c'),
               ['-O2', '--closure=1'], output_filename='out.js')
     run_test()
 
@@ -1170,7 +1168,7 @@ int f() {
     ''')
 
     ensure_dir('subdir')
-    open(os.path.join('subdir', 'libfile.so'), 'w').write('this is not llvm bitcode!')
+    create_file('subdir/libfile.so', 'this is not llvm bitcode!')
 
     create_file('libfile.cpp', '''
       #include <stdio.h>
@@ -1180,7 +1178,7 @@ int f() {
     ''')
 
     self.run_process([EMXX, 'libfile.cpp', '-shared', '-o', 'libfile.so'], stderr=PIPE)
-    self.run_process([EMXX, 'main.cpp', os.path.join('subdir', 'libfile.so'), '-L.'])
+    self.run_process([EMXX, 'main.cpp', Path('subdir/libfile.so'), '-L.'])
     self.assertContained('hello from lib', self.run_js('a.out.js'))
 
   def test_identical_basenames(self):
@@ -1188,26 +1186,26 @@ int f() {
     # causing multiply defined symbol errors
     ensure_dir('foo')
     ensure_dir('bar')
-    open(os.path.join('foo', 'main.cpp'), 'w').write('''
+    create_file('foo/main.cpp', '''
       extern void printey();
       int main() {
         printey();
         return 0;
       }
     ''')
-    open(os.path.join('bar', 'main.cpp'), 'w').write('''
+    create_file('bar/main.cpp', '''
       #include <stdio.h>
       void printey() { printf("hello there\\n"); }
     ''')
 
-    self.run_process([EMXX, os.path.join('foo', 'main.cpp'), os.path.join('bar', 'main.cpp')])
+    self.run_process([EMXX, Path('foo/main.cpp'), Path('bar/main.cpp')])
     self.assertContained('hello there', self.run_js('a.out.js'))
 
     # ditto with first creating .o files
     try_delete('a.out.js')
-    self.run_process([EMXX, '-c', os.path.join('foo', 'main.cpp'), '-o', os.path.join('foo', 'main.o')])
-    self.run_process([EMXX, '-c', os.path.join('bar', 'main.cpp'), '-o', os.path.join('bar', 'main.o')])
-    self.run_process([EMCC, os.path.join('foo', 'main.o'), os.path.join('bar', 'main.o')])
+    self.run_process([EMXX, '-c', Path('foo/main.cpp'), '-o', Path('foo/main.o')])
+    self.run_process([EMXX, '-c', Path('bar/main.cpp'), '-o', Path('bar/main.o')])
+    self.run_process([EMCC, Path('foo/main.o'), Path('bar/main.o')])
     self.assertContained('hello there', self.run_js('a.out.js'))
 
   def test_main_a(self):
@@ -1273,25 +1271,25 @@ int f() {
 
   def test_archive_duplicate_basenames(self):
     ensure_dir('a')
-    create_file(os.path.join('a', 'common.c'), r'''
+    create_file('a/common.c', r'''
       #include <stdio.h>
       void a(void) {
         printf("a\n");
       }
     ''')
-    self.run_process([EMCC, os.path.join('a', 'common.c'), '-c', '-o', os.path.join('a', 'common.o')])
+    self.run_process([EMCC, Path('a/common.c'), '-c', '-o', Path('a/common.o')])
 
     ensure_dir('b')
-    create_file(os.path.join('b', 'common.c'), r'''
+    create_file('b/common.c', r'''
       #include <stdio.h>
       void b(void) {
         printf("b...\n");
       }
     ''')
-    self.run_process([EMCC, os.path.join('b', 'common.c'), '-c', '-o', os.path.join('b', 'common.o')])
+    self.run_process([EMCC, Path('b/common.c'), '-c', '-o', Path('b/common.o')])
 
     try_delete('liba.a')
-    self.run_process([EMAR, 'rc', 'liba.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
+    self.run_process([EMAR, 'rc', 'liba.a', Path('a/common.o'), Path('b/common.o')])
 
     # Verify that archive contains basenames with hashes to avoid duplication
     text = self.run_process([EMAR, 't', 'liba.a'], stdout=PIPE).stdout
@@ -1314,7 +1312,7 @@ int f() {
 
     # Using llvm-ar directly should cause duplicate basenames
     try_delete('libdup.a')
-    self.run_process([LLVM_AR, 'rc', 'libdup.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
+    self.run_process([LLVM_AR, 'rc', 'libdup.a', Path('a/common.o'), Path('b/common.o')])
     text = self.run_process([EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
     self.assertEqual(text.count('common.o'), 2)
 
@@ -1495,14 +1493,14 @@ int f() {
         }
       ''')
 
-      create_file(os.path.join('libdir', 'libfile.cpp'), '''
+      create_file('libdir/libfile.cpp', '''
         #include <stdio.h>
         void printey() {
           printf("hello from lib");
         }
       ''')
 
-      create_file(os.path.join('libdir', 'libother.cpp'), '''
+      create_file('libdir/libother.cpp', '''
         #include <stdio.h>
         extern void printey();
         void printother() {
@@ -1513,9 +1511,9 @@ int f() {
       ''')
 
       # Build libfile normally into an .so
-      self.run_process([EMXX, os.path.join('libdir', 'libfile.cpp'), '-shared', '-o', os.path.join('libdir', 'libfile.so' + lib_suffix)])
+      self.run_process([EMXX, Path('libdir/libfile.cpp'), '-shared', '-o', Path('libdir/libfile.so' + lib_suffix)])
       # Build libother and dynamically link it to libfile
-      self.run_process([EMXX, '-Llibdir', os.path.join('libdir', 'libother.cpp')] + link_flags + ['-shared', '-o', os.path.join('libdir', 'libother.so')])
+      self.run_process([EMXX, '-Llibdir', Path('libdir/libother.cpp')] + link_flags + ['-shared', '-o', Path('libdir/libother.so')])
       # Build the main file, linking in both the libs
       self.run_process([EMXX, '-Llibdir', os.path.join('main.cpp')] + link_flags + ['-lother', '-c'])
       print('...')
@@ -1614,14 +1612,14 @@ int f() {
     self.emcc(test_file('sdl2_mixer_wav.c'), ['-s', 'USE_SDL_MIXER=2'], output_filename='a.out.js')
 
   def test_libpng(self):
-    shutil.copyfile(test_file('third_party', 'libpng', 'pngtest.png'), 'pngtest.png')
-    self.emcc(test_file('third_party', 'libpng', 'pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_LIBPNG'], output_filename='a.out.js')
+    shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
+    self.emcc(test_file('third_party/libpng/pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_LIBPNG'], output_filename='a.out.js')
     output = self.run_js('a.out.js')
     self.assertContained('libpng passes test', output)
 
   def test_giflib(self):
-    shutil.copyfile(test_file('third_party', 'giflib', 'treescap.gif'), 'treescap.gif')
-    self.emcc(test_file('third_party', 'giflib', 'giftext.c'), ['--embed-file', 'treescap.gif', '-s', 'USE_GIFLIB'], output_filename='a.out.js')
+    shutil.copyfile(test_file('third_party/giflib/treescap.gif'), 'treescap.gif')
+    self.emcc(test_file('third_party/giflib/giftext.c'), ['--embed-file', 'treescap.gif', '-s', 'USE_GIFLIB'], output_filename='a.out.js')
     self.assertContained('GIF file terminated normally', self.run_js('a.out.js', args=['treescap.gif']))
 
   def test_libjpeg(self):
@@ -1645,7 +1643,7 @@ int f() {
   def test_freetype(self):
     # copy the Liberation Sans Bold truetype file located in the
     # <emscripten_root>/tests/freetype to the compilation folder
-    shutil.copy2(test_file('freetype', 'LiberationSansBold.ttf'), os.getcwd())
+    shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), os.getcwd())
     # build test program with the font file embed in it
     self.emcc(test_file('freetype_test.c'), ['-s', 'USE_FREETYPE', '--embed-file', 'LiberationSansBold.ttf'], output_filename='a.out.js')
     # the test program will print an ascii representation of a bitmap where the
@@ -1829,7 +1827,7 @@ int f() {
       if no_initial_run:
         # Calling main later should still work, filesystem etc. must be set up.
         print('call main later')
-        src = open('a.out.js').read()
+        src = read_file('a.out.js')
         src += '\nModule.callMain();\n'
         create_file('a.out.js', src)
         self.assertContained('hello from main', self.run_js('a.out.js'))
@@ -1890,68 +1888,67 @@ int f() {
     # the files should be included, and externally - not as part of optimized
     # code, so they are the very first and last things, and they are not
     # minified.
-    with open('a.out.js') as output:
-      js = output.read()
-      pre = js.index('// I am an external pre.')
-      post = js.index('// I am an external post.')
-      # ignore some slack - newlines and other things. we just care about the
-      # big picture here
-      SLACK = 50
-      self.assertLess(pre, post)
-      self.assertLess(pre, SLACK)
-      self.assertGreater(post, len(js) - SLACK)
-      # make sure the slack is tiny compared to the whole program
-      self.assertGreater(len(js), 100 * SLACK)
+    js = read_file('a.out.js')
+    pre = js.index('// I am an external pre.')
+    post = js.index('// I am an external post.')
+    # ignore some slack - newlines and other things. we just care about the
+    # big picture here
+    SLACK = 50
+    self.assertLess(pre, post)
+    self.assertLess(pre, SLACK)
+    self.assertGreater(post, len(js) - SLACK)
+    # make sure the slack is tiny compared to the whole program
+    self.assertGreater(len(js), 100 * SLACK)
 
   def test_js_optimizer(self):
     for input, expected, passes in [
-      (test_file('optimizer', 'test-js-optimizer-minifyGlobals.js'), open(test_file('optimizer', 'test-js-optimizer-minifyGlobals-output.js')).read(),
+      (test_file('optimizer/test-js-optimizer-minifyGlobals.js'), read_file(test_file('optimizer/test-js-optimizer-minifyGlobals-output.js')),
        ['minifyGlobals']),
-      (test_file('optimizer', 'test-js-optimizer-minifyLocals.js'), open(test_file('optimizer', 'test-js-optimizer-minifyLocals-output.js')).read(),
+      (test_file('optimizer/test-js-optimizer-minifyLocals.js'), read_file(test_file('optimizer/test-js-optimizer-minifyLocals-output.js')),
        ['minifyLocals']),
-      (test_file('optimizer', 'JSDCE.js'), open(test_file('optimizer', 'JSDCE-output.js')).read(),
+      (test_file('optimizer/JSDCE.js'), read_file(test_file('optimizer/JSDCE-output.js')),
        ['JSDCE']),
-      (test_file('optimizer', 'JSDCE-hasOwnProperty.js'), open(test_file('optimizer', 'JSDCE-hasOwnProperty-output.js')).read(),
+      (test_file('optimizer/JSDCE-hasOwnProperty.js'), read_file(test_file('optimizer/JSDCE-hasOwnProperty-output.js')),
        ['JSDCE']),
-      (test_file('optimizer', 'JSDCE-fors.js'), open(test_file('optimizer', 'JSDCE-fors-output.js')).read(),
+      (test_file('optimizer/JSDCE-fors.js'), read_file(test_file('optimizer/JSDCE-fors-output.js')),
        ['JSDCE']),
-      (test_file('optimizer', 'AJSDCE.js'), open(test_file('optimizer', 'AJSDCE-output.js')).read(),
+      (test_file('optimizer/AJSDCE.js'), read_file(test_file('optimizer/AJSDCE-output.js')),
        ['AJSDCE']),
-      (test_file('optimizer', 'emitDCEGraph.js'), open(test_file('optimizer', 'emitDCEGraph-output.js')).read(),
+      (test_file('optimizer/emitDCEGraph.js'), read_file(test_file('optimizer/emitDCEGraph-output.js')),
        ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer', 'emitDCEGraph2.js'), open(test_file('optimizer', 'emitDCEGraph2-output.js')).read(),
+      (test_file('optimizer/emitDCEGraph2.js'), read_file(test_file('optimizer/emitDCEGraph2-output.js')),
        ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer', 'emitDCEGraph3.js'), open(test_file('optimizer', 'emitDCEGraph3-output.js')).read(),
+      (test_file('optimizer/emitDCEGraph3.js'), read_file(test_file('optimizer/emitDCEGraph3-output.js')),
        ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer', 'emitDCEGraph4.js'), open(test_file('optimizer', 'emitDCEGraph4-output.js')).read(),
+      (test_file('optimizer/emitDCEGraph4.js'), read_file(test_file('optimizer/emitDCEGraph4-output.js')),
        ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer', 'emitDCEGraph5.js'), open(test_file('optimizer', 'emitDCEGraph5-output.js')).read(),
+      (test_file('optimizer/emitDCEGraph5.js'), read_file(test_file('optimizer/emitDCEGraph5-output.js')),
        ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer', 'minimal-runtime-applyDCEGraphRemovals.js'), open(test_file('optimizer', 'minimal-runtime-applyDCEGraphRemovals-output.js')).read(),
+      (test_file('optimizer/minimal-runtime-applyDCEGraphRemovals.js'), read_file(test_file('optimizer/minimal-runtime-applyDCEGraphRemovals-output.js')),
        ['applyDCEGraphRemovals']),
-      (test_file('optimizer', 'applyDCEGraphRemovals.js'), open(test_file('optimizer', 'applyDCEGraphRemovals-output.js')).read(),
+      (test_file('optimizer/applyDCEGraphRemovals.js'), read_file(test_file('optimizer/applyDCEGraphRemovals-output.js')),
        ['applyDCEGraphRemovals']),
-      (test_file('optimizer', 'applyImportAndExportNameChanges.js'), open(test_file('optimizer', 'applyImportAndExportNameChanges-output.js')).read(),
+      (test_file('optimizer/applyImportAndExportNameChanges.js'), read_file(test_file('optimizer/applyImportAndExportNameChanges-output.js')),
        ['applyImportAndExportNameChanges']),
-      (test_file('optimizer', 'applyImportAndExportNameChanges2.js'), open(test_file('optimizer', 'applyImportAndExportNameChanges2-output.js')).read(),
+      (test_file('optimizer/applyImportAndExportNameChanges2.js'), read_file(test_file('optimizer/applyImportAndExportNameChanges2-output.js')),
        ['applyImportAndExportNameChanges']),
-      (test_file('optimizer', 'minimal-runtime-emitDCEGraph.js'), open(test_file('optimizer', 'minimal-runtime-emitDCEGraph-output.js')).read(),
+      (test_file('optimizer/minimal-runtime-emitDCEGraph.js'), read_file(test_file('optimizer/minimal-runtime-emitDCEGraph-output.js')),
        ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer', 'minimal-runtime-2-emitDCEGraph.js'), open(test_file('optimizer', 'minimal-runtime-2-emitDCEGraph-output.js')).read(),
+      (test_file('optimizer/minimal-runtime-2-emitDCEGraph.js'), read_file(test_file('optimizer/minimal-runtime-2-emitDCEGraph-output.js')),
        ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer', 'standalone-emitDCEGraph.js'), open(test_file('optimizer', 'standalone-emitDCEGraph-output.js')).read(),
+      (test_file('optimizer/standalone-emitDCEGraph.js'), read_file(test_file('optimizer/standalone-emitDCEGraph-output.js')),
        ['emitDCEGraph', 'noPrint']),
-      (test_file('optimizer', 'emittedJSPreservesParens.js'), open(test_file('optimizer', 'emittedJSPreservesParens-output.js')).read(),
+      (test_file('optimizer/emittedJSPreservesParens.js'), read_file(test_file('optimizer/emittedJSPreservesParens-output.js')),
        []),
-      (test_file('optimizer', 'test-growableHeap.js'), open(test_file('optimizer', 'test-growableHeap-output.js')).read(),
+      (test_file('optimizer/test-growableHeap.js'), read_file(test_file('optimizer/test-growableHeap-output.js')),
        ['growableHeap']),
-      (test_file('optimizer', 'test-unsignPointers.js'), open(test_file('optimizer', 'test-unsignPointers-output.js')).read(),
+      (test_file('optimizer/test-unsignPointers.js'), read_file(test_file('optimizer/test-unsignPointers-output.js')),
        ['unsignPointers']),
-      (test_file('optimizer', 'test-asanify.js'), open(test_file('optimizer', 'test-asanify-output.js')).read(),
+      (test_file('optimizer/test-asanify.js'), read_file(test_file('optimizer/test-asanify-output.js')),
        ['asanify']),
-      (test_file('optimizer', 'test-safeHeap.js'), open(test_file('optimizer', 'test-safeHeap-output.js')).read(),
+      (test_file('optimizer/test-safeHeap.js'), read_file(test_file('optimizer/test-safeHeap-output.js')),
        ['safeHeap']),
-      (test_file('optimizer', 'test-LittleEndianHeap.js'), open(test_file('optimizer', 'test-LittleEndianHeap-output.js')).read(),
+      (test_file('optimizer/test-LittleEndianHeap.js'), read_file(test_file('optimizer/test-LittleEndianHeap-output.js')),
        ['littleEndianHeap']),
     ]:
       print(input, passes)
@@ -1961,7 +1958,7 @@ int f() {
       expected = [out.replace('\n\n', '\n').replace('\n\n', '\n') for out in expected]
 
       # test calling optimizer
-      output = self.run_process(config.NODE_JS + [path_from_root('tools', 'acorn-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
+      output = self.run_process(config.NODE_JS + [path_from_root('tools/acorn-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
 
       def check_js(js, expected):
         # print >> sys.stderr, 'chak\n==========================\n', js, '\n===========================\n'
@@ -1995,8 +1992,8 @@ int f() {
         self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
 
       if input not in [ # tests that are native-optimizer only
-        test_file('optimizer', 'asmLastOpts.js'),
-        test_file('optimizer', '3154.js')
+        test_file('optimizer/asmLastOpts.js'),
+        test_file('optimizer/3154.js')
       ]:
         check_js(output, expected)
       else:
@@ -2011,10 +2008,10 @@ int f() {
     # which runs the internal js optimizer JS script directly (which the python
     # script calls)
     shutil.copyfile(test_file('optimizer', name + '.js'), name + '.js')
-    self.run_process([PYTHON, path_from_root('tools', 'js_optimizer.py'), name + '.js'] + passes)
-    with open(test_file('optimizer', name + '-output.js')) as expected:
-      with open(name + '.js.jsopt.js') as actual:
-        self.assertIdentical(expected.read(), actual.read())
+    self.run_process([PYTHON, path_from_root('tools/js_optimizer.py'), name + '.js'] + passes)
+    expected = read_file(test_file('optimizer', name + '-output.js'))
+    actual = read_file(name + '.js.jsopt.js')
+    self.assertIdentical(expected, actual)
 
   def test_m_mm(self):
     create_file('foo.c', '#include <emscripten.h>')
@@ -2133,14 +2130,14 @@ int f() {
   def test_scons(self):
     # this test copies the site_scons directory alongside the test
     shutil.copytree(test_file('scons'), 'test')
-    shutil.copytree(path_from_root('tools', 'scons', 'site_scons'), os.path.join('test', 'site_scons'))
+    shutil.copytree(path_from_root('tools/scons/site_scons'), Path('test/site_scons'))
     with utils.chdir('test'):
       self.run_process(['scons'])
       output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
   @unittest.skipIf(not scons_path, 'scons not found in PATH')
-  @with_env_modify({'EMSCRIPTEN_TOOLPATH': path_from_root('tools', 'scons', 'site_scons'),
+  @with_env_modify({'EMSCRIPTEN_TOOLPATH': path_from_root('tools/scons/site_scons'),
                     'EMSCRIPTEN_ROOT': path_from_root()})
   def test_emscons(self):
     # uses the emscons wrapper which requires EMSCRIPTEN_TOOLPATH to find
@@ -2152,7 +2149,7 @@ int f() {
     self.assertContained('If you see this - the world is all right!', output)
 
   def test_embind_fail(self):
-    out = self.expect_fail([EMXX, test_file('embind', 'test_unsigned.cpp')])
+    out = self.expect_fail([EMXX, test_file('embind/test_unsigned.cpp')])
     self.assertContained("undefined symbol: _embind_register_function", out)
 
   def test_embind_asyncify(self):
@@ -2176,12 +2173,12 @@ int f() {
   @is_slow_test
   def test_embind(self):
     environ = os.environ.copy()
-    environ['EMCC_CLOSURE_ARGS'] = environ.get('EMCC_CLOSURE_ARGS', '') + " --externs " + pipes.quote(test_file('embind', 'underscore-externs.js'))
+    environ['EMCC_CLOSURE_ARGS'] = environ.get('EMCC_CLOSURE_ARGS', '') + " --externs " + pipes.quote(test_file('embind/underscore-externs.js'))
     test_cases = [
         (['--bind']),
         (['--bind', '-O1']),
         (['--bind', '-O2']),
-        (['--bind', '-O2', '-s', 'ALLOW_MEMORY_GROWTH', test_file('embind', 'isMemoryGrowthEnabled=true.cpp')]),
+        (['--bind', '-O2', '-s', 'ALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')]),
     ]
     without_utf8_args = ['-s', 'EMBIND_STD_STRING_IS_UTF8=0']
     test_cases_without_utf8 = []
@@ -2196,28 +2193,27 @@ int f() {
       self.clear()
 
       testFiles = [
-        test_file('embind', 'underscore-1.4.2.js'),
-        test_file('embind', 'imvu_test_adapter.js'),
-        test_file('embind', 'embind.test.js'),
+        test_file('embind/underscore-1.4.2.js'),
+        test_file('embind/imvu_test_adapter.js'),
+        test_file('embind/embind.test.js'),
       ]
 
       self.run_process(
-        [EMXX, test_file('embind', 'embind_test.cpp'),
-         '--pre-js', test_file('embind', 'test.pre.js'),
-         '--post-js', test_file('embind', 'test.post.js'),
+        [EMXX, test_file('embind/embind_test.cpp'),
+         '--pre-js', test_file('embind/test.pre.js'),
+         '--post-js', test_file('embind/test.post.js'),
          '-s', 'WASM_ASYNC_COMPILATION=0',
          '-s', 'IN_TEST_HARNESS'] + args,
         env=environ)
 
       if 'DYNAMIC_EXECUTION=0' in args:
-        with open('a.out.js') as js_binary_file:
-          js_binary_str = js_binary_file.read()
-          self.assertNotContained('new Function(', js_binary_str)
-          self.assertNotContained('eval(', js_binary_str)
+        js_binary_str = read_file('a.out.js')
+        self.assertNotContained('new Function(', js_binary_str)
+        self.assertNotContained('eval(', js_binary_str)
 
       with open('a.out.js', 'ab') as f:
         for tf in testFiles:
-          f.write(open(tf, 'rb').read())
+          f.write(read_binary(tf))
 
       output = self.run_js('a.out.js')
       self.assertNotContained('FAIL', output)
@@ -2270,7 +2266,7 @@ int f() {
     self.run_process([EMCC, 'main.o', '-s', 'supp.o', '-s', 'SAFE_HEAP'])
     self.assertContained('yello', self.run_js('a.out.js'))
     # Check that valid -s option had an effect'
-    self.assertContained('SAFE_HEAP', open('a.out.js').read())
+    self.assertContained('SAFE_HEAP', read_file('a.out.js'))
 
   def test_conftest_s_flag_passing(self):
     create_file('conftest.c', r'''
@@ -2320,17 +2316,16 @@ int f() {
     self.assertExists('immutable.js.metadata')
     # verify js output JS file is not touched when the metadata is separated
     orig_timestamp = os.path.getmtime('immutable.js')
-    orig_content = open('immutable.js').read()
+    orig_content = read_file('immutable.js')
     # ensure some time passes before running the packager again so that if it does touch the
     # js file it will end up with the different timestamp.
     time.sleep(1.0)
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
     # assert both file content and timestamp are the same as reference copy
-    self.assertTextDataIdentical(orig_content, open('immutable.js').read())
+    self.assertTextDataIdentical(orig_content, read_file('immutable.js'))
     self.assertEqual(orig_timestamp, os.path.getmtime('immutable.js'))
     # verify the content of metadata file is correct
-    with open('immutable.js.metadata') as f:
-      metadata = json.load(f)
+    metadata = json.loads(read_file('immutable.js.metadata'))
     self.assertEqual(len(metadata['files']), 2)
     assert metadata['files'][0]['start'] == 0 and metadata['files'][0]['end'] == len('data1') and metadata['files'][0]['filename'] == '/data1.txt'
     assert metadata['files'][1]['start'] == len('data1') and metadata['files'][1]['end'] == len('data1') + len('data2') and metadata['files'][1]['filename'] == '/subdir/data2.txt'
@@ -2518,23 +2513,23 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.clear()
 
     # compile with -O2 --closure 0
-    self.run_process([EMCC, test_file('Module-exports', 'test.c'),
+    self.run_process([EMCC, test_file('Module-exports/test.c'),
                       '-o', 'test.js', '-O2', '--closure', '0',
-                      '--pre-js', test_file('Module-exports', 'setup.js'),
+                      '--pre-js', test_file('Module-exports/setup.js'),
                       '-s', 'EXPORTED_FUNCTIONS=_bufferTest,_malloc,_free',
                       '-s', 'EXPORTED_RUNTIME_METHODS=ccall,cwrap',
                       '-s', 'WASM_ASYNC_COMPILATION=0'])
 
     # Check that compilation was successful
     self.assertExists('test.js')
-    test_js_closure_0 = open('test.js').read()
+    test_js_closure_0 = read_file('test.js')
 
     # Check that test.js compiled with --closure 0 contains "module['exports'] = Module;"
     assert ("module['exports'] = Module;" in test_js_closure_0) or ('module["exports"]=Module' in test_js_closure_0) or ('module["exports"] = Module;' in test_js_closure_0)
 
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
-    shutil.copyfile(test_file('Module-exports', 'main.js'), 'main.js')
+    shutil.copyfile(test_file('Module-exports/main.js'), 'main.js')
     if config.NODE_JS in config.JS_ENGINES:
       self.assertContained('bufferTest finished', self.run_js('main.js'))
 
@@ -2543,16 +2538,16 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.assertNotExists('test.js')
 
     # compile with -O2 --closure 1
-    self.run_process([EMCC, test_file('Module-exports', 'test.c'),
+    self.run_process([EMCC, test_file('Module-exports/test.c'),
                       '-o', 'test.js', '-O2', '--closure=1',
-                      '--pre-js', test_file('Module-exports', 'setup.js'),
+                      '--pre-js', test_file('Module-exports/setup.js'),
                       '-s', 'EXPORTED_FUNCTIONS=_bufferTest,_malloc,_free',
                       '-s', 'EXPORTED_RUNTIME_METHODS=ccall,cwrap',
                       '-s', 'WASM_ASYNC_COMPILATION=0'])
 
     # Check that compilation was successful
     self.assertExists('test.js')
-    test_js_closure_1 = open('test.js').read()
+    test_js_closure_1 = read_file('test.js')
 
     # Check that test.js compiled with --closure 1 contains "module.exports", we want to verify that
     # "module['exports']" got minified to "module.exports" when compiling with --closure 1
@@ -2940,7 +2935,7 @@ EMSCRIPTEN_KEEPALIVE int myreade() {
 
     self.run_process([EMXX, '-MMD', '-c', 'test.cpp', '-o', 'test.o'])
     self.assertExists('test.d')
-    deps = open('test.d').read()
+    deps = read_file('test.d')
     # Look for ': ' instead of just ':' to not confuse C:\path\ notation with make "target: deps" rule. Not perfect, but good enough for this test.
     head, tail = deps.split(': ', 2)
     self.assertContained('test.o', head)
@@ -2950,21 +2945,21 @@ EMSCRIPTEN_KEEPALIVE int myreade() {
   def test_dependency_file_2(self):
     shutil.copyfile(test_file('hello_world.c'), 'a.c')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c'])
-    self.assertContained('a.o: a.c\n', open('test.d').read())
+    self.assertContained('a.o: a.c\n', read_file('test.d'))
 
     shutil.copyfile(test_file('hello_world.c'), 'a.c')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test2.d', '-c', '-o', 'test.o'])
-    self.assertContained('test.o: a.c\n', open('test2.d').read())
+    self.assertContained('test.o: a.c\n', read_file('test2.d'))
 
     shutil.copyfile(test_file('hello_world.c'), 'a.c')
     ensure_dir('obj')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test3.d', '-c', '-o', 'obj/test.o'])
-    self.assertContained('obj/test.o: a.c\n', open('test3.d').read())
+    self.assertContained('obj/test.o: a.c\n', read_file('test3.d'))
 
   def test_compilation_database(self):
     shutil.copyfile(test_file('hello_world.c'), 'a.c')
     self.run_process([EMCC, 'a.c', '-MJ', 'hello.json', '-c', '-o', 'test.o'])
-    self.assertContained('"file": "a.c", "output": "test.o"', open('hello.json').read())
+    self.assertContained('"file": "a.c", "output": "test.o"', read_file('hello.json'))
 
   def test_js_lib_quoted_key(self):
     create_file('lib.js', r'''
@@ -3169,8 +3164,7 @@ return 0;
     expected_output = 'Module.onAbort was called'
 
     def add_on_abort_and_verify(extra=''):
-      with open('a.out.js') as f:
-        js = f.read()
+      js = read_file('a.out.js')
       with open('a.out.js', 'w') as f:
         f.write("var Module = { onAbort: function() { console.log('%s') } };\n" % expected_output)
         f.write(extra + '\n')
@@ -3217,8 +3211,7 @@ return 0;
         }
       ''')
     self.run_process([EMCC, 'src.c', '-s', 'WASM_ASYNC_COMPILATION=0'])
-    with open('a.out.js') as f:
-      js = f.read()
+    js = read_file('a.out.js')
     with open('a.out.js', 'w') as f:
       f.write("var Module = { onAbort: function() { console.log('%s'); throw 're-throw'; } };\n" % expected_output)
       f.write(js)
@@ -3269,7 +3262,7 @@ int main(int argc, char **argv) {
             cmd += ['--profiling-funcs'] # for function names
           self.run_process(cmd)
           output = self.run_js('a.out.js')
-          src = open('a.out.js').read()
+          src = read_file('a.out.js')
           if wasm:
             src += '\n' + self.get_wasm_text('a.out.wasm')
           exit = 1 - no_exit
@@ -3348,7 +3341,7 @@ int main() {
       ]:
       print(name, args)
       self.clear()
-      self.run_process([EMCC, '-c', path_from_root('system', 'lib', 'dlmalloc.c')] + args)
+      self.run_process([EMCC, '-c', path_from_root('system/lib/dlmalloc.c')] + args)
       sizes[name] = os.path.getsize('dlmalloc.o')
     print(sizes)
     opt_min = min(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
@@ -3420,7 +3413,7 @@ Waste<3> *getMore() {
       self.run_process([EMXX, 'side.cpp', '-c'] + opts)
       self.run_process([EMCC, 'main.o', 'side.o'] + opts)
       self.run_js('a.out.js')
-      src = open('a.out.js').read()
+      src = read_file('a.out.js')
       self.assertContained('argc: 1\n16\n17\n10\n', self.run_js('a.out.js'))
       self.assertContainedIf('globalCtors', src, has_global)
 
@@ -3528,12 +3521,15 @@ int main()
       warning = 'linking a library with `-shared` will emit a static object file'
       self.assertContainedIf(warning, err, suffix in shared_suffixes)
 
-  def test_symbol_map(self):
+  @parameterized({
+    'O2': [['-O2']],
+    'O3': [['-O3']],
+  })
+  def test_symbol_map(self, opts):
     def get_symbols_lines(symbols_file):
       self.assertTrue(os.path.isfile(symbols_file), "Symbols file %s isn't created" % symbols_file)
       # check that the map is correct
-      with open(symbols_file) as f:
-        symbols = f.read()
+      symbols = read_file(symbols_file)
       lines = [line.split(':') for line in symbols.strip().split('\n')]
       return lines
 
@@ -3556,11 +3552,10 @@ int main()
     UNMINIFIED_HEAP8 = 'var HEAP8 = new '
     UNMINIFIED_MIDDLE = 'function middle'
 
-    for opts in [['-O2'], ['-O3']]:
-      for wasm in [0, 1, 2]:
-        print(opts, wasm)
-        self.clear()
-        create_file('src.c', r'''
+    for wasm in [0, 1, 2]:
+      print(opts, wasm)
+      self.clear()
+      create_file('src.c', r'''
 #include <emscripten.h>
 
 EM_JS(int, run_js, (), {
@@ -3570,58 +3565,57 @@ return 0;
 
 EMSCRIPTEN_KEEPALIVE
 void middle() {
-  if (run_js()) {
-    // fake recursion that is never reached, to avoid inlining in binaryen and LLVM
-    middle();
-  }
+if (run_js()) {
+  // fake recursion that is never reached, to avoid inlining in binaryen and LLVM
+  middle();
+}
 }
 
 int main() {
 EM_ASM({ _middle() });
 }
 ''')
-        cmd = [EMCC, 'src.c', '--emit-symbol-map'] + opts
-        cmd += ['-s', 'WASM=%d' % wasm]
-        self.run_process(cmd)
+      cmd = [EMCC, 'src.c', '--emit-symbol-map'] + opts
+      if wasm != 1:
+        cmd.append(f'-sWASM={wasm}')
+      self.run_process(cmd)
 
-        minified_middle = get_minified_middle('a.out.js.symbols')
-        self.assertNotEqual(minified_middle, None, "Missing minified 'middle' function")
-        if wasm:
-          # stack traces are standardized enough that we can easily check that the
-          # minified name is actually in the output
-          stack_trace_reference = 'wasm-function[%s]' % minified_middle
-          out = self.run_js('a.out.js')
-          self.assertContained(stack_trace_reference, out)
-          # make sure there are no symbols in the wasm itself
-          wat = self.run_process([wasm_dis, 'a.out.wasm'], stdout=PIPE).stdout
-          for func_start in ('(func $middle', '(func $_middle'):
-            self.assertNotContained(func_start, wat)
+      minified_middle = get_minified_middle('a.out.js.symbols')
+      self.assertNotEqual(minified_middle, None, "Missing minified 'middle' function")
+      if wasm:
+        # stack traces are standardized enough that we can easily check that the
+        # minified name is actually in the output
+        stack_trace_reference = 'wasm-function[%s]' % minified_middle
+        out = self.run_js('a.out.js')
+        self.assertContained(stack_trace_reference, out)
+        # make sure there are no symbols in the wasm itself
+        wat = self.run_process([wasm_dis, 'a.out.wasm'], stdout=PIPE).stdout
+        for func_start in ('(func $middle', '(func $_middle'):
+          self.assertNotContained(func_start, wat)
 
-        # Ensure symbols file type according to `-s WASM=` mode
-        if wasm == 0:
-          self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'js', 'Primary symbols file should store JS mappings')
-        elif wasm == 1:
-          self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store Wasm mappings')
-        elif wasm == 2:
-          # special case when both JS and Wasm targets are created
-          minified_middle_2 = get_minified_middle('a.out.wasm.js.symbols')
-          self.assertNotEqual(minified_middle_2, None, "Missing minified 'middle' function")
-          self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store Wasm mappings')
-          self.assertEqual(guess_symbols_file_type('a.out.wasm.js.symbols'), 'js', 'Secondary symbols file should store JS mappings')
+      # Ensure symbols file type according to `-s WASM=` mode
+      if wasm == 0:
+        self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'js', 'Primary symbols file should store JS mappings')
+      elif wasm == 1:
+        self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store Wasm mappings')
+      elif wasm == 2:
+        # special case when both JS and Wasm targets are created
+        minified_middle_2 = get_minified_middle('a.out.wasm.js.symbols')
+        self.assertNotEqual(minified_middle_2, None, "Missing minified 'middle' function")
+        self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store Wasm mappings')
+        self.assertEqual(guess_symbols_file_type('a.out.wasm.js.symbols'), 'js', 'Secondary symbols file should store JS mappings')
 
-        # check we don't keep unnecessary debug info with wasm2js when emitting
-        # a symbol map
-        if wasm == 0 and '-O' in str(opts):
-          with open('a.out.js') as f:
-            js = f.read()
-          self.assertNotContained(UNMINIFIED_HEAP8, js)
-          self.assertNotContained(UNMINIFIED_MIDDLE, js)
-          # verify those patterns would exist with more debug info
-          self.run_process(cmd + ['--profiling-funcs'])
-          with open('a.out.js') as f:
-            js = f.read()
-          self.assertContained(UNMINIFIED_HEAP8, js)
-          self.assertContained(UNMINIFIED_MIDDLE, js)
+      # check we don't keep unnecessary debug info with wasm2js when emitting
+      # a symbol map
+      if wasm == 0 and '-O' in str(opts):
+        js = read_file('a.out.js')
+        self.assertNotContained(UNMINIFIED_HEAP8, js)
+        self.assertNotContained(UNMINIFIED_MIDDLE, js)
+        # verify those patterns would exist with more debug info
+        self.run_process(cmd + ['--profiling-funcs'])
+        js = read_file('a.out.js')
+        self.assertContained(UNMINIFIED_HEAP8, js)
+        self.assertContained(UNMINIFIED_MIDDLE, js)
 
   def test_bc_to_bc(self):
     # emcc should 'process' bitcode to bitcode. build systems can request this if
@@ -3695,7 +3689,7 @@ int main() {
   def test_no_dynamic_execution(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-O1', '-s', 'DYNAMIC_EXECUTION=0'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
-    src = open('a.out.js').read()
+    src = read_file('a.out.js')
     self.assertNotContained('eval(', src)
     self.assertNotContained('eval.', src)
     self.assertNotContained('new Function', src)
@@ -3705,7 +3699,7 @@ int main() {
     create_file('temp.txt', "foo\n")
     self.run_process([EMCC, test_file('hello_world.c'), '-O1',
                       '-s', 'DYNAMIC_EXECUTION=0', '--preload-file', 'temp.txt'])
-    src = open('a.out.js').read()
+    src = read_file('a.out.js')
     self.assertNotContained('eval(', src)
     self.assertNotContained('eval.', src)
     self.assertNotContained('new Function', src)
@@ -4131,7 +4125,7 @@ int main() {
     self.assertExists('hello_world.s')
 
   def assertIsLLVMAsm(self, filename):
-    bitcode = open(filename).read()
+    bitcode = read_file(filename)
     self.assertContained('target triple = "', bitcode)
 
   def test_dashS_ll_input(self):
@@ -4801,11 +4795,11 @@ This locale is not the C locale.
     self.run_process([EMCC, test_file('hello_world_fopen.c'), '-s', 'ASSERTIONS=0'])
     yes_size = os.path.getsize('a.out.js')
     self.assertContained('hello, world!', self.run_js('a.out.js'))
-    self.assertContained(FS_MARKER, open('a.out.js').read())
+    self.assertContained(FS_MARKER, read_file('a.out.js'))
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'ASSERTIONS=0'])
     no_size = os.path.getsize('a.out.js')
     self.assertContained('hello, world!', self.run_js('a.out.js'))
-    self.assertNotContained(FS_MARKER, open('a.out.js').read())
+    self.assertNotContained(FS_MARKER, read_file('a.out.js'))
     print('yes fs, no fs:', yes_size, no_size)
     # ~100K of FS code is removed
     self.assertGreater(yes_size - no_size, 90000)
@@ -4855,11 +4849,11 @@ This locale is not the C locale.
     BROWSER_INIT = 'var Browser'
 
     self.run_process([EMCC, test_file('hello_world.c')])
-    self.assertNotContained(BROWSER_INIT, open('a.out.js').read())
+    self.assertNotContained(BROWSER_INIT, read_file('a.out.js'))
 
     # uses emscripten_set_main_loop, which needs Browser
     self.run_process([EMCC, test_file('browser_main_loop.c')])
-    self.assertContained(BROWSER_INIT, open('a.out.js').read())
+    self.assertContained(BROWSER_INIT, read_file('a.out.js'))
 
   def test_EXPORTED_RUNTIME_METHODS(self):
     def test(opts, has, not_has):
@@ -4869,7 +4863,7 @@ This locale is not the C locale.
       # print nice error messages)
       self.run_process([EMCC, test_file('hello_world.c'), '-s', 'ASSERTIONS=0'] + opts)
       self.assertContained('hello, world!', self.run_js('a.out.js'))
-      src = open('a.out.js').read()
+      src = read_file('a.out.js')
       self.assertContained(has, src)
       self.assertNotContained(not_has, src)
 
@@ -5005,13 +4999,13 @@ int main(void) {
 
   def test_require_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'MODULARIZE', '-s', 'ASSERTIONS=0'])
-    src = open('a.out.js').read()
+    src = read_file('a.out.js')
     self.assertContained('module.exports = Module;', src)
     output = self.run_process(config.NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
     self.assertFalse(output.stderr)
     self.assertEqual(output.stdout, 'hello, world!\n')
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'MODULARIZE', '-s', 'EXPORT_NAME="NotModule"', '-s', 'ASSERTIONS=0'])
-    src = open('a.out.js').read()
+    src = read_file('a.out.js')
     self.assertContained('module.exports = NotModule;', src)
     output = self.run_process(config.NODE_JS + ['-e', 'var m = require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
     self.assertFalse(output.stderr)
@@ -5024,15 +5018,13 @@ int main(void) {
 
   def test_define_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'MODULARIZE', '-s', 'ASSERTIONS=0'])
-    with open('a.out.js') as f:
-      src = 'var module = 0; ' + f.read()
+    src = 'var module = 0; ' + read_file('a.out.js')
     create_file('a.out.js', src)
     assert "define([], function() { return Module; });" in src
     output = self.run_process(config.NODE_JS + ['-e', 'var m; (global.define = function(deps, factory) { m = factory(); }).amd = true; require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
     assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'MODULARIZE', '-s', 'EXPORT_NAME="NotModule"', '-s', 'ASSERTIONS=0'])
-    with open('a.out.js') as f:
-      src = 'var module = 0; ' + f.read()
+    src = 'var module = 0; ' + read_file('a.out.js')
     create_file('a.out.js', src)
     assert "define([], function() { return NotModule; });" in src
     output = self.run_process(config.NODE_JS + ['-e', 'var m; (global.define = function(deps, factory) { m = factory(); }).amd = true; require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
@@ -5126,7 +5118,7 @@ print(os.environ.get('NM'))
     # simulates a configure/make script that looks for things like CC, AR, etc., and which we should
     # not confuse by setting those vars to something containing `python X` as the script checks for
     # the existence of an executable.
-    self.run_process([emmake, PYTHON, test_file('emmake', 'make.py')])
+    self.run_process([emmake, PYTHON, test_file('emmake/make.py')])
 
   def test_sdl2_config(self):
     for args, expected in [
@@ -5158,11 +5150,11 @@ int main() {
   def test_NO_aliasing(self):
     # the NO_ prefix flips boolean options
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'EXIT_RUNTIME'])
-    exit_1 = open('a.out.js').read()
+    exit_1 = read_file('a.out.js')
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'NO_EXIT_RUNTIME=0'])
-    no_exit_0 = open('a.out.js').read()
+    no_exit_0 = read_file('a.out.js')
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'EXIT_RUNTIME=0'])
-    exit_0 = open('a.out.js').read()
+    exit_0 = read_file('a.out.js')
 
     assert exit_1 == no_exit_0
     assert exit_1 != exit_0
@@ -5868,7 +5860,7 @@ int main() {
 
   def test_musl_syscalls(self):
     self.run_process([EMCC, test_file('hello_world.c')])
-    src = open('a.out.js').read()
+    src = read_file('a.out.js')
     # there should be no musl syscalls in hello world output
     self.assertNotContained('__syscall', src)
 
@@ -5998,7 +5990,7 @@ int main(int argc, char **argv) {
 }
 ''')
     ensure_dir('boot')
-    create_file(os.path.join('boot', 'README.txt'), ' ')
+    create_file('boot/README.txt', ' ')
     self.run_process([EMCC, 'src.c', '-s', 'SAFE_HEAP', '--embed-file', 'boot'])
     self.assertContained('Resolved: /boot/README.txt', self.run_js('a.out.js'))
 
@@ -6068,7 +6060,7 @@ int main(int argc, char **argv)
 }
 ''')
     create_file('testfile.txt', '')
-    create_file(os.path.join('Folder', 'testfile.txt'), '')
+    create_file('Folder/testfile.txt', '')
     self.run_process([EMCC, 'src.c', '--embed-file', 'testfile.txt', '--embed-file', 'Folder'])
     self.assertContained('''Resolved: "testfile.txt" => "/testfile.txt"
 Resolved: "Folder/testfile.txt" => "/Folder/testfile.txt"
@@ -6180,10 +6172,10 @@ Resolved: "/" => "/"
     # The MS 32 bits should be available in Runtime.getTempRet0() even when compiled with -O2 --closure 1
 
     # Compile test.c and wrap it in a native JavaScript binding so we can call our compiled function from JS.
-    self.run_process([EMCC, test_file('return64bit', 'test.c'),
-                      '--pre-js', test_file('return64bit', 'testbindstart.js'),
+    self.run_process([EMCC, test_file('return64bit/test.c'),
+                      '--pre-js', test_file('return64bit/testbindstart.js'),
                       '--pre-js', test_file('return64bit', bind_js),
-                      '--post-js', test_file('return64bit', 'testbindend.js'),
+                      '--post-js', test_file('return64bit/testbindend.js'),
                       '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall',
                       '-s', 'EXPORTED_FUNCTIONS=_test_return64', '-o', 'test.js', '-O2',
                       '--closure=1', '-g1', '-s', 'WASM_ASYNC_COMPILATION=0'] + args)
@@ -6226,12 +6218,16 @@ high = 1234
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_dash_s_response_file_string(self):
-    create_file('response_file', '"MyModule"\n')
-    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORT_NAME=@response_file'])
+    create_file('response_file.txt', 'MyModule\n')
+    create_file('response_file.json', '"MyModule"\n')
+    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORT_NAME=@response_file.txt'])
+    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORT_NAME=@response_file.json'])
 
   def test_dash_s_response_file_list(self):
-    create_file('response_file', '["_main", "_malloc"]\n')
-    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@response_file'])
+    create_file('response_file.txt', '_main\n_malloc\n')
+    create_file('response_file.json', '["_main", "_malloc"]\n')
+    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@response_file.txt'])
+    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@response_file.json'])
 
   def test_dash_s_response_file_misssing(self):
     err = self.expect_fail([EMXX, test_file('hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@foo'])
@@ -6321,7 +6317,7 @@ int main() {
 
   def test_memory_growth_noasm(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-s', 'ALLOW_MEMORY_GROWTH'])
-    src = open('a.out.js').read()
+    src = read_file('a.out.js')
     assert 'use asm' not in src
 
   def test_EM_ASM_i64(self):
@@ -6428,7 +6424,7 @@ int main() {
           shutil.copyfile('a.out.wasm', 'x' + hex(expected) + '.wasm')
           return self.count_wasm_contents('a.out.wasm', 'funcs')
         else:
-          return open('a.out.js').read().count('function _')
+          return read_file('a.out.js').count('function _')
 
       print('no bad ctor')
       first  = test(1000, 2000, 3000, 0xe, 0x58e) # noqa
@@ -6483,7 +6479,7 @@ mergeInto(LibraryManager.library, {
     # use SINGLE_FILE since we don't want to depend on loading a side .wasm file on the environment in this test;
     # with the wrong env we have very odd failures
     self.run_process([EMXX, 'main.cpp', '-s', 'SINGLE_FILE'])
-    src = open('a.out.js').read()
+    src = read_file('a.out.js')
     envs = ['web', 'worker', 'node', 'shell']
     for env in envs:
       for engine in config.JS_ENGINES:
@@ -6561,13 +6557,13 @@ mergeInto(LibraryManager.library, {
 
     # text is in the source when needed, but when forcing FS, it isn't there
     self.run_process([EMXX, 'src.cpp'])
-    self.assertContained(error, open('a.out.js').read())
+    self.assertContained(error, read_file('a.out.js'))
     self.run_process([EMXX, 'src.cpp', '-s', 'FORCE_FILESYSTEM']) # forcing FS means no need
-    self.assertNotContained(error, open('a.out.js').read())
+    self.assertNotContained(error, read_file('a.out.js'))
     self.run_process([EMXX, 'src.cpp', '-s', 'ASSERTIONS=0']) # no assertions, no need
-    self.assertNotContained(error, open('a.out.js').read())
+    self.assertNotContained(error, read_file('a.out.js'))
     self.run_process([EMXX, 'src.cpp', '-O2']) # optimized, so no assertions
-    self.assertNotContained(error, open('a.out.js').read())
+    self.assertNotContained(error, read_file('a.out.js'))
 
   def test_warn_module_print_err(self):
     error = 'was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)'
@@ -6682,7 +6678,7 @@ int main() {
       # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in
       # them, which makes counting harder
       self.run_process([EMXX, test_file('hello_world.cpp')] + args + ['-s', 'MALLOC="dlmalloc"', '-s', 'EXPORTED_FUNCTIONS=_main,_malloc'])
-      code = open('a.out.wasm', 'rb').read()
+      code = read_binary('a.out.wasm')
       if '-g' in args:
         # With -g we get full dwarf info which means we there are many occurances of malloc
         self.assertGreater(code.count(b'malloc'), 2)
@@ -6752,7 +6748,7 @@ int main() {
     self.assertContained('MAXIMUM_MEMORY must be a multiple of WebAssembly page size (64KiB)', ret)
 
   def test_dasho_invalid_dir(self):
-    ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', os.path.join('NONEXISTING_DIRECTORY', 'out.js')])
+    ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', Path('NONEXISTING_DIRECTORY/out.js')])
     self.assertContained('specified output file (NONEXISTING_DIRECTORY%sout.js) is in a directory that does not exist' % os.path.sep, ret)
 
   def test_dasho_is_dir(self):
@@ -6811,7 +6807,7 @@ int main() {
       cmd = [EMXX, test_file('hello_world.cpp')] + args
       print(' '.join(cmd))
       self.run_process(cmd)
-      js = open('a.out.js').read()
+      js = read_file('a.out.js')
       assert expect_clean_js == ('// ' not in js), 'cleaned-up js must not have comments'
       assert expect_whitespace_js == ('{\n  ' in js), 'whitespace-minified js must not have excess spacing'
       assert expect_closured == ('var a;' in js or 'var a,' in js or 'var a=' in js or 'var a ' in js), 'closured js must have tiny variable names'
@@ -6857,7 +6853,7 @@ int main() {
     if not os.path.exists(filename):
       self.fail('Test expectation file not found: ' + filename + '.\n' +
                 'Run with EMTEST_REBASELINE to generate.')
-    expected_content = open(filename).read()
+    expected_content = read_file(filename)
     message = "Run with EMTEST_REBASELINE=1 to automatically update expectations"
     self.assertTextDataIdentical(expected_content, contents, message,
                                  filename, filename + '.new')
@@ -6869,7 +6865,7 @@ int main() {
     # in -Os, -Oz, we remove imports wasm doesn't need
     print('Running metadce test: %s:' % filename, args, expected_exists,
           expected_not_exists, check_sent, check_imports, check_exports, check_funcs)
-    filename = test_file('other', 'metadce', filename)
+    filename = test_file('other/metadce', filename)
 
     def clean_arg(arg):
       return arg.replace('-', '')
@@ -6894,7 +6890,7 @@ int main() {
 
     self.run_process([compiler_for(filename), filename, '-g2'] + args)
     # find the imports we send from JS
-    js = open('a.out.js').read()
+    js = read_file('a.out.js')
     start = js.find('asmLibraryArg = ')
     end = js.find('}', start) + 1
     start = js.find('{', start)
@@ -6918,8 +6914,7 @@ int main() {
         with open(size_file, 'w') as f:
           f.write(f'{wasm_size}\n')
 
-      with open(size_file) as f:
-        expected_size = int(f.read().strip())
+      expected_size = int(read_file(size_file).strip())
       delta = wasm_size - expected_size
       ratio = abs(delta) / float(expected_size)
       print('  seen wasm size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (wasm_size, expected_size, delta, ratio))
@@ -7061,7 +7056,7 @@ int main() {
     err = self.run_process([EMXX, test_file('hello_world.cpp'), '-Os', '-s', '%s=%s' % (setting_name, ','.join(exports))], stderr=PIPE).stderr
     if use_legacy_name:
       self.assertContained('warning: EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead [-Wdeprecated]', err)
-    js = open('a.out.js').read()
+    js = read_file('a.out.js')
     for export in exports:
       self.assertContained(f'Module["{export}"]', js)
 
@@ -7078,11 +7073,11 @@ int main() {
       print(args)
       try_delete('a.out.wasm')
       try_delete('a.out.wat')
-      cmd = [EMCC, test_file('other', 'ffi.c'), '-g', '-o', 'a.out.wasm'] + args
+      cmd = [EMCC, test_file('other/ffi.c'), '-g', '-o', 'a.out.wasm'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
       self.run_process([wasm_dis, 'a.out.wasm', '-o', 'a.out.wat'])
-      text = open('a.out.wat').read()
+      text = read_file('a.out.wat')
       # remove internal comments and extra whitespace
       text = re.sub(r'\(;[^;]+;\)', '', text)
       text = re.sub(r'\$var\$*.', '', text)
@@ -7124,11 +7119,11 @@ int main() {
       try_delete('a.out.wasm')
       try_delete('a.out.wat')
       with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
-        cmd = [EMXX, test_file('other', 'noffi.cpp'), '-g', '-o', 'a.out.js'] + args
+        cmd = [EMXX, test_file('other/noffi.cpp'), '-g', '-o', 'a.out.js'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
       self.run_process([wasm_dis, 'a.out.wasm', '-o', 'a.out.wat'])
-      text = open('a.out.wat').read()
+      text = read_file('a.out.wat')
       # remove internal comments and extra whitespace
       text = re.sub(r'\(;[^;]+;\)', '', text)
       text = re.sub(r'\$var\$*.', '', text)
@@ -7143,13 +7138,13 @@ int main() {
   def test_export_aliasee(self):
     # build side module
     args = ['-s', 'SIDE_MODULE']
-    cmd = [EMCC, test_file('other', 'alias', 'side.c'), '-g', '-o', 'side.wasm'] + args
+    cmd = [EMCC, test_file('other/alias/side.c'), '-g', '-o', 'side.wasm'] + args
     print(' '.join(cmd))
     self.run_process(cmd)
 
     # build main module
     args = ['-g', '-s', 'EXPORTED_FUNCTIONS=_main,_foo', '-s', 'MAIN_MODULE=2', '-s', 'EXIT_RUNTIME', '-lnodefs.js']
-    cmd = [EMCC, test_file('other', 'alias', 'main.c'), '-o', 'main.js'] + args
+    cmd = [EMCC, test_file('other/alias/main.c'), '-o', 'main.js'] + args
     print(' '.join(cmd))
     self.run_process(cmd)
 
@@ -7158,7 +7153,7 @@ int main() {
 
   def test_sysconf_phys_pages(self):
     def run(args, expected):
-      cmd = [EMCC, test_file('unistd', 'sysconf_phys_pages.c')] + args
+      cmd = [EMCC, test_file('unistd/sysconf_phys_pages.c')] + args
       print(str(cmd))
       self.run_process(cmd)
       result = self.run_js('a.out.js').strip()
@@ -7316,7 +7311,7 @@ int main() {
     self.emcc_args += ['-fwasm-exceptions', '-flto']
     self.v8_args.append('--experimental-wasm-eh')
     self.js_engines = [config.V8_ENGINE]
-    self.do_run_from_file(test_file('core', 'test_exceptions.cpp'), test_file('core', 'test_exceptions_caught.out'))
+    self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
 
   def test_wasm_nope(self):
     for opts in [[], ['-O2']]:
@@ -7533,10 +7528,8 @@ end
       results = {}
       for f in (flag1, flag2):
         self.run_process([EMCC, test_file('hello_world.c'), '-s', f + '=' + flagarg] + extra_args)
-        with open('a.out.js') as out:
-          results[f + '.js'] = out.read()
-        with open('a.out.wasm', 'rb') as out:
-          results[f + '.wasm'] = out.read()
+        results[f + '.js'] = read_file('a.out.js')
+        results[f + '.wasm'] = read_binary('a.out.wasm')
       self.assertEqual(results[flag1 + '.js'], results[flag2 + '.js'], 'js results should be identical')
       self.assertEqual(results[flag1 + '.wasm'], results[flag2 + '.wasm'], 'wasm results should be identical')
 
@@ -7609,13 +7602,13 @@ end
       self.run_process([EMCC, test_file('hello_world.c')])
 
   def test_noderawfs(self):
-    fopen_write = open(test_file('asmfs', 'fopen_write.cpp')).read()
+    fopen_write = read_file(test_file('asmfs/fopen_write.cpp'))
     create_file('main.cpp', fopen_write)
     self.run_process([EMXX, 'main.cpp', '-s', 'NODERAWFS'])
     self.assertContained("read 11 bytes. Result: Hello data!", self.run_js('a.out.js'))
 
     # NODERAWFS should directly write on OS file system
-    self.assertEqual("Hello data!", open('hello_file.txt').read())
+    self.assertEqual("Hello data!", read_file('hello_file.txt'))
 
   def test_noderawfs_disables_embedding(self):
     expected = '--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem'
@@ -7651,8 +7644,7 @@ end
     ERROR = 'NODE_CODE_CACHING: failed to deserialize, bad cache file?'
     self.assertContained(ERROR, self.run_js('a.out.js'))
     # we cached proper code after showing that error
-    with open(get_cached(), 'rb') as f:
-      self.assertEqual(f.read().count(b'waka'), 0)
+    self.assertEqual(read_binary(get_cached()).count(b'waka'), 0)
     self.assertNotContained(ERROR, self.run_js('a.out.js'))
 
   def test_autotools_shared_check(self):
@@ -7727,9 +7719,8 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
   def test_js_optimizer_chunk_size_determinism(self):
     def build():
       self.run_process([EMCC, test_file('hello_world.c'), '-O3', '-s', 'WASM=0'])
-      with open('a.out.js') as f:
-        # FIXME: newline differences can exist, ignore for now
-        return f.read().replace('\n', '')
+      # FIXME: newline differences can exist, ignore for now
+      return read_file('a.out.js').replace('\n', '')
 
     normal = build()
 
@@ -7765,13 +7756,12 @@ int main() {
 }''')
     self.run_process([EMXX, 'src.cpp', '-O2', '--profiling', '-pthread',
                       '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ALLOW_MEMORY_GROWTH'])
-    with open('a.out.js') as f:
-      # growable-heap must not interfere with heap unsigning, and vice versa:
-      # we must have both applied, that is
-      #   - GROWABLE_HEAP_I8() replaces HEAP8
-      #   - $0 gets an >>> 0 unsigning
-      self.assertContained('GROWABLE_HEAP_I8().set([ 1, 2, 3 ], $0 >>> 0)',
-                           f.read())
+    # growable-heap must not interfere with heap unsigning, and vice versa:
+    # we must have both applied, that is
+    #   - GROWABLE_HEAP_I8() replaces HEAP8
+    #   - $0 gets an >>> 0 unsigning
+    self.assertContained('GROWABLE_HEAP_I8().set([ 1, 2, 3 ], $0 >>> 0)',
+                         read_file('a.out.js'))
 
   @parameterized({
     '': ([],), # noqa
@@ -7798,7 +7788,7 @@ int main() {
     if not self.is_wasm():
       self.skipTest('only supported with wasm')
     self.run_process([EMCC, test_file('hello_123.c'), '-gsource-map', '-o', 'a.js', '--source-map-base', 'dir/'])
-    output = open('a.wasm', 'rb').read()
+    output = read_binary('a.wasm')
     # has sourceMappingURL section content and points to 'dir/a.wasm.map' file
     source_mapping_url_content = webassembly.toLEB(len('sourceMappingURL')) + b'sourceMappingURL' + webassembly.toLEB(len('dir/a.wasm.map')) + b'dir/a.wasm.map'
     self.assertEqual(output.count(source_mapping_url_content), 1)
@@ -7825,24 +7815,24 @@ int main() {
       self.skipTest('only supported with wasm')
 
     self.run_process([EMCC, test_file('hello_123.c'), '-gsource-map', '-o', 'a.js'] + list(args))
-    output = open('a.wasm', 'rb').read()
+    output = read_binary('a.wasm')
     # has sourceMappingURL section content and points to 'a.wasm.map' file
     source_mapping_url_content = webassembly.toLEB(len('sourceMappingURL')) + b'sourceMappingURL' + webassembly.toLEB(len('a.wasm.map')) + b'a.wasm.map'
     self.assertIn(source_mapping_url_content, output)
 
   def test_wasm_sourcemap(self):
     # The no_main.c will be read (from relative location) due to speficied "-s"
-    shutil.copyfile(test_file('other', 'wasm_sourcemap', 'no_main.c'), 'no_main.c')
-    wasm_map_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
+    shutil.copyfile(test_file('other/wasm_sourcemap/no_main.c'), 'no_main.c')
+    wasm_map_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
                     '--sources', '--prefix', '=wasm-src://',
                     '--load-prefix', '/emscripten/tests/other/wasm_sourcemap=.',
                     '--dwarfdump-output',
-                    test_file('other', 'wasm_sourcemap', 'foo.wasm.dump'),
+                    test_file('other/wasm_sourcemap/foo.wasm.dump'),
                     '-o', 'a.out.wasm.map',
-                    test_file('other', 'wasm_sourcemap', 'foo.wasm'),
+                    test_file('other/wasm_sourcemap/foo.wasm'),
                     '--basepath=' + os.getcwd()]
     self.run_process(wasm_map_cmd)
-    output = open('a.out.wasm.map').read()
+    output = read_file('a.out.wasm.map')
     # has "sources" entry with file (includes also `--prefix =wasm-src:///` replacement)
     self.assertIn('wasm-src:///emscripten/tests/other/wasm_sourcemap/no_main.c', output)
     # has "sourcesContent" entry with source code (included with `-s` option)
@@ -7851,14 +7841,14 @@ int main() {
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]')
 
   def test_wasm_sourcemap_dead(self):
-    wasm_map_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
+    wasm_map_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
                     '--dwarfdump-output',
-                    test_file('other', 'wasm_sourcemap_dead', 't.wasm.dump'),
+                    test_file('other/wasm_sourcemap_dead/t.wasm.dump'),
                     '-o', 'a.out.wasm.map',
-                    test_file('other', 'wasm_sourcemap_dead', 't.wasm'),
+                    test_file('other/wasm_sourcemap_dead/t.wasm'),
                     '--basepath=' + os.getcwd()]
     self.run_process(wasm_map_cmd, stdout=PIPE, stderr=PIPE)
-    output = open('a.out.wasm.map').read()
+    output = read_file('a.out.wasm.map')
     # has only two entries
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
 
@@ -7877,8 +7867,7 @@ int main() {
       for curr in infiles:
         print('  ', curr)
         self.run_process([EMCC, curr, '-gsource-map'])
-        with open('a.out.wasm.map', 'r') as f:
-          self.assertIn('"%s"' % expected_source_map_path, str(f.read()))
+        self.assertIn('"%s"' % expected_source_map_path, read_file('a.out.wasm.map'))
 
     test('a.cpp')
 
@@ -7894,24 +7883,22 @@ int main() {
     self.assertExists('a.out.wasm.debug.wasm')
     self.assertLess(os.path.getsize('a.out.wasm'), os.path.getsize('a.out.wasm.debug.wasm'))
     # the special section should also exist, that refers to the side debug file
-    with open('a.out.wasm', 'rb') as f:
-      wasm = f.read()
-      self.assertIn(b'external_debug_info', wasm)
-      self.assertIn(b'a.out.wasm.debug.wasm', wasm)
+    wasm = read_binary('a.out.wasm')
+    self.assertIn(b'external_debug_info', wasm)
+    self.assertIn(b'a.out.wasm.debug.wasm', wasm)
 
     # building to a subdirectory should still leave a relative path, which
     # assumes the debug file is alongside the main one
     os.mkdir('subdir')
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-gseparate-dwarf',
-                      '-o', os.path.join('subdir', 'output.js')])
-    with open(os.path.join('subdir', 'output.wasm'), 'rb') as f:
-      wasm = f.read()
-      self.assertIn(b'output.wasm.debug.wasm', wasm)
-      # check both unix-style slashes and the system's slashes, so that we don't
-      # assume the encoding of the section in this test
-      self.assertNotIn(b'subdir/output.wasm.debug.wasm', wasm)
-      self.assertNotIn(bytes(os.path.join('subdir', 'output.wasm.debug.wasm'), 'ascii'), wasm)
+                      '-o', Path('subdir/output.js')])
+    wasm = read_binary('subdir/output.wasm')
+    self.assertIn(b'output.wasm.debug.wasm', wasm)
+    # check both unix-style slashes and the system's slashes, so that we don't
+    # assume the encoding of the section in this test
+    self.assertNotIn(b'subdir/output.wasm.debug.wasm', wasm)
+    self.assertNotIn(bytes(os.path.join('subdir', 'output.wasm.debug.wasm'), 'ascii'), wasm)
 
   def test_separate_dwarf_with_filename(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
@@ -7926,21 +7913,18 @@ int main() {
     # should leave a relative path to the debug wasm
     os.mkdir('subdir')
     self.run_process([EMCC, test_file('hello_world.c'),
-                      '-o', os.path.join('subdir', 'output.js'),
+                      '-o', Path('subdir/output.js'),
                       '-gseparate-dwarf=with_dwarf2.wasm'])
     self.assertExists('with_dwarf2.wasm')
-    with open(os.path.join('subdir', 'output.wasm'), 'rb') as f:
-      wasm = f.read()
-      self.assertIn(b'../with_dwarf2.wasm', wasm)
+    wasm = read_binary('subdir/output.wasm')
+    self.assertIn(b'../with_dwarf2.wasm', wasm)
 
   def test_separate_dwarf_with_filename_and_path(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
-    with open('a.out.wasm', 'rb') as f:
-      self.assertIn(b'with_dwarf.wasm', f.read())
+    self.assertIn(b'with_dwarf.wasm', read_binary('a.out.wasm'))
     self.run_process([EMCC, test_file('hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm',
                       '-s', 'SEPARATE_DWARF_URL=http://somewhere.com/hosted.wasm'])
-    with open('a.out.wasm', 'rb') as f:
-      self.assertIn(b'somewhere.com/hosted.wasm', f.read())
+    self.assertIn(b'somewhere.com/hosted.wasm', read_binary('a.out.wasm'))
 
   @parameterized({
     'O0': (['-O0'],),
@@ -7949,15 +7933,13 @@ int main() {
   })
   def test_wasm_producers_section(self, args):
     self.run_process([EMCC, test_file('hello_world.c')] + args)
-    with open('a.out.wasm', 'rb') as f:
-      data = f.read()
+    data = read_binary('a.out.wasm')
     # if there is no producers section expected by default, verify that, and
     # see that the flag works to add it.
     self.assertNotIn('clang', str(data))
     size = os.path.getsize('a.out.wasm')
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'EMIT_PRODUCERS_SECTION'] + args)
-    with open('a.out.wasm', 'rb') as f:
-      self.assertIn('clang', str(f.read()))
+    self.assertIn(b'clang', read_binary('a.out.wasm'))
     size_with_section = os.path.getsize('a.out.wasm')
     self.assertLess(size, size_with_section)
 
@@ -7992,12 +7974,12 @@ console.error('JSLIB: none of the above');
     self.assertEqual(err.count('JSLIB'), 1)
 
   def test_html_preprocess(self):
-    src_file = test_file('module', 'test_stdin.c')
+    src_file = test_file('module/test_stdin.c')
     output_file = 'test_stdin.html'
-    shell_file = test_file('module', 'test_html_preprocess.html')
+    shell_file = test_file('module/test_html_preprocess.html')
 
     self.run_process([EMCC, '-o', output_file, src_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=0'], stdout=PIPE, stderr=PIPE)
-    output = open(output_file).read()
+    output = read_file(output_file)
     self.assertContained("""<style>
 /* Disable preprocessing inside style block as syntax is ambiguous with CSS */
 #include {background-color: black;}
@@ -8014,7 +7996,7 @@ T5:(else) ASSERTIONS
 T6:!ASSERTIONS""", output)
 
     self.run_process([EMCC, '-o', output_file, src_file, '--shell-file', shell_file, '-s', 'ASSERTIONS'], stdout=PIPE, stderr=PIPE)
-    output = open(output_file).read()
+    output = read_file(output_file)
     self.assertContained("""<style>
 /* Disable preprocessing inside style block as syntax is ambiguous with CSS */
 #include {background-color: black;}
@@ -8031,7 +8013,7 @@ T5:ASSERTIONS
 T6:(else) !ASSERTIONS""", output)
 
     self.run_process([EMCC, '-o', output_file, src_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=2'], stdout=PIPE, stderr=PIPE)
-    output = open(output_file).read()
+    output = read_file(output_file)
     self.assertContained("""<style>
 /* Disable preprocessing inside style block as syntax is ambiguous with CSS */
 #include {background-color: black;}
@@ -8050,8 +8032,8 @@ T6:(else) !ASSERTIONS""", output)
   # Tests that Emscripten-compiled applications can be run from a relative path with node command line that is different than the current working directory.
   def test_node_js_run_from_different_directory(self):
     ensure_dir('subdir')
-    self.run_process([EMCC, test_file('hello_world.c'), '-o', os.path.join('subdir', 'a.js'), '-O3'])
-    ret = self.run_process(config.NODE_JS + [os.path.join('subdir', 'a.js')], stdout=PIPE).stdout
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', Path('subdir/a.js'), '-O3'])
+    ret = self.run_process(config.NODE_JS + [Path('subdir/a.js')], stdout=PIPE).stdout
     self.assertContained('hello, world!', ret)
 
   # Tests that a pthreads + modularize build can be run in node js
@@ -8069,7 +8051,7 @@ test_module().then((test_module_instance) => {
     create_file(os.path.join('subdir', moduleLoader), moduleLoaderContents)
 
     # build hello_world.c
-    self.run_process([EMCC, test_file('hello_world.c'), '-o', os.path.join('subdir', 'module.js'), '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'MODULARIZE', '-s', 'EXPORT_NAME=test_module', '-s', 'ENVIRONMENT=worker,node'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', Path('subdir/module.js'), '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'MODULARIZE', '-s', 'EXPORT_NAME=test_module', '-s', 'ENVIRONMENT=worker,node'])
 
     # run the module
     ret = self.run_process(config.NODE_JS + ['--experimental-wasm-threads'] + [os.path.join('subdir', moduleLoader)], stdout=PIPE).stdout
@@ -8117,12 +8099,19 @@ test_module().then((test_module_instance) => {
         void c() { printf("c\n"); }
         void d() { printf("d\n"); }
       ''')
-    create_file('response', r'''[
+    create_file('response.json', '''\
+[
 "_a",
 "_b",
 "_c",
 "_d"
 ]
+''')
+    create_file('response.txt', '''\
+_a
+_b
+_c
+_d
 ''')
 
     for export_arg, expected in [
@@ -8137,7 +8126,9 @@ test_module().then((test_module_instance) => {
       # extra space at end - should be ignored
       ("EXPORTED_FUNCTIONS=['_a', '_b', '_c', '_d' ]", ''),
       # extra newline in response file - should be ignored
-      ("EXPORTED_FUNCTIONS=@response", ''),
+      ("EXPORTED_FUNCTIONS=@response.json", ''),
+      # Simple one-per-line response file format
+      ("EXPORTED_FUNCTIONS=@response.txt", ''),
       # stray slash
       ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''undefined exported symbol: "\\\\'_c'"'''),
       # stray slash
@@ -8154,6 +8145,9 @@ test_module().then((test_module_instance) => {
       print(proc.stderr)
       if not expected:
         self.assertFalse(proc.stderr)
+        js = open('a.out.js').read()
+        for sym in ('_a', '_b', '_c', '_d'):
+          self.assertContained(f'var {sym} = ', js)
       else:
         self.assertNotEqual(proc.returncode, 0)
         self.assertContained(expected, proc.stderr)
@@ -8165,19 +8159,21 @@ test_module().then((test_module_instance) => {
     self.assertContained('Try to quote the entire argument', proc.stderr)
 
   def test_asyncify_response_file(self):
-    return self.skipTest(' TODO remove the support for multiple binaryen versions warning output ("function name" vs "pattern" etc).')
     create_file('a.txt', r'''[
   "DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)"
 ]
 ''')
-    proc = self.run_process([EMCC, test_file('hello_world.c'), '-s', 'ASYNCIFY', '-s', "ASYNCIFY_ONLY=@a.txt"], stdout=PIPE, stderr=PIPE)
-    # we should parse the response file properly, and then issue a proper warning for the missing function
-    self.assertContained(
-        'Asyncify onlylist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
-        proc.stderr)
+
+    create_file('b.txt', 'DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)')
+    for file in ('a.txt', 'b.txt'):
+      proc = self.run_process([EMCC, test_file('hello_world.c'), '-sASYNCIFY', f'-sASYNCIFY_ONLY=@{file}'], stdout=PIPE, stderr=PIPE)
+      # we should parse the response file properly, and then issue a proper warning for the missing function
+      self.assertContained(
+          'Asyncify onlylist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
+          proc.stderr)
 
   def test_asyncify_advise(self):
-    src = test_file('other', 'asyncify_advise.c')
+    src = test_file('other/asyncify_advise.c')
 
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_ADVISE')
@@ -8396,22 +8392,22 @@ ok.
     ''', 'getpeername error: Socket not connected', assert_returncode=NON_ZERO)
 
   def test_getsockname_addrlen(self):
-    self.do_runf(test_file('sockets', 'test_getsockname_addrlen.c'), 'success')
+    self.do_runf(test_file('sockets/test_getsockname_addrlen.c'), 'success')
 
   def test_sin_zero(self):
-    self.do_runf(test_file('sockets', 'test_sin_zero.c'), 'success')
+    self.do_runf(test_file('sockets/test_sin_zero.c'), 'success')
 
   def test_getaddrinfo(self):
-    self.do_runf(test_file('sockets', 'test_getaddrinfo.c'), 'success')
+    self.do_runf(test_file('sockets/test_getaddrinfo.c'), 'success')
 
   def test_getnameinfo(self):
-    self.do_runf(test_file('sockets', 'test_getnameinfo.c'), 'success')
+    self.do_runf(test_file('sockets/test_getnameinfo.c'), 'success')
 
   def test_gethostbyname(self):
-    self.do_runf(test_file('sockets', 'test_gethostbyname.c'), 'success')
+    self.do_runf(test_file('sockets/test_gethostbyname.c'), 'success')
 
   def test_getprotobyname(self):
-    self.do_runf(test_file('sockets', 'test_getprotobyname.c'), 'success')
+    self.do_runf(test_file('sockets/test_getprotobyname.c'), 'success')
 
   def test_socketpair(self):
     self.do_run(r'''
@@ -8494,7 +8490,7 @@ int main () {
     self.skipTest('Skipping other.test_no_invoke_functions_are_generated_if_exception_catching_is_disabled: Enable after new version of fastcomp has been tagged')
     for args in [[], ['-s', 'WASM=0']]:
       self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING', '-o', 'a.html'] + args)
-      output = open('a.js').read()
+      output = read_file('a.js')
       self.assertContained('_main', output) # Smoke test that we actually compiled
       self.assertNotContained('invoke_', output)
 
@@ -8503,23 +8499,23 @@ int main () {
     self.skipTest('Skipping other.test_no_excessive_invoke_functions_are_generated_when_exceptions_are_enabled: Enable after new version of fastcomp has been tagged')
     for args in [[], ['-s', 'WASM=0']]:
       self.run_process([EMXX, test_file('invoke_i.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'a.html'] + args)
-      output = open('a.js').read()
+      output = read_file('a.js')
       self.assertContained('invoke_i', output)
       self.assertNotContained('invoke_ii', output)
       self.assertNotContained('invoke_v', output)
 
   def test_emscripten_metadata(self):
     self.run_process([EMCC, test_file('hello_world.c')])
-    self.assertNotIn(b'emscripten_metadata', open('a.out.wasm', 'rb').read())
+    self.assertNotIn(b'emscripten_metadata', read_binary('a.out.wasm'))
 
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-s', 'EMIT_EMSCRIPTEN_METADATA'])
-    self.assertIn(b'emscripten_metadata', open('a.out.wasm', 'rb').read())
+    self.assertIn(b'emscripten_metadata', read_binary('a.out.wasm'))
 
     # Test is standalone mode too.
     self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.wasm',
                       '-s', 'EMIT_EMSCRIPTEN_METADATA'])
-    self.assertIn(b'emscripten_metadata', open('out.wasm', 'rb').read())
+    self.assertIn(b'emscripten_metadata', read_binary('out.wasm'))
 
     # make sure wasm executes correctly
     ret = self.run_process(config.NODE_JS + ['a.out.js'], stdout=PIPE).stdout
@@ -8538,8 +8534,7 @@ int main () {
   def test_emscripten_license(self, expect_license, args):
     # fastcomp does not support the new license flag
     self.run_process([EMCC, test_file('hello_world.c')] + args)
-    with open('a.out.js') as f:
-      js = f.read()
+    js = read_file('a.out.js')
     licenses_found = len(re.findall('Copyright [0-9]* The Emscripten Authors', js))
     if expect_license:
       self.assertNotEqual(licenses_found, 0, 'Unable to find license block in output file!')
@@ -8558,7 +8553,7 @@ int main () {
       args = [EMCC, test_file('long_function_name_in_export.c'), '-o', 'a.html', '-s', 'ENVIRONMENT=web', '-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-Werror'] + extra_args
       self.run_process(args)
 
-      output = open('a.js', 'r').read()
+      output = read_file('a.js')
       try_delete('a.js')
       self.assertNotContained('asm["_thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunction"]', output)
 
@@ -8622,9 +8617,9 @@ int main () {
     random_printf_sources = [test_file('hello_random_printf.c'),
                              '-s', 'USES_DYNAMIC_ALLOC=0',
                              '-s', 'SINGLE_FILE']
-    hello_webgl_sources = [test_file('minimal_webgl', 'main.cpp'),
-                           test_file('minimal_webgl', 'webgl.c'),
-                           '--js-library', test_file('minimal_webgl', 'library_js.js'),
+    hello_webgl_sources = [test_file('minimal_webgl/main.cpp'),
+                           test_file('minimal_webgl/webgl.c'),
+                           '--js-library', test_file('minimal_webgl/library_js.js'),
                            '-s', 'USES_DYNAMIC_ALLOC', '-lwebgl.js',
                            '-s', 'MODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-s', 'MAX_WEBGL_VERSION=2']
@@ -8659,7 +8654,7 @@ int main () {
 
     expected_results = {}
     try:
-      expected_results = json.loads(open(results_file, 'r').read())
+      expected_results = json.loads(read_file(results_file))
     except Exception:
       if not EMTEST_REBASELINE:
         raise
@@ -8671,7 +8666,7 @@ int main () {
     def get_file_gzipped_size(f):
       f_gz = f + '.gz'
       with gzip.open(f_gz, 'wb') as gzf:
-        gzf.write(open(f, 'rb').read())
+        gzf.write(read_binary(f))
       size = os.path.getsize(f_gz)
       try_delete(f_gz)
       return size
@@ -8692,7 +8687,7 @@ int main () {
       # Emscripten config file. If you have this line fail, make sure 'node' is
       # visible in PATH.
       self.run_process(terser + ['-b', 'beautify=true', 'a.js', '-o', 'pretty.js'])
-      self.assertFileContents(js_out, open('pretty.js').read())
+      self.assertFileContents(js_out, read_file('pretty.js'))
 
     obtained_results = {}
     total_output_size = 0
@@ -8711,7 +8706,7 @@ int main () {
 
       if size != expected_size and (f.endswith('.js') or f.endswith('.html')):
         print('Contents of ' + f + ': ')
-        print(open(f, 'r').read())
+        print(read_file(f))
 
       print('size of ' + f + ' == ' + str(size) + ', expected ' + str(expected_size) + ', delta=' + str(size - expected_size) + print_percent(size, expected_size))
       print('size of ' + f_gz + ' == ' + str(size_gz) + ', expected ' + str(expected_size_gz) + ', delta=' + str(size_gz - expected_size_gz) + print_percent(size_gz, expected_size_gz))
@@ -8762,7 +8757,7 @@ int main () {
 
   # Tests the library_c_preprocessor.js functionality.
   def test_c_preprocessor(self):
-    self.run_process([EMXX, test_file('test_c_preprocessor.c'), '--js-library', path_from_root('src', 'library_c_preprocessor.js'), '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$remove_cpp_comments_in_shaders,$preprocess_c_code'])
+    self.run_process([EMXX, test_file('test_c_preprocessor.c'), '--js-library', path_from_root('src/library_c_preprocessor.js'), '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$remove_cpp_comments_in_shaders,$preprocess_c_code'])
     normal = self.run_js('a.out.js')
     print(str(normal))
 
@@ -8775,10 +8770,10 @@ int main () {
     self.run_process([EMCC, '-s', 'PRECISE_I64_MATH=2', test_file('hello_world.c')])
 
   def test_jsmath(self):
-    self.run_process([EMXX, test_file('other', 'jsmath.cpp'), '-Os', '-o', 'normal.js', '--closure', '0'])
+    self.run_process([EMXX, test_file('other/jsmath.cpp'), '-Os', '-o', 'normal.js', '--closure', '0'])
     normal_js_size = os.path.getsize('normal.js')
     normal_wasm_size = os.path.getsize('normal.wasm')
-    self.run_process([EMXX, test_file('other', 'jsmath.cpp'), '-Os', '-o', 'jsmath.js', '-s', 'JS_MATH', '--closure', '0'])
+    self.run_process([EMXX, test_file('other/jsmath.cpp'), '-Os', '-o', 'jsmath.js', '-s', 'JS_MATH', '--closure', '0'])
     jsmath_js_size = os.path.getsize('jsmath.js')
     jsmath_wasm_size = os.path.getsize('jsmath.wasm')
     # js math increases JS size, but decreases wasm, and wins overall
@@ -8905,7 +8900,7 @@ int main () {
     self.set_setting('SAFE_HEAP')
     self.set_setting('SAFE_HEAP_LOG')
     self.set_setting('EXIT_RUNTIME')
-    src = open(test_file('hello_world.c')).read()
+    src = read_file(test_file('hello_world.c'))
     self.do_run(src, 'SAFE_HEAP load: ')
 
     self.set_setting('WASM', 0)
@@ -8978,7 +8973,7 @@ int main(void) {
     'cpp': ['cpp'],
   })
   def test_lsan_leaks(self, ext):
-    self.do_smart_test(test_file('other', 'test_lsan_leaks.' + ext),
+    self.do_smart_test(test_file('other/test_lsan_leaks.' + ext),
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH'],
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
@@ -9003,7 +8998,7 @@ int main(void) {
     ]],
   })
   def test_lsan_stack_trace(self, ext, regexes):
-    self.do_smart_test(test_file('other', 'test_lsan_leaks.' + ext),
+    self.do_smart_test(test_file('other/test_lsan_leaks.' + ext),
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH', '-gsource-map'],
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
@@ -9016,12 +9011,12 @@ int main(void) {
     'cpp': ['cpp'],
   })
   def test_lsan_no_leak(self, ext):
-    self.do_smart_test(test_file('other', 'test_lsan_no_leak.' + ext),
+    self.do_smart_test(test_file('other/test_lsan_no_leak.' + ext),
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'ASSERTIONS=0'],
                        regexes=[r'^\s*$'])
 
   def test_lsan_no_stack_trace(self):
-    self.do_smart_test(test_file('other', 'test_lsan_leaks.c'),
+    self.do_smart_test(test_file('other/test_lsan_leaks.c'),
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH', '-DDISABLE_CONTEXT'],
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
@@ -9029,14 +9024,14 @@ int main(void) {
     ])
 
   def test_asan_null_deref(self):
-    self.do_smart_test(test_file('other', 'test_asan_null_deref.c'),
+    self.do_smart_test(test_file('other/test_asan_null_deref.c'),
                        emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=314572800'],
                        assert_returncode=NON_ZERO, literals=[
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
   def test_asan_no_stack_trace(self):
-    self.do_smart_test(test_file('other', 'test_lsan_leaks.c'),
+    self.do_smart_test(test_file('other/test_lsan_leaks.c'),
                        emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1',  '-sINITIAL_MEMORY=314572800', '-DDISABLE_CONTEXT', '-s', 'EXIT_RUNTIME'],
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
@@ -9044,13 +9039,13 @@ int main(void) {
     ])
 
   def test_asan_pthread_stubs(self):
-    self.do_smart_test(test_file('other', 'test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=314572800'])
+    self.do_smart_test(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=314572800'])
 
   @node_pthreads
   def test_proxy_to_pthread_stack(self):
     # Check that the proxied main gets run with TOTAL_STACK setting and not
     # DEFAULT_PTHREAD_STACK_SIZE.
-    self.do_smart_test(test_file('other', 'test_proxy_to_pthread_stack.c'),
+    self.do_smart_test(test_file('other/test_proxy_to_pthread_stack.c'),
                        ['success'],
                        emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'DEFAULT_PTHREAD_STACK_SIZE=64kb', '-s', 'TOTAL_STACK=128kb'])
 
@@ -9059,7 +9054,7 @@ int main(void) {
     'sync': ['-s', 'WASM_ASYNC_COMPILATION=0'],
   })
   def test_offset_converter(self, *args):
-    self.do_smart_test(test_file('other', 'test_offset_converter.c'),
+    self.do_smart_test(test_file('other/test_offset_converter.c'),
                        emcc_args=['-s', 'USE_OFFSET_CONVERTER', '-gsource-map'] + list(args), literals=['ok'])
 
   @no_windows('ptys and select are not available on windows')
@@ -9076,8 +9071,7 @@ int main(void) {
   })
   @no_windows('ptys and select are not available on windows')
   def test_pty_no_color(self, flag):
-    with open('src.c', 'w') as f:
-      f.write('int main() {')
+    create_file('src.c', 'int main() {')
 
     returncode, output = self.run_on_pty([EMCC, flag, 'src.c'])
     self.assertNotEqual(returncode, 0)
@@ -9121,9 +9115,8 @@ int main(void) {
       self.run_process([EMCC, test_file('hello_world.c'), '-O3', '--closure=1'] + args)
       for engine in config.JS_ENGINES:
         self.assertContained('hello, world!', self.run_js('a.out.js', engine=engine))
-      with open('a.out.js') as f:
-        # ignore \r which on windows can increase the size
-        return len(f.read().replace('\r', ''))
+      # ignore \r which on windows can increase the size
+      return len(read_file('a.out.js').replace('\r', ''))
     normal = test([])
     changed = test(['-s', 'INCOMING_MODULE_JS_API=[]'])
     print('sizes', normal, changed)
@@ -9189,7 +9182,7 @@ int main(void) {
 
   def test_exception_settings(self):
     for catching, throwing, opts in itertools.product([0, 1], repeat=3):
-      cmd = [EMXX, test_file('other', 'exceptions_modes_symbols_defined.cpp'), '-s', 'DISABLE_EXCEPTION_THROWING=%d' % (1 - throwing), '-s', 'DISABLE_EXCEPTION_CATCHING=%d' % (1 - catching), '-O%d' % opts]
+      cmd = [EMXX, test_file('other/exceptions_modes_symbols_defined.cpp'), '-s', 'DISABLE_EXCEPTION_THROWING=%d' % (1 - throwing), '-s', 'DISABLE_EXCEPTION_CATCHING=%d' % (1 - catching), '-O%d' % opts]
       print(cmd)
       if not throwing and not catching:
         self.assertContained('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but such support is required', self.expect_fail(cmd))
@@ -9201,11 +9194,11 @@ int main(void) {
   def test_fignore_exceptions(self):
     # the new clang flag -fignore-exceptions basically is the same as -s DISABLE_EXCEPTION_CATCHING=1,
     # that is, it allows throwing, but emits no support code for catching.
-    self.run_process([EMXX, test_file('other', 'exceptions_modes_symbols_defined.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+    self.run_process([EMXX, test_file('other/exceptions_modes_symbols_defined.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     enable_size = os.path.getsize('a.out.wasm')
-    self.run_process([EMXX, test_file('other', 'exceptions_modes_symbols_defined.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING'])
+    self.run_process([EMXX, test_file('other/exceptions_modes_symbols_defined.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING'])
     disable_size = os.path.getsize('a.out.wasm')
-    self.run_process([EMXX, test_file('other', 'exceptions_modes_symbols_defined.cpp'), '-s', '-fignore-exceptions'])
+    self.run_process([EMXX, test_file('other/exceptions_modes_symbols_defined.cpp'), '-s', '-fignore-exceptions'])
     ignore_size = os.path.getsize('a.out.wasm')
     self.assertGreater(enable_size, disable_size)
     self.assertEqual(disable_size, ignore_size)
@@ -9233,13 +9226,10 @@ int main(void) {
       }
     ''')
     self.run_process([EMXX, 'src.cpp', '-c', '-o', 'src.o'] + compile_flags)
-    if compile_flags and not link_flags:
-      out = self.expect_fail([EMXX, 'src.o'] + link_flags)
-      self.assertContained('error: DISABLE_EXCEPTION_CATCHING was set, which means no C++ exception catching support code is linked in, but such support is required by symbol `__cxa_begin_catch`.', out)
-      return
-
     self.run_process([EMXX, 'src.o'] + link_flags)
     result = self.run_js('a.out.js', assert_returncode=0 if expect_caught else NON_ZERO)
+    if not expect_caught:
+      self.assertContainedIf('exception catching is disabled, this exception cannot be caught', result, expect_caught)
     self.assertContainedIf('CAUGHT', result, expect_caught)
 
   def test_exceptions_with_closure_and_without_catching(self):
@@ -9461,8 +9451,7 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
   def test_non_wasm_without_wasm_in_vm(self):
     # Test that our non-wasm output does not depend on wasm support in the vm.
     self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'WASM=0'])
-    with open('a.out.js') as f:
-      js = f.read()
+    js = read_file('a.out.js')
     with open('a.out.js', 'w') as f:
       f.write('var WebAssembly = null;\n' + js)
     for engine in config.JS_ENGINES:
@@ -9476,7 +9465,7 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
   def test_backwards_deps_in_archive(self):
     # Test that JS dependencies from deps_info.json work for code linked via
     # static archives using -l<name>
-    self.run_process([EMCC, '-c', test_file('sockets', 'test_gethostbyname.c'), '-o', 'a.o'])
+    self.run_process([EMCC, '-c', test_file('sockets/test_gethostbyname.c'), '-o', 'a.o'])
     self.run_process([LLVM_AR, 'cr', 'liba.a', 'a.o'])
     create_file('empty.c', 'static int foo = 0;')
     self.run_process([EMCC, 'empty.c', '-la', '-L.'])
@@ -9559,22 +9548,19 @@ int main() {
 
   def test_stdin_compile_only(self):
     # Should fail without -x lang specifier
-    with open(test_file('hello_world.cpp')) as f:
-      err = self.expect_fail([EMCC, '-c', '-'], input=f.read())
+    src = read_file(test_file('hello_world.cpp'))
+    err = self.expect_fail([EMCC, '-c', '-'], input=src)
     self.assertContained('error: -E or -x required when input is from standard input', err)
 
-    with open(test_file('hello_world.cpp')) as f:
-      self.run_process([EMCC, '-c', '-o', 'out.o', '-x', 'c++', '-'], input=f.read())
+    self.run_process([EMCC, '-c', '-o', 'out.o', '-x', 'c++', '-'], input=src)
     self.assertExists('out.o')
 
     # Same again but without an explicit output filename
-    with open(test_file('hello_world.cpp')) as f:
-      self.run_process([EMCC, '-c', '-x', 'c++', '-'], input=f.read())
+    self.run_process([EMCC, '-c', '-x', 'c++', '-'], input=src)
     self.assertExists('-.o')
 
   def test_stdin_compile_and_link(self):
-    with open(test_file('hello_world.cpp')) as f:
-      self.run_process([EMCC, '-x', 'c++', '-'], input=f.read())
+    self.run_process([EMCC, '-x', 'c++', '-'], input=read_file(test_file('hello_world.cpp')))
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_stdout_link(self):
@@ -9632,8 +9618,8 @@ int main() {
   def test_drop_support_for_browser(self):
     # Test that -1 means "not supported"
     self.run_process([EMCC, test_file('test_html5_core.c'), '-s', 'MIN_IE_VERSION=-1'])
-    self.assertContained('allowsDeferredCalls: true', open('a.out.js').read())
-    self.assertNotContained('allowsDeferredCalls: JSEvents.isInternetExplorer()', open('a.out.js').read())
+    self.assertContained('allowsDeferredCalls: true', read_file('a.out.js'))
+    self.assertNotContained('allowsDeferredCalls: JSEvents.isInternetExplorer()', read_file('a.out.js'))
 
   def test_errno_type(self):
     create_file('errno_type.c', '''
@@ -9649,9 +9635,8 @@ int main() {
     self.run_process([EMCC, 'errno_type.c'])
 
   def test_standalone_syscalls(self):
-    self.run_process([EMXX, test_file('other', 'test_standalone_syscalls.cpp'), '-o', 'test.wasm'])
-    with open(test_file('other', 'test_standalone_syscalls.out')) as f:
-      expected = f.read()
+    self.run_process([EMXX, test_file('other/test_standalone_syscalls.cpp'), '-o', 'test.wasm'])
+    expected = read_file(test_file('other/test_standalone_syscalls.out'))
     for engine in config.WASM_ENGINES:
       self.assertContained(expected, self.run_js('test.wasm', engine))
 
@@ -9663,25 +9648,24 @@ int main() {
 
     # first compile the library with emcc, getting a .c and .h
     self.run_process([EMCC,
-                      test_file('other', 'wasm2c', 'unsafe-library.c'),
+                      test_file('other/wasm2c/unsafe-library.c'),
                       '-O3', '-o', 'lib.wasm', '-s', 'WASM2C', '--no-entry'])
     # compile the main program natively normally, together with the unsafe
     # library
     self.run_process([CLANG_CC,
-                      test_file('other', 'wasm2c', 'my-code.c'),
+                      test_file('other/wasm2c/my-code.c'),
                       'lib.wasm.c', '-O3', '-o', 'program.exe'] +
                      clang_native.get_clang_native_args(),
                      env=clang_native.get_clang_native_env())
     output = self.run_process([os.path.abspath('program.exe')], stdout=PIPE).stdout
-    with open(test_file('other', 'wasm2c', 'output.txt')) as f:
-      self.assertEqual(output, f.read())
+    self.assertEqual(output, read_file(test_file('other/wasm2c/output.txt')))
 
   @requires_native_clang
   def test_wasm2c_multi_lib(self):
     # compile two libraries to object files
     for lib in ['a', 'b']:
       self.run_process([EMCC,
-                        test_file('other', 'wasm2c', f'unsafe-library-{lib}.c'),
+                        test_file('other/wasm2c', f'unsafe-library-{lib}.c'),
                         '-O3', '-o', f'lib{lib}.wasm', '-s', 'WASM2C', '--no-entry'])
       # build with a different WASM_RT_MODULE_PREFIX for each library, so that
       # they do not have colliding symbols
@@ -9692,14 +9676,13 @@ int main() {
 
     # compile the main program with the wasmboxed libraries
     self.run_process([CLANG_CC,
-                      test_file('other', 'wasm2c', 'my-code-multi.c'),
+                      test_file('other/wasm2c/my-code-multi.c'),
                       'liba.wasm.o', 'libb.wasm.o',
                       '-O3', '-o', 'program.exe'] +
                      clang_native.get_clang_native_args(),
                      env=clang_native.get_clang_native_env())
     output = self.run_process([os.path.abspath('program.exe')], stdout=PIPE).stdout
-    with open(test_file('other', 'wasm2c', 'output-multi.txt')) as f:
-      self.assertEqual(output, f.read())
+    self.assertEqual(output, read_file(test_file('other/wasm2c/output-multi.txt')))
 
   @parameterized({
     'wasm2js': (['-s', 'WASM=0'], ''),
@@ -9711,8 +9694,7 @@ int main() {
       # happens when we kill the global Promise function.
       create_file('extern-post.js', extern_post_js)
       self.run_process([EMXX, test_file('hello_world.cpp')] + constant_args + args + ['--extern-post-js', 'extern-post.js'])
-      with open('a.out.js') as f:
-        js = f.read()
+      js = read_file('a.out.js')
       with open('a.out.js', 'w') as f:
         f.write('Promise = undefined;\n' + js)
       return self.run_js('a.out.js', assert_returncode=NON_ZERO if expect_fail else 0)
@@ -9774,15 +9756,15 @@ int main() {
 
   def test_nostdlib(self):
     # First ensure all the system libs are built
-    self.run_process([EMCC, test_file('unistd', 'close.c')])
+    self.run_process([EMCC, test_file('unistd/close.c')])
 
-    self.assertContained('undefined symbol:', self.expect_fail([EMCC, test_file('unistd', 'close.c'), '-nostdlib']))
-    self.assertContained('undefined symbol:', self.expect_fail([EMCC, test_file('unistd', 'close.c'), '-nodefaultlibs']))
+    self.assertContained('undefined symbol:', self.expect_fail([EMCC, test_file('unistd/close.c'), '-nostdlib']))
+    self.assertContained('undefined symbol:', self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
 
     # Build again but with explit system libraries
     libs = ['-lc', '-lcompiler_rt', '-lc_rt_wasm']
-    self.run_process([EMCC, test_file('unistd', 'close.c'), '-nostdlib'] + libs)
-    self.run_process([EMCC, test_file('unistd', 'close.c'), '-nodefaultlibs'] + libs)
+    self.run_process([EMCC, test_file('unistd/close.c'), '-nostdlib'] + libs)
+    self.run_process([EMCC, test_file('unistd/close.c'), '-nodefaultlibs'] + libs)
 
   def test_argument_match(self):
     # Verify that emcc arguments match precisely.  We had a bug where only the prefix
@@ -9828,8 +9810,8 @@ int main() {
   })
   def test_support_errno(self, args):
     self.emcc_args += args
-    src = test_file('core', 'test_support_errno.c')
-    output = test_file('core', 'test_support_errno.out')
+    src = test_file('core/test_support_errno.c')
+    output = test_file('core/test_support_errno.out')
 
     self.do_run_from_file(src, output)
     size_default = os.path.getsize('test_support_errno.js')
@@ -9837,18 +9819,18 @@ int main() {
     # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
     # to be set after the failing syscall.
     self.emcc_args += ['-s', 'SUPPORT_ERRNO=0']
-    output = test_file('core', 'test_support_errno_disabled.out')
+    output = test_file('core/test_support_errno_disabled.out')
     self.do_run_from_file(src, output)
 
     # Verify the JS output was smaller
     self.assertLess(os.path.getsize('test_support_errno.js'), size_default)
 
   def test_assembly(self):
-    self.run_process([EMCC, '-c', test_file('other', 'test_asm.s'), '-o', 'foo.o'])
+    self.run_process([EMCC, '-c', test_file('other/test_asm.s'), '-o', 'foo.o'])
     self.do_other_test('test_asm.c', libraries=['foo.o'])
 
   def test_assembly_preprocessed(self):
-    self.run_process([EMCC, '-c', test_file('other', 'test_asm_cpp.S'), '-o', 'foo.o'])
+    self.run_process([EMCC, '-c', test_file('other/test_asm_cpp.S'), '-o', 'foo.o'])
     self.do_other_test('test_asm.c', libraries=['foo.o'])
 
   @parameterized({
@@ -9965,7 +9947,7 @@ int main () {
     # Tests that explicitly exported `_main` does not fail, even though `_start` is the entry
     # point.
     # We should consider making this a warning since the `_main` export is redundant.
-    self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=_main', '-sSTANDALONE_WASM', test_file('core', 'test_hello_world.c')])
+    self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=_main', '-sSTANDALONE_WASM', test_file('core/test_hello_world.c')])
 
   def test_missing_malloc_export(self):
     # we used to include malloc by default. show a clear error in builds with
@@ -10011,11 +9993,11 @@ int main () {
     self.do_runf('unincluded_malloc.c', 'malloc was not included, but is needed in allocateUTF8. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.')
 
   def test_getrusage(self):
-    self.do_runf(test_file('other', 'test_getrusage.c'))
+    self.do_runf(test_file('other/test_getrusage.c'))
 
   @with_env_modify({'EMMAKEN_COMPILER': shared.CLANG_CC})
   def test_emmaken_compiler(self):
-    stderr = self.run_process([EMCC, '-c', test_file('core', 'test_hello_world.c')], stderr=PIPE).stderr
+    stderr = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c')], stderr=PIPE).stderr
     self.assertContained('warning: `EMMAKEN_COMPILER` is deprecated', stderr)
 
   @no_windows('relies on a shell script')
@@ -10027,11 +10009,11 @@ exec "$@"
     ''')
     make_executable('wrapper.sh')
     with env_modify({'EM_COMPILER_WRAPPER': './wrapper.sh'}):
-      stdout = self.run_process([EMCC, '-c', test_file('core', 'test_hello_world.c')], stdout=PIPE).stdout
+      stdout = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c')], stdout=PIPE).stdout
     self.assertContained('wrapping compiler call: ', stdout)
     self.assertExists('test_hello_world.o')
 
-    stdout = self.run_process([EMCC, '-c', test_file('core', 'test_hello_world.c'), '--compiler-wrapper=./wrapper.sh'], stdout=PIPE).stdout
+    stdout = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c'), '--compiler-wrapper=./wrapper.sh'], stdout=PIPE).stdout
     self.assertContained('wrapping compiler call: ', stdout)
     self.assertExists('test_hello_world.o')
 
@@ -10064,13 +10046,13 @@ exec "$@"
     self.do_runf(test_file('hello_world.c'), '[library call:_fd_write: 0x1')
 
   def test_SUPPORT_LONGJMP_executable(self):
-    stderr = self.run_process([EMCC, test_file('core', 'test_longjmp.c'), '-s', 'SUPPORT_LONGJMP=0'], stderr=PIPE, check=False).stderr
+    stderr = self.run_process([EMCC, test_file('core/test_longjmp.c'), '-s', 'SUPPORT_LONGJMP=0'], stderr=PIPE, check=False).stderr
     self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)',
                          stderr)
 
   def test_SUPPORT_LONGJMP_object(self):
     # compile the object *with* support, but link without
-    self.run_process([EMCC, test_file('core', 'test_longjmp.c'), '-c', '-s', 'SUPPORT_LONGJMP', '-o', 'a.o'])
+    self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-s', 'SUPPORT_LONGJMP', '-o', 'a.o'])
     stderr = self.run_process([EMCC, 'a.o', '-s', 'SUPPORT_LONGJMP=0'], stderr=PIPE, check=False).stderr
     self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)',
                          stderr)
@@ -10136,12 +10118,12 @@ exec "$@"
 
     self.run_process([EMCC, test_file('hello_world.c'), '--oformat=html', '-o', 'out.foo'])
     self.assertFalse(building.is_wasm('out.foo'))
-    self.assertContained('<html ', open('out.foo').read())
+    self.assertContained('<html ', read_file('out.foo'))
     self.clear()
 
     self.run_process([EMCC, test_file('hello_world.c'), '--oformat=js', '-o', 'out.foo'])
     self.assertFalse(building.is_wasm('out.foo'))
-    self.assertContained('new ExitStatus', open('out.foo').read())
+    self.assertContained('new ExitStatus', read_file('out.foo'))
     self.clear()
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--oformat=foo'])
@@ -10210,7 +10192,7 @@ exec "$@"
   def test_split_module(self):
     self.set_setting('SPLIT_MODULE')
     self.emcc_args += ['-g', '-Wno-experimental']
-    self.emcc_args += ['--post-js', test_file('other', 'test_split_module.post.js')]
+    self.emcc_args += ['--post-js', test_file('other/test_split_module.post.js')]
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
     self.do_other_test('test_split_module.c')
     self.assertExists('test_split_module.wasm')
@@ -10230,8 +10212,8 @@ exec "$@"
   def test_split_main_module(self):
     initialTableSize = 17
 
-    side_src = test_file('other', 'lib_hello.c')
-    post_js = test_file('other', 'test_split_module.post.js')
+    side_src = test_file('other/lib_hello.c')
+    post_js = test_file('other/test_split_module.post.js')
 
     self.run_process([EMCC, side_src, '-sSIDE_MODULE=1', '-g', '-o', 'libhello.wasm'])
 
@@ -10273,7 +10255,7 @@ exec "$@"
     # EMTEST_REBASELINE and it prrevents regressions or unintended changes
     # to the output json.
     self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
-    self.assertFileContents(test_file('reference_struct_info.json'), open('out.json').read())
+    self.assertFileContents(test_file('reference_struct_info.json'), read_file('out.json'))
 
   def test_gen_struct_info_env(self):
     # gen_struct_info.py builds C code in a very particlar way.  We don't want EMMAKEN_CFLAGS to
@@ -10364,7 +10346,7 @@ exec "$@"
         continue
       print(shared.shlex_join(cmd))
       self.run_process(cmd)
-      js = open('a.out.js').read()
+      js = read_file('a.out.js')
       for dep in deps:
         direct = '_' + dep + '('
         via_module = '"_%s"](' % dep
@@ -10458,7 +10440,7 @@ exec "$@"
     self.run_js('a.out.js')
 
     # negative case: foo is undefined in test_check_undefined.c
-    err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other', 'test_check_undefined.c')])
+    err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other/test_check_undefined.c')])
     self.assertContained('undefined symbol: foo', err)
 
   def test_EMMAKEN_NO_SDK(self):

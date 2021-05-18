@@ -360,6 +360,7 @@ def apply_settings(changes):
     if key in MEM_SIZE_SETTINGS:
       value = str(expand_byte_size_suffixes(value))
 
+    filename = None
     if value and value[0] == '@':
       filename = value[1:]
       if not os.path.exists(filename):
@@ -371,10 +372,14 @@ def apply_settings(changes):
     existing = getattr(settings, user_key, None)
     expect_list = type(existing) == list
 
-    try:
-      value = parse_value(value, expect_list)
-    except Exception as e:
-      exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
+    if filename and expect_list and value.strip()[0] != '[':
+      # Prefer simpler one-line-per value parser
+      value = parse_symbol_list_file(value)
+    else:
+      try:
+        value = parse_value(value, expect_list)
+      except Exception as e:
+        exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
 
     # Do some basic type checking by comparing to the existing settings.
     # Sadly we can't do this generically in the SettingsManager since there are settings
@@ -2185,9 +2190,10 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if not settings.DISABLE_EXCEPTION_CATCHING:
     settings.EXPORTED_FUNCTIONS += [
-      # If not for LTO builds, we could handle these by adding deps_info.py
-      # entries for __cxa_find_matching_catch_* functions.  However, under
-      # LTO these symbols don't exist prior the linking.
+      # For normal builds the entries in deps_info.py are enough to include
+      # these symbols whenever __cxa_find_matching_catch_* functions are
+      # found.  However, under LTO these symbols don't exist prior to linking
+      # so we include then unconditionally when exceptions are enabled.
       '___cxa_is_pointer_type',
       '___cxa_can_catch',
 
@@ -2420,12 +2426,12 @@ def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, new
     # Ports are always linked into the main module, never the size module.
     extra_files_to_link += system_libs.get_ports_libs(settings)
   if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-    link_as_cxx = run_via_emxx
+    settings.LINK_AS_CXX = run_via_emxx
     # Traditionally we always link as C++.  For compatibility we continue to do that,
     # unless running in strict mode.
     if not settings.STRICT and '-nostdlib++' not in newargs:
-      link_as_cxx = True
-    extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, link_as_cxx, forced=state.forced_stdlibs)
+      settings.LINK_AS_CXX = True
+    extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, forced=state.forced_stdlibs)
   linker_arguments.extend(extra_files_to_link)
 
 
@@ -3570,6 +3576,15 @@ def is_valid_abspath(options, path_name):
     if in_directory(valid_abspath, path_name):
       return True
   return False
+
+
+def parse_symbol_list_file(contents):
+  """Parse contents of one-symbol-per-line response file.  This format can by used
+  with, for example, -sEXPORTED_FUNCTIONS=@filename and avoids the need for any
+  kind of quoting or escaping.
+  """
+  values = contents.splitlines()
+  return [v.strip() for v in values]
 
 
 def parse_value(text, expect_list):

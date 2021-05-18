@@ -20,10 +20,26 @@ See docs/process.md for more on how version tagging works.
 
 2.0.21
 ------
+- Options such as EXPORTED_FUNCTIONS that can take a response file containing
+  list of symbols can now use a simple one-symbol-per-line format.  This new
+  format is much simpler and doesn't require commas between symbols, opening
+  or closing braces, or any kind of escaping for special characters.
 - The WebAssembly linker (`wasm-ld`) now performes string tail merging on any
   static string data in your program.   This has long been part of the native
   ELF linker and should not be observable in well-behaved programs.  This
   behavior can be disabled by passing `-Wl,-O0`.
+- The functions `fork`, `vfork`, `posix_spawn` and `system` now fail with
+  the errno value `ENOSYS` (52) rather than `EAGAIN` (6).  This is more
+  correct, since they will never work and attempting to retry won't help.
+- `EXPORT_ES6` will now emit static URLs for main WebAssembly file as well
+  as for helper Worker used by `-pthread` that can be statically detected
+  by modern bundlers at build time. In particular, you no longer have to set
+  `Module.locateFile` hook and `Module.mainScriptUrlOrBlob` settings -
+  both bundlers and browsers should pick up the required files automatically.
+  Note: this doesn't yet cover other use-cases that emit external files,
+  such as dynamic linking, `--proxy-to-worker`, external memory etc. (#14135)
+- `EXPORT_ES6` can now be used in combination with `-o [filename].html`. (#14165)
+- `EXPORT_ES6` no longer requires setting custom `EXPORT_NAME` too. (#14139)
 
 2.0.20: 05/04/2021
 ------------------
