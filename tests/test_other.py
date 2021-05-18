@@ -10466,3 +10466,10 @@ exec "$@"
     ''')
     self.run_process([EMCC, 'get.c', '-s', 'ALLOW_MEMORY_GROWTH', arg])
     self.assertContained(f'max: |{expected}|', self.run_js('a.out.js'))
+
+  def test_auto_ptr_cxx17(self):
+    # Test that its still possible to use auto_ptr, even in C++17
+    self.do_other_test('test_auto_ptr_cxx17.cpp', emcc_args=[
+      '-std=c++17',
+      '-D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR',
+      '-Wno-deprecated-declarations'])
