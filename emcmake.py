@@ -36,7 +36,7 @@ variables so that emcc etc. are used. Typical usage:
     args.append('-DCMAKE_TOOLCHAIN_FILE=' + utils.path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
 
   if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
-    node_js = config.NODE_JS[0].replace('"', '\"')
+    node_js = config.NODE_JS[0]
     args.append(f'-DCMAKE_CROSSCOMPILING_EMULATOR={node_js}')
 
   # On Windows specify MinGW Makefiles or ninja if we have them and no other
