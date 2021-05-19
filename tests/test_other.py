@@ -7392,7 +7392,7 @@ int main() {
     os.mkdir('subdir')
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'subdir/libside1.so'])
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'subdir/libside2.so', '-L', 'subdir', '-lside1'])
-    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'MAIN_MODULE', '-o', 'subdir/main.js', '-L', 'subdir', '-lside2'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'MAIN_MODULE', '-o', 'main.js', '-L', 'subdir', '-lside2'])
 
   @is_slow_test
   def test_lto(self):
