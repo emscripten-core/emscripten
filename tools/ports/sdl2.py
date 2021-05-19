@@ -38,10 +38,8 @@ def get(ports, settings, shared):
     dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_dropevents.c events/SDL_events.c
     events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c
     events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c
-    joystick/SDL_gamecontroller.c joystick/SDL_joystick.c libm/e_atan2.c libm/e_exp.c libm/e_log.c libm/e_pow.c
-    libm/e_rem_pio2.c libm/e_sqrt.c libm/k_cos.c libm/k_rem_pio2.c libm/k_sin.c libm/k_tan.c
-    libm/s_atan.c libm/s_copysign.c libm/s_cos.c libm/s_fabs.c libm/s_floor.c libm/s_scalbn.c
-    libm/s_sin.c libm/s_tan.c power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c
+    joystick/SDL_gamecontroller.c joystick/SDL_joystick.c
+    power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c
     render/SDL_yuv_sw.c render/direct3d/SDL_render_d3d.c render/direct3d11/SDL_render_d3d11.c
     render/opengl/SDL_render_gl.c render/opengl/SDL_shaders_gl.c render/opengles/SDL_render_gles.c
     render/opengles2/SDL_render_gles2.c render/opengles2/SDL_shaders_gles2.c
@@ -248,9 +246,16 @@ sdl_config_h = r'''/* include/SDL_config.h.  Generated from SDL_config.h.in by c
 #define HAVE_COPYSIGN 1
 #define HAVE_COS 1
 #define HAVE_COSF 1
+#define HAVE_EXP
+#define HAVE_EXPF
 #define HAVE_FABS 1
 #define HAVE_FLOOR 1
+#define HAVE_FMOD
+#define HAVE_FMODF
 #define HAVE_LOG 1
+#define HAVE_LOGF 1
+#define HAVE_LOG10 1
+#define HAVE_LOG10F 1
 #define HAVE_POW 1
 #define HAVE_SCALBN 1
 #define HAVE_SIN 1

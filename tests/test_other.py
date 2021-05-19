@@ -1611,6 +1611,11 @@ int f() {
   def test_sdl2_mixer_wav(self):
     self.emcc(test_file('sdl2_mixer_wav.c'), ['-s', 'USE_SDL_MIXER=2'], output_filename='a.out.js')
 
+  def test_sdl2_linkable(self):
+    # Ensure that SDL2 can be built with LINKABLE.  This implies there are no undefined
+    # symbols in the library (because LINKABLE includes the entire library).
+    self.emcc(test_file('sdl2_misc.c'), ['-sLINKABLE', '-sUSE_SDL=2'], output_filename='a.out.js')
+
   def test_libpng(self):
     shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
     self.emcc(test_file('third_party/libpng/pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_LIBPNG'], output_filename='a.out.js')
