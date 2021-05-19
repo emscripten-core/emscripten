@@ -1608,8 +1608,8 @@ class Ports:
   """
 
   @staticmethod
-  def get_include_dir():
-    dirname = shared.Cache.get_include_dir()
+  def get_include_dir(*parts):
+    dirname = shared.Cache.get_include_dir(*parts)
     shared.safe_ensure_dirs(dirname)
     return dirname
 
