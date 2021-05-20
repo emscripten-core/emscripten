@@ -20,9 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 2.0.22
 -----
+- wasm-ld will now perform string tail merging in debug string sections as well
+  as regular data sections.   This behaviour can be be disabled with `-Wl,-O0`.
+  This should significantly reduce the size of dwarf debug information in the
+  wasm binary.
 
 2.0.21: 05/18/2021
-------
+------------------
 - Options such as EXPORTED_FUNCTIONS that can take a response file containing
   list of symbols can now use a simple one-symbol-per-line format.  This new
   format is much simpler and doesn't require commas between symbols, opening
