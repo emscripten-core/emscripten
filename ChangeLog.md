@@ -24,6 +24,8 @@ See docs/process.md for more on how version tagging works.
   as regular data sections.   This behaviour can be be disabled with `-Wl,-O0`.
   This should significantly reduce the size of dwarf debug information in the
   wasm binary.
+- The experimental SPLIT_MODULE setting now expects the secondary module to be
+  named `<module>.deferred.wasm` instead of `<module>.wasm.deferred`.
 
 2.0.21: 05/18/2021
 ------------------

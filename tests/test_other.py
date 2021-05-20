@@ -10234,7 +10234,7 @@ exec "$@"
 
     os.remove('test_split_module.wasm')
     os.rename('primary.wasm', 'test_split_module.wasm')
-    os.rename('secondary.wasm', 'test_split_module.wasm.deferred')
+    os.rename('secondary.wasm', 'test_split_module.deferred.wasm')
     result = self.run_js('test_split_module.js')
     self.assertNotIn('profile', result)
     self.assertIn('Hello! answer: 42', result)
@@ -10273,7 +10273,7 @@ exec "$@"
 
     os.remove('test_split_main_module.wasm')
     os.rename('primary.wasm', 'test_split_main_module.wasm')
-    os.rename('secondary.wasm', 'test_split_main_module.wasm.deferred')
+    os.rename('secondary.wasm', 'test_split_main_module.deferred.wasm')
     result = self.run_js('test_split_main_module.js')
     self.assertNotIn('profile', result)
     self.assertIn('Hello from main!', result)
