@@ -921,8 +921,6 @@ var LibraryWebGPU = {
     }
 
     function makeColorStates(count, csArrayPtr) {
-      if (count === 0) return undefined;
-
       var states = [];
       for (var i = 0; i < count; ++i) {
         states.push(makeColorState(csArrayPtr + {{{ C_STRUCTS.WGPUColorTargetState.__size__ }}} * i));
