@@ -309,7 +309,7 @@ def setup_environment_settings():
 
 
 def minify_whitespace():
-  return settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0
+  return settings.OPT_LEVEL >= 2 and (settings.DEBUG_LEVEL == 0 or settings.SHRINK_LEVEL >= 2)
 
 
 def embed_memfile():
