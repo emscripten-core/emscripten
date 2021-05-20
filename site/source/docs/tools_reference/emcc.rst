@@ -162,6 +162,12 @@ Options that are modified or new in *emcc* are listed below:
   ``-sSEPARATE_DWARF_URL=URL`` to customize that location (this is useful if
   you want to host it on a different server, for example).
 
+.. _emcc-gsplit-dwarf:
+
+``-gsplit-dwarf``
+  Enable debug fission, which creates split DWARF object files alongside the
+  wasm object files. This option must be used together with ``-c``.
+
 .. _emcc-gsource-map:
 
 ``-gsource-map``

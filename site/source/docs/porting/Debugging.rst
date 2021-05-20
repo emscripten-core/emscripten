@@ -46,15 +46,15 @@ white-space, function names, and variable names,
   a file on the side instead with the
   :ref:`-gseparate-dwarf <emcc-gseparate-dwarf>` option! The debug information
   size also affects the linking time, because the debug information in all
-  object files needs to be linked as well. Passing the ``-gsplit-dwarf`` option
-  can help here, which causes clang to leave debug information scattered across
-  object files. That debug information needs to be linked into a DWARF package
-  file (``.dwp``) using the ``llvm-dwp`` tool then, but that could happen in
-  parallel to the linking of the compiled output! A compatible version should
-  be part of your emscripten distribution, for example in
-  ``$EMSDK/upstream/bin/llvm-dwp``. When running it after linking, it's as
-  simple as ``llvm-dwp -e foo.wasm -o foo.wasm.dwp``, or ``llvm-dwp -e
-  foo.debug.wasm -o foo.debug.wasm.dwp`` when used together with
+  object files needs to be linked as well. Passing the
+  :ref:`-gsplit-dwarf <emcc-gsplit-dwarf>` option can help here, which causes
+  clang to leave debug information scattered across object files. That debug
+  information needs to be linked into a DWARF package file (``.dwp``) using the
+  ``llvm-dwp`` tool then, but that could happen in parallel to the linking of
+  the compiled output! A compatible version should be part of your emscripten
+  distribution, for example in ``$EMSDK/upstream/bin/llvm-dwp``. When running it
+  after linking, it's as simple as ``llvm-dwp -e foo.wasm -o foo.wasm.dwp``, or
+  ``llvm-dwp -e foo.debug.wasm -o foo.debug.wasm.dwp`` when used together with
   ``-gseparate-dwarf`` (the dwp file should have the same file name as the main
   symbol file with an extra ``.dwp`` extension).
 
