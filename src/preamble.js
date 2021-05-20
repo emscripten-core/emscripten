@@ -835,7 +835,9 @@ var splitModuleProxyHandler = {
     return function() {
       err('placeholder function called: ' + prop);
       var imports = {'primary': Module['asm']};
-      instantiateSync(wasmBinaryFile + '.deferred', imports);
+      // Replace '.wasm' suffix with '.deferred.wasm'.
+      var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
+      instantiateSync(deferred, imports);
       err('instantiated deferred module, continuing');
 #if RELOCATABLE
       // When the table is dynamically laid out, the placeholder functions names
