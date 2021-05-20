@@ -9,9 +9,6 @@ function saveProfileData() {
     console.log('wrote profile of', actualLen, 'bytes (allocated', len, 'bytes)');
     _free(offset);
   }
-
-  // Say hello *after* recording the profile so that all functions are deferred.
-  __Z8cpp_mainv();
 }
 
 addOnPostRun(saveProfileData);

@@ -10257,10 +10257,8 @@ exec "$@"
     self.set_setting('FORCE_FILESYSTEM', 1)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.set_setting('ALLOW_MEMORY_GROWTH', 1)
-    self.set_setting('EXIT_RUNTIME', 1)
-    self.set_setting('INCLUDE_FULL_LIBRARY', 1) # https://github.com/emscripten-core/emscripten/issues/13794
+    self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('MAIN_MODULE', 2)
-
     self.emcc_args += ['-Wno-experimental']
     self.emcc_args += ['-std=c++17']
     self.emcc_args += ['-D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR']
@@ -10269,15 +10267,6 @@ exec "$@"
     self.emcc_args += ['-flto']
     self.emcc_args += ['-Oz']
     self.emcc_args += [f'-sINITIAL_TABLE={initialTableSize}']
-
-    create_file('mylib.js', '''
-      mergeInto(LibraryManager.library, {
-        js_call: function(x, y) {
-          return x + y;
-        }
-      });
-    ''')
-    self.emcc_args += ['--js-library', 'mylib.js']
 
     self.do_other_test('test_split_module_ex.cpp')
 
