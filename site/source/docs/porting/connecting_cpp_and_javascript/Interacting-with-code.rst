@@ -674,32 +674,46 @@ Here ``my_function`` is a C function that receives a single integer parameter
 integer. This could be something like ``int my_function(char *buf)``.
 
 The converse case of exporting allocated memory into JavaScript can be
-tricky when wasm-based memory is allowed to grow (by compiling with
-``-s ALLOW_MEMORY_GROWTH=1``). Increasing the size of memory changes
+tricky when wasm-based memory is allowed to **grow**, by compiling with
+``-s ALLOW_MEMORY_GROWTH``. Increasing the size of memory changes
 to a new buffer and existing array views essentially become invalid,
 so you cannot simply do this:
 
 .. code-block:: javascript
 
    function func() {
-     var ptr = callSomething(len);               // if memory grows ...
-     return HEAPU8.subarray(ptr, ptr+len); // ... this will fail
+     let someView = HEAPU8.subarray(x, y);
+     compute(someView);
+
+     // This may grow memory, which would invalidate all views.
+     maybeGrow();
+
+     // If we grew, this use of an invalidated view will fail. Failure in this
+     // case will return undefined, the same as reading out of bounds from a
+     // typed array. If the operation were someView.subarray(), however, then it
+     // would throw an error.
+     return someView[z];
    }
 
-Here, if `callSomething` calls `malloc` and returns the allocated
-pointer, and if that `malloc` grew memory, you will not be able to
-read the returned data unless you renew the view:
+Emscripten will refresh the canonical views like ``HEAPU8`` for you, which you
+can use to refresh your own views:
 
 .. code-block:: javascript
 
    function func() {
-     var ptr = callSomething(len);
-     return new Uint8Array(HEAPU8.subarray(ptr, ptr+len)); // create a new view
+     let someView = HEAPU8.subarray(x, y);
+     compute(someView);
+
+     // This may grow memory, which would invalidate all views.
+     maybeGrow();
+
+     // Create a new, fresh view after the possible growth.
+     someView = HEAPU8.subarray(x, y);
+     return someView[z];
    }
 
-Note that a second instance of memory growth will possibly invalidate
-the current view, requiring another update of the view (you can, of
-course, avoid this problem by copying the data.)
+Another option to avoid such problems is to copy the data, when that makes
+sense.
 
 .. _interacting-with-code-execution-behaviour:
 
