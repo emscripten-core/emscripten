@@ -6,9 +6,8 @@
 import os
 import shutil
 
-# TODO - update with info from new port
-TAG = 'version_1'
-HASH = '592435b237c0e4b2e30537bd28b82f68b6587cd18990357cf2391b2fc588755f9586ab6d1f5c8da36815c594bf3d8a0fb37015738b2c8c011dab082a1512a3bd'
+TAG = 'v1.2.11'
+HASH = '104c62ed1228b5f1199bc037081861576900eb0697a226cafa62a35c4c890b5cb46622e399f9aad82ee5dfb475bae26ae75e2bd6da3d261361b1c8b996970faf'
 
 
 def needed(settings):
@@ -16,7 +15,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('zlib', 'https://github.com/emscripten-ports/zlib/archive/' + TAG + '.zip', 'zlib-' + TAG, sha512hash=HASH)
+  ports.fetch_project('zlib', 'https://github.com/madler/zlib/archive/' + TAG + '.zip', 'zlib-' + TAG, sha512hash=HASH)
 
   def create(final):
     ports.clear_project_build('zlib')
