@@ -749,14 +749,14 @@ function instrumentWasmTableWithAbort() {
 #if EXPORT_ES6
 if (Module['locateFile']) {
 #endif
-var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
-if (!isDataURI(wasmBinaryFile)) {
-  wasmBinaryFile = locateFile(wasmBinaryFile);
-}
+  var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
+  if (!isDataURI(wasmBinaryFile)) {
+    wasmBinaryFile = locateFile(wasmBinaryFile);
+  }
 #if EXPORT_ES6
 } else {
-// Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
-var wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).toString();
+  // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
+  var wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).toString();
 }
 #endif
 
