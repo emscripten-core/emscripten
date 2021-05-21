@@ -2702,84 +2702,86 @@ Module["preRun"].push(function () {
     create_file('test.txt', 'emscripten')
     self.btest(test_file('test_wget_data.c'), expected='1', args=['-O2', '-g2', '-s', 'ASYNCIFY'])
 
-  def test_locate_file(self):
+  @parameterized({
+    '': ([],),
+    'es6': (['-s', 'EXPORT_ES6=1'],),
+  })
+  def test_locate_file(self, args):
     for wasm in [0, 1]:
-      for es6 in [0, 1]:
-        print(f'wasm={wasm},es6={es6}')
-        self.clear()
-        create_file('src.cpp', r'''
-          #include <stdio.h>
-          #include <string.h>
-          #include <assert.h>
-          int main() {
-            FILE *f = fopen("data.txt", "r");
-            assert(f && "could not open file");
-            char buf[100];
-            int num = fread(buf, 1, 20, f);
-            assert(num == 20 && "could not read 20 bytes");
-            buf[20] = 0;
-            fclose(f);
-            int result = !strcmp("load me right before", buf);
-            printf("|%s| : %d\n", buf, result);
-            REPORT_RESULT(result);
-            return 0;
-          }
-        ''')
-        create_file('data.txt', 'load me right before...')
-        create_file('pre.js', 'Module.locateFile = function(x) { return "sub/" + x };')
-        self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
-        # put pre.js first, then the file packager data, so locateFile is there for the file loading code
-        self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM', '-s', 'WASM=' + str(wasm), '-s', 'EXPORT_ES6=' + str(es6)])
-        ensure_dir('sub')
+      self.clear()
+      create_file('src.cpp', r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <assert.h>
+        int main() {
+          FILE *f = fopen("data.txt", "r");
+          assert(f && "could not open file");
+          char buf[100];
+          int num = fread(buf, 1, 20, f);
+          assert(num == 20 && "could not read 20 bytes");
+          buf[20] = 0;
+          fclose(f);
+          int result = !strcmp("load me right before", buf);
+          printf("|%s| : %d\n", buf, result);
+          REPORT_RESULT(result);
+          return 0;
+        }
+      ''')
+      create_file('data.txt', 'load me right before...')
+      create_file('pre.js', 'Module.locateFile = function(x) { return "sub/" + x };')
+      self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
+      # put pre.js first, then the file packager data, so locateFile is there for the file loading code
+      self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM', '-s', 'WASM=' + str(wasm)] + args)
+      ensure_dir('sub')
+      if wasm:
+        shutil.move('page.wasm', Path('sub/page.wasm'))
+      else:
+        shutil.move('page.html.mem', Path('sub/page.html.mem'))
+      shutil.move('test.data', Path('sub/test.data'))
+      self.run_browser('page.html', None, '/report_result?1')
+
+      # alternatively, put locateFile in the HTML
+      print('in html')
+
+      create_file('shell.html', '''
+        <body>
+          <script>
+            var Module = {
+              locateFile: function(x) { return "sub/" + x }
+            };
+          </script>
+
+          {{{ SCRIPT }}}
+        </body>
+      ''')
+
+      def in_html(expected):
+        self.compile_btest(['src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'SAFE_HEAP', '-s', 'ASSERTIONS', '-s', 'FORCE_FILESYSTEM', '-s', 'WASM=' + str(wasm)] + args)
         if wasm:
           shutil.move('page.wasm', Path('sub/page.wasm'))
         else:
           shutil.move('page.html.mem', Path('sub/page.html.mem'))
-        shutil.move('test.data', Path('sub/test.data'))
-        self.run_browser('page.html', None, '/report_result?1')
+        self.run_browser('page.html', None, '/report_result?' + expected)
 
-        # alternatively, put locateFile in the HTML
-        print('in html')
+      in_html('1')
 
-        create_file('shell.html', '''
-          <body>
-            <script>
-              var Module = {
-                locateFile: function(x) { return "sub/" + x }
-              };
-            </script>
+      # verify that the mem init request succeeded in the latter case
+      if not wasm:
+        create_file('src.cpp', r'''
+          #include <stdio.h>
+          #include <emscripten.h>
 
-            {{{ SCRIPT }}}
-          </body>
-        ''')
+          int main() {
+            int result = EM_ASM_INT({
+              return Module['memoryInitializerRequest'].status;
+            });
+            printf("memory init request: %d\n", result);
+            REPORT_RESULT(result);
+            return 0;
+          }
+          ''')
 
-        def in_html(expected, args=[]):
-          self.compile_btest(['src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'SAFE_HEAP', '-s', 'ASSERTIONS', '-s', 'FORCE_FILESYSTEM', '-s', 'WASM=' + str(wasm), '-s', 'EXPORT_ES6=' + str(es6)] + args)
-          if wasm:
-            shutil.move('page.wasm', Path('sub/page.wasm'))
-          else:
-            shutil.move('page.html.mem', Path('sub/page.html.mem'))
-          self.run_browser('page.html', None, '/report_result?' + expected)
-
-        in_html('1')
-
-        # verify that the mem init request succeeded in the latter case
-        if not wasm:
-          create_file('src.cpp', r'''
-            #include <stdio.h>
-            #include <emscripten.h>
-
-            int main() {
-              int result = EM_ASM_INT({
-                return Module['memoryInitializerRequest'].status;
-              });
-              printf("memory init request: %d\n", result);
-              REPORT_RESULT(result);
-              return 0;
-            }
-            ''')
-
-          in_html('200')
+        in_html('200')
 
   @requires_graphics_hardware
   @parameterized({
