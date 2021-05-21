@@ -5816,11 +5816,9 @@ int main(void) {
     src = read_file(test_file('new.cpp')).replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''
 #include <new>
 
-void *
-operator new(size_t size) throw(std::bad_alloc)
-{
-printf("new %zu!\\n", size);
-return malloc(size);
+void* operator new(size_t size) {
+  printf("new %zu!\\n", size);
+  return malloc(size);
 }
 '''
     self.do_run(src, 'new 4!\n*1,0*')
