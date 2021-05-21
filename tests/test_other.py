@@ -10287,11 +10287,9 @@ exec "$@"
     self.set_setting('FORCE_FILESYSTEM', 1)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.set_setting('ALLOW_MEMORY_GROWTH', 1)
-    self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('MAIN_MODULE', 2)
     self.emcc_args += ['-Wno-experimental']
     self.emcc_args += ['-std=c++17']
-    self.emcc_args += ['-D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR']
     self.emcc_args += ['-Wno-deprecated-declarations']
     self.emcc_args += ['--post-js', path_from_root('tests', 'other', 'test_split_module_ex.post.js')]
     self.emcc_args += ['-flto']
@@ -10309,7 +10307,7 @@ exec "$@"
 
     os.remove('test_split_module_ex.wasm')
     os.rename('primary.wasm', 'test_split_module_ex.wasm')
-    os.rename('secondary.wasm', 'test_split_module_ex.wasm.deferred')
+    os.rename('secondary.wasm', 'test_split_module_ex.deferred.wasm')
     result = self.run_js('test_split_module_ex.js')
     self.assertNotIn('profile', result)
     self.assertIn('Test exception handling: -1', result)
