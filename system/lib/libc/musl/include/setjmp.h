@@ -25,7 +25,7 @@ typedef jmp_buf sigjmp_buf;
 #define siglongjmp(buf, val) longjmp(buf, val)
 #else
 int sigsetjmp (sigjmp_buf, int);
-int siglongjmp (sigjmp_buf, int);
+_Noreturn int siglongjmp (sigjmp_buf, int);
 #endif
 #endif
 

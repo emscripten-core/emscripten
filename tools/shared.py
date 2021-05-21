@@ -682,7 +682,6 @@ class JS:
 
   @staticmethod
   def make_invoke(sig, named=True):
-    assert('_setThrew' in settings.EXPORTED_FUNCTIONS)
     legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
     args = ['index'] + ['a' + str(i) for i in range(1, len(legal_sig))]
     ret = 'return ' if sig[0] != 'v' else ''
