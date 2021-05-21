@@ -94,8 +94,8 @@ class Cache:
       return os.path.join(self.dirname, 'sysroot')
     return 'sysroot'
 
-  def get_include_dir(self):
-    return self.get_sysroot_dir('include')
+  def get_include_dir(self, *parts):
+    return self.get_sysroot_dir('include', *parts)
 
   def get_sysroot_dir(self, *parts):
     return os.path.join(self.get_sysroot(absolute=True), *parts)

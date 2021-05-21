@@ -197,9 +197,10 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--emit-symbol-map``
   [link]
-  Save a map file between the minified global names and the original function names. This allows you, for example, to reconstruct meaningful stack traces.
-
-  .. note:: This is only relevant when :term:`minifying` global names, which happens in ``-O2`` and above, and when no ``-g`` option was specified to prevent minification.
+  Save a map file between function indexes in the wasm and function names. By
+  storing the names on a file on the side, you can avoid shipping the names, and
+  can still reconstruct meaningful stack traces by translating the indexes back
+  to the names.
 
   .. note:: When used with ``-s WASM=2``, two symbol files are created. ``[name].js.symbols`` (with WASM symbols) and ``[name].wasm.js.symbols`` (with ASM.js symbols)
 

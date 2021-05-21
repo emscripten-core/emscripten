@@ -7125,7 +7125,7 @@ someweirdtext
       # needs to containt valid source text.
       self.assertTextDataIdentical(src, data['sourcesContent'][0])
     mappings = json.loads(self.run_js(
-      path_from_root('tools/source-maps/sourcemap2json.js'),
+      path_from_root('tests/sourcemap2json.js'),
       args=[map_filename]))
     seen_lines = set()
     for m in mappings:
