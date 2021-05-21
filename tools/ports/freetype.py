@@ -8,9 +8,8 @@ import shutil
 from tools import system_libs
 from ..utils import path_from_root
 
-# TODO - update this with info from the port
-TAG = 'version_1'
-HASH = '9a04eeb8f2746e644b4ab04d4f1ab735aafde2152c1d70253357aa94136b05485d7923d4933518db4b7222b1762605c6f02f26a5b17797ed473b9549f2957414'
+TAG = 'VER-2-10-4'
+HASH = '795dfc6b3f14b25cda4f2e76637e7453390ef775bd6b7dc380d5aa03d923890bdff46d3f40e52b54a49c05207efa4e9cbdc9281cb5babb51750919bbda1c80b9'
 
 
 def needed(settings):
@@ -18,7 +17,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('freetype', 'https://github.com/emscripten-ports/FreeType/archive/' + TAG + '.zip', 'FreeType-' + TAG, sha512hash=HASH)
+  ports.fetch_project('freetype', 'http://git.savannah.gnu.org/cgit/freetype/freetype2.git/snapshot/freetype2-' + TAG + '.tar.gz', 'FreeType-' + TAG, sha512hash=HASH)
 
   def create(final):
     ports.clear_project_build('freetype')
