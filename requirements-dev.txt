@@ -7,4 +7,4 @@
 flake8==3.9.0
 flake8-unused-arguments==0.0.6
 coverage==5.5
-Sphinx==2.4.4
+sphinx==2.4.4
