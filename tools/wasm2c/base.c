@@ -113,21 +113,10 @@ static jmp_buf setjmp_stack[MAX_SETJMP_STACK];
 
 static u32 next_setjmp = 0;
 
-// Declare an export that may be needed and may not be. For example if longjmp
-// is included then we need setThrew, but we must declare setThrew so that
-// the C compiler can build us without error if longjmp is not actually used.
-
-#define DECLARE_WEAK_EXPORT(ret, name, args) \
-__attribute__((weak)) \
-ret (*WASM_RT_ADD_PREFIX(name)) args = NULL;
-
-DECLARE_WEAK_EXPORT(void, Z_setThrewZ_vii, (u32, u32));
-
-IMPORT_IMPL(void, Z_envZ_emscripten_longjmpZ_vii, (u32 buf, u32 value), {
+IMPORT_IMPL(void, Z_envZ__emscripten_throw_longjmpZ_vv, (), {
   if (next_setjmp == 0) {
     abort_with_message("longjmp without setjmp");
   }
-  WASM_RT_ADD_PREFIX(Z_setThrewZ_vii)(buf, value ? value : 1);
   longjmp(setjmp_stack[next_setjmp - 1], 1);
 });
 
