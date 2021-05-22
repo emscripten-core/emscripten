@@ -10534,3 +10534,12 @@ exec "$@"
       '-std=c++17',
       '-D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR',
       '-Wno-deprecated-declarations'])
+
+  def test_special_chars_in_arguments(self):
+    # We had some regressions where the windows `.bat` files that run the compiler
+    # driver were failing to accept certain special characters such as `(`, `)` and `!`.
+    # See https://github.com/emscripten-core/emscripten/issues/14063
+    create_file('test(file).c', 'int main() { return 0; }')
+    create_file('test!.c', 'int main() { return 0; }')
+    self.run_process([EMCC, 'test(file).c'])
+    self.run_process([EMCC, 'test!.c'])
