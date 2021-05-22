@@ -56,10 +56,12 @@ def dir_is_newer(dir_a, dir_b):
   return newest_a < newest_b
 
 
-def get_base_cflags(force_object_files=False):
+def get_base_cflags(force_object_files=False, debug_info=True):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
-  flags = ['-g']
+  flags = []
+  if debug_info:
+    flags.append('-g')
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE:
@@ -1636,7 +1638,7 @@ class Ports:
       shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
+  def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[], debug_info=True):
     srcs = []
     for root, dirs, files in os.walk(src_path, topdown=False):
       if any((excluded in root) for excluded in exclude_dirs):
@@ -1656,19 +1658,19 @@ class Ports:
       commands.append([shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
       objects.append(obj)
 
-    Ports.run_commands(commands)
+    Ports.run_commands(commands, debug_info=debug_info)
     create_lib(output_path, objects)
     return output_path
 
   @staticmethod
-  def run_commands(commands):
+  def run_commands(commands, debug_info=True):
     # Runs a sequence of compiler commands, adding importand cflags as defined by get_cflags() so
     # that the ports are built in the correct configuration.
     def add_args(cmd):
       # this must only be called on a standard build command
       assert cmd[0] in (shared.EMCC, shared.EMXX)
       # add standard cflags, but also allow the cmd to override them
-      return cmd[:1] + get_base_cflags() + cmd[1:]
+      return cmd[:1] + get_base_cflags(debug_info=debug_info) + cmd[1:]
     run_build_commands([add_args(c) for c in commands])
 
   @staticmethod

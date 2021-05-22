@@ -84,7 +84,8 @@ def get(ports, settings, shared):
       commands.append([shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + flags)
       objects.append(obj)
 
-    ports.run_commands(commands)
+    # Debug info temporarly disabled due to: https://github.com/emscripten-core/emscripten/issues/14255
+    ports.run_commands(commands, debug_info=False)
     ports.create_lib(output_path, objects)
 
     # copy header to a location so it can be used as 'MPG123/'
