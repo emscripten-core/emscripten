@@ -906,9 +906,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
   cflags = [
       '-Oz',
       '-D_LIBCXXABI_BUILDING_LIBRARY',
-      # Remove this once we update to include this llvm
-      # revision: https://reviews.llvm.org/D64961
-      '-D_LIBCXXABI_GUARD_ABI_ARM',
+      '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
     ]
 
   def get_cflags(self):
