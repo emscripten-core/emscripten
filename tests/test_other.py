@@ -1579,6 +1579,36 @@ int f() {
         'side.wasm',
       ])
 
+  def test_dylink_no_autoload(self):
+    create_file('main.c', r'''
+      #include <stdio.h>
+      int sidey();
+      int main() {
+        printf("sidey: %d\n", sidey());
+        return 0;
+      }''')
+    create_file('side.c', 'int sidey() { return 42; }')
+    self.run_process([EMCC, '-sSIDE_MODULE', 'side.c', '-o', 'libside.wasm'])
+
+    # First show everything working as expected with AUTOLOAD_DYLIBS
+    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm'])
+    output = self.run_js('a.out.js')
+    self.assertContained('sidey: 42\n', output)
+
+    # Same again but with NO_AUTOLOAD_DYLIBS.   This time we expect the call to sidey
+    # to fail at runtime.
+    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS'])
+    output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContained("external symbol 'sidey' is missing. perhaps a side module was not linked in?", output)
+
+    # Now with NO_AUTOLOAD_DYLIBS, but with manual loading of libside.wasm using loadDynamicLibrary
+    create_file('pre.js', '''
+    Module.preRun = function() { loadDynamicLibrary('libside.wasm'); }
+    ''')
+    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS', '--pre-js=pre.js'])
+    output = self.run_js('a.out.js')
+    self.assertContained('sidey: 42\n', output)
+
   def test_js_link(self):
     create_file('main.cpp', '''
       #include <stdio.h>

@@ -959,7 +959,7 @@ function createWasm() {
 
     Module['asm'] = exports;
 
-#if MAIN_MODULE
+#if MAIN_MODULE && AUTOLOAD_DYLIBS
     var metadata = getDylinkMetadata(module);
     if (metadata.neededDynlibs) {
       dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
