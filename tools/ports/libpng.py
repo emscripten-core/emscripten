@@ -7,9 +7,8 @@ import os
 import shutil
 import logging
 
-# TODO - update these once upstream is current
-TAG = 'version_1'
-HASH = '3f38d0816a5f6841f2cc6dc01281f9ee2ce620efa99288f1cb65a0123365d5d6fc6cce9109ea697282d36edcab7e53e76abd53b1b884f478f606fce1bf19bcdd' #v1.6.37 hash
+TAG = '1.6.37'
+HASH = '2ce2b855af307ca92a6e053f521f5d262c36eb836b4810cb53c809aa3ea2dcc08f834aee0ffd66137768a54397e28e92804534a74abb6fc9f6f3127f14c9c338'
 
 deps = ['zlib']
 
@@ -19,7 +18,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('libpng', 'https://github.com/emscripten-ports/libpng/archive/' + TAG + '.zip', 'libpng-' + TAG, sha512hash=HASH)
+  ports.fetch_project('libpng', 'https://download.sourceforge.net/libpng/libpng-' + TAG + '.tar.gz', 'libpng-' + TAG, sha512hash=HASH)
 
   def create(final):
     logging.info('building port: libpng')
