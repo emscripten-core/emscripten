@@ -81,8 +81,8 @@ var LibraryGLEmulation = {
 
     // GL_ALPHA_TEST support
     alphaTestEnabled: false,
-    alphaFunc: 0x207, // GL_ALWAYS
-    alphaRef: 0.0,
+    alphaTestFunc: 0x207, // GL_ALWAYS
+    alphaTestRef: 0.0,
 
     // GL_POINTS support.
     pointSize: 1.0,
@@ -398,6 +398,10 @@ var LibraryGLEmulation = {
             {{{ makeSetValue('params', '0', 'GLImmediate.currentMatrix + 0x1700', 'i32') }}};
             return;
           }
+          case 0x0BC1: { // GL_ALPHA_TEST_FUNC
+            {{{ makeSetValue('params', '0', 'GLEmulation.alphaTestFunc', 'i32') }}};
+            return;
+          }
         }
         glGetIntegerv(pname, params);
       };
@@ -686,6 +690,8 @@ var LibraryGLEmulation = {
           {{{ makeSetValue('params', '4', 'GLEmulation.lightModelAmbient[1]', 'float') }}};
           {{{ makeSetValue('params', '8', 'GLEmulation.lightModelAmbient[2]', 'float') }}};
           {{{ makeSetValue('params', '12', 'GLEmulation.lightModelAmbient[3]', 'float') }}};
+        } else if (pname == 0xBC2) { // GL_ALPHA_TEST_REF
+          {{{ makeSetValue('params', '0', 'GLEmulation.alphaTestRef', 'float') }}};
         } else {
           glGetFloatv(pname, params);
         }
@@ -2129,7 +2135,7 @@ var LibraryGLEmulation = {
 
       // By alpha testing mode
       enabledAttributesKey = (enabledAttributesKey << 1) | GLEmulation.alphaTestEnabled;
-      enabledAttributesKey = (enabledAttributesKey << 3) | (GLEmulation.alphaFunc - 0x200);
+      enabledAttributesKey = (enabledAttributesKey << 3) | (GLEmulation.alphaTestFunc - 0x200);
 
       // By drawing mode:
       enabledAttributesKey = (enabledAttributesKey << 1) | (GLImmediate.mode == GLctx.POINTS ? 1 : 0);
@@ -2364,7 +2370,7 @@ var LibraryGLEmulation = {
             var fsAlphaTestPass = '';
             if (GLEmulation.alphaTestEnabled) {
               fsAlphaTestDefs = 'uniform float u_alphaTestRef;';
-              switch (GLEmulation.alphaFunc) {
+              switch (GLEmulation.alphaTestFunc) {
                 case 0x200: // GL_NEVER
                   fsAlphaTestPass = 'discard;';
                   break;
@@ -2710,7 +2716,7 @@ var LibraryGLEmulation = {
           }
 
           if (this.hasAlphaTest) {
-            if (this.alphaTestRefLocation) GLctx.uniform1f(this.alphaTestRefLocation, GLEmulation.alphaRef);
+            if (this.alphaTestRefLocation) GLctx.uniform1f(this.alphaTestRefLocation, GLEmulation.alphaTestRef);
           }
 
           if (GLImmediate.mode == GLctx.POINTS) {
@@ -3380,9 +3386,9 @@ var LibraryGLEmulation = {
       case 0x205: // GL_NOTEQUAL
       case 0x206: // GL_GEQUAL
       case 0x207: // GL_ALWAYS
-        GLEmulation.alphaRef = ref;
-        if (GLEmulation.alphaFunc != func) {
-          GLEmulation.alphaFunc = func;
+        GLEmulation.alphaTestRef = ref;
+        if (GLEmulation.alphaTestFunc != func) {
+          GLEmulation.alphaTestFunc = func;
           GLImmediate.currentRenderer = null; // alpha test mode is part of the FFP shader state, we must re-lookup the renderer to use.
         }
         break;
