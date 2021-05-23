@@ -368,8 +368,8 @@ var LibraryWebGPU = {
     ],
     StorageTextureAccess: [
       undefined,
-      'readonly',
-      'writeonly',
+      'read-only',
+      'write-only',
     ],
     StoreOp: [
       'store',
@@ -921,8 +921,6 @@ var LibraryWebGPU = {
     }
 
     function makeColorStates(count, csArrayPtr) {
-      if (count === 0) return undefined;
-
       var states = [];
       for (var i = 0; i < count; ++i) {
         states.push(makeColorState(csArrayPtr + {{{ C_STRUCTS.WGPUColorTargetState.__size__ }}} * i));
@@ -958,6 +956,9 @@ var LibraryWebGPU = {
         "stencilBack": makeStencilStateFace(dssPtr + {{{ C_STRUCTS.WGPUDepthStencilState.stencilBack }}}),
         "stencilReadMask": {{{ gpu.makeGetU32('dssPtr', C_STRUCTS.WGPUDepthStencilState.stencilReadMask) }}},
         "stencilWriteMask": {{{ gpu.makeGetU32('dssPtr', C_STRUCTS.WGPUDepthStencilState.stencilWriteMask) }}},
+        "depthBias": {{{ makeGetValue('dssPtr', C_STRUCTS.WGPUDepthStencilState.depthBias, '*') }}},
+        "depthBiasSlopeScale": {{{ makeGetValue('dssPtr', C_STRUCTS.WGPUDepthStencilState.depthBiasSlopeScale, 'float') }}},
+        "depthBiasClamp": {{{ makeGetValue('dssPtr', C_STRUCTS.WGPUDepthStencilState.depthBiasClamp, 'float') }}},
       };
     }
 
