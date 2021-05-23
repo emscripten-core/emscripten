@@ -477,17 +477,17 @@ The following table highlights the availability and expected performance of diff
    * - _mm_comineq_sd
      - ❌ scalarized
    * - _mm_cvtepi32_pd
-     - ❌ scalarized
+     - ✅ wasm_f64x2_convert_low_i32x4
    * - _mm_cvtepi32_ps
      - ✅ wasm_f32x4_convert_i32x4
    * - _mm_cvtpd_epi32
      - ❌ scalarized
    * - _mm_cvtpd_ps
-     - ❌ scalarized
+     - ✅ wasm_f32x4_demote_f64x2_zero
    * - _mm_cvtps_epi32
      - ❌ scalarized
    * - _mm_cvtps_pd
-     - ❌ scalarized
+     - ✅ wasm_f64x2_promote_low_f32x4
    * - _mm_cvtsd_f64
      - ✅ wasm_f64x2_extract_lane
    * - _mm_cvtsd_si32

@@ -56,10 +56,12 @@ def dir_is_newer(dir_a, dir_b):
   return newest_a < newest_b
 
 
-def get_base_cflags(force_object_files=False):
+def get_base_cflags(force_object_files=False, debug_info=True):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
-  flags = ['-g']
+  flags = []
+  if debug_info:
+    flags.append('-g')
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE:
@@ -1451,7 +1453,7 @@ def handle_reverse_deps(input_files):
     add_reverse_deps(symbols)
 
 
-def calculate(input_files, cxx, forced):
+def calculate(input_files, forced):
   # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
   # for unresolved symbols in your project files, which can speed up linking, but if you do not have
   # the proper list of actually needed libraries, errors can occur. See below for how we must
@@ -1531,9 +1533,9 @@ def calculate(input_files, cxx, forced):
 
     add_library('libc')
     add_library('libcompiler_rt')
-    if cxx:
+    if settings.LINK_AS_CXX:
       add_library('libc++')
-    if cxx or sanitize:
+    if settings.LINK_AS_CXX or sanitize:
       add_library('libc++abi')
       if settings.EXCEPTION_HANDLING:
         add_library('libunwind')
@@ -1608,8 +1610,8 @@ class Ports:
   """
 
   @staticmethod
-  def get_include_dir():
-    dirname = shared.Cache.get_include_dir()
+  def get_include_dir(*parts):
+    dirname = shared.Cache.get_include_dir(*parts)
     shared.safe_ensure_dirs(dirname)
     return dirname
 
@@ -1636,7 +1638,7 @@ class Ports:
       shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
+  def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[], debug_info=True):
     srcs = []
     for root, dirs, files in os.walk(src_path, topdown=False):
       if any((excluded in root) for excluded in exclude_dirs):
@@ -1656,19 +1658,19 @@ class Ports:
       commands.append([shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
       objects.append(obj)
 
-    Ports.run_commands(commands)
+    Ports.run_commands(commands, debug_info=debug_info)
     create_lib(output_path, objects)
     return output_path
 
   @staticmethod
-  def run_commands(commands):
+  def run_commands(commands, debug_info=True):
     # Runs a sequence of compiler commands, adding importand cflags as defined by get_cflags() so
     # that the ports are built in the correct configuration.
     def add_args(cmd):
       # this must only be called on a standard build command
       assert cmd[0] in (shared.EMCC, shared.EMXX)
       # add standard cflags, but also allow the cmd to override them
-      return cmd[:1] + get_base_cflags() + cmd[1:]
+      return cmd[:1] + get_base_cflags(debug_info=debug_info) + cmd[1:]
     run_build_commands([add_args(c) for c in commands])
 
   @staticmethod
@@ -1916,13 +1918,15 @@ def show_ports():
 
 # Once we require python 3.8 we can use shutil.copytree with
 # dirs_exist_ok=True and remove this function.
-def copytree_exist_ok(src, dest):
-  with utils.chdir(src):
-    for dirname, dirs, files in os.walk('.'):
-      destdir = os.path.join(dest, dirname)
-      utils.safe_ensure_dirs(destdir)
-      for f in files:
-        shared.safe_copy(os.path.join(src, dirname, f), os.path.join(destdir, f))
+def copytree_exist_ok(src, dst):
+  os.makedirs(dst, exist_ok=True)
+  for entry in os.scandir(src):
+    srcname = os.path.join(src, entry.name)
+    dstname = os.path.join(dst, entry.name)
+    if entry.is_dir():
+      copytree_exist_ok(srcname, dstname)
+    else:
+      shared.safe_copy(srcname, dstname)
 
 
 def install_system_headers(stamp):

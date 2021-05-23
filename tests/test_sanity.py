@@ -9,6 +9,7 @@ import shutil
 import time
 import re
 import tempfile
+from pathlib import Path
 from subprocess import PIPE, STDOUT
 
 from runner import RunnerCore, path_from_root, env_modify, test_file
@@ -23,7 +24,7 @@ from tools import shared, system_libs, utils
 from tools import response_file
 
 SANITY_FILE = shared.Cache.get_path('sanity.txt')
-commands = [[EMCC], [path_from_root('tests', 'runner'), 'blahblah']]
+commands = [[EMCC], [path_from_root('tests/runner'), 'blahblah']]
 
 
 def restore():
@@ -206,7 +207,7 @@ class sanity(RunnerCore):
       self.assertContained('Please edit the file if any of those are incorrect', output)
       self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
       self.assertTrue(output.strip().endswith('============='))
-      template_file = open(path_from_root('tools', 'settings_template.py')).read()
+      template_file = Path(path_from_root('tools/settings_template.py')).read_text()
       self.assertNotContained('{{{', config_data)
       self.assertNotContained('}}}', config_data)
       self.assertContained('{{{', template_file)
@@ -492,13 +493,17 @@ fi
     self.assertEqual(num_times_libc_was_built, 1)
 
   @parameterized({
-    '': [False],
-    'response_files': [True]
+    '': [False, False],
+    'response_files': [True, False],
+    'relative': [False, True]
   })
-  def test_emcc_cache_flag(self, use_response_files):
+  def test_emcc_cache_flag(self, use_response_files, relative):
     restore_and_set_up()
 
-    cache_dir_name = self.in_dir('emscripten_cache')
+    if relative:
+      cache_dir_name = 'emscripten_cache'
+    else:
+      cache_dir_name = self.in_dir('emscripten_cache')
     self.assertFalse(os.path.exists(cache_dir_name))
     create_file('test.c', r'''
       #include <stdio.h>

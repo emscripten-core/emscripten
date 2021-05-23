@@ -747,12 +747,16 @@ function instrumentWasmTableWithAbort() {
 #endif
 
 #if EXPORT_ES6
-// Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
-var wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).toString();
-#else
-var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
-if (!isDataURI(wasmBinaryFile)) {
-  wasmBinaryFile = locateFile(wasmBinaryFile);
+if (Module['locateFile']) {
+#endif
+  var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
+  if (!isDataURI(wasmBinaryFile)) {
+    wasmBinaryFile = locateFile(wasmBinaryFile);
+  }
+#if EXPORT_ES6
+} else {
+  // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
+  var wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).toString();
 }
 #endif
 
@@ -835,7 +839,9 @@ var splitModuleProxyHandler = {
     return function() {
       err('placeholder function called: ' + prop);
       var imports = {'primary': Module['asm']};
-      instantiateSync(wasmBinaryFile + '.deferred', imports);
+      // Replace '.wasm' suffix with '.deferred.wasm'.
+      var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
+      instantiateSync(deferred, imports);
       err('instantiated deferred module, continuing');
 #if RELOCATABLE
       // When the table is dynamically laid out, the placeholder functions names
@@ -953,7 +959,7 @@ function createWasm() {
 
     Module['asm'] = exports;
 
-#if MAIN_MODULE
+#if MAIN_MODULE && AUTOLOAD_DYLIBS
     var metadata = getDylinkMetadata(module);
     if (metadata.neededDynlibs) {
       dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
