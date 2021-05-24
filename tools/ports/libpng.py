@@ -18,7 +18,8 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('libpng', 'https://download.sourceforge.net/libpng/libpng-' + TAG + '.tar.gz', 'libpng-' + TAG, sha512hash=HASH)
+  # This is an emscripten-hosted mirror of the libpng repo from Sourceforge.
+  ports.fetch_project('libpng', 'https://storage.googleapis.com/webassembly/emscripten-ports/libpng-' + TAG + '.tar.gz', 'libpng-' + TAG, sha512hash=HASH)
 
   def create(final):
     logging.info('building port: libpng')
