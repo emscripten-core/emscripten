@@ -7529,6 +7529,18 @@ Module['onRuntimeInitialized'] = function() {
       if should_pass:
         raise
 
+    # use of ASYNCIFY_* options may require intermediate debug info. that should
+    # not end up emitted in the final binary
+    if self.is_wasm():
+      with open('test_asyncify_lists.wasm', 'rb') as f:
+        binary = f.read()
+      # there should be no name section
+      self.assertFalse(b'name' in binary)
+      # in a fully-optimized build, imports and exports are minified too and we
+      # can verify that our function names appear nowhere
+      if '-O3' in self.emcc_args:
+        self.assertFalse(b'main' in binary)
+
   @parameterized({
     'normal': ([], True),
     'ignoreindirect': (['-s', 'ASYNCIFY_IGNORE_INDIRECT'], False),

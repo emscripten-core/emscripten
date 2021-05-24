@@ -1445,6 +1445,11 @@ def get_binaryen_bin():
   return rtn
 
 
+# track whether the last binaryen command kept debug info around. this is used
+# to see whether we need to do an extra step at the end to strip it.
+binaryen_kept_debug_info = False
+
+
 def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
   cmd = [os.path.join(get_binaryen_bin(), tool)]
   if outfile and tool == 'wasm-opt' and \
@@ -1490,6 +1495,8 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   ret = check_call(cmd, stdout=stdout).stdout
   if outfile:
     save_intermediate(outfile, '%s.wasm' % tool)
+    global binaryen_kept_debug_info
+    binaryen_kept_debug_info = '-g' in cmd
   return ret
 
 
