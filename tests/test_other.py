@@ -10542,3 +10542,15 @@ exec "$@"
     create_file('test!.c', 'int main() { return 0; }')
     self.run_process([EMCC, 'test(file).c'])
     self.run_process([EMCC, 'test!.c'])
+
+  @no_windows('relies on a shell script')
+  def test_report_subprocess_signals(self):
+    # Test that when subprocess is killed by signal we report the signal name
+    create_file('die.sh', '''\
+#!/bin/sh
+kill -9 $$
+    ''')
+    make_executable('die.sh')
+    with env_modify({'EM_COMPILER_WRAPPER': './die.sh'}):
+      err = self.expect_fail([EMCC, test_file('hello_world.c')])
+      self.assertContained('failed (received SIGKILL (-9))', err)
