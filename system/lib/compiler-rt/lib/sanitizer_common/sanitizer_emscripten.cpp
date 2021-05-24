@@ -124,11 +124,15 @@ void GetThreadStackAndTls(bool main, uptr *stk_addr, uptr *stk_size,
 #endif
 }
 
+class SuspendedThreadsListEmscripten final : public SuspendedThreadsList {};
+
 void StopTheWorld(StopTheWorldCallback callback, void *argument) {
   // TODO: have some workable alternative, since we can't just fork and suspend
   // the parent process. This does not matter when single thread.
-  callback(SuspendedThreadsList(), argument);
+  callback(SuspendedThreadsListEmscripten(), argument);
 }
+
+void InitializePlatformCommonFlags(CommonFlags *cf) {}
 
 } // namespace __sanitizer
 

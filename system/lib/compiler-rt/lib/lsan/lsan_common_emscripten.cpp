@@ -102,7 +102,8 @@ void HandleLeaks() {
   if (common_flags()->exitcode) Die();
 }
 
-void LockStuffAndStopTheWorld(StopTheWorldCallback callback, void *argument) {
+void LockStuffAndStopTheWorld(StopTheWorldCallback callback,
+                              CheckForLeaksParam *argument) {
   // Currently, on Emscripten this does nothing and just calls the callback.
   // This works fine on a single-threaded environment.
   LockThreadRegistry();
