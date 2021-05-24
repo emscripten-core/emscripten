@@ -18,8 +18,17 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.21
-------
+2.0.22
+-----
+- wasm-ld will now perform string tail merging in debug string sections as well
+  as regular data sections.   This behaviour can be be disabled with `-Wl,-O0`.
+  This should significantly reduce the size of dwarf debug information in the
+  wasm binary.
+- The experimental SPLIT_MODULE setting now expects the secondary module to be
+  named `<module>.deferred.wasm` instead of `<module>.wasm.deferred`.
+
+2.0.21: 05/18/2021
+------------------
 - Options such as EXPORTED_FUNCTIONS that can take a response file containing
   list of symbols can now use a simple one-symbol-per-line format.  This new
   format is much simpler and doesn't require commas between symbols, opening
@@ -40,6 +49,10 @@ See docs/process.md for more on how version tagging works.
   such as dynamic linking, `--proxy-to-worker`, external memory etc. (#14135)
 - `EXPORT_ES6` can now be used in combination with `-o [filename].html`. (#14165)
 - `EXPORT_ES6` no longer requires setting custom `EXPORT_NAME` too. (#14139)
+- New diagnostics allow Emscripten to issue warnings when using Intel SIMD
+  intrinsics (from xmmintrin.h) which have slow emulations rather than fast
+  WebAssembly equivalents. To enable them, define WASM_SIMD_COMPAT_SLOW
+  in the preprocessor (#14152)
 
 2.0.20: 05/04/2021
 ------------------

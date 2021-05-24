@@ -2702,9 +2702,12 @@ Module["preRun"].push(function () {
     create_file('test.txt', 'emscripten')
     self.btest(test_file('test_wget_data.c'), expected='1', args=['-O2', '-g2', '-s', 'ASYNCIFY'])
 
-  def test_locate_file(self):
+  @parameterized({
+    '': ([],),
+    'es6': (['-s', 'EXPORT_ES6=1'],),
+  })
+  def test_locate_file(self, args):
     for wasm in [0, 1]:
-      print('wasm', wasm)
       self.clear()
       create_file('src.cpp', r'''
         #include <stdio.h>
@@ -2728,7 +2731,7 @@ Module["preRun"].push(function () {
       create_file('pre.js', 'Module.locateFile = function(x) { return "sub/" + x };')
       self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
       # put pre.js first, then the file packager data, so locateFile is there for the file loading code
-      self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM', '-s', 'WASM=' + str(wasm)])
+      self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM', '-s', 'WASM=' + str(wasm)] + args)
       ensure_dir('sub')
       if wasm:
         shutil.move('page.wasm', Path('sub/page.wasm'))
@@ -2752,7 +2755,7 @@ Module["preRun"].push(function () {
         </body>
       ''')
 
-      def in_html(expected, args=[]):
+      def in_html(expected):
         self.compile_btest(['src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'SAFE_HEAP', '-s', 'ASSERTIONS', '-s', 'FORCE_FILESYSTEM', '-s', 'WASM=' + str(wasm)] + args)
         if wasm:
           shutil.move('page.wasm', Path('sub/page.wasm'))

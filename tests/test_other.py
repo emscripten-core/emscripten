@@ -552,7 +552,8 @@ f.close()
     'html':        ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release']),
     'library':     ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel']),
     'static_cpp':  ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
-    'stdproperty': ('stdproperty',    'helloworld.js',         [])
+    'stdproperty': ('stdproperty',    'helloworld.js',         []),
+    'post_build':  ('post_build',     'hello.js',              []),
   })
   def test_cmake(self, test_dir, output_file, cmake_args):
     # Test all supported generators.
@@ -599,6 +600,9 @@ f.close()
         if output_file.endswith('.js'):
           ret = self.run_process(config.NODE_JS + [tempdirname + '/' + output_file], stdout=PIPE).stdout
           self.assertTextDataIdentical(read_file(cmakelistsdir + '/out.txt').strip(), ret.strip())
+
+        if test_dir == 'post_build':
+          ret = self.run_process(['ctest'], env=env)
 
   # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten toolchain match with the actual language features that Clang supports.
   # If we update LLVM version and this test fails, copy over the new advertised features from Clang and place them to cmake/Modules/Platform/Emscripten.cmake.
@@ -1575,6 +1579,36 @@ int f() {
         'side.wasm',
       ])
 
+  def test_dylink_no_autoload(self):
+    create_file('main.c', r'''
+      #include <stdio.h>
+      int sidey();
+      int main() {
+        printf("sidey: %d\n", sidey());
+        return 0;
+      }''')
+    create_file('side.c', 'int sidey() { return 42; }')
+    self.run_process([EMCC, '-sSIDE_MODULE', 'side.c', '-o', 'libside.wasm'])
+
+    # First show everything working as expected with AUTOLOAD_DYLIBS
+    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm'])
+    output = self.run_js('a.out.js')
+    self.assertContained('sidey: 42\n', output)
+
+    # Same again but with NO_AUTOLOAD_DYLIBS.   This time we expect the call to sidey
+    # to fail at runtime.
+    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS'])
+    output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContained("external symbol 'sidey' is missing. perhaps a side module was not linked in?", output)
+
+    # Now with NO_AUTOLOAD_DYLIBS, but with manual loading of libside.wasm using loadDynamicLibrary
+    create_file('pre.js', '''
+    Module.preRun = function() { loadDynamicLibrary('libside.wasm'); }
+    ''')
+    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS', '--pre-js=pre.js'])
+    output = self.run_js('a.out.js')
+    self.assertContained('sidey: 42\n', output)
+
   def test_js_link(self):
     create_file('main.cpp', '''
       #include <stdio.h>
@@ -1610,6 +1644,15 @@ int f() {
 
   def test_sdl2_mixer_wav(self):
     self.emcc(test_file('sdl2_mixer_wav.c'), ['-s', 'USE_SDL_MIXER=2'], output_filename='a.out.js')
+
+  def test_sdl2_linkable(self):
+    # Ensure that SDL2 can be built with LINKABLE.  This implies there are no undefined
+    # symbols in the library (because LINKABLE includes the entire library).
+    self.emcc(test_file('sdl2_misc.c'), ['-sLINKABLE', '-sUSE_SDL=2'], output_filename='a.out.js')
+
+  def test_sdl2_gfx_linkable(self):
+    # Same as above but for sdl2_gfx library
+    self.emcc(test_file('sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
 
   def test_libpng(self):
     shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
@@ -3616,6 +3659,23 @@ EM_ASM({ _middle() });
         js = read_file('a.out.js')
         self.assertContained(UNMINIFIED_HEAP8, js)
         self.assertContained(UNMINIFIED_MIDDLE, js)
+
+  @parameterized({
+    '': [[]],
+    # bigint support is interesting to test here because it changes which
+    # binaryen tools get run, which can affect how debug info is kept around
+    'bigint': [['-sWASM_BIGINT']],
+  })
+  def test_symbol_map_output_size(self, args):
+    # build with and without a symbol map and verify that the sizes are the
+    # same. using a symbol map should add the map on the side, but not increase
+    # the build size.
+    # -Oz is used here to run as many optimizations as possible, to check for
+    # any difference in how the optimizer operates
+    self.run_process([EMCC, test_file('hello_world.c'), '-Oz', '-o', 'test1.js'] + args)
+    self.run_process([EMCC, test_file('hello_world.c'), '-Oz', '-o', 'test2.js', '--emit-symbol-map'] + args)
+    self.assertEqual(os.path.getsize('test1.js'), os.path.getsize('test2.js'))
+    self.assertEqual(os.path.getsize('test1.wasm'), os.path.getsize('test2.wasm'))
 
   def test_bc_to_bc(self):
     # emcc should 'process' bitcode to bitcode. build systems can request this if
@@ -10127,7 +10187,7 @@ exec "$@"
     self.clear()
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--oformat=foo'])
-    self.assertContained("error: invalid output format: `foo` (must be one of ['wasm', 'js', 'mjs', 'html', 'bare']", err)
+    self.assertContained("error: invalid output format: `foo` (must be one of ['object', 'wasm', 'js', 'mjs', 'html', 'bare']", err)
 
   # Tests that the old format of {{{ makeDynCall('sig') }}}(func, param1) works
   def test_old_makeDynCall_syntax(self):
@@ -10204,7 +10264,7 @@ exec "$@"
 
     os.remove('test_split_module.wasm')
     os.rename('primary.wasm', 'test_split_module.wasm')
-    os.rename('secondary.wasm', 'test_split_module.wasm.deferred')
+    os.rename('secondary.wasm', 'test_split_module.deferred.wasm')
     result = self.run_js('test_split_module.js')
     self.assertNotIn('profile', result)
     self.assertIn('Hello! answer: 42', result)
@@ -10243,7 +10303,7 @@ exec "$@"
 
     os.remove('test_split_main_module.wasm')
     os.rename('primary.wasm', 'test_split_main_module.wasm')
-    os.rename('secondary.wasm', 'test_split_main_module.wasm.deferred')
+    os.rename('secondary.wasm', 'test_split_main_module.deferred.wasm')
     result = self.run_js('test_split_main_module.js')
     self.assertNotIn('profile', result)
     self.assertIn('Hello from main!', result)
@@ -10466,3 +10526,19 @@ exec "$@"
     ''')
     self.run_process([EMCC, 'get.c', '-s', 'ALLOW_MEMORY_GROWTH', arg])
     self.assertContained(f'max: |{expected}|', self.run_js('a.out.js'))
+
+  def test_auto_ptr_cxx17(self):
+    # Test that its still possible to use auto_ptr, even in C++17
+    self.do_other_test('test_auto_ptr_cxx17.cpp', emcc_args=[
+      '-std=c++17',
+      '-D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR',
+      '-Wno-deprecated-declarations'])
+
+  def test_special_chars_in_arguments(self):
+    # We had some regressions where the windows `.bat` files that run the compiler
+    # driver were failing to accept certain special characters such as `(`, `)` and `!`.
+    # See https://github.com/emscripten-core/emscripten/issues/14063
+    create_file('test(file).c', 'int main() { return 0; }')
+    create_file('test!.c', 'int main() { return 0; }')
+    self.run_process([EMCC, 'test(file).c'])
+    self.run_process([EMCC, 'test!.c'])

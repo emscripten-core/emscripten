@@ -3593,7 +3593,7 @@ ok
     return self.dylink_testf(main, side, expected, force_c, **kwargs)
 
   def dylink_testf(self, main, side, expected=None, force_c=False, main_emcc_args=[],
-                   need_reverse=True, auto_load=True, **kwargs):
+                   need_reverse=True, **kwargs):
     self.maybe_closure()
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.emcc_args.copy()
@@ -3618,13 +3618,8 @@ ok
     # main settings
     self.set_setting('MAIN_MODULE', 2)
     self.clear_setting('SIDE_MODULE')
-    if auto_load:
-      self.emcc_args += main_emcc_args
-      self.emcc_args.append('liblib.so')
-    else:
-      # When not auto loading (i.e. when not specifying the side module on the
-      # command line) we need to disable warnings on undefined symbols.
-      self.set_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
+    self.emcc_args += main_emcc_args
+    self.emcc_args.append('liblib.so')
 
     if force_c:
       self.emcc_args.append('-nostdlib++')
@@ -4447,6 +4442,10 @@ res64 - external 64\n''', header='''
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args.append('-lnodefs.js')
     self.set_setting('INITIAL_MEMORY', '64mb')
+    # This test loads the module at runtime with loadWebAssemblyModule so we
+    # want to suppress the automatic loading that would otherwise be done at
+    # startup.
+    self.set_setting('NO_AUTOLOAD_DYLIBS')
 
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -4473,8 +4472,7 @@ res64 - external 64\n''', header='''
     ''',
                      expected=['sidef: 10'],
                      # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
-                     need_reverse=not self.is_wasm(),
-                     auto_load=False)
+                     need_reverse=not self.is_wasm())
 
   @needs_dylink
   def test_dylink_dso_needed(self):
@@ -5816,11 +5814,9 @@ int main(void) {
     src = read_file(test_file('new.cpp')).replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''
 #include <new>
 
-void *
-operator new(size_t size) throw(std::bad_alloc)
-{
-printf("new %zu!\\n", size);
-return malloc(size);
+void* operator new(size_t size) {
+  printf("new %zu!\\n", size);
+  return malloc(size);
 }
 '''
     self.do_run(src, 'new 4!\n*1,0*')
@@ -6149,6 +6145,10 @@ return malloc(size);
   })
   # Called thus so it runs late in the alphabetical cycle... it is long
   def test_bullet(self, use_cmake):
+    if not use_cmake:
+      # Temporarily disabled
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/14255')
+
     if WINDOWS and not use_cmake:
       self.skipTest("Windows cannot run configure sh scripts")
 
@@ -7125,7 +7125,7 @@ someweirdtext
       # needs to containt valid source text.
       self.assertTextDataIdentical(src, data['sourcesContent'][0])
     mappings = json.loads(self.run_js(
-      path_from_root('tools/source-maps/sourcemap2json.js'),
+      path_from_root('tests/sourcemap2json.js'),
       args=[map_filename]))
     seen_lines = set()
     for m in mappings:
@@ -8429,9 +8429,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['--extern-pre-js', 'pre.js']
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
+    # This test is for setting dynamicLibraries at runtime so we don't
+    # want emscripten loading `liblib.so` automatically (which it would
+    # do without this setting.
+    self.set_setting('NO_AUTOLOAD_DYLIBS')
 
     create_file('pre.js', '''
-      if ( !global.Module ) {
+      if (!global.Module) {
         // This is the initial load (not a worker)
         // Define the initial state of Module as we would
         // in the html shell file.
@@ -8454,8 +8458,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       r'''
         int side() { return 42; }
       ''',
-      'result is 42',
-      auto_load=False)
+      'result is 42')
 
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
