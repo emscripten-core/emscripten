@@ -195,12 +195,17 @@ class other(RunnerCore):
     # any tests for EXPORT_ES6 but once we do this should be enabled.
     # self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
-  def test_emcc_output_worker_mjs(self):
+  @parameterized({
+    '': (True, [],),
+    'no_import_meta': (False, ['-s', 'USE_ES6_IMPORT_META=0'],),
+  })
+  def test_emcc_output_worker_mjs(self, has_import_meta, args):
     os.mkdir('subdir')
     self.run_process([EMCC, '-o', 'subdir/hello_world.mjs', '-pthread', '-O1',
-                      test_file('hello_world.c')])
+                      test_file('hello_world.c')] + args)
     src = read_file('subdir/hello_world.mjs')
-    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
+    self.assertContainedIf("new URL('hello_world.wasm', import.meta.url)", src, condition=has_import_meta)
+    self.assertContainedIf("new Worker(new URL('hello_world.worker.js', import.meta.url))", src, condition=has_import_meta)
     self.assertContained('export default Module;', src)
     src = read_file('subdir/hello_world.worker.js')
     self.assertContained('import("./hello_world.mjs")', src)
