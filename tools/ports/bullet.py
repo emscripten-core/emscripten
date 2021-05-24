@@ -45,8 +45,7 @@ def get(ports, settings, shared):
       for dir in dirs:
         includes.append(os.path.join(root, dir))
 
-    # Debug info temporarly disabled due to: https://github.com/emscripten-core/emscripten/issues/14255
-    ports.build_port(src_path, final, includes=includes, exclude_dirs=['MiniCL'], debug_info=False)
+    ports.build_port(src_path, final, includes=includes, exclude_dirs=['MiniCL'])
 
   return [shared.Cache.get_lib('libbullet.a', create)]
 

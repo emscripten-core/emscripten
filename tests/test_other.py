@@ -1670,6 +1670,7 @@ int f() {
     self.emcc(test_file('jpeg_test.c'), ['--embed-file', 'screenshot.jpg', '-s', 'USE_LIBJPEG'], output_filename='a.out.js')
     self.assertContained('Image is 600 by 450 with 3 components', self.run_js('a.out.js', args=['screenshot.jpg']))
 
+  @disabled('https://github.com/emscripten-core/emscripten/issues/14255')
   def test_bullet(self):
     self.emcc(test_file('bullet_hello_world.cpp'), ['-s', 'USE_BULLET'], output_filename='a.out.js')
     self.assertContained('BULLET RUNNING', self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
