@@ -45,6 +45,9 @@ See docs/process.md for more on how version tagging works.
   could prevent running in WASI VMs, but that has not been needed any more. A
   minor side effect you might see from this is a larger wasm size in standalone
   mode when not optimizing (but optimized builds are unaffected). (#14338)
+- You can now explicitly request that an environment variable remain unset by
+  setting its value in `ENV` to `undefined`. This is useful for variables, such
+  as `LANG`, for which Emscripten normally provides a default value.
 
 2.0.23
 ------
