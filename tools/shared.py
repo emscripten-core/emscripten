@@ -16,6 +16,7 @@ import re
 import shutil
 import subprocess
 import time
+import signal
 import sys
 import tempfile
 
@@ -117,6 +118,15 @@ def mp_run_process(command_tuple):
   return ret
 
 
+def returncode_to_str(code):
+  assert code != 0
+  if code < 0:
+    signal_name = signal.Signals(-code).name
+    return f'received {signal_name} ({code})'
+
+  return f'returned {code}'
+
+
 # Runs multiple subprocess commands.
 # bool 'check': If True (default), raises an exception if any of the subprocesses failed with a nonzero exit code.
 # string 'route_stdout_to_temp_files_suffix': if not None, all stdouts are instead written to files, and an array of filenames is returned.
@@ -188,7 +198,8 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
             logger.info(out)
           if err:
             logger.error(err)
-          raise Exception('Subprocess %d/%d failed with return code %d! (cmdline: %s)' % (idx + 1, len(commands), finished_process.returncode, shlex_join(commands[idx])))
+
+          raise Exception('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
         num_completed += 1
 
   # If processes finished out of order, sort the results to the order of the input.
@@ -202,7 +213,7 @@ def check_call(cmd, *args, **kw):
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed (%d)", shlex_join(cmd), e.returncode)
+    exit_with_error("'%s' failed (%s)", shlex_join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
