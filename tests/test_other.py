@@ -656,6 +656,21 @@ f.close()
     err = self.expect_fail([EMCMAKE, 'cmake', test_file('cmake/static_lib'), '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON'])
     self.assertContained('EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES is not compatible with the', err)
 
+  @parameterized({
+    '': ['0'],
+    '_suffix': ['1'],
+  })
+  def test_cmake_static_lib(self, custom):
+    # Test that one is able to use custom suffixes for static libraries.
+    # (sometimes projects want to emulate stuff, and do weird things like files
+    # with ".so" suffix which are in fact either ar archives or bitcode files)
+    self.run_process([EMCMAKE, 'cmake', f'-DSET_CUSTOM_SUFFIX_IN_PROJECT={custom}', test_file('cmake/static_lib')])
+    self.run_process(['cmake', '--build', '.'])
+    if custom == '1':
+      self.assertTrue(building.is_ar('myprefix_static_lib.somecustomsuffix'))
+    else:
+      self.assertTrue(building.is_ar('libstatic_lib.a'))
+
   # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
   def test_cmake_emscripten_version(self):
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/emscripten_version')])
