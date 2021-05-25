@@ -3247,7 +3247,9 @@ window.close = function() {
     # Error.stackTraceLimit default to 10 in chrome but this test relies on more
     # than 40 stack frames being reported.
     create_file('pre.js', 'Error.stackTraceLimit = 80;\n')
-    self.btest('browser/async_2.cpp', '40', args=['-O3', '--pre-js', 'pre.js', '-s', 'ASYNCIFY'])
+    # run -O1 to avoid the binaryen optimizer, which inlines and in doing so
+    # ends up modifying stack traces
+    self.btest('browser/async_2.cpp', '40', args=['-O1', '--pre-js', 'pre.js', '-s', 'ASYNCIFY'])
 
   def test_async_virtual(self):
     for opts in [0, 3]:
