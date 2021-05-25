@@ -1110,9 +1110,9 @@ int f() {
         cmd = jsrun.make_command(os.path.normpath('out.js'), engine)
         cmd = shared.shlex_join(cmd)
         if WINDOWS:
-          os.system('type "in.txt" | {} >out.txt'.format(cmd))
+          os.system(f'type "in.txt" | {cmd} >out.txt')
         else: # posix
-          os.system('cat in.txt | {} > out.txt'.format(cmd))
+          os.system(f'cat in.txt | {cmd} > out.txt')
         self.assertContained('abcdef\nghijkl\neof', read_file('out.txt'))
 
     self.emcc(test_file('module/test_stdin.c'), output_filename='out.js')

@@ -905,7 +905,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
-      '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
+      '-D_LIBCXXABI_BUILDING_LIBRARY',
       # Remove this once we update to include this llvm
       # revision: https://reviews.llvm.org/D64961
       '-D_LIBCXXABI_GUARD_ABI_ARM',

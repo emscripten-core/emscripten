@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 2.0.23
 ------
+- libcxx updated to llvm-12. (#14249)
+- compiler-rt updated to llvm-12. (#14280)
 
 2.0.22 - 05/25/2021
 -------------------
