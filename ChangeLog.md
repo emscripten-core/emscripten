@@ -18,8 +18,13 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.22
------
+2.0.23
+------
+
+2.0.22 - 05/25/2021
+-------------------
+- Fix a crash bug that was present in 2.0.21 with the use of `-g`.  See
+  https://reviews.llvm.org/D102999.
 - wasm-ld will now perform string tail merging in debug string sections as well
   as regular data sections.   This behaviour can be be disabled with `-Wl,-O0`.
   This should significantly reduce the size of dwarf debug information in the
