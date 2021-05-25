@@ -7,7 +7,7 @@
 #include <emscripten.h>
 #include <assert.h>
 
-int calc(int x) {
+__attribute__((noinline)) int calc(int x) {
   printf("..%d..\n", x);
   if (x < 5) {
     char buffer[10000];
