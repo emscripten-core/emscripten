@@ -6145,10 +6145,6 @@ void* operator new(size_t size) {
   })
   # Called thus so it runs late in the alphabetical cycle... it is long
   def test_bullet(self, use_cmake):
-    if not use_cmake:
-      # Temporarily disabled
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/14255')
-
     if WINDOWS and not use_cmake:
       self.skipTest("Windows cannot run configure sh scripts")
 
