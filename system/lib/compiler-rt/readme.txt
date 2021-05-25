@@ -13,9 +13,6 @@ The current patch is based on:
 tag: llvmorg-10.0.0
 git: d32170dbd5b0d54436537b6b75beaf44324e0c28
 
-Not all files are included. The list of included files from lib/builtins/ is in
-filelist.txt.
-
 Update Instructions
 -------------------
 
