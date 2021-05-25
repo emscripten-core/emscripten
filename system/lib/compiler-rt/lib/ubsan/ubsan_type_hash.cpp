@@ -1,4 +1,4 @@
-//===-- ubsan_type_hash.cc ------------------------------------------------===//
+//===-- ubsan_type_hash.cpp -----------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -11,7 +11,7 @@
 // permitted to use language features which require a C++ ABI library.
 //
 // Most of the implementation lives in an ABI-specific source file
-// (ubsan_type_hash_{itanium,win}.cc).
+// (ubsan_type_hash_{itanium,win}.cpp).
 //
 //===----------------------------------------------------------------------===//
 
