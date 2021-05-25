@@ -951,6 +951,12 @@ module({
         });
 */
 
+        test("class member function named with a well-known symbol", function() {
+            var instance = new cm.SymbolNameClass();
+            assert.equal("Iterator", instance[Symbol.iterator]());
+            assert.equal("Species", cm.SymbolNameClass[Symbol.species]());
+        });
+
         test("no undefined entry in overload table when depending on already bound types", function() {
             var dummy_overloads = cm.MultipleOverloadsDependingOnDummy.prototype.dummy;
             // check if the overloadTable is correctly named

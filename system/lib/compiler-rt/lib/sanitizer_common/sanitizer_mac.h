@@ -30,25 +30,33 @@ struct MemoryMappingLayoutData {
   bool current_instrumented;
 };
 
-enum MacosVersion {
-  MACOS_VERSION_UNINITIALIZED = 0,
-  MACOS_VERSION_UNKNOWN,
-  MACOS_VERSION_LEOPARD,
-  MACOS_VERSION_SNOW_LEOPARD,
-  MACOS_VERSION_LION,
-  MACOS_VERSION_MOUNTAIN_LION,
-  MACOS_VERSION_MAVERICKS,
-  MACOS_VERSION_YOSEMITE,
-  MACOS_VERSION_EL_CAPITAN,
-  MACOS_VERSION_SIERRA,
-  MACOS_VERSION_HIGH_SIERRA,
-  MACOS_VERSION_HIGH_SIERRA_DOT_RELEASE_4,
-  MACOS_VERSION_MOJAVE,
-  MACOS_VERSION_CATALINA,
-  MACOS_VERSION_UNKNOWN_NEWER
+template <typename VersionType>
+struct VersionBase {
+  u16 major;
+  u16 minor;
+
+  VersionBase(u16 major, u16 minor) : major(major), minor(minor) {}
+
+  bool operator==(const VersionType &other) const {
+    return major == other.major && minor == other.minor;
+  }
+  bool operator>=(const VersionType &other) const {
+    return major > other.major ||
+           (major == other.major && minor >= other.minor);
+  }
+  bool operator<(const VersionType &other) const { return !(*this >= other); }
 };
 
-MacosVersion GetMacosVersion();
+struct MacosVersion : VersionBase<MacosVersion> {
+  MacosVersion(u16 major, u16 minor) : VersionBase(major, minor) {}
+};
+
+struct DarwinKernelVersion : VersionBase<DarwinKernelVersion> {
+  DarwinKernelVersion(u16 major, u16 minor) : VersionBase(major, minor) {}
+};
+
+MacosVersion GetMacosAlignedVersion();
+DarwinKernelVersion GetDarwinKernelVersion();
 
 char **GetEnviron();
 
@@ -67,7 +75,7 @@ asm(".desc ___crashreporter_info__, 0x10");
 namespace __sanitizer {
 static BlockingMutex crashreporter_info_mutex(LINKER_INITIALIZED);
 
-INLINE void CRAppendCrashLogMessage(const char *msg) {
+inline void CRAppendCrashLogMessage(const char *msg) {
   BlockingMutexLock l(&crashreporter_info_mutex);
   internal_strlcat(__crashreporter_info_buff__, msg,
                    sizeof(__crashreporter_info_buff__)); }

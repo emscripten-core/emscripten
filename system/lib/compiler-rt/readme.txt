@@ -1,17 +1,26 @@
-These files are from llvm-project/compiler-rt, release 10.0.0.
+llvm's compiler-rt
+------------------
 
-tag: llvmorg-10.0.0
-git: d32170dbd5b0d54436537b6b75beaf44324e0c28
+These files are from the llvm-project based on release 12.0.0.
 
-Not all files are included. The list of included files from lib/builtins/ is in
-filelist.txt.
+We maintain a local fork of llvm-project that contains any emscripten
+specific patches:
+
+  https://github.com/emscripten-core/llvm-project
+
+The current patch is based on:
+
+tag: llvmorg-12.0.0
+git: d28af7c654d8db0b68c175db5ce212d74fb5e9bc
 
 Update Instructions
 -------------------
 
 Run `system/lib/update_compiler_rt.py path/to/llvm-root`
 
-Local Change
-------------
+Modifications
+-------------
 
-lib/builtins/powitf2.c: enable for wasm as well as PPC
+For a list of changes from upstream see the compiler-rt files that are part of:
+
+https://github.com/llvm/llvm-project/compare/llvmorg-12.0.0...emscripten-core:emscripten-libs-12.0.0

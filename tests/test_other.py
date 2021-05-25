@@ -195,12 +195,17 @@ class other(RunnerCore):
     # any tests for EXPORT_ES6 but once we do this should be enabled.
     # self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
-  def test_emcc_output_worker_mjs(self):
+  @parameterized({
+    '': (True, [],),
+    'no_import_meta': (False, ['-s', 'USE_ES6_IMPORT_META=0'],),
+  })
+  def test_emcc_output_worker_mjs(self, has_import_meta, args):
     os.mkdir('subdir')
     self.run_process([EMCC, '-o', 'subdir/hello_world.mjs', '-pthread', '-O1',
-                      test_file('hello_world.c')])
+                      test_file('hello_world.c')] + args)
     src = read_file('subdir/hello_world.mjs')
-    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
+    self.assertContainedIf("new URL('hello_world.wasm', import.meta.url)", src, condition=has_import_meta)
+    self.assertContainedIf("new Worker(new URL('hello_world.worker.js', import.meta.url))", src, condition=has_import_meta)
     self.assertContained('export default Module;', src)
     src = read_file('subdir/hello_world.worker.js')
     self.assertContained('import("./hello_world.mjs")', src)
@@ -1578,6 +1583,36 @@ int f() {
         '-s', 'MAIN_MODULE=1',
         'side.wasm',
       ])
+
+  def test_dylink_no_autoload(self):
+    create_file('main.c', r'''
+      #include <stdio.h>
+      int sidey();
+      int main() {
+        printf("sidey: %d\n", sidey());
+        return 0;
+      }''')
+    create_file('side.c', 'int sidey() { return 42; }')
+    self.run_process([EMCC, '-sSIDE_MODULE', 'side.c', '-o', 'libside.wasm'])
+
+    # First show everything working as expected with AUTOLOAD_DYLIBS
+    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm'])
+    output = self.run_js('a.out.js')
+    self.assertContained('sidey: 42\n', output)
+
+    # Same again but with NO_AUTOLOAD_DYLIBS.   This time we expect the call to sidey
+    # to fail at runtime.
+    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS'])
+    output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContained("external symbol 'sidey' is missing. perhaps a side module was not linked in?", output)
+
+    # Now with NO_AUTOLOAD_DYLIBS, but with manual loading of libside.wasm using loadDynamicLibrary
+    create_file('pre.js', '''
+    Module.preRun = function() { loadDynamicLibrary('libside.wasm'); }
+    ''')
+    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS', '--pre-js=pre.js'])
+    output = self.run_js('a.out.js')
+    self.assertContained('sidey: 42\n', output)
 
   def test_js_link(self):
     create_file('main.cpp', '''
@@ -10234,7 +10269,7 @@ exec "$@"
 
     os.remove('test_split_module.wasm')
     os.rename('primary.wasm', 'test_split_module.wasm')
-    os.rename('secondary.wasm', 'test_split_module.wasm.deferred')
+    os.rename('secondary.wasm', 'test_split_module.deferred.wasm')
     result = self.run_js('test_split_module.js')
     self.assertNotIn('profile', result)
     self.assertIn('Hello! answer: 42', result)
@@ -10273,7 +10308,7 @@ exec "$@"
 
     os.remove('test_split_main_module.wasm')
     os.rename('primary.wasm', 'test_split_main_module.wasm')
-    os.rename('secondary.wasm', 'test_split_main_module.wasm.deferred')
+    os.rename('secondary.wasm', 'test_split_main_module.deferred.wasm')
     result = self.run_js('test_split_main_module.js')
     self.assertNotIn('profile', result)
     self.assertIn('Hello from main!', result)
@@ -10503,3 +10538,24 @@ exec "$@"
       '-std=c++17',
       '-D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR',
       '-Wno-deprecated-declarations'])
+
+  def test_special_chars_in_arguments(self):
+    # We had some regressions where the windows `.bat` files that run the compiler
+    # driver were failing to accept certain special characters such as `(`, `)` and `!`.
+    # See https://github.com/emscripten-core/emscripten/issues/14063
+    create_file('test(file).c', 'int main() { return 0; }')
+    create_file('test!.c', 'int main() { return 0; }')
+    self.run_process([EMCC, 'test(file).c'])
+    self.run_process([EMCC, 'test!.c'])
+
+  @no_windows('relies on a shell script')
+  def test_report_subprocess_signals(self):
+    # Test that when subprocess is killed by signal we report the signal name
+    create_file('die.sh', '''\
+#!/bin/sh
+kill -9 $$
+    ''')
+    make_executable('die.sh')
+    with env_modify({'EM_COMPILER_WRAPPER': './die.sh'}):
+      err = self.expect_fail([EMCC, test_file('hello_world.c')])
+      self.assertContained('failed (received SIGKILL (-9))', err)

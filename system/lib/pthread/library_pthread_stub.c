@@ -188,9 +188,12 @@ _Noreturn void pthread_exit(void* status) {
    exit((int)status);
 }
 
-int pthread_detach(pthread_t t) {
+int emscripten_builtin_pthread_detach(pthread_t t) {
   return 0;
 }
+
+weak_alias(emscripten_builtin_pthread_detach, pthread_detach);
+weak_alias(emscripten_builtin_pthread_detach, thrd_detach);
 
 pthread_t emscripten_main_browser_thread_id() {
   return __pthread_self();

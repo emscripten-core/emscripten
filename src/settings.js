@@ -1934,6 +1934,10 @@ var SPLIT_MODULE = 0;
 // [link]
 var REVERSE_DEPS = 'auto';
 
+// For MAIN_MODULE builds, automatically load any dynamic library dependencies
+// on startup, before loading the main module.
+var AUTOLOAD_DYLIBS = 1;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
