@@ -178,7 +178,7 @@ _deps_info = {
   'accept': ['htons'],
   'recvfrom': ['htons'],
   'send': ['ntohs'],
-  'setjmp': ['malloc', 'free', 'saveSetjmp'],
+  #'setjmp': ['malloc', 'free', 'saveSetjmp'],
   'setprotoent': ['malloc'],
   'setgroups': ['sysconf'],
   'syslog': ['malloc', 'ntohs'],
