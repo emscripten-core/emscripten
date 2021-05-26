@@ -1024,7 +1024,6 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
-        void Configure(TextureFormat format, TextureUsage allowedUsage, uint32_t width, uint32_t height) const;
         TextureView GetCurrentTextureView() const;
         void Present() const;
 
