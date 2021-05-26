@@ -5328,6 +5328,27 @@ main( int argv, char ** argc ) {
         self.emcc_args += ['-lnodefs.js', '-lnoderawfs.js']
       self.do_run_in_out_file_test('fs/test_mmap.c')
 
+  @parameterized({
+    '': [],
+    'minimal_runtime': ['-s', 'MINIMAL_RUNTIME=1']
+  })
+  def test_fs_no_main(self, *args):
+    # library_fs.js uses hooks to enable ignoreing of permisions up until ATMAINs are run.  This
+    # test verified that they work correctly, even in programs without a main function.
+    create_file('pre.js', '''
+Module['preRun'] = function() {
+  assert(FS.ignorePermissions, "ignorePermissions not set during preRun");
+}
+Module['onRuntimeInitialized'] = function() {
+  assert(!FS.ignorePermissions, "ignorePermissions not unset during onRuntimeInitialized");
+  assert(_foo() == 42);
+}
+''')
+    self.set_setting('EXPORTED_FUNCTIONS', '_foo')
+    self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args += ['--pre-js', 'pre.js'] + list(args)
+    self.do_run('int foo() { return 42; }', '', force_c=True)
+
   @also_with_noderawfs
   def test_fs_errorstack(self):
     # Enables strict mode, which may catch some strict-mode-only errors

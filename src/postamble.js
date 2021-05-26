@@ -319,9 +319,7 @@ function run(args) {
 
     initRuntime();
 
-#if HAS_MAIN
     preMain();
-#endif
 
 #if MODULARIZE
     readyPromiseResolve(Module);

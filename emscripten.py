@@ -151,7 +151,7 @@ def update_settings_glue(metadata, DEBUG):
 
 def apply_static_code_hooks(forwarded_json, code):
   code = shared.do_replace(code, '<<< ATINITS >>>', str(forwarded_json['ATINITS']))
-  if settings.HAS_MAIN:
+  if forwarded_json['ATMAINS']:
     code = shared.do_replace(code, '<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
   if settings.EXIT_RUNTIME:
     code = shared.do_replace(code, '<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))

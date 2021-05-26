@@ -397,7 +397,6 @@ function initRuntime() {
   callRuntimeCallbacks(__ATINIT__);
 }
 
-#if HAS_MAIN
 function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
@@ -405,10 +404,11 @@ function preMain() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
+#if ATMAINS.length
   <<< ATMAINS >>>
+#endif
   callRuntimeCallbacks(__ATMAIN__);
 }
-#endif
 
 function exitRuntime() {
 #if STACK_OVERFLOW_CHECK

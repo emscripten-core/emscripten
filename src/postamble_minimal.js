@@ -13,7 +13,9 @@ function run() {
   emscriptenMemoryProfiler.onPreloadComplete();
 #endif
 
+#if ATMAINS.length
   <<< ATMAINS >>>
+#endif
 
 #if PROXY_TO_PTHREAD
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
@@ -47,6 +49,10 @@ function run() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
+}
+#elif ATMAINS.length
+function run() {
+  <<< ATMAINS >>>
 }
 #endif
 
