@@ -174,12 +174,6 @@ var LibraryPThread = {
     },
 
     runExitHandlersAndDeinitThread: function(tb, exitCode) {
-#if PTHREADS_PROFILING
-      var profilerBlock = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0);
-      _free(profilerBlock);
-#endif
-
       // Disable all cancellation so that executing the cleanup handlers won't trigger another JS
       // canceled exception to be thrown.
       Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2, 1/*PTHREAD_CANCEL_DISABLE*/);
@@ -259,6 +253,11 @@ var LibraryPThread = {
         var tlsMemory = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.tsd, 'i32') }}};
         {{{ makeSetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.tsd, 0, 'i32') }}};
         _free(tlsMemory);
+#if PTHREADS_PROFILING
+        var profilerBlock = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.profilerBlock, 'i32') }}};
+        {{{ makeSetValue('pthread.threadInfoStruct',  C_STRUCTS.pthread.profilerBlock, 0, 'i32') }}};
+        _free(profilerBlock);
+#endif
         _free(pthread.threadInfoStruct);
       }
       pthread.threadInfoStruct = 0;
