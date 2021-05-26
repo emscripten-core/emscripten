@@ -9602,23 +9602,7 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     # Verify that programs containing pthread code can still work even
     # without enabling threads.  This is possible becase we link in
     # libpthread_stub.a
-    create_file('pthread.c', r'''
-#include <stdint.h>
-#include <stdio.h>
-#include <pthread.h>
-
-static void cleanup (void* arg) {
-  printf("cleanup: %ld\n", (intptr_t)arg);
-}
-
-int main() {
-  pthread_atfork(NULL, NULL, NULL);
-  pthread_cleanup_push(cleanup, (void*)42);
-  pthread_cleanup_pop(1);
-  return 0;
-}
-''')
-    self.do_runf('pthread.c', 'cleanup: 42')
+    self.do_other_test('test_pthread_stub.c')
 
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')

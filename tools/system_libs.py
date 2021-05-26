@@ -733,19 +733,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         # TODO: These could be moved away from JS in the upcoming musl upgrade.
         'pthread_cancel.c', 'pthread_detach.c',
         'pthread_join.c', 'pthread_testcancel.c',
-        # TODO: Support C11 condition variable and mutex library functions.
-        'cnd_broadcast.c',
-        'cnd_destroy.c',
-        'cnd_init.c',
-        'cnd_signal.c',
-        'cnd_timedwait.c',
-        'cnd_wait.c',
-        'mtx_destroy.c',
-        'mtx_init.c',
-        'mtx_lock.c',
-        'mtx_timedlock.c',
-        'mtx_trylock.c',
-        'mtx_unlock.c',
       ]
       libc_files += files_in_path(
         path_components=['system', 'lib', 'pthread'],
@@ -760,15 +747,27 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=[
           'pthread_self.c',
           # C11 thread library functions
+          'call_once.c',
+          'tss_create.c',
+          'tss_delete.c',
+          'tss_set.c',
+          'cnd_broadcast.c',
+          'cnd_destroy.c',
+          'cnd_init.c',
+          'cnd_signal.c',
+          'cnd_timedwait.c',
+          'cnd_wait.c',
+          'mtx_destroy.c',
+          'mtx_init.c',
+          'mtx_lock.c',
+          'mtx_timedlock.c',
+          'mtx_trylock.c',
+          'mtx_unlock.c',
           'thrd_create.c',
           'thrd_exit.c',
           'thrd_join.c',
           'thrd_sleep.c',
           'thrd_yield.c',
-          'call_once.c',
-          'tss_create.c',
-          'tss_delete.c',
-          'tss_set.c',
         ])
       libc_files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
 
