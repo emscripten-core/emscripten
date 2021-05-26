@@ -8,7 +8,7 @@ project(static_library)
 # command line to override the suffix, but changing it needs
 # to happen in the CMakeLists.txt file itself. (this is likely due to CMake
 # internal script evaluation order(?))
-if (SET_FAKE_SUFFIX_IN_PROJECT)
+if (SET_CUSTOM_SUFFIX_IN_PROJECT)
   set(CMAKE_STATIC_LIBRARY_SUFFIX ".somecustomsuffix")
 
   # Also check that we can control the prefix. Setting this to an empty string
