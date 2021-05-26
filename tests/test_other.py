@@ -10559,3 +10559,6 @@ kill -9 $$
     with env_modify({'EM_COMPILER_WRAPPER': './die.sh'}):
       err = self.expect_fail([EMCC, test_file('hello_world.c')])
       self.assertContained('failed (received SIGKILL (-9))', err)
+
+  def test_concepts(self):
+    self.do_runf(test_file('other', 'test_concepts.cpp'), '', emcc_args=['-std=c++20'])
