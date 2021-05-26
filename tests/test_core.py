@@ -6222,8 +6222,6 @@ void* operator new(size_t size) {
         };
         """ % line_splitter(str(image_bytes)))
 
-      shutil.copy(test_file('third_party/openjpeg/opj_config.h'), self.get_dir())
-
       lib = self.get_library('third_party/openjpeg',
                              [Path('codec/CMakeFiles/j2k_to_image.dir/index.c.o'),
                               Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
@@ -6278,7 +6276,7 @@ void* operator new(size_t size) {
                      includes=[test_file('third_party/openjpeg/libopenjpeg'),
                                test_file('third_party/openjpeg/codec'),
                                test_file('third_party/openjpeg/common'),
-                               Path(self.get_build_dir(), 'openjpeg')],
+                               Path(self.get_build_dir(), 'third_party/openjpeg')],
                      output_nicerizer=image_compare)
 
       do_test()
