@@ -223,6 +223,11 @@ list(APPEND CMAKE_SYSTEM_PREFIX_PATH /)
 
 set(CMAKE_LIBRARY_ARCHITECTURE "wasm32-emscripten")
 
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "${EMSCRIPTEN_SYSROOT}" CACHE PATH
+    "Install path prefix, prepended onto install directories." FORCE)
+endif()
+
 # To find programs to execute during CMake run time with find_program(), e.g.
 # 'git' or so, we allow looking into system paths.
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
