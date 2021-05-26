@@ -693,7 +693,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # musl modules
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'ipc', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'search', 'setjmp', 'env',
+        'aio', 'exit', 'legacy', 'mq', 'setjmp', 'env',
         'ldso'
     ]
 
