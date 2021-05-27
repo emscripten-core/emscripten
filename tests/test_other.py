@@ -680,6 +680,20 @@ f.close()
     self.run_process([EMCC, test_file('hello_world.c'), '-sUSE_ZLIB'])
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_stuff')])
 
+  def test_cmake_install(self):
+    # Build and install a library `foo`
+    os.mkdir('build1')
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/install_lib')], cwd='build1')
+    self.run_process(['cmake', '--build', 'build1'])
+    # newer versions of cmake support --install but we currently have 3.10.2 in CI
+    # so we using `--build --target install` instead.
+    self.run_process(['cmake', '--build', 'build1', '--target', 'install'])
+    # Build an application that uses `find_package` to locate and use the above library.
+    os.mkdir('build2')
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_package')], cwd='build2')
+    self.run_process(['cmake', '--build', 'build2'])
+    self.assertContained('foo: 42\n', self.run_js('build2/Bar.js'))
+
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
 

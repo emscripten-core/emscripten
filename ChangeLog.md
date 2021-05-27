@@ -20,6 +20,16 @@ See docs/process.md for more on how version tagging works.
 
 2.0.24
 ------
+- CMake projects (those that either use emcmake or use Emscripten.cmake
+  directly) are new configured to install (by default) directly into the
+  emscripten sysroot.  This means that running `cmake --install` (or running the
+  install target, via `make install` for example) will install resources into
+  the sysroot such that they can later be found and used by `find_path`,
+  `find_file`, `find_package`, etc.  Previously the default was to attempt to
+  install into the host system (e.g `/usr/local`) which is almost always not
+  desirable.  Folks that were previously using `CMAKE_INSTALL_PREFIX` to build
+  their own secondary sysroot may be able to simplify their build system by
+  removing this completely and relying on the new default.
 
 2.0.23
 ------
