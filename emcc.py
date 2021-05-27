@@ -102,17 +102,6 @@ DEFAULT_ASYNCIFY_IMPORTS = [
   'emscripten_fiber_swap',
   'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '_emval_await']
 
-# Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc
-# opt levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to
-# get llvm opt level 3, and speed-wise emcc level 2 is already the slowest/most
-# optimizing level)
-LLVM_OPT_LEVEL = {
-  0: ['-O0'],
-  1: ['-O1'],
-  2: ['-O3'],
-  3: ['-O3'],
-}
-
 # Target options
 final_js = None
 
