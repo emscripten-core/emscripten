@@ -675,6 +675,11 @@ f.close()
   def test_cmake_emscripten_version(self):
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/emscripten_version')])
 
+  def test_cmake_find_stuff(self):
+    # Ensure that zlib exists in the sysroot
+    self.run_process([EMCC, test_file('hello_world.c'), '-sUSE_ZLIB'])
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_stuff')])
+
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
 

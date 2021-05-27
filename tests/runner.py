@@ -100,6 +100,8 @@ TEST_ROOT = path_from_root('tests')
 
 WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
+EMBUILDER = shared.bat_suffix(path_from_root('embuilder'))
+
 
 if EMTEST_VERBOSE:
   logging.root.setLevel(logging.DEBUG)

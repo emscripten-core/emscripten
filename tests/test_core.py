@@ -28,7 +28,7 @@ from runner import RunnerCore, path_from_root, requires_native_clang, test_file
 from runner import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
 from runner import env_modify, with_env_modify, disabled, node_pthreads
 from runner import read_file, read_binary
-from runner import NON_ZERO, WEBIDL_BINDER
+from runner import NON_ZERO, WEBIDL_BINDER, EMBUILDER
 import clang_native
 
 # decorators for limiting which modes a test can run in
@@ -6243,6 +6243,11 @@ void* operator new(size_t size) {
         };
         """ % line_splitter(str(image_bytes)))
 
+      # ensure libpng is built so that openjpeg's configure step can detect it.
+      # If we don't do this then we don't know what the state of the cache will be
+      # and this test would different non-deterministic results based on, for example,
+      # what other tests had previously run.
+      self.run_process([EMBUILDER, 'build', 'libpng'])
       lib = self.get_library('third_party/openjpeg',
                              [Path('codec/CMakeFiles/j2k_to_image.dir/index.c.o'),
                               Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
@@ -6293,6 +6298,7 @@ void* operator new(size_t size) {
         self.do_runf(test_file('third_party/openjpeg/codec/j2k_to_image.c'),
                      'Successfully generated', # The real test for valid output is in image_compare
                      args='-i image.j2k -o image.raw'.split(),
+                     emcc_args=['-sUSE_LIBPNG'],
                      libraries=lib,
                      includes=[test_file('third_party/openjpeg/libopenjpeg'),
                                test_file('third_party/openjpeg/codec'),
