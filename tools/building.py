@@ -1287,7 +1287,7 @@ def is_ar(filename):
     if _is_ar_cache.get(filename):
       return _is_ar_cache[filename]
     header = open(filename, 'rb').read(8)
-    sigcheck = header == b'!<arch>\n'
+    sigcheck = header in (b'!<arch>\n', b'!<thin>\n')
     _is_ar_cache[filename] = sigcheck
     return sigcheck
   except Exception as e:
