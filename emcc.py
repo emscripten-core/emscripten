@@ -1302,11 +1302,9 @@ def phase_setup(options, state, newargs, settings_map):
     state.mode = Mode.COMPILE_ONLY
 
   if state.mode in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
-    # TODO(sbc): Re-enable these warnings once we are sure we don't have any false
-    # positives.  See: https://github.com/emscripten-core/emscripten/pull/14109
-    # for key in settings_map:
-    #   if key not in COMPILE_TIME_SETTINGS:
-    #     diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
+    for key in settings_map:
+       if key not in COMPILE_TIME_SETTINGS:
+         diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
     if state.has_dash_c:
       if '-emit-llvm' in newargs:
         options.default_object_extension = '.bc'
