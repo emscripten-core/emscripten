@@ -47,6 +47,9 @@ variables so that emcc etc. are used. Typical usage:
       args += ['-G', 'MinGW Makefiles']
     elif utils.which('ninja'):
       args += ['-G', 'Ninja']
+    else:
+      print('emcmake: no compatible cmake generator found; Please install ninja or mingw32-make, or specify a generator explicitly using -G', file=sys.stderr)
+      return 1
 
   # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles
   # is being used. This happens quite often, so do this automatically on
