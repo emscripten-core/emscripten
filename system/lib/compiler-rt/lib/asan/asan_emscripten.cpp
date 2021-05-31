@@ -33,6 +33,8 @@ void *AsanDoesNotSupportStaticLinkage() {
 
 void InitializeAsanInterceptors() {}
 
+void FlushUnneededASanShadowMemory(uptr p, uptr size) {}
+
 // We can use a plain thread_local variable for TSD.
 static thread_local void *per_thread;
 
@@ -65,7 +67,7 @@ static thread_return_t THREAD_CALLING_CONV asan_thread_start(void *arg) {
     internal_sched_yield();
   emscripten_builtin_free(param);
   SetCurrentThread(t);
-  return t->ThreadStart(GetTid(), nullptr);
+  return t->ThreadStart(GetTid());
 }
 
 INTERCEPTOR(int, pthread_create, void *thread,

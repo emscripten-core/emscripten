@@ -14,7 +14,7 @@ from subprocess import PIPE, STDOUT
 
 from runner import RunnerCore, path_from_root, env_modify, test_file
 from runner import create_file, ensure_dir, make_executable, with_env_modify
-from runner import parameterized
+from runner import parameterized, EMBUILDER
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
 from tools.shared import CANONICAL_TEMP_DIR
@@ -94,8 +94,6 @@ def make_fake_llc(filename, targets):
 
 
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
-
-EMBUILDER = path_from_root('embuilder.py')
 
 # arguments to build a minimal hello world program, without even libc
 # (-O1 avoids -O0's default assertions which bring in checking code;

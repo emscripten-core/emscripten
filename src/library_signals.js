@@ -157,7 +157,18 @@ var funs = {
   sigpending: function(set) {
     {{{ makeSetValue('set', 0, 0, 'i32') }}};
     return 0;
+  },
+
+  sigwait: function(set, sig) {
+    // POSIX SIGNALS are not supported
+    // if set contains an invalid signal number, EINVAL is returned
+    // in our case we return EINVAL all the time
+#if ASSERTIONS
+    err('Calling stub instead of sigwait()');
+#endif
+    return {{{ cDefine('EINVAL') }}};
   }
+	
   //signalfd
   //ppoll
   //epoll_pwait

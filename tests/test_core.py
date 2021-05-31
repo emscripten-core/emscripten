@@ -28,7 +28,7 @@ from runner import RunnerCore, path_from_root, requires_native_clang, test_file
 from runner import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
 from runner import env_modify, with_env_modify, disabled, node_pthreads
 from runner import read_file, read_binary
-from runner import NON_ZERO, WEBIDL_BINDER
+from runner import NON_ZERO, WEBIDL_BINDER, EMBUILDER
 import clang_native
 
 # decorators for limiting which modes a test can run in
@@ -5328,6 +5328,27 @@ main( int argv, char ** argc ) {
         self.emcc_args += ['-lnodefs.js', '-lnoderawfs.js']
       self.do_run_in_out_file_test('fs/test_mmap.c')
 
+  @parameterized({
+    '': [],
+    'minimal_runtime': ['-s', 'MINIMAL_RUNTIME=1']
+  })
+  def test_fs_no_main(self, *args):
+    # library_fs.js uses hooks to enable ignoreing of permisions up until ATMAINs are run.  This
+    # test verified that they work correctly, even in programs without a main function.
+    create_file('pre.js', '''
+Module['preRun'] = function() {
+  assert(FS.ignorePermissions, "ignorePermissions not set during preRun");
+}
+Module['onRuntimeInitialized'] = function() {
+  assert(!FS.ignorePermissions, "ignorePermissions not unset during onRuntimeInitialized");
+  assert(_foo() == 42);
+}
+''')
+    self.set_setting('EXPORTED_FUNCTIONS', '_foo')
+    self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args += ['--pre-js', 'pre.js'] + list(args)
+    self.do_run('int foo() { return 42; }', '', force_c=True)
+
   @also_with_noderawfs
   def test_fs_errorstack(self):
     # Enables strict mode, which may catch some strict-mode-only errors
@@ -6222,8 +6243,11 @@ void* operator new(size_t size) {
         };
         """ % line_splitter(str(image_bytes)))
 
-      shutil.copy(test_file('third_party/openjpeg/opj_config.h'), self.get_dir())
-
+      # ensure libpng is built so that openjpeg's configure step can detect it.
+      # If we don't do this then we don't know what the state of the cache will be
+      # and this test would different non-deterministic results based on, for example,
+      # what other tests had previously run.
+      self.run_process([EMBUILDER, 'build', 'libpng'])
       lib = self.get_library('third_party/openjpeg',
                              [Path('codec/CMakeFiles/j2k_to_image.dir/index.c.o'),
                               Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
@@ -6274,11 +6298,12 @@ void* operator new(size_t size) {
         self.do_runf(test_file('third_party/openjpeg/codec/j2k_to_image.c'),
                      'Successfully generated', # The real test for valid output is in image_compare
                      args='-i image.j2k -o image.raw'.split(),
+                     emcc_args=['-sUSE_LIBPNG'],
                      libraries=lib,
                      includes=[test_file('third_party/openjpeg/libopenjpeg'),
                                test_file('third_party/openjpeg/codec'),
                                test_file('third_party/openjpeg/common'),
-                               Path(self.get_build_dir(), 'openjpeg')],
+                               Path(self.get_build_dir(), 'third_party/openjpeg')],
                      output_nicerizer=image_compare)
 
       do_test()

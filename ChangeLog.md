@@ -18,8 +18,32 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.22
------
+2.0.24
+------
+- CMake projects (those that either use emcmake or use Emscripten.cmake
+  directly) are new configured to install (by default) directly into the
+  emscripten sysroot.  This means that running `cmake --install` (or running the
+  install target, via `make install` for example) will install resources into
+  the sysroot such that they can later be found and used by `find_path`,
+  `find_file`, `find_package`, etc.  Previously the default was to attempt to
+  install into the host system (e.g `/usr/local`) which is almost always not
+  desirable.  Folks that were previously using `CMAKE_INSTALL_PREFIX` to build
+  their own secondary sysroot may be able to simplify their build system by
+  removing this completely and relying on the new default.
+- Reinstated the warning on linker-only `-s` settings passed when not linking
+  (i.e. when compiling with `-c`).  As before this can disabled with
+  `-Wno-unused-command-line-argument` (#14182).
+
+2.0.23
+------
+- libcxxabi updated to llvm-12. (#14288)
+- libcxx updated to llvm-12. (#14249)
+- compiler-rt updated to llvm-12. (#14280)
+
+2.0.22 - 05/25/2021
+-------------------
+- Fix a crash bug that was present in 2.0.21 with the use of `-g`.  See
+  https://reviews.llvm.org/D102999.
 - wasm-ld will now perform string tail merging in debug string sections as well
   as regular data sections.   This behaviour can be be disabled with `-Wl,-O0`.
   This should significantly reduce the size of dwarf debug information in the

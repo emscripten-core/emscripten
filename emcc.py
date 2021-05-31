@@ -102,17 +102,6 @@ DEFAULT_ASYNCIFY_IMPORTS = [
   'emscripten_fiber_swap',
   'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '_emval_await']
 
-# Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc
-# opt levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to
-# get llvm opt level 3, and speed-wise emcc level 2 is already the slowest/most
-# optimizing level)
-LLVM_OPT_LEVEL = {
-  0: ['-O0'],
-  1: ['-O1'],
-  2: ['-O3'],
-  3: ['-O3'],
-}
-
 # Target options
 final_js = None
 
@@ -237,7 +226,6 @@ class EmccOptions:
     self.compiler_wrapper = None
     self.oformat = None
     self.requested_debug = ''
-    self.profiling = False
     self.profiling_funcs = False
     self.tracing = False
     self.emit_symbol_map = False
@@ -1314,11 +1302,9 @@ def phase_setup(options, state, newargs, settings_map):
     state.mode = Mode.COMPILE_ONLY
 
   if state.mode in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
-    # TODO(sbc): Re-enable these warnings once we are sure we don't have any false
-    # positives.  See: https://github.com/emscripten-core/emscripten/pull/14109
-    # for key in settings_map:
-    #   if key not in COMPILE_TIME_SETTINGS:
-    #     diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
+    for key in settings_map:
+       if key not in COMPILE_TIME_SETTINGS:
+         diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
     if state.has_dash_c:
       if '-emit-llvm' in newargs:
         options.default_object_extension = '.bc'
@@ -2839,7 +2825,6 @@ def parse_args(newargs):
         settings.DEBUG_LEVEL = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
-      options.profiling = True
     elif check_flag('-profiling-funcs') or check_flag('--profiling-funcs'):
       options.profiling_funcs = True
     elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':

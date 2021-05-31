@@ -195,12 +195,17 @@ class other(RunnerCore):
     # any tests for EXPORT_ES6 but once we do this should be enabled.
     # self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
-  def test_emcc_output_worker_mjs(self):
+  @parameterized({
+    '': (True, [],),
+    'no_import_meta': (False, ['-s', 'USE_ES6_IMPORT_META=0'],),
+  })
+  def test_emcc_output_worker_mjs(self, has_import_meta, args):
     os.mkdir('subdir')
     self.run_process([EMCC, '-o', 'subdir/hello_world.mjs', '-pthread', '-O1',
-                      test_file('hello_world.c')])
+                      test_file('hello_world.c')] + args)
     src = read_file('subdir/hello_world.mjs')
-    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
+    self.assertContainedIf("new URL('hello_world.wasm', import.meta.url)", src, condition=has_import_meta)
+    self.assertContainedIf("new Worker(new URL('hello_world.worker.js', import.meta.url))", src, condition=has_import_meta)
     self.assertContained('export default Module;', src)
     src = read_file('subdir/hello_world.worker.js')
     self.assertContained('import("./hello_world.mjs")', src)
@@ -651,9 +656,43 @@ f.close()
     err = self.expect_fail([EMCMAKE, 'cmake', test_file('cmake/static_lib'), '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON'])
     self.assertContained('EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES is not compatible with the', err)
 
+  @parameterized({
+    '': ['0'],
+    '_suffix': ['1'],
+  })
+  def test_cmake_static_lib(self, custom):
+    # Test that one is able to use custom suffixes for static libraries.
+    # (sometimes projects want to emulate stuff, and do weird things like files
+    # with ".so" suffix which are in fact either ar archives or bitcode files)
+    self.run_process([EMCMAKE, 'cmake', f'-DSET_CUSTOM_SUFFIX_IN_PROJECT={custom}', test_file('cmake/static_lib')])
+    self.run_process(['cmake', '--build', '.'])
+    if custom == '1':
+      self.assertTrue(building.is_ar('myprefix_static_lib.somecustomsuffix'))
+    else:
+      self.assertTrue(building.is_ar('libstatic_lib.a'))
+
   # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
   def test_cmake_emscripten_version(self):
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/emscripten_version')])
+
+  def test_cmake_find_stuff(self):
+    # Ensure that zlib exists in the sysroot
+    self.run_process([EMCC, test_file('hello_world.c'), '-sUSE_ZLIB'])
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_stuff')])
+
+  def test_cmake_install(self):
+    # Build and install a library `foo`
+    os.mkdir('build1')
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/install_lib')], cwd='build1')
+    self.run_process(['cmake', '--build', 'build1'])
+    # newer versions of cmake support --install but we currently have 3.10.2 in CI
+    # so we using `--build --target install` instead.
+    self.run_process(['cmake', '--build', 'build1', '--target', 'install'])
+    # Build an application that uses `find_package` to locate and use the above library.
+    os.mkdir('build2')
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_package')], cwd='build2')
+    self.run_process(['cmake', '--build', 'build2'])
+    self.assertContained('foo: 42\n', self.run_js('build2/Bar.js'))
 
   def test_system_include_paths(self):
     # Verify that all default include paths are within `emscripten/system`
@@ -1105,9 +1144,9 @@ int f() {
         cmd = jsrun.make_command(os.path.normpath('out.js'), engine)
         cmd = shared.shlex_join(cmd)
         if WINDOWS:
-          os.system('type "in.txt" | {} >out.txt'.format(cmd))
+          os.system(f'type "in.txt" | {cmd} >out.txt')
         else: # posix
-          os.system('cat in.txt | {} > out.txt'.format(cmd))
+          os.system(f'cat in.txt | {cmd} > out.txt')
         self.assertContained('abcdef\nghijkl\neof', read_file('out.txt'))
 
     self.emcc(test_file('module/test_stdin.c'), output_filename='out.js')
@@ -9582,23 +9621,7 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     # Verify that programs containing pthread code can still work even
     # without enabling threads.  This is possible becase we link in
     # libpthread_stub.a
-    create_file('pthread.c', r'''
-#include <stdint.h>
-#include <stdio.h>
-#include <pthread.h>
-
-static void cleanup (void* arg) {
-  printf("cleanup: %ld\n", (intptr_t)arg);
-}
-
-int main() {
-  pthread_atfork(NULL, NULL, NULL);
-  pthread_cleanup_push(cleanup, (void*)42);
-  pthread_cleanup_pop(1);
-  return 0;
-}
-''')
-    self.do_runf('pthread.c', 'cleanup: 42')
+    self.do_other_test('test_pthread_stub.c')
 
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')
@@ -9766,7 +9789,7 @@ int main() {
 
   # Compile-test for -s USE_WEBGPU=1 and library_webgpu.js.
   def test_webgpu_compiletest(self):
-    for args in [[], ['-s', 'ASSERTIONS']]:
+    for args in [[], ['-s', 'ASSERTIONS'], ['-s', 'MAIN_MODULE=1']]:
       self.run_process([EMXX, test_file('webgpu_dummy.cpp'), '-s', 'USE_WEBGPU', '-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IMPORTS=["init_js_device"]'] + args)
 
   def test_signature_mismatch(self):
@@ -10554,3 +10577,10 @@ kill -9 $$
     with env_modify({'EM_COMPILER_WRAPPER': './die.sh'}):
       err = self.expect_fail([EMCC, test_file('hello_world.c')])
       self.assertContained('failed (received SIGKILL (-9))', err)
+
+  def test_concepts(self):
+    self.do_runf(test_file('other', 'test_concepts.cpp'), '', emcc_args=['-std=c++20'])
+
+  def test_link_only_setting_warning(self):
+    err = self.run_process([EMCC, '-sALLOW_MEMORY_GROWTH', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
+    self.assertContained("warning: linker setting ignored during compilation: 'ALLOW_MEMORY_GROWTH' [-Wunused-command-line-argument]", err)

@@ -76,8 +76,6 @@ get_filename_component(EMSCRIPTEN_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}" ABSOLUTE)
 
 list(APPEND CMAKE_MODULE_PATH "${EMSCRIPTEN_ROOT_PATH}/cmake/Modules")
 
-list(APPEND CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}/system")
-
 if (CMAKE_HOST_WIN32)
   set(EMCC_SUFFIX ".bat")
 else()
@@ -211,6 +209,25 @@ if (EMSCRIPTEN_FORCE_COMPILERS)
   endif()
 endif()
 
+execute_process(COMMAND "${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}" "CACHE"
+  RESULT_VARIABLE _emcache_result
+  OUTPUT_VARIABLE _emcache_output
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
+if (NOT _emcache_result EQUAL 0)
+  message(FATAL_ERROR "Failed to find emscripten cache directory with command \"'${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}' CACHE\"! Process returned with error code ${_emcache_result}.")
+endif()
+set(EMSCRIPTEN_SYSROOT "${_emcache_output}/sysroot")
+
+list(APPEND CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_SYSROOT}")
+list(APPEND CMAKE_SYSTEM_PREFIX_PATH /)
+
+set(CMAKE_LIBRARY_ARCHITECTURE "wasm32-emscripten")
+
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "${EMSCRIPTEN_SYSROOT}" CACHE PATH
+    "Install path prefix, prepended onto install directories." FORCE)
+endif()
+
 # To find programs to execute during CMake run time with find_program(), e.g.
 # 'git' or so, we allow looking into system paths.
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
@@ -228,8 +245,6 @@ endif()
 if (NOT CMAKE_FIND_ROOT_PATH_MODE_PACKAGE)
   set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 endif()
-
-set(CMAKE_SYSTEM_INCLUDE_PATH "${EMSCRIPTEN_ROOT_PATH}/system/include")
 
 option(EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES "If set, static library targets generate LLVM bitcode files (.bc). If disabled (default), UNIX ar archives (.a) are generated." OFF)
 if (EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES)
