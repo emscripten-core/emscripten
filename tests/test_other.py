@@ -7622,6 +7622,13 @@ end
     self.run_process([EMAR, 'crS', '--format=gnu', 'libfoo.a', 'file.txt', 'hello_world.o'])
     self.run_process([EMCC, test_file('hello_world.c'), 'libfoo.a'])
 
+  def test_archive_thin(self):
+    self.run_process([EMCC, '-c', test_file('hello_world.c')])
+    # The `T` flag means "thin"
+    self.run_process([EMAR, 'crT', 'libhello.a', 'hello_world.o'])
+    self.run_process([EMCC, 'libhello.a'])
+    self.assertContained('hello, world!', self.run_js('a.out.js'))
+
   def test_flag_aliases(self):
     def assert_aliases_match(flag1, flag2, flagarg, extra_args=[]):
       results = {}
