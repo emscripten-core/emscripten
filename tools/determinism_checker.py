@@ -13,7 +13,7 @@ import time
 
 
 def run():
-  subprocess.check_call(['emcc', 'src.cpp', '-O2', '-s', 'WASM=1'])
+  subprocess.check_call(['emcc', 'src.cpp', '-O2'])
   ret = {}
   for relevant_file in os.listdir('.'):
     ret[relevant_file] = open(relevant_file).read()

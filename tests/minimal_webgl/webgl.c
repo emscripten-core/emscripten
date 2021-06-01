@@ -1,8 +1,8 @@
-#include <GLES2/gl2.h>
-#include <emscripten.h>
-#include <emscripten/html5.h>
-#include <string.h>
-#include <assert.h>
+#include <emscripten.h> // For emscripten_get_device_pixel_ratio()
+#include <emscripten/html5.h> // For Emscripten HTML5 WebGL context creation API
+#include <webgl/webgl1.h> // For Emscripten WebGL API headers (see also webgl/webgl1_ext.h and webgl/webgl2.h)
+#include <string.h> // For NULL and strcmp()
+#include <assert.h> // For assert()
 
 void upload_unicode_char_to_texture(int unicodeChar, int charSize, int applyShadow);
 void load_texture_from_url(GLuint texture, const char *url, int *outWidth, int *outHeight);

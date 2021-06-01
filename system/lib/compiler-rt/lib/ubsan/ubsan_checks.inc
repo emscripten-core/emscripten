@@ -18,6 +18,8 @@
 
 UBSAN_CHECK(GenericUB, "undefined-behavior", "undefined")
 UBSAN_CHECK(NullPointerUse, "null-pointer-use", "null")
+UBSAN_CHECK(NullPointerUseWithNullability, "null-pointer-use",
+            "nullability-assign")
 UBSAN_CHECK(PointerOverflow, "pointer-overflow", "pointer-overflow")
 UBSAN_CHECK(MisalignedPointerUse, "misaligned-pointer-use", "alignment")
 UBSAN_CHECK(AlignmentAssumption, "alignment-assumption", "alignment")
@@ -30,6 +32,7 @@ UBSAN_CHECK(IntegerDivideByZero, "integer-divide-by-zero",
             "integer-divide-by-zero")
 UBSAN_CHECK(FloatDivideByZero, "float-divide-by-zero", "float-divide-by-zero")
 UBSAN_CHECK(InvalidBuiltin, "invalid-builtin-use", "invalid-builtin-use")
+UBSAN_CHECK(InvalidObjCCast, "invalid-objc-cast", "invalid-objc-cast")
 UBSAN_CHECK(ImplicitUnsignedIntegerTruncation,
             "implicit-unsigned-integer-truncation",
             "implicit-unsigned-integer-truncation")
@@ -54,6 +57,10 @@ UBSAN_CHECK(InvalidEnumLoad, "invalid-enum-load", "enum")
 UBSAN_CHECK(FunctionTypeMismatch, "function-type-mismatch", "function")
 UBSAN_CHECK(InvalidNullReturn, "invalid-null-return",
             "returns-nonnull-attribute")
+UBSAN_CHECK(InvalidNullReturnWithNullability, "invalid-null-return",
+            "nullability-return")
 UBSAN_CHECK(InvalidNullArgument, "invalid-null-argument", "nonnull-attribute")
+UBSAN_CHECK(InvalidNullArgumentWithNullability, "invalid-null-argument",
+            "nullability-arg")
 UBSAN_CHECK(DynamicTypeMismatch, "dynamic-type-mismatch", "vptr")
 UBSAN_CHECK(CFIBadType, "cfi-bad-type", "cfi")

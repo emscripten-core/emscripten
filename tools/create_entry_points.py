@@ -7,42 +7,78 @@
 """Tool for creating/maintains the python launcher scripts for all the emscripten
 python tools.
 
-This tools makes copies or `run_python.sh` and `run_python.bat` script for each
-entry point.  On UNIX we previously used symbolic links for simplicity but this
-breaks MINGW users on windows who want use the shell script launcher but don't
-have symlink support (sigh).
+This tools makes copies or `run_python.sh/.bat` and `run_python_compiler.sh/.bat`
+script for each entry point. On UNIX we previously used symbolic links for
+simplicity but this breaks MINGW users on windows who want use the shell script
+launcher but don't have symlink support.
 """
 
 import os
-import shutil
 import sys
+import stat
+
+compiler_entry_points = '''
+emcc
+em++
+'''.split()
 
 entry_points = '''
 emar
 embuilder
-emcc
 emcmake
 em-config
 emconfigure
 emmake
-em++
 emranlib
 emrun
 emscons
 emsize
+emdump
+emprofile
+tools/file_packager
+tools/webidl_binder
+tests/runner
 '''.split()
 
 
+# For some tools the entry point doesn't live alongside the python
+# script.
+entry_remap = {
+  'emdump': 'tools/emdump',
+  'emprofile': 'tools/emprofile',
+}
+
+tools_dir = os.path.dirname(os.path.abspath(__file__))
+
+
 def main():
-  tools_dir = os.path.dirname(os.path.abspath(__file__))
   root_dir = os.path.dirname(tools_dir)
-  sh_file = os.path.join(tools_dir, 'run_python.sh')
-  bat_file = os.path.join(tools_dir, 'run_python.bat')
-  for entry_point in entry_points:
-    if os.path.exists(os.path.join(root_dir, entry_point)):
-        os.remove(os.path.join(root_dir, entry_point))
-    shutil.copy2(sh_file, os.path.join(root_dir, entry_point))
-    shutil.copy2(bat_file, os.path.join(root_dir, entry_point) + '.bat')
+
+  def generate_entry_points(cmd, path):
+    sh_file = path + '.sh'
+    bat_file = path + '.bat'
+    with open(sh_file) as f:
+      sh_file = f.read()
+    with open(bat_file) as f:
+      bat_file = f.read()
+
+    for entry_point in cmd:
+      sh_data = sh_file
+      bat_data = bat_file
+      if entry_point in entry_remap:
+        sh_data = sh_data.replace('$0', '$(dirname $0)/' + entry_remap[entry_point])
+        bat_data = bat_data.replace('%~n0', entry_remap[entry_point].replace('/', '\\'))
+
+      out_sh_file = os.path.join(root_dir, entry_point)
+      with open(out_sh_file, 'w') as f:
+        f.write(sh_data)
+      os.chmod(out_sh_file, stat.S_IMODE(os.stat(out_sh_file).st_mode) | stat.S_IXUSR)
+
+      with open(os.path.join(root_dir, entry_point + '.bat'), 'w') as f:
+        f.write(bat_data)
+
+  generate_entry_points(entry_points, os.path.join(tools_dir, 'run_python'))
+  generate_entry_points(compiler_entry_points, os.path.join(tools_dir, 'run_python_compiler'))
 
 
 if __name__ == '__main__':

@@ -28,15 +28,6 @@
 extern "C" {
 #endif
 
-#if !__EMSCRIPTEN__
-#include <SDL/SDL.h> /* for SDL_Delay in async_call */
-#endif
-
-#if __EMSCRIPTEN__
-// This version of emscripten has <emscripten/vr.h> and associated support
-#define EMSCRIPTEN_HAS_VR_SUPPORT 1
-#endif
-
 /* Typedefs */
 
 typedef short __attribute__((aligned(1))) emscripten_align1_short;
@@ -59,94 +50,59 @@ typedef void (*em_callback_func)(void);
 typedef void (*em_arg_callback_func)(void*);
 typedef void (*em_str_callback_func)(const char *);
 
-extern void emscripten_run_script(const char *script);
-extern int emscripten_run_script_int(const char *script);
-extern char *emscripten_run_script_string(const char *script);
-extern void emscripten_async_run_script(const char *script, int millis);
-extern void emscripten_async_load_script(const char *script, em_callback_func onload, em_callback_func onerror);
+void emscripten_run_script(const char *script);
+int emscripten_run_script_int(const char *script);
+char *emscripten_run_script_string(const char *script);
+void emscripten_async_run_script(const char *script, int millis);
+void emscripten_async_load_script(const char *script, em_callback_func onload, em_callback_func onerror);
 
-#if __EMSCRIPTEN__
-extern void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
+void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
 
 #define EM_TIMING_SETTIMEOUT 0
 #define EM_TIMING_RAF 1
 #define EM_TIMING_SETIMMEDIATE 2
 
-extern int emscripten_set_main_loop_timing(int mode, int value);
-extern void emscripten_get_main_loop_timing(int *mode, int *value);
-extern void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop);
-extern void emscripten_pause_main_loop(void);
-extern void emscripten_resume_main_loop(void);
-extern void emscripten_cancel_main_loop(void);
-#else
-#define emscripten_set_main_loop(func, fps, simulateInfiniteLoop) \
-  while (1) { func(); usleep(1000000/fps); }
-#define emscripten_cancel_main_loop() exit(1);
-#endif
-
+int emscripten_set_main_loop_timing(int mode, int value);
+void emscripten_get_main_loop_timing(int *mode, int *value);
+void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop);
+void emscripten_pause_main_loop(void);
+void emscripten_resume_main_loop(void);
+void emscripten_cancel_main_loop(void);
 
 typedef void (*em_socket_callback)(int fd, void *userData);
 typedef void (*em_socket_error_callback)(int fd, int err, const char* msg, void *userData);
 
-extern void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback callback);
-extern void emscripten_set_socket_open_callback(void *userData, em_socket_callback callback);
-extern void emscripten_set_socket_listen_callback(void *userData, em_socket_callback callback);
-extern void emscripten_set_socket_connection_callback(void *userData, em_socket_callback callback);
-extern void emscripten_set_socket_message_callback(void *userData, em_socket_callback callback);
-extern void emscripten_set_socket_close_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback callback);
+void emscripten_set_socket_open_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_listen_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_connection_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_message_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_close_callback(void *userData, em_socket_callback callback);
 
-
-#if __EMSCRIPTEN__
-extern void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
-extern void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
-#else
-inline void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name) {
-  func(arg);
-}
-inline void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name) {
-  func(arg);
-}
-#endif
+void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
+void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
 #define emscripten_push_main_loop_blocker(func, arg) \
   _emscripten_push_main_loop_blocker(func, arg, #func)
 #define emscripten_push_uncounted_main_loop_blocker(func, arg) \
   _emscripten_push_uncounted_main_loop_blocker(func, arg, #func)
 
-#if __EMSCRIPTEN__
-extern void emscripten_set_main_loop_expected_blockers(int num);
-#else
-inline void emscripten_set_main_loop_expected_blockers(int num) {}
-#endif
+void emscripten_set_main_loop_expected_blockers(int num);
 
+void emscripten_async_call(em_arg_callback_func func, void *arg, int millis);
 
-#if __EMSCRIPTEN__
-extern void emscripten_async_call(em_arg_callback_func func, void *arg, int millis);
-#else
-inline void emscripten_async_call(em_arg_callback_func func, void *arg, int millis) {
-  if (millis) SDL_Delay(millis);
-  func(arg);
-}
-#endif
-
-
-extern void emscripten_exit_with_live_runtime(void);
-extern void emscripten_force_exit(int status);
+void emscripten_exit_with_live_runtime(void);
+void emscripten_force_exit(int status);
 
 double emscripten_get_device_pixel_ratio(void);
 
+char *emscripten_get_window_title();
+void emscripten_set_window_title(const char *);
+void emscripten_get_screen_size(int *width, int *height);
 void emscripten_hide_mouse(void);
 void emscripten_set_canvas_size(int width, int height) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_set_canvas_element_size() instead")));
 void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_get_canvas_element_size() and emscripten_get_fullscreen_status() instead")));
 
-#if __EMSCRIPTEN__
 double emscripten_get_now(void);
-#else
-#include <time.h>
-static inline double emscripten_get_now(void) {
-  return (1000*clock())/(double)CLOCKS_PER_SEC;
-}
-#endif
-
 float emscripten_random(void);
 
 // wget
@@ -240,7 +196,7 @@ char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
 #define EM_LOG_ERROR     4
 #define EM_LOG_C_STACK   8
 #define EM_LOG_JS_STACK 16
-#define EM_LOG_DEMANGLE 32
+#define EM_LOG_DEMANGLE 32  // deprecated
 #define EM_LOG_NO_PATHS 64
 #define EM_LOG_FUNC_PARAMS 128
 #define EM_LOG_DEBUG    256
@@ -268,12 +224,8 @@ void emscripten_yield(void);
 /* Internal APIs. Be careful with these. */
 /* ===================================== */
 
-#if __EMSCRIPTEN__
 void emscripten_sleep(unsigned int ms);
 void emscripten_sleep_with_yield(unsigned int ms);
-#else
-#define emscripten_sleep SDL_Delay
-#endif
 
 #ifdef __cplusplus
 }

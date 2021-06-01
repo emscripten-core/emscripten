@@ -1,4 +1,1 @@
-emscripten_get_sbrk_ptr
-emscripten_resize_heap
-memory
-table
+

@@ -47,7 +47,6 @@ void CreateThread(int i, int n)
 {
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	pthread_attr_setstacksize(&attr, 4*1024);
 	int rc = pthread_create(&thread[i], &attr, ThreadMain, 0);
 	if (rc != 0 || thread[i] == 0)

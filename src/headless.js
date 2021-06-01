@@ -119,7 +119,7 @@ var document = {
   removeEventListener: window.removeEventListener,
   callEventListeners: window.callEventListeners,
   getElementById: function(id) {
-    switch(id) {
+    switch (id) {
       case 'canvas': {
         if (this.canvas) return this.canvas;
         return this.canvas = headlessCanvas();

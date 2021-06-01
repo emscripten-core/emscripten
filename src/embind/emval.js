@@ -76,8 +76,7 @@ var LibraryEmVal = {
 
   _emval_register__deps: ['$emval_free_list', '$emval_handle_array', '$init_emval'],
   _emval_register: function(value) {
-
-    switch(value){
+    switch (value) {
       case undefined :{ return 1; }
       case null :{ return 2; }
       case true :{ return 3; }
@@ -93,6 +92,7 @@ var LibraryEmVal = {
       }
   },
 
+  _emval_incref__sig: 'vi',
   _emval_incref__deps: ['$emval_handle_array'],
   _emval_incref: function(handle) {
     if (handle > 4) {
@@ -100,6 +100,7 @@ var LibraryEmVal = {
     }
   },
 
+  _emval_decref__sig: 'vi',
   _emval_decref__deps: ['$emval_free_list', '$emval_handle_array'],
   _emval_decref: function(handle) {
     if (handle > 4 && 0 === --emval_handle_array[handle].refcount) {
@@ -130,6 +131,7 @@ var LibraryEmVal = {
     return __emval_register(getStringOrSymbol(v));
   },
 
+  _emval_take_value__sig: 'iii',
   _emval_take_value__deps: ['_emval_register', '$requireRegisteredType'],
   _emval_take_value: function(type, argv) {
     type = requireRegisteredType(type, '_emval_take_value');
@@ -165,14 +167,14 @@ var LibraryEmVal = {
     };
 #else
     var argsList = "";
-    for(var i = 0; i < argCount; ++i) {
+    for (var i = 0; i < argCount; ++i) {
         argsList += (i!==0?", ":"")+"arg"+i; // 'arg0, arg1, ..., argn'
     }
 
     var functionBody =
         "return function emval_allocator_"+argCount+"(constructor, argTypes, args) {\n";
 
-    for(var i = 0; i < argCount; ++i) {
+    for (var i = 0; i < argCount; ++i) {
         functionBody +=
             "var argType"+i+" = requireRegisteredType(Module['HEAP32'][(argTypes >>> 2) + "+i+"], \"parameter "+i+"\");\n" +
             "var arg"+i+" = argType"+i+".readValueFromPointer(args);\n" +
@@ -241,7 +243,7 @@ var LibraryEmVal = {
 #endif
   _emval_get_global__deps: ['_emval_register', '$getStringOrSymbol', '$emval_get_global'],
   _emval_get_global: function(name) {
-    if(name===0){
+    if (name===0) {
       return __emval_register(emval_get_global());
     } else {
       name = getStringOrSymbol(name);
@@ -280,6 +282,20 @@ var LibraryEmVal = {
     return returnType['toWireType'](destructors, handle);
   },
 
+  _emval_as_int64__deps: ['$requireHandle', '$requireRegisteredType'],
+  _emval_as_int64: function(handle, returnType, destructorsRef) {
+    handle = requireHandle(handle);
+    returnType = requireRegisteredType(returnType, 'emval::as');
+    return returnType['toWireType'](null, handle);
+  },
+
+  _emval_as_uint64__deps: ['$requireHandle', '$requireRegisteredType'],
+  _emval_as_uint64: function(handle, returnType, destructorsRef) {
+    handle = requireHandle(handle);
+    returnType = requireRegisteredType(returnType, 'emval::as');
+    return returnType['toWireType'](null, handle);
+  },
+
   _emval_equals__deps: ['$requireHandle'],
   _emval_equals: function(first, second) {
     first = requireHandle(first);
@@ -314,6 +330,7 @@ var LibraryEmVal = {
     return !object;
   },
 
+  _emval_call__sig: 'iiiii',
   _emval_call__deps: ['_emval_lookupTypes', '_emval_register', '$requireHandle'],
   _emval_call: function(handle, argCount, argTypes, argv) {
     handle = requireHandle(handle);
@@ -359,6 +376,7 @@ var LibraryEmVal = {
     return id;
   },
 
+  _emval_get_method_caller__sig: 'iii',
   _emval_get_method_caller__deps: ['_emval_addMethodCaller', '_emval_lookupTypes', '$new_', '$makeLegalFunctionName'],
   _emval_get_method_caller: function(argCount, argTypes) {
     var types = __emval_lookupTypes(argCount, argTypes);
@@ -434,6 +452,7 @@ var LibraryEmVal = {
     return caller(handle, methodName, __emval_allocateDestructors(destructorsRef), args);
   },
 
+  _emval_call_void_method__sig: 'viiii',
   _emval_call_void_method__deps: ['_emval_allocateDestructors', '$getStringOrSymbol', '$emval_methodCallers', '$requireHandle'],
   _emval_call_void_method: function(caller, handle, methodName, args) {
     caller = emval_methodCallers[caller];

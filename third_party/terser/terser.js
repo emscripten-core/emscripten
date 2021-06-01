@@ -7611,7 +7611,7 @@ function OutputStream(options) {
                 definitions : M.declarations.map(from_moz)
             });
         },
-        
+
         ImportDeclaration: function(M) {
             var imported_name = null;
             var imported_names = null;
@@ -7738,6 +7738,19 @@ function OutputStream(options) {
                             end   : my_end_token(M),
                             name  : M.name
                         });
+        },
+        ImportExpression: function(M) {
+          let import_token = my_start_token(M);
+          return new AST_Call({
+            start      : import_token,
+            end        : my_end_token(M),
+            expression : new AST_SymbolRef({
+              start    : import_token,
+              end      : import_token,
+              name     : "import"
+            }),
+            args       : [from_moz(M.source)]
+          });
         }
     };
 

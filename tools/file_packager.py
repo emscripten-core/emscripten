@@ -1,11 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2012 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-'''
-A tool that generates FS API calls to generate a filesystem, and packages the files
+"""A tool that generates FS API calls to generate a filesystem, and packages the files
 to work with that.
 
 This is called by emcc. You can also call it yourself.
@@ -22,7 +21,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -30,7 +29,7 @@ Usage:
   --exclude E [F..] Specifies filename pattern matches to use for excluding given files from being added to the package.
                     See https://docs.python.org/2/library/fnmatch.html for syntax.
 
-  --from-emcc Indicate that `file_packager.py` was called from `emcc.py` and will be further processed by it, so some code generation can be skipped here
+  --from-emcc Indicate that `file_packager` was called from `emcc` and will be further processed by it, so some code generation can be skipped here
 
   --js-output=FILE Writes output in FILE, if not specified, standard output is used.
 
@@ -41,10 +40,6 @@ Usage:
   --use-preload-cache Stores package in IndexedDB so that subsequent loads don't need to do XHR. Checks package version.
 
   --indexedDB-name Use specified IndexedDB database name (Default: 'EM_PRELOAD_CACHE')
-
-  --no-heap-copy If specified, the preloaded filesystem is not copied inside the Emscripten HEAP, but kept in a separate typed array outside it.
-                 The default, if this is not specified, is to embed the VFS inside the HEAP, so that mmap()ing files in it is a no-op.
-                 Passing this flag optimizes for fread() usage, omitting it optimizes for mmap() usage.
 
   --separate-metadata Stores package metadata separately. Only applicable when preloading and js-output file is specified.
 
@@ -58,9 +53,8 @@ Notes:
 
   * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
     subdir\file, in JS it will be subdir/file. For simplicity we treat the web platform as a *NIX.
-'''
+"""
 
-from __future__ import print_function
 import os
 import sys
 import shutil
@@ -70,10 +64,6 @@ import ctypes
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools.toolchain_profiler import ToolchainProfiler
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
-
 import posixpath
 from tools import shared
 from subprocess import PIPE
@@ -81,7 +71,7 @@ import fnmatch
 import json
 
 if len(sys.argv) == 1:
-  print('''Usage: file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]
+  print('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
 See the source for more details.''')
   sys.exit(0)
 
@@ -159,7 +149,7 @@ def add(mode, rootpathsrc, rootpathdst):
       elif DEBUG:
         print('Skipping file "%s" from inclusion in the emscripten '
               'virtual file system.' % fullname, file=sys.stderr)
-    del dirnames[:]
+    dirnames.clear()
     dirnames.extend(new_dirnames)
 
 
@@ -177,12 +167,6 @@ def main():
   # offline cache instead.
   use_preload_cache = False
   indexeddb_name = 'EM_PRELOAD_CACHE'
-  # If set to True, the blob received from XHR is moved to the Emscripten HEAP,
-  # optimizing for mmap() performance (if ALLOW_MEMORY_GROWTH=0).
-  # If set to False, the XHR blob is kept intact, and fread()s etc. are performed
-  # directly to that data. This optimizes for minimal memory usage and fread()
-  # performance.
-  heap_copy = True
   # If set to True, the package metadata is stored separately from js-output
   # file which makes js-output file immutable to the package content changes.
   # If set to False, the package metadata is stored inside the js-output file
@@ -209,7 +193,7 @@ def main():
       indexeddb_name = arg.split('=', 1)[1] if '=' in arg else None
       leading = ''
     elif arg == '--no-heap-copy':
-      heap_copy = False
+      print('ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
       leading = ''
     elif arg == '--separate-metadata':
       separate_metadata = True
@@ -254,12 +238,13 @@ def main():
         data_files.append({'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode,
                            'explicit_dst_path': uses_at_notation})
       else:
-        print('Warning: ' + arg + ' does not exist, ignoring.', file=sys.stderr)
+        print('error: ' + arg + ' does not exist', file=sys.stderr)
+        return 1
     elif leading == 'exclude':
       excluded_patterns.append(arg)
     else:
       print('Unknown parameter:', arg, file=sys.stderr)
-      sys.exit(1)
+      return 1
 
   if (not force) and not data_files:
     has_preloaded = False
@@ -273,8 +258,13 @@ def main():
           'so that it includes support for loading this file package',
           file=sys.stderr)
 
+  if jsoutput and os.path.abspath(jsoutput) == os.path.abspath(data_target):
+    print('error: TARGET should not be the same value of --js-output',
+          file=sys.stderr)
+    return 1
+
   ret = ''
-  # emcc.py will add this to the output itself, so it is only needed for
+  # emcc will add this to the output itself, so it is only needed for
   # standalone calls
   if not from_emcc:
     ret = '''
@@ -383,8 +373,8 @@ def main():
       for i in range(len(parts)):
         partial = '/'.join(parts[:i + 1])
         if partial not in partial_dirs:
-          code += ('''Module['FS_createPath']('/%s', '%s', true, true);\n'''
-                   % ('/'.join(parts[:i]), parts[i]))
+          code += ('''Module['FS_createPath'](%s, %s, true, true);\n'''
+                   % (json.dumps('/' + '/'.join(parts[:i])), json.dumps(parts[i])))
           partial_dirs.append(partial)
 
   if has_preloaded:
@@ -425,40 +415,41 @@ def main():
           Module['removeRunDependency']('fp ' + that.name);
   '''
 
-    # Data requests - for getting a block of data out of the big archive - have
-    # a similar API to XHRs
-    code += '''
-      /** @constructor */
-      function DataRequest(start, end, audio) {
-        this.start = start;
-        this.end = end;
-        this.audio = audio;
-      }
-      DataRequest.prototype = {
-        requests: {},
-        open: function(mode, name) {
-          this.name = name;
-          this.requests[name] = this;
-          Module['addRunDependency']('fp ' + this.name);
-        },
-        send: function() {},
-        onload: function() {
-          var byteArray = this.byteArray.subarray(this.start, this.end);
-          this.finish(byteArray);
-        },
-        finish: function(byteArray) {
-          var that = this;
-  %s
-          this.requests[this.name] = null;
-        }
-      };
-  %s
-    ''' % (create_preloaded if use_preload_plugins else create_data, '''
-          var files = metadata['files'];
-          for (var i = 0; i < files.length; ++i) {
-            new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio']).open('GET', files[i]['filename']);
+    if not lz4:
+        # Data requests - for getting a block of data out of the big archive - have
+        # a similar API to XHRs
+        code += '''
+          /** @constructor */
+          function DataRequest(start, end, audio) {
+            this.start = start;
+            this.end = end;
+            this.audio = audio;
           }
-  ''' if not lz4 else '')
+          DataRequest.prototype = {
+            requests: {},
+            open: function(mode, name) {
+              this.name = name;
+              this.requests[name] = this;
+              Module['addRunDependency']('fp ' + this.name);
+            },
+            send: function() {},
+            onload: function() {
+              var byteArray = this.byteArray.subarray(this.start, this.end);
+              this.finish(byteArray);
+            },
+            finish: function(byteArray) {
+              var that = this;
+      %s
+              this.requests[this.name] = null;
+            }
+          };
+      %s
+        ''' % (create_preloaded if use_preload_plugins else create_data, '''
+              var files = metadata['files'];
+              for (var i = 0; i < files.length; ++i) {
+                new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio']).open('GET', files[i]['filename']);
+              }
+      ''')
 
   counter = 0
   for file_ in data_files:
@@ -496,16 +487,7 @@ def main():
   if has_preloaded:
     if not lz4:
       # Get the big archive and split it up
-      if heap_copy:
-        use_data = '''
-          // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though
-          // (we may be allocating before malloc is ready, during startup).
-          var ptr = Module['getMemory'](byteArray.length);
-          Module['HEAPU8'].set(byteArray, ptr);
-          DataRequest.prototype.byteArray = Module['HEAPU8'].subarray(ptr, ptr+byteArray.length);
-    '''
-      else:
-        use_data = '''
+      use_data = '''
           // Reuse the bytearray from the XHR as the source for file reads.
           DataRequest.prototype.byteArray = byteArray;
     '''
@@ -523,16 +505,16 @@ def main():
       temp = data_target + '.orig'
       shutil.move(data_target, temp)
       meta = shared.run_js_tool(shared.path_from_root('tools', 'lz4-compress.js'),
-                                [shared.path_from_root('src', 'mini-lz4.js'),
+                                [shared.path_from_root('third_party', 'mini-lz4.js'),
                                 temp, data_target], stdout=PIPE)
       os.unlink(temp)
       use_data = '''
             var compressedData = %s;
             compressedData['data'] = byteArray;
-            assert(typeof LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
-            LZ4.loadPackage({ 'metadata': metadata, 'compressedData': compressedData });
+            assert(typeof Module['LZ4'] === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
+            Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
             Module['removeRunDependency']('datafile_%s');
-      ''' % (meta, shared.JS.escape_for_js_string(data_target))
+      ''' % (meta, "true" if use_preload_plugins else "false", shared.JS.escape_for_js_string(data_target))
 
     package_uuid = uuid.uuid4()
     package_name = data_target

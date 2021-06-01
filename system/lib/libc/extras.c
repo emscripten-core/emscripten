@@ -30,4 +30,3 @@ long* _get_timezone() {
 
 void __lock(void* ptr) {}
 void __unlock(void* ptr) {}
-

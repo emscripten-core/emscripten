@@ -34,8 +34,8 @@ int main()
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
   EMSCRIPTEN_RESULT res;
   EmscriptenWebGLContextAttributes attrs;
-  attrs.majorVersion = WEBGL_CONTEXT_VERSION;
   emscripten_webgl_init_context_attributes(&attrs);
+  attrs.majorVersion = WEBGL_CONTEXT_VERSION;
   context = emscripten_webgl_create_context("#canvas", &attrs);
   assert(context > 0); // Must have received a valid context.
   res = emscripten_webgl_make_context_current(context);
@@ -55,11 +55,19 @@ int main()
   if (hasext(exts, "WEBGL_draw_instanced_base_vertex_base_instance"))
     assert(emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(context));
 
+  if (hasext(exts, "WEBGL_multi_draw"))
+    assert(emscripten_webgl_enable_WEBGL_multi_draw(context));
+
+  if (hasext(exts, "WEBGL_multi_draw_instanced_base_vertex_base_instance"))
+    assert(emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(context));
+
 #if WEBGL_SIMPLE_ENABLE_EXTENSION
   assert(hasext(exts, "ANGLE_instanced_arrays") == emscripten_webgl_enable_extension(context, "ANGLE_instanced_arrays"));
   assert(hasext(exts, "OES_vertex_array_object") == emscripten_webgl_enable_extension(context, "OES_vertex_array_object"));
   assert(hasext(exts, "WEBGL_draw_buffers") == emscripten_webgl_enable_extension(context, "WEBGL_draw_buffers"));
   assert(hasext(exts, "WEBGL_draw_instanced_base_vertex_base_instance") == emscripten_webgl_enable_extension(context, "WEBGL_draw_instanced_base_vertex_base_instance"));
+  assert(hasext(exts, "WEBGL_multi_draw") == emscripten_webgl_enable_extension(context, "WEBGL_multi_draw"));
+  assert(hasext(exts, "WEBGL_multi_draw_instanced_base_vertex_base_instance") == emscripten_webgl_enable_extension(context, "WEBGL_multi_draw_instanced_base_vertex_base_instance"));
 #endif
 
 #ifdef REPORT_RESULT

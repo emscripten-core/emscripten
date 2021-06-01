@@ -4,6 +4,9 @@ orbs:
   win: circleci/windows@1.0.0
 
 executors:
+  linux-node:
+    docker:
+      - image: circleci/node:stretch
   bionic:
     docker:
       - image: emscripten/emscripten-ci
@@ -12,13 +15,12 @@ executors:
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
-      PYTHON_BIN: "python3"
+      EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
   mac:
     environment:
       EMSDK_NOTTY: "1"
-      PYTHON_BIN: "python3"
     macos:
-      xcode: "9.0"
+      xcode: "12.2.0"
 
 commands:
   emsdk-env:
@@ -32,14 +34,14 @@ commands:
     steps:
       - run: npm ci
   build:
-    description: "Install emsdk build all libraries using embuilder"
+    description: "Install emsdk"
     steps:
       - run:
           name: install emsdk
           command: |
-            curl -# -L -o ~/emsdk-master.tar.gz https://github.com/emscripten-core/emsdk/archive/master.tar.gz
-            tar -C ~ -xf ~/emsdk-master.tar.gz
-            mv ~/emsdk-master ~/emsdk
+            curl -# -L -o ~/emsdk-main.tar.gz https://github.com/emscripten-core/emsdk/archive/main.tar.gz
+            tar -C ~ -xf ~/emsdk-main.tar.gz
+            mv ~/emsdk-main ~/emsdk
             cd ~/emsdk
             ./emsdk update-tags
             ./emsdk install tot-upstream
@@ -55,52 +57,53 @@ commands:
             # test v8 with --wasm-staging which enables new features. we use v8
             # as a "bleeding edge" shell here, basically, with node being the
             # primary shell (which we run without any special flags)
+            # Refer to commit 0bc3640 if we need to pin V8 version.
             echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> .emscripten
             echo "JS_ENGINES = [NODE_JS]" >> .emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
             echo "WASM_ENGINES = []" >> .emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> .emscripten || true
+            test -d ~/wasi-sdk && cp -ar ~/wasi-sdk/lib/ ~/emsdk/upstream/lib/clang/13.0.0/
             cd -
             echo "final .emscripten:"
             cat ~/emsdk/.emscripten
       - emsdk-env
       - npm-install
       - run:
-          name: gen_struct_info
+          name: clear cache
           command: |
-            # We've had issues in the past with building struct info when the
-            # cache is completely empty.  So specific test creating struct
-            # info first.
-            # For some reason this seems to deadlock while accessing the
-            # cache direcotry on windows.  Adding EMCC_DEBUG makes it work so
-            # debugging the issue is tricky.
-            [ "$CIRCLE_JOB" != "build-windows" ] && $PYTHON_BIN ./tools/gen_struct_info.py > out.json
-            $PYTHON_BIN ./emcc.py --clear-cache
+            ./emcc --clear-cache
+  build-libs-and-freeze:
+    description: "Build all libraries, and freeze the cache"
+    steps:
       - run:
           name: embuilder build ALL
           command: |
-            $PYTHON_BIN ./embuilder.py build ALL
-            $PYTHON_BIN tests/runner.py test_hello_world
+            ./embuilder build ALL
+            ./tests/runner test_hello_world
       - run:
           name: embuilder (LTO)
           command: |
-            $PYTHON_BIN ./embuilder.py build MINIMAL --lto
-            $PYTHON_BIN tests/runner.py test_hello_world
+            ./embuilder build MINIMAL --lto
+            ./tests/runner test_hello_world
       - run:
           name: embuilder (PIC)
           command: |
-            $PYTHON_BIN ./embuilder.py build SYSTEM --pic
-            $PYTHON_BIN tests/runner.py test_hello_world
+            ./embuilder build SYSTEM --pic
+            ./tests/runner test_hello_world
       - run:
           name: embuilder (PIC+LTO)
           command: |
-            $PYTHON_BIN ./embuilder.py build MINIMAL --pic --lto
-            $PYTHON_BIN tests/runner.py test_hello_world
+            ./embuilder build MINIMAL --pic --lto
+            ./tests/runner test_hello_world
       - run:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
+  persist:
+    description: "Persist the emsdk, libraries, and engines"
+    steps:
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -108,8 +111,9 @@ commands:
           paths:
             - emsdk/
             - cache/
-            - vms
-            - .jsvu
+            - vms/
+            - wasi-sdk/
+            - .jsvu/
   run-tests:
     description: "Runs emscripten tests"
     parameters:
@@ -121,13 +125,16 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
       - emsdk-env
       - npm-install
       - run:
           name: run tests
           command: |
-            $PYTHON_BIN tests/runner.py << parameters.test_targets >>
-            $PYTHON_BIN tools/check_clean.py
+            ./tests/runner << parameters.test_targets >>
+            $EMSDK_PYTHON ./tools/check_clean.py
   run-tests-mac:
     description: "Runs emscripten tests"
     parameters:
@@ -145,12 +152,14 @@ commands:
           name: Install brew package dependencies
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: brew install python3 cmake
+          command: |
+            brew list cmake || brew install cmake
+            brew list python3 || brew install python3
       - run:
           name: run tests
           command: |
-            python3 tests/runner.py << parameters.test_targets >>
-            tools/check_clean.py
+            ./tests/runner << parameters.test_targets >>
+            $EMSDK_PYTHON ./tools/check_clean.py
   test-firefox:
     description: "Runs emscripten tests under firefox"
     steps:
@@ -158,6 +167,9 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
       - emsdk-env
       - npm-install
       - run:
@@ -248,7 +260,12 @@ commands:
             EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
             cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
             rm -r $TMPDIR
-            python3 tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            echo "-----"
+            echo "Running emrun tests"
+            echo "-----"
+            # test_no_browser seems to cause the xsession to go down when run in github CI.
+            tests/runner emrun skip:emrun.test_no_browser
             openbox --exit
             wait || true # wait for startx to shutdown cleanly, or not
   test-chrome:
@@ -258,6 +275,9 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
       - emsdk-env
       - npm-install
       - run:
@@ -274,12 +294,13 @@ commands:
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
             CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
-            CHROME_FLAGS_WASM: "--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
+            CHROME_FLAGS_WASM: "--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            # skip test_zzz_zzz_4GB_fail as it OOMs on the current bot
-            python3 tests/runner.py browser skip:browser.test_zzz_zzz_4GB_fail
+            # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
+            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail
+            tests/runner emrun
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
@@ -307,52 +328,9 @@ commands:
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            python3 tests/runner.py sockets
+            tests/runner sockets
 
 jobs:
-  build-fastcomp:
-    executor: bionic
-    steps:
-      - checkout
-      - run:
-          name: install emsdk
-          command: |
-            curl -# -L -o ~/emsdk-master.tar.gz https://github.com/emscripten-core/emsdk/archive/master.tar.gz
-            tar -C ~ -xf ~/emsdk-master.tar.gz
-            mv ~/emsdk-master ~/emsdk
-            cd ~/emsdk
-            ./emsdk update-tags
-            ./emsdk install tot-fastcomp
-            ./emsdk activate tot-fastcomp
-            # Remove the emsdk version of emscripten to save space in the
-            # persistent workspace and to avoid any confusion with the version
-            # we are trying to test.
-            rm -Rf emscripten
-            # We use an out-of-tree cache directory so it can be part of the
-            # persisted workspace (see below).
-            echo "import os" >> .emscripten
-            echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
-            cd -
-            echo "final .emscripten:"
-            cat ~/emsdk/.emscripten
-      - emsdk-env
-      - npm-install
-      - run:
-          name: embuilder build ALL
-          command: |
-            python3 ./embuilder.py build ALL
-            python3 tests/runner.py test_hello_world
-      - run:
-          name: freeze cache
-          command: |
-            echo "FROZEN_CACHE=True" >> ~/emsdk/.emscripten
-      - persist_to_workspace:
-          # Must be an absolute path, or relative path from working_directory
-          root: ~/
-          # Must be relative path from root
-          paths:
-            - emsdk/
-            - cache/
   build-docs:
     executor: bionic
     steps:
@@ -367,96 +345,14 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run: pip2 install flake8==3.7.8
-      - run: pip3 install flake8==3.7.8
-      - run: python2 -m flake8 --show-source --statistics
+      - run: pip3 install -r requirements-dev.txt
       - run: python3 -m flake8 --show-source --statistics
-  test-fastcomp-other:
-    executor: bionic
+  eslint:
+    executor: linux-node
     steps:
-      - run-tests:
-          # some native-dependent tests fail because of the lack of native
-          # headers on emsdk-bundled clang>
-          # CircleCI actively kills memory-over-consuming process skip llvm-lit
-          # tests which need lit, and pip to get lit, but pip has broken on CI
-          test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
-  test-fastcomp-browser-firefox:
-    executor: bionic
-    steps:
-      - test-firefox
-  test-fastcomp-browser-chrome:
-    executor: bionic
-    steps:
-      - test-chrome
-  test-fastcomp-ab:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_a* asm*.test_b*"
-  test-fastcomp-c:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_c*"
-  test-fastcomp-d:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "default.test_d* asm1.test_d* asm2.test_d* asm2g.test_d* asm3.test_d*"
-  test-fastcomp-e:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_e*"
-  test-fastcomp-f:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_f*"
-  test-fastcomp-ghi:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_g* asm*.test_h* asm*.test_i*"
-  test-fastcomp-jklmno:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*"
-  test-fastcomp-p:
-    executor: bionic
-    environment:
-      # Without this test_poppler can cause timeouts because it takes more then
-      # 10 minutes without outputing anything.
-      EM_BUILD_VERBOSE: "2"
-    steps:
-      - run-tests:
-          test_targets: "default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*"
-  test-fastcomp-qrst:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_q* asm*.test_r* asm*.test_s* asm*.test_t*"
-  test-fastcomp-uvwxyz:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "asm*.test_u* asm*.test_w* asm*.test_v* asm*.test_x* asm*.test_y* asm*.test_z*"
-  test-fastcomp-wasm0:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "wasm0"
-  test-fastcomp-wasm2:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "wasm2"
-  test-fastcomp-wasm3:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "wasm3"
+      - checkout
+      - npm-install
+      - run: npm run lint
   test-sanity:
     executor: bionic
     steps:
@@ -482,6 +378,14 @@ jobs:
             tar -xf wasmtime-$VERSION-x86_64-linux.tar.xz
             cp wasmtime-$VERSION-x86_64-linux/wasmtime ~/vms
       - run:
+          name: get wasi-sdk-sysroot
+          command: |
+            wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/libclang_rt.builtins-wasm32-wasi-11.0.tar.gz
+            wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/wasi-sysroot-11.0.tar.gz
+            mkdir ~/wasi-sdk
+            tar xvf libclang_rt.builtins-wasm32-wasi-11.0.tar.gz -C ~/wasi-sdk
+            tar xvf wasi-sysroot-11.0.tar.gz -C ~/wasi-sdk/
+      - run:
           name: get v8
           command: |
             wget https://nodejs.org/dist/v12.13.0/node-v12.13.0-linux-x64.tar.xz
@@ -491,19 +395,14 @@ jobs:
             export PATH="${HOME}/.jsvu:${PATH}"
             jsvu --os=default --engines=v8
       - build
-  test-minimal-python2:
-    environment:
-      # PTYHON_BIN is used in this file to control which version of python
-      # we use to run the test runner, and EMSDK_PYTHON is used by emcc and
-      # other tools to determine which version of python to use internally.
-      # These can, by design, vary independently.
-      PYTHON_BIN: "python2"
-      EMSDK_PYTHON: "python2"
-      EMCC_ALLOW_PYTHON2: "1"
+      - build-libs-and-freeze
+      - persist
+  # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
+  test-posixtest:
     executor: bionic
     steps:
       - run-tests:
-          test_targets: "wasm2.test_hello_world other.test_emcc_size_parsing"
+          test_targets: "posixtest"
   test-wasm0:
     executor: bionic
     steps:
@@ -513,13 +412,14 @@ jobs:
     executor: bionic
     steps:
       - run-tests:
-          test_targets: "wasm2 asan.test_embind*"
+          # also add a few asan tests
+          test_targets: "wasm2 asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread*"
   test-wasm3:
     executor: bionic
     steps:
       - run-tests:
-          # TODO: test wasms
-          test_targets: "wasm3"
+          # also add a little select testing for wasm2js in -O3
+          test_targets: "wasm3 wasm2js3.test_memorygrowth_2"
   test-wasm2js1:
     executor: bionic
     steps:
@@ -529,7 +429,8 @@ jobs:
     executor: bionic
     steps:
       - run-tests:
-          # see explanations in the fastcomp skips for these, earlier
+          # some native-dependent tests fail because of the lack of native
+          # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
   test-browser-chrome:
     executor: bionic
@@ -543,60 +444,50 @@ jobs:
     executor: bionic
     steps:
       - test-sockets-chrome
-  build-windows:
+  # windows and mac do not have separate build and test jobs, as they only run
+  # a limited set of tests; it is simpler and faster to do it all in one job.
+  test-windows:
     executor:
       name: win/vs2019
       shell: bash.exe -eo pipefail
     environment:
-      # on windows the python binary is always called python.exe and never
-      # python3.exe
-      PYTHON_BIN: "python"
       PYTHONUNBUFFERED: "1"
-      EMSDK_NOTTY: "1"
-    steps:
-      - checkout
-      - run:
-          name: Install packages
-          command: choco install make cmake.portable python3
-      - run:
-          name: Add python to bash path
-          command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
-      - build
-  test-minimal-windows:
-    environment:
-      # on windows the python binary is always called python.exe and never
-      # python3.exe
-      PYTHON_BIN: "python"
-      PYTHONUNBUFFERED: "1"
+      # Override the default locale to use UTF-8 encoding for all files and stdio 
+      # streams (see PEP540), since oure test files are encoded with UTF-8.
+      PYTHONUTF8: "1"
       EMSDK_NOTTY: "1"
       # clang can compile but not link in the current setup, see
       # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
       EMTEST_LACKS_NATIVE_CLANG: "1"
-    executor:
-      name: win/vs2019
-      shell: bash.exe -eo pipefail
     steps:
+      - checkout
       - run:
           name: Install packages
-          command: choco install make cmake.portable python3
+          command: |
+            choco install cmake.portable ninja
+            choco install python --version 3.8.0
       - run:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
+      - build
+      # note we do *not* build all libraries and freeze the cache; as we run
+      # only limited tests here, it's more efficient to build on demand
       - run-tests:
-          test_targets: "other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null"
-  build-mac:
+          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file wasm2.test_utf16 other.test_special_chars_in_arguments"
+  test-mac:
     executor: mac
     steps:
       - run:
           name: Install brew package dependencies
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: brew install python3 cmake
+          command: |
+            brew list cmake || brew install cmake
+            brew list python3 || brew install python3
       - checkout
       - build
-  test-other-mac:
-    executor: mac
-    steps:
+      # note we do *not* build all libraries and freeze the cache; as we run
+      # only limited tests here, it's more efficient to build on demand
       - run-tests-mac:
           test_targets: "other wasm0.test_lua wasm0.test_longjmp_standalone wasm2.test_sse1 skip:other.test_native_link_error_message"
 
@@ -604,58 +495,13 @@ workflows:
   build-test:
     jobs:
       - flake8
+      - eslint
       - build-docs
-      - build-fastcomp
-      - test-fastcomp-other:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-browser-firefox:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-browser-chrome:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-ab:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-c:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-d:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-e:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-f:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-ghi:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-jklmno:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-p:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-qrst:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-uvwxyz:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-wasm0:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-wasm2:
-          requires:
-            - build-fastcomp
-      - test-fastcomp-wasm3:
-          requires:
-            - build-fastcomp
       - build-linux
       - test-sanity:
+          requires:
+            - build-linux
+      - test-posixtest:
           requires:
             - build-linux
       - test-wasm0:
@@ -682,14 +528,5 @@ workflows:
       - test-sockets-chrome:
           requires:
             - build-linux
-      - test-minimal-python2:
-          requires:
-            - build-linux
-      - build-windows
-      - test-minimal-windows:
-          requires:
-            - build-windows
-      - build-mac
-      - test-other-mac:
-          requires:
-            - build-mac
+      - test-windows
+      - test-mac

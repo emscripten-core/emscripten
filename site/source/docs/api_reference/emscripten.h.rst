@@ -4,7 +4,7 @@
 emscripten.h
 ============
 
-This page documents the public C++ APIs provided by `emscripten.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/emscripten.h>`_.
+This page documents the public C++ APIs provided by `emscripten.h <https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/emscripten.h>`_.
 
 Emscripten uses existing/familiar APIs where possible (for example: :term:`SDL`). This API provides C++ support for capabilities that are specific to JavaScript or the browser environment, or for which there is no existing API.
 
@@ -492,6 +492,20 @@ Functions
   :rtype: double
   :return: The pixel ratio or 1.0 if not supported.
 
+.. c:function:: char *emscripten_get_window_title()
+
+  Returns the window title.
+
+  The returned string will be valid until the next call of the function
+
+.. c:function:: void emscripten_set_window_title(char *title)
+
+  Sets the window title.
+
+.. c:function:: void emscripten_get_screen_size(int *width, int *height)
+
+  Returns the width and height of the screen.
+
 .. c:function:: void emscripten_hide_mouse(void)
 
   Hide the OS mouse cursor over the canvas.
@@ -580,7 +594,7 @@ Typedefs
 
   Defined as: ::
 
-    typedef void (*em_async_wget2_data_onprogress_func)(unsigned void*, int, int)
+    typedef void (*em_async_wget2_data_onprogress_func)(unsigned, void*, int, int)
 
 
 .. c:type:: em_run_preload_plugins_data_onload_func
@@ -997,10 +1011,6 @@ Defines
 
   If specified, prints a call stack that contains file names referring to lines in the built .js/.html file along with the message. The flags :c:data:`EM_LOG_C_STACK` and :c:data:`EM_LOG_JS_STACK` can be combined to output both untranslated and translated file and line information.
 
-.. c:macro:: EM_LOG_DEMANGLE
-
-  If specified, C/C++ function names are de-mangled before printing. Otherwise, the mangled post-compilation JavaScript function names are displayed.
-
 .. c:macro:: EM_LOG_NO_PATHS
 
   If specified, the pathnames of the file information in the call stack will be omitted.
@@ -1017,9 +1027,9 @@ Functions
 
   Returns the value of a compiler setting.
 
-  For example, to return the integer representing the value of ``PRECISE_F32`` during compilation: ::
+  For example, to return the integer representing the value of ``INITIAL_MEMORY`` during compilation: ::
 
-    emscripten_get_compiler_setting("PRECISE_F32")
+    emscripten_get_compiler_setting("INITIAL_MEMORY")
 
   For values containing anything other than an integer, a string is returned (you will need to cast the ``int`` return value to a ``char*``).
 
@@ -1244,7 +1254,7 @@ Typedefs
 
   Unaligned types. These may be used to force LLVM to emit unaligned loads/stores in places in your code where :ref:`SAFE_HEAP <debugging-SAFE-HEAP>` found an unaligned operation.
 
-  For usage examples see `tests/core/test_set_align.c <https://github.com/emscripten-core/emscripten/blob/master/tests/core/test_set_align.c>`_.
+  For usage examples see `tests/core/test_set_align.c <https://github.com/emscripten-core/emscripten/blob/main/tests/core/test_set_align.c>`_.
 
   .. note:: It is better to avoid unaligned operations, but if you are reading from a packed stream of bytes or such, these types may be useful!
 
@@ -1326,43 +1336,6 @@ IndexedDB
   :param pexists: An out parameter that will be filled with a non-zero value if the file exists in that database.
   :param perror: An out parameter that will be filled with a non-zero value if an error occurred.
 
-
-Fastcomp Asyncify functions
-===========================
-
-Fastcomp's Asyncify support has asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ for more details.
-
-Typedefs
---------
-
-.. c:type:: emscripten_coroutine
-
-    A handle to the structure used by coroutine supporting functions.
-
-Functions
----------
-
-.. c:function:: void emscripten_sleep_with_yield(unsigned int ms)
-
-  Sleep for `ms` milliseconds, while allowing other asynchronous operations, e.g. caused by ``emscripten_async_call``, to run normally, during
-  this sleep. Note that this method **does** still block the main loop, as otherwise it could recurse, if you are calling this method from it.
-  Even so, you should use this method carefully: the order of execution is potentially very confusing this way.
-
-  .. note:: This only works in fastcomp. In the wasm backend, just use sleep, which does not have strict yield checking.
-
-.. c:function:: emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size)
-
-    Create a coroutine which will be run as `func(arg)`.
-
-    :param int stack_size: the stack size that should be allocated for the coroutine, use 0 for the default value.
-
-.. c:function:: int emscripten_coroutine_next(emscripten_coroutine coroutine)
-
-    Run `coroutine` until it returns, or `emscripten_yield` is called. A non-zero value is returned if `emscripten_yield` is called, otherwise 0 is returned, and future calls of `emscripten_coroutine_next` on this coroutine is undefined behaviour.
-
-.. c:function:: void emscripten_yield(void)
-
-    This function should only be called in a coroutine created by `emscripten_coroutine_create`, when it called, the coroutine is paused and the caller will continue.
 
 Upstream Asyncify functions
 ===========================

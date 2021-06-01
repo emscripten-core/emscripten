@@ -17,13 +17,12 @@ def needed(settings):
 
 def get(ports, settings, shared):
   ports.fetch_project('bullet', 'https://github.com/emscripten-ports/bullet/archive/' + TAG + '.zip', 'Bullet-' + TAG, sha512hash=HASH)
-  libname = ports.get_lib_name('libbullet')
 
-  def create():
+  def create(final):
     logging.info('building port: bullet')
 
     source_path = os.path.join(ports.get_dir(), 'bullet', 'Bullet-' + TAG)
-    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'bullet')
+    dest_path = os.path.join(ports.get_build_dir(), 'bullet')
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
@@ -33,7 +32,7 @@ def get(ports, settings, shared):
     dest_include_path = os.path.join(ports.get_include_dir(), 'bullet')
     for base, dirs, files in os.walk(src_path):
       for f in files:
-        if os.path.splitext(f)[1] != '.h':
+        if shared.suffix(f) != '.h':
           continue
         fullpath = os.path.join(base, f)
         relpath = os.path.relpath(fullpath, src_path)
@@ -46,15 +45,13 @@ def get(ports, settings, shared):
       for dir in dirs:
         includes.append(os.path.join(root, dir))
 
-    final = os.path.join(ports.get_build_dir(), 'bullet', libname)
     ports.build_port(src_path, final, includes=includes, exclude_dirs=['MiniCL'])
-    return final
 
-  return [shared.Cache.get(libname, create)]
+  return [shared.Cache.get_lib('libbullet.a', create)]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libbullet'))
+  shared.Cache.erase_lib('libbullet.a')
 
 
 def process_args(ports):

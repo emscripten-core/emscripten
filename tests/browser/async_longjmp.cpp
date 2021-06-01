@@ -24,11 +24,6 @@ void first(void) {
                     // return 1
 }
 
-__attribute__((noinline)) // https://github.com/emscripten-core/emscripten/issues/8894
-void finish(int x) {
-  REPORT_RESULT(x);
-}
-
 int main() {
   volatile int x = 0;
   emscripten_sleep(1);
@@ -47,5 +42,6 @@ int main() {
     printf("result: %d %d\n", x, jmpval);  // prints
   }
   emscripten_sleep(1);
-  finish(x);
+  REPORT_RESULT(x);
+  return x;
 }

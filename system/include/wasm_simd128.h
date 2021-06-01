@@ -6,5 +6,5 @@
  */
 
 // This header has been moved to the LLVM project:
-// https://github.com/llvm/llvm-project/blob/master/clang/lib/Headers/wasm_simd128.h
+// https://github.com/llvm/llvm-project/blob/main/clang/lib/Headers/wasm_simd128.h
 #include_next <wasm_simd128.h>

@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -41,22 +42,21 @@ int main()
 	}
 
 	pthread_t thread;
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-	int rc = pthread_create(&thread, &attr, ThreadMain, 0);
+	int rc = pthread_create(&thread, NULL, ThreadMain, 0);
 	assert(rc == 0);
 	rc = emscripten_futex_wait(&main_thread_wait_val, 1, 15 * 1000);
-	if (rc != 0)
+	// An rc of 0 means no error, and of EWOULDBLOCK means that the value is
+	// not the expected one, which can happen if the pthread manages to set it
+	// before we reach the futex_wait.
+	if (rc != 0 && rc != -EWOULDBLOCK)
 	{
-		printf("ERROR! futex wait timed out!\n");
+		printf("ERROR! futex wait errored %d!\n", rc);
 		result = 2;
 #ifdef REPORT_RESULT
 		REPORT_RESULT(result);
 #endif
 		exit(1);
 	}
-	pthread_attr_destroy(&attr);
 	pthread_join(thread, 0);		
 
 #ifdef REPORT_RESULT

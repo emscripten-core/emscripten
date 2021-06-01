@@ -5,7 +5,7 @@ on:
     tags:
   push:
     branches:
-      - master
+      - main
   pull_request:
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
       run: |
         make dist
         version=`cat emscripten-version.txt | sed s/\"//g`
-        echo "::set-env name=VERSION::$version"
+        echo "VERSION=$version" >> $GITHUB_ENV
     - uses: actions/upload-artifact@v1
       with:
         name: emscripten-${{ env.VERSION }}

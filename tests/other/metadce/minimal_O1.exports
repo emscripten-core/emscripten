@@ -1,11 +1,9 @@
-__data_end
 __errno_location
-__growWasmMemory
+__indirect_function_table
 __wasm_call_ctors
 add
-free
 global_val
-malloc
+memory
 stackAlloc
 stackRestore
 stackSave

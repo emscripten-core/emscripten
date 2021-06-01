@@ -8,6 +8,8 @@
 #if SANITIZER_EMSCRIPTEN
 #include <emscripten.h>
 #include <cstddef>
+#include <cstdint>
+#define __ATTRP_C11_THREAD ((void*)(uintptr_t)-1)
 
 namespace __asan {
 
@@ -30,6 +32,8 @@ void *AsanDoesNotSupportStaticLinkage() {
 }
 
 void InitializeAsanInterceptors() {}
+
+void FlushUnneededASanShadowMemory(uptr p, uptr size) {}
 
 // We can use a plain thread_local variable for TSD.
 static thread_local void *per_thread;
@@ -63,7 +67,7 @@ static thread_return_t THREAD_CALLING_CONV asan_thread_start(void *arg) {
     internal_sched_yield();
   emscripten_builtin_free(param);
   SetCurrentThread(t);
-  return t->ThreadStart(GetTid(), nullptr);
+  return t->ThreadStart(GetTid());
 }
 
 INTERCEPTOR(int, pthread_create, void *thread,
@@ -74,7 +78,7 @@ INTERCEPTOR(int, pthread_create, void *thread,
     StopInitOrderChecking();
   GET_STACK_TRACE_THREAD;
   int detached = 0;
-  if (attr)
+  if (attr && attr != __ATTRP_C11_THREAD)
     pthread_attr_getdetachstate(attr, &detached);
   atomic_uintptr_t *param = (atomic_uintptr_t *)
       emscripten_builtin_malloc(sizeof(atomic_uintptr_t));
@@ -103,7 +107,7 @@ INTERCEPTOR(int, pthread_create, void *thread,
 
 namespace __lsan {
 
-#ifndef USE_THREADS
+#ifndef __EMSCRIPTEN_PTHREADS__
 // XXX HACK: Emscripten treats thread_local variables the same as globals in
 // non-threaded builds, so a hack was introduced where we skip the allocator
 // cache in the common module. Now we have to define this symbol to keep that

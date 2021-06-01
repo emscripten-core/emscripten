@@ -2,6 +2,7 @@
 #include <emscripten.h>
 #include <emscripten/threading.h>
 #include <assert.h>
+#include <stdio.h>
 
 void Sleep(double msecs)
 {
@@ -39,5 +40,6 @@ int main()
 	Sleep(5000);
 	pthread_t thread;
 	pthread_create(&thread, NULL, thread_main, NULL);
-	EM_ASM(noExitRuntime=true);
+	emscripten_exit_with_live_runtime();
+	return 0;
 }

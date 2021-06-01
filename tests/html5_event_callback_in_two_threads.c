@@ -112,5 +112,5 @@ int main()
 
   printf("Please press the Enter key.\n");
 
-  EM_ASM(noExitRuntime = true);
+  emscripten_exit_with_live_runtime();
 }

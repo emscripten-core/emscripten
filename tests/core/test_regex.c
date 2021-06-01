@@ -29,13 +29,13 @@ int main(void) {
   } else {
     printf(
         "With the whole expression, "
-        "a matched substring \"%.*s\" is found at position %d to %d.\n",
-        pmatch[0].rm_eo - pmatch[0].rm_so, &string[pmatch[0].rm_so],
+        "a matched substring \"%.*s\" is found at position %ld to %zu.\n",
+        (int)(pmatch[0].rm_eo - pmatch[0].rm_so), &string[pmatch[0].rm_so],
         pmatch[0].rm_so, pmatch[0].rm_eo - 1);
     printf(
         "With the sub-expression, "
-        "a matched substring \"%.*s\" is found at position %d to %d.\n",
-        pmatch[1].rm_eo - pmatch[1].rm_so, &string[pmatch[1].rm_so],
+        "a matched substring \"%.*s\" is found at position %ld to %zu.\n",
+        (int)(pmatch[1].rm_eo - pmatch[1].rm_so), &string[pmatch[1].rm_so],
         pmatch[1].rm_so, pmatch[1].rm_eo - 1);
   }
   regfree(&preg);

@@ -8,14 +8,22 @@
 #ifndef __wasi_emscripten_helpers_h
 #define __wasi_emscripten_helpers_h
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Converts a wasi return code to a musl syscall return code (-1 if
 // error, 0 otherwise), and sets errno accordingly.
-extern int __wasi_syscall_ret(__wasi_errno_t code);
+int __wasi_syscall_ret(__wasi_errno_t code);
 
 // Check if a wasi file descriptor is valid, returning 1 if valid and 0 if
 // not. If not, also sets errno to EBADF.
-extern int __wasi_fd_is_valid(__wasi_fd_t fd);
+int __wasi_fd_is_valid(__wasi_fd_t fd);
 
-extern struct timespec __wasi_timestamp_to_timespec(__wasi_timestamp_t timestamp);
+struct timespec __wasi_timestamp_to_timespec(__wasi_timestamp_t timestamp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __wasi_emscripten_helpers_h

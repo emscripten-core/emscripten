@@ -17,9 +17,13 @@ Why do I get multiple errors building basic code and the tests?
 
 All the tests in the :ref:`Emscripten test suite <emscripten-test-suite>` are known to build and pass on our test infrastructure, so if you see failures locally it is likely that there is some problem with your environment. (Rarely, there may be temporary breakage, but never on a tagged release version.)
 
-First call ``emcc -v``, which runs basic sanity checks and prints out useful environment information. If that doesn't help, follow the instructions in :ref:`verifying-the-emscripten-environment`.
+First call ``emcc --check``, which runs basic sanity checks and prints out useful environment information. If that doesn't help, follow the instructions in :ref:`verifying-the-emscripten-environment`.
 
 You might also want to go through the :ref:`Tutorial` again, as it is updated as Emscripten changes.
+
+Also make sure that you have the necessary requirements for running Emscripten
+as specified in the :ref:`SDK <sdk-download-and-install>` section, including new-enough versions of
+the dependencies.
 
 
 I tried something: why doesn’t it work?
@@ -36,7 +40,6 @@ Do I need to change my build system to use Emscripten?
 ======================================================
 
 In most cases you will be able to use your project's current build system with Emscripten. See :ref:`Building-Projects`.
-
 
 
 Why is code compilation slow?
@@ -95,13 +98,25 @@ to use a local webserver. For example, Python has one built in,
 ``python -m http.server`` in Python 3 or ``python -m SimpleHTTPServer``
 in Python 2. After doing that, you can visit ``http://localhost:8000/``.
 
+When doing quick local testing, another option than a local webserver is to
+bundle everything into a single file, using ``-s SINGLE_FILE`` (as then no XHRs
+will be made to ``file://`` URLs).
+
 Otherwise, to debug this, look for an error reported on the page itself, or in the browser devtools (web console and network tab), or in your webserver's logging.
 
 
 What is "No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead" or "no native wasm support detected"?
 ===============================================================================================================================
 
-Those errors indicate that WebAssembly support is not present in the VM you are trying to run the code in. Compile with ``-s WASM=0`` to disable WebAssembly (and emit asm.js instead) if you want your code to run in such environments (all modern browsers support WebAssembly, but in some cases you may want to reach 100% of browsers, including legacy ones).
+Those errors indicate that WebAssembly support is not present in the VM you are
+trying to run the code in. Compile with ``-s WASM=0`` to disable WebAssembly
+(and emit equivalent JS instead), if you want your code to run in such
+environments. Note that all modern browsers support WebAssembly, so this should
+only matter if you need to target legacy browsers.
+
+``-s WASM=0`` output should run exactly the same as a WebAssembly build, but may
+be larger, start up slower, and run slower, so it's better to ship WebAssembly
+whenever you can.
 
 
 Why do I get ``machine type must be wasm32`` or ``is not a valid input file`` during linking?
@@ -122,6 +137,7 @@ they actually contain. Common issues are:
   code. To fix that, use emconfigure/emmake, see :ref:`Building-Projects`. In
   this case ``emcc.py`` will show that second error,
   "is not a valid input file".
+
 
 Why does my code fail to compile with an error message about inline assembly (or ``{"text":"asm"}``)?
 =====================================================================================================
@@ -162,7 +178,6 @@ To run a C function repeatedly, use :c:func:`emscripten_set_main_loop` (this is 
 To respond to browser events use the SDL API in the normal way. There are examples in the SDL tests (search for SDL in **tests/runner.py**).
 
 See also: :ref:`faq-my-html-app-hangs`
-
 
 
 Why doesn't my SDL app work?
@@ -298,7 +313,7 @@ Emscripten does dead code elimination of functions that are not called from the 
 
 To make sure a C function remains available to be called from normal JavaScript, it must be added to the `EXPORTED_FUNCTIONS <https://github.com/emscripten-core/emscripten/blob/1.29.12/src/settings.js#L388>`_ using the *emcc* command line. For example, to prevent functions ``my_func()`` and ``main()`` from being removed/renamed, run *emcc* with: ::
 
-  emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']"  ...
+  emcc -s EXPORTED_FUNCTIONS=_main,_my_func  ...
 
 .. note::
 
@@ -330,7 +345,6 @@ Another possible cause of missing code is improper linking of ``.a`` files. The 
 .. tip:: It can be useful to compile with ``EMCC_DEBUG=1`` set for the environment (``EMCC_DEBUG=1 emcc ...`` on Linux, ``set EMMCC_DEBUG=1`` on Windows). This splits up the compilation steps and saves them in ``/tmp/emscripten_temp``. You can then see at what stage the code vanishes (you will need to do ``llvm-dis`` on the bitcode  stages to read them, or ``llvm-nm``, etc.).
 
 
-
 Why is the File System API is not available when I build with closure?
 ======================================================================
 
@@ -360,17 +374,17 @@ Another alternative is to wrap the generated code (or your other code) in a clos
 Why do I get ``TypeError: Module.someThing is not a function``?
 ===============================================================
 
-The ``Module`` object will contain exported methods. For something to appear there, you should add it to ``EXPORTED_FUNCTIONS`` for compiled code, or ``EXTRA_EXPORTED_RUNTIME_METHODS`` for a runtime method (like ``getValue``). For example,
+The ``Module`` object will contain exported methods. For something to appear there, you should add it to ``EXPORTED_FUNCTIONS`` for compiled code, or ``EXPORTED_RUNTIME_METHODS`` for a runtime method (like ``getValue``). For example,
 
  ::
 
-  emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']" ...
+  emcc -s EXPORTED_FUNCTIONS=_main,_my_func ...
 
 would export a C method ``my_func`` (in addition to ``main``, in this example). And
 
  ::
 
-  emcc -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall']" ...
+  emcc -s EXPORTED_RUNTIME_METHODS=ccall ...
 
 will export ``ccall``. In both cases you can then access the exported function on the ``Module`` object.
 
@@ -395,7 +409,7 @@ with
 
   x = stackAlloc(10);
 
-.. note:: The above will work for code in a ``--pre-js`` or JS library, that is, code that is compiled together with the emscripten output. If you try to access ``Runtime.*`` methods from outside the compiled code, then you must export that function (using ``EXTRA_EXPORTED_RUNTIME_METHODS``), and use it on the Module object, see :ref:`that FAQ entry<faq-export-stuff>`.
+.. note:: The above will work for code in a ``--pre-js`` or JS library, that is, code that is compiled together with the emscripten output. If you try to access ``Runtime.*`` methods from outside the compiled code, then you must export that function (using ``EXPORTED_RUNTIME_METHODS``), and use it on the Module object, see :ref:`that FAQ entry<faq-export-stuff>`.
 
 
 Why do I get a ``NameError`` or ``a problem occurred in evaluating content after a "-s"`` when I use a ``-s`` option?
@@ -406,42 +420,85 @@ That may occur when running something like
 ::
 
   # this fails on most Linuxes
-  emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']
+  emcc a.c -s EXPORTED_RUNTIME_METHODS=['addOnPostRun']
 
   # this fails on macOS
-  emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
+  emcc a.c -s EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
 
 You may need to quote things like this:
 
 ::
 
   # this works in the shell on most Linuxes and on macOS
-  emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
+  emcc a.c -s "EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
 
   # or you may need something like this in a Makefile
-  emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
+  emcc a.c -s EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
 
-The proper syntax depends on the OS and shell you are in, and if you are writing in a Makefile, etc.
+The proper syntax depends on the OS and shell you are in, and if you are writing
+in a Makefile, etc. Things like spaces may also matter in some shells, for
+example you may need to avoid empty spaces between list items:
 
-Why do I get an odd python error complaining about libcxx.bc or libcxxabi.bc?
-=============================================================================
+::
 
-A possible cause is that building *libcxx* or *libcxxabi* failed. Go to **system/lib/libcxx** (or libcxxabi) and do ``emmake make`` to see the actual error. Or, clean the Emscripten cache (``./emcc --clear-cache``) and then compile your file with ``EMCC_DEBUG=1`` in the environment. *libcxx* will then be built in **/tmp/emscripten_temp/libcxx**, and you can see ``configure*, make*`` files that are the output of configure and make, etc.
+  # this works in the shell on most Linuxes and on macOS
+  emcc a.c -s "EXPORTED_RUNTIME_METHODS=['foo','bar']"
 
-Another possible cause of this error is the lack of ``make``, which is necessary to build these libraries. If you are on Windows, you need *cmake*.
+(note there is no space after the ``,``).
+
+For simplicity, you may want to use a **response file**, that is,
+
+::
+
+  # this works in the shell on most Linuxes and on macOS
+  emcc a.c -s "EXPORTED_RUNTIME_METHODS=@extra.txt"
+
+and then ``extra.txt`` can be a plain file that contains ``['foo','bar']``. This
+avoids any issues with the shell environment parsing the string.
+
+How do I specify ``-s`` options in a CMake project?
+===================================================
+
+Simple things like this should just work in a ``CMakeLists.txt`` file:
+
+::
+
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_SDL=2")
+
+However, some ``-s`` options may require quoting, or the space between ``-s``
+and the next argument may confuse CMake, when using things like
+``target_link_options``. To avoid those problems, you can use ``-sX=Y``
+notation, that is, without a space:
+
+::
+
+  # same as before but no space after -s
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_SDL=2")
+  # example of target_link_options with a list of names
+  target_link_options(example PRIVATE "-sEXPORTED_FUNCTIONS=[_main]")
+
+Note also that ``_main`` does not need to be quoted, even though it's a string
+name (``emcc`` knows that the argument to ``EXPORTED_FUNCTIONS`` is a list of
+strings, so it accepts ``[a]`` or ``[a,b]`` etc.).
 
 
-Why do I get an error mentioning Uglify and ``throw new JS_Parse_Error``?
-=========================================================================
+Why do I get a Python ``SyntaxError: invalid syntax`` on ``file=..`` or on a string starting with ``f'..'``?
+============================================================================================================ 
 
-In ``-O2`` and above, emscripten will optimize the JS using Uglify1. If you added any JS (using ``--pre-js``/``--post-js``/``EM_ASM``/``EM_JS``) and it contains JS that Uglify1 can't parse - like recent ES6 features - then it will throw such a parsing error.
+Emscripten requires a recent-enough version of Python. An older Python version,
+like ``2.*``, will not support the print statement by default, so it will error on
+syntax like ``print('..', file=..)``. And an older ``3.*`` Python may not support
+f-strings, which look like ``f'..'``.
 
-In the long term we hope to upgrade our internal JS parser. Meanwhile, you can move such code to another script tag on the page, that is, not pass it through the emscripten optimizer.
+Make sure that you have a new enough version of Python installed, as specified
+in the :ref:`SDK <sdk-download-and-install>` instructions, and that it is used by emcc (for example by
+running ``emcc.py`` using that Python).
 
-See also
+In a CI environment you may need to specify the Python version to use, if the
+default is not new enough. For example,
+`on Netlify <https://github.com/emscripten-core/emscripten/issues/12896>`_
+you can use ``PYTHON_VERSION``.
 
- * https://github.com/emscripten-core/emscripten/issues/6000
- * https://github.com/emscripten-core/emscripten/issues/5700
 
 Why does running LLVM bitcode generated by emcc through **lli** break with errors about ``impure_ptr``?
 =======================================================================================================
@@ -467,28 +524,10 @@ Why do I get ``error: cannot compile this aggregate va_arg expression yet`` and 
 This is a limitation of the asm.js target in :term:`Clang`. This code is not currently supported.
 
 
-Why does building from source fail during linking (at 100%)?
-============================================================
-
-Building :ref:`Fastcomp from source <building-fastcomp-from-source>` (and hence the SDK) can fail at 100% progress. This is due to out of memory in the linking stage, and is reported as an error: ``collect2: error: ld terminated with signal 9 [Killed]``.
-
-The solution is to ensure the system has sufficient memory. On Ubuntu 14.04.1 LTS 64bit, you should use at least 6Gb.
-
-
-Why do I get odd rounding errors when using float variables?
-============================================================
-
-In asm.js, by default Emscripten uses doubles for all floating-point variables, that is, 64-bit floats even when C/C++ code contains 32-bit floats. This is simplest and most efficient to implement in JS as doubles are the only native numeric type. As a result, you may see rounding errors compared to native code using 32-bit floats, just because of the difference in precision between 32-bit and 64-bit floating-point values.
-
-To check if this is the issue you are seeing, build with ``-s PRECISE_F32=1``. This uses proper 32-bit floating-point values, at the cost of some extra code size overhead. This may be faster in some browsers, if they optimize ``Math.fround``, but can be slower in others. See ``src/settings.js`` for more details on this option.
-
-(This is not an issue for wasm, which has native float types.)
-
-
 How do I pass int64_t and uint64_t values from js into wasm functions?
 ======================================================================
 
-JS can't represent int64s, so what happens is that in exported functions (that you can call from JS) we "legalize" the types, by turning an i64 argument into two i32s (low and high bits), and an i64 return value becomes an i32, and you can access the high bits by calling a helper function called getTempRet0.
+If you build using the `-s WASM_BIGINT` flag, then `int64_t` and `uint64_t` will be represented as `bigint` values in JS. Without the `-s WASM_BIGINT` flag, the values will be represented as `number` in JS which can't represent int64s, so what happens is that in exported functions (that you can call from JS) we "legalize" the types, by turning an i64 argument into two i32s (low and high bits), and an i64 return value becomes an i32, and you can access the high bits by calling a helper function called getTempRet0.
 
 
 Can I use multiple Emscripten-compiled programs on one Web page?

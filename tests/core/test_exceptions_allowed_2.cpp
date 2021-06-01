@@ -22,7 +22,11 @@ void nocatch(void) {
     }
 }
 
+#ifdef MAIN_NO_SIGNATURE
+int main() {
+#else
 int main(int argc, char* argv[]) {
+#endif
     try {
         nocatch();
     }

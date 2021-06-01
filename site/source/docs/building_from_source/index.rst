@@ -8,7 +8,7 @@ Building Emscripten yourself is an alternative to getting binaries using the ems
 
 Emscripten's core codebase, which is in the main "emscripten" repo, does not need to be compiled (it uses Python for most of the scripting that glues together all the tools). What do need to be compiled are LLVM (which in particular provides clang and wasm-ld) and Binaryen. After compiling them, simply edit the ``.emscripten`` file to point to the right place for each of those tools (if the file doesn't exist yet, run ``emcc`` for the first time).
 
-Get the ``master`` branches, or check the `Packaging <https://github.com/emscripten-core/emscripten/blob/master/docs/packaging.md>`_ instructions to identify precise commits in existing releases.
+Get the ``main`` branches, or check the `Packaging <https://github.com/emscripten-core/emscripten/blob/main/docs/packaging.md>`_ instructions to identify precise commits in existing releases.
 
 
 Building LLVM
@@ -29,8 +29,6 @@ Then point LLVM_ROOT in ``.emscripten`` to ``<llvm_src>/build/bin`` (no need to 
 
 Please refer to the upstream docs for more detail.
 
-For using the older fastcomp backend, see :ref:`the fastcomp docs <building-fastcomp-from-source>`.
-
 Building Binaryen
 -----------------
 
@@ -40,7 +38,6 @@ See the `Binaryen build instructions <https://github.com/WebAssembly/binaryen#bu
    :maxdepth: 1
 
    toolchain_what_is_needed
-   building_fastcomp_manually_from_source
    configuring_emscripten_settings
    verify_emscripten_environment
 

@@ -70,7 +70,7 @@ to prevent C++ name mangling.
 To compile this code run the following command in the Emscripten
 home directory::
 
-    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]'
+    emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]'
 
 ``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the
 compiled code (everything else might be removed if it is not used), and
@@ -159,7 +159,7 @@ parameters to pass to the function:
      we did in this tutorial, then because of optimizations
      and minification you should export ccall from the runtime, using
      ``EXPORTED_RUNTIME_METHODS``, for example using
-     ``-s 'EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'``,
+     ``-s EXPORTED_RUNTIME_METHODS=ccall,cwrap``,
      and call it on ``Module`` (which contains
      everything exported, in a safe way that is not influenced by minification
      or optimizations).
@@ -190,7 +190,7 @@ Compile the library with emcc:
 
 .. code:: bash
 
-    emcc api_example.c -o api_example.js -s MODULARIZE -s EXPORTED_RUNTIME_METHODS=['ccall']
+    emcc api_example.c -o api_example.js -s MODULARIZE -s EXPORTED_RUNTIME_METHODS=ccall
 
 Require the library and call its procedures from node:
 
@@ -238,7 +238,7 @@ Strings in JavaScript must be converted to pointers for compiled
 code -- the relevant function is :js:func:`UTF8ToString`, which
 given a pointer returns a JavaScript string. Converting a JavaScript
 string ``someString`` to a pointer can be accomplished using ``ptr = ``
-allocate(intArrayFromString(someString), 'i8', ALLOC_NORMAL) <allocate>``.
+allocate(intArrayFromString(someString), ALLOC_NORMAL) <allocate>``.
 
 .. note:: The conversion to a pointer allocates memory, which needs to be
    freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side)
@@ -548,29 +548,27 @@ a function,
 
   mergeInto(LibraryManager.library, {
     $method_support__postset: 'method_support();',
-    $method_support: {
-      init: function() {
-        var SomeLib = function() {
-          this.callCount = 0;
-        };
+    $method_support: function() {
+      var SomeLib = function() {
+        this.callCount = 0;
+      };
 
-        SomeLib.prototype.getCallCount = function() {
-          return this.callCount;
-        };
+      SomeLib.prototype.getCallCount = function() {
+        return this.callCount;
+      };
 
-        SomeLib.prototype.process = function() {
-          ++this.callCount;
-        };
+      SomeLib.prototype.process = function() {
+        ++this.callCount;
+      };
 
-        SomeLib.prototype.reset = function() {
-          this.callCount = 0;
-        };
+      SomeLib.prototype.reset = function() {
+        this.callCount = 0;
+      };
 
-        var inst = new SomeLib();
-        _method_01 = inst.getCallCount.bind(inst);
-        _method_02 = inst.process.bind(inst);
-        _method_03 = inst.reset.bind(inst);
-      }
+      var inst = new SomeLib();
+      _method_01 = inst.getCallCount.bind(inst);
+      _method_02 = inst.process.bind(inst);
+      _method_03 = inst.reset.bind(inst);
     },
     method_01: function() {},
     method_01__deps: ['$method_support'],
@@ -587,7 +585,7 @@ See the `library_*.js`_ files for other examples.
 
    - JavaScript libraries can declare dependencies (``__deps``), however
      those are only for other JavaScript libraries. See examples in
-     `/src <https://github.com/emscripten-core/emscripten/tree/master/src>`_
+     `/src <https://github.com/emscripten-core/emscripten/tree/main/src>`_
      with the name format **library_*.js**
    - You can add dependencies for all your methods using
      ``autoAddDeps(myLibrary, name)`` where myLibrary is the object with
@@ -616,12 +614,8 @@ be called.
 
 See `test_add_function in tests/test_core.py`_ for an example.
 
-When using ``addFunction``, there is a backing array where these functions are
-stored. This array must be explicitly sized, which can be done via a
-compile-time setting, ``RESERVED_FUNCTION_POINTERS``. For example, to reserve
-space for 20 functions to be added::
-
-    emcc ... -s RESERVED_FUNCTION_POINTERS=20 ...
+You should build with ``-s ALLOW_TABLE_GROWTH`` to allow new functions to be
+added to the table. Otherwise by default the table has a fixed size.
 
 .. note:: When using ``addFunction`` on LLVM wasm backend, you need to provide
    an additional second argument, a Wasm function signature string. Each
@@ -637,7 +631,7 @@ space for 20 functions to be added::
 
    For example, if you add a function that takes an integer and does not return
    anything, you can do ``addFunction(your_function, 'vi');``. See
-   `tests/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/incoming/tests/interop/test_add_function_post.js>`_ for an example.
+   `tests/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/main/tests/interop/test_add_function_post.js>`_ for an example.
 
 
 .. _interacting-with-code-access-memory:
@@ -680,32 +674,46 @@ Here ``my_function`` is a C function that receives a single integer parameter
 integer. This could be something like ``int my_function(char *buf)``.
 
 The converse case of exporting allocated memory into JavaScript can be
-tricky when wasm-based memory is allowed to grow (by compiling with
-``-s ALLOW_MEMORY_GROWTH=1``). Increasing the size of memory changes
+tricky when wasm-based memory is allowed to **grow**, by compiling with
+``-s ALLOW_MEMORY_GROWTH``. Increasing the size of memory changes
 to a new buffer and existing array views essentially become invalid,
 so you cannot simply do this:
 
 .. code-block:: javascript
 
    function func() {
-     var ptr = callSomething(len);               // if memory grows ...
-     return HEAPU8.subarray(buffer, buffer+len); // ... this will fail
+     let someView = HEAPU8.subarray(x, y);
+     compute(someView);
+
+     // This may grow memory, which would invalidate all views.
+     maybeGrow();
+
+     // If we grew, this use of an invalidated view will fail. Failure in this
+     // case will return undefined, the same as reading out of bounds from a
+     // typed array. If the operation were someView.subarray(), however, then it
+     // would throw an error.
+     return someView[z];
    }
 
-Here, if `callSomething` calls `malloc` and returns the allocated
-pointer, and if that `malloc` grew memory, you will not be able to
-read the returned data unless you renew the view:
+Emscripten will refresh the canonical views like ``HEAPU8`` for you, which you
+can use to refresh your own views:
 
 .. code-block:: javascript
 
    function func() {
-     var ptr = callSomething(len);
-     return new Uint8Array(HEAPU8.subarray(ptr, ptr+len)); // create a new view
+     let someView = HEAPU8.subarray(x, y);
+     compute(someView);
+
+     // This may grow memory, which would invalidate all views.
+     maybeGrow();
+
+     // Create a new, fresh view after the possible growth.
+     someView = HEAPU8.subarray(x, y);
+     return someView[z];
    }
 
-Note that a second instance of memory growth will possibly invalidate
-the current view, requiring another update of the view (you can, of
-course, avoid this problem by copying the data.)
+Another option to avoid such problems is to copy the data, when that makes
+sense.
 
 .. _interacting-with-code-execution-behaviour:
 
@@ -778,13 +786,13 @@ for defining the binding:
    of one tool over the other will usually be based on which is the most
    natural fit for the project and its build system.
 
-.. _library.js: https://github.com/emscripten-core/emscripten/blob/master/src/library.js
+.. _library.js: https://github.com/emscripten-core/emscripten/blob/main/src/library.js
 .. _test_js_libraries: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L5043
-.. _src/deps_info.json: https://github.com/emscripten-core/emscripten/blob/master/src/deps_info.json
-.. _tools/system_libs.py: https://github.com/emscripten-core/emscripten/blob/master/tools/system_libs.py
-.. _library_\*.js: https://github.com/emscripten-core/emscripten/tree/master/src
+.. _src/deps_info.json: https://github.com/emscripten-core/emscripten/blob/main/src/deps_info.json
+.. _tools/system_libs.py: https://github.com/emscripten-core/emscripten/blob/main/tools/system_libs.py
+.. _library_\*.js: https://github.com/emscripten-core/emscripten/tree/main/src
 .. _test_add_function in tests/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L6237
-.. _tests/core/test_utf.in: https://github.com/emscripten-core/emscripten/blob/master/tests/core/test_utf.in
+.. _tests/core/test_utf.in: https://github.com/emscripten-core/emscripten/blob/main/tests/core/test_utf.in
 .. _tests/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4597
 .. _Box2D: https://github.com/kripken/box2d.js/#box2djs
 .. _Bullet: https://github.com/kripken/ammo.js/#ammojs

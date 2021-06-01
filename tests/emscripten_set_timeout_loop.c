@@ -1,4 +1,6 @@
+#include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
+#include <emscripten/em_asm.h>
 #include <assert.h>
 
 double previousSetTimeouTime = 0;
@@ -29,5 +31,6 @@ EM_BOOL tick(double time, void *userData)
 int main()
 {
 	emscripten_set_timeout_loop(tick, 100, (void*)1);
-	EM_ASM(noExitRuntime = 1);
+	emscripten_exit_with_live_runtime();
+	return 0;
 }

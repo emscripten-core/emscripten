@@ -7,6 +7,7 @@ import logging
 import os
 import shlex
 import tempfile
+from .utils import WINDOWS
 
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
@@ -21,7 +22,10 @@ def create_response_file(args, directory):
   response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp', dir=directory, text=True)
 
   # Backslashes and other special chars need to be escaped in the response file.
-  escape_chars = ('\\', '\"', '\'')
+  escape_chars = ['\\', '\"']
+  # When calling llvm-ar on Linux and macOS, single quote characters ' should be escaped.
+  if not WINDOWS:
+    escape_chars += ['\'']
 
   def escape(arg):
     for char in escape_chars:
@@ -36,10 +40,23 @@ def create_response_file(args, directory):
     if ' ' in arg:
       arg = '"%s"' % arg
     contents += arg + '\n'
-  with os.fdopen(response_fd, 'w') as f:
+
+  # When writing windows repsonse files force the encoding to UTF8 which we know
+  # that llvm tools understand.  Without this, we get whatever the default codepage
+  # might be.
+  # See: https://github.com/llvm/llvm-project/blob/3f3d1c901d7abcc5b91468335679b1b27d8a02dd/llvm/include/llvm/Support/Program.h#L168-L170
+  # And: https://github.com/llvm/llvm-project/blob/63d16d06f5b8f71382033b5ea4aa668f8150817a/clang/include/clang/Driver/Job.h#L58-L69
+  # TODO(sbc): Should we also force utf-8 on non-windows?
+  if WINDOWS:
+    encoding = 'utf-8'
+  else:
+    encoding = None
+
+  with os.fdopen(response_fd, 'w', encoding=encoding) as f:
     f.write(contents)
+
   if DEBUG:
-    logging.warning('Creating response file ' + response_filename + ': ' + contents)
+    logging.warning('Creating response file ' + response_filename + ' with following contents: ' + contents)
 
   # Register the created .rsp file to be automatically cleaned up once this
   # process finishes, so that caller does not have to remember to do it.

@@ -19,14 +19,9 @@ synchronous way.
 
 See the
 `Asyncify introduction blogpost <https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html>`_
-for general background and details of how it works internally. The following
-expands on the Emscripten examples from that post.
-
-.. note:: This post talks about Asyncify using the new LLVM wasm backend.
-          There was an older Asyncify implementation for the old fastcomp
-          backend. The two algorithms and implementations are entirely separate,
-          so if you are using fastcomp, these docs may not be accurate - you
-          should upgrade to the wasm backend and new Asyncify!
+for general background and details of how it works internally (you can also view
+`this talk about Asyncify <https://www.youtube.com/watch?v=qQOP6jqZqf8>`_).
+The following expands on the Emscripten examples from that post.
 
 .. _yielding_to_main_loop:
 
@@ -167,7 +162,7 @@ To run this example, first compile it with
 
 ::
 
-    ./emcc example.c -O3 -o a.html -s ASYNCIFY -s 'ASYNCIFY_IMPORTS=["do_fetch"]'
+    emcc example.c -O3 -o a.html -s ASYNCIFY -s 'ASYNCIFY_IMPORTS=["do_fetch"]'
 
 Note that you must tell the compiler that ``do_fetch()`` can do an
 asynchronous operation, using ``ASYNCIFY_IMPORTS``, otherwise it won't
@@ -233,7 +228,7 @@ You can build this with
 
 ::
 
-    ../emcc example.c -s ASYNCIFY=1 -s 'ASYNCIFY_IMPORTS=["get_digest_size"]' -o a.html -O2
+    emcc example.c -s ASYNCIFY=1 -s 'ASYNCIFY_IMPORTS=["get_digest_size"]' -o a.html -O2
 
 This example calls the Promise-returning ``window.crypto.subtle()`` API (the
 example is based off of
@@ -278,6 +273,22 @@ In this case you don't need to worry about ``ASYNCIFY_IMPORTS``, since it's an
 internal implementation detail of ``val::await`` and Emscripten takes care of it
 automatically.
 
+Usage with ``ccall``
+####################
+
+To make use of an Asyncify-using wasm export from Javascript, you can use the
+``Module.ccall`` function and pass ``async: true`` to its call options object.
+``ccall`` will then return a Promise, which will resolve with the result of the
+function once the computation completes.
+
+In this example, a function "func" is called which returns a Number.
+
+.. code-block:: javascript
+
+    Module.ccall("func", "number", [], [], {async: true}).then(result => {
+      console.log("js_func: " + result);
+    });
+
 Optimizing
 ##########
 
@@ -300,15 +311,22 @@ you can tell Asyncify to ignore indirect calls using
 If you know that some indirect calls matter and others do not, then you
 can provide a manual list of functions to Asyncify:
 
-* ``ASYNCIFY_REMOVE_LIST`` is a list of functions that do not unwind the stack.
+* ``ASYNCIFY_REMOVE`` is a list of functions that do not unwind the stack.
   Asyncify will do its normal whole-program analysis, then remove these
   functions from the list of instrumented functions.
-* ``ASYNCIFY_ADD_LIST`` is a list of functions that do unwind the stack, and
+* ``ASYNCIFY_ADD`` is a list of functions that do unwind the stack, and
   are added after doing the normal whole-program analysis. This is mostly useful
   if you use ``ASYNCIFY_IGNORE_INDIRECT`` but want to also mark some additional
   functions that need to unwind.
-* ``ASYNCIFY_ONLY_LIST`` is a list of the **only** functions that can unwind
+* ``ASYNCIFY_ONLY`` is a list of the **only** functions that can unwind
   the stack. Asyncify will instrument exactly those and no others.
+
+You can enable the ``ASYNCIFY_ADVISE`` setting, which will tell the compiler to
+output which functions it is currently instrumenting and why. You can then
+determine whether you should add any functions to ``ASYNCIFY_REMOVE`` or
+whether it would be safe to enable ``ASYNCIFY_IGNORE_INDIRECT``. Note that this
+phase of the compiler happens after many optimization phases, and several
+functions maybe be inlined already. To be safe, run it with `-O0`.
 
 For more details see ``settings.js``. Note that the manual settings
 mentioned here are error-prone - if you don't get things exactly right,

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2019 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -20,8 +20,6 @@ any '-format' argument). It does not accept any other arguments aside from the
 input file, which is expected to be a JS file. The wasm file is expected to be
 in the same directory, and have the same basename with a '.wasm' extension.
 """
-
-from __future__ import print_function
 
 import argparse
 import os

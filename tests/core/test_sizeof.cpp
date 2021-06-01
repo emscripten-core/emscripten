@@ -30,5 +30,8 @@ int main(int argc, const char *argv[]) {
   printf("*%d,%d,%d,%d,%d,%d*\n", as[0].x, as[0].y, as[1].x, as[1].y, as[2].x,
          as[2].y);
 
+  delete[] a;
+  delete[] b;
+  delete[] c;
   return 0;
 }

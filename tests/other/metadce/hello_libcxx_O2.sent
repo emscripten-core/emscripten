@@ -1,8 +1,5 @@
 __cxa_atexit
-__map_file
-__sys_munmap
 abort
-emscripten_get_sbrk_ptr
 emscripten_memcpy_big
 emscripten_resize_heap
 environ_get
@@ -11,7 +8,5 @@ fd_close
 fd_read
 fd_seek
 fd_write
-memory
 setTempRet0
 strftime_l
-table

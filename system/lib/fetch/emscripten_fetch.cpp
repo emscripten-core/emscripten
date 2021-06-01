@@ -18,37 +18,35 @@ extern "C" {
 // Uncomment the following and clear the cache with emcc --clear-cache to rebuild this file to
 // enable internal debugging. #define FETCH_DEBUG
 
-struct __emscripten_fetch_queue {
+static void fetch_free(emscripten_fetch_t* fetch);
+
+// APIs defined in JS
+void emscripten_start_fetch(emscripten_fetch_t* fetch);
+int32_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
+int32_t _emscripten_fetch_get_response_headers(int32_t fetchID, int32_t dst, int32_t dstSizeBytes);
+void _emscripten_fetch_free(unsigned int);
+
+struct emscripten_fetch_queue {
   emscripten_fetch_t** queuedOperations;
   int numQueuedItems;
   int queueSize;
 };
 
-static void fetch_free(emscripten_fetch_t* fetch);
+emscripten_fetch_queue* _emscripten_get_fetch_queue() {
+  static thread_local emscripten_fetch_queue g_queue;
 
-extern "C" {
-void emscripten_start_fetch(emscripten_fetch_t* fetch);
-__emscripten_fetch_queue* _emscripten_get_fetch_work_queue();
-
-__emscripten_fetch_queue* _emscripten_get_fetch_queue() {
-  __emscripten_fetch_queue* queue = _emscripten_get_fetch_work_queue();
-  if (!queue->queuedOperations) {
-    queue->queueSize = 64;
-    queue->numQueuedItems = 0;
-    queue->queuedOperations =
-      (emscripten_fetch_t**)malloc(sizeof(emscripten_fetch_t*) * queue->queueSize);
+  if (!g_queue.queuedOperations) {
+    g_queue.queueSize = 64;
+    g_queue.numQueuedItems = 0;
+    g_queue.queuedOperations =
+      (emscripten_fetch_t**)malloc(sizeof(emscripten_fetch_t*) * g_queue.queueSize);
   }
-  return queue;
-}
-
-int32_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
-int32_t _emscripten_fetch_get_response_headers(int32_t fetchID, int32_t dst, int32_t dstSizeBytes);
-void _emscripten_fetch_free(unsigned int);
+  return &g_queue;
 }
 
 void emscripten_proxy_fetch(emscripten_fetch_t* fetch) {
   // TODO: mutex lock
-  __emscripten_fetch_queue* queue = _emscripten_get_fetch_queue();
+  emscripten_fetch_queue* queue = _emscripten_get_fetch_queue();
   //	TODO handle case when queue->numQueuedItems >= queue->queueSize
   queue->queuedOperations[queue->numQueuedItems++] = fetch;
 #ifdef FETCH_DEBUG

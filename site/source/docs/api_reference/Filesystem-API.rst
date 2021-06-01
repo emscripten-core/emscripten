@@ -4,7 +4,7 @@
 File System API
 ===============
 
-File operations in Emscripten are provided by the `FS <https://github.com/emscripten-core/emscripten/blob/master/src/library_fs.js>`_ library. It is used internally for all of Emscripten's **libc** and **libcxx** file I/O.
+File operations in Emscripten are provided by the `FS <https://github.com/emscripten-core/emscripten/blob/main/src/library_fs.js>`_ library. It is used internally for all of Emscripten's **libc** and **libcxx** file I/O.
 
 .. note:: The API is *inspired* by the Linux/POSIX `File System API <http://linux.die.net/man/2/>`_, with each presenting a very similar interface.
 
@@ -12,7 +12,7 @@ File operations in Emscripten are provided by the `FS <https://github.com/emscri
   native and browser environments make this unreasonable. For example, user and
   group permissions are defined but ignored in :js:func:`FS.open`.
 
-Emscripten predominantly compiles code that uses synchronous file I/O, so the majority of the ``FS`` member functions offer a synchronous interface (with errors being reported by raising exceptions of type `FS.ErrnoError <https://github.com/emscripten-core/emscripten/blob/master/system/lib/libc/musl/arch/emscripten/bits/errno.h>`_).
+Emscripten predominantly compiles code that uses synchronous file I/O, so the majority of the ``FS`` member functions offer a synchronous interface (with errors being reported by raising exceptions of type `FS.ErrnoError <https://github.com/emscripten-core/emscripten/blob/main/system/lib/libc/musl/arch/emscripten/bits/errno.h>`_).
 
 File data in Emscripten is partitioned by mounted file systems. Several file systems are provided. An instance of :ref:`MEMFS <filesystem-api-memfs>` is mounted to ``/`` by default. The subdirectories `/home/web_user` and `/tmp` are also created automatically, in addition to several other special devices and streams (e.g. `/dev/null`, `/dev/random`, `/dev/stdin`, `/proc/self/fd`); see `FS.staticInit()` in the FS library for full details. Instances of :ref:`NODEFS <filesystem-api-nodefs>` and :ref:`IDBFS <filesystem-api-idbfs>` can be mounted to other directories if your application needs to :ref:`persist data <filesystem-api-persist-data>`.
 
@@ -62,7 +62,7 @@ NODEFS
 
 This file system lets a program in *node* map directories (via a mount operation) on the host filesystem to directories in Emscripten's virtual filesystem. It uses node's synchronous `FS API <http://nodejs.org/api/fs.html>`_ to immediately persist any data written to the Emscripten file system to your local disk.
 
-See `this test <https://github.com/emscripten-core/emscripten/blob/master/tests/fs/test_nodefs_rw.c>`_ for an example.
+See `this test <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_nodefs_rw.c>`_ for an example.
 
 .. _filesystem-api-idbfs:
 
@@ -166,7 +166,7 @@ File system API
        }, '/working');
 
 
-    You can also pass in a package of files, created by ``tools/file_packager.py`` with ``--separate-metadata``. You must
+    You can also pass in a package of files, created by ``tools/file_packager`` with ``--separate-metadata``. You must
     provide the metadata as a JSON object, and the data as a blob:
 
     .. code-block:: javascript
@@ -219,7 +219,7 @@ File system API
        });
      }
 
-  A real example of this functionality can be seen in `test_idbfs_sync.c <https://github.com/emscripten-core/emscripten/blob/master/tests/fs/test_idbfs_sync.c>`_.
+  A real example of this functionality can be seen in `test_idbfs_sync.c <https://github.com/emscripten-core/emscripten/blob/main/tests/fs/test_idbfs_sync.c>`_.
 
   :param bool populate: ``true`` to initialize Emscripten's file system data with the data from the file system's persistent source, and ``false`` to save Emscripten`s file system data to the file system's persistent source.
   :param callback: A notification callback function that is invoked on completion of the synchronization. If an error occurred, it will be provided as a parameter to this function.
@@ -490,8 +490,8 @@ File system API
   Note that in the current implementation the stored timestamp is a single value, the maximum of ``atime`` and ``mtime``.
 
   :param string path: The path of the file to update.
-  :param int atime: The file modify time (milliseconds).
-  :param int mtime: The file access time (milliseconds).
+  :param int atime: The file access time (milliseconds).
+  :param int mtime: The file modify time (milliseconds).
 
 
 
@@ -634,7 +634,7 @@ File system API
     FS.createLazyFile('/', 'bar', '/get_file.php?name=baz', true, true);
 
 
-  :param parent: The parent folder, either as a path (e.g. `'/usr/lib'`) or an object previously returned from a `FS.createFolder()` or `FS.createPath()` call.
+  :param parent: The parent folder, either as a path (e.g. `'/usr/lib'`) or an object previously returned from a `FS.mkdir()` or `FS.createPath()` call.
   :type parent: string/object
   :param string name: The name of the new file.
   :param string url: In the browser, this is the URL whose contents will be returned when this file is accessed. In a command line engine like *node.js*, this will be the local (real) file system path from where the contents will be loaded. Note that writes to this file are virtual.
@@ -648,7 +648,7 @@ File system API
 
   Preloads a file asynchronously, and uses preload plugins to prepare its content. You should call this in ``preRun``, ``run()`` will be delayed until all preloaded files are ready. This is how the :ref:`preload-file <emcc-preload-file>` option works in *emcc* when ``--use-preload-plugins`` has been specified (if you use this method by itself, you will need to build the program with that option).
 
-  :param parent: The parent folder, either as a path (e.g. **'/usr/lib'**) or an object previously returned from a `FS.createFolder()` or `FS.createPath()` call.
+  :param parent: The parent folder, either as a path (e.g. **'/usr/lib'**) or an object previously returned from a `FS.mkdir()` or `FS.createPath()` call.
   :type parent: string/object
   :param string name: The name of the new file.
   :param string url: In the browser, this is the URL whose contents will be returned when the file is accessed. In a command line engine, this will be the local (real) file system path the contents will be loaded from. Note that writes to this file are virtual.

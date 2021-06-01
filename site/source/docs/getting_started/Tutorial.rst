@@ -20,7 +20,10 @@ For the next section you will need to open a command prompt:
 - On Linux or macOS, open a *Terminal*.
 - On Windows open the :ref:`Emscripten Command Prompt <emcmdprompt>`, a command prompt that has been pre-configured with the correct system paths and settings to point to the :term:`active <Active Tool/SDK>` Emscripten tools. To access this prompt, type **Emscripten** in the Windows 8 start screen, and then select the **Emscripten Command Prompt** option.
 
-Navigate with the command prompt to the emscripten directory under the SDK. This is a folder below the :term:`emsdk root directory`, typically **<emsdk root directory>/fastcomp/emscripten/** (for the older "fastcomp" compiler; for the newer upstream LLVM wasm backend it will be **<emsdk root directory>/upstream/emscripten/**). The examples below will depend on finding files relative to that location.
+Navigate with the command prompt to the emscripten directory under the SDK. This
+is a folder below the :term:`emsdk root directory`, typically
+**<emsdk root directory>/upstream/emscripten/**.
+The examples below will depend on finding files relative to that location.
 
 .. note:: In older emscripten versions the directory structure was different: the version number appeared, and the backend (fastcomp/upstream) did not, so you would use something like **<emsdk root directory>/emscripten/1.20.0/**.
 
@@ -80,7 +83,7 @@ You can now open ``hello.html`` in a web browser.
 
 Once you have the HTML loaded in your browser, you'll see a text area for displaying the output of the ``printf()`` calls in the native code.
 
-The HTML output isn't limited just to just displaying text. You can also use the SDL API to show a colored cube in a ``<canvas>`` element (on browsers that support it). For an example, build the `hello_world_sdl.cpp <https://github.com/emscripten-core/emscripten/blob/master/tests/hello_world_sdl.cpp>`_ test code and then refresh the browser: ::
+The HTML output isn't limited just to just displaying text. You can also use the SDL API to show a colored cube in a ``<canvas>`` element (on browsers that support it). For an example, build the `hello_world_sdl.cpp <https://github.com/emscripten-core/emscripten/blob/main/tests/hello_world_sdl.cpp>`_ test code and then refresh the browser: ::
 
     ./emcc tests/hello_world_sdl.cpp -o hello.html
 
@@ -102,7 +105,7 @@ JavaScript is usually run in the sandboxed environment of a web browser, without
 Files that you want to access should be :ref:`preloaded <emcc-preload-file>` or :ref:`embedded <emcc-embed-file>` into the virtual file system. Preloading (or embedding) generates a virtual file system that corresponds to the file system structure at *compile* time, *relative to the current directory*.
 
 
-The `hello_world_file.cpp <https://github.com/emscripten-core/emscripten/blob/master/tests/hello_world_file.cpp>`_ example shows how to load a file (both the test code and the file to be loaded shown below):
+The `hello_world_file.cpp <https://github.com/emscripten-core/emscripten/blob/main/tests/hello_world_file.cpp>`_ example shows how to load a file (both the test code and the file to be loaded shown below):
 
 .. include:: ../../../../tests/hello_world_file.cpp
    :literal:
@@ -151,7 +154,7 @@ For more information about compiler optimization options see :ref:`Optimizing-Co
 Emscripten Test Suite and Benchmarks
 ====================================
 
-Emscripten has a comprehensive test suite, which covers virtually all Emscripten functionality. These tests are an excellent resource for developers as they provide practical examples of most features, and are known to build successfully on the master branch.
+Emscripten has a comprehensive test suite, which covers virtually all Emscripten functionality. These tests are an excellent resource for developers as they provide practical examples of most features, and are known to build successfully on the ``main`` branch.
 
 See :ref:`emscripten-test-suite` for more information.
 

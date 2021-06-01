@@ -4,12 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if !WASM_BACKEND && EMULATED_FUNCTION_POINTERS == 0
-var jsCallStartIndex = 1;
-var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
-#endif // !WASM_BACKEND && EMULATED_FUNCTION_POINTERS == 0
-
-#if WASM
 // Wraps a JS function as a wasm function with a given signature.
 function convertJsFunctionToWasm(func, sig) {
 #if WASM2JS
@@ -103,16 +97,31 @@ var freeTableIndexes = [];
 // Weak map of functions in the table to their indexes, created on first use.
 var functionsInTableMap;
 
+function getEmptyTableSlot() {
+  // Reuse a free index if there is one, otherwise grow.
+  if (freeTableIndexes.length) {
+    return freeTableIndexes.pop();
+  }
+  // Grow the table
+  try {
+    wasmTable.grow(1);
+  } catch (err) {
+    if (!(err instanceof RangeError)) {
+      throw err;
+    }
+    throw 'Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.';
+  }
+  return wasmTable.length - 1;
+}
+
 // Add a wasm function to the table.
 function addFunctionWasm(func, sig) {
-  var table = wasmTable;
-
   // Check if the function is already in the table, to ensure each function
   // gets a unique index. First, create the map if this is the first use.
   if (!functionsInTableMap) {
     functionsInTableMap = new WeakMap();
-    for (var i = 0; i < table.length; i++) {
-      var item = table.get(i);
+    for (var i = 0; i < wasmTable.length; i++) {
+      var item = wasmTable.get(i);
       // Ignore null values.
       if (item) {
         functionsInTableMap.set(item, i);
@@ -129,45 +138,26 @@ function addFunctionWasm(func, sig) {
   // Make sure functionsInTableMap is actually up to date, that is, that this
   // function is not actually in the wasm Table despite not being tracked in
   // functionsInTableMap.
-  for (var i = 0; i < table.length; i++) {
-    assert(table.get(i) != func, 'function in Table but not functionsInTableMap');
+  for (var i = 0; i < wasmTable.length; i++) {
+    assert(wasmTable.get(i) != func, 'function in Table but not functionsInTableMap');
   }
 #endif
 
-  var ret;
-  // Reuse a free index if there is one, otherwise grow.
-  if (freeTableIndexes.length) {
-    ret = freeTableIndexes.pop();
-  } else {
-    ret = table.length;
-    // Grow the table
-    try {
-      table.grow(1);
-    } catch (err) {
-      if (!(err instanceof RangeError)) {
-        throw err;
-      }
-#if WASM_BACKEND
-      throw 'Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.';
-#else
-      throw 'Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.';
-#endif
-    }
-  }
+  var ret = getEmptyTableSlot();
 
   // Set the new value.
   try {
     // Attempting to call this with JS function will cause of table.set() to fail
-    table.set(ret, func);
+    wasmTable.set(ret, func);
   } catch (err) {
     if (!(err instanceof TypeError)) {
       throw err;
     }
 #if ASSERTIONS
-    assert(typeof sig !== 'undefined', 'Missing signature argument to addFunction');
+    assert(typeof sig !== 'undefined', 'Missing signature argument to addFunction: ' + func);
 #endif
     var wrapped = convertJsFunctionToWasm(func, sig);
-    table.set(ret, wrapped);
+    wasmTable.set(ret, wrapped);
   }
 
   functionsInTableMap.set(func, ret);
@@ -175,11 +165,10 @@ function addFunctionWasm(func, sig) {
   return ret;
 }
 
-function removeFunctionWasm(index) {
+function removeFunction(index) {
   functionsInTableMap.delete(wasmTable.get(index));
   freeTableIndexes.push(index);
 }
-#endif
 
 // 'sig' parameter is required for the llvm backend but only when func is not
 // already a WebAssembly function.
@@ -193,59 +182,5 @@ function addFunction(func, sig) {
 #endif // ASSERTIONS == 2
 #endif // ASSERTIONS
 
-#if WASM_BACKEND
   return addFunctionWasm(func, sig);
-#else
-
-#if EMULATED_FUNCTION_POINTERS == 0
-  var base = 0;
-  for (var i = base; i < base + {{{ RESERVED_FUNCTION_POINTERS }}}; i++) {
-    if (!functionPointers[i]) {
-      functionPointers[i] = func;
-      return jsCallStartIndex + i;
-    }
-  }
-  throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
-
-#else // EMULATED_FUNCTION_POINTERS == 0
-
-#if WASM
-  return addFunctionWasm(func, sig);
-#else
-  alignFunctionTables(); // TODO: we should rely on this being an invariant
-  var tables = getFunctionTables();
-  var ret = -1;
-  for (var signature in tables) {
-    var table = tables[signature];
-    if (ret < 0) ret = table.length;
-    else assert(ret === table.length);
-    table.push(func);
-  }
-  return ret;
-#endif // WASM
-
-#endif // EMULATED_FUNCTION_POINTERS == 0
-#endif // WASM_BACKEND
-}
-
-function removeFunction(index) {
-#if WASM_BACKEND
-  removeFunctionWasm(index);
-#else
-
-#if EMULATED_FUNCTION_POINTERS == 0
-  functionPointers[index-jsCallStartIndex] = null;
-#else
-#if WASM
-  removeFunctionWasm(index);
-#else
-  alignFunctionTables(); // XXX we should rely on this being an invariant
-  var tables = getFunctionTables();
-  for (var sig in tables) {
-    tables[sig][index] = null;
-  }
-#endif // WASM
-
-#endif // EMULATE_FUNCTION_POINTER_CASTS == 0
-#endif // WASM_BACKEND
 }

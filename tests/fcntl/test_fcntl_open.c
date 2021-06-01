@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-char nonexistent_name[] = "noexist-##";
+char nonexistent_name[] = "noexist-###";
 
 void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
@@ -40,9 +40,8 @@ void cleanup() {
   unlink("test-file");
   rmdir("test-folder");
   for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 16; j++) {
-      nonexistent_name[8] = 'a' + i;
-      nonexistent_name[9] = 'a' + j;
+    for (int j = 0; j < 32; j++) {
+      sprintf(nonexistent_name, "noexist-%c%d", 'a' + i, j);
       unlink(nonexistent_name);
     }
   }
@@ -56,12 +55,13 @@ void test() {
   int modes[] = {O_RDONLY, O_WRONLY, O_RDWR};
 
   for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 16; j++) {
+    for (int j = 0; j < 32; j++) {
       int flags = modes[i];
       if (j & 0x1) flags |= O_CREAT;
       if (j & 0x2) flags |= O_EXCL;
       if (j & 0x4) flags |= O_TRUNC;
       if (j & 0x8) flags |= O_APPEND;
+      if (j & 0x16) flags |= O_NOCTTY;
 
       printf("EXISTING FILE %d,%d\n", i, j);
       int success = open("test-file", flags, 0777) != -1;
@@ -110,8 +110,7 @@ void test() {
       printf("\n");
       errno = 0;
 
-      nonexistent_name[8] = 'a' + i;
-      nonexistent_name[9] = 'a' + j;
+      sprintf(nonexistent_name, "noexist-%c%d", 'a' + i, j);
       printf("NON-EXISTING %d,%d\n", i, j);
       success = open(nonexistent_name, flags, 0777) != -1;
       printf("success: %d\n", success);

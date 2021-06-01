@@ -7,7 +7,6 @@
 Performs a search-replace in all of js/
 '''
 
-from __future__ import print_function
 import os
 
 
@@ -22,7 +21,7 @@ for x in all_children('src') + all_children('tests') + all_children('tools') + a
     continue
   print(x)
   orig = open(x).read()
-  fixed = orig[:]
+  fixed = orig.copy()
   fixed = fixed.replace('Module["print"](', 'out(')
   fixed = fixed.replace('Module[\'print\'](', 'out(')
   fixed = fixed.replace('Module.print(', 'out(')

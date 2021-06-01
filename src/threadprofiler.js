@@ -24,24 +24,34 @@ var emscriptenThreadProfiler = {
   },
 
   updateUi: function updateUi() {
-    if (typeof PThread === 'undefined') return; // Likely running threadprofiler on a singlethreaded build, or not initialized yet, ignore updating.
+    if (typeof PThread === 'undefined') {
+      // Likely running threadprofiler on a singlethreaded build, or not
+      // initialized yet, ignore updating.
+      return;
+    }
     var str = '';
-    var mainThread = PThread.mainThreadBlock;
+    var mainThread = _emscripten_main_browser_thread_id();
 
-    var threads = [PThread.mainThreadBlock];
-    for(var t in PThread.pthreads) threads.push(PThread.pthreads[t].threadInfoStruct);
+    var threads = [mainThread];
+    for (var i in PThread.pthreads) {
+      threads.push(PThread.pthreads[i].threadInfoStruct);
+    }
 
-    for(var i = 0; i < threads.length; ++i) {
-      var threadPtr = threads[i];//(t == PThread.mainThreadBlock ? PThread.mainThreadBlock : maiPThread.pthreads[t].threadInfoStruct;
-      var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 20 /*C_STRUCTS.pthread.profilerBlock*/ ) >> 2);
+    for (var i = 0; i < threads.length; ++i) {
+      var threadPtr = threads[i];
+      var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
       var threadName = PThread.getThreadName(threadPtr);
-      if (threadName) threadName = '"' + threadName + '" (0x' + threadPtr.toString(16) + ')';
-      else threadName = '(0x' + threadPtr.toString(16) + ')';
+      if (threadName) {
+        threadName = '"' + threadName + '" (0x' + threadPtr.toString(16) + ')';
+      } else {
+        threadName = '(0x' + threadPtr.toString(16) + ')';
+      }
 
       str += 'Thread ' + threadName + ' now: ' + PThread.threadStatusAsString(threadPtr) + '. ';
+
       var threadTimesInStatus = [];
       var totalTime = 0;
-      for(var j = 0; j < 7/*EM_THREAD_STATUS_NUMFIELDS*/; ++j) {
+      for (var j = 0; j < 7/*EM_THREAD_STATUS_NUMFIELDS*/; ++j) {
         threadTimesInStatus.push(HEAPF64[((profilerBlock + 16/*C_STRUCTS.thread_profiler_block.timeSpentInStatus*/) >> 3) + j]);
         totalTime += threadTimesInStatus[j];
         HEAPF64[((profilerBlock + 16/*C_STRUCTS.thread_profiler_block.timeSpentInStatus*/) >> 3) + j] = 0;

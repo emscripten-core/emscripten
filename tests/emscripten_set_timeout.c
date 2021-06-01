@@ -1,4 +1,6 @@
+#include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
+#include <emscripten/em_asm.h>
 #include <assert.h>
 
 int func1Executed = 0;
@@ -43,5 +45,5 @@ void func1(void *userData)
 int main()
 {
 	emscripten_set_timeout(func1, 100, (void*)1);
-	EM_ASM(noExitRuntime = 1);
+	emscripten_exit_with_live_runtime();
 }

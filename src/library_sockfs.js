@@ -21,15 +21,15 @@ mergeInto(LibraryManager.library, {
       // For more documentation see system/include/emscripten/emscripten.h
       Module['websocket']._callbacks = {};
       Module['websocket']['on'] = /** @this{Object} */ function(event, callback) {
-	    if ('function' === typeof callback) {
-		  this._callbacks[event] = callback;
+        if ('function' === typeof callback) {
+          this._callbacks[event] = callback;
         }
-	    return this;
+        return this;
       };
 
       Module['websocket'].emit = /** @this{Object} */ function(event, param) {
-	    if ('function' === typeof this._callbacks[event]) {
-		  this._callbacks[event].call(this, param);
+        if ('function' === typeof this._callbacks[event]) {
+          this._callbacks[event].call(this, param);
         }
       };
 
@@ -78,7 +78,7 @@ mergeInto(LibraryManager.library, {
       var stream = FS.createStream({
         path: name,
         node: node,
-        flags: FS.modeStringToFlags('r+'),
+        flags: {{{ cDefine('O_RDWR') }}},
         seekable: false,
         stream_ops: SOCKFS.stream_ops
       });
@@ -732,16 +732,19 @@ mergeInto(LibraryManager.library, {
    * Passing a NULL callback function to a emscripten_set_socket_*_callback call
    * will deregister the callback registered for that Event.
    */
-  __set_network_callback: function(event, userData, callback) {
+#if !MINIMAL_RUNTIME
+  $_setNetworkCallback__deps: ['$runtimeKeepalivePush'],
+#endif
+  $_setNetworkCallback: function(event, userData, callback) {
     function _callback(data) {
       try {
         if (event === 'error') {
           var sp = stackSave();
-          var msg = allocate(intArrayFromString(data[2]), 'i8', ALLOC_STACK);
-          {{{ makeDynCall('viiii') }}}(callback, data[0], data[1], msg, userData);
+          var msg = allocate(intArrayFromString(data[2]), ALLOC_STACK);
+          {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
           stackRestore(sp);
         } else {
-          {{{ makeDynCall('vii') }}}(callback, data, userData);
+          {{{ makeDynCall('vii', 'callback') }}}(data, userData);
         }
       } catch (e) {
         if (e instanceof ExitStatus) {
@@ -753,31 +756,33 @@ mergeInto(LibraryManager.library, {
       }
     };
 
-    noExitRuntime = true;
+    // FIXME(sbc): This has no corresponding Pop so will currently keep the
+    // runtime alive indefinitely.
+    {{{ runtimeKeepalivePush() }}}
     Module['websocket']['on'](event, callback ? _callback : null);
   },
-  emscripten_set_socket_error_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_error_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_error_callback: function(userData, callback) {
-    ___set_network_callback('error', userData, callback);
+    _setNetworkCallback('error', userData, callback);
   },
-  emscripten_set_socket_open_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_open_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_open_callback: function(userData, callback) {
-    ___set_network_callback('open', userData, callback);
+    _setNetworkCallback('open', userData, callback);
   },
-  emscripten_set_socket_listen_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_listen_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_listen_callback: function(userData, callback) {
-    ___set_network_callback('listen', userData, callback);
+    _setNetworkCallback('listen', userData, callback);
   },
-  emscripten_set_socket_connection_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_connection_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_connection_callback: function(userData, callback) {
-    ___set_network_callback('connection', userData, callback);
+    _setNetworkCallback('connection', userData, callback);
   },
-  emscripten_set_socket_message_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_message_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_message_callback: function(userData, callback) {
-    ___set_network_callback('message', userData, callback);
+    _setNetworkCallback('message', userData, callback);
   },
-  emscripten_set_socket_close_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_close_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_close_callback: function(userData, callback) {
-    ___set_network_callback('close', userData, callback);
+    _setNetworkCallback('close', userData, callback);
   }
 });

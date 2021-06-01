@@ -1,6 +1,12 @@
 // EMSCRIPTEN_START_ASM
 function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
 
+var helpee = 12;
+
+function helper() {
+  return helpee;
+}
+
 function asmFunc(global, env, buffer) {
  var memory = env.memory;
  var FUNCTION_TABLE = wasmTable;
@@ -32,6 +38,7 @@ function asmFunc(global, env, buffer) {
 ;
  function $0($0_1, $1_1) {
   var $2_1 = 0, $3_1 = 0, $4_1 = 0, $5_1 = 0, $6_1 = 0;
+  helper();
   $5_1 = 1024;
   $2_1 = HEAP32[$1_1 + 16 >> 2];
   label$1 : {

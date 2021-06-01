@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <iostream>
+#include <cmath>
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/val.h>
@@ -331,7 +332,7 @@ int main()
     d = undefined;
     e = 0;
     f = 1;
-    g = '';
+    g = "";
     h = '0';
     i = 'false';
   );
@@ -570,7 +571,7 @@ int main()
   ensure_js("test_val_throw_(new TypeError('message'))");
   
   // this test should probably go elsewhere as it is not a member of val
-  test("template<typename T> std::vector<T> vecFromJSArray(val v)");
+  test("template<typename T> std::vector<T> vecFromJSArray(const val& v)");
   EM_ASM(
     // can't declare like this because i get:
     //   error: expected ')'
@@ -578,11 +579,33 @@ int main()
     //a = [1, '2'];
     a = [];
     a[0] = 1;
-    a[1] = 'b';
+    a[1] = '42';
+    a[2] = 'b';
+    a[3] = new Date(100000);
   );
-  ensure(vecFromJSArray<val>(val::global("a")).at(0).as<int>() == 1);
-  ensure(vecFromJSArray<val>(val::global("a")).at(1).as<string>() == "b");
-  ensure(vecFromJSArray<val>(val::global("a")).size() == 2);
+  const std::vector<val>& aAsArray = vecFromJSArray<val>(val::global("a"));
+  ensure(aAsArray.at(0).as<int>() == 1);
+  ensure(aAsArray.at(1).as<string>() == "42");
+  ensure(aAsArray.at(2).as<string>() == "b");
+  ensure(aAsArray.size() == 4);
+  
+  test("template<typename T> std::vector<T> convertJSArrayToNumberVector(const val& v)");
+  
+  const std::vector<float>& aAsNumberVectorFloat = convertJSArrayToNumberVector<float>(val::global("a"));
+  ensure(aAsNumberVectorFloat.size() == 4);
+
+  ensure(aAsNumberVectorFloat.at(0) == 1.f);
+  ensure(aAsNumberVectorFloat.at(1) == 42.f);     // String containing numbers are converted correctly
+  ensure(std::isnan(aAsNumberVectorFloat.at(2))); // NaN returned if can not be converted for floats
+  ensure(aAsNumberVectorFloat.at(3) == 100000.f); // Date returns milliseconds since epoch
+  
+  const std::vector<uint32_t>& aAsNumberVectorUint32_t = convertJSArrayToNumberVector<uint32_t>(val::global("a"));
+  ensure(aAsNumberVectorUint32_t.size() == 4);
+
+  ensure(aAsNumberVectorUint32_t.at(0) == 1);
+  ensure(aAsNumberVectorUint32_t.at(1) == 42);     // String containing numbers are converted correctly
+  ensure(aAsNumberVectorUint32_t.at(2) == 0);      // 0 is returned if can not be converted for integers
+  ensure(aAsNumberVectorUint32_t.at(3) == 100000); // Date returns milliseconds since epoch
   
   printf("end\n");
   return 0;

@@ -34,13 +34,13 @@ void main_loop() {
 
       break;
     case ENET_EVENT_TYPE_RECEIVE:
-      printf ("A packet of length %u containing %s was received from %s on channel %u.\n",
+      printf ("A packet of length %zu containing %s was received from %s on channel %u.\n",
               event.packet -> dataLength,
-              event.packet -> data,
-              event.peer -> data,
+              (char*)event.packet -> data,
+              (char*)event.peer -> data,
               event.channelID);
 
-      int result = strcmp("packetfoo", event.packet->data);
+      int result = strcmp("packetfoo", (char*)event.packet->data);
 #ifdef __EMSCRIPTEN__
       REPORT_RESULT(result);
 #else
@@ -51,7 +51,7 @@ void main_loop() {
       enet_packet_destroy (event.packet);
       break;
     case ENET_EVENT_TYPE_DISCONNECT:
-      printf ("%s disconected.\n", event.peer -> data);
+      printf ("%s disconected.\n", (char*)event.peer -> data);
       /* Reset the peer's client information. */
       event.peer -> data = NULL;
       enet_host_destroy(host);

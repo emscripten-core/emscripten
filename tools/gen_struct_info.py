@@ -1,13 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding=utf-8
 # Copyright 2013 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-'''
-This tool extracts information about structs and defines from the C headers.
-You can pass either the raw header files or JSON files to this script.
+"""This tool extracts information about structs and defines from the C headers.
 
 The JSON input format is as follows:
 [
@@ -77,8 +75,7 @@ The JSON output format is based on the return value of Runtime.generateStructInf
     ...
   }
 }
-
-'''
+"""
 
 import sys
 import os
@@ -91,162 +88,16 @@ import subprocess
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared
+from tools import system_libs
+from tools.settings import settings
 
 QUIET = (__name__ != '__main__')
+DEBUG = False
 
 
 def show(msg):
   if shared.DEBUG or not QUIET:
     sys.stderr.write('gen_struct_info: %s\n' % msg)
-
-
-# Try to load pycparser.
-try:
-  import pycparser
-except ImportError:
-  # The import failed
-
-  def parse_header(path, cpp_opts):
-    # Tell the user how to get pycparser, if he or she tries to parse a C file.
-    sys.stderr.write('ERR: I need pycparser to process C files. \n')
-    sys.stderr.write('   Use "pip install pycparser" to install or download it from "https://github.com/eliben/pycparser".\n')
-    sys.exit(1)
-else:
-  # We successfully imported pycparser, the script will be completely functional.
-
-  class DelayedRef(object):
-    def __init__(self, dest):
-      self.dest = dest
-
-    def __str__(self):
-      return self.dest
-
-  # For a list of node types and their fields, look here: https://github.com/eliben/pycparser/blob/master/pycparser/_c_ast.cfg
-  class FieldVisitor(pycparser.c_ast.NodeVisitor):
-    def __init__(self):
-      self._name = None
-      self.structs = {}
-      self.named_structs = {}
-
-    def visit_Struct(self, node):
-      if node.decls is None:
-        self.named_structs[self._name] = DelayedRef(node.name)
-        return
-
-      fields = []
-      for decl in node.decls:
-        if decl.name is None:
-          # Well, this field doesn't have a name.
-          continue
-
-        if decl.type is not None and isinstance(decl.type, pycparser.c_ast.PtrDecl):
-          # This field is a pointer, there's no point in looking for nested structs.
-          fields.append(decl.name)
-        else:
-          # Look for nested structs.
-          subwalk = FieldVisitor()
-          subwalk.visit(decl)
-
-          if subwalk.named_structs:
-            # Store the nested fields.
-            fields.append(subwalk.named_structs)
-          else:
-            # Just store the field name.
-            fields.append(decl.name)
-
-      if node.name is not None:
-        self.structs[node.name] = fields
-
-      self.named_structs[self._name] = fields
-
-    def visit_Union(self, node):
-      self.visit_Struct(node)
-
-    def visit_TypeDecl(self, node):
-      # Remember the name of this typedef, so we can access it later in visit_Struct().
-      old_name = self._name
-      self._name = node.declname
-      self.generic_visit(node)
-      self._name = old_name
-
-  # The first parameter is a structure, the second is a path (a list containing all the keys, needed to reach the destination).
-  # The last parameter is an item to look for. This function will try to follow the path into the given object and then look there for this key.
-  # As long as the nested object doesn't have the given key, it will descent into the next higher object till it finds the given key.
-  #
-  # Example:
-  #
-  # res = look_through({
-  #   'la1': {
-  #     'lb1': {
-  #       'lc1': 99,
-  #       'lc2': { 'ld1': 11 }
-  #       'lc2': 200
-  #     },
-  #     'nice': 100
-  #   },
-  #   'nice': 300
-  # }, ['la1', 'lb1', 'lc2'], 'nice')
-  #
-  # print(res)    # Prints 100 .
-  #
-  # In this case the function looked inside obj['la1']['lb1']['lc2']['nice'], then obj['la1']['lb1']['nice'] and found the value
-  # in obj['la1']['nice']. As soon as it finds a value it returns it and stops looking.
-  def look_through(obj, path, name):
-    cur_level = obj
-    path = path[:]
-    for i, p in enumerate(path):
-      cur_level = cur_level[p]
-      path[i] = cur_level
-
-    path = [obj] + path
-
-    while len(path):
-      if name in path[-1]:
-        return path[-1][name]
-      else:
-        path.pop()
-
-    return None
-
-  # Use the above function to resolve all DelayedRef() inside a list or dict recursively.
-  def resolve_delayed(item, root=None, path=[]):
-    if root is None:
-      root = item
-
-    if isinstance(item, DelayedRef):
-      if item.dest in path:
-        show('WARN: Circular reference found! Field "' + path[-1] + '" references "' + item.dest + '"! (Path = ' + '/'.join([str(part) for part in path]) + ')')
-        return {'__ref__': item.dest}
-      else:
-        return look_through(root, path[:-1], item.dest)
-    elif isinstance(item, dict):
-      for name, val in item.items():
-        item[name] = resolve_delayed(val, root, path + [name])
-    elif isinstance(item, list):
-      for i, val in enumerate(item):
-        item[i] = resolve_delayed(val, root, path + [i])
-
-    return item
-
-  def parse_header(path, cpp_opts):
-    show('Parsing header "' + path + '"...')
-
-    # Use clang -E as the preprocessor for pycparser.
-    ast = pycparser.parse_file(path, True, cpp_path=shared.CLANG_CC, cpp_args=['-E'] + cpp_opts)
-
-    # Walk the parsed AST and filter out all the declared structs and their fields.
-    walker = FieldVisitor()
-    walker.visit(ast)
-
-    walker.structs = resolve_delayed(walker.structs)
-    with open(path, 'r') as stream:
-      defines = re.findall(r'(?:^|\n)\s*#define\s+([A-Z|_|0-9]+)\s.*', stream.read())
-
-    return {
-      'file': path,
-      'defines': defines,
-      'structs': walker.structs
-    }
 
 
 # The following three functions generate C code. The output of the compiled code will be
@@ -343,64 +194,77 @@ def gen_inspect_code(path, struct, code):
   c_ascent(code)
 
 
-def inspect_code(headers, cpp_opts, structs, defines):
+def inspect_headers(headers, cflags):
   code = ['#include <stdio.h>', '#include <stddef.h>']
-  # Include all the needed headers.
-  for path in headers:
-    code.append('#include "' + path + '"')
+  for header in headers:
+    code.append('#include "' + header['name'] + '"')
 
   code.append('int main() {')
   c_descent('structs', code)
-  for name, struct in structs.items():
-    gen_inspect_code([name], struct, code)
+  for header in headers:
+    for name, struct in header['structs'].items():
+      gen_inspect_code([name], struct, code)
 
   c_ascent(code)
   c_descent('defines', code)
-  for name, type_ in defines.items():
-    # Add the necessary python type, if missing.
-    if '%' not in type_:
-      if type_[-1] in ('d', 'i', 'u'):
-        # integer
-        type_ = 'i%' + type_
-      elif type_[-1] in ('f', 'F', 'e', 'E', 'g', 'G'):
-        # float
-        type_ = 'f%' + type_
-      elif type_[-1] in ('x', 'X', 'a', 'A', 'c', 's'):
-        # hexadecimal or string
-        type_ = 's%' + type_
+  for header in headers:
+    for name, type_ in header['defines'].items():
+      # Add the necessary python type, if missing.
+      if '%' not in type_:
+        if type_[-1] in ('d', 'i', 'u'):
+          # integer
+          type_ = 'i%' + type_
+        elif type_[-1] in ('f', 'F', 'e', 'E', 'g', 'G'):
+          # float
+          type_ = 'f%' + type_
+        elif type_[-1] in ('x', 'X', 'a', 'A', 'c', 's'):
+          # hexadecimal or string
+          type_ = 's%' + type_
 
-    c_set(name, type_, name, code)
+      c_set(name, type_, name, code)
 
   code.append('return 0;')
   code.append('}')
 
   # Write the source code to a temporary file.
-  src_file = tempfile.mkstemp('.c')
+  src_file = tempfile.mkstemp('.c', text=True)
   show('Generating C code... ' + src_file[1])
-  os.write(src_file[0], shared.asbytes('\n'.join(code)))
+  os.write(src_file[0], '\n'.join(code).encode())
 
   js_file = tempfile.mkstemp('.js')
+
+  # Check sanity early on before populating the cache with libcompiler_rt
+  # If we don't do this the parallel build of compiler_rt will run while holding the cache
+  # lock and with EM_EXCLUSIVE_CACHE_ACCESS set causing N processes to race to run sanity checks.
+  # While this is not in itself serious problem it is wasteful and noise on stdout.
+  # For the same reason we run this early in embuilder.py and emcc.py.
+  # TODO(sbc): If we can remove EM_EXCLUSIVE_CACHE_ACCESS then this would not longer be needed.
+  shared.check_sanity()
+
+  compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt'].get_path()
 
   # Close all unneeded FDs.
   os.close(src_file[0])
   os.close(js_file[0])
 
-  # Remove dangerous env modifications
-  env = os.environ.copy()
-  env['EMCC_FORCE_STDLIBS'] = 'libcompiler_rt'
-  env['EMCC_ONLY_FORCED_STDLIBS'] = '1'
-
   info = []
   # Compile the program.
   show('Compiling generated code...')
+
   # -Oz optimizes enough to avoid warnings on code size/num locals
-  cmd = [shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1],
-                                    '-O0', '--js-opts', '0', '--memory-init-file', '0',
-                                    '-Werror', '-Wno-format',
-                                    '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
-                                    '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0',
-                                    '-s', 'STRICT=1',
-                                    '-s', 'SINGLE_FILE=1']
+  cmd = [shared.EMCC] + cflags + ['-o', js_file[1], src_file[1],
+                                  '-O0',
+                                  '-Werror',
+                                  '-Wno-format',
+                                  '-nostdlib',
+                                  compiler_rt,
+                                  '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
+                                  '-s', 'LLD_REPORT_UNDEFINED=1',
+                                  '-s', 'STRICT',
+                                  # Use SINGLE_FILE=1 so there is only a single
+                                  # file to cleanup.
+                                  '-s', 'SINGLE_FILE']
+
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
   cmd += ['-Wno-error=version-check']
@@ -408,15 +272,12 @@ def inspect_code(headers, cpp_opts, structs, defines):
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd += ['-Wno-deprecated']
 
-  if not shared.Settings.WASM_BACKEND:
-    # Avoid the binaryen dependency if we are only using fastcomp
-    cmd += ['-s', 'WASM=0', '-Wno-fastcomp']
-  if shared.Settings.LTO:
-    cmd += ['-flto=' + shared.Settings.LTO]
+  if settings.LTO:
+    cmd += ['-flto=' + settings.LTO]
 
-  show(cmd)
+  show(shared.shlex_join(cmd))
   try:
-    subprocess.check_call(cmd, env=env)
+    subprocess.check_call(cmd, env=system_libs.clean_env())
   except subprocess.CalledProcessError as e:
     sys.stderr.write('FAIL: Compilation failed!: %s\n' % e.cmd)
     sys.exit(1)
@@ -425,17 +286,42 @@ def inspect_code(headers, cpp_opts, structs, defines):
   show('Calling generated program... ' + js_file[1])
   info = shared.run_js_tool(js_file[1], stdout=shared.PIPE).splitlines()
 
-  # Remove all temporary files.
-  os.unlink(src_file[1])
+  if not DEBUG:
+    # Remove all temporary files.
+    os.unlink(src_file[1])
 
-  if os.path.exists(js_file[1]):
-    os.unlink(js_file[1])
+    if os.path.exists(js_file[1]):
+      os.unlink(js_file[1])
 
   # Parse the output of the program into a dict.
   return parse_c_output(info)
 
 
-def parse_json(path, header_files, structs, defines):
+def merge_info(target, src):
+  for key, value in src['defines'].items():
+    if key in target['defines']:
+      raise Exception('duplicate define: %s' % key)
+    target['defines'][key] = value
+
+  for key, value in src['structs'].items():
+    if key in target['structs']:
+      raise Exception('duplicate struct: %s' % key)
+    target['structs'][key] = value
+
+
+def inspect_code(headers, cflags):
+  if not DEBUG:
+    info = inspect_headers(headers, cflags)
+  else:
+    info = {'defines': {}, 'structs': {}}
+    for header in headers:
+      merge_info(info, inspect_headers([header], cflags))
+  return info
+
+
+def parse_json(path):
+  header_files = []
+
   with open(path, 'r') as stream:
     # Remove comments before loading the JSON.
     data = json.loads(re.sub(r'//.*\n', '', stream.read()))
@@ -444,64 +330,57 @@ def parse_json(path, header_files, structs, defines):
     data = [data]
 
   for item in data:
-    header_files.append(item['file'])
-    for name, data in item['structs'].items():
-      if name in structs:
+    for key in item.keys():
+      if key not in ['file', 'defines', 'structs']:
+        raise 'Unexpected key in json file: %s' % key
+
+    header = {'name': item['file'], 'structs': {}, 'defines': {}}
+    for name, data in item.get('structs', {}).items():
+      if name in header['structs']:
         show('WARN: Description of struct "' + name + '" in file "' + item['file'] + '" replaces an existing description!')
 
-      structs[name] = data
+      header['structs'][name] = data
 
-    for part in item['defines']:
+    for part in item.get('defines', []):
       if not isinstance(part, list):
         # If no type is specified, assume integer.
         part = ['i', part]
 
-      if part[1] in defines:
+      if part[1] in header['defines']:
         show('WARN: Description of define "' + part[1] + '" in file "' + item['file'] + '" replaces an existing description!')
 
-      defines[part[1]] = part[0]
+      header['defines'][part[1]] = part[0]
+
+    header_files.append(header)
+
+  return header_files
 
 
-def output_json(obj, compressed=True, stream=None):
+def output_json(obj, stream=None):
   if stream is None:
     stream = sys.stdout
   elif isinstance(stream, str):
     stream = open(stream, 'w')
 
-  if compressed:
-    json.dump(obj, stream, separators=(',', ':'))
-  else:
-    json.dump(obj, stream, indent=4, sort_keys=True)
+  json.dump(obj, stream, indent=4, sort_keys=True)
 
   stream.write('\n')
   stream.close()
 
 
-def filter_opts(opts):
-  # Only apply compiler options regarding syntax, includes and defines.
-  # We have to compile for the current system, we aren't compiling to bitcode after all.
-  out = []
-  for flag in opts:
-    if flag[:2] in ('-f', '-I', '-i', '-D', '-U'):
-      out.append(flag)
-
-  return out
-
-
 def main(args):
   global QUIET
 
-  default_json = shared.path_from_root('src', 'struct_info.json')
+  default_json_files = [
+      shared.path_from_root('src', 'struct_info.json'),
+      shared.path_from_root('src', 'struct_info_internal.json')
+  ]
   parser = argparse.ArgumentParser(description='Generate JSON infos for structs.')
-  parser.add_argument('headers', nargs='*',
-                      help='A header (.h) file or a JSON file with a list of structs and their fields (defaults to src/struct_info.json)',
-                      default=[default_json])
+  parser.add_argument('json', nargs='*',
+                      help='JSON file with a list of structs and their fields (defaults to src/struct_info.json)',
+                      default=default_json_files)
   parser.add_argument('-q', dest='quiet', action='store_true', default=False,
                       help='Don\'t output anything besides error messages.')
-  parser.add_argument('-f', dest='list_fields', action='store_true', default=False,
-                      help='Output a list of structs and fields for the given headers.')
-  parser.add_argument('-c', dest='pretty_print', action='store_false', default=True,
-                      help="Compress JSON output (don't pretty print)")
   parser.add_argument('-o', dest='output', metavar='path', default=None,
                       help='Path to the JSON file that will be written. If omitted, the generated data will be printed to stdout.')
   parser.add_argument('-I', dest='includes', metavar='dir', action='append', default=[],
@@ -515,49 +394,37 @@ def main(args):
   QUIET = args.quiet
 
   # Avoid parsing problems due to gcc specifc syntax.
-  cpp_opts = ['-D_GNU_SOURCE']
+  cflags = ['-D_GNU_SOURCE']
 
   # Add the user options to the list as well.
   for path in args.includes:
-    cpp_opts.append('-I' + path)
+    cflags.append('-I' + path)
 
   for arg in args.defines:
-    cpp_opts.append('-D' + arg)
+    cflags.append('-D' + arg)
 
   for arg in args.undefines:
-    cpp_opts.append('-U' + arg)
+    cflags.append('-U' + arg)
 
-  if args.list_fields:
-    # Just parse the given headers and output the result.
-    data = []
-    for path in args.headers:
-      if path[-5:] == '.json':
-        show('WARN: Skipping "' + path + '" because it\'s already a JSON file!')
-      else:
-        data.append(parse_header(path, cpp_opts))
-
-    output_json(data, not args.pretty_print, args.output)
-    return 0
+  internal_cflags = [
+    '-I' + shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'),
+  ]
 
   # Look for structs in all passed headers.
-  header_files = []
-  structs = {}
-  defines = {}
+  info = {'defines': {}, 'structs': {}}
 
-  for header in args.headers:
-    if header[-5:] == '.json':
-      # This is a JSON file, parse it.
-      parse_json(header, header_files, structs, defines)
+  for f in args.json:
+    # This is a JSON file, parse it.
+    header_files = parse_json(f)
+    # Inspect all collected structs.
+    if 'internal' in f:
+      use_cflags = cflags + internal_cflags
     else:
-      # If the passed file isn't a JSON file, assume it's a header.
-      header_files.append(header)
-      data = parse_header(header, cpp_opts)
-      structs.update(data['structs'])
-      defines.extend(data['defines'])
+      use_cflags = cflags
+    info_fragment = inspect_code(header_files, use_cflags)
+    merge_info(info, info_fragment)
 
-  # Inspect all collected structs.
-  struct_info = inspect_code(header_files, cpp_opts, structs, defines)
-  output_json(struct_info, not args.pretty_print, args.output)
+  output_json(info, args.output)
   return 0
 
 

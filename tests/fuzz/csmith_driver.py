@@ -8,7 +8,6 @@
 
 CSMITH_PATH should be set to something like /usr/local/include/csmith
 """
-from __future__ import print_function
 
 import os
 import sys
@@ -21,9 +20,10 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(script_dir))))
 
 from tools import shared
+from tools import config
 
 # can add flags like --no-threads --ion-offthread-compile=off
-engine = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
+engine = eval('config.' + sys.argv[1]) if len(sys.argv) > 1 else config.JS_ENGINES[0]
 
 print('testing js engine', engine)
 
@@ -54,10 +54,6 @@ while 1:
     else:
       opts = '-Oz'
   print('opt level:', opts)
-
-  llvm_opts = []
-  if random.random() < 0.5:
-    llvm_opts = ['--llvm-opts', str(random.randint(0, 3))]
 
   print('Tried %d, notes: %s' % (tried, notes))
   print('1) Generate source')
@@ -115,16 +111,10 @@ while 1:
 
   def try_js(args=[]):
     shared.try_delete(filename + '.js')
-    js_args = [shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + llvm_opts + CSMITH_CFLAGS + args + ['-w']
+    js_args = [shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + CSMITH_CFLAGS + args + ['-w']
     if TEST_BINARYEN:
-      js_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_TRAP_MODE="js"']
       if random.random() < 0.5:
         js_args += ['-g']
-      if random.random() < 0.1:
-        if random.random() < 0.5:
-          js_args += ['--js-opts', '0']
-        else:
-          js_args += ['--js-opts', '1']
       if random.random() < 0.5:
         # pick random passes
         BINARYEN_EXTRA_PASSES = [
@@ -158,8 +148,6 @@ while 1:
       js_args += ['-s', 'MAIN_MODULE=1']
     if random.random() < 0.25:
       js_args += ['-s', 'INLINING_LIMIT=1'] # inline nothing, for more call interaction
-    if random.random() < 0.5:
-      js_args += ["--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2"]
     if random.random() < 0.5:
       js_args += ['-s', 'ASSERTIONS=1']
     print('(compile)', ' '.join(js_args))

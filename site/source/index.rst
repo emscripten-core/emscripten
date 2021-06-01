@@ -25,7 +25,6 @@
   docs/tools_reference/index
   docs/optimizing/Optimizing-Code
   docs/optimizing/Optimizing-WebGL
-  docs/debugging/CyberDWARF
   docs/debugging/Sanitizers
   docs/building_from_source/index
   docs/contributing/index

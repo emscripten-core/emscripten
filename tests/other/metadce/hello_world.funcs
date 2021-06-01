@@ -5,7 +5,6 @@ $__emscripten_stdout_seek
 $__errno_location
 $__fflush_unlocked
 $__fwritex
-$__growWasmMemory
 $__lock
 $__lockfile
 $__lshrti3
@@ -13,7 +12,6 @@ $__ofl_lock
 $__ofl_unlock
 $__original_main
 $__pthread_self
-$__set_stack_limit
 $__stdio_write
 $__towrite
 $__trunctfdf2
@@ -22,14 +20,10 @@ $__unlockfile
 $__vfprintf_internal
 $__wasi_syscall_ret
 $__wasm_call_ctors
-$dlfree
-$dlmalloc
-$dynCall_ii
-$dynCall_iidiiii
-$dynCall_iiii
 $dynCall_jiji
-$dynCall_vii
-$emscripten_get_sbrk_ptr
+$emscripten_stack_get_end
+$emscripten_stack_get_free
+$emscripten_stack_init
 $fflush
 $fmt_fp
 $fmt_o
@@ -49,8 +43,6 @@ $pop_arg
 $pop_arg_long_double
 $printf
 $printf_core
-$pthread_self
-$sbrk
 $stackAlloc
 $stackRestore
 $stackSave

@@ -6,7 +6,6 @@
 """Simple tool to find functions with lots of vars.
 """
 
-from __future__ import print_function
 import sys
 
 filename = sys.argv[1]

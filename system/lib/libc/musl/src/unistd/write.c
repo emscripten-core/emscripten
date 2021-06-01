@@ -10,10 +10,8 @@ ssize_t write(int fd, const void *buf, size_t count)
 		.buf_len = count
 	};
 	size_t num;
-	__wasi_errno_t error =
-			__wasi_fd_write(fd, &iov, 1, &num);
-	if (error != __WASI_ERRNO_SUCCESS) {
-		return __wasi_syscall_ret(error);
+	if (__wasi_syscall_ret(__wasi_fd_write(fd, &iov, 1, &num))) {
+		return -1;
 	}
 	return num;
 #else

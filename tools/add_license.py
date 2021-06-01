@@ -51,17 +51,8 @@ exclude_filenames = [
     'system/lib/html5/dom_pk_codes.c',
     'system/lib/dlmalloc.c',
     'third_party/',
-    'tools/eliminator/node_modules/',
-    'tests/freetype/src/',
-    'tests/bullet/src/',
-    'tests/poppler/poppler/',
-    'tests/box2d/',
     'tests/glbook/',
-    'tests/lzma/lzma/',
-    'tests/nbody-java/',
-    'tests/cube2hash/',
     'tests/optimizer/',
-    'tests/sqlite/sqlite3.c',
     'site/source/_themes/',
 ]
 

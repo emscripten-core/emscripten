@@ -15,7 +15,7 @@
 
 /*
  * File origin:
- *   https://github.com/CraneStation/wasi-libc/blob/master/libc-bottom-half/headers/public/wasi/api.h
+ *   https://github.com/WebAssembly/wasi-libc/blob/main/libc-bottom-half/headers/public/wasi/api.h
  * Revision:
  *   2c2fc9a2fddd0927a66f1c142e65c8dab6f5c5d7
  * License:
@@ -28,6 +28,10 @@
 
 #include <stddef.h>
 #include <stdint.h>
+
+#pragma push_macro("_Static_assert")
+#undef _Static_assert
+#define _Static_assert(X, Y)
 
 _Static_assert(_Alignof(int8_t) == 1, "non-wasi data layout");
 _Static_assert(_Alignof(uint8_t) == 1, "non-wasi data layout");
@@ -2750,5 +2754,7 @@ __wasi_errno_t __wasi_sock_shutdown(
 #ifdef __cplusplus
 }
 #endif
+
+#pragma pop_macro("_Static_assert")
 
 #endif

@@ -405,9 +405,11 @@ void main_tick()
   numItersDoneOnCanvas += numItersPerFrame;
 
 #if defined(TEST_THREAD_PROFILING) && defined(REPORT_RESULT)
-  if (numItersDoneOnCanvas > 50000)
+  static bool reported = false;
+  if (!reported && numItersDoneOnCanvas > 50000)
   {
     REPORT_RESULT(0);
+    reported = true;
   }
 #endif
 
@@ -501,7 +503,7 @@ void main_tick()
       var updatesPerFrame = (new RegExp("[\\?&]updates=([^&#]*)")).exec(location.href);
       if (updatesPerFrame) return updatesPerFrame[1];
     }
-    if (typeof Module !== 'undefined' && Module.arguments && Module.arguments.length >= 1) return parseInt(Module.arguments[0]);
+    if (arguments_ && arguments_.length >= 1) return parseInt(arguments_[0]);
     if (typeof document !== 'undefined' && document.getElementById('updates_per_frame')) return parseInt(document.getElementById('updates_per_frame').value);
     return 50;
   });
@@ -585,12 +587,8 @@ int main(int argc, char** argv)
   maxThreadsRunning = emscripten_num_logical_cores() < MAX_NUM_THREADS ? emscripten_num_logical_cores() : MAX_NUM_THREADS;
   for(int i = 0; i < maxThreadsRunning; ++i)
   {
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    int rc = pthread_create(&thread[i], &attr, mandelbrot_thread, (void*)i);
+    int rc = pthread_create(&thread[i], NULL, mandelbrot_thread, (void*)i);
     assert(rc == 0);
-    pthread_attr_destroy(&attr);
   }
 #endif
 
@@ -606,7 +604,7 @@ int main(int argc, char** argv)
   if (ENVIRONMENT_IS_WEB) {
     emscripten_set_main_loop(main_tick, 0, 0);
   } else {
-    int numTotalFrames = EM_ASM_INT(return (typeof Module !== 'undefined' && Module.arguments && Module.arguments.length >= 2) ? parseInt(Module.arguments[1]) : 1000);
+    int numTotalFrames = EM_ASM_INT(return (arguments_ && arguments_.length >= 2) ? parseInt(arguments_[1]) : 1000);
     printf("Rendering %d frames of Mandelbrot. Invoke \"node|js mandelbrot.js numItersPerFrame numFrames\" to configure.\n", numTotalFrames);
     double t0 = emscripten_get_now();
     for(int i = 0; i < numTotalFrames; ++i) {

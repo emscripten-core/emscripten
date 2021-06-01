@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS'],
+  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc'],
   $NODERAWFS__postset: 'if (ENVIRONMENT_IS_NODE) {' +
     'var _wrapNodeError = function(func) { return function() { try { return func.apply(this, arguments) } catch (e) { if (!e.code) throw e; throw new FS.ErrnoError(ERRNO_CODES[e.code]); } } };' +
     'var VFS = Object.assign({}, FS);' +
@@ -46,7 +46,13 @@ mergeInto(LibraryManager.library, {
     chown: function() { fs.chownSync.apply(void 0, arguments); },
     fchown: function() { fs.fchownSync.apply(void 0, arguments); },
     truncate: function() { fs.truncateSync.apply(void 0, arguments); },
-    ftruncate: function() { fs.ftruncateSync.apply(void 0, arguments); },
+    ftruncate: function(fd, len) {
+      // See https://github.com/nodejs/node/issues/35632
+      if (len < 0) {
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+      }
+      fs.ftruncateSync.apply(void 0, arguments);
+    },
     utime: function() { fs.utimesSync.apply(void 0, arguments); },
     open: function(path, flags, mode, suggestFD) {
       if (typeof flags === "string") {
@@ -116,10 +122,31 @@ mergeInto(LibraryManager.library, {
     allocate: function() {
       throw new FS.ErrnoError(ERRNO_CODES.EOPNOTSUPP);
     },
-    mmap: function() {
-      throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
+    mmap: function(stream, address, length, position, prot, flags) {
+      if (stream.stream_ops) {
+        // this stream is created by in-memory filesystem
+        return VFS.mmap(stream, address, length, position, prot, flags);
+      }
+      if (address !== 0) {
+        // We don't currently support location hints for the address of the mapping
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+      }
+
+      var ptr = mmapAlloc(length);
+      FS.read(stream, HEAP8, ptr, length, position);
+      return { ptr: ptr, allocated: true };
     },
-    msync: function() {
+    msync: function(stream, buffer, offset, length, mmapFlags) {
+      if (stream.stream_ops) {
+        // this stream is created by in-memory filesystem
+        return VFS.msync(stream, buffer, offset, length, mmapFlags);
+      }
+      if (mmapFlags & {{{ cDefine('MAP_PRIVATE') }}}) {
+        // MAP_PRIVATE calls need not to be synced back to underlying fs
+        return 0;
+      }
+
+      FS.write(stream, buffer, 0, length, offset);
       return 0;
     },
     munmap: function() {

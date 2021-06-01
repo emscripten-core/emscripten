@@ -65,6 +65,8 @@ namespace emscripten {
             EM_VAL _emval_get_property(EM_VAL object, EM_VAL key);
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
             EM_GENERIC_WIRE_TYPE _emval_as(EM_VAL value, TYPEID returnType, EM_DESTRUCTORS* destructors);
+            int64_t _emval_as_int64(EM_VAL value, TYPEID returnType);
+            uint64_t _emval_as_uint64(EM_VAL value, TYPEID returnType);
 
             bool _emval_equals(EM_VAL first, EM_VAL second);
             bool _emval_strictly_equals(EM_VAL first, EM_VAL second);
@@ -190,6 +192,7 @@ namespace emscripten {
                 const void* p;
             } w[2];
             double d;
+            uint64_t u;
         };
         static_assert(sizeof(GenericWireType) == 8, "GenericWireType must be 8 bytes");
         static_assert(alignof(GenericWireType) == 8, "GenericWireType must be 8-byte-aligned");
@@ -201,6 +204,16 @@ namespace emscripten {
 
         inline void writeGenericWireType(GenericWireType*& cursor, double wt) {
             cursor->d = wt;
+            ++cursor;
+        }
+
+        inline void writeGenericWireType(GenericWireType*& cursor, int64_t wt) {
+            cursor->u = wt;
+            ++cursor;
+        }
+
+        inline void writeGenericWireType(GenericWireType*& cursor, uint64_t wt) {
+            cursor->u = wt;
             ++cursor;
         }
 
@@ -501,6 +514,30 @@ namespace emscripten {
             return fromGenericWireType<T>(result);
         }
 
+        template<>
+        int64_t as<int64_t>() const {
+            using namespace internal;
+
+            typedef BindingType<int64_t> BT;
+            typename WithPolicies<>::template ArgTypeList<int64_t> targetType;
+
+            return _emval_as_int64(
+                handle,
+                targetType.getTypes()[0]);
+        }
+
+        template<>
+        uint64_t as<uint64_t>() const {
+            using namespace internal;
+
+            typedef BindingType<uint64_t> BT;
+            typename WithPolicies<>::template ArgTypeList<uint64_t> targetType;
+
+            return  _emval_as_uint64(
+                handle,
+                targetType.getTypes()[0]);
+        }
+
 // If code is not being compiled with GNU extensions enabled, typeof() is not a reserved keyword, so support that as a member function.
 #if __STRICT_ANSI__
         val typeof() const {
@@ -580,15 +617,33 @@ namespace emscripten {
         };
     }
 
-    template<typename T>
-    std::vector<T> vecFromJSArray(val v) {
-        auto l = v["length"].as<unsigned>();
+    template <typename T>
+    std::vector<T> vecFromJSArray(const val& v) {
+        const size_t l = v["length"].as<size_t>();
 
         std::vector<T> rv;
-        for(unsigned i = 0; i < l; ++i) {
+        rv.reserve(l);
+        for (size_t i = 0; i < l; ++i) {
             rv.push_back(v[i].as<T>());
         }
 
         return rv;
-    };
+    }
+
+    template <typename T>
+    std::vector<T> convertJSArrayToNumberVector(const val& v) {
+        const size_t l = v["length"].as<size_t>();
+
+        std::vector<T> rv;
+        rv.resize(l);
+
+        // Copy the array into our vector through the use of typed arrays.
+        // It will try to convert each element through Number().
+        // See https://www.ecma-international.org/ecma-262/6.0/#sec-%typedarray%.prototype.set-array-offset
+        // and https://www.ecma-international.org/ecma-262/6.0/#sec-tonumber
+        val memoryView{ typed_memory_view(l, rv.data()) };
+        memoryView.call<void>("set", v);
+
+        return rv;
+    }
 }

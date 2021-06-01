@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 #include <pthread.h>
+#include <stdio.h>
 #include <errno.h>
 #include <emscripten.h>
 #include <emscripten/threading.h>

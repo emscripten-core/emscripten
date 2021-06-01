@@ -3,5 +3,7 @@
 
 void thrd_yield()
 {
+#ifndef __EMSCRIPTEN__
 	__syscall(SYS_sched_yield);
+#endif
 }

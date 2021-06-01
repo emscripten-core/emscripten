@@ -7,11 +7,9 @@
 mergeInto(LibraryManager.library, {
   emscripten_get_exported_function: function(name) {
     name = UTF8ToString(name);
-#if WASM_BACKEND
     // Wasm backend does not use C name mangling on exports,
     // so adjust for that manually.
     if (name[0] == '_') name = name.substr(1);
-#endif
 #if MINIMAL_RUNTIME
     var exportedFunc = asm[name];
 #else

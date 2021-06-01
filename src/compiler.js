@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * @license
  * Copyright 2010 The Emscripten Authors
@@ -9,15 +10,11 @@
 var nodeFS = require('fs');
 var nodePath = require('path');
 
-// *** Environment setup code ***
-
-// Expose functionality in the same simple way that the shells work
-// Note that we pollute the global namespace here, otherwise we break in node
-print = function(x) {
+print = (x) => {
   process['stdout'].write(x + '\n');
 };
 
-printErr = function(x) {
+printErr = (x) => {
   process['stderr'].write(x + '\n');
 };
 
@@ -32,33 +29,27 @@ function find(filename) {
   return filename;
 }
 
-read = function(filename) {
+read = (filename) => {
   var absolute = find(filename);
-  return nodeFS['readFileSync'](absolute).toString();
+  return nodeFS.readFileSync(absolute).toString();
 };
 
-load = function(f) {
-  globalEval(read(f));
+function load(f) {
+  eval.call(null, read(f));
 };
-
-function globalEval(x) {
-  eval.call(null, x);
-}
 
 // Basic utilities
-
 load('utility.js');
 
 // Load settings, can be overridden by commandline
-
-load('settings.js');
-load('settings_internal.js');
+load('./settings.js');
+load('./settings_internal.js');
 
 var arguments_ = process['argv'].slice(2);
-var settings_file = arguments_[0];
+var settingsFile = arguments_[0];
 
-if (settings_file) {
-  var settings = JSON.parse(read(settings_file));
+if (settingsFile) {
+  var settings = JSON.parse(read(settingsFile));
   for (var key in settings) {
     var value = settings[key];
     if (value[0] == '@') {
@@ -69,21 +60,20 @@ if (settings_file) {
         // continue normally; assume it is not a response file
       }
     }
-    eval(key + ' = ' + JSON.stringify(value));
+    global[key] = eval(JSON.stringify(value));
   }
 }
 
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
 EXCEPTION_CATCHING_ALLOWED = set(EXCEPTION_CATCHING_ALLOWED);
-IMPLEMENTED_FUNCTIONS = set(IMPLEMENTED_FUNCTIONS);
+WASM_EXPORTS = set(WASM_EXPORTS);
+SIDE_MODULE_EXPORTS = set(SIDE_MODULE_EXPORTS);
 INCOMING_MODULE_JS_API = set(INCOMING_MODULE_JS_API);
 
-DEAD_FUNCTIONS.forEach(function(dead) {
-  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(dead.substr(1));
-});
-DEAD_FUNCTIONS = numberedSet(DEAD_FUNCTIONS);
-
 RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
+
+// Side modules are pure wasm and have no JS
+assert(!SIDE_MODULE, "JS compiler should not run on side modules");
 
 // Output some info and warnings based on settings
 
@@ -103,14 +93,13 @@ load('runtime.js');
 //===============================
 
 B = new Benchmarker();
-var dummyData = {functionStubs: []}
 
 try {
-  JSify(dummyData);
+  JSify();
 
   B.print('glue');
 } catch(err) {
-  if (err.toString().indexOf('Aborting compilation due to previous errors') != -1) {
+  if (err.toString().includes('Aborting compilation due to previous errors')) {
     // Compiler failed on user error, don't print the stacktrace in this case.
     printErr(err);
   } else {
@@ -124,16 +113,12 @@ try {
   // Instead of process.exit() directly, wait for stdout flush event.
   // See https://github.com/joyent/node/issues/1669 and https://github.com/emscripten-core/emscripten/issues/2582
   // Workaround is based on https://github.com/RReverser/acorn/commit/50ab143cecc9ed71a2d66f78b4aec3bb2e9844f6
-  process['stdout']['once']('drain', function () {
-    process['exit'](1);
-  });
+  process['stdout']['once']('drain', () => process['exit'](1));
   // Make sure to print something to force the drain event to occur, in case the
   // stdout buffer was empty.
   console.log(' ');
   // Work around another node bug where sometimes 'drain' is never fired - make
   // another effort to emit the exit status, after a significant delay (if node
   // hasn't fired drain by then, give up)
-  setTimeout(function() {
-    process['exit'](1);
-  }, 500);
+  setTimeout(() => process['exit'](1), 500);
 }

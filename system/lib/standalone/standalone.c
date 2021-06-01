@@ -6,13 +6,14 @@
  */
 
 #include <assert.h>
-#include <emscripten.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 
+#include <emscripten.h>
+#include <emscripten/heap.h>
 #include <wasi/api.h>
 #include <wasi/wasi-helpers.h>
 
@@ -114,9 +115,14 @@ void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_
   return dest;
 }
 
-static const int WASM_PAGE_SIZE = 65536;
-
 extern void emscripten_notify_memory_growth(size_t memory_index);
+
+size_t emscripten_get_heap_max() {
+  // In standalone mode we don't have any wasm instructions to access the max
+  // memory size so the best we can do (without calling an import) is return
+  // the current heap size.
+  return emscripten_get_heap_size();
+}
 
 int emscripten_resize_heap(size_t size) {
 #ifdef __EMSCRIPTEN_MEMORY_GROWTH__
@@ -125,8 +131,7 @@ int emscripten_resize_heap(size_t size) {
   ssize_t diff = (size - old_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
   size_t result = __builtin_wasm_memory_grow(0, diff);
   if (result != (size_t)-1) {
-
-   // Success, update JS (see https://github.com/WebAssembly/WASI/issues/82)
+    // Success, update JS (see https://github.com/WebAssembly/WASI/issues/82)
     emscripten_notify_memory_growth(0);
     return 1;
   }

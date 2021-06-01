@@ -18,5 +18,6 @@ int main()
 	emscripten_hide_mouse();
 	EMSCRIPTEN_RESULT ret = emscripten_set_click_callback("#canvas", 0, 1, mouse_callback);
 	assert(ret == 0);
-	EM_ASM(noExitRuntime = true);
+	emscripten_exit_with_live_runtime();
+	return 0;
 }

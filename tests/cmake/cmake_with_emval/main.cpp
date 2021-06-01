@@ -9,12 +9,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int main()
-{
+int main() {
 #if __STRICT_ANSI__
-	int strict_ansi = 1;
+  int strict_ansi = 1;
 #else
-	int strict_ansi = 0;
+  int strict_ansi = 0;
 #endif
-	printf("Hello! __STRICT_ANSI__: %d, __cplusplus: %ld\n", strict_ansi, __cplusplus);
+  printf("Hello! __STRICT_ANSI__: %d, __cplusplus: %ld\n", strict_ansi, __cplusplus);
 }

@@ -262,14 +262,11 @@ var LibraryTracing = {
   emscripten_trace_report_memory_layout: function() {
     if (EmscriptenTrace.postEnabled) {
       var memory_layout = {
-        'static_base':  STATIC_BASE,
-        'stack_base':   STACK_BASE,
-        'stack_top':    STACKTOP,
-        'stack_max':    STACK_MAX,
-#if !MINIMAL_RUNTIME
-        'dynamic_base': DYNAMIC_BASE,
-#endif
-        'dynamic_top':  HEAP32[DYNAMICTOP_PTR>>2],
+        'static_base':  {{{ GLOBAL_BASE }}},
+        'stack_base':   _emscripten_stack_get_base(),
+        'stack_top':    _emscripten_stack_get_current(),
+        'stack_max':    _emscripten_stack_get_end(),
+        'dynamic_top':  _sbrk(),
         'total_memory': HEAP8.length
       };
       var now = EmscriptenTrace.now();

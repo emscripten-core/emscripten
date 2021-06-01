@@ -35,7 +35,7 @@ int main() {
   printf("%Lg\n", strtold("-0x0p+0", &endptr));
   char str[] = "  12.34e56end";
   printf("%Lg\n", strtold(str, &endptr));
-  printf("%d\n", endptr - str);
+  printf("%zu\n", endptr - str);
   printf("%Lg\n", strtold("84e+420", &endptr));
   printf("%.12Lf\n", strtold("1.2345678900000000e+08", NULL));
   return 0;

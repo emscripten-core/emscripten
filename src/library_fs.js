@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$setErrNo', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
+  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -18,19 +18,26 @@ mergeInto(LibraryManager.library, {
 #if LibraryManager.has('library_noderawfs.js')
     '$NODERAWFS',
 #endif
+#if LibraryManager.has('library_proxyfs.js')
+    '$PROXYFS',
+#endif
 #if ASSERTIONS
     '$ERRNO_MESSAGES', '$ERRNO_CODES',
 #endif
     ],
   $FS__postset: function() {
     // TODO: do we need noFSInit?
-    addAtInit('if (!Module["noFSInit"] && !FS.init.initialized) FS.init();');
-    addAtMain('FS.ignorePermissions = false;');
+    addAtInit(`
+if (!Module["noFSInit"] && !FS.init.initialized)
+  FS.init();
+FS.ignorePermissions = false;
+`)
     addAtExit('FS.quit();');
     // We must statically create FS.FSNode here so that it is created in a manner
     // that is visible to Closure compiler. That lets us use type annotations for
     // Closure to the "this" pointer in various node creation functions.
-    return `var FSNode = /** @constructor */ function(parent, name, mode, rdev) {
+    return `
+var FSNode = /** @constructor */ function(parent, name, mode, rdev) {
   if (!parent) {
     parent = this;  // root node sets parent to itself
   }
@@ -94,8 +101,8 @@ FS.staticInit();` +
     initialized: false,
     // Whether we are currently ignoring permissions. Useful when preparing the
     // filesystem and creating files inside read-only folders.
-    // This is set to false when the runtime is initialized, allowing you
-    // to modify the filesystem freely before run() is called.
+    // This is set to false during `preInit`, allowing you to modify the
+    // filesystem freely up until that point (e.g. during `preRun`).
     ignorePermissions: true,
     trackingDelegate: {},
     tracking: {
@@ -108,11 +115,6 @@ FS.staticInit();` +
     genericErrors: {},
     filesystems: null,
     syncFSRequests: 0, // we warn if there are multiple in flight at once
-
-    handleFSError: function(e) {
-      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
-      return setErrNo(e.errno);
-    },
 
     //
     // paths
@@ -253,6 +255,9 @@ FS.staticInit();` +
       return FS.lookup(parent, name);
     },
     createNode: function(parent, name, mode, rdev) {
+#if ASSERTIONS
+      assert(typeof parent === 'object')
+#endif
       var node = new FS.FSNode(parent, name, mode, rdev);
 
       FS.hashAddNode(node);
@@ -294,21 +299,15 @@ FS.staticInit();` +
     // permissions
     //
     flagModes: {
+      // Extra quotes used here on the keys to this object otherwise jsifier will
+      // erase them in the process of reading and then writing the JS library
+      // code.
       '"r"': {{{ cDefine('O_RDONLY') }}},
-      '"rs"': {{{ cDefine('O_RDONLY') }}} | {{{ cDefine('O_SYNC') }}},
       '"r+"': {{{ cDefine('O_RDWR') }}},
       '"w"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}},
-      '"wx"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_EXCL') }}},
-      '"xw"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_EXCL') }}},
       '"w+"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}},
-      '"wx+"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}} | {{{ cDefine('O_EXCL') }}},
-      '"xw+"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}} | {{{ cDefine('O_EXCL') }}},
       '"a"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}},
-      '"ax"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_EXCL') }}},
-      '"xa"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_EXCL') }}},
       '"a+"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}},
-      '"ax+"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}} | {{{ cDefine('O_EXCL') }}},
-      '"xa+"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}} | {{{ cDefine('O_EXCL') }}}
     },
     // convert the 'r', 'r+', etc. to it's corresponding set of O_* flags
     modeStringToFlags: function(str) {
@@ -331,11 +330,11 @@ FS.staticInit();` +
         return 0;
       }
       // return 0 if any user, group or owner bits are set.
-      if (perms.indexOf('r') !== -1 && !(node.mode & {{{ cDefine('S_IRUGO') }}})) {
+      if (perms.includes('r') && !(node.mode & {{{ cDefine('S_IRUGO') }}})) {
         return {{{ cDefine('EACCES') }}};
-      } else if (perms.indexOf('w') !== -1 && !(node.mode & {{{ cDefine('S_IWUGO') }}})) {
+      } else if (perms.includes('w') && !(node.mode & {{{ cDefine('S_IWUGO') }}})) {
         return {{{ cDefine('EACCES') }}};
-      } else if (perms.indexOf('x') !== -1 && !(node.mode & {{{ cDefine('S_IXUGO') }}})) {
+      } else if (perms.includes('x') && !(node.mode & {{{ cDefine('S_IXUGO') }}})) {
         return {{{ cDefine('EACCES') }}};
       }
       return 0;
@@ -621,7 +620,7 @@ FS.staticInit();` +
         while (current) {
           var next = current.name_next;
 
-          if (mounts.indexOf(current.mount) !== -1) {
+          if (mounts.includes(current.mount)) {
             FS.destroyNode(current);
           }
 
@@ -720,14 +719,13 @@ FS.staticInit();` +
       var new_name = PATH.basename(new_path);
       // parents must exist
       var lookup, old_dir, new_dir;
-      try {
-        lookup = FS.lookupPath(old_path, { parent: true });
-        old_dir = lookup.node;
-        lookup = FS.lookupPath(new_path, { parent: true });
-        new_dir = lookup.node;
-      } catch (e) {
-        throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
-      }
+
+      // let the errors from non existant directories percolate up
+      lookup = FS.lookupPath(old_path, { parent: true });
+      old_dir = lookup.node;
+      lookup = FS.lookupPath(new_path, { parent: true });
+      new_dir = lookup.node;
+
       if (!old_dir || !new_dir) throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       // need to be part of the same mount
       if (old_dir.mount !== new_dir.mount) {
@@ -1268,7 +1266,7 @@ FS.staticInit();` +
     },
     readFile: function(path, opts) {
       opts = opts || {};
-      opts.flags = opts.flags || 'r';
+      opts.flags = opts.flags || {{{ cDefine('O_RDONLY') }}};
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
         throw new Error('Invalid encoding type "' + opts.encoding + '"');
@@ -1289,7 +1287,7 @@ FS.staticInit();` +
     },
     writeFile: function(path, data, opts) {
       opts = opts || {};
-      opts.flags = opts.flags || 'w';
+      opts.flags = opts.flags || {{{ cDefine('O_TRUNC') | cDefine('O_CREAT') | cDefine('O_WRONLY') }}};
       var stream = FS.open(path, opts.flags, opts.mode);
       if (typeof data === 'string') {
         var buf = new Uint8Array(lengthBytesUTF8(data)+1);
@@ -1338,40 +1336,14 @@ FS.staticInit();` +
       });
       FS.mkdev('/dev/null', FS.makedev(1, 3));
       // setup /dev/tty and /dev/tty1
-      // stderr needs to print output using Module['printErr']
+      // stderr needs to print output using err() rather than out()
       // so we register a second tty just for it.
       TTY.register(FS.makedev(5, 0), TTY.default_tty_ops);
       TTY.register(FS.makedev(6, 0), TTY.default_tty1_ops);
       FS.mkdev('/dev/tty', FS.makedev(5, 0));
       FS.mkdev('/dev/tty1', FS.makedev(6, 0));
       // setup /dev/[u]random
-      var random_device;
-      if (typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function') {
-        // for modern web browsers
-        var randomBuffer = new Uint8Array(1);
-        random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
-      } else
-#if ENVIRONMENT_MAY_BE_NODE
-      if (ENVIRONMENT_IS_NODE) {
-        // for nodejs with or without crypto support included
-        try {
-          var crypto_module = require('crypto');
-          // nodejs has crypto support
-          random_device = function() { return crypto_module['randomBytes'](1)[0]; };
-        } catch (e) {
-          // nodejs doesn't have crypto support
-        }
-      } else
-#endif // ENVIRONMENT_MAY_BE_NODE
-      {}
-      if (!random_device) {
-        // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
-#if ASSERTIONS
-        random_device = function() { abort("no cryptographic support found for random_device. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };"); };
-#else
-        random_device = function() { abort("random_device"); };
-#endif
-      }
+      var random_device = getRandomDevice();
       FS.createDevice('/dev', 'random', random_device);
       FS.createDevice('/dev', 'urandom', random_device);
       // we're not going to emulate the actual shm device,
@@ -1380,13 +1352,14 @@ FS.staticInit();` +
       FS.mkdir('/dev/shm/tmp');
     },
     createSpecialDirectories: function() {
-      // create /proc/self/fd which allows /proc/self/fd/6 => readlink gives the name of the stream for fd 6 (see test_unistd_ttyname)
+      // create /proc/self/fd which allows /proc/self/fd/6 => readlink gives the
+      // name of the stream for fd 6 (see test_unistd_ttyname)
       FS.mkdir('/proc');
-      FS.mkdir('/proc/self');
+      var proc_self = FS.mkdir('/proc/self');
       FS.mkdir('/proc/self/fd');
       FS.mount({
         mount: function() {
-          var node = FS.createNode('/proc/self', 'fd', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, {{{ cDefine('S_IXUGO') }}});
+          var node = FS.createNode(proc_self, 'fd', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, {{{ cDefine('S_IXUGO') }}});
           node.node_ops = {
             lookup: function(parent, name) {
               var fd = +name;
@@ -1431,9 +1404,9 @@ FS.staticInit();` +
       }
 
       // open default streams for the stdin, stdout and stderr devices
-      var stdin = FS.open('/dev/stdin', 'r');
-      var stdout = FS.open('/dev/stdout', 'w');
-      var stderr = FS.open('/dev/stderr', 'w');
+      var stdin = FS.open('/dev/stdin', {{{ cDefine('O_RDONLY') }}});
+      var stdout = FS.open('/dev/stdout', {{{ cDefine('O_WRONLY') }}});
+      var stderr = FS.open('/dev/stderr', {{{ cDefine('O_WRONLY') }}});
 #if ASSERTIONS
       assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
       assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
@@ -1502,6 +1475,9 @@ FS.staticInit();` +
 #if LibraryManager.has('library_workerfs.js')
         'WORKERFS': WORKERFS,
 #endif
+#if LibraryManager.has('library_proxyfs.js')
+        'PROXYFS': PROXYFS,
+#endif
       };
     },
     init: function(input, output, error) {
@@ -1543,23 +1519,11 @@ FS.staticInit();` +
       if (canWrite) mode |= {{{ cDefine('S_IWUGO') }}};
       return mode;
     },
-    joinPath: function(parts, forceRelative) {
-      var path = PATH.join.apply(null, parts);
-      if (forceRelative && path[0] == '/') path = path.substr(1);
-      return path;
-    },
-    absolutePath: function(relative, base) {
-      return PATH_FS.resolve(base, relative);
-    },
-    standardizePath: function(path) {
-      return PATH.normalize(path);
-    },
     findObject: function(path, dontResolveLastLink) {
       var ret = FS.analyzePath(path, dontResolveLastLink);
       if (ret.exists) {
         return ret.object;
       } else {
-        setErrNo(ret.error);
         return null;
       }
     },
@@ -1590,11 +1554,6 @@ FS.staticInit();` +
         ret.error = e.errno;
       };
       return ret;
-    },
-    createFolder: function(parent, name, canRead, canWrite) {
-      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
-      var mode = FS.getMode(canRead, canWrite);
-      return FS.mkdir(path, mode);
     },
     createPath: function(parent, path, canRead, canWrite) {
       parent = typeof parent === 'string' ? parent : FS.getPath(parent);
@@ -1629,7 +1588,7 @@ FS.staticInit();` +
         }
         // make sure we can write to the file
         FS.chmod(node, mode | {{{ cDefine('S_IWUGO') }}});
-        var stream = FS.open(node, 'w');
+        var stream = FS.open(node, {{{ cDefine('O_TRUNC') | cDefine('O_CREAT') | cDefine('O_WRONLY') }}});
         FS.write(stream, data, 0, data.length, 0, canOwn);
         FS.close(stream);
         FS.chmod(node, mode);
@@ -1690,15 +1649,10 @@ FS.staticInit();` +
       });
       return FS.mkdev(path, mode, dev);
     },
-    createLink: function(parent, name, target, canRead, canWrite) {
-      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
-      return FS.symlink(target, path);
-    },
     // Makes sure a file's contents are loaded. Returns whether the file has
     // been loaded successfully. No-op for files that have been loaded already.
     forceLoadFile: function(obj) {
       if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
-      var success = true;
       if (typeof XMLHttpRequest !== 'undefined') {
         throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
       } else if (read_) {
@@ -1709,13 +1663,11 @@ FS.staticInit();` +
           obj.contents = intArrayFromString(read_(obj.url), true);
           obj.usedBytes = obj.contents.length;
         } catch (e) {
-          success = false;
+          throw new FS.ErrnoError({{{ cDefine('EIO') }}});
         }
       } else {
         throw new Error('Cannot load without read() or XMLHttpRequest.');
       }
-      if (!success) setErrNo({{{ cDefine('EIO') }}});
-      return success;
     },
     // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
     // XHR, which is not possible in browsers except in a web worker! Use preloading,
@@ -1811,7 +1763,7 @@ FS.staticInit();` +
         Object.defineProperties(lazyArray, {
           length: {
             get: /** @this{Object} */ function() {
-              if(!this.lengthKnown) {
+              if (!this.lengthKnown) {
                 this.cacheLength();
               }
               return this._length;
@@ -1819,7 +1771,7 @@ FS.staticInit();` +
           },
           chunkSize: {
             get: /** @this{Object} */ function() {
-              if(!this.lengthKnown) {
+              if (!this.lengthKnown) {
                 this.cacheLength();
               }
               return this._chunkSize;
@@ -1854,17 +1806,13 @@ FS.staticInit();` +
       keys.forEach(function(key) {
         var fn = node.stream_ops[key];
         stream_ops[key] = function forceLoadLazyFile() {
-          if (!FS.forceLoadFile(node)) {
-            throw new FS.ErrnoError({{{ cDefine('EIO') }}});
-          }
+          FS.forceLoadFile(node);
           return fn.apply(null, arguments);
         };
       });
       // use a custom read function
       stream_ops.read = function stream_ops_read(stream, buffer, offset, length, position) {
-        if (!FS.forceLoadFile(node)) {
-          throw new FS.ErrnoError({{{ cDefine('EIO') }}});
-        }
+        FS.forceLoadFile(node);
         var contents = stream.node.contents;
         if (position >= contents.length)
           return 0;
@@ -2023,15 +1971,37 @@ FS.staticInit();` +
       openRequest.onerror = onerror;
     },
 
-    // Allocate memory for an mmap operation. This allocates space of the right
-    // page-aligned size, and clears the padding.
-    mmapAlloc: function(size) {
-      var alignedSize = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
-      var ptr = _malloc(alignedSize);
-      while (size < alignedSize) HEAP8[ptr + size++] = 0;
-      return ptr;
-    }
-  }
+    // Removed v1 functions
+#if ASSERTIONS
+    absolutePath: function() {
+      abort('FS.absolutePath has been removed; use PATH_FS.resolve instead');
+    },
+    createFolder: function() {
+      abort('FS.createFolder has been removed; use FS.mkdir instead');
+    },
+    createLink: function() {
+      abort('FS.createLink has been removed; use FS.symlink instead');
+    },
+    joinPath: function() {
+      abort('FS.joinPath has been removed; use PATH.join instead');
+    },
+    mmapAlloc: function() {
+      abort('FS.mmapAlloc has been replaced by the top level function mmapAlloc');
+    },
+    standardizePath: function() {
+      abort('FS.standardizePath has been removed; use PATH.normalize instead');
+    },
+#endif
+  },
+
+  // Allocate memory for an mmap operation. This allocates space of the right
+  // page-aligned size, and clears the padding.
+  $mmapAlloc: function(size) {
+    var alignedSize = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
+    var ptr = {{{ makeMalloc('mmapAlloc', 'alignedSize') }}};
+    while (size < alignedSize) HEAP8[ptr + size++] = 0;
+    return ptr;
+  },
 });
 
 if (FORCE_FILESYSTEM) {

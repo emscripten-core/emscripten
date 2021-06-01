@@ -9,8 +9,8 @@ just the end-user parts of emscripten to be installed.  For example this avoids
 including the `tests/third_party` directory which is of that biggest parts 
 of the source tree.
 
-If you prefer you can use can use `make install` or `make dist` which
-to invokes `tools/install.py`.
+If you prefer, you can use `make install` or `make dist` which invokes
+`tools/install.py`.
 
 Dependencies
 ------------
@@ -23,9 +23,9 @@ is unlikely to work.
 The core
 [DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
 file in the `emscripten-releases` repository contains all the information about
-about the various repositories that go into an emscripten release. This is the
-repo used by our CI to build and test emscripten.  To find out which revisions
-went into a given release you need to check out the DEPS file that the revision
+the various repositories that go into an emscripten release. This is the repo
+used by our CI to build and test emscripten.  To find out which revisions went
+into a given release you need to check out the DEPS file that the revision
 corresponding to that release.  It has lines like these:
 
 ```
@@ -35,7 +35,7 @@ corresponding to that release.  It has lines like these:
 ```
 
 These linses specify git hashes of the various repositories that make up the
-ralease.
+release.
 
 In principle you can build any git hash in that repo because all updates get
 fully tested before they are committed. You can look at the
@@ -46,7 +46,7 @@ Alternatively, you may want to build our official emscripten release tags, which
 are the versions the emsdk lets users install. To find the mapping between the
 emsdk versions and the revision of the emscripten-releases repository, the emsdk
 has
-[emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/master/emscripten-releases-tags.txt).
+[emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.txt).
 All versions listed there should be safe to build, as we check that the CI
 was green on them.
 
@@ -77,9 +77,23 @@ the wasm backend):
     * wasm-as
     * wasm2js
     * wasm-metadce
-\
+
 (If you are packaging the older fastcomp backend instead of the wasm backend,
 you don't need wasm-ld or wasm2js, and you do need llvm-link and opt.)
+
+Node modules
+------------
+
+In addition to the dependencies listed above, emscripten also has node module
+dependencies specified in `package.json`.  These should be be installed by
+running `npm install` inside the emscripten directory.
+
+This will crate a `node_modules` subdirectory containing the required
+dependencies.  This directory should be packaged along with emscripten.  We
+don't currently support these modules being installed in other locations but
+supporting system-wide node modules is something that could be added if its
+deemed useful.
+
 
 Configuration
 -------------
@@ -111,8 +125,8 @@ Prebuilt libraries
 ------------------
 
 Ideally a packaged installation can include a fully populated cache directory
-containing pre-built libraries.   If you want to do this you can use
-`./embuilder build ALL` to populate the cache directory.  You can them ship the
+containing pre-built libraries.  If you want to do this you can use
+`embuilder build ALL` to populate the cache directory.  You can them ship the
 `cache` directory inside the emscripten directory.  When shipping the cache
 directory on a multi-user system where users cannot modify the `cache` you need
 to be sure that all possible configurations of the libraries are built.
@@ -128,14 +142,4 @@ embuilder build ALL --pic --lto
 Existing Packages
 -----------------
 
-The following is a partial list of downstream emscripten packages.  While there
-packages are not officially supported by the emscripten developers we try to
-work with downstream packagers to ensure everything works as expected.
-
-**Homebrew**
- - package info: https://formulae.brew.sh/formula/emscripten
- - maintainer: @chenrui333
-
-**Arch Linux**
- - package info: https://github.com/archlinux/svntogit-community/tree/packages/emscripten/trunk
- - maintainer: Sven-Hendrik Haase <svenstaro@gmail.com>
+See https://emscripten.org/docs/getting_started/downloads.html#installation-using-packages

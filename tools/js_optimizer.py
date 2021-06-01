@@ -1,30 +1,21 @@
+#!/usr/bin/env python3
 # Copyright 2012 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
 import os
 import sys
 import subprocess
 import re
 import json
 import shutil
-import logging
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(1, __rootpath__)
 
 from tools.toolchain_profiler import ToolchainProfiler
-from tools import building
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
-
-try:
-  from tools import shared
-except ImportError:
-  # Python 2 circular import compatibility
-  import shared
+from tools import building, config, shared
 
 configuration = shared.configuration
 temp_files = configuration.get_temp_files()
@@ -34,10 +25,7 @@ def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
 
-# Passes supported by the native optimizer
-NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'receiveJSON', 'emitJSON', 'eliminateDeadFuncs', 'eliminate', 'eliminateMemSafe', 'simplifyExpressions', 'simplifyIfs', 'optimizeFrounds', 'registerize', 'registerizeHarder', 'minifyNames', 'minifyLocals', 'minifyWhitespace', 'cleanup', 'asmLastOpts', 'last', 'noop', 'closure'])
-
-JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
+ACORN_OPTIMIZER = path_from_root('tools', 'acorn-optimizer.js')
 
 NUM_CHUNKS_PER_CORE = 3
 MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 512 * 1024) # configuring this is just for debugging purposes
@@ -51,179 +39,29 @@ func_sig = re.compile(r'function ([_\w$]+)\(')
 func_sig_json = re.compile(r'\["defun", ?"([_\w$]+)",')
 import_sig = re.compile(r'(var|const) ([_\w$]+ *=[^;]+);')
 
-NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '2' # use optimized native optimizer by default (can also be '1' or 'g')
-
 
 def split_funcs(js, just_split=False):
   if just_split:
     return [('(json)', line) for line in js.splitlines()]
-  if shared.Settings.WASM_BACKEND:
-    # for the wasm backend, split properly even if there are no newlines,
-    # which is important for deterministic builds (as which functions
-    # are in each chunk may differ, so we need to split them up and combine
-    # them all together later and sort them deterministically)
-    parts = ['function ' + part for part in js.split('function ')[1:]]
-    funcs = []
-    for func in parts:
-      m = func_sig.search(func)
-      if not m:
-        continue
-      ident = m.group(1)
-      assert ident
-      funcs.append((ident, func))
-    return funcs
-  else:
-    # for fastcomp split using the legacy method, which looks for newlines.
-    # it does *not* work without newlines, but the sourcemapping support
-    # depends on not splitting without newlines
-    parts = [part for part in js.split('\n}\n')]
-    funcs = []
-    for i, func in enumerate(parts):
-      if i < len(parts) - 1:
-        func += '\n}\n' # last part needs no }
-      m = func_sig.search(func)
-      if not m:
-        continue
-      ident = m.group(1)
-      assert ident
-      funcs.append((ident, func))
-    return funcs
+  # split properly even if there are no newlines,
+  # which is important for deterministic builds (as which functions
+  # are in each chunk may differ, so we need to split them up and combine
+  # them all together later and sort them deterministically)
+  parts = ['function ' + part for part in js.split('function ')[1:]]
+  funcs = []
+  for func in parts:
+    m = func_sig.search(func)
+    if not m:
+      continue
+    ident = m.group(1)
+    assert ident
+    funcs.append((ident, func))
+  return funcs
 
 
-def get_native_optimizer():
-  # Allow users to override the location of the optimizer executable by setting
-  # an environment variable EMSCRIPTEN_NATIVE_OPTIMIZER=/path/to/optimizer(.exe)
-  opt = os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER')
-  if opt:
-    logging.debug('env forcing native optimizer at ' + opt)
-    return opt
-  # Also, allow specifying the location of the optimizer in .emscripten
-  # configuration file under EMSCRIPTEN_NATIVE_OPTIMIZER='/path/to/optimizer'
-  opt = shared.EMSCRIPTEN_NATIVE_OPTIMIZER
-  if opt:
-    logging.debug('config forcing native optimizer at ' + opt)
-    return opt
-
-  log_output = None if DEBUG else subprocess.PIPE
-
-  def get_optimizer(name, args):
-    def create_optimizer_cmake():
-      shared.logging.debug('building native optimizer via CMake: ' + name)
-      output = shared.Cache.get_path(name)
-      shared.try_delete(output)
-
-      if NATIVE_OPTIMIZER == '1':
-        cmake_build_type = 'RelWithDebInfo'
-      elif NATIVE_OPTIMIZER == '2':
-        cmake_build_type = 'Release'
-      elif NATIVE_OPTIMIZER == 'g':
-        cmake_build_type = 'Debug'
-
-      build_path = shared.Cache.get_path('optimizer_build_' + cmake_build_type)
-      shared.try_delete(os.path.join(build_path, 'CMakeCache.txt'))
-
-      if not os.path.exists(build_path):
-        os.mkdir(build_path)
-
-      if WINDOWS:
-        # Poor man's check for whether or not we should attempt 64 bit build
-        if os.environ.get('ProgramFiles(x86)'):
-          cmake_generators = [
-            'Visual Studio 15 2017 Win64',
-            'Visual Studio 15 2017',
-            'Visual Studio 14 2015 Win64',
-            'Visual Studio 14 2015',
-            'Visual Studio 12 Win64', # The year component is omitted for compatibility with older CMake.
-            'Visual Studio 12',
-            'Visual Studio 11 Win64',
-            'Visual Studio 11',
-            'MinGW Makefiles',
-            'Unix Makefiles',
-          ]
-        else:
-          cmake_generators = [
-            'Visual Studio 15 2017',
-            'Visual Studio 14 2015',
-            'Visual Studio 12',
-            'Visual Studio 11',
-            'MinGW Makefiles',
-            'Unix Makefiles',
-          ]
-      else:
-        cmake_generators = ['Unix Makefiles']
-
-      for cmake_generator in cmake_generators:
-        # Delete CMakeCache.txt so that we can switch to a new CMake generator.
-        shared.try_delete(os.path.join(build_path, 'CMakeCache.txt'))
-        proc = subprocess.Popen(['cmake', '-G', cmake_generator, '-DCMAKE_BUILD_TYPE=' + cmake_build_type, shared.path_from_root('tools', 'optimizer')], cwd=build_path, stdin=log_output, stdout=log_output, stderr=log_output)
-        proc.communicate()
-        if proc.returncode == 0:
-          make = ['cmake', '--build', build_path]
-          if 'Visual Studio' in cmake_generator:
-            make += ['--config', cmake_build_type, '--', '/nologo', '/verbosity:minimal']
-
-          proc = subprocess.Popen(make, cwd=build_path, stdin=log_output, stdout=log_output, stderr=log_output)
-          proc.communicate()
-          if proc.returncode == 0:
-            if WINDOWS and 'Visual Studio' in cmake_generator:
-              shutil.copyfile(os.path.join(build_path, cmake_build_type, 'optimizer.exe'), output)
-            else:
-              shutil.copyfile(os.path.join(build_path, 'optimizer'), output)
-            return output
-
-      assert False
-
-    def create_optimizer():
-      shared.logging.debug('building native optimizer: ' + name)
-      output = shared.Cache.get_path(name)
-      shared.try_delete(output)
-      for compiler in [shared.CLANG_CXX, 'g++', 'clang++']: # try our clang first, otherwise hope for a system compiler in the path
-        shared.logging.debug('  using ' + compiler)
-        try:
-          shared.run_process([compiler,
-                              shared.path_from_root('tools', 'optimizer', 'parser.cpp'),
-                              shared.path_from_root('tools', 'optimizer', 'simple_ast.cpp'),
-                              shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'),
-                              shared.path_from_root('tools', 'optimizer', 'optimizer-shared.cpp'),
-                              shared.path_from_root('tools', 'optimizer', 'optimizer-main.cpp'),
-                              '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output] + args,
-                             stdout=log_output, stderr=log_output)
-        except Exception as e:
-          logging.debug(str(e))
-          continue # perhaps the later compilers will succeed
-        # success
-        return output
-      shared.exit_with_error('Failed to build native optimizer')
-
-    use_cmake_to_configure = WINDOWS # Currently only Windows uses CMake to drive the optimizer build, but set this to True to use on other platforms as well.
-    if use_cmake_to_configure:
-      return shared.Cache.get(name, create_optimizer_cmake)
-    else:
-      return shared.Cache.get(name, create_optimizer)
-
-  if NATIVE_OPTIMIZER == '1':
-    return get_optimizer('optimizer.exe', [])
-  elif NATIVE_OPTIMIZER == '2':
-    return get_optimizer('optimizer.2.exe', ['-DNDEBUG'])
-  elif NATIVE_OPTIMIZER == 'g':
-    return get_optimizer('optimizer.g.exe', ['-O0', '-g', '-fno-omit-frame-pointer'])
-
-
-# Check if we should run a pass or set of passes natively. if a set of passes,
-# they must all be valid to run in the native optimizer at once.
-def use_native(x, source_map=False):
-  if source_map:
-    return False
-  if not NATIVE_OPTIMIZER or NATIVE_OPTIMIZER == '0':
-    return False
-  if isinstance(x, list):
-    return len(NATIVE_PASSES.intersection(x)) == len(x) and 'asm' in x
-  return x in NATIVE_PASSES
-
-
-class Minifier(object):
-  """asm.js minification support. We calculate minification of
-  globals here, then pass that into the parallel js-optimizer.js runners which
+class Minifier:
+  """minification support. We calculate minification of
+  globals here, then pass that into the parallel acorn-optimizer.js runners which
   perform minification of locals.
   """
 
@@ -232,13 +70,13 @@ class Minifier(object):
     self.symbols_file = None
     self.profiling_funcs = False
 
-  def minify_shell(self, shell, minify_whitespace, source_map=False):
-    # Run through js-optimizer.js to find and minify the global symbols
+  def minify_shell(self, shell, minify_whitespace):
+    # Run through acorn-optimizer.js to find and minify the global symbols
     # We send it the globals, which it parses at the proper time. JS decides how
     # to minify all global names, we receive a dictionary back, which is then
     # used by the function processors
 
-    shell = shell.replace('0.0', '13371337') # avoid uglify doing 0.0 => 0
+    shell = shell.replace('0.0', '13371337') # avoid optimizer doing 0.0 => 0
 
     # Find all globals in the JS functions code
 
@@ -255,11 +93,9 @@ class Minifier(object):
         f.write('\n')
         f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
 
-      cmd = shared.NODE_JS + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata']
+      cmd = config.NODE_JS + [ACORN_OPTIMIZER, temp_file, 'minifyGlobals']
       if minify_whitespace:
         cmd.append('minifyWhitespace')
-      if source_map:
-        cmd.append('--debug')
       output = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
 
     assert len(output) and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
@@ -286,37 +122,31 @@ start_asm_marker = '// EMSCRIPTEN_START_ASM\n'
 end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
 
 
-def run_on_chunk(command):
-  try:
-    if JS_OPTIMIZER in command: # XXX hackish
-      index = command.index(JS_OPTIMIZER)
-      filename = command[index + 1]
+# Given a set of functions of form (ident, text), and a preferred chunk size,
+# generates a set of chunks for parallel processing and caching.
+@ToolchainProfiler.profile_block('chunkify')
+def chunkify(funcs, chunk_size):
+  chunks = []
+  # initialize reasonably, the rest of the funcs we need to split out
+  curr = []
+  total_size = 0
+  for i in range(len(funcs)):
+    func = funcs[i]
+    curr_size = len(func[1])
+    if total_size + curr_size < chunk_size:
+      curr.append(func)
+      total_size += curr_size
     else:
-      filename = command[1]
-    if os.environ.get('EMCC_SAVE_OPT_TEMP') and os.environ.get('EMCC_SAVE_OPT_TEMP') != '0':
-      saved = 'save_' + os.path.basename(filename)
-      while os.path.exists(saved):
-        saved = 'input' + str(int(saved.replace('input', '').replace('.txt', '')) + 1) + '.txt'
-      print('running js optimizer command', ' '.join([c if c != filename else saved for c in command]), file=sys.stderr)
-      shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
-    if shared.EM_BUILD_VERBOSE >= 3:
-      print('run_on_chunk: ' + str(command), file=sys.stderr)
-    proc = shared.run_process(command, stdout=subprocess.PIPE)
-    output = proc.stdout
-    assert proc.returncode == 0, 'Error in optimizer (return code ' + str(proc.returncode) + '): ' + output
-    assert len(output) and not output.startswith('Assertion failed'), 'Error in optimizer: ' + output
-    filename = temp_files.get(os.path.basename(filename) + '.jo.js').name
-    with open(filename, 'w') as f:
-      f.write(output)
-    if DEBUG and not shared.WINDOWS:
-      print('.', file=sys.stderr) # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
-    return filename
-  except KeyboardInterrupt:
-    # avoid throwing keyboard interrupts from a child process
-    raise Exception()
+      chunks.append(curr)
+      curr = [func]
+      total_size = curr_size
+  if curr:
+    chunks.append(curr)
+    curr = None
+  return [''.join(func[1] for func in chunk) for chunk in chunks] # remove function names
 
 
-def run_on_js(filename, passes, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
+def run_on_js(filename, passes, extra_info=None, just_split=False, just_concat=False):
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
     if not isinstance(passes, list):
       passes = [passes]
@@ -363,7 +193,7 @@ def run_on_js(filename, passes, source_map=False, extra_info=None, just_split=Fa
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
       if 'asm' not in passes:
         # can have Module[..] and inlining prevention code, push those to post
-        class Finals(object):
+        class Finals:
           buf = []
 
         def process(line):
@@ -398,11 +228,7 @@ EMSCRIPTEN_FUNCS();
         return True
 
       passes = list(filter(check_symbol_mapping, passes))
-      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();')
-      if not shared.Settings.WASM_BACKEND:
-        # Restore a comment for Closure Compiler
-        asm_open_bracket = asm_shell_pre.find('(')
-        asm_shell_pre = asm_shell_pre[:asm_open_bracket + 1] + '/** @suppress {uselessCode} */' + asm_shell_pre[asm_open_bracket + 1:]
+      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes).split('EMSCRIPTEN_FUNCS();')
       asm_shell_post = asm_shell_post.replace('});', '})')
       pre += asm_shell_pre + '\n' + start_funcs_marker
       post = end_funcs_marker + asm_shell_post + post
@@ -431,12 +257,12 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('js_optimizer.split_to_chunks'):
     # if we are making source maps, we want our debug numbering to start from the
     # top of the file, so avoid breaking the JS into chunks
-    cores = 1 if source_map else building.get_num_cores()
+    cores = shared.get_num_cores()
 
     if not just_split:
       intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
       chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
-      chunks = shared.chunkify(funcs, chunk_size)
+      chunks = chunkify(funcs, chunk_size)
     else:
       # keep same chunks as before
       chunks = [f[1] for f in funcs]
@@ -465,38 +291,23 @@ EMSCRIPTEN_FUNCS();
 
   with ToolchainProfiler.profile_block('run_optimizer'):
     if len(filenames):
-      if not use_native(passes, source_map):
-        commands = [shared.NODE_JS + [JS_OPTIMIZER, f, 'noPrintMetadata'] +
-                    (['--debug'] if source_map else []) + passes for f in filenames]
-      else:
-        # use the native optimizer
-        shared.logging.debug('js optimizer using native')
-        assert not source_map # XXX need to use js optimizer
-        commands = [[get_native_optimizer(), f] + passes for f in filenames]
-      # print [' '.join(command) for command in commands]
+      commands = [config.NODE_JS + [ACORN_OPTIMIZER, f] + passes for f in filenames]
 
-      cores = min(cores, len(filenames))
-      if len(chunks) > 1 and cores >= 2:
-        # We can parallelize
-        if DEBUG:
-          print('splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size / (1024 * 1024.)), file=sys.stderr)
-        with ToolchainProfiler.profile_block('optimizer_pool'):
-          pool = building.get_multiprocessing_pool()
-          filenames = pool.map(run_on_chunk, commands, chunksize=1)
-      else:
-        # We can't parallize, but still break into chunks to avoid uglify/node memory issues
-        if len(chunks) > 1 and DEBUG:
-          print('splitting up js optimization into %d chunks' % (len(chunks)), file=sys.stderr)
-        filenames = [run_on_chunk(command) for command in commands]
-    else:
-      filenames = []
+      if os.environ.get('EMCC_SAVE_OPT_TEMP') and os.environ.get('EMCC_SAVE_OPT_TEMP') != '0':
+        for filename in filenames:
+          saved = 'save_' + os.path.basename(filename)
+          while os.path.exists(saved):
+            saved = 'input' + str(int(saved.replace('input', '').replace('.txt', '')) + 1) + '.txt'
+          shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
+
+      filenames = shared.run_multiple_processes(commands, route_stdout_to_temp_files_suffix='js_opt.jo.js')
 
     for filename in filenames:
       temp_files.note(filename)
 
   with ToolchainProfiler.profile_block('split_closure_cleanup'):
     if closure or cleanup:
-      # run on the shell code, everything but what we js-optimize
+      # run on the shell code, everything but what we acorn-optimize
       start_asm = '// EMSCRIPTEN_START_ASM\n'
       end_asm = '// EMSCRIPTEN_END_ASM\n'
       cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(wakaGlobal,wakaEnv,wakaBuffer)\n'
@@ -512,8 +323,7 @@ EMSCRIPTEN_FUNCS();
         if closure:
           if DEBUG:
             print('running closure on shell code', file=sys.stderr)
-          cld = building.closure_compiler(cld, pretty='minifyWhitespace' not in passes,
-                                          extra_closure_args=extra_closure_args)
+          cld = building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
           temp_files.note(cld)
         elif cleanup:
           if DEBUG:
@@ -583,17 +393,14 @@ EMSCRIPTEN_FUNCS();
   return filename
 
 
-def run(filename, passes, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
-  if 'receiveJSON' in passes:
-    just_split = True
-  if 'emitJSON' in passes:
-    just_concat = True
-  with ToolchainProfiler.profile_block('js_optimizer.run_on_js'):
-    return run_on_js(filename, passes, source_map, extra_info, just_split, just_concat, extra_closure_args)
+@ToolchainProfiler.profile_block('js_optimizer.run_on_js')
+def run(filename, passes, extra_info=None):
+  just_split = 'receiveJSON' in passes
+  just_concat = 'emitJSON' in passes
+  return run_on_js(filename, passes, extra_info=extra_info, just_split=just_split, just_concat=just_concat)
 
 
 def main():
-  ToolchainProfiler.record_process_start()
   last = sys.argv[-1]
   if '{' in last:
     extra_info = json.loads(last)

@@ -7,6 +7,7 @@
 
 // Test RAF is actually used (and not setTimeout etc.)
 
+#include <stdio.h>
 #include <emscripten.h>
 
 EMSCRIPTEN_KEEPALIVE extern "C" void good() {

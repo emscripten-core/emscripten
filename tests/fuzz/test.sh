@@ -7,8 +7,8 @@ rm *.out *.bc *.js
 gcc $@ -m32 -I/home/alon/Dev/csmith/runtime -o n1.out &> /dev/null
 /home/alon/Dev/fastcomp/build/Release+Asserts/bin/clang -m32 -I/home/alon/Dev/csmith/runtime -o n2.out $@ &> /dev/null
 /home/alon/Dev/fastcomp/build/Release+Asserts/bin/clang -m32 -I/home/alon/Dev/csmith/runtime -emit-llvm -c -o bc.bc $@ &> o
-~/Dev/emscripten/emcc $@ -I/home/alon/Dev/csmith/runtime -s PRECISE_F32=1 -o fc.out.js --memory-init-file 0 -profiling &> /dev/null
-~/Dev/emscripten/emcc $@ -s SAFE_HEAP=1 -I/home/alon/Dev/csmith/runtime -s PRECISE_F32=1 -o fc-sh.out.js &> /dev/null
+~/Dev/emscripten/emcc $@ -I/home/alon/Dev/csmith/runtime -o fc.out.js --memory-init-file 0 -profiling &> /dev/null
+~/Dev/emscripten/emcc $@ -s SAFE_HEAP=1 -I/home/alon/Dev/csmith/runtime -o fc-sh.out.js &> /dev/null
 echo "run n1"
 ./n1.out &> n1
 echo "run n2"

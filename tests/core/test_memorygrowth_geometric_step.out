@@ -1,1 +1,2 @@
-Ptr: 1, value: 16843009, Heap size: 268435456
+Heap size before allocation: 16777216
+Ptr: 1, value: 16843009, Heap size now: 101777408 (increase: 85000192 bytes)

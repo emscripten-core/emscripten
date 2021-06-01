@@ -1,13 +1,15 @@
-#if !STANDALONE_WASM // standalone wasm creates the table in the wasm
+#if RELOCATABLE
+// In RELOCATABLE mode we create the table in JS.
 var wasmTable = new WebAssembly.Table({
-  'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+  'initial': {{{ INITIAL_TABLE }}},
 #if !ALLOW_TABLE_GROWTH
-#if WASM_BACKEND
-  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
-#else
-  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+  'maximum': {{{ INITIAL_TABLE }}},
 #endif
-#endif // WASM_BACKEND
   'element': 'anyfunc'
 });
+#else
+// In regular non-RELOCATABLE mode the table is exported
+// from the wasm module and this will be assigned once
+// the exports are available.
+var wasmTable;
 #endif

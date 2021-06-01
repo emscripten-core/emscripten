@@ -1,13 +1,9 @@
 
 /* XXX Emscripten XXX */
 #if __EMSCRIPTEN__
-#if defined(__EMSCRIPTEN__) && !defined(__asmjs__)
 // When building for wasm we export `malloc` and `emscripten_builtin_malloc` as
 // weak alias of the internal `dlmalloc` which is static to this file.
 #define DLMALLOC_EXPORT static
-#else
-#define DLMALLOC_EXPORT __attribute__((__weak__))
-#endif
 /* mmap uses malloc, so malloc can't use mmap */
 #define HAVE_MMAP 0
 /* we can only grow the heap up anyhow, so don't try to trim */
@@ -859,7 +855,7 @@ extern "C" {
     
 #ifndef USE_DL_PREFIX
 // XXX Emscripten XXX
-#if defined(__EMSCRIPTEN__) && !defined(__asmjs__)
+#if defined(__EMSCRIPTEN__)
 void* malloc(size_t) __attribute__((weak, alias("dlmalloc")));
 void  free(void*) __attribute__((weak, alias("dlfree")));
 void* calloc(size_t, size_t) __attribute__((weak, alias("dlcalloc")));
@@ -888,34 +884,7 @@ void malloc_inspect_all(void(*handler)(void*, void *, size_t, void*), void* arg)
 void** independent_calloc(size_t, size_t, void**) __attribute__((weak, alias("dlindependent_calloc")));
 void** independent_comalloc(size_t, size_t*, void**) __attribute__((weak, alias("dlindependent_comalloc")));
 size_t bulk_free(void**, size_t n_elements) __attribute__((weak, alias("dlbulk_free")));
-#else
-// XXX fastcomp HACK: in fastcomp, weak aliases loses to JavaScript versions of the function.
-// Therefore, we must define real functions. We use macros to remove the dl prefix, but this
-// forces the user to override all or none of the functions below.
-// Remove the else block once fastcomp is removed.
-#define dlcalloc               calloc
-#define dlfree                 free
-#define dlmalloc               malloc
-#define dlmemalign             memalign
-#define dlposix_memalign       posix_memalign
-#define dlrealloc              realloc
-#define dlrealloc_in_place     realloc_in_place
-#define dlvalloc               valloc
-#define dlpvalloc              pvalloc
-#define dlmallinfo             mallinfo
-#define dlmallopt              mallopt
-#define dlmalloc_trim          malloc_trim
-#define dlmalloc_stats         malloc_stats
-#define dlmalloc_usable_size   malloc_usable_size
-#define dlmalloc_footprint     malloc_footprint
-#define dlmalloc_max_footprint malloc_max_footprint
-#define dlmalloc_footprint_limit malloc_footprint_limit
-#define dlmalloc_set_footprint_limit malloc_set_footprint_limit
-#define dlmalloc_inspect_all   malloc_inspect_all
-#define dlindependent_calloc   independent_calloc
-#define dlindependent_comalloc independent_comalloc
-#define dlbulk_free            bulk_free
-#endif
+#endif /*__EMSCRIPTEN__*/
 #endif /* USE_DL_PREFIX */
     
     /*
@@ -6076,17 +6045,9 @@ int mspace_mallopt(int param_number, int value) {
 // and dlfree from this file.
 // This allows an easy mechanism for hooking into memory allocation.
 #if defined(__EMSCRIPTEN__) && !ONLY_MSPACES
-#ifdef __asmjs__
-// XXX This is to support the fastcomp hack above where we remove the dl prefix.
-// TODO: Remove this branch when fastcomp is removed.
-extern __typeof(malloc) emscripten_builtin_malloc __attribute__((alias("malloc")));
-extern __typeof(free) emscripten_builtin_free __attribute__((alias("free")));
-extern __typeof(memalign) emscripten_builtin_memalign __attribute__((alias("memalign")));
-#else
 extern __typeof(malloc) emscripten_builtin_malloc __attribute__((alias("dlmalloc")));
 extern __typeof(free) emscripten_builtin_free __attribute__((alias("dlfree")));
 extern __typeof(memalign) emscripten_builtin_memalign __attribute__((alias("dlmemalign")));
-#endif /* __asmjs__ */
 #endif
 
 /* -------------------- Alternative MORECORE functions ------------------- */

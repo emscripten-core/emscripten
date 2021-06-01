@@ -15,12 +15,12 @@ mergeInto(LibraryManager.library, {
     init: function() {
       if (LZ4.codec) return;
       LZ4.codec = (function() {
-        {{{ read('mini-lz4.js') }}};
+        {{{ read('../third_party/mini-lz4.js') }}};
         return MiniLZ4;
       })();
       LZ4.CHUNK_SIZE = LZ4.codec.CHUNK_SIZE;
     },
-    loadPackage: function (pack) {
+    loadPackage: function (pack, preloadPlugin) {
       LZ4.init();
       var compressedData = pack['compressedData'];
       if (!compressedData) compressedData = LZ4.codec.compressPackage(pack['data']);
@@ -42,6 +42,31 @@ mergeInto(LibraryManager.library, {
           end: file.end,
         });
       });
+      // Preload files if necessary. This code is largely similar to
+      // createPreloadedFile in library_fs.js. However, a main difference here
+      // is that we only decompress the file if it can be preloaded.
+      // Abstracting out the common parts seems to be more effort than it is
+      // worth.
+      if (preloadPlugin) {
+        Browser.init();
+        pack['metadata'].files.forEach(function(file) {
+          var handled = false;
+          var fullname = file.filename;
+          Module['preloadPlugins'].forEach(function(plugin) {
+            if (handled) return;
+            if (plugin['canHandle'](fullname)) {
+              var dep = getUniqueRunDependency('fp ' + fullname);
+              addRunDependency(dep);
+              var finish = function() {
+                removeRunDependency(dep);
+              }
+              var byteArray = FS.readFile(fullname);
+              plugin['handle'](byteArray, fullname, finish, finish);
+              handled = true;
+            }
+          });
+        });
+      }
     },
     createNode: function (parent, name, mode, dev, contents, mtime) {
       var node = FS.createNode(parent, name, mode);

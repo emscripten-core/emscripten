@@ -37,11 +37,14 @@ uint64_t threadCasAccumulatedReadData[NUM_THREADS] = {};
 
 int rand_32()
 {
-	return (int)(emscripten_random() * 0x3FFFFFFF);
+	return (int)(emscripten_random() * float(0x3FFFFFFF));
 }
 
 void *ThreadMain(void *arg)
 {
+	// Do some stdio to test proxying to the main thread.
+	printf("pthread %p starting\n", arg);
+
 	assert(pthread_self() != 0);
 	assert(globalUchar == 5);
 	assert(globalUshort == 5);
@@ -100,7 +103,6 @@ void RunTest(int test)
 {	
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	pthread_attr_setstacksize(&attr, 4*1024);
 
 	printf("Main thread has thread ID %d\n", (int)pthread_self());

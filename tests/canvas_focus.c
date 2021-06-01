@@ -30,6 +30,7 @@ int main()
     // Focus, then send an event, same as if the user clicked on it for focus.
     Module.canvas.focus();
     document.activeElement.dispatchEvent(event);
-    noExitRuntime = true;
   });
+  emscripten_exit_with_live_runtime();
+  return 0;
 }

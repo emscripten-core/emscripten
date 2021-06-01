@@ -1,0 +1,10 @@
+# TODO(sbc): switch to using Pipenv since it seems like that way to go
+# these day managing python deps.
+# These requirements are only needed for developers who want to run flake8 on
+# the codebase and generate docs using Sphinx, not for users of emscripten.
+# Install with `pip3 install -r requirements-dev.txt`
+
+flake8==3.9.0
+flake8-unused-arguments==0.0.6
+coverage==5.5
+sphinx==2.4.4

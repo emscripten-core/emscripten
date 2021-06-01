@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES'],
+  $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES', '$mmapAlloc'],
   $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); var NODEJS_PATH = require("path"); NODEFS.staticInit(); }',
   $NODEFS: {
     isWindows: false,
@@ -20,6 +20,7 @@ mergeInto(LibraryManager.library, {
         "{{{ cDefine('O_APPEND') }}}": flags["O_APPEND"],
         "{{{ cDefine('O_CREAT') }}}": flags["O_CREAT"],
         "{{{ cDefine('O_EXCL') }}}": flags["O_EXCL"],
+        "{{{ cDefine('O_NOCTTY') }}}": flags["O_NOCTTY"],
         "{{{ cDefine('O_RDONLY') }}}": flags["O_RDONLY"],
         "{{{ cDefine('O_RDWR') }}}": flags["O_RDWR"],
         "{{{ cDefine('O_DSYNC') }}}": flags["O_SYNC"],
@@ -295,14 +296,15 @@ mergeInto(LibraryManager.library, {
         return position;
       },
       mmap: function(stream, address, length, position, prot, flags) {
-        // We don't currently support location hints for the address of the mapping
-        assert(address === 0);
-
+        if (address !== 0) {
+          // We don't currently support location hints for the address of the mapping
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+        }
         if (!FS.isFile(stream.node.mode)) {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }
 
-        var ptr = FS.mmapAlloc(length);
+        var ptr = mmapAlloc(length);
 
         NODEFS.stream_ops.read(stream, HEAP8, ptr, length, position);
         return { ptr: ptr, allocated: true };

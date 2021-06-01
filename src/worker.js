@@ -8,12 +8,52 @@
 // This is the entry point file that is loaded first by each Web Worker
 // that executes pthreads on the Emscripten application.
 
-// Thread-local:
-var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (shared). If zero, this worker is not currently hosting an executing pthread.
-var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
-var parentThreadId = 0; // The ID of the parent pthread that launched this thread.
+'use strict';
 
 var Module = {};
+
+#if ENVIRONMENT_MAY_BE_NODE
+// Node.js support
+if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
+  // Create as web-worker-like an environment as we can.
+
+  var nodeWorkerThreads = require('worker_threads');
+
+  var parentPort = nodeWorkerThreads.parentPort;
+
+  parentPort.on('message', function(data) {
+    onmessage({ data: data });
+  });
+
+  var nodeFS = require('fs');
+
+  Object.assign(global, {
+    self: global,
+    require: require,
+    Module: Module,
+    location: {
+      href: __filename
+    },
+    Worker: nodeWorkerThreads.Worker,
+    importScripts: function(f) {
+      (0, eval)(nodeFS.readFileSync(f, 'utf8'));
+    },
+    postMessage: function(msg) {
+      parentPort.postMessage(msg);
+    },
+    performance: global.performance || {
+      now: function() {
+        return Date.now();
+      }
+    },
+  });
+}
+#endif // ENVIRONMENT_MAY_BE_NODE
+
+// Thread-local:
+#if EMBIND
+var initializedJS = false; // Guard variable for one-time init of the JS state (currently only embind types registration)
+#endif
 
 #if ASSERTIONS
 function assert(condition, text) {
@@ -27,7 +67,7 @@ function threadPrintErr() {
 }
 function threadAlert() {
   var text = Array.prototype.slice.call(arguments).join(' ');
-  postMessage({cmd: 'alert', text: text, threadId: selfThreadId});
+  postMessage({cmd: 'alert', text: text, threadId: Module['_pthread_self']()});
 }
 #if ASSERTIONS
 // We don't need out() for now, but may need to add it if we want to use it
@@ -38,57 +78,65 @@ var out = function() {
 }
 #endif
 var err = threadPrintErr;
-this.alert = threadAlert;
+self.alert = threadAlert;
 
-#if WASM && !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
   var instance = new WebAssembly.Instance(Module['wasmModule'], info);
+#if RELOCATABLE || MAIN_MODULE
+  receiveInstance(instance, Module['wasmModule']);
+#else
+  // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
+  // the above line no longer optimizes out down to the following line.
+  // When the regression is fixed, we can remove this if/else.
+  receiveInstance(instance);
+#endif
   // We don't need the module anymore; new threads will be spawned from the main thread.
   Module['wasmModule'] = null;
-#if LOAD_SOURCE_MAP
-  wasmSourceMap = resetPrototype(WasmSourceMap, wasmSourceMapData);
-#endif
-#if USE_OFFSET_CONVERTER
-  wasmOffsetConverter = resetPrototype(WasmOffsetConverter, wasmOffsetData);
-#endif
-  receiveInstance(instance); // The second 'module' parameter is intentionally null here, we don't need to keep a ref to the Module object from here.
   return instance.exports;
 };
+#endif
+
+#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
+// When using postMessage to send an object, it is processed by the structured clone algorithm.
+// The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
+// This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
+function resetPrototype(constructor, attrs) {
+  var object = Object.create(constructor.prototype);
+  for (var key in attrs) {
+    if (attrs.hasOwnProperty(key)) {
+      object[key] = attrs[key];
+    }
+  }
+  return object;
+}
 #endif
 
 #if LOAD_SOURCE_MAP
 var wasmSourceMapData;
 #endif
 #if USE_OFFSET_CONVERTER
-var wasmOffsetData;
+var wasmOffsetData, wasmOffsetConverter;
 #endif
 
-this.onmessage = function(e) {
+function moduleLoaded() {
+#if LOAD_SOURCE_MAP
+  wasmSourceMap = resetPrototype(Module['WasmSourceMap'], wasmSourceMapData);
+#endif
+#if USE_OFFSET_CONVERTER
+  wasmOffsetConverter = resetPrototype(Module['WasmOffsetConverter'], wasmOffsetData);
+#endif
+}
+
+self.onmessage = function(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if MINIMAL_RUNTIME
       var imports = {};
 #endif
 
-#if !WASM_BACKEND
-      // Initialize the thread-local field(s):
-#if MINIMAL_RUNTIME
-      var imports = {};
-#endif
-#endif
-
-      // Initialize the global "process"-wide fields:
-#if !MINIMAL_RUNTIME
-      Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
-#endif
-
-#if USES_DYNAMIC_ALLOC
-      {{{ makeAsmImportsAccessInPthread('DYNAMICTOP_PTR') }}} = e.data.DYNAMICTOP_PTR;
-#endif
-
-#if WASM
       // Module and memory were sent from main thread
 #if MINIMAL_RUNTIME
 #if MODULARIZE
@@ -100,6 +148,10 @@ this.onmessage = function(e) {
       Module['wasmModule'] = e.data.wasmModule;
 #endif // MINIMAL_RUNTIME
 
+#if MAIN_MODULE
+      Module['dynamicLibraries'] = e.data.dynamicLibraries;
+#endif
+
       {{{ makeAsmImportsAccessInPthread('wasmMemory') }}} = e.data.wasmMemory;
 
 #if LOAD_SOURCE_MAP
@@ -110,33 +162,17 @@ this.onmessage = function(e) {
 #endif
 
       {{{ makeAsmImportsAccessInPthread('buffer') }}} = {{{ makeAsmImportsAccessInPthread('wasmMemory') }}}.buffer;
-#else // asm.js:
-      {{{ makeAsmImportsAccessInPthread('buffer') }}} = e.data.buffer;
-
-#if SEPARATE_ASM
-      // load the separated-out asm.js
-      e.data.asmJsUrlOrBlob = e.data.asmJsUrlOrBlob || '{{{ SEPARATE_ASM }}}';
-      if (typeof e.data.asmJsUrlOrBlob === 'string') {
-        importScripts(e.data.asmJsUrlOrBlob);
-      } else {
-        var objectUrl = URL.createObjectURL(e.data.asmJsUrlOrBlob);
-        importScripts(objectUrl);
-        URL.revokeObjectURL(objectUrl);
-      }
-#endif
-
-#endif // WASM
 
 #if !MINIMAL_RUNTIME || MODULARIZE
       {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
 #endif
 
 #if MODULARIZE && EXPORT_ES6
-      import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {
-        return {{{ EXPORT_NAME }}}.default(Module);
+      (e.data.urlOrBlob ? import(e.data.urlOrBlob) : import('./{{{ TARGET_JS_NAME }}}')).then(function(exports) {
+        return exports.default(Module);
       }).then(function(instance) {
         Module = instance;
-        postMessage({ 'cmd': 'loaded' });
+        moduleLoaded();
       });
 #else
       if (typeof e.data.urlOrBlob === 'string') {
@@ -150,21 +186,21 @@ this.onmessage = function(e) {
 #if MINIMAL_RUNTIME
       {{{ EXPORT_NAME }}}(imports).then(function (instance) {
         Module = instance;
-        postMessage({ 'cmd': 'loaded' });
+        moduleLoaded();
       });
 #else
       {{{ EXPORT_NAME }}}(Module).then(function (instance) {
         Module = instance;
-        postMessage({ 'cmd': 'loaded' });
+        moduleLoaded();
       });
 #endif
 #endif
 
-#if !MODULARIZE && (!MINIMAL_RUNTIME || !WASM)
+#if !MODULARIZE && !MINIMAL_RUNTIME
       // MINIMAL_RUNTIME always compiled Wasm (&Wasm2JS) asynchronously, even in pthreads. But
       // regular runtime and asm.js are loaded synchronously, so in those cases
       // we are now loaded, and can post back to main thread.
-      postMessage({ 'cmd': 'loaded' });
+      moduleLoaded();
 #endif
 
 #endif
@@ -182,45 +218,33 @@ this.onmessage = function(e) {
       // threads see a somewhat coherent clock across each of them
       // (+/- 0.1msecs in testing).
       Module['__performance_now_clock_drift'] = performance.now() - e.data.time;
-      threadInfoStruct = e.data.threadInfoStruct;
 
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      Module['registerPthreadPtr'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
+      Module['__emscripten_thread_init'](e.data.threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
 
-      selfThreadId = e.data.selfThreadId;
-      parentThreadId = e.data.parentThreadId;
       // Establish the stack frame for this thread in global scope
-#if WASM_BACKEND
       // The stack grows downwards
       var max = e.data.stackBase;
       var top = e.data.stackBase + e.data.stackSize;
-#else
-      var max = e.data.stackBase + e.data.stackSize;
-      var top = e.data.stackBase;
-#endif
 #if ASSERTIONS
-      assert(threadInfoStruct);
-      assert(selfThreadId);
-      assert(parentThreadId);
+      assert(e.data.threadInfoStruct);
       assert(top != 0);
       assert(max != 0);
-#if WASM_BACKEND
       assert(top > max);
-#else
-      assert(max > top);
-#endif
 #endif
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpace'](top, max);
-#if WASM_BACKEND
-      Module['_emscripten_tls_init']();
-#endif
-#if STACK_OVERFLOW_CHECK
-      Module['writeStackCookie']();
-#endif
-
       Module['PThread'].receiveObjectTransfer(e.data);
-      Module['PThread'].setThreadStatus(Module['_pthread_self'](), 1/*EM_THREAD_STATUS_RUNNING*/);
+      Module['PThread'].threadInit();
+
+#if EMBIND
+      // Embind must initialize itself on all threads, as it generates support JS.
+      // We only do this once per worker since they get reused
+      if (!initializedJS) {
+        Module['___embind_register_native_and_builtin_types']();
+        initializedJS = true;
+      }
+#endif // EMBIND
 
       try {
         // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
@@ -230,56 +254,75 @@ this.onmessage = function(e) {
         // enable that to work. If you find the following line to crash, either change the signature
         // to "proper" void *ThreadMain(void *arg) form, or try linking with the Emscripten linker
         // flag -s EMULATE_FUNCTION_POINTER_CASTS=1 to add in emulation for this x86 ABI extension.
-        var result = Module['dynCall_ii'](e.data.start_routine, e.data.arg);
+        var result = Module['invokeEntryPoint'](e.data.start_routine, e.data.arg);
 
 #if STACK_OVERFLOW_CHECK
         Module['checkStackCookie']();
 #endif
-#if !MINIMAL_RUNTIME // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to pthreads. To exit a pthread with live runtime, use the function emscripten_unwind_to_js_event_loop() in the pthread body.
-        // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
+#if MINIMAL_RUNTIME
+        // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
+        // pthreads. To exit a pthread with live runtime, use the function
+        // emscripten_unwind_to_js_event_loop() in the pthread body.
+        // The thread might have finished without calling pthread_exit(). If so,
+        // then perform the exit operation ourselves.
         // (This is a no-op if explicit pthread_exit() had been called prior.)
-        if (!Module['getNoExitRuntime']())
-#endif
+        Module['PThread'].threadExit(result);
+#else
+        if (Module['keepRuntimeAlive']()) {
+          Module['PThread'].setExitStatus(result);
+        } else {
           Module['PThread'].threadExit(result);
+        }
+#endif
       } catch(ex) {
         if (ex === 'Canceled!') {
           Module['PThread'].threadCancel();
         } else if (ex != 'unwind') {
-#if MINIMAL_RUNTIME
-          // ExitStatus not present in MINIMAL_RUNTIME
-          Atomics.store(Module['HEAPU32'], (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
-#else
-          Atomics.store(Module['HEAPU32'], (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (ex instanceof Module['ExitStatus']) ? ex.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
-#endif
-
-          Atomics.store(Module['HEAPU32'], (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
 #if ASSERTIONS
+          // FIXME(sbc): Figure out if this is still needed or useful.  Its not
+          // clear to me how this check could ever fail.  In order to get into
+          // this try/catch block at all we have already called bunch of
+          // functions on `Module`.. why is this one special?
           if (typeof(Module['_emscripten_futex_wake']) !== "function") {
             err("Thread Initialisation failed.");
             throw ex;
           }
 #endif
-          Module['_emscripten_futex_wake'](threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
-#if MINIMAL_RUNTIME
-          throw ex; // ExitStatus not present in MINIMAL_RUNTIME
-#else
-          if (!(ex instanceof Module['ExitStatus'])) throw ex;
+          // ExitStatus not present in MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
+          if (ex instanceof Module['ExitStatus']) {
+            if (Module['keepRuntimeAlive']()) {
+#if ASSERTIONS
+              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), staying alive due to noExitRuntime.');
 #endif
+            } else {
+#if ASSERTIONS
+              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), calling threadExit.');
+#endif
+              Module['PThread'].threadExit(ex.status);
+            }
+          }
+          else
+#endif
+          {
+            Module['PThread'].threadExit(-2);
+            throw ex;
+          }
 #if ASSERTIONS
         } else {
           // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
-          err('Pthread 0x' + threadInfoStruct.toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
+          err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
 #endif
         }
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
-      if (threadInfoStruct) {
+      if (Module['_pthread_self']()) {
         Module['PThread'].threadCancel();
       }
     } else if (e.data.target === 'setimmediate') {
       // no-op
     } else if (e.data.cmd === 'processThreadQueue') {
-      if (threadInfoStruct) { // If this thread is actually running?
+      if (Module['_pthread_self']()) { // If this thread is actually running?
         Module['_emscripten_current_thread_process_queued_calls']();
       }
     } else {
@@ -288,59 +331,7 @@ this.onmessage = function(e) {
     }
   } catch(ex) {
     err('worker.js onmessage() captured an uncaught exception: ' + ex);
-    if (ex.stack) err(ex.stack);
+    if (ex && ex.stack) err(ex.stack);
     throw ex;
   }
 };
-
-#if ENVIRONMENT_MAY_BE_NODE
-// Node.js support
-if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
-  // Create as web-worker-like an environment as we can.
-  self = {
-    location: {
-      href: __filename
-    }
-  };
-
-  var onmessage = this.onmessage;
-
-  var nodeWorkerThreads = require('worker_threads');
-
-  global.Worker = nodeWorkerThreads.Worker;
-
-  var parentPort = nodeWorkerThreads.parentPort;
-
-  parentPort.on('message', function(data) {
-    onmessage({ data: data });
-  });
-
-  var nodeFS = require('fs');
-
-  var nodeRead = function(filename) {
-    return nodeFS.readFileSync(filename, 'utf8');
-  };
-
-  function globalEval(x) {
-    global.require = require;
-    global.Module = Module;
-    eval.call(null, x);
-  }
-
-  importScripts = function(f) {
-    globalEval(nodeRead(f));
-  };
-
-  postMessage = function(msg) {
-    parentPort.postMessage(msg);
-  };
-
-  if (typeof performance === 'undefined') {
-    performance = {
-      now: function() {
-        return Date.now();
-      }
-    };
-  }
-}
-#endif // ENVIRONMENT_MAY_BE_NODE

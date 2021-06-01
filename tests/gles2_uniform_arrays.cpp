@@ -13,6 +13,7 @@
 
 void RunTest(int testVariant)
 {
+    printf("Testing variant %d\n", testVariant);
     GLuint vs = 0;
 
     const char *vsCode = "#version 100\n"
@@ -70,8 +71,8 @@ void RunTest(int testVariant)
         assert(glGetUniformLocation(program, "colors[3]") == -1);
         assert(glGetUniformLocation(program, "colors[1]") == loc+1);
         assert(glGetUniformLocation(program, "colors[]") == loc);
+        assert(glGetUniformLocation(program, "colors[-1]") == -1);
         assert(glGetUniformLocation(program, "colors[-100]") == -1);
-        assert(glGetUniformLocation(program, "colors[bleh]") == -1);
         printf("   ...ok\n");
     }
 

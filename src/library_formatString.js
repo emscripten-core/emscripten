@@ -9,11 +9,44 @@ mergeInto(LibraryManager.library, {
     return x < 0 || (x === 0 && (1/x) === -Infinity);
   },
 
+  // Converts a value we have as signed, into an unsigned value. For
+  // example, -1 in int32 would be a very large number as unsigned.
+  $unSign: function(value, bits) {
+    if (value >= 0) {
+      return value;
+    }
+    // Need some trickery, since if bits == 32, we are right at the limit of the
+    // bits JS uses in bitshifts
+    return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value
+                      : Math.pow(2, bits)         + value;
+  },
+
+  // Converts a value we have as unsigned, into a signed value. For
+  // example, 200 in a uint8 would be a negative number.
+  $reSign: function(value, bits) {
+    if (value <= 0) {
+      return value;
+    }
+    var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
+                          : Math.pow(2, bits-1);
+    // for huge values, we can hit the precision limit and always get true here.
+    // so don't do that but, in general there is no perfect solution here. With
+    // 64-bit ints, we get rounding and errors
+    // TODO: In i64 mode 1, resign the two parts separately and safely
+    if (value >= half && (bits <= 32 || value > half)) {
+      // Cannot bitshift half, as it may be at the limit of the bits JS uses in
+      // bitshifts
+      value = -2*half + value;
+    }
+    return value;
+  },
+
   // Performs printf-style formatting.
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
-  $formatString__deps: ['$reallyNegative', '$convertI32PairToI53', '$convertU32PairToI53'
+  $formatString__deps: ['$reallyNegative', '$convertI32PairToI53', '$convertU32PairToI53',
+                        '$reSign', '$unSign', 'strlen'
 #if MINIMAL_RUNTIME
     , '$intArrayFromString'
 #endif
@@ -67,7 +100,7 @@ mergeInto(LibraryManager.library, {
 
     var ret = [];
     var curr, next, currArg;
-    while(1) {
+    while (1) {
       var startTextIndex = textIndex;
       curr = {{{ makeGetValue(0, 'textIndex', 'i8') }}};
       if (curr === 0) break;
@@ -132,7 +165,7 @@ mergeInto(LibraryManager.library, {
             precision = getNextArg('i32');
             textIndex++;
           } else {
-            while(1) {
+            while (1) {
               var precisionChr = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
               if (precisionChr < {{{ charCode('0') }}} ||
                   precisionChr > {{{ charCode('9') }}}) break;
@@ -325,7 +358,7 @@ mergeInto(LibraryManager.library, {
               var parts = argText.split('e');
               if (isGeneral && !flagAlternative) {
                 // Discard trailing zeros and periods.
-                while (parts[0].length > 1 && parts[0].indexOf('.') != -1 &&
+                while (parts[0].length > 1 && parts[0].includes('.') &&
                        (parts[0].slice(-1) == '0' || parts[0].slice(-1) == '.')) {
                   parts[0] = parts[0].slice(0, -1);
                 }
@@ -434,7 +467,13 @@ mergeInto(LibraryManager.library, {
     return ret;
   },
 
-  // printf/puts implementations for when musl is not pulled in - very partial. useful for tests, and when bootstrapping structInfo
+  // printf/puts/strlen implementations for when musl is not pulled in - very
+  // partial. useful for tests, and when bootstrapping structInfo
+  strlen: function(ptr) {
+    var end = ptr;
+    while (HEAPU8[end]) ++end;
+    return end - ptr;
+  },
   printf__deps: ['$formatString'
 #if MINIMAL_RUNTIME
     , '$intArrayToString'

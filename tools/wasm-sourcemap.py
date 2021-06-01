@@ -22,8 +22,6 @@ import sys
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools.shared import asstr
-
 logger = logging.getLogger('wasm-sourcemap')
 
 
@@ -178,7 +176,7 @@ def remove_dead_entries(entries):
 
 def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
-    output = open(options.dwarfdump_output, 'r').read()
+    output = open(options.dwarfdump_output, 'rb').read()
   elif options.dwarfdump:
     logger.debug('Reading DWARF information from %s' % wasm)
     if not os.path.exists(options.dwarfdump):
@@ -195,7 +193,7 @@ def read_dwarf_entries(wasm, options):
     sys.exit(1)
 
   entries = []
-  debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", asstr(output))
+  debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output.decode('utf-8'))
   maybe_debug_info_content = debug_line_chunks[0]
   for i in range(1, len(debug_line_chunks), 2):
     stmt_list = debug_line_chunks[i]
@@ -279,7 +277,10 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
     if prefixes.provided():
       source_name = prefixes.sources.resolve(file_name)
     else:
-      file_name = os.path.relpath(os.path.abspath(file_name), base_path)
+      try:
+        file_name = os.path.relpath(file_name, base_path)
+      except ValueError:
+        file_name = os.path.abspath(file_name)
       file_name = normalize_path(file_name)
       source_name = file_name
     if source_name not in sources_map:

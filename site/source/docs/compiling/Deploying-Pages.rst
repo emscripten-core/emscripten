@@ -11,11 +11,9 @@ Build Files and Custom Shell
 
 Emscripten build output consists of two essential parts: 1) the low level compiled code module and 2) the JavaScript runtime to interact with it. If targeting WebAssembly which is done with linker flags ``-s WASM=1 -o out.html``, the compiled code is stored in a file ``out.wasm`` and the runtime lives in a file ``out.js``. When targeting asm.js there exists an additional binary file ``out.mem`` that contains the static memory section of the compiled code. This part is embedded in the ``out.wasm`` file when targeting WebAssembly.
 
-By default when targeting asm.js, the compiled code and the runtime are fused in the same ``out.js`` file. For moderately large asm.js projects, it is recommended to use the ``--separate-asm`` flag to separate the compiled code to its own ``out.asm.js`` file, which enables browsers to optimize memory usage for the compiled asm.js code.
-
 Additional build output files can also exist, depending on which features are used. If the Emscripten file packager is used, a binary ``out.data`` package is generated, along with an associated ``out.data.js`` loader file. Also Emscripten pthreads and Fetch APIs have their own associated Web Worker related script ``.js`` output files.
 
-Developers can choose to output either to JavaScript or HTML. If outputting JavaScript (``emcc -o out.js``), the developer is expected to manually create the ``out.html`` main page in which the code is run in browsers. When targeting HTML with ``emcc -o out.html`` (the recommended build mode), Emscripten will generate the HTML shell file automatically. This shell file can be customized by using the ``emcc -o out.html --shell-file path/to/custom_shell.html`` linker directive. Copy the `default minimal HTML shell file <https://github.com/emscripten-core/emscripten/blob/master/src/shell_minimal.html>`_ from Emscripten repository to your project tree to get a good starting template for a customized shell file.
+Developers can choose to output either to JavaScript or HTML. If outputting JavaScript (``emcc -o out.js``), the developer is expected to manually create the ``out.html`` main page in which the code is run in browsers. When targeting HTML with ``emcc -o out.html`` (the recommended build mode), Emscripten will generate the HTML shell file automatically. This shell file can be customized by using the ``emcc -o out.html --shell-file path/to/custom_shell.html`` linker directive. Copy the `default minimal HTML shell file <https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html>`_ from Emscripten repository to your project tree to get a good starting template for a customized shell file.
 
 The following sections offer tips for improving the site experience.
 
@@ -118,7 +116,7 @@ This way the page will be future compatible once support for the particular feat
 
     2. Exceptions caused by Emscripten runtime calling the ``abort()`` function. These correspond to a fatal error that execution of the compiled code cannot recover from. For example, this can occur when calling an invalid function pointer.
 
-    3. Traps caused by compiled WebAssembly code. These correspond to fatal errors coming from the WebAssembly VM. This can occur for example when performing an integer division by zero, or when converting a large floating point number to an integer when the float is out of range of the numbers representable by that integer type. See the linker flag ``-s BINARYEN_TRAP_MODE`` for more details.
+    3. Traps caused by compiled WebAssembly code. These correspond to fatal errors coming from the WebAssembly VM. This can occur for example when performing an integer division by zero, or when converting a large floating point number to an integer when the float is out of range of the numbers representable by that integer type.
 
 - Implement a final "catch all" error handler on the page by implementing a ``window.onerror`` script. This will be called as a last resort if no other source handled an exception that was raised on the page. See `window.onerror <https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers/onerror#window.onerror>`_ documentaton on MDN.
 

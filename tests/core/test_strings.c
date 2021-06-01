@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
   printf("%lu\n", strlen(foolingthecompiler)); // Tests parsing /0D in llvm -
                                                // should not be a 0 (end string)
                                                // then a D!
-  printf("null -> %s\n", NULL);  // Should print '(null)', not the string at address 0,
+  printf("null -> %s\n", (char*)NULL);  // Should print '(null)', not the string at address 0,
                                  // which is a real address for us!
   printf("/* a comment */\n");  // Should not break the generated code!
   printf("// another\n");       // Should not break the generated code!

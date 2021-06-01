@@ -1,1 +1,1 @@
-proc_exit
+wasi_snapshot_preview1.proc_exit

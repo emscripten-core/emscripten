@@ -23,6 +23,10 @@
 
 #include "SDL_net.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 typedef enum {
   MSG_READ,
   MSG_WRITE
