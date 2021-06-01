@@ -521,10 +521,6 @@ def get_binaryen_passes():
       passes += ['--no-exit-runtime']
   if run_binaryen_optimizer:
     passes += [building.opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
-  elif settings.STANDALONE_WASM:
-    # even if not optimizing, make an effort to remove all unused imports and
-    # exports, to make the wasm as standalone as possible
-    passes += ['--remove-unused-module-elements']
   # when optimizing, use the fact that low memory is never used (1024 is a
   # hardcoded value in the binaryen pass)
   if run_binaryen_optimizer and settings.GLOBAL_BASE >= 1024:
