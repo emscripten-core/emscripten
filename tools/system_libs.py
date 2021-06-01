@@ -1104,8 +1104,8 @@ class libal(Library):
   src_files = ['al.c']
 
 
-class libgl(MTLibrary):
-  name = 'libgl'
+class libGL(MTLibrary):
+  name = 'libGL'
 
   src_dir = ['system', 'lib', 'gl']
   src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c']
@@ -1526,7 +1526,7 @@ def calculate(input_files, forced):
     add_library('libcompiler_rt')
   else:
     if settings.AUTO_NATIVE_LIBRARIES:
-      add_library('libgl')
+      add_library('libGL')
       add_library('libal')
       add_library('libhtml5')
 

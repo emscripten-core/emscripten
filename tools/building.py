@@ -1371,7 +1371,7 @@ def map_to_js_libs(library_name):
   }
   # And some are hybrid and require JS and native libraries to be included
   native_library_map = {
-    'GL': 'libgl',
+    'GL': 'libGL',
   }
 
   if library_name in library_map:
