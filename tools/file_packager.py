@@ -716,8 +716,6 @@ def main():
             if (err) {
               errback(err);
             } else {
-              console.log('got data');
-              console.log(typeof contents.buffer);
               callback(contents.buffer);
             }
           });
