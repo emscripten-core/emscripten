@@ -9683,6 +9683,8 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     ok(required_flags + ['-O1'])
     # Exception support shouldn't require changes after linking
     ok(required_flags + ['-fexceptions'])
+    # Standalone mode should not do anything special to the wasm.
+    ok(required_flags + ['-sSTANDALONE_WASM'])
 
     # other builds fail with a standard message + extra details
     def fail(args, details):

@@ -33,6 +33,11 @@ See docs/process.md for more on how version tagging works.
 - Reinstated the warning on linker-only `-s` settings passed when not linking
   (i.e. when compiling with `-c`).  As before this can disabled with
   `-Wno-unused-command-line-argument` (#14182).
+- Standalone wasm mode no longer does extra binaryen work during link. It used
+  to remove unneeded imports, in hopes of avoiding nonstandard imports that
+  could prevent running in WASI VMs, but that has not been needed any more. A
+  minor side effect you might see from this is a larger wasm size in standalone
+  mode when not optimizing (but optimized builds are unaffected). (#14338)
 
 2.0.23
 ------
