@@ -1527,9 +1527,22 @@ LibraryManager.library = {
   _emscripten_throw_longjmp__sig: 'v',
   _emscripten_throw_longjmp: function() { throw 'longjmp'; },
 #if !SUPPORT_LONGJMP
+  // These are in order to print helpful error messages when either longjmp of
+  // setjmp is used.
   longjmp__deps: [function() {
     error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)');
   }],
+  get setjmp__deps() {
+    return this.longjmp__deps;
+  },
+  // This is to print the correct error message when a program is built with
+  // SUPPORT_LONGJMP=1 but linked with SUPPORT_LONGJMP=0. When a program is
+  // built with SUPPORT_LONGJMP=1, the object file contains references of not
+  // longjmp but _emscripten_throw_longjmp, which is called from
+  // emscripten_longjmp.
+  get _emscripten_throw_longjmp__deps() {
+    return this.longjmp__deps;
+  },
   // will never be emitted, as the dep errors at compile time
   longjmp: function(env, value) {
     abort('longjmp not supported');
