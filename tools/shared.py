@@ -679,6 +679,11 @@ class JS:
     return sig == JS.legalize_sig(sig)
 
   @staticmethod
+  def isidentifier(name):
+    # https://stackoverflow.com/questions/43244604/check-that-a-string-is-a-valid-javascript-identifier-name-using-python-3
+    return name.replace('$', '_').isidentifier()
+
+  @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
     if settings.DYNCALLS or not JS.is_legal_sig(sig):
