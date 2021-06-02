@@ -102,17 +102,6 @@ DEFAULT_ASYNCIFY_IMPORTS = [
   'emscripten_fiber_swap',
   'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '_emval_await']
 
-# Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc
-# opt levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to
-# get llvm opt level 3, and speed-wise emcc level 2 is already the slowest/most
-# optimizing level)
-LLVM_OPT_LEVEL = {
-  0: ['-O0'],
-  1: ['-O1'],
-  2: ['-O3'],
-  3: ['-O3'],
-}
-
 # Target options
 final_js = None
 
@@ -237,7 +226,6 @@ class EmccOptions:
     self.compiler_wrapper = None
     self.oformat = None
     self.requested_debug = ''
-    self.profiling = False
     self.profiling_funcs = False
     self.tracing = False
     self.emit_symbol_map = False
@@ -533,10 +521,6 @@ def get_binaryen_passes():
       passes += ['--no-exit-runtime']
   if run_binaryen_optimizer:
     passes += [building.opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
-  elif settings.STANDALONE_WASM:
-    # even if not optimizing, make an effort to remove all unused imports and
-    # exports, to make the wasm as standalone as possible
-    passes += ['--remove-unused-module-elements']
   # when optimizing, use the fact that low memory is never used (1024 is a
   # hardcoded value in the binaryen pass)
   if run_binaryen_optimizer and settings.GLOBAL_BASE >= 1024:
@@ -1314,11 +1298,9 @@ def phase_setup(options, state, newargs, settings_map):
     state.mode = Mode.COMPILE_ONLY
 
   if state.mode in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
-    # TODO(sbc): Re-enable these warnings once we are sure we don't have any false
-    # positives.  See: https://github.com/emscripten-core/emscripten/pull/14109
-    # for key in settings_map:
-    #   if key not in COMPILE_TIME_SETTINGS:
-    #     diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
+    for key in settings_map:
+       if key not in COMPILE_TIME_SETTINGS:
+         diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
     if state.has_dash_c:
       if '-emit-llvm' in newargs:
         options.default_object_extension = '.bc'
@@ -2839,7 +2821,6 @@ def parse_args(newargs):
         settings.DEBUG_LEVEL = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
-      options.profiling = True
     elif check_flag('-profiling-funcs') or check_flag('--profiling-funcs'):
       options.profiling_funcs = True
     elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':
@@ -3026,9 +3007,20 @@ def phase_binaryen(target, options, wasm_target):
     logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
   # whether we need to emit -g (function name debug info) in the final wasm
   debug_info = settings.DEBUG_LEVEL >= 2 or options.profiling_funcs
-  # whether we need to emit -g in the intermediate binaryen invocations (but not necessarily at the very end).
-  # this is necessary for emitting a symbol map at the end.
-  intermediate_debug_info = bool(debug_info or options.emit_symbol_map or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.ASYNCIFY_ADD)
+  # whether we need to emit -g in the intermediate binaryen invocations (but not
+  # necessarily at the very end). this is necessary if we depend on debug info
+  # during compilation, even if we do not emit it at the end.
+  # we track the number of causes for needing intermdiate debug info so
+  # that we can stop emitting it when possible - in particular, that is
+  # important so that we stop emitting it before the end, and it is not in the
+  # final binary (if it shouldn't be)
+  intermediate_debug_info = 0
+  if debug_info:
+    intermediate_debug_info += 1
+  if options.emit_symbol_map:
+    intermediate_debug_info += 1
+  if settings.ASYNCIFY:
+    intermediate_debug_info += 1
   # note that wasm-ld can strip DWARF info for us too (--strip-debug), but it
   # also strips the Names section. so to emit just the Names section we don't
   # tell wasm-ld to strip anything, and we do it here.
@@ -3046,6 +3038,10 @@ def phase_binaryen(target, options, wasm_target):
     if strip_producers:
       passes += ['--strip-producers']
     building.save_intermediate(wasm_target, 'pre-byn.wasm')
+    # if asyncify is used, we will use it in the next stage, and so if it is
+    # the only reason we need intermediate debug info, we can stop keeping it
+    if settings.ASYNCIFY:
+      intermediate_debug_info -= 1
     building.run_wasm_opt(wasm_target,
                           wasm_target,
                           args=passes,
@@ -3161,15 +3157,27 @@ def phase_binaryen(target, options, wasm_target):
   # this will also remove debug info if we only kept it around in the intermediate invocations.
   # note that if we aren't emitting a binary (like in wasm2js) then we don't
   # have anything to do here.
-  if options.emit_symbol_map and os.path.exists(wasm_target):
-    building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=debug_info)
-    save_intermediate_with_wasm('symbolmap', wasm_target)
+  if options.emit_symbol_map:
+    intermediate_debug_info -= 1
+    if os.path.exists(wasm_target):
+      building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
+      save_intermediate_with_wasm('symbolmap', wasm_target)
 
   if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
     building.emit_debug_on_side(wasm_target, settings.SEPARATE_DWARF)
 
   if settings.WASM2C:
     wasm2c.do_wasm2c(wasm_target)
+
+  # we have finished emitting the wasm, and so intermediate debug info will
+  # definitely no longer be used tracking it.
+  if debug_info:
+    intermediate_debug_info -= 1
+  assert intermediate_debug_info == 0
+  # strip debug info if it was not already stripped by the last command
+  if not debug_info and building.binaryen_kept_debug_info and \
+     building.os.path.exists(wasm_target):
+    building.run_wasm_opt(wasm_target, wasm_target)
 
   # replace placeholder strings with correct subresource locations
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:

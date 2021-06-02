@@ -28,7 +28,7 @@ from runner import RunnerCore, path_from_root, requires_native_clang, test_file
 from runner import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
 from runner import env_modify, with_env_modify, disabled, node_pthreads
 from runner import read_file, read_binary
-from runner import NON_ZERO, WEBIDL_BINDER
+from runner import NON_ZERO, WEBIDL_BINDER, EMBUILDER
 import clang_native
 
 # decorators for limiting which modes a test can run in
@@ -5328,6 +5328,27 @@ main( int argv, char ** argc ) {
         self.emcc_args += ['-lnodefs.js', '-lnoderawfs.js']
       self.do_run_in_out_file_test('fs/test_mmap.c')
 
+  @parameterized({
+    '': [],
+    'minimal_runtime': ['-s', 'MINIMAL_RUNTIME=1']
+  })
+  def test_fs_no_main(self, *args):
+    # library_fs.js uses hooks to enable ignoreing of permisions up until ATMAINs are run.  This
+    # test verified that they work correctly, even in programs without a main function.
+    create_file('pre.js', '''
+Module['preRun'] = function() {
+  assert(FS.ignorePermissions, "ignorePermissions not set during preRun");
+}
+Module['onRuntimeInitialized'] = function() {
+  assert(!FS.ignorePermissions, "ignorePermissions not unset during onRuntimeInitialized");
+  assert(_foo() == 42);
+}
+''')
+    self.set_setting('EXPORTED_FUNCTIONS', '_foo')
+    self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args += ['--pre-js', 'pre.js'] + list(args)
+    self.do_run('int foo() { return 42; }', '', force_c=True)
+
   @also_with_noderawfs
   def test_fs_errorstack(self):
     # Enables strict mode, which may catch some strict-mode-only errors
@@ -6145,10 +6166,6 @@ void* operator new(size_t size) {
   })
   # Called thus so it runs late in the alphabetical cycle... it is long
   def test_bullet(self, use_cmake):
-    if not use_cmake:
-      # Temporarily disabled
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/14255')
-
     if WINDOWS and not use_cmake:
       self.skipTest("Windows cannot run configure sh scripts")
 
@@ -6226,8 +6243,11 @@ void* operator new(size_t size) {
         };
         """ % line_splitter(str(image_bytes)))
 
-      shutil.copy(test_file('third_party/openjpeg/opj_config.h'), self.get_dir())
-
+      # ensure libpng is built so that openjpeg's configure step can detect it.
+      # If we don't do this then we don't know what the state of the cache will be
+      # and this test would different non-deterministic results based on, for example,
+      # what other tests had previously run.
+      self.run_process([EMBUILDER, 'build', 'libpng'])
       lib = self.get_library('third_party/openjpeg',
                              [Path('codec/CMakeFiles/j2k_to_image.dir/index.c.o'),
                               Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
@@ -6278,11 +6298,12 @@ void* operator new(size_t size) {
         self.do_runf(test_file('third_party/openjpeg/codec/j2k_to_image.c'),
                      'Successfully generated', # The real test for valid output is in image_compare
                      args='-i image.j2k -o image.raw'.split(),
+                     emcc_args=['-sUSE_LIBPNG'],
                      libraries=lib,
                      includes=[test_file('third_party/openjpeg/libopenjpeg'),
                                test_file('third_party/openjpeg/codec'),
                                test_file('third_party/openjpeg/common'),
-                               Path(self.get_build_dir(), 'openjpeg')],
+                               Path(self.get_build_dir(), 'third_party/openjpeg')],
                      output_nicerizer=image_compare)
 
       do_test()
@@ -7528,6 +7549,18 @@ Module['onRuntimeInitialized'] = function() {
     except Exception:
       if should_pass:
         raise
+
+    # use of ASYNCIFY_* options may require intermediate debug info. that should
+    # not end up emitted in the final binary
+    if self.is_wasm():
+      with open('test_asyncify_lists.wasm', 'rb') as f:
+        binary = f.read()
+      # there should be no name section
+      self.assertFalse(b'name' in binary)
+      # in a fully-optimized build, imports and exports are minified too and we
+      # can verify that our function names appear nowhere
+      if '-O3' in self.emcc_args:
+        self.assertFalse(b'main' in binary)
 
   @parameterized({
     'normal': ([], True),

@@ -8,11 +8,11 @@
 
 #include "private_typeinfo.h"
 
-// The flag _LIBCXX_DYNAMIC_FALLBACK is used to make dynamic_cast more
-// forgiving when type_info's mistakenly have hidden visibility and thus
-// multiple type_infos can exist for a single type.
+// The flag _LIBCXXABI_FORGIVING_DYNAMIC_CAST is used to make dynamic_cast
+// more forgiving when type_info's mistakenly have hidden visibility and
+// thus multiple type_infos can exist for a single type.
 //
-// When _LIBCXX_DYNAMIC_FALLBACK is defined, and only in the case where
+// When _LIBCXXABI_FORGIVING_DYNAMIC_CAST is defined, and only in the case where
 // there is a detected inconsistency in the type_info hierarchy during a
 // dynamic_cast, then the equality operation will fall back to using strcmp
 // on type_info names to determine type_info equality.
@@ -23,7 +23,7 @@
 // algorithm and an inconsistency is still detected, dynamic_cast will call
 // abort with an appropriate message.
 //
-// The current implementation of _LIBCXX_DYNAMIC_FALLBACK requires a
+// The current implementation of _LIBCXXABI_FORGIVING_DYNAMIC_CAST requires a
 // printf-like function called syslog:
 //
 //     void syslog(int facility_priority, const char* format, ...);
@@ -31,21 +31,22 @@
 // If you want this functionality but your platform doesn't have syslog,
 // just implement it in terms of fprintf(stderr, ...).
 //
-// _LIBCXX_DYNAMIC_FALLBACK is currently off by default.
+// _LIBCXXABI_FORGIVING_DYNAMIC_CAST is currently off by default.
 
 // On Windows, typeids are different between DLLs and EXEs, so comparing
 // type_info* will work for typeids from the same compiled file but fail
 // for typeids from a DLL and an executable. Among other things, exceptions
 // are not caught by handlers since can_catch() returns false.
 //
-// Defining _LIBCXX_DYNAMIC_FALLBACK does not help since can_catch() calls
+// Defining _LIBCXXABI_FORGIVING_DYNAMIC_CAST does not help since can_catch() calls
 // is_equal() with use_strcmp=false so the string names are not compared.
 
 #include <string.h>
 
-#ifdef _LIBCXX_DYNAMIC_FALLBACK
+#ifdef _LIBCXXABI_FORGIVING_DYNAMIC_CAST
 #include "abort_message.h"
 #include <sys/syslog.h>
+#include <atomic>
 #endif
 
 static inline
@@ -58,6 +59,16 @@ is_equal(const std::type_info* x, const std::type_info* y, bool use_strcmp)
         return *x == *y;
     // Still allow pointer equality to short circut.
     return x == y || strcmp(x->name(), y->name()) == 0;
+}
+
+static inline ptrdiff_t update_offset_to_base(const char* vtable,
+                                              ptrdiff_t offset_to_base) {
+#if __has_feature(cxx_abi_relative_vtable)
+  // VTable components are 32 bits in the relative vtables ABI.
+  return *reinterpret_cast<const int32_t*>(vtable + offset_to_base);
+#else
+  return *reinterpret_cast<const ptrdiff_t*>(vtable + offset_to_base);
+#endif
 }
 
 namespace __cxxabiv1
@@ -296,7 +307,7 @@ __base_class_type_info::has_unambiguous_public_base(__dynamic_cast_info* info,
         if (__offset_flags & __virtual_mask)
         {
             const char* vtable = *static_cast<const char*const*>(adjustedPtr);
-            offset_to_base = *reinterpret_cast<const ptrdiff_t*>(vtable + offset_to_base);
+            offset_to_base = update_offset_to_base(vtable, offset_to_base);
         }
     }
     __base_type->has_unambiguous_public_base(
@@ -614,10 +625,26 @@ __dynamic_cast(const void *static_ptr, const __class_type_info *static_type,
     // Possible future optimization:  Take advantage of src2dst_offset
 
     // Get (dynamic_ptr, dynamic_type) from static_ptr
+#if __has_feature(cxx_abi_relative_vtable)
+    // The vtable address will point to the first virtual function, which is 8
+    // bytes after the start of the vtable (4 for the offset from top + 4 for the typeinfo component).
+    const int32_t* vtable =
+        *reinterpret_cast<const int32_t* const*>(static_ptr);
+    int32_t offset_to_derived = vtable[-2];
+    const void* dynamic_ptr = static_cast<const char*>(static_ptr) + offset_to_derived;
+
+    // The typeinfo component is now a relative offset to a proxy.
+    int32_t offset_to_ti_proxy = vtable[-1];
+    const uint8_t* ptr_to_ti_proxy =
+        reinterpret_cast<const uint8_t*>(vtable) + offset_to_ti_proxy;
+    const __class_type_info* dynamic_type =
+        *(reinterpret_cast<const __class_type_info* const*>(ptr_to_ti_proxy));
+#else
     void **vtable = *static_cast<void ** const *>(static_ptr);
     ptrdiff_t offset_to_derived = reinterpret_cast<ptrdiff_t>(vtable[-2]);
     const void* dynamic_ptr = static_cast<const char*>(static_ptr) + offset_to_derived;
     const __class_type_info* dynamic_type = static_cast<const __class_type_info*>(vtable[-1]);
+#endif
 
     // Initialize answer to nullptr.  This will be changed from the search
     //    results if a non-null answer is found.  Regardless, this is what will
@@ -633,22 +660,26 @@ __dynamic_cast(const void *static_ptr, const __class_type_info *static_type,
         info.number_of_dst_type = 1;
         // Do the  search
         dynamic_type->search_above_dst(&info, dynamic_ptr, dynamic_ptr, public_path, false);
-#ifdef _LIBCXX_DYNAMIC_FALLBACK
+#ifdef _LIBCXXABI_FORGIVING_DYNAMIC_CAST
         // The following if should always be false because we should definitely
         //   find (static_ptr, static_type), either on a public or private path
         if (info.path_dst_ptr_to_static_ptr == unknown)
         {
             // We get here only if there is some kind of visibility problem
             //   in client code.
-            syslog(LOG_ERR, "dynamic_cast error 1: Both of the following type_info's "
-                    "should have public visibility. At least one of them is hidden. %s"
-                    ", %s.\n", static_type->name(), dynamic_type->name());
+            static_assert(std::atomic<size_t>::is_always_lock_free, "");
+            static std::atomic<size_t> error_count(0);
+            size_t error_count_snapshot = error_count.fetch_add(1, std::memory_order_relaxed);
+            if ((error_count_snapshot & (error_count_snapshot-1)) == 0)
+                syslog(LOG_ERR, "dynamic_cast error 1: Both of the following type_info's "
+                        "should have public visibility. At least one of them is hidden. %s"
+                        ", %s.\n", static_type->name(), dynamic_type->name());
             // Redo the search comparing type_info's using strcmp
             info = {dst_type, static_ptr, static_type, src2dst_offset, 0};
             info.number_of_dst_type = 1;
             dynamic_type->search_above_dst(&info, dynamic_ptr, dynamic_ptr, public_path, true);
         }
-#endif  // _LIBCXX_DYNAMIC_FALLBACK
+#endif  // _LIBCXXABI_FORGIVING_DYNAMIC_CAST
         // Query the search.
         if (info.path_dst_ptr_to_static_ptr == public_path)
             dst_ptr = dynamic_ptr;
@@ -657,22 +688,26 @@ __dynamic_cast(const void *static_ptr, const __class_type_info *static_type,
     {
         // Not using giant short cut.  Do the search
         dynamic_type->search_below_dst(&info, dynamic_ptr, public_path, false);
- #ifdef _LIBCXX_DYNAMIC_FALLBACK
+ #ifdef _LIBCXXABI_FORGIVING_DYNAMIC_CAST
         // The following if should always be false because we should definitely
         //   find (static_ptr, static_type), either on a public or private path
         if (info.path_dst_ptr_to_static_ptr == unknown &&
             info.path_dynamic_ptr_to_static_ptr == unknown)
         {
-            syslog(LOG_ERR, "dynamic_cast error 2: One or more of the following type_info's "
-                            "has hidden visibility or is defined in more than one translation "
-                            "unit. They should all have public visibility. "
-                            "%s, %s, %s.\n", static_type->name(), dynamic_type->name(),
-                    dst_type->name());
+            static_assert(std::atomic<size_t>::is_always_lock_free, "");
+            static std::atomic<size_t> error_count(0);
+            size_t error_count_snapshot = error_count.fetch_add(1, std::memory_order_relaxed);
+            if ((error_count_snapshot & (error_count_snapshot-1)) == 0)
+                syslog(LOG_ERR, "dynamic_cast error 2: One or more of the following type_info's "
+                                "has hidden visibility or is defined in more than one translation "
+                                "unit. They should all have public visibility. "
+                                "%s, %s, %s.\n", static_type->name(), dynamic_type->name(),
+                        dst_type->name());
             // Redo the search comparing type_info's using strcmp
             info = {dst_type, static_ptr, static_type, src2dst_offset, 0};
             dynamic_type->search_below_dst(&info, dynamic_ptr, public_path, true);
         }
-#endif  // _LIBCXX_DYNAMIC_FALLBACK
+#endif  // _LIBCXXABI_FORGIVING_DYNAMIC_CAST
         // Query the search.
         switch (info.number_to_static_ptr)
         {
@@ -1258,7 +1293,7 @@ __base_class_type_info::search_above_dst(__dynamic_cast_info* info,
     if (__offset_flags & __virtual_mask)
     {
         const char* vtable = *static_cast<const char*const*>(current_ptr);
-        offset_to_base = *reinterpret_cast<const ptrdiff_t*>(vtable + offset_to_base);
+        offset_to_base = update_offset_to_base(vtable, offset_to_base);
     }
     __base_type->search_above_dst(info, dst_ptr,
                                   static_cast<const char*>(current_ptr) + offset_to_base,
@@ -1278,7 +1313,7 @@ __base_class_type_info::search_below_dst(__dynamic_cast_info* info,
     if (__offset_flags & __virtual_mask)
     {
         const char* vtable = *static_cast<const char*const*>(current_ptr);
-        offset_to_base = *reinterpret_cast<const ptrdiff_t*>(vtable + offset_to_base);
+        offset_to_base = update_offset_to_base(vtable, offset_to_base);
     }
     __base_type->search_below_dst(info,
                                   static_cast<const char*>(current_ptr) + offset_to_base,

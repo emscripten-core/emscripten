@@ -24,7 +24,6 @@ In general a complete Emscripten environment requires the following tools. First
 
   - :term:`Node.js` (0.8 or above; 0.10.17 or above to run websocket-using servers in node)
   - :term:`Python` (3.6 or above)
-    site/source/docs/building_from_source/toolchain_what_is_needed.rst
   - :term:`Java` (1.6.0_31 or later). Java is optional. It can be used to run the java version of term:`Closure Compiler`.
   - :term:`Git` client. Git is required if building tools from source.
   - :term:`LLVM` (LLVM, including clang and wasm-ld)

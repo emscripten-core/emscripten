@@ -56,12 +56,10 @@ def dir_is_newer(dir_a, dir_b):
   return newest_a < newest_b
 
 
-def get_base_cflags(force_object_files=False, debug_info=True):
+def get_base_cflags(force_object_files=False):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
-  flags = []
-  if debug_info:
-    flags.append('-g')
+  flags = ['-g']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE:
@@ -735,19 +733,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         # TODO: These could be moved away from JS in the upcoming musl upgrade.
         'pthread_cancel.c', 'pthread_detach.c',
         'pthread_join.c', 'pthread_testcancel.c',
-        # TODO: Support C11 condition variable and mutex library functions.
-        'cnd_broadcast.c',
-        'cnd_destroy.c',
-        'cnd_init.c',
-        'cnd_signal.c',
-        'cnd_timedwait.c',
-        'cnd_wait.c',
-        'mtx_destroy.c',
-        'mtx_init.c',
-        'mtx_lock.c',
-        'mtx_timedlock.c',
-        'mtx_trylock.c',
-        'mtx_unlock.c',
       ]
       libc_files += files_in_path(
         path_components=['system', 'lib', 'pthread'],
@@ -762,15 +747,27 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=[
           'pthread_self.c',
           # C11 thread library functions
+          'call_once.c',
+          'tss_create.c',
+          'tss_delete.c',
+          'tss_set.c',
+          'cnd_broadcast.c',
+          'cnd_destroy.c',
+          'cnd_init.c',
+          'cnd_signal.c',
+          'cnd_timedwait.c',
+          'cnd_wait.c',
+          'mtx_destroy.c',
+          'mtx_init.c',
+          'mtx_lock.c',
+          'mtx_timedlock.c',
+          'mtx_trylock.c',
+          'mtx_unlock.c',
           'thrd_create.c',
           'thrd_exit.c',
           'thrd_join.c',
           'thrd_sleep.c',
           'thrd_yield.c',
-          'call_once.c',
-          'tss_create.c',
-          'tss_delete.c',
-          'tss_set.c',
         ])
       libc_files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
 
@@ -907,10 +904,8 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
-      '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
-      # Remove this once we update to include this llvm
-      # revision: https://reviews.llvm.org/D64961
-      '-D_LIBCXXABI_GUARD_ABI_ARM',
+      '-D_LIBCXXABI_BUILDING_LIBRARY',
+      '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
     ]
 
   def get_cflags(self):
@@ -1638,7 +1633,7 @@ class Ports:
       shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[], debug_info=True):
+  def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
     srcs = []
     for root, dirs, files in os.walk(src_path, topdown=False):
       if any((excluded in root) for excluded in exclude_dirs):
@@ -1658,19 +1653,19 @@ class Ports:
       commands.append([shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
       objects.append(obj)
 
-    Ports.run_commands(commands, debug_info=debug_info)
+    Ports.run_commands(commands)
     create_lib(output_path, objects)
     return output_path
 
   @staticmethod
-  def run_commands(commands, debug_info=True):
+  def run_commands(commands):
     # Runs a sequence of compiler commands, adding importand cflags as defined by get_cflags() so
     # that the ports are built in the correct configuration.
     def add_args(cmd):
       # this must only be called on a standard build command
       assert cmd[0] in (shared.EMCC, shared.EMXX)
       # add standard cflags, but also allow the cmd to override them
-      return cmd[:1] + get_base_cflags(debug_info=debug_info) + cmd[1:]
+      return cmd[:1] + get_base_cflags() + cmd[1:]
     run_build_commands([add_args(c) for c in commands])
 
   @staticmethod

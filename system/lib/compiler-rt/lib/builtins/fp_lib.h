@@ -40,13 +40,16 @@
 
 #if defined SINGLE_PRECISION
 
+typedef uint16_t half_rep_t;
 typedef uint32_t rep_t;
+typedef uint64_t twice_rep_t;
 typedef int32_t srep_t;
 typedef float fp_t;
+#define HALF_REP_C UINT16_C
 #define REP_C UINT32_C
 #define significandBits 23
 
-static __inline int rep_clz(rep_t a) { return __builtin_clz(a); }
+static __inline int rep_clz(rep_t a) { return clzsi(a); }
 
 // 32x32 --> 64 bit multiply
 static __inline void wideMultiply(rep_t a, rep_t b, rep_t *hi, rep_t *lo) {
@@ -58,9 +61,11 @@ COMPILER_RT_ABI fp_t __addsf3(fp_t a, fp_t b);
 
 #elif defined DOUBLE_PRECISION
 
+typedef uint32_t half_rep_t;
 typedef uint64_t rep_t;
 typedef int64_t srep_t;
 typedef double fp_t;
+#define HALF_REP_C UINT32_C
 #define REP_C UINT64_C
 #define significandBits 52
 
@@ -69,9 +74,9 @@ static __inline int rep_clz(rep_t a) {
   return __builtin_clzl(a);
 #else
   if (a & REP_C(0xffffffff00000000))
-    return __builtin_clz(a >> 32);
+    return clzsi(a >> 32);
   else
-    return 32 + __builtin_clz(a & REP_C(0xffffffff));
+    return 32 + clzsi(a & REP_C(0xffffffff));
 #endif
 }
 
@@ -102,9 +107,11 @@ COMPILER_RT_ABI fp_t __adddf3(fp_t a, fp_t b);
 #elif defined QUAD_PRECISION
 #if __LDBL_MANT_DIG__ == 113 && defined(__SIZEOF_INT128__)
 #define CRT_LDBL_128BIT
+typedef uint64_t half_rep_t;
 typedef __uint128_t rep_t;
 typedef __int128_t srep_t;
 typedef long double fp_t;
+#define HALF_REP_C UINT64_C
 #define REP_C (__uint128_t)
 // Note: Since there is no explicit way to tell compiler the constant is a
 // 128-bit integer, we let the constant be casted to 128-bit integer

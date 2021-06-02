@@ -21,7 +21,7 @@
 
 namespace __sanitizer {
 
-class DlAddrSymbolizer : public SymbolizerTool {
+class DlAddrSymbolizer final : public SymbolizerTool {
  public:
   bool SymbolizePC(uptr addr, SymbolizedStack *stack) override;
   bool SymbolizeData(uptr addr, DataInfo *info) override;
@@ -29,12 +29,13 @@ class DlAddrSymbolizer : public SymbolizerTool {
 
 class AtosSymbolizerProcess;
 
-class AtosSymbolizer : public SymbolizerTool {
+class AtosSymbolizer final : public SymbolizerTool {
  public:
   explicit AtosSymbolizer(const char *path, LowLevelAllocator *allocator);
 
   bool SymbolizePC(uptr addr, SymbolizedStack *stack) override;
   bool SymbolizeData(uptr addr, DataInfo *info) override;
+  void LateInitialize() override;
 
  private:
   AtosSymbolizerProcess *process_;
