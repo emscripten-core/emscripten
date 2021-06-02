@@ -42,7 +42,7 @@ from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
-from tools.shared import do_replace
+from tools.shared import do_replace, strip_prefix
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
@@ -335,7 +335,7 @@ def apply_settings(changes):
     # and we can't just flip them, so leave them as-is to be
     # handled in a special way later)
     if key.startswith('NO_') and value in ('0', '1'):
-      key = key[3:]
+      key = strip_prefix(key, 'NO_')
       value = str(1 - int(value))
     return key, value
 
@@ -357,7 +357,7 @@ def apply_settings(changes):
 
     filename = None
     if value and value[0] == '@':
-      filename = value[1:]
+      filename = strip_prefix(value, '@')
       if not os.path.exists(filename):
         exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
       value = open(filename).read().strip()
@@ -618,7 +618,7 @@ def is_dash_s_for_emcc(args, i):
       return False
     arg = args[i + 1]
   else:
-    arg = args[i][2:]
+    arg = strip_prefix(args[i], '-s')
   arg = arg.split('=')[0]
   return arg.isidentifier() and arg.isupper()
 
@@ -714,7 +714,7 @@ def parse_s_args(args):
           key = args[i + 1]
           args[i + 1] = ''
         else:
-          key = args[i][2:]
+          key = strip_prefix(args[i], '-s')
         args[i] = ''
 
         # If not = is specified default to 1
@@ -1244,7 +1244,7 @@ def phase_setup(options, state, newargs, settings_map):
         # For shared libraries that are neither bitcode nor wasm, assuming its local native
         # library and attempt to find a library by the same name in our own library path.
         # TODO(sbc): Do we really need this feature?  See test_other.py:test_local_link
-        libname = unsuffixed_basename(arg).lstrip('lib')
+        libname = strip_prefix(unsuffixed_basename(arg), 'lib')
         state.libs.append((i, libname))
       else:
         input_files.append((i, arg))
@@ -2294,7 +2294,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
         return_next = True
         continue
       if item.startswith('-x'):
-        return item[2:]
+        return strip_prefix(item, '-x')
     return ''
 
   language_mode = get_language_mode(newargs)
@@ -2729,7 +2729,7 @@ def parse_args(newargs):
 
     if arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
-      options.requested_level = arg[2:] or '2'
+      options.requested_level = strip_prefix(arg, '-O') or '2'
       if options.requested_level == 's':
         options.requested_level = 2
         settings.SHRINK_LEVEL = 1
@@ -2784,7 +2784,7 @@ def parse_args(newargs):
       settings.DEBUG_LEVEL = max(1, settings.DEBUG_LEVEL)
     elif arg.startswith('-g'):
       options.requested_debug = arg
-      requested_level = arg[2:] or '3'
+      requested_level = strip_prefix(arg, '-g') or '3'
       if is_int(requested_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
         settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + arg)
@@ -2959,7 +2959,7 @@ def parse_args(newargs):
     elif arg == '-frtti':
       settings.USE_RTTI = 1
     elif arg.startswith('-jsD'):
-      key = arg[4:]
+      key = strip_prefix(arg, '-jsD')
       if '=' in key:
         key, value = key.split('=')
       else:
@@ -2975,7 +2975,7 @@ def parse_args(newargs):
     elif check_arg('-o'):
       options.output_file = consume_arg()
     elif arg.startswith('-o'):
-      options.output_file = arg[2:]
+      options.output_file = strip_prefix(arg, '-o')
       newargs[i] = ''
     elif arg == '-mllvm':
       # Ignore the next argument rather than trying to parse it.  This is needed
