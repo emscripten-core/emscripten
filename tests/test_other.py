@@ -10603,3 +10603,7 @@ kill -9 $$
     err = self.expect_fail([EMCC, '-c', '-Werror', 'test.c'])
     self.assertContained("error: 'foo' is deprecated", err)
     self.run_process([EMCC, '-c', '-Werror', '-Wno-deprecated', 'test.c'])
+
+  def test_bad_export_name(self):
+    err = self.expect_fail([EMCC, '-sEXPORT_NAME=foo bar', test_file('hello_world.c')])
+    self.assertContained('error: EXPORT_NAME is not a valid JS identifier: `foo bar`', err)

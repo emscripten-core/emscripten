@@ -360,7 +360,7 @@ def apply_settings(changes):
       filename = value[1:]
       if not os.path.exists(filename):
         exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
-      value = open(filename).read()
+      value = open(filename).read().strip()
     else:
       value = value.replace('\\', '\\\\')
 
@@ -2230,6 +2230,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
       exit_with_error('NODE_CODE_CACHING only works in node, but target environments do not include it')
     if settings.SINGLE_FILE:
       exit_with_error('NODE_CODE_CACHING saves a file on the side and is not compatible with SINGLE_FILE')
+
+  if not shared.JS.isidentifier(settings.EXPORT_NAME):
+    exit_with_error(f'EXPORT_NAME is not a valid JS identifier: `{settings.EXPORT_NAME}`')
 
   if options.tracing and settings.ALLOW_MEMORY_GROWTH:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
