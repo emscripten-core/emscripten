@@ -1537,8 +1537,6 @@ LibraryManager.library = {
   setjmp: function(env, value) {
     abort('setjmp not supported');
   },
-  //_emscripten_throw_longjmp__deps: longjmp__deps,
-  _emscripten_throw_longjmp__deps: longjmp__deps,
 #endif
 
   // ==========================================================================

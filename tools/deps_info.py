@@ -93,6 +93,11 @@ _deps_info = {
   'emscripten_idb_load': ['malloc', 'free'],
   'emscripten_init_websocket_to_posix_socket_bridge': ['malloc', 'free'],
   'emscripten_log': ['strlen'],
+  # This list is the same as setjmp's dependencies. In non-LTO builds, setjmp
+  # does not exist in the object files; it is converted into a code sequence
+  # that includes several functions, one of which is emscripten_longjmp. This is
+  # a trick to includes these dependencies for setjmp even when setjmp does not
+  # exist. Refer to setjmp's entry for more details.
   'emscripten_longjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
   'emscripten_pc_get_file': ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'malloc', 'free'],
   'emscripten_pc_get_function': ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'malloc', 'free'],
@@ -177,6 +182,12 @@ _deps_info = {
   'accept': ['htons'],
   'recvfrom': ['htons'],
   'send': ['ntohs'],
+  # In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function calls
+  # that exist in the same function with setjmp are converted to some code
+  # sequence that includes invokes, malloc, free, saveSetjmp, and
+  # emscripten_longjmp. setThrew is called from invokes, but there's no way to
+  # directly include invokes in deps_info.py, so we list it as setjmp's
+  # dependency.
   'setjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
   'setprotoent': ['malloc'],
   'setgroups': ['sysconf'],
