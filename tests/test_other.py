@@ -10381,7 +10381,7 @@ exec "$@"
 
     # When debugging set this valud to the function that you want to start
     # with.  All symbols prior will be skipped over.
-    start_at = 'longjmp'
+    start_at = None
     assert not start_at or start_at in deps_info.get_deps_info()
     for function, deps in deps_info.get_deps_info().items():
       if start_at:
@@ -10433,9 +10433,16 @@ exec "$@"
         cmd.append('-sUSE_WEBGPU')
       if function.startswith('__cxa_'):
         cmd.append('-fexceptions')
-      # Causes WebAssemblyLowerEmscriptenEHSjLj pass in llvm to crash
-      # TODO
-      if function in ['emscripten_longjmp', 'longjmp', 'setjmp']:
+      # In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function
+      # calls that exist in the same function with setjmp are converted to some
+      # code sequence that includes malloc, free, and emscripten_longjmp.
+      # emscripten_longjmp is included in deps_info.py because in non-LTO build
+      # setjmp does not exist anymore in the final object file. So the mere
+      # indirect reference of setjmp or emscripten_longjmp does not generate
+      # calls to malloc/free/saveSetjmp, which are specified in deps_info.py.
+      # Also Emscripten EH has a known restriction that setjmp cannot be called
+      # or referenced indirectly anyway.
+      if function in ['emscripten_longjmp', 'setjmp']:
         continue
       print(shared.shlex_join(cmd))
       self.run_process(cmd)
