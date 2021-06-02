@@ -300,6 +300,20 @@ class Library:
     """
     return shared.Cache.get_lib(self.get_filename(), self.build)
 
+  def get_link_flag(self):
+    """
+    Gets the link flags needed to use the library.
+
+    This will trigger a build if this library is not in the cache.
+    """
+    fullpath = self.get_path()
+    # For non-libaries (e.g. crt1.o) we pass the entire path to the linker
+    if self.get_ext() != '.a':
+      return fullpath
+    # For libraries (.a) files, we pass the abbreviated `-l` form.
+    base = shared.unsuffixed_basename(fullpath)
+    return '-l' + shared.strip_prefix(base, 'lib')
+
   def get_files(self):
     """
     Gets a list of source files for this library.
@@ -1487,7 +1501,7 @@ def calculate(input_files, forced):
     logger.debug('including %s (%s)' % (lib.name, lib.get_filename()))
 
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
-    libs_to_link.append((lib.get_path(), need_whole_archive))
+    libs_to_link.append((lib.get_link_flag(), need_whole_archive))
 
   if settings.USE_PTHREADS:
     add_library('crtbegin')

@@ -21,6 +21,12 @@ See docs/process.md for more on how version tagging works.
 2.0.24
 ------
 - Support `--preload-file` in Node.js. (#11785)
+- System libraries are now passed to the linker internally via `-lfoo` rather
+  than using their full path.  This is in line with how gcc and clang pass system
+  libraries to the linker.  This should not effect any builds unless a project a
+  happens to have, for example, a file called `libc.a` in one of its library
+  paths.  This would have the effect of overriding the system library (as it
+  would with gcc or clang) (#14342).
 - CMake projects (those that either use emcmake or use Emscripten.cmake
   directly) are new configured to install (by default) directly into the
   emscripten sysroot.  This means that running `cmake --install` (or running the
