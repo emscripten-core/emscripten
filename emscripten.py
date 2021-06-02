@@ -25,7 +25,8 @@ from tools import diagnostics
 from tools import shared
 from tools import gen_struct_info
 from tools import webassembly
-from tools.shared import WINDOWS, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
+from tools.shared import WINDOWS, path_from_root, exit_with_error, asmjs_mangle
+from tools.shared import treat_as_user_function, strip_prefix
 from tools.settings import settings
 
 logger = logging.getLogger('emscripten')
@@ -798,7 +799,7 @@ def create_invoke_wrappers(invoke_funcs):
   """Asm.js-style exception handling: invoke wrapper generation."""
   invoke_wrappers = ''
   for invoke in invoke_funcs:
-    sig = invoke[len('invoke_'):]
+    sig = strip_prefix(invoke, 'invoke_')
     invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
   return invoke_wrappers
 

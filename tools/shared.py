@@ -737,6 +737,11 @@ def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
 
 
+def strip_prefix(string, prefix):
+  assert string.startswith(prefix)
+  return string[len(prefix):]
+
+
 def safe_copy(src, dst):
   logging.debug('copy: %s -> %s', src, dst)
   src = os.path.abspath(src)
