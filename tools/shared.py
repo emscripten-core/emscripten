@@ -61,7 +61,7 @@ diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined', error=True)
-diagnostics.add_warning('deprecated')
+diagnostics.add_warning('deprecated', shared=True)
 diagnostics.add_warning('version-check')
 diagnostics.add_warning('export-main')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
@@ -679,6 +679,11 @@ class JS:
     return sig == JS.legalize_sig(sig)
 
   @staticmethod
+  def isidentifier(name):
+    # https://stackoverflow.com/questions/43244604/check-that-a-string-is-a-valid-javascript-identifier-name-using-python-3
+    return name.replace('$', '_').isidentifier()
+
+  @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
     if settings.DYNCALLS or not JS.is_legal_sig(sig):
@@ -735,6 +740,11 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
+
+
+def strip_prefix(string, prefix):
+  assert string.startswith(prefix)
+  return string[len(prefix):]
 
 
 def safe_copy(src, dst):

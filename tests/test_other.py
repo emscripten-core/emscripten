@@ -10600,3 +10600,17 @@ kill -9 $$
   def test_link_only_setting_warning(self):
     err = self.run_process([EMCC, '-sALLOW_MEMORY_GROWTH', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained("warning: linker setting ignored during compilation: 'ALLOW_MEMORY_GROWTH' [-Wunused-command-line-argument]", err)
+
+  def test_no_deprecated(self):
+    # Test that -Wno-deprecated is passed on to clang driver
+    create_file('test.c', '''\
+        __attribute__((deprecated)) int foo();
+        int main() { return foo(); }
+    ''')
+    err = self.expect_fail([EMCC, '-c', '-Werror', 'test.c'])
+    self.assertContained("error: 'foo' is deprecated", err)
+    self.run_process([EMCC, '-c', '-Werror', '-Wno-deprecated', 'test.c'])
+
+  def test_bad_export_name(self):
+    err = self.expect_fail([EMCC, '-sEXPORT_NAME=foo bar', test_file('hello_world.c')])
+    self.assertContained('error: EXPORT_NAME is not a valid JS identifier: `foo bar`', err)
