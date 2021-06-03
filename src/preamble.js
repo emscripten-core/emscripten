@@ -746,14 +746,14 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
-#if EXPORT_ES6 && USE_ES6_IMPORT_META
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE
 if (Module['locateFile']) {
 #endif
   var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
-#if EXPORT_ES6 && USE_ES6_IMPORT_META
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE // in single-file mode, repeating WASM_BINARY_FILE would emit the contents again
 } else {
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
   var wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).toString();
