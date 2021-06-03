@@ -119,7 +119,7 @@ function callMain(args) {
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
-  assert(!calledMain, 'main() is special in that it should only be called once in the C ABI');
+  assert(!calledMain, 'in the C world, main() is special in that it should only be called once');
 #endif
 
 #if STANDALONE_WASM
