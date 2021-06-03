@@ -9543,6 +9543,12 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     out = self.run_process([EMXX, test_file('hello_world.cpp'), '-Wl,-version-script,foo'], stderr=PIPE).stderr
     self.assertContained('warning: ignoring unsupported linker flag: `-version-script`', out)
 
+  def test_supported_linker_flag_skip_next(self):
+    # Regression test for a bug where skipping an unsupported linker flag
+    # could skip the next unrelated linker flag.
+    err = self.expect_fail([EMXX, test_file('hello_world.cpp'), '-Wl,-rpath=foo', '-lbar'])
+    self.assertContained('error: unable to find library -lbar', err)
+
   def test_linker_flags_pass_through(self):
     err = self.expect_fail([EMXX, test_file('hello_world.cpp'), '-Wl,--waka'])
     self.assertContained('wasm-ld: error: unknown argument: --waka', err)
