@@ -10433,8 +10433,15 @@ exec "$@"
         cmd.append('-sUSE_WEBGPU')
       if function.startswith('__cxa_'):
         cmd.append('-fexceptions')
-      # Causes WebAssemblyLowerEmscriptenEHSjLj pass in llvm to crash
-      if function == 'setjmp':
+      # In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function
+      # calls that exist in the same function with setjmp are converted to some
+      # code sequence that includes emscripten_longjmp. emscripten_longjmp is
+      # included in deps_info.py because in non-LTO builds setjmp does not exist
+      # anymore in the object files. So the mere indirect reference of setjmp or
+      # emscripten_longjmp does not generate calls to its dependencies specified
+      # in deps_info.py. Also Emscripten EH has a known restriction that setjmp
+      # cannot be called or referenced indirectly anyway.
+      if function in ['emscripten_longjmp', 'setjmp']:
         continue
       print(shared.shlex_join(cmd))
       self.run_process(cmd)

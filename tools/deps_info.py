@@ -93,7 +93,12 @@ _deps_info = {
   'emscripten_idb_load': ['malloc', 'free'],
   'emscripten_init_websocket_to_posix_socket_bridge': ['malloc', 'free'],
   'emscripten_log': ['strlen'],
-  'emscripten_longjmp': ['setThrew'],
+  # This list is the same as setjmp's dependencies. In non-LTO builds, setjmp
+  # does not exist in the object files; it is converted into a code sequence
+  # that includes several functions, one of which is emscripten_longjmp. This is
+  # a trick to include these dependencies for setjmp even when setjmp does not
+  # exist. Refer to setjmp's entry for more details.
+  'emscripten_longjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
   'emscripten_pc_get_file': ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'malloc', 'free'],
   'emscripten_pc_get_function': ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'malloc', 'free'],
   'emscripten_run_preload_plugins_data': ['malloc'],
@@ -167,7 +172,6 @@ _deps_info = {
   'gmtime_r':  ['malloc'],
   'localtime': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
   'localtime_r': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
-  'longjmp': ['setThrew'],
   'mktime': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
   'mmap': ['memalign', 'memset', 'malloc'],
   'munmap': ['malloc', 'free'],
@@ -178,10 +182,15 @@ _deps_info = {
   'accept': ['htons'],
   'recvfrom': ['htons'],
   'send': ['ntohs'],
-  'setjmp': ['saveSetjmp'],
+  # In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function calls
+  # that exist in the same function with setjmp are converted to some code
+  # sequence that includes invokes, malloc, free, saveSetjmp, and
+  # emscripten_longjmp. setThrew is called from invokes, but there's no way to
+  # directly include invokes in deps_info.py, so we list it as a setjmp's
+  # dependency.
+  'setjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
   'setprotoent': ['malloc'],
   'setgroups': ['sysconf'],
-  'siglongjmp': ['setThrew'],
   'syslog': ['malloc', 'ntohs'],
   'timegm': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
   'times': ['memset'],
