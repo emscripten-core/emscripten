@@ -1399,7 +1399,12 @@ int f() {
     self.run_process([EMCC, 'main.c', '-L.', '-lexport', '-s', 'EXPORTED_FUNCTIONS=%s' % full_export_name])
     self.assertTrue(self.is_exported_in_wasm(export_name, 'a.out.wasm'))
 
-  def test_embed_file(self):
+  @parameterized({
+    'embed': (['--embed-file', 'somefile.txt'],),
+    'embed-twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
+    'preload': (['--preload-file', 'somefile.txt'],)
+  })
+  def test_include_file(self, args):
     create_file('somefile.txt', 'hello from a file with lots of data and stuff in it thank you very much')
     create_file('main.cpp', r'''
       #include <stdio.h>
@@ -1414,12 +1419,10 @@ int f() {
       }
     ''')
 
-    self.run_process([EMXX, 'main.cpp', '--embed-file', 'somefile.txt'])
-    self.assertContained('|hello from a file wi|', self.run_js('a.out.js'))
-
-    # preload twice, should not err
-    self.run_process([EMXX, 'main.cpp', '--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'])
-    self.assertContained('|hello from a file wi|', self.run_js('a.out.js'))
+    self.run_process([EMXX, 'main.cpp'] + args)
+    # run in node.js to ensure we verify that file preloading works there
+    result = self.run_js('a.out.js', engine=config.NODE_JS)
+    self.assertContained('|hello from a file wi|', result)
 
   def test_embed_file_dup(self):
     ensure_dir(self.in_dir('tst', 'test1'))

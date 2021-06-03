@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 2.0.24
 ------
+- Support `--preload-file` in Node.js. (#11785)
 - CMake projects (those that either use emcmake or use Emscripten.cmake
   directly) are new configured to install (by default) directly into the
   emscripten sysroot.  This means that running `cmake --install` (or running the
