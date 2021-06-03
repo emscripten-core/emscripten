@@ -918,51 +918,7 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_linked_list.c')
 
   def test_sup(self):
-      src = '''
-        #include <stdio.h>
-
-        struct S4   { int x;          }; // size: 4
-        struct S4_2 { short x, y;     }; // size: 4, but for alignment purposes, 2
-        struct S6   { short x, y, z;  }; // size: 6
-        struct S6w  { char x[6];      }; // size: 6 also
-        struct S6z  { int x; short y; }; // size: 8, since we align to a multiple of the biggest - 4
-
-        struct C___  { S6 a, b, c; int later; };
-        struct Carr  { S6 a[3]; int later; }; // essentially the same, but differently defined
-        struct C__w  { S6 a; S6w b; S6 c; int later; }; // same size, different struct
-        struct Cp1_  { int pre; short a; S6 b, c; int later; }; // fillers for a
-        struct Cp2_  { int a; short pre; S6 b, c; int later; }; // fillers for a (get addr of the other filler)
-        struct Cint  { S6 a; int  b; S6 c; int later; }; // An int (different size) for b
-        struct C4__  { S6 a; S4   b; S6 c; int later; }; // Same size as int from before, but a struct
-        struct C4_2  { S6 a; S4_2 b; S6 c; int later; }; // Same size as int from before, but a struct with max element size 2
-        struct C__z  { S6 a; S6z  b; S6 c; int later; }; // different size, 8 instead of 6
-
-        int main()
-        {
-          #define TEST(struc) \\
-          { \\
-            struc *s = 0; \\
-            printf("*%s: %d,%d,%d,%d<%zu*\\n", #struc, (int)&(s->a), (int)&(s->b), (int)&(s->c), (int)&(s->later), sizeof(struc)); \\
-          }
-          #define TEST_ARR(struc) \\
-          { \\
-            struc *s = 0; \\
-            printf("*%s: %d,%d,%d,%d<%zu*\\n", #struc, (int)&(s->a[0]), (int)&(s->a[1]), (int)&(s->a[2]), (int)&(s->later), sizeof(struc)); \\
-          }
-          printf("sizeofs:%zu,%zu\\n", sizeof(S6), sizeof(S6z));
-          TEST(C___);
-          TEST_ARR(Carr);
-          TEST(C__w);
-          TEST(Cp1_);
-          TEST(Cp2_);
-          TEST(Cint);
-          TEST(C4__);
-          TEST(C4_2);
-          TEST(C__z);
-          return 0;
-        }
-      '''
-      self.do_run(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
+    self.do_run_in_out_file_test(test_file('core/test_sup.cpp'))
 
   @also_with_standalone_wasm()
   def test_assert(self):
@@ -1067,51 +1023,7 @@ int main()
     self.do_run(src, r'''d is at 24''')
 
   def test_setjmp_noleak(self):
-    src = r'''
-#include <setjmp.h>
-#include <stdio.h>
-#include <assert.h>
-
-jmp_buf env;
-
-void luaWork(int d){
-  int x;
-  printf("d is at %d\n", d);
-
-  longjmp(env, 1);
-}
-
-#include <malloc.h>
-#include <stdlib.h>
-
-void dump() {
-  struct mallinfo m = mallinfo();
-  printf("dump: %d , %d\n", m.arena, m.uordblks);
-}
-
-void work(int n)
-{
-  printf("work %d\n", n);
-  dump();
-
-  if(!setjmp(env)){
-    luaWork(n);
-  }
-
-  if (n > 0) work(n-1);
-}
-
-int main() {
-  struct mallinfo m1 = mallinfo();
-  dump();
-  work(10);
-  dump();
-  struct mallinfo m2 = mallinfo();
-  assert(m1.uordblks == m2.uordblks);
-  printf("ok.\n");
-}
-'''
-    self.do_run(src, r'''ok.''')
+    self.do_runf(test_file('core/test_setjmp_noleak.c'), 'ok.')
 
   @with_both_exception_handling
   def test_exceptions(self):
