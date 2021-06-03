@@ -12,7 +12,6 @@
 #endif
 
 #include <xmmintrin.h>
-#include <emscripten/emscripten.h>
 
 #define __MIN(x, y) ((x) <= (y) ? (x) : (y))
 #define __MAX(x, y) ((x) >= (y) ? (x) : (y))
