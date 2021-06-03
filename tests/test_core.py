@@ -7583,19 +7583,19 @@ Module['onRuntimeInitialized'] = function() {
   @no_asan('asyncify stack operations confuse asan')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY')
-    self.do_core_test('emscripten_scan_registers.cpp')
+    self.do_core_test('test_emscripten_scan_registers.cpp')
 
   def test_asyncify_assertions(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
     self.set_setting('ASSERTIONS')
-    self.do_core_test('asyncify_assertions.cpp')
+    self.do_core_test('test_asyncify_assertions.cpp')
 
   def test_asyncify_during_exit(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASSERTIONS')
     self.set_setting('EXIT_RUNTIME', 1)
-    self.do_core_test('asyncify_during_exit.cpp', assert_returncode=1)
+    self.do_core_test('test_asyncify_during_exit.cpp', assert_returncode=1)
 
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm2js('TODO: lazy loading in wasm2js')
