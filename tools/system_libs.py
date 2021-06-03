@@ -490,13 +490,14 @@ class Library:
 
     This returns a dictionary of simple names to Library objects.
     """
-    result = {}
-    for subclass in cls.get_inheritance_tree():
-      if subclass.name:
-        library = subclass.get_default_variation()
-        if library.can_build() and library.can_use():
-          result[subclass.name] = library
-    return result
+    if not hasattr(cls, 'useable_variations'):
+      cls.useable_variations = {}
+      for subclass in cls.get_inheritance_tree():
+        if subclass.name:
+          library = subclass.get_default_variation()
+          if library.can_build() and library.can_use():
+            cls.useable_variations[subclass.name] = library
+    return cls.useable_variations
 
 
 class MTLibrary(Library):
