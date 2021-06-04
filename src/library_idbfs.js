@@ -212,7 +212,7 @@ mergeInto(LibraryManager.library, {
       try {
         var req = store.put(entry, path);
       } catch (e) {
-        callback(this.error);
+        callback(e);
         return;
       }
       req.onsuccess = function() { callback(null); };
