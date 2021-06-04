@@ -977,7 +977,15 @@ var LibraryBrowser = {
         if (onload) {{{ makeDynCall('viiii', 'onload') }}}(handle, arg, buffer, byteArray.length);
         if (free) _free(buffer);
       } else {
-        if (onerror) {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, http.statusText);
+        if (onerror) {
+          let statusText = 0;
+          if(http.statusText) {
+            let len = lengthBytesUTF8(http.statusText) + 1;
+            statusText = stackAlloc(len);
+            stringToUTF8(http.statusText, statusText, len);
+          }
+          {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, statusText);
+        }
       }
       delete Browser.wgetRequests[handle];
     };
@@ -985,7 +993,13 @@ var LibraryBrowser = {
     // ERROR
     http.onerror = function http_onerror(e) {
       if (onerror) {
-        {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, http.statusText);
+        let statusText = 0;
+        if(http.statusText) {
+          let len = lengthBytesUTF8(http.statusText) + 1;
+          statusText = stackAlloc(len);
+          stringToUTF8(http.statusText, statusText, len);
+        }
+        {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, statusText);
       }
       delete Browser.wgetRequests[handle];
     };
