@@ -1340,7 +1340,6 @@ def map_to_js_libs(library_name):
   # Some native libraries are implemented in Emscripten as system side JS libraries
   library_map = {
     'c': [],
-    'dl': [],
     'EGL': ['library_egl.js'],
     'GL': ['library_webgl.js', 'library_html5_webgl.js'],
     'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
@@ -1351,10 +1350,7 @@ def map_to_js_libs(library_name):
     'glfw3': ['library_glfw.js'],
     'GLU': [],
     'glut': ['library_glut.js'],
-    'm': [],
     'openal': ['library_openal.js'],
-    'rt': [],
-    'pthread': [],
     'X11': ['library_xlib.js'],
     'SDL': ['library_sdl.js'],
     'stdc++': [],

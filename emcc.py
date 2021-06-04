@@ -3507,6 +3507,14 @@ def process_libraries(link_flags, lib_dirs, linker_inputs):
   libraries = []
   suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
   system_libs_map = system_libs.Library.get_usable_variations()
+  # These libraries are seperate under glibc but with musl they are all rolled into
+  # a single libc.  For compatability we silectly ignore these.
+  ignore_libraries = [
+    'm',
+    'rt',
+    'pthread',
+    'dl',
+  ]
 
   # Find library files
   for i, flag in link_flags:
@@ -3514,6 +3522,8 @@ def process_libraries(link_flags, lib_dirs, linker_inputs):
       new_flags.append((i, flag))
       continue
     lib = strip_prefix(flag, '-l')
+    if lib in ignore_libraries:
+      continue
     # We don't need to resolve system libraries to absolute paths here, we can just
     # let wasm-ld handle that.  However, we do want to map to the correct variant.
     # For example we map `-lc` to `-lc-mt` if we are building with threading support.
