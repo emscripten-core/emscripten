@@ -1050,7 +1050,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.POST_LINK_ONLY:
     settings.limit_settings(None)
     target, wasm_target = phase_linker_setup(options, state, newargs, settings_map)
-    process_libraries(state.link_flags, state.lib_dirs, [])
+    process_libraries(state, [])
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
     phase_post_link(options, state, input_files[0][1], wasm_target, target)
@@ -1113,7 +1113,7 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   state.link_flags = filter_link_flags(state.link_flags, using_lld)
 
   # Decide what we will link
-  state.link_flags = process_libraries(state.link_flags, state.lib_dirs, linker_inputs)
+  process_libraries(state, linker_inputs)
 
   linker_args = [val for _, val in sorted(linker_inputs + state.link_flags)]
 
@@ -3502,14 +3502,14 @@ def find_library(lib, lib_dirs):
   return None
 
 
-def process_libraries(link_flags, lib_dirs, linker_inputs):
+def process_libraries(state, linker_inputs):
   new_flags = []
   libraries = []
   suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
   system_libs_map = system_libs.Library.get_usable_variations()
 
   # Find library files
-  for i, flag in link_flags:
+  for i, flag in state.link_flags:
     if not flag.startswith('-l'):
       new_flags.append((i, flag))
       continue
@@ -3527,7 +3527,7 @@ def process_libraries(link_flags, lib_dirs, linker_inputs):
     path = None
     for suff in suffixes:
       name = 'lib' + lib + suff
-      path = find_library(name, lib_dirs)
+      path = find_library(name, state.lib_dirs)
       if path:
         break
 
@@ -3546,7 +3546,7 @@ def process_libraries(link_flags, lib_dirs, linker_inputs):
   # Sort the input list from (order, lib_name) pairs to a flat array in the right order.
   settings.SYSTEM_JS_LIBRARIES.sort(key=lambda lib: lib[0])
   settings.SYSTEM_JS_LIBRARIES = [lib[1] for lib in settings.SYSTEM_JS_LIBRARIES]
-  return new_flags
+  state.link_flags = new_flags
 
 
 class ScriptSource:
