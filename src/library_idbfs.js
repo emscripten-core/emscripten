@@ -209,7 +209,12 @@ mergeInto(LibraryManager.library, {
       };
     },
     storeRemoteEntry: function(store, path, entry, callback) {
-      var req = store.put(entry, path);
+      try {
+        var req = store.put(entry, path);
+      } catch (e) {
+        callback(this.error);
+        return;
+      }
       req.onsuccess = function() { callback(null); };
       req.onerror = function(e) {
         callback(this.error);
