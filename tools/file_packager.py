@@ -524,8 +524,8 @@ def main():
       var PACKAGE_PATH = '';
       if (typeof window === 'object') {
         PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
-      } else if (typeof location !== 'undefined') {
-        // worker
+      } else if (typeof process === 'undefined' && typeof location !== 'undefined') {
+        // web worker
         PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf('/')) + '/');
       }
       var PACKAGE_NAME = '%s';
@@ -711,8 +711,7 @@ def main():
     ret += r'''
       function fetchRemotePackage(packageName, packageSize, callback, errback) {
         if (typeof process === 'object') {
-          fs = require('fs');
-          fs.readFile(packageName, function(err, contents) {
+          require('fs').readFile(packageName, function(err, contents) {
             if (err) {
               errback(err);
             } else {
