@@ -1339,8 +1339,6 @@ def is_wasm_dylib(filename):
 def map_to_js_libs(library_name):
   # Some native libraries are implemented in Emscripten as system side JS libraries
   library_map = {
-    'c': [],
-    'dl': [],
     'EGL': ['library_egl.js'],
     'GL': ['library_webgl.js', 'library_html5_webgl.js'],
     'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
@@ -1351,15 +1349,27 @@ def map_to_js_libs(library_name):
     'glfw3': ['library_glfw.js'],
     'GLU': [],
     'glut': ['library_glut.js'],
-    'm': [],
     'openal': ['library_openal.js'],
-    'rt': [],
-    'pthread': [],
     'X11': ['library_xlib.js'],
     'SDL': ['library_sdl.js'],
-    'stdc++': [],
     'uuid': ['library_uuid.js'],
-    'websocket': ['library_websocket.js']
+    'websocket': ['library_websocket.js'],
+    # These 4 libraries are seperate under glibc but are all rolled into
+    # libc with musl.  For compatibility with glibc we just ignore them
+    # completely.
+    'dl': [],
+    'm': [],
+    'rt': [],
+    'pthread': [],
+    # This is the name of GNU's C++ standard library. We ignore it here
+    # for compatability with GNU toolchains.
+    'stdc++': [],
+    # This means that linking against libc with `-lc` is ignored when the
+    # library is not found (It does work if library already exists in the
+    # sysroot because that case is handled before we call (map_to_js_libs).
+    # TODO(sbc): We should probably remove this and allow `-lc` to make it all
+    # the way to the linker.
+    'c': [],
   }
 
   if library_name in library_map:
