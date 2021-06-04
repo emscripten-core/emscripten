@@ -25,8 +25,7 @@ set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
 # OpenCV) use this to detect bitness.
 set(CMAKE_SYSTEM_PROCESSOR x86)
 
-# Since emscripten produces Javascript, we set the byte order to little endian
-# to avoid cmake's checks.
+# WebAssembly is always little endian so avoid the cmake's checks and force this.
 set(CMAKE_C_BYTE_ORDER LITTLE_ENDIAN)
 set(CMAKE_CXX_BYTE_ORDER LITTLE_ENDIAN)
 
