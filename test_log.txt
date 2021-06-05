@@ -1,0 +1,130 @@
+runner:WARNING: use EMTEST_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage
+Test suites:
+['test_browser']
+Running test_browser: (513 tests)
+(checking sanity from test runner)
+shared:INFO: (Emscripten: Running sanity checks)
+runner:INFO: Using default system browser
+test_TextDecoder (test_browser.browser) ... [Browser harness server on process 804903]
+
+Running the browser tests. Make sure the browser allows popups from localhost.
+
+ok
+test_aaaaa_emscripten_async_wget2_data (test_browser.browser) ... ok
+test_access_file_after_heap_resize (test_browser.browser) ... Remember to build the main file with  -s FORCE_FILESYSTEM=1  so that it includes support for loading this file package
+ok
+test_aniso (test_browser.browser) ... ok
+test_asmfs_dirent_test_readdir (test_browser.browser) ... skipped 'ASMFS is looking for a maintainer'
+test_asmfs_dirent_test_readdir_empty (test_browser.browser) ... skipped 'ASMFS is looking for a maintainer'
+test_asmfs_fopen_write (test_browser.browser) ... skipped 'ASMFS is looking for a maintainer'
+test_asmfs_hello_file (test_browser.browser) ... skipped 'ASMFS is looking for a maintainer'
+test_asmfs_mkdir_create_unlink_rmdir (test_browser.browser) ... skipped 'ASMFS is looking for a maintainer'
+test_asmfs_read_file_twice (test_browser.browser) ... skipped 'ASMFS is looking for a maintainer'
+test_asmfs_relative_paths (test_browser.browser) ... skipped 'ASMFS is looking for a maintainer'
+test_asmfs_test_fcntl_open (test_browser.browser) ... skipped 'ASMFS is looking for a maintainer'
+test_asmfs_unistd_access (test_browser.browser) ... skipped 'ASMFS is looking for a maintainer'
+test_asmfs_unistd_close (test_browser.browser) ... skipped 'ASMFS is looking for a maintainer'
+test_asmfs_unistd_unlink (test_browser.browser) ... skipped 'ASMFS is looking for a maintainer'
+test_assert_failure (test_browser.browser) ... ok
+test_async (test_browser.browser) ... 0
+1
+2
+3
+ok
+test_async_2 (test_browser.browser) ... ok
+test_async_bad_list (test_browser.browser) ... warning: Asyncify onlylist contained a non-existing function name: waka (waka)
+ok
+test_async_in_pthread (test_browser.browser) ... ok
+test_async_iostream (test_browser.browser) ... ok
+test_async_longjmp_O0 (test_browser.browser) ... ok
+test_async_longjmp_O3 (test_browser.browser) ... ok
+test_async_mainloop (test_browser.browser) ... 0
+3
+ok
+test_async_returnvalue_em_js_bad (test_browser.browser) ... ok
+test_async_returnvalue_empty_list (test_browser.browser) ... ok
+test_async_returnvalue_normal (test_browser.browser) ... ok
+test_async_returnvalue_nothing (test_browser.browser) ... ok
+test_async_returnvalue_response (test_browser.browser) ... ok
+test_async_stack_overflow (test_browser.browser) ... ok
+test_async_virtual (test_browser.browser) ... 0
+3
+ok
+test_async_virtual_2 (test_browser.browser) ... 0
+3
+ok
+test_asyncify_tricky_function_sig (test_browser.browser) ... ok
+test_base64_atob_fallback (test_browser.browser) ... ok
+test_binaryen_async (test_browser.browser) ... [] 1
+['-O1'] 1
+['-O2'] 1
+['-O3'] 1
+['-s', 'WASM_ASYNC_COMPILATION'] 1
+['-O1', '-s', 'WASM_ASYNC_COMPILATION=0'] 0
+ok
+test_browser_modularize_no_current_script (test_browser.browser) ... [] ['-s', 'MODULARIZE'] Module();
+['subdir'] ['-s', 'MODULARIZE'] Module();
+ok
+test_browser_run_from_different_directory (test_browser.browser) ... ok
+test_browser_run_from_different_directory_async (test_browser.browser) ... ['-s', 'MODULARIZE']
+ok
+test_canvas_focus (test_browser.browser) ... Module();
+new Module();
+ok
+test_canvas_size_proxy (test_browser.browser) ... ok
+test_canvas_style_proxy (test_browser.browser) ... ok
+test_chunked_synchronous_xhr (test_browser.browser) ... 127.0.0.1 - - [04/Jun/2021 22:16:39] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:39] "HEAD /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:39] "OPTIONS /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:39] "GET /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:40] "OPTIONS /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:40] "GET /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:40] "OPTIONS /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:40] "GET /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:40] "OPTIONS /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:40] "GET /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:40] "OPTIONS /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:40] "GET /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:40] "OPTIONS /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:40] "GET /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:41] "OPTIONS /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:41] "GET /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:41] "OPTIONS /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:41] "GET /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:41] "OPTIONS /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:41] "GET /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:41] "OPTIONS /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:41] "GET /bogus_file_path HTTP/1.1" 200 -
+127.0.0.1 - - [04/Jun/2021 22:16:41] "OPTIONS /bogus_file_path HTTP/1.1" 200 -
+FAIL
+test_clientside_vertex_arrays_es3 (test_browser.browser) ... (sleep for server)
+[test error (see below), automatically retrying]
+Expected to find '/report_result?4205574455
+' in '/report_result?abort:Error: Couldn't load http://localhost:11111/bogus_file_path. Status: 0
+', diff:
+
+--- expected
++++ actual
+@@ -1 +1 @@
+-/report_result?4205574455
++/report_result?abort:Error: Couldn't load http://localhost:11111/bogus_file_path. Status: 0
+
+
+ok
+test_closure_in_web_only_target_environment_console_log (test_browser.browser) ... ok
+test_closure_in_web_only_target_environment_webgl (test_browser.browser) ... ok
+test_cocos2d_hello (test_browser.browser) ... skipped 'cocos2d needs to be ported'
+test_cpuprofiler_memoryprofiler (test_browser.browser) ... ok
+test_cube_explosion (test_browser.browser) ... proxied...
+ok
+test_cubegeom (test_browser.browser) ... proxied...
+ok
+test_cubegeom_color (test_browser.browser) ... ok
+test_cubegeom_color2 (test_browser.browser) ... proxied...
+ok
+test_cubegeom_fog (test_browser.browser) ... ok
+test_cubegeom_glew (test_browser.browser) ... ok
+test_cubegeom_mt (test_browser.browser) ... ok
+test_cubegeom_normal (test_browser.browser) ... proxied...
+ok
+test_cubegeom_normal_dap (test_browser.browser) ... proxied...

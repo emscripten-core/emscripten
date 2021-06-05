@@ -979,7 +979,7 @@ var LibraryBrowser = {
       } else {
         if (onerror) {
           var statusText = 0;
-          if(http.statusText) {
+          if (http.statusText) {
             var len = lengthBytesUTF8(http.statusText) + 1;
             statusText = stackAlloc(len);
             stringToUTF8(http.statusText, statusText, len);
@@ -994,7 +994,7 @@ var LibraryBrowser = {
     http.onerror = function http_onerror(e) {
       if (onerror) {
         var statusText = 0;
-        if(http.statusText) {
+        if (http.statusText) {
           var len = lengthBytesUTF8(http.statusText) + 1;
           statusText = stackAlloc(len);
           stringToUTF8(http.statusText, statusText, len);
