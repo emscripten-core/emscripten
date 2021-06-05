@@ -35,7 +35,7 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, EMCMAKE, 
 from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from runner import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from runner import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
-from runner import compiler_for, read_file, read_binary
+from runner import compiler_for, read_file, read_binary, EMBUILDER
 from tools import shared, building, utils, deps_info
 import jsrun
 import clang_native
@@ -422,6 +422,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertNotExists('twopart_side.o')
     self.assertNotExists(test_file('twopart_main.o'))
     self.assertNotExists(test_file('twopart_side.o'))
+
+  def test_tsearch(self):
+    self.do_other_test('test_tsearch.c')
 
   def test_combining_object_files(self):
     # Compiling two files with -c will generate separate object files
@@ -10630,3 +10633,15 @@ kill -9 $$
   def test_bad_export_name(self):
     err = self.expect_fail([EMCC, '-sEXPORT_NAME=foo bar', test_file('hello_world.c')])
     self.assertContained('error: EXPORT_NAME is not a valid JS identifier: `foo bar`', err)
+
+  def test_standard_library_mapping(self):
+    # Test the `-l` flags on the command line get mapped the correct libraries variant
+    self.run_process([EMBUILDER, 'build', 'libc-mt', 'libcompiler_rt-mt', 'libdlmalloc-mt'])
+
+    libs = ['-lc', '-lc_rt_wasm', '-lcompiler_rt', '-lmalloc']
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nostdlib', '-v'] + libs, stderr=PIPE).stderr
+
+    # Check the the linker was run with `-mt` variants because `-pthread` was passed.
+    self.assertContained(' -lc-mt ', err)
+    self.assertContained(' -ldlmalloc-mt ', err)
+    self.assertContained(' -lcompiler_rt-mt ', err)

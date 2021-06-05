@@ -203,15 +203,12 @@ class EmccState:
     self.has_dash_c = False
     self.has_dash_E = False
     self.has_dash_S = False
-    self.libs = []
     self.link_flags = []
     self.lib_dirs = []
     self.forced_stdlibs = []
 
 
 def add_link_flag(state, i, f):
-  if f.startswith('-l'):
-    state.libs.append((i, f[2:]))
   if f.startswith('-L'):
     state.lib_dirs.append(f[2:])
 
@@ -638,7 +635,7 @@ def filter_out_dynamic_libs(options, inputs):
     else:
       return True
 
-  return [f for f in inputs if check(f[1])]
+  return [f for f in inputs if check(f)]
 
 
 def filter_out_duplicate_dynamic_libs(inputs):
@@ -654,7 +651,7 @@ def filter_out_duplicate_dynamic_libs(inputs):
       seen.add(abspath)
     return True
 
-  return [f for f in inputs if check(f[1])]
+  return [f for f in inputs if check(f)]
 
 
 def process_dynamic_libs(dylibs, lib_dirs):
@@ -1053,7 +1050,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.POST_LINK_ONLY:
     settings.limit_settings(None)
     target, wasm_target = phase_linker_setup(options, state, newargs, settings_map)
-    process_libraries(state.libs, state.lib_dirs, [])
+    process_libraries(state.link_flags, state.lib_dirs, [])
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
     phase_post_link(options, state, input_files[0][1], wasm_target, target)
@@ -1116,24 +1113,23 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   state.link_flags = filter_link_flags(state.link_flags, using_lld)
 
   # Decide what we will link
-  consumed = process_libraries(state.libs, state.lib_dirs, linker_inputs)
-  # Filter out libraries that are actually JS libs
-  state.link_flags = [l for l in state.link_flags if l[0] not in consumed]
+  state.link_flags = process_libraries(state.link_flags, state.lib_dirs, linker_inputs)
+
+  linker_args = [val for _, val in sorted(linker_inputs + state.link_flags)]
 
   # If we are linking to an intermediate object then ignore other
   # "fake" dynamic libraries, since otherwise we will end up with
   # multiple copies in the final executable.
   if options.oformat == OFormat.OBJECT or options.ignore_dynamic_linking:
-    linker_inputs = filter_out_dynamic_libs(options, linker_inputs)
+    linker_args = filter_out_dynamic_libs(options, linker_args)
   else:
-    linker_inputs = filter_out_duplicate_dynamic_libs(linker_inputs)
+    linker_args = filter_out_duplicate_dynamic_libs(linker_args)
 
   if settings.MAIN_MODULE:
-    dylibs = [i[1] for i in linker_inputs if building.is_wasm_dylib(i[1])]
+    dylibs = [a for a in linker_args if building.is_wasm_dylib(a)]
     process_dynamic_libs(dylibs, state.lib_dirs)
 
-  linker_arguments = [val for _, val in sorted(linker_inputs + state.link_flags)]
-  return linker_arguments
+  return linker_args
 
 
 @ToolchainProfiler.profile_block('parse arguments')
@@ -1244,7 +1240,7 @@ def phase_setup(options, state, newargs, settings_map):
         # library and attempt to find a library by the same name in our own library path.
         # TODO(sbc): Do we really need this feature?  See test_other.py:test_local_link
         libname = strip_prefix(unsuffixed_basename(arg), 'lib')
-        state.libs.append((i, libname))
+        add_link_flag(state, i, '-l' + libname)
       else:
         input_files.append((i, arg))
     elif arg.startswith('-L'):
@@ -1986,7 +1982,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
   # When not declaring wasm module exports in outer scope one by one, disable minifying
   # wasm module export names so that the names can be passed directly to the outer scope.
   # Also, if using library_exports.js API, disable minification so that the feature can work.
-  if not settings.DECLARE_ASM_MODULE_EXPORTS or 'exports.js' in [x for _, x in state.libs]:
+  if not settings.DECLARE_ASM_MODULE_EXPORTS or '-lexports.js' in [x for _, x in state.link_flags]:
     settings.MINIFY_ASMJS_EXPORT_NAMES = 0
 
   # Enable minification of wasm imports and exports when appropriate, if we
@@ -3506,13 +3502,26 @@ def find_library(lib, lib_dirs):
   return None
 
 
-def process_libraries(libs, lib_dirs, linker_inputs):
+def process_libraries(link_flags, lib_dirs, linker_inputs):
+  new_flags = []
   libraries = []
-  consumed = []
   suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
+  system_libs_map = system_libs.Library.get_usable_variations()
 
   # Find library files
-  for i, lib in libs:
+  for i, flag in link_flags:
+    if not flag.startswith('-l'):
+      new_flags.append((i, flag))
+      continue
+    lib = strip_prefix(flag, '-l')
+    # We don't need to resolve system libraries to absolute paths here, we can just
+    # let wasm-ld handle that.  However, we do want to map to the correct variant.
+    # For example we map `-lc` to `-lc-mt` if we are building with threading support.
+    if 'lib' + lib in system_libs_map:
+      lib = system_libs_map['lib' + lib]
+      new_flags.append((i, '-l' + strip_prefix(lib.get_base_name(), 'lib')))
+      continue
+
     logger.debug('looking for library "%s"', lib)
 
     path = None
@@ -3524,14 +3533,12 @@ def process_libraries(libs, lib_dirs, linker_inputs):
 
     if path:
       linker_inputs.append((i, path))
-      consumed.append(i)
-    else:
-      jslibs = building.map_to_js_libs(lib)
-      if jslibs is not None:
-        libraries += [(i, jslib) for jslib in jslibs]
-        consumed.append(i)
-      elif building.map_and_apply_to_settings(lib):
-        consumed.append(i)
+      continue
+    jslibs = building.map_to_js_libs(lib)
+    if jslibs is not None:
+      libraries += [(i, jslib) for jslib in jslibs]
+    elif not building.map_and_apply_to_settings(lib):
+      new_flags.append((i, flag))
 
   settings.SYSTEM_JS_LIBRARIES += libraries
 
@@ -3539,7 +3546,7 @@ def process_libraries(libs, lib_dirs, linker_inputs):
   # Sort the input list from (order, lib_name) pairs to a flat array in the right order.
   settings.SYSTEM_JS_LIBRARIES.sort(key=lambda lib: lib[0])
   settings.SYSTEM_JS_LIBRARIES = [lib[1] for lib in settings.SYSTEM_JS_LIBRARIES]
-  return consumed
+  return new_flags
 
 
 class ScriptSource:

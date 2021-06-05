@@ -270,13 +270,15 @@ class TestCoreBase(RunnerCore):
   def is_wasm2js(self):
     return self.get_setting('WASM') == 0
 
+  def can_use_closure(self):
+    return '-g' not in self.emcc_args and '--profiling' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args)
+
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
-    if '--closure=1' not in self.emcc_args:
-      if '-g' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args):
-        self.emcc_args += ['--closure=1']
-        logger.debug('using closure compiler..')
-        return True
+    if '--closure=1' not in self.emcc_args and self.can_use_closure():
+      self.emcc_args += ['--closure=1']
+      logger.debug('using closure compiler..')
+      return True
     return False
 
   def assertStartswith(self, output, prefix):
@@ -2326,6 +2328,12 @@ The current type of b is: 9
   @node_pthreads
   def test_pthread_dispatch_after_exit(self):
     self.do_run_in_out_file_test('pthread/test_pthread_dispatch_after_exit.c')
+
+  @node_pthreads
+  def test_pthread_nested_work_queue(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.do_run_in_out_file_test('pthread/test_pthread_nested_work_queue.c')
 
   @node_pthreads
   def test_pthread_thread_local_storage(self):
@@ -5191,9 +5199,7 @@ main( int argv, char ** argc ) {
     self.emcc_args += ['-lnodefs.js']
     self.set_setting('SYSCALL_DEBUG')
     self.do_runf(test_file('fs/test_nodefs_rw.c'), 'success')
-    if '-g' not in self.emcc_args:
-      print('closure')
-      self.emcc_args += ['--closure=1']
+    if self.maybe_closure():
       self.do_runf(test_file('fs/test_nodefs_rw.c'), 'success')
 
   @also_with_noderawfs
@@ -6334,9 +6340,7 @@ void* operator new(size_t size) {
     self.set_setting('EXPORTED_FUNCTIONS', ['_get_int', '_get_float', '_get_bool', '_get_string', '_print_int', '_print_float', '_print_bool', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc'])
     self.do_core_test('test_ccall.cpp')
 
-    if '-O2' in self.emcc_args and '-g' not in self.emcc_args:
-      print('with closure')
-      self.emcc_args += ['--closure=1']
+    if self.maybe_closure():
       self.do_core_test('test_ccall.cpp')
 
   def test_EXPORTED_RUNTIME_METHODS(self):
@@ -7252,9 +7256,9 @@ someweirdtext
     self.emcc_args += ['-DRUN_FROM_JS_SHELL']
     self.do_run_in_out_file_test('emscripten_log/emscripten_log.cpp')
     # test closure compiler as well
-    print('closure')
-    self.emcc_args += ['--closure=1', '-g1'] # extra testing
-    self.do_run_in_out_file_test('emscripten_log/emscripten_log_with_closure.cpp')
+    if self.maybe_closure():
+      self.emcc_args += ['-g1'] # extra testing
+      self.do_run_in_out_file_test('emscripten_log/emscripten_log_with_closure.cpp')
 
   def test_float_literals(self):
     self.do_run_in_out_file_test('test_float_literals.cpp')
