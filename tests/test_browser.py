@@ -3538,10 +3538,15 @@ window.close = function() {
     # same wasm side module works
     self.btest_exit(self.in_dir('main.c'), args=['-s', 'MAIN_MODULE=2', '-O2', '-s', 'EXPORT_ALL', 'side.wasm'])
 
+  def test_dlopen_async(self):
+    create_file('side.c', 'int foo = 42;\n')
+    self.run_process([EMCC, 'side.c', '-o', 'libside.so', '-s', 'SIDE_MODULE'])
+    self.btest_exit(test_file('other/test_dlopen_async.c'), args=['-s', 'MAIN_MODULE=2'])
+
   def test_dlopen_blocking(self):
     create_file('side.c', 'int foo = 42;\n')
     self.run_process([EMCC, 'side.c', '-o', 'libside.so', '-s', 'SIDE_MODULE', '-s', 'USE_PTHREADS', '-Wno-experimental'])
-    # Attempt to use dlopen without preloading the side module should fail on the main thread
+    # Attempt to use dlopen the side module (without preloading) should fail on the main thread
     # since the syncronous `readBinary` function does not exist.
     self.btest_exit(test_file('other/test_dlopen_blocking.c'), assert_returncode=1, args=['-s', 'MAIN_MODULE=2'])
     # But with PROXY_TO_PTHEAD it does work, since we can do blocking and sync XHR in a worker.

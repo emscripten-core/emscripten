@@ -179,6 +179,9 @@ var LibraryDylink = {
   dlopen: function(filename, flag) {
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
+  emscripten_dlopen: function(filename, flags, user_data, onsuccess, onerror) {
+    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
+  },
   dlclose: function(handle) {
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
@@ -705,9 +708,8 @@ var LibraryDylink = {
   },
 
   // void* dlopen(const char* filename, int flags);
-  dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
-  dlopen__sig: 'iii',
-  dlopen: function(filenameAddr, flags) {
+  $dlopenInternal__deps: ['$DLFCN', '$FS', '$ENV'],
+  $dlopenInternal: function(filenameAddr, flags, jsflags) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     var searchpaths = [];
@@ -743,21 +745,74 @@ var LibraryDylink = {
     }
 
     // We don't care about RTLD_NOW and RTLD_LAZY.
-    var jsflags = {
-      global:   Boolean(flags & {{{ cDefine('RTLD_GLOBAL') }}}),
-      nodelete: Boolean(flags & {{{ cDefine('RTLD_NODELETE') }}}),
+    var combinedFlags = {
+      global:    Boolean(flags & {{{ cDefine('RTLD_GLOBAL') }}}),
+      nodelete:  Boolean(flags & {{{ cDefine('RTLD_NODELETE') }}}),
+      loadAsync: jsflags.loadAsync,
+      fs:        jsflags.fs,
+    }
 
-      fs: FS, // load libraries from provided filesystem
+    if (jsflags.loadAsync) {
+      return loadDynamicLibrary(filename, combinedFlags);
     }
 
     try {
-      return loadDynamicLibrary(filename, jsflags)
+      return loadDynamicLibrary(filename, combinedFlags)
     } catch (e) {
 #if ASSERTIONS
       err('Error in loading dynamic library ' + filename + ": " + e);
 #endif
       DLFCN.errorMsg = 'Could not load dynamic lib: ' + filename + '\n' + e;
       return 0;
+    }
+  },
+
+  dlopen__deps: ['$dlopenInternal'],
+  dlopen__sig: 'iii',
+  dlopen: function(filename, flags) {
+#if ASYNCIFY
+    return Asyncify.handleSleep(function(wakeUp) {
+      var jsflags = {
+        loadAsync: true,
+        fs: FS, // load libraries from provided filesystem
+      }
+      var promise = dlopenInternal(filename, flags, jsflags);
+      promise.then(wakeUp).catch(function() { wakeUp(0) });
+    });
+#else
+    var jsflags = {
+      loadAsync: false,
+      fs: FS, // load libraries from provided filesystem
+    }
+    return dlopenInternal(filename, flags, jsflags);
+#endif
+  },
+
+  // Async version of dlopen.
+  emscripten_dlopen__deps: ['$DLFCN', '$dlopenInternal', '$callUserCallback',
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepalivePush',
+    '$runtimeKeepalivePop',
+#endif
+  ],
+  emscripten_dlopen__sig: 'iii',
+  emscripten_dlopen: function(filename, flags, user_data, onsuccess, onerror) {
+    function errorCallback(e) {
+      DLFCN.errorMsg = 'Could not load dynamic lib: ' + UTF8ToString(filename) + '\n' + e;
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(function () { {{{ makeDynCall('vi', 'onerror') }}}(user_data); });
+    }
+    function successCallback(handle) {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(function () { {{{ makeDynCall('vii', 'onsuccess') }}}(user_data, handle); });
+    }
+
+    {{{ runtimeKeepalivePush() }}}
+    var promise = dlopenInternal(filename, flags, { loadAsync: true });
+    if (promise) {
+      promise.then(successCallback, errorCallback);
+    } else {
+      errorCallback();
     }
   },
 

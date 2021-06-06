@@ -25,6 +25,14 @@ See docs/process.md for more on how version tagging works.
   to use this function without including it.  The normal library `__deps`
   mechanism can be used to include it, or can be added to
   `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`.
+- dlopen can now load libraries at runtime from the web without preloading
+  or embedding.  This features relies on `ASYNCIFY` to suspend execution until
+  the library is loaded and then continue on as if dlopen was blocking.  For
+  users who don't want to use `ASYNCIFY` (which has a size and runtime cost)
+  there is a async (callback-based) version of the dlopen API available as
+  `emscripten_dlopen()` declared in `emscropten/emscripten.h`.  See
+  `docs/api_reference/emscripten.h.rst` (or the online version) for more
+  details.
 
 2.0.25 - 06/30/2021
 -------------------
