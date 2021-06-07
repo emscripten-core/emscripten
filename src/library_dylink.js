@@ -252,13 +252,8 @@ var LibraryDylink = {
 
   // fetchBinary fetches binary data @ url. (async)
   $fetchBinary: function(url) {
-    return fetch(url, { credentials: 'same-origin' }).then(function(response) {
-      if (!response['ok']) {
-        throw "failed to load binary file at '" + url + "'";
-      }
-      return response['arrayBuffer']();
-    }).then(function(buffer) {
-      return new Uint8Array(buffer);
+    return new Promise(function(resolve, reject) {
+      readAsync(url, resolve, reject);
     });
   },
 
