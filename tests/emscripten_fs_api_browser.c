@@ -3,7 +3,9 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <emscripten.h>
 #include <assert.h>
 #include <string.h>
@@ -11,8 +13,6 @@
 #include "SDL/SDL_image.h"
 #include <sys/stat.h>
 #include <unistd.h>
- 
-extern "C" {
 
 int result = 1;
 int get_count = 0;
@@ -65,7 +65,7 @@ void wait_wgets() {
     assert(IMG_Load("/tmp/screen_shot.png"));
     assert(data_ok == 1 && data_bad == 1);
     emscripten_cancel_main_loop();
-    REPORT_RESULT(result);
+    exit(result);
   }
   assert(get_count <= 8);
 }
@@ -77,7 +77,8 @@ void onLoaded(const char* file) {
     result = 0;
   }
 
-  if (FILE * f = fopen(file, "r")) {
+  FILE * f = fopen(file, "r");
+  if (f) {
       printf("exists: %s\n", file);
       int c = fgetc (f);
       if (c == EOF) {
@@ -89,7 +90,7 @@ void onLoaded(const char* file) {
     result = 0;
     printf("!exists: %s\n", file);
   }
-  
+
   get_count++;
   printf("onLoaded %s\n", file);
 }
@@ -105,13 +106,13 @@ void onError(const char* file) {
 
 int main() {
   emscripten_async_wget(
-    "http://localhost:8888/this_is_not_a_file", 
+    "http://localhost:8888/this_is_not_a_file",
     "/tmp/null",
     onLoaded,
     onError);
 
   emscripten_async_wget(
-    "http://localhost:8888/test.html", 
+    "http://localhost:8888/test.html",
     "/tmp/test.html",
     onLoaded,
     onError);
@@ -143,7 +144,7 @@ int main() {
   char name[40];
   strcpy(name, "/tmp/screen_shot.png"); // test for issue #2349, name being free'd
   emscripten_async_wget(
-    "http://localhost:8888/screenshot.png", 
+    "http://localhost:8888/screenshot.png",
     name,
     onLoaded,
     onError);
@@ -153,6 +154,3 @@ int main() {
 
   return 0;
 }
-
-}
-
