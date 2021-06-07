@@ -152,14 +152,14 @@ _mm_maskload_ps(const float *__mem_addr, __m128i __mask)
   return _mm_and_ps(_mm_load_ps(__mem_addr), (__m128)_mm_srai_epi32(__mask, 31));
 }
 
-static __inline__ void __attribute__((__always_inline__, __nodebug__))
+static __inline__ void __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_maskstore_pd(double *__mem_addr, __m128i __mask, __m128d __a)
 {
   if ((wasm_i64x2_extract_lane(__mask, 0) & 0x8000000000000000ull) != 0) __mem_addr[0] = wasm_f64x2_extract_lane(__a, 0);
   if ((wasm_i64x2_extract_lane(__mask, 1) & 0x8000000000000000ull) != 0) __mem_addr[1] = wasm_f64x2_extract_lane(__a, 1);
 }
 
-static __inline__ void __attribute__((__always_inline__, __nodebug__))
+static __inline__ void __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_maskstore_ps(float *__mem_addr, __m128i __mask, __m128 __a)
 {
   if ((wasm_i32x4_extract_lane(__mask, 0) & 0x80000000ull) != 0) __mem_addr[0] = wasm_f32x4_extract_lane(__a, 0);
