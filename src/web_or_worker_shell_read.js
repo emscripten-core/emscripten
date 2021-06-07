@@ -51,13 +51,13 @@
     xhr.responseType = 'arraybuffer';
     xhr.onload = function() {
       if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-        onload(xhr.response);
+        onload(new Uint8Array(xhr.response));
         return;
       }
 #if SUPPORT_BASE64_EMBEDDING
       var data = tryParseAsDataURI(url);
       if (data) {
-        onload(data.buffer);
+        onload(data);
         return;
       }
 #endif

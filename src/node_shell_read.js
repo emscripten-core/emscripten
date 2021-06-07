@@ -19,9 +19,5 @@ read_ = function shell_read(filename, binary) {
 
 readBinary = function readBinary(filename) {
   var ret = read_(filename, true);
-  if (!ret.buffer) {
-    ret = new Uint8Array(ret);
-  }
-  assert(ret.buffer);
-  return ret;
+  return new Uint8Array(ret);
 };

@@ -24,7 +24,6 @@ function runMemoryInitializer() {
   } else {
     addRunDependency('memory initializer');
     var applyMemoryInitializer = function(data) {
-      if (data.byteLength) data = new Uint8Array(data);
 #if ASSERTIONS
       for (var i = 0; i < data.length; i++) {
         assert(HEAPU8[{{{ GLOBAL_BASE }}} + i] === 0, "area for memory initializer should not have been touched before it's loaded");
@@ -57,12 +56,12 @@ function runMemoryInitializer() {
       // a network request has already been created, just use that
       var useRequest = function() {
         var request = Module['memoryInitializerRequest'];
-        var response = request.response;
+        var response = new Uint8Array(request.response);
         if (request.status !== 200 && request.status !== 0) {
 #if SUPPORT_BASE64_EMBEDDING
           var data = tryParseAsDataURI(Module['memoryInitializerRequestURL']);
           if (data) {
-            response = data.buffer;
+            response = data;
           } else {
 #endif
             // If you see this warning, the issue may be that you are using locateFile and defining it in JS. That

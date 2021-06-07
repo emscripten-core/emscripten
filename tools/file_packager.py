@@ -490,16 +490,12 @@ def main():
       use_data = '''
           // Reuse the bytearray from the XHR as the source for file reads.
           DataRequest.prototype.byteArray = byteArray;
-    '''
-      use_data += '''
-            var files = metadata['files'];
-            for (var i = 0; i < files.length; ++i) {
-              DataRequest.prototype.requests[files[i].filename].onload();
-            }
-      '''
-      use_data += ("          Module['removeRunDependency']('datafile_%s');\n"
-                   % shared.JS.escape_for_js_string(data_target))
-
+          var files = metadata['files'];
+          for (var i = 0; i < files.length; ++i) {
+            DataRequest.prototype.requests[files[i].filename].onload();
+          }
+          Module['removeRunDependency']('datafile_%s');
+      ''' % shared.JS.escape_for_js_string(data_target)
     else:
       # LZ4FS usage
       temp = data_target + '.orig'
@@ -715,7 +711,7 @@ def main():
             if (err) {
               errback(err);
             } else {
-              callback(contents.buffer);
+              callback(contents);
             }
           });
           return;
@@ -759,7 +755,7 @@ def main():
         xhr.onload = function(event) {
           if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
             var packageData = xhr.response;
-            callback(packageData);
+            callback(new Uint8Array(packageData));
           } else {
             throw new Error(xhr.statusText + " : " + xhr.responseURL);
           }
@@ -773,10 +769,9 @@ def main():
     '''
 
     code += r'''
-      function processPackageData(arrayBuffer) {
-        assert(arrayBuffer, 'Loading data file failed.');
-        assert(arrayBuffer instanceof ArrayBuffer, 'bad input to processPackageData');
-        var byteArray = new Uint8Array(arrayBuffer);
+      function processPackageData(byteArray) {
+        assert(byteArray, 'Loading data file failed.');
+        assert(byteArray instanceof Uint8Array, 'bad input to processPackageData');
         var curr;
         %s
       };
@@ -896,7 +891,7 @@ def main():
       _metadata_template = '''
    }
    loadPackage(%s);
-  ''' % json.dumps(metadata)
+  ''' % json.dumps(metadata, indent=4)
 
   ret += '''%s
   })();

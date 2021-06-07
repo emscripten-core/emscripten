@@ -2438,7 +2438,7 @@ void *getBindBuffer() {
     self.btest_exit('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE'], assert_returncode=8)
 
   @parameterized({
-    'non-lz4': ([],),
+    'non_lz4': ([],),
     'lz4': (['-s', 'LZ4'],)
   })
   def test_preload_module(self, args):
