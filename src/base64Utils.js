@@ -68,8 +68,8 @@ function intArrayFromBase64(s) {
   }
 }
 
-// If filename is a base64 data URI, parses and returns data (Buffer on node,
-// Uint8Array otherwise). If filename is not a base64 data URI, returns undefined.
+// If filename is a base64 data URI, parses and returns data (Uint8Array). If
+// filename is not a base64 data URI, returns undefined.
 function tryParseAsDataURI(filename) {
   if (!isDataURI(filename)) {
     return;

@@ -283,7 +283,7 @@ var LibraryDylink = {
       assert(dylinkSection.length != 0, 'need dylink section');
       binary = new Int8Array(dylinkSection[0]);
     } else {
-      var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
+      var int32View = new Uint32Array(binary.buffer, 0, 1);
       assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
       // we should see the dylink section right after the magic number and wasm version
       assert(binary[8] === 0, 'need the dylink section to be first')
