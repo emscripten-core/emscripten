@@ -1,4 +1,4 @@
-.. Pthreads support:
+.. _Pthreads-support:
 
 ==============================
 Pthreads support

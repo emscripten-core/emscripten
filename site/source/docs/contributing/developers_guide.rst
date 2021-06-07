@@ -98,6 +98,8 @@ automatically when you create a pull request, and they should all pass. If you
 run into trouble with a test failure you can't fix, please let the developers
 know.
 
+.. _developers-guide-bisecting:
+
 Bisecting
 =========
 
