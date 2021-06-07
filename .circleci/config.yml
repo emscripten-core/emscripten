@@ -175,6 +175,8 @@ commands:
       - run:
           name: download firefox
           command: |
+            # Temporarily pinned to beta rather then dev.
+            # See https://github.com/emscripten-core/emscripten/issues/14401
             wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-beta-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
