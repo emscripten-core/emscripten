@@ -1840,8 +1840,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
       exit_with_error('USE_PTHREADS=2 is no longer supported')
     if settings.ALLOW_MEMORY_GROWTH:
       diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
-    # UTF8Decoder.decode may not work with a view of a SharedArrayBuffer, see https://github.com/whatwg/encoding/issues/172
-    settings.TEXTDECODER = 0
     settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
     settings.EXPORTED_FUNCTIONS += [
       '___emscripten_pthread_data_constructor',
