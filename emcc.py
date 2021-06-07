@@ -3523,6 +3523,17 @@ def process_libraries(state, linker_inputs):
       continue
 
     logger.debug('looking for library "%s"', lib)
+    js_libs, native_lib = building.map_to_js_libs(lib)
+    if js_libs is not None:
+      libraries += [(i, js_lib) for js_lib in js_libs]
+      # If native_lib is returned then include it in the link
+      # via forced_stdlibs.
+      if native_lib:
+        state.forced_stdlibs.append(native_lib)
+      continue
+
+    if building.map_and_apply_to_settings(lib):
+      continue
 
     path = None
     for suff in suffixes:
@@ -3534,11 +3545,8 @@ def process_libraries(state, linker_inputs):
     if path:
       linker_inputs.append((i, path))
       continue
-    jslibs = building.map_to_js_libs(lib)
-    if jslibs is not None:
-      libraries += [(i, jslib) for jslib in jslibs]
-    elif not building.map_and_apply_to_settings(lib):
-      new_flags.append((i, flag))
+
+    new_flags.append((i, flag))
 
   settings.SYSTEM_JS_LIBRARIES += libraries
 

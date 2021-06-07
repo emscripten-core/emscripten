@@ -10645,3 +10645,9 @@ kill -9 $$
     self.assertContained(' -lc-mt ', err)
     self.assertContained(' -ldlmalloc-mt ', err)
     self.assertContained(' -lcompiler_rt-mt ', err)
+
+  def test_explict_gl_linking(self):
+    # Test that libGL can be linked explictly via `-lGL` rather than implictly.
+    # Here we use NO_AUTO_NATIVE_LIBRARIES to disable the implictly linking that normally
+    # includes the native GL library.
+    self.run_process([EMCC, test_file('other/test_explict_gl_linking.c'), '-sNO_AUTO_NATIVE_LIBRARIES', '-lGL'])
