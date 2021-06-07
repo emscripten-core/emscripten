@@ -49,7 +49,5 @@ int main(int argc, char **argv)
   assert(h == 202);
   w = h = 0;
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1);
-#endif
+  return 0;
 }

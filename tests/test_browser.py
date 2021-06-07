@@ -1805,7 +1805,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-s', 'FULL_ES3=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGLESv2'])
 
   def test_emscripten_api(self):
-    self.btest('emscripten_api_browser.cpp', '1', args=['-s', 'EXPORTED_FUNCTIONS=_main,_third', '-lSDL'])
+    self.btest_exit('emscripten_api_browser.c', args=['-s', 'EXPORTED_FUNCTIONS=_main,_third', '-lSDL'])
 
   def test_emscripten_api2(self):
     def setup():
@@ -1817,7 +1817,7 @@ keydown(100);keyup(100); // trigger the end
 
     setup()
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
-    self.btest('emscripten_api_browser2.cpp', '1', args=['-s', 'EXPORTED_FUNCTIONS=_main,_set', '-s', 'FORCE_FILESYSTEM'])
+    self.btest_exit('emscripten_api_browser2.c', args=['-s', 'EXPORTED_FUNCTIONS=_main,_set', '-s', 'FORCE_FILESYSTEM'])
 
     # check using file packager to another dir
     self.clear()
@@ -1825,10 +1825,10 @@ keydown(100);keyup(100); // trigger the end
     ensure_dir('sub')
     self.run_process([FILE_PACKAGER, 'sub/test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
     shutil.copyfile(Path('sub/test.data'), 'test.data')
-    self.btest('emscripten_api_browser2.cpp', '1', args=['-s', 'EXPORTED_FUNCTIONS=_main,_set', '-s', 'FORCE_FILESYSTEM'])
+    self.btest_exit('emscripten_api_browser2.c', args=['-s', 'EXPORTED_FUNCTIONS=_main,_set', '-s', 'FORCE_FILESYSTEM'])
 
   def test_emscripten_api_infloop(self):
-    self.btest('emscripten_api_browser_infloop.cpp', '7')
+    self.btest_exit('emscripten_api_browser_infloop.cpp', assert_returncode=7)
 
   def test_emscripten_fs_api(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png') # preloaded *after* run
@@ -1841,32 +1841,32 @@ keydown(100);keyup(100); // trigger the end
   @requires_threads
   def test_emscripten_main_loop(self):
     for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'EXIT_RUNTIME']]:
-      self.btest('emscripten_main_loop.cpp', '0', args=args)
+      self.btest_exit('emscripten_main_loop.cpp', args=args)
 
   @requires_threads
   def test_emscripten_main_loop_settimeout(self):
     for args in [
       [],
       # test pthreads + AUTO_JS_LIBRARIES mode as well
-      ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'AUTO_JS_LIBRARIES=0']
+      ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'AUTO_JS_LIBRARIES=0'],
     ]:
-      self.btest('emscripten_main_loop_settimeout.cpp', '1', args=args)
+      self.btest_exit('emscripten_main_loop_settimeout.cpp', args=args)
 
   @requires_threads
   def test_emscripten_main_loop_and_blocker(self):
     for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
-      self.btest('emscripten_main_loop_and_blocker.cpp', '0', args=args)
+      self.btest_exit('emscripten_main_loop_and_blocker.cpp', args=args)
 
   @requires_threads
   def test_emscripten_main_loop_and_blocker_exit(self):
     # Same as above but tests that EXIT_RUNTIME works with emscripten_main_loop.  The
     # app should still stay alive until the loop ends
-    self.btest_exit('emscripten_main_loop_and_blocker.cpp', 0)
+    self.btest_exit('emscripten_main_loop_and_blocker.cpp')
 
   @requires_threads
   def test_emscripten_main_loop_setimmediate(self):
     for args in [[], ['--proxy-to-worker'], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
-      self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=args)
+      self.btest_exit('emscripten_main_loop_setimmediate.cpp', args=args)
 
   def test_fs_after_main(self):
     for args in [[], ['-O1']]:
@@ -4309,12 +4309,12 @@ window.close = function() {
   @requires_offscreen_canvas
   @requires_graphics_hardware
   def test_webgl_offscreen_canvas_only_in_pthread(self):
-    self.btest('gl_only_in_pthread.cpp', expected='0', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'OFFSCREENCANVAS_SUPPORT', '-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER'])
+    self.btest_exit('gl_only_in_pthread.cpp', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'OFFSCREENCANVAS_SUPPORT', '-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER'])
 
   # Tests that rendering from client side memory without default-enabling extensions works.
   @requires_graphics_hardware
   def test_webgl_from_client_side_memory_without_default_enabled_extensions(self):
-    self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-s', 'FULL_ES2=1'])
+    self.btest_exit('webgl_draw_triangle.c', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-s', 'FULL_ES2=1'])
 
   # Tests for WEBGL_multi_draw extension
   # For testing WebGL draft extensions like this, if using chrome as the browser,
@@ -4351,7 +4351,7 @@ window.close = function() {
   @requires_graphics_hardware
   def test_webgl_sample_query(self):
     cmd = ['-s', 'MAX_WEBGL_VERSION=2', '-lGL']
-    self.btest('webgl_sample_query.cpp', expected='0', args=cmd)
+    self.btest_exit('webgl_sample_query.cpp', args=cmd)
 
   @requires_graphics_hardware
   def test_webgl_timer_query(self):
@@ -4364,7 +4364,7 @@ window.close = function() {
         ['-s', 'MAX_WEBGL_VERSION=2'],
       ]:
       cmd = args + ['-lGL']
-      self.btest('webgl_timer_query.cpp', expected='0', args=cmd)
+      self.btest_exit('webgl_timer_query.cpp', args=cmd)
 
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware
@@ -4374,12 +4374,12 @@ window.close = function() {
       for version in [[], ['-s', 'FULL_ES3'], ['-s', 'FULL_ES3']]:
         args = ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1'] + threads + version
         print('with args: %s' % str(args))
-        self.btest('webgl_draw_triangle.c', '0', args=args)
+        self.btest_exit('webgl_draw_triangle.c', args=args)
 
   # Tests that VAOs can be used even if WebGL enableExtensionsByDefault is set to 0.
   @requires_graphics_hardware
   def test_webgl_vao_without_automatic_extensions(self):
-    self.btest('test_webgl_no_auto_init_extensions.c', '0', args=['-lGL', '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0'])
+    self.btest_exit('test_webgl_no_auto_init_extensions.c', args=['-lGL', '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0'])
 
   # Tests that offscreen framebuffer state restoration works
   @requires_graphics_hardware
@@ -4398,12 +4398,12 @@ window.close = function() {
         ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],
       ]:
       cmd = args + ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
-      self.btest('webgl_offscreen_framebuffer_swap_with_bad_state.c', '0', args=cmd)
+      self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', args=cmd)
 
   # Tests that -s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1 rendering works.
   @requires_graphics_hardware
   def test_webgl_workaround_webgl_uniform_upload_bug(self):
-    self.btest('webgl_draw_triangle_with_uniform_color.c', '0', args=['-lGL', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG'])
+    self.btest_exit('webgl_draw_triangle_with_uniform_color.c',  args=['-lGL', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG'])
 
   # Tests that using an array of structs in GL uniforms works.
   @requires_graphics_hardware
@@ -4446,7 +4446,7 @@ window.close = function() {
                '-s', 'MAX_WEBGL_VERSION=2',
                '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=' + str(simple_enable_extensions),
                '-s', 'GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=' + str(simple_enable_extensions)]
-        self.btest('webgl2_simple_enable_extensions.c', expected='0', args=cmd)
+        self.btest_exit('webgl2_simple_enable_extensions.c', args=cmd)
 
   # Tests the feature that shell html page can preallocate the typed array and place it
   # to Module.buffer before loading the script page.
@@ -4458,18 +4458,16 @@ window.close = function() {
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
   def test_fetch_to_memory(self):
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
-    self.btest('fetch/to_memory.cpp',
-               expected='1',
-               args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-DFILE_DOES_NOT_EXIST'],
-               also_asmjs=True)
+    self.btest_exit('fetch/to_memory.cpp',
+                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-DFILE_DOES_NOT_EXIST'],
+                    also_asmjs=True)
 
     # Test the positive case when the file URL exists. (http 200)
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     for arg in [[], ['-s', 'FETCH_SUPPORT_INDEXEDDB=0']]:
-      self.btest('fetch/to_memory.cpp',
-                 expected='1',
-                 args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'] + arg,
-                 also_asmjs=True)
+      self.btest_exit('fetch/to_memory.cpp',
+                      args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'] + arg,
+                      also_asmjs=True)
 
   @parameterized({
     '': ([],),
@@ -4485,24 +4483,22 @@ window.close = function() {
 
   def test_fetch_to_indexdb(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest('fetch/to_indexeddb.cpp',
-               expected='1',
-               args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'],
-               also_asmjs=True)
+    self.btest_exit('fetch/to_indexeddb.cpp',
+                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'],
+                    also_asmjs=True)
 
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
   def test_fetch_cached_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest('fetch/cached_xhr.cpp',
-               expected='1',
-               args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'],
-               also_asmjs=True)
+    self.btest_exit('fetch/cached_xhr.cpp',
+                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'],
+                    also_asmjs=True)
 
   # Tests that response headers get set on emscripten_fetch_t values.
   @requires_threads
   def test_fetch_response_headers(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest('fetch/response_headers.cpp', expected='1', args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'], also_asmjs=True)
+    self.btest_exit('fetch/response_headers.cpp', args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'], also_asmjs=True)
 
   # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
   def test_fetch_stream_file(self):
@@ -4515,10 +4511,9 @@ window.close = function() {
     with open('largefile.txt', 'w') as f:
       for i in range(1024):
         f.write(s)
-    self.btest('fetch/stream_file.cpp',
-               expected='1',
-               args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'INITIAL_MEMORY=536870912'],
-               also_asmjs=True)
+    self.btest_exit('fetch/stream_file.cpp',
+                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'INITIAL_MEMORY=536870912'],
+                    also_asmjs=True)
 
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -s PROXY_TO_PTHREAD=1 option.
@@ -4532,22 +4527,21 @@ window.close = function() {
   @requires_threads
   def test_fetch_implicit_append(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/example_synchronous_fetch.cpp', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests synchronous emscripten_fetch() usage from wasm pthread in fastcomp.
   @requires_threads
   def test_fetch_sync_xhr_in_wasm(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/example_synchronous_fetch.cpp', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
   @requires_threads
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest('fetch/sync_xhr.cpp',
-               expected='0',
-               args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '--proxy-to-worker'],
-               also_asmjs=True)
+    self.btest_exit('fetch/sync_xhr.cpp',
+                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '--proxy-to-worker'],
+                    also_asmjs=True)
 
   # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
   @no_wasm_backend("emscripten_fetch_wait uses an asm.js based web worker")
@@ -4589,7 +4583,7 @@ window.close = function() {
   @requires_asmfs
   @requires_threads
   def test_asmfs_mkdir_create_unlink_rmdir(self):
-    self.btest('cstdio/test_remove.cpp', expected='0', args=['-s', 'ASMFS', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG'])
+    self.btest_exit('cstdio/test_remove.cpp', args=['-s', 'ASMFS', '-s', 'WASM=0', '-s', 'USE_PTHREADS', '-s', 'FETCH_DEBUG'])
 
   @requires_asmfs
   @requires_threads
@@ -4634,23 +4628,25 @@ window.close = function() {
         ['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'],
     ]:
       print("Testing with: ", args)
-      self.btest('pthread/test_pthread_locale.c', expected='1', args=args)
+      self.btest_exit('pthread/test_pthread_locale.c', args=args)
 
-  # Tests the Emscripten HTML5 API emscripten_set_canvas_element_size() and emscripten_get_canvas_element_size() functionality in singlethreaded programs.
+  # Tests the Emscripten HTML5 API emscripten_set_canvas_element_size() and
+  # emscripten_get_canvas_element_size() functionality in singlethreaded programs.
   def test_emscripten_set_canvas_element_size(self):
-    self.btest('emscripten_set_canvas_element_size.c', expected='1')
+    self.btest_exit('emscripten_set_canvas_element_size.c')
 
-  # Test that emscripten_get_device_pixel_ratio() is callable from pthreads (and proxies to main thread to obtain the proper window.devicePixelRatio value).
+  # Test that emscripten_get_device_pixel_ratio() is callable from pthreads (and proxies to main
+  # thread to obtain the proper window.devicePixelRatio value).
   @requires_threads
   def test_emscripten_get_device_pixel_ratio(self):
     for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
-      self.btest('emscripten_get_device_pixel_ratio.c', expected='1', args=args)
+      self.btest_exit('emscripten_get_device_pixel_ratio.c', args=args)
 
   # Tests that emscripten_run_script() variants of functions work in pthreads.
   @requires_threads
   def test_pthread_run_script(self):
     for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD']]:
-      self.btest(test_file('pthread/test_pthread_run_script.cpp'), expected='1', args=['-O3'] + args)
+      self.btest_exit(test_file('pthread/test_pthread_run_script.cpp'), args=['-O3'] + args)
 
   # Tests emscripten_set_canvas_element_size() and OffscreenCanvas functionality in different build configurations.
   @requires_threads
@@ -4666,7 +4662,7 @@ window.close = function() {
     ]:
       cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-s', 'GL_DEBUG', '--threadprofiler'] + args
       print(' '.join(cmd))
-      self.btest('canvas_animate_resize.cpp', expected='1', args=cmd)
+      self.btest_exit('canvas_animate_resize.cpp', args=cmd)
 
   # Tests the absolute minimum pthread-enabled application.
   @requires_threads
@@ -4969,7 +4965,7 @@ window.close = function() {
   # Tests that Closure run in combination with -s ENVIRONMENT=web mode works with a small WebGL application
   @requires_graphics_hardware
   def test_closure_in_web_only_target_environment_webgl(self):
-    self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'ENVIRONMENT=web', '-O3', '--closure=1'])
+    self.btest_exit('webgl_draw_triangle.c', args=['-lGL', '-s', 'ENVIRONMENT=web', '-O3', '--closure=1'])
 
   def test_no_declare_asm_module_exports_asmjs(self):
     for minimal_runtime in [[], ['-s', 'MINIMAL_RUNTIME']]:
@@ -4997,7 +4993,7 @@ window.close = function() {
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):
-    self.btest(test_file('browser/test_emscripten_unwind_to_js_event_loop.c'), '1', args=['-s', 'NO_EXIT_RUNTIME'])
+    self.btest_exit(test_file('browser/test_emscripten_unwind_to_js_event_loop.c'))
 
   def test_wasm2js_fallback(self):
     for args in [[], ['-s', 'MINIMAL_RUNTIME']]:
@@ -5030,7 +5026,7 @@ window.close = function() {
       self.run_browser('test.html', 'hello!', '/report_result?0')
 
   def test_system(self):
-    self.btest(test_file('system.c'), '0')
+    self.btest_exit(test_file('system.c'))
 
   # Tests that it is possible to hook into/override a symbol defined in a system library.
   @requires_graphics_hardware
@@ -5039,14 +5035,12 @@ window.close = function() {
 
     # When WebGL is implicitly linked in, the implicit linking should happen before any user --js-libraries, so that they can adjust
     # the behavior afterwards.
-    self.btest(test_file('test_override_system_js_lib_symbol.c'),
-               expected='5121',
-               args=['--js-library', test_file('test_override_system_js_lib_symbol.js')])
+    self.btest_exit(test_file('test_override_system_js_lib_symbol.c'),
+                    args=['--js-library', test_file('test_override_system_js_lib_symbol.js')])
 
     # When WebGL is explicitly linked to in strict mode, the linking order on command line should enable overriding.
-    self.btest(test_file('test_override_system_js_lib_symbol.c'),
-               expected='5121',
-               args=['-s', 'AUTO_JS_LIBRARIES=0', '-lwebgl.js', '--js-library', test_file('test_override_system_js_lib_symbol.js')])
+    self.btest_exit(test_file('test_override_system_js_lib_symbol.c'),
+                    args=['-s', 'AUTO_JS_LIBRARIES=0', '-lwebgl.js', '--js-library', test_file('test_override_system_js_lib_symbol.js')])
 
   @no_firefox('no 4GB support yet')
   def test_zzz_zzz_4gb(self):

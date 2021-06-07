@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
@@ -11,11 +12,9 @@
 
 int value = 0;
 
-extern "C" {
-  void set(int x) {
-    printf("set! %d\n", x);
-    value = x;
-  }
+void set(int x) {
+  printf("set! %d\n", x);
+  value = x;
 }
 
 void load2() {
@@ -34,8 +33,9 @@ void load2() {
   fclose(f);
   assert(strcmp(buffer, "second") == 0);
 
-  REPORT_RESULT(1);
+  exit(0);
 }
+
 void error2() {
   printf("fail2\n");
 }
@@ -45,13 +45,12 @@ void load1() {
   assert(value == 456);
   emscripten_async_load_script("script2.js", load2, error2);
 }
+
 void error1() {
   printf("fail1\n");
 }
 
 int main() {
   emscripten_async_load_script("script1.js", load1, error1);
-
-  return 1;
+  return 99;
 }
-
