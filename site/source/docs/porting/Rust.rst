@@ -41,7 +41,7 @@ which means that the compatible version of Emscripten can be installed as follow
 commit, see our
 `release process docs <https://github.com/emscripten-core/emscripten/blob/main/docs/process.md#release-processes>`_
 which are summarized in the
-:ref:`developer's guide <developers-guide-bisecting>`.
+:ref:`developer's guide <developers-guide-bisecting>`.)
 
 ===========
 Hello World
