@@ -43,7 +43,9 @@ def get_clang_native_env():
   EMSCRIPTEN_MODIFIES = ['LDSHARED', 'AR', 'CROSS_COMPILE', 'NM', 'RANLIB']
   for dangerous in EMSCRIPTEN_MODIFIES:
     if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
-      del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
+      # Remove this block completely assuming all tests pass without hitting
+      # this assert
+      assert False
 
   if MACOS:
     path = run_process(['xcrun', '--show-sdk-path'], stdout=PIPE).stdout.strip()
