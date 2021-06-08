@@ -760,7 +760,6 @@ If manually bisecting:
     html = html.replace('</body>', '''
 <script>
 function assert(x, y) { if (!x) throw 'assertion failed ' + y }
-
 %s
 
 var windowClose = window.close;
@@ -4881,21 +4880,21 @@ window.close = function() {
 
   @requires_threads
   def test_emscripten_set_timeout(self):
-    self.btest(test_file('emscripten_set_timeout.c'), '0', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit(test_file('emscripten_set_timeout.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_threads
   def test_emscripten_set_timeout_loop(self):
-    self.btest(test_file('emscripten_set_timeout_loop.c'), '0', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit(test_file('emscripten_set_timeout_loop.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   def test_emscripten_set_immediate(self):
-    self.btest(test_file('emscripten_set_immediate.c'), '0')
+    self.btest_exit(test_file('emscripten_set_immediate.c'))
 
   def test_emscripten_set_immediate_loop(self):
-    self.btest(test_file('emscripten_set_immediate_loop.c'), '0')
+    self.btest_exit(test_file('emscripten_set_immediate_loop.c'))
 
   @requires_threads
   def test_emscripten_set_interval(self):
-    self.btest(test_file('emscripten_set_interval.c'), '0', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit(test_file('emscripten_set_interval.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Test emscripten_performance_now() and emscripten_date_now()
   @requires_threads
