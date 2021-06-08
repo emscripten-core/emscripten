@@ -50,9 +50,8 @@ def wasm_simd(f):
   return decorated
 
 
-def bleeding_edge_wasm_backend(f):
+def needs_non_trapping_float_to_int(f):
   def decorated(self):
-    self.require_v8()
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
     f(self)
@@ -3454,7 +3453,7 @@ ok
     self.do_run(src, 'a: loaded\nb: loaded\na: loaded\n')
 
   @needs_dylink
-  @bleeding_edge_wasm_backend
+  @needs_non_trapping_float_to_int
   def test_dlfcn_feature_in_lib(self):
     self.emcc_args.append('-mnontrapping-fptoint')
 
@@ -5686,7 +5685,7 @@ int main(void) {
 
     test([])
 
-  @bleeding_edge_wasm_backend
+  @needs_non_trapping_float_to_int
   def test_fasta_nontrapping(self):
     self.emcc_args += ['-mnontrapping-fptoint']
     self.test_fasta()
