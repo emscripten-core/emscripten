@@ -141,14 +141,13 @@ else if (ENVIRONMENT_IS_NODE) {
 
 // `/` should be present at the end if `scriptDirectory` is not empty
 var scriptDirectory = '';
-function locateFile(path) {
-#if expectToReceiveOnModule('locateFile')
-  if (Module['locateFile']) {
-    return Module['locateFile'](path, scriptDirectory);
-  }
-#endif
+
+function locateFileDefualt(path) {
   return scriptDirectory + path;
 }
+
+{{{ makeModuleReceiveWithVar('locateFile', 'locateFile', 'locateFileDefualt', true) }}}
+
 
 // Hooks that are implemented differently in different runtime environments.
 var read_,
