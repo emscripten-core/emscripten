@@ -217,6 +217,12 @@ class other(RunnerCore):
     self.assertNotContained("new URL('data:", src)
     self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url))", src)
 
+  def test_emcc_output_mjs_closure(self):
+    self.run_process([EMCC, '-o', 'hello_world.mjs',
+                      test_file('hello_world.c'), '--closure=1'])
+    src = read_file('hello_world.mjs')
+    self.assertContained('new URL("hello_world.wasm", import.meta.url)', src)
+
   def test_export_es6_implies_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'EXPORT_ES6=1'])
     src = read_file('a.out.js')
