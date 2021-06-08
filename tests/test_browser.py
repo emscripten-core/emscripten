@@ -1813,11 +1813,11 @@ keydown(100);keyup(100); // trigger the end
 
   def test_emscripten_fs_api(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png') # preloaded *after* run
-    self.btest('emscripten_fs_api_browser.cpp', '1', args=['-lSDL'])
+    self.btest_exit('emscripten_fs_api_browser.c', assert_returncode=1, args=['-lSDL'])
 
   def test_emscripten_fs_api2(self):
-    self.btest('emscripten_fs_api_browser2.cpp', '1', args=['-s', "ASSERTIONS=0"])
-    self.btest('emscripten_fs_api_browser2.cpp', '1', args=['-s', "ASSERTIONS=1"])
+    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-s', "ASSERTIONS=0"])
+    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-s', "ASSERTIONS=1"])
 
   @requires_threads
   def test_emscripten_main_loop(self):
@@ -2431,11 +2431,11 @@ void *getBindBuffer() {
     self.btest('worker_api_main.cpp', expected='566')
 
   def test_emscripten_async_wget2(self):
-    self.btest('test_emscripten_async_wget2.cpp', expected='0')
+    self.btest_exit('test_emscripten_async_wget2.cpp')
 
-  def test_module(self):
+  def test_emscripten_async_wget_side_module(self):
     self.run_process([EMCC, test_file('browser_module.cpp'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE', '-s', 'EXPORTED_FUNCTIONS=_one,_two'])
-    self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE'], expected='8')
+    self.btest_exit('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE'], assert_returncode=8)
 
   @parameterized({
     'non-lz4': ([],),
@@ -2448,8 +2448,7 @@ void *getBindBuffer() {
         return 42;
       }
     ''')
-    self.run_process([EMCC, 'library.c', '-s', 'SIDE_MODULE', '-O2', '-o', 'library.wasm', '-s', 'EXPORT_ALL'])
-    os.rename('library.wasm', 'library.so')
+    self.run_process([EMCC, 'library.c', '-s', 'SIDE_MODULE', '-O2', '-o', 'library.so', '-s', 'EXPORT_ALL'])
     create_file('main.c', r'''
       #include <dlfcn.h>
       #include <stdio.h>
