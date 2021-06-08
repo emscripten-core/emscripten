@@ -5,6 +5,7 @@
 # found in the LICENSE file.
 
 import sys
+import os
 from tools import building
 from tools import shared
 from tools import config
@@ -26,7 +27,6 @@ variables so that emcc etc. are used. Typical usage:
     return 1
 
   args = sys.argv[1:]
-  env = building.get_building_env()
 
   def has_substr(args, substr):
     return any(substr in s for s in args)
@@ -56,7 +56,9 @@ variables so that emcc etc. are used. Typical usage:
   # behalf of the user. See
   # http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
   if utils.WINDOWS and 'MinGW Makefiles' in args:
-    env = building.remove_sh_exe_from_path(env)
+    env = building.remove_sh_exe_from_path(os.environ)
+  else:
+    env = None
 
   print('configure: ' + shared.shlex_join(args), file=sys.stderr)
   try:
