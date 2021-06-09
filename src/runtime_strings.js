@@ -18,6 +18,9 @@
 function TextDecoderWrapper(encoding) {
   var textDecoder = new TextDecoder(encoding);
   this.decode = function(data) {
+#if ASSERTIONS
+    assert(data instanceof Uint8Array);
+#endif
     if (data.buffer instanceof SharedArrayBuffer) {
       data = new Uint8Array(data);
     }
