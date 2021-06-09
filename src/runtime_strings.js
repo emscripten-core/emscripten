@@ -20,10 +20,9 @@ function TextDecoderWrapper(encoding) {
   this.decode = function(data) {
 #if ASSERTIONS
     assert(data instanceof Uint8Array);
+    assert(data.buffer instanceof SharedArrayBuffer);
 #endif
-    if (data.buffer instanceof SharedArrayBuffer) {
-      data = new Uint8Array(data);
-    }
+    data = new Uint8Array(data);
     return textDecoder.decode.call(textDecoder, data);
   };
 }
