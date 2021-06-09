@@ -2519,13 +2519,8 @@ The current type of b is: 9
 
   def prep_dlfcn_main(self):
     self.set_setting('MAIN_MODULE')
+    self.set_setting('NODERAWFS')
     self.clear_setting('SIDE_MODULE')
-
-    create_file('lib_so_pre.js', '''
-    if (!Module['preRun']) Module['preRun'] = [];
-    Module['preRun'].push(function() { FS.createDataFile('/', 'liblib.so', %s, true, false, false); });
-''' % str(list(bytearray(read_binary('liblib.so')))))
-    self.emcc_args += ['--pre-js', 'lib_so_pre.js']
 
   def build_dlfcn_lib(self, filename):
     if self.is_wasm():
@@ -2906,7 +2901,6 @@ Var: 42
     for i in range(10):
       curr = '%d.so' % i
       shutil.copyfile('liblib.so', curr)
-      self.emcc_args += ['--embed-file', curr]
 
     self.prep_dlfcn_main()
     self.set_setting('INITIAL_MEMORY', '128mb')
@@ -3420,14 +3414,10 @@ ok
     shutil.move(indir('liblib.so'), indir('libb.so'))
 
     self.set_setting('MAIN_MODULE')
+    self.set_setting('NODERAWFS')
     self.clear_setting('SIDE_MODULE')
-    self.set_setting('EXPORT_ALL')
-    self.emcc_args += ['--embed-file', '.@/']
 
-    # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
-    self.set_setting('INITIAL_MEMORY', '32mb')
-
-    src = r'''
+    create_file('main.c', r'''
       #include <dlfcn.h>
       #include <assert.h>
       #include <stddef.h>
@@ -3449,8 +3439,8 @@ ok
 
         return 0;
       }
-      '''
-    self.do_run(src, 'a: loaded\nb: loaded\na: loaded\n')
+      ''')
+    self.do_runf('main.c', 'a: loaded\nb: loaded\na: loaded\n')
 
   @needs_dylink
   @needs_non_trapping_float_to_int
