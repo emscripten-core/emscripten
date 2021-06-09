@@ -574,7 +574,17 @@ If manually bisecting:
     # change the file package base dir to look in a "cdn". note that normally
     # you would add this in your own custom html file etc., and not by
     # modifying the existing shell in this manner
-    create_file('shell.html', read_file(path_from_root('src', 'shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
+    default_shell = read_file(path_from_root('src', 'shell.html'))
+    create_file('shell.html', default_shell.replace('var Module = {', '''
+    var Module = {
+      locateFile: function(path, prefix) {
+        if (path.endsWith(".wasm")) {
+           return prefix + path;
+        } else {
+           return "cdn/" + path;
+        }
+      },
+    '''))
     create_file('main.cpp', r'''
       #include <stdio.h>
       #include <string.h>
