@@ -411,6 +411,10 @@ function preMain() {
 #endif
 
 function exitRuntime() {
+#if ASYNCIFY && ASSERTIONS
+  // ASYNCIFY cannot be used once the runtime starts shutting down.
+  Asyncify.state = Asyncify.State.Disabled;
+#endif
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
@@ -423,9 +427,6 @@ function exitRuntime() {
 #if USE_PTHREADS
   PThread.runExitHandlers();
 #endif
-#endif
-#if ASYNCIFY && ASSERTIONS
-  Asyncify.checkStateAfterExitRuntime();
 #endif
   runtimeExited = true;
 }
