@@ -2593,15 +2593,18 @@ Module["preRun"].push(function () {
     self.btest(test_file('webgl_color_buffer_readpixels.cpp'), args=['-lGL'], expected='0')
 
   # Test for PR#5373 (https://github.com/emscripten-core/emscripten/pull/5373)
+  @requires_graphics_hardware
   def test_webgl_shader_source_length(self):
     for opts in [[], ['-s', 'FULL_ES2=1']]:
       print(opts)
       self.btest(test_file('webgl_shader_source_length.cpp'), args=opts + ['-lGL'], expected='0')
 
   # Tests calling glGetString(GL_UNMASKED_VENDOR_WEBGL).
+  @requires_graphics_hardware
   def test_webgl_unmasked_vendor_webgl(self):
     self.btest(test_file('webgl_unmasked_vendor_webgl.c'), args=['-lGL'], expected='0')
 
+  @requires_graphics_hardware
   def test_webgl2(self):
     for opts in [
       ['-s', 'MIN_CHROME_VERSION=0'],
@@ -2623,9 +2626,11 @@ Module["preRun"].push(function () {
     # (the testcase doesn't even use threads, but is compiled with thread support).
     self.btest(test_file('webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL', '-s', 'USE_PTHREADS'], expected='0')
 
+  @requires_graphics_hardware
   def test_webgl2_objects(self):
     self.btest(test_file('webgl2_objects.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
+  @requires_graphics_hardware
   def test_html5_webgl_api(self):
     for mode in [['-s', 'OFFSCREENCANVAS_SUPPORT', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'],
                  ['-s', 'OFFSCREEN_FRAMEBUFFER', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'],
