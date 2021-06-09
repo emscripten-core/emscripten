@@ -6615,7 +6615,7 @@ mergeInto(LibraryManager.library, {
   def test_override_c_environ(self):
     create_file('pre.js', r'''
       var Module = {
-        preRun: [function() { ENV.hello = 'world' }]
+        preRun: [function() { ENV.hello = 'world'; ENV.LANG = undefined; }]
       };
     ''')
     create_file('src.cpp', r'''
@@ -6623,10 +6623,13 @@ mergeInto(LibraryManager.library, {
       #include <stdio.h>
       int main() {
         printf("|%s|\n", getenv("hello"));
+        printf("LANG is %s\n", getenv("LANG") ? "set" : "not set");
       }
     ''')
     self.run_process([EMXX, 'src.cpp', '--pre-js', 'pre.js'])
-    self.assertContained('|world|', self.run_js('a.out.js'))
+    output = self.run_js('a.out.js')
+    self.assertContained('|world|', output)
+    self.assertContained('LANG is not set', output)
 
     create_file('pre.js', r'''
       var Module = {
