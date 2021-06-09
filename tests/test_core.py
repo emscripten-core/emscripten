@@ -7498,7 +7498,7 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
     self.set_setting('ASSERTIONS')
-    self.do_core_test('test_asyncify_assertions.cpp')
+    self.do_core_test('test_asyncify_assertions.c', assert_returncode=NON_ZERO)
 
   @no_lsan('leaks asyncify stack during exit')
   @no_asan('leaks asyncify stack during exit')
