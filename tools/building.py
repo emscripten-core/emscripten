@@ -185,9 +185,9 @@ def get_building_env(cflags=[]):
 # sh.exe removed from the PATH.  Used to work around CMake limitation with
 # MinGW Makefiles, where sh.exe is not allowed to be present.
 def remove_sh_exe_from_path(env):
+  # Should only ever be called on WINDOWS
+  assert WINDOWS
   env = env.copy()
-  if not WINDOWS:
-    return env
   path = env['PATH'].split(';')
   path = [p for p in path if not os.path.exists(os.path.join(p, 'sh.exe'))]
   env['PATH'] = ';'.join(path)

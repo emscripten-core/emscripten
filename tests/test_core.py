@@ -38,8 +38,7 @@ logger = logging.getLogger("test_core")
 
 def wasm_simd(f):
   def decorated(self):
-    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
-      self.skipTest('wasm simd only supported in d8 for now')
+    self.require_v8()
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
     if '-O3' in self.emcc_args:
@@ -47,18 +46,14 @@ def wasm_simd(f):
     self.emcc_args.append('-msimd128')
     self.emcc_args.append('-fno-lax-vector-conversions')
     self.v8_args.append('--experimental-wasm-simd')
-    self.js_engines = [config.V8_ENGINE]
     f(self)
   return decorated
 
 
-def bleeding_edge_wasm_backend(f):
+def needs_non_trapping_float_to_int(f):
   def decorated(self):
-    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
-      self.skipTest('only works in d8 for now')
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
-    self.js_engines = [config.V8_ENGINE]
     f(self)
   return decorated
 
@@ -69,8 +64,8 @@ def also_with_wasm_bigint(f):
     f(self)
     if self.is_wasm():
       self.set_setting('WASM_BIGINT')
+      self.require_node()
       self.node_args.append('--experimental-wasm-bigint')
-      self.js_engines = [config.NODE_JS]
       f(self)
   return decorated
 
@@ -99,14 +94,12 @@ def with_both_exception_handling(f):
       # Wasm EH is currently supported only in wasm backend and V8
       if not self.is_wasm():
         self.skipTest('wasm2js does not support wasm exceptions')
-      if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
-        self.skipTest('d8 required to run wasm eh tests')
+      self.require_v8()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
       if '-fsanitize=address' in self.emcc_args:
         self.skipTest('Wasm EH does not work with asan yet')
       self.emcc_args.append('-fwasm-exceptions')
       self.v8_args.append('--experimental-wasm-eh')
-      self.js_engines = [config.V8_ENGINE]
       f(self)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -3460,7 +3453,7 @@ ok
     self.do_run(src, 'a: loaded\nb: loaded\na: loaded\n')
 
   @needs_dylink
-  @bleeding_edge_wasm_backend
+  @needs_non_trapping_float_to_int
   def test_dlfcn_feature_in_lib(self):
     self.emcc_args.append('-mnontrapping-fptoint')
 
@@ -5692,7 +5685,7 @@ int main(void) {
 
     test([])
 
-  @bleeding_edge_wasm_backend
+  @needs_non_trapping_float_to_int
   def test_fasta_nontrapping(self):
     self.emcc_args += ['-mnontrapping-fptoint']
     self.test_fasta()

@@ -3512,13 +3512,6 @@ def process_libraries(state, linker_inputs):
       new_flags.append((i, flag))
       continue
     lib = strip_prefix(flag, '-l')
-    # We don't need to resolve system libraries to absolute paths here, we can just
-    # let wasm-ld handle that.  However, we do want to map to the correct variant.
-    # For example we map `-lc` to `-lc-mt` if we are building with threading support.
-    if 'lib' + lib in system_libs_map:
-      lib = system_libs_map['lib' + lib]
-      new_flags.append((i, '-l' + strip_prefix(lib.get_base_name(), 'lib')))
-      continue
 
     logger.debug('looking for library "%s"', lib)
     js_libs, native_lib = building.map_to_js_libs(lib)
@@ -3528,6 +3521,14 @@ def process_libraries(state, linker_inputs):
       # via forced_stdlibs.
       if native_lib:
         state.forced_stdlibs.append(native_lib)
+      continue
+
+    # We don't need to resolve system libraries to absolute paths here, we can just
+    # let wasm-ld handle that.  However, we do want to map to the correct variant.
+    # For example we map `-lc` to `-lc-mt` if we are building with threading support.
+    if 'lib' + lib in system_libs_map:
+      lib = system_libs_map['lib' + lib]
+      new_flags.append((i, '-l' + strip_prefix(lib.get_base_name(), 'lib')))
       continue
 
     if building.map_and_apply_to_settings(lib):

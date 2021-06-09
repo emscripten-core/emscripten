@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <dlfcn.h>
 #include <emscripten.h>
 
@@ -36,12 +37,12 @@ void next(const char *x) {
   assert(twofunc() == 7);
   onefunc();
   int result = twofunc();
-  REPORT_RESULT(result);
+  exit(result);
 }
 
 int main() {
   emscripten_async_wget("lib.wasm", "thelib.wasm", next, NULL);
-  
+  printf("returning from main\n");
   return 0;
 }
 
