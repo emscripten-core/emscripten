@@ -2639,6 +2639,7 @@ Module["preRun"].push(function () {
         continue
       self.btest(test_file('html5_webgl.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + mode, expected='0')
 
+  @requires_graphics_hardware
   def test_webgl2_ubos(self):
     self.btest(test_file('webgl2_ubos.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
@@ -4265,6 +4266,7 @@ window.close = function() {
   @no_chrome('see https://crbug.com/961765')
   @requires_threads
   @requires_offscreen_canvas
+  @requires_graphics_hardware
   def test_webgl_offscreen_canvas_in_pthread(self):
     for args in [[], ['-DTEST_CHAINED_WEBGL_CONTEXT_PASSING']]:
       self.btest('gl_in_pthread.cpp', expected='1', args=args + ['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'OFFSCREENCANVAS_SUPPORT', '-lGL'])
@@ -4273,6 +4275,7 @@ window.close = function() {
   # -DTEST_MAIN_THREAD_EXPLICIT_COMMIT: Test the same (WebGL on main thread after pthread), but by using explicit .commit() to swap on the main thread instead of implicit "swap when rAF ends" logic
   @requires_threads
   @requires_offscreen_canvas
+  @requires_graphics_hardware
   @disabled('This test is disabled because current OffscreenCanvas does not allow transfering it after a rendering context has been created for it.')
   def test_webgl_offscreen_canvas_in_mainthread_after_pthread(self):
     for args in [[], ['-DTEST_MAIN_THREAD_EXPLICIT_COMMIT']]:
@@ -4280,6 +4283,7 @@ window.close = function() {
 
   @requires_threads
   @requires_offscreen_canvas
+  @requires_graphics_hardware
   def test_webgl_offscreen_canvas_only_in_pthread(self):
     self.btest('gl_only_in_pthread.cpp', expected='0', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'OFFSCREENCANVAS_SUPPORT', '-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER'])
 
@@ -4387,6 +4391,7 @@ window.close = function() {
   # -DTEST_OFFSCREEN_CANVAS=2: Tests that if a WebGL context is created on a pthread that has the canvas transferred to it via automatic transferring of Module.canvas when EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES is not defined, then OffscreenCanvas is also used
   @requires_threads
   @requires_offscreen_canvas
+  @requires_graphics_hardware
   def test_webgl_offscreen_canvas_in_proxied_pthread(self):
     for asyncify in [0, 1]:
       cmd = ['-s', 'USE_PTHREADS', '-s', 'OFFSCREENCANVAS_SUPPORT', '-lGL', '-s', 'GL_DEBUG', '-s', 'PROXY_TO_PTHREAD']
