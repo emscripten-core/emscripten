@@ -21,6 +21,9 @@ function TextDecoderWrapper(encoding) {
 #if ASSERTIONS
     assert(data instanceof Uint8Array);
 #endif
+    // While we compile with pthreads, this method can be called on side buffers
+    // as well, such as the stdout buffer in the filesystem code. Only copy when
+    // we have to.
     if (data.buffer instanceof SharedArrayBuffer) {
       data = new Uint8Array(data);
     }
