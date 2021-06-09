@@ -105,13 +105,14 @@ mergeInto(LibraryManager.library, {
               try {
                 return original.apply(null, arguments);
               } finally {
-                if (ABORT) return;
-                var y = Asyncify.exportCallStack.pop();
-                assert(y === x);
+                if (!ABORT) {
+                  var y = Asyncify.exportCallStack.pop();
+                  assert(y === x);
 #if ASYNCIFY_DEBUG >= 2
-                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + x);
+                  err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + x);
 #endif
-                Asyncify.maybeStopUnwind();
+                  Asyncify.maybeStopUnwind();
+                }
               }
             };
           } else {
