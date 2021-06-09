@@ -109,6 +109,7 @@ var LibraryEmVal = {
     }
   },
 
+  _emval_run_destructors__sig: 'vi',
   _emval_run_destructors__deps: ['_emval_decref', '$emval_handle_array', '$runDestructors'],
   _emval_run_destructors: function(handle) {
     var destructors = emval_handle_array[handle].value;
@@ -257,6 +258,7 @@ var LibraryEmVal = {
     return __emval_register(Module[name]);
   },
 
+  _emval_get_property__sig: 'iii',
   _emval_get_property__deps: ['_emval_register', '$requireHandle'],
   _emval_get_property: function(handle, key) {
     handle = requireHandle(handle);
@@ -264,6 +266,7 @@ var LibraryEmVal = {
     return __emval_register(handle[key]);
   },
 
+  _emval_set_property__sig: 'viii',
   _emval_set_property__deps: ['$requireHandle'],
   _emval_set_property: function(handle, key, value) {
     handle = requireHandle(handle);
