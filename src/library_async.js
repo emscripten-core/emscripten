@@ -25,7 +25,8 @@ mergeInto(LibraryManager.library, {
     State: {
       Normal: 0,
       Unwinding: 1,
-      Rewinding: 2
+      Rewinding: 2,
+      Disabled: 3,
     },
     state: 0,
     StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
@@ -83,11 +84,6 @@ mergeInto(LibraryManager.library, {
           }
         })(x);
       }
-    },
-
-    checkStateAfterExitRuntime: function() {
-      assert(Asyncify.state === Asyncify.State.None,
-            'Asyncify cannot be done during or after the runtime exits');
     },
 #endif
 
@@ -183,6 +179,9 @@ mergeInto(LibraryManager.library, {
     },
 
     handleSleep: function(startAsync) {
+#if ASSERTIONS
+      assert(Asyncify.state !== Asyncify.State.Disabled, 'Asyncify cannot be done during or after the runtime exits');
+#endif
       if (ABORT) return;
 #if !MINIMAL_RUNTIME
       noExitRuntime = true;

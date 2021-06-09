@@ -1078,7 +1078,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def do_run_in_out_file_test(self, *path, **kwargs):
     srcfile = test_file(*path)
-    outfile = shared.unsuffixed(srcfile) + '.out'
+    out_suffix = kwargs.pop('out_suffix', '')
+    outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
     expected = read_file(outfile)
     self._build_and_run(srcfile, expected, **kwargs)
 
