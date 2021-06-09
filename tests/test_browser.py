@@ -131,6 +131,16 @@ def requires_asmfs(f):
   return decorated
 
 
+def also_with_threads(f):
+  def decorated(self):
+    f(self)
+    if not os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
+      print('(threads)')
+      self.emcc_args += ['-pthread']
+      f(self)
+  return decorated
+
+
 # Today we only support the wasm backend so any tests that is disabled under the llvm
 # backend is always disabled.
 # TODO(sbc): Investigate all tests with this decorator and either fix of remove the test.
@@ -4231,12 +4241,15 @@ window.close = function() {
     shutil.move('test.wasm', Path('cdn/test.wasm'))
     self.run_browser('test.html', '', '/report_result?0')
 
+  @also_with_threads
   def test_utf8_textdecoder(self):
     self.btest_exit('benchmark_utf8.cpp', 0, args=['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt', '-s', 'EXPORTED_RUNTIME_METHODS=[UTF8ToString]'])
 
+  @also_with_threads
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark_utf16.cpp', 0, args=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-s', 'EXPORTED_RUNTIME_METHODS=[UTF16ToString,stringToUTF16,lengthBytesUTF16]'])
 
+  @also_with_threads
   def test_TextDecoder(self):
     self.btest('browser_test_hello_world.c', '0', args=['-s', 'TEXTDECODER=0'])
     just_fallback = os.path.getsize('test.js')
@@ -4244,7 +4257,13 @@ window.close = function() {
     td_with_fallback = os.path.getsize('test.js')
     self.btest('browser_test_hello_world.c', '0', args=['-s', 'TEXTDECODER=2'])
     td_without_fallback = os.path.getsize('test.js')
-    self.assertLess(td_without_fallback, just_fallback)
+    # pthread TextDecoder support is more complex due to
+    # https://github.com/whatwg/encoding/issues/172
+    # and therefore the expected code size win there is actually a loss
+    if '-pthread' not in self.emcc_args:
+      self.assertLess(td_without_fallback, just_fallback)
+    else:
+      self.assertGreater(td_without_fallback, just_fallback)
     self.assertLess(just_fallback, td_with_fallback)
 
   def test_small_js_flags(self):

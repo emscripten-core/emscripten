@@ -57,8 +57,10 @@ int main() {
   double t = 0;
   double t2 = emscripten_get_now();
   for(int i = 0; i < 100000; ++i) {
-    // FF Nightly: Already on small strings of 64 bytes in length, TextDecoder trumps in performance.
-    char *str = randomString(8);
+    // Create strings of lengths 1-32, because the internals of text decoding
+    // have a cutoff of 16 for when to use TextDecoder, and we wish to test both
+    // (see UTF8ArrayToString).
+    char *str = randomString((i % 32) + 1);
     t += test(str);
     delete [] str;
   }
