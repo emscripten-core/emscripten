@@ -199,7 +199,8 @@ commands:
           name: run tests
           environment:
             GALLIUM_DRIVER: softpipe # TODO: use the default llvmpipe when it supports more extensions
-            # TODO: return to GL testing when https://bugzil.la/1375585 resolves
+            # TODO: Do GL testing when https://bugzil.la/1375585 (lack of WebGL
+            #       support in headless mode) resolves
             EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             # OffscreenCanvas support is not yet done in Firefox.
