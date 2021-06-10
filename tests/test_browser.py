@@ -2434,7 +2434,7 @@ void *getBindBuffer() {
     self.btest('test_emscripten_async_wget2.cpp', expected='0')
 
   def test_emscripten_async_wget2_data(self):
-    shutil.copyfile(test_file('hello.txt'), 'hello.txt')
+    create_file('hello.txt', 'Hello Emscripten!')
     self.btest('test_emscripten_async_wget2_data.cpp', expected='0')
     time.sleep(10)
 
