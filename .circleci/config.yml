@@ -208,16 +208,18 @@ commands:
             DISPLAY: ":0"
           command: |
             export EMTEST_BROWSER="$HOME/firefox/firefox -headless -profile $HOME/tmp-firefox-profile/"
-            # Start an X session. Openbox might be optional for now, but
-            # an ICCCM/EWMH compliant window manager is potentially needed
-            # for tests with fullscreen toggling (if we move to a headless
-            # browser, this may not be needed eventually).
-            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            echo "-----"
+            echo "Running browser tests"
+            echo "-----"
+            tests/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            echo "-----"
+            echo "Running posix tests"
+            echo "-----"
+            tests/runner browser posixtest_browser.test_pthread_create_1_1
             echo "-----"
             echo "Running emrun tests"
             echo "-----"
-            # test_no_browser seems to cause the xsession to go down when run in github CI.
-            tests/runner emrun skip:emrun.test_no_browser
+            tests/runner emrun
   test-chrome:
     description: "Runs emscripten browser tests under chrome"
     steps:
