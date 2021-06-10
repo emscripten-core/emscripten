@@ -212,13 +212,9 @@ commands:
             echo "Running browser tests"
             echo "-----"
             tests/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
-            echo "-----"
-            echo "Running emrun tests"
-            echo "-----"
-            tests/runner emrun
-            # posix test suite is disabled because firefox errors on "already
-            # running and not responding" TODO: find out a way to shut down and
-            # restart firefox
+            # posix and emrun suites are disabled because firefox errors on
+            # "Firefox is already running, but is not responding."
+            # TODO: find out a way to shut down and restart firefox
   test-chrome:
     description: "Runs emscripten browser tests under chrome"
     steps:
