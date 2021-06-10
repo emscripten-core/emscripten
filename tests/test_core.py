@@ -27,7 +27,7 @@ from tools import shared, building, config, webassembly
 from runner import RunnerCore, path_from_root, requires_native_clang, test_file
 from runner import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
 from runner import env_modify, with_env_modify, disabled, node_pthreads
-from runner import read_file, read_binary
+from runner import read_file, read_binary, require_node
 from runner import NON_ZERO, WEBIDL_BINDER, EMBUILDER, EMMAKE
 import clang_native
 
@@ -7314,14 +7314,15 @@ someweirdtext
   def test_vswprintf_utf8(self):
     self.do_run_in_out_file_test('vswprintf_utf8.c')
 
+  # needs setTimeout which only node has
+  @require_node
   @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
-  def test_async(self):
+  def test_async_hello(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('ASYNCIFY')
-    self.banned_js_engines = [config.SPIDERMONKEY_ENGINE, config.V8_ENGINE] # needs setTimeout which only node has
 
-    src = r'''
+    create_file('main.c',  r'''
 #include <stdio.h>
 #include <emscripten.h>
 void f(void *p) {
@@ -7336,12 +7337,20 @@ int main() {
   emscripten_sleep(100);
   printf("%d\n", i);
 }
-'''
+''')
 
-    self.do_run(src, 'HelloWorld!99')
+    self.do_runf('main.c', 'HelloWorld!99')
 
-    print('check bad ccall use')
-    src = r'''
+  @require_node
+  @no_asan('asyncify stack operations confuse asan')
+  def test_async_ccall_bad(self):
+    # check bad ccall use
+    # needs to flush stdio streams
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('ASYNCIFY')
+    self.set_setting('ASSERTIONS')
+    self.set_setting('INVOKE_RUN', 0)
+    create_file('main.c', r'''
 #include <stdio.h>
 #include <emscripten.h>
 int main() {
@@ -7349,9 +7358,7 @@ int main() {
   emscripten_sleep(100);
   printf("World\n");
 }
-'''
-    self.set_setting('ASSERTIONS')
-    self.set_setting('INVOKE_RUN', 0)
+''')
     create_file('pre.js', '''
 Module['onRuntimeInitialized'] = function() {
   try {
@@ -7364,10 +7371,18 @@ Module['onRuntimeInitialized'] = function() {
 };
 ''')
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_run(src, 'The call to main is running asynchronously.')
+    self.do_runf('main.c', 'The call to main is running asynchronously.')
 
-    print('check reasonable ccall use')
-    src = r'''
+  @require_node
+  @no_asan('asyncify stack operations confuse asan')
+  def test_async_ccall_good(self):
+    # check reasonable ccall use
+    # needs to flush stdio streams
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('ASYNCIFY')
+    self.set_setting('ASSERTIONS')
+    self.set_setting('INVOKE_RUN', 0)
+    create_file('main.c', r'''
 #include <stdio.h>
 #include <emscripten.h>
 int main() {
@@ -7375,33 +7390,36 @@ int main() {
   emscripten_sleep(100);
   printf("World\n");
 }
-'''
+''')
     create_file('pre.js', '''
 Module['onRuntimeInitialized'] = function() {
   ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
 };
 ''')
-    self.do_run(src, 'HelloWorld')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_runf('main.c', 'HelloWorld')
 
+  @no_asan('asyncify stack operations confuse asan')
+  def test_async_ccall_promise(self):
     print('check ccall promise')
-    self.clear_setting('EXIT_RUNTIME')
+    self.set_setting('ASYNCIFY')
+    self.set_setting('ASSERTIONS')
+    self.set_setting('INVOKE_RUN', 0)
     self.set_setting('EXPORTED_FUNCTIONS', ['_stringf', '_floatf'])
-    src = r'''
+    create_file('main.c', r'''
 #include <stdio.h>
 #include <emscripten.h>
-extern "C" {
-  const char* stringf(char* param) {
-    emscripten_sleep(20);
-    printf("%s", param);
-    return "second";
-  }
-  double floatf() {
-    emscripten_sleep(20);
-    emscripten_sleep(20);
-    return 6.4;
-  }
+const char* stringf(char* param) {
+  emscripten_sleep(20);
+  printf("%s", param);
+  return "second";
 }
-'''
+double floatf() {
+  emscripten_sleep(20);
+  emscripten_sleep(20);
+  return 6.4;
+}
+''')
     create_file('pre.js', r'''
 Module['onRuntimeInitialized'] = function() {
   ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
@@ -7411,7 +7429,8 @@ Module['onRuntimeInitialized'] = function() {
     });
 };
 ''')
-    self.do_run(src, 'first\nsecond\n6.4')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_runf('main.c', 'first\nsecond\n6.4')
 
   @no_asan('asyncify stack operations confuse asan')
   def test_fibers_asyncify(self):
