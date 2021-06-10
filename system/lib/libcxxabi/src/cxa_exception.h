@@ -17,6 +17,13 @@
 #include "cxxabi.h"
 #include "unwind.h"
 
+#ifdef __USING_EMSCRIPTEN_EXCEPTIONS__
+// Under emscripten-style exception handling the __cxa_exception type is
+// defined in JavaScript in src/library_exceptions.js.
+// Any usage of this header would lead to incompatabilities.
+#error "Not compatible with emscripten-style exception handling"
+#endif
+
 namespace __cxxabiv1 {
 
 static const uint64_t kOurExceptionClass          = 0x434C4E47432B2B00; // CLNGC++\0
