@@ -235,7 +235,7 @@ example is based off of
 `this MDN example <https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest#Basic_example>`_
 ).
 
-Note that we must propagate the value returned from ``handleSleep()``. The calling C code then
+Note that we must propagate the value returned from ``handleAsync()``. The calling C code then
 gets it normally, after the Promise completes.
 
 If you're using the ``handleSleep`` API, the value needs to be also passed to the ``wakeUp`` callback, instead of being returned from our handler:
