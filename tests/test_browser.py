@@ -2719,11 +2719,11 @@ Module["preRun"].push(function () {
 
   def test_wget(self):
     create_file('test.txt', 'emscripten')
-    self.btest(test_file('test_wget.c'), expected='1', args=['-s', 'ASYNCIFY'])
+    self.btest_exit(test_file('test_wget.c'), args=['-s', 'ASYNCIFY'])
 
   def test_wget_data(self):
     create_file('test.txt', 'emscripten')
-    self.btest(test_file('test_wget_data.c'), expected='1', args=['-O2', '-g2', '-s', 'ASYNCIFY'])
+    self.btest_exit(test_file('test_wget_data.c'), args=['-O2', '-g2', '-s', 'ASYNCIFY'])
 
   @parameterized({
     '': ([],),

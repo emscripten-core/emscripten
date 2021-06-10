@@ -7383,6 +7383,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_run(src, 'HelloWorld')
 
     print('check ccall promise')
+    self.clear_setting('EXIT_RUNTIME')
     self.set_setting('EXPORTED_FUNCTIONS', ['_stringf', '_floatf'])
     src = r'''
 #include <stdio.h>
