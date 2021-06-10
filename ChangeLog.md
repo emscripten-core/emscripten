@@ -21,7 +21,7 @@ See docs/process.md for more on how version tagging works.
 2.0.25
 ------
 
-2.0.24 - 05/10/2021
+2.0.24 - 06/10/2021
 -------------------
 - Support `--preload-file` in Node.js. (#11785)
 - System libraries are now passed to the linker internally via `-lfoo` rather
