@@ -101,6 +101,7 @@ TEST_ROOT = path_from_root('tests')
 WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
 EMBUILDER = shared.bat_suffix(path_from_root('embuilder'))
+EMMAKE = shared.bat_suffix(path_from_root('emmake'))
 
 
 if EMTEST_VERBOSE:
@@ -848,7 +849,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def get_library(self, name, generated_libs, configure=['sh', './configure'],
                   configure_args=[], make=['make'], make_args=None,
-                  env_init={}, cache_name_extra='', native=False):
+                  env_init=None, cache_name_extra='', native=False):
+    if env_init is None:
+      env_init = {}
     if make_args is None:
       make_args = ['-j', str(shared.get_num_cores())]
 
@@ -878,9 +881,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # Avoid += so we don't mutate the default arg
       configure = configure + configure_args
 
+    cflags = ' '.join(self.get_emcc_args())
+    env_init.setdefault('CFLAGS', cflags)
+    env_init.setdefault('CXXFLAGS', cflags)
     return build_library(name, build_dir, output_dir, generated_libs, configure,
                          make, make_args, self.library_cache,
-                         cache_name, env_init=env_init, native=native, cflags=self.get_emcc_args())
+                         cache_name, env_init=env_init, native=native)
 
   def clear(self):
     delete_contents(self.get_dir())
@@ -1078,7 +1084,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def do_run_in_out_file_test(self, *path, **kwargs):
     srcfile = test_file(*path)
-    outfile = shared.unsuffixed(srcfile) + '.out'
+    out_suffix = kwargs.pop('out_suffix', '')
+    outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
     expected = read_file(outfile)
     self._build_and_run(srcfile, expected, **kwargs)
 
@@ -1649,8 +1656,7 @@ def build_library(name,
                   cache=None,
                   cache_name=None,
                   env_init={},
-                  native=False,
-                  cflags=[]):
+                  native=False):
   """Build a library and cache the result.  We build the library file
   once and cache it for all our tests. (We cache in memory since the test
   directory is destroyed and recreated for each test. Note that we cache
@@ -1669,12 +1675,13 @@ def build_library(name,
   shutil.copytree(source_dir, project_dir)
 
   generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
+
   if native:
     env = clang_native.get_clang_native_env()
   else:
-    env = building.get_building_env(cflags=cflags)
-  for k, v in env_init.items():
-    env[k] = v
+    env = os.environ.copy()
+  env.update(env_init)
+
   if configure:
     if configure[0] == 'cmake':
       configure = [EMCMAKE] + configure
@@ -1695,6 +1702,9 @@ def build_library(name,
       print(read_file(Path(project_dir, 'configure_err')))
       print('-- end configure stderr --')
       raise
+    # if we run configure or cmake we don't then need any kind
+    # of special env when we run make below
+    env = None
 
   def open_make_out(mode='r'):
     return open(os.path.join(project_dir, 'make.out'), mode)

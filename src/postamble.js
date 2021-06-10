@@ -190,33 +190,25 @@ function callMain(args) {
     assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
 #endif
 #else
-#if ASYNCIFY
-    // if we are saving the stack, then do not call exit, we are not
-    // really exiting now, just unwinding the JS stack
-    if (!keepRuntimeAlive()) {
-#endif // ASYNCIFY
-      // if we're not running an evented main loop, it's time to exit
-      exit(ret, /* implicit = */ true);
-#if ASYNCIFY
-    }
-#endif // ASYNCIFY
+    // if we're not running an evented main loop, it's time to exit
+    exit(ret, /* implicit = */ true);
   }
-  catch(e) {
-    if (e instanceof ExitStatus) {
-      // exit() throws this once it's done to make sure execution
-      // has been stopped completely
+  catch (e) {
+    // Certain exception types we do not treat as errors since they are used for
+    // internal control flow.
+    // 1. ExitStatus, which is thrown by exit()
+    // 2. "unwind", which is thrown by emscripten_unwind_to_js_event_loop() and others
+    //    that wish to return to JS event loop.
+    if (e instanceof ExitStatus || e == 'unwind') {
       return;
-    } else if (e == 'unwind') {
-      // running an evented main loop, don't immediately exit
-      return;
-    } else {
-      var toLog = e;
-      if (e && typeof e === 'object' && e.stack) {
-        toLog = [e, e.stack];
-      }
-      err('exception thrown: ' + toLog);
-      quit_(1, e);
     }
+    // Anything else is an unexpected exception and we treat it as hard error.
+    var toLog = e;
+    if (e && typeof e === 'object' && e.stack) {
+      toLog = [e, e.stack];
+    }
+    err('exception thrown: ' + toLog);
+    quit_(1, e);
 #endif // !PROXY_TO_PTHREAD
   } finally {
     calledMain = true;

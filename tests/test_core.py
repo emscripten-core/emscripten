@@ -28,7 +28,7 @@ from runner import RunnerCore, path_from_root, requires_native_clang, test_file
 from runner import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
 from runner import env_modify, with_env_modify, disabled, node_pthreads
 from runner import read_file, read_binary
-from runner import NON_ZERO, WEBIDL_BINDER, EMBUILDER
+from runner import NON_ZERO, WEBIDL_BINDER, EMBUILDER, EMMAKE
 import clang_native
 
 # decorators for limiting which modes a test can run in
@@ -463,7 +463,7 @@ class TestCoreBase(RunnerCore):
   def test_cube2hash(self):
     # A good test of i64 math
     self.do_run('// empty file', 'Usage: hashstring <seed>',
-                libraries=self.get_library('third_party/cube2hash', ['libcube2hash.a'], configure=None),
+                libraries=self.get_library('third_party/cube2hash', ['libcube2hash.a'], configure=None, make=[EMMAKE, 'make']),
                 includes=[test_file('third_party/cube2hash')], assert_returncode=NON_ZERO)
 
     for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
@@ -5948,10 +5948,11 @@ void* operator new(size_t size) {
   def test_lua(self):
     self.emcc_args.remove('-Werror')
 
+    libs = self.get_library('third_party/lua', [Path('src/lua.o'), Path('src/liblua.a')], make=[EMMAKE, 'make', 'generic'], configure=None)
     self.do_run('',
                 'hello lua world!\n17\n1\n2\n3\n4\n7',
                 args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                libraries=self.get_library('third_party/lua', [Path('src/lua.o'), Path('src/liblua.a')], make=['make', 'generic'], configure=None),
+                libraries=libs,
                 includes=[test_file('lua')],
                 output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
@@ -7383,6 +7384,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_run(src, 'HelloWorld')
 
     print('check ccall promise')
+    self.clear_setting('EXIT_RUNTIME')
     self.set_setting('EXPORTED_FUNCTIONS', ['_stringf', '_floatf'])
     src = r'''
 #include <stdio.h>
@@ -7497,6 +7499,8 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('ASSERTIONS')
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_core_test('test_asyncify_during_exit.cpp', assert_returncode=1)
+    print('NO_ASYNC')
+    self.do_core_test('test_asyncify_during_exit.cpp', emcc_args=['-DNO_ASYNC'], out_suffix='_no_async')
 
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm2js('TODO: lazy loading in wasm2js')

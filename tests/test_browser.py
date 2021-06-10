@@ -21,7 +21,7 @@ from pathlib import Path
 from urllib.request import urlopen
 
 from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
-from runner import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
+from runner import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER, EMMAKE
 from runner import read_file
 from tools import shared
 from tools import system_libs
@@ -128,6 +128,16 @@ def requires_asmfs(f):
     self.skipTest('ASMFS is looking for a maintainer')
     return f(self, *args, **kwargs)
 
+  return decorated
+
+
+def also_with_threads(f):
+  def decorated(self):
+    f(self)
+    if not os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
+      print('(threads)')
+      self.emcc_args += ['-pthread']
+      f(self)
   return decorated
 
 
@@ -1737,7 +1747,7 @@ keydown(100);keyup(100); // trigger the end
       Path('Chapter_9/TextureWrap', 'CH09_TextureWrap.o'),
       Path('Chapter_10/MultiTexture', 'CH10_MultiTexture.o'),
       Path('Chapter_13/ParticleSystem', 'CH13_ParticleSystem.o'),
-    ], configure=None)
+    ], configure=None, make=[EMMAKE, 'make'])
 
     def book_path(*pathelems):
       return test_file('glbook', *pathelems)
@@ -2442,6 +2452,11 @@ void *getBindBuffer() {
   def test_emscripten_async_wget2(self):
     self.btest_exit('test_emscripten_async_wget2.cpp')
 
+  def test_emscripten_async_wget2_data(self):
+    create_file('hello.txt', 'Hello Emscripten!')
+    self.btest('test_emscripten_async_wget2_data.cpp', expected='0')
+    time.sleep(10)
+
   def test_emscripten_async_wget_side_module(self):
     self.run_process([EMCC, test_file('browser_module.cpp'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE', '-s', 'EXPORTED_FUNCTIONS=_one,_two'])
     self.btest_exit('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE'], assert_returncode=8)
@@ -2710,11 +2725,11 @@ Module["preRun"].push(function () {
 
   def test_wget(self):
     create_file('test.txt', 'emscripten')
-    self.btest(test_file('test_wget.c'), expected='1', args=['-s', 'ASYNCIFY'])
+    self.btest_exit(test_file('test_wget.c'), args=['-s', 'ASYNCIFY'])
 
   def test_wget_data(self):
     create_file('test.txt', 'emscripten')
-    self.btest(test_file('test_wget_data.c'), expected='1', args=['-O2', '-g2', '-s', 'ASYNCIFY'])
+    self.btest_exit(test_file('test_wget_data.c'), args=['-O2', '-g2', '-s', 'ASYNCIFY'])
 
   @parameterized({
     '': ([],),
@@ -4237,12 +4252,15 @@ window.close = function() {
     shutil.move('test.wasm', Path('cdn/test.wasm'))
     self.run_browser('test.html', '', '/report_result?0')
 
+  @also_with_threads
   def test_utf8_textdecoder(self):
     self.btest_exit('benchmark_utf8.cpp', 0, args=['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt', '-s', 'EXPORTED_RUNTIME_METHODS=[UTF8ToString]'])
 
+  @also_with_threads
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark_utf16.cpp', 0, args=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-s', 'EXPORTED_RUNTIME_METHODS=[UTF16ToString,stringToUTF16,lengthBytesUTF16]'])
 
+  @also_with_threads
   def test_TextDecoder(self):
     self.btest('browser_test_hello_world.c', '0', args=['-s', 'TEXTDECODER=0'])
     just_fallback = os.path.getsize('test.js')
@@ -4250,7 +4268,13 @@ window.close = function() {
     td_with_fallback = os.path.getsize('test.js')
     self.btest('browser_test_hello_world.c', '0', args=['-s', 'TEXTDECODER=2'])
     td_without_fallback = os.path.getsize('test.js')
-    self.assertLess(td_without_fallback, just_fallback)
+    # pthread TextDecoder support is more complex due to
+    # https://github.com/whatwg/encoding/issues/172
+    # and therefore the expected code size win there is actually a loss
+    if '-pthread' not in self.emcc_args:
+      self.assertLess(td_without_fallback, just_fallback)
+    else:
+      self.assertGreater(td_without_fallback, just_fallback)
     self.assertLess(just_fallback, td_with_fallback)
 
   def test_small_js_flags(self):
