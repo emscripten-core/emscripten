@@ -968,30 +968,7 @@ var LibraryBrowser = {
 
     var handle = Browser.getNextWgetRequestHandle();
 
-    // LOAD
-    http.onload = function http_onload(e) {
-      if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.substr(0,4).toLowerCase() != "http")) {
-        var byteArray = new Uint8Array(/** @type{ArrayBuffer} */(http.response));
-        var buffer = _malloc(byteArray.length);
-        HEAPU8.set(byteArray, buffer);
-        if (onload) {{{ makeDynCall('viiii', 'onload') }}}(handle, arg, buffer, byteArray.length);
-        if (free) _free(buffer);
-      } else {
-        if (onerror) {
-          var statusText = 0;
-          if (http.statusText) {
-            var len = lengthBytesUTF8(http.statusText) + 1;
-            statusText = stackAlloc(len);
-            stringToUTF8(http.statusText, statusText, len);
-          }
-          {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, statusText);
-        }
-      }
-      delete Browser.wgetRequests[handle];
-    };
-
-    // ERROR
-    http.onerror = function http_onerror(e) {
+    function onerrorjs() {
       if (onerror) {
         var statusText = 0;
         if (http.statusText) {
@@ -1001,6 +978,25 @@ var LibraryBrowser = {
         }
         {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, statusText);
       }
+    }
+
+    // LOAD
+    http.onload = function http_onload(e) {
+      if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.substr(0,4).toLowerCase() != "http")) {
+        var byteArray = new Uint8Array(/** @type{ArrayBuffer} */(http.response));
+        var buffer = _malloc(byteArray.length);
+        HEAPU8.set(byteArray, buffer);
+        if (onload) {{{ makeDynCall('viiii', 'onload') }}}(handle, arg, buffer, byteArray.length);
+        if (free) _free(buffer);
+      } else {
+        onerrorjs();
+      }
+      delete Browser.wgetRequests[handle];
+    };
+
+    // ERROR
+    http.onerror = function http_onerror(e) {
+      onerrorjs();
       delete Browser.wgetRequests[handle];
     };
 
