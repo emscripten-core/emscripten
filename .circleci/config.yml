@@ -215,7 +215,7 @@ commands:
             echo "-----"
             echo "Running posix tests"
             echo "-----"
-            tests/runner browser posixtest_browser.test_pthread_create_1_1
+            tests/runner posixtest_browser.test_pthread_create_1_1
             echo "-----"
             echo "Running emrun tests"
             echo "-----"
