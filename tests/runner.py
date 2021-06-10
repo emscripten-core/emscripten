@@ -620,7 +620,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     es_check_env = os.environ.copy()
     es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
     try:
-      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stderr=PIPE, env=es_check_env)
+      shared.run_process(es_check + ['es5', os.path.abspath(filename), '--quiet'], stderr=PIPE, env=es_check_env)
     except subprocess.CalledProcessError as e:
       print(e.stderr)
       self.fail('es-check failed to verify ES5 output compliance')
