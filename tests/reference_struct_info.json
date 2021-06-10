@@ -1222,6 +1222,14 @@
             "module": 4,
             "nextInChain": 0
         },
+        "__cxa_exception": {
+            "__size__": 16,
+            "caught": 12,
+            "exceptionDestructor": 8,
+            "exceptionType": 4,
+            "referenceCount": 0,
+            "rethrown": 13
+        },
         "__wasi_fdstat_t": {
             "__size__": 24,
             "fs_filetype": 0,

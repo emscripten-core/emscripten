@@ -9,20 +9,6 @@ var LibraryExceptions = {
   $exceptionLast: '0',
   $exceptionCaught: ' []',
 
-  // Static fields for ExceptionInfo class.
-  $ExceptionInfoAttrs: {
-    // ExceptionInfo native structure layout.
-    DESTRUCTOR_OFFSET: 0,
-    REFCOUNT_OFFSET: Runtime.POINTER_SIZE,
-    TYPE_OFFSET: Runtime.POINTER_SIZE + 4,
-    CAUGHT_OFFSET: Runtime.POINTER_SIZE + 8,
-    RETHROWN_OFFSET: Runtime.POINTER_SIZE + 9,
-
-    // Total structure size with padding, should be multiple of allocation alignment.
-    SIZE: alignMemory(Runtime.POINTER_SIZE + 10)
-  },
-
-  $ExceptionInfo__deps: ['$ExceptionInfoAttrs'],
   // This class is the exception metadata which is prepended to each thrown object (in WASM memory).
   // It is allocated in one block among with a thrown object in __cxa_allocate_exception and freed
   // in ___cxa_free_exception. It roughly corresponds to __cxa_exception structure in libcxxabi. The
@@ -37,44 +23,44 @@ var LibraryExceptions = {
   // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
   $ExceptionInfo: function(excPtr) {
     this.excPtr = excPtr;
-    this.ptr = excPtr - ExceptionInfoAttrs.SIZE;
+    this.ptr = excPtr - {{{ C_STRUCTS.__cxa_exception.__size__ }}};
 
     this.set_type = function(type) {
-      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.TYPE_OFFSET', 'type', '*') }}};
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.exceptionType, 'type', '*') }}};
     };
 
     this.get_type = function() {
-      return {{{ makeGetValue('this.ptr', 'ExceptionInfoAttrs.TYPE_OFFSET', '*') }}};
+      return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.exceptionType, '*') }}};
     };
 
     this.set_destructor = function(destructor) {
-      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.DESTRUCTOR_OFFSET', 'destructor', '*') }}};
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.exceptionDestructor, 'destructor', '*') }}};
     };
 
     this.get_destructor = function() {
-      return {{{ makeGetValue('this.ptr', 'ExceptionInfoAttrs.DESTRUCTOR_OFFSET', '*') }}};
+      return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.exceptionDestructor, '*') }}};
     };
 
     this.set_refcount = function(refcount) {
-      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.REFCOUNT_OFFSET', 'refcount', 'i32') }}};
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'refcount', 'i32') }}};
     };
 
     this.set_caught = function (caught) {
       caught = caught ? 1 : 0;
-      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.CAUGHT_OFFSET', 'caught', 'i8') }}};
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.caught, 'caught', 'i8') }}};
     };
 
     this.get_caught = function () {
-      return {{{ makeGetValue('this.ptr', 'ExceptionInfoAttrs.CAUGHT_OFFSET', 'i8') }}} != 0;
+      return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.caught, 'i8') }}} != 0;
     };
 
     this.set_rethrown = function (rethrown) {
       rethrown = rethrown ? 1 : 0;
-      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.RETHROWN_OFFSET', 'rethrown', 'i8') }}};
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.rethrown, 'rethrown', 'i8') }}};
     };
 
     this.get_rethrown = function () {
-      return {{{ makeGetValue('this.ptr', 'ExceptionInfoAttrs.RETHROWN_OFFSET', 'i8') }}} != 0;
+      return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.rethrown, 'i8') }}} != 0;
     };
 
     // Initialize native structure fields. Should be called once after allocated.
@@ -88,20 +74,20 @@ var LibraryExceptions = {
 
     this.add_ref = function() {
 #if USE_PTHREADS
-      Atomics.add(HEAP32, (this.ptr + ExceptionInfoAttrs.REFCOUNT_OFFSET) >> 2, 1);
+      Atomics.add(HEAP32, (this.ptr + {{{ C_STRUCTS.__cxa_exception.referenceCount }}}) >> 2, 1);
 #else
-      var value = {{{ makeGetValue('this.ptr', 'ExceptionInfoAttrs.REFCOUNT_OFFSET', 'i32') }}};
-      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.REFCOUNT_OFFSET', 'value + 1', 'i32') }}};
+      var value = {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'i32') }}};
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'value + 1', 'i32') }}};
 #endif
     };
 
     // Returns true if last reference released.
     this.release_ref = function() {
 #if USE_PTHREADS
-      var prev = Atomics.sub(HEAP32, (this.ptr + ExceptionInfoAttrs.REFCOUNT_OFFSET) >> 2, 1);
+      var prev = Atomics.sub(HEAP32, (this.ptr + {{{ C_STRUCTS.__cxa_exception.referenceCount }}}) >> 2, 1);
 #else
-      var prev = {{{ makeGetValue('this.ptr', 'ExceptionInfoAttrs.REFCOUNT_OFFSET', 'i32') }}};
-      {{{ makeSetValue('this.ptr', 'ExceptionInfoAttrs.REFCOUNT_OFFSET', 'prev - 1', 'i32') }}};
+      var prev = {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'i32') }}};
+      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.referenceCount, 'prev - 1', 'i32') }}};
 #endif
 #if ASSERTIONS
       assert(prev > 0);
@@ -205,11 +191,10 @@ var LibraryExceptions = {
   },
 
   // Exceptions
-  __cxa_allocate_exception__deps: ['$ExceptionInfoAttrs'],
   __cxa_allocate_exception__sig: 'vi',
   __cxa_allocate_exception: function(size) {
     // Thrown object is prepended by exception metadata block
-    return _malloc(size + ExceptionInfoAttrs.SIZE) + ExceptionInfoAttrs.SIZE;
+    return _malloc(size + {{{ C_STRUCTS.__cxa_exception.__size__ }}}) + {{{ C_STRUCTS.__cxa_exception.__size__ }}};
   },
 
   __cxa_free_exception__deps: ['$ExceptionInfo'],

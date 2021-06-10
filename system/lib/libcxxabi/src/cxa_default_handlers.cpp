@@ -13,13 +13,11 @@
 #include "abort_message.h"
 #include "cxxabi.h"
 #include "cxa_handlers.h"
+#include "cxa_exception.h"
 #include "private_typeinfo.h"
 #include "include/atomic_support.h"
 
 #if !defined(LIBCXXABI_SILENT_TERMINATE)
-// XXX EMSCRIPTEN: this header is not compatible with emscripten exceptions
-// and is only needed when !LIBCXXABI_SILENT_TERMINATE
-#include "cxa_exception.h"
 
 _LIBCPP_SAFE_STATIC
 static const char* cause = "uncaught";
