@@ -21,7 +21,7 @@ from pathlib import Path
 from urllib.request import urlopen
 
 from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
-from runner import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
+from runner import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER, EMMAKE
 from runner import read_file
 from tools import shared
 from tools import system_libs
@@ -1747,7 +1747,7 @@ keydown(100);keyup(100); // trigger the end
       Path('Chapter_9/TextureWrap', 'CH09_TextureWrap.o'),
       Path('Chapter_10/MultiTexture', 'CH10_MultiTexture.o'),
       Path('Chapter_13/ParticleSystem', 'CH13_ParticleSystem.o'),
-    ], configure=None)
+    ], configure=None, make=[EMMAKE, 'make'])
 
     def book_path(*pathelems):
       return test_file('glbook', *pathelems)
