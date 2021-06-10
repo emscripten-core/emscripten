@@ -9,11 +9,34 @@
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
 
+#if USE_PTHREADS && TEXTDECODER
+// UTF8Decoder.decode may not work with a view of a SharedArrayBuffer, see
+// https://github.com/whatwg/encoding/issues/172
+// To avoid that, we wrap around it and add a copy into a normal ArrayBuffer,
+// which can still be much faster than creating a string character by
+// character.
+function TextDecoderWrapper(encoding) {
+  var textDecoder = new TextDecoder(encoding);
+  this.decode = function(data) {
+#if ASSERTIONS
+    assert(data instanceof Uint8Array);
+#endif
+    // While we compile with pthreads, this method can be called on side buffers
+    // as well, such as the stdout buffer in the filesystem code. Only copy when
+    // we have to.
+    if (data.buffer instanceof SharedArrayBuffer) {
+      data = new Uint8Array(data);
+    }
+    return textDecoder.decode.call(textDecoder, data);
+  };
+}
+#endif
+
 #if TEXTDECODER == 2
-var UTF8Decoder = new TextDecoder('utf8');
+var UTF8Decoder = new TextDecoder{{{ USE_PTHREADS ? 'Wrapper' : ''}}}('utf8');
 #else // TEXTDECODER == 2
 #if TEXTDECODER
-var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf8') : undefined;
+var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder{{{ USE_PTHREADS ? 'Wrapper' : ''}}}('utf8') : undefined;
 #endif // TEXTDECODER
 #endif // TEXTDECODER == 2
 

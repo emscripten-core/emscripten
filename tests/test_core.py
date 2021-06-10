@@ -38,8 +38,7 @@ logger = logging.getLogger("test_core")
 
 def wasm_simd(f):
   def decorated(self):
-    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
-      self.skipTest('wasm simd only supported in d8 for now')
+    self.require_v8()
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
     if '-O3' in self.emcc_args:
@@ -47,18 +46,14 @@ def wasm_simd(f):
     self.emcc_args.append('-msimd128')
     self.emcc_args.append('-fno-lax-vector-conversions')
     self.v8_args.append('--experimental-wasm-simd')
-    self.js_engines = [config.V8_ENGINE]
     f(self)
   return decorated
 
 
-def bleeding_edge_wasm_backend(f):
+def needs_non_trapping_float_to_int(f):
   def decorated(self):
-    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
-      self.skipTest('only works in d8 for now')
     if not self.is_wasm():
       self.skipTest('wasm2js only supports MVP for now')
-    self.js_engines = [config.V8_ENGINE]
     f(self)
   return decorated
 
@@ -69,8 +64,8 @@ def also_with_wasm_bigint(f):
     f(self)
     if self.is_wasm():
       self.set_setting('WASM_BIGINT')
+      self.require_node()
       self.node_args.append('--experimental-wasm-bigint')
-      self.js_engines = [config.NODE_JS]
       f(self)
   return decorated
 
@@ -99,14 +94,12 @@ def with_both_exception_handling(f):
       # Wasm EH is currently supported only in wasm backend and V8
       if not self.is_wasm():
         self.skipTest('wasm2js does not support wasm exceptions')
-      if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
-        self.skipTest('d8 required to run wasm eh tests')
+      self.require_v8()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
       if '-fsanitize=address' in self.emcc_args:
         self.skipTest('Wasm EH does not work with asan yet')
       self.emcc_args.append('-fwasm-exceptions')
       self.v8_args.append('--experimental-wasm-eh')
-      self.js_engines = [config.V8_ENGINE]
       f(self)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -270,13 +263,15 @@ class TestCoreBase(RunnerCore):
   def is_wasm2js(self):
     return self.get_setting('WASM') == 0
 
+  def can_use_closure(self):
+    return '-g' not in self.emcc_args and '--profiling' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args)
+
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
-    if '--closure=1' not in self.emcc_args:
-      if '-g' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args):
-        self.emcc_args += ['--closure=1']
-        logger.debug('using closure compiler..')
-        return True
+    if '--closure=1' not in self.emcc_args and self.can_use_closure():
+      self.emcc_args += ['--closure=1']
+      logger.debug('using closure compiler..')
+      return True
     return False
 
   def assertStartswith(self, output, prefix):
@@ -2328,6 +2323,12 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_dispatch_after_exit.c')
 
   @node_pthreads
+  def test_pthread_nested_work_queue(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.do_run_in_out_file_test('pthread/test_pthread_nested_work_queue.c')
+
+  @node_pthreads
   def test_pthread_thread_local_storage(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
@@ -2518,13 +2519,8 @@ The current type of b is: 9
 
   def prep_dlfcn_main(self):
     self.set_setting('MAIN_MODULE')
+    self.set_setting('NODERAWFS')
     self.clear_setting('SIDE_MODULE')
-
-    create_file('lib_so_pre.js', '''
-    if (!Module['preRun']) Module['preRun'] = [];
-    Module['preRun'].push(function() { FS.createDataFile('/', 'liblib.so', %s, true, false, false); });
-''' % str(list(bytearray(read_binary('liblib.so')))))
-    self.emcc_args += ['--pre-js', 'lib_so_pre.js']
 
   def build_dlfcn_lib(self, filename):
     if self.is_wasm():
@@ -2905,7 +2901,6 @@ Var: 42
     for i in range(10):
       curr = '%d.so' % i
       shutil.copyfile('liblib.so', curr)
-      self.emcc_args += ['--embed-file', curr]
 
     self.prep_dlfcn_main()
     self.set_setting('INITIAL_MEMORY', '128mb')
@@ -3419,14 +3414,10 @@ ok
     shutil.move(indir('liblib.so'), indir('libb.so'))
 
     self.set_setting('MAIN_MODULE')
+    self.set_setting('NODERAWFS')
     self.clear_setting('SIDE_MODULE')
-    self.set_setting('EXPORT_ALL')
-    self.emcc_args += ['--embed-file', '.@/']
 
-    # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
-    self.set_setting('INITIAL_MEMORY', '32mb')
-
-    src = r'''
+    create_file('main.c', r'''
       #include <dlfcn.h>
       #include <assert.h>
       #include <stddef.h>
@@ -3448,11 +3439,11 @@ ok
 
         return 0;
       }
-      '''
-    self.do_run(src, 'a: loaded\nb: loaded\na: loaded\n')
+      ''')
+    self.do_runf('main.c', 'a: loaded\nb: loaded\na: loaded\n')
 
   @needs_dylink
-  @bleeding_edge_wasm_backend
+  @needs_non_trapping_float_to_int
   def test_dlfcn_feature_in_lib(self):
     self.emcc_args.append('-mnontrapping-fptoint')
 
@@ -5191,9 +5182,7 @@ main( int argv, char ** argc ) {
     self.emcc_args += ['-lnodefs.js']
     self.set_setting('SYSCALL_DEBUG')
     self.do_runf(test_file('fs/test_nodefs_rw.c'), 'success')
-    if '-g' not in self.emcc_args:
-      print('closure')
-      self.emcc_args += ['--closure=1']
+    if self.maybe_closure():
       self.do_runf(test_file('fs/test_nodefs_rw.c'), 'success')
 
   @also_with_noderawfs
@@ -5686,7 +5675,7 @@ int main(void) {
 
     test([])
 
-  @bleeding_edge_wasm_backend
+  @needs_non_trapping_float_to_int
   def test_fasta_nontrapping(self):
     self.emcc_args += ['-mnontrapping-fptoint']
     self.test_fasta()
@@ -6334,9 +6323,7 @@ void* operator new(size_t size) {
     self.set_setting('EXPORTED_FUNCTIONS', ['_get_int', '_get_float', '_get_bool', '_get_string', '_print_int', '_print_float', '_print_bool', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc'])
     self.do_core_test('test_ccall.cpp')
 
-    if '-O2' in self.emcc_args and '-g' not in self.emcc_args:
-      print('with closure')
-      self.emcc_args += ['--closure=1']
+    if self.maybe_closure():
       self.do_core_test('test_ccall.cpp')
 
   def test_EXPORTED_RUNTIME_METHODS(self):
@@ -7252,9 +7239,9 @@ someweirdtext
     self.emcc_args += ['-DRUN_FROM_JS_SHELL']
     self.do_run_in_out_file_test('emscripten_log/emscripten_log.cpp')
     # test closure compiler as well
-    print('closure')
-    self.emcc_args += ['--closure=1', '-g1'] # extra testing
-    self.do_run_in_out_file_test('emscripten_log/emscripten_log_with_closure.cpp')
+    if self.maybe_closure():
+      self.emcc_args += ['-g1'] # extra testing
+      self.do_run_in_out_file_test('emscripten_log/emscripten_log_with_closure.cpp')
 
   def test_float_literals(self):
     self.do_run_in_out_file_test('test_float_literals.cpp')
@@ -7501,7 +7488,7 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
     self.set_setting('ASSERTIONS')
-    self.do_core_test('test_asyncify_assertions.cpp')
+    self.do_core_test('test_asyncify_assertions.c', assert_returncode=NON_ZERO)
 
   @no_lsan('leaks asyncify stack during exit')
   @no_asan('leaks asyncify stack during exit')
@@ -7510,6 +7497,8 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('ASSERTIONS')
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_core_test('test_asyncify_during_exit.cpp', assert_returncode=1)
+    print('NO_ASYNC')
+    self.do_core_test('test_asyncify_during_exit.cpp', emcc_args=['-DNO_ASYNC'], out_suffix='_no_async')
 
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm2js('TODO: lazy loading in wasm2js')

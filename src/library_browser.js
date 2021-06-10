@@ -800,9 +800,11 @@ var LibraryBrowser = {
     function doCallback(callback) {
       if (callback) {
         {{{ runtimeKeepalivePop() }}}
-        var stack = stackSave();
-        {{{ makeDynCall('vi', 'callback') }}}(allocate(intArrayFromString(_file), ALLOC_STACK));
-        stackRestore(stack);
+        callUserCallback(function() {
+          var stack = stackSave();
+          {{{ makeDynCall('vi', 'callback') }}}(allocate(intArrayFromString(_file), ALLOC_STACK));
+          stackRestore(stack);
+        });
       }
     }
     var destinationDirectory = PATH.dirname(_file);
@@ -862,13 +864,22 @@ var LibraryBrowser = {
   emscripten_async_wget_data__proxy: 'sync',
   emscripten_async_wget_data__sig: 'viiii',
   emscripten_async_wget_data: function(url, arg, onload, onerror) {
+    {{{ runtimeKeepalivePush() }}}
     Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
-      var buffer = _malloc(byteArray.length);
-      HEAPU8.set(byteArray, buffer);
-      {{{ makeDynCall('viii', 'onload') }}}(arg, buffer, byteArray.length);
-      _free(buffer);
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(function() {
+        var buffer = _malloc(byteArray.length);
+        HEAPU8.set(byteArray, buffer);
+        {{{ makeDynCall('viii', 'onload') }}}(arg, buffer, byteArray.length);
+        _free(buffer);
+      });
     }, function() {
-      if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(arg);
+      if (onerror) {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(function() {
+          {{{ makeDynCall('vi', 'onerror') }}}(arg);
+        });
+      }
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 

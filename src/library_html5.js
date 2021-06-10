@@ -2706,33 +2706,64 @@ var LibraryJSEvents = {
     // emscripten_set_immediate_loop() if application links to both of them.
   },
 
-  emscripten_set_immediate__deps: ['$polyfillSetImmediate'],
+  emscripten_set_immediate__deps: ['$polyfillSetImmediate', '$callUserCallback',
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
+#endif
+  ],
   emscripten_set_immediate: function(cb, userData) {
     polyfillSetImmediate();
+    {{{ runtimeKeepalivePush(); }}}
     return emSetImmediate(function() {
-      {{{ makeDynCall('vi', 'cb') }}}(userData);
+      {{{ runtimeKeepalivePop(); }}}
+      callUserCallback(function() {
+        {{{ makeDynCall('vi', 'cb') }}}(userData);
+      });
     });
   },
 
-  emscripten_clear_immediate__deps: ['$polyfillSetImmediate'],
+  emscripten_clear_immediate__deps: ['$polyfillSetImmediate',
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepalivePop',
+#endif
+  ],
   emscripten_clear_immediate: function(id) {
+    {{{ runtimeKeepalivePop(); }}}
     emClearImmediate(id);
   },
 
-  emscripten_set_immediate_loop__deps: ['$polyfillSetImmediate'],
+  emscripten_set_immediate_loop__deps: ['$polyfillSetImmediate', '$callUserCallback',
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
+#endif
+  ],
   emscripten_set_immediate_loop: function(cb, userData) {
     polyfillSetImmediate();
     function tick() {
-      if ({{{ makeDynCall('ii', 'cb') }}}(userData)) {
-        emSetImmediate(tick);
-      }
+      {{{ runtimeKeepalivePop(); }}}
+      callUserCallback(function() {
+        if ({{{ makeDynCall('ii', 'cb') }}}(userData)) {
+          {{{ runtimeKeepalivePush(); }}}
+          emSetImmediate(tick);
+        }
+      });
     }
+    {{{ runtimeKeepalivePush(); }}}
     return emSetImmediate(tick);
   },
 
+  emscripten_set_timeout__deps: ['$callUserCallback',
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
+#endif
+  ],
   emscripten_set_timeout: function(cb, msecs, userData) {
+    {{{ runtimeKeepalivePush() }}}
     return setTimeout(function() {
-      {{{ makeDynCall('vi', 'cb') }}}(userData);
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(function() {
+        {{{ makeDynCall('vi', 'cb') }}}(userData);
+      });
     }, msecs);
   },
 
@@ -2754,13 +2785,25 @@ var LibraryJSEvents = {
     return setTimeout(tick, 0);
   },
 
+  emscripten_set_interval__deps: ['$callUserCallback',
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
+#endif
+  ],
   emscripten_set_interval: function(cb, msecs, userData) {
+    {{{ runtimeKeepalivePush() }}}
     return setInterval(function() {
-      {{{ makeDynCall('vi', 'cb') }}}(userData)
+      callUserCallback(function() {
+        {{{ makeDynCall('vi', 'cb') }}}(userData)
+      });
     }, msecs);
   },
 
+#if !MINIMAL_RUNTIME
+  emscripten_clear_interval__deps: ['$runtimeKeepalivePop'],
+#endif
   emscripten_clear_interval: function(id) {
+    {{{ runtimeKeepalivePop() }}}
     clearInterval(id);
   },
 

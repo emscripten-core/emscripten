@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <emscripten.h>
 
-extern "C" {
-
 EM_JS(void, suspend, (), {
   return Asyncify.handleSleep(function(wakeUp) {
     Module.resume = wakeUp;
@@ -32,6 +30,4 @@ int main() {
   suspend();
   suspend();
   printf("finish\n");
-}
-
 }

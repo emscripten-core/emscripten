@@ -25,7 +25,8 @@ mergeInto(LibraryManager.library, {
     State: {
       Normal: 0,
       Unwinding: 1,
-      Rewinding: 2
+      Rewinding: 2,
+      Disabled: 3,
     },
     state: 0,
     StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
@@ -84,11 +85,6 @@ mergeInto(LibraryManager.library, {
         })(x);
       }
     },
-
-    checkStateAfterExitRuntime: function() {
-      assert(Asyncify.state === Asyncify.State.None,
-            'Asyncify cannot be done during or after the runtime exits');
-    },
 #endif
 
     instrumentWasmExports: function(exports) {
@@ -105,13 +101,14 @@ mergeInto(LibraryManager.library, {
               try {
                 return original.apply(null, arguments);
               } finally {
-                if (ABORT) return;
-                var y = Asyncify.exportCallStack.pop();
-                assert(y === x);
+                if (!ABORT) {
+                  var y = Asyncify.exportCallStack.pop();
+                  assert(y === x);
 #if ASYNCIFY_DEBUG >= 2
-                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + x);
+                  err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + x);
 #endif
-                Asyncify.maybeStopUnwind();
+                  Asyncify.maybeStopUnwind();
+                }
               }
             };
           } else {
@@ -182,6 +179,9 @@ mergeInto(LibraryManager.library, {
     },
 
     handleSleep: function(startAsync) {
+#if ASSERTIONS
+      assert(Asyncify.state !== Asyncify.State.Disabled, 'Asyncify cannot be done during or after the runtime exits');
+#endif
       if (ABORT) return;
 #if !MINIMAL_RUNTIME
       noExitRuntime = true;

@@ -490,13 +490,14 @@ class Library:
 
     This returns a dictionary of simple names to Library objects.
     """
-    result = {}
-    for subclass in cls.get_inheritance_tree():
-      if subclass.name:
-        library = subclass.get_default_variation()
-        if library.can_build() and library.can_use():
-          result[subclass.name] = library
-    return result
+    if not hasattr(cls, 'useable_variations'):
+      cls.useable_variations = {}
+      for subclass in cls.get_inheritance_tree():
+        if subclass.name:
+          library = subclass.get_default_variation()
+          if library.can_build() and library.can_use():
+            cls.useable_variations[subclass.name] = library
+    return cls.useable_variations
 
 
 class MTLibrary(Library):
@@ -693,7 +694,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     # musl modules
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'ipc', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'search', 'setjmp', 'env',
+        'aio', 'exit', 'legacy', 'mq', 'setjmp', 'env',
         'ldso'
     ]
 
@@ -1103,8 +1104,8 @@ class libal(Library):
   src_files = ['al.c']
 
 
-class libgl(MTLibrary):
-  name = 'libgl'
+class libGL(MTLibrary):
+  name = 'libGL'
 
   src_dir = ['system', 'lib', 'gl']
   src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c']
@@ -1525,7 +1526,7 @@ def calculate(input_files, forced):
     add_library('libcompiler_rt')
   else:
     if settings.AUTO_NATIVE_LIBRARIES:
-      add_library('libgl')
+      add_library('libGL')
       add_library('libal')
       add_library('libhtml5')
 

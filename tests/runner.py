@@ -208,6 +208,26 @@ def requires_native_clang(func):
   return decorated
 
 
+def require_node(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_node()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
+def require_v8(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_v8()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def node_pthreads(f):
   def decorated(self):
     self.set_setting('USE_PTHREADS')
@@ -418,6 +438,22 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('no dynamic linking support in ASan yet')
     if '-fsanitize=leak' in self.emcc_args:
       self.skipTest('no dynamic linking support in LSan yet')
+
+  def require_v8(self):
+    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
+      if 'EMTEST_SKIP_V8' in os.environ:
+        self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
+      else:
+        self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
+    self.js_engines = [config.V8_ENGINE]
+
+  def require_node(self):
+    if not config.NODE_JS or config.NODE_JS not in config.JS_ENGINES:
+      if 'EMTEST_SKIP_NODE' in os.environ:
+        self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
+      else:
+        self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
+    self.js_engines = [config.NODE_JS]
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
@@ -678,7 +714,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     stderr = self.in_dir('stderr')
     error = None
     if not engine:
-      engine = config.JS_ENGINES[0]
+      engine = self.js_engines[0]
     if engine == config.NODE_JS:
       engine = engine + self.node_args
     if engine == config.V8_ENGINE:
@@ -1042,7 +1078,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def do_run_in_out_file_test(self, *path, **kwargs):
     srcfile = test_file(*path)
-    outfile = shared.unsuffixed(srcfile) + '.out'
+    out_suffix = kwargs.pop('out_suffix', '')
+    outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
     expected = read_file(outfile)
     self._build_and_run(srcfile, expected, **kwargs)
 

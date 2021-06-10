@@ -131,6 +131,16 @@ def requires_asmfs(f):
   return decorated
 
 
+def also_with_threads(f):
+  def decorated(self):
+    f(self)
+    if not os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
+      print('(threads)')
+      self.emcc_args += ['-pthread']
+      f(self)
+  return decorated
+
+
 # Today we only support the wasm backend so any tests that is disabled under the llvm
 # backend is always disabled.
 # TODO(sbc): Investigate all tests with this decorator and either fix of remove the test.
@@ -574,7 +584,17 @@ If manually bisecting:
     # change the file package base dir to look in a "cdn". note that normally
     # you would add this in your own custom html file etc., and not by
     # modifying the existing shell in this manner
-    create_file('shell.html', read_file(path_from_root('src', 'shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
+    default_shell = read_file(path_from_root('src', 'shell.html'))
+    create_file('shell.html', default_shell.replace('var Module = {', '''
+    var Module = {
+      locateFile: function(path, prefix) {
+        if (path.endsWith(".wasm")) {
+           return prefix + path;
+        } else {
+           return "cdn/" + path;
+        }
+      },
+    '''))
     create_file('main.cpp', r'''
       #include <stdio.h>
       #include <string.h>
@@ -760,7 +780,6 @@ If manually bisecting:
     html = html.replace('</body>', '''
 <script>
 function assert(x, y) { if (!x) throw 'assertion failed ' + y }
-
 %s
 
 var windowClose = window.close;
@@ -1813,11 +1832,11 @@ keydown(100);keyup(100); // trigger the end
 
   def test_emscripten_fs_api(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png') # preloaded *after* run
-    self.btest('emscripten_fs_api_browser.cpp', '1', args=['-lSDL'])
+    self.btest_exit('emscripten_fs_api_browser.c', assert_returncode=1, args=['-lSDL'])
 
   def test_emscripten_fs_api2(self):
-    self.btest('emscripten_fs_api_browser2.cpp', '1', args=['-s', "ASSERTIONS=0"])
-    self.btest('emscripten_fs_api_browser2.cpp', '1', args=['-s', "ASSERTIONS=1"])
+    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-s', "ASSERTIONS=0"])
+    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-s', "ASSERTIONS=1"])
 
   @requires_threads
   def test_emscripten_main_loop(self):
@@ -2431,16 +2450,16 @@ void *getBindBuffer() {
     self.btest('worker_api_main.cpp', expected='566')
 
   def test_emscripten_async_wget2(self):
-    self.btest('test_emscripten_async_wget2.cpp', expected='0')
+    self.btest_exit('test_emscripten_async_wget2.cpp')
 
   def test_emscripten_async_wget2_data(self):
     create_file('hello.txt', 'Hello Emscripten!')
     self.btest('test_emscripten_async_wget2_data.cpp', expected='0')
     time.sleep(10)
 
-  def test_module(self):
+  def test_emscripten_async_wget_side_module(self):
     self.run_process([EMCC, test_file('browser_module.cpp'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE', '-s', 'EXPORTED_FUNCTIONS=_one,_two'])
-    self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE'], expected='8')
+    self.btest_exit('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE'], assert_returncode=8)
 
   @parameterized({
     'non-lz4': ([],),
@@ -2453,8 +2472,7 @@ void *getBindBuffer() {
         return 42;
       }
     ''')
-    self.run_process([EMCC, 'library.c', '-s', 'SIDE_MODULE', '-O2', '-o', 'library.wasm', '-s', 'EXPORT_ALL'])
-    os.rename('library.wasm', 'library.so')
+    self.run_process([EMCC, 'library.c', '-s', 'SIDE_MODULE', '-O2', '-o', 'library.so', '-s', 'EXPORT_ALL'])
     create_file('main.c', r'''
       #include <dlfcn.h>
       #include <stdio.h>
@@ -4228,12 +4246,15 @@ window.close = function() {
     shutil.move('test.wasm', Path('cdn/test.wasm'))
     self.run_browser('test.html', '', '/report_result?0')
 
+  @also_with_threads
   def test_utf8_textdecoder(self):
     self.btest_exit('benchmark_utf8.cpp', 0, args=['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt', '-s', 'EXPORTED_RUNTIME_METHODS=[UTF8ToString]'])
 
+  @also_with_threads
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark_utf16.cpp', 0, args=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-s', 'EXPORTED_RUNTIME_METHODS=[UTF16ToString,stringToUTF16,lengthBytesUTF16]'])
 
+  @also_with_threads
   def test_TextDecoder(self):
     self.btest('browser_test_hello_world.c', '0', args=['-s', 'TEXTDECODER=0'])
     just_fallback = os.path.getsize('test.js')
@@ -4241,7 +4262,13 @@ window.close = function() {
     td_with_fallback = os.path.getsize('test.js')
     self.btest('browser_test_hello_world.c', '0', args=['-s', 'TEXTDECODER=2'])
     td_without_fallback = os.path.getsize('test.js')
-    self.assertLess(td_without_fallback, just_fallback)
+    # pthread TextDecoder support is more complex due to
+    # https://github.com/whatwg/encoding/issues/172
+    # and therefore the expected code size win there is actually a loss
+    if '-pthread' not in self.emcc_args:
+      self.assertLess(td_without_fallback, just_fallback)
+    else:
+      self.assertGreater(td_without_fallback, just_fallback)
     self.assertLess(just_fallback, td_with_fallback)
 
   def test_small_js_flags(self):
@@ -4887,21 +4914,21 @@ window.close = function() {
 
   @requires_threads
   def test_emscripten_set_timeout(self):
-    self.btest(test_file('emscripten_set_timeout.c'), '0', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit(test_file('emscripten_set_timeout.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_threads
   def test_emscripten_set_timeout_loop(self):
-    self.btest(test_file('emscripten_set_timeout_loop.c'), '0', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit(test_file('emscripten_set_timeout_loop.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   def test_emscripten_set_immediate(self):
-    self.btest(test_file('emscripten_set_immediate.c'), '0')
+    self.btest_exit(test_file('emscripten_set_immediate.c'))
 
   def test_emscripten_set_immediate_loop(self):
-    self.btest(test_file('emscripten_set_immediate_loop.c'), '0')
+    self.btest_exit(test_file('emscripten_set_immediate_loop.c'))
 
   @requires_threads
   def test_emscripten_set_interval(self):
-    self.btest(test_file('emscripten_set_interval.c'), '0', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit(test_file('emscripten_set_interval.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Test emscripten_performance_now() and emscripten_date_now()
   @requires_threads

@@ -411,6 +411,10 @@ function preMain() {
 #endif
 
 function exitRuntime() {
+#if ASYNCIFY && ASSERTIONS
+  // ASYNCIFY cannot be used once the runtime starts shutting down.
+  Asyncify.state = Asyncify.State.Disabled;
+#endif
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
@@ -423,9 +427,6 @@ function exitRuntime() {
 #if USE_PTHREADS
   PThread.runExitHandlers();
 #endif
-#endif
-#if ASYNCIFY && ASSERTIONS
-  Asyncify.checkStateAfterExitRuntime();
 #endif
   runtimeExited = true;
 }
@@ -746,17 +747,18 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
+var wasmBinaryFile;
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE
 if (Module['locateFile']) {
 #endif
-  var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
+  wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE // in single-file mode, repeating WASM_BINARY_FILE would emit the contents again
 } else {
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
-  var wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).toString();
+  wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).toString();
 }
 #endif
 
