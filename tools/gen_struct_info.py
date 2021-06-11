@@ -141,6 +141,8 @@ def parse_c_output(lines):
 
   for line in lines:
     arg = line[1:].strip()
+    if '::' in arg:
+      arg = arg.split('::', 1)[1]
     if line[0] == 'K':
       # This is a key
       key = arg
@@ -252,7 +254,7 @@ def inspect_headers(headers, cflags):
   show('Compiling generated code...')
 
   # -Oz optimizes enough to avoid warnings on code size/num locals
-  cmd = [shared.EMCC] + cflags + ['-o', js_file[1], src_file[1],
+  cmd = [shared.EMXX] + cflags + ['-o', js_file[1], src_file[1],
                                   '-O0',
                                   '-Werror',
                                   '-Wno-format',
@@ -408,6 +410,8 @@ def main(args):
 
   internal_cflags = [
     '-I' + shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'),
+    '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'src'),
+    '-D__USING_EMSCRIPTEN_EXCEPTIONS__',
   ]
 
   # Look for structs in all passed headers.

@@ -17,14 +17,19 @@
 #include "cxxabi.h"
 #include "unwind.h"
 
-#ifdef __USING_EMSCRIPTEN_EXCEPTIONS__
-// Under emscripten-style exception handling the __cxa_exception type is
-// defined in JavaScript in src/library_exceptions.js.
-// Any usage of this header would lead to incompatabilities.
-#error "Not compatible with emscripten-style exception handling"
-#endif
-
 namespace __cxxabiv1 {
+
+#ifdef __USING_EMSCRIPTEN_EXCEPTIONS__
+
+struct _LIBCXXABI_HIDDEN __cxa_exception {
+  size_t referenceCount;
+  std::type_info *exceptionType;
+  void (*exceptionDestructor)(void *);
+  uint8_t caught;
+  uint8_t rethrown;
+};
+
+#else
 
 static const uint64_t kOurExceptionClass          = 0x434C4E47432B2B00; // CLNGC++\0
 static const uint64_t kOurDependentExceptionClass = 0x434C4E47432B2B01; // CLNGC++\1
@@ -170,6 +175,8 @@ extern "C" _LIBCXXABI_FUNC_VIS __cxa_eh_globals * __cxa_get_globals_fast ();
 
 extern "C" _LIBCXXABI_FUNC_VIS void * __cxa_allocate_dependent_exception ();
 extern "C" _LIBCXXABI_FUNC_VIS void __cxa_free_dependent_exception (void * dependent_exception);
+
+#endif // !__USING_EMSCRIPTEN_EXCEPTIONS__
 
 }  // namespace __cxxabiv1
 

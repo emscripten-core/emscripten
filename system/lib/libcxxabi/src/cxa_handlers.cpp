@@ -15,9 +15,7 @@
 #include "abort_message.h"
 #include "cxxabi.h"
 #include "cxa_handlers.h"
-#ifndef __USING_EMSCRIPTEN_EXCEPTIONS__
 #include "cxa_exception.h"
-#endif
 #include "private_typeinfo.h"
 #include "include/atomic_support.h"
 
