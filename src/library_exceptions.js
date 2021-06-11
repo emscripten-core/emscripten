@@ -424,6 +424,7 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
         out("  can_catch found " + [adjusted, caughtType]);
 #endif
+        stackRestore(stackTop);
         {{{ makeStructuralReturn(['catchInfo.ptr', 'caughtType']) }}};
       }
     }
