@@ -38,6 +38,18 @@ LibraryManager.library = {
     setTempRet0(val);
   },
 
+  $zeroMemory: function(address, size) {
+#if LEGACY_VM_SUPPORT
+    if (!HEAPU8.fill) {
+      for (var i = 0; i < size; i++) {
+        HEAPU8[address + i] = 0;
+      }
+      return;
+    }
+#endif
+    HEAPU8.fill(0, address, address + size);
+  },
+
 #if SAFE_HEAP
   // Trivial wrappers around runtime functions that make these symbols available
   // to native code.
@@ -1490,12 +1502,13 @@ LibraryManager.library = {
   // sys/times.h
   // ==========================================================================
 
+  times__deps: ['$zeroMemory'],
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
     // NOTE: This is fake, since we can't calculate real CPU time usage in JS.
     if (buffer !== 0) {
-      _memset(buffer, 0, {{{ C_STRUCTS.tms.__size__ }}});
+      zeroMemory(buffer, {{{ C_STRUCTS.tms.__size__ }}});
     }
     return 0;
   },
@@ -2040,23 +2053,22 @@ LibraryManager.library = {
 
     return { family: family, addr: addr, port: port };
   },
-  $writeSockaddr__deps: ['$Sockets', '$inetPton4', '$inetPton6'],
+  $writeSockaddr__deps: ['$Sockets', '$inetPton4', '$inetPton6', '$zeroMemory'],
   $writeSockaddr: function (sa, family, addr, port, addrlen) {
     switch (family) {
       case {{{ cDefine('AF_INET') }}}:
         addr = inetPton4(addr);
+        zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
         }
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'family', 'i16') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'addr', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
-        /* Use makeSetValue instead of memset to avoid adding memset dependency for all users of writeSockaddr. */
-        {{{ assert(C_STRUCTS.sockaddr_in.__size__ - C_STRUCTS.sockaddr_in.sin_zero == 8), '' }}}
-        {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_zero, '0', 'i64') }}};
         break;
       case {{{ cDefine('AF_INET6') }}}:
         addr = inetPton6(addr);
+        zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in6.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
         }
@@ -2066,8 +2078,6 @@ LibraryManager.library = {
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+8, 'addr[2]', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+12, 'addr[3]', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_port, '_htons(port)', 'i16') }}};
-        {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_flowinfo, '0', 'i32') }}};
-        {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_scope_id, '0', 'i32') }}};
         break;
       default:
         return {{{ cDefine('EAFNOSUPPORT') }}};

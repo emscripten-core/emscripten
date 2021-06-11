@@ -1348,6 +1348,7 @@ var LibrarySDL = {
     return SDL.version;
   },
 
+  SDL_Init__deps: ['$zeroMemory'],
   SDL_Init__proxy: 'sync',
   SDL_Init__sig: 'ii',
   SDL_Init__docs: '/** @param{number=} initFlags */', 
@@ -1368,7 +1369,7 @@ var LibrarySDL = {
 
     window.addEventListener("unload", SDL.receiveEvent);
     SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
-    _memset(SDL.keyboardState, 0, 0x10000);
+    zeroMemory(SDL.keyboardState, 0x10000);
     // Initialize this structure carefully for closure
     SDL.DOMEventToSDLEvent['keydown']    = 0x300  /* SDL_KEYDOWN */;
     SDL.DOMEventToSDLEvent['keyup']      = 0x301  /* SDL_KEYUP */;
