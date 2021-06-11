@@ -932,6 +932,9 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
+      # The code used to interpret exceptions during terminate
+      # is not compatible with emscripten exceptions.
+      cflags.append('-DLIBCXXABI_SILENT_TERMINATE')
     elif self.eh_mode == Exceptions.WASM:
       cflags.append('-D__USING_WASM_EXCEPTIONS__')
     return cflags
@@ -942,7 +945,6 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       'cxa_aux_runtime.cpp',
       'cxa_default_handlers.cpp',
       'cxa_demangle.cpp',
-      'cxa_exception_storage.cpp',
       'cxa_guard.cpp',
       'cxa_handlers.cpp',
       'cxa_virtual.cpp',
@@ -957,6 +959,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       filenames += ['cxa_noexception.cpp']
     elif self.eh_mode == Exceptions.WASM:
       filenames += [
+        'cxa_exception_storage.cpp',
         'cxa_exception.cpp',
         'cxa_personality.cpp'
       ]
