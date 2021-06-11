@@ -420,7 +420,7 @@ function makeI64(low, high) {
 
 // Splits a number (an integer in a double, possibly > 32 bits) into an i64 value, represented by a low and high i32 pair.
 // Will suffer from rounding.
-function splitI64(value, floatConversion) {
+function splitI64(value) {
   // general idea:
   //
   //  $1$0 = ~~$d >>> 0;
@@ -436,18 +436,12 @@ function splitI64(value, floatConversion) {
   // For negatives, we need to ensure a -1 if the value is overall negative, even if not significant negative component
 
   const lowInput = legalizedI64s ? value : 'VALUE';
-  if (floatConversion) lowInput = asmFloatToInt(lowInput);
   const low = lowInput + '>>>0';
   const high = makeInlineCalculation(
-      asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
-        '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
-        asmCoercion('Math.min(' + asmCoercion('Math.floor((VALUE)/' +
-        asmEnsureFloat(4294967296, 'double') + ')', 'double') + ', ' +
-        asmEnsureFloat(4294967295, 'double') + ')', 'i32') + '>>>0' +
+      'Math.abs(VALUE) >= 1 ? (VALUE > 0 ? ' +
+        'Math.min(Math.floor((VALUE)/4294967296), 4294967295)>>>0' +
         ' : ' +
-        asmFloatToInt(asmCoercion('Math.ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' +
-        asmEnsureFloat(4294967296, 'double') + ')', 'double')) + '>>>0' +
-        ')' +
+        'Math.ceil((VALUE - +((VALUE)>>>0))/4294967296)>>>0)' +
       ' : 0',
       value,
       'tempDouble',
@@ -490,66 +484,22 @@ function getHeapOffset(offset, type) {
   return `((${offset})>>${shifts})`;
 }
 
-function ensureDot(value) {
-  value = value.toString();
-  // if already dotted, or Infinity or NaN, nothing to do here
-  // if smaller than 1 and running js opts, we always need to force a coercion
-  // (0.001 will turn into 1e-3, which has no .)
-  if ((value.includes('.') || /[IN]/.test(value))) return value;
-  const e = value.indexOf('e');
-  if (e < 0) return value + '.0';
-  return value.substr(0, e) + '.0' + value.substr(e);
-}
-
-// ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
-function asmEnsureFloat(value, type) {
-  if (!isNumber(value)) return value;
-  if (type === 'float') {
-    // normally ok to just emit Math.fround(0), but if the constant is large we
-    // may need a .0 (if it can't fit in an int)
-    if (value == 0) return 'Math.fround(0)';
-    value = ensureDot(value);
-    return 'Math.fround(' + value + ')';
-  }
-  if (type in Compiletime.FLOAT_TYPES) {
-    return ensureDot(value);
-  }
+// Legacy function, kept around in case there are extenal users.
+function asmEnsureFloat(value) {
   return value;
 }
 
-function asmCoercion(value, type, signedness) {
-  if (type == 'void') {
-    return value;
-  } else if (type in Compiletime.FLOAT_TYPES) {
-    if (isNumber(value)) {
-      return asmEnsureFloat(value, type);
-    } else {
-      if (signedness) {
-        if (signedness == 'u') {
-          value = '(' + value + ')>>>0';
-        } else {
-          value = '(' + value + ')|0';
-        }
-      }
-      if (type === 'float') {
-        return 'Math.fround(' + value + ')';
-      } else {
-        return '(+(' + value + '))';
-      }
-    }
-  } else {
-    if (signedness == 'u') {
-      return '((' + value + ')>>>0)';
-    }
-    return '((' + value + ')|0)';
-  }
+// Legacy function, kept around in case there are extenal users.
+function asmCoercion(value) {
+  return value;
 }
 
-function asmFloatToInt(x) {
-  return '(~~(' + x + '))';
+// Legacy function, kept around in case there are extenal users.
+function asmFloatToInt(value) {
+  return value;
 }
 
-function makeGetTempDouble(i, type, forSet) { // get an aliased part of the tempDouble temporary storage
+function makeGetTempDouble(i, type) { // get an aliased part of the tempDouble temporary storage
   // Cannot use makeGetValue because it uses us
   // this is a unique case where we *can* use HEAPF64
   const heap = getHeapForType(type);
@@ -560,13 +510,11 @@ function makeGetTempDouble(i, type, forSet) { // get an aliased part of the temp
   } else {
     offset = getHeapOffset(ptr, type);
   }
-  let ret = heap + '[' + offset + ']';
-  if (!forSet) ret = asmCoercion(ret, type);
-  return ret;
+  return heap + '[' + offset + ']';
 }
 
 function makeSetTempDouble(i, type, value) {
-  return makeGetTempDouble(i, type, true) + '=' + asmEnsureFloat(value, type);
+  return makeGetTempDouble(i, type) + '=' + value;
 }
 
 // See makeSetValue
@@ -607,9 +555,9 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
         }
       } else {
         if (type == 'float') {
-          ret += 'copyTempFloat(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + '),' + makeGetTempDouble(0, 'float');
+          ret += 'copyTempFloat(' + getFastValue(ptr, '+', pos) + '),' + makeGetTempDouble(0, 'float');
         } else {
-          ret += 'copyTempDouble(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + '),' + makeGetTempDouble(0, 'double');
+          ret += 'copyTempDouble(' + getFastValue(ptr, '+', pos) + '),' + makeGetTempDouble(0, 'double');
         }
       }
       ret += ')';
@@ -620,7 +568,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
     if (!ignore) {
-      return asmCoercion('SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned + 0) + ')', type, unsigned ? 'u' : undefined);
+      return 'SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + offset + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned + 0) + ')';
     }
   }
   return getHeapForType(type, unsigned) + '[' + getHeapOffset(offset, type) + ']';
@@ -702,7 +650,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
     if (!ignore) {
-      return 'SAFE_HEAP_STORE' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ')';
+      return 'SAFE_HEAP_STORE' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + offset + ', ' + value + ', ' + Runtime.getNativeTypeSize(type) + ')';
     }
   }
   return getHeapForType(type) + '[' + getHeapOffset(offset, type) + '] = ' + value;
@@ -894,7 +842,7 @@ function getHeapForType(type, unsigned) {
 // case external JS library code uses this name.
 function makeStructuralReturn(values) {
   assert(values.length == 2);
-  return 'setTempRet0(' + values[1] + '); return ' + asmCoercion(values[0], 'i32');
+  return 'setTempRet0(' + values[1] + '); return ' + values[0];
 }
 
 function makeThrow(what) {
@@ -1005,14 +953,8 @@ function getTypeFromHeap(suffix) {
   assert(false, 'bad type suffix: ' + suffix);
 }
 
-function ensureValidFFIType(type) {
-  return type === 'float' ? 'double' : type; // ffi does not tolerate float XXX
-}
-
-// FFI return values must arrive as doubles, and we can force them to floats afterwards
-function asmFFICoercion(value, type) {
-  value = asmCoercion(value, ensureValidFFIType(type));
-  if (type === 'float') value = asmCoercion(value, 'float');
+// Legacy function, kept around in case there are extenal users.
+function asmFFICoercion(value) {
   return value;
 }
 
