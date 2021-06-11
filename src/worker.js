@@ -50,6 +50,44 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
 }
 #endif // ENVIRONMENT_MAY_BE_NODE
 
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+if (typeof AudioWorkletGlobalScope === "function") {
+  var oldRegisterProcessor = registerProcessor;
+  registerProcessor = function(name, cls) {
+    console.log(`register processor ${name}`)
+    globalThis[name] = cls;
+    oldRegisterProcessor(name, cls);
+  }
+
+  Object.assign(globalThis, {
+    Module: Module,
+    self: globalThis, // Unlike DedicatedWorkerGlobalScope, AudioWorkletGlobalScope doesn't have 'self'
+    performance: { // Polyfill performance.now() since it's missing in worklets, falling back to Date.now()
+      start: Date.now(),
+      now: function() {
+        return Date.now() - performance.start;
+      }
+    }
+  });
+    
+  // Create a dummy processor which we use to bootstrap PThreads in the worklet context
+  class PThreadDummyProcessor extends AudioWorkletProcessor {
+    constructor(arg) {
+      super();
+      // Make message passing work directly on the global scope to simulate what regular
+      // Workers do which makes all the code above work the same.
+      this.port.onmessage = self.onmessage;
+      self.postMessage = this.port.postMessage.bind(this.port);
+    }
+    
+    // Needs a dummy process method too otherwise 'registerProcessor' fails below
+    process(inputs, outputs, parameters) {}
+  }
+  
+  registerProcessor('pthread-dummy-processor', PThreadDummyProcessor);
+}
+#endif
+
 // Thread-local:
 #if EMBIND
 var initializedJS = false; // Guard variable for one-time init of the JS state (currently only embind types registration)
@@ -134,7 +172,12 @@ self.onmessage = function(e) {
 
 #if !MINIMAL_RUNTIME || MODULARIZE
       {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+      {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_AUDIOWORKLET') }}} = typeof AudioWorkletGlobalScope === "function";
 #endif
+#endif
+
+
 
 #if MODULARIZE && EXPORT_ES6
       (e.data.urlOrBlob ? import(e.data.urlOrBlob) : import('./{{{ TARGET_JS_NAME }}}')).then(function(exports) {
@@ -143,6 +186,10 @@ self.onmessage = function(e) {
         Module = instance;
       });
 #else
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+      // When running as an AudioWorklet all the scripts are imported from the main thread (via .addModule)      
+      if(!{{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_AUDIOWORKLET') }}}) { 
+#endif
       if (typeof e.data.urlOrBlob === 'string') {
 #if TRUSTED_TYPES
         if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
@@ -162,6 +209,9 @@ self.onmessage = function(e) {
         importScripts(objectUrl);
         URL.revokeObjectURL(objectUrl);
       }
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+      }
+#endif
 #if MODULARIZE
 #if MINIMAL_RUNTIME
       {{{ EXPORT_NAME }}}(imports).then(function (instance) {
@@ -214,6 +264,12 @@ self.onmessage = function(e) {
       }
 #endif // EMBIND
 
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+      if ({{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_AUDIOWORKLET') }}}) {
+        // Audio worklets don't run any entrypoint since their entry points are the 'process' function invocations
+        postMessage({'cmd': 'running'});
+      } else {
+#endif
       try {
         // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
         // Native codebases sometimes spawn threads with other thread entry point signatures,
@@ -283,6 +339,9 @@ self.onmessage = function(e) {
 #endif
         }
       }
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+      }
+#endif
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (Module['_pthread_self']()) {
         Module['__emscripten_thread_exit'](-1/*PTHREAD_CANCELED*/);

@@ -8,5 +8,6 @@
 // This file should go away in the future when worker.js is refactored to live inside the JS module.
 
 var ENVIRONMENT_IS_PTHREAD;
+var ENVIRONMENT_IS_AUDIOWORKLET;
 /** @suppress {duplicate} */
 var wasmMemory;

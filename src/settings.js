@@ -621,6 +621,7 @@ var LEGACY_VM_SUPPORT = 0;
 //    'webview' - just like web, but in a webview like Cordova;
 //                considered to be same as "web" in almost every place
 //    'worker'  - a web worker environment.
+//    'audioworklet'  - an audio worklet environment.
 //    'node'    - Node.js.
 //    'shell'   - a JS shell like d8, js, or jsc.
 // This settings can be a comma-separated list of these environments, e.g.,

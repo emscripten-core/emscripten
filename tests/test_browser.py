@@ -5204,6 +5204,17 @@ window.close = function() {
   def test_full_js_library_strict(self):
     self.btest_exit(test_file('hello_world.c'), args=['-sINCLUDE_FULL_LIBRARY', '-sSTRICT_JS'])
 
+  # Tests audio worklets
+  @requires_threads
+  @requires_sound_hardware
+  def test_audio_worklet(self):
+    self.btest(path_from_root('tests', 'audioworklet', 'audioworklet.cpp'),
+               expected='1',
+               args=['-s', 'USE_PTHREADS=1', '-s', 'MODULARIZE=1', '-s',
+                     'EXPORT_NAME=AudioWorkletSample', '-s', 'ENVIRONMENT=web,worker,audioworklet',
+                     '--extern-post-js', path_from_root('tests', 'audioworklet', 'audioworklet_post.js'),
+                     '--shell-file', path_from_root('tests', 'audioworklet', 'shell.html')])
+
 
 EMRUN = path_from_root('emrun')
 

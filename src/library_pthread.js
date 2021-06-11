@@ -292,14 +292,23 @@ var LibraryPThread = {
           if (Module['onAbort']) {
             Module['onAbort'](d['arg']);
           }
-        } else {
+        }
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+        else if (cmd === 'running') {
+          // This is only notified for audio worklet contexts to let us know the pthread environment
+          // is ready and we can go ahead and create any pending AudioWorkletNodes
+          worker.context.audioWorklet.pthread.resolveRunPromise();
+          delete worker.context.audioWorklet.pthread.resolveRunPromise;
+        }
+#endif 
+        else {
           err("worker sent an unknown command " + cmd);
         }
         PThread.currentProxiedOperationCallerThread = undefined;
       };
 
       worker.onerror = function(e) {
-        err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
+        err('pthread sent an error! ' + e.stack ? e.stack : (e.filename + ':' + e.lineno + ': ' + e.message));
         throw e;
       };
 
@@ -427,6 +436,84 @@ var LibraryPThread = {
       }
       return PThread.unusedWorkers.pop();
     }
+
+    busySpinWait: function(msecs) {
+      var t = performance.now() + msecs;
+      while (performance.now() < t) {
+        ;
+      }
+    },
+
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+    // Initializes a pthread in the AudioWorkletGlobalScope for this audio context
+    initAudioWorkletPThread: function(audioCtx, pthreadPtr) {
+      var aw = audioCtx.audioWorklet;
+      assert(!aw.pthread, "Can't call initAudioWorkletPThread twice on the same audio context");
+      aw.pthread = {};
+
+      // First, load the code into the worklet context. The .worker.js first, then the main script.
+#if MINIMAL_RUNTIME
+      var pthreadMainJs = Module['worker'];
+#else
+      var pthreadMainJs = locateFile('{{{ PTHREAD_WORKER_FILE }}}');
+#endif
+      Promise.all([
+        aw.addModule(pthreadMainJs),
+        aw.addModule(Module['mainScriptUrlOrBlob'] || _scriptDir)
+      ]).then(function() {
+        // Create a dummy worklet node that we use to establish the message channel
+        var dummyWorklet = new AudioWorkletNode(audioCtx, 'pthread-dummy-processor', {
+          numberOfInputs: 0,
+          numberOfOutputs : 1,
+          outputChannelCount : [1]
+        })
+
+        // Push this dummyWorklet into the PThread internal worker pool so it
+        // gets picked up in _pthread_create below. 
+        PThread.unusedWorkers.push(dummyWorklet);
+
+        // Add postMessage directly on the object, forwarded to port.postMessage (emulates Worker)
+        dummyWorklet.postMessage = dummyWorklet.port.postMessage.bind(dummyWorklet.port);
+
+        // We still call loadWasmModuleToWorker to setup the pthread environment,
+        // but we skip the actual WASM loading since it's already been done via
+        // addModule above.
+        PThread.loadWasmModuleToWorker(dummyWorklet);
+
+        // Forward port.onMessage to onmessage on the object (emulates Worker)
+        dummyWorklet.port.onmessage = dummyWorklet.onmessage;
+
+        // Call pthread_create to have Emscripten init our worklet pthread globals as if
+        // it was a regular worker
+        _pthread_create(pthreadPtr, 0, 0, 0);
+
+        aw.pthread.dummyWorklet = dummyWorklet;
+      }, function(err) {
+        aw.pthread.rejectRunPromise(err);
+        delete aw.pthread;
+      });
+
+      aw.pthread.runPromise = new Promise(function(resolve, reject) {
+        aw.pthread.resolveRunPromise = resolve;
+        aw.pthread.rejectRunPromise = reject;
+      });
+
+      return aw.pthread.runPromise;
+    },
+
+    // Creates an AudioWorkletNode on the specified audio context.
+    // initAudioWorkletPThread must've been called on the audio context before.
+    createAudioWorklet: function(audioCtx, processorName, processorOpts) {    
+      assert(audioCtx.audioWorklet.pthread.runPromise, "Call initAudioWorkletPThread once before calling createAudioWorklet");
+      return new Promise(function(resolve, reject) {
+        audioCtx.audioWorklet.pthread.runPromise.then(function() {
+          resolve(new AudioWorkletNode(audioCtx, processorName, processorOpts));
+        }, function(err) {
+          reject(err);
+        })
+      });
+    }
+#endif
   },
 
   $freeThreadData__noleakcheck: true,
@@ -993,8 +1080,8 @@ var LibraryPThread = {
   emscripten_futex_wait__deps: ['emscripten_main_thread_process_queued_calls'],
   emscripten_futex_wait: function(addr, val, timeout) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
-    // We can do a normal blocking wait anywhere but on the main browser thread.
-    if (!ENVIRONMENT_IS_WEB) {
+    // We can do a normal blocking wait anywhere but on the main browser thread or in an audio worklet.
+    if (!ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_AUDIOWORKLET) {
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
@@ -1031,10 +1118,20 @@ var LibraryPThread = {
       // ourselves before calling the potentially-recursive call. See below for
       // how we handle the case of our futex being notified during the time in
       // between when we are not set as the value of __emscripten_main_thread_futex.
-#if ASSERTIONS
-      assert(__emscripten_main_thread_futex > 0);
+      //
+      // For audio worklets we use the same global address since they all run on 
+      // the audio thread. It's all very similar to the main thread case, except we 
+      // don't have to do any nested call special casing.
+      var theFutex = __emscripten_main_thread_futex;
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+      if (ENVIRONMENT_IS_AUDIOWORKLET) {
+        theFutex = __emscripten_audio_worklet_futex;
+      }
 #endif
-      var lastAddr = Atomics.exchange(HEAP32, __emscripten_main_thread_futex >> 2, addr);
+#if ASSERTIONS
+      assert(theFutex > 0);
+#endif
+      var lastAddr = Atomics.exchange(HEAP32, theFutex >> 2, addr);
 #if ASSERTIONS
       // We must not have already been waiting.
       assert(lastAddr == 0);
@@ -1048,7 +1145,7 @@ var LibraryPThread = {
           PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
           // We timed out, so stop marking ourselves as waiting.
-          lastAddr = Atomics.exchange(HEAP32, __emscripten_main_thread_futex >> 2, 0);
+          lastAddr = Atomics.exchange(HEAP32, theFutex >> 2, 0);
 #if ASSERTIONS
           // The current value must have been our address which we set, or
           // in a race it was set to 0 which means another thread just allowed
@@ -1057,12 +1154,25 @@ var LibraryPThread = {
 #endif
           return -{{{ cDefine('ETIMEDOUT') }}};
         }
+
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+        if (ENVIRONMENT_IS_AUDIOWORKLET) {
+          // Audio worklet version without any special casing like for the main thread below
+          lastAddr = Atomics.load(HEAP32, theFutex >> 2);
+          if (lastAddr != addr) {
+            // We were told to stop waiting, so stop.
+            break;
+          }
+          continue;
+        }
+#endif
+
         // We are performing a blocking loop here, so we must handle proxied
         // events from pthreads, to avoid deadlocks.
         // Note that we have to do so carefully, as we may take a lock while
         // doing so, which can recurse into this function; stop marking
         // ourselves as waiting while we do so.
-        lastAddr = Atomics.exchange(HEAP32, __emscripten_main_thread_futex >> 2, 0);
+        lastAddr = Atomics.exchange(HEAP32, theFutex >> 2, 0);
 #if ASSERTIONS
         assert(lastAddr == addr || lastAddr == 0);
 #endif
@@ -1132,33 +1242,46 @@ var LibraryPThread = {
     // For Atomics.notify() API Infinity is to be passed in that case.
     if (count >= {{{ cDefine('INT_MAX') }}}) count = Infinity;
 
-    // See if main thread is waiting on this address? If so, wake it up by resetting its wake location to zero.
-    // Note that this is not a fair procedure, since we always wake main thread first before any workers, so
+    // See if any spinning thread is waiting on this address? If so, wake it up by resetting its wake location to zero.
+    // Note that this is not a fair procedure, since we always wake these threads first before any workers, so
     // this scheme does not adhere to real queue-based waiting.
-#if ASSERTIONS
-    assert(__emscripten_main_thread_futex > 0);
+    // Spin-wait futexes are used on the main thread and in worklets due to the lack of Atomic.wait().
+    var spinFutexesWoken = 0;
+    
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+    var spinFutexes = [__emscripten_main_thread_futex, __emscripten_audio_worklet_futex];
+    for (var i = 0; i < spinFutexes.length; i++) {
+      var theFutex = spinFutexes[i];
+#else
+    var theFutex = __emscripten_main_thread_futex;
 #endif
-    var mainThreadWaitAddress = Atomics.load(HEAP32, __emscripten_main_thread_futex >> 2);
-    var mainThreadWoken = 0;
-    if (mainThreadWaitAddress == addr) {
+#if ASSERTIONS
+    assert(theFutex > 0);
+#endif
+    var waitAddress = Atomics.load(HEAP32, theFutex >> 2);
+    
+    if (waitAddress == addr) {
 #if ASSERTIONS
       // We only use __emscripten_main_thread_futex on the main browser thread, where we
       // cannot block while we wait. Therefore we should only see it set from
       // other threads, and not on the main thread itself. In other words, the
       // main thread must never try to wake itself up!
-      assert(!ENVIRONMENT_IS_WEB);
+      assert(theFutex != __emscripten_main_thread_futex || !ENVIRONMENT_IS_WEB);
 #endif
-      var loadedAddr = Atomics.compareExchange(HEAP32, __emscripten_main_thread_futex >> 2, mainThreadWaitAddress, 0);
-      if (loadedAddr == mainThreadWaitAddress) {
+      var loadedAddr = Atomics.compareExchange(HEAP32, theFutex >> 2, waitAddress, 0);
+      if (loadedAddr == waitAddress) {
         --count;
-        mainThreadWoken = 1;
+        spinFutexesWoken += 1;
         if (count <= 0) return 1;
       }
     }
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+    } // close out the spinFutexes loop
+#endif
 
     // Wake any workers waiting on this address.
     var ret = Atomics.notify(HEAP32, addr >> 2, count);
-    if (ret >= 0) return ret + mainThreadWoken;
+    if (ret >= 0) return ret + spinFutexesWoken;
     throw 'Atomics.notify returned an unexpected value ' + ret;
   },
 

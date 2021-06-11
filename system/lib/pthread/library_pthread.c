@@ -823,6 +823,10 @@ int _emscripten_call_on_thread(int forceAsync, pthread_t targetThread, EM_FUNC_S
 // the main thread is waiting, we wake it up before waking up any workers.
 EMSCRIPTEN_KEEPALIVE void* _emscripten_main_thread_futex;
 
+// Stores the memory address that audio worklets are waiting on, if any. If
+// a worklet is waiting, we wake it up before waking up any workers.
+EMSCRIPTEN_KEEPALIVE void* _emscripten_audio_worklet_futex;
+
 void __emscripten_init_main_thread_js(void* tb);
 
 // See system/lib/README.md for static constructor ordering.

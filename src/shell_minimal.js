@@ -140,7 +140,9 @@ var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? d
 
 // MINIMAL_RUNTIME does not support --proxy-to-worker option, so Worker and Pthread environments
 // coincide.
-var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts === 'function';
+var ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
+var ENVIRONMENT_IS_AUDIOWORKLET = typeof AudioWorkletGlobalScope === 'function';
+var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_AUDIOWORKLET;
 
 var currentScriptUrl = typeof _scriptDir !== 'undefined' ? _scriptDir : ((typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined);
 #endif // USE_PTHREADS

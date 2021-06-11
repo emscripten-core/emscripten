@@ -146,7 +146,7 @@ UBSAN_SANITIZERS = {
 }
 
 
-VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
+VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell', 'audioworklet')
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 COMPILE_ONLY_FLAGS = set(['--default-obj-ext'])
@@ -296,6 +296,9 @@ def setup_environment_settings():
       not settings.ENVIRONMENT or \
       'worker' in environments or \
       (settings.ENVIRONMENT_MAY_BE_NODE and settings.USE_PTHREADS)
+
+  # Worklet environment must be enabled explicitly for now
+  settings.ENVIRONMENT_MAY_BE_AUDIOWORKLET = 'audioworklet' in environments
 
   if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.PROXY_TO_WORKER:
     exit_with_error('If you specify --proxy-to-worker and specify a "-s ENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)')
@@ -3379,7 +3382,17 @@ var %(EXPORT_NAME)s = (function() {
   with open(final_js, 'w') as f:
     f.write(src)
 
-    # Export using a UMD style export, or ES6 exports if selected
+    # Add ; if src doesn't contain it so we generate valid JS (otherwise acorn fails)
+    if src.rstrip()[-1] != ';':
+      f.write(';')
+
+    # Store the export on the global scope for audio worklets
+    if settings.ENVIRONMENT_MAY_BE_AUDIOWORKLET:
+      f.write('''if (typeof AudioWorkletGlobalScope === 'function')
+  globalThis["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
+''' % {
+        'EXPORT_NAME': settings.EXPORT_NAME
+      })
 
     if settings.EXPORT_ES6:
       f.write('export default %s;' % settings.EXPORT_NAME)
