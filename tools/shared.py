@@ -339,7 +339,7 @@ def set_version_globals():
 
 def generate_sanity():
   sanity_file_content = EMSCRIPTEN_VERSION + '|' + config.LLVM_ROOT + '|' + get_clang_version()
-  config_data = open(config.EM_CONFIG).read()
+  config_data = read_text(config.EM_CONFIG)
   checksum = binascii.crc32(config_data.encode())
   sanity_file_content += '|%#x\n' % checksum
   return sanity_file_content
@@ -407,7 +407,7 @@ def check_sanity(force=False):
   sanity_file = Cache.get_path('sanity.txt')
   with Cache.lock():
     if os.path.exists(sanity_file):
-      sanity_data = open(sanity_file).read()
+      sanity_data = read_text(sanity_file)
       if sanity_data != expected:
         logger.debug('old sanity: %s' % sanity_data)
         logger.debug('new sanity: %s' % expected)
@@ -788,7 +788,7 @@ def read_and_preprocess(filename, expand_macros=False):
     args += ['--expandMacros']
 
   run_js_tool(path_from_root('tools/preprocessor.js'), args, True, stdout=open(stdout, 'w'), cwd=dirname)
-  out = open(stdout, 'r').read()
+  out = read_text(stdout)
 
   return out
 

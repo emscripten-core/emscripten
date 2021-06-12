@@ -42,7 +42,7 @@ from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
-from tools.shared import read_text
+from tools.shared import read_text, write_text, read_bytes
 from tools.shared import do_replace, strip_prefix
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
@@ -1351,19 +1351,19 @@ def phase_linker_setup(options, state, newargs, settings_map):
     add_link_flag(state, sys.maxsize, f)
 
   if options.emrun:
-    options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
-    options.post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
+    options.pre_js += read_text(shared.path_from_root('src', 'emrun_prejs.js')) + '\n'
+    options.post_js += read_text(shared.path_from_root('src', 'emrun_postjs.js')) + '\n'
     # emrun mode waits on program exit
     settings.EXIT_RUNTIME = 1
 
   if options.cpu_profiler:
-    options.post_js += open(shared.path_from_root('src', 'cpuprofiler.js')).read() + '\n'
+    options.post_js += read_text(shared.path_from_root('src', 'cpuprofiler.js')) + '\n'
 
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
 
   if options.thread_profiler:
-    options.post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
+    options.post_js += read_text(shared.path_from_root('src', 'threadprofiler.js')) + '\n'
 
   if options.memory_init_file is None:
     options.memory_init_file = settings.OPT_LEVEL >= 2
@@ -2566,9 +2566,9 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
 
   # Remove some trivial whitespace
   # TODO: do not run when compress has already been done on all parts of the code
-  # src = open(final_js).read()
+  # src = read_text(final_js)
   # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
-  # open(final_js, 'w').write(src)
+  # write_text(final_js, src)
 
   if settings.USE_PTHREADS:
     target_dir = os.path.dirname(os.path.abspath(target))
@@ -2600,10 +2600,9 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # Unmangle previously mangled `import.meta` references in both main code and libraries.
   # See also: `preprocess` in parseTools.js.
   if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
-    src = open(final_js).read()
+    src = read_text(final_js)
     final_js += '.esmeta.js'
-    with open(final_js, 'w') as f:
-      f.write(src.replace('EMSCRIPTEN$IMPORT$META', 'import.meta'))
+    write_text(final_js, src.replace('EMSCRIPTEN$IMPORT$META', 'import.meta'))
     save_intermediate('es6-import-meta')
 
   # Apply pre and postjs files

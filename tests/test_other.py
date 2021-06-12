@@ -8271,7 +8271,7 @@ _d
       print(proc.stderr)
       if not expected:
         self.assertFalse(proc.stderr)
-        js = open('a.out.js').read()
+        js = shared.read_text('a.out.js')
         for sym in ('_a', '_b', '_c', '_d'):
           self.assertContained(f'var {sym} = ', js)
       else:

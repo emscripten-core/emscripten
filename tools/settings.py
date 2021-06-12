@@ -8,7 +8,7 @@ import os
 import re
 
 from .utils import path_from_root, exit_with_error
-from . import diagnostics
+from . import diagnostics, shared
 
 # Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
 MEM_SIZE_SETTINGS = (
@@ -96,13 +96,13 @@ class SettingsManager:
     self.allowed_settings.clear()
 
     # Load the JS defaults into python.
-    settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
+    settings = shared.read_text(path_from_root('src', 'settings.js')).replace('//', '#')
     settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
     # Variable TARGET_NOT_SUPPORTED is referenced by value settings.js (also beyond declaring it),
     # so must pass it there explicitly.
     exec(settings, {'attrs': self.attrs})
 
-    settings = open(path_from_root('src', 'settings_internal.js')).read().replace('//', '#')
+    settings = shared.read_text(path_from_root('src', 'settings_internal.js')).replace('//', '#')
     settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
     internal_attrs = {}
     exec(settings, {'attrs': internal_attrs})

@@ -22,6 +22,8 @@ import sys
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from tools.shared import read_bytes
+
 logger = logging.getLogger('wasm-sourcemap')
 
 
@@ -176,7 +178,7 @@ def remove_dead_entries(entries):
 
 def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
-    output = open(options.dwarfdump_output, 'rb').read()
+    output = read_bytes(options.dwarfdump_output)
   elif options.dwarfdump:
     logger.debug('Reading DWARF information from %s' % wasm)
     if not os.path.exists(options.dwarfdump):

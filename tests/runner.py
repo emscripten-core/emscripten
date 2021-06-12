@@ -60,6 +60,7 @@ from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import get_canonical_temp_dir, try_delete
+from tools.shared import read_text, read_binary
 from tools.utils import MACOS, WINDOWS
 from tools import shared, line_endings, building, config
 
@@ -116,14 +117,6 @@ def delete_contents(pathname):
 def test_file(*path_components):
   """Construct a path relative to the emscripten "tests" directory."""
   return str(Path(TEST_ROOT, *path_components))
-
-
-def read_file(*path_components):
-  return Path(*path_components).read_text()
-
-
-def read_binary(*path_components):
-  return Path(*path_components).read_bytes()
 
 
 # checks if browser testing is enabled
@@ -656,7 +649,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       post_build(output)
 
     if js_outfile and self.uses_memory_init_file():
-      src = read_file(output)
+      src = read_text(output)
       # side memory init file, or an empty one in the js
       assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
@@ -683,7 +676,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     start_off = 0
     end_off = 0
 
-    js = read_file(javascript_file)
+    js = read_text(javascript_file)
     blob = "".join(js.splitlines())
 
     start_off = blob.find(start_tok) + len(start_tok)
@@ -734,8 +727,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if not filename.endswith('.wasm'):
       self.assertEqual(line_endings.check_line_endings(filename), 0)
 
-    out = read_file(stdout)
-    err = read_file(stderr)
+    out = read_text(stdout)
+    err = read_text(stderr)
     if output_nicerizer:
       ret = output_nicerizer(out, err)
     else:
@@ -1080,13 +1073,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   ## Just like `do_run` but with filename of expected output
   def do_run_from_file(self, filename, expected_output_filename, **kwargs):
-    self._build_and_run(filename, read_file(expected_output_filename), **kwargs)
+    self._build_and_run(filename, read_text(expected_output_filename), **kwargs)
 
   def do_run_in_out_file_test(self, *path, **kwargs):
     srcfile = test_file(*path)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
-    expected = read_file(outfile)
+    expected = read_text(outfile)
     self._build_and_run(srcfile, expected, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
@@ -1465,7 +1458,7 @@ class BrowserCore(RunnerCore):
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     basename = os.path.basename(expected)
     shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
-    reporting = read_file(test_file('browser_reporting.js'))
+    reporting = read_text(test_file('browser_reporting.js'))
     with open('reftest.js', 'w') as out:
       out.write('''
       function doReftest() {
@@ -1696,10 +1689,10 @@ def build_library(name,
                              cwd=project_dir)
     except subprocess.CalledProcessError:
       print('-- configure stdout --')
-      print(read_file(Path(project_dir, 'configure_out')))
+      print(read_text(Path(project_dir, 'configure_out')))
       print('-- end configure stdout --')
       print('-- configure stderr --')
-      print(read_file(Path(project_dir, 'configure_err')))
+      print(read_text(Path(project_dir, 'configure_err')))
       print('-- end configure stderr --')
       raise
     # if we run configure or cmake we don't then need any kind

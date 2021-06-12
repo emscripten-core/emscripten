@@ -93,7 +93,7 @@ def eval_ctors(js, wasm_file, num):
 
 # main
 def main():
-  js = open(js_file).read()
+  js = shared.read_text(js_file)
   ctors_start, ctors_end = find_ctors(js)
   if ctors_start < 0:
     logger.debug('ctor_evaller: no ctors')

@@ -157,7 +157,7 @@ def generate_minimal_runtime_load_statement(target_basename):
 
 def generate_minimal_runtime_html(target, options, js_target, target_basename):
   logger.debug('generating HTML for minimal runtime')
-  shell = open(options.shell_path, 'r').read()
+  shell = shared.read_text(options.shell_path)
   if settings.SINGLE_FILE:
     # No extra files needed to download in a SINGLE_FILE build.
     shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', '')
@@ -178,7 +178,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
 
   # In SINGLE_FILE build, embed the main .js file into the .html output
   if settings.SINGLE_FILE:
-    js_contents = open(js_target).read()
+    js_contents = shared.read_text(js_target)
     shared.try_delete(js_target)
   else:
     js_contents = ''

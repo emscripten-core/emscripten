@@ -9,8 +9,13 @@
 import os
 import re
 import sys
+from pathlib import Path
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+sys.path.insert(1, str(Path(__file__).parents[1].resolve()))
+from tools.shared import read_text
+
 
 
 def path_from_root(*pathelems):
@@ -21,8 +26,11 @@ def nice(x):
   return '0x' + ('0' * (len(x) - 6)) + x[2:].upper()
 
 
-repdata = open(path_from_root('system', 'include', 'GL', 'gl.h')).readlines() + ['\n'] + \
-    open(path_from_root('system', 'include', 'GL', 'glext.h')).readlines()
+repdata = (
+  read_text(path_from_root('system', 'include', 'GL', 'gl.h')).splitline(keepends=True)
+  + ['\n']
+  + read_text(path_from_root('system', 'include', 'GL', 'glext.h')).splitlines(keepends=True)
+)
 reps = {}
 for rep in repdata:
   rep = rep.replace('\t', ' ').replace('\n', '')

@@ -20,7 +20,7 @@ from functools import wraps
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner')
 
-from tools.shared import try_delete, PIPE
+from tools.shared import try_delete, PIPE, read_text, write_text
 from tools.shared import PYTHON, EMCC, EMAR
 from tools.utils import WINDOWS, MACOS
 from tools import shared, building, config, webassembly
@@ -6585,7 +6585,7 @@ void* operator new(size_t size) {
     # make sure the shortened name is the right one
     full_aborter = None
     short_aborter = None
-    for line in open('test_demangle_stacks.js.symbols').readlines():
+    for line in read_text('test_demangle_stacks.js.symbols').splitlines(keepends=True):
       if ':' not in line:
         continue
       # split by the first ':' (wasm backend demangling may include more :'s later on)
@@ -7655,7 +7655,7 @@ Module['onRuntimeInitialized'] = function() {
     os.rename('a.out.wasm.js.unused', 'a.out.wasm.js')
 
     # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
-    open('b.out.js', 'w').write('WebAssembly = undefined;\n' + read_file('a.out.js'))
+    write_text('b.out.js', 'WebAssembly = undefined;\n' + read_file('a.out.js'))
     os.remove('a.out.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
     self.assertContained('hello!', self.run_js('b.out.js'))
 

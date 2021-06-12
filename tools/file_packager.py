@@ -458,7 +458,7 @@ def main():
     basename = os.path.basename(filename)
     if file_['mode'] == 'embed':
       # Embed
-      data = list(bytearray(open(file_['srcpath'], 'rb').read()))
+      data = list(bytearray(shared.read_bytes(file_['srcpath'], 'rb')))
       code += '''var fileData%d = [];\n''' % counter
       if data:
         parts = []
