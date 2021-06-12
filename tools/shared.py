@@ -16,6 +16,7 @@ import re
 import shutil
 import subprocess
 import time
+import signal
 import sys
 import tempfile
 
@@ -60,7 +61,7 @@ diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined', error=True)
-diagnostics.add_warning('deprecated')
+diagnostics.add_warning('deprecated', shared=True)
 diagnostics.add_warning('version-check')
 diagnostics.add_warning('export-main')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
@@ -69,6 +70,7 @@ diagnostics.add_warning('pthreads-mem-growth')
 
 # TODO(sbc): Investigate switching to shlex.quote
 def shlex_quote(arg):
+  arg = os.fspath(arg)
   if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
     return '"' + arg.replace('"', '\\"') + '"'
 
@@ -114,6 +116,15 @@ def mp_run_process(command_tuple):
   if pipe_stdout:
     ret = out.decode('UTF-8')
   return ret
+
+
+def returncode_to_str(code):
+  assert code != 0
+  if code < 0:
+    signal_name = signal.Signals(-code).name
+    return f'received {signal_name} ({code})'
+
+  return f'returned {code}'
 
 
 # Runs multiple subprocess commands.
@@ -187,7 +198,8 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
             logger.info(out)
           if err:
             logger.error(err)
-          raise Exception('Subprocess %d/%d failed with return code %d! (cmdline: %s)' % (idx + 1, len(commands), finished_process.returncode, shlex_join(commands[idx])))
+
+          raise Exception('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
         num_completed += 1
 
   # If processes finished out of order, sort the results to the order of the input.
@@ -201,7 +213,7 @@ def check_call(cmd, *args, **kw):
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed (%d)", shlex_join(cmd), e.returncode)
+    exit_with_error("'%s' failed (%s)", shlex_join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
@@ -320,7 +332,7 @@ def set_version_globals():
   global EMSCRIPTEN_VERSION, EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY
   filename = path_from_root('emscripten-version.txt')
   with open(filename) as f:
-    EMSCRIPTEN_VERSION = f.read().strip().replace('"', '')
+    EMSCRIPTEN_VERSION = f.read().strip().strip('"')
   parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
   EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 
@@ -537,21 +549,6 @@ def target_environment_may_be(environment):
   return settings.ENVIRONMENT == '' or environment in settings.ENVIRONMENT.split(',')
 
 
-def verify_settings():
-  if settings.SAFE_HEAP not in [0, 1]:
-    exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
-
-  if not settings.WASM:
-    # When the user requests non-wasm output, we enable wasm2js. that is,
-    # we still compile to wasm normally, but we compile the final output
-    # to js.
-    settings.WASM = 1
-    settings.WASM2JS = 1
-  if settings.WASM == 2:
-    # Requesting both Wasm and Wasm2JS support
-    settings.WASM2JS = 1
-
-
 def print_compiler_stage(cmd):
   """Emulate the '-v' of clang/gcc by printing the name of the sub-command
   before executing it."""
@@ -682,6 +679,11 @@ class JS:
     return sig == JS.legalize_sig(sig)
 
   @staticmethod
+  def isidentifier(name):
+    # https://stackoverflow.com/questions/43244604/check-that-a-string-is-a-valid-javascript-identifier-name-using-python-3
+    return name.replace('$', '_').isidentifier()
+
+  @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
     if settings.DYNCALLS or not JS.is_legal_sig(sig):
@@ -738,6 +740,11 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
+
+
+def strip_prefix(string, prefix):
+  assert string.startswith(prefix)
+  return string[len(prefix):]
 
 
 def safe_copy(src, dst):
@@ -833,7 +840,6 @@ FILE_PACKAGER = bat_suffix(path_from_root('tools', 'file_packager'))
 
 apply_configuration()
 
-verify_settings()
 Cache = cache.Cache(config.CACHE)
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))

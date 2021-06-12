@@ -27,13 +27,17 @@ mergeInto(LibraryManager.library, {
     ],
   $FS__postset: function() {
     // TODO: do we need noFSInit?
-    addAtInit('if (!Module["noFSInit"] && !FS.init.initialized) FS.init();');
-    addAtMain('FS.ignorePermissions = false;');
+    addAtInit(`
+if (!Module["noFSInit"] && !FS.init.initialized)
+  FS.init();
+FS.ignorePermissions = false;
+`)
     addAtExit('FS.quit();');
     // We must statically create FS.FSNode here so that it is created in a manner
     // that is visible to Closure compiler. That lets us use type annotations for
     // Closure to the "this" pointer in various node creation functions.
-    return `var FSNode = /** @constructor */ function(parent, name, mode, rdev) {
+    return `
+var FSNode = /** @constructor */ function(parent, name, mode, rdev) {
   if (!parent) {
     parent = this;  // root node sets parent to itself
   }
@@ -97,8 +101,8 @@ FS.staticInit();` +
     initialized: false,
     // Whether we are currently ignoring permissions. Useful when preparing the
     // filesystem and creating files inside read-only folders.
-    // This is set to false when the runtime is initialized, allowing you
-    // to modify the filesystem freely before run() is called.
+    // This is set to false during `preInit`, allowing you to modify the
+    // filesystem freely up until that point (e.g. during `preRun`).
     ignorePermissions: true,
     trackingDelegate: {},
     tracking: {
@@ -1993,7 +1997,7 @@ FS.staticInit();` +
   // Allocate memory for an mmap operation. This allocates space of the right
   // page-aligned size, and clears the padding.
   $mmapAlloc: function(size) {
-    var alignedSize = alignMemory(size, {{{ POSIX_PAGE_SIZE }}});
+    var alignedSize = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
     var ptr = {{{ makeMalloc('mmapAlloc', 'alignedSize') }}};
     while (size < alignedSize) HEAP8[ptr + size++] = 0;
     return ptr;

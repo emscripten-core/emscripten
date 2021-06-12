@@ -10,6 +10,8 @@ import logging
 TAG = 'release-2.0.2'
 HASH = 'b9d03061d177f20f4e03f3e3553afd7bfe0c05da7b9a774312b389318e747cf9724e0475e9afff6a64ce31bab0217e2afb2619d75556753fbbb6ecafa9775219'
 
+deps = ['sdl2']
+
 
 def needed(settings):
   return settings.USE_SDL_MIXER == 2
@@ -88,8 +90,6 @@ def clear(ports, settings, shared):
 
 
 def process_dependencies(settings):
-  global deps
-  deps = ['sdl2']
   settings.USE_SDL = 2
   if "ogg" in settings.SDL2_MIXER_FORMATS:
     deps.append('vorbis')

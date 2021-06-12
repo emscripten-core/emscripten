@@ -18,8 +18,111 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-Current Trunk
--------------
+2.0.25
+------
+
+2.0.24 - 06/10/2021
+-------------------
+- Support `--preload-file` in Node.js. (#11785)
+- System libraries are now passed to the linker internally via `-lfoo` rather
+  than using their full path.  This is in line with how gcc and clang pass system
+  libraries to the linker.  This should not effect any builds unless a project a
+  happens to have, for example, a file called `libc.a` in one of its library
+  paths.  This would have the effect of overriding the system library (as it
+  would with gcc or clang) (#14342).
+- CMake projects (those that either use emcmake or use Emscripten.cmake
+  directly) are new configured to install (by default) directly into the
+  emscripten sysroot.  This means that running `cmake --install` (or running the
+  install target, via `make install` for example) will install resources into
+  the sysroot such that they can later be found and used by `find_path`,
+  `find_file`, `find_package`, etc.  Previously the default was to attempt to
+  install into the host system (e.g `/usr/local`) which is almost always not
+  desirable.  Folks that were previously using `CMAKE_INSTALL_PREFIX` to build
+  their own secondary sysroot may be able to simplify their build system by
+  removing this completely and relying on the new default.
+- Reinstated the warning on linker-only `-s` settings passed when not linking
+  (i.e. when compiling with `-c`).  As before this can disabled with
+  `-Wno-unused-command-line-argument` (#14182).
+- Standalone wasm mode no longer does extra binaryen work during link. It used
+  to remove unneeded imports, in hopes of avoiding nonstandard imports that
+  could prevent running in WASI VMs, but that has not been needed any more. A
+  minor side effect you might see from this is a larger wasm size in standalone
+  mode when not optimizing (but optimized builds are unaffected). (#14338)
+- You can now explicitly request that an environment variable remain unset by
+  setting its value in `ENV` to `undefined`. This is useful for variables, such
+  as `LANG`, for which Emscripten normally provides a default value.
+
+2.0.23 - 05/26/2021
+-------------------
+- libcxxabi updated to llvm-12. (#14288)
+- libcxx updated to llvm-12. (#14249)
+- compiler-rt updated to llvm-12. (#14280)
+
+2.0.22 - 05/25/2021
+-------------------
+- Fix a crash bug that was present in 2.0.21 with the use of `-g`.  See
+  https://reviews.llvm.org/D102999.
+- wasm-ld will now perform string tail merging in debug string sections as well
+  as regular data sections.   This behaviour can be be disabled with `-Wl,-O0`.
+  This should significantly reduce the size of dwarf debug information in the
+  wasm binary.
+- The experimental SPLIT_MODULE setting now expects the secondary module to be
+  named `<module>.deferred.wasm` instead of `<module>.wasm.deferred`.
+
+2.0.21: 05/18/2021
+------------------
+- Options such as EXPORTED_FUNCTIONS that can take a response file containing
+  list of symbols can now use a simple one-symbol-per-line format.  This new
+  format is much simpler and doesn't require commas between symbols, opening
+  or closing braces, or any kind of escaping for special characters.
+- The WebAssembly linker (`wasm-ld`) now performes string tail merging on any
+  static string data in your program.   This has long been part of the native
+  ELF linker and should not be observable in well-behaved programs.  This
+  behavior can be disabled by passing `-Wl,-O0`.
+- The functions `fork`, `vfork`, `posix_spawn` and `system` now fail with
+  the errno value `ENOSYS` (52) rather than `EAGAIN` (6).  This is more
+  correct, since they will never work and attempting to retry won't help.
+- `EXPORT_ES6` will now emit static URLs for main WebAssembly file as well
+  as for helper Worker used by `-pthread` that can be statically detected
+  by modern bundlers at build time. In particular, you no longer have to set
+  `Module.locateFile` hook and `Module.mainScriptUrlOrBlob` settings -
+  both bundlers and browsers should pick up the required files automatically.
+  Note: this doesn't yet cover other use-cases that emit external files,
+  such as dynamic linking, `--proxy-to-worker`, external memory etc. (#14135)
+- `EXPORT_ES6` can now be used in combination with `-o [filename].html`. (#14165)
+- `EXPORT_ES6` no longer requires setting custom `EXPORT_NAME` too. (#14139)
+- New diagnostics allow Emscripten to issue warnings when using Intel SIMD
+  intrinsics (from xmmintrin.h) which have slow emulations rather than fast
+  WebAssembly equivalents. To enable them, define WASM_SIMD_COMPAT_SLOW
+  in the preprocessor (#14152)
+
+2.0.20: 05/04/2021
+------------------
+- This ChangeLog and the `emscripten-version.txt` file that is checked into
+  the repository now reflect the next, upcoming, release once a release is
+  made.  Previously they would continue to reflect the old release until after
+  we decide to cut the release.  Switching to this method allow for a slightly
+  simpler release process that also allows us to tag a version that contains
+  the correct version information.
+- The version string reported by `-v`/`--version` now includes a `-git` suffix
+  (e.g. `2.0.19-git`) when running from git checkout (to help distinguish
+  unreleased git versions from official releases) (#14092).
+- Temporarily back out new `-Wunused-command-line-argument` warnings introduced
+  in 2.0.19.
+
+2.0.19: 05/04/2021
+------------------
+- Emscripten will now warn when linker-only `-s` settings are specified in
+  compile-only (`-c`) mode.  Just like with clang itself, this warning can be
+  disabled using the flag: `-Wno-unused-command-line-argument`.
+- When building with `-s MAIN_MODULE` emscripten will now error on undefined
+  symbol by default.  This matches the behvious of clang/gcc/msvc.  This
+  requires that your side modules be present on the command line.  If you do not
+  specify your side modules on the command line (either direcly or via
+  `RUNTIME_LINKED_LIBS`) you may need to add `-s WARN_ON_UNDEFINED_SYMBOLS=0` to
+  avoid errors about symbol that are missing at link time (but present in your
+  side modules provided at runtime).  We hope that this case is not common and
+  most users are building with side modules listed on the command line (#14060).
 - The `RUNTIME_LINKED_LIBS` setting is now deprecated.  It's better to simply
   list dynamic library dependencies directly on the command line.
 

@@ -38,6 +38,18 @@ LibraryManager.library = {
     setTempRet0(val);
   },
 
+  $zeroMemory: function(address, size) {
+#if LEGACY_VM_SUPPORT
+    if (!HEAPU8.fill) {
+      for (var i = 0; i < size; i++) {
+        HEAPU8[address + i] = 0;
+      }
+      return;
+    }
+#endif
+    HEAPU8.fill(0, address, address + size);
+  },
+
 #if SAFE_HEAP
   // Trivial wrappers around runtime functions that make these symbols available
   // to native code.
@@ -171,7 +183,7 @@ LibraryManager.library = {
     // pid_t fork(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fork.html
     // We don't support multiple processes.
-    setErrNo({{{ cDefine('EAGAIN') }}});
+    setErrNo({{{ cDefine('ENOSYS') }}});
     return -1;
   },
   vfork: 'fork',
@@ -193,11 +205,9 @@ LibraryManager.library = {
 
   emscripten_get_heap_max: function() {
 #if ALLOW_MEMORY_GROWTH
-#if MAXIMUM_MEMORY == -1 // no maximum set, assume the best
-    return 4*1024*1024*1024;
-#else
-    return {{{ MAXIMUM_MEMORY }}};
-#endif
+    // Handle the case of 4GB (which would wrap to 0 in the return value) by
+    // returning up to 4GB - one wasm page.
+    return {{{ Math.min(MAXIMUM_MEMORY, FOUR_GB - WASM_PAGE_SIZE) }}};
 #else // no growth
     return HEAPU8.length;
 #endif
@@ -295,16 +305,12 @@ LibraryManager.library = {
     // 4. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
     //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
 
-#if MAXIMUM_MEMORY != -1
-    // A limit was set for how much we can grow. We should not exceed that
+    // A limit is set for how much we can grow. We should not exceed that
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
     // In CAN_ADDRESS_2GB mode, stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate full 4GB Wasm memories, the size will wrap
     // back to 0 bytes in Wasm side for any code that deals with heap sizes, which would require special casing all heap size related code to treat
     // 0 specially.
-    var maxHeapSize = {{{ Math.min(MAXIMUM_MEMORY, 4294967296 - WASM_PAGE_SIZE) }}};
-#else
-    var maxHeapSize = {{{ (CAN_ADDRESS_2GB ? 4294967296 : 2147483648) - WASM_PAGE_SIZE }}};
-#endif
+    var maxHeapSize = {{{ Math.min(MAXIMUM_MEMORY, FOUR_GB - WASM_PAGE_SIZE) }}};
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
       err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
@@ -417,7 +423,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
     if (!command) return 0; // no shell available
-    setErrNo({{{ cDefine('EAGAIN') }}});
+    setErrNo({{{ cDefine('ENOSYS') }}});
     return -1;
   },
 
@@ -1496,12 +1502,13 @@ LibraryManager.library = {
   // sys/times.h
   // ==========================================================================
 
+  times__deps: ['$zeroMemory'],
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
     // NOTE: This is fake, since we can't calculate real CPU time usage in JS.
     if (buffer !== 0) {
-      _memset(buffer, 0, {{{ C_STRUCTS.tms.__size__ }}});
+      zeroMemory(buffer, {{{ C_STRUCTS.tms.__size__ }}});
     }
     return 0;
   },
@@ -1530,27 +1537,33 @@ LibraryManager.library = {
   // setjmp.h
   // ==========================================================================
 
-  longjmp__sig: 'vii',
-#if SUPPORT_LONGJMP
-  longjmp: function(env, value) {
-    _setThrew(env, value || 1);
-    throw 'longjmp';
-  },
-#else
+  _emscripten_throw_longjmp__sig: 'v',
+  _emscripten_throw_longjmp: function() { throw 'longjmp'; },
+#if !SUPPORT_LONGJMP
+  // These are in order to print helpful error messages when either longjmp of
+  // setjmp is used.
   longjmp__deps: [function() {
     error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)');
   }],
+  get setjmp__deps() {
+    return this.longjmp__deps;
+  },
+  // This is to print the correct error message when a program is built with
+  // SUPPORT_LONGJMP=1 but linked with SUPPORT_LONGJMP=0. When a program is
+  // built with SUPPORT_LONGJMP=1, the object file contains references of not
+  // longjmp but _emscripten_throw_longjmp, which is called from
+  // emscripten_longjmp.
+  get _emscripten_throw_longjmp__deps() {
+    return this.longjmp__deps;
+  },
   // will never be emitted, as the dep errors at compile time
   longjmp: function(env, value) {
     abort('longjmp not supported');
   },
+  setjmp: function(env, value) {
+    abort('setjmp not supported');
+  },
 #endif
-  // TODO: remove these aliases if/when the LLVM backend can stop emitting them
-  // (it emits them atm as they are generated by an IR pass, at at that time
-  // they each have a different signature - it is only at the wasm level that
-  // they become identical).
-  emscripten_longjmp__sig: 'vii',
-  emscripten_longjmp: 'longjmp',
 
   // ==========================================================================
   // sys/wait.h
@@ -2040,23 +2053,22 @@ LibraryManager.library = {
 
     return { family: family, addr: addr, port: port };
   },
-  $writeSockaddr__deps: ['$Sockets', '$inetPton4', '$inetPton6'],
+  $writeSockaddr__deps: ['$Sockets', '$inetPton4', '$inetPton6', '$zeroMemory'],
   $writeSockaddr: function (sa, family, addr, port, addrlen) {
     switch (family) {
       case {{{ cDefine('AF_INET') }}}:
         addr = inetPton4(addr);
+        zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
         }
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'family', 'i16') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'addr', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
-        /* Use makeSetValue instead of memset to avoid adding memset dependency for all users of writeSockaddr. */
-        {{{ assert(C_STRUCTS.sockaddr_in.__size__ - C_STRUCTS.sockaddr_in.sin_zero == 8), '' }}}
-        {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_zero, '0', 'i64') }}};
         break;
       case {{{ cDefine('AF_INET6') }}}:
         addr = inetPton6(addr);
+        zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in6.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
         }
@@ -2066,8 +2078,6 @@ LibraryManager.library = {
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+8, 'addr[2]', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+12, 'addr[3]', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_port, '_htons(port)', 'i16') }}};
-        {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_flowinfo, '0', 'i32') }}};
-        {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_scope_id, '0', 'i32') }}};
         break;
       default:
         return {{{ cDefine('EAFNOSUPPORT') }}};
@@ -3357,6 +3367,7 @@ LibraryManager.library = {
     return Number(str);
   },
 
+#if LINK_AS_CXX
   // libunwind
 
   _Unwind_Backtrace__deps: ['emscripten_get_callstack_js'],
@@ -3386,6 +3397,7 @@ LibraryManager.library = {
   _Unwind_DeleteException: function(ex) {
     err('TODO: Unwind_DeleteException');
   },
+#endif
 
   // autodebugging
 
@@ -3685,20 +3697,25 @@ LibraryManager.library = {
   },
 
 #if RELOCATABLE
-  // These get set in emscripten.py during add_standard_wasm_imports, but are
-  // included here so they don't show up as undefined symbols at js compile
-  // time.
+  // Globals that are normally exported from the wasm module but in relocatable
+  // mode are created here and imported by the module.
+  // Mark with `__import` so these are usable from native code.  This is needed
+  // because, by default, only functions can be be imported.
   __stack_pointer: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, {{{ STACK_BASE }}})",
+  __stack_pointer__import: true,
   // tell the memory segments where to place themselves
   __memory_base: '{{{ GLOBAL_BASE }}}',
+  __memory_base__import: true,
   // the wasm backend reserves slot 0 for the NULL function pointer
   __table_base: 1,
+  __table_base__import: true,
   // To support such allocations during startup, track them on __heap_base and
   // then when the main module is loaded it reads that value and uses it to
   // initialize sbrk (the main module is relocatable itself, and so it does not
   // have __heap_base hardcoded into it - it receives it from JS as an extern
   // global, basically).
   __heap_base: '{{{ HEAP_BASE }}}',
+  __heap_base__import: true,
 #endif
 };
 

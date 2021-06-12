@@ -156,7 +156,7 @@ def remove_quotes(arg):
     return arg
 
 
-def get_building_env(cflags=[]):
+def get_building_env():
   env = os.environ.copy()
   # point CC etc. to the em* tools.
   env['CC'] = EMCC
@@ -167,8 +167,6 @@ def get_building_env(cflags=[]):
   env['LDSHARED'] = EMCC
   env['RANLIB'] = EMRANLIB
   env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
-  if cflags:
-    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
   env['HOST_CC'] = CLANG_CC
   env['HOST_CXX'] = CLANG_CXX
   env['HOST_CFLAGS'] = '-W' # if set to nothing, CFLAGS is used, which we don't want
@@ -185,9 +183,9 @@ def get_building_env(cflags=[]):
 # sh.exe removed from the PATH.  Used to work around CMake limitation with
 # MinGW Makefiles, where sh.exe is not allowed to be present.
 def remove_sh_exe_from_path(env):
+  # Should only ever be called on WINDOWS
+  assert WINDOWS
   env = env.copy()
-  if not WINDOWS:
-    return env
   path = env['PATH'].split(';')
   path = [p for p in path if not os.path.exists(os.path.join(p, 'sh.exe'))]
   env['PATH'] = ';'.join(path)
@@ -350,12 +348,12 @@ def link_llvm(linker_inputs, target):
   check_call(cmd)
 
 
-def lld_flags_for_executable(external_symbol_list):
+def lld_flags_for_executable(external_symbols):
   cmd = []
-  if external_symbol_list:
+  if external_symbols:
     undefs = configuration.get_temp_files().get('.undefined').name
     with open(undefs, 'w') as f:
-      f.write('\n'.join(external_symbol_list))
+      f.write('\n'.join(external_symbols))
     cmd.append('--allow-undefined-file=%s' % undefs)
   else:
     cmd.append('--allow-undefined')
@@ -384,11 +382,14 @@ def lld_flags_for_executable(external_symbol_list):
     c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
     # Strip the leading underscores
     c_exports = [demangle_c_symbol_name(e) for e in c_exports]
-    if external_symbol_list:
+    if external_symbols:
       # Filter out symbols external/JS symbols
-      c_exports = [e for e in c_exports if e not in external_symbol_list]
+      c_exports = [e for e in c_exports if e not in external_symbols]
     for export in c_exports:
       cmd += ['--export', export]
+
+    for export in settings.EXPORT_IF_DEFINED:
+      cmd.append('--export-if-defined=' + export)
 
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')
@@ -407,8 +408,6 @@ def lld_flags_for_executable(external_symbol_list):
     # Export these two section start symbols so that we can extact the string
     # data that they contain.
     cmd += [
-      '--export', '__start_em_asm',
-      '--export', '__stop_em_asm',
       '-z', 'stack-size=%s' % settings.TOTAL_STACK,
       '--initial-memory=%d' % settings.INITIAL_MEMORY,
     ]
@@ -432,7 +431,7 @@ def lld_flags_for_executable(external_symbol_list):
   return cmd
 
 
-def link_lld(args, target, external_symbol_list=None):
+def link_lld(args, target, external_symbols=None):
   if not os.path.exists(WASM_LD):
     exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
   # runs lld to link things.
@@ -456,13 +455,17 @@ def link_lld(args, target, external_symbol_list=None):
 
   # Wasm exception handling. This is a CodeGen option for the LLVM backend, so
   # wasm-ld needs to take this for the LTO mode.
+  # When wasm EH is enabled, we use the legacy pass manager because the new pass
+  # manager + wasm EH has some known bugs. See
+  # https://github.com/emscripten-core/emscripten/issues/14180.
+  # TODO Switch to the new pass manager.
   if settings.EXCEPTION_HANDLING:
-    cmd += ['-mllvm', '-exception-model=wasm']
+    cmd += ['-mllvm', '-exception-model=wasm', '--lto-legacy-pass-manager']
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
   if '--relocatable' not in args and '-r' not in args:
-    cmd += lld_flags_for_executable(external_symbol_list)
+    cmd += lld_flags_for_executable(external_symbols)
 
   cmd = get_command_with_possible_response_file(cmd)
   check_call(cmd)
@@ -1282,7 +1285,7 @@ def is_ar(filename):
     if _is_ar_cache.get(filename):
       return _is_ar_cache[filename]
     header = open(filename, 'rb').read(8)
-    sigcheck = header == b'!<arch>\n'
+    sigcheck = header in (b'!<arch>\n', b'!<thin>\n')
     _is_ar_cache[filename] = sigcheck
     return sigcheck
   except Exception as e:
@@ -1328,14 +1331,16 @@ def is_wasm_dylib(filename):
   return False
 
 
-# Given the name of a special Emscripten-implemented system library, returns an
-# array of absolute paths to JS library files inside emscripten/src/ that
-# corresponds to the library name.
 def map_to_js_libs(library_name):
+  """Given the name of a special Emscripten-implemented system library, returns an
+  pair containing
+  1. Array of absolute paths to JS library files, inside emscripten/src/ that corresponds to the
+     library name. `None` means there is no mapping and the library will be processed by the linker
+     as a require for normal native library.
+  2. Optional name of a corresponding native library to link in.
+  """
   # Some native libraries are implemented in Emscripten as system side JS libraries
   library_map = {
-    'c': [],
-    'dl': [],
     'EGL': ['library_egl.js'],
     'GL': ['library_webgl.js', 'library_html5_webgl.js'],
     'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
@@ -1346,26 +1351,36 @@ def map_to_js_libs(library_name):
     'glfw3': ['library_glfw.js'],
     'GLU': [],
     'glut': ['library_glut.js'],
-    'm': [],
     'openal': ['library_openal.js'],
-    'rt': [],
-    'pthread': [],
     'X11': ['library_xlib.js'],
     'SDL': ['library_sdl.js'],
-    'stdc++': [],
     'uuid': ['library_uuid.js'],
-    'websocket': ['library_websocket.js']
+    'websocket': ['library_websocket.js'],
+    # These 4 libraries are seperate under glibc but are all rolled into
+    # libc with musl.  For compatibility with glibc we just ignore them
+    # completely.
+    'dl': [],
+    'm': [],
+    'rt': [],
+    'pthread': [],
+    # This is the name of GNU's C++ standard library. We ignore it here
+    # for compatability with GNU toolchains.
+    'stdc++': [],
+  }
+  # And some are hybrid and require JS and native libraries to be included
+  native_library_map = {
+    'GL': 'libGL',
   }
 
   if library_name in library_map:
     libs = library_map[library_name]
     logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
-    return libs
+    return (libs, native_library_map.get(library_name))
 
   if library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
-    return ['library_' + library_name]
+    return (['library_' + library_name], None)
 
-  return None
+  return (None, None)
 
 
 # Map a linker flag to a settings. This lets a user write -lSDL2 and it will have the same effect as
@@ -1440,6 +1455,11 @@ def get_binaryen_bin():
   return rtn
 
 
+# track whether the last binaryen command kept debug info around. this is used
+# to see whether we need to do an extra step at the end to strip it.
+binaryen_kept_debug_info = False
+
+
 def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
   cmd = [os.path.join(get_binaryen_bin(), tool)]
   if outfile and tool == 'wasm-opt' and \
@@ -1485,6 +1505,8 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   ret = check_call(cmd, stdout=stdout).stdout
   if outfile:
     save_intermediate(outfile, '%s.wasm' % tool)
+    global binaryen_kept_debug_info
+    binaryen_kept_debug_info = '-g' in cmd
   return ret
 
 

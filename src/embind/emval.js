@@ -282,6 +282,20 @@ var LibraryEmVal = {
     return returnType['toWireType'](destructors, handle);
   },
 
+  _emval_as_int64__deps: ['$requireHandle', '$requireRegisteredType'],
+  _emval_as_int64: function(handle, returnType, destructorsRef) {
+    handle = requireHandle(handle);
+    returnType = requireRegisteredType(returnType, 'emval::as');
+    return returnType['toWireType'](null, handle);
+  },
+
+  _emval_as_uint64__deps: ['$requireHandle', '$requireRegisteredType'],
+  _emval_as_uint64: function(handle, returnType, destructorsRef) {
+    handle = requireHandle(handle);
+    returnType = requireRegisteredType(returnType, 'emval::as');
+    return returnType['toWireType'](null, handle);
+  },
+
   _emval_equals__deps: ['$requireHandle'],
   _emval_equals: function(first, second) {
     first = requireHandle(first);

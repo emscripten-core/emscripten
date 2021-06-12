@@ -147,7 +147,7 @@ File system API
   :param type: The :ref:`file system type <filesystem-api-filesystems>`: ``MEMFS``, ``NODEFS``, ``IDBFS`` or ``WORKERFS``.
   :param object opts: A generic settings object used by the underlying file system.
 
-    ``NODFES`` uses the `root` parameter to map the Emscripten directory to the physical directory. For example, to mount the current folder as a NODEFS instance:
+    ``NODEFS`` uses the `root` parameter to map the Emscripten directory to the physical directory. For example, to mount the current folder as a NODEFS instance:
 
     .. code-block:: javascript
 

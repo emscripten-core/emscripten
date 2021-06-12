@@ -267,6 +267,7 @@ var HEAP_DATA_VIEW;
 
 #if WASM_BIGINT
 var HEAP64;
+var HEAPU64;
 #endif
 
 #if USE_PTHREADS
@@ -292,6 +293,7 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 #if WASM_BIGINT
   Module['HEAP64'] = HEAP64 = new BigInt64Array(buf);
+  Module['HEAPU64'] = HEAPU64 = new BigUint64Array(buf);
 #endif
 }
 
@@ -409,6 +411,10 @@ function preMain() {
 #endif
 
 function exitRuntime() {
+#if ASYNCIFY && ASSERTIONS
+  // ASYNCIFY cannot be used once the runtime starts shutting down.
+  Asyncify.state = Asyncify.State.Disabled;
+#endif
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
@@ -421,9 +427,6 @@ function exitRuntime() {
 #if USE_PTHREADS
   PThread.runExitHandlers();
 #endif
-#endif
-#if ASYNCIFY && ASSERTIONS
-  Asyncify.checkStateAfterExitRuntime();
 #endif
   runtimeExited = true;
 }
@@ -744,10 +747,20 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
-var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
-if (!isDataURI(wasmBinaryFile)) {
-  wasmBinaryFile = locateFile(wasmBinaryFile);
+var wasmBinaryFile;
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE
+if (Module['locateFile']) {
+#endif
+  wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
+  if (!isDataURI(wasmBinaryFile)) {
+    wasmBinaryFile = locateFile(wasmBinaryFile);
+  }
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE // in single-file mode, repeating WASM_BINARY_FILE would emit the contents again
+} else {
+  // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
+  wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).toString();
 }
+#endif
 
 function getBinary(file) {
   try {
@@ -807,7 +820,7 @@ function getBinaryPromise() {
     }
 #endif
   }
-    
+
   // Otherwise, getBinary should be able to get it synchronously
   return Promise.resolve().then(function() { return getBinary(wasmBinaryFile); });
 }
@@ -828,7 +841,9 @@ var splitModuleProxyHandler = {
     return function() {
       err('placeholder function called: ' + prop);
       var imports = {'primary': Module['asm']};
-      instantiateSync(wasmBinaryFile + '.deferred', imports);
+      // Replace '.wasm' suffix with '.deferred.wasm'.
+      var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
+      instantiateSync(deferred, imports);
       err('instantiated deferred module, continuing');
 #if RELOCATABLE
       // When the table is dynamically laid out, the placeholder functions names
@@ -946,7 +961,7 @@ function createWasm() {
 
     Module['asm'] = exports;
 
-#if MAIN_MODULE
+#if MAIN_MODULE && AUTOLOAD_DYLIBS
     var metadata = getDylinkMetadata(module);
     if (metadata.neededDynlibs) {
       dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);

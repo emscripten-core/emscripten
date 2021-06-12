@@ -174,12 +174,6 @@ var LibraryPThread = {
     },
 
     runExitHandlersAndDeinitThread: function(tb, exitCode) {
-#if PTHREADS_PROFILING
-      var profilerBlock = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0);
-      _free(profilerBlock);
-#endif
-
       // Disable all cancellation so that executing the cleanup handlers won't trigger another JS
       // canceled exception to be thrown.
       Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2, 1/*PTHREAD_CANCEL_DISABLE*/);
@@ -259,6 +253,11 @@ var LibraryPThread = {
         var tlsMemory = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.tsd, 'i32') }}};
         {{{ makeSetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.tsd, 0, 'i32') }}};
         _free(tlsMemory);
+#if PTHREADS_PROFILING
+        var profilerBlock = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.profilerBlock, 'i32') }}};
+        {{{ makeSetValue('pthread.threadInfoStruct',  C_STRUCTS.pthread.profilerBlock, 0, 'i32') }}};
+        _free(profilerBlock);
+#endif
         _free(pthread.threadInfoStruct);
       }
       pthread.threadInfoStruct = 0;
@@ -442,7 +441,11 @@ var LibraryPThread = {
         // it could load up the same file. In that case, developer must either deliver the Blob
         // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
         // independently load up the same main application file.
-        'urlOrBlob': Module['mainScriptUrlOrBlob'] || _scriptDir,
+        'urlOrBlob': Module['mainScriptUrlOrBlob']
+#if !EXPORT_ES6
+        || _scriptDir
+#endif
+        ,
 #if WASM2JS
         // the polyfill WebAssembly.Memory instance has function properties,
         // which will fail in postMessage, so just send a custom object with the
@@ -469,6 +472,17 @@ var LibraryPThread = {
 #if MINIMAL_RUNTIME
       var pthreadMainJs = Module['worker'];
 #else
+#if EXPORT_ES6 && USE_ES6_IMPORT_META
+      // If we're using module output and there's no explicit override, use bundler-friendly pattern.
+      if (!Module['locateFile']) {
+#if PTHREADS_DEBUG
+        out('Allocating a new web worker from ' + new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
+#endif
+        // Use bundler-friendly `new Worker(new URL(..., import.meta.url))` pattern; works in browsers too.
+        PThread.unusedWorkers.push(new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url)));
+        return;
+      }
+#endif
       // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
       // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
       // to the main html file is loaded.
@@ -1009,8 +1023,8 @@ var LibraryPThread = {
     return 0;
   },
 
-  pthread_detach__sig: 'vi',
-  pthread_detach: function(thread) {
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_detach__sig: 'vi',
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_detach: function(thread) {
     if (!thread) {
       err('pthread_detach attempted on a null thread pointer!');
       return ERRNO_CODES.ESRCH;
@@ -1028,9 +1042,13 @@ var LibraryPThread = {
     return wasDetached ? ERRNO_CODES.EINVAL : 0;
   },
 
-  // C11 threads function.
+  // C11 thread version.
   // TODO: remove this in favor or compiling musl/src/thread/pthread_detach.c
+#if USE_LSAN
+  thrd_detach: 'emscripten_builtin_pthread_detach',
+#else
   thrd_detach: 'pthread_detach',
+#endif
 
   pthread_exit__deps: ['exit'],
   pthread_exit: function(status) {

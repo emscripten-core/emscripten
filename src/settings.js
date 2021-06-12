@@ -173,8 +173,6 @@ var INITIAL_MEMORY = 16777216;
 // relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
 // INITIAL_MEMORY is the final size of memory anyhow.
 //
-// If this value is -1, it means there is no specified limit.
-//
 // Note that the default value here is 2GB, which means that by default if you
 // enable memory growth then we can grow up to 2GB but no higher. 2GB is a
 // natural limit for several reasons:
@@ -186,6 +184,8 @@ var INITIAL_MEMORY = 16777216;
 //     has support started to appear. As support is limited, it's safer for
 //     people to opt into >2GB+ heaps rather than get a build that may not
 //     work on all VMs.
+//
+// To use more than 2GB, set this to something higher, like 4GB.
 //
 // (This option was formerly called WASM_MEM_MAX and BINARYEN_MEM_MAX.)
 // [link]
@@ -598,6 +598,7 @@ var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 //  * Work around old Chromium WebGL 1 bug (-s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
 //  * Disable WebAssembly. (Must be paired with -s WASM=0)
 //  * Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
+//  * Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
 // You can also configure the above options individually.
 // [link]
 var LEGACY_VM_SUPPORT = 0;
@@ -789,12 +790,10 @@ var ASYNCIFY_LAZY_LOAD_CODE = 0;
 var ASYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
-// quite a lot here, but have removed them all, so this option is redundant
-// given that EXTRA_EXPORTED_RUNTIME_METHODS exists, and so this option exists
-// only for backwards compatibility. You should use
-// EXTRA_EXPORTED_RUNTIME_METHODS for things you want to export from the
-// runtime.  Note that methods on this list are only exported if they are
-// included (either automatically from linking, or due to being in
+// quite a lot here, but have removed them all. You should use
+// EXPORTED_RUNTIME_METHODS for things you want to export from the runtime. Note
+// that methods on this list are only exported if they are included (either
+// automatically from linking, or due to being in
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).
 // Note that the name may be slightly misleading, as this is for any JS library
 // element, and not just methods. For example, we can export the FS object by
@@ -1753,7 +1752,6 @@ var USES_DYNAMIC_ALLOC = 1;
 // [compile+link] - at compile time this enables the transformations needed for
 // longjmp support at codegen time, while at link it allows linking in the
 // library support.
-// [link]
 var SUPPORT_LONGJMP = 1;
 
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior.
@@ -1936,6 +1934,10 @@ var SPLIT_MODULE = 0;
 // (since they both avoid the running of llvm-nm on all linker inputs).
 // [link]
 var REVERSE_DEPS = 'auto';
+
+// For MAIN_MODULE builds, automatically load any dynamic library dependencies
+// on startup, before loading the main module.
+var AUTOLOAD_DYLIBS = 1;
 
 //===========================================
 // Internal, used for testing only, from here

@@ -499,6 +499,11 @@ var LibraryEmbind = {
         case 2: return signed ?
             function readS32FromPointer(pointer) { return HEAP32[pointer >> 2]; } :
             function readU32FromPointer(pointer) { return HEAPU32[pointer >> 2]; };
+#if WASM_BIGINT
+        case 3: return signed ?
+            function readS64FromPointer(pointer) { return HEAP64[pointer >> 3]; } :
+            function readU64FromPointer(pointer) { return HEAPU64[pointer >> 3]; };
+#endif
         default:
             throw new TypeError("Unknown integer type: " + name);
     }
@@ -584,6 +589,45 @@ var LibraryEmbind = {
     });
   },
 
+#if WASM_BIGINT
+  _embind_register_bigint__deps: [
+    'embind_repr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
+  _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {
+    name = readLatin1String(name);
+
+    var shift = getShiftFromSize(size);
+
+    var isUnsignedType = (name.indexOf('u') != -1);
+
+    // maxRange comes through as -1 for uint64_t (see issue 13902). Work around that temporarily
+    if (isUnsignedType) {
+      // Use string because acorn does recognize bigint literals
+      maxRange = (BigInt(1) << BigInt(64)) - BigInt(1);
+    }
+
+    registerType(primitiveType, {
+        name: name,
+        'fromWireType': function (value) {
+          return value;
+        },
+        'toWireType': function (destructors, value) {
+          if (typeof value !== "bigint") {
+            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+          }
+          if (value < minRange || value > maxRange) {
+            throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+          }
+          return value;
+        },
+        'argPackAdvance': 8,
+        'readValueFromPointer': integerReadValueFromPointer(name, shift, !isUnsignedType),
+        destructorFunction: null, // This type does not need a destructor
+    });
+  },
+#else
+  _embind_register_bigint__deps: [],
+  _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {},
+#endif
 
   _embind_register_float__deps: [
     'embind_repr', '$floatReadValueFromPointer', '$getShiftFromSize',
@@ -2103,6 +2147,10 @@ var LibraryEmbind = {
         classType = classType[0];
         var humanName = classType.name + '.' + methodName;
 
+        if (methodName.startsWith("@@")) {
+            methodName = Symbol[methodName.substring(2)];
+        }
+
         if (isPureVirtual) {
             classType.registeredClass.pureVirtualFunctions.push(methodName);
         }
@@ -2239,6 +2287,10 @@ var LibraryEmbind = {
 
         function unboundTypesHandler() {
             throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
+        }
+
+        if (methodName.startsWith("@@")) {
+            methodName = Symbol[methodName.substring(2)];
         }
 
         var proto = classType.registeredClass.constructor;

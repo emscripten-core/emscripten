@@ -137,27 +137,22 @@ var funs = {
     setErrNo(ERRNO_CODES.EINTR);
     return -1;
   },
-#if SUPPORT_LONGJMP
-#if ASSERTIONS
-  siglongjmp__deps: ['longjmp'],
-  siglongjmp: function(env, value) {
-    // We cannot wrap the sigsetjmp, but I hope that
-    // in most cases siglongjmp will be called later.
-
-    // siglongjmp can be called very many times, so don't flood the stderr.
-    warnOnce("Calling longjmp() instead of siglongjmp()");
-    _longjmp(env, value);
-  },
-#else
-  siglongjmp__sig: 'vii',
-  siglongjmp: 'longjmp',
-#endif
-#endif
 
   sigpending: function(set) {
     {{{ makeSetValue('set', 0, 0, 'i32') }}};
     return 0;
+  },
+
+  sigwait: function(set, sig) {
+    // POSIX SIGNALS are not supported
+    // if set contains an invalid signal number, EINVAL is returned
+    // in our case we return EINVAL all the time
+#if ASSERTIONS
+    err('Calling stub instead of sigwait()');
+#endif
+    return {{{ cDefine('EINVAL') }}};
   }
+	
   //signalfd
   //ppoll
   //epoll_pwait

@@ -12,6 +12,7 @@ import logging
 import os
 import shutil
 import sys
+from enum import IntEnum, auto
 from glob import iglob
 
 from . import shared, building, ports, config, utils
@@ -299,6 +300,20 @@ class Library:
     """
     return shared.Cache.get_lib(self.get_filename(), self.build)
 
+  def get_link_flag(self):
+    """
+    Gets the link flags needed to use the library.
+
+    This will trigger a build if this library is not in the cache.
+    """
+    fullpath = self.get_path()
+    # For non-libaries (e.g. crt1.o) we pass the entire path to the linker
+    if self.get_ext() != '.a':
+      return fullpath
+    # For libraries (.a) files, we pass the abbreviated `-l` form.
+    base = shared.unsuffixed_basename(fullpath)
+    return '-l' + shared.strip_prefix(base, 'lib')
+
   def get_files(self):
     """
     Gets a list of source files for this library.
@@ -475,13 +490,14 @@ class Library:
 
     This returns a dictionary of simple names to Library objects.
     """
-    result = {}
-    for subclass in cls.get_inheritance_tree():
-      if subclass.name:
-        library = subclass.get_default_variation()
-        if library.can_build() and library.can_use():
-          result[subclass.name] = library
-    return result
+    if not hasattr(cls, 'useable_variations'):
+      cls.useable_variations = {}
+      for subclass in cls.get_inheritance_tree():
+        if subclass.name:
+          library = subclass.get_default_variation()
+          if library.can_build() and library.can_use():
+            cls.useable_variations[subclass.name] = library
+    return cls.useable_variations
 
 
 class MTLibrary(Library):
@@ -536,7 +552,7 @@ class OptimizedAggressivelyForSizeLibrary(Library):
     return super().get_default_variation(is_optz=settings.SHRINK_LEVEL >= 2, **kwargs)
 
 
-class exceptions:
+class Exceptions(IntEnum):
   """
   This represents exception handling mode of Emscripten. Currently there are
   three modes of exception handling:
@@ -549,9 +565,9 @@ class exceptions:
     is meant to be fast. You need to use a VM that has the EH support to use
     this. This is not fully working yet and still experimental.
   """
-  none = 0
-  emscripten = 1
-  wasm = 2
+  NONE = auto()
+  EMSCRIPTEN = auto()
+  WASM = auto()
 
 
 class NoExceptLibrary(Library):
@@ -561,11 +577,11 @@ class NoExceptLibrary(Library):
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.eh_mode == exceptions.none:
+    if self.eh_mode == Exceptions.NONE:
       cflags += ['-fno-exceptions']
-    elif self.eh_mode == exceptions.emscripten:
+    elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
-    elif self.eh_mode == exceptions.wasm:
+    elif self.eh_mode == Exceptions.WASM:
       cflags += ['-fwasm-exceptions']
     return cflags
 
@@ -573,27 +589,27 @@ class NoExceptLibrary(Library):
     name = super().get_base_name()
     # TODO Currently emscripten-based exception is the default mode, thus no
     # suffixes. Change the default to wasm exception later.
-    if self.eh_mode == exceptions.none:
+    if self.eh_mode == Exceptions.NONE:
       name += '-noexcept'
-    elif self.eh_mode == exceptions.wasm:
+    elif self.eh_mode == Exceptions.WASM:
       name += '-except'
     return name
 
   @classmethod
   def variations(cls, **kwargs):  # noqa
     combos = super().variations()
-    return ([dict(eh_mode=exceptions.none, **combo) for combo in combos] +
-            [dict(eh_mode=exceptions.emscripten, **combo) for combo in combos] +
-            [dict(eh_mode=exceptions.wasm, **combo) for combo in combos])
+    return ([dict(eh_mode=Exceptions.NONE, **combo) for combo in combos] +
+            [dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos] +
+            [dict(eh_mode=Exceptions.WASM, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     if settings.EXCEPTION_HANDLING:
-      eh_mode = exceptions.wasm
+      eh_mode = Exceptions.WASM
     elif settings.DISABLE_EXCEPTION_CATCHING == 1:
-      eh_mode = exceptions.none
+      eh_mode = Exceptions.NONE
     else:
-      eh_mode = exceptions.emscripten
+      eh_mode = Exceptions.EMSCRIPTEN
     return super().get_default_variation(eh_mode=eh_mode, **kwargs)
 
 
@@ -677,8 +693,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     # musl modules
     ignore = [
-        'ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'search', 'setjmp', 'env',
+        'ipc', 'passwd', 'signal', 'sched', 'ipc', 'time', 'linux',
+        'aio', 'exit', 'legacy', 'mq', 'setjmp', 'env',
         'ldso'
     ]
 
@@ -711,6 +727,64 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strlen.c'),
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_fcntl.c'),
       ]
+
+    if self.is_mt:
+      ignore += [
+        'clone.c', '__lock.c',
+        'pthread_cleanup_push.c', 'pthread_create.c',
+        'pthread_kill.c', 'pthread_sigmask.c',
+        '__set_thread_area.c', 'synccall.c',
+        '__syscall_cp.c', '__tls_get_addr.c',
+        '__unmapself.c',
+        # Empty files, simply ignore them.
+        'syscall_cp.c', 'tls.c',
+        # TODO: Comment out (or support) within upcoming musl upgrade. See #12216.
+        # 'pthread_setname_np.c',
+        # TODO: No longer exists in the latest musl version.
+        '__futex.c',
+        # TODO: Could be supported in the upcoming musl upgrade
+        'lock_ptc.c', 'pthread_getattr_np.c',
+        # 'pthread_setattr_default_np.c',
+        # TODO: These could be moved away from JS in the upcoming musl upgrade.
+        'pthread_cancel.c', 'pthread_detach.c',
+        'pthread_join.c', 'pthread_testcancel.c',
+      ]
+      libc_files += files_in_path(
+        path_components=['system', 'lib', 'pthread'],
+        filenames=[
+          'library_pthread.c',
+          'emscripten_thread_state.s',
+        ])
+    else:
+      ignore += ['thread']
+      libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
+        filenames=[
+          'pthread_self.c',
+          # C11 thread library functions
+          'call_once.c',
+          'tss_create.c',
+          'tss_delete.c',
+          'tss_set.c',
+          'cnd_broadcast.c',
+          'cnd_destroy.c',
+          'cnd_init.c',
+          'cnd_signal.c',
+          'cnd_timedwait.c',
+          'cnd_wait.c',
+          'mtx_destroy.c',
+          'mtx_init.c',
+          'mtx_lock.c',
+          'mtx_timedlock.c',
+          'mtx_trylock.c',
+          'mtx_unlock.c',
+          'thrd_create.c',
+          'thrd_exit.c',
+          'thrd_join.c',
+          'thrd_sleep.c',
+          'thrd_yield.c',
+        ])
+      libc_files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
 
     # These are included in wasm_libc_rt instead
     ignore += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
@@ -764,73 +838,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         path_components=['system', 'lib', 'pthread'],
         filenames=['emscripten_atomic.c'])
 
-    libc_files += files_in_path(
-        path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
-        filenames=[
-          'pthread_self.c',
-          # C11 thread library functions
-          'thrd_create.c',
-          'thrd_exit.c',
-          'thrd_join.c',
-          'thrd_sleep.c',
-          'thrd_yield.c',
-          'call_once.c',
-          'tss_create.c',
-          'tss_delete.c',
-          'tss_set.c',
-        ])
-
     libc_files += glob_in_path(['system', 'lib', 'libc', 'compat'], '*.c')
-
-    if self.is_mt:
-      libc_files += files_in_path(
-        path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
-        filenames=[
-          'pthread_attr_destroy.c', 'pthread_condattr_setpshared.c',
-          'pthread_mutex_lock.c', 'pthread_spin_destroy.c', 'pthread_attr_get.c',
-          'pthread_cond_broadcast.c', 'pthread_mutex_setprioceiling.c',
-          'pthread_spin_init.c', 'pthread_attr_init.c', 'pthread_cond_destroy.c',
-          'pthread_mutex_timedlock.c', 'pthread_spin_lock.c',
-          'pthread_attr_setdetachstate.c', 'pthread_cond_init.c',
-          'pthread_mutex_trylock.c', 'pthread_spin_trylock.c',
-          'pthread_attr_setguardsize.c', 'pthread_cond_signal.c',
-          'pthread_mutex_unlock.c', 'pthread_spin_unlock.c',
-          'pthread_attr_setinheritsched.c', 'pthread_cond_timedwait.c',
-          'pthread_once.c', 'sem_destroy.c', 'pthread_attr_setschedparam.c',
-          'pthread_cond_wait.c', 'pthread_rwlockattr_destroy.c', 'sem_getvalue.c',
-          'pthread_attr_setschedpolicy.c', 'pthread_equal.c', 'pthread_rwlockattr_init.c',
-          'sem_init.c', 'pthread_attr_setscope.c', 'pthread_getspecific.c',
-          'pthread_rwlockattr_setpshared.c', 'sem_open.c', 'pthread_attr_setstack.c',
-          'pthread_key_create.c', 'pthread_rwlock_destroy.c', 'sem_post.c',
-          'pthread_attr_setstacksize.c', 'pthread_mutexattr_destroy.c',
-          'pthread_rwlock_init.c', 'sem_timedwait.c', 'pthread_barrierattr_destroy.c',
-          'pthread_mutexattr_init.c', 'pthread_rwlock_rdlock.c', 'sem_trywait.c',
-          'pthread_barrierattr_init.c', 'pthread_mutexattr_setprotocol.c',
-          'pthread_rwlock_timedrdlock.c', 'sem_unlink.c',
-          'pthread_barrierattr_setpshared.c', 'pthread_mutexattr_setpshared.c',
-          'pthread_rwlock_timedwrlock.c', 'sem_wait.c', 'pthread_barrier_destroy.c',
-          'pthread_mutexattr_setrobust.c', 'pthread_rwlock_tryrdlock.c',
-          '__timedwait.c', 'pthread_barrier_init.c', 'pthread_mutexattr_settype.c',
-          'pthread_rwlock_trywrlock.c', 'vmlock.c', 'pthread_barrier_wait.c',
-          'pthread_mutex_consistent.c', 'pthread_rwlock_unlock.c', '__wait.c',
-          'pthread_condattr_destroy.c', 'pthread_mutex_destroy.c',
-          'pthread_rwlock_wrlock.c', 'pthread_condattr_init.c',
-          'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c',
-          'pthread_condattr_setclock.c', 'pthread_mutex_init.c',
-          'pthread_setspecific.c', 'pthread_setcancelstate.c',
-          'pthread_getconcurrency.c', 'pthread_setconcurrency.c',
-          'pthread_getschedparam.c', 'pthread_setschedparam.c',
-          'pthread_setschedprio.c', 'pthread_atfork.c',
-          'pthread_getcpuclockid.c',
-        ])
-      libc_files += files_in_path(
-        path_components=['system', 'lib', 'pthread'],
-        filenames=[
-          'library_pthread.c',
-          'emscripten_thread_state.s',
-        ])
-    else:
-      libc_files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
 
     return libc_files
 
@@ -911,10 +919,8 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
-      '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
-      # Remove this once we update to include this llvm
-      # revision: https://reviews.llvm.org/D64961
-      '-D_LIBCXXABI_GUARD_ABI_ARM',
+      '-D_LIBCXXABI_BUILDING_LIBRARY',
+      '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
     ]
 
   def get_cflags(self):
@@ -922,11 +928,14 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
     cflags.append('-DNDEBUG')
     if not self.is_mt:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
-    if self.eh_mode == exceptions.none:
+    if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
-    elif self.eh_mode == exceptions.emscripten:
+    elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
-    elif self.eh_mode == exceptions.wasm:
+      # The code used to interpret exceptions during terminate
+      # is not compatible with emscripten exceptions.
+      cflags.append('-DLIBCXXABI_SILENT_TERMINATE')
+    elif self.eh_mode == Exceptions.WASM:
       cflags.append('-D__USING_WASM_EXCEPTIONS__')
     return cflags
 
@@ -936,7 +945,6 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       'cxa_aux_runtime.cpp',
       'cxa_default_handlers.cpp',
       'cxa_demangle.cpp',
-      'cxa_exception_storage.cpp',
       'cxa_guard.cpp',
       'cxa_handlers.cpp',
       'cxa_virtual.cpp',
@@ -947,10 +955,11 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp'
     ]
-    if self.eh_mode == exceptions.none:
+    if self.eh_mode == Exceptions.NONE:
       filenames += ['cxa_noexception.cpp']
-    elif self.eh_mode == exceptions.wasm:
+    elif self.eh_mode == Exceptions.WASM:
       filenames += [
+        'cxa_exception_storage.cpp',
         'cxa_exception.cpp',
         'cxa_personality.cpp'
       ]
@@ -989,18 +998,18 @@ class libunwind(NoExceptLibrary, MTLibrary):
     super().__init__(**kwargs)
 
   def can_use(self):
-    return super().can_use() and self.eh_mode == exceptions.wasm
+    return super().can_use() and self.eh_mode == Exceptions.WASM
 
   def get_cflags(self):
     cflags = super().get_cflags()
     cflags.append('-DNDEBUG')
     if not self.is_mt:
       cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
-    if self.eh_mode == exceptions.none:
+    if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
-    elif self.eh_mode == exceptions.emscripten:
+    elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
-    elif self.eh_mode == exceptions.wasm:
+    elif self.eh_mode == Exceptions.WASM:
       cflags.append('-D__USING_WASM_EXCEPTIONS__')
     return cflags
 
@@ -1098,8 +1107,8 @@ class libal(Library):
   src_files = ['al.c']
 
 
-class libgl(MTLibrary):
-  name = 'libgl'
+class libGL(MTLibrary):
+  name = 'libGL'
 
   src_dir = ['system', 'lib', 'gl']
   src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c']
@@ -1134,7 +1143,7 @@ class libgl(MTLibrary):
     if self.is_legacy:
       cflags += ['-DLEGACY_GL_EMULATION=1']
     if self.is_webgl2:
-      cflags += ['-DMAX_WEBGL_VERSION=2', '-s', 'MAX_WEBGL_VERSION=2']
+      cflags += ['-DMAX_WEBGL_VERSION=2']
     if self.is_ofb:
       cflags += ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
     if self.is_full_es3:
@@ -1413,7 +1422,7 @@ def handle_reverse_deps(input_files):
   elif settings.REVERSE_DEPS == 'all':
     # When not optimzing we add all possible reverse dependencies rather
     # than scanning the input files
-    for symbols in deps_info.deps_info.values():
+    for symbols in deps_info.get_deps_info().values():
       for symbol in symbols:
         settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(symbol))
     return
@@ -1425,7 +1434,7 @@ def handle_reverse_deps(input_files):
 
   def add_reverse_deps(need):
     more = False
-    for ident, deps in deps_info.deps_info.items():
+    for ident, deps in deps_info.get_deps_info().items():
       if ident in need.undefs and ident not in added:
         added.add(ident)
         more = True
@@ -1457,7 +1466,7 @@ def handle_reverse_deps(input_files):
     add_reverse_deps(symbols)
 
 
-def calculate(input_files, cxx, forced):
+def calculate(input_files, forced):
   # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
   # for unresolved symbols in your project files, which can speed up linking, but if you do not have
   # the proper list of actually needed libraries, errors can occur. See below for how we must
@@ -1496,7 +1505,7 @@ def calculate(input_files, cxx, forced):
     logger.debug('including %s (%s)' % (lib.name, lib.get_filename()))
 
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
-    libs_to_link.append((lib.get_path(), need_whole_archive))
+    libs_to_link.append((lib.get_link_flag(), need_whole_archive))
 
   if settings.USE_PTHREADS:
     add_library('crtbegin')
@@ -1520,7 +1529,7 @@ def calculate(input_files, cxx, forced):
     add_library('libcompiler_rt')
   else:
     if settings.AUTO_NATIVE_LIBRARIES:
-      add_library('libgl')
+      add_library('libGL')
       add_library('libal')
       add_library('libhtml5')
 
@@ -1537,9 +1546,9 @@ def calculate(input_files, cxx, forced):
 
     add_library('libc')
     add_library('libcompiler_rt')
-    if cxx:
+    if settings.LINK_AS_CXX:
       add_library('libc++')
-    if cxx or sanitize:
+    if settings.LINK_AS_CXX or sanitize:
       add_library('libc++abi')
       if settings.EXCEPTION_HANDLING:
         add_library('libunwind')
@@ -1614,8 +1623,8 @@ class Ports:
   """
 
   @staticmethod
-  def get_include_dir():
-    dirname = shared.Cache.get_include_dir()
+  def get_include_dir(*parts):
+    dirname = shared.Cache.get_include_dir(*parts)
     shared.safe_ensure_dirs(dirname)
     return dirname
 
@@ -1886,6 +1895,7 @@ def get_ports_libs(settings):
 
   for port in dependency_order(needed):
     if port.needed(settings):
+      port.linker_setup(Ports, settings)
       # ports return their output files, which will be linked, or a txt file
       ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
 
@@ -1906,7 +1916,7 @@ def add_ports_cflags(args, settings): # noqa: U100
 
   needed = get_needed_ports(settings)
 
-  # Now get (i.e. build) the ports independency order.  This is important because the
+  # Now get (i.e. build) the ports in dependency order.  This is important because the
   # headers from one ports might be needed before we can build the next.
   for port in dependency_order(needed):
     port.get(Ports, settings, shared)
@@ -1921,13 +1931,15 @@ def show_ports():
 
 # Once we require python 3.8 we can use shutil.copytree with
 # dirs_exist_ok=True and remove this function.
-def copytree_exist_ok(src, dest):
-  with utils.chdir(src):
-    for dirname, dirs, files in os.walk('.'):
-      destdir = os.path.join(dest, dirname)
-      utils.safe_ensure_dirs(destdir)
-      for f in files:
-        shared.safe_copy(os.path.join(src, dirname, f), os.path.join(destdir, f))
+def copytree_exist_ok(src, dst):
+  os.makedirs(dst, exist_ok=True)
+  for entry in os.scandir(src):
+    srcname = os.path.join(src, entry.name)
+    dstname = os.path.join(dst, entry.name)
+    if entry.is_dir():
+      copytree_exist_ok(srcname, dstname)
+    else:
+      shared.safe_copy(srcname, dstname)
 
 
 def install_system_headers(stamp):

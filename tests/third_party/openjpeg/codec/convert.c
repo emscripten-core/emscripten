@@ -48,6 +48,7 @@
 #include "../libs/png/png.h"
 #else
 #include <png.h>
+#include <zlib.h> // FOR Z_BEST_COMPRESSION
 #endif /* _WIN32 */
 #endif /* HAVE_LIBPNG */
 

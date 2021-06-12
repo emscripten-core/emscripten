@@ -7,6 +7,8 @@
 // Various tools for parsing LLVM. Utilities of various sorts, that are
 // specific to Emscripten (and hence not in utility.js).
 
+const FOUR_GB = 4 * 1024 * 1024 * 1024;
+
 let currentlyParsedFilename = '';
 
 // Does simple 'macro' substitution, using Django-like syntax,
@@ -31,6 +33,14 @@ function processMacros(text) {
 // Param filenameHint can be passed as a description to identify the file that is being processed, used
 // to locate errors for reporting and for html files to stop expansion between <style> and </style>.
 function preprocess(text, filenameHint) {
+  if (EXPORT_ES6 && USE_ES6_IMPORT_META) {
+    // `eval`, Terser and Closure don't support module syntax; to allow it,
+    // we need to temporarily replace `import.meta` usages with placeholders
+    // during preprocess phase, and back after all the other ops.
+    // See also: `phase_final_emitting` in emcc.py.
+    text = text.replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META');
+  }
+
   const IGNORE = 0;
   const SHOW = 1;
   // This state is entered after we have shown one of the block of an if/elif/else sequence.
@@ -1068,6 +1078,8 @@ function addAtInit(code) {
   ATINITS.push(code);
 }
 
+// TODO(sbc): There are no more uses to ATMAINS or addAtMain in emscripten.
+// We should look into removing these.
 global.ATMAINS = [];
 
 function addAtMain(code) {
@@ -1106,13 +1118,6 @@ function makeRetainedCompilerSettings() {
 
 // In wasm, the heap size must be a multiple of 64KiB.
 const WASM_PAGE_SIZE = 65536;
-
-// Page size reported by some POSIX calls, mostly filesystem. This does not
-// depend on the memory page size which differs between wasm and asm.js, and
-// makes us report a consistent value despite the compile target. However,
-// perhaps we should unify all the page sizes (especially after fastcomp is
-// gone TODO).
-const POSIX_PAGE_SIZE = 16384;
 
 // Receives a function as text, and a function that constructs a modified
 // function, to which we pass the parsed-out name, arguments, and body of the
@@ -1234,7 +1239,7 @@ function makeAsmImportsAccessInPthread(variable) {
     return `imports['${variable}']`;
   }
   // In non-MODULARIZE builds, can access the imports from global scope.
-  return variable;
+  return `self.${variable}`;
 }
 
 function _asmjsDemangle(symbol) {

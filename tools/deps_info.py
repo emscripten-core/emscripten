@@ -48,11 +48,13 @@
 # TODO: Move all __deps from src/library*.js to deps_info, and use that single source of info
 #       both here and in the JS compiler.
 
-deps_info = {
+from tools.settings import settings
+
+_deps_info = {
   'Mix_LoadWAV_RW': ['fileno'],
   'SDL_CreateRGBSurface': ['malloc', 'free'],
   'SDL_GL_GetProcAddress': ['malloc'],
-  'SDL_Init': ['malloc', 'free', 'memset', 'memcpy'],
+  'SDL_Init': ['malloc', 'free', 'memcpy'],
   'SDL_LockSurface': ['malloc', 'free'],
   'SDL_OpenAudio': ['malloc', 'free'],
   'SDL_PushEvent': ['malloc', 'free'],
@@ -60,7 +62,6 @@ deps_info = {
   'SDL_malloc': ['malloc', 'free'],
   '__cxa_allocate_exception': ['malloc'],
   '__cxa_end_catch': ['setThrew', 'free'],
-  '__cxa_begin_catch': ['__cxa_is_pointer_type'],
   '__cxa_free_exception': ['free'],
   '_embind_register_class': ['free'],
   '_embind_register_enum_value': ['free'],
@@ -92,7 +93,12 @@ deps_info = {
   'emscripten_idb_load': ['malloc', 'free'],
   'emscripten_init_websocket_to_posix_socket_bridge': ['malloc', 'free'],
   'emscripten_log': ['strlen'],
-  'emscripten_longjmp': ['setThrew'],
+  # This list is the same as setjmp's dependencies. In non-LTO builds, setjmp
+  # does not exist in the object files; it is converted into a code sequence
+  # that includes several functions, one of which is emscripten_longjmp. This is
+  # a trick to include these dependencies for setjmp even when setjmp does not
+  # exist. Refer to setjmp's entry for more details.
+  'emscripten_longjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
   'emscripten_pc_get_file': ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'malloc', 'free'],
   'emscripten_pc_get_function': ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'malloc', 'free'],
   'emscripten_run_preload_plugins_data': ['malloc'],
@@ -101,7 +107,6 @@ deps_info = {
   'emscripten_set_batterylevelchange_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_beforeunload_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_blur_callback_on_thread': ['malloc', 'free'],
-  'emscripten_set_canvas_element_size_calling_thread': ['_emscripten_call_on_thread'],
   'emscripten_set_click_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_dblclick_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_devicemotion_callback_on_thread': ['malloc', 'free'],
@@ -122,7 +127,6 @@ deps_info = {
   'emscripten_set_mouseout_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_mouseover_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_mouseup_callback_on_thread': ['malloc', 'free'],
-  'emscripten_set_offscreencanvas_size_on_target_thread': ['_emscripten_call_on_thread', 'malloc', 'free'],
   'emscripten_set_offscreencanvas_size_on_target_thread_js': ['malloc', 'free'],
   'emscripten_set_orientationchange_callback_on_thread': ['malloc', 'free'],
   'emscripten_set_pointerlockchange_callback_on_thread': ['malloc', 'free'],
@@ -156,7 +160,6 @@ deps_info = {
   'getnameinfo': ['htons', 'ntohs'],
   'getpeername': ['htons'],
   'getsockname': ['htons'],
-  'getrusage': ['memset'],
   'glGetString': ['malloc'],
   'glGetStringi': ['malloc'],
   'glMapBufferRange': ['malloc'],
@@ -168,9 +171,8 @@ deps_info = {
   'gmtime_r':  ['malloc'],
   'localtime': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
   'localtime_r': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
-  'longjmp': ['setThrew'],
   'mktime': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
-  'mmap': ['memalign', 'memset', 'malloc'],
+  'mmap': ['memalign', 'malloc'],
   'munmap': ['malloc', 'free'],
   'pthread_create': ['malloc', 'free', 'emscripten_main_thread_process_queued_calls'],
   'readdir': ['malloc'],
@@ -179,20 +181,42 @@ deps_info = {
   'accept': ['htons'],
   'recvfrom': ['htons'],
   'send': ['ntohs'],
-  'setjmp': ['saveSetjmp'],
+  # In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function calls
+  # that exist in the same function with setjmp are converted to some code
+  # sequence that includes invokes, malloc, free, saveSetjmp, and
+  # emscripten_longjmp. setThrew is called from invokes, but there's no way to
+  # directly include invokes in deps_info.py, so we list it as a setjmp's
+  # dependency.
+  'setjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
   'setprotoent': ['malloc'],
   'setgroups': ['sysconf'],
-  'siglongjmp': ['setThrew'],
   'syslog': ['malloc', 'ntohs'],
   'timegm': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
-  'times': ['memset'],
   'tmpnam': ['malloc'],
   'ttyname': ['malloc'],
   'tzset': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
-  'uuid_clear': ['memset'],
   'uuid_compare': ['memcmp'],
   'uuid_copy': ['memcpy'],
   'wgpuBufferGetMappedRange': ['malloc', 'free'],
   'wgpuBufferGetConstMappedRange': ['malloc', 'free'],
   'emscripten_glGetString': ['malloc'],
 }
+
+
+def get_deps_info():
+  if not settings.EXCEPTION_HANDLING and settings.LINK_AS_CXX:
+    _deps_info['__cxa_begin_catch'] = ['__cxa_is_pointer_type']
+    _deps_info['__cxa_find_matching_catch'] = ['__cxa_can_catch']
+    _deps_info['__cxa_find_matching_catch_1'] = ['__cxa_can_catch']
+    _deps_info['__cxa_find_matching_catch_2'] = ['__cxa_can_catch']
+    _deps_info['__cxa_find_matching_catch_3'] = ['__cxa_can_catch']
+    _deps_info['__cxa_find_matching_catch_4'] = ['__cxa_can_catch']
+    _deps_info['__cxa_find_matching_catch_5'] = ['__cxa_can_catch']
+    _deps_info['__cxa_find_matching_catch_6'] = ['__cxa_can_catch']
+    _deps_info['__cxa_find_matching_catch_7'] = ['__cxa_can_catch']
+    _deps_info['__cxa_find_matching_catch_8'] = ['__cxa_can_catch']
+    _deps_info['__cxa_find_matching_catch_9'] = ['__cxa_can_catch']
+  if settings.USE_PTHREADS:
+    _deps_info['emscripten_set_canvas_element_size_calling_thread'] = ['_emscripten_call_on_thread']
+    _deps_info['emscripten_set_offscreencanvas_size_on_target_thread'] = ['_emscripten_call_on_thread', 'malloc', 'free']
+  return _deps_info

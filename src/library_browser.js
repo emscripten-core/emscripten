@@ -800,9 +800,11 @@ var LibraryBrowser = {
     function doCallback(callback) {
       if (callback) {
         {{{ runtimeKeepalivePop() }}}
-        var stack = stackSave();
-        {{{ makeDynCall('vi', 'callback') }}}(allocate(intArrayFromString(_file), ALLOC_STACK));
-        stackRestore(stack);
+        callUserCallback(function() {
+          var stack = stackSave();
+          {{{ makeDynCall('vi', 'callback') }}}(allocate(intArrayFromString(_file), ALLOC_STACK));
+          stackRestore(stack);
+        });
       }
     }
     var destinationDirectory = PATH.dirname(_file);
@@ -862,13 +864,22 @@ var LibraryBrowser = {
   emscripten_async_wget_data__proxy: 'sync',
   emscripten_async_wget_data__sig: 'viiii',
   emscripten_async_wget_data: function(url, arg, onload, onerror) {
+    {{{ runtimeKeepalivePush() }}}
     Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
-      var buffer = _malloc(byteArray.length);
-      HEAPU8.set(byteArray, buffer);
-      {{{ makeDynCall('viii', 'onload') }}}(arg, buffer, byteArray.length);
-      _free(buffer);
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(function() {
+        var buffer = _malloc(byteArray.length);
+        HEAPU8.set(byteArray, buffer);
+        {{{ makeDynCall('viii', 'onload') }}}(arg, buffer, byteArray.length);
+        _free(buffer);
+      });
     }, function() {
-      if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(arg);
+      if (onerror) {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(function() {
+          {{{ makeDynCall('vi', 'onerror') }}}(arg);
+        });
+      }
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
@@ -968,6 +979,18 @@ var LibraryBrowser = {
 
     var handle = Browser.getNextWgetRequestHandle();
 
+    function onerrorjs() {
+      if (onerror) {
+        var statusText = 0;
+        if (http.statusText) {
+          var len = lengthBytesUTF8(http.statusText) + 1;
+          statusText = stackAlloc(len);
+          stringToUTF8(http.statusText, statusText, len);
+        }
+        {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, statusText);
+      }
+    }
+
     // LOAD
     http.onload = function http_onload(e) {
       if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.substr(0,4).toLowerCase() != "http")) {
@@ -977,16 +1000,14 @@ var LibraryBrowser = {
         if (onload) {{{ makeDynCall('viiii', 'onload') }}}(handle, arg, buffer, byteArray.length);
         if (free) _free(buffer);
       } else {
-        if (onerror) {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, http.statusText);
+        onerrorjs();
       }
       delete Browser.wgetRequests[handle];
     };
 
     // ERROR
     http.onerror = function http_onerror(e) {
-      if (onerror) {
-        {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, http.statusText);
-      }
+      onerrorjs();
       delete Browser.wgetRequests[handle];
     };
 

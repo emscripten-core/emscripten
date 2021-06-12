@@ -628,6 +628,9 @@ Classes
       (``this``) parameter.  When the ``Callable`` is a function object the function signature must be explicitly specified in the ``Signature`` template parameter
       in the format ``ReturnType (Args...)``.  For ``Callable`` types other than function objects the method signature will be deduced.
 
+      A method name specified in the human-readable well-known symbol format (e.g., ``@@iterator``)
+      is bound using the named ``Symbol`` for JavaScript (e.g., ``Symbol.iterator``).
+
       The following are all valid calls to ``function``:
 
       .. code-block:: cpp
@@ -726,6 +729,9 @@ Classes
       of the constructor. For example ``.class_function("myStaticFunction",
       &MyClass::myStaticFunction)`` binds ``myStaticFunction`` to
       ``MyClass.myStaticFunction``.
+
+      A method name specified in the human-readable well-known symbol format (e.g., ``@@species``)
+      is bound using the named ``Symbol`` for JavaScript (e.g., ``Symbol.species``).
 
       :param const char* methodName
       :param ReturnType (\*classMethod)(Args...)

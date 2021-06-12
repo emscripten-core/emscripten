@@ -25,9 +25,9 @@ int main(void) {
 #else
   assert(system(NULL) == 0);
   assert(system("") == -1);
-  assert(errno == EAGAIN);
+  assert(errno == ENOSYS);
   assert(system("true") == -1);
-  assert(errno == EAGAIN);
+  assert(errno == ENOSYS);
 #ifdef REPORT_RESULT
   REPORT_RESULT(0);
 #endif
