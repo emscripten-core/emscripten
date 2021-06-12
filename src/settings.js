@@ -598,6 +598,7 @@ var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 //  * Work around old Chromium WebGL 1 bug (-s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
 //  * Disable WebAssembly. (Must be paired with -s WASM=0)
 //  * Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
+//  * Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
 // You can also configure the above options individually.
 // [link]
 var LEGACY_VM_SUPPORT = 0;

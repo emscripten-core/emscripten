@@ -226,7 +226,7 @@ var SyscallsLibrary = {
     }
   },
 
-  $syscallMmap2__deps: ['$SYSCALLS',
+  $syscallMmap2__deps: ['$SYSCALLS', '$zeroMemory',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
@@ -247,7 +247,7 @@ var SyscallsLibrary = {
     if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
       ptr = _memalign({{{ WASM_PAGE_SIZE }}}, len);
       if (!ptr) return -{{{ cDefine('ENOMEM') }}};
-      _memset(ptr, 0, len);
+      zeroMemory(ptr, len);
       allocated = true;
     } else {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
@@ -494,11 +494,12 @@ var SyscallsLibrary = {
   __sys_setrlimit: function(varargs) {
     return 0; // no-op
   },
+  __sys_getrusage__deps: ['$zeroMemory'],
   __sys_getrusage: function(who, usage) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
-    _memset(usage, 0, {{{ C_STRUCTS.rusage.__size__ }}});
+    zeroMemory(usage, {{{ C_STRUCTS.rusage.__size__ }}});
     {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_utime.tv_sec, '1', 'i32') }}}; // fake some values
     {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_utime.tv_usec, '2', 'i32') }}};
     {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_stime.tv_sec, '3', 'i32') }}};
