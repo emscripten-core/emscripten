@@ -70,7 +70,8 @@ while 1:
   check_call([CSMITH, '--no-volatiles', '--no-packed-struct'] + extra_args,
              # ['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
              stdout=open(fullname, 'w'))
-  print('1) Generate source... %.2f K' % (len(open(fullname).read()) / 1024.))
+  with open(fullname) as fh:
+      print('1) Generate source... %.2f K' % (len(fh.read()) / 1024.))
 
   tried += 1
 

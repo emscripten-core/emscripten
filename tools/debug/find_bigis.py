@@ -11,7 +11,8 @@ from __future__ import print_function
 import os, sys, re
 
 filename = sys.argv[1]
-data = open(filename).read()
+with open(filename) as fh:
+    data = fh.read()
 iss = re.findall(r' i\d+ [^=]', data)
 set_iss = set(iss)
 bigs = []

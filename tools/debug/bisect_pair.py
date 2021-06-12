@@ -14,20 +14,20 @@ import os, sys, shutil
 from subprocess import Popen, PIPE, STDOUT
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+
+sys.path.insert(1, __rootpath__)
+
+from tools import shared
+
+
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
-exec(open(path_from_root('tools', 'shared.py'), 'r').read())
+  
+exec(shared.read_text(path_from_root('tools', 'shared.py')))
 
-file1 = open(sys.argv[1]).read()
-file2 = open(sys.argv[2]).read()
+shutil.copyfile(sys.argv[1], 'left')
+shutil.copyfile(sys.argv[2], 'right')
 
-leftf = open('left', 'w')
-leftf.write(file1)
-leftf.close()
-
-rightf = open('right', 'w')
-rightf.write(file2)
-rightf.close()
 
 def run_code(name):
   ret = run_js(name, stderr=PIPE, full_output=True, assert_returncode=None, engine=SPIDERMONKEY_ENGINE)

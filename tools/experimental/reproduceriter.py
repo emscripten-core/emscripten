@@ -147,7 +147,8 @@ for parent, dirs, files in os.walk(out_dir):
     if filename.endswith('.js'):
       fullname = os.path.join(parent, filename)
       print('   ', fullname)
-      js = open(fullname).read()
+      with open(fullname) as fh:
+          js = fh.read()
       js = re.sub(r'document\.on(\w+) ?= ?([\w.$]+)', lambda m: 'Recorder.onEvent("' + m.group(1) + '", ' + m.group(2) + ')', js)
       js = re.sub(r'''([\w.'"\[\]]+)\.addEventListener\(([\w,. $]+)\)''', lambda m: 'Recorder.addListener(' + m.group(1) + ', ' + m.group(2) + ')', js)
       open(fullname, 'w').write(js)
@@ -156,12 +157,14 @@ for parent, dirs, files in os.walk(out_dir):
 
 print('add boilerplate...')
 
-open(os.path.join(out_dir, first_js), 'w').write(
-  (open(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src', 'headless.js')).read() % (
-    window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop
-  ) if shell else '') +
-  open(os.path.join(os.path.dirname(__file__), 'reproduceriter.js')).read() +
-  open(os.path.join(in_dir, first_js)).read() + ('\nwindow.runEventLoop();\n' if shell else '')
-)
+with open(os.path.join(out_dir, first_js), 'w') as fh1:
+  # TODO: the following needs refactoring
+  fh1.write(
+    (open(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src', 'headless.js')).read() % (
+      window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop
+    ) if shell else '') +
+    open(os.path.join(os.path.dirname(__file__), 'reproduceriter.js')).read() +
+    open(os.path.join(in_dir, first_js)).read() + ('\nwindow.runEventLoop();\n' if shell else '')
+  )
 
 print('done!')

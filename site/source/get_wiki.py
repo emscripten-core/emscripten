@@ -91,7 +91,8 @@ def ConvertFilesToRst():
             continue
 
         inputfilename = wiki_checkout + file
-        markdown = open(inputfilename).read()
+        with open(inputfilename) as fh:
+            markdown = fh.read()
         if 'This article has moved from the wiki to the new site' in markdown:
             continue
         if 'This page has been migrated to the main site' in markdown:

@@ -8,11 +8,11 @@ Performs a search-replace in all of js/
 '''
 
 import os
+import sys
 from pathlib import Path
 
 sys.path.insert(1, str(Path(__file__).parents[1].resolve()))
 from tools.shared import read_text
-
 
 
 def all_children(subdir):

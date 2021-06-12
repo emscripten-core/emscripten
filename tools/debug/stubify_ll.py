@@ -9,11 +9,17 @@
 from __future__ import print_function
 import os, sys
 
+from pathlib import Path
+
+sys.path.insert(1, str(Path(__file__).parents[2].resolve()))
+ 
+from tools import shared
+
 kill = False
 
 valids = sys.argv[2].split(',')
 
-for line in open(sys.argv[1]).readlines():
+for line in shared.read_text(sys.argv[1]).splitlines(keepends=True):
   line = line.replace('\n', '')
   if line.startswith('define ') and line.endswith('{'):
     ok = False

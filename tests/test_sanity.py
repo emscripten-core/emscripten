@@ -119,7 +119,7 @@ class sanity(RunnerCore):
     print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (EM_CONFIG, EM_CONFIG))
     print()
     print('>>> the original settings file is:')
-    print(open(EM_CONFIG).read().strip())
+    print(shared.read_text(EM_CONFIG).strip())
     print('<<<')
     print()
 
@@ -186,7 +186,7 @@ class sanity(RunnerCore):
           output = self.do(command)
       finally:
         shutil.rmtree(temp_bin)
-        config_data = open(default_config).read()
+        config_data = shared.read_text(default_config)
         try_delete(default_config)
 
       self.assertContained('Welcome to Emscripten!', output)
@@ -335,7 +335,7 @@ fi
     output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
     # EMCC should have checked sanity successfully
-    old_sanity = open(SANITY_FILE).read()
+    old_sanity = shared.read_text(SANITY_FILE)
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     # emcc run again should not sanity check, because the sanity file is newer
@@ -529,7 +529,7 @@ fi
 
     fd, custom_config_filename = tempfile.mkstemp(prefix='.emscripten_config_')
 
-    orig_config = open(EM_CONFIG, 'r').read()
+    orig_config = shared.read_text(EM_CONFIG)
 
     # Move the ~/.emscripten to a custom location.
     with os.fdopen(fd, "w") as f:
