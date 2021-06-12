@@ -6946,6 +6946,7 @@ someweirdtext
   })
   @sync
   def test_webidl(self, mode, allow_memory_growth):
+    self.uses_es6 = True
     if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
       self.set_setting('MODULARIZE')
@@ -6956,29 +6957,28 @@ someweirdtext
     self.assertExists('glue.cpp')
     self.assertExists('glue.js')
 
+    post_js = '\n\n'
+    if self.get_setting('MODULARIZE'):
+      post_js += 'var TheModule = Module();\n'
+    else:
+      post_js += 'var TheModule = Module;\n'
+    post_js += '\n\n'
+    if allow_memory_growth:
+      post_js += "var isMemoryGrowthAllowed = true;\n"
+    else:
+      post_js += "var isMemoryGrowthAllowed = false;\n"
+    post_js += read_file(test_file('webidl/post.js'))
+    post_js += '\n\n'
+    create_file('extern-post.js', post_js)
+
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=_malloc,_free', '--post-js', 'glue.js']
+    self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=_malloc,_free', '--post-js=glue.js', '--extern-post-js=extern-post.js']
     if allow_memory_growth:
       self.set_setting('ALLOW_MEMORY_GROWTH')
 
-    def post(filename):
-      with open(filename, 'a') as f:
-        f.write('\n\n')
-        if self.get_setting('MODULARIZE'):
-          f.write('var TheModule = Module();\n')
-        else:
-          f.write('var TheModule = Module;\n')
-        f.write('\n\n')
-        if allow_memory_growth:
-          f.write("var isMemoryGrowthAllowed = true;")
-        else:
-          f.write("var isMemoryGrowthAllowed = false;")
-        f.write(read_file(test_file('webidl/post.js')))
-        f.write('\n\n')
-
     output = test_file('webidl/output_%s.txt' % mode)
-    self.do_run_from_file(test_file('webidl/test.cpp'), output, post_build=post)
+    self.do_run_from_file(test_file('webidl/test.cpp'), output)
 
   ### Tests for tools
 
@@ -7216,20 +7216,16 @@ someweirdtext
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
+    create_file('post.js', 'var TheModule = Module();\n')
     self.emcc_args += [
       '--pre-js', test_file('core/modularize_closure_pre.js'),
+      '--extern-post-js=post.js',
       '--closure=1',
       '-g1',
       '-s',
       'MODULARIZE=1',
     ]
-
-    def post(filename):
-      with open(filename, 'a') as f:
-        f.write('\n\n')
-        f.write('var TheModule = Module();\n')
-
-    self.do_core_test('modularize_closure_pre.c', post_build=post)
+    self.do_core_test('modularize_closure_pre.c')
 
   @no_wasm2js('symbol names look different wasm2js backtraces')
   def test_emscripten_log(self):
@@ -8025,23 +8021,17 @@ NODEFS is no longer included by default; build with -lnodefs.js
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_stack_trace(self, g_flag, expected_output):
-    self.emcc_args += ['-fsanitize=null', g_flag]
-    self.set_setting('ALLOW_MEMORY_GROWTH')
-
     if g_flag == '-gsource-map':
       if not self.is_wasm():
         self.skipTest('wasm2js has no source map support')
       elif '-Oz' in self.emcc_args:
         self.skipTest('-Oz breaks stack traces')
 
-    def modify_env(filename):
-      contents = read_file(filename)
-      contents = 'Module = {UBSAN_OPTIONS: "print_stacktrace=1"};' + contents
-      with open(filename, 'w') as f:
-        f.write(contents)
-
+    create_file('pre.js', 'Module = {UBSAN_OPTIONS: "print_stacktrace=1"};')
+    self.emcc_args += ['-fsanitize=null', g_flag, '--pre-js=pre.js']
+    self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_runf(test_file('core/test_ubsan_full_null_ref.cpp'),
-                 post_build=modify_env, assert_all=True, expected_output=expected_output)
+                 assert_all=True, expected_output=expected_output)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_typeinfo_eq(self):
@@ -8166,23 +8156,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   def test_asan_modularized_with_closure(self):
-    self.emcc_args.append('-fsanitize=address')
+    # the bug is that createModule() returns undefined, instead of the
+    # proper Promise object.
+    create_file('post.js', 'if (!(createModule() instanceof Promise)) throw "Promise was not returned :(";\n')
+    self.emcc_args += ['-fsanitize=address', '--extern-post-js=post.js']
     self.set_setting('MODULARIZE')
     self.set_setting('EXPORT_NAME', 'createModule')
     self.set_setting('USE_CLOSURE_COMPILER')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.set_setting('INITIAL_MEMORY', '300mb')
-
-    def post(filename):
-      with open(filename, 'a') as f:
-        f.write('\n\n')
-        # the bug is that createModule() returns undefined, instead of the
-        # proper Promise object.
-        f.write('if (!(createModule() instanceof Promise)) throw "Promise was not returned :(";\n')
-
-    self.do_runf(test_file('hello_world.c'),
-                 post_build=post,
-                 expected_output='hello, world!')
+    self.do_runf(test_file('hello_world.c'), expected_output='hello, world!')
 
   @no_asan('SAFE_HEAP cannot be used with ASan')
   def test_safe_heap_user_js(self):
