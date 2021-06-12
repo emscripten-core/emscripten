@@ -34,7 +34,6 @@ import sys
 import time
 from enum import Enum, unique, auto
 from subprocess import PIPE
-from pathlib import Path
 from urllib.parse import quote
 
 
@@ -43,6 +42,7 @@ from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
+from tools.shared import read_text
 from tools.shared import do_replace, strip_prefix
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
@@ -358,7 +358,7 @@ def apply_settings(changes):
       filename = strip_prefix(value, '@')
       if not os.path.exists(filename):
         exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
-      value = Path(filename).read_text().strip()
+      value = read_text(filename).strip()
     else:
       value = value.replace('\\', '\\\\')
 
@@ -590,7 +590,7 @@ def get_binaryen_passes():
 
 
 def make_js_executable(script):
-  src = Path(script).read_text()
+  src = read_text(script)
   cmd = shared.shlex_join(config.JS_ENGINE)
   if not os.path.isabs(config.JS_ENGINE[0]):
     # TODO: use whereis etc. And how about non-*NIX?
@@ -2528,7 +2528,7 @@ def phase_source_transforms(options, target):
   # Apply pre and postjs files
   if final_js and (options.pre_js or options.post_js):
     logger.debug('applying pre/postjses')
-    src = Path(final_js).read_text()
+    src = read_text(final_js)
     final_js += '.pp.js'
     with open(final_js, 'w') as f:
       # pre-js code goes right after the Module integration code (so it
@@ -2554,9 +2554,9 @@ def phase_memory_initializer(memfile):
   # is set the memory initializer url.
   global final_js
 
-  src = Path(final_js).read_text()
+  src = read_text(final_js)
   src = do_replace(src, '// {{MEM_INITIALIZER}}', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
-  Path(final_js + '.mem.js').write_text(src)
+  write_text(final_js + '.mem.js', src)
   final_js += '.mem.js'
 
 
@@ -2579,7 +2579,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     # Minify the worker.js file in optimized builds
     if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
       minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
-      Path(worker_output).write_text(minified_worker)
+      write_text(worker_output, minified_worker)
 
   # track files that will need native eols
   generated_text_files_with_native_eols = []
@@ -2609,7 +2609,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
     logger.debug('applying extern pre/postjses')
-    src = Path(final_js).read_text()
+    src = read_text(final_js)
     final_js += '.epp.js'
     with open(final_js, 'w') as f:
       f.write(fix_windows_newlines(options.extern_pre_js))
@@ -2754,13 +2754,13 @@ def parse_args(newargs):
     elif check_arg('--js-transform'):
       options.js_transform = consume_arg()
     elif check_arg('--pre-js'):
-      options.pre_js += Path(consume_arg_file()).read_text() + '\n'
+      options.pre_js += read_text(consume_arg_file()) + '\n'
     elif check_arg('--post-js'):
-      options.post_js += Path(consume_arg_file()).read_text() + '\n'
+      options.post_js += read_text(consume_arg_file()) + '\n'
     elif check_arg('--extern-pre-js'):
-      options.extern_pre_js += Path(consume_arg_file()).read_text() + '\n'
+      options.extern_pre_js += read_text(consume_arg_file()) + '\n'
     elif check_arg('--extern-post-js'):
-      options.extern_post_js += Path(consume_arg_file()).read_text() + '\n'
+      options.extern_post_js += read_text(consume_arg_file()) + '\n'
     elif check_arg('--compiler-wrapper'):
       config.COMPILER_WRAPPER = consume_arg()
     elif check_flag('--post-link'):
@@ -3178,10 +3178,10 @@ def phase_binaryen(target, options, wasm_target):
 
   # replace placeholder strings with correct subresource locations
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
-    js = Path(final_js).read_text()
+    js = read_text(final_js)
 
     if settings.MINIMAL_RUNTIME:
-      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(Path(wasm_target).read_bytes()))
+      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(read_bytes(wasm_target)))
     else:
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', shared.JS.get_subresource_location(wasm_target))
     shared.try_delete(wasm_target)
@@ -3192,7 +3192,7 @@ def phase_binaryen(target, options, wasm_target):
 def modularize():
   global final_js
   logger.debug('Modularizing, assigning to var ' + settings.EXPORT_NAME)
-  src = Path(final_js).read_text()
+  src = read_text(final_js)
 
   return_value = settings.EXPORT_NAME
   if settings.WASM_ASYNC_COMPILATION:
@@ -3387,7 +3387,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   if settings.SINGLE_FILE:
     js_contents = script.inline or ''
     if script.src:
-      js_contents += Path(js_target).read_text()
+      js_contents += read_text(js_target)
     shared.try_delete(js_target)
     script.src = None
     script.inline = js_contents
@@ -3480,13 +3480,13 @@ def generate_worker_js(target, js_target, target_basename):
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 
   target_contents = worker_js_script(proxy_worker_filename)
-  Path(target).write_text(target_contents)
+  write_text(target, target_contents)
 
 
 def worker_js_script(proxy_worker_filename):
-  web_gl_client_src = Path(shared.path_from_root('src', 'webGLClient.js')).read_text()
-  idb_store_src = Path(shared.path_from_root('src', 'IDBStore.js')).read_text()
-  proxy_client_src = Path(shared.path_from_root('src', 'proxyClient.js')).read_text()
+  web_gl_client_src = read_text(shared.path_from_root('src', 'webGLClient.js'))
+  idb_store_src = read_text(shared.path_from_root('src', 'IDBStore.js'))
+  proxy_client_src = read_text(shared.path_from_root('src', 'proxyClient.js'))
   proxy_client_src = do_replace(proxy_client_src, '{{{ filename }}}', proxy_worker_filename)
   proxy_client_src = do_replace(proxy_client_src, '{{{ IDBStore.js }}}', idb_store_src)
   return web_gl_client_src + '\n' + proxy_client_src

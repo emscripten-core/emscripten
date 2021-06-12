@@ -799,6 +799,23 @@ def do_replace(input_, pattern, replacement):
   return input_.replace(pattern, replacement)
 
 
+def read_text(file_path):
+    """Read from a file opened in text mode"""
+    with open(file_path) as fh:
+        text = fh.read()
+    return text
+
+def read_bytes(file_path):
+    """Read from a file opened in binary mode"""
+    with open(file_path, 'rb') as fh:
+        text = fh.read()
+    return text
+
+def write_text(file_path, text):
+    """Write to a file opened in text mode"""
+    with open(file_path, 'w') as fh:
+        fh.write(text)
+
 # ============================================================================
 # End declarations.
 # ============================================================================
