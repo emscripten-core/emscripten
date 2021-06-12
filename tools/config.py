@@ -7,7 +7,6 @@ import os
 import sys
 import logging
 from .utils import path_from_root, exit_with_error, __rootpath__, which
-from .shared import read_text
 
 logger = logging.getLogger('shared')
 
@@ -106,6 +105,9 @@ def parse_config_file():
 
   Also check EM_<KEY> environment variables to override specific config keys.
   """
+  # import inside the function to avoid circular imports
+  from .shared import read_text
+
   config = {}
   config_text = read_text(EM_CONFIG)
   try:
@@ -172,6 +174,10 @@ def parse_config_file():
 def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
+
+  # import inside the function to avoid circular imports
+  from .shared import read_text
+
   config_data = read_text(path_from_root('tools', 'settings_template.py')).splitlines()
   config_data = config_data[3:] # remove the initial comment
   config_data = '\n'.join(config_data)
