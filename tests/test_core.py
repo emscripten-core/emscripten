@@ -20,7 +20,7 @@ from functools import wraps
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner')
 
-from tools.shared import try_delete, PIPE, read_text, write_text
+from tools.shared import try_delete, PIPE, read_file, write_text
 from tools.shared import PYTHON, EMCC, EMAR
 from tools.utils import WINDOWS, MACOS
 from tools import shared, building, config, webassembly
@@ -6585,7 +6585,7 @@ void* operator new(size_t size) {
     # make sure the shortened name is the right one
     full_aborter = None
     short_aborter = None
-    for line in read_text('test_demangle_stacks.js.symbols').splitlines(keepends=True):
+    for line in read_file('test_demangle_stacks.js.symbols').splitlines(keepends=True):
       if ':' not in line:
         continue
       # split by the first ':' (wasm backend demangling may include more :'s later on)

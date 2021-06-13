@@ -26,8 +26,8 @@ def process_line(line):
   num, val = line.split(',')
   return [int(num), float(val)]
 
-a = shared.read_text(sys.argv[1]).splitlines(keepends=True)
-b = shared.read_text(sys.argv[2]).splitlines(keepends=True)
+a = shared.read_file(sys.argv[1]).splitlines(keepends=True)
+b = shared.read_file(sys.argv[2]).splitlines(keepends=True)
 MIN = 0.0001 if len(sys.argv) < 4 else sys.argv[3]
 
 ai = 0

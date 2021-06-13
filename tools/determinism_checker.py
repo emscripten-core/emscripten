@@ -10,14 +10,14 @@ import os
 import random
 import subprocess
 import time
-from tools.shared import read_text
+from tools.shared import read_file
 
 
 def run():
   subprocess.check_call(['emcc', 'src.cpp', '-O2'])
   ret = {}
   for relevant_file in os.listdir('.'):
-    ret[relevant_file] = read_text(relevant_file)
+    ret[relevant_file] = read_file(relevant_file)
   return ret
 
 

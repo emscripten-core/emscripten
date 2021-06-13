@@ -6,9 +6,9 @@ import sys
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import building
-from tools.shared import read_text, write_text
+from tools.shared import read_file, write_text
 
-f = read_text(sys.argv[1], 'r')
+f = read_file(sys.argv[1], 'r')
 orig_size = len(f)
 
 f = f.strip()

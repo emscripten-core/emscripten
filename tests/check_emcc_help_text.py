@@ -22,8 +22,8 @@ def main():
     print('doc build output not found: %s' % build_output)
     return 1
 
-  emcc_docs_output = Path(build_output).read_text()
-  emcc_docs = Path(docs_file).read_text()
+  emcc_docs_output = Path(build_output).read_file()
+  emcc_docs = Path(docs_file).read_file()
 
   if emcc_docs_output != emcc_docs:
     print('contents of checked in docs/emcc.txt does not match build output:')

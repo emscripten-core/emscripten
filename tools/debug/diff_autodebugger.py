@@ -15,8 +15,8 @@ sys.path.insert(1, str(Path(__file__).parents[2].resolve()))
  
 from tools import shared
 
-f1 = shared.read_text(sys.argv[1]).splitlines(keepends=True)
-f2 = shared.read_text(sys.argv[2]).splitlines(keepends=True)
+f1 = shared.read_file(sys.argv[1]).splitlines(keepends=True)
+f2 = shared.read_file(sys.argv[2]).splitlines(keepends=True)
 
 for i in range(len(f1)):
   if f1[i] == f2[i]: continue

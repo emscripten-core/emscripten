@@ -23,7 +23,7 @@ from tools import shared
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
   
-exec(shared.read_text(path_from_root('tools', 'shared.py')))
+exec(shared.read_file(path_from_root('tools', 'shared.py')))
 
 shutil.copyfile(sys.argv[1], 'left')
 shutil.copyfile(sys.argv[2], 'right')

@@ -119,7 +119,7 @@ class sanity(RunnerCore):
     print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (EM_CONFIG, EM_CONFIG))
     print()
     print('>>> the original settings file is:')
-    print(shared.read_text(EM_CONFIG).strip())
+    print(shared.read_file(EM_CONFIG).strip())
     print('<<<')
     print()
 
@@ -186,7 +186,7 @@ class sanity(RunnerCore):
           output = self.do(command)
       finally:
         shutil.rmtree(temp_bin)
-        config_data = shared.read_text(default_config)
+        config_data = shared.read_file(default_config)
         try_delete(default_config)
 
       self.assertContained('Welcome to Emscripten!', output)
@@ -205,7 +205,7 @@ class sanity(RunnerCore):
       self.assertContained('Please edit the file if any of those are incorrect', output)
       self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
       self.assertTrue(output.strip().endswith('============='))
-      template_file = Path(path_from_root('tools/settings_template.py')).read_text()
+      template_file = Path(path_from_root('tools/settings_template.py')).read_file()
       self.assertNotContained('{{{', config_data)
       self.assertNotContained('}}}', config_data)
       self.assertContained('{{{', template_file)
@@ -335,7 +335,7 @@ fi
     output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
     # EMCC should have checked sanity successfully
-    old_sanity = shared.read_text(SANITY_FILE)
+    old_sanity = shared.read_file(SANITY_FILE)
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     # emcc run again should not sanity check, because the sanity file is newer
@@ -529,7 +529,7 @@ fi
 
     fd, custom_config_filename = tempfile.mkstemp(prefix='.emscripten_config_')
 
-    orig_config = shared.read_text(EM_CONFIG)
+    orig_config = shared.read_file(EM_CONFIG)
 
     # Move the ~/.emscripten to a custom location.
     with os.fdopen(fd, "w") as f:

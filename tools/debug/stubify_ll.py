@@ -19,7 +19,7 @@ kill = False
 
 valids = sys.argv[2].split(',')
 
-for line in shared.read_text(sys.argv[1]).splitlines(keepends=True):
+for line in shared.read_file(sys.argv[1]).splitlines(keepends=True):
   line = line.replace('\n', '')
   if line.startswith('define ') and line.endswith('{'):
     ok = False

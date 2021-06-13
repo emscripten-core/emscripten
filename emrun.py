@@ -31,7 +31,7 @@ import sys
 import tempfile
 import threading
 import time
-from tools.shared import read_text
+from tools.shared import read_file
 from operator import itemgetter
 
 if sys.version_info.major == 2:
@@ -1386,7 +1386,7 @@ def get_system_info(format_json):
       return info.strip()
   else:
     try:
-      unique_system_id = read_text(os.path.expanduser('~/.emrun.generated.guid')).strip()
+      unique_system_id = read_file(os.path.expanduser('~/.emrun.generated.guid')).strip()
     except Exception:
       import uuid
       unique_system_id = str(uuid.uuid4())

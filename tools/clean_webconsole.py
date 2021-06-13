@@ -14,7 +14,7 @@ from pathlib import Path
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 sys.path.insert(1, str(Path(__file__).parents[1].resolve()))
-from tools.shared import read_text
+from tools.shared import read_file
 
 
 def path_from_root(*pathelems):
@@ -26,9 +26,9 @@ def nice(x):
 
 
 repdata = (
-  read_text(path_from_root('system', 'include', 'GL', 'gl.h')).splitline(keepends=True) +
+  read_file(path_from_root('system', 'include', 'GL', 'gl.h')).splitline(keepends=True) +
   ['\n'] +
-  read_text(path_from_root('system', 'include', 'GL', 'glext.h')).splitlines(keepends=True)
+  read_file(path_from_root('system', 'include', 'GL', 'glext.h')).splitlines(keepends=True)
 )
 reps = {}
 for rep in repdata:
