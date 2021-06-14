@@ -196,6 +196,8 @@ commands:
           # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
           # are crashing Firefox (bugzil.la/1281796). The former case is
           # further blocked by issue #6897.
+          # browser.test_sdl2_misc_main_module: Requires PIC version of libSDL
+          # which is not included in emsdk (not compatible with FROZEN_CACHE).
           name: run tests
           environment:
             GALLIUM_DRIVER: softpipe # TODO: use the default llvmpipe when it supports more extensions
@@ -212,7 +214,7 @@ commands:
             echo "-----"
             echo "Running browser tests"
             echo "-----"
-            tests/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            tests/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget skip:browser.test_sdl2_misc_main_module
             # posix and emrun suites are disabled because firefox errors on
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
@@ -249,7 +251,9 @@ commands:
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
             # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
-            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail
+            # browser.test_sdl2_misc_main_module: Requires PIC version of libSDL
+            # which is not included in emsdk (not compatible with FROZEN_CACHE).
+            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_sdl2_misc_main_module
             tests/runner emrun
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
