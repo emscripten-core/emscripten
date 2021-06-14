@@ -119,11 +119,11 @@ def test_file(*path_components):
 
 
 def read_file(*path_components):
-  return Path(*path_components).read_file()
+  return Path(*path_components).read_text()
 
 
 def read_binary(*path_components):
-  return Path(*path_components).read_binary()
+  return Path(*path_components).read_bytes()
 
 
 # checks if browser testing is enabled
