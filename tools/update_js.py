@@ -8,12 +8,7 @@ Performs a search-replace in all of js/
 '''
 
 import os
-import sys
 from pathlib import Path
-
-sys.path.insert(1, str(Path(__file__).parents[1].resolve()))
-from tools.shared import read_file
-
 
 def all_children(subdir):
   return [os.path.join(dp, f) for dp, dn, fn in os.walk(subdir) for f in fn]
@@ -25,7 +20,7 @@ for x in all_children('src') + all_children('tests') + all_children('tools') + a
   if not (x.endswith('.py') or x.endswith('.c') or x.endswith('.cpp') or x.endswith('.h') or x.endswith('.js') or x.endswith('.ll')):
     continue
   print(x)
-  orig = read_file(x)
+  orig = Path(x).read_text()
   fixed = orig.copy()
   fixed = fixed.replace('Module["print"](', 'out(')
   fixed = fixed.replace('Module[\'print\'](', 'out(')

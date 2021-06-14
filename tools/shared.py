@@ -800,23 +800,21 @@ def do_replace(input_, pattern, replacement):
 
 
 def read_file(file_path):
-    """Read from a file opened in text mode"""
-    with open(file_path) as fh:
-        text = fh.read()
-    return text
+  """Read from a file opened in text mode"""
+  with open(file_path) as fh:
+    return fh.read()
 
 
 def read_binary(file_path):
-    """Read from a file opened in binary mode"""
-    with open(file_path, 'rb') as fh:
-        text = fh.read()
-    return text
+  """Read from a file opened in binary mode"""
+  with open(file_path, 'rb') as fh:
+    return fh.read()
 
 
 def write_text(file_path, text):
-    """Write to a file opened in text mode"""
-    with open(file_path, 'w') as fh:
-        fh.write(text)
+  """Write to a file opened in text mode"""
+  with open(file_path, 'w') as fh:
+    fh.write(text)
 
 
 # ============================================================================
