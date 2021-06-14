@@ -382,8 +382,6 @@ def type_to_cdec(raw):
 def render_function(class_name, func_name, sigs, return_type, non_pointer,
                     copy, operator, constructor, func_scope,
                     call_content=None, const=False, array_attribute=False):
-  global mid_c, mid_js, js_impl_methods
-
   legacy_mode = CHECKS not in ['ALL', 'FAST']
   all_checks = CHECKS == 'ALL'
 
@@ -521,9 +519,9 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
   body += '  %s%s(%s)%s;\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args), call_postfix)
   if cache:
     body += '  ' + cache + '\n'
-  mid_js += [r'''%sfunction%s(%s) {
+  mid_js.append(r'''%sfunction%s(%s) {
 %s
-};''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, (' ' + func_name) if constructor else '', ', '.join(args), body[:-1])]
+};''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, (' ' + func_name) if constructor else '', ', '.join(args), body[:-1]))
 
   # C
 
@@ -579,18 +577,18 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
 
     c_return_type = type_to_c(return_type)
     maybe_const = 'const ' if const else ''
-    mid_c += [r'''
+    mid_c.append(r'''
 %s%s EMSCRIPTEN_KEEPALIVE %s(%s) {
 %s  %s%s%s;
 }
-''' % (maybe_const, type_to_c(class_name) if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
+''' % (maybe_const, type_to_c(class_name) if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix))
 
     if not constructor:
       if i == max_args:
         dec_args = ', '.join([type_to_cdec(raw[j]) + ' ' + args[j] for j in range(i)])
         js_call_args = ', '.join(['%s%s' % (('(int)' if sig[j] in interfaces else '') + take_addr_if_nonpointer(raw[j]), args[j]) for j in range(i)])
 
-        js_impl_methods += [r'''  %s %s(%s) %s {
+        js_impl_methods.append(r'''  %s %s(%s) %s {
     %sEM_ASM_%s({
       var self = Module['getCache'](Module['%s'])[$0];
       if (!self.hasOwnProperty('%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
@@ -604,7 +602,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
           func_name,
           ','.join(['$%d' % i for i in range(1, max_args + 1)]),
           return_postfix,
-          (', ' if js_call_args else '') + js_call_args)]
+          (', ' if js_call_args else '') + js_call_args))
 
 
 for name, interface in interfaces.items():
@@ -641,7 +639,6 @@ for name in names:
   mid_js += ['\n// ' + name + '\n']
   mid_c += ['\n// ' + name + '\n']
 
-  global js_impl_methods
   js_impl_methods = []
 
   cons = interface.getExtendedAttribute('Constructor')
