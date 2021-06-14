@@ -626,8 +626,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('es-check failed to verify ES5 output compliance')
 
   # Build JavaScript code from source code
-  def build(self, filename, libraries=[], includes=[], force_c=False,
-            post_build=None, js_outfile=True, emcc_args=[]):
+  def build(self, filename, libraries=[], includes=[], force_c=False, js_outfile=True, emcc_args=[]):
     suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
     if compiler[0] == EMCC:
@@ -651,9 +650,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.assertExists(output)
     if js_outfile and not self.uses_es6:
       self.verify_es5(output)
-
-    if post_build:
-      post_build(output)
 
     if js_outfile and self.uses_memory_init_file():
       src = read_file(output)
@@ -1092,7 +1088,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   ## Does a complete test - builds, runs, checks output, etc.
   def _build_and_run(self, filename, expected_output, args=[], output_nicerizer=None,
                      no_build=False,
-                     js_engines=None, post_build=None, libraries=[],
+                     js_engines=None, libraries=[],
                      includes=[],
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True, force_c=False, emcc_args=[]):
@@ -1101,7 +1097,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if no_build:
       js_file = filename
     else:
-      self.build(filename, libraries=libraries, includes=includes, post_build=post_build,
+      self.build(filename, libraries=libraries, includes=includes,
                  force_c=force_c, emcc_args=emcc_args)
       js_file = shared.unsuffixed(os.path.basename(filename)) + '.js'
     self.assertExists(js_file)
