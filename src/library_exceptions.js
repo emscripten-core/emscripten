@@ -120,13 +120,15 @@ var LibraryExceptions = {
     };
 
     this.set_adjusted_ptr = function(adjustedPtr) {
-      var ptrSize = {{{ Runtime.POINTER_SIZE }}};
-      {{{ makeSetValue('this.ptr', 'ptrSize', 'adjustedPtr', '*') }}};
+      {{{ makeSetValue('this.ptr', Runtime.POINTER_SIZE, 'adjustedPtr', '*') }}};
     };
 
+    this.get_adjusted_ptr_addr = function() {
+      return this.ptr + {{{ Runtime.POINTER_SIZE }}};
+    }
+
     this.get_adjusted_ptr = function() {
-      var ptrSize = {{{ Runtime.POINTER_SIZE }}};
-      return {{{ makeGetValue('this.ptr', 'ptrSize', '*') }}};
+      return {{{ makeGetValue('this.ptr', Runtime.POINTER_SIZE, '*') }}};
     };
 
     // Get pointer which is expected to be received by catch clause in C++ code. It may be adjusted
@@ -378,6 +380,7 @@ var LibraryExceptions = {
     var thrownType = info.get_type();
     var catchInfo = new CatchInfo();
     catchInfo.set_base_ptr(thrown);
+    catchInfo.set_adjusted_ptr(thrown);
     if (!thrownType) {
       // just pass through the thrown ptr
       {{{ makeStructuralReturn(['catchInfo.ptr', 0]) }}};
@@ -388,9 +391,6 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     out("can_catch on " + [thrown]);
 #endif
-    var stackTop = stackSave();
-    var exceptionThrowBuf = stackAlloc(4);
-    {{{ makeSetValue('exceptionThrowBuf', '0', 'thrown', '*') }}};
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
@@ -401,19 +401,13 @@ var LibraryExceptions = {
         // Catch all clause matched or exactly the same type is caught
         break;
       }
-      if ({{{ exportedAsmFunc('___cxa_can_catch') }}}(caughtType, thrownType, exceptionThrowBuf)) {
-        var adjusted = {{{ makeGetValue('exceptionThrowBuf', '0', '*') }}};
-        if (thrown !== adjusted) {
-          catchInfo.set_adjusted_ptr(adjusted);
-        }
+      if ({{{ exportedAsmFunc('___cxa_can_catch') }}}(caughtType, thrownType, catchInfo.get_adjusted_ptr_addr())) {
 #if EXCEPTION_DEBUG
-        out("  can_catch found " + [adjusted, caughtType]);
+        out("  can_catch found " + [catchInfo.get_adjusted_ptr(), caughtType]);
 #endif
-        stackRestore(stackTop);
         {{{ makeStructuralReturn(['catchInfo.ptr', 'caughtType']) }}};
       }
     }
-    stackRestore(stackTop);
     {{{ makeStructuralReturn(['catchInfo.ptr', 'thrownType']) }}};
   },
 
