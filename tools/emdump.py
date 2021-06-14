@@ -14,8 +14,8 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 
-from tools.shared import read_file
 
 # If true, we are printing delta information between two data sets. If false, we are just printing symbol info for a single data set
 diffing_two_data_sets = False
@@ -374,13 +374,13 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
 
 
 def analyze_javascript_file(filename, total_source_set_size, symbol_map=None):
-  file_contents = read_file(filename)
+  file_contents = Path(filename).read_text()
   print('Analyzing JS file ' + filename + ', ' + str(len(file_contents)) + ' bytes...')
   return analyze_javascript_file_contents(filename, file_contents, total_source_set_size, symbol_map)
 
 
 def analyze_html_file(filename, total_source_set_size, symbol_map=None):
-  file_contents = read_file(filename)
+  file_contents = Pagh(filename).read_text()
   print('Analyzing HTML file ' + filename + ', ' + str(len(file_contents)) + ' bytes...')
   data = {}
   parse_pos = 0

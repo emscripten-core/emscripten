@@ -22,6 +22,7 @@ import shutil
 import stat
 import sys
 import time
+from pathlib import Path
 
 import api_items
 
@@ -91,8 +92,7 @@ def ConvertFilesToRst():
             continue
 
         inputfilename = wiki_checkout + file
-        with open(inputfilename) as fh:
-            markdown = fh.read()
+        markdown = Path(inputfilename).read_text()
         if 'This article has moved from the wiki to the new site' in markdown:
             continue
         if 'This page has been migrated to the main site' in markdown:

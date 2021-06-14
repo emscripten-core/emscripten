@@ -10,14 +10,14 @@ import os
 import random
 import subprocess
 import time
-from tools.shared import read_file
+from pathlib import Path
 
 
 def run():
   subprocess.check_call(['emcc', 'src.cpp', '-O2'])
   ret = {}
   for relevant_file in os.listdir('.'):
-    ret[relevant_file] = read_file(relevant_file)
+    ret[relevant_file] = Path(relevant_file).read_text()
   return ret
 
 
@@ -25,12 +25,12 @@ def write(data, subdir):
   if not os.path.exists(subdir):
     os.mkdir(subdir)
   for relevant_file in data.keys():
-    open(os.path.join(subdir, relevant_file), 'w').write(data[relevant_file])
+    Path(os.path.join(subdir, relevant_file)).write_text(data[relevant_file])
 
 
 os.chdir('/tmp/emscripten_temp')
 assert len(os.listdir('.')) == 0, 'temp dir should start out empty, after that, everything there looks important to us'
-open('src.cpp', 'w').write('''
+Path('src.cpp').write_text('''
   #include <iostream>
 
   int main()

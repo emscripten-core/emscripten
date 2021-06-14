@@ -13,14 +13,14 @@ the programs differ on each line but lines have not been added or removed
 
 from __future__ import print_function
 import os, sys, shutil
+from pathlib import Path
 from subprocess import Popen, PIPE, STDOUT
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
   
-with open(path_from_root('tools', 'shared.py'), 'r') as fh:
-    exec(fh.read())
+exec(Path(path_from_root('tools', 'shared.py').read())
 
 shutil.copyfile(sys.argv[1], 'left')
 shutil.copyfile(sys.argv[2], 'right')

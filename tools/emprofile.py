@@ -10,11 +10,8 @@ import shutil
 import sys
 import tempfile
 import time
+from pathlib import Path
 
-
-sys.path.inster(1, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
-
-from tools import shared
 
 profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
 
@@ -58,7 +55,7 @@ def create_profiling_graph():
     print('Processing ' + str(len(log_files)) + ' profile log files in "' + profiler_logs_path + '"...')
   for f in log_files:
     try:
-      json_data = shared.read_file(f)
+      json_data = Path(f).read_text()
       if len(json_data.strip()) == 0:
         continue
       lines = json_data.split('\n')
@@ -80,8 +77,8 @@ def create_profiling_graph():
   emprofile_json_data = json.dumps(all_results, indent=2)
 
   html_file = OUTFILE + '.html'
-  html_contents = shared.read_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'toolchain_profiler.results_template.html')).replace('{{{ emprofile_json_data }}}', emprofile_json_data)
-  shared.write_text(html_file, html_contents)
+  html_contents = Path(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'toolchain_profiler.results_template.html')).read_text().replace('{{{ emprofile_json_data }}}', emprofile_json_data)
+  Path(html_file).write_text(html_contents)
   print('Wrote "' + html_file + '"')
 
 

@@ -14,10 +14,6 @@ import os, sys
 
 from pathlib import Path
 
-sys.path.insert(1, str(Path(__file__).parents[2].resolve()))
- 
-from tools import shared
-
 
 def process_line(line):
   #AD:2041,0.900000
@@ -26,8 +22,8 @@ def process_line(line):
   num, val = line.split(',')
   return [int(num), float(val)]
 
-a = shared.read_file(sys.argv[1]).splitlines(keepends=True)
-b = shared.read_file(sys.argv[2]).splitlines(keepends=True)
+a = Path(sys.argv[1]).read_text().splitlines(keepends=True)
+b = Path(sys.argv[2]).read_text().splitlines(keepends=True)
 MIN = 0.0001 if len(sys.argv) < 4 else sys.argv[3]
 
 ai = 0

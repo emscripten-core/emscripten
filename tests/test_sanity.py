@@ -9,12 +9,11 @@ import shutil
 import time
 import re
 import tempfile
-from pathlib import Path
 from subprocess import PIPE, STDOUT
 
 from runner import RunnerCore, path_from_root, env_modify, test_file
 from runner import create_file, ensure_dir, make_executable, with_env_modify
-from runner import parameterized, EMBUILDER
+from runner import parameterized
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
 from tools.shared import CANONICAL_TEMP_DIR
@@ -24,7 +23,7 @@ from tools import shared, system_libs, utils
 from tools import response_file
 
 SANITY_FILE = shared.Cache.get_path('sanity.txt')
-commands = [[EMCC], [path_from_root('tests/runner'), 'blahblah']]
+commands = [[EMCC], [path_from_root('tests', 'runner'), 'blahblah']]
 
 
 def restore():
@@ -95,6 +94,8 @@ def make_fake_llc(filename, targets):
 
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
 
+EMBUILDER = path_from_root('embuilder.py')
+
 # arguments to build a minimal hello world program, without even libc
 # (-O1 avoids -O0's default assertions which bring in checking code;
 #  FILESYSTEM=0 avoids bringing libc for that)
@@ -119,7 +120,7 @@ class sanity(RunnerCore):
     print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (EM_CONFIG, EM_CONFIG))
     print()
     print('>>> the original settings file is:')
-    print(shared.read_file(EM_CONFIG).strip())
+    print(open(EM_CONFIG).read().strip())
     print('<<<')
     print()
 
@@ -186,7 +187,7 @@ class sanity(RunnerCore):
           output = self.do(command)
       finally:
         shutil.rmtree(temp_bin)
-        config_data = shared.read_file(default_config)
+        config_data = open(default_config).read()
         try_delete(default_config)
 
       self.assertContained('Welcome to Emscripten!', output)
@@ -205,7 +206,7 @@ class sanity(RunnerCore):
       self.assertContained('Please edit the file if any of those are incorrect', output)
       self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
       self.assertTrue(output.strip().endswith('============='))
-      template_file = Path(path_from_root('tools/settings_template.py')).read_file()
+      template_file = open(path_from_root('tools', 'settings_template.py')).read()
       self.assertNotContained('{{{', config_data)
       self.assertNotContained('}}}', config_data)
       self.assertContained('{{{', template_file)
@@ -335,7 +336,7 @@ fi
     output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
     # EMCC should have checked sanity successfully
-    old_sanity = shared.read_file(SANITY_FILE)
+    old_sanity = open(SANITY_FILE).read()
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     # emcc run again should not sanity check, because the sanity file is newer
@@ -491,17 +492,13 @@ fi
     self.assertEqual(num_times_libc_was_built, 1)
 
   @parameterized({
-    '': [False, False],
-    'response_files': [True, False],
-    'relative': [False, True]
+    '': [False],
+    'response_files': [True]
   })
-  def test_emcc_cache_flag(self, use_response_files, relative):
+  def test_emcc_cache_flag(self, use_response_files):
     restore_and_set_up()
 
-    if relative:
-      cache_dir_name = 'emscripten_cache'
-    else:
-      cache_dir_name = self.in_dir('emscripten_cache')
+    cache_dir_name = self.in_dir('emscripten_cache')
     self.assertFalse(os.path.exists(cache_dir_name))
     create_file('test.c', r'''
       #include <stdio.h>
@@ -529,7 +526,7 @@ fi
 
     fd, custom_config_filename = tempfile.mkstemp(prefix='.emscripten_config_')
 
-    orig_config = shared.read_file(EM_CONFIG)
+    orig_config = open(EM_CONFIG, 'r').read()
 
     # Move the ~/.emscripten to a custom location.
     with os.fdopen(fd, "w") as f:
