@@ -42,7 +42,7 @@ from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
-from tools.shared import read_file, write_text, read_binary
+from tools.shared import read_file, write_file, read_binary
 from tools.shared import do_replace, strip_prefix
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
@@ -2556,7 +2556,7 @@ def phase_memory_initializer(memfile):
 
   src = read_file(final_js)
   src = do_replace(src, '// {{MEM_INITIALIZER}}', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
-  write_text(final_js + '.mem.js', src)
+  write_file(final_js + '.mem.js', src)
   final_js += '.mem.js'
 
 
@@ -2568,7 +2568,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # TODO: do not run when compress has already been done on all parts of the code
   # src = read_file(final_js)
   # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
-  # write_text(final_js, src)
+  # write_file(final_js, src)
 
   if settings.USE_PTHREADS:
     target_dir = os.path.dirname(os.path.abspath(target))
@@ -2579,7 +2579,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     # Minify the worker.js file in optimized builds
     if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
       minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
-      write_text(worker_output, minified_worker)
+      write_file(worker_output, minified_worker)
 
   # track files that will need native eols
   generated_text_files_with_native_eols = []
@@ -2602,7 +2602,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
     src = read_file(final_js)
     final_js += '.esmeta.js'
-    write_text(final_js, src.replace('EMSCRIPTEN$IMPORT$META', 'import.meta'))
+    write_file(final_js, src.replace('EMSCRIPTEN$IMPORT$META', 'import.meta'))
     save_intermediate('es6-import-meta')
 
   # Apply pre and postjs files
@@ -3479,7 +3479,7 @@ def generate_worker_js(target, js_target, target_basename):
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 
   target_contents = worker_js_script(proxy_worker_filename)
-  write_text(target, target_contents)
+  write_file(target, target_contents)
 
 
 def worker_js_script(proxy_worker_filename):

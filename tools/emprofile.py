@@ -78,7 +78,7 @@ def create_profiling_graph():
 
   html_file = OUTFILE + '.html'
   html_contents = Path(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'toolchain_profiler.results_template.html')).read_text().replace('{{{ emprofile_json_data }}}', emprofile_json_data)
-  Path(html_file).write_text(html_contents)
+  Path(html_file).write_file(html_contents)
   print('Wrote "' + html_file + '"')
 
 

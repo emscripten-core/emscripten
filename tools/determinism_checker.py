@@ -25,12 +25,12 @@ def write(data, subdir):
   if not os.path.exists(subdir):
     os.mkdir(subdir)
   for relevant_file in data.keys():
-    Path(os.path.join(subdir, relevant_file)).write_text(data[relevant_file])
+    Path(os.path.join(subdir, relevant_file)).write_file(data[relevant_file])
 
 
 os.chdir('/tmp/emscripten_temp')
 assert len(os.listdir('.')) == 0, 'temp dir should start out empty, after that, everything there looks important to us'
-Path('src.cpp').write_text('''
+Path('src.cpp').write_file('''
   #include <iostream>
 
   int main()

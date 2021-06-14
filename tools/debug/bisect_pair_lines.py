@@ -48,7 +48,7 @@ right_lines = file2.split('\n')
 while True:
   mid = int((low + high)/2)
   print(low, high, '  current: %d' % mid, end=' ')
-  open('middle', 'w').write('\n'.join(left_lines[:mid] + right_lines[mid:]))
+  Path('middle').write_text('\n'.join(left_lines[:mid] + right_lines[mid:]))
   shutil.copyfile('middle', 'middle' + str(mid))
   result = run_code('middle')
   print(result == left_result, result == right_result)#, 'XXX', left_result, 'YYY', result, 'ZZZ', right_result

@@ -691,7 +691,8 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       except OSError:
         pass
       filename = os.path.join(dump_out_directory, os.path.normpath(filename))
-      open(filename, 'wb').write(data)
+      with open(filename, 'wb') as fh:
+        fh.write(data)
       logi('Wrote ' + str(len(data)) + ' bytes to file "' + filename + '".')
       have_received_messages = True
     elif path == '/system_info':
@@ -1060,7 +1061,8 @@ def get_computer_model():
         model = check_output(cmd)
         model = re.search('<configCode>(.*)</configCode>', model)
         model = model.group(1).strip()
-        open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), 'w').write(model) # Cache the hardware model to disk
+        with open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), 'w') as fh:
+          fh.write(model) # Cache the hardware model to disk
         return model
       except Exception:
         hwmodel = check_output(['sysctl', 'hw.model'])

@@ -113,6 +113,7 @@ import os
 import re
 import sys
 import shutil
+from pathlib import Path
 
 assert len(sys.argv) >= 4, 'Usage: reproduceriter.py IN_DIR OUT_DIR FIRST_JS [WINDOW_LOCATION]'
 
@@ -151,7 +152,7 @@ for parent, dirs, files in os.walk(out_dir):
           js = fh.read()
       js = re.sub(r'document\.on(\w+) ?= ?([\w.$]+)', lambda m: 'Recorder.onEvent("' + m.group(1) + '", ' + m.group(2) + ')', js)
       js = re.sub(r'''([\w.'"\[\]]+)\.addEventListener\(([\w,. $]+)\)''', lambda m: 'Recorder.addListener(' + m.group(1) + ', ' + m.group(2) + ')', js)
-      open(fullname, 'w').write(js)
+      Path(fullname).write_text(js)
 
 # Add our boilerplate
 

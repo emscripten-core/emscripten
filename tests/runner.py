@@ -296,7 +296,7 @@ def create_file(name, contents, binary=False):
   if binary:
     name.write_bytes(contents)
   else:
-    name.write_text(contents)
+    name.write_file(contents)
 
 
 def make_executable(name):

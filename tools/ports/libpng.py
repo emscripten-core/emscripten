@@ -6,6 +6,7 @@
 import os
 import shutil
 import logging
+from pathlib import Path
 
 TAG = '1.6.37'
 HASH = '2ce2b855af307ca92a6e053f521f5d262c36eb836b4810cb53c809aa3ea2dcc08f834aee0ffd66137768a54397e28e92804534a74abb6fc9f6f3127f14c9c338'
@@ -30,7 +31,7 @@ def get(ports, settings, shared):
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
-    open(os.path.join(dest_path, 'pnglibconf.h'), 'w').write(pnglibconf_h)
+    Path(dest_path, 'pnglibconf.h').write_text(pnglibconf_h)
     ports.install_headers(dest_path)
 
     ports.build_port(dest_path, final, flags=['-s', 'USE_ZLIB=1'], exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])

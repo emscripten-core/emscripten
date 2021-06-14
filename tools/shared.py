@@ -811,7 +811,7 @@ def read_binary(file_path):
     return fh.read()
 
 
-def write_text(file_path, text):
+def write_file(file_path, text):
   """Write to a file opened in text mode"""
   with open(file_path, 'w') as fh:
     fh.write(text)
