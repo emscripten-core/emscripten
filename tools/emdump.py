@@ -380,7 +380,7 @@ def analyze_javascript_file(filename, total_source_set_size, symbol_map=None):
 
 
 def analyze_html_file(filename, total_source_set_size, symbol_map=None):
-  file_contents = Pagh(filename).read_text()
+  file_contents = Path(filename).read_text()
   print('Analyzing HTML file ' + filename + ', ' + str(len(file_contents)) + ' bytes...')
   data = {}
   parse_pos = 0

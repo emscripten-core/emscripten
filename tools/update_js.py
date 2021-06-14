@@ -10,6 +10,7 @@ Performs a search-replace in all of js/
 import os
 from pathlib import Path
 
+
 def all_children(subdir):
   return [os.path.join(dp, f) for dp, dn, fn in os.walk(subdir) for f in fn]
 

@@ -166,7 +166,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
 
   temp_files = shared.configuration.get_temp_files()
   with temp_files.get_file(suffix='.js') as shell_temp:
-    write_file(shell_temp, shell)
+    shared.write_file(shell_temp, shell)
     shell = shared.read_and_preprocess(shell_temp)
 
   if re.search(r'{{{\s*SCRIPT\s*}}}', shell):
