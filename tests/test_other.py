@@ -2602,9 +2602,9 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
   def test_demangle_malloc_infinite_loop_crash(self):
     self.run_process([EMXX, test_file('malloc_demangle_infinite_loop.cpp'), '-g', '-s', 'ABORTING_MALLOC', '-s', 'DEMANGLE_SUPPORT'])
     output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    if output.count('Cannot enlarge memory arrays') > 4:
+    if output.count('Cannot enlarge memory arrays') > 5:
       print(output)
-    self.assertLess(output.count('Cannot enlarge memory arrays'),  5)
+    self.assertLess(output.count('Cannot enlarge memory arrays'),  6)
 
   @require_node
   def test_module_exports_with_closure(self):
@@ -3880,7 +3880,11 @@ int main(int argc, char **argv) {
     self.run_process([EMXX, 'code.cpp'])
     self.assertContained('I am ' + os.path.realpath(self.get_dir()).replace('\\', '/') + '/a.out.js', self.run_js('a.out.js').replace('\\', '/'))
 
-  def test_returncode(self):
+  @parameterized({
+    'no_exit_runtime': [True],
+    '': [False],
+  })
+  def test_returncode(self, no_exit):
     create_file('src.cpp', r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -3893,23 +3897,22 @@ int main(int argc, char **argv) {
       }
     ''')
     for code in [0, 123]:
-      for no_exit in [0, 1]:
-        for call_exit in [0, 1]:
-          for async_compile in [0, 1]:
-            self.run_process([EMXX, 'src.cpp', '-DCODE=%d' % code, '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit, '-s', 'WASM_ASYNC_COMPILATION=%d' % async_compile])
-            for engine in config.JS_ENGINES:
-              # async compilation can't return a code in d8
-              if async_compile and engine == config.V8_ENGINE:
-                continue
-              print(code, no_exit, call_exit, async_compile, engine)
-              proc = self.run_process(engine + ['a.out.js'], stderr=PIPE, check=False)
-              # we always emit the right exit code, whether we exit the runtime or not
-              self.assertEqual(proc.returncode, code)
-              msg = 'but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)'
-              if no_exit and call_exit:
-                self.assertContained(msg, proc.stderr)
-              else:
-                self.assertNotContained(msg, proc.stderr)
+      for call_exit in [0, 1]:
+        for async_compile in [0, 1]:
+          self.run_process([EMXX, 'src.cpp', '-DCODE=%d' % code, '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit, '-s', 'WASM_ASYNC_COMPILATION=%d' % async_compile])
+          for engine in config.JS_ENGINES:
+            # async compilation can't return a code in d8
+            if async_compile and engine == config.V8_ENGINE:
+              continue
+            print(code, call_exit, async_compile, engine)
+            proc = self.run_process(engine + ['a.out.js'], stderr=PIPE, check=False)
+            msg = 'but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)'
+            if no_exit and call_exit:
+              self.assertContained(msg, proc.stderr)
+            else:
+              self.assertNotContained(msg, proc.stderr)
+            # we always emit the right exit code, whether we exit the runtime or not
+            self.assertEqual(proc.returncode, code)
 
   def test_emscripten_force_exit_NO_EXIT_RUNTIME(self):
     create_file('src.cpp', r'''
@@ -9173,7 +9176,7 @@ int main(void) {
     # DEFAULT_PTHREAD_STACK_SIZE.
     self.do_smart_test(test_file('other/test_proxy_to_pthread_stack.c'),
                        ['success'],
-                       emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'DEFAULT_PTHREAD_STACK_SIZE=64kb', '-s', 'TOTAL_STACK=128kb'])
+                       emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'DEFAULT_PTHREAD_STACK_SIZE=64kb', '-s', 'TOTAL_STACK=128kb', '-s', 'EXIT_RUNTIME'])
 
   @parameterized({
     'async': ['-s', 'WASM_ASYNC_COMPILATION'],

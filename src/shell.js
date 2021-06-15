@@ -201,7 +201,11 @@ if (ENVIRONMENT_IS_NODE) {
   process['on']('unhandledRejection', abort);
 #endif
 
-  quit_ = function(status) {
+  quit_ = function(status, toThrow) {
+    if (keepRuntimeAlive()) {
+      process['exitCode'] = status;
+      throw toThrow;
+    }
     process['exit'](status);
   };
 
