@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 2.0.25
 ------
+- Drop support for node versions older than v5.10.0.  We now assume the
+  existence of `Buffer.from` which was added in v5.10.0.  If it turns out
+  there is still a need to support these older node versions we can
+  add a polyfil under LEGACY_VM_SUPPORT (#14447).
 
 2.0.24 - 06/10/2021
 -------------------
