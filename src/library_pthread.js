@@ -457,10 +457,7 @@ var LibraryPThread = {
 #else
       var pthreadMainJs = locateFile('{{{ PTHREAD_WORKER_FILE }}}');
 #endif
-      Promise.all([
-        aw.addModule(pthreadMainJs),
-        aw.addModule(Module['mainScriptUrlOrBlob'] || _scriptDir)
-      ]).then(function() {
+      aw.addModule(pthreadMainJs).then(function() {
         // Create a dummy worklet node that we use to establish the message channel
         var dummyWorklet = new AudioWorkletNode(audioCtx, 'pthread-dummy-processor', {
           numberOfInputs: 0,
@@ -480,8 +477,19 @@ var LibraryPThread = {
         // addModule above.
         PThread.loadWasmModuleToWorker(dummyWorklet);
 
-        // Forward port.onMessage to onmessage on the object (emulates Worker)
-        dummyWorklet.port.onmessage = dummyWorklet.onmessage;
+        // Forward port.onMessage to onmessage on the object (emulates Worker) but
+        // add worklet-only 'addmodule' message that is sent from the worklet after
+        // the worker.js has processed the 'load' commands and needs to load the main
+        // js (which it can't do directly in AudioWorkletGlobalScope)
+        dummyWorklet.port.onmessage = function(e) {
+          if(e.data.cmd == 'addmodule') {
+            aw.addModule((Module['mainScriptUrlOrBlob'] || _scriptDir) + "ADSF").then(function() {
+              dummyWorklet.postMessage({'cmd': 'moduleloaded'}); 
+            });
+          } else {
+            dummyWorklet.onmessage(e)
+          }
+        }
 
         // Call pthread_create to have Emscripten init our worklet pthread globals as if
         // it was a regular worker
