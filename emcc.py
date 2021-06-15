@@ -3382,17 +3382,11 @@ var %(EXPORT_NAME)s = (function() {
   with open(final_js, 'w') as f:
     f.write(src)
 
-    # Add ; if src doesn't contain it so we generate valid JS (otherwise acorn fails)
-    if src.rstrip()[-1] != ';':
-      f.write(';')
-
     # Store the export on the global scope for audio worklets
     if settings.ENVIRONMENT_MAY_BE_AUDIOWORKLET:
-      f.write('''if (typeof AudioWorkletGlobalScope === 'function')
-  globalThis["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
-''' % {
-        'EXPORT_NAME': settings.EXPORT_NAME
-      })
+      f.write(f'''if (typeof AudioWorkletGlobalScope === 'function')
+  globalThis["{settings.EXPORT_NAME}"] = {settings.EXPORT_NAME};
+''')
 
     if settings.EXPORT_ES6:
       f.write('export default %s;' % settings.EXPORT_NAME)

@@ -379,9 +379,13 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
   setWindowTitle = function(title) { document.title = title };
-} else if (ENVIRONMENT_IS_AUDIOWORKLET) {
+} 
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+else if (ENVIRONMENT_IS_AUDIOWORKLET) {
   // Nothing for worklets!
-} else
+} 
+#endif // ENVIRONMENT_MAY_BE_AUDIOWORKLET
+else
 #endif // ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 {
 #if ASSERTIONS

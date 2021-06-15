@@ -308,7 +308,7 @@ var LibraryPThread = {
       };
 
       worker.onerror = function(e) {
-        err('pthread sent an error! ' + e.stack ? e.stack : (e.filename + ':' + e.lineno + ': ' + e.message));
+        err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
         throw e;
       };
 
@@ -503,7 +503,7 @@ var LibraryPThread = {
 
     // Creates an AudioWorkletNode on the specified audio context.
     // initAudioWorkletPThread must've been called on the audio context before.
-    createAudioWorklet: function(audioCtx, processorName, processorOpts) {    
+    createAudioWorkletNode: function(audioCtx, processorName, processorOpts) {    
       assert(audioCtx.audioWorklet.pthread.runPromise, "Call initAudioWorkletPThread once before calling createAudioWorklet");
       return new Promise(function(resolve, reject) {
         audioCtx.audioWorklet.pthread.runPromise.then(function() {

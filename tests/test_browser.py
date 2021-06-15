@@ -5208,12 +5208,12 @@ window.close = function() {
   @requires_threads
   @requires_sound_hardware
   def test_audio_worklet(self):
-    self.btest(path_from_root('tests', 'audioworklet', 'audioworklet.cpp'),
+    self.btest(path_from_root('tests', 'audioworklet', 'futex', 'audioworklet_futex.cpp'),
                expected='1',
                args=['-s', 'USE_PTHREADS=1', '-s', 'MODULARIZE=1', '-s',
-                     'EXPORT_NAME=AudioWorkletSample', '-s', 'ENVIRONMENT=web,worker,audioworklet',
-                     '--extern-post-js', path_from_root('tests', 'audioworklet', 'audioworklet_post.js'),
-                     '--shell-file', path_from_root('tests', 'audioworklet', 'shell.html')])
+                     'EXPORT_NAME=MyModule', '-s', 'ENVIRONMENT=web,worker,audioworklet',
+                     '--extern-post-js', path_from_root('tests', 'audioworklet', 'futex', 'audioworklet_futex_post.js'),
+                     '--shell-file', test_file('shell_that_launches_modularize.html')])
 
 
 EMRUN = path_from_root('emrun')

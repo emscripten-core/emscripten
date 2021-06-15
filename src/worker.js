@@ -265,7 +265,7 @@ self.onmessage = function(e) {
 #endif // EMBIND
 
 #if ENVIRONMENT_MAY_BE_AUDIOWORKLET
-      if ({{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_AUDIOWORKLET') }}}) {
+      if (Module['ENVIRONMENT_IS_AUDIOWORKLET']) {
         // Audio worklets don't run any entrypoint since their entry points are the 'process' function invocations
         postMessage({'cmd': 'running'});
       } else {
