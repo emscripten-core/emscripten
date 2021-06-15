@@ -5285,7 +5285,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_runf(test_file('fs/test_64bit.c'), 'success')
 
   def test_sigalrm(self):
-    self.do_runf(test_file('sigalrm.cpp'), '')
+    self.do_runf(test_file('test_sigalrm.c'), 'Received alarm!')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_access(self):
