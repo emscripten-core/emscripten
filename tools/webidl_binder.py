@@ -14,7 +14,6 @@ import sys
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared
-from tools.shared import read_file
 
 sys.path.append(shared.path_from_root('third_party'))
 sys.path.append(shared.path_from_root('third_party', 'ply'))
@@ -56,7 +55,7 @@ p = WebIDL.Parser()
 p.parse(r'''
 interface VoidPtr {
 };
-''' + read_file(input_file))
+''' + shared.read_file(input_file))
 data = p.finish()
 
 interfaces = {}
