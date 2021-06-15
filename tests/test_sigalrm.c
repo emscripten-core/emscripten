@@ -8,16 +8,21 @@
 #include <signal.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <emscripten/emscripten.h>
 
 void alarm_handler(int dummy) {
   printf("Received alarm!\n");
-  exit(0);
+  emscripten_force_exit(0);
 }
 
 int main() {
   if (signal(SIGALRM, alarm_handler) == SIG_ERR) {
     printf("Error in signal()!\n");
-    exit(1);
+    return 1;
   }
   alarm(1);
+  // Make sure that we keep the runtime alive long enough
+  // to receive the alarm.
+  emscripten_exit_with_live_runtime();
+  __builtin_unreachable();
 }
