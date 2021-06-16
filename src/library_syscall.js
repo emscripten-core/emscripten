@@ -305,10 +305,6 @@ var SyscallsLibrary = {
     return 0;
   },
 
-  __sys_exit: function(status) {
-    exit(status);
-    // no return
-  },
   __sys_open: function(path, flags, varargs) {
     var pathname = SYSCALLS.getStr(path);
     var mode = varargs ? SYSCALLS.get() : 0;
@@ -1214,13 +1210,6 @@ var SyscallsLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
-#if MINIMAL_RUNTIME
-  __sys_exit_group__deps: ['$exit'],
-#endif
-  __sys_exit_group: function(status) {
-    exit(status);
-    return 0;
-  },
   __sys_statfs64: function(path, size, buf) {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
