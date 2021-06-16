@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -10,9 +11,8 @@
 #include <emscripten.h>
 #include <assert.h>
 
+bool exit_ok = false;
 int last = 0;
-
-extern "C" {
 
 bool pre1ed = false;
 bool pre2ed = false;
@@ -43,7 +43,9 @@ void argey(void* arg) {
   printf("argey: %d\n", counter);
   if (counter == 5) {
     emscripten_cancel_main_loop();
-    REPORT_RESULT(1);
+    // The main loop is now done so its ok to run atexit handlers.
+    exit_ok = true;
+    exit(0);
   }
 }
 
@@ -75,22 +77,22 @@ void four(void *arg) {
 void __attribute__((used)) third() {
   int now = SDL_GetTicks();
   printf("thard! %d\n", now);
-  assert(fabs(now - last - 1000) < 500);
+  assert(abs(now - last - 1000) < 500);
   emscripten_async_call(four, (void*)43, -1); // triggers requestAnimationFrame
 }
 
 void second(void *arg) {
   int now = SDL_GetTicks();
   printf("sacond! %d\n", now);
-  assert(fabs(now - last - 500) < 250);
+  assert(abs(now - last - 500) < 250);
   last = now;
   emscripten_async_run_script("Module._third()", 1000);
 }
 
-}
-
-void never() {
-  REPORT_RESULT(0);
+// Should not be called when main return but only once the
+// main loops is stopped and the runtime shuts down.
+void check_exit_ok() {
+  assert(exit_ok == true);
 }
 
 int main() {
@@ -105,7 +107,7 @@ int main() {
 
   assert(ratio == ratio2);
 
-  atexit(never); // should never be called - it is wrong to exit the runtime orderly if we have async calls!
+  atexit(check_exit_ok);
 
   emscripten_async_call(second, (void*)0, 500);
 
