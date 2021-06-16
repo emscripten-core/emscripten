@@ -192,6 +192,9 @@ See docs/process.md for more on how version tagging works.
 - You can now explicitly request that an environment variable remain unset by
   setting its value in `ENV` to `undefined`. This is useful for variables, such
   as `LANG`, for which Emscripten normally provides a default value.
+- Added support for running Emscripten-compiled native code in AudioWorklets as
+  if they were regular pthreads. See `/tests/audioworklet/tone/` for a working 
+  minimal example.
 
 2.0.23 - 05/26/2021
 -------------------

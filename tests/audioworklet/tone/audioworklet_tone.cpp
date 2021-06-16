@@ -17,13 +17,18 @@
 // 2) init is the JS-side audio worklet initialization that:
 //    - a) creates an AudioContext
 //    - b) initializes a PThread context in that AudioContext
-//    - c) creates an AudioWorkletNode running the 'native-passthrough-processor' 
-//         that calls generateAudio from 1)
-// 3) the NativePassthroughProcessor in audioworklet_tone_post.js that is the
-//    audio thread side implementation of 'native-passthrough-processor'
+//    - c) creates an AudioWorkletNode running the 'native-passthrough-processor' that calls generateAudio from 1)
+// 3) the NativePassthroughProcessor in audioworklet_tone_post.js that is the audio thread side implementation of 'native-passthrough-processor'
 //
-// Compile with
-// emcc -s USE_PTHREADS=1 -s MODULARIZE=1 -s EXPORT_NAME=MyModule -s ENVIRONMENT=web,worker,audioworklet --extern-post-js=audioworklet_tone_post.js --shell-file ../../shell_that_launches_modularize.html -o audioworklet_tone.html audioworklet_tone.cpp
+// Compile with:
+//   emcc -s USE_PTHREADS=1 -s ENVIRONMENT=web,worker,audioworklet --post-js=audioworklet_tone_post.js -o audioworklet_tone.html audioworklet_tone.cpp
+//
+// Or if using MODULARIZE=1
+//   emcc -s USE_PTHREADS=1 -s MODULARIZE=1 -s EXPORT_NAME=MyModule -s ENVIRONMENT=web,worker,audioworklet --extern-post-js=audioworklet_tone_post.js --shell-file ../../shell_that_launches_modularize.html -o audioworklet_tone.html audioworklet_tone.cpp
+// note the !!--extern-post-js!! in the MODULARIZE case - currently there is a Chromium implementation bug that fails to synchronize processor
+// registrations to the main thread if the `registerProcessor` call doesn't execute during initial JS evaluation. So we need to make sure we
+// put it outside the modularized part (--post-js will keep it inside) so it executes during initial eval and registers properly.
+// See https://bugs.chromium.org/p/chromium/issues/detail?id=1218892
 
 static pthread_t workletThreadId = 0;
 static uint32_t sampleRate = 48000; 

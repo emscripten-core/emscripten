@@ -3382,12 +3382,7 @@ var %(EXPORT_NAME)s = (function() {
   with open(final_js, 'w') as f:
     f.write(src)
 
-    # Store the export on the global scope for audio worklets
-    if settings.ENVIRONMENT_MAY_BE_AUDIOWORKLET:
-      f.write(f'''if (typeof AudioWorkletGlobalScope === 'function')
-  globalThis["{settings.EXPORT_NAME}"] = {settings.EXPORT_NAME};
-''')
-
+    # Export using a UMD style export, or ES6 exports if selected
     if settings.EXPORT_ES6:
       f.write('export default %s;' % settings.EXPORT_NAME)
     elif not settings.MINIMAL_RUNTIME:
@@ -3399,6 +3394,12 @@ else if (typeof define === 'function' && define['amd'])
 else if (typeof exports === 'object')
   exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {'EXPORT_NAME': settings.EXPORT_NAME})
+
+    # Store the export on the global scope for audio worklets
+    if settings.ENVIRONMENT_MAY_BE_AUDIOWORKLET:
+      f.write(f'''if (typeof AudioWorkletGlobalScope === 'function')
+  globalThis["{settings.EXPORT_NAME}"] = {settings.EXPORT_NAME};
+''')
 
   shared.configuration.get_temp_files().note(final_js)
   save_intermediate('modularized')
