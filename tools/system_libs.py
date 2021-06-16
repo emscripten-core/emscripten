@@ -151,6 +151,14 @@ def get_wasm_libc_rt_files():
   return math_files + other_files + iprintf_files
 
 
+def is_case_insensitive(path):
+  """Returns True if the filesystem at `path` is case insensitive."""
+  shared.write_file(os.path.join(path, 'test_file'), '')
+  case_insensitive = os.path.exists(os.path.join(path, 'TEST_FILE'))
+  os.remove(os.path.join(path, 'test_file'))
+  return case_insensitive
+
+
 class Library:
   """
   `Library` is the base class of all system libraries.
@@ -343,8 +351,20 @@ class Library:
     objects = []
     cflags = self.get_cflags()
     base_flags = get_base_cflags()
+    case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
-      o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
+      object_basename = shared.unsuffixed_basename(src)
+      # Resolve duplicates by appending unique.
+      # This is needed on case insensitve filesystem to handle,
+      # for example, _exit.o and _Exit.o.
+      if case_insensitive:
+        object_basename = object_basename.lower()
+      o = os.path.join(build_dir, object_basename + '.o')
+      object_uuid = 0
+      # Find a unique basename
+      while o in objects:
+        object_uuid += 1
+        o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
       ext = shared.suffix(src)
       if ext in ('.s', '.S', '.c'):
         cmd = [shared.EMCC]
@@ -704,7 +724,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
-        'alarm.c', 'syscall.c', '_exit.c', 'popen.c',
+        'alarm.c', 'syscall.c', 'popen.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'faccessat.c',
         # 'process' exclusion
@@ -824,6 +844,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'sched'],
         filenames=['sched_yield.c'])
+
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
+        filenames=['_Exit.c'])
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc'],
@@ -1390,9 +1414,7 @@ class libstandalonewasm(MuslInternalLibrary):
     # including fprintf etc.
     exit_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
-        filenames=['assert.c', 'atexit.c', 'exit.c']) + files_in_path(
-        path_components=['system', 'lib', 'libc', 'musl', 'src', 'unistd'],
-        filenames=['_exit.c'])
+        filenames=['assert.c', 'atexit.c', 'exit.c'])
     return base_files + time_files + exit_files
 
 

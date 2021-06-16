@@ -163,12 +163,6 @@ LibraryManager.library = {
 #endif
   },
 
-  _exit__sig: 'vi',
-  _exit: 'exit',
-
-  _Exit__sig: 'vi',
-  _Exit: 'exit',
-
 #if MINIMAL_RUNTIME
   $exit: function(status) {
     throw 'exit(' + status + ')';
