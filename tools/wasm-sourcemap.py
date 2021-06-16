@@ -18,9 +18,11 @@ from math import floor, log
 import os
 import re
 from subprocess import Popen, PIPE
+from pathlib import Path
 import sys
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 
 logger = logging.getLogger('wasm-sourcemap')
 
@@ -176,7 +178,7 @@ def remove_dead_entries(entries):
 
 def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
-    output = open(options.dwarfdump_output, 'rb').read()
+    output = Path(options.dwarfdump_output).read_bytes()
   elif options.dwarfdump:
     logger.debug('Reading DWARF information from %s' % wasm)
     if not os.path.exists(options.dwarfdump):

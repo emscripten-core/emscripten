@@ -42,6 +42,7 @@ from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
+from tools.shared import read_file, write_file, read_binary
 from tools.shared import do_replace, strip_prefix
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
@@ -357,7 +358,7 @@ def apply_settings(changes):
       filename = strip_prefix(value, '@')
       if not os.path.exists(filename):
         exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
-      value = open(filename).read().strip()
+      value = read_file(filename).strip()
     else:
       value = value.replace('\\', '\\\\')
 
@@ -589,7 +590,7 @@ def get_binaryen_passes():
 
 
 def make_js_executable(script):
-  src = open(script).read()
+  src = read_file(script)
   cmd = shared.shlex_join(config.JS_ENGINE)
   if not os.path.isabs(config.JS_ENGINE[0]):
     # TODO: use whereis etc. And how about non-*NIX?
@@ -1350,19 +1351,19 @@ def phase_linker_setup(options, state, newargs, settings_map):
     add_link_flag(state, sys.maxsize, f)
 
   if options.emrun:
-    options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
-    options.post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
+    options.pre_js += read_file(shared.path_from_root('src', 'emrun_prejs.js')) + '\n'
+    options.post_js += read_file(shared.path_from_root('src', 'emrun_postjs.js')) + '\n'
     # emrun mode waits on program exit
     settings.EXIT_RUNTIME = 1
 
   if options.cpu_profiler:
-    options.post_js += open(shared.path_from_root('src', 'cpuprofiler.js')).read() + '\n'
+    options.post_js += read_file(shared.path_from_root('src', 'cpuprofiler.js')) + '\n'
 
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
 
   if options.thread_profiler:
-    options.post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
+    options.post_js += read_file(shared.path_from_root('src', 'threadprofiler.js')) + '\n'
 
   if options.memory_init_file is None:
     options.memory_init_file = settings.OPT_LEVEL >= 2
@@ -2527,7 +2528,7 @@ def phase_source_transforms(options, target):
   # Apply pre and postjs files
   if final_js and (options.pre_js or options.post_js):
     logger.debug('applying pre/postjses')
-    src = open(final_js).read()
+    src = read_file(final_js)
     final_js += '.pp.js'
     with open(final_js, 'w') as f:
       # pre-js code goes right after the Module integration code (so it
@@ -2553,9 +2554,9 @@ def phase_memory_initializer(memfile):
   # is set the memory initializer url.
   global final_js
 
-  src = open(final_js).read()
+  src = read_file(final_js)
   src = do_replace(src, '// {{MEM_INITIALIZER}}', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
-  open(final_js + '.mem.js', 'w').write(src)
+  write_file(final_js + '.mem.js', src)
   final_js += '.mem.js'
 
 
@@ -2565,9 +2566,9 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
 
   # Remove some trivial whitespace
   # TODO: do not run when compress has already been done on all parts of the code
-  # src = open(final_js).read()
+  # src = read_file(final_js)
   # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
-  # open(final_js, 'w').write(src)
+  # write_file(final_js, src)
 
   if settings.USE_PTHREADS:
     target_dir = os.path.dirname(os.path.abspath(target))
@@ -2578,7 +2579,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     # Minify the worker.js file in optimized builds
     if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
       minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
-      open(worker_output, 'w').write(minified_worker)
+      write_file(worker_output, minified_worker)
 
   # track files that will need native eols
   generated_text_files_with_native_eols = []
@@ -2599,16 +2600,15 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # Unmangle previously mangled `import.meta` references in both main code and libraries.
   # See also: `preprocess` in parseTools.js.
   if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
-    src = open(final_js).read()
+    src = read_file(final_js)
     final_js += '.esmeta.js'
-    with open(final_js, 'w') as f:
-      f.write(src.replace('EMSCRIPTEN$IMPORT$META', 'import.meta'))
+    write_file(final_js, src.replace('EMSCRIPTEN$IMPORT$META', 'import.meta'))
     save_intermediate('es6-import-meta')
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
     logger.debug('applying extern pre/postjses')
-    src = open(final_js).read()
+    src = read_file(final_js)
     final_js += '.epp.js'
     with open(final_js, 'w') as f:
       f.write(fix_windows_newlines(options.extern_pre_js))
@@ -2753,13 +2753,13 @@ def parse_args(newargs):
     elif check_arg('--js-transform'):
       options.js_transform = consume_arg()
     elif check_arg('--pre-js'):
-      options.pre_js += open(consume_arg_file()).read() + '\n'
+      options.pre_js += read_file(consume_arg_file()) + '\n'
     elif check_arg('--post-js'):
-      options.post_js += open(consume_arg_file()).read() + '\n'
+      options.post_js += read_file(consume_arg_file()) + '\n'
     elif check_arg('--extern-pre-js'):
-      options.extern_pre_js += open(consume_arg_file()).read() + '\n'
+      options.extern_pre_js += read_file(consume_arg_file()) + '\n'
     elif check_arg('--extern-post-js'):
-      options.extern_post_js += open(consume_arg_file()).read() + '\n'
+      options.extern_post_js += read_file(consume_arg_file()) + '\n'
     elif check_arg('--compiler-wrapper'):
       config.COMPILER_WRAPPER = consume_arg()
     elif check_flag('--post-link'):
@@ -3177,10 +3177,10 @@ def phase_binaryen(target, options, wasm_target):
 
   # replace placeholder strings with correct subresource locations
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
-    js = open(final_js).read()
+    js = read_file(final_js)
 
     if settings.MINIMAL_RUNTIME:
-      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(open(wasm_target, 'rb').read()))
+      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(read_binary(wasm_target)))
     else:
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', shared.JS.get_subresource_location(wasm_target))
     shared.try_delete(wasm_target)
@@ -3191,7 +3191,7 @@ def phase_binaryen(target, options, wasm_target):
 def modularize():
   global final_js
   logger.debug('Modularizing, assigning to var ' + settings.EXPORT_NAME)
-  src = open(final_js).read()
+  src = read_file(final_js)
 
   return_value = settings.EXPORT_NAME
   if settings.WASM_ASYNC_COMPILATION:
@@ -3386,7 +3386,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   if settings.SINGLE_FILE:
     js_contents = script.inline or ''
     if script.src:
-      js_contents += open(js_target).read()
+      js_contents += read_file(js_target)
     shared.try_delete(js_target)
     script.src = None
     script.inline = js_contents
@@ -3479,13 +3479,13 @@ def generate_worker_js(target, js_target, target_basename):
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 
   target_contents = worker_js_script(proxy_worker_filename)
-  open(target, 'w').write(target_contents)
+  write_file(target, target_contents)
 
 
 def worker_js_script(proxy_worker_filename):
-  web_gl_client_src = open(shared.path_from_root('src', 'webGLClient.js')).read()
-  idb_store_src = open(shared.path_from_root('src', 'IDBStore.js')).read()
-  proxy_client_src = open(shared.path_from_root('src', 'proxyClient.js')).read()
+  web_gl_client_src = read_file(shared.path_from_root('src', 'webGLClient.js'))
+  idb_store_src = read_file(shared.path_from_root('src', 'IDBStore.js'))
+  proxy_client_src = read_file(shared.path_from_root('src', 'proxyClient.js'))
   proxy_client_src = do_replace(proxy_client_src, '{{{ filename }}}', proxy_worker_filename)
   proxy_client_src = do_replace(proxy_client_src, '{{{ IDBStore.js }}}', idb_store_src)
   return web_gl_client_src + '\n' + proxy_client_src

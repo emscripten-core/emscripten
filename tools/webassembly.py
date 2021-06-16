@@ -97,7 +97,7 @@ def add_emscripten_metadata(wasm_file):
     #     the EMSCRIPTEN_METADATA_MINOR
   )
 
-  orig = open(wasm_file, 'rb').read()
+  orig = shared.read_binary(wasm_file)
   with open(wasm_file, 'wb') as f:
     f.write(orig[0:8]) # copy magic number and version
     # write the special section

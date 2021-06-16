@@ -106,7 +106,8 @@ def parse_config_file():
   Also check EM_<KEY> environment variables to override specific config keys.
   """
   config = {}
-  config_text = open(EM_CONFIG, 'r').read()
+  with open(EM_CONFIG) as fh:
+    config_text = fh.read()
   try:
     exec(config_text, config)
   except Exception as e:
@@ -171,7 +172,9 @@ def parse_config_file():
 def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
-  config_data = open(path_from_root('tools', 'settings_template.py')).read().splitlines()
+
+  with open(path_from_root('tools', 'settings_template.py')) as fh:
+    config_data = fh.read().splitlines()
   config_data = config_data[3:] # remove the initial comment
   config_data = '\n'.join(config_data)
   # autodetect some default paths

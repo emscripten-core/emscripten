@@ -55,7 +55,7 @@ p = WebIDL.Parser()
 p.parse(r'''
 interface VoidPtr {
 };
-''' + open(input_file).read())
+''' + shared.read_file(input_file))
 data = p.finish()
 
 interfaces = {}

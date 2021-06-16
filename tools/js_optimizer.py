@@ -151,7 +151,7 @@ def run_on_js(filename, passes, extra_info=None, just_split=False, just_concat=F
     if not isinstance(passes, list):
       passes = [passes]
 
-    js = open(filename).read()
+    js = shared.read_file(filename)
     if os.linesep != '\n':
       js = js.replace(os.linesep, '\n') # we assume \n in the splitting code
 
@@ -333,7 +333,7 @@ EMSCRIPTEN_FUNCS();
             acorn_passes.append('minifyWhitespace')
           cld = building.acorn_optimizer(cld, acorn_passes)
           temp_files.note(cld)
-        coutput = open(cld).read()
+        coutput = shared.read_file(cld)
 
       coutput = coutput.replace('wakaUnknownBefore();', start_asm)
       after = 'wakaUnknownAfter'
@@ -364,7 +364,7 @@ EMSCRIPTEN_FUNCS();
       # sort functions by size, to make diffing easier and to improve aot times
       funcses = []
       for out_file in filenames:
-        funcses.append(split_funcs(open(out_file).read(), False))
+        funcses.append(split_funcs(shared.read_file(out_file), False))
       funcs = [item for sublist in funcses for item in sublist]
       funcses = None
       if not os.environ.get('EMCC_NO_OPT_SORT'):
@@ -381,7 +381,7 @@ EMSCRIPTEN_FUNCS();
     else:
       # just concat the outputs
       for out_file in filenames:
-        f.write(open(out_file).read())
+        f.write(shared.read_file(out_file))
 
   with ToolchainProfiler.profile_block('write_post'):
     f.write('\n')
