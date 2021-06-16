@@ -161,6 +161,9 @@ See docs/process.md for more on how version tagging works.
   existence of `Buffer.from` which was added in v5.10.0.  If it turns out
   there is still a need to support these older node versions we can
   add a polyfil under LEGACY_VM_SUPPORT (#14447).
+- Added support for running Emscripten-compiled native code in AudioWorklets as
+  if they were regular pthreads. See `/tests/audioworklet/tone/` for a working 
+  minimal example.
 
 2.0.24 - 06/10/2021
 -------------------
