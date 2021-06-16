@@ -483,7 +483,9 @@ uptr internal_execve(const char *filename, char *const argv[],
 
 #if !SANITIZER_NETBSD
 void internal__exit(int exitcode) {
-#if SANITIZER_FREEBSD || SANITIZER_SOLARIS
+#if SANITIZER_EMSCRIPTEN
+  __wasi_proc_exit(exitcode);
+#elif SANITIZER_FREEBSD || SANITIZER_SOLARIS
   internal_syscall(SYSCALL(exit), exitcode);
 #else
   internal_syscall(SYSCALL(exit_group), exitcode);
