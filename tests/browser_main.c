@@ -37,7 +37,8 @@ void next(const char *x) {
   assert(twofunc() == 7);
   onefunc();
   int result = twofunc();
-  exit(result);
+  assert(result == 8);
+  exit(0);
 }
 
 int main() {

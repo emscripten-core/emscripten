@@ -2221,50 +2221,52 @@ void *getBindBuffer() {
 
   def test_runtimelink(self):
     create_file('header.h', r'''
-      struct point
-      {
+      struct point {
         int x, y;
       };
     ''')
 
-    create_file('supp.cpp', r'''
+    create_file('supp.c', r'''
       #include <stdio.h>
       #include "header.h"
 
       extern void mainFunc(int x);
       extern int mainInt;
 
-      void suppFunc(struct point &p) {
-        printf("supp: %d,%d\n", p.x, p.y);
-        mainFunc(p.x + p.y);
+      void suppFunc(struct point *p) {
+        printf("supp: %d,%d\n", p->x, p->y);
+        mainFunc(p->x + p->y);
         printf("supp see: %d\n", mainInt);
       }
 
       int suppInt = 76;
     ''')
 
-    create_file('main.cpp', r'''
+    create_file('main.c', r'''
       #include <stdio.h>
+      #include <assert.h>
       #include "header.h"
 
-      extern void suppFunc(struct point &p);
+      extern void suppFunc(struct point *p);
       extern int suppInt;
 
       void mainFunc(int x) {
         printf("main: %d\n", x);
+        assert(x == 56);
       }
 
       int mainInt = 543;
 
       int main( int argc, const char *argv[] ) {
         struct point p = { 54, 2 };
-        suppFunc(p);
+        suppFunc(&p);
         printf("main see: %d\nok.\n", suppInt);
-        return suppInt;
+        assert(suppInt == 76);
+        return 0;
       }
     ''')
-    self.run_process([EMCC, 'supp.cpp', '-o', 'supp.wasm', '-s', 'SIDE_MODULE', '-O2', '-s', 'EXPORT_ALL'])
-    self.btest_exit('main.cpp', args=['-DBROWSER=1', '-s', 'MAIN_MODULE', '-O2', 'supp.wasm', '-s', 'EXPORT_ALL'], assert_returncode=76)
+    self.run_process([EMCC, 'supp.c', '-o', 'supp.wasm', '-s', 'SIDE_MODULE', '-O2'])
+    self.btest_exit('main.c', args=['-s', 'MAIN_MODULE=2', '-O2', 'supp.wasm'])
 
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
@@ -2458,8 +2460,8 @@ void *getBindBuffer() {
     time.sleep(10)
 
   def test_emscripten_async_wget_side_module(self):
-    self.run_process([EMCC, test_file('browser_module.cpp'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE', '-s', 'EXPORTED_FUNCTIONS=_one,_two'])
-    self.btest_exit('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE'], assert_returncode=8)
+    self.run_process([EMCC, test_file('browser_module.c'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE'])
+    self.btest_exit('browser_main.c', args=['-O2', '-s', 'MAIN_MODULE=2'])
 
   @parameterized({
     'non-lz4': ([],),
@@ -2472,7 +2474,7 @@ void *getBindBuffer() {
         return 42;
       }
     ''')
-    self.run_process([EMCC, 'library.c', '-s', 'SIDE_MODULE', '-O2', '-o', 'library.so', '-s', 'EXPORT_ALL'])
+    self.run_process([EMCC, 'library.c', '-s', 'SIDE_MODULE', '-O2', '-o', 'library.so'])
     create_file('main.c', r'''
       #include <dlfcn.h>
       #include <stdio.h>
@@ -2498,7 +2500,7 @@ void *getBindBuffer() {
     ''')
     self.btest_exit(
       'main.c',
-      args=['-s', 'MAIN_MODULE', '--preload-file', '.@/', '-O2', '--use-preload-plugins', '-s', 'EXPORT_ALL'] + args)
+      args=['-s', 'MAIN_MODULE=2', '--preload-file', '.@/', '-O2', '--use-preload-plugins'] + args)
 
   def test_mmap_file(self):
     create_file('data.dat', 'data from the file ' + ('.' * 9000))
@@ -3215,7 +3217,6 @@ window.close = function() {
   def test_sdl2_misc(self):
     self.btest_exit('sdl2_misc.c', args=['-s', 'USE_SDL=2'])
 
-  @disabled('https://github.com/emscripten-core/emscripten/issues/13101')
   def test_sdl2_misc_main_module(self):
     self.btest_exit('sdl2_misc.c', args=['-s', 'USE_SDL=2', '-s', 'MAIN_MODULE'])
 
@@ -3479,7 +3480,7 @@ window.close = function() {
 
   @requires_sync_compilation
   def test_dynamic_link(self):
-    create_file('main.cpp', r'''
+    create_file('main.c', r'''
       #include <stdio.h>
       #include <stdlib.h>
       #include <string.h>
@@ -3499,11 +3500,10 @@ window.close = function() {
         });
         puts(ret);
         EM_ASM({ assert(Module.printed === 'hello through side', ['expected', Module.printed]); });
-        REPORT_RESULT(2);
         return 0;
       }
     ''')
-    create_file('side.cpp', r'''
+    create_file('side.c', r'''
       #include <stdlib.h>
       #include <string.h>
       char *side(const char *data);
@@ -3513,18 +3513,18 @@ window.close = function() {
         return ret;
       }
     ''')
-    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL'])
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '-s', 'EXPORT_ALL', 'side.wasm'])
+    self.run_process([EMCC, 'side.c', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm'])
+    self.btest_exit(self.in_dir('main.c'), args=['-s', 'MAIN_MODULE=2', '-O2', 'side.wasm'])
 
     print('wasm in worker (we can read binary data synchronously there)')
 
-    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL'])
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '--proxy-to-worker', '-s', 'EXPORT_ALL', 'side.wasm'])
+    self.run_process([EMCC, 'side.c', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm'])
+    self.btest_exit(self.in_dir('main.c'), args=['-s', 'MAIN_MODULE=2', '-O2', '--proxy-to-worker', 'side.wasm'])
 
     print('wasm (will auto-preload since no sync binary reading)')
 
     # same wasm side module works
-    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE', '-O2', '-s', 'EXPORT_ALL', 'side.wasm'])
+    self.btest_exit(self.in_dir('main.c'), args=['-s', 'MAIN_MODULE=2', '-O2', '-s', 'EXPORT_ALL', 'side.wasm'])
 
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
@@ -3573,7 +3573,7 @@ window.close = function() {
   @requires_graphics_hardware
   @requires_sync_compilation
   def test_dynamic_link_glemu(self):
-    create_file('main.cpp', r'''
+    create_file('main.c', r'''
       #include <stdio.h>
       #include <string.h>
       #include <assert.h>
@@ -3586,7 +3586,7 @@ window.close = function() {
         return 0;
       }
     ''')
-    create_file('side.cpp', r'''
+    create_file('side.c', r'''
       #include "SDL/SDL.h"
       #include "SDL/SDL_opengl.h"
       const char *side() {
@@ -3595,17 +3595,20 @@ window.close = function() {
         return (const char *)glGetString(GL_EXTENSIONS);
       }
     ''')
-    self.run_process([EMCC, 'side.cpp', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-lSDL', '-s', 'EXPORT_ALL'])
+    self.run_process([EMCC, 'side.c', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-lSDL'])
 
-    self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE', '-O2', '-s', 'LEGACY_GL_EMULATION', '-lSDL', '-lGL', '-s', 'EXPORT_ALL', 'side.wasm'])
+    self.btest(self.in_dir('main.c'), '1', args=['-s', 'MAIN_MODULE=2', '-O2', '-s', 'LEGACY_GL_EMULATION', '-lSDL', '-lGL', 'side.wasm'])
 
   def test_dynamic_link_many(self):
     # test asynchronously loading two side modules during startup
     create_file('main.c', r'''
+      #include <assert.h>
       int side1();
       int side2();
       int main() {
-        return side1() + side2();
+        assert(side1() == 1);
+        assert(side2() == 2);
+        return 0;
       }
     ''')
     create_file('side1.c', r'''
@@ -3616,8 +3619,7 @@ window.close = function() {
     ''')
     self.run_process([EMCC, 'side1.c', '-s', 'SIDE_MODULE', '-o', 'side1.wasm'])
     self.run_process([EMCC, 'side2.c', '-s', 'SIDE_MODULE', '-o', 'side2.wasm'])
-    self.btest_exit(self.in_dir('main.c'), assert_returncode=3,
-                    args=['-s', 'MAIN_MODULE', 'side1.wasm', 'side2.wasm'])
+    self.btest_exit(self.in_dir('main.c'), args=['-s', 'MAIN_MODULE=2', 'side1.wasm', 'side2.wasm'])
 
   def test_dynamic_link_pthread_many(self):
     # Test asynchronously loading two side modules during startup
@@ -3661,7 +3663,7 @@ window.close = function() {
     self.run_process([EMCC, 'side1.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side1.wasm'])
     self.run_process([EMCC, 'side2.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side2.wasm'])
     self.btest(self.in_dir('main.cpp'), '1',
-               args=['-Wno-experimental', '-pthread', '-s', 'MAIN_MODULE', 'side1.wasm', 'side2.wasm'])
+               args=['-Wno-experimental', '-pthread', '-s', 'MAIN_MODULE=2', 'side1.wasm', 'side2.wasm'])
 
   def test_memory_growth_during_startup(self):
     create_file('data.dat', 'X' * (30 * 1024 * 1024))

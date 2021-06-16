@@ -5,8 +5,6 @@
 
 int state = 0;
 
-extern "C" {
-
 void one() {
   state++;
 }
@@ -14,6 +12,3 @@ void one() {
 int two() {
   return state;
 }
-
-}
-
