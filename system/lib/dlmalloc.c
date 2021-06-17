@@ -656,7 +656,7 @@ defined(__i386__) || defined(__x86_64__))) ||                    \
 #endif  /* ONLY_MSPACES */
 #endif  /* MSPACES */
 #ifndef MALLOC_ALIGNMENT
-#define MALLOC_ALIGNMENT ((size_t)(2 * sizeof(void *)))
+#define MALLOC_ALIGNMENT (alignof(max_align_t))
 #endif  /* MALLOC_ALIGNMENT */
 #ifndef FOOTERS
 #define FOOTERS 0
