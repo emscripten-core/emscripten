@@ -1081,11 +1081,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   linker_arguments = phase_calculate_linker_inputs(options, state, linker_inputs)
 
   if options.oformat == OFormat.OBJECT:
-    with ToolchainProfiler.profile_block('linking to object file'):
-      logger.debug('link_to_object: ' + str(linker_arguments) + ' -> ' + target)
-      building.link_to_object(linker_arguments, target)
-      logger.debug('stopping after linking to object file')
-      return 0
+    logger.debug('link_to_object: ' + str(linker_arguments) + ' -> ' + target)
+    building.link_to_object(linker_arguments, target)
+    logger.debug('stopping after linking to object file')
+    return 0
 
   phase_calculate_system_libraries(state, linker_arguments, linker_inputs, newargs)
 
