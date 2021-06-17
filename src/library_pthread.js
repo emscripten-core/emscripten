@@ -293,14 +293,6 @@ var LibraryPThread = {
             Module['onAbort'](d['arg']);
           }
         }
-#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
-        else if (cmd === 'running') {
-          // This is only notified for audio worklet contexts to let us know the pthread environment
-          // is ready and we can go ahead and create any pending AudioWorkletNodes
-          worker.context.audioWorklet.pthread.resolveRunPromise();
-          delete worker.context.audioWorklet.pthread.resolveRunPromise;
-        }
-#endif 
         else {
           err("worker sent an unknown command " + cmd);
         }
@@ -459,35 +451,46 @@ var LibraryPThread = {
 #endif
       aw.addModule(pthreadMainJs).then(function() {
         // Create a dummy worklet node that we use to establish the message channel
-        var dummyWorklet = new AudioWorkletNode(audioCtx, 'pthread-dummy-processor', {
+        // This worklet is not conected anywhere so 'process' doesn't get called so it's 
+        // not a performance overhead to have it instantiated
+        var dummy = new AudioWorkletNode(audioCtx, 'pthread-dummy-processor', {
           numberOfInputs: 0,
           numberOfOutputs : 1,
           outputChannelCount : [1]
         })
 
-        // Push this dummyWorklet into the PThread internal worker pool so it
+        // Push this node into the PThread internal worker pool so it
         // gets picked up in _pthread_create below. 
-        PThread.unusedWorkers.push(dummyWorklet);
+        PThread.unusedWorkers.push(dummy);
 
         // Add postMessage directly on the object, forwarded to port.postMessage (emulates Worker)
-        dummyWorklet.postMessage = dummyWorklet.port.postMessage.bind(dummyWorklet.port);
+        dummy.postMessage = dummy.port.postMessage.bind(dummy.port);
 
         // We still call loadWasmModuleToWorker to setup the pthread environment,
         // but we skip the actual WASM loading since it's already been done via
         // addModule above.
-        PThread.loadWasmModuleToWorker(dummyWorklet);
+        PThread.loadWasmModuleToWorker(dummy);
 
         // Forward port.onMessage to onmessage on the object (emulates Worker) but
-        // add worklet-only 'addmodule' message that is sent from the worklet after
-        // the worker.js has processed the 'load' commands and needs to load the main
-        // js (which it can't do directly in AudioWorkletGlobalScope)
-        dummyWorklet.port.onmessage = function(e) {
-          if(e.data.cmd == 'addmodule') {
-            aw.addModule((Module['mainScriptUrlOrBlob'] || _scriptDir) + "ADSF").then(function() {
-              dummyWorklet.postMessage({'cmd': 'moduleloaded'}); 
+        // add a few worklet-only messages 
+        dummy.port.onmessage = function(e) {
+          var d = e['data'];
+          var cmd = d['cmd'];
+          if(cmd === 'addmodule') {
+            // This is sent from the worklet after the worker.js has processed the 'load' 
+            // commands and needs to load the main js (which it can't do directly in 
+            // AudioWorkletGlobalScope so we do it here from the main thread)
+            aw.addModule((Module['mainScriptUrlOrBlob'] || _scriptDir)).then(function() {
+              dummy.postMessage({'cmd': 'moduleloaded'}); 
             });
+          } else if (cmd === 'running') {
+            // This is notified to let us know the pthread environment is ready and we can go ahead
+            // and create any pending AudioWorkletNodes
+            aw.pthread.resolveRunPromise();
+            delete aw.pthread.resolveRunPromise;
           } else {
-            dummyWorklet.onmessage(e)
+            // Pass it on to the regular worker onmessage
+            dummy.onmessage(e)
           }
         }
 
@@ -495,7 +498,7 @@ var LibraryPThread = {
         // it was a regular worker
         _pthread_create(pthreadPtr, 0, 0, 0);
 
-        aw.pthread.dummyWorklet = dummyWorklet;
+        aw.pthread.dummyWorklet = dummy;
       }, function(err) {
         aw.pthread.rejectRunPromise(err);
         delete aw.pthread;
