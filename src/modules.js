@@ -416,6 +416,7 @@ function exportRuntime() {
     'setTempRet0',
     'callMain',
     'abort',
+    'keepRuntimeAlive',
   ];
 
   if (USE_OFFSET_CONVERTER) {

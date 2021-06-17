@@ -417,14 +417,6 @@ function exit(status, implicit) {
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
-  // if this is just main exit-ing implicitly, and the status is 0, then we
-  // don't need to do anything here and can just leave. if the status is
-  // non-zero, though, then we need to report it.
-  // (we may have warned about this earlier, if a situation justifies doing so)
-  if (implicit && keepRuntimeAlive() && status === 0) {
-    return;
-  }
-
 #if USE_PTHREADS
   if (!implicit) {
     if (ENVIRONMENT_IS_PTHREAD) {
