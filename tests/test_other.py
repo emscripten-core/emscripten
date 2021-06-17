@@ -10659,7 +10659,7 @@ kill -9 $$
     self.run_process([EMCC, test_file('other/test_explict_gl_linking.c'), '-sNO_AUTO_NATIVE_LIBRARIES', '-lGL'])
 
   def test_no_main_with_PROXY_TO_PTHREAD(self):
-    create_test_file('lib.cpp', r'''
+    create_file('lib.cpp', r'''
 #include <emscripten.h>
 EMSCRIPTEN_KEEPALIVE
 void foo() {}
