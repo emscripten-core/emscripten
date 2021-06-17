@@ -845,8 +845,9 @@ var splitModuleProxyHandler = {
       var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
       var mmhSuccess = false;
       if (Module["mmh"]) {
-        var [instance, module] = Module["mmh"](prop, deferred, imports);
-        mmhSuccess = !!instance;
+        // returns [instance, module]
+        var moduleInfo = Module["mmh"](prop, deferred, imports);
+        mmhSuccess = !!moduleInfo[0];// instance
       }
       if (!mmhSuccess) {
         instantiateSync(deferred, imports);
