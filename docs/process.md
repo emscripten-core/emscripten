@@ -115,8 +115,9 @@ updating `emcc.rst` in a PR, the following should be done:
 1. In your emscripten repo checkout, enter `site`.
 2. Run `make clean` (without this, it may not emit the right output).
 2. Run `make text`.
-3. Add the changes to your PR.
-
+3. Copy the output `build/text/docs/tools_reference/emcc.txt` to
+   `../docs/emcc.txt` (both paths relative to the `site/` directory in
+   emscripten that you entered in step 1), and add that change to your PR.
 
 [site_repo]: https://github.com/kripken/emscripten-site
 [releases_repo]: https://chromium.googlesource.com/emscripten-releases
