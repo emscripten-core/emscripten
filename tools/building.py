@@ -201,76 +201,76 @@ def make_paths_absolute(f):
 
 # Runs llvm-nm for the given list of files.
 # The results are populated in nm_cache
+@ToolchainProfiler.profile_block('llvm_nm_multiple')
 def llvm_nm_multiple(files):
-  with ToolchainProfiler.profile_block('llvm_nm_multiple'):
-    if len(files) == 0:
-      return []
-    # Run llvm-nm on files that we haven't cached yet
-    llvm_nm_files = [f for f in files if f not in nm_cache]
+  if len(files) == 0:
+    return []
+  # Run llvm-nm on files that we haven't cached yet
+  llvm_nm_files = [f for f in files if f not in nm_cache]
 
-    # We can issue multiple files in a single llvm-nm calls, but only if those
-    # files are all .o or .bc files. Because of llvm-nm output format, we cannot
-    # llvm-nm multiple .a files in one call, but those must be individually checked.
+  # We can issue multiple files in a single llvm-nm calls, but only if those
+  # files are all .o or .bc files. Because of llvm-nm output format, we cannot
+  # llvm-nm multiple .a files in one call, but those must be individually checked.
 
-    o_files = [f for f in llvm_nm_files if os.path.splitext(f)[1].lower() in ['.o', '.obj', '.bc']]
-    a_files = [f for f in llvm_nm_files if f not in o_files]
+  a_files = [f for f in llvm_nm_files if is_ar(f)]
+  o_files = [f for f in llvm_nm_files if f not in a_files]
 
-    # Issue parallel calls for .a files
-    if len(a_files) > 0:
-      results = shared.run_multiple_processes([[LLVM_NM, a] for a in a_files], pipe_stdout=True, check=False)
-      for i in range(len(results)):
-        nm_cache[a_files[i]] = parse_symbols(results[i])
+  # Issue parallel calls for .a files
+  if len(a_files) > 0:
+    results = shared.run_multiple_processes([[LLVM_NM, a] for a in a_files], pipe_stdout=True, check=False)
+    for i in range(len(results)):
+      nm_cache[a_files[i]] = parse_symbols(results[i])
 
-    # Issue a single batch call for multiple .o files
-    if len(o_files) > 0:
-      cmd = [LLVM_NM] + o_files
-      cmd = get_command_with_possible_response_file(cmd)
-      results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
+  # Issue a single batch call for multiple .o files
+  if len(o_files) > 0:
+    cmd = [LLVM_NM] + o_files
+    cmd = get_command_with_possible_response_file(cmd)
+    results = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False)
 
-      # If one or more of the input files cannot be processed, llvm-nm will return a non-zero error code, but it will still process and print
-      # out all the other files in order. So even if process return code is non zero, we should always look at what we got to stdout.
-      if results.returncode != 0:
-        logger.debug('Subcommand ' + ' '.join(cmd) + ' failed with return code ' + str(results.returncode) + '! (An input file was corrupt?)')
+    # If one or more of the input files cannot be processed, llvm-nm will return a non-zero error code, but it will still process and print
+    # out all the other files in order. So even if process return code is non zero, we should always look at what we got to stdout.
+    if results.returncode != 0:
+      logger.debug('Subcommand ' + ' '.join(cmd) + ' failed with return code ' + str(results.returncode) + '! (An input file was corrupt?)')
 
-      results = results.stdout
+    results = results.stdout
 
-      # llvm-nm produces a single listing of form
-      # file1.o:
-      # 00000001 T __original_main
-      #          U __stack_pointer
-      #
-      # file2.o:
-      # 0000005d T main
-      #          U printf
-      #
-      # ...
-      # so loop over the report to extract the results
-      # for each individual file.
+    # llvm-nm produces a single listing of form
+    # file1.o:
+    # 00000001 T __original_main
+    #          U __stack_pointer
+    #
+    # file2.o:
+    # 0000005d T main
+    #          U printf
+    #
+    # ...
+    # so loop over the report to extract the results
+    # for each individual file.
 
-      filename = o_files[0]
+    filename = o_files[0]
 
-      # When we dispatched more than one file, we must manually parse
-      # the file result delimiters (like shown structured above)
-      if len(o_files) > 1:
-        file_start = 0
-        i = 0
+    # When we dispatched more than one file, we must manually parse
+    # the file result delimiters (like shown structured above)
+    if len(o_files) > 1:
+      file_start = 0
+      i = 0
 
-        while True:
-          nl = results.find('\n', i)
-          if nl < 0:
-            break
-          colon = results.rfind(':', i, nl)
-          if colon >= 0 and results[colon + 1] == '\n': # New file start?
-            nm_cache[filename] = parse_symbols(results[file_start:i - 1])
-            filename = results[i:colon].strip()
-            file_start = colon + 2
-          i = nl + 1
+      while True:
+        nl = results.find('\n', i)
+        if nl < 0:
+          break
+        colon = results.rfind(':', i, nl)
+        if colon >= 0 and results[colon + 1] == '\n': # New file start?
+          nm_cache[filename] = parse_symbols(results[file_start:i - 1])
+          filename = results[i:colon].strip()
+          file_start = colon + 2
+        i = nl + 1
 
-        nm_cache[filename] = parse_symbols(results[file_start:])
-      else:
-        # We only dispatched a single file, so can parse all of the result directly
-        # to that file.
-        nm_cache[filename] = parse_symbols(results)
+      nm_cache[filename] = parse_symbols(results[file_start:])
+    else:
+      # We only dispatched a single file, so can parse all of the result directly
+      # to that file.
+      nm_cache[filename] = parse_symbols(results)
 
   return [nm_cache[f] if f in nm_cache else ObjectFileInfo(1, '') for f in files]
 
@@ -279,32 +279,32 @@ def llvm_nm(file):
   return llvm_nm_multiple([file])[0]
 
 
+@ToolchainProfiler.profile_block('read_link_inputs')
 def read_link_inputs(files):
-  with ToolchainProfiler.profile_block('read_link_inputs'):
-    # Before performing the link, we need to look at each input file to determine which symbols
-    # each of them provides. Do this in multiple parallel processes.
-    archive_names = [] # .a files passed in to the command line to the link
-    object_names = [] # .o/.bc files passed in to the command line to the link
-    for f in files:
-      absolute_path_f = make_paths_absolute(f)
+  # Before performing the link, we need to look at each input file to determine which symbols
+  # each of them provides. Do this in multiple parallel processes.
+  archive_names = [] # .a files passed in to the command line to the link
+  object_names = [] # .o/.bc files passed in to the command line to the link
+  for f in files:
+    absolute_path_f = make_paths_absolute(f)
 
-      if absolute_path_f not in ar_contents and is_ar(absolute_path_f):
-        archive_names.append(absolute_path_f)
-      elif absolute_path_f not in nm_cache and is_bitcode(absolute_path_f):
-        object_names.append(absolute_path_f)
+    if absolute_path_f not in ar_contents and is_ar(absolute_path_f):
+      archive_names.append(absolute_path_f)
+    elif absolute_path_f not in nm_cache and is_bitcode(absolute_path_f):
+      object_names.append(absolute_path_f)
 
-    # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
-    archive_contents = extract_archive_contents(archive_names)
+  # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
+  archive_contents = extract_archive_contents(archive_names)
 
-    for a in archive_contents:
-      ar_contents[os.path.abspath(a['archive_name'])] = a['o_files']
-      for o in a['o_files']:
-        if o not in nm_cache:
-          object_names.append(o)
+  for a in archive_contents:
+    ar_contents[os.path.abspath(a['archive_name'])] = a['o_files']
+    for o in a['o_files']:
+      if o not in nm_cache:
+        object_names.append(o)
 
-    # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
-    # The results are not used here directly, but populated to llvm-nm cache structure.
-    llvm_nm_multiple(object_names)
+  # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
+  # The results are not used here directly, but populated to llvm-nm cache structure.
+  llvm_nm_multiple(object_names)
 
 
 def llvm_backend_args():
@@ -333,6 +333,7 @@ def llvm_backend_args():
   return args
 
 
+@ToolchainProfiler.profile_block('linking to object file')
 def link_to_object(args, target):
   # link using lld unless LTO is requested (lld can't output LTO/bitcode object files).
   if not settings.LTO:
@@ -755,170 +756,170 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
   return True
 
 
+@ToolchainProfiler.profile_block('closure_compiler')
 def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
-  with ToolchainProfiler.profile_block('closure_compiler'):
-    env = shared.env_with_node_in_path()
-    user_args = []
-    env_args = os.environ.get('EMCC_CLOSURE_ARGS')
-    if env_args:
-      user_args += shlex.split(env_args)
-    if extra_closure_args:
-      user_args += extra_closure_args
+  env = shared.env_with_node_in_path()
+  user_args = []
+  env_args = os.environ.get('EMCC_CLOSURE_ARGS')
+  if env_args:
+    user_args += shlex.split(env_args)
+  if extra_closure_args:
+    user_args += extra_closure_args
 
-    # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
-    # to enable use the java backend.  Without this it will only try the native and JavaScript
-    # versions of the compiler.
-    java_bin = os.path.dirname(config.JAVA)
-    if java_bin:
-      def add_to_path(dirname):
-        env['PATH'] = env['PATH'] + os.pathsep + dirname
-      add_to_path(java_bin)
-      java_home = os.path.dirname(java_bin)
-      env.setdefault('JAVA_HOME', java_home)
+  # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
+  # to enable use the java backend.  Without this it will only try the native and JavaScript
+  # versions of the compiler.
+  java_bin = os.path.dirname(config.JAVA)
+  if java_bin:
+    def add_to_path(dirname):
+      env['PATH'] = env['PATH'] + os.pathsep + dirname
+    add_to_path(java_bin)
+    java_home = os.path.dirname(java_bin)
+    env.setdefault('JAVA_HOME', java_home)
 
-    closure_cmd = get_closure_compiler()
+  closure_cmd = get_closure_compiler()
 
-    native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
-    if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
-      # Run with Java Closure compiler as a fallback if the native version does not work
-      user_args.append('--platform=java')
-      check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
+  native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
+  if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
+    # Run with Java Closure compiler as a fallback if the native version does not work
+    user_args.append('--platform=java')
+    check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
 
-    # Closure externs file contains known symbols to be extern to the minification, Closure
-    # should not minify these symbol names.
-    CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs', 'closure-externs.js')]
+  # Closure externs file contains known symbols to be extern to the minification, Closure
+  # should not minify these symbol names.
+  CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs', 'closure-externs.js')]
 
-    # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
-    # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
-    # externs file for the exports, Closure is able to reason about the exports.
-    if settings.WASM_FUNCTION_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
-      # Generate an exports file that records all the exported symbols from the wasm module.
-      module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_FUNCTION_EXPORTS])
-      exports_file = configuration.get_temp_files().get('_module_exports.js')
-      exports_file.write(module_exports_suppressions.encode())
-      exports_file.close()
+  # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
+  # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
+  # externs file for the exports, Closure is able to reason about the exports.
+  if settings.WASM_FUNCTION_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
+    # Generate an exports file that records all the exported symbols from the wasm module.
+    module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_FUNCTION_EXPORTS])
+    exports_file = configuration.get_temp_files().get('_module_exports.js')
+    exports_file.write(module_exports_suppressions.encode())
+    exports_file.close()
 
-      CLOSURE_EXTERNS += [exports_file.name]
+    CLOSURE_EXTERNS += [exports_file.name]
 
-    # Node.js specific externs
-    if shared.target_environment_may_be('node'):
-      NODE_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'node-externs')
-      NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
-      NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
-                      if name.endswith('.js')]
-      CLOSURE_EXTERNS += [path_from_root('src', 'closure-externs', 'node-externs.js')] + NODE_EXTERNS
+  # Node.js specific externs
+  if shared.target_environment_may_be('node'):
+    NODE_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'node-externs')
+    NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
+    NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
+                    if name.endswith('.js')]
+    CLOSURE_EXTERNS += [path_from_root('src', 'closure-externs', 'node-externs.js')] + NODE_EXTERNS
 
-    # V8/SpiderMonkey shell specific externs
-    if shared.target_environment_may_be('shell'):
-      V8_EXTERNS = [path_from_root('src', 'closure-externs', 'v8-externs.js')]
-      SPIDERMONKEY_EXTERNS = [path_from_root('src', 'closure-externs', 'spidermonkey-externs.js')]
-      CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
+  # V8/SpiderMonkey shell specific externs
+  if shared.target_environment_may_be('shell'):
+    V8_EXTERNS = [path_from_root('src', 'closure-externs', 'v8-externs.js')]
+    SPIDERMONKEY_EXTERNS = [path_from_root('src', 'closure-externs', 'spidermonkey-externs.js')]
+    CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
 
-    # Web environment specific externs
-    if shared.target_environment_may_be('web') or shared.target_environment_may_be('worker'):
-      BROWSER_EXTERNS_BASE = path_from_root('src', 'closure-externs', 'browser-externs')
-      if os.path.isdir(BROWSER_EXTERNS_BASE):
-        BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
-        BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
-                           if name.endswith('.js')]
-        CLOSURE_EXTERNS += BROWSER_EXTERNS
+  # Web environment specific externs
+  if shared.target_environment_may_be('web') or shared.target_environment_may_be('worker'):
+    BROWSER_EXTERNS_BASE = path_from_root('src', 'closure-externs', 'browser-externs')
+    if os.path.isdir(BROWSER_EXTERNS_BASE):
+      BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
+      BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
+                         if name.endswith('.js')]
+      CLOSURE_EXTERNS += BROWSER_EXTERNS
 
-    if settings.MINIMAL_RUNTIME and settings.USE_PTHREADS and not settings.MODULARIZE:
-      CLOSURE_EXTERNS += [path_from_root('src', 'minimal_runtime_worker_externs.js')]
+  if settings.MINIMAL_RUNTIME and settings.USE_PTHREADS and not settings.MODULARIZE:
+    CLOSURE_EXTERNS += [path_from_root('src', 'minimal_runtime_worker_externs.js')]
 
-    args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
-    # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
-    args += ['--language_in', 'ECMASCRIPT_2020']
-    # Tell closure not to do any transpiling or inject any polyfills.
-    # At some point we may want to look into using this as way to convert to ES5 but
-    # babel is perhaps a better tool for that.
-    args += ['--language_out', 'NO_TRANSPILE']
-    # Tell closure never to inject the 'use strict' directive.
-    args += ['--emit_use_strict=false']
+  args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
+  # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
+  args += ['--language_in', 'ECMASCRIPT_2020']
+  # Tell closure not to do any transpiling or inject any polyfills.
+  # At some point we may want to look into using this as way to convert to ES5 but
+  # babel is perhaps a better tool for that.
+  args += ['--language_out', 'NO_TRANSPILE']
+  # Tell closure never to inject the 'use strict' directive.
+  args += ['--emit_use_strict=false']
 
-    # Closure compiler is unable to deal with path names that are not 7-bit ASCII:
-    # https://github.com/google/closure-compiler/issues/3784
-    tempfiles = configuration.get_temp_files()
-    outfile = tempfiles.get('.cc.js').name  # Safe 7-bit filename
+  # Closure compiler is unable to deal with path names that are not 7-bit ASCII:
+  # https://github.com/google/closure-compiler/issues/3784
+  tempfiles = configuration.get_temp_files()
+  outfile = tempfiles.get('.cc.js').name  # Safe 7-bit filename
 
-    def move_to_safe_7bit_ascii_filename(filename):
-      safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
-      shutil.copyfile(filename, safe_filename)
-      return os.path.relpath(safe_filename, tempfiles.tmpdir)
+  def move_to_safe_7bit_ascii_filename(filename):
+    safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
+    shutil.copyfile(filename, safe_filename)
+    return os.path.relpath(safe_filename, tempfiles.tmpdir)
 
-    for e in CLOSURE_EXTERNS:
-      args += ['--externs', move_to_safe_7bit_ascii_filename(e)]
+  for e in CLOSURE_EXTERNS:
+    args += ['--externs', move_to_safe_7bit_ascii_filename(e)]
 
-    for i in range(len(user_args)):
-      if user_args[i] == '--externs':
-        user_args[i + 1] = move_to_safe_7bit_ascii_filename(user_args[i + 1])
+  for i in range(len(user_args)):
+    if user_args[i] == '--externs':
+      user_args[i + 1] = move_to_safe_7bit_ascii_filename(user_args[i + 1])
 
-    # Specify output file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
-    args += ['--js_output_file', os.path.relpath(outfile, tempfiles.tmpdir)]
+  # Specify output file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
+  args += ['--js_output_file', os.path.relpath(outfile, tempfiles.tmpdir)]
 
-    if settings.IGNORE_CLOSURE_COMPILER_ERRORS:
-      args.append('--jscomp_off=*')
-    if pretty:
-      args += ['--formatting', 'PRETTY_PRINT']
-    # Specify input file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
-    args += ['--js', move_to_safe_7bit_ascii_filename(filename)]
-    cmd = closure_cmd + args + user_args
-    logger.debug('closure compiler: ' + ' '.join(cmd))
+  if settings.IGNORE_CLOSURE_COMPILER_ERRORS:
+    args.append('--jscomp_off=*')
+  if pretty:
+    args += ['--formatting', 'PRETTY_PRINT']
+  # Specify input file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
+  args += ['--js', move_to_safe_7bit_ascii_filename(filename)]
+  cmd = closure_cmd + args + user_args
+  logger.debug('closure compiler: ' + ' '.join(cmd))
 
-    # Closure compiler does not work if any of the input files contain characters outside the
-    # 7-bit ASCII range. Therefore make sure the command line we pass does not contain any such
-    # input files by passing all input filenames relative to the cwd. (user temp directory might
-    # be in user's home directory, and user's profile name might contain unicode characters)
-    proc = run_process(cmd, stderr=PIPE, check=False, env=env, cwd=tempfiles.tmpdir)
+  # Closure compiler does not work if any of the input files contain characters outside the
+  # 7-bit ASCII range. Therefore make sure the command line we pass does not contain any such
+  # input files by passing all input filenames relative to the cwd. (user temp directory might
+  # be in user's home directory, and user's profile name might contain unicode characters)
+  proc = run_process(cmd, stderr=PIPE, check=False, env=env, cwd=tempfiles.tmpdir)
 
-    # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
-    # outfile.map source map file (https://github.com/google/closure-compiler/wiki/Source-Maps)
-    # But it looks like it creates such files on Linux(?) even without setting that command line
-    # flag (and currently we don't), so delete the produced source map file to not leak files in
-    # temp directory.
-    try_delete(outfile + '.map')
+  # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
+  # outfile.map source map file (https://github.com/google/closure-compiler/wiki/Source-Maps)
+  # But it looks like it creates such files on Linux(?) even without setting that command line
+  # flag (and currently we don't), so delete the produced source map file to not leak files in
+  # temp directory.
+  try_delete(outfile + '.map')
 
-    # Print Closure diagnostics result up front.
-    if proc.returncode != 0:
-      logger.error('Closure compiler run failed:\n')
-    elif len(proc.stderr.strip()) > 0:
-      if settings.CLOSURE_WARNINGS == 'error':
-        logger.error('Closure compiler completed with warnings and -s CLOSURE_WARNINGS=error enabled, aborting!\n')
-      elif settings.CLOSURE_WARNINGS == 'warn':
-        logger.warn('Closure compiler completed with warnings:\n')
+  # Print Closure diagnostics result up front.
+  if proc.returncode != 0:
+    logger.error('Closure compiler run failed:\n')
+  elif len(proc.stderr.strip()) > 0:
+    if settings.CLOSURE_WARNINGS == 'error':
+      logger.error('Closure compiler completed with warnings and -s CLOSURE_WARNINGS=error enabled, aborting!\n')
+    elif settings.CLOSURE_WARNINGS == 'warn':
+      logger.warn('Closure compiler completed with warnings:\n')
 
-    # Print input file (long wall of text!)
-    if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and settings.CLOSURE_WARNINGS != 'quiet')):
-      input_file = open(filename, 'r').read().splitlines()
-      for i in range(len(input_file)):
-        sys.stderr.write(str(i + 1) + ': ' + input_file[i] + '\n')
+  # Print input file (long wall of text!)
+  if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and settings.CLOSURE_WARNINGS != 'quiet')):
+    input_file = open(filename, 'r').read().splitlines()
+    for i in range(len(input_file)):
+      sys.stderr.write(str(i + 1) + ': ' + input_file[i] + '\n')
 
-    if proc.returncode != 0:
-      logger.error(proc.stderr) # print list of errors (possibly long wall of text if input was minified)
+  if proc.returncode != 0:
+    logger.error(proc.stderr) # print list of errors (possibly long wall of text if input was minified)
 
-      # Exit and print final hint to get clearer output
-      msg = 'closure compiler failed (rc: %d): %s' % (proc.returncode, shared.shlex_join(cmd))
-      if not pretty:
-        msg += ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set'
-      exit_with_error(msg)
+    # Exit and print final hint to get clearer output
+    msg = 'closure compiler failed (rc: %d): %s' % (proc.returncode, shared.shlex_join(cmd))
+    if not pretty:
+      msg += ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set'
+    exit_with_error(msg)
 
-    if len(proc.stderr.strip()) > 0 and settings.CLOSURE_WARNINGS != 'quiet':
-      # print list of warnings (possibly long wall of text if input was minified)
-      if settings.CLOSURE_WARNINGS == 'error':
-        logger.error(proc.stderr)
-      else:
-        logger.warn(proc.stderr)
+  if len(proc.stderr.strip()) > 0 and settings.CLOSURE_WARNINGS != 'quiet':
+    # print list of warnings (possibly long wall of text if input was minified)
+    if settings.CLOSURE_WARNINGS == 'error':
+      logger.error(proc.stderr)
+    else:
+      logger.warn(proc.stderr)
 
-      # Exit and/or print final hint to get clearer output
-      if not pretty:
-        logger.warn('(rerun with -g1 linker flag for an unminified output)')
-      elif DEBUG != 2:
-        logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
+    # Exit and/or print final hint to get clearer output
+    if not pretty:
+      logger.warn('(rerun with -g1 linker flag for an unminified output)')
+    elif DEBUG != 2:
+      logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
 
-      if settings.CLOSURE_WARNINGS == 'error':
-        exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS=error enabled')
+    if settings.CLOSURE_WARNINGS == 'error':
+      exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS=error enabled')
 
-    return outfile
+  return outfile
 
 
 # minify the final wasm+JS combination. this is done after all the JS

@@ -9,6 +9,7 @@ var LibraryBrowser = {
   $Browser__deps: [
     '$setMainLoop',
     '$callUserCallback',
+    '$safeSetTimeout',
     'emscripten_set_main_loop_timing',
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush',
@@ -230,7 +231,7 @@ var LibraryBrowser = {
           };
           audio.src = url;
           // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
-          Browser.safeSetTimeout(function() {
+          safeSetTimeout(function() {
             finish(audio); // try to use it even though it is not necessarily ready to play
           }, 10000);
         } else {
@@ -488,19 +489,17 @@ var LibraryBrowser = {
 
     // abort and pause-aware versions TODO: build main loop on top of this?
 
+    safeSetTimeout: function(func) {
+      // Legacy function, this is used by the SDL2 port so we need to keep it
+      // around at least until that is updated.
+      return safeSetTimeout(func);
+    },
     safeRequestAnimationFrame: function(func) {
       {{{ runtimeKeepalivePush() }}}
       return Browser.requestAnimationFrame(function() {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(func);
       });
-    },
-    safeSetTimeout: function(func, timeout) {
-      {{{ runtimeKeepalivePush() }}}
-      return setTimeout(function() {
-        {{{ runtimeKeepalivePop() }}}
-        callUserCallback(func);
-      }, timeout);
     },
 
     getMimetype: function(name) {
@@ -1105,10 +1104,10 @@ var LibraryBrowser = {
   },
 
   // Callable from pthread, executes in pthread context.
-  emscripten_async_run_script__deps: ['emscripten_run_script'],
+  emscripten_async_run_script__deps: ['emscripten_run_script', '$safeSetTimeout'],
   emscripten_async_run_script: function(script, millis) {
     // TODO: cache these to avoid generating garbage
-    Browser.safeSetTimeout(function() {
+    safeSetTimeout(function() {
       _emscripten_run_script(script);
     }, millis);
   },
@@ -1421,13 +1420,19 @@ var LibraryBrowser = {
 
   // Runs natively in pthread, no __proxy needed.
   emscripten_async_call__sig: 'viii',
+  emscripten_async_call__deps: ['$safeSetTimeout'],
   emscripten_async_call: function(func, arg, millis) {
     function wrapper() {
       {{{ makeDynCall('vi', 'func') }}}(arg);
     }
 
-    if (millis >= 0) {
-      Browser.safeSetTimeout(wrapper, millis);
+    if (millis >= 0
+#if ENVIRONMENT_MAY_BE_NODE
+      // node does not support requestAnimationFrame
+      || ENVIRONMENT_IS_NODE
+#endif
+    ) {
+      safeSetTimeout(wrapper, millis);
     } else {
       Browser.safeRequestAnimationFrame(wrapper);
     }

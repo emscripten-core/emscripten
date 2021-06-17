@@ -304,10 +304,10 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  emscripten_sleep__deps: ['$Browser'],
+  emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep: function(ms) {
     Asyncify.handleSleep(function(wakeUp) {
-      Browser.safeSetTimeout(wakeUp, ms);
+      safeSetTimeout(wakeUp, ms);
     });
   },
 

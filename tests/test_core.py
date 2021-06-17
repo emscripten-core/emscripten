@@ -7513,7 +7513,7 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('ASYNCIFY')
     self.set_setting('ASSERTIONS')
     self.set_setting('EXIT_RUNTIME', 1)
-    self.do_core_test('test_asyncify_during_exit.cpp', assert_returncode=1)
+    self.do_core_test('test_asyncify_during_exit.cpp', assert_returncode=NON_ZERO)
     print('NO_ASYNC')
     self.do_core_test('test_asyncify_during_exit.cpp', emcc_args=['-DNO_ASYNC'], out_suffix='_no_async')
 
@@ -8253,6 +8253,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_create_proxy(self):
     # with PROXY_TO_PTHREAD, we can synchronously depend on workers being available
     self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-DALLOW_SYNC']
     self.do_run_in_out_file_test('core/pthread/create.cpp')
 
@@ -8507,6 +8508,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # 'none' should fail to link because the dependency on ntohs was not added.
     err = self.expect_fail([EMCC, 'connect.c', '-sREVERSE_DEPS=none'])
     self.assertContained('undefined symbol: ntohs', err)
+
+  def test_emscripten_async_call(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test(test_file('core/test_emscripten_async_call.c'))
 
 
 # Generate tests for everything

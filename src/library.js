@@ -163,12 +163,6 @@ LibraryManager.library = {
 #endif
   },
 
-  _exit__sig: 'vi',
-  _exit: 'exit',
-
-  _Exit__sig: 'vi',
-  _Exit: 'exit',
-
 #if MINIMAL_RUNTIME
   $exit: function(status) {
     throw 'exit(' + status + ')';
@@ -3569,7 +3563,6 @@ LibraryManager.library = {
     throw 'unwind';
   },
 
-  emscripten_force_exit__deps: ['$runtimeKeepaliveCounter'],
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
@@ -3586,16 +3579,8 @@ LibraryManager.library = {
   },
 
 #if !MINIMAL_RUNTIME
-  $runtimeKeepaliveCounter: 0,
-
-  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
-  $keepRuntimeAlive: function() {
-    return noExitRuntime || runtimeKeepaliveCounter > 0;
-  },
-
   // Callable in pthread without __proxy needed.
   $runtimeKeepalivePush__sig: 'v',
-  $runtimeKeepalivePush__deps: ['$runtimeKeepaliveCounter'],
   $runtimeKeepalivePush: function() {
     runtimeKeepaliveCounter += 1;
 #if RUNTIME_DEBUG
@@ -3604,7 +3589,6 @@ LibraryManager.library = {
   },
 
   $runtimeKeepalivePop__sig: 'v',
-  $runtimeKeepalivePop__deps: ['$runtimeKeepaliveCounter'],
   $runtimeKeepalivePop: function() {
 #if ASSERTIONS
     assert(runtimeKeepaliveCounter > 0);
@@ -3614,7 +3598,6 @@ LibraryManager.library = {
     err('runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
 #endif
   },
-
 
   // Used to call user callbacks from the embedder / event loop.  For example
   // setTimeout or any other kind of event handler that calls into user case
@@ -3690,6 +3673,14 @@ LibraryManager.library = {
     func();
   },
 #endif
+
+  $safeSetTimeout: function(func, timeout) {
+    {{{ runtimeKeepalivePush() }}}
+    return setTimeout(function() {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(func);
+    }, timeout);
+  },
 
   $asmjsMangle: function(x) {
     var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
