@@ -8,7 +8,9 @@
 #include <stdio.h>
 #include <atomic>
 #include <mutex>
+
 #include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
 
 // This test tests the futex implementation for audio worklets which is 
 // very similar to the main thread futex spin loop implementation since

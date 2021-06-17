@@ -21,14 +21,9 @@
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
 // If running as an audio worklet, pull the Module object from the global scope
 // where it gets set up in worker.js that's loaded in the first addModule call
 // and only shares the global scope with the main js
-if(typeof AudioWorkletGlobalScope === 'function') {
-  var Module = globalThis.Module
-}
-#endif
 #if USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
 var /** @type {{
@@ -39,8 +34,18 @@ var /** @type {{
   preloadResults: Object
 }}
  */ Module;
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+if(typeof AudioWorkletGlobalScope === 'function') {
+  Module = globalThis.Module
+}
+#endif
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 #else
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+if(typeof AudioWorkletGlobalScope === 'function') {
+  var Module = globalThis.Module
+}
+#endif
 var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : {};
 #endif // USE_CLOSURE_COMPILER
 
