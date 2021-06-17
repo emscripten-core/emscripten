@@ -212,8 +212,8 @@ def llvm_nm_multiple(files):
   # files are all .o or .bc files. Because of llvm-nm output format, we cannot
   # llvm-nm multiple .a files in one call, but those must be individually checked.
 
-  o_files = [f for f in llvm_nm_files if os.path.splitext(f)[1].lower() in ['.o', '.obj', '.bc']]
-  a_files = [f for f in llvm_nm_files if f not in o_files]
+  a_files = [f for f in llvm_nm_files if is_ar(f)]
+  o_files = [f for f in llvm_nm_files if f not in a_files]
 
   # Issue parallel calls for .a files
   if len(a_files) > 0:

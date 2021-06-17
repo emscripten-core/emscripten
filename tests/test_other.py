@@ -10657,3 +10657,17 @@ kill -9 $$
     # Here we use NO_AUTO_NATIVE_LIBRARIES to disable the implictly linking that normally
     # includes the native GL library.
     self.run_process([EMCC, test_file('other/test_explict_gl_linking.c'), '-sNO_AUTO_NATIVE_LIBRARIES', '-lGL'])
+
+  def test_archive_bad_extension(self):
+    # Regression test for https://github.com/emscripten-core/emscripten/issues/14012
+    # where llvm_nm_multiple would be confused by archives names like object files.
+    create_file('main.c', '''
+    #include <sys/socket.h>
+    int main() {
+       return (int)&accept;
+    }
+    ''')
+
+    self.run_process([EMCC, '-c', 'main.c'])
+    self.run_process([EMAR, 'crs', 'libtest.bc', 'main.o'])
+    self.run_process([EMCC, 'libtest.bc', 'libtest.bc'])
