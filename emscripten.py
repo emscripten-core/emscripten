@@ -205,7 +205,7 @@ def report_missing_symbols(js_library_funcs):
     # In this mode we never expect _main in the export list.
     return
 
-  if settings.PROXY_TO_PTHREAD and '_main' not in all_implemented:
+  if settings.PROXY_TO_PTHREAD and '_main' not in defined_symbols:
     exit_with_error('PROXY_TO_PTHREAD proxies main() for you, but no main exists')
 
   if settings.IGNORE_MISSING_MAIN:
