@@ -843,13 +843,19 @@ var splitModuleProxyHandler = {
       var imports = {'primary': Module['asm']};
       // Replace '.wasm' suffix with '.deferred.wasm'.
       var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
-      var mmhSuccess = false;
-      if (Module["mmh"]) {
-        // returns [instance, module]
-        var moduleInfo = Module["mmh"](prop, deferred, imports);
-        mmhSuccess = !!moduleInfo[0];// instance
-      }
-      if (!mmhSuccess) {
+      if (Module["loadSplitModule"]) {
+        try {
+          // returns [instance, module]
+          var moduleInfo = Module["loadSplitModule"](prop, deferred, imports);
+          if (!moduleInfo || !moduleInfo[0]) {
+              throw "loadSplitModule handler failed!";
+          }
+        } catch(e) {
+            var str = e.toString();
+            err('failed to compile wasm module: ' + str);
+            throw e;
+        }
+      } else {
         instantiateSync(deferred, imports);
       }
       err('instantiated deferred module, continuing');
