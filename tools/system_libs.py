@@ -763,6 +763,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'pthread_testcancel.c',
           'emscripten_proxy_main.c',
           'emscripten_thread_state.s',
+          'cxa_thread_atexit.c',
         ])
     else:
       ignore += ['thread']

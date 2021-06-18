@@ -6,8 +6,7 @@
  */
 
 #define _GNU_SOURCE
-#include "../internal/libc.h"
-#include "../internal/pthread_impl.h"
+
 #include <assert.h>
 #include <dirent.h>
 #include <errno.h>
@@ -33,6 +32,9 @@
 
 #include <emscripten.h>
 #include <emscripten/threading.h>
+
+#include "libc.h"
+#include "pthread_impl.h"
 
 // Extra pthread_attr_t field:
 #define _a_transferredcanvases __u.__s[9]

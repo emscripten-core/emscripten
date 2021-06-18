@@ -60,7 +60,6 @@ var LibraryPThread = {
     },
     // Maps pthread_t to pthread info objects
     pthreads: {},
-    threadExitHandlers: [], // An array of C functions to run when this thread exits.
 
 #if PTHREADS_PROFILING
     createProfilerBlock: function(pthreadPtr) {
@@ -927,13 +926,6 @@ var LibraryPThread = {
     // but if we ever fetched a rendering context for them that would not be valid, so we don't try.
     postMessage({ 'cmd': 'exit' });
   },
-
-  __cxa_thread_atexit__sig: 'vii',
-  __cxa_thread_atexit: function(routine, arg) {
-    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) });
-  },
-  __cxa_thread_atexit_impl: '__cxa_thread_atexit',
-
 
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
   emscripten_futex_wait__deps: ['emscripten_main_thread_process_queued_calls'],

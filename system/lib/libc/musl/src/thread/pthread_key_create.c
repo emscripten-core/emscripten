@@ -40,10 +40,9 @@ int __pthread_key_delete(pthread_key_t k)
 }
 
 #ifdef __EMSCRIPTEN__
-void EMSCRIPTEN_KEEPALIVE __pthread_tsd_run_dtors()
-#else
-void __pthread_tsd_run_dtors()
+EMSCRIPTEN_KEEPALIVE
 #endif
+void __pthread_tsd_run_dtors()
 {
 	pthread_t self = __pthread_self();
 	int i, j, not_finished = self->tsd_used;
