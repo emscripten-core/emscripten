@@ -136,7 +136,7 @@ unsupported = {
 }
 
 # Mark certain tests as flaky, which may sometimes fail.
-# TODO invesigate these tests.
+# TODO investigate these tests.
 flaky = {
   'test_pthread_cond_signal_1_1': 'flaky: https://github.com/emscripten-core/emscripten/issues/13283',
 }
@@ -145,7 +145,6 @@ flaky = {
 disabled = {
   **unsupported,
   **flaky,
-  'test_pthread_create_11_1': 'never returns',
   'test_pthread_attr_setscope_5_1': 'internally skipped (PTS_UNTESTED)',
 }
 
