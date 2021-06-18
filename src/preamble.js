@@ -415,6 +415,9 @@ function exitRuntime() {
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
 #endif
+#if USE_PTHREADS
+  PThread.terminateAllThreads();
+#endif
   runtimeExited = true;
 }
 

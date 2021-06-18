@@ -167,7 +167,7 @@ function callMain(args) {
 
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
-    abortWrapperDepth += 2; 
+    abortWrapperDepth += 2;
 #endif
 
 #if STANDALONE_WASM
@@ -202,7 +202,7 @@ function callMain(args) {
 
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
-    abortWrapperDepth -= 2; 
+    abortWrapperDepth -= 2;
 #endif
   }
 }
@@ -440,9 +440,6 @@ function exit(status, implicit) {
     }
 #endif // ASSERTIONS
   } else {
-#if USE_PTHREADS
-    PThread.terminateAllThreads();
-#endif
     exitRuntime();
   }
 
@@ -452,9 +449,6 @@ function exit(status, implicit) {
 function procExit(code) {
   EXITSTATUS = code;
   if (!keepRuntimeAlive()) {
-#if USE_PTHREADS
-    PThread.terminateAllThreads();
-#endif
 #if expectToReceiveOnModule('onExit')
     if (Module['onExit']) Module['onExit'](code);
 #endif
