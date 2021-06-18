@@ -10346,6 +10346,7 @@ exec "$@"
     result = self.run_js('test_split_module.js')
     self.assertNotIn('profile', result)
     self.assertIn('Custom handler for loading split module.', result)
+    self.assertIn('Hello! answer: 42', result)
 
   def test_split_main_module(self):
     initialTableSize = 17
