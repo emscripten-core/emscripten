@@ -13,7 +13,6 @@ $_do_call
 $_emscripten_call_on_thread
 $_emscripten_do_dispatch_to_thread
 $_emscripten_thread_init
-$_main_thread
 $a_cas
 $add
 $dispose_chunk
