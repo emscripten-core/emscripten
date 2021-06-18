@@ -425,11 +425,6 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-  _ZSt9terminatev__deps: ['exit'],
-  _ZSt9terminatev: function() {
-    _exit(-1234);
-  },
-
 #if MINIMAL_RUNTIME && !EXIT_RUNTIME
   atexit__sig: 'v', // atexit unsupported in MINIMAL_RUNTIME
   atexit: function(){},
