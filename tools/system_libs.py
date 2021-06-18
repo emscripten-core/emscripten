@@ -751,7 +751,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     if self.is_mt:
       ignore += [
         'clone.c', '__lock.c',
-        'pthread_cleanup_push.c', 'pthread_create.c',
+        'pthread_create.c',
         'pthread_kill.c', 'pthread_sigmask.c',
         '__set_thread_area.c', 'synccall.c',
         '__syscall_cp.c', '__tls_get_addr.c',
@@ -781,6 +781,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
         filenames=[
           'pthread_self.c',
+          'pthread_cleanup_push.c',
           # C11 thread library functions
           'call_once.c',
           'tss_create.c',
