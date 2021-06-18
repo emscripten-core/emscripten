@@ -844,16 +844,8 @@ var splitModuleProxyHandler = {
       // Replace '.wasm' suffix with '.deferred.wasm'.
       var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
       if (Module["loadSplitModule"]) {
-        try {
-          // returns [instance, module]
-          var moduleInfo = Module["loadSplitModule"](prop, deferred, imports);
-          if (!moduleInfo || !moduleInfo[0]) {
-              throw "loadSplitModule handler failed!";
-          }
-        } catch(e) {
-            var str = e.toString();
-            err('failed to compile wasm module: ' + str);
-            throw e;
+        if (!Module["loadSplitModule"](prop, deferred, imports)) {
+          abort('failed to load split module');
         }
       } else {
         instantiateSync(deferred, imports);
