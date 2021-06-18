@@ -164,7 +164,7 @@ __cxa_decrement_exception_refcount(void *primary_exception) _NOEXCEPT;
 extern _LIBCXXABI_FUNC_VIS bool __cxa_uncaught_exception() _NOEXCEPT;
 extern _LIBCXXABI_FUNC_VIS unsigned int __cxa_uncaught_exceptions() _NOEXCEPT;
 
-#if defined(__linux__) || defined(__Fuchsia__)
+#if defined(__linux__) || defined(__Fuchsia__) || defined(__EMSCRIPTEN__)
 // Linux and Fuchsia TLS support. Not yet an official part of the Itanium ABI.
 // https://sourceware.org/glibc/wiki/Destructor%20support%20for%20thread_local%20variables
 extern _LIBCXXABI_FUNC_VIS int __cxa_thread_atexit(void (*)(void *), void *,

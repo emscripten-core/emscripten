@@ -49,6 +49,12 @@ function stringifyWithFunctions(obj) {
   }
 }
 
+/*
+function isWeak(symName) {
+  return symName in ('__cxa_thread_atexit_impl')
+}
+*/
+
 function isDefined(symName) {
   if (symName in WASM_EXPORTS || symName in SIDE_MODULE_EXPORTS) {
     return true;
@@ -151,6 +157,7 @@ function JSify(functionsOnly) {
       }
 
       var noExport = false;
+      var needsPlaceholder = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
         if (ONLY_CALC_JS_SYMBOLS) {
@@ -181,17 +188,25 @@ function JSify(functionsOnly) {
           // (not useful to warn/error multiple times)
           LibraryManager.library[ident + '__docs'] = '/** @type {function(...*):?} */';
         } else {
-          var target = "Module['" + finalName + "']";
-          var assertion = '';
-          if (ASSERTIONS) {
-            var what = 'function';
-            assertion += 'if (!' + target + ') abort("external symbol \'' + ident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
-
-          }
-          var functionBody = assertion + "return " + target + ".apply(null, arguments);";
-          LibraryManager.library[ident] = new Function(functionBody);
-          noExport = true;
+          needsPlaceholder = true;
         }
+      }
+
+      if (LibraryManager.library.hasOwnProperty(ident) && (typeof LibraryManager.library[ident] === 'undefined')) {
+        needsPlaceholder = true;
+      }
+
+      if (needsPlaceholder) {
+        var target = "Module['" + finalName + "']";
+        var assertion = '';
+        if (ASSERTIONS) {
+          var what = 'function';
+          assertion += 'if (!' + target + ') abort("external symbol \'' + ident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
+
+        }
+        var functionBody = assertion + "return " + target + ".apply(null, arguments);";
+        LibraryManager.library[ident] = new Function(functionBody);
+        noExport = true;
       }
 
       var original = LibraryManager.library[ident];
@@ -231,6 +246,8 @@ function JSify(functionsOnly) {
         if (!isJsOnlyIdentifier(ident[0])) {
           libraryFunctions.push(finalName);
         }
+      } else if (typeof snippet === 'undefined') {
+        return '';
       }
 
       // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be exported

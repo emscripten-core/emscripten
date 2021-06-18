@@ -231,6 +231,7 @@ def require_v8(func):
 
 def node_pthreads(f):
   def decorated(self):
+    self.skipTest('xxx')
     self.set_setting('USE_PTHREADS')
     self.emcc_args += ['-Wno-pthreads-mem-growth']
     if self.get_setting('MINIMAL_RUNTIME'):
