@@ -21,7 +21,6 @@
 
 extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 extern void _emscripten_thread_init(int, int, int);
-extern void __pthread_exit_run_handlers();
 extern void __pthread_detached_exit();
 extern void* _emscripten_tls_base();
 extern int8_t __dso_handle;
@@ -124,10 +123,6 @@ void _emscripten_thread_exit(void* result) {
 
   // Run any handlers registered with pthread_cleanup_push
   __run_cleanup_handlers();
-
-  // Run any JS thread exit handlers (for C++ programs this includes any
-  // functions registered with __cxa_thread_atexit).
-  __pthread_exit_run_handlers();
 
   // Call into the musl function that runs destructors of all thread-specific data.
   __pthread_tsd_run_dtors();
