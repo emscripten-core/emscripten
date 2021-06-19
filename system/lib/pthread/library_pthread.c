@@ -946,3 +946,34 @@ int emscripten_proxy_main(int argc, char** argv) {
 }
 
 weak_alias(__pthread_testcancel, pthread_testcancel);
+
+// See musl's pthread_create.c
+void __run_cleanup_handlers(void* _unused) {
+  pthread_t self = __pthread_self();
+  while (self->cancelbuf) {
+    void (*f)(void *) = self->cancelbuf->__f;
+    void *x = self->cancelbuf->__x;
+    self->cancelbuf = self->cancelbuf->__next;
+    f(x);
+  }
+}
+
+extern int __cxa_thread_atexit(void (*)(void *), void *, void *);
+
+extern int8_t __dso_handle;
+
+// Copied from musl's pthread_create.c
+void __do_cleanup_push(struct __ptcb *cb) {
+  struct pthread *self = __pthread_self();
+  cb->__next = self->cancelbuf;
+  self->cancelbuf = cb;
+  static thread_local bool registerd = false;
+  if (!registerd) {
+    __cxa_thread_atexit(__run_cleanup_handlers, NULL, &__dso_handle);
+  }
+}
+
+// Copied from musl's pthread_create.c
+void __do_cleanup_pop(struct __ptcb *cb) {
+  __pthread_self()->cancelbuf = cb->__next;
+}

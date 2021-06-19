@@ -1058,15 +1058,12 @@ var LibraryPThread = {
     throw 'unwind';
   },
 
-  pthread_cleanup_push__sig: 'vii',
-  pthread_cleanup_push: function(routine, arg) {
-    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) });
+  __cxa_thread_atexit__sig: 'vii',
+  __cxa_thread_atexit: function(routine, arg) {
+    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) }); 
   },
+  __cxa_thread_atexit_impl: '__cxa_thread_atexit',
 
-  pthread_cleanup_pop: function(execute) {
-    var routine = PThread.threadExitHandlers.pop();
-    if (execute) routine();
-  },
 
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
   emscripten_futex_wait__deps: ['emscripten_main_thread_process_queued_calls'],

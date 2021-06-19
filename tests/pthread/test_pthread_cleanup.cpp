@@ -92,6 +92,7 @@ int main() {
   printf("Cleanup state variable: %d", cleanupState);
   assert(cleanupState == 907640832);
 
+  pthread_cleanup_pop(1);
   exit(EXIT_SUCCESS);
 }
 
