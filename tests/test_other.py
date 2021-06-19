@@ -10674,3 +10674,8 @@ kill -9 $$
     self.run_process([EMCC, '-c', 'main.c'])
     self.run_process([EMAR, 'crs', 'libtest.bc', 'main.o'])
     self.run_process([EMCC, 'libtest.bc', 'libtest.bc'])
+
+  def test_pic_implies_relocatable(self):
+    # Test that `-fPIC` implies `-s RELOCATABLE` which implies `-fvisibility=default`
+    out = self.run_process([EMCC, '-fPIC', '-c', test_file('hello_world.c'), '-v'], stderr=PIPE).stderr
+    self.assertContained('-fvisibility=default', out)
