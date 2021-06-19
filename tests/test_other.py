@@ -4229,10 +4229,9 @@ int main() {
     # a program which includes a non-trivial syscall, but disables the filesystem.
     create_file('src.c', r'''
 #include <sys/time.h>
-#include <stddef.h>
-extern int __sys_openat(int);
+#include <fcntl.h>
 int main() {
-  return __sys_openat(0);
+  return openat(0, "foo", 0);
 }''')
     self.run_process([EMCC, 'src.c', '-s', 'NO_FILESYSTEM'])
 
@@ -10680,3 +10679,29 @@ kill -9 $$
     # compiling (compile+link).
     self.run_process([EMCC, test_file('hello_world.c'), '-g', '-gsplit-dwarf'])
     self.assertExists('hello_world.dwo')
+
+  @parameterized({
+    '': [[]],
+    'strict': [['-sSTRICT']],
+    'no_allow': [['-sALLOW_UNIMPLEMENTED_SYSCALLS=0']],
+  })
+  def test_unimplemented_syscalls(self, args):
+    create_file('main.c', '''
+    #include <assert.h>
+    #include <errno.h>
+    #include <sys/mman.h>
+
+    int main() {
+      assert(mincore(0, 0, 0) == -1);
+      assert(errno == ENOSYS);
+      return 0;
+    }
+    ''')
+    cmd = [EMCC, 'main.c', '-sASSERTIONS'] + args
+    if args:
+      err = self.expect_fail(cmd)
+      self.assertContained('error: attempt to link unsupport syscall: __sys_mincore (use -s ALLOW_UNIMPLEMENTED_SYSCALLS (the default) to allow linking with a stub version', err)
+    else:
+      self.run_process(cmd)
+      err = self.run_js('a.out.js')
+      self.assertContained('warning: unsupported syscall: __sys_mincore', err)
