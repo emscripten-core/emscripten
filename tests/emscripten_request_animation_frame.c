@@ -22,10 +22,7 @@ EM_BOOL func2(double time, void *userData)
 	}
 	if (func2Executed == 2)
 	{
-#ifdef REPORT_RESULT
 		assert(func1Executed == 1);
-		REPORT_RESULT(0);
-#endif
 	}
 	return 0;
 }
@@ -36,9 +33,7 @@ EM_BOOL func1(double time, void *userData)
 	assert(time > 0);
 	++func1Executed;
 
-#ifdef REPORT_RESULT
 	assert(func1Executed == 1);
-#endif
 
 	emscripten_request_animation_frame(func2, (void*)2);
 

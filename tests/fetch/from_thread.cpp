@@ -90,6 +90,5 @@ int main() {
   // be what was returned from thread_main.
   assert(*res == 99);
 #endif
-  REPORT_RESULT(result);
-  return result;
+  return 0;
 }

@@ -17,7 +17,7 @@ GLFWwindow *window;
 
 int last_cursor_disabled = -1;
 int pointerlock_isActive = 0;
-int result = 0;
+
 void render() {
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -35,7 +35,6 @@ void render() {
 
             if (step == 5) {
                 printf("All tests passed.\n");
-                REPORT_RESULT(1);
                 exit(0);
             }
 
@@ -43,7 +42,6 @@ void render() {
             else printf("Click again to enable Pointer Lock\n");
         } else {
             printf("FAIL: cursor_disabled(%d) != pointerlock_isActive(%d)\n", cursor_disabled, pointerlock_isActive);
-            REPORT_RESULT(result);
             exit(1);
         }
     }
@@ -74,7 +72,6 @@ int main() {
     if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
         // Browsers do not allow disabling the cursor (Pointer Lock) without a gesture.
         printf("FAIL: glfwGetInputMode returned GLFW_CURSOR_DISABLED prematurely\n");
-        REPORT_RESULT(result);
         exit(1);
     }
     printf("Pass 1: glfwGetInputMode not prematurely returning cursor disabled\n");
@@ -83,6 +80,7 @@ int main() {
 #ifdef __EMSCRIPTEN__
     emscripten_set_pointerlockchange_callback(NULL, NULL, 0, on_pointerlockchange);
     emscripten_set_main_loop(render, 0, 1);
+    __builtin_trap();
 #else
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();

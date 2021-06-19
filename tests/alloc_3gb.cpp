@@ -15,7 +15,5 @@ int main()
 	free(ptr3);
 	free(ptr2);
 	printf("OK\n");
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#endif
+	return 0;
 }

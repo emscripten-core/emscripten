@@ -198,8 +198,5 @@ int main() {
   test();
   test_scandir();
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
   return EXIT_SUCCESS;
 }

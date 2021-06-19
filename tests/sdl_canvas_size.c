@@ -44,6 +44,5 @@ int main(int argc, char *argv[])
     assert(h == 480);
 
     SDL_Quit();
-    REPORT_RESULT(1);
     return 0;
 }

@@ -5,17 +5,10 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <EGL/egl.h>
 #include <emscripten.h>
-
-int result = 1; // Success
-#define assert(x) do { \
-  if (!(x)) { \
-    result = 0; \
-    printf("Assertion failure: %s in %s:%d!\n", #x, __FILE__, __LINE__); \
-  } \
-} while(0)
 
 int main(int argc, char *argv[]) {
   EM_ASM({
@@ -37,8 +30,5 @@ int main(int argc, char *argv[]) {
   EGLint attribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
   assert(eglCreateContext(display, config, NULL, attribs) == NULL);
   assert(eglGetError() == EGL_BAD_MATCH);
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  return 0;
 }

@@ -1,5 +1,6 @@
 #include <emscripten/html5.h>
 #include <assert.h>
+#include <stdlib.h>
 
 double previousRafTime = 0;
 int funcExecuted = 0;
@@ -8,9 +9,7 @@ void testDone(void *userData)
 {
 	assert((long)userData == 2);
 	assert(funcExecuted == 10);
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#endif
+	exit(0);
 }
 
 EM_BOOL tick(double time, void *userData)
