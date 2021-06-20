@@ -554,10 +554,11 @@ def get_binaryen_passes():
     def check_human_readable_list(items):
       for item in items:
         if item.count('(') != item.count(')'):
-          logger.warning('''emcc: ASYNCIFY list contains an item without balanced parentheses ("(", ")"):''')
-          logger.warning('''   ''' + item)
-          logger.warning('''This may indicate improper escaping that led to splitting inside your names.''')
-          logger.warning('''Try to quote the entire argument, like this: -s 'ASYNCIFY_ONLY=["foo(int, char)", "bar"]' ''')
+          logger.warning('emcc: ASYNCIFY list contains an item without balanced parentheses ("(", ")"):')
+          logger.warning('   ' + item)
+          logger.warning('This may indicate improper escaping that led to splitting inside your names.')
+          logger.warning('Try using a response file. e.g: -sASYNCIFY_ONLY=@funcs.txt. The format is a simple')
+          logger.warning('text file, one line per function.')
           break
 
     if settings.ASYNCIFY_REMOVE:
