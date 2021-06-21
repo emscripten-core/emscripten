@@ -1028,6 +1028,7 @@ var LINKABLE = 0;
 //   * AUTO_NATIVE_LIBRARIES is disabled.
 //   * AUTO_ARCHIVE_INDEXES is disabled.
 //   * DEFAULT_TO_CXX is disabled.
+//   * ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
 // [compile+link]
 var STRICT = 0;
 
@@ -1938,6 +1939,11 @@ var REVERSE_DEPS = 'auto';
 // For MAIN_MODULE builds, automatically load any dynamic library dependencies
 // on startup, before loading the main module.
 var AUTOLOAD_DYLIBS = 1;
+
+// Include unimplemented JS syscalls to be included in the final output.  This
+// allows programs that depend on these syscalls at runtime to be compiled, even
+// though these syscalls will fail (or do nothing) at runtime.
+var ALLOW_UNIMPLEMENTED_SYSCALLS = 1;
 
 //===========================================
 // Internal, used for testing only, from here

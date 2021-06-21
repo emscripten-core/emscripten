@@ -1537,6 +1537,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
     default_setting('DEFAULT_TO_CXX', 0)
+    default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
