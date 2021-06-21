@@ -10307,10 +10307,16 @@ exec "$@"
   def test_syslog(self):
     self.do_other_test('test_syslog.c')
 
-  def test_split_module(self):
+  @parameterized({
+    'default': (False),
+    'custom': (True),
+  })
+  def test_split_module(self, customLoader):
     self.set_setting('SPLIT_MODULE')
     self.emcc_args += ['-g', '-Wno-experimental']
     self.emcc_args += ['--post-js', test_file('other/test_split_module.post.js')]
+    if customLoader:
+      self.emcc_args += ['--post-js', test_file('other/test_load_split_module.post.js')]
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
     self.do_other_test('test_split_module.c')
     self.assertExists('test_split_module.wasm')
@@ -10325,27 +10331,7 @@ exec "$@"
     os.rename('secondary.wasm', 'test_split_module.deferred.wasm')
     result = self.run_js('test_split_module.js')
     self.assertNotIn('profile', result)
-    self.assertIn('Hello! answer: 42', result)
-
-  def test_loadSplitModule(self):
-    self.set_setting('SPLIT_MODULE')
-    self.emcc_args += ['-g', '-Wno-experimental']
-    self.emcc_args += ['--post-js', test_file('other/test_load_split_module.post.js')]
-    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
-    self.do_other_test('test_split_module.c')
-    self.assertExists('test_split_module.wasm')
-    self.assertExists('test_split_module.wasm.orig')
-    self.assertExists('profile.data')
-
-    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    self.run_process([wasm_split, '--enable-mutable-globals', '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data'])
-
-    os.remove('test_split_module.wasm')
-    os.rename('primary.wasm', 'test_split_module.wasm')
-    os.rename('secondary.wasm', 'test_split_module.deferred.wasm')
-    result = self.run_js('test_split_module.js')
-    self.assertNotIn('profile', result)
-    self.assertIn('Custom handler for loading split module.', result)
+    self.assertContainedIf('Custom handler for loading split module.', result, condition=customLoader)
     self.assertIn('Hello! answer: 42', result)
 
   def test_split_main_module(self):
