@@ -1,6 +1,6 @@
 Module["loadSplitModule"] = function(deferred, imports, prop) {
     console.log('Custom handler for loading split module.');    
-    if (prop) {
+    if (prop && !isNaN(parseInt(prop))) {
         console.log('Called with placeholder');
         console.log(prop);
     }

@@ -10308,8 +10308,8 @@ exec "$@"
     self.do_other_test('test_syslog.c')
 
   @parameterized({
-    'default': (False),
-    'custom': (True),
+    'default': (False,),
+    'custom': (True,),
   })
   def test_split_module(self, customLoader):
     self.set_setting('SPLIT_MODULE')
