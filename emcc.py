@@ -42,7 +42,6 @@ from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
-from tools.shared import read_file, write_file, read_binary
 from tools.shared import do_replace, strip_prefix
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
@@ -52,6 +51,7 @@ from tools import wasm2c
 from tools import webassembly
 from tools import config
 from tools.settings import settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
+from tools.utils import read_file, write_file, read_binary
 
 logger = logging.getLogger('emcc')
 

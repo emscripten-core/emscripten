@@ -65,7 +65,7 @@ import ctypes
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import posixpath
-from tools import shared
+from tools import shared, utils
 from subprocess import PIPE
 import fnmatch
 import json
@@ -458,7 +458,7 @@ def main():
     basename = os.path.basename(filename)
     if file_['mode'] == 'embed':
       # Embed
-      data = list(bytearray(shared.read_binary(file_['srcpath'])))
+      data = list(bytearray(utils.read_binary(file_['srcpath'])))
       code += '''var fileData%d = [];\n''' % counter
       if data:
         parts = []

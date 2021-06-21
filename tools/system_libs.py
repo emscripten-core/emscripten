@@ -152,7 +152,7 @@ def get_wasm_libc_rt_files():
 
 def is_case_insensitive(path):
   """Returns True if the filesystem at `path` is case insensitive."""
-  shared.write_file(os.path.join(path, 'test_file'), '')
+  utils.write_file(os.path.join(path, 'test_file'), '')
   case_insensitive = os.path.exists(os.path.join(path, 'TEST_FILE'))
   os.remove(os.path.join(path, 'test_file'))
   return case_insensitive
