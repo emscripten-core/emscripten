@@ -2378,6 +2378,14 @@ def phase_compile_inputs(options, state, newargs, input_files):
     if not state.has_dash_c:
       cmd += ['-c']
     cmd += ['-o', output_file]
+    if state.mode == Mode.COMPILE_AND_LINK and '-gsplit-dwarf' in newargs:
+      # When running in COMPILE_AND_LINK mode we compile to temporary location
+      # but we want the `.dwo` file to be generated in the current working directory,
+      # like it is under clang.  We could avoid this hack if we use the clang driver
+      # to generate the temporary files, but that would also involve using the clang
+      # driver to perform linking which would be big change.
+      cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
+      cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
     shared.check_call(cmd)
     if output_file not in ('-', os.devnull):
       assert os.path.exists(output_file)
