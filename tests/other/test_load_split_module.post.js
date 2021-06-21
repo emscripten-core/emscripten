@@ -1,4 +1,8 @@
-Module["loadSplitModule"] = function(_prop, deferred, imports) {
-    console.log('Custom handler for loading split module.');
+Module["loadSplitModule"] = function(deferred, imports, prop) {
+    console.log('Custom handler for loading split module.');    
+    if (prop) {
+        console.log('Called with placeholder');
+        console.log(prop);
+    }
     return instantiateSync(deferred, imports);
 }

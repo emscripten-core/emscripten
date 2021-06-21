@@ -10332,6 +10332,7 @@ exec "$@"
     result = self.run_js('test_split_module.js')
     self.assertNotIn('profile', result)
     self.assertContainedIf('Custom handler for loading split module.', result, condition=customLoader)
+    self.assertContainedIf('Called with placeholder', result, condition=customLoader)
     self.assertIn('Hello! answer: 42', result)
 
   def test_split_main_module(self):
