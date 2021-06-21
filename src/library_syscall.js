@@ -301,6 +301,12 @@ var SyscallsLibrary = {
       if (info.allocated) {
         _free(info.malloc);
       }
+    } else {
+      // Len < info.len, which means a partial munmap. If we would leak memory
+      // here, error.
+      if (info.allocated) {
+        abort('munmap of part of an mmap-ed region is not supported');
+      }
     }
     return 0;
   },
