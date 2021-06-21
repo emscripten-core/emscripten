@@ -1774,12 +1774,9 @@ class Ports:
               Ports.clear_project_build(name)
             return
 
-    if url.endswith('.tar.bz2'):
-      fullpath = fullname + '.tar.bz2'
-    elif url.endswith('.tar.gz'):
-      fullpath = fullname + '.tar.gz'
-    else:
-      fullpath = fullname + '.zip'
+    url_filename = url.rsplit('/')[-1]
+    ext = url_filename.split('.', 1)[1]
+    fullpath = fullname + '.' + ext
 
     if name not in Ports.name_cache: # only mention each port once in log
       logger.debug(f'including port: {name}')
