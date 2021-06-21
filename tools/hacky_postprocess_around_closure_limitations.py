@@ -6,7 +6,7 @@ import sys
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import building
-from tools.shared import read_file, write_file
+from tools.utils import read_file, write_file
 
 f = read_file(sys.argv[1])
 orig_size = len(f)

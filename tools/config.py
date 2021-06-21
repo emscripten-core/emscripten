@@ -6,6 +6,8 @@
 import os
 import sys
 import logging
+
+from . import utils
 from .utils import path_from_root, exit_with_error, __rootpath__, which
 
 logger = logging.getLogger('shared')
@@ -106,8 +108,7 @@ def parse_config_file():
   Also check EM_<KEY> environment variables to override specific config keys.
   """
   config = {}
-  with open(EM_CONFIG) as fh:
-    config_text = fh.read()
+  config_text = utils.read_file(EM_CONFIG)
   try:
     exec(config_text, config)
   except Exception as e:
@@ -173,9 +174,8 @@ def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
 
-  with open(path_from_root('tools', 'settings_template.py')) as fh:
-    config_data = fh.read().splitlines()
-  config_data = config_data[3:] # remove the initial comment
+  config_data = utils.read_file(path_from_root('tools', 'settings_template.py'))
+  config_data = config_data.splitlines()[3:] # remove the initial comment
   config_data = '\n'.join(config_data)
   # autodetect some default paths
   config_data = config_data.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
@@ -187,8 +187,8 @@ def generate_config(path, first_time=False):
 
   abspath = os.path.abspath(os.path.expanduser(path))
   # write
-  with open(abspath, 'w') as f:
-    f.write(config_data)
+
+  utils.write_file(abspath, config_data)
 
   if first_time:
     print('''

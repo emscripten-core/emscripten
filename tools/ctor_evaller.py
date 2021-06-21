@@ -17,7 +17,7 @@ import sys
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools import shared
+from tools import shared, utils
 
 
 js_file = sys.argv[1]
@@ -93,7 +93,7 @@ def eval_ctors(js, wasm_file, num):
 
 # main
 def main():
-  js = shared.read_file(js_file)
+  js = utils.read_file(js_file)
   ctors_start, ctors_end = find_ctors(js)
   if ctors_start < 0:
     logger.debug('ctor_evaller: no ctors')
@@ -114,7 +114,7 @@ def main():
     logger.debug('ctor_evaller: not successful')
     sys.exit(0)
   logger.debug('ctor_evaller: we managed to remove %d ctors' % num_successful)
-  shared.write_file(js_file, new_js)
+  utils.write_file(js_file, new_js)
 
 
 if __name__ == '__main__':
