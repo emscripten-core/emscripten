@@ -782,7 +782,7 @@ def main():
       function handleError(error) {
         console.error('package error:', error);
       };
-    ''' % { 'node_support_code' : node_support_code }
+    ''' % {'node_support_code': node_support_code}
 
     code += r'''
       function processPackageData(arrayBuffer) {
