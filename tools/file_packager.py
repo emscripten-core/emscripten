@@ -21,7 +21,7 @@ data downloads.
 
 Usage:
 
-  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -48,6 +48,8 @@ Usage:
 
   --use-preload-plugins Tells the file packager to run preload plugins on the files as they are loaded. This performs tasks like decoding images
                         and audio using the browser's codecs.
+
+  --no-node Whether to support Node.js. By default we do, which emits some extra code.
 
 Notes:
 
@@ -174,6 +176,7 @@ def main():
   separate_metadata = False
   lz4 = False
   use_preload_plugins = False
+  support_node = True
 
   for arg in sys.argv[2:]:
     if arg == '--preload':
@@ -203,6 +206,9 @@ def main():
       leading = ''
     elif arg == '--use-preload-plugins':
       use_preload_plugins = True
+      leading = ''
+    elif arg == '--no-node':
+      support_node = False
       leading = ''
     elif arg.startswith('--js-output'):
       jsoutput = arg.split('=', 1)[1] if '=' in arg else None
@@ -708,8 +714,10 @@ def main():
         }
       '''
 
-    ret += r'''
-      function fetchRemotePackage(packageName, packageSize, callback, errback) {
+    # add Node.js support code, if necessary
+    node_support_code = ''
+    if support_node:
+      node_support_code = r'''
         if (typeof process === 'object') {
           require('fs').readFile(packageName, function(err, contents) {
             if (err) {
@@ -720,6 +728,10 @@ def main():
           });
           return;
         }
+      '''
+    ret += r'''
+      function fetchRemotePackage(packageName, packageSize, callback, errback) {
+        %(node_support_code)s
         var xhr = new XMLHttpRequest();
         xhr.open('GET', packageName, true);
         xhr.responseType = 'arraybuffer';
@@ -770,7 +782,7 @@ def main():
       function handleError(error) {
         console.error('package error:', error);
       };
-    '''
+    ''' % { 'node_support_code' : node_support_code }
 
     code += r'''
       function processPackageData(arrayBuffer) {

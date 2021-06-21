@@ -2520,6 +2520,8 @@ def phase_source_transforms(options, target):
       file_args.append('--lz4')
     if options.use_preload_plugins:
       file_args.append('--use-preload-plugins')
+    if not settings.ENVIRONMENT_MAY_BE_NODE:
+      file_args.append('--no-node')
     file_code = shared.check_call([shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
     options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
 
