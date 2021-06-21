@@ -10674,3 +10674,9 @@ kill -9 $$
     self.run_process([EMCC, '-c', 'main.c'])
     self.run_process([EMAR, 'crs', 'libtest.bc', 'main.o'])
     self.run_process([EMCC, 'libtest.bc', 'libtest.bc'])
+
+  def test_split_dwarf_implicit_compile(self):
+    # Verify that the dwo file is generated in the current working directory, even when implicitly
+    # compiling (compile+link).
+    self.run_process([EMCC, test_file('hello_world.c'), '-g', '-gsplit-dwarf'])
+    self.assertExists('hello_world.dwo')
