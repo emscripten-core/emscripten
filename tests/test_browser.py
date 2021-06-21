@@ -719,10 +719,17 @@ If manually bisecting:
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
     self.btest('sdl_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'], also_proxied=True, manually_trigger_reftest=True)
 
-  def test_sdl_image_prepare_data(self):
+  @parameterized({
+    '': ([],),
+    # add testing for closure on preloaded files + ENVIRONMENT=web (we must not
+    # emit any node.js code here, see
+    # https://github.com/emscripten-core/emscripten/issues/14486
+    'closure_webonly': (['--closure', '1', '-s', 'ENVIRONMENT=web'],)
+  })
+  def test_sdl_image_prepare_data(self, args):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.btest('sdl_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'], manually_trigger_reftest=True)
+    self.btest('sdl_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'] + args, manually_trigger_reftest=True)
 
   def test_sdl_image_must_prepare(self):
     # load an image file, get pixel data.
