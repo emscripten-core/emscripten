@@ -8285,7 +8285,7 @@ _d
     proc = self.run_process([EMCC, test_file('hello_world.c'), '-s', 'ASYNCIFY', '-s', "ASYNCIFY_ONLY=[DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)]"], stdout=PIPE, stderr=PIPE)
     self.assertContained('emcc: ASYNCIFY list contains an item without balanced parentheses', proc.stderr)
     self.assertContained('   DOS_ReadFile(unsigned short', proc.stderr)
-    self.assertContained('Try to quote the entire argument', proc.stderr)
+    self.assertContained('Try using a response file', proc.stderr)
 
   def test_asyncify_response_file(self):
     create_file('a.txt', r'''[
