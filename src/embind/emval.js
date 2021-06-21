@@ -127,6 +127,7 @@ var LibraryEmVal = {
     return __emval_register({});
   },
 
+  _emval_new_cstring__sig: 'ii',
   _emval_new_cstring__deps: ['$getStringOrSymbol', '_emval_register'],
   _emval_new_cstring: function(v) {
     return __emval_register(getStringOrSymbol(v));
@@ -242,6 +243,7 @@ var LibraryEmVal = {
     })()('return this')();
   },
 #endif
+  _emval_get_global__sig: 'ii',
   _emval_get_global__deps: ['_emval_register', '$getStringOrSymbol', '$emval_get_global'],
   _emval_get_global: function(name) {
     if (name===0) {
@@ -274,7 +276,8 @@ var LibraryEmVal = {
     value = requireHandle(value);
     handle[key] = value;
   },
-
+    
+  _emval_as__sig: 'iiii',
   _emval_as__deps: ['_emval_register', '$requireHandle', '$requireRegisteredType'],
   _emval_as: function(handle, returnType, destructorsRef) {
     handle = requireHandle(handle);
