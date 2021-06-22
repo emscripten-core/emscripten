@@ -304,9 +304,11 @@ var SyscallsLibrary = {
       // len < info.len, which means a partial munmap (i.e., not of the entire
       // allocated region). If we did an actual allocation, this would leak, as
       // all we have is malloc/free and not a real mmap.
+#if ASSERTIONS
       if (info.allocated) {
-        abort('munmap of part of an mmap-ed region is not supported');
+        err('munmap of part of an mmap-ed region is not supported, and will leak');
       }
+#endif
     }
     return 0;
   },
