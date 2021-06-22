@@ -5,7 +5,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
+  $FS__deps: ['$getRandomDevice', '$PATH', '$PATH_FS', '$TTY', '$MEMFS', '$asyncLoad',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -1876,7 +1876,7 @@ FS.staticInit();` +
       }
       addRunDependency(dep);
       if (typeof url == 'string') {
-        Browser.asyncLoad(url, function(byteArray) {
+        asyncLoad(url, function(byteArray) {
           processData(byteArray);
         }, onerror);
       } else {

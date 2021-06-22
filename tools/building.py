@@ -113,7 +113,7 @@ def extract_archive_contents(archive_files):
   for a in archive_contents:
     missing_contents = [x for x in a['o_files'] if not os.path.exists(x)]
     if missing_contents:
-      exit_with_error('llvm-ar failed to extract file(s) ' + str(missing_contents) + ' from archive file ' + f + '!')
+      exit_with_error(f'llvm-ar failed to extract file(s) {missing_contents} from archive file {f}!')
 
   return archive_contents
 
@@ -230,7 +230,7 @@ def llvm_nm_multiple(files):
     # If one or more of the input files cannot be processed, llvm-nm will return a non-zero error code, but it will still process and print
     # out all the other files in order. So even if process return code is non zero, we should always look at what we got to stdout.
     if results.returncode != 0:
-      logger.debug('Subcommand ' + ' '.join(cmd) + ' failed with return code ' + str(results.returncode) + '! (An input file was corrupt?)')
+      logger.debug(f'Subcommand {" ".join(cmd)} failed with return code {results.returncode}! (An input file was corrupt?)')
 
     results = results.stdout
 
@@ -673,7 +673,7 @@ def opt_level_to_str(opt_level, shrink_level=0):
   elif shrink_level >= 2:
     return '-Oz'
   else:
-    return '-O' + str(min(opt_level, 3))
+    return f'-O{min(opt_level, 3)}'
 
 
 def js_optimizer(filename, passes):
@@ -892,7 +892,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and settings.CLOSURE_WARNINGS != 'quiet')):
     input_file = open(filename, 'r').read().splitlines()
     for i in range(len(input_file)):
-      sys.stderr.write(str(i + 1) + ': ' + input_file[i] + '\n')
+      sys.stderr.write(f'{i + 1}: {input_file[i]}\n')
 
   if proc.returncode != 0:
     logger.error(proc.stderr) # print list of errors (possibly long wall of text if input was minified)
@@ -1144,7 +1144,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     passes += ['last']
     if passes:
       # hackish fixups to work around wasm2js style and the js optimizer FIXME
-      wasm2js_js = '// EMSCRIPTEN_START_ASM\n' + wasm2js_js + '// EMSCRIPTEN_END_ASM\n'
+      wasm2js_js = f'// EMSCRIPTEN_START_ASM\n{wasm2js_js}// EMSCRIPTEN_END_ASM\n'
       wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_START_FUNCS;\n', '// EMSCRIPTEN_START_FUNCS\n')
       wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_END_FUNCS;\n', '// EMSCRIPTEN_END_FUNCS\n')
       wasm2js_js = wasm2js_js.replace('\n function $', '\nfunction $')
@@ -1182,7 +1182,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     finds = re.findall(r'''[\w\d_$]+\.__wasm2jsInstantiate__''', all_js)
   assert len(finds) == 1
   marker = finds[0]
-  all_js = all_js.replace(marker, '(\n' + wasm2js_js + '\n)')
+  all_js = all_js.replace(marker, f'(\n{wasm2js_js}\n)')
   # replace the placeholder with the actual code
   js_file = js_file + '.wasm2js.js'
   with open(js_file, 'w') as f:
@@ -1378,8 +1378,8 @@ def map_to_js_libs(library_name):
     logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
     return (libs, native_library_map.get(library_name))
 
-  if library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
-    return (['library_' + library_name], None)
+  if library_name.endswith('.js') and os.path.isfile(path_from_root('src', f'library_{library_name}')):
+    return ([f'library_{library_name}'], None)
 
   return (None, None)
 
@@ -1493,7 +1493,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
         extra += '\nnote: to disable int64 legalization (which requires changes after link) use -s WASM_BIGINT'
       if settings.OPT_LEVEL > 0:
         extra += '\nnote: -O2+ optimizations always require changes, build with -O0 or -O1 instead'
-      exit_with_error('changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: ' + str(cmd) + extra)
+      exit_with_error(f'changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: {cmd}{extra}')
   if debug:
     cmd += ['-g'] # preserve the debug info
   # if the features are not already handled, handle them
@@ -1501,8 +1501,8 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   # if we are emitting a source map, every time we load and save the wasm
   # we must tell binaryen to update it
   if settings.GENERATE_SOURCE_MAP and outfile:
-    cmd += ['--input-source-map=' + infile + '.map']
-    cmd += ['--output-source-map=' + outfile + '.map']
+    cmd += [f'--input-source-map={infile}.map']
+    cmd += [f'--output-source-map={outfile}.map']
   ret = check_call(cmd, stdout=stdout).stdout
   if outfile:
     save_intermediate(outfile, '%s.wasm' % tool)

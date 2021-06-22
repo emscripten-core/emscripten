@@ -426,7 +426,13 @@ If manually bisecting:
     self.compile_btest([cpp, '--pre-js', data_js_file, '-o', abs_page_file, '-s', 'FORCE_FILESYSTEM'])
     self.run_browser(page_file, '|load me right before|.', '/report_result?0')
 
-  def test_preload_caching(self):
+  @parameterized({
+    '0': (0,),
+    '1mb': (1 * 1024 * 1024,),
+    '100mb': (100 * 1024 * 1024,),
+    '150mb': (150 * 1024 * 1024,),
+  })
+  def test_preload_caching(self, extra_size):
     create_file('main.cpp', r'''
       #include <stdio.h>
       #include <string.h>
@@ -473,14 +479,13 @@ If manually bisecting:
     # chrome's limit on IndexedDB item sizes, see
     # https://cs.chromium.org/chromium/src/content/renderer/indexed_db/webidbdatabase_impl.cc?type=cs&q=%22The+serialized+value+is+too+large%22&sq=package:chromium&g=0&l=177
     # https://cs.chromium.org/chromium/src/out/Debug/gen/third_party/blink/public/mojom/indexeddb/indexeddb.mojom.h?type=cs&sq=package:chromium&g=0&l=60
-    for extra_size in (0, 1 * 1024 * 1024, 100 * 1024 * 1024, 150 * 1024 * 1024):
-      if is_chrome() and extra_size >= 100 * 1024 * 1024:
-        continue
-      create_file('somefile.txt', '''load me right before running the code please''' + ('_' * extra_size))
-      print('size:', os.path.getsize('somefile.txt'))
-      self.compile_btest(['main.cpp', '--use-preload-cache', '--js-library', 'test.js', '--preload-file', 'somefile.txt', '-o', 'page.html', '-s', 'ALLOW_MEMORY_GROWTH'])
-      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
-      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?2')
+    if is_chrome() and extra_size >= 100 * 1024 * 1024:
+      self.skipTest('chrome bug')
+    create_file('somefile.txt', '''load me right before running the code please''' + ('_' * extra_size))
+    print('size:', os.path.getsize('somefile.txt'))
+    self.compile_btest(['main.cpp', '--use-preload-cache', '--js-library', 'test.js', '--preload-file', 'somefile.txt', '-o', 'page.html', '-s', 'ALLOW_MEMORY_GROWTH'])
+    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?2')
 
   def test_preload_caching_indexeddb_name(self):
     create_file('somefile.txt', '''load me right before running the code please''')
@@ -719,10 +724,17 @@ If manually bisecting:
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
     self.btest('sdl_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'], also_proxied=True, manually_trigger_reftest=True)
 
-  def test_sdl_image_prepare_data(self):
+  @parameterized({
+    '': ([],),
+    # add testing for closure on preloaded files + ENVIRONMENT=web (we must not
+    # emit any node.js code here, see
+    # https://github.com/emscripten-core/emscripten/issues/14486
+    'closure_webonly': (['--closure', '1', '-s', 'ENVIRONMENT=web'],)
+  })
+  def test_sdl_image_prepare_data(self, args):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.btest('sdl_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'], manually_trigger_reftest=True)
+    self.btest('sdl_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'] + args, manually_trigger_reftest=True)
 
   def test_sdl_image_must_prepare(self):
     # load an image file, get pixel data.

@@ -98,10 +98,9 @@ def create_lib(libname, inputs):
         shutil.copyfile(inputs[0], libname)
     else:
       building.link_to_object(inputs, libname)
-  elif suffix == '.a':
-    building.emar('cr', libname, inputs)
   else:
-    raise Exception('unknown suffix ' + libname)
+    assert suffix == '.a'
+    building.emar('cr', libname, inputs)
 
 
 def get_wasm_libc_rt_files():
@@ -153,7 +152,7 @@ def get_wasm_libc_rt_files():
 
 def is_case_insensitive(path):
   """Returns True if the filesystem at `path` is case insensitive."""
-  shared.write_file(os.path.join(path, 'test_file'), '')
+  utils.write_file(os.path.join(path, 'test_file'), '')
   case_insensitive = os.path.exists(os.path.join(path, 'TEST_FILE'))
   os.remove(os.path.join(path, 'test_file'))
   return case_insensitive
@@ -851,6 +850,24 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=['_Exit.c'])
 
     libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'signal'],
+        filenames=[
+          'getitimer.c',
+          'killpg.c',
+          'setitimer.c',
+          'sigaddset.c',
+          'sigdelset.c',
+          'sigemptyset.c',
+          'sigfillset.c',
+          'sigismember.c',
+          'signal.c',
+          'sigprocmask.c',
+          'sigrtmax.c',
+          'sigrtmin.c',
+          'sigwait.c',
+        ])
+
+    libc_files += files_in_path(
         path_components=['system', 'lib', 'libc'],
         filenames=[
           'extras.c',
@@ -1517,7 +1534,7 @@ def calculate(input_files, forced):
     force = ','.join(name for name, lib in system_libs_map.items() if not lib.never_force)
   force_include = set((force.split(',') if force else []) + forced)
   if force_include:
-    logger.debug('forcing stdlibs: ' + str(force_include))
+    logger.debug(f'forcing stdlibs: {force_include}')
 
   def add_library(libname):
     lib = system_libs_map[libname]
@@ -1657,18 +1674,18 @@ class Ports:
       target = os.path.basename(src_dir)
     dest = os.path.join(Ports.get_include_dir(), target)
     shared.try_delete(dest)
-    logger.debug('installing headers: ' + dest)
+    logger.debug(f'installing headers: {dest}')
     shutil.copytree(src_dir, dest)
 
   @staticmethod
-  def install_headers(src_dir, pattern="*.h", target=None):
-    logger.debug("install_headers")
+  def install_headers(src_dir, pattern='*.h', target=None):
+    logger.debug('install_headers')
     dest = Ports.get_include_dir()
     if target:
       dest = os.path.join(dest, target)
       shared.safe_ensure_dirs(dest)
     matches = glob.glob(os.path.join(src_dir, pattern))
-    assert matches, "no headers found to install in %s" % src_dir
+    assert matches, f'no headers found to install in {src_dir}'
     for f in matches:
       logger.debug('installing: ' + os.path.join(dest, os.path.basename(f)))
       shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
@@ -1762,34 +1779,31 @@ class Ports:
               shared.exit_with_error('%s is not a known port' % name)
             port = ports.ports_by_name[name]
             if not hasattr(port, 'SUBDIR'):
-              logger.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
+              logger.error(f'port {name} lacks .SUBDIR attribute, which we need in order to override it locally, please update it')
               sys.exit(1)
             subdir = port.SUBDIR
             target = os.path.join(fullname, subdir)
             if os.path.exists(target) and not dir_is_newer(path, target):
-              logger.warning('not grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ') as the destination ' + target + ' is newer (run emcc --clear-ports if that is incorrect)')
+              logger.warning(f'not grabbing local port: {name} from {path} to {fullname} (subdir: {subdir}) as the destination {target} is newer (run emcc --clear-ports if that is incorrect)')
             else:
-              logger.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
+              logger.warning(f'grabbing local port: {name} from {path} to {fullname} (subdir: {subdir})')
               shared.try_delete(fullname)
               shutil.copytree(path, target)
               Ports.clear_project_build(name)
             return
 
-    if url.endswith('.tar.bz2'):
-      fullpath = fullname + '.tar.bz2'
-    elif url.endswith('.tar.gz'):
-      fullpath = fullname + '.tar.gz'
-    else:
-      fullpath = fullname + '.zip'
+    url_filename = url.rsplit('/')[-1]
+    ext = url_filename.split('.', 1)[1]
+    fullpath = fullname + '.' + ext
 
     if name not in Ports.name_cache: # only mention each port once in log
-      logger.debug('including port: ' + name)
-      logger.debug('    (at ' + fullname + ')')
+      logger.debug(f'including port: {name}')
+      logger.debug(f'    (at {fullname})')
       Ports.name_cache.add(name)
 
     def retrieve():
       # retrieve from remote server
-      logger.info('retrieving port: ' + name + ' from ' + url)
+      logger.info(f'retrieving port: {name} from {url}')
       try:
         import requests
         response = requests.get(url)
@@ -1802,7 +1816,7 @@ class Ports:
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
         if actual_hash != sha512hash:
-          shared.exit_with_error('Unexpected hash: ' + actual_hash + '\n'
+          shared.exit_with_error(f'Unexpected hash: {actual_hash}\n'
                                  'If you are updating the port, please update the hash in the port module.')
       with open(fullpath, 'wb') as f:
         f.write(data)
@@ -1810,7 +1824,7 @@ class Ports:
     marker = os.path.join(fullname, '.emscripten_url')
 
     def unpack():
-      logger.info('unpacking port: ' + name)
+      logger.info(f'unpacking port: {name}')
       shared.safe_ensure_dirs(fullname)
       shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
       with open(marker, 'w') as f:

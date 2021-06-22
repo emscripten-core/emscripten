@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 2.0.25
 ------
+- A new setting called `ALLOW_UNIMPLEMENTED_SYSCALLS` was added.  This setting
+  is enabled by default but, if disabled, will generate link-time errors if
+  a program references an unimplemented syscall.  This setting is disabled
+  by default in `STRICT` mode.
 - By default (unless `EXIT_RUNTIME=1` is specified) emscripten programs running
   under node will no longer call `process.exit()` on `exit()`.  Instead they
   will simply unwind the stack and return to the event loop, much like they do

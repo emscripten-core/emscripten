@@ -42,7 +42,6 @@ from tools import shared, system_libs
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
-from tools.shared import read_file, write_file, read_binary
 from tools.shared import do_replace, strip_prefix
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
@@ -52,6 +51,7 @@ from tools import wasm2c
 from tools import webassembly
 from tools import config
 from tools.settings import settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
+from tools.utils import read_file, write_file, read_binary
 
 logger = logging.getLogger('emcc')
 
@@ -159,9 +159,9 @@ def save_intermediate(name, suffix='js'):
   if not DEBUG:
     return
   if not final_js:
-    logger.debug('(not saving intermediate %s because not generating JS)' % name)
+    logger.debug(f'(not saving intermediate {name} because not generating JS)')
     return
-  building.save_intermediate(final_js, name + '.' + suffix)
+  building.save_intermediate(final_js, f'{name}.{suffix}')
 
 
 def save_intermediate_with_wasm(name, wasm_binary):
@@ -271,7 +271,7 @@ def setup_environment_settings():
   # Environment setting based on user input
   environments = settings.ENVIRONMENT.split(',')
   if any([x for x in environments if x not in VALID_ENVIRONMENTS]):
-    exit_with_error('Invalid environment specified in "ENVIRONMENT": ' + settings.ENVIRONMENT + '. Should be one of: ' + ','.join(VALID_ENVIRONMENTS))
+    exit_with_error(f'Invalid environment specified in "ENVIRONMENT": {settings.ENVIRONMENT}. Should be one of: {",".join(VALID_ENVIRONMENTS)}')
 
   settings.ENVIRONMENT_MAY_BE_WEB = not settings.ENVIRONMENT or 'web' in environments
   settings.ENVIRONMENT_MAY_BE_WEBVIEW = not settings.ENVIRONMENT or 'webview' in environments
@@ -554,10 +554,11 @@ def get_binaryen_passes():
     def check_human_readable_list(items):
       for item in items:
         if item.count('(') != item.count(')'):
-          logger.warning('''emcc: ASYNCIFY list contains an item without balanced parentheses ("(", ")"):''')
-          logger.warning('''   ''' + item)
-          logger.warning('''This may indicate improper escaping that led to splitting inside your names.''')
-          logger.warning('''Try to quote the entire argument, like this: -s 'ASYNCIFY_ONLY=["foo(int, char)", "bar"]' ''')
+          logger.warning('emcc: ASYNCIFY list contains an item without balanced parentheses ("(", ")"):')
+          logger.warning('   ' + item)
+          logger.warning('This may indicate improper escaping that led to splitting inside your names.')
+          logger.warning('Try using a response file. e.g: -sASYNCIFY_ONLY=@funcs.txt. The format is a simple')
+          logger.warning('text file, one line per function.')
           break
 
     if settings.ASYNCIFY_REMOVE:
@@ -947,7 +948,7 @@ def run(args):
     cmd = shared.shlex_join(args)
     if EMCC_CFLAGS:
       cmd += ' + ' + EMCC_CFLAGS
-    logger.warning('invocation: ' + cmd + '  (in ' + os.getcwd() + ')')
+    logger.warning(f'invocation: {cmd} (in {os.getcwd()})')
   if EMCC_CFLAGS:
     args.extend(shlex.split(EMCC_CFLAGS))
 
@@ -1073,7 +1074,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   settings.limit_settings(None)
 
   if options.output_file and options.output_file.startswith('-'):
-    exit_with_error('invalid output filename: `%s`' % options.output_file)
+    exit_with_error(f'invalid output filename: `{options.output_file}`')
 
   target, wasm_target = phase_linker_setup(options, state, newargs, settings_map)
 
@@ -1081,7 +1082,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   linker_arguments = phase_calculate_linker_inputs(options, state, linker_inputs)
 
   if options.oformat == OFormat.OBJECT:
-    logger.debug('link_to_object: ' + str(linker_arguments) + ' -> ' + target)
+    logger.debug(f'link_to_object: {linker_arguments} -> {target}')
     building.link_to_object(linker_arguments, target)
     logger.debug('stopping after linking to object file')
     return 0
@@ -1231,7 +1232,7 @@ def phase_setup(options, state, newargs, settings_map):
         has_header_inputs = True
       if file_suffix in STATICLIB_ENDINGS and not building.is_ar(arg):
         if building.is_bitcode(arg):
-          message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files use .bc or .o.'
+          message = f'{arg}: File has a suffix of a static library {STATICLIB_ENDINGS}, but instead is an LLVM bitcode file! When linking LLVM bitcode files use .bc or .o.'
         else:
           message = arg + ': Unknown format, not a static library!'
         exit_with_error(message)
@@ -1536,6 +1537,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
     default_setting('DEFAULT_TO_CXX', 0)
+    default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
@@ -2018,7 +2020,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
      settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
      (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
-    exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
+    exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_path}" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
   if settings.STANDALONE_WASM:
     if settings.USE_PTHREADS:
@@ -2338,11 +2340,11 @@ def phase_compile_inputs(options, state, newargs, input_files):
     headers = [header for _, header in input_files]
     for header in headers:
       if not header.endswith(HEADER_ENDINGS):
-        exit_with_error('cannot mix precompile headers with non-header inputs: ' + str(headers) + ' : ' + header)
+        exit_with_error(f'cannot mix precompiled headers with non-header inputs: {headers} : {header}')
       cmd = get_clang_command(header)
       if options.output_file:
         cmd += ['-o', options.output_file]
-      logger.debug("running (for precompiled headers): " + cmd[0] + ' ' + ' '.join(cmd[1:]))
+      logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
       shared.check_call(cmd)
       return []
 
@@ -2378,6 +2380,14 @@ def phase_compile_inputs(options, state, newargs, input_files):
     if not state.has_dash_c:
       cmd += ['-c']
     cmd += ['-o', output_file]
+    if state.mode == Mode.COMPILE_AND_LINK and '-gsplit-dwarf' in newargs:
+      # When running in COMPILE_AND_LINK mode we compile to temporary location
+      # but we want the `.dwo` file to be generated in the current working directory,
+      # like it is under clang.  We could avoid this hack if we use the clang driver
+      # to generate the temporary files, but that would also involve using the clang
+      # driver to perform linking which would be big change.
+      cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
+      cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
     shared.check_call(cmd)
     if output_file not in ('-', os.devnull):
       assert os.path.exists(output_file)
@@ -2425,7 +2435,7 @@ def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, new
 
 @ToolchainProfiler.profile_block('link')
 def phase_link(linker_arguments, wasm_target):
-  logger.debug('linking: ' + str(linker_arguments))
+  logger.debug(f'linking: {linker_arguments}')
 
   # Make a final pass over settings.EXPORTED_FUNCTIONS to remove any
   # duplication between functions added by the driver/libraries and function
@@ -2520,6 +2530,8 @@ def phase_source_transforms(options, target):
       file_args.append('--lz4')
     if options.use_preload_plugins:
       file_args.append('--use-preload-plugins')
+    if not settings.ENVIRONMENT_MAY_BE_NODE:
+      file_args.append('--no-node')
     file_code = shared.check_call([shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
     options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
 
@@ -2896,8 +2908,8 @@ def parse_args(newargs):
         # that are e.g. x86 specific and non-portable. The emscripten bundled
         # headers are modified to be portable, local system ones are generally not.
         diagnostics.warning(
-            'absolute-paths', '-I or -L of an absolute path "' + arg +
-            '" encountered. If this is to a local system header/library, it may '
+            'absolute-paths', f'-I or -L of an absolute path "{arg}" '
+            'encountered. If this is to a local system header/library, it may '
             'cause problems (local system files make sense for compiling natively '
             'on your system, but not necessarily to JavaScript).')
     elif check_flag('--emrun'):
@@ -2930,12 +2942,12 @@ def parse_args(newargs):
       elif style.lower() == 'linux':
         options.output_eol = '\n'
       else:
-        exit_with_error('Invalid value "' + style + '" to --output_eol!')
+        exit_with_error(f'Invalid value "{style}" to --output_eol!')
     elif check_arg('--generate-config'):
       optarg = consume_arg()
       path = os.path.expanduser(optarg)
       if os.path.exists(path):
-        exit_with_error('File ' + optarg + ' passed to --generate-config already exists!')
+        exit_with_error(f'File {optarg} passed to --generate-config already exists!')
       else:
         config.generate_config(optarg)
       should_exit = True
@@ -2956,7 +2968,7 @@ def parse_args(newargs):
       else:
         value = '1'
       if key in settings.keys():
-        exit_with_error(arg + ': cannot change built-in settings values with a -jsD directive. Pass -s ' + key + '=' + value + ' instead!')
+        exit_with_error(f'{arg}: cannot change built-in settings values with a -jsD directive. Pass -s {key}={value} instead!')
       user_js_defines += [(key, value)]
       newargs[i] = ''
     elif check_flag('-shared'):
@@ -3188,7 +3200,7 @@ def phase_binaryen(target, options, wasm_target):
 
 def modularize():
   global final_js
-  logger.debug('Modularizing, assigning to var ' + settings.EXPORT_NAME)
+  logger.debug(f'Modularizing, assigning to var {settings.EXPORT_NAME}')
   src = read_file(final_js)
 
   return_value = settings.EXPORT_NAME
@@ -3264,7 +3276,7 @@ else if (typeof exports === 'object')
 
 def module_export_name_substitution():
   global final_js
-  logger.debug('Private module export name substitution with ' + settings.EXPORT_NAME)
+  logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
   with open(final_js) as f:
     src = f.read()
   final_js += '.module_export_name_substitution.js'
@@ -3433,7 +3445,7 @@ def minify_html(filename):
   # '--remove-empty-elements': removes all elements with empty contents.
   #                            (Breaks at least browser.test_asm_swapping)
 
-  logger.debug('minifying HTML file ' + filename)
+  logger.debug(f'minifying HTML file {filename}')
   size_before = os.path.getsize(filename)
   start_time = time.time()
   shared.check_call(shared.get_npm_cmd('html-minifier-terser') + [filename, '-o', filename] + opts, env=shared.env_with_node_in_path())
@@ -3441,7 +3453,7 @@ def minify_html(filename):
   elapsed_time = time.time() - start_time
   size_after = os.path.getsize(filename)
   delta = size_after - size_before
-  logger.debug('HTML minification took {:.2f}'.format(elapsed_time) + ' seconds, and shrunk size of ' + filename + ' from ' + str(size_before) + ' to ' + str(size_after) + ' bytes, delta=' + str(delta) + ' ({:+.2f}%)'.format(delta * 100.0 / size_before))
+  logger.debug(f'HTML minification took {elapsed_time:.2f} seconds, and shrunk size of {filename} from {size_before} to {size_after} bytes, delta={delta} ({delta * 100.0 / size_before:+.2f}%)')
 
 
 def generate_html(target, options, js_target, target_basename,

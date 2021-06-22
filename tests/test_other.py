@@ -4229,10 +4229,9 @@ int main() {
     # a program which includes a non-trivial syscall, but disables the filesystem.
     create_file('src.c', r'''
 #include <sys/time.h>
-#include <stddef.h>
-extern int __sys_openat(int);
+#include <fcntl.h>
 int main() {
-  return __sys_openat(0);
+  return openat(0, "foo", 0);
 }''')
     self.run_process([EMCC, 'src.c', '-s', 'NO_FILESYSTEM'])
 
@@ -7094,7 +7093,7 @@ int main() {
 
   @node_pthreads
   def test_metadce_minimal_pthreads(self):
-    self.run_metadce_test('minimal.c', ['-Oz', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'], [], [])
+    self.run_metadce_test('minimal_main.c', ['-Oz', '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD'], [], [])
 
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka']), # noqa
@@ -8285,7 +8284,7 @@ _d
     proc = self.run_process([EMCC, test_file('hello_world.c'), '-s', 'ASYNCIFY', '-s', "ASYNCIFY_ONLY=[DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)]"], stdout=PIPE, stderr=PIPE)
     self.assertContained('emcc: ASYNCIFY list contains an item without balanced parentheses', proc.stderr)
     self.assertContained('   DOS_ReadFile(unsigned short', proc.stderr)
-    self.assertContained('Try to quote the entire argument', proc.stderr)
+    self.assertContained('Try using a response file', proc.stderr)
 
   def test_asyncify_response_file(self):
     create_file('a.txt', r'''[
@@ -10661,6 +10660,15 @@ kill -9 $$
     # includes the native GL library.
     self.run_process([EMCC, test_file('other/test_explict_gl_linking.c'), '-sNO_AUTO_NATIVE_LIBRARIES', '-lGL'])
 
+  def test_no_main_with_PROXY_TO_PTHREAD(self):
+    create_file('lib.cpp', r'''
+#include <emscripten.h>
+EMSCRIPTEN_KEEPALIVE
+void foo() {}
+''')
+    err = self.expect_fail([EMCC, 'lib.cpp', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.assertContained('emcc: error: PROXY_TO_PTHREAD proxies main() for you, but no main exists', err)
+
   def test_archive_bad_extension(self):
     # Regression test for https://github.com/emscripten-core/emscripten/issues/14012
     # where llvm_nm_multiple would be confused by archives names like object files.
@@ -10674,3 +10682,35 @@ kill -9 $$
     self.run_process([EMCC, '-c', 'main.c'])
     self.run_process([EMAR, 'crs', 'libtest.bc', 'main.o'])
     self.run_process([EMCC, 'libtest.bc', 'libtest.bc'])
+
+  def test_split_dwarf_implicit_compile(self):
+    # Verify that the dwo file is generated in the current working directory, even when implicitly
+    # compiling (compile+link).
+    self.run_process([EMCC, test_file('hello_world.c'), '-g', '-gsplit-dwarf'])
+    self.assertExists('hello_world.dwo')
+
+  @parameterized({
+    '': [[]],
+    'strict': [['-sSTRICT']],
+    'no_allow': [['-sALLOW_UNIMPLEMENTED_SYSCALLS=0']],
+  })
+  def test_unimplemented_syscalls(self, args):
+    create_file('main.c', '''
+    #include <assert.h>
+    #include <errno.h>
+    #include <sys/mman.h>
+
+    int main() {
+      assert(mincore(0, 0, 0) == -1);
+      assert(errno == ENOSYS);
+      return 0;
+    }
+    ''')
+    cmd = [EMCC, 'main.c', '-sASSERTIONS'] + args
+    if args:
+      err = self.expect_fail(cmd)
+      self.assertContained('error: attempt to link unsupport syscall: __sys_mincore (use -s ALLOW_UNIMPLEMENTED_SYSCALLS (the default) to allow linking with a stub version', err)
+    else:
+      self.run_process(cmd)
+      err = self.run_js('a.out.js')
+      self.assertContained('warning: unsupported syscall: __sys_mincore', err)
