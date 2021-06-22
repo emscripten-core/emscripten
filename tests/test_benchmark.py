@@ -18,8 +18,8 @@ if __name__ == '__main__':
 
 import clang_native
 import jsrun
-import runner
-from runner import TEST_ROOT, test_file, read_file, read_binary
+import common
+from common import TEST_ROOT, test_file, read_file, read_binary
 from tools.shared import run_process, PIPE, try_delete, EMCC, config
 from tools import building
 
@@ -389,7 +389,7 @@ if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
   ]
 
 
-class benchmark(runner.RunnerCore):
+class benchmark(common.RunnerCore):
   save_dir = True
 
   @classmethod
@@ -405,7 +405,7 @@ class benchmark(runner.RunnerCore):
     except Exception:
       pass
     try:
-      with runner.chdir(os.path.expanduser('~/Dev/mozilla-central')):
+      with common.chdir(os.path.expanduser('~/Dev/mozilla-central')):
         fingerprint.append('sm: ' + [line for line in run_process(['hg', 'tip'], stdout=PIPE).stdout.splitlines() if 'changeset' in line][0])
     except Exception:
       pass

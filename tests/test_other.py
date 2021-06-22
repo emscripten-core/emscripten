@@ -32,10 +32,10 @@ if __name__ == '__main__':
 from tools.shared import try_delete, config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, EM_BUILD_VERBOSE
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, EMCMAKE, EMCONFIGURE
-from runner import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
-from runner import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
-from runner import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
-from runner import compiler_for, read_file, read_binary, EMBUILDER, require_v8, require_node
+from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
+from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
+from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
+from common import compiler_for, read_file, read_binary, EMBUILDER, require_v8, require_node
 from tools import shared, building, utils, deps_info
 import jsrun
 import clang_native

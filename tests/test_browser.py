@@ -20,9 +20,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.request import urlopen
 
-from runner import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
-from runner import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER, EMMAKE
-from runner import read_file
+from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
+from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER, EMMAKE
+from common import read_file
 from tools import shared
 from tools import system_libs
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
