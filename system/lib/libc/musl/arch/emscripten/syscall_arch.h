@@ -48,6 +48,7 @@ long SYS_IMPORT(getpriority) __syscall96(long which, long who);
 long SYS_IMPORT(setpriority) __syscall97(long which, long who, long prio);
 long SYS_IMPORT(socketcall) __syscall102(long call, long args);
 long SYS_IMPORT(setitimer) __syscall104(long which, long new_value, long old_value);
+long SYS_IMPORT(getitimer) __syscall105(long which, long old_value);
 long SYS_IMPORT(wait4) __syscall114(long pid, long wstatus, long options, long rusage);
 long SYS_IMPORT(setdomainname) __syscall121(long name, long size);
 long SYS_IMPORT(uname) __syscall122(long buf);

@@ -38,6 +38,7 @@
 #define __NR_getpriority	 96
 #define __NR_setpriority	 97
 #define __NR_setitimer		104
+#define __NR_getitimer		105
 #define __NR_wait4		114
 #define __NR_setdomainname	121
 #define __NR_uname		122
@@ -163,6 +164,7 @@
 #define SYS_getpriority	 96
 #define SYS_setpriority	 97
 #define SYS_setitimer		104
+#define SYS_getitimer		105
 #define SYS_wait4		114
 #define SYS_setdomainname	121
 #define SYS_uname		122

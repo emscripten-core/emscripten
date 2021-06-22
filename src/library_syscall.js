@@ -1483,11 +1483,13 @@ function unimplementedSycall(name) {
   '__sys_rt_sigqueueinfo',
   '__sys_sendmmsg',
   '__sys_setitimer',
+  '__sys_getitimer',
   '__sys_shutdown',
   '__sys_socketpair',
   '__sys_setsockopt',
   '__sys_ugetrlimit',
   '__sys_wait4',
+  '__sys_pause',
 ].forEach(unimplementedSycall);
 
 mergeInto(LibraryManager.library, SyscallsLibrary);
