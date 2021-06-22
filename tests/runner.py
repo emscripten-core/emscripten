@@ -300,12 +300,58 @@ def run_tests(options, suites):
 
 def parse_args(args):
   parser = argparse.ArgumentParser(prog='runner.py', description=__doc__)
+  parser.add_argument('--save-dir', action='store_true', default='EMTEST_SAVE_DIR' in os.environ,
+                      help='Save the temporary directory used during for each '
+                           'test.  Implies --cores=1.')
+  parser.add_argument('--no-clean', action='store_true',
+                      help='Do not clean the temporary directory before each test run')
+  parser.add_argument('--verbose', action='store_true')
+  parser.add_argument('--all-engines', action='store_true')
+  parser.add_argument('--detect-leaks', action='store_true')
+  parser.add_argument('--cores',
+                      help='Set the number tests to run in parallel.  Defaults '
+                           'to the number of CPU cores.')
+  parser.add_argument('--rebaseline', action='store_true',
+                      help='Automatically update test expectations for tests that support it.')
+  parser.add_argument('--browser',
+                      help='Command to launch web browser in which to run browser tests.')
   parser.add_argument('tests', nargs='*')
   return parser.parse_args()
 
 
+def env_config():
+  common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
+  common.EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
+  common.EMTEST_SAVE_DIR = int(os.getenv('EMTEST_SAVE_DIR', '0'))
+  common.EMTEST_ALL_ENGINES = os.getenv('EMTEST_ALL_ENGINES')
+  common.EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
+  common.EMTEST_LACKS_NATIVE_CLANG = os.getenv('EMTEST_LACKS_NATIVE_CLANG')
+  common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
+
+  assert 'PARALLEL_SUITE_EMCC_CORES' not in os.environ, 'use EMTEST_CORES rather than PARALLEL_SUITE_EMCC_CORES'
+  parallel_testsuite.NUM_CORES = os.environ.get('EMTEST_CORES') or os.environ.get('EMCC_CORES')
+
+
 def main(args):
+  env_config()
   options = parse_args(args)
+  if options.browser:
+    common.EMTEST_BROWSER = options.browser
+  if options.detect_leaks:
+    common.EMTEST_DETECT_TEMPFILE_LEAKS = options.detect_leaks
+  if options.save_dir:
+    common.EMTEST_SAVE_DIR = options.save_dir
+  if options.no_clean:
+    common.EMTEST_SAVE_DIR = 2
+  if options.all_engines:
+    common.EMTEST_ALL_ENGINES = options.all_engines
+  if options.rebaseline:
+    common.EMTEST_REBASELINE = options.rebaseline
+  if options.verbose:
+    common.EMTEST_VERBOSE = options.verbose
+  if options.cores:
+    parallel_testsuite.NUM_CORES = options.cores
+
   check_js_engines()
 
   def prepend_default(arg):
