@@ -850,6 +850,24 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=['_Exit.c'])
 
     libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'signal'],
+        filenames=[
+          'getitimer.c',
+          'killpg.c',
+          'setitimer.c',
+          'sigaddset.c',
+          'sigdelset.c',
+          'sigemptyset.c',
+          'sigfillset.c',
+          'sigismember.c',
+          'signal.c',
+          'sigprocmask.c',
+          'sigrtmax.c',
+          'sigrtmin.c',
+          'sigwait.c',
+        ])
+
+    libc_files += files_in_path(
         path_components=['system', 'lib', 'libc'],
         filenames=[
           'extras.c',
