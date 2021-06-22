@@ -7463,20 +7463,16 @@ Module['onRuntimeInitialized'] = function() {
       self.set_setting('ASYNCIFY_ONLY', '@response.file')
     self.set_setting('ASYNCIFY')
     self.emcc_args += args
-    try:
+
+    if should_pass:
       self.do_core_test('test_asyncify_lists.cpp', assert_identical=True)
-      if not should_pass:
-        should_pass = True
-        raise Exception('should not have passed')
-    except Exception:
-      if should_pass:
-        raise
+    else:
+      self.do_runf(test_file('core/test_asyncify_lists.cpp'), 'exception thrown', assert_returncode=NON_ZERO)
 
     # use of ASYNCIFY_* options may require intermediate debug info. that should
     # not end up emitted in the final binary
     if self.is_wasm():
-      with open('test_asyncify_lists.wasm', 'rb') as f:
-        binary = f.read()
+      binary = read_binary('test_asyncify_lists.wasm')
       # there should be no name section
       self.assertFalse(b'name' in binary)
       # in a fully-optimized build, imports and exports are minified too and we
