@@ -276,12 +276,11 @@ var SyscallsLibrary = {
 #if CAN_ADDRESS_2GB
     addr >>>= 0;
 #endif
-    if ((addr | 0) === {{{ cDefine('MAP_FAILED') }}} || len === 0) {
-      return -{{{ cDefine('EINVAL') }}};
-    }
     // TODO: support unmmap'ing parts of allocations
     var info = SYSCALLS.mappings[addr];
-    if (!info) return 0;
+    if (len === 0 || !info) {
+      return -{{{ cDefine('EINVAL') }}};
+    }
     if (len === info.len) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
       var stream = FS.getStream(info.fd);
