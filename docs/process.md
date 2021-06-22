@@ -103,6 +103,9 @@ that is:
 3. Run `make install EMSCRIPTEN_SITE=\[path-to-a-checkout-of-the-site-repo\]`
 3. Go to the site repo, commit the changes, and push.
 
+You will need the specific sphinx version installed, which you can do using
+`pip3 install -r requirements-dev.txt` (depending on your system, you may then
+need to add `~/.local/bin` to your path, if pip installs to there).
 
 
 Updating the `emcc.py` help text
@@ -118,6 +121,9 @@ updating `emcc.rst` in a PR, the following should be done:
 3. Copy the output `build/text/docs/tools_reference/emcc.txt` to
    `../docs/emcc.txt` (both paths relative to the `site/` directory in
    emscripten that you entered in step 1), and add that change to your PR.
+
+See notes above on installing sphinx.
+
 
 [site_repo]: https://github.com/kripken/emscripten-site
 [releases_repo]: https://chromium.googlesource.com/emscripten-releases
