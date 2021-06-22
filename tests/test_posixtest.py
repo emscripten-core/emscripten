@@ -139,6 +139,7 @@ unsupported = {
 # TODO investigate these tests.
 flaky = {
   'test_pthread_cond_signal_1_1': 'flaky: https://github.com/emscripten-core/emscripten/issues/13283',
+  'test_pthread_barrier_wait_2_1': 'flaky: https://github.com/emscripten-core/emscripten/issues/14508',
 }
 
 # Mark certain tests as not passing
