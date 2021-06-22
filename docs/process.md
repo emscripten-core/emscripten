@@ -103,7 +103,7 @@ that is:
 3. Run `make install EMSCRIPTEN_SITE=\[path-to-a-checkout-of-the-site-repo\]`
 3. Go to the site repo, commit the changes, and push.
 
-You will need the proper sphinx version installed, which you can do using
+You will need the specific sphinx version installed, which you can do using
 `pip3 install -r requirements-dev.txt` (depending on your system, you may then
 need to add `~/.local/bin` to your path, if pip installs to there).
 
