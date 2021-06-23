@@ -10316,7 +10316,7 @@ exec "$@"
     self.emcc_args += ['-g', '-Wno-experimental']
     self.emcc_args += ['--post-js', test_file('other/test_split_module.post.js')]
     if customLoader:
-      self.emcc_args += ['--pre-js', test_file('other/test_load_split_module.post.js')]
+      self.emcc_args += ['--pre-js', test_file('other/test_load_split_module.pre.js')]
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
     self.do_other_test('test_split_module.c')
     self.assertExists('test_split_module.wasm')
