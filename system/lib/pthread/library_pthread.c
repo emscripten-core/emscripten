@@ -967,9 +967,10 @@ void __do_cleanup_push(struct __ptcb *cb) {
   struct pthread *self = __pthread_self();
   cb->__next = self->cancelbuf;
   self->cancelbuf = cb;
-  static thread_local bool registerd = false;
-  if (!registerd) {
+  static thread_local bool registered = false;
+  if (!registered) {
     __cxa_thread_atexit(__run_cleanup_handlers, NULL, &__dso_handle);
+    registered = true;
   }
 }
 
