@@ -837,7 +837,6 @@ var wasmOffsetConverter;
 
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', 'loadSplitModule', 'instantiateSync',  true) }}}
-
 var splitModuleProxyHandler = {
   'get': function(target, prop, receiver) {
     return function() {
