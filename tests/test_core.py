@@ -24,11 +24,11 @@ from tools.shared import try_delete, PIPE
 from tools.shared import PYTHON, EMCC, EMAR
 from tools.utils import WINDOWS, MACOS
 from tools import shared, building, config, webassembly
-from runner import RunnerCore, path_from_root, requires_native_clang, test_file
-from runner import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
-from runner import env_modify, with_env_modify, disabled, node_pthreads
-from runner import read_file, read_binary, require_node
-from runner import NON_ZERO, WEBIDL_BINDER, EMBUILDER, EMMAKE
+from common import RunnerCore, path_from_root, requires_native_clang, test_file
+from common import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
+from common import env_modify, with_env_modify, disabled, node_pthreads
+from common import read_file, read_binary, require_node
+from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, EMMAKE
 import clang_native
 
 # decorators for limiting which modes a test can run in

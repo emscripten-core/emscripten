@@ -23,7 +23,7 @@ except Exception:
   # which is the same behavior as before.
   pass
 import clang_native
-from runner import BrowserCore, no_windows, create_file, test_file, read_file
+from common import BrowserCore, no_windows, create_file, test_file, read_file
 from tools import shared, config, utils
 from tools.shared import PYTHON, EMCC, path_from_root, WINDOWS, run_process, CLANG_CC
 

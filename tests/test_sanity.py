@@ -12,9 +12,9 @@ import tempfile
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
-from runner import RunnerCore, path_from_root, env_modify, test_file
-from runner import create_file, ensure_dir, make_executable, with_env_modify
-from runner import parameterized, EMBUILDER
+from common import RunnerCore, path_from_root, env_modify, test_file
+from common import create_file, ensure_dir, make_executable, with_env_modify
+from common import parameterized, EMBUILDER
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
 from tools.shared import CANONICAL_TEMP_DIR

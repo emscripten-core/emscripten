@@ -12,7 +12,7 @@ See
 import glob
 import os
 
-from runner import RunnerCore, path_from_root
+from common import RunnerCore, path_from_root
 from tools import config
 from tools.shared import EMCC
 import test_posixtest_browser
