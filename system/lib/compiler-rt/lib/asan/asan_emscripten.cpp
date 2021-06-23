@@ -60,12 +60,7 @@ extern "C" {
 }
 
 static thread_return_t THREAD_CALLING_CONV asan_thread_start(void *arg) {
-  atomic_uintptr_t *param = reinterpret_cast<atomic_uintptr_t *>(arg);
-  AsanThread *t = nullptr;
-  while ((t = reinterpret_cast<AsanThread *>(
-              atomic_load(param, memory_order_acquire))) == nullptr)
-    internal_sched_yield();
-  emscripten_builtin_free(param);
+  AsanThread *t = (AsanThread *)arg;
   SetCurrentThread(t);
   return t->ThreadStart(GetTid());
 }
@@ -80,9 +75,11 @@ INTERCEPTOR(int, pthread_create, void *thread,
   int detached = 0;
   if (attr && attr != __ATTRP_C11_THREAD)
     pthread_attr_getdetachstate(attr, &detached);
-  atomic_uintptr_t *param = (atomic_uintptr_t *)
-      emscripten_builtin_malloc(sizeof(atomic_uintptr_t));
-  atomic_store(param, 0, memory_order_relaxed);
+
+  u32 current_tid = GetCurrentTidOrInvalid();
+  AsanThread *t =
+      AsanThread::Create(start_routine, arg, current_tid, &stack, detached);
+
   int result;
   {
     // Ignore all allocations made by pthread_create: thread stack/TLS may be
@@ -92,13 +89,13 @@ INTERCEPTOR(int, pthread_create, void *thread,
 #if CAN_SANITIZE_LEAKS
     __lsan::ScopedInterceptorDisabler disabler;
 #endif
-    result = REAL(pthread_create)(thread, attr, asan_thread_start, param);
+    result = REAL(pthread_create)(thread, attr, asan_thread_start, t);
   }
-  if (result == 0) {
-    u32 current_tid = GetCurrentTidOrInvalid();
-    AsanThread *t =
-        AsanThread::Create(start_routine, arg, current_tid, &stack, detached);
-    atomic_store(param, reinterpret_cast<uptr>(t), memory_order_release);
+  if (result != 0) {
+    // If the thread didn't start delete the AsanThread to avoid leaking it.
+    // Note AsanThreadContexts never get destroyed so the AsanThreadContext
+    // that was just created for the AsanThread is wasted.
+    t->Destroy();
   }
   return result;
 }
