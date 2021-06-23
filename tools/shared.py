@@ -270,10 +270,8 @@ def get_clang_version():
 
 def check_llvm_version():
   actual = get_clang_version()
-  if EXPECTED_LLVM_VERSION in actual:
-    return True
-  diagnostics.warning('version-check', 'LLVM version for clang executable "%s" appears incorrect (seeing "%s", expected "%s")', CLANG_CC, actual, EXPECTED_LLVM_VERSION)
-  return False
+  if EXPECTED_LLVM_VERSION not in actual:
+    exit_with_error(f'incompatible LLVM version. "{CLANG_CC}" reports version "{actual}" but emscripten requires "{EXPECTED_LLVM_VERSION}"')
 
 
 def get_llc_targets():

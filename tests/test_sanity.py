@@ -234,14 +234,14 @@ class sanity(RunnerCore):
           try_delete(default_config)
 
   def test_llvm(self):
-    LLVM_WARNING = 'LLVM version for clang executable'
+    LLVM_ERROR = 'incompatible LLVM version'
 
     restore_and_set_up()
 
     # Clang should report the version number we expect, and emcc should not warn
-    assert shared.check_llvm_version()
+    shared.check_llvm_version()
     output = self.check_working(EMCC)
-    self.assertNotContained(LLVM_WARNING, output)
+    self.assertNotContained(LLVM_ERROR, output)
 
     # Fake a different llvm version
     restore_and_set_up()
@@ -265,10 +265,10 @@ class sanity(RunnerCore):
         make_fake_tool(self.in_dir('fake', 'llvm-nm'), '%s.%s' % (expected_x, expected_y))
         did_modify = inc_x != 0 or inc_y != 0
         if did_modify:
-          output = self.check_working(EMCC, LLVM_WARNING)
+          output = self.check_working(EMCC, LLVM_ERROR)
         else:
           output = self.check_working(EMCC)
-          self.assertNotContained(LLVM_WARNING, output)
+          self.assertNotContained(LLVM_ERROR, output)
 
   def test_emscripten_root(self):
     # The correct path
