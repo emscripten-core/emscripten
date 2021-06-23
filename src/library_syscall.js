@@ -278,7 +278,7 @@ var SyscallsLibrary = {
 #endif
     // TODO: support unmmap'ing parts of allocations
     var info = SYSCALLS.mappings[addr];
-    if (len === 0 || !info || len > info.len) {
+    if (len === 0 || len > info.len || !info) {
       return -{{{ cDefine('EINVAL') }}};
     }
     if (len < info.len) {
@@ -290,6 +290,8 @@ var SyscallsLibrary = {
         err('munmap of part of an mmap-ed region is not supported, and will leak');
       }
 #endif
+      // Return zero as this is not an invalid input value, it's just that we
+      // can't fully support it.
       return 0;
     }
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
