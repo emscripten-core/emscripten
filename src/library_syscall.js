@@ -278,7 +278,7 @@ var SyscallsLibrary = {
 #endif
     // TODO: support unmmap'ing parts of allocations
     var info = SYSCALLS.mappings[addr];
-    if (len === 0 || len > info.len || !info) {
+    if (len === 0 || !info || len > info.len) {
       return -{{{ cDefine('EINVAL') }}};
     }
     if (len < info.len) {
