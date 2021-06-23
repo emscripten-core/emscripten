@@ -170,7 +170,10 @@ var LibraryPThread = {
       }
 
       // Call into the musl function that runs destructors of all thread-specific data.
-      if (ENVIRONMENT_IS_PTHREAD && _pthread_self()) ___pthread_tsd_run_dtors();
+#if ASSERTIONS
+      assert(_pthread_self())
+#endif
+      ___pthread_tsd_run_dtors();
     },
 
     runExitHandlersAndDeinitThread: function(tb, exitCode) {
