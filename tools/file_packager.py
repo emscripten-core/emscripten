@@ -95,9 +95,11 @@ AV_WORKAROUND = 0
 excluded_patterns = []
 new_data_files = []
 
+
 def base64_encode(b):
   b64 = base64.b64encode(b)
   return b64.decode('ascii')
+
 
 def has_hidden_attribute(filepath):
   """Win32 code to test whether the given file has the hidden property set."""
