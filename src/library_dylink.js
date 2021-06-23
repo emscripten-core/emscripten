@@ -250,18 +250,6 @@ var LibraryDylink = {
     return ret;
   },
 
-  // fetchBinary fetches binary data @ url. (async)
-  $fetchBinary: function(url) {
-    return fetch(url, { credentials: 'same-origin' }).then(function(response) {
-      if (!response['ok']) {
-        throw "failed to load binary file at '" + url + "'";
-      }
-      return response['arrayBuffer']();
-    }).then(function(buffer) {
-      return new Uint8Array(buffer);
-    });
-  },
-
   // returns the side module metadata as an object
   // { memorySize, memoryAlign, tableSize, tableAlign, neededDynlibs}
   $getDylinkMetadata: function(binary) {
@@ -576,7 +564,7 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$fetchBinary', '$isInternalSym', '$mergeLibSymbols'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$isInternalSym', '$mergeLibSymbols'],
   $loadDynamicLibrary: function(lib, flags) {
     if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
       LDSO.loadedLibs[-1] = {
@@ -628,7 +616,7 @@ var LibraryDylink = {
     // libData <- libFile
     function loadLibData(libFile) {
       // for wasm, we can use fetch for async, but for fs mode we can only imitate it
-      if (flags.fs) {
+      if (flags.fs && flags.fs.findObject(libFile)) {
         var libData = flags.fs.readFile(libFile, {encoding: 'binary'});
         if (!(libData instanceof Uint8Array)) {
           libData = new Uint8Array(libData);
@@ -637,9 +625,15 @@ var LibraryDylink = {
       }
 
       if (flags.loadAsync) {
-        return fetchBinary(libFile);
+        return new Promise(function(resolve, reject) {
+          readAsync(libFile, function(data) { resolve(new Uint8Array(data)); }, reject);
+        });
       }
+
       // load the binary synchronously
+      if (!readBinary) {
+        throw new Error(libFile + ': file not found, and synchronous loading of external files is not available');
+      }
       return readBinary(libFile);
     }
 
@@ -674,7 +668,7 @@ var LibraryDylink = {
       return getLibModule().then(function(libModule) {
         moduleLoaded(libModule);
         return handle;
-      })
+      });
     }
 
     moduleLoaded(getLibModule());
@@ -694,32 +688,24 @@ var LibraryDylink = {
       return;
     }
 
-    // if we can load dynamic libraries synchronously, do so, otherwise, preload
-    if (!readBinary) {
-      // we can't read binary data synchronously, so preload
-      addRunDependency('preloadDylibs');
-      dynamicLibraries.reduce(function(chain, lib) {
-        return chain.then(function() {
-          return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true});
-        });
-      }, Promise.resolve()).then(function() {
-        // we got them all, wonderful
-        removeRunDependency('preloadDylibs');
-        reportUndefinedSymbols();
+    // Load binaries asynchronously
+    addRunDependency('preloadDylibs');
+    dynamicLibraries.reduce(function(chain, lib) {
+      return chain.then(function() {
+        return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true});
       });
-      return;
-    }
-
-    dynamicLibraries.forEach(function(lib) {
-      // libraries linked to main never go away
-      loadDynamicLibrary(lib, {global: true, nodelete: true, allowUndefined: true});
+    }, Promise.resolve()).then(function() {
+      // we got them all, wonderful
+      reportUndefinedSymbols();
+      removeRunDependency('preloadDylibs');
+#if DYLINK_DEBUG
+    err('preloadDylibs done!');
+#endif
     });
-    reportUndefinedSymbols();
   },
 
   // void* dlopen(const char* filename, int flags);
   dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
-  dlopen__proxy: 'sync',
   dlopen__sig: 'iii',
   dlopen: function(filenameAddr, flags) {
     // void *dlopen(const char *file, int mode);
@@ -777,7 +763,6 @@ var LibraryDylink = {
 
   // int dlclose(void* handle);
   dlclose__deps: ['$DLFCN'],
-  dlclose__proxy: 'sync',
   dlclose__sig: 'ii',
   dlclose: function(handle) {
     // int dlclose(void *handle);
@@ -796,7 +781,6 @@ var LibraryDylink = {
 
   // void* dlsym(void* handle, const char* symbol);
   dlsym__deps: ['$DLFCN'],
-  dlsym__proxy: 'sync',
   dlsym__sig: 'iii',
   dlsym: function(handle, symbol) {
     // void *dlsym(void *restrict handle, const char *restrict name);
@@ -840,7 +824,6 @@ var LibraryDylink = {
 
   // char* dlerror(void);
   dlerror__deps: ['$DLFCN', '$stringToNewUTF8'],
-  dlerror__proxy: 'sync',
   dlerror__sig: 'i',
   dlerror: function() {
     // char *dlerror(void);
@@ -855,7 +838,6 @@ var LibraryDylink = {
   },
 
   dladdr__deps: ['$stringToNewUTF8', '$getExecutableName'],
-  dladdr__proxy: 'sync',
   dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way

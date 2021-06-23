@@ -265,6 +265,10 @@ if (ENVIRONMENT_IS_SHELL) {
     return data;
   };
 
+  readAsync = function readAsync(f, onload, onerror) {
+    setTimeout(function() { onload(readBinary(f)); }, 0);
+  };
+
   if (typeof scriptArgs != 'undefined') {
     arguments_ = scriptArgs;
   } else if (typeof arguments != 'undefined') {

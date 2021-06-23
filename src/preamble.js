@@ -507,11 +507,6 @@ function getUniqueRunDependency(id) {
 }
 
 function addRunDependency(id) {
-#if USE_PTHREADS
-  // We should never get here in pthreads (could no-op this out if called in pthreads, but that might indicate a bug in caller side,
-  // so good to be very explicit)
-  assert(!ENVIRONMENT_IS_PTHREAD, "addRunDependency cannot be used in a pthread worker");
-#endif
   runDependencies++;
 
 #if expectToReceiveOnModule('monitorRunDependencies')
