@@ -10308,7 +10308,7 @@ exec "$@"
     self.do_other_test('test_syslog.c')
 
   @parameterized({
-    'default': (False,),
+    '': (False,),
     'custom': (True,),
   })
   def test_split_module(self, customLoader):
