@@ -424,14 +424,14 @@ function exitRuntime() {
   checkStackCookie();
 #endif
 #if USE_PTHREADS
+#if EXIT_RUNTIME
+  PThread.runExitHandlers();
+#endif
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
-#if USE_PTHREADS
-  PThread.runExitHandlers();
-#endif
 #endif
   runtimeExited = true;
 }
@@ -841,6 +841,7 @@ var wasmOffsetConverter;
 #endif
 
 #if SPLIT_MODULE
+{{{ makeModuleReceiveWithVar('loadSplitModule', 'loadSplitModule', 'instantiateSync',  true) }}}
 var splitModuleProxyHandler = {
   'get': function(target, prop, receiver) {
     return function() {
@@ -848,7 +849,7 @@ var splitModuleProxyHandler = {
       var imports = {'primary': Module['asm']};
       // Replace '.wasm' suffix with '.deferred.wasm'.
       var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
-      instantiateSync(deferred, imports);
+      loadSplitModule(deferred, imports, prop);
       err('instantiated deferred module, continuing');
 #if RELOCATABLE
       // When the table is dynamically laid out, the placeholder functions names
