@@ -997,6 +997,7 @@ function createWasm() {
 #if ASSERTIONS && !PURE_WASI
     assert(wasmTable, "table not found in wasm exports");
 #endif
+#include "runtime_cache_table.js"
 #endif
 
 #if hasExportedFunction('___wasm_call_ctors')

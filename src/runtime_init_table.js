@@ -7,6 +7,9 @@ var wasmTable = new WebAssembly.Table({
 #endif
   'element': 'anyfunc'
 });
+
+#include "runtime_cache_table.js"
+
 #else
 // In regular non-RELOCATABLE mode the table is exported
 // from the wasm module and this will be assigned once

@@ -213,3 +213,7 @@ var HAS_MAIN = 0;
 
 // Set to true if we are linking as C++ and including C++ stdlibs
 var LINK_AS_CXX = 0;
+
+// Set when we optimize wasmTable accesses by wrapping the raw WebAssembly.Table
+// with a cache.
+var CACHE_WASM_TABLE = 0;

@@ -203,6 +203,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #if ASSERTIONS
   assert(wasmTable);
 #endif
+#include "runtime_cache_table.js"
 
 #if !IMPORTED_MEMORY
   wasmMemory = asm['memory'];
