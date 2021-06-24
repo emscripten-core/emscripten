@@ -2558,10 +2558,7 @@ The current type of b is: 9
         return 0;
       }
       '''
-    self.do_run(src, 'error: Could not load dynamic lib: libfoo.so\nError: No such file or directory')
-    print('without assertions, the error is less clear')
-    self.set_setting('ASSERTIONS', 0)
-    self.do_run(src, 'error: Could not load dynamic lib: libfoo.so\nError: FS error')
+    self.do_run(src, "error: Could not load dynamic lib: libfoo.so\nError: ENOENT: no such file or directory, open 'libfoo.so'")
 
   @needs_dylink
   def test_dlfcn_basic(self):
