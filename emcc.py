@@ -2002,9 +2002,11 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
 
-  # Cache the wasm table for speed in builds not optimizing for size.
+  # Cache the wasm table for speed in builds not optimizing for size. We also
+  # cannot cache when using dynamic linking.
   settings.CACHE_WASM_TABLE = settings.OPT_LEVEL >= 2 and \
-                              settings.SHRINK_LEVEL == 0
+                              settings.SHRINK_LEVEL == 0 and \
+                              not settings.RELOCATABLE
 
   if settings.MINIMAL_RUNTIME:
     # Minimal runtime uses a different default shell file

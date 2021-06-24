@@ -1,4 +1,9 @@
 #if CACHE_WASM_TABLE
+// Wrap the wasm table with a cache, to avoid repeatedly calling table.get().
+// That operation is fairly heavyweight in VMs.
+// N.B.: This cache assumes that the wasm does not modify the table, which is
+//       not necessarily true in relocatable builds (a side module segment may
+//       add items), or if we some day use wasm table operations in wasm.
 var originalWasmTable = wasmTable;
 wasmTable = {
   _cache: [],
@@ -22,7 +27,7 @@ wasmTable = {
   },
   grow: function(by) {
     var ret = originalWasmTable.grow(by);
-    length = wasmTable.length;
+    wasmTable.length = originalWasmTable.length;
     return ret;
   }
 };
