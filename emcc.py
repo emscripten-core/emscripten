@@ -2004,9 +2004,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   # Cache the wasm table for speed in builds not optimizing for size. We also
   # cannot cache when using dynamic linking.
-  settings.CACHE_WASM_TABLE = settings.OPT_LEVEL >= 2 and \
-                              settings.SHRINK_LEVEL == 0 and \
-                              not settings.RELOCATABLE
+  settings.CACHE_WASM_TABLE = not settings.RELOCATABLE and \
+      settings.OPT_LEVEL >= 2 and settings.SHRINK_LEVEL == 0
 
   if settings.MINIMAL_RUNTIME:
     # Minimal runtime uses a different default shell file
