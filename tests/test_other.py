@@ -10443,8 +10443,6 @@ exec "$@"
         cmd.append('-sUSE_OFFSET_CONVERTER')
       if 'embind' in function:
         cmd.append('--bind')
-      if 'fetch' in function:
-        cmd.append('-sFETCH')
       if 'websocket' in function:
         cmd += ['-sPROXY_POSIX_SOCKETS', '-lwebsocket.js']
       if function == 'Mix_LoadWAV_RW':
