@@ -22,11 +22,11 @@ from urllib.request import urlopen
 
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER, EMMAKE
-from common import read_file
+from common import read_file, require_v8
 from tools import shared
 from tools import system_libs
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
-from tools.shared import try_delete, config
+from tools.shared import try_delete
 
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):
@@ -5066,6 +5066,7 @@ window.close = function() {
                     args=['-s', 'AUTO_JS_LIBRARIES=0', '-lwebgl.js', '--js-library', test_file('test_override_system_js_lib_symbol.js')])
 
   @no_firefox('no 4GB support yet')
+  @require_v8
   def test_zzz_zzz_4gb(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
@@ -5076,7 +5077,7 @@ window.close = function() {
     # test that we can allocate in the 2-4GB range, if we enable growth and
     # set the max appropriately
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB']
-    self.do_run_in_out_file_test('browser', 'test_4GB.cpp', js_engines=[config.V8_ENGINE])
+    self.do_run_in_out_file_test('browser', 'test_4GB.cpp')
 
   # Tests that emmalloc supports up to 4GB Wasm heaps.
   @no_firefox('no 4GB support yet')
@@ -5104,6 +5105,7 @@ window.close = function() {
     self.btest(test_file('browser/emmalloc_memgrowth.cpp'), expected='0', args=['-s', 'MALLOC=emmalloc', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'ABORTING_MALLOC=0', '-s', 'ASSERTIONS=2', '-s', 'MINIMAL_RUNTIME=1', '-s', 'MAXIMUM_MEMORY=4GB'])
 
   @no_firefox('no 4GB support yet')
+  @require_v8
   def test_zzz_zzz_2gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
@@ -5114,9 +5116,10 @@ window.close = function() {
     # test that growth doesn't go beyond 2GB without the max being set for that,
     # and that we can catch an allocation failure exception for that
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=2GB']
-    self.do_run_in_out_file_test('browser', 'test_2GB_fail.cpp', js_engines=[config.V8_ENGINE])
+    self.do_run_in_out_file_test('browser', 'test_2GB_fail.cpp')
 
   @no_firefox('no 4GB support yet')
+  @require_v8
   def test_zzz_zzz_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
@@ -5127,7 +5130,7 @@ window.close = function() {
     # test that we properly report an allocation error that would overflow over
     # 4GB.
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ABORTING_MALLOC=0']
-    self.do_run_in_out_file_test('browser', 'test_4GB_fail.cpp', js_engines=[config.V8_ENGINE])
+    self.do_run_in_out_file_test('browser', 'test_4GB_fail.cpp')
 
   @disabled("only run this manually, to test for race conditions")
   @parameterized({

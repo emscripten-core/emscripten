@@ -372,6 +372,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
     self.js_engines = [config.V8_ENGINE]
+    self.emcc_args.append('-sENVIRONMENT=shell')
 
   def require_node(self):
     if not config.NODE_JS or config.NODE_JS not in config.JS_ENGINES:

@@ -548,7 +548,7 @@ def apply_configuration():
 
 
 def target_environment_may_be(environment):
-  return settings.ENVIRONMENT == '' or environment in settings.ENVIRONMENT.split(',')
+  return not settings.ENVIRONMENT or environment in settings.ENVIRONMENT.split(',')
 
 
 def print_compiler_stage(cmd):

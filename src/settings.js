@@ -603,18 +603,19 @@ var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 // [link]
 var LEGACY_VM_SUPPORT = 0;
 
-// By default, emscripten output will run on the web, in a web worker,
-// in node.js, or in a JS shell like d8, js, or jsc. You can set this option to
-// specify that the output should only run in one particular environment, which
-// must be one of
+// Specify which runtime environments the JS output will be capable of running
+// in.  For maximum portability this can configured to support all envionements
+// or it can be limited to reduce overall code size.  The supported environments
+// are:
 //    'web'     - the normal web environment.
 //    'webview' - just like web, but in a webview like Cordova;
 //                considered to be same as "web" in almost every place
 //    'worker'  - a web worker environment.
 //    'node'    - Node.js.
 //    'shell'   - a JS shell like d8, js, or jsc.
-// Or it can be a comma-separated list of them, e.g., "web,worker". If this is
-// the empty string, then all runtime environments are supported.
+// This settings can be a comma-separated list of these environments, e.g.,
+// "web,worker". If this is the empty string, then all environments are
+// supported.
 //
 // Note that the set of environments recognized here is not identical to the
 // ones we identify at runtime using ENVIRONMENT_IS_*. Specifically:
@@ -623,8 +624,11 @@ var LEGACY_VM_SUPPORT = 0;
 //  * The webview target is basically a subset of web. It must be specified
 //    alongside web (e.g. "web,webview") and we only use it for code generation
 //    at compile time, there is no runtime behavior change.
+//
+// Note that by default we do not include the 'shell' environment since direct
+// usage of d8, js, jsc is extremely rare.
 // [link]
-var ENVIRONMENT = '';
+var ENVIRONMENT = 'web,webview,worker,node';
 
 // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
 // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
