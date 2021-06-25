@@ -3158,6 +3158,12 @@ window.close = function() {
                message='glClipPlane and GL_LIGHTING emulation. You should see a torus cut open on one side with lighting from one lightsource applied.')
 
   @requires_graphics_hardware
+  def test_sdl2_glalphatest(self):
+    self.btest('sdl2_glalphatest.c', reference='sdl2_glalphatest.png',
+               args=['-s', 'LEGACY_GL_EMULATION', '-s', 'USE_SDL=2'],
+               message='GL_ALPHA_TEST emulation. You should see gradients with different alpha testing modes and reference values.')
+
+  @requires_graphics_hardware
   def test_sdl2_fog_simple(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
