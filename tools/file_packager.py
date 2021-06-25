@@ -57,6 +57,7 @@ Notes:
     subdir\file, in JS it will be subdir/file. For simplicity we treat the web platform as a *NIX.
 """
 
+import base64
 import os
 import sys
 import shutil
@@ -93,6 +94,11 @@ AV_WORKAROUND = 0
 
 excluded_patterns = []
 new_data_files = []
+
+
+def base64_encode(b):
+  b64 = base64.b64encode(b)
+  return b64.decode('ascii')
 
 
 def has_hidden_attribute(filepath):
@@ -464,18 +470,9 @@ def main():
     basename = os.path.basename(filename)
     if file_['mode'] == 'embed':
       # Embed
-      data = list(bytearray(utils.read_binary(file_['srcpath'])))
-      code += '''var fileData%d = [];\n''' % counter
-      if data:
-        parts = []
-        chunk_size = 10240
-        start = 0
-        while start < len(data):
-          parts.append('''fileData%d.push.apply(fileData%d, %s);\n'''
-                       % (counter, counter, str(data[start:start + chunk_size])))
-          start += chunk_size
-        code += ''.join(parts)
-      code += ('''Module['FS_createDataFile']('%s', '%s', fileData%d, true, true, false);\n'''
+      data = base64_encode(utils.read_binary(file_['srcpath']))
+      code += '''var fileData%d = '%s';\n''' % (counter, data)
+      code += ('''Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, false);\n'''
                % (dirname, basename, counter))
       counter += 1
     elif file_['mode'] == 'preload':

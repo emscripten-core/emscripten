@@ -398,7 +398,7 @@ function JSify(functionsOnly) {
       print(preprocess(read('arrayUtils.js')));
     }
 
-    if (SUPPORT_BASE64_EMBEDDING && !MINIMAL_RUNTIME) {
+    if ((SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM) && !MINIMAL_RUNTIME) {
       print(preprocess(read('base64Utils.js')));
     }
 
