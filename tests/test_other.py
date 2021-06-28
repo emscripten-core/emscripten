@@ -36,8 +36,8 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, read_file, read_binary, EMBUILDER, require_v8, require_node
-from common import EMTEST_REBASELINE
 from tools import shared, building, utils, deps_info
+import common
 import jsrun
 import clang_native
 from tools import line_endings
@@ -6972,7 +6972,7 @@ int main() {
   def assertFileContents(self, filename, contents):
     contents = contents.replace('\r', '')
 
-    if EMTEST_REBASELINE:
+    if common.EMTEST_REBASELINE:
       with open(filename, 'w') as f:
         f.write(contents)
       return
@@ -7037,7 +7037,7 @@ int main() {
       # measure the wasm size without the name section
       self.run_process([wasm_opt, 'a.out.wasm', '--strip-debug', '--all-features', '-o', 'a.out.nodebug.wasm'])
       wasm_size = os.path.getsize('a.out.nodebug.wasm')
-      if EMTEST_REBASELINE:
+      if common.EMTEST_REBASELINE:
         with open(size_file, 'w') as f:
           f.write(f'{wasm_size}\n')
 
@@ -8791,7 +8791,7 @@ int main () {
     try:
       expected_results = json.loads(read_file(results_file))
     except Exception:
-      if not EMTEST_REBASELINE:
+      if not common.EMTEST_REBASELINE:
         raise
 
     args = [EMCC, '-o', 'a.html'] + args + sources
@@ -8860,7 +8860,7 @@ int main () {
       # happens in wasm2js, so it may be platform-nondeterminism in closure
       # compiler).
       # TODO: identify what is causing this. meanwhile allow some amount of slop
-      if not EMTEST_REBASELINE:
+      if not common.EMTEST_REBASELINE:
         if js:
           slop = 30
         else:
@@ -8881,7 +8881,7 @@ int main () {
     print('Total output size=' + str(total_output_size) + ' bytes, expected total size=' + str(total_expected_size) + ', delta=' + str(total_output_size - total_expected_size) + print_percent(total_output_size, total_expected_size))
     print('Total output size gzipped=' + str(total_output_size_gz) + ' bytes, expected total size gzipped=' + str(total_expected_size_gz) + ', delta=' + str(total_output_size_gz - total_expected_size_gz) + print_percent(total_output_size_gz, total_expected_size_gz))
 
-    if EMTEST_REBASELINE:
+    if common.EMTEST_REBASELINE:
       open(results_file, 'w').write(json.dumps(obtained_results, indent=2) + '\n')
     else:
       if total_output_size > total_expected_size:
@@ -10386,7 +10386,7 @@ exec "$@"
   def test_gen_struct_info(self):
     # This tests is fragile and will need updating any time any of the refereced
     # structs or defines change.   However its easy to rebaseline with
-    # EMTEST_REBASELINE and it prrevents regressions or unintended changes
+    # EMTEST_REBASELINE and it prevents regressions or unintended changes
     # to the output json.
     self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
     self.assertFileContents(test_file('reference_struct_info.json'), read_file('out.json'))
