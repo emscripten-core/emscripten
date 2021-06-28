@@ -12,9 +12,7 @@ See
 import glob
 import os
 
-from common import RunnerCore, path_from_root
-from tools import config
-from tools.shared import EMCC
+from common import RunnerCore, path_from_root, node_pthreads
 import test_posixtest_browser
 
 testsuite_root = path_from_root('tests/third_party/posixtestsuite')
@@ -47,8 +45,6 @@ def get_pthread_tests():
   pthread_tests = [os.path.join(pthread_test_root, t) for t in pthread_tests]
   return pthread_tests
 
-
-engine = config.NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
 
 # Mark certain tests as unsupported
 # TODO: Investigate failing semaphores tests.
@@ -152,6 +148,7 @@ disabled = {
 
 def make_test(name, testfile, browser):
 
+  @node_pthreads
   def f(self):
     if name in disabled:
       self.skipTest(disabled[name])
@@ -166,8 +163,7 @@ def make_test(name, testfile, browser):
     if browser:
       self.btest_exit(testfile, args=args)
     else:
-      self.run_process([EMCC, testfile, '-o', 'test.js'] + args)
-      self.run_js('test.js', engine=engine)
+      self.do_runf(testfile, emcc_args=args)
 
   return f
 
