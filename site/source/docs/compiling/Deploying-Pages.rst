@@ -159,4 +159,4 @@ When planning a testing matrix before pushing a site live, the following items c
 
 - Simulate lack of any special APIs that the page might need, e.g. Gamepad, Acceleration or Touch Events, and make sure that appropriate error flow is handled in those cases as well.
 
-If you have good tips or suggestsions to share, please help improve this guide by posting feedback to the `Emscripten bug tracker <https://github.com/emscripten-core/emscripten/issues>`_ or the `emscripten-discuss <https://groups.google.com/forum/#!forum/emscripten-discuss>`_ mailing list.
+If you have good tips or suggestions to share, please help improve this guide by posting feedback to the `Emscripten bug tracker <https://github.com/emscripten-core/emscripten/issues>`_ or the `emscripten-discuss <https://groups.google.com/forum/#!forum/emscripten-discuss>`_ mailing list.
