@@ -27,7 +27,7 @@ from tools import shared, building, config, webassembly
 from common import RunnerCore, path_from_root, requires_native_clang, test_file
 from common import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads
-from common import read_file, read_binary, require_node
+from common import read_file, read_binary, require_node, require_v8
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, EMMAKE
 import clang_native
 
@@ -77,6 +77,7 @@ def all_engines(f):
   def decorated(self):
     old = self.use_all_engines
     self.use_all_engines = True
+    self.set_setting('ENVIRONMENT', 'web,node,shell')
     try:
       f(self)
     finally:
@@ -5691,9 +5692,10 @@ int main(void) {
   def test_whets(self):
     self.do_runf(test_file('whets.cpp'), 'Single Precision C Whetstone Benchmark')
 
+  # node is slower, and fail on 64-bit
+  @require_v8
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   def test_dlmalloc_inline(self):
-    self.banned_js_engines = [config.NODE_JS] # slower, and fail on 64-bit
     # needed with typed arrays
     self.set_setting('INITIAL_MEMORY', '128mb')
 
@@ -5701,9 +5703,10 @@ int main(void) {
     self.do_run(src, '*1,0*', args=['200', '1'], force_c=True)
     self.do_run('src.js', '*400,0*', args=['400', '400'], force_c=True, no_build=True)
 
+  # node is slower, and fail on 64-bit
+  @require_v8
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   def test_dlmalloc(self):
-    self.banned_js_engines = [config.NODE_JS] # slower, and fail on 64-bit
     # needed with typed arrays
     self.set_setting('INITIAL_MEMORY', '128mb')
 

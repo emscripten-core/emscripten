@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 2.0.25
 ------
+- Support for the 'shell' environment is now disabled by default.  Running under
+  `d8`, `js`, or `jsc` is not something that most emscripten users ever want to
+  do, so including the support code is, more often than not, unnecessary.  Users
+  who want shell support can enable it by including 'shell' in `-s ENVIRONMENT`
+  (#14535).
 - A new setting called `ALLOW_UNIMPLEMENTED_SYSCALLS` was added.  This setting
   is enabled by default but, if disabled, will generate link-time errors if
   a program references an unimplemented syscall.  This setting is disabled

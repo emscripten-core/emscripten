@@ -511,7 +511,7 @@ f.close()
         self.clear()
         wasm = '=0' not in str(mode)
         print('  mode', mode, 'wasm?', wasm)
-        self.run_process([EMCC, test_file('hello_world.c')] + opts + mode)
+        self.run_process([EMCC, test_file('hello_world.c'), '-sENVIRONMENT=node,shell'] + opts + mode)
         self.assertExists('a.out.js')
         if wasm:
           self.assertExists('a.out.wasm')
@@ -2755,7 +2755,7 @@ int main()
     return 0;
 }
     ''')
-    self.run_process([EMXX, 'src.cpp', '--embed-file', 'src.cpp'])
+    self.run_process([EMXX, 'src.cpp', '--embed-file', 'src.cpp', '-sENVIRONMENT=node,shell'])
     for engine in config.JS_ENGINES:
       out = self.run_js('a.out.js', engine=engine)
       self.assertContained('File size: 724', out)
@@ -3898,7 +3898,7 @@ int main(int argc, char **argv) {
     for code in [0, 123]:
       for call_exit in [0, 1]:
         for async_compile in [0, 1]:
-          self.run_process([EMXX, 'src.cpp', '-DCODE=%d' % code, '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit, '-s', 'WASM_ASYNC_COMPILATION=%d' % async_compile])
+          self.run_process([EMXX, 'src.cpp', '-sENVIRONMENT=node,shell', '-DCODE=%d' % code, '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit, '-s', 'WASM_ASYNC_COMPILATION=%d' % async_compile])
           for engine in config.JS_ENGINES:
             # async compilation can't return a code in d8
             if async_compile and engine == config.V8_ENGINE:
@@ -9247,7 +9247,7 @@ int main(void) {
 
   def test_INCOMING_MODULE_JS_API(self):
     def test(args):
-      self.run_process([EMCC, test_file('hello_world.c'), '-O3', '--closure=1'] + args)
+      self.run_process([EMCC, test_file('hello_world.c'), '-O3', '--closure=1', '-sENVIRONMENT=node,shell'] + args)
       for engine in config.JS_ENGINES:
         self.assertContained('hello, world!', self.run_js('a.out.js', engine=engine))
       # ignore \r which on windows can increase the size
@@ -9258,7 +9258,7 @@ int main(void) {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 5872), 150)
+    self.assertLess(abs(changed - 5001), 150)
 
   def test_llvm_includes(self):
     create_file('atomics.c', '#include <stdatomic.h>')
@@ -9591,7 +9591,7 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
 
   def test_non_wasm_without_wasm_in_vm(self):
     # Test that our non-wasm output does not depend on wasm support in the vm.
-    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'WASM=0'])
+    self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'WASM=0', '-sENVIRONMENT=node,shell'])
     js = read_file('a.out.js')
     with open('a.out.js', 'w') as f:
       f.write('var WebAssembly = null;\n' + js)
@@ -10498,8 +10498,8 @@ exec "$@"
   def test_shell_Oz(self):
     # regression test for -Oz working on non-web, non-node environments that
     # lack TextDecoder
-    self.run_process([EMCC, test_file('hello_world.c'), '-Oz'])
-    self.assertContained('hello, world!', self.run_js('a.out.js'))
+    self.emcc_args += ['-Oz']
+    self.do_runf(test_file('hello_world.c'), 'hello, world!')
 
   def test_runtime_keepalive(self):
     self.uses_es6 = True
@@ -10726,3 +10726,10 @@ void foo() {}
       self.run_process(cmd)
       err = self.run_js('a.out.js')
       self.assertContained('warning: unsupported syscall: __sys_mincore', err)
+
+  @require_v8
+  def test_missing_shell_support(self):
+    # By default shell support is not included
+    self.run_process([EMCC, test_file('hello_world.c')])
+    err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContained('shell environment detected but not enabled at build time.', err)
