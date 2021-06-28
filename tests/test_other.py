@@ -36,6 +36,7 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, read_file, read_binary, EMBUILDER, require_v8, require_node
+from common import EMTEST_REBASELINE
 from tools import shared, building, utils, deps_info
 import jsrun
 import clang_native
@@ -48,8 +49,6 @@ emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
 wasm_dis = Path(building.get_binaryen_bin(), 'wasm-dis')
 wasm_opt = Path(building.get_binaryen_bin(), 'wasm-opt')
-
-EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
 
 
 class temp_directory():

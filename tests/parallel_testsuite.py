@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import multiprocessing
-import os
 import sys
 import unittest
 import tempfile
@@ -12,6 +11,8 @@ import time
 import queue
 
 from tools.tempfiles import try_delete
+
+NUM_CORES = None
 
 
 def g_testing_thread(work_queue, result_queue, temp_dir):
@@ -218,9 +219,8 @@ class FakeCode():
 
 
 def num_cores():
-  emcc_cores = os.environ.get('PARALLEL_SUITE_EMCC_CORES') or os.environ.get('EMCC_CORES')
-  if emcc_cores:
-    return int(emcc_cores)
+  if NUM_CORES:
+    return int(NUM_CORES)
   return multiprocessing.cpu_count()
 
 
