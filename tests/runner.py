@@ -284,7 +284,7 @@ def run_tests(options, suites):
     res = testRunner.run(suite)
     msg = ('%s: %s run, %s errors, %s failures, %s skipped' %
            (mod_name, res.testsRun, len(res.errors), len(res.failures), len(res.skipped)))
-    num_failures += len(res.errors) + len(res.failures)
+    num_failures += len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
     resultMessages.append(msg)
 
   if len(resultMessages) > 1:
@@ -294,8 +294,7 @@ def run_tests(options, suites):
     for msg in resultMessages:
       print('    ' + msg)
 
-  # Return the number of failures as the process exit code for automating success/failure reporting.
-  return min(num_failures, 255)
+  return num_failures
 
 
 def parse_args(args):
@@ -375,7 +374,11 @@ def main(args):
     print('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
     return 1
 
-  return run_tests(options, suites)
+  num_failures = run_tests(options, suites)
+  # Return the number of failures as the process exit code
+  # for automating success/failure reporting.  Return codes
+  # over 125 are not well supported on UNIX.
+  return min(num_failures, 125)
 
 
 if __name__ == '__main__':

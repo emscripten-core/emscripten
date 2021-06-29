@@ -138,6 +138,16 @@ class BufferedParallelTestResult():
       print(test, '... ok (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
 
+  def addExpectedFailure(self, test, err):
+    if hasattr(time, 'perf_counter'):
+      print(test, '... expected failure (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
+    self.buffered_result = BufferedTestExpectedFailure(test, err)
+
+  def addUnexpectedSuccess(self, test):
+    if hasattr(time, 'perf_counter'):
+      print(test, '... unexpected success (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
+    self.buffered_result = BufferedTestUnexpectedSuccess(test)
+
   def addSkip(self, test, reason):
     print(test, "... skipped '%s'" % reason, file=sys.stderr)
     self.buffered_result = BufferedTestSkip(test, reason)
@@ -182,9 +192,19 @@ class BufferedTestFailure(BufferedTestBase):
     result.addFailure(self.test, self.error)
 
 
+class BufferedTestExpectedFailure(BufferedTestBase):
+  def updateResult(self, result):
+    result.addExpectedFailure(self.test, self.error)
+
+
 class BufferedTestError(BufferedTestBase):
   def updateResult(self, result):
     result.addError(self.test, self.error)
+
+
+class BufferedTestUnexpectedSuccess(BufferedTestBase):
+  def updateResult(self, result):
+    result.addUnexpectedSuccess(self.test)
 
 
 class FakeTraceback():
