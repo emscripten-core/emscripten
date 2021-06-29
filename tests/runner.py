@@ -308,6 +308,7 @@ def parse_args(args):
   parser.add_argument('--verbose', action='store_true')
   parser.add_argument('--all-engines', action='store_true')
   parser.add_argument('--detect-leaks', action='store_true')
+  parser.add_argument('--skip-slow', action='store_true', help='Skip tests marked as slow')
   parser.add_argument('--cores',
                       help='Set the number tests to run in parallel.  Defaults '
                            'to the number of CPU cores.')
@@ -326,6 +327,7 @@ def env_config():
   common.EMTEST_ALL_ENGINES = os.getenv('EMTEST_ALL_ENGINES')
   common.EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
   common.EMTEST_LACKS_NATIVE_CLANG = os.getenv('EMTEST_LACKS_NATIVE_CLANG')
+  common.EMTEST_REBASELINE = os.getenv('EMTEST_REBASELINE')
   common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
 
   assert 'PARALLEL_SUITE_EMCC_CORES' not in os.environ, 'use EMTEST_CORES rather than PARALLEL_SUITE_EMCC_CORES'
@@ -343,6 +345,8 @@ def main(args):
     common.EMTEST_SAVE_DIR = options.save_dir
   if options.no_clean:
     common.EMTEST_SAVE_DIR = 2
+  if options.skip_slow:
+    common.EMTEST_SKIP_SLOW = options.skip_slow
   if options.all_engines:
     common.EMTEST_ALL_ENGINES = options.all_engines
   if options.rebaseline:
