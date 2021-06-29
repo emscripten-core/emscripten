@@ -19,7 +19,7 @@ if __name__ == '__main__':
 import clang_native
 import jsrun
 import common
-from common import TEST_ROOT, test_file, read_file, read_binary
+from common import TEST_ROOT, EMMAKE, test_file, read_file, read_binary
 from tools.shared import run_process, PIPE, try_delete, EMCC, config
 from tools import building
 
@@ -943,7 +943,13 @@ class benchmark(common.RunnerCore):
     shutil.copyfile(test_file('third_party', 'lua', benchmark + '.lua'), benchmark + '.lua')
 
     def lib_builder(name, native, env_init):
-      ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'),
+                             [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')],
+                             configure=None,
+                             make=[EMMAKE, 'make', 'generic'],
+                             native=native,
+                             cache_name_extra=name,
+                             env_init=env_init)
       if native:
         return ret
       shutil.copyfile(ret[0], ret[0] + '.bc')
@@ -980,7 +986,13 @@ class benchmark(common.RunnerCore):
     src = read_file(test_file('third_party', 'coremark', 'core_main.c'))
 
     def lib_builder(name, native, env_init):
-      return self.get_library('third_party/coremark', [os.path.join('coremark.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library('third_party/coremark',
+                              [os.path.join('coremark.a')],
+                              configure=None,
+                              make=[EMMAKE, 'make'],
+                              native=native,
+                              cache_name_extra=name,
+                              env_init=env_init)
 
     def output_parser(output):
       iters_sec = re.search(r'Iterations/Sec   : ([\d\.]+)', output).group(1)
@@ -992,7 +1004,13 @@ class benchmark(common.RunnerCore):
     src = read_file(test_file('benchmark', 'test_box2d_benchmark.cpp'))
 
     def lib_builder(name, native, env_init):
-      return self.get_library(os.path.join('third_party', 'box2d'), ['box2d.a'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(os.path.join('third_party', 'box2d'),
+                              ['box2d.a'],
+                              configure=None,
+                              make=[EMMAKE, 'make'],
+                              native=native,
+                              cache_name_extra=name,
+                              env_init=env_init)
 
     self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + test_file('third_party', 'box2d')], lib_builder=lib_builder)
 
@@ -1022,7 +1040,13 @@ class benchmark(common.RunnerCore):
     src = read_file(test_file('benchmark', 'test_lzma_benchmark.c'))
 
     def lib_builder(name, native, env_init):
-      return self.get_library(os.path.join('third_party', 'lzma'), [os.path.join('lzma.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(os.path.join('third_party', 'lzma'),
+                              [os.path.join('lzma.a')],
+                              configure=None,
+                              make=[EMMAKE, 'make'],
+                              native=native,
+                              cache_name_extra=name,
+                              env_init=env_init)
 
     self.do_benchmark('lzma', src, 'ok.', shared_args=['-I' + test_file('third_party', 'lzma')], lib_builder=lib_builder)
 
