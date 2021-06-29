@@ -125,6 +125,7 @@ LibraryManager.library = {
   // sys/file.h
   // ==========================================================================
 
+  flock__unimplemented: true,
   flock: function(fd, operation) {
     // int flock(int fd, int operation);
     // Pretend to succeed
@@ -134,6 +135,7 @@ LibraryManager.library = {
   chroot__deps: ['$setErrNo'],
   chroot__proxy: 'sync',
   chroot__sig: 'ii',
+  chroot__unimplemented: true,
   chroot: function(path) {
     // int chroot(const char *path);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chroot.html
@@ -143,6 +145,7 @@ LibraryManager.library = {
 
   execve__deps: ['$setErrNo'],
   execve__sig: 'iiii',
+  execve__unimplemented: true,
   execve: function(path, argv, envp) {
     // int execve(const char *pathname, char *const argv[],
     //            char *const envp[]);
@@ -173,6 +176,7 @@ LibraryManager.library = {
   // processes.
   fork__deps: ['$setErrNo'],
   fork__sig: 'i',
+  fork__unimplemented: true,
   fork: function() {
     // pid_t fork(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fork.html
@@ -184,17 +188,17 @@ LibraryManager.library = {
   posix_spawn: 'fork',
 
   setgroups__deps: ['$setErrNo', 'sysconf'],
+  setgroups__unimplemented: true,
   setgroups: function(ngroups, gidset) {
     // int setgroups(int ngroups, const gid_t *gidset);
     // https://developer.apple.com/library/mac/#documentation/Darwin/Reference/ManPages/man2/setgroups.2.html
     if (ngroups < 1 || ngroups > _sysconf({{{ cDefine('_SC_NGROUPS_MAX') }}})) {
       setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
-    } else {
-      // We have just one process/user/group, so it makes no sense to set groups.
-      setErrNo({{{ cDefine('EPERM') }}});
-      return -1;
     }
+    // We have just one process/user/group, so it makes no sense to set groups.
+    setErrNo({{{ cDefine('EPERM') }}});
+    return -1;
   },
 
   emscripten_get_heap_max: function() {
@@ -506,17 +510,6 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
-  // pwd.h
-  // ==========================================================================
-
-  // TODO: Implement.
-  // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/pwd.h.html
-  getpwuid: function(uid) {
-    return 0; // NULL
-  },
-
-
-  // ==========================================================================
   // time.h
   // ==========================================================================
 
@@ -759,6 +752,7 @@ LibraryManager.library = {
   },
 
   stime__deps: ['$setErrNo'],
+  stime__unimplemented: true,
   stime: function(when) {
     setErrNo({{{ cDefine('EPERM') }}});
     return -1;
@@ -1393,6 +1387,7 @@ LibraryManager.library = {
     return _strptime(buf, format, tm); // no locale support yet
   },
 
+  getdate__unimplemented: true,
   getdate: function(string) {
     // struct tm *getdate(const char *string);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/getdate.html
@@ -1483,6 +1478,7 @@ LibraryManager.library = {
   // ==========================================================================
 
   times__deps: ['$zeroMemory'],
+  times__unimplemented: true,
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
@@ -1517,9 +1513,11 @@ LibraryManager.library = {
     return this.longjmp__deps;
   },
   // will never be emitted, as the dep errors at compile time
+  longjmp__unimplemented: true,
   longjmp: function(env, value) {
     abort('longjmp not supported');
   },
+  setjmp__unimplemented: true,
   setjmp: function(env, value) {
     abort('setjmp not supported');
   },
@@ -1531,6 +1529,7 @@ LibraryManager.library = {
 
   wait__deps: ['$setErrNo'],
   wait__sig: 'ii',
+  wait__unimplemented: true,
   wait: function(stat_loc) {
     // pid_t wait(int *stat_loc);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/wait.html
@@ -2536,22 +2535,36 @@ LibraryManager.library = {
 
   // pwd.h
 
+  getpwnam__unimplemented: true,
   getpwnam: function() { throw 'getpwnam: TODO' },
+  getpwnam_r__unimplemented: true,
   getpwnam_r: function() { throw 'getpwnam_r: TODO' },
+  getpwuid__unimplemented: true,
   getpwuid: function() { throw 'getpwuid: TODO' },
+  getpwuid_r__unimplemented: true,
   getpwuid_r: function() { throw 'getpwuid_r: TODO' },
+  setpwent__unimplemented: true,
   setpwent: function() { throw 'setpwent: TODO' },
+  getpwent__unimplemented: true,
   getpwent: function() { throw 'getpwent: TODO' },
+  endpwent__unimplemented: true,
   endpwent: function() { throw 'endpwent: TODO' },
 
   // grp.h
 
+  getgrgid__unimplemented: true,
   getgrgid: function() { throw 'getgrgid: TODO' },
+  getgrgid_r__unimplemented: true,
   getgrgid_r: function() { throw 'getgrgid_r: TODO' },
+  getgrnam__unimplemented: true,
   getgrnam: function() { throw 'getgrnam: TODO' },
+  getgrnam_r__unimplemented: true,
   getgrnam_r: function() { throw 'getgrnam_r: TODO' },
+  getgrent__unimplemented: true,
   getgrent: function() { throw 'getgrent: TODO' },
+  endgrent__unimplemented: true,
   endgrent: function() { throw 'endgrent: TODO' },
+  setgrent__unimplemented: true,
   setgrent: function() { throw 'setgrent: TODO' },
 
   // random.h
