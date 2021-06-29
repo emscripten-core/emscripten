@@ -226,7 +226,7 @@ var SyscallsLibrary = {
     }
   },
 
-  $syscallMmap2__deps: ['$SYSCALLS', '$zeroMemory',
+  $syscallMmap2__deps: ['$SYSCALLS', '$zeroMemory', '$mmapAlloc',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
@@ -245,9 +245,8 @@ var SyscallsLibrary = {
     // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
     // In this case fd argument is ignored.
     if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
-      ptr = _memalign({{{ WASM_PAGE_SIZE }}}, len);
+      ptr = mmapAlloc(len);
       if (!ptr) return -{{{ cDefine('ENOMEM') }}};
-      zeroMemory(ptr, len);
       allocated = true;
     } else {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
