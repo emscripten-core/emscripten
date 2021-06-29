@@ -41,6 +41,12 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     self.max_cores = max_cores
 
   def run(self, result):
+    # The 'spawn' method is used on windows and it can be useful to set this on
+    # all platforms when debugging multiprocessing issues.  Without this we
+    # default to 'fork' on unix which is better because global state is
+    # inherited by the child process, but can lead to hard-to-debug windows-only
+    # issues.
+    # multiprocessing.set_start_method('spawn')
     test_queue = self.create_test_queue()
     self.init_processes(test_queue)
     results = self.collect_results()
