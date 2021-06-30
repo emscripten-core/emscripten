@@ -133,7 +133,7 @@ flaky = {
   'test_pthread_cond_signal_1_1': 'flaky: https://github.com/emscripten-core/emscripten/issues/13283',
   'test_pthread_barrier_wait_2_1': 'flaky: https://github.com/emscripten-core/emscripten/issues/14508',
   'test_pthread_rwlock_unlock_3_1': 'Test fail: writer did not get write lock, when main release the lock',
-  'test_pthread_detach_1_2': 'flaky when the whole test suite is run'
+  'test_pthread_detach_1_2': 'Test fail: we were able to join a detached thread',
 }
 
 # Mark certain tests as disabled.  These are tests that are either flaky or never return.
@@ -147,9 +147,6 @@ disabled = {
 expect_fail = {
   **unsupported,
   'test_pthread_attr_setscope_5_1': 'internally skipped (PTS_UNTESTED)',
-  # TODO(kleisauke): Regression?
-  'test_pthread_cond_wait_2_3': 'fails with: The child did not own the mutex inside the cleanup handler',
-  'test_pthread_cond_timedwait_2_6': 'fails with: The child did not own the mutex inside the cleanup handler',
 }
 
 
