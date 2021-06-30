@@ -508,13 +508,13 @@ var WasiLibrary = {
       var type = stream.tty ? {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}} :
                  FS.isDir(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_DIRECTORY }}} :
                  FS.isLink(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_SYMBOLIC_LINK }}} :
-                 {{{ cDefs.__WASI_FILETYPE_REGULAR_FILE }}};
+                 FS.isFile(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_REGULAR_FILE }}} :
+                 -1;
+      if (type === -1) return -{{{ cDefs.EBADF }}};
 #else
       // Hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0. We support at
       // least stdin, stdout, stderr in a simple way.
-#if ASSERTIONS
-      assert(fd == 0 || fd == 1 || fd == 2);
-#endif
+      if (fd < 0 || fd > 2) return -{{{ cDefs.EBADF }}};
       var type = {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}};
       if (fd == 0) {
         rightsBase = {{{ cDefs.__WASI_RIGHTS_FD_READ }}};
