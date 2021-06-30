@@ -44,42 +44,27 @@ When:
 
 Requirements:
 
- * [emscripten-releases build CI](https://ci.chromium.org/p/emscripten-releases/g/main/console)
-   is green on all OSes for the desired hash (where the hash is the git hash in
-   the
-   [emscripten-releases](https://chromium.googlesource.com/emscripten-releases)
-   repo, which then specifies through
-   [DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
-   exactly which revisions to use in all other repos).
+ * [emscripten-releases build CI][waterfall] is green on all OSes for the
+   desired hash (where the hash is the git hash in the
+   [emscripten-releases][releases_repo] repo, which then specifies through
+   [DEPS][DEPS] exactly which revisions to use in all other repos).
  * [GitHub CI](https://github.com/emscripten-core/emscripten/branches) is green
-   on the `master` branch.
+   on the `main` branch.
 
 How:
 
-1. Open a PR for the emsdk to update
-   [emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/master/emscripten-releases-tags.txt),
-   adding the version and the hash. Updating the "latest" tag there to the new
-   release is possible, but can also be deferred if you want to do more testing
-   before users fetching "latest" get this release.
-2. Run [update_bazel_workspace.sh](https://github.com/emscripten-core/emsdk/blob/master/scripts/update_bazel_workspace.sh).
-   This will update the bazel toolchain based on the new "latest" tag in emscripten-releases-tags.txt.
-3. Tag the emsdk repo as well, on the commit that does the update, after it
-   lands on master.
-4. Update
-   [emscripten-version.txt](https://github.com/emscripten-core/emscripten/blob/main/emscripten-version.txt)
-   in the emscripten repo. This is a delayed update, in that the tag will refer
-   to the actual release, but the update to emscripten-version.txt is a new
-   commit to emscripten that happens later.
-   * To minimize the difference, we should pick hashes for releases that are
-     very recent, and try to avoid anything else landing in between - can ask
-     on irc/chat for people to not land anything, or do this at a time of day
-     when that's unlikely, etc.
-   * There is no need to open a PR for this change, you can optionally just
-     commit it directly.
-5. Tag the emscripten repo on the emscripten commit on which
-   `emscripten-version.txt` was updated. (This could also be the commit from the
-   DEPS file as well, but this way is less confusing when just working on the
-   emscripten repo, and the difference should only be one commit anyhow.)
+1. Run [`./scripts/create_release.py`][create_release] in the emsdk repository.
+   This script will update [emscripten-releases-tags.txt][emscripten_releases_tags],
+   adding a new version.  You can either specify the desired hash, or let the
+   script pick the current tot build.  The script will create a new git branch
+   that can be uploaded as a PR.
+3. Tag the `emsdk` repo with the new version number, on the commit that does the
+   update, after it lands on main.
+4. Tag the `emscripten` repo with the new version number, on the commit referred
+   to in the [DEPS][DEPS] file above.
+5. Update [`emscripten-version.txt`][emscripten_version] and
+   [`ChangeLog.md`][changelog] in the emscripten repo to refer the next,
+   upcoming, version.
 
 Major version update (1.X.Y to 1.(X+1).0)
 -----------------------------------------
@@ -110,7 +95,7 @@ Updating the `emscripten.org` Website
 --------------------------------------
 
 The site is currently hosted in `gh-pages` branch of the separate [site
-repository](site_repo). To update the docs, rebuild them and copy them there,
+repository][site_repo]. To update the docs, rebuild them and copy them there,
 that is:
 
 1. In your emscripten repo checkout, enter `site`.
@@ -118,7 +103,9 @@ that is:
 3. Run `make install EMSCRIPTEN_SITE=\[path-to-a-checkout-of-the-site-repo\]`
 3. Go to the site repo, commit the changes, and push.
 
-[site_repo]: https://github.com/kripken/emscripten-site
+You will need the specific sphinx version installed, which you can do using
+`pip3 install -r requirements-dev.txt` (depending on your system, you may then
+need to add `~/.local/bin` to your path, if pip installs to there).
 
 
 Updating the `emcc.py` help text
@@ -131,4 +118,18 @@ updating `emcc.rst` in a PR, the following should be done:
 1. In your emscripten repo checkout, enter `site`.
 2. Run `make clean` (without this, it may not emit the right output).
 2. Run `make text`.
-3. Add the changes to your PR.
+3. Copy the output `build/text/docs/tools_reference/emcc.txt` to
+   `../docs/emcc.txt` (both paths relative to the `site/` directory in
+   emscripten that you entered in step 1), and add that change to your PR.
+
+See notes above on installing sphinx.
+
+
+[site_repo]: https://github.com/kripken/emscripten-site
+[releases_repo]: https://chromium.googlesource.com/emscripten-releases
+[waterfall]: https://ci.chromium.org/p/emscripten-releases/g/main/console
+[emscripten_version]: https://github.com/emscripten-core/emscripten/blob/main/emscripten-version.txt
+[changelog]: https://github.com/emscripten-core/emscripten/blob/main/ChangeLog.md
+[create_release]: https://github.com/emscripten-core/emsdk/blob/main/scripts/create_release.py
+[emscripten_releases_tags]: https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.txt
+[DEPS]: https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS

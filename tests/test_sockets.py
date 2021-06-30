@@ -23,7 +23,7 @@ except Exception:
   # which is the same behavior as before.
   pass
 import clang_native
-from runner import BrowserCore, no_windows, create_file, test_file
+from common import BrowserCore, no_windows, create_file, test_file, read_file
 from tools import shared, config, utils
 from tools.shared import PYTHON, EMCC, path_from_root, WINDOWS, run_process, CLANG_CC
 
@@ -234,7 +234,7 @@ class sockets(BrowserCore):
 
     # re-write the client test with this literal (it's too big to pass via command line)
     input_filename = test_file('sockets', 'test_sockets_echo_client.c')
-    input = open(input_filename).read()
+    input = read_file(input_filename)
     create_file('test_sockets_echo_bigdata.c', input.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message))
 
     harnesses = [
@@ -284,7 +284,7 @@ class sockets(BrowserCore):
     shared.try_delete('enet')
     shutil.copytree(test_file('third_party', 'enet'), 'enet')
     with utils.chdir('enet'):
-      self.run_process([path_from_root('emconfigure'), './configure'])
+      self.run_process([path_from_root('emconfigure'), './configure', '--disable-shared'])
       self.run_process([path_from_root('emmake'), 'make'])
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + self.in_dir('enet', 'include')]
 
@@ -332,15 +332,13 @@ class sockets(BrowserCore):
 
     host_filepath = test_file('sockets', host_src)
     temp_host_filepath = os.path.join(self.get_dir(), os.path.basename(host_src))
-    with open(host_filepath) as f:
-      host_src = f.read()
+    host_src = read_file(host_filepath)
     with open(temp_host_filepath, 'w') as f:
       f.write(host_src)
 
     peer_filepath = test_file('sockets', peer_src)
     temp_peer_filepath = os.path.join(self.get_dir(), os.path.basename(peer_src))
-    with open(peer_filepath) as f:
-      peer_src = f.read()
+    peer_src = read_file(peer_filepath)
     with open(temp_peer_filepath, 'w') as f:
       f.write(peer_src)
 

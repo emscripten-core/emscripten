@@ -43,13 +43,13 @@ class Cache:
       raise Exception('Attempt to lock the cache but FROZEN_CACHE is set')
 
     if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
-      logger.debug('PID %s acquiring multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
+      logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to Emscripten cache at {self.dirname}')
       try:
         self.filelock.acquire(60)
       except filelock.Timeout:
         # The multiprocess cache locking can be disabled altogether by setting EM_EXCLUSIVE_CACHE_ACCESS=1 environment
         # variable before building. (in that case, use "embuilder.py build ALL" to prepopulate the cache)
-        logger.warning('Accessing the Emscripten cache at "' + self.dirname + '" is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "' + self.filelock_name + '" and try again. If this occurs deterministically, consider filing a bug.')
+        logger.warning(f'Accessing the Emscripten cache at "{self.dirname}" is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "{self.filelock_name}" and try again. If this occurs deterministically, consider filing a bug.')
         self.filelock.acquire()
 
       self.prev_EM_EXCLUSIVE_CACHE_ACCESS = os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS')
@@ -66,7 +66,7 @@ class Cache:
       else:
         del os.environ['EM_EXCLUSIVE_CACHE_ACCESS']
       self.filelock.release()
-      logger.debug('PID %s released multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
+      logger.debug(f'PID {os.getpid()} released multiprocess file lock to Emscripten cache at {self.dirname}')
 
   @contextlib.contextmanager
   def lock(self):
@@ -89,16 +89,19 @@ class Cache:
   def get_path(self, name):
     return os.path.join(self.dirname, name)
 
-  def get_sysroot_dir(self, absolute):
+  def get_sysroot(self, absolute):
     if absolute:
       return os.path.join(self.dirname, 'sysroot')
     return 'sysroot'
 
-  def get_include_dir(self):
-    return os.path.join(self.get_sysroot_dir(absolute=True), 'include')
+  def get_include_dir(self, *parts):
+    return self.get_sysroot_dir('include', *parts)
+
+  def get_sysroot_dir(self, *parts):
+    return os.path.join(self.get_sysroot(absolute=True), *parts)
 
   def get_lib_dir(self, absolute):
-    path = os.path.join(self.get_sysroot_dir(absolute=absolute), 'lib')
+    path = os.path.join(self.get_sysroot(absolute=absolute), 'lib')
     if settings.MEMORY64:
       path = os.path.join(path, 'wasm64-emscripten')
     else:
@@ -123,7 +126,7 @@ class Cache:
     with self.lock():
       name = os.path.join(self.dirname, shortname)
       if os.path.exists(name):
-        logger.info('deleting cached file: %s', name)
+        logger.info(f'deleting cached file: {name}')
         tempfiles.try_delete(name)
 
   def get_lib(self, libname, *args, **kwargs):
@@ -143,7 +146,7 @@ class Cache:
     if config.FROZEN_CACHE:
       # Raise an exception here rather than exit_with_error since in practice this
       # should never happen
-      raise Exception('FROZEN_CACHE is set, but cache file is missing: "%s" (in cache root path "%s")' % (shortname, self.dirname))
+      raise Exception(f'FROZEN_CACHE is set, but cache file is missing: "{shortname}" (in cache root path "{self.dirname}")')
 
     with self.lock():
       if os.path.exists(cachename) and not force:
@@ -153,7 +156,7 @@ class Cache:
           what = 'system library'
         else:
           what = 'system asset'
-      message = 'generating ' + what + ': ' + shortname + '... (this will be cached in "' + cachename + '" for subsequent builds)'
+      message = f'generating {what}: {shortname}... (this will be cached in "{cachename}" for subsequent builds)'
       logger.info(message)
       utils.safe_ensure_dirs(os.path.dirname(cachename))
       creator(cachename)

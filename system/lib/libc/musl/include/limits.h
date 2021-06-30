@@ -64,11 +64,7 @@
 /* Implementation choices... */
 
 #define PTHREAD_KEYS_MAX 128
-#ifdef __EMSCRIPTEN__ // posixtestsuite insists PTHREAD_STACK_MIN is a multiple of PAGE_SIZE
-#define PTHREAD_STACK_MIN PAGE_SIZE
-#else
 #define PTHREAD_STACK_MIN 2048
-#endif
 #define PTHREAD_DESTRUCTOR_ITERATIONS 4
 #define SEM_VALUE_MAX 0x7fffffff
 #define SEM_NSEMS_MAX 256

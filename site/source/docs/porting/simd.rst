@@ -92,7 +92,7 @@ Compiling SIMD code targeting x86 SSE instruction set
 
 Emscripten supports compiling existing codebases that use x86 SSE by passing the `-msse` directive to the compiler, and including the header `<xmmintrin.h>`.
 
-Currently only the SSE1 and SSE2 instruction sets are supported.
+Currently only the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and 128-bit AVX instruction sets are supported.
 
 The following table highlights the availability and expected performance of different SSE1 intrinsics. Even if you are directly targeting the native Wasm SIMD opcodes via wasm_simd128.h header, this table can be useful for understanding the performance limitations that the Wasm SIMD specification has when running on x86 hardware.
 
@@ -109,6 +109,8 @@ The following legend is used to highlight the expected performance of various in
  - ⚫ the given SSE intrinsic is not available. Referencing the intrinsic will cause a compiler error.
 
 Certain intrinsics in the table below are marked "virtual". This means that there does not actually exist a native x86 SSE instruction set opcode to implement them, but native compilers offer the function as a convenience. Different compilers might generate a different instruction sequence for these.
+
+In addition to consulting the tables below, you can turn on diagnostics for slow, emulated functions by defining the macro `WASM_SIMD_COMPAT_SLOW`. This will print out warnings if you attempt to use any of the slow paths (corresponding to ❌ or 💣 in the legend).
 
 .. list-table:: x86 SSE intrinsics available via #include <xmmintrin.h>
    :widths: 20 30
@@ -153,7 +155,7 @@ Certain intrinsics in the table below are marked "virtual". This means that ther
    * - _mm_sfence
      - ⚠️ A full barrier in multithreaded builds.
    * - _mm_shuffle_ps
-     - 🟡 wasm_v32x4_shuffle. VM must guess type.
+     - 🟡 wasm_i32x4_shuffle. VM must guess type.
    * - _mm_storer_ps
      - 💡 Virtual. Shuffle + Simd store.
    * - _mm_store_ps1 (_mm_store1_ps)
@@ -475,17 +477,17 @@ The following table highlights the availability and expected performance of diff
    * - _mm_comineq_sd
      - ❌ scalarized
    * - _mm_cvtepi32_pd
-     - ❌ scalarized
+     - ✅ wasm_f64x2_convert_low_i32x4
    * - _mm_cvtepi32_ps
      - ✅ wasm_f32x4_convert_i32x4
    * - _mm_cvtpd_epi32
      - ❌ scalarized
    * - _mm_cvtpd_ps
-     - ❌ scalarized
+     - ✅ wasm_f32x4_demote_f64x2_zero
    * - _mm_cvtps_epi32
      - ❌ scalarized
    * - _mm_cvtps_pd
-     - ❌ scalarized
+     - ✅ wasm_f64x2_promote_low_f32x4
    * - _mm_cvtsd_f64
      - ✅ wasm_f64x2_extract_lane
    * - _mm_cvtsd_si32
@@ -900,9 +902,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_blendv_ps
      - ⚠️ emulated with a SIMD shr+and+andnot+or
    * - _mm_ceil_pd
-     - ❌ scalarized
+     - ✅ wasm_f64x2_ceil
    * - _mm_ceil_ps
-     - ❌ scalarized
+     - ✅ wasm_f32x4_ceil
    * - _mm_ceil_sd
      - ❌ scalarized
    * - _mm_ceil_ss
@@ -922,13 +924,13 @@ The following table highlights the availability and expected performance of diff
    * - _mm_cvtepi8_epi64
      - ⚠️ emulated with two SIMD widens+const+cmp+shuffle
    * - _mm_cvtepu16_epi32
-     - ✅ wasm_i32x4_widen_low_u16x8
+     - ✅ wasm_u32x4_extend_low_u16x8
    * - _mm_cvtepu16_epi64
      - ⚠️ emulated with SIMD const+two shuffles
    * - _mm_cvtepu32_epi64
      - ⚠️ emulated with SIMD const+shuffle
    * - _mm_cvtepu8_epi16
-     - ✅ wasm_i16x8_widen_low_u8x16
+     - ✅ wasm_u16x8_extend_low_u8x16
    * - _mm_cvtepu8_epi32
      - ⚠️ emulated with two SIMD widens
    * - _mm_cvtepu8_epi64
@@ -946,9 +948,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_extract_ps
      - ✅ wasm_i32x4_extract_lane
    * - _mm_floor_pd
-     - ❌ scalarized
+     - ✅ wasm_f64x2_floor
    * - _mm_floor_ps
-     - ❌ scalarized
+     - ✅ wasm_f32x4_floor
    * - _mm_floor_sd
      - ❌ scalarized
    * - _mm_floor_ss
@@ -1005,21 +1007,21 @@ The following table highlights the availability and expected performance of diff
      - ❌ scalarized
    * - _mm_testc_si128
      - ❌ scalarized
-   * - _mm_test_nzc_si128
+   * - _mm_testnzc_si128
      - ❌ scalarized
    * - _mm_testz_si128
      - ❌ scalarized
 
 The following table highlights the availability and expected performance of different SSE4.2 intrinsics. Refer to `Intel Intrinsics Guide on SSE4.2 <https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=SSE4_2>`_.
 
-.. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h>
+.. list-table:: x86 SSE4.2 intrinsics available via #include <nmmintrin.h>
    :widths: 20 30
    :header-rows: 1
 
    * - Intrinsic name
      - WebAssembly SIMD support
    * - _mm_cmpgt_epi64
-     - ❌ scalarized
+     - ✅ wasm_i64x2_gt
 
 ⚫ The SSE4.2 functions that deal with string comparisons and CRC calculations are not available:
  - _mm_cmpestra, _mm_cmpestrc, _mm_cmpestri, _mm_cmpestrm, _mm_cmpestro, _mm_cmpestrs, _mm_cmpestrz, _mm_cmpistra, _mm_cmpistrc, _mm_cmpistri, _mm_cmpistrm, _mm_cmpistro, _mm_cmpistrs, _mm_cmpistrz, _mm_crc32_u16, _mm_crc32_u32, _mm_crc32_u64, _mm_crc32_u8

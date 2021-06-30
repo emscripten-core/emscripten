@@ -34,7 +34,7 @@ int main() {
   printf("\n");
   errno = 0;
 
-  printf("F_SETFD: %d\n", fcntl(f, F_SETFD));
+  printf("F_SETFD: %d\n", fcntl(f, F_SETFD, -1));
   printf("errno: %d\n", errno);
   printf("\n");
   errno = 0;
@@ -82,7 +82,7 @@ int main() {
   printf("\n");
   errno = 0;
 
-  printf("INVALID: %d\n", fcntl(f, 123));
+  printf("INVALID: %d\n", fcntl(f, 123, -1));
   printf("errno: %d\n", errno);
 
   return 0;

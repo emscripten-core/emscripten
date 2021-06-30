@@ -8,6 +8,8 @@ import os
 TAG = 'version_4'
 HASH = '30a7b04652239bccff3cb1fa7cd8ae602791b5f502a96df39585c13ebc4bb2b64ba1598c0d1f5382028d94e04a5ca02185ea06bf7f4b3520f6df4cc253f9dd24'
 
+deps = ['sdl2']
+
 
 def needed(settings):
   return settings.USE_SDL_IMAGE == 2
@@ -61,8 +63,6 @@ def clear(ports, settings, shared):
 
 
 def process_dependencies(settings):
-  global deps
-  deps = ['sdl2']
   settings.USE_SDL = 2
   if 'png' in settings.SDL2_IMAGE_FORMATS:
     deps.append('libpng')

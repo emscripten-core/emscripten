@@ -29,7 +29,6 @@ var LibraryFetch = {
     '$Fetch',
     '$fetchXHR',
     '$callUserCallback',
-    'emscripten_is_main_browser_thread',
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush',
     '$runtimeKeepalivePop',

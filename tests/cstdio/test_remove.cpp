@@ -64,9 +64,5 @@ int main() {
   atexit(cleanup);
   setup();
   test();
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
-  return EXIT_SUCCESS;
+  return 0;
 }

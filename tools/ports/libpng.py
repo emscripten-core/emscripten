@@ -6,9 +6,10 @@
 import os
 import shutil
 import logging
+from pathlib import Path
 
-TAG = 'version_1'
-HASH = 'a19ede8a4339f2745a490c22f3893899e1a5eae9d2b270e49d88d3a85239fbbaa26c9a352d0e6fb8bb69b4f45bd00c1ae9eff29b60cf03e79c5df45a4409992f'
+TAG = '1.6.37'
+HASH = '2ce2b855af307ca92a6e053f521f5d262c36eb836b4810cb53c809aa3ea2dcc08f834aee0ffd66137768a54397e28e92804534a74abb6fc9f6f3127f14c9c338'
 
 deps = ['zlib']
 
@@ -18,7 +19,8 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('libpng', 'https://github.com/emscripten-ports/libpng/archive/' + TAG + '.zip', 'libpng-' + TAG, sha512hash=HASH)
+  # This is an emscripten-hosted mirror of the libpng repo from Sourceforge.
+  ports.fetch_project('libpng', 'https://storage.googleapis.com/webassembly/emscripten-ports/libpng-' + TAG + '.tar.gz', 'libpng-' + TAG, sha512hash=HASH)
 
   def create(final):
     logging.info('building port: libpng')
@@ -29,7 +31,7 @@ def get(ports, settings, shared):
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
-    open(os.path.join(dest_path, 'pnglibconf.h'), 'w').write(pnglibconf_h)
+    Path(dest_path, 'pnglibconf.h').write_text(pnglibconf_h)
     ports.install_headers(dest_path)
 
     ports.build_port(dest_path, final, flags=['-s', 'USE_ZLIB=1'], exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
@@ -53,13 +55,12 @@ def show():
   return 'libpng (USE_LIBPNG=1; zlib license)'
 
 
-pnglibconf_h = r'''/* libpng 1.6.17 STANDARD API DEFINITION */
+pnglibconf_h = r'''/* pnglibconf.h - library build configuration */
 
-/* pnglibconf.h - library build configuration */
+/* libpng version 1.6.37 */
 
-/* Libpng version 1.6.17 - March 26, 2015 */
-
-/* Copyright (c) 1998-2014 Glenn Randers-Pehrson */
+/* Copyright (c) 2018-2019 Cosmin Truta */
+/* Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson */
 
 /* This code is released under the libpng license. */
 /* For conditions of distribution and use, see the disclaimer */
@@ -99,6 +100,8 @@ pnglibconf_h = r'''/* libpng 1.6.17 STANDARD API DEFINITION */
 #define PNG_IO_STATE_SUPPORTED
 #define PNG_MNG_FEATURES_SUPPORTED
 #define PNG_POINTER_INDEXING_SUPPORTED
+/*#undef PNG_POWERPC_VSX_API_SUPPORTED*/
+/*#undef PNG_POWERPC_VSX_CHECK_SUPPORTED*/
 #define PNG_PROGRESSIVE_READ_SUPPORTED
 #define PNG_READ_16BIT_SUPPORTED
 #define PNG_READ_ALPHA_MODE_SUPPORTED
@@ -137,6 +140,7 @@ pnglibconf_h = r'''/* libpng 1.6.17 STANDARD API DEFINITION */
 #define PNG_READ_USER_TRANSFORM_SUPPORTED
 #define PNG_READ_bKGD_SUPPORTED
 #define PNG_READ_cHRM_SUPPORTED
+#define PNG_READ_eXIf_SUPPORTED
 #define PNG_READ_gAMA_SUPPORTED
 #define PNG_READ_hIST_SUPPORTED
 #define PNG_READ_iCCP_SUPPORTED
@@ -156,8 +160,6 @@ pnglibconf_h = r'''/* libpng 1.6.17 STANDARD API DEFINITION */
 #define PNG_SAVE_UNKNOWN_CHUNKS_SUPPORTED
 #define PNG_SEQUENTIAL_READ_SUPPORTED
 #define PNG_SETJMP_SUPPORTED
-#define PNG_SET_CHUNK_CACHE_LIMIT_SUPPORTED
-#define PNG_SET_CHUNK_MALLOC_LIMIT_SUPPORTED
 #define PNG_SET_OPTION_SUPPORTED
 #define PNG_SET_UNKNOWN_CHUNKS_SUPPORTED
 #define PNG_SET_USER_LIMITS_SUPPORTED
@@ -166,6 +168,7 @@ pnglibconf_h = r'''/* libpng 1.6.17 STANDARD API DEFINITION */
 #define PNG_SIMPLIFIED_READ_SUPPORTED
 #define PNG_SIMPLIFIED_WRITE_AFIRST_SUPPORTED
 #define PNG_SIMPLIFIED_WRITE_BGR_SUPPORTED
+#define PNG_SIMPLIFIED_WRITE_STDIO_SUPPORTED
 #define PNG_SIMPLIFIED_WRITE_SUPPORTED
 #define PNG_STDIO_SUPPORTED
 #define PNG_STORE_UNKNOWN_CHUNKS_SUPPORTED
@@ -177,7 +180,7 @@ pnglibconf_h = r'''/* libpng 1.6.17 STANDARD API DEFINITION */
 #define PNG_USER_MEM_SUPPORTED
 #define PNG_USER_TRANSFORM_INFO_SUPPORTED
 #define PNG_USER_TRANSFORM_PTR_SUPPORTED
-#define PNG_WARNINGS_SUPPORTED
+/*#undef PNG_WARNINGS_SUPPORTED*/
 #define PNG_WRITE_16BIT_SUPPORTED
 #define PNG_WRITE_ANCILLARY_CHUNKS_SUPPORTED
 #define PNG_WRITE_BGR_SUPPORTED
@@ -207,6 +210,7 @@ pnglibconf_h = r'''/* libpng 1.6.17 STANDARD API DEFINITION */
 #define PNG_WRITE_WEIGHTED_FILTER_SUPPORTED
 #define PNG_WRITE_bKGD_SUPPORTED
 #define PNG_WRITE_cHRM_SUPPORTED
+#define PNG_WRITE_eXIf_SUPPORTED
 #define PNG_WRITE_gAMA_SUPPORTED
 #define PNG_WRITE_hIST_SUPPORTED
 #define PNG_WRITE_iCCP_SUPPORTED
@@ -224,6 +228,7 @@ pnglibconf_h = r'''/* libpng 1.6.17 STANDARD API DEFINITION */
 #define PNG_WRITE_zTXt_SUPPORTED
 #define PNG_bKGD_SUPPORTED
 #define PNG_cHRM_SUPPORTED
+#define PNG_eXIf_SUPPORTED
 #define PNG_gAMA_SUPPORTED
 #define PNG_hIST_SUPPORTED
 #define PNG_iCCP_SUPPORTED
@@ -242,11 +247,14 @@ pnglibconf_h = r'''/* libpng 1.6.17 STANDARD API DEFINITION */
 /* end of options */
 /* settings */
 #define PNG_API_RULE 0
-#define PNG_COST_SHIFT 3
 #define PNG_DEFAULT_READ_MACROS 1
 #define PNG_GAMMA_THRESHOLD_FIXED 5000
 #define PNG_IDAT_READ_SIZE PNG_ZBUF_SIZE
 #define PNG_INFLATE_BUF_SIZE 1024
+#define PNG_LINKAGE_API extern
+#define PNG_LINKAGE_CALLBACK extern
+#define PNG_LINKAGE_DATA extern
+#define PNG_LINKAGE_FUNCTION extern
 #define PNG_MAX_GAMMA_8 11
 #define PNG_QUANTIZE_BLUE_BITS 5
 #define PNG_QUANTIZE_GREEN_BITS 5
@@ -257,7 +265,6 @@ pnglibconf_h = r'''/* libpng 1.6.17 STANDARD API DEFINITION */
 #define PNG_USER_CHUNK_MALLOC_MAX 8000000
 #define PNG_USER_HEIGHT_MAX 1000000
 #define PNG_USER_WIDTH_MAX 1000000
-#define PNG_WEIGHT_SHIFT 8
 #define PNG_ZBUF_SIZE 8192
 #define PNG_ZLIB_VERNUM 0 /* unknown */
 #define PNG_Z_DEFAULT_COMPRESSION (-1)

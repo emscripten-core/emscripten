@@ -14,14 +14,7 @@
 #include <emscripten/html5.h>
 #include <GLES2/gl2.h>
 
-#ifdef REPORT_RESULT
-#define DIE() do { REPORT_RESULT(1); exit(1); } while (0)
-#else
-#define DIE() do { exit(1); } while (0)
-#endif
-
-int main()
-{
+int main() {
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.explicitSwapControl = 1;
@@ -38,7 +31,7 @@ int main()
 #if !TEST_WEBGL2 && TEST_VAO
   // This test cannot run without browser support for OES_vertex_array_object.
   if (!emscripten_webgl_enable_extension(ctx, "OES_vertex_array_object")) {
-    DIE();
+    return 1;
   }
 #endif
 
@@ -49,7 +42,7 @@ int main()
   emscripten_webgl_commit_frame();
 
   if (glGetError() != GL_NO_ERROR) {
-    DIE();
+    return 1;
   }
 
   // C doesn't have access to the "frontbuffer" (canvas contents).
@@ -61,10 +54,8 @@ int main()
     return pixels[0] == 0 && pixels[1] == 255 && pixels[2] == 0 && pixels[3] == 255;
   });
   if (!canvas_is_green) {
-    DIE();
+    return 1;
   }
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

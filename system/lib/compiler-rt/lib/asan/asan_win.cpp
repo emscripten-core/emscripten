@@ -134,7 +134,7 @@ INTERCEPTOR(int, _except_handler4, void *a, void *b, void *c, void *d) {
 static thread_return_t THREAD_CALLING_CONV asan_thread_start(void *arg) {
   AsanThread *t = (AsanThread *)arg;
   SetCurrentThread(t);
-  return t->ThreadStart(GetTid(), /* signal_thread_is_registered */ nullptr);
+  return t->ThreadStart(GetTid());
 }
 
 INTERCEPTOR_WINAPI(HANDLE, CreateThread, LPSECURITY_ATTRIBUTES security,
@@ -189,6 +189,12 @@ void InitializePlatformInterceptors() {
 
 void AsanApplyToGlobals(globals_op_fptr op, const void *needle) {
   UNIMPLEMENTED();
+}
+
+void FlushUnneededASanShadowMemory(uptr p, uptr size) {
+  // Since asan's mapping is compacting, the shadow chunk may be
+  // not page-aligned, so we only flush the page-aligned portion.
+  ReleaseMemoryPagesToOS(MemToShadow(p), MemToShadow(p + size));
 }
 
 // ---------------------- TSD ---------------- {{{
@@ -247,15 +253,8 @@ void *AsanDoesNotSupportStaticLinkage() {
 }
 
 uptr FindDynamicShadowStart() {
-  uptr granularity = GetMmapGranularity();
-  uptr alignment = 8 * granularity;
-  uptr left_padding = granularity;
-  uptr space_size = kHighShadowEnd + left_padding;
-  uptr shadow_start = FindAvailableMemoryRange(space_size, alignment,
-                                               granularity, nullptr, nullptr);
-  CHECK_NE((uptr)0, shadow_start);
-  CHECK(IsAligned(shadow_start, alignment));
-  return shadow_start;
+  return MapDynamicShadow(MemToShadowSize(kHighMemEnd), SHADOW_SCALE,
+                          /*min_shadow_base_alignment*/ 0, kHighMemEnd);
 }
 
 void AsanCheckDynamicRTPrereqs() {}
@@ -267,6 +266,8 @@ void ReadContextStack(void *context, uptr *stack, uptr *ssize) {
 }
 
 void AsanOnDeadlySignal(int, void *siginfo, void *context) { UNIMPLEMENTED(); }
+
+bool PlatformUnpoisonStacks() { return false; }
 
 #if SANITIZER_WINDOWS64
 // Exception handler for dealing with shadow memory.

@@ -46,7 +46,7 @@ Alternatively, you may want to build our official emscripten release tags, which
 are the versions the emsdk lets users install. To find the mapping between the
 emsdk versions and the revision of the emscripten-releases repository, the emsdk
 has
-[emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/master/emscripten-releases-tags.txt).
+[emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.txt).
 All versions listed there should be safe to build, as we check that the CI
 was green on them.
 
@@ -126,7 +126,7 @@ Prebuilt libraries
 
 Ideally a packaged installation can include a fully populated cache directory
 containing pre-built libraries.  If you want to do this you can use
-`./embuilder build ALL` to populate the cache directory.  You can them ship the
+`embuilder build ALL` to populate the cache directory.  You can them ship the
 `cache` directory inside the emscripten directory.  When shipping the cache
 directory on a multi-user system where users cannot modify the `cache` you need
 to be sure that all possible configurations of the libraries are built.

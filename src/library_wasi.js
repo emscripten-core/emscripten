@@ -33,7 +33,11 @@ var WasiLibrary = {
       };
       // Apply the user-provided values, if any.
       for (var x in ENV) {
-        env[x] = ENV[x];
+        // x is a key in ENV; if ENV[x] is undefined, that means it was
+        // explicitly set to be so. We allow user code to do that to
+        // force variables with default values to remain unset.
+        if (ENV[x] === undefined) delete env[x];
+        else env[x] = ENV[x];
       }
       var strings = [];
       for (var x in env) {

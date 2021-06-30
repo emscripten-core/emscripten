@@ -22,7 +22,6 @@ int main()
     glGenVertexArraysOES(1, &vao);
     assert(vao != 0);
   }
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+
+  return 0;
 }

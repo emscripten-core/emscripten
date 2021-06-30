@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 #include <cassert>
+#include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <emscripten.h>
@@ -52,9 +53,7 @@ void getQueryResult()
   GL_CALL(glDeleteQueriesEXT(1, &timerQuery));
 #endif
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  exit(result);
 }
 
 int main()

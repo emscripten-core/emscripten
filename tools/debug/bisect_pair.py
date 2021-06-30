@@ -11,23 +11,20 @@ diff that makes the outputs different.
 
 from __future__ import print_function
 import os, sys, shutil
+from pathlib import Path
 from subprocess import Popen, PIPE, STDOUT
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+
+
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
-exec(open(path_from_root('tools', 'shared.py'), 'r').read())
+  
+exec(Path(path_from_root('tools', 'shared.py').read_text()))
 
-file1 = open(sys.argv[1]).read()
-file2 = open(sys.argv[2]).read()
+shutil.copyfile(sys.argv[1], 'left')
+shutil.copyfile(sys.argv[2], 'right')
 
-leftf = open('left', 'w')
-leftf.write(file1)
-leftf.close()
-
-rightf = open('right', 'w')
-rightf.write(file2)
-rightf.close()
 
 def run_code(name):
   ret = run_js(name, stderr=PIPE, full_output=True, assert_returncode=None, engine=SPIDERMONKEY_ENGINE)

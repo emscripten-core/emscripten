@@ -10,6 +10,8 @@ import logging
 TAG = '2b147ffef10ec541d3eace326eafe11a54e635f8'
 HASH = 'f39f1f50a039a1667fe92b87d28548d32adcf0eb8526008656de5315039aa21f29d230707caa47f80f6b3a412a577698cd4bbfb9458bb92ac47e6ba993b8efe6'
 
+deps = ['sdl2']
+
 
 def needed(settings):
   return settings.USE_SDL_GFX == 2
@@ -28,7 +30,7 @@ def get(ports, settings, shared):
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
-    ports.build_port(dest_path, final, [dest_path], exclude_dirs=['test'])
+    ports.build_port(dest_path, final, [dest_path], exclude_dirs=['test'], flags=['-sUSE_SDL=2'])
 
     ports.install_headers(source_path, target='SDL2')
 
@@ -37,6 +39,10 @@ def get(ports, settings, shared):
 
 def clear(ports, settings, shared):
   shared.Cache.erase_lib('libSDL2_gfx.a')
+
+
+def process_dependencies(settings):
+  settings.USE_SDL = 2
 
 
 def process_args(ports):

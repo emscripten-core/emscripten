@@ -48,7 +48,7 @@ MINIMAL_TASKS = [
     'libemmalloc-memvalidate',
     'libemmalloc-verbose',
     'libemmalloc-memvalidate-verbose',
-    'libgl',
+    'libGL',
     'libhtml5',
     'libsockets',
     'libc_rt_wasm',
@@ -91,6 +91,9 @@ USER_TASKS = [
 temp_files = shared.configuration.get_temp_files()
 logger = logging.getLogger('embuilder')
 force = False
+legacy_prefixes = {
+  'libgl': 'libGL',
+}
 
 
 def get_help():
@@ -170,6 +173,9 @@ def main():
     tasks = [x for x in tasks if x not in skip_tasks]
     print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:
+    for old, new in legacy_prefixes.items():
+      if what.startswith(old):
+        what = what.replace(old, new)
     logger.info('building and verifying ' + what)
     start_time = time.time()
     if what in SYSTEM_LIBRARIES:

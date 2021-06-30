@@ -108,7 +108,7 @@ mergeInto(LibraryManager.library, {
           if (ENVIRONMENT_IS_NODE) {
             // we will read data by chunks of BUFSIZE
             var BUFSIZE = 256;
-            var buf = Buffer.alloc ? Buffer.alloc(BUFSIZE) : new Buffer(BUFSIZE);
+            var buf = Buffer.alloc(BUFSIZE);
             var bytesRead = 0;
 
             try {

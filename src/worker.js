@@ -8,12 +8,52 @@
 // This is the entry point file that is loaded first by each Web Worker
 // that executes pthreads on the Emscripten application.
 
+'use strict';
+
+var Module = {};
+
+#if ENVIRONMENT_MAY_BE_NODE
+// Node.js support
+if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
+  // Create as web-worker-like an environment as we can.
+
+  var nodeWorkerThreads = require('worker_threads');
+
+  var parentPort = nodeWorkerThreads.parentPort;
+
+  parentPort.on('message', function(data) {
+    onmessage({ data: data });
+  });
+
+  var nodeFS = require('fs');
+
+  Object.assign(global, {
+    self: global,
+    require: require,
+    Module: Module,
+    location: {
+      href: __filename
+    },
+    Worker: nodeWorkerThreads.Worker,
+    importScripts: function(f) {
+      (0, eval)(nodeFS.readFileSync(f, 'utf8'));
+    },
+    postMessage: function(msg) {
+      parentPort.postMessage(msg);
+    },
+    performance: global.performance || {
+      now: function() {
+        return Date.now();
+      }
+    },
+  });
+}
+#endif // ENVIRONMENT_MAY_BE_NODE
+
 // Thread-local:
 #if EMBIND
 var initializedJS = false; // Guard variable for one-time init of the JS state (currently only embind types registration)
 #endif
-
-var Module = {};
 
 #if ASSERTIONS
 function assert(condition, text) {
@@ -38,7 +78,7 @@ var out = function() {
 }
 #endif
 var err = threadPrintErr;
-this.alert = threadAlert;
+self.alert = threadAlert;
 
 #if !MINIMAL_RUNTIME
 Module['instantiateWasm'] = function(info, receiveInstance) {
@@ -78,7 +118,7 @@ function resetPrototype(constructor, attrs) {
 var wasmSourceMapData;
 #endif
 #if USE_OFFSET_CONVERTER
-var wasmOffsetData;
+var wasmOffsetData, wasmOffsetConverter;
 #endif
 
 function moduleLoaded() {
@@ -90,7 +130,7 @@ function moduleLoaded() {
 #endif
 }
 
-this.onmessage = function(e) {
+self.onmessage = function(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if MINIMAL_RUNTIME
@@ -128,8 +168,8 @@ this.onmessage = function(e) {
 #endif
 
 #if MODULARIZE && EXPORT_ES6
-      import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {
-        return {{{ EXPORT_NAME }}}.default(Module);
+      (e.data.urlOrBlob ? import(e.data.urlOrBlob) : import('./{{{ TARGET_JS_NAME }}}')).then(function(exports) {
+        return exports.default(Module);
       }).then(function(instance) {
         Module = instance;
         moduleLoaded();
@@ -295,55 +335,3 @@ this.onmessage = function(e) {
     throw ex;
   }
 };
-
-#if ENVIRONMENT_MAY_BE_NODE
-// Node.js support
-if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
-  // Create as web-worker-like an environment as we can.
-  self = {
-    location: {
-      href: __filename
-    }
-  };
-
-  var onmessage = this.onmessage;
-
-  var nodeWorkerThreads = require('worker_threads');
-
-  global.Worker = nodeWorkerThreads.Worker;
-
-  var parentPort = nodeWorkerThreads.parentPort;
-
-  parentPort.on('message', function(data) {
-    onmessage({ data: data });
-  });
-
-  var nodeFS = require('fs');
-
-  var nodeRead = function(filename) {
-    return nodeFS.readFileSync(filename, 'utf8');
-  };
-
-  function globalEval(x) {
-    global.require = require;
-    global.Module = Module;
-    eval.call(null, x);
-  }
-
-  importScripts = function(f) {
-    globalEval(nodeRead(f));
-  };
-
-  postMessage = function(msg) {
-    parentPort.postMessage(msg);
-  };
-
-  if (typeof performance === 'undefined') {
-    performance = {
-      now: function() {
-        return Date.now();
-      }
-    };
-  }
-}
-#endif // ENVIRONMENT_MAY_BE_NODE

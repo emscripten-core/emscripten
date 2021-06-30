@@ -25,8 +25,8 @@ lchown(good): 0, errno: 0
 lchown(bad): -1, errno: 44
 fchown(good): 0, errno: 0
 fchown(bad): -1, errno: 8
-fork: -1, errno: 6
-vfork: -1, errno: 6
+fork: -1, errno: 52
+vfork: -1, errno: 52
 crypt: ba4TuD1iozTxw, errno: 0
 encrypt, errno: 0
 getgid: 0, errno: 0

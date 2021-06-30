@@ -8,9 +8,10 @@
 
 mergeInto(LibraryManager.library, {
   // Clear a 'compact' UUID.
+  uuid_clear__deps: ['$zeroMemory'],
   uuid_clear: function(uu) {
     // void uuid_clear(uuid_t uu);
-    _memset(uu, 0, 16);
+    zeroMemory(uu, 16);
   },
 
   // Compare whether or not two 'compact' UUIDs are the same.

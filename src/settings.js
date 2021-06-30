@@ -173,8 +173,6 @@ var INITIAL_MEMORY = 16777216;
 // relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
 // INITIAL_MEMORY is the final size of memory anyhow.
 //
-// If this value is -1, it means there is no specified limit.
-//
 // Note that the default value here is 2GB, which means that by default if you
 // enable memory growth then we can grow up to 2GB but no higher. 2GB is a
 // natural limit for several reasons:
@@ -186,6 +184,8 @@ var INITIAL_MEMORY = 16777216;
 //     has support started to appear. As support is limited, it's safer for
 //     people to opt into >2GB+ heaps rather than get a build that may not
 //     work on all VMs.
+//
+// To use more than 2GB, set this to something higher, like 4GB.
 //
 // (This option was formerly called WASM_MEM_MAX and BINARYEN_MEM_MAX.)
 // [link]
@@ -598,22 +598,24 @@ var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 //  * Work around old Chromium WebGL 1 bug (-s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
 //  * Disable WebAssembly. (Must be paired with -s WASM=0)
 //  * Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
+//  * Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
 // You can also configure the above options individually.
 // [link]
 var LEGACY_VM_SUPPORT = 0;
 
-// By default, emscripten output will run on the web, in a web worker,
-// in node.js, or in a JS shell like d8, js, or jsc. You can set this option to
-// specify that the output should only run in one particular environment, which
-// must be one of
+// Specify which runtime environments the JS output will be capable of running
+// in.  For maximum portability this can configured to support all envionements
+// or it can be limited to reduce overall code size.  The supported environments
+// are:
 //    'web'     - the normal web environment.
 //    'webview' - just like web, but in a webview like Cordova;
 //                considered to be same as "web" in almost every place
 //    'worker'  - a web worker environment.
 //    'node'    - Node.js.
 //    'shell'   - a JS shell like d8, js, or jsc.
-// Or it can be a comma-separated list of them, e.g., "web,worker". If this is
-// the empty string, then all runtime environments are supported.
+// This settings can be a comma-separated list of these environments, e.g.,
+// "web,worker". If this is the empty string, then all environments are
+// supported.
 //
 // Note that the set of environments recognized here is not identical to the
 // ones we identify at runtime using ENVIRONMENT_IS_*. Specifically:
@@ -622,8 +624,11 @@ var LEGACY_VM_SUPPORT = 0;
 //  * The webview target is basically a subset of web. It must be specified
 //    alongside web (e.g. "web,webview") and we only use it for code generation
 //    at compile time, there is no runtime behavior change.
+//
+// Note that by default we do not include the 'shell' environment since direct
+// usage of d8, js, jsc is extremely rare.
 // [link]
-var ENVIRONMENT = '';
+var ENVIRONMENT = 'web,webview,worker,node';
 
 // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
 // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
@@ -789,12 +794,10 @@ var ASYNCIFY_LAZY_LOAD_CODE = 0;
 var ASYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
-// quite a lot here, but have removed them all, so this option is redundant
-// given that EXTRA_EXPORTED_RUNTIME_METHODS exists, and so this option exists
-// only for backwards compatibility. You should use
-// EXTRA_EXPORTED_RUNTIME_METHODS for things you want to export from the
-// runtime.  Note that methods on this list are only exported if they are
-// included (either automatically from linking, or due to being in
+// quite a lot here, but have removed them all. You should use
+// EXPORTED_RUNTIME_METHODS for things you want to export from the runtime. Note
+// that methods on this list are only exported if they are included (either
+// automatically from linking, or due to being in
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).
 // Note that the name may be slightly misleading, as this is for any JS library
 // element, and not just methods. For example, we can export the FS object by
@@ -833,7 +836,7 @@ var INCOMING_MODULE_JS_API = [
   'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
   'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
   'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
-  'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
+  'loadSplitModule', 'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
   'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
@@ -932,13 +935,6 @@ var RETAIN_COMPILER_SETTINGS = 0;
 // [link]
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 
-// This list is also used to determine auto-exporting of library dependencies
-// (i.e., functions that might be dependencies of JS library functions, that if
-// so we must export so that if they are implemented in C they will be
-// accessible, in ASM_JS mode).
-// [link]
-var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy'];
-
 // Include all JS library functions instead of the sum of
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + any functions used by the generated code.
 // This is needed when dynamically loading (i.e. dlopen) modules that make use
@@ -1036,6 +1032,7 @@ var LINKABLE = 0;
 //   * AUTO_NATIVE_LIBRARIES is disabled.
 //   * AUTO_ARCHIVE_INDEXES is disabled.
 //   * DEFAULT_TO_CXX is disabled.
+//   * ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
 // [compile+link]
 var STRICT = 0;
 
@@ -1760,7 +1757,6 @@ var USES_DYNAMIC_ALLOC = 1;
 // [compile+link] - at compile time this enables the transformations needed for
 // longjmp support at codegen time, while at link it allows linking in the
 // library support.
-// [link]
 var SUPPORT_LONGJMP = 1;
 
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior.
@@ -1944,6 +1940,15 @@ var SPLIT_MODULE = 0;
 // [link]
 var REVERSE_DEPS = 'auto';
 
+// For MAIN_MODULE builds, automatically load any dynamic library dependencies
+// on startup, before loading the main module.
+var AUTOLOAD_DYLIBS = 1;
+
+// Include unimplemented JS syscalls to be included in the final output.  This
+// allows programs that depend on these syscalls at runtime to be compiled, even
+// though these syscalls will fail (or do nothing) at runtime.
+var ALLOW_UNIMPLEMENTED_SYSCALLS = 1;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
@@ -2023,4 +2028,5 @@ var LEGACY_SETTINGS = [
   ['ASM_PRIMITIVE_VARS', [[]], 'No longer needed'],
   ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older'],
   ['RUNTIME_FUNCS_TO_IMPORT', [[]], 'No longer needed'],
+  ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
 ];

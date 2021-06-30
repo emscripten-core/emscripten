@@ -28,12 +28,6 @@ mergeInto(LibraryManager.library, {
         "{{{ cDefine('O_WRONLY') }}}": flags["O_WRONLY"]
       };
     },
-    bufferFrom: function (arrayBuffer) {
-      // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
-      // Buffer.from before 4.5 was just a method inherited from Uint8Array
-      // Buffer.alloc has been added with Buffer.from together, so check it instead
-      return Buffer["alloc"] ? Buffer.from(arrayBuffer) : new Buffer(arrayBuffer);
-    },
     convertNodeCode: function(e) {
       var code = e.code;
 #if ASSERTIONS
@@ -262,14 +256,14 @@ mergeInto(LibraryManager.library, {
         // Node.js < 6 compatibility: node errors on 0 length reads
         if (length === 0) return 0;
         try {
-          return fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
+          return fs.readSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       write: function (stream, buffer, offset, length, position) {
         try {
-          return fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
+          return fs.writeSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }

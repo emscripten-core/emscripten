@@ -5,76 +5,35 @@
  */
 
 // 'use strict'
-var funs = {
+var LibrarySignals = {
   _sigalrm_handler: 0,
 
-  signal__deps: ['_sigalrm_handler'],
-  signal: function(sig, func) {
-    if (sig == {{{ cDefine('SIGALRM') }}}) {
-      __sigalrm_handler = func;
-    } else {
-#if ASSERTIONS
-      err('Calling stub instead of signal()');
-#endif
-    }
-    return 0;
-  },
-  bsd_signal__sig: 'iii',
-  bsd_signal: 'signal',
-  sigemptyset: function(set) {
-    {{{ makeSetValue('set', '0', '0', 'i32') }}};
-    return 0;
-  },
-  sigfillset: function(set) {
-    {{{ makeSetValue('set', '0', '-1>>>0', 'i32') }}};
-    return 0;
-  },
-  sigaddset: function(set, signum) {
-    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '| (1 << (signum-1))', 'i32') }}};
-    return 0;
-  },
-  sigdelset: function(set, signum) {
-    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '& (~(1 << (signum-1)))', 'i32') }}};
-    return 0;
-  },
-  sigismember: function(set, signum) {
-    return {{{ makeGetValue('set', '0', 'i32') }}} & (1 << (signum-1));
-  },
-  sigaction: function(signum, act, oldact) {
+  __sigaction__deps: ['_sigalrm_handler'],
+  __sigaction: function(sig, act, oldact) {
     //int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
+    if (sig == {{{ cDefine('SIGALRM') }}}) {
+      __sigalrm_handler = {{{ makeGetValue('act', '0', 'i32') }}};
+      return 0;
+    }
 #if ASSERTIONS
-    err('Calling stub instead of sigaction()');
+    err('sigaction: signal type not supported: this is a no-op.');
 #endif
     return 0;
   },
-  sigprocmask: function() {
-#if ASSERTIONS
-    err('Calling stub instead of sigprocmask()');
-#endif
-    return 0;
-  },
+  sigaction__sig: 'viii',
+  sigaction: '__sigaction',
+
   // pthread_sigmask - examine and change mask of blocked signals
   pthread_sigmask: function(how, set, oldset) {
     err('pthread_sigmask() is not supported: this is a no-op.');
     return 0;
   },
-  __libc_current_sigrtmin: function() {
-#if ASSERTIONS
-    err('Calling stub instead of __libc_current_sigrtmin');
-#endif
-    return 0;
-  },
-  __libc_current_sigrtmax: function() {
-#if ASSERTIONS
-    err('Calling stub instead of __libc_current_sigrtmax');
-#endif
-    return 0;
-  },
+
   kill__deps: ['$ERRNO_CODES', '$setErrNo'],
   kill: function(pid, sig) {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/kill.html
     // Makes no sense in a single-process environment.
-	  // Should kill itself somtimes depending on `pid`
+    // Should kill itself somtimes depending on `pid`
 #if ASSERTIONS
     err('Calling stub instead of kill()');
 #endif
@@ -82,14 +41,6 @@ var funs = {
     return -1;
   },
 
-  killpg__deps: ['$ERRNO_CODES', '$setErrNo'],
-  killpg: function() {
-#if ASSERTIONS
-    err('Calling stub instead of killpg()');
-#endif
-    setErrNo(ERRNO_CODES.EPERM);
-    return -1;
-  },
   siginterrupt: function() {
 #if ASSERTIONS
     err('Calling stub instead of siginterrupt()');
@@ -102,10 +53,7 @@ var funs = {
 #if ASSERTIONS
     err('Calling stub instead of raise()');
 #endif
-  setErrNo(ERRNO_CODES.ENOSYS);
-#if ASSERTIONS
-    warnOnce('raise() returning an error as we do not support it');
-#endif
+    setErrNo(ERRNO_CODES.ENOSYS);
     return -1;
   },
 
@@ -116,79 +64,22 @@ var funs = {
       if (__sigalrm_handler) {{{ makeDynCall('vi', '__sigalrm_handler') }}}(0);
     }, seconds*1000);
   },
-  ualarm: function() {
-    throw 'ualarm() is not implemented yet';
-  },
-  setitimer: function() {
-    throw 'setitimer() is not implemented yet';
-  },
-  getitimer: function() {
-    throw 'getitimer() is not implemented yet';
-  },
-
-  pause__deps: ['$setErrNo', '$ERRNO_CODES'],
-  pause: function() {
-    // int pause(void);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/pause.html
-    // We don't support signals, so we return immediately.
-#if ASSERTIONS
-    err('Calling stub instead of pause()');
-#endif
-    setErrNo(ERRNO_CODES.EINTR);
-    return -1;
-  },
-#if SUPPORT_LONGJMP
-#if ASSERTIONS
-  siglongjmp__deps: ['longjmp'],
-  siglongjmp: function(env, value) {
-    // We cannot wrap the sigsetjmp, but I hope that
-    // in most cases siglongjmp will be called later.
-
-    // siglongjmp can be called very many times, so don't flood the stderr.
-    warnOnce("Calling longjmp() instead of siglongjmp()");
-    _longjmp(env, value);
-  },
-#else
-  siglongjmp__sig: 'vii',
-  siglongjmp: 'longjmp',
-#endif
-#endif
 
   sigpending: function(set) {
     {{{ makeSetValue('set', 0, 0, 'i32') }}};
     return 0;
+  },
+
+  //int sigtimedwait(const sigset_t *restrict mask, siginfo_t *restrict si, const struct timespec *restrict timeout)
+  sigtimedwait: function(set, sig, timeout) {
+    // POSIX SIGNALS are not supported
+    // if set contains an invalid signal number, EINVAL is returned
+    // in our case we return EINVAL all the time
+#if ASSERTIONS
+    err('Calling stub instead of sigwait()');
+#endif
+    return {{{ cDefine('EINVAL') }}};
   }
-  //signalfd
-  //ppoll
-  //epoll_pwait
-  //pselect
-  //sigvec
-  //sigmask
-  //sigblock
-  //sigsetmask
-  //siggetmask
-  //sigsuspend
-  //siginterrupt
-  //sigqueue
-  //sysv_signal
-  //signal
-  //pthread_kill
-  //gsignal
-  //ssignal
-  //psignal
-  //psiginfo
-  //sigpause
-  //sigisemptyset
-  //sigtimedwait
-  //sigwaitinfo
-  //sigreturn
-  //sigstack
-  //sigaltstack(2)
-  //sigsetops(3),
-  //sighold
-  //sigrelse
-  //sigignore
-  //sigset
 };
 
-mergeInto(LibraryManager.library, funs);
+mergeInto(LibraryManager.library, LibrarySignals);

@@ -93,6 +93,11 @@ static int ProcessGlobalRegionsCallback(struct dl_phdr_info *info, size_t size,
   return 0;
 }
 
+#if SANITIZER_ANDROID && __ANDROID_API__ < 21
+extern "C" __attribute__((weak)) int dl_iterate_phdr(
+    int (*)(struct dl_phdr_info *, size_t, void *), void *);
+#endif
+
 // Scans global variables for heap pointers.
 void ProcessGlobalRegions(Frontier *frontier) {
   if (!flags()->use_globals) return;
@@ -134,7 +139,8 @@ static int LockStuffAndStopTheWorldCallback(struct dl_phdr_info *info,
 // while holding the libdl lock in the parent thread, we can safely reenter it
 // in the tracer. The solution is to run stoptheworld from a dl_iterate_phdr()
 // callback in the parent thread.
-void LockStuffAndStopTheWorld(StopTheWorldCallback callback, void *argument) {
+void LockStuffAndStopTheWorld(StopTheWorldCallback callback,
+                              CheckForLeaksParam *argument) {
   DoStopTheWorldParam param = {callback, argument};
   dl_iterate_phdr(LockStuffAndStopTheWorldCallback, &param);
 }

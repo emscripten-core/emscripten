@@ -25,7 +25,8 @@ from tools import diagnostics
 from tools import shared
 from tools import gen_struct_info
 from tools import webassembly
-from tools.shared import WINDOWS, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
+from tools.shared import WINDOWS, path_from_root, exit_with_error, asmjs_mangle
+from tools.shared import treat_as_user_function, strip_prefix
 from tools.settings import settings
 
 logger = logging.getLogger('emscripten')
@@ -189,14 +190,13 @@ def set_memory(static_bump):
   settings.HEAP_BASE = align_memory(stack_high)
 
 
-def report_missing_symbols(pre):
-  # the initial list of missing functions are that the user explicitly exported
-  # but were not implemented in compiled code
-  missing = set(settings.USER_EXPORTED_FUNCTIONS) - set(asmjs_mangle(e) for e in settings.WASM_EXPORTS)
-
-  for requested in sorted(missing):
-    if (f'function {requested}(') not in pre:
-      diagnostics.warning('undefined', f'undefined exported symbol: "{requested}"')
+def report_missing_symbols(js_library_funcs):
+  # Report any symbol that was explicitly exported but is present neither
+  # as a native function nor as a JS library function.
+  defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_library_funcs)
+  missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
+  for symbol in sorted(missing):
+    diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
 
   # Special hanlding for the `_main` symbol
 
@@ -204,6 +204,13 @@ def report_missing_symbols(pre):
     # standalone mode doesn't use main, and it always reports missing entry point at link time.
     # In this mode we never expect _main in the export list.
     return
+
+  # PROXY_TO_PTHREAD only makes sense with a main(), so error if one is
+  # missing. note that when main() might arrive from another module we cannot
+  # error here.
+  if settings.PROXY_TO_PTHREAD and '_main' not in defined_symbols and \
+     not settings.RELOCATABLE:
+    exit_with_error('PROXY_TO_PTHREAD proxies main() for you, but no main exists')
 
   if settings.IGNORE_MISSING_MAIN:
     # The default mode for emscripten is to ignore the missing main function allowing
@@ -302,7 +309,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   # memory and global initializers
 
   if settings.RELOCATABLE:
-    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm)[0])
+    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm).mem_size)
     set_memory(static_bump)
     logger.debug('stack_base: %d, stack_max: %d, heap_base: %d', settings.STACK_BASE, settings.STACK_MAX, settings.HEAP_BASE)
 
@@ -312,10 +319,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
     t = time.time()
 
   forwarded_json = json.loads(forwarded_data)
-  # For the wasm backend the implementedFunctions from compiler.js should
-  # always be empty. This only gets populated for __asm function when using
-  # the JS backend.
-  assert not forwarded_json['Functions']['implementedFunctions']
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
@@ -324,7 +327,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   if settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
-  report_missing_symbols(pre)
+  report_missing_symbols(forwarded_json['libraryFunctions'])
 
   if not outfile_js:
     logger.debug('emscript: skipping remaining js glue generation')
@@ -337,11 +340,8 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
     # In regular runtime, atinits etc. exist in the preamble part
     pre = apply_static_code_hooks(forwarded_json, pre)
 
-  # merge forwarded data
-  settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
-
   asm_consts = create_asm_consts(metadata)
-  em_js_funcs = create_em_js(forwarded_json, metadata)
+  em_js_funcs = create_em_js(metadata)
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
   asm_const_map = 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
   pre = pre.replace(
@@ -476,7 +476,7 @@ def create_asm_consts(metadata):
   return asm_consts
 
 
-def create_em_js(forwarded_json, metadata):
+def create_em_js(metadata):
   em_js_funcs = []
   separator = '<::>'
   for name, raw in metadata.get('emJsFuncs', {}).items():
@@ -490,7 +490,6 @@ def create_em_js(forwarded_json, metadata):
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
     func = 'function {}({}){}'.format(name, ','.join(arg_names), body)
     em_js_funcs.append(func)
-    forwarded_json['Functions']['libraryFunctions'][name] = 1
 
   return em_js_funcs
 
@@ -798,6 +797,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in settings.EXPORTED_FUNCTIONS]
   building.user_requested_exports.update(unexpected_exports)
+  settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
 
   return metadata
 
@@ -806,7 +806,7 @@ def create_invoke_wrappers(invoke_funcs):
   """Asm.js-style exception handling: invoke wrapper generation."""
   invoke_wrappers = ''
   for invoke in invoke_funcs:
-    sig = invoke[len('invoke_'):]
+    sig = strip_prefix(invoke, 'invoke_')
     invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
   return invoke_wrappers
 
@@ -822,6 +822,11 @@ def normalize_line_endings(text):
 
 
 def generate_struct_info():
+  # If we are running in BOOTSTRAPPING_STRUCT_INFO we don't populate STRUCT_INFO
+  # otherwise that would lead to infinite recursion.
+  if settings.BOOTSTRAPPING_STRUCT_INFO:
+    return
+
   generated_struct_info_name = 'generated_struct_info.json'
 
   @ToolchainProfiler.profile_block('gen_struct_info')
@@ -832,7 +837,6 @@ def generate_struct_info():
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile):
-  if not settings.BOOTSTRAPPING_STRUCT_INFO:
-    generate_struct_info()
+  generate_struct_info()
 
   emscript(in_wasm, out_wasm, outfile_js, memfile, shared.DEBUG)

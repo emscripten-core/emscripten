@@ -81,9 +81,6 @@ void tick()
     emscripten_webgl_make_context_current(0);
     emscripten_webgl_destroy_context(ctx);
     printf("quit\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
     exit(0);
   }
 }
@@ -154,4 +151,5 @@ int main()
     usleep(16*1000);
   }
 #endif
+  return 99;
 }

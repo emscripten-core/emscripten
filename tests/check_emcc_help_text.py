@@ -9,6 +9,7 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -21,11 +22,8 @@ def main():
     print('doc build output not found: %s' % build_output)
     return 1
 
-  with open(build_output, 'r') as f:
-    emcc_docs_output = f.read()
-
-  with open(docs_file, 'r') as f:
-    emcc_docs = f.read()
+  emcc_docs_output = Path(build_output).read_text()
+  emcc_docs = Path(docs_file).read_text()
 
   if emcc_docs_output != emcc_docs:
     print('contents of checked in docs/emcc.txt does not match build output:')

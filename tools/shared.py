@@ -16,6 +16,7 @@ import re
 import shutil
 import subprocess
 import time
+import signal
 import sys
 import tempfile
 
@@ -30,6 +31,7 @@ from . import cache, tempfiles, colored_logger
 from . import diagnostics
 from . import config
 from . import filelock
+from . import utils
 from .settings import settings
 
 
@@ -50,7 +52,7 @@ logger = logging.getLogger('shared')
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
 diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
-# unused diagnositic flags.  TODO(sbc): remove at some point
+# unused diagnostic flags.  TODO(sbc): remove at some point
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('experimental')
 diagnostics.add_warning('invalid-input')
@@ -60,7 +62,7 @@ diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined', error=True)
-diagnostics.add_warning('deprecated')
+diagnostics.add_warning('deprecated', shared=True)
 diagnostics.add_warning('version-check')
 diagnostics.add_warning('export-main')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
@@ -69,6 +71,7 @@ diagnostics.add_warning('pthreads-mem-growth')
 
 # TODO(sbc): Investigate switching to shlex.quote
 def shlex_quote(arg):
+  arg = os.fspath(arg)
   if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
     return '"' + arg.replace('"', '\\"') + '"'
 
@@ -82,7 +85,7 @@ def shlex_join(cmd):
 
 
 def run_process(cmd, check=True, input=None, *args, **kw):
-  """Runs a subpocess returning the exit code.
+  """Runs a subprocess returning the exit code.
 
   By default this function will raise an exception on failure.  Therefor this should only be
   used if you want to handle such failures.  For most subprocesses, failures are not recoverable
@@ -114,6 +117,15 @@ def mp_run_process(command_tuple):
   if pipe_stdout:
     ret = out.decode('UTF-8')
   return ret
+
+
+def returncode_to_str(code):
+  assert code != 0
+  if code < 0:
+    signal_name = signal.Signals(-code).name
+    return f'received {signal_name} ({code})'
+
+  return f'returned {code}'
 
 
 # Runs multiple subprocess commands.
@@ -187,7 +199,8 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
             logger.info(out)
           if err:
             logger.error(err)
-          raise Exception('Subprocess %d/%d failed with return code %d! (cmdline: %s)' % (idx + 1, len(commands), finished_process.returncode, shlex_join(commands[idx])))
+
+          raise Exception('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
         num_completed += 1
 
   # If processes finished out of order, sort the results to the order of the input.
@@ -201,7 +214,7 @@ def check_call(cmd, *args, **kw):
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed (%d)", shlex_join(cmd), e.returncode)
+    exit_with_error("'%s' failed (%s)", shlex_join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
@@ -231,7 +244,7 @@ def timeout_run(proc, timeout=None, full_output=False, check=True):
   if check and proc.returncode != 0:
     raise subprocess.CalledProcessError(proc.returncode, '', stdout, stderr)
   if TRACK_PROCESS_SPAWNS:
-    logging.info('Process ' + str(proc.pid) + ' finished after ' + str(time.time() - start) + ' seconds. Exit code: ' + str(proc.returncode))
+    logging.info(f'Process {proc.pid} finished after {time.time() - start} seconds. Exit code: {proc.returncode}')
   return '\n'.join(out) if full_output else out[0]
 
 
@@ -241,7 +254,7 @@ def get_npm_cmd(name):
   else:
     cmd = config.NODE_JS + [path_from_root('node_modules', '.bin', name)]
   if not os.path.exists(cmd[-1]):
-    exit_with_error('%s was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies' % name)
+    exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
   return cmd
 
 
@@ -310,7 +323,8 @@ def check_node_version():
     return False
 
   if version < EXPECTED_NODE_VERSION:
-    diagnostics.warning('version-check', 'node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
+    expected = '.'.join(str(v) for v in EXPECTED_NODE_VERSION)
+    diagnostics.warning('version-check', f'node version appears too old (seeing "{actual}", expected "v{expected}")')
     return False
 
   return True
@@ -320,14 +334,14 @@ def set_version_globals():
   global EMSCRIPTEN_VERSION, EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY
   filename = path_from_root('emscripten-version.txt')
   with open(filename) as f:
-    EMSCRIPTEN_VERSION = f.read().strip().replace('"', '')
+    EMSCRIPTEN_VERSION = f.read().strip().strip('"')
   parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
   EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 
 
 def generate_sanity():
-  sanity_file_content = EMSCRIPTEN_VERSION + '|' + config.LLVM_ROOT + '|' + get_clang_version()
-  config_data = open(config.EM_CONFIG).read()
+  sanity_file_content = f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}|{get_clang_version()}'
+  config_data = utils.read_file(config.EM_CONFIG)
   checksum = binascii.crc32(config_data.encode())
   sanity_file_content += '|%#x\n' % checksum
   return sanity_file_content
@@ -395,7 +409,7 @@ def check_sanity(force=False):
   sanity_file = Cache.get_path('sanity.txt')
   with Cache.lock():
     if os.path.exists(sanity_file):
-      sanity_data = open(sanity_file).read()
+      sanity_data = utils.read_file(sanity_file)
       if sanity_data != expected:
         logger.debug('old sanity: %s' % sanity_data)
         logger.debug('new sanity: %s' % expected)
@@ -489,7 +503,7 @@ class Configuration:
 
     self.TEMP_DIR = os.environ.get("EMCC_TEMP_DIR", tempfile.gettempdir())
     if not os.path.isdir(self.TEMP_DIR):
-      exit_with_error("The temporary directory `" + self.TEMP_DIR + "` does not exist! Please make sure that the path is correct.")
+      exit_with_error(f'The temporary directory `{self.TEMP_DIR}` does not exist! Please make sure that the path is correct.')
 
     self.CANONICAL_TEMP_DIR = get_canonical_temp_dir(self.TEMP_DIR)
 
@@ -498,7 +512,7 @@ class Configuration:
       try:
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
-        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.EM_CONFIG)
+        exit_with_error(str(e) + f'Could not create canonical temp dir. Check definition of TEMP_DIR in {config.EM_CONFIG}')
 
       # Since the canonical temp directory is, by definition, the same
       # between all processes that run in DEBUG mode we need to use a multi
@@ -534,22 +548,7 @@ def apply_configuration():
 
 
 def target_environment_may_be(environment):
-  return settings.ENVIRONMENT == '' or environment in settings.ENVIRONMENT.split(',')
-
-
-def verify_settings():
-  if settings.SAFE_HEAP not in [0, 1]:
-    exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
-
-  if not settings.WASM:
-    # When the user requests non-wasm output, we enable wasm2js. that is,
-    # we still compile to wasm normally, but we compile the final output
-    # to js.
-    settings.WASM = 1
-    settings.WASM2JS = 1
-  if settings.WASM == 2:
-    # Requesting both Wasm and Wasm2JS support
-    settings.WASM2JS = 1
+  return not settings.ENVIRONMENT or environment in settings.ENVIRONMENT.split(',')
 
 
 def print_compiler_stage(cmd):
@@ -590,6 +589,11 @@ def asmjs_mangle(name):
     return '_' + name
   else:
     return name
+
+
+def reconfigure_cache():
+  global Cache
+  Cache = cache.Cache(config.CACHE)
 
 
 class JS:
@@ -677,6 +681,11 @@ class JS:
     return sig == JS.legalize_sig(sig)
 
   @staticmethod
+  def isidentifier(name):
+    # https://stackoverflow.com/questions/43244604/check-that-a-string-is-a-valid-javascript-identifier-name-using-python-3
+    return name.replace('$', '_').isidentifier()
+
+  @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
     if settings.DYNCALLS or not JS.is_legal_sig(sig):
@@ -724,7 +733,7 @@ def suffix(name):
 
 
 def unsuffixed(name):
-  """Return the filename without the extention.
+  """Return the filename without the extension.
 
   If there are multiple extensions this strips only the final one.
   """
@@ -733,6 +742,11 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
+
+
+def strip_prefix(string, prefix):
+  assert string.startswith(prefix)
+  return string[len(prefix):]
 
 
 def safe_copy(src, dst):
@@ -745,7 +759,8 @@ def safe_copy(src, dst):
     return
   if dst == os.devnull:
     return
-  shutil.copyfile(src, dst)
+  # Copies data and permission bits, but not other metadata such as timestamp
+  shutil.copy(src, dst)
 
 
 def read_and_preprocess(filename, expand_macros=False):
@@ -775,7 +790,7 @@ def read_and_preprocess(filename, expand_macros=False):
     args += ['--expandMacros']
 
   run_js_tool(path_from_root('tools/preprocessor.js'), args, True, stdout=open(stdout, 'w'), cwd=dirname)
-  out = open(stdout, 'r').read()
+  out = utils.read_file(stdout)
 
   return out
 
@@ -827,7 +842,6 @@ FILE_PACKAGER = bat_suffix(path_from_root('tools', 'file_packager'))
 
 apply_configuration()
 
-verify_settings()
 Cache = cache.Cache(config.CACHE)
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))

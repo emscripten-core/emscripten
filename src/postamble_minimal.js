@@ -24,11 +24,11 @@ function run() {
   var ret = _main();
 
 #if EXIT_RUNTIME
-  callRuntimeCallbacks(__ATEXIT__);
-  <<< ATEXITS >>>
 #if USE_PTHREADS
   PThread.runExitHandlers();
 #endif
+  callRuntimeCallbacks(__ATEXIT__);
+  <<< ATEXITS >>>
 #endif
 
 #if IN_TEST_HARNESS
@@ -76,7 +76,7 @@ function initRuntime(asm) {
 #endif
 #endif
 
-#if '__wasm_call_ctors' in WASM_EXPORTS
+#if hasExportedFunction('___wasm_call_ctors')
   asm['__wasm_call_ctors']();
 #endif
 

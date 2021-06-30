@@ -79,26 +79,22 @@ _mm_blendv_ps(__m128 __a, __m128 __b, __m128 __mask)
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_ceil_pd(__m128d __a)
 {
-  return (__m128d)wasm_f64x2_make(__builtin_ceil(wasm_f64x2_extract_lane(__a, 0)),
-                                  __builtin_ceil(wasm_f64x2_extract_lane(__a, 1)));
+  return (__m128d)wasm_f64x2_ceil((v128_t)__a);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_ceil_ps(__m128 __a)
 {
-  return (__m128)wasm_f32x4_make(__builtin_ceilf(wasm_f32x4_extract_lane(__a, 0)),
-                                 __builtin_ceilf(wasm_f32x4_extract_lane(__a, 1)),
-                                 __builtin_ceilf(wasm_f32x4_extract_lane(__a, 2)),
-                                 __builtin_ceilf(wasm_f32x4_extract_lane(__a, 3)));
+  return (__m128)wasm_f32x4_ceil((v128_t)__a);
 }
 
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_ceil_ss(__m128 __a, __m128 __b)
 {
   return (__m128)wasm_f32x4_replace_lane(__a, 0, __builtin_ceilf(wasm_f32x4_extract_lane(__b, 0)));
 }
 
-static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128d __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_ceil_sd(__m128d __a, __m128d __b)
 {
   return (__m128d)wasm_f64x2_replace_lane(__a, 0, __builtin_ceil(wasm_f64x2_extract_lane(__b, 0)));
@@ -107,26 +103,22 @@ _mm_ceil_sd(__m128d __a, __m128d __b)
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_floor_pd(__m128d __a)
 {
-  return (__m128d)wasm_f64x2_make(__builtin_floor(wasm_f64x2_extract_lane(__a, 0)),
-                                  __builtin_floor(wasm_f64x2_extract_lane(__a, 1)));
+  return (__m128d)wasm_f64x2_floor((v128_t)__a);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_floor_ps(__m128 __a)
 {
-  return (__m128)wasm_f32x4_make(__builtin_floorf(wasm_f32x4_extract_lane(__a, 0)),
-                                 __builtin_floorf(wasm_f32x4_extract_lane(__a, 1)),
-                                 __builtin_floorf(wasm_f32x4_extract_lane(__a, 2)),
-                                 __builtin_floorf(wasm_f32x4_extract_lane(__a, 3)));
+  return (__m128)wasm_f32x4_floor((v128_t)__a);
 }
 
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_floor_ss(__m128 __a, __m128 __b)
 {
   return (__m128)wasm_f32x4_replace_lane(__a, 0, __builtin_floorf(wasm_f32x4_extract_lane(__b, 0)));
 }
 
-static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
+static __inline__ __m128d __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_floor_sd(__m128d __a, __m128d __b)
 {
   return (__m128d)wasm_f64x2_replace_lane(__a, 0, __builtin_floor(wasm_f64x2_extract_lane(__b, 0)));
@@ -214,7 +206,7 @@ _mm_mullo_epi32(__m128i __a, __m128i __b)
   return (__m128i)wasm_i32x4_mul(__a, __b);
 }
 
-static __inline__  __m128i __attribute__((__always_inline__, __nodebug__))
+static __inline__  __m128i __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_mul_epi32(__m128i __a, __m128i __b)
 {
   return (__m128i)wasm_i64x2_make(
@@ -329,14 +321,14 @@ _mm_max_epu32(__m128i __a, __m128i __b)
 #define _mm_extract_epi64(__a, __imm8) __extension__ ({       \
                                        wasm_i64x2_extract_lane((__a), (__imm8) & 1); })
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_testz_si128(__m128i __a, __m128i __b)
 {
   v128_t __m = wasm_v128_and(__a, __b);
   return (wasm_i64x2_extract_lane(__m, 0) | wasm_i64x2_extract_lane(__m, 1)) == 0;
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_testc_si128(__m128i __a, __m128i __b)
 {
   v128_t __m = wasm_v128_andnot(__b, __a);
@@ -352,20 +344,20 @@ _mm_testnzc_si128(__m128i __a, __m128i __b)
       && (wasm_i64x2_extract_lane(__m2, 0) | wasm_i64x2_extract_lane(__m2, 1));
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_test_all_ones(__m128i __a)
 {
   return (wasm_i64x2_extract_lane(__a, 0) & wasm_i64x2_extract_lane(__a, 1)) == 0xFFFFFFFFFFFFFFFFull;
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_test_all_zeros(__m128i __a, __m128i __mask)
 {
   v128_t __m = wasm_v128_and(__a, __mask);
   return (wasm_i64x2_extract_lane(__m, 0) | wasm_i64x2_extract_lane(__m, 1)) == 0;
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_test_mix_ones_zeros(__m128i __a, __m128i __mask)
 {
   v128_t __m = wasm_v128_and(__a, __mask);
@@ -427,13 +419,13 @@ _mm_cvtepi32_epi64(__m128i __a)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepu8_epi16(__m128i __a)
 {
-  return (__m128i)wasm_i16x8_widen_low_u8x16((v128_t)__a);
+  return (__m128i)wasm_u16x8_extend_low_u8x16((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepu8_epi32(__m128i __a)
 {
-  return (__m128i)wasm_i32x4_widen_low_u16x8(wasm_i16x8_widen_low_u8x16((v128_t)__a));
+  return (__m128i)wasm_u32x4_extend_low_u16x8(wasm_i16x8_widen_low_u8x16((v128_t)__a));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
@@ -446,7 +438,7 @@ _mm_cvtepu8_epi64(__m128i __a)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepu16_epi32(__m128i __a)
 {
-  return (__m128i)wasm_i32x4_widen_low_u16x8((v128_t)__a);
+  return (__m128i)wasm_u32x4_extend_low_u16x8((v128_t)__a);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))

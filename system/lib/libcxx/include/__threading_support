@@ -11,9 +11,14 @@
 #define _LIBCPP_THREADING_SUPPORT
 
 #include <__config>
+#include <__availability>
 #include <chrono>
 #include <iosfwd>
 #include <errno.h>
+
+#ifdef __MVS__
+# include <__support/ibm/nanosleep.h>
+#endif
 
 #ifndef _LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER
 #pragma GCC system_header
@@ -26,6 +31,12 @@
 #if defined(_LIBCPP_HAS_THREAD_API_PTHREAD)
 # include <pthread.h>
 # include <sched.h>
+# if defined(__APPLE__) || defined(__MVS__)
+#  define _LIBCPP_NO_NATIVE_SEMAPHORES
+# endif
+# ifndef _LIBCPP_NO_NATIVE_SEMAPHORES
+# include <semaphore.h>
+# endif
 #elif defined(_LIBCPP_HAS_THREAD_API_C11)
 # include <threads.h>
 #endif
@@ -65,16 +76,25 @@ typedef pthread_mutex_t __libcpp_recursive_mutex_t;
 typedef pthread_cond_t __libcpp_condvar_t;
 #define _LIBCPP_CONDVAR_INITIALIZER PTHREAD_COND_INITIALIZER
 
+#ifndef _LIBCPP_NO_NATIVE_SEMAPHORES
+// Semaphore
+typedef sem_t __libcpp_semaphore_t;
+# define _LIBCPP_SEMAPHORE_MAX SEM_VALUE_MAX
+#endif
+
 // Execute once
 typedef pthread_once_t __libcpp_exec_once_flag;
 #define _LIBCPP_EXEC_ONCE_INITIALIZER PTHREAD_ONCE_INIT
 
 // Thread id
-typedef pthread_t __libcpp_thread_id;
+#if defined(__MVS__)
+  typedef unsigned long long __libcpp_thread_id;
+#else
+  typedef pthread_t __libcpp_thread_id;
+#endif
 
 // Thread
-#define _LIBCPP_NULL_THREAD 0U
-
+#define _LIBCPP_NULL_THREAD ((__libcpp_thread_t()))
 typedef pthread_t __libcpp_thread_t;
 
 // Thread Local Storage
@@ -126,6 +146,9 @@ typedef void* __libcpp_recursive_mutex_t[5];
 // Condition Variable
 typedef void* __libcpp_condvar_t;
 #define _LIBCPP_CONDVAR_INITIALIZER 0
+
+// Semaphore
+typedef void* __libcpp_semaphore_t;
 
 // Execute Once
 typedef void* __libcpp_exec_once_flag;
@@ -191,6 +214,26 @@ int __libcpp_condvar_timedwait(__libcpp_condvar_t *__cv, __libcpp_mutex_t *__m,
 _LIBCPP_THREAD_ABI_VISIBILITY
 int __libcpp_condvar_destroy(__libcpp_condvar_t* __cv);
 
+#ifndef _LIBCPP_NO_NATIVE_SEMAPHORES
+
+// Semaphore
+_LIBCPP_THREAD_ABI_VISIBILITY
+bool __libcpp_semaphore_init(__libcpp_semaphore_t* __sem, int __init);
+
+_LIBCPP_THREAD_ABI_VISIBILITY
+bool __libcpp_semaphore_destroy(__libcpp_semaphore_t* __sem);
+
+_LIBCPP_THREAD_ABI_VISIBILITY
+bool __libcpp_semaphore_post(__libcpp_semaphore_t* __sem);
+
+_LIBCPP_THREAD_ABI_VISIBILITY
+bool __libcpp_semaphore_wait(__libcpp_semaphore_t* __sem);
+
+_LIBCPP_THREAD_ABI_VISIBILITY
+bool __libcpp_semaphore_wait_timed(__libcpp_semaphore_t* __sem, chrono::nanoseconds const& __ns);
+
+#endif // _LIBCPP_NO_NATIVE_SEMAPHORES
+
 // Execute once
 _LIBCPP_THREAD_ABI_VISIBILITY
 int __libcpp_execute_once(__libcpp_exec_once_flag *flag,
@@ -242,8 +285,48 @@ int __libcpp_tls_set(__libcpp_tls_key __key, void *__p);
 
 #endif // !defined(_LIBCPP_HAS_THREAD_API_EXTERNAL)
 
+struct __libcpp_timed_backoff_policy {
+  _LIBCPP_INLINE_VISIBILITY
+  bool operator()(chrono::nanoseconds __elapsed) const
+  {
+      if(__elapsed > chrono::milliseconds(128))
+          __libcpp_thread_sleep_for(chrono::milliseconds(8));
+      else if(__elapsed > chrono::microseconds(64))
+          __libcpp_thread_sleep_for(__elapsed / 2);
+      else if(__elapsed > chrono::microseconds(4))
+        __libcpp_thread_yield();
+      else
+        {} // poll
+      return false;
+  }
+};
+
+static _LIBCPP_CONSTEXPR const int __libcpp_polling_count = 64;
+
+template<class _Fn, class _BFn>
+_LIBCPP_AVAILABILITY_SYNC _LIBCPP_INLINE_VISIBILITY
+bool __libcpp_thread_poll_with_backoff(
+  _Fn && __f, _BFn && __bf, chrono::nanoseconds __max_elapsed = chrono::nanoseconds::zero())
+{
+    auto const __start = chrono::high_resolution_clock::now();
+    for(int __count = 0;;) {
+      if(__f())
+        return true; // _Fn completion means success
+      if(__count < __libcpp_polling_count) {
+        __count += 1;
+        continue;
+      }
+      chrono::nanoseconds const __elapsed = chrono::high_resolution_clock::now() - __start;
+      if(__max_elapsed != chrono::nanoseconds::zero() && __max_elapsed < __elapsed)
+          return false; // timeout failure
+      if(__bf(__elapsed))
+        return false; // _BFn completion means failure
+    }
+}
+
 #if (!defined(_LIBCPP_HAS_THREAD_LIBRARY_EXTERNAL) || \
      defined(_LIBCPP_BUILDING_THREAD_LIBRARY_EXTERNAL))
+
 
 namespace __thread_detail {
 
@@ -364,6 +447,38 @@ int __libcpp_condvar_destroy(__libcpp_condvar_t *__cv)
   return pthread_cond_destroy(__cv);
 }
 
+#ifndef _LIBCPP_NO_NATIVE_SEMAPHORES
+
+// Semaphore
+bool __libcpp_semaphore_init(__libcpp_semaphore_t* __sem, int __init)
+{
+    return sem_init(__sem, 0, __init) == 0;
+}
+
+bool __libcpp_semaphore_destroy(__libcpp_semaphore_t* __sem)
+{
+    return sem_destroy(__sem) == 0;
+}
+
+bool __libcpp_semaphore_post(__libcpp_semaphore_t* __sem)
+{
+    return sem_post(__sem) == 0;
+}
+
+bool __libcpp_semaphore_wait(__libcpp_semaphore_t* __sem)
+{
+    return sem_wait(__sem) == 0;
+}
+
+bool __libcpp_semaphore_wait_timed(__libcpp_semaphore_t* __sem, chrono::nanoseconds const& __ns)
+{
+    auto const __abs_time = chrono::system_clock::now().time_since_epoch() + __ns;
+    __libcpp_timespec_t __ts = __thread_detail::__convert_to_timespec(__abs_time);
+    return sem_timedwait(__sem, &__ts) == 0;
+}
+
+#endif //_LIBCPP_NO_NATIVE_SEMAPHORES
+
 // Execute once
 int __libcpp_execute_once(__libcpp_exec_once_flag *flag,
                           void (*init_routine)()) {
@@ -374,7 +489,7 @@ int __libcpp_execute_once(__libcpp_exec_once_flag *flag,
 // Returns non-zero if the thread ids are equal, otherwise 0
 bool __libcpp_thread_id_equal(__libcpp_thread_id t1, __libcpp_thread_id t2)
 {
-  return pthread_equal(t1, t2) != 0;
+  return t1 == t2;
 }
 
 // Returns non-zero if t1 < t2, otherwise 0
@@ -385,28 +500,33 @@ bool __libcpp_thread_id_less(__libcpp_thread_id t1, __libcpp_thread_id t2)
 
 // Thread
 bool __libcpp_thread_isnull(const __libcpp_thread_t *__t) {
-  return *__t == 0;
+  return *__t == __libcpp_thread_t();
 }
 
 int __libcpp_thread_create(__libcpp_thread_t *__t, void *(*__func)(void *),
                            void *__arg)
 {
-  return pthread_create(__t, 0, __func, __arg);
+  return pthread_create(__t, nullptr, __func, __arg);
 }
 
 __libcpp_thread_id __libcpp_thread_get_current_id()
 {
-  return pthread_self();
+  const __libcpp_thread_t thread = pthread_self();
+  return __libcpp_thread_get_id(&thread);
 }
 
 __libcpp_thread_id __libcpp_thread_get_id(const __libcpp_thread_t *__t)
 {
+#if defined(__MVS__)
+  return __t->__;
+#else
   return *__t;
+#endif
 }
 
 int __libcpp_thread_join(__libcpp_thread_t *__t)
 {
-  return pthread_join(*__t, 0);
+  return pthread_join(*__t, nullptr);
 }
 
 int __libcpp_thread_detach(__libcpp_thread_t *__t)
@@ -541,7 +661,7 @@ bool __libcpp_thread_id_less(__libcpp_thread_id t1, __libcpp_thread_id t2)
 
 // Thread
 bool __libcpp_thread_isnull(const __libcpp_thread_t *__t) {
-  return *__t == 0;
+  return __libcpp_thread_get_id(__t) == 0;
 }
 
 int __libcpp_thread_create(__libcpp_thread_t *__t, void *(*__func)(void *),
@@ -599,6 +719,7 @@ int __libcpp_tls_set(__libcpp_tls_key __key, void *__p)
 }
 
 #endif
+
 
 #endif // !_LIBCPP_HAS_THREAD_LIBRARY_EXTERNAL || _LIBCPP_BUILDING_THREAD_LIBRARY_EXTERNAL
 

@@ -7,7 +7,7 @@ Currently only entire modules can be marked as
 parallel.
 """
 
-from runner import BrowserCore
+from common import BrowserCore
 
 
 class posixtest_browser(BrowserCore):

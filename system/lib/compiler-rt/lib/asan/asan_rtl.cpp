@@ -45,7 +45,8 @@ static void AsanDie() {
     // Don't die twice - run a busy loop.
     while (1) { }
   }
-  if (common_flags()->print_module_map >= 1) PrintModuleMap();
+  if (common_flags()->print_module_map >= 1)
+    DumpProcessMap();
   if (flags()->sleep_before_dying) {
     Report("Sleeping for %d second(s)\n", flags()->sleep_before_dying);
     SleepForSeconds(flags()->sleep_before_dying);
@@ -321,7 +322,7 @@ static void InitializeHighMemEnd() {
   kHighMemEnd = GetMaxUserVirtualAddress();
   // Increase kHighMemEnd to make sure it's properly
   // aligned together with kHighMemBeg:
-  kHighMemEnd |= SHADOW_GRANULARITY * GetMmapGranularity() - 1;
+  kHighMemEnd |= (GetMmapGranularity() << SHADOW_SCALE) - 1;
 #endif  // !ASAN_FIXED_MAPPING
   CHECK_EQ((kHighMemBeg % GetMmapGranularity()), 0);
 #endif  // !SANITIZER_MYRIAD2
@@ -555,22 +556,33 @@ class AsanInitializer {
 static AsanInitializer asan_initializer;
 #endif  // ASAN_DYNAMIC
 
-} // namespace __asan
-
-// ---------------------- Interface ---------------- {{{1
-using namespace __asan;
-
-void NOINLINE __asan_handle_no_return() {
-  if (asan_init_is_running)
+void UnpoisonStack(uptr bottom, uptr top, const char *type) {
+  static const uptr kMaxExpectedCleanupSize = 64 << 20;  // 64M
+  if (top - bottom > kMaxExpectedCleanupSize) {
+    static bool reported_warning = false;
+    if (reported_warning)
+      return;
+    reported_warning = true;
+    Report(
+        "WARNING: ASan is ignoring requested __asan_handle_no_return: "
+        "stack type: %s top: %p; bottom %p; size: %p (%zd)\n"
+        "False positive error reports may follow\n"
+        "For details see "
+        "https://github.com/google/sanitizers/issues/189\n",
+        type, top, bottom, top - bottom, top - bottom);
     return;
+  }
+  PoisonShadow(bottom, top - bottom, 0);
+}
 
-  int local_stack;
-  AsanThread *curr_thread = GetCurrentThread();
-  uptr PageSize = GetPageSizeCached();
-  uptr top, bottom;
-  if (curr_thread) {
+static void UnpoisonDefaultStack() {
+  uptr bottom, top;
+
+  if (AsanThread *curr_thread = GetCurrentThread()) {
+    int local_stack;
+    const uptr page_size = GetPageSizeCached();
     top = curr_thread->stack_top();
-    bottom = ((uptr)&local_stack - PageSize) & ~(PageSize - 1);
+    bottom = ((uptr)&local_stack - page_size) & ~(page_size - 1);
   } else if (SANITIZER_RTEMS) {
     // Give up On RTEMS.
     return;
@@ -582,23 +594,29 @@ void NOINLINE __asan_handle_no_return() {
                          &tls_size);
     top = bottom + stack_size;
   }
-  static const uptr kMaxExpectedCleanupSize = 64 << 20;  // 64M
-  if (top - bottom > kMaxExpectedCleanupSize) {
-    static bool reported_warning = false;
-    if (reported_warning)
-      return;
-    reported_warning = true;
-    Report("WARNING: ASan is ignoring requested __asan_handle_no_return: "
-           "stack top: %p; bottom %p; size: %p (%zd)\n"
-           "False positive error reports may follow\n"
-           "For details see "
-           "https://github.com/google/sanitizers/issues/189\n",
-           top, bottom, top - bottom, top - bottom);
-    return;
-  }
-  PoisonShadow(bottom, top - bottom, 0);
+
+  UnpoisonStack(bottom, top, "default");
+}
+
+static void UnpoisonFakeStack() {
+  AsanThread *curr_thread = GetCurrentThread();
   if (curr_thread && curr_thread->has_fake_stack())
     curr_thread->fake_stack()->HandleNoReturn();
+}
+
+}  // namespace __asan
+
+// ---------------------- Interface ---------------- {{{1
+using namespace __asan;
+
+void NOINLINE __asan_handle_no_return() {
+  if (asan_init_is_running)
+    return;
+
+  if (!PlatformUnpoisonStacks())
+    UnpoisonDefaultStack();
+
+  UnpoisonFakeStack();
 }
 
 extern "C" void *__asan_extra_spill_area() {

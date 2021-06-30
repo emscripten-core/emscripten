@@ -36,9 +36,9 @@ static inline void a_or_l(volatile void *p, long v)
 #define a_cas_p a_cas_p
 static inline void *a_cas_p(volatile void *p, void *t, void *s)
 {
-	void* expected = t;
-	__c11_atomic_compare_exchange_strong((_Atomic uintptr_t*)p, &expected, s, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
-	return expected;
+	uintptr_t expected = (uintptr_t)t;
+	__c11_atomic_compare_exchange_strong((_Atomic uintptr_t*)p, &expected, (uintptr_t)s, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+	return (void*)expected;
 }
 
 #define a_cas_l a_cas_l

@@ -13,6 +13,7 @@ import os
 import sys
 
 from . import shared
+from . import utils
 from .settings import settings
 
 sys.path.append(shared.path_from_root('third_party'))
@@ -39,6 +40,10 @@ EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
 EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 29)
 
 WASM_PAGE_SIZE = 65536
+
+MAGIC = b'\0asm'
+
+VERSION = b'\x01\0\0\0'
 
 HEADER_SIZE = 8
 
@@ -93,7 +98,7 @@ def add_emscripten_metadata(wasm_file):
     #     the EMSCRIPTEN_METADATA_MINOR
   )
 
-  orig = open(wasm_file, 'rb').read()
+  orig = utils.read_binary(wasm_file)
   with open(wasm_file, 'wb') as f:
     f.write(orig[0:8]) # copy magic number and version
     # write the special section
@@ -135,6 +140,7 @@ Section = namedtuple('Section', ['type', 'size', 'offset'])
 Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
 Import = namedtuple('Import', ['kind', 'module', 'field'])
 Export = namedtuple('Export', ['name', 'kind', 'index'])
+Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed'])
 
 
 class Module:
@@ -145,8 +151,8 @@ class Module:
     self.buf = open(filename, 'rb')
     magic = self.buf.read(4)
     version = self.buf.read(4)
-    assert magic == b'\0asm'
-    assert version == b'\x01\0\0\0'
+    assert magic == MAGIC
+    assert version == VERSION
 
   def __del__(self):
     self.buf.close()
@@ -192,10 +198,7 @@ def parse_dylink_section(wasm_file):
 
   dylink_section = next(module.sections())
   assert dylink_section.type == SecType.CUSTOM
-  section_size = dylink_section.size
-  section_offset = dylink_section.offset
-  section_end = section_offset + section_size
-  module.seek(section_offset)
+  module.seek(dylink_section.offset)
   # section name
   section_name = module.readString()
   assert section_name == 'dylink'
@@ -211,7 +214,7 @@ def parse_dylink_section(wasm_file):
     needed.append(libname)
     needed_count -= 1
 
-  return (mem_size, mem_align, table_size, table_align, section_end, needed)
+  return Dylink(mem_size, mem_align, table_size, table_align, needed)
 
 
 def get_exports(wasm_file):

@@ -6,8 +6,7 @@
 
 GLuint what_got_created(void);
 
-int main()
-{
+int main() {
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
@@ -22,7 +21,5 @@ int main()
   GLuint whatGotCreated = what_got_created();
   printf("Created texture of type 0x%x\n", whatGotCreated);
   assert(createType == whatGotCreated);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(whatGotCreated);
-#endif
+  return 0;
 }

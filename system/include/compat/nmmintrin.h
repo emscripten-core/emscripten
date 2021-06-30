@@ -16,7 +16,7 @@
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cmpgt_epi64(__m128i __a, __m128i __b)
 {
-  return (__m128i)((__i64x2)__a > (__i64x2)__b);
+  return wasm_i64x2_gt(__a, __b);
 }
 
 // Unsupported functions:
