@@ -203,8 +203,8 @@ var LibraryPThread = {
     threadExit: function(exitCode) {
       var tb = _pthread_self();
       if (tb) { // If we haven't yet exited?
-#if ASSERTIONS
-        err('Pthread 0x' + tb.toString(16) + ' exited.');
+#if PTHREADS_DEBUG
+        out('Pthread 0x' + tb.toString(16) + ' exited.');
 #endif
         PThread.runExitHandlersAndDeinitThread(tb, exitCode);
 
@@ -353,7 +353,7 @@ var LibraryPThread = {
           if (thread) {
             thread.worker.postMessage(e.data, d['transferList']);
           } else {
-            console.error('Internal error! Worker sent a message "' + cmd + '" to target pthread ' + d['targetThread'] + ', but that thread no longer exists!');
+            err('Internal error! Worker sent a message "' + cmd + '" to target pthread ' + d['targetThread'] + ', but that thread no longer exists!');
           }
           PThread.currentProxiedOperationCallerThread = undefined;
           return;
@@ -693,7 +693,7 @@ var LibraryPThread = {
     if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
     if (transferredCanvasNames) transferredCanvasNames = transferredCanvasNames.split(',');
 #if GL_DEBUG
-    console.log('pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
+    out('pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
 #endif
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
