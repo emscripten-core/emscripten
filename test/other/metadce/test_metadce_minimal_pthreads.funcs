@@ -1,7 +1,6 @@
 $__emscripten_stdout_seek
 $__errno_location
 $__memcpy
-$__memset
 $__pthread_getspecific
 $__pthread_mutex_lock
 $__pthread_mutex_trylock
