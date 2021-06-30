@@ -319,14 +319,14 @@ def parse_args(args):
   return parser.parse_args()
 
 
-def env_config():
+def configure():
   common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
   common.EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
   common.EMTEST_SAVE_DIR = int(os.getenv('EMTEST_SAVE_DIR', '0'))
-  common.EMTEST_ALL_ENGINES = os.getenv('EMTEST_ALL_ENGINES')
-  common.EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
-  common.EMTEST_LACKS_NATIVE_CLANG = os.getenv('EMTEST_LACKS_NATIVE_CLANG')
-  common.EMTEST_REBASELINE = os.getenv('EMTEST_REBASELINE')
+  common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
+  common.EMTEST_SKIP_SLOW = int(os.getenv('EMTEST_SKIP_SLOW', '0'))
+  common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
+  common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
   common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
 
   assert 'PARALLEL_SUITE_EMCC_CORES' not in os.environ, 'use EMTEST_CORES rather than PARALLEL_SUITE_EMCC_CORES'
@@ -334,26 +334,37 @@ def env_config():
 
 
 def main(args):
-  env_config()
   options = parse_args(args)
-  if options.browser:
-    common.EMTEST_BROWSER = options.browser
-  if options.detect_leaks:
-    common.EMTEST_DETECT_TEMPFILE_LEAKS = options.detect_leaks
-  if options.save_dir:
-    common.EMTEST_SAVE_DIR = options.save_dir
+
+  # We set the environments variables here and then call configure,
+  # to apply them.  This means the python's multiprocessing child
+  # process will see the same configuration even though they don't
+  # parse the command line.
+  def set_env(name, option_value):
+    if option_value is None:
+      return
+    if option_value is False:
+      value = '0'
+    elif option_value is True:
+      value = '1'
+    else:
+      value = str(option_value)
+    os.environ[name] = value
+
+  set_env('EMTEST_BROWSER', options.browser)
+  set_env('EMTEST_DETECT_TEMPFILE_LEAKS', options.detect_leaks)
+  set_env('EMTEST_SAVE_DIR', options.save_dir)
   if options.no_clean:
-    common.EMTEST_SAVE_DIR = 2
-  if options.skip_slow:
-    common.EMTEST_SKIP_SLOW = options.skip_slow
-  if options.all_engines:
-    common.EMTEST_ALL_ENGINES = options.all_engines
-  if options.rebaseline:
-    common.EMTEST_REBASELINE = options.rebaseline
-  if options.verbose:
-    common.EMTEST_VERBOSE = options.verbose
-  if options.cores:
-    parallel_testsuite.NUM_CORES = options.cores
+    set_env('EMTEST_SAVE_DIR', 2)
+  else:
+    set_env('EMTEST_SAVE_DIR', options.save_dir)
+  set_env('EMTEST_SKIP_SLOW', options.skip_slow)
+  set_env('EMTEST_ALL_ENGINES', options.all_engines)
+  set_env('EMTEST_REBASELINE', options.rebaseline)
+  set_env('EMTEST_VERBOSE', options.verbose)
+  set_env('EMTEST_CORES', options.cores)
+
+  configure()
 
   check_js_engines()
 
@@ -380,6 +391,8 @@ def main(args):
   # over 125 are not well supported on UNIX.
   return min(num_failures, 125)
 
+
+configure()
 
 if __name__ == '__main__':
   try:
