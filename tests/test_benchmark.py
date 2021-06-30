@@ -385,7 +385,7 @@ if config.SPIDERMONKEY_ENGINE and config.SPIDERMONKEY_ENGINE in config.JS_ENGINE
 
 if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
   benchmarkers += [
-    # EmscriptenBenchmarker('Node.js', shared.NODE_JS),
+    # EmscriptenBenchmarker('Node.js', config.NODE_JS),
   ]
 
 
