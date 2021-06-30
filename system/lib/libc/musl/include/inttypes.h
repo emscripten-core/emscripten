@@ -25,6 +25,11 @@ uintmax_t wcstoumax(const wchar_t *__restrict, wchar_t **__restrict, int);
 #if UINTPTR_MAX == UINT64_MAX
 #define __PRI64  "l"
 #define __PRIPTR "l"
+#elif defined(__EMSCRIPTEN__)
+// Under emscripten __PTRDIFF_TYPE__ and therefor intptr_t are defined to
+// be `long int` even on wasm2.
+#define __PRI64  "ll"
+#define __PRIPTR "l"
 #else
 #define __PRI64  "ll"
 #define __PRIPTR ""

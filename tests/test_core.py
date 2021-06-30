@@ -4699,6 +4699,9 @@ Have even and odd!
   def test_printf_octal(self):
     self.do_run_in_out_file_test('printf/test_octal.c')
 
+  def test_printf_macros(self):
+    self.do_core_test('test_printf_macros.c')
+
   def test_vprintf(self):
     self.do_core_test('test_vprintf.c')
 
