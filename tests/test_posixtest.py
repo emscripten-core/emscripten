@@ -175,7 +175,8 @@ def make_test(name, testfile, browser):
             '-sUSE_PTHREADS',
             '-sEXIT_RUNTIME',
             '-sTOTAL_MEMORY=256mb',
-            '-sPTHREAD_POOL_SIZE=40']
+            '-sPTHREAD_POOL_SIZE=40',
+            '-sPTHREAD_POOL_SIZE_STRICT=0']
     if browser:
       self.btest_exit(testfile, args=args)
     else:
