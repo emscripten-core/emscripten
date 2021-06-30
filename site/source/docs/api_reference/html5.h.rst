@@ -640,7 +640,7 @@ Functions
 
   .. note::
 
-    - For the ``resize`` callback, pass in target = 0 to get ``resize`` events from the ``Window`` object.
+    - For the ``resize`` callback, pass in target = ``EMSCRIPTEN_EVENT_TARGET_WINDOW`` to get ``resize`` events from the ``Window`` object.
     - The DOM3 Events specification only requires that the ``Window`` object sends resize events. It is valid to register a ``resize`` callback on other DOM elements, but the browser is not required to fire ``resize`` events for these.
 
   :param target: |target-parameter-doc|
