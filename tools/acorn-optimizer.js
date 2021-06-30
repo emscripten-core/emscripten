@@ -943,7 +943,7 @@ function applyDCEGraphRemovals(ast) {
 
 // Need a parser to pass to acorn.Node constructor.
 // Create it once and reuse it.
-var stubParser = new acorn.Parser();
+var stubParser = new acorn.Parser({ecmaVersion: 2020})
 
 function createNode(props) {
   var node = new acorn.Node(stubParser);
