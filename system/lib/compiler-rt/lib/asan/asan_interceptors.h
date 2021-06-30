@@ -26,10 +26,10 @@ void InitializePlatformInterceptors();
 
 }  // namespace __asan
 
-// There is no general interception at all on Fuchsia.
+// There is no general interception at all on Fuchsia and Emscripten.
 // Only the functions in asan_interceptors_memintrinsics.h are
 // really defined to replace libc functions.
-#if !SANITIZER_FUCHSIA
+#if !SANITIZER_FUCHSIA && !SANITIZER_EMSCRIPTEN
 
 // Use macro to describe if specific function should be
 // intercepted on a given platform.
@@ -162,6 +162,6 @@ DECLARE_REAL(char*, strstr, const char *s1, const char *s2)
   (void) ctx;
 #define COMMON_INTERCEPT_FUNCTION(name) ASAN_INTERCEPT_FUNC(name)
 
-#endif  // !SANITIZER_FUCHSIA
+#endif  // !SANITIZER_FUCHSIA && !SANITIZER_EMSCRIPTEN
 
 #endif  // ASAN_INTERCEPTORS_H

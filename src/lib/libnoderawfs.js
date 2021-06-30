@@ -57,7 +57,7 @@ addToLibrary({
     // generic function for all node creation
     cwd() { return process.cwd(); },
     chdir(...args) { process.chdir(...args); },
-    mknod(path, mode) {
+    mknod(path, mode/*, dev */) {
       if (FS.isDir(path)) {
         fs.mkdirSync(path, mode);
       } else {
