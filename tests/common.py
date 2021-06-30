@@ -1564,8 +1564,8 @@ def build_library(name,
                   build_dir,
                   output_dir,
                   generated_libs,
-                  configure=['sh', './configure'],
-                  make=['make'],
+                  configure,
+                  make,
                   make_args=[],
                   cache=None,
                   cache_name=None,
@@ -1596,11 +1596,18 @@ def build_library(name,
     env = os.environ.copy()
   env.update(env_init)
 
-  if configure:
-    if configure[0] == 'cmake':
-      configure = [EMCMAKE] + configure
+  if not native:
+    # Inject emcmake, emconfigure or emmake accordingly, but only if we are
+    # cross compiling.
+    if configure:
+      if configure[0] == 'cmake':
+        configure = [EMCMAKE] + configure
+      else:
+        configure = [EMCONFIGURE] + configure
     else:
-      configure = [EMCONFIGURE] + configure
+      make = [EMMAKE] + make
+
+  if configure:
     try:
       with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
         with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
