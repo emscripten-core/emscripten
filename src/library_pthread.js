@@ -873,14 +873,6 @@ var LibraryPThread = {
 #endif
   },
 
-#if USE_LSAN
-  emscripten_builtin_pthread_join__sig: 'iii',
-  emscripten_builtin_pthread_join__deps: ['pthread_join'],
-  emscripten_builtin_pthread_join: function(thread, status) {
-    return _pthread_join(thread, status);
-  },
-#endif
-
   pthread_kill__deps: ['$cancelThread', '$cleanupThread', 'emscripten_main_browser_thread_id'],
   pthread_kill: function(thread, signal) {
     if (signal < 0 || signal >= 65/*_NSIG*/) return ERRNO_CODES.EINVAL;

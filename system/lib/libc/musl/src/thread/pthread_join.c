@@ -58,3 +58,7 @@ static int __pthread_tryjoin_np(pthread_t t, void **res)
 weak_alias(__pthread_tryjoin_np, pthread_tryjoin_np);
 weak_alias(__pthread_timedjoin_np, pthread_timedjoin_np);
 weak_alias(__pthread_join, pthread_join);
+
+#ifdef __EMSCRIPTEN__ // XXX Emscripten needed by LSan
+weak_alias(__pthread_join, emscripten_builtin_pthread_join);
+#endif

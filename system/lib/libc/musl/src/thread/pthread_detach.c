@@ -15,3 +15,7 @@ static int __pthread_detach(pthread_t t)
 
 weak_alias(__pthread_detach, pthread_detach);
 weak_alias(__pthread_detach, thrd_detach);
+
+#ifdef __EMSCRIPTEN__ // XXX Emscripten needed by LSan
+weak_alias(__pthread_detach, emscripten_builtin_pthread_detach);
+#endif
