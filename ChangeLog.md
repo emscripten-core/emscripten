@@ -18,8 +18,12 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.25
+2.0.26
 ------
+
+2.0.25 - 06/30/2021
+-------------------
+
 - Support for the 'shell' environment is now disabled by default.  Running under
   `d8`, `js`, or `jsc` is not something that most emscripten users ever want to
   do, so including the support code is, more often than not, unnecessary.  Users
