@@ -170,7 +170,7 @@ def parse_c_output(lines):
   return result
 
 
-def gen_inspect_code(path, struct, code, cxx=False):
+def gen_inspect_code(path, struct, code):
   if path[0][-1] == '#':
     path[0] = path[0][:-1]
     prefix = ''
@@ -255,17 +255,17 @@ def inspect_headers(headers, cflags, cxx=False):
 
   # -Oz optimizes enough to avoid warnings on code size/num locals
   cmd = [shared.EMXX if cxx else shared.EMCC] + cflags + ['-o', js_file[1], src_file[1],
-                                  '-O0',
-                                  '-Werror',
-                                  '-Wno-format',
-                                  '-nostdlib',
-                                  compiler_rt,
-                                  '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
-                                  '-s', 'LLD_REPORT_UNDEFINED=1',
-                                  '-s', 'STRICT',
-                                  # Use SINGLE_FILE=1 so there is only a single
-                                  # file to cleanup.
-                                  '-s', 'SINGLE_FILE']
+                                                          '-O0',
+                                                          '-Werror',
+                                                          '-Wno-format',
+                                                          '-nostdlib',
+                                                          compiler_rt,
+                                                          '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
+                                                          '-s', 'LLD_REPORT_UNDEFINED=1',
+                                                          '-s', 'STRICT',
+                                                          # Use SINGLE_FILE=1 so there is only a single
+                                                          # file to cleanup.
+                                                          '-s', 'SINGLE_FILE']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
