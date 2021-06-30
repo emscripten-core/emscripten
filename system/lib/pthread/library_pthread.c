@@ -45,8 +45,6 @@ char* gets(char*);
 // Extra pthread_attr_t field:
 #define _a_transferredcanvases __u.__s[9]
 
-void __pthread_testcancel();
-
 int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t* a, const char** str) {
   *str = (const char*)a->_a_transferredcanvases;
   return 0;
@@ -55,17 +53,6 @@ int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t* a, cons
 int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t* a, const char* str) {
   a->_a_transferredcanvases = (unsigned long)str;
   return 0;
-}
-
-int _pthread_getcanceltype() { return pthread_self()->cancelasync; }
-
-static void inline __pthread_mutex_locked(pthread_mutex_t* mutex) {
-  // The lock is now ours, mark this thread as the owner of this lock.
-  assert(mutex);
-  assert(mutex->_m_lock == 0);
-  mutex->_m_lock = pthread_self()->tid;
-  if (_pthread_getcanceltype() == PTHREAD_CANCEL_ASYNCHRONOUS)
-    __pthread_testcancel();
 }
 
 int sched_get_priority_max(int policy) {
@@ -101,27 +88,16 @@ int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr, int prioceiling)
   return EPERM;
 }
 
-int pthread_setcancelstate(int new, int* old) {
-  if (new > 1U)
-    return EINVAL;
-  struct pthread* self = pthread_self();
-  if (old)
-    *old = self->canceldisable;
-  self->canceldisable = new;
-  return 0;
+void __block_app_sigs(void *set)
+{
+  // no-op
+  (void)set;
 }
 
-int _pthread_isduecanceled(struct pthread* pthread_ptr) {
-  return pthread_ptr->cancel != 0;
-}
-
-void __pthread_testcancel() {
-  struct pthread* self = pthread_self();
-  if (self->canceldisable)
-    return;
-  if (_pthread_isduecanceled(self)) {
-    EM_ASM(throw 'Canceled!');
-  }
+void __restore_sigs(void *set)
+{
+  // no-op
+  (void)set;
 }
 
 static uint32_t dummyZeroAddress = 0;
@@ -936,8 +912,6 @@ int emscripten_proxy_main(int argc, char** argv) {
   pthread_attr_destroy(&attr);
   return rc;
 }
-
-weak_alias(__pthread_testcancel, pthread_testcancel);
 
 // See musl's pthread_create.c
 void __run_cleanup_handlers(void* _unused) {

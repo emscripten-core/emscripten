@@ -275,9 +275,7 @@ self.onmessage = function(e) {
         }
 #endif
       } catch(ex) {
-        if (ex === 'Canceled!') {
-          Module['PThread'].threadCancel();
-        } else if (ex != 'unwind') {
+        if (ex != 'unwind') {
 #if ASSERTIONS
           // FIXME(sbc): Figure out if this is still needed or useful.  Its not
           // clear to me how this check could ever fail.  In order to get into
@@ -317,7 +315,7 @@ self.onmessage = function(e) {
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (Module['_pthread_self']()) {
-        Module['PThread'].threadCancel();
+        Module['PThread'].threadExit(-1/*PTHREAD_CANCELED*/);
       }
     } else if (e.data.target === 'setimmediate') {
       // no-op

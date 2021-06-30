@@ -187,10 +187,6 @@ done:
 		__pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, 0);
 	}
 
-#ifdef __EMSCRIPTEN__
-	pthread_testcancel();
-#endif
-
 	return e;
 }
 

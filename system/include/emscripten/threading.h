@@ -302,6 +302,11 @@ pthread_t emscripten_main_browser_thread_id(void);
 //         Asyncify builds.
 void emscripten_thread_sleep(double msecs);
 
+// Cleanups the pthread_t struct.
+// TODO(kleisauke): Improve description.
+// This is an internal function and generally not intended for user code.
+void emscripten_cleanup_thread(pthread_t thread);
+
 #define EM_THREAD_STATUS int
 #define EM_THREAD_STATUS_NOTSTARTED 0
 #define EM_THREAD_STATUS_RUNNING    1
