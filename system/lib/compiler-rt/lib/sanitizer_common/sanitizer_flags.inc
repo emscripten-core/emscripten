@@ -71,7 +71,12 @@ COMMON_FLAG(bool, strip_env, 1,
             "avoid passing it to children. Default is true.")
 COMMON_FLAG(bool, detect_leaks, !SANITIZER_MAC, "Enable memory leak detection.")
 COMMON_FLAG(
-    bool, leak_check_at_exit, !SANITIZER_EMSCRIPTEN,
+    bool, leak_check_at_exit,
+#ifdef __EMSCRIPTEN_PTHREADS__
+    false,
+#else
+    true,
+#endif
     "Invoke leak checking in an atexit handler. Has no effect if "
     "detect_leaks=false, or if __lsan_do_leak_check() is called before the "
     "handler has a chance to run.")

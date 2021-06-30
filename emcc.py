@@ -2149,7 +2149,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     if settings.LINKABLE:
       exit_with_error('ASan does not support dynamic linking')
 
-  if sanitize and settings.EXIT_RUNTIME:
+  if sanitize and settings.USE_PTHREADS and settings.EXIT_RUNTIME:
     settings.EXPORTED_FUNCTIONS += ['___lsan_do_leak_check']
 
   if sanitize and settings.GENERATE_SOURCE_MAP:
