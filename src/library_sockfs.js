@@ -509,7 +509,7 @@ mergeInto(LibraryManager.library, {
         var WebSocketServer = require('ws').Server;
         var host = sock.saddr;
 #if SOCKET_DEBUG
-        console.log('listen: ' + host + ':' + sock.sport);
+        out('listen: ' + host + ':' + sock.sport);
 #endif
         sock.server = new WebSocketServer({
           host: host,
@@ -520,7 +520,7 @@ mergeInto(LibraryManager.library, {
 
         sock.server.on('connection', function(ws) {
 #if SOCKET_DEBUG
-          console.log('received connection from: ' + ws._socket.remoteAddress + ':' + ws._socket.remotePort);
+          out('received connection from: ' + ws._socket.remoteAddress + ':' + ws._socket.remotePort);
 #endif
           if (sock.type === {{{ cDefine('SOCK_STREAM') }}}) {
             var newsock = SOCKFS.createSocket(sock.family, sock.type, sock.protocol);
