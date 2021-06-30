@@ -1212,10 +1212,18 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
 }
 
 function makeRemovedFSAssert(fsName) {
-  if (!ASSERTIONS) return;
+  assert(ASSERTIONS);
   const lower = fsName.toLowerCase();
   if (SYSTEM_JS_LIBRARIES.includes('library_' + lower + '.js')) return '';
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
+}
+
+function makeRemovedRuntimeFunction(name) {
+  assert(ASSERTIONS);
+  if (libraryFunctions.includes(name)) {
+    return '';
+  }
+  return `function ${name}() { abort('\`${name}\` is now a library function and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line'); }`;
 }
 
 // Given an array of elements [elem1,elem2,elem3], returns a string "['elem1','elem2','elem3']"

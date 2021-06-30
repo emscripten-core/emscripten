@@ -367,7 +367,7 @@ jobs:
     steps:
       - run-tests:
           # also add a few asan tests
-          test_targets: "wasm2 asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread*"
+          test_targets: "wasm2 asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread* asan.test_dyncall_specific_minimal_runtime"
   test-wasm3:
     executor: bionic
     steps:
