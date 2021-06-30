@@ -3938,11 +3938,9 @@ window.close = function() {
   # Test that pthreads are able to do printf.
   @requires_threads
   def test_pthread_printf(self):
-    def run(debug):
-       self.btest(test_file('pthread/test_pthread_printf.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'LIBRARY_DEBUG=%d' % debug])
-
-    run(debug=True)
-    run(debug=False)
+    args = ['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE']
+    # args += ['-sLIBRARY_DEBUG']
+    self.btest(test_file('pthread/test_pthread_printf.cpp'), expected='0', args=args)
 
   # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
   @requires_threads
@@ -4441,7 +4439,8 @@ window.close = function() {
   @requires_graphics_hardware
   def test_webgl_offscreen_canvas_in_proxied_pthread(self):
     for asyncify in [0, 1]:
-      cmd = ['-s', 'USE_PTHREADS', '-s', 'OFFSCREENCANVAS_SUPPORT', '-lGL', '-s', 'GL_DEBUG', '-s', 'PROXY_TO_PTHREAD']
+      cmd = ['-s', 'USE_PTHREADS', '-s', 'OFFSCREENCANVAS_SUPPORT', '-lGL', '-s', 'PROXY_TO_PTHREAD']
+      # cmd += ['-sGL_DEBUG']
       if asyncify:
         # given the synchronous render loop here, asyncify is needed to see intermediate frames and
         # the gradual color change
@@ -4456,7 +4455,8 @@ window.close = function() {
     for args1 in [[], ['-s', 'PROXY_TO_PTHREAD']]:
       for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
         for args3 in [[], ['-s', 'OFFSCREENCANVAS_SUPPORT', '-s', 'OFFSCREEN_FRAMEBUFFER']]:
-          cmd = args1 + args2 + args3 + ['-s', 'USE_PTHREADS', '-lGL', '-s', 'GL_DEBUG']
+          cmd = args1 + args2 + args3 + ['-s', 'USE_PTHREADS', '-lGL']
+          # cmd += ['-sGL_DEBUG']
           print(str(cmd))
           self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
 
@@ -4683,7 +4683,8 @@ window.close = function() {
       ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'],
       ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-s', 'OFFSCREENCANVAS_SUPPORT'],
     ]:
-      cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-s', 'GL_DEBUG', '--threadprofiler'] + args
+      cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '--threadprofiler'] + args
+      # cmd += ['-sGL_DEBUG']
       print(' '.join(cmd))
       self.btest_exit('canvas_animate_resize.cpp', args=cmd)
 

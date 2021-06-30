@@ -308,7 +308,7 @@ self.onmessage = function(e) {
             Module['PThread'].threadExit(-2);
             throw ex;
           }
-#if ASSERTIONS
+#if PTHREADS_DEBUG
         } else {
           // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
           err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');

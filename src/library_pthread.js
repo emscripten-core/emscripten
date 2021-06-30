@@ -203,7 +203,7 @@ var LibraryPThread = {
     threadExit: function(exitCode) {
       var tb = _pthread_self();
       if (tb) { // If we haven't yet exited?
-#if ASSERTIONS
+#if PTHREADS_DEBUG
         err('Pthread 0x' + tb.toString(16) + ' exited.');
 #endif
         PThread.runExitHandlersAndDeinitThread(tb, exitCode);

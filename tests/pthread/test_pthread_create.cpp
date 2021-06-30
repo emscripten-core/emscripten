@@ -28,7 +28,7 @@ void *ThreadMain(void *arg)
 
 #define N 100
 
-	EM_ASM(err('Thread idx '+$0+': sorting ' + $1 + ' numbers with param ' + $2 + '.'), idx, N, param);
+	//EM_ASM(err('Thread idx '+$0+': sorting ' + $1 + ' numbers with param ' + $2 + '.'), idx, N, param);
 
 	unsigned int n[N];
 	for(unsigned int i = 0; i < N; ++i)
@@ -47,11 +47,12 @@ void *ThreadMain(void *arg)
 		}
 	// Ensure all elements are in place.
 	int numGood = 0;
-	for(unsigned int i = 0; i < N; ++i)
+	for(unsigned int i = 0; i < N; ++i) {
 		if (n[i] == i) ++numGood;
 		else EM_ASM(err('n['+$0+']='+$1), i, n[i]);
+	}
 
-	EM_ASM(out('Thread idx ' + $0 + ' with param '+$1+': all done with result '+$2+'.'), idx, param, numGood);
+	//EM_ASM(out('Thread idx ' + $0 + ' with param '+$1+': all done with result '+$2+'.'), idx, param, numGood);
 	pthread_exit((void*)numGood);
 }
 
@@ -84,8 +85,8 @@ int main()
 		CreateThread(i);
 
 	// Join all threads and create more.
-        while (numThreadsToCreate > 0)
-        {
+	while (numThreadsToCreate > 0)
+	{
 		for(int i = 0; i < NUM_THREADS; ++i)
 		{
 			if (thread[i])
@@ -93,7 +94,7 @@ int main()
 				int status;
 				int rc = pthread_join(thread[i], (void**)&status);
 				assert(rc == 0);
-				EM_ASM(err('Main: Joined thread idx ' + $0 + ' (param ' + $1 + ') with status ' + $2), i, global_shared_data[i], (int)status);
+				//EM_ASM(err('Main: Joined thread idx ' + $0 + ' (param ' + $1 + ') with status ' + $2), i, global_shared_data[i], (int)status);
 				assert(status == N);
 				thread[i] = 0;
 				if (numThreadsToCreate > 0)
