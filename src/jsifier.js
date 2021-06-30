@@ -232,9 +232,7 @@ function JSify(functionsOnly) {
       } else if (typeof snippet === 'function') {
         isFunction = true;
         snippet = processLibraryFunction(snippet, ident, finalName);
-        if (!isJsOnlyIdentifier(ident[0])) {
-          libraryFunctions.push(finalName);
-        }
+        libraryFunctions.push(finalName);
       }
 
       // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be exported

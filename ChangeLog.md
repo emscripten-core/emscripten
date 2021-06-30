@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 2.0.26
 ------
+- The `alignMemory` function is now a library function and therefore not
+  included by default.  Debug builds will automatically abort if you try
+  to use this function without including it.  The normal library `__deps`
+  mechanism can be used to include it, or can be added to
+  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`.
 
 2.0.25 - 06/30/2021
 -------------------
