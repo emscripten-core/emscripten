@@ -2427,7 +2427,7 @@ var LibraryJSEvents = {
         // TODO: Perhaps autoResizeViewport should only be true if FBO 0 is currently active?
         autoResizeViewport = (prevViewport[0] === 0 && prevViewport[1] === 0 && prevViewport[2] === canvas.width && prevViewport[3] === canvas.height);
 #if GL_DEBUG
-        console.error('Resizing canvas from ' + canvas.width + 'x' + canvas.height + ' to ' + width + 'x' + height + '. Previous GL viewport size was ' 
+        err('Resizing canvas from ' + canvas.width + 'x' + canvas.height + ' to ' + width + 'x' + height + '. Previous GL viewport size was ' 
           + prevViewport + ', so autoResizeViewport=' + autoResizeViewport);
 #endif
       }
@@ -2435,7 +2435,7 @@ var LibraryJSEvents = {
       canvas.height = height;
       if (autoResizeViewport) {
 #if GL_DEBUG
-        console.error('Automatically resizing GL viewport to cover whole render target ' + width + 'x' + height);
+        err('Automatically resizing GL viewport to cover whole render target ' + width + 'x' + height);
 #endif
         // TODO: Add -s CANVAS_RESIZE_SETS_GL_VIEWPORT=0/1 option (default=1). This is commonly done and several graphics engines depend on this,
         // but this can be quite disruptive.
@@ -2447,7 +2447,7 @@ var LibraryJSEvents = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_DEFERRED') }}}; // This will have to be done asynchronously
     } else {
 #if GL_DEBUG
-      console.error('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
+      err('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     }
@@ -2491,7 +2491,7 @@ var LibraryJSEvents = {
   emscripten_set_canvas_element_size__sig: 'iiii',
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
-    console.error('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
+    err('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
 #endif
     var canvas = findCanvasEventTarget(target);
     if (canvas) {
@@ -2505,7 +2505,7 @@ var LibraryJSEvents = {
   emscripten_set_canvas_element_size__sig: 'iiii',
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
-    console.error('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
+    err('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
 #endif
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
@@ -2521,7 +2521,7 @@ var LibraryJSEvents = {
   $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size'],
   $setCanvasElementSize: function(target, width, height) {
 #if GL_DEBUG
-    console.error('setCanvasElementSize(target='+target+',width='+width+',height='+height);
+    err('setCanvasElementSize(target='+target+',width='+width+',height='+height);
 #endif
     if (!target.controlTransferredOffscreen) {
       target.width = width;
@@ -2559,7 +2559,7 @@ var LibraryJSEvents = {
       {{{ makeSetValue('height', 0, 'canvas.height', 'i32') }}};
     } else {
 #if GL_DEBUG
-      console.error('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
+      err('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     }
@@ -2819,7 +2819,7 @@ var LibraryJSEvents = {
 #if ASSERTIONS
     assert(typeof str === 'number');
 #endif
-    console.log(UTF8ToString(str));
+    out(UTF8ToString(str));
   },
 
   emscripten_console_warn: function(str) {
@@ -2833,7 +2833,7 @@ var LibraryJSEvents = {
 #if ASSERTIONS
     assert(typeof str === 'number');
 #endif
-    console.error(UTF8ToString(str));
+    err(UTF8ToString(str));
   },
 
   emscripten_throw_number: function(number) {

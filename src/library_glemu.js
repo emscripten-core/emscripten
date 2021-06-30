@@ -431,7 +431,7 @@ var LibraryGLEmulation = {
       _glShaderSource = _emscripten_glShaderSource = function _glShaderSource(shader, count, string, length) {
         var source = GL.getSource(shader, count, string, length);
 #if GL_DEBUG
-        console.log("glShaderSource: Input: \n" + source);
+        out("glShaderSource: Input: \n" + source);
         GL.shaderOriginalSources[shader] = source;
 #endif
         // XXX We add attributes and uniforms to shaders. The program can ask for the # of them, and see the
@@ -535,7 +535,7 @@ var LibraryGLEmulation = {
         }
 #if GL_DEBUG
         GL.shaderSources[shader] = source;
-        console.log("glShaderSource: Output: \n" + source);
+        out("glShaderSource: Output: \n" + source);
 #endif
         GLctx.shaderSource(GL.shaders[shader], source);
       };
@@ -2040,7 +2040,7 @@ var LibraryGLEmulation = {
         GLImmediate.rendererComponents[name] = 1;
 #if ASSERTIONS
         if (GLImmediate.enabledClientAttributes[name]) {
-          console.log("Warning: glTexCoord used after EnableClientState for TEXTURE_COORD_ARRAY for TEXTURE0. Disabling TEXTURE_COORD_ARRAY...");
+          out("Warning: glTexCoord used after EnableClientState for TEXTURE_COORD_ARRAY for TEXTURE0. Disabling TEXTURE_COORD_ARRAY...");
         }
 #endif
         GLImmediate.enabledClientAttributes[name] = true;
@@ -3441,7 +3441,7 @@ var LibraryGLEmulation = {
     if (!GLctx.currentElementArrayBufferBinding) {
       assert(type == GLctx.UNSIGNED_SHORT); // We can only emulate buffers of this kind, for now
     }
-    console.log("DrawElements doesn't actually prepareClientAttributes properly.");
+    out("DrawElements doesn't actually prepareClientAttributes properly.");
 #endif
     GLImmediate.prepareClientAttributes(count, false);
     GLImmediate.mode = mode;

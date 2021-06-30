@@ -454,9 +454,9 @@ var LibraryGL = {
     validateGLObjectID: function(objectHandleArray, objectID, callerFunctionName, objectReadableType) {
       if (objectID != 0) {
         if (objectHandleArray[objectID] === null) {
-          console.error(callerFunctionName + ' called with an already deleted ' + objectReadableType + ' ID ' + objectID + '!');
+          err(callerFunctionName + ' called with an already deleted ' + objectReadableType + ' ID ' + objectID + '!');
         } else if (!(objectID in objectHandleArray)) {
-          console.error(callerFunctionName + ' called with a nonexisting ' + objectReadableType + ' ID ' + objectID + '!');
+          err(callerFunctionName + ' called with a nonexisting ' + objectReadableType + ' ID ' + objectID + '!');
         }
       }
     },
@@ -494,21 +494,21 @@ var LibraryGL = {
             }
           }
 #endif
-          console.error('Invalid vertex attribute data type GLenum ' + dataType + ' passed to GL function!');
+          err('Invalid vertex attribute data type GLenum ' + dataType + ' passed to GL function!');
       }
       if (dimension == 0x80E1 /* GL_BGRA */) {
-        console.error('WebGL does not support size=GL_BGRA in a call to glVertexAttribPointer! Please use size=4 and type=GL_UNSIGNED_BYTE instead!');
+        err('WebGL does not support size=GL_BGRA in a call to glVertexAttribPointer! Please use size=4 and type=GL_UNSIGNED_BYTE instead!');
       } else if (dimension < 1 || dimension > 4) {
-        console.error('Invalid dimension='+dimension+' in call to glVertexAttribPointer, must be 1,2,3 or 4.');
+        err('Invalid dimension='+dimension+' in call to glVertexAttribPointer, must be 1,2,3 or 4.');
       }
       if (stride < 0 || stride > 255) {
-        console.error('Invalid stride='+stride+' in call to glVertexAttribPointer. Note that maximum supported stride in WebGL is 255!');
+        err('Invalid stride='+stride+' in call to glVertexAttribPointer. Note that maximum supported stride in WebGL is 255!');
       }
       if (offset % sizeBytes != 0) {
-        console.error('GL spec section 6.4 error: vertex attribute data offset of ' + offset + ' bytes should have been a multiple of the data type size that was used: GLenum ' + dataType + ' has size of ' + sizeBytes + ' bytes!');
+        err('GL spec section 6.4 error: vertex attribute data offset of ' + offset + ' bytes should have been a multiple of the data type size that was used: GLenum ' + dataType + ' has size of ' + sizeBytes + ' bytes!');
       }
       if (stride % sizeBytes != 0) {
-        console.error('GL spec section 6.4 error: vertex attribute data stride of ' + stride + ' bytes should have been a multiple of the data type size that was used: GLenum ' + dataType + ' has size of ' + sizeBytes + ' bytes!');
+        err('GL spec section 6.4 error: vertex attribute data stride of ' + stride + ' bytes should have been a multiple of the data type size that was used: GLenum ' + dataType + ' has size of ' + sizeBytes + ' bytes!');
       }
     },
 #endif
@@ -523,18 +523,18 @@ var LibraryGL = {
       var threadId = (typeof _pthread_self !== 'undefined') ? _pthread_self : function() { return 1; };
       // Accessing 'arguments' is super slow, so to avoid overhead, statically reason the number of arguments.
       switch (numArgs) {
-        case 0: glCtx[f] = function webgl_0() { var ret = glCtx[realf](); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '() -> ' + ret); return ret; }; break;
-        case 1: glCtx[f] = function webgl_1(a1) { var ret = glCtx[realf](a1); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+') -> ' + ret); return ret; }; break;
-        case 2: glCtx[f] = function webgl_2(a1, a2) { var ret = glCtx[realf](a1, a2); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +') -> ' + ret); return ret; }; break;
-        case 3: glCtx[f] = function webgl_3(a1, a2, a3) { var ret = glCtx[realf](a1, a2, a3); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +') -> ' + ret); return ret; }; break;
-        case 4: glCtx[f] = function webgl_4(a1, a2, a3, a4) { var ret = glCtx[realf](a1, a2, a3, a4); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +') -> ' + ret); return ret; }; break;
-        case 5: glCtx[f] = function webgl_5(a1, a2, a3, a4, a5) { var ret = glCtx[realf](a1, a2, a3, a4, a5); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +') -> ' + ret); return ret; }; break;
-        case 6: glCtx[f] = function webgl_6(a1, a2, a3, a4, a5, a6) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +') -> ' + ret); return ret; }; break;
-        case 7: glCtx[f] = function webgl_7(a1, a2, a3, a4, a5, a6, a7) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +', ' + a7 +') -> ' + ret); return ret; }; break;
-        case 8: glCtx[f] = function webgl_8(a1, a2, a3, a4, a5, a6, a7, a8) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +', ' + a7 +', ' + a8 +') -> ' + ret); return ret; }; break;
-        case 9: glCtx[f] = function webgl_9(a1, a2, a3, a4, a5, a6, a7, a8, a9) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +', ' + a7 +', ' + a8 +', ' + a9 +') -> ' + ret); return ret; }; break;
-        case 10: glCtx[f] = function webgl_10(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +', ' + a7 +', ' + a8 +', ' + a9 +', ' + a10 +') -> ' + ret); return ret; }; break;
-        case 11: glCtx[f] = function webgl_11(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11); console.error('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +', ' + a7 +', ' + a8 +', ' + a9 +', ' + a10 +', ' + a11 +') -> ' + ret); return ret; }; break;
+        case 0: glCtx[f] = function webgl_0() { var ret = glCtx[realf](); err('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '() -> ' + ret); return ret; }; break;
+        case 1: glCtx[f] = function webgl_1(a1) { var ret = glCtx[realf](a1); err('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+') -> ' + ret); return ret; }; break;
+        case 2: glCtx[f] = function webgl_2(a1, a2) { var ret = glCtx[realf](a1, a2); err('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +') -> ' + ret); return ret; }; break;
+        case 3: glCtx[f] = function webgl_3(a1, a2, a3) { var ret = glCtx[realf](a1, a2, a3); err('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +') -> ' + ret); return ret; }; break;
+        case 4: glCtx[f] = function webgl_4(a1, a2, a3, a4) { var ret = glCtx[realf](a1, a2, a3, a4); err('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +') -> ' + ret); return ret; }; break;
+        case 5: glCtx[f] = function webgl_5(a1, a2, a3, a4, a5) { var ret = glCtx[realf](a1, a2, a3, a4, a5); err('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +') -> ' + ret); return ret; }; break;
+        case 6: glCtx[f] = function webgl_6(a1, a2, a3, a4, a5, a6) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6); err('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +') -> ' + ret); return ret; }; break;
+        case 7: glCtx[f] = function webgl_7(a1, a2, a3, a4, a5, a6, a7) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7); err('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +', ' + a7 +') -> ' + ret); return ret; }; break;
+        case 8: glCtx[f] = function webgl_8(a1, a2, a3, a4, a5, a6, a7, a8) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8); err('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +', ' + a7 +', ' + a8 +') -> ' + ret); return ret; }; break;
+        case 9: glCtx[f] = function webgl_9(a1, a2, a3, a4, a5, a6, a7, a8, a9) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9); err('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +', ' + a7 +', ' + a8 +', ' + a9 +') -> ' + ret); return ret; }; break;
+        case 10: glCtx[f] = function webgl_10(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10); err('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +', ' + a7 +', ' + a8 +', ' + a9 +', ' + a10 +') -> ' + ret); return ret; }; break;
+        case 11: glCtx[f] = function webgl_11(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11); err('[Thread ' + threadId() + ', GL ctx: ' + contextHandle + ']: ' + f + '('+a1+', ' + a2 +', ' + a3 +', ' + a4 +', ' + a5 +', ' + a6 +', ' + a7 +', ' + a8 +', ' + a9 +', ' + a10 +', ' + a11 +') -> ' + ret); return ret; }; break;
         default: console.warn('hookWebGL failed! Unexpected length ' + glCtx[realf].length);
       }
     },
@@ -1033,9 +1033,9 @@ var LibraryGL = {
 #if GL_DEBUG
       if (contextHandle && !GL.contexts[contextHandle]) {
 #if USE_PTHREADS
-        console.error('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist, or was created on another thread!');
+        err('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist, or was created on another thread!');
 #else
-        console.error('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist!');
+        err('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist!');
 #endif
       }
 #endif
@@ -3080,13 +3080,13 @@ var LibraryGL = {
 
 #if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
 #if GL_DEBUG
-    console.log('Input shader source: ' + source);
+    out('Input shader source: ' + source);
 #endif
     // Remove comments and C-preprocess the input shader first, so that we can appropriately
     // parse the layout location directives.
     source = preprocess_c_code(remove_cpp_comments_in_shaders(source), { 'GL_FRAGMENT_PRECISION_HIGH': function() { return 1; }});
 #if GL_DEBUG
-    console.log('Shader source after preprocessing: ' + source);
+    out('Shader source after preprocessing: ' + source);
 #endif
 #endif // ~GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
 
@@ -3100,7 +3100,7 @@ var LibraryGL = {
       explicitUniformLocations[match[5]] = jstoi_q(match[1]);
 #if GL_TRACK_ERRORS
       if (!(explicitUniformLocations[match[5]] >= 0 && explicitUniformLocations[match[5]] < 1048576)) {
-        console.error('Specified an out of range layout(location=x) directive "' + explicitUniformLocations[match[5]] + '"! (' + match[0] + ')');
+        err('Specified an out of range layout(location=x) directive "' + explicitUniformLocations[match[5]] + '"! (' + match[0] + ')');
         GL.recordError(0x501 /* GL_INVALID_VALUE */);
         return;
       }
@@ -3115,8 +3115,8 @@ var LibraryGL = {
     GL.shaders[shader].explicitUniformLocations = explicitUniformLocations;
 
 #if GL_DEBUG
-    console.log('Shader source after removing layout location directives: ' + source);
-    console.log('Explicit uniform locations recorded in the shader:');
+    out('Shader source after removing layout location directives: ' + source);
+    out('Explicit uniform locations recorded in the shader:');
     console.dir(explicitUniformLocations);
 #endif
 
@@ -3160,7 +3160,7 @@ var LibraryGL = {
 #if GL_TRACK_ERRORS
       var numBindingPoints = GLctx.getParameter(bindingsType);
       if (!(binding >= 0 && binding + arrayLength <= numBindingPoints)) {
-        console.error('Specified an out of range layout(binding=x) directive "' + binding + '"! (' + bindingMatch[0] + '). Valid range is [0, ' + numBindingPoints + '-1]');
+        err('Specified an out of range layout(binding=x) directive "' + binding + '"! (' + bindingMatch[0] + '). Valid range is [0, ' + numBindingPoints + '-1]');
         GL.recordError(0x501 /* GL_INVALID_VALUE */);
         return;
       }
@@ -3175,10 +3175,10 @@ var LibraryGL = {
     source = source.replace(/layout\s*\(\s*binding\s*=\s*([-\d]+)\s*,(.*?)\)/g, 'layout($2)'); // "layout(binding = 1, std140)" -> "layout(std140)"
 
 #if GL_DEBUG
-    console.log('Shader source after removing layout binding directives: ' + source);
-    console.log('Sampler binding locations recorded in the shader:');
+    out('Shader source after removing layout binding directives: ' + source);
+    out('Sampler binding locations recorded in the shader:');
     console.dir(samplerBindings);
-    console.log('Uniform binding locations recorded in the shader:');
+    out('Uniform binding locations recorded in the shader:');
     console.dir(uniformBindings);
 #endif
 
@@ -3210,7 +3210,7 @@ var LibraryGL = {
     GLctx.compileShader(GL.shaders[shader]);
 #if GL_DEBUG
     var log = (GLctx.getShaderInfoLog(GL.shaders[shader]) || '').trim();
-    if (log) console.error('glCompileShader: ' + log);
+    if (log) err('glCompileShader: ' + log);
 #endif
   },
 
@@ -3395,8 +3395,8 @@ var LibraryGL = {
     GLctx.linkProgram(program);
 #if GL_DEBUG
     var log = (GLctx.getProgramInfoLog(program) || '').trim();
-    if (log) console.error('glLinkProgram: ' + log);
-    if (program.uniformLocsById) console.log('glLinkProgram invalidated ' + Object.keys(program.uniformLocsById).length + ' uniform location mappings');
+    if (log) err('glLinkProgram: ' + log);
+    if (program.uniformLocsById) out('glLinkProgram invalidated ' + Object.keys(program.uniformLocsById).length + ' uniform location mappings');
 #endif
     // Invalidate earlier computed uniform->ID mappings, those have now become stale
     program.uniformLocsById = 0; // Mark as null-like so that glGetUniformLocation() knows to populate this again.
@@ -3412,7 +3412,7 @@ var LibraryGL = {
         // the array sizes will get populated to correct sizes.
         program.uniformSizeAndIdsByName[shaderLocation] = [1, loc];
 #if GL_DEBUG
-        console.log('Marking uniform ' + loc + ' to location ' + shaderLocation);
+        out('Marking uniform ' + loc + ' to location ' + shaderLocation);
 #endif
 
         // Make sure we will never automatically assign locations within the range
@@ -3469,7 +3469,7 @@ var LibraryGL = {
           for(var i = 0; i < bindings[1]; ++i) {
             var blockIndex = GLctx.getUniformBlockIndex(p, ubo + (bindings[1] > 1 ? '[' + i + ']' : ''));
 #if GL_DEBUG
-            console.log('Applying initial UBO binding point ' + (bindings[0]+i) + ' for UBO "' + (ubo + (bindings[1] > 1 ? '[' + i + ']' : '')) + '" at block index ' + blockIndex + ' ' + (bindings[1] > 1 ? ' (array index='+i+')' : ''));
+            out('Applying initial UBO binding point ' + (bindings[0]+i) + ' for UBO "' + (ubo + (bindings[1] > 1 ? '[' + i + ']' : '')) + '" at block index ' + blockIndex + ' ' + (bindings[1] > 1 ? ' (array index='+i+')' : ''));
 #endif
             GLctx.uniformBlockBinding(p, blockIndex, bindings[0]+i);
           }
@@ -3482,7 +3482,7 @@ var LibraryGL = {
         var bindings = p.explicitSamplerBindings[sampler];
         for(var i = 0; i < bindings[1]; ++i) {
 #if GL_DEBUG
-          console.log('Applying initial sampler binding point ' + (bindings[0]+i) + ' for sampler "' + sampler + (i > 0 ? '['+i+']' : '') +  '"');
+          out('Applying initial sampler binding point ' + (bindings[0]+i) + ' for sampler "' + sampler + (i > 0 ? '['+i+']' : '') +  '"');
 #endif
           GLctx.uniform1i(GLctx.getUniformLocation(p, sampler + (i ? '['+i+']' : '')), bindings[0]+i);
         }

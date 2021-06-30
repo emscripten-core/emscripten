@@ -278,7 +278,7 @@ mergeInto(LibraryManager.library, {
       default:
         if (directive != 'version' && directive != 'pragma' && directive != 'extension') { // GLSL shader compiler specific #directives.
 #if ASSERTIONS
-          console.error('Unrecognized preprocessor directive #' + directive + '!');
+          err('Unrecognized preprocessor directive #' + directive + '!');
 #endif
         }
 

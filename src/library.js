@@ -245,7 +245,7 @@ LibraryManager.library = {
       return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
-      console.error('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+      err('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
     }
     // implicit 0 return to save code size (caller will cast "undefined" into 0
@@ -338,7 +338,7 @@ LibraryManager.library = {
       var replacement = emscripten_realloc_buffer(newSize);
 #if ASSERTIONS == 2
       var t1 = _emscripten_get_now();
-      console.log('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
+      out('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
 #endif
       if (replacement) {
 #if ASSERTIONS && WASM2JS
@@ -2871,7 +2871,7 @@ LibraryManager.library = {
 
     if (flags & 1 /*EM_LOG_CONSOLE*/) {
       if (flags & 4 /*EM_LOG_ERROR*/) {
-        console.error(str);
+        err(str);
       } else if (flags & 2 /*EM_LOG_WARN*/) {
         console.warn(str);
       } else if (flags & 512 /*EM_LOG_INFO*/) {
@@ -2879,7 +2879,7 @@ LibraryManager.library = {
       } else if (flags & 256 /*EM_LOG_DEBUG*/) {
         console.debug(str);
       } else {
-        console.log(str);
+        out(str);
       }
     } else if (flags & 6 /*EM_LOG_ERROR|EM_LOG_WARN*/) {
       err(str);

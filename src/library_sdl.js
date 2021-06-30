@@ -1217,12 +1217,12 @@ var LibrarySDL = {
     // Debugging
 
     debugSurface: function(surfData) {
-      console.log('dumping surface ' + [surfData.surf, surfData.source, surfData.width, surfData.height]);
+      out('dumping surface ' + [surfData.surf, surfData.source, surfData.width, surfData.height]);
       var image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
       var data = image.data;
       var num = Math.min(surfData.width, surfData.height);
       for (var i = 0; i < num; i++) {
-        console.log('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
+        out('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
       }
     },
 
@@ -1830,7 +1830,7 @@ var LibrarySDL = {
         return !Browser.pointerLock;
         break;
       default:
-        console.log( "SDL_ShowCursor called with unknown toggle parameter value: " + toggle + "." );
+        out( "SDL_ShowCursor called with unknown toggle parameter value: " + toggle + "." );
         break;
     }
   },
@@ -1870,7 +1870,7 @@ var LibrarySDL = {
     if (depth !== 32) {
       // TODO: Actually fill pixel data to created surface.
       // TODO: Take into account depth and pitch parameters.
-      console.log('TODO: Partially unimplemented SDL_CreateRGBSurfaceFrom called!');
+      out('TODO: Partially unimplemented SDL_CreateRGBSurfaceFrom called!');
       return surf;
     }
 
@@ -2462,7 +2462,7 @@ var LibrarySDL = {
       } else if (SDL.audio.channels < 0 || SDL.audio.channels > 32) {
         throw 'Unsupported number of audio channels for SDL audio: ' + SDL.audio.channels + '!';
       } else if (SDL.audio.channels != 1 && SDL.audio.channels != 2) { // Unsure what SDL audio spec supports. Web Audio spec supports up to 32 channels.
-        console.log('Warning: Using untested number of audio channels ' + SDL.audio.channels);
+        out('Warning: Using untested number of audio channels ' + SDL.audio.channels);
       }
       if (SDL.audio.samples < 128 || SDL.audio.samples > 524288 /* arbitrary cap */) {
         throw 'Unsupported audio callback buffer size ' + SDL.audio.samples + '!';
@@ -2580,7 +2580,7 @@ var LibrarySDL = {
           var curtime = SDL.audioContext['currentTime'];
 #if ASSERTIONS
           if (curtime > SDL.audio.nextPlayTime && SDL.audio.nextPlayTime != 0) {
-            console.log('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
+            out('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
           }
 #endif
           // Don't ever start buffer playbacks earlier from current time than a given constant 'SDL.audio.bufferingDelay', since a browser
@@ -2595,14 +2595,14 @@ var LibrarySDL = {
           // Uncomment to debug SDL buffer feed starves.
           if (SDL.audio.curBufferEnd) {
             var thisBufferStart = Math.round(playtime * SDL.audio.freq);
-            if (thisBufferStart != SDL.audio.curBufferEnd) console.log('SDL starved ' + (thisBufferStart - SDL.audio.curBufferEnd) + ' samples!');
+            if (thisBufferStart != SDL.audio.curBufferEnd) out('SDL starved ' + (thisBufferStart - SDL.audio.curBufferEnd) + ' samples!');
           }
           SDL.audio.curBufferEnd = Math.round(playtime * SDL.audio.freq + sizeSamplesPerChannel);
           */
 
           SDL.audio.nextPlayTime = playtime + SDL.audio.bufferDurationSecs;
         } catch(e) {
-          console.log('Web Audio API error playing back audio: ' + e.toString());
+          out('Web Audio API error playing back audio: ' + e.toString());
         }
       }
 
@@ -2619,7 +2619,7 @@ var LibrarySDL = {
       SDL.allocateChannels(32);
 
     } catch(e) {
-      console.log('Initializing SDL audio threw an exception: "' + e.toString() + '"! Continuing without audio.');
+      out('Initializing SDL audio threw an exception: "' + e.toString() + '"! Continuing without audio.');
       SDL.audio = null;
       SDL.allocateChannels(0);
       if (obtained) {
