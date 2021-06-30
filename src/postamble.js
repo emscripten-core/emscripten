@@ -428,7 +428,7 @@ function exit(status, implicit) {
       // The pthread may have decided not to exit its own runtime, for example
       // because it runs a main loop, but that doesn't affect the main thread.
       postMessage({ 'cmd': 'exitProcess', 'returnCode': status });
-      throw new ExitStatus(status);
+      quit_(status, new ExitStatus(status));
     } else {
 #if ASSERTIONS
       err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
