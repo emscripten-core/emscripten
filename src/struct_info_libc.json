@@ -45,17 +45,5 @@
               "global_locale"
             ]
         }
-    },
-    {
-        "file": "cxa_exception.h",
-        "structs": {
-            "__cxxabiv1::__cxa_exception": [
-              "exceptionDestructor",
-              "referenceCount",
-              "exceptionType",
-              "caught",
-              "rethrown"
-            ]
-        }
     }
 ]
