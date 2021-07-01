@@ -435,10 +435,6 @@ function exitRuntime() {
 #endif
 #if USE_PTHREADS
   PThread.terminateAllThreads();
-#if EXIT_RUNTIME && (USE_LSAN || USE_ASAN)
-  // Leak check should be run after all threads have been terminated.
-  ___lsan_do_leak_check();
-#endif
 #endif
   runtimeExited = true;
 }
