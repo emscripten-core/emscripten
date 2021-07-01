@@ -63,9 +63,9 @@ INTERCEPTOR(void, free, void *p) {
 }
 
 INTERCEPTOR(void*, calloc, uptr nmemb, uptr size) {
-  // This hack is not required for Fuchsia because there are no dlsym calls
+  // This hack is not required for Fuchsia/Emscripten because there are no dlsym calls
   // involved in setting up interceptors.
-#if !SANITIZER_FUCHSIA
+#if !SANITIZER_FUCHSIA && !SANITIZER_EMSCRIPTEN
   if (lsan_init_is_running) {
     // Hack: dlsym calls calloc before REAL(calloc) is retrieved from dlsym.
     const uptr kCallocPoolSize = 1024;
@@ -77,7 +77,7 @@ INTERCEPTOR(void*, calloc, uptr nmemb, uptr size) {
     CHECK(allocated < kCallocPoolSize);
     return mem;
   }
-#endif  // !SANITIZER_FUCHSIA
+#endif  // !SANITIZER_FUCHSIA && !SANITIZER_EMSCRIPTEN
   ENSURE_LSAN_INITED;
   GET_STACK_TRACE_MALLOC;
   return lsan_calloc(nmemb, size, stack);
