@@ -107,7 +107,7 @@ Defines
 
   .. code-block:: none
 
-    EM_JS(const char*, get_unicode_str, (), {
+    EM_JS(char*, get_unicode_str, (), {
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
       // 'jsString.length' would return the length of the string as UTF-16
       // units, but Emscripten C strings operate as UTF-8.
@@ -118,7 +118,7 @@ Defines
     });
 
     int main() {
-      const char* str = get_unicode_str();
+      char* str = get_unicode_str();
       printf("UTF8 string says: %s\n", str);
       // Each call to _malloc() must be paired with free(), or heap memory will leak!
       free(str);
