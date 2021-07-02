@@ -33,6 +33,10 @@
 
 #include <stddef.h>
 
+#if SANITIZER_EMSCRIPTEN
+#define __ATTRP_C11_THREAD ((void*)(uptr)-1)
+#endif
+
 using namespace __lsan;
 
 extern "C" {
@@ -452,7 +456,11 @@ INTERCEPTOR(int, pthread_create, void *th, void *attr,
   ENSURE_LSAN_INITED;
   EnsureMainThreadIDIsCorrect();
   __sanitizer_pthread_attr_t myattr;
+#if SANITIZER_EMSCRIPTEN
+  if (!attr || attr == __ATTRP_C11_THREAD) {
+#else
   if (!attr) {
+#endif
     pthread_attr_init(&myattr);
     attr = &myattr;
   }
@@ -562,16 +570,15 @@ void InitializeInterceptors() {
   LSAN_MAYBE_INTERCEPT_PTHREAD_ATFORK;
 
   LSAN_MAYBE_INTERCEPT_STRERROR;
+#endif  // !SANITIZER_FUCHSIA && !SANITIZER_EMSCRIPTEN
 
-#if !SANITIZER_NETBSD && !SANITIZER_FREEBSD
+#if !SANITIZER_NETBSD && !SANITIZER_FREEBSD && !SANITIZER_FUCHSIA
   if (pthread_key_create(&g_thread_finalize_key, &thread_finalize)) {
     Report("LeakSanitizer: failed to create thread key.\n");
     Die();
   }
 #endif
-
-#endif  // !SANITIZER_FUCHSIA
 }
 
 } // namespace __lsan
-#endif // SANITIZER_EMSCRIPTEN
+#endif // SANITIZER_POSIX

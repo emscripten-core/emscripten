@@ -18,6 +18,7 @@
 #include "sanitizer_stoptheworld.h"
 
 #include <signal.h>
+#include <unistd.h>
 
 #if SANITIZER_EMSCRIPTEN
 
@@ -122,6 +123,10 @@ void GetThreadStackAndTls(bool main, uptr *stk_addr, uptr *stk_size,
 #else
   *tls_addr = *tls_size = 0;
 #endif
+}
+
+tid_t GetTid() {
+  return gettid();
 }
 
 class SuspendedThreadsListEmscripten final : public SuspendedThreadsList {};

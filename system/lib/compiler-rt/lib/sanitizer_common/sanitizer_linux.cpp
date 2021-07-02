@@ -514,7 +514,7 @@ bool FileExists(const char *filename) {
   return S_ISREG(st.st_mode);
 }
 
-#if !SANITIZER_NETBSD
+#if !SANITIZER_NETBSD && !SANITIZER_EMSCRIPTEN
 tid_t GetTid() {
 #if SANITIZER_FREEBSD
   long Tid;
@@ -522,8 +522,6 @@ tid_t GetTid() {
   return Tid;
 #elif SANITIZER_SOLARIS
   return thr_self();
-#elif SANITIZER_EMSCRIPTEN
-  return (tid_t) pthread_self();
 #else
   return internal_syscall(SYSCALL(gettid));
 #endif

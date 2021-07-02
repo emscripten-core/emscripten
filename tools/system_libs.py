@@ -834,7 +834,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'linux'],
-        filenames=['getdents.c'])
+        filenames=['getdents.c', 'gettid.c'])
 
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],

@@ -53,7 +53,7 @@ var LibraryPThread = {
       // The pthread struct has a field that points to itself.
       {{{ makeSetValue('tb', C_STRUCTS.pthread.self, 'tb', 'i32') }}};
 
-      // The main thread ID, this becomes zero when the thread is no longer available.
+      // Main thread ID, this becomes zero when the thread is no longer available.
       {{{ makeSetValue('tb', C_STRUCTS.pthread.tid, 'tb', 'i32') }}};
 
       // pthread struct prev and next should initially point to itself (see __init_tp in musl),
@@ -802,7 +802,7 @@ var LibraryPThread = {
     // The pthread struct has a field that points to itself.
     {{{ makeSetValue('threadInfoStruct', C_STRUCTS.pthread.self, 'threadInfoStruct', 'i32') }}};
 
-    // The main thread ID, this becomes zero when the thread is no longer available.
+    // Thread ID, this becomes zero when the thread is no longer available.
     {{{ makeSetValue('threadInfoStruct', C_STRUCTS.pthread.tid, 'threadInfoStruct', 'i32') }}};
 
     // pthread struct prev and next should initially point to itself (see __init_tp in musl),
