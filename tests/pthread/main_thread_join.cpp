@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <emscripten.h>
+#include <emscripten/threading.h>
 #include <pthread.h>
 #include <stdio.h>
 
@@ -22,9 +23,7 @@ void loop() {
   if (pthread_tryjoin_np(thread, &retval) == 0) {
     emscripten_cancel_main_loop();
     assert(tries.load() == EXPECTED_TRIES);
-#ifdef REPORT_RESULT
-    REPORT_RESULT(2);
-#endif
+    emscripten_force_exit(2);
   }
   tries++;
 }
@@ -47,9 +46,6 @@ pthread_t CreateThread() {
 
 int main() {
   if (!emscripten_has_threading_support()) {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
     printf("Skipped: Threading is not supported.\n");
     return 0;
   }
@@ -63,9 +59,7 @@ int main() {
   puts("trying to block...");
   pthread_join(thread, (void**)&status);
   puts("blocked ok.");
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1);
-#endif
+  return 0;
 #endif // TRY_JOIN
 }
 

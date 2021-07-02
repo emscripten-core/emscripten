@@ -34,9 +34,6 @@ int main()
 {
 	if (!emscripten_has_threading_support())
 	{
-#ifdef REPORT_RESULT
-		REPORT_RESULT(0);
-#endif
 		printf("Skipped: Threading is not supported.\n");
 		return 0;
 	}
@@ -51,15 +48,9 @@ int main()
 	if (rc != 0 && rc != -EWOULDBLOCK)
 	{
 		printf("ERROR! futex wait errored %d!\n", rc);
-		result = 2;
-#ifdef REPORT_RESULT
-		REPORT_RESULT(result);
-#endif
-		exit(1);
+		return 2;
 	}
 	pthread_join(thread, 0);		
 
-#ifdef REPORT_RESULT
-	REPORT_RESULT(result);
-#endif
+  return result;
 }

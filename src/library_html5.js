@@ -2771,17 +2771,27 @@ var LibraryJSEvents = {
     clearTimeout(id);
   },
 
+  emscripten_set_timeout_loop__deps: ['$callUserCallback',
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
+#endif
+  ],
   emscripten_set_timeout_loop: function(cb, msecs, userData) {
     function tick() {
       var t = performance.now();
       var n = t + msecs;
-      if ({{{ makeDynCall('idi', 'cb') }}}(t, userData)) {
-        // Save a little bit of code space: modern browsers should treat
-        // negative setTimeout as timeout of 0
-        // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
-        setTimeout(tick, n - performance.now());
-      }
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(function() {
+        if ({{{ makeDynCall('idi', 'cb') }}}(t, userData)) {
+          // Save a little bit of code space: modern browsers should treat
+          // negative setTimeout as timeout of 0
+          // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
+          {{{ runtimeKeepalivePush() }}}
+          setTimeout(tick, n - performance.now());
+        }
+      });
     }
+    {{{ runtimeKeepalivePush() }}}
     return setTimeout(tick, 0);
   },
 

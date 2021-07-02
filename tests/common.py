@@ -1515,16 +1515,16 @@ class BrowserCore(RunnerCore):
     self.run_process([EMCC] + self.get_emcc_args() + args)
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
-      """Special case of btest that reports its result solely via exiting
-      with a give result code.
+    """Special case of btest that reports its result solely via exiting
+    with a given result code.
 
-      In this case we set EXIT_RUNTIME and we don't need to provide the
-      REPORT_RESULT macro to the C code.
-      """
-      self.set_setting('EXIT_RUNTIME')
-      kwargs['reporting'] = Reporting.JS_ONLY
-      kwargs['expected'] = 'exit:%d' % assert_returncode
-      return self.btest(filename, *args, **kwargs)
+    In this case we set EXIT_RUNTIME and we don't need to provide the
+    REPORT_RESULT macro to the C code.
+    """
+    self.set_setting('EXIT_RUNTIME')
+    kwargs['reporting'] = Reporting.JS_ONLY
+    kwargs['expected'] = 'exit:%d' % assert_returncode
+    return self.btest(filename, *args, **kwargs)
 
   def btest(self, filename, expected=None, reference=None,
             reference_slack=0, manual_reference=False, post_build=None,

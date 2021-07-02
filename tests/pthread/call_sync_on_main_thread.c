@@ -32,7 +32,5 @@ int main()
 	assert(inWorker1 == PROXY_TO_PTHREAD);
 	assert(inWorker2 == 0);
 	assert(returnedInt == 42 + 4);
-#ifdef REPORT_RESULT
-	REPORT_RESULT(1);
-#endif
+	return 0;
 }

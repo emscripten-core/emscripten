@@ -102,8 +102,5 @@ int main (int argc, char *argv[])
   /* Clean up and exit */
   pthread_mutex_destroy(&count_mutex);
   pthread_cond_destroy(&count_threshold_cv);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
-  pthread_exit(NULL);
+  return 0;
 }

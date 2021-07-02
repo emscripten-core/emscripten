@@ -97,9 +97,6 @@ int main()
 			}
 		}
 	}
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#endif
 
 	for(int i = 0; i < NUM_THREADS; ++i)
 	{

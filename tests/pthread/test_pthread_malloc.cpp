@@ -41,9 +41,6 @@ static void *thread_start(void *arg)
 int main()
 {
   if (!emscripten_has_threading_support()) {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
     printf("Skipped: threading support is not available!\n");
     return 0;
   }
@@ -58,8 +55,6 @@ int main()
     result += res;
   }
   printf("Test finished with result %d\n", result);
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  assert(result == 0);
+  return 0;
 }

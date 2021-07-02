@@ -108,7 +108,5 @@ int main()
 		}
 	}
 
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#endif
+	return 0;
 }

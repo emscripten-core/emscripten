@@ -24,9 +24,6 @@ int main()
 {
   if (!emscripten_has_threading_support())
   {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
     printf("Skipped: Threading is not supported.\n");
     return 0;
   }
@@ -39,8 +36,5 @@ int main()
 	assert(rc == 0);
 
 	std::cout << "The thread should print 'Hello from thread'" << std::endl;
-
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#endif
+	return 0;
 }

@@ -96,7 +96,5 @@ int main()
 
 	test_async();
 
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#endif
+	return 0;
 }

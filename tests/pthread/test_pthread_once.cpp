@@ -38,7 +38,5 @@ int main()
 		assert(numInitialized == 1);
 	}
 
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#endif
+	return 0;
 }
