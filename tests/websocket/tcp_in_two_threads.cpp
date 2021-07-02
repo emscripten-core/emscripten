@@ -61,7 +61,7 @@ int lookup_host(const char *host)
   return 0;
 }
 
-int pendingMessages = 0;
+_Atomic uint32_t pendingMessages = 0;
 
 void *send_thread(void *arg)
 {
@@ -72,7 +72,7 @@ void *send_thread(void *arg)
     char message[] = "hella";
     message[4] += i;
 
-    while(emscripten_atomic_load_u32(&pendingMessages) != 0)
+    while(pendingMessages != 0)
       emscripten_thread_sleep(10);
 
     printf("Send()ing\n");
@@ -82,7 +82,7 @@ void *send_thread(void *arg)
       pthread_exit((void*)1);
     }
     printf("Send() done\n");
-    emscripten_atomic_add_u32(&pendingMessages, 1);
+    pendingMessages++;
   }
   pthread_exit(0);
 }
@@ -104,7 +104,7 @@ void *recv_thread(void *arg)
      
     puts("Server reply: ");
     puts(server_reply);
-    emscripten_atomic_sub_u32(&pendingMessages, 1);
+    pendingMessages--;
   }
   pthread_exit(0);
 }

@@ -190,7 +190,7 @@ typedef struct emscripten_fetch_t {
   // Specifies a human-readable form of the status code.
   char statusText[64];
 
-  uint32_t __proxyState;
+  _Atomic uint32_t __proxyState;
 
   // For internal use only.
   emscripten_fetch_attr_t __attributes;
