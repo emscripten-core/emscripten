@@ -6953,17 +6953,19 @@ someweirdtext
     self.do_run(src, '418\ndotest returned: 42\n')
 
   @parameterized({
+    '': (None, False),
     'all': ('ALL', False),
     'fast': ('FAST', False),
     'default': ('DEFAULT', False),
     'all_growth': ('ALL', True),
   })
-  @sync
   def test_webidl(self, mode, allow_memory_growth):
     self.uses_es6 = True
     if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
       self.set_setting('MODULARIZE')
+    else:
+      self.set_setting('WASM_ASYNC_COMPILATION', 0)
 
     # Force IDL checks mode
     with env_modify({'IDL_CHECKS': mode}):
@@ -6991,8 +6993,10 @@ someweirdtext
     if allow_memory_growth:
       self.set_setting('ALLOW_MEMORY_GROWTH')
 
-    output = test_file('webidl/output_%s.txt' % mode)
-    self.do_run_from_file(test_file('webidl/test.cpp'), output)
+    if not mode:
+      mode = 'DEFAULT'
+    expected = test_file('webidl/output_%s.txt' % mode)
+    self.do_run_from_file(test_file('webidl/test.cpp'), expected)
 
   ### Tests for tools
 

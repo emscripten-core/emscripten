@@ -807,7 +807,7 @@ if len(deferred_js):
     %s
   }
   if (runtimeInitialized) setupEnums();
-  else addOnPreMain(setupEnums);
+  else addOnInit(setupEnums);
 })();
 ''' % '\n    '.join(deferred_js)]
 
