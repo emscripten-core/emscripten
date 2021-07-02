@@ -196,7 +196,7 @@ Require the library and call its procedures from node:
 
 .. code:: javascript
 
-    var factory = require('./a.out.js');
+    var factory = require('./api_example.js');
 
     factory().then((instance) => {
       instance._sayHi(); // direct calling works
