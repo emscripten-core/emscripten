@@ -125,7 +125,7 @@ Another noticeable effect is that WebAssembly is compiled asynchronously by defa
 Web server setup
 ================
 
-To serve wasm in the most efficient way over the network, make sure your web server has the proper MIME time for ``.wasm`` files, which is application/wasm. That will allow streaming compilation, where the browser can start to compile code as it downloads.
+To serve wasm in the most efficient way over the network, make sure your web server has the proper MIME type for ``.wasm`` files, which is application/wasm. That will allow streaming compilation, where the browser can start to compile code as it downloads.
 
 In Apache, you can do this with
 

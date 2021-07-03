@@ -9,11 +9,13 @@
 from __future__ import print_function
 import os, sys
 
+from pathlib import Path
+
 kill = False
 
 valids = sys.argv[2].split(',')
 
-for line in open(sys.argv[1]).readlines():
+for line in Path(sys.argv[1]).read_text().splitlines(keepends=True):
   line = line.replace('\n', '')
   if line.startswith('define ') and line.endswith('{'):
     ok = False

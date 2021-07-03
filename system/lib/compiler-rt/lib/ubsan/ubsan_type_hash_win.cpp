@@ -1,4 +1,4 @@
-//===-- ubsan_type_hash_win.cc --------------------------------------------===//
+//===-- ubsan_type_hash_win.cpp -------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -12,7 +12,7 @@
 
 #include "sanitizer_common/sanitizer_platform.h"
 #include "ubsan_platform.h"
-#if CAN_SANITIZE_UB && SANITIZER_WINDOWS
+#if CAN_SANITIZE_UB && defined(_MSC_VER)
 #include "ubsan_type_hash.h"
 
 #include "sanitizer_common/sanitizer_common.h"

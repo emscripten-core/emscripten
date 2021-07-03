@@ -1,4 +1,4 @@
-//===-- ubsan_init.cc -----------------------------------------------------===//
+//===-- ubsan_init.cpp ----------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -37,10 +37,12 @@ static void CommonStandaloneInit() {
   SanitizerToolName = GetSanititizerToolName();
   CacheBinaryName();
   InitializeFlags();
+  __sanitizer::InitializePlatformEarly();
   __sanitizer_set_report_path(common_flags()->log_path);
   AndroidLogInit();
   InitializeCoverage(common_flags()->coverage, common_flags()->coverage_dir);
   CommonInit();
+  Symbolizer::LateInitialize();
 }
 
 void __ubsan::InitAsStandalone() {

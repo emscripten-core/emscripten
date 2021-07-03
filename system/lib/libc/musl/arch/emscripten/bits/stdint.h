@@ -1,3 +1,5 @@
+// XXX Emscripten in sync with musl/arch/x86_64/bits/stdint.h
+// TODO(kleisauke): Perhaps we should sync this with musl/arch/i386/bits/stdint.h instead?
 typedef int32_t int_fast16_t;
 typedef int32_t int_fast32_t;
 typedef uint32_t uint_fast16_t;

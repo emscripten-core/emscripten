@@ -73,6 +73,7 @@ var LibraryHtml5WebGL = {
 #endif
   '$JSEvents', '_emscripten_webgl_power_preferences', '$findEventTarget', '$findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
+  emscripten_webgl_do_create_context__sig: 'iii',
   emscripten_webgl_do_create_context: function(target, attributes) {
 #if ASSERTIONS
     assert(attributes);
@@ -204,6 +205,7 @@ var LibraryHtml5WebGL = {
   },
 #if USE_PTHREADS && OFFSCREEN_FRAMEBUFFER
   // Runs on the calling thread, proxies if needed.
+  emscripten_webgl_make_context_current_calling_thread__sig: 'ii',
   emscripten_webgl_make_context_current_calling_thread: function(contextHandle) {
     var success = GL.makeContextCurrent(contextHandle);
     if (success) GL.currentContextIsProxied = false; // If succeeded above, we will have a local GL context from this thread (worker or main).
@@ -241,6 +243,7 @@ var LibraryHtml5WebGL = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_webgl_do_commit_frame__sig: 'i',
   emscripten_webgl_do_commit_frame: function() {
 #if TRACE_WEBGL_CALLS
     var threadId = (typeof _pthread_self !== 'undefined') ? _pthread_self : function() { return 1; };

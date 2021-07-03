@@ -2,6 +2,7 @@
 #include <emscripten.h>
 #include <stdio.h>
 #include <thread>
+#include <math.h>
 
 std::atomic<int> ret;
 

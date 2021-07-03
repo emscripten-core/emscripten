@@ -111,9 +111,19 @@ function isNumber(x) {
 }
 
 function isJsLibraryConfigIdentifier(ident) {
-  return ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
-   || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import')
-   || ident.endsWith('__nothrow');
+  suffixes = [
+    '__sig',
+    '__proxy',
+    '__asm',
+    '__inline',
+    '__deps',
+    '__postset',
+    '__docs',
+    '__import',
+    '__nothrow',
+    '__unimplemented'
+  ];
+  return suffixes.some((suffix) => ident.endsWith(suffix));
 }
 
 // Sets

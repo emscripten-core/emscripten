@@ -6,6 +6,7 @@
 import os
 import shutil
 import logging
+from pathlib import Path
 
 VERSION = '9c'
 HASH = 'b2affe9a1688bd49fc033f4682c4a242d4ee612f1affaef532f5adcb4602efc4433c4a52a4b3d69e7440ff1f6413b1b041b419bc90efd6d697999961a9a6afb7'
@@ -30,7 +31,7 @@ def get(ports, settings, shared):
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
-    open(os.path.join(dest_path, 'jconfig.h'), 'w').write(jconfig_h)
+    Path(dest_path, 'jconfig.h').write_text(jconfig_h)
     ports.install_headers(dest_path)
 
     ports.build_port(

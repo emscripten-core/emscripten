@@ -70,7 +70,5 @@ int main()
   assert(hasext(exts, "WEBGL_multi_draw_instanced_base_vertex_base_instance") == emscripten_webgl_enable_extension(context, "WEBGL_multi_draw_instanced_base_vertex_base_instance"));
 #endif
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

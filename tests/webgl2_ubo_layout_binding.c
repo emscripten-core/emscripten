@@ -152,9 +152,10 @@ int main(int argc, char *argv[])
   uint8_t data[4];
   glReadPixels(160, 85, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, data);
   printf("output color: %u, %u, %u, %u\n", data[0], data[1], data[2], data[3]);
-  assert(data[0] == 76);
-  assert(data[1] == 127);
-  assert(data[2] == 229);
+#define DIFF(x, y) ((x)-(y) < 0 ? (y) - (x) : (x) - (y))
+  assert(DIFF(data[0], 76) <= 1);
+  assert(DIFF(data[1], 127) <= 1);
+  assert(DIFF(data[2], 229) <= 1);
   assert(data[3] == 255);
 
   // Try binding to a negative binding point, should fail:
@@ -184,6 +185,10 @@ int main(int argc, char *argv[])
   printf("The following compile should produce an error:\n");
   CompileShader(GL_FRAGMENT_SHADER, str);
   assert(glGetError());
+  assert(!glGetError());
+
+  // Test that glUseProgram(0) succeeds without errors.
+  glUseProgram(0);
   assert(!glGetError());
 
   printf("Test passed!\n");

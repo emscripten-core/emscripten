@@ -267,6 +267,8 @@ namespace emscripten {
         EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(unsigned long);
         EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(float);
         EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(double);
+        EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(int64_t);
+        EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(uint64_t);
 
         template<>
         struct BindingType<void> {

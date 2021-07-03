@@ -8,6 +8,7 @@ Performs a search-replace in all of js/
 '''
 
 import os
+from pathlib import Path
 
 
 def all_children(subdir):
@@ -20,7 +21,7 @@ for x in all_children('src') + all_children('tests') + all_children('tools') + a
   if not (x.endswith('.py') or x.endswith('.c') or x.endswith('.cpp') or x.endswith('.h') or x.endswith('.js') or x.endswith('.ll')):
     continue
   print(x)
-  orig = open(x).read()
+  orig = Path(x).read_text()
   fixed = orig.copy()
   fixed = fixed.replace('Module["print"](', 'out(')
   fixed = fixed.replace('Module[\'print\'](', 'out(')
@@ -45,4 +46,4 @@ for x in all_children('src') + all_children('tests') + all_children('tools') + a
   fixed = fixed.replace('Module.printErr = ', 'err = ')
 
   if fixed != orig:
-    open(x, 'w').write(fixed)
+    Path(x).write_text(fixed)

@@ -5,28 +5,36 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
 #include <emscripten.h>
 
-int main()
-{
-    const char * file = "/test.txt";
-    emscripten_wget(file , file);
-    FILE * f = fopen(file, "r");
-    int result = 0;
-    if(f) {
 #define BUFSIZE 1024
-        char buf[BUFSIZE];
-        fgets(buf, BUFSIZE, f);
-        buf[BUFSIZE-1] = 0;
-        for(int i = 0; i < BUFSIZE; ++i)
-            buf[i] = tolower(buf[i]);
-        if(strstr(buf, "emscripten")) 
-            result = 1;
-        fclose(f);
-    }
-    REPORT_RESULT(result);
-    return 0;
+
+int main() {
+  const char * file = "/test.txt";
+  printf("calling wget\n");
+  emscripten_wget(file , file);
+  printf("back from wget\n");
+
+  FILE * f = fopen(file, "r");
+  assert(f);
+
+  char buf[BUFSIZE];
+  fgets(buf, BUFSIZE, f);
+  buf[BUFSIZE-1] = 0;
+  for(int i = 0; i < BUFSIZE; ++i) {
+    buf[i] = tolower(buf[i]);
+  }
+  assert(strstr(buf, "emscripten"));
+  fclose(f);
+
+  printf("exiting main\n");
+  // Implicit return from main with ASYNCIFY + EXIT_RUNTIME
+  // currently doesn't work so we need to explictly exit.
+  // https://github.com/emscripten-core/emscripten/issues/14417
+  exit(0);
 }

@@ -23,14 +23,15 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   {
     wasmMemory = new WebAssembly.Memory({
-      'initial': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}}
+      'initial': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}},
 #if ALLOW_MEMORY_GROWTH
-#if MAXIMUM_MEMORY != -1
-      ,
+      // In theory we should not need to emit the maximum if we want "unlimited"
+      // or 4GB of memory, but VMs error on that atm, see
+      // https://github.com/emscripten-core/emscripten/issues/14130
+      // And in the pthreads case we definitely need to emit a maximum. So
+      // always emit one.
       'maximum': {{{ MAXIMUM_MEMORY }}} / {{{ WASM_PAGE_SIZE }}}
-#endif
 #else
-      ,
       'maximum': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}}
 #endif // ALLOW_MEMORY_GROWTH
 #if USE_PTHREADS

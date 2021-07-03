@@ -53,7 +53,7 @@ static void *volatile vdso_func = (void *)cgt_init;
 
 #endif
 
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 _Static_assert(CLOCK_REALTIME == __WASI_CLOCKID_REALTIME, "monotonic clock must match");
 _Static_assert(CLOCK_MONOTONIC == __WASI_CLOCKID_MONOTONIC, "monotonic clock must match");
 
@@ -62,7 +62,7 @@ int __clock_gettime(clockid_t clk, struct timespec *ts) {
 	if (__wasi_syscall_ret(__wasi_clock_time_get(clk, 1, &timestamp))) {
 		return -1;
 	}
-  *ts = __wasi_timestamp_to_timespec(timestamp);
+	*ts = __wasi_timestamp_to_timespec(timestamp);
 	return 0;
 }
 #else // __EMSCRIPTEN__

@@ -5,7 +5,7 @@
 
 ssize_t preadv(int fd, const struct iovec *iov, int count, off_t ofs)
 {
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 	size_t num;
 	if (__wasi_syscall_ret(__wasi_fd_pread(fd, (struct __wasi_iovec_t*)iov, count, ofs, &num))) {
 		return -1;

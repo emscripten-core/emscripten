@@ -141,6 +141,8 @@ def parse_c_output(lines):
 
   for line in lines:
     arg = line[1:].strip()
+    if '::' in arg:
+      arg = arg.split('::', 1)[1]
     if line[0] == 'K':
       # This is a key
       key = arg
@@ -194,7 +196,7 @@ def gen_inspect_code(path, struct, code):
   c_ascent(code)
 
 
-def inspect_headers(headers, cflags):
+def inspect_headers(headers, cflags, cxx=False):
   code = ['#include <stdio.h>', '#include <stddef.h>']
   for header in headers:
     code.append('#include "' + header['name'] + '"')
@@ -252,17 +254,18 @@ def inspect_headers(headers, cflags):
   show('Compiling generated code...')
 
   # -Oz optimizes enough to avoid warnings on code size/num locals
-  cmd = [shared.EMCC] + cflags + ['-o', js_file[1], src_file[1],
-                                  '-O0',
-                                  '-Werror',
-                                  '-Wno-format',
-                                  '-nostdlib',
-                                  compiler_rt,
-                                  '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
-                                  '-s', 'STRICT',
-                                  # Use SINGLE_FILE=1 so there is only a single
-                                  # file to cleanup.
-                                  '-s', 'SINGLE_FILE']
+  cmd = [shared.EMXX if cxx else shared.EMCC] + cflags + ['-o', js_file[1], src_file[1],
+                                                          '-O0',
+                                                          '-Werror',
+                                                          '-Wno-format',
+                                                          '-nostdlib',
+                                                          compiler_rt,
+                                                          '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
+                                                          '-s', 'LLD_REPORT_UNDEFINED=1',
+                                                          '-s', 'STRICT',
+                                                          # Use SINGLE_FILE=1 so there is only a single
+                                                          # file to cleanup.
+                                                          '-s', 'SINGLE_FILE']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
@@ -308,13 +311,13 @@ def merge_info(target, src):
     target['structs'][key] = value
 
 
-def inspect_code(headers, cflags):
+def inspect_code(headers, cflags, cxx=False):
   if not DEBUG:
-    info = inspect_headers(headers, cflags)
+    info = inspect_headers(headers, cflags, cxx)
   else:
     info = {'defines': {}, 'structs': {}}
     for header in headers:
-      merge_info(info, inspect_headers([header], cflags))
+      merge_info(info, inspect_headers([header], cflags, cxx))
   return info
 
 
@@ -372,7 +375,8 @@ def main(args):
 
   default_json_files = [
       shared.path_from_root('src', 'struct_info.json'),
-      shared.path_from_root('src', 'struct_info_internal.json')
+      shared.path_from_root('src', 'struct_info_libc.json'),
+      shared.path_from_root('src', 'struct_info_libcxx.json')
   ]
   parser = argparse.ArgumentParser(description='Generate JSON infos for structs.')
   parser.add_argument('json', nargs='*',
@@ -410,18 +414,27 @@ def main(args):
     '-I' + shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'include'),
   ]
 
+  internal_cxxflags = [
+    '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'src'),
+    '-D__USING_EMSCRIPTEN_EXCEPTIONS__',
+  ]
+
   # Look for structs in all passed headers.
   info = {'defines': {}, 'structs': {}}
 
   for f in args.json:
     # This is a JSON file, parse it.
     header_files = parse_json(f)
+    cxx = False
     # Inspect all collected structs.
-    if 'internal' in f:
+    if 'libcxx' in f:
+      use_cflags = cflags + internal_cxxflags
+      cxx = True
+    elif 'libc' in f:
       use_cflags = cflags + internal_cflags
     else:
       use_cflags = cflags
-    info_fragment = inspect_code(header_files, use_cflags)
+    info_fragment = inspect_code(header_files, use_cflags, cxx)
     merge_info(info, info_fragment)
 
   output_json(info, args.output)

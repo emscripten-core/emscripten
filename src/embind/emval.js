@@ -109,6 +109,7 @@ var LibraryEmVal = {
     }
   },
 
+  _emval_run_destructors__sig: 'vi',
   _emval_run_destructors__deps: ['_emval_decref', '$emval_handle_array', '$runDestructors'],
   _emval_run_destructors: function(handle) {
     var destructors = emval_handle_array[handle].value;
@@ -126,6 +127,7 @@ var LibraryEmVal = {
     return __emval_register({});
   },
 
+  _emval_new_cstring__sig: 'ii',
   _emval_new_cstring__deps: ['$getStringOrSymbol', '_emval_register'],
   _emval_new_cstring: function(v) {
     return __emval_register(getStringOrSymbol(v));
@@ -241,6 +243,7 @@ var LibraryEmVal = {
     })()('return this')();
   },
 #endif
+  _emval_get_global__sig: 'ii',
   _emval_get_global__deps: ['_emval_register', '$getStringOrSymbol', '$emval_get_global'],
   _emval_get_global: function(name) {
     if (name===0) {
@@ -257,6 +260,7 @@ var LibraryEmVal = {
     return __emval_register(Module[name]);
   },
 
+  _emval_get_property__sig: 'iii',
   _emval_get_property__deps: ['_emval_register', '$requireHandle'],
   _emval_get_property: function(handle, key) {
     handle = requireHandle(handle);
@@ -264,6 +268,7 @@ var LibraryEmVal = {
     return __emval_register(handle[key]);
   },
 
+  _emval_set_property__sig: 'viii',
   _emval_set_property__deps: ['$requireHandle'],
   _emval_set_property: function(handle, key, value) {
     handle = requireHandle(handle);
@@ -271,7 +276,8 @@ var LibraryEmVal = {
     value = requireHandle(value);
     handle[key] = value;
   },
-
+    
+  _emval_as__sig: 'iiii',
   _emval_as__deps: ['_emval_register', '$requireHandle', '$requireRegisteredType'],
   _emval_as: function(handle, returnType, destructorsRef) {
     handle = requireHandle(handle);
@@ -280,6 +286,20 @@ var LibraryEmVal = {
     var rd = __emval_register(destructors);
     HEAP32[destructorsRef >> 2] = rd;
     return returnType['toWireType'](destructors, handle);
+  },
+
+  _emval_as_int64__deps: ['$requireHandle', '$requireRegisteredType'],
+  _emval_as_int64: function(handle, returnType, destructorsRef) {
+    handle = requireHandle(handle);
+    returnType = requireRegisteredType(returnType, 'emval::as');
+    return returnType['toWireType'](null, handle);
+  },
+
+  _emval_as_uint64__deps: ['$requireHandle', '$requireRegisteredType'],
+  _emval_as_uint64: function(handle, returnType, destructorsRef) {
+    handle = requireHandle(handle);
+    returnType = requireRegisteredType(returnType, 'emval::as');
+    return returnType['toWireType'](null, handle);
   },
 
   _emval_equals__deps: ['$requireHandle'],

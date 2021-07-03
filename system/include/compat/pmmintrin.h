@@ -40,13 +40,13 @@ _mm_hsub_ps(__m128 __a, __m128 __b)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_movehdup_ps(__m128 __a)
 {
-  return (__m128)wasm_v32x4_shuffle(__a, __a, 1, 1, 3, 3);
+  return (__m128)wasm_i32x4_shuffle(__a, __a, 1, 1, 3, 3);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_moveldup_ps(__m128 __a)
 {
-  return (__m128)wasm_v32x4_shuffle(__a, __a, 0, 0, 2, 2);
+  return (__m128)wasm_i32x4_shuffle(__a, __a, 0, 0, 2, 2);
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
@@ -72,7 +72,7 @@ _mm_hsub_pd(__m128d __a, __m128d __b)
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_movedup_pd(__m128d __a)
 {
-  return (__m128d)wasm_v64x2_shuffle(__a, __a, 0, 0);
+  return (__m128d)wasm_i64x2_shuffle(__a, __a, 0, 0);
 }
 
 #define _MM_DENORMALS_ZERO_ON   (0x0040)

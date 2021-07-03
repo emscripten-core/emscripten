@@ -12,6 +12,8 @@ Run it with filenames of two autodebugger logs as parameters
 from __future__ import print_function
 import os, sys
 
+from pathlib import Path
+
 
 def process_line(line):
   #AD:2041,0.900000
@@ -20,8 +22,8 @@ def process_line(line):
   num, val = line.split(',')
   return [int(num), float(val)]
 
-a = open(sys.argv[1], 'r').readlines()
-b = open(sys.argv[2], 'r').readlines()
+a = Path(sys.argv[1]).read_text().splitlines(keepends=True)
+b = Path(sys.argv[2]).read_text().splitlines(keepends=True)
 MIN = 0.0001 if len(sys.argv) < 4 else sys.argv[3]
 
 ai = 0

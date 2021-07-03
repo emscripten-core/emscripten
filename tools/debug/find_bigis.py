@@ -9,9 +9,10 @@ Simple tool to find big i types in an .ll file. Anything over i64 is of interest
 
 from __future__ import print_function
 import os, sys, re
+from pathlib import Path
 
 filename = sys.argv[1]
-data = open(filename).read()
+data = Path(filename).read_text()
 iss = re.findall(r' i\d+ [^=]', data)
 set_iss = set(iss)
 bigs = []

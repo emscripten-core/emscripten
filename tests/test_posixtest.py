@@ -7,17 +7,24 @@
    ./tests/third_party/posixtestsuite
 See
    https://github.com/emscripten-core/posixtestsuite
+
+Verify that it runs properly in musl:
+   cd ./tests/third_party/posixtestsuite
+   docker run -v $(pwd):/app -w /app -it alpine:latest \
+      apk add build-base && \
+      POSIX_TARGET=conformance/interfaces/pthread_join make LDFLAGS='-pthread'
+
+Where [INTERFACE_DIR] is for e.g.: pthread_join
 """
 
 import glob
 import os
+import unittest
 
-from runner import RunnerCore, path_from_root
-from tools import config
-from tools.shared import EMCC
+from common import RunnerCore, path_from_root, node_pthreads
 import test_posixtest_browser
 
-testsuite_root = path_from_root('tests', 'third_party', 'posixtestsuite')
+testsuite_root = path_from_root('tests/third_party/posixtestsuite')
 
 
 class posixtest(RunnerCore):
@@ -31,7 +38,6 @@ class posixtest(RunnerCore):
 def filter_tests(all_tests):
   pthread_tests = [t for t in all_tests if t.startswith('pthread_')]
   # filter out some tests we don't support
-  pthread_tests = [t for t in pthread_tests if not t.startswith('pthread_atfork')]
   pthread_tests = [t for t in pthread_tests if not t.startswith('pthread_sigmask')]
   return pthread_tests
 
@@ -48,17 +54,31 @@ def get_pthread_tests():
   return pthread_tests
 
 
-engine = config.NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
-
 # Mark certain tests as unsupported
 # TODO: Investigate failing semaphores tests.
-unsupported = {
+unsupported_noreturn = {
   'test_pthread_atfork_1_1': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_1_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_2_1': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_2_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_3_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_4_1': 'fork() and multiple processes are not supported',
+  'test_pthread_kill_1_1': 'signals are not supported',
+  'test_pthread_create_1_5': 'semaphores are not supported',
+  'test_pthread_exit_6_1': 'lacking necessary mmap() support',
+  'test_pthread_spin_lock_1_1': 'signals are not supported',
+  'test_pthread_mutex_lock_5_1': 'signals are not supported',
+  'test_pthread_mutexattr_settype_2_1': 'interrupting pthread_mutex_lock wait via SIGALRM is not supported',
+  'test_pthread_spin_lock_3_1': 'signals are not supported',
+  'test_pthread_mutex_lock_3_1': 'signals are not supported',
+  'test_pthread_create_14_1': 'signals are not supported',
+  'test_pthread_detach_4_3': 'signals are not supported',
+  'test_pthread_join_6_3': 'signals are not supported',
+  'test_pthread_cond_init_4_2': 'signals are not supported',
+  'test_pthread_barrier_wait_3_2': 'signals are not supported',
+}
+
+unsupported = {
   'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setinheritsched_2_4': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setschedparam_1_3': 'scheduling policy/parameters are not supported',
@@ -66,58 +86,34 @@ unsupported = {
   'test_pthread_attr_setschedpolicy_4_1': 'scheduling policy/parameters are not supported',
   'test_pthread_barrierattr_getpshared_2_1': 'shm_open and shm_unlink are not supported',
   'test_pthread_barrier_wait_3_1': 'signals are not supported',
-  'test_pthread_barrier_wait_3_2': 'signals are not supported',
-  'test_pthread_cancel_5_2': 'signals are not supported',
   'test_pthread_cond_broadcast_1_2': 'lacking necessary mmap() support',
   'test_pthread_cond_broadcast_2_3': 'lacking necessary mmap() support',
-  'test_pthread_cond_broadcast_4_2': 'signals are not supported',
   'test_pthread_cond_destroy_2_1': 'lacking necessary mmap() support',
   'test_pthread_cond_init_1_2': 'clock_settime() is not supported',
   'test_pthread_cond_init_1_3': 'lacking necessary mmap() support',
   'test_pthread_cond_init_2_2': 'clock_settime() is not supported',
   'test_pthread_cond_init_4_1': 'fork() and multiple processes are not supported',
-  'test_pthread_cond_init_4_2': 'signals are not supported',
   'test_pthread_cond_signal_1_2': 'lacking necessary mmap() support',
-  'test_pthread_cond_signal_4_2': 'signals are not supported',
   'test_pthread_cond_timedwait_2_4': 'lacking necessary mmap() support',
   'test_pthread_cond_timedwait_2_7': 'lacking necessary mmap() support',
   'test_pthread_cond_timedwait_4_2': 'lacking necessary mmap() support',
   'test_pthread_cond_wait_2_2': 'lacking necessary mmap() support',
-  'test_pthread_cond_wait_4_1': 'fork() and multiple processes are not supported',
-  'test_pthread_create_1_5': 'semaphores are not supported',
-  'test_pthread_create_1_6': 'semaphores are not supported',
   'test_pthread_create_8_1': 'signals are not supported',
   'test_pthread_create_8_2': 'signals are not supported',
   'test_pthread_create_10_1': 'signals are not supported',
-  'test_pthread_create_14_1': 'signals are not supported',
-  'test_pthread_create_15_1': 'signals are not supported',
-  'test_pthread_detach_4_3': 'signals are not supported',
-  'test_pthread_equal_2_1': 'signals are not supported',
-  'test_pthread_exit_6_1': 'lacking necessary mmap() support',
-  'test_pthread_exit_6_2': 'semaphores are not supported',
   'test_pthread_getschedparam_1_3': 'scheduling policy/parameters are not supported',
-  'test_pthread_getschedparam_4_1': 'signals are not supported',
-  'test_pthread_join_6_3': 'signals are not supported',
-  'test_pthread_kill_1_1': 'signals are not supported',
   'test_pthread_kill_1_2': 'signals are not supported',
-  'test_pthread_kill_8_1': 'signals are not supported',
   'test_pthread_mutexattr_getprioceiling_1_2': 'pthread_mutexattr_setprioceiling is not supported',
   'test_pthread_mutexattr_getprotocol_1_2': 'pthread_mutexattr_setprotocol is not supported',
   'test_pthread_mutexattr_setprioceiling_1_1': 'pthread_mutexattr_setprioceiling is not supported',
   'test_pthread_mutexattr_setprioceiling_3_1': 'pthread_mutexattr_setprioceiling is not supported',
   'test_pthread_mutexattr_setprioceiling_3_2': 'pthread_mutexattr_setprioceiling is not supported',
   'test_pthread_mutexattr_setprotocol_1_1': 'setting pthread_mutexattr_setprotocol to a nonzero value is not supported',
-  'test_pthread_mutexattr_settype_2_1': 'interrupting pthread_mutex_lock wait via SIGALRM is not supported',
   'test_pthread_mutex_getprioceiling_1_1': 'pthread_mutex_getprioceiling is not supported',
-  'test_pthread_mutex_init_1_2': 'signals are not supported',
   'test_pthread_mutex_init_5_1': 'fork() and multiple processes are not supported',
-  'test_pthread_mutex_lock_3_1': 'signals are not supported',
-  'test_pthread_mutex_lock_5_1': 'signals are not supported',
   'test_pthread_mutex_trylock_1_2': 'lacking necessary mmap() support',
   'test_pthread_mutex_trylock_2_1': 'lacking necessary mmap() support',
   'test_pthread_mutex_trylock_4_2': 'lacking necessary mmap() support',
-  'test_pthread_mutex_trylock_4_3': 'signals are not supported',
-  'test_pthread_once_6_1': 'signals are not supported',
   'test_pthread_rwlockattr_getpshared_2_1': 'shm_open and shm_unlink are not supported',
   'test_pthread_rwlock_rdlock_2_1': 'thread priorities not supported, cannot test rwlocking in priority order',
   'test_pthread_rwlock_rdlock_2_2': 'thread priorities not supported, cannot test rwlocking in priority order',
@@ -126,70 +122,65 @@ unsupported = {
   'test_pthread_rwlock_timedrdlock_6_2': 'signals are not supported',
   'test_pthread_rwlock_timedwrlock_6_1': 'signals are not supported',
   'test_pthread_rwlock_timedwrlock_6_2': 'signals are not supported',
-  'test_pthread_rwlock_unlock_3_1': 'thread priorities not supported, cannot test rwlocking in priority order',
   'test_pthread_rwlock_wrlock_2_1': 'signals are not supported',
-  'test_pthread_setschedparam_5_1': 'signals are not supported',
   'test_pthread_spin_init_2_1': 'shm_open and shm_unlink are not supported',
   'test_pthread_spin_init_2_2': 'shm_open and shm_unlink are not supported',
-  'test_pthread_spin_lock_1_1': 'signals are not supported',
-  'test_pthread_spin_lock_3_1': 'signals are not supported',
 }
 
 # Mark certain tests as flaky, which may sometimes fail.
-# TODO invesigate these tests.
+# TODO investigate these tests.
 flaky = {
   'test_pthread_cond_signal_1_1': 'flaky: https://github.com/emscripten-core/emscripten/issues/13283',
+  'test_pthread_barrier_wait_2_1': 'flaky: https://github.com/emscripten-core/emscripten/issues/14508',
+  'test_pthread_rwlock_unlock_3_1': 'Test fail: writer did not get write lock, when main release the lock',
+  'test_pthread_detach_1_2': 'Test fail: we were able to join a detached thread',
 }
 
-# Mark certain tests as not passing
+# Mark certain tests as disabled.  These are tests that are either flaky or never return.
 disabled = {
-  **unsupported,
   **flaky,
-  'test_pthread_create_11_1': 'never returns',
-  'test_pthread_barrier_wait_2_1': 'never returns',
+  **unsupported_noreturn,
+}
+
+# These tests are known to fail reliably.  We run them anyway so that we can
+# detect fixes overtime.
+expect_fail = {
+  **unsupported,
   'test_pthread_attr_setscope_5_1': 'internally skipped (PTS_UNTESTED)',
-  'test_pthread_create_5_1': 'never returns',
-  'test_pthread_exit_1_2': 'never returns',
-  'test_pthread_exit_2_2': 'never returns',
-  'test_pthread_exit_3_2': 'never returns',
-  'test_pthread_exit_4_1': 'never returns',
-  'test_pthread_getcpuclockid_1_1': 'never returns',
-  'test_pthread_key_create_1_2': 'never returns',
-  'test_pthread_rwlock_rdlock_1_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_timedrdlock_1_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_timedrdlock_3_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_timedrdlock_5_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_timedwrlock_1_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_timedwrlock_3_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_timedwrlock_5_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_wrlock_1_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_rwlock_trywrlock_1_1': 'fails with "main: Unexpected thread state"',
-  'test_pthread_spin_destroy_3_1': 'never returns',
-  'test_pthread_spin_init_4_1': 'never returns',
 }
 
 
 def make_test(name, testfile, browser):
 
+  @node_pthreads
   def f(self):
     if name in disabled:
       self.skipTest(disabled[name])
     args = ['-I' + os.path.join(testsuite_root, 'include'),
+            # TODO(kleisauke): Run with ASan. Note that this requires matching signatures, i.e:
+            # void *thread_func() -> void *thread_func(void *unused)
+            # void *a_thread_func() -> void *a_thread_func(void *unused)
+            # void *a_thread_function() -> void *a_thread_function(void *unused)
+            # void a_cleanup_func() -> void a_cleanup_func(void *unused)
+            # etc, etc.
+            # '-O0',
+            # '-g3',
+            # '-fsanitize=address',
             '-Werror',
             '-Wno-format-security',
             '-Wno-int-conversion',
             '-sUSE_PTHREADS',
             '-sEXIT_RUNTIME',
-            '-sTOTAL_MEMORY=268435456',
-            '-sPTHREAD_POOL_SIZE=40']
+            '-sTOTAL_MEMORY=256mb',
+            '-sPTHREAD_POOL_SIZE=40',
+            '-sPTHREAD_POOL_SIZE_STRICT=0']
     if browser:
-      # Only are only needed for browser tests of the was btest
-      # injects headers using `-include` flag.
-      args += ['-Wno-macro-redefined', '-D_GNU_SOURCE']
-      self.btest(testfile, args=args, expected='exit:0')
+      self.btest_exit(testfile, args=args)
     else:
-      self.run_process([EMCC, testfile, '-o', 'test.js'] + args)
-      self.run_js('test.js', engine=engine)
+      self.do_runf(testfile, emcc_args=args)
+
+  if name in expect_fail:
+    f = unittest.expectedFailure(f)
 
   return f
 

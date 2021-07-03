@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <stdlib.h>
 #include <cassert>
 #include <cstdio>
 #include <emscripten.h>
@@ -30,16 +31,15 @@ void getQueryResult()
   GLuint any;
   GL_CALL(glGetQueryObjectuiv(sampleQuery, GL_QUERY_RESULT, &any));
 
-  if(!any) return;
+  if (!any) return;
 
   printf("queried any samples passed: %u\n", any);
   emscripten_cancel_main_loop();
 
   GL_CALL(glDeleteQueries(1, &sampleQuery));
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  // result == 0 signals success
+  exit(result);
 }
 
 GLuint compile_shader(GLenum shaderType, const char *src)
@@ -64,8 +64,7 @@ GLuint create_program(GLuint vert, GLuint frag)
    return program;
 }
 
-int main()
-{
+int main() {
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
 
@@ -74,13 +73,9 @@ int main()
   attrs.minorVersion = 0;
 
   /* Skip WebGL 2 tests if not supported */
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context( "#canvas", &attrs );
-  if (!context)
-  {
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
+  if (!context) {
     printf("Skipped: WebGL 2 is not supported.\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(result);
-#endif
     return 0;
   }
   emscripten_webgl_make_context_current(context);
@@ -140,5 +135,5 @@ int main()
   /* Run the main loop to get the result */
   emscripten_set_main_loop(getQueryResult, 0, 0);
 
-  return 0;
+  return 99;
 }

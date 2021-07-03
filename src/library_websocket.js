@@ -220,7 +220,7 @@ var LibraryWebSocket = {
       HEAPU32[WS.socketEvent>>2] = socketId;
       HEAPU32[(WS.socketEvent+4)>>2] = e.wasClean;
       HEAPU32[(WS.socketEvent+8)>>2] = e.code;
-      stringToUTF8(e.reason, HEAPU32[(WS.socketEvent+10)>>2], 512);
+      stringToUTF8(e.reason, WS.socketEvent+10, 512);
       {{{ makeDynCall('iiii', 'callbackFunc') }}}(0/*TODO*/, WS.socketEvent, userData);
     }
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};

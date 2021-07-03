@@ -78,13 +78,6 @@ static void InitializeSwiftDemangler() {
 // Attempts to demangle a Swift name. The demangler will return nullptr if a
 // non-Swift name is passed in.
 const char *DemangleSwift(const char *name) {
-  if (!name) return nullptr;
-
-  // Check if we are dealing with a Swift mangled name first.
-  if (name[0] != '_' || name[1] != 'T') {
-    return nullptr;
-  }
-
   if (swift_demangle_f)
     return swift_demangle_f(name, internal_strlen(name), 0, 0, 0);
 
@@ -151,9 +144,19 @@ bool SymbolizerProcess::StartSymbolizerSubprocess() {
   GetArgV(path_, argv);
   pid_t pid;
 
+  // Report how symbolizer is being launched for debugging purposes.
+  if (Verbosity() >= 3) {
+    // Only use `Report` for first line so subsequent prints don't get prefixed
+    // with current PID.
+    Report("Launching Symbolizer process: ");
+    for (unsigned index = 0; index < kArgVMax && argv[index]; ++index)
+      Printf("%s ", argv[index]);
+    Printf("\n");
+  }
+
   if (use_posix_spawn_) {
 #if SANITIZER_MAC
-    fd_t fd = internal_spawn(argv, &pid);
+    fd_t fd = internal_spawn(argv, const_cast<const char **>(GetEnvP()), &pid);
     if (fd == kInvalidFd) {
       Report("WARNING: failed to spawn external symbolizer (errno: %d)\n",
              errno);
@@ -173,7 +176,7 @@ bool SymbolizerProcess::StartSymbolizerSubprocess() {
       return false;
     }
 
-    pid = StartSubprocess(path_, argv, /* stdin */ outfd[0],
+    pid = StartSubprocess(path_, argv, GetEnvP(), /* stdin */ outfd[0],
                           /* stdout */ infd[1]);
     if (pid < 0) {
       internal_close(infd[0]);
@@ -198,7 +201,7 @@ bool SymbolizerProcess::StartSymbolizerSubprocess() {
   return true;
 }
 
-class Addr2LineProcess : public SymbolizerProcess {
+class Addr2LineProcess final : public SymbolizerProcess {
  public:
   Addr2LineProcess(const char *path, const char *module_name)
       : SymbolizerProcess(path), module_name_(internal_strdup(module_name)) {}
@@ -258,7 +261,7 @@ bool Addr2LineProcess::ReachedEndOfOutput(const char *buffer,
                           output_terminator_, kTerminatorLen);
 }
 
-class Addr2LinePool : public SymbolizerTool {
+class Addr2LinePool final : public SymbolizerTool {
  public:
   explicit Addr2LinePool(const char *addr2line_path,
                          LowLevelAllocator *allocator)
@@ -311,9 +314,10 @@ class Addr2LinePool : public SymbolizerTool {
 
 #if SANITIZER_SUPPORTS_WEAK_HOOKS
 extern "C" {
-SANITIZER_INTERFACE_ATTRIBUTE SANITIZER_WEAK_ATTRIBUTE
-bool __sanitizer_symbolize_code(const char *ModuleName, u64 ModuleOffset,
-                                char *Buffer, int MaxLength);
+SANITIZER_INTERFACE_ATTRIBUTE SANITIZER_WEAK_ATTRIBUTE bool
+__sanitizer_symbolize_code(const char *ModuleName, u64 ModuleOffset,
+                           char *Buffer, int MaxLength,
+                           bool SymbolizeInlineFrames);
 SANITIZER_INTERFACE_ATTRIBUTE SANITIZER_WEAK_ATTRIBUTE
 bool __sanitizer_symbolize_data(const char *ModuleName, u64 ModuleOffset,
                                 char *Buffer, int MaxLength);
@@ -324,7 +328,7 @@ int __sanitizer_symbolize_demangle(const char *Name, char *Buffer,
                                    int MaxLength);
 }  // extern "C"
 
-class InternalSymbolizer : public SymbolizerTool {
+class InternalSymbolizer final : public SymbolizerTool {
  public:
   static InternalSymbolizer *get(LowLevelAllocator *alloc) {
     if (__sanitizer_symbolize_code != 0 &&
@@ -336,7 +340,8 @@ class InternalSymbolizer : public SymbolizerTool {
 
   bool SymbolizePC(uptr addr, SymbolizedStack *stack) override {
     bool result = __sanitizer_symbolize_code(
-        stack->info.module, stack->info.module_offset, buffer_, kBufferSize);
+        stack->info.module, stack->info.module_offset, buffer_, kBufferSize,
+        common_flags()->symbolize_inline_frames);
     if (result) ParseSymbolizePCOutput(buffer_, stack);
     return result;
   }
@@ -382,7 +387,7 @@ class InternalSymbolizer : public SymbolizerTool {
 };
 #else  // SANITIZER_SUPPORTS_WEAK_HOOKS
 
-class InternalSymbolizer : public SymbolizerTool {
+class InternalSymbolizer final : public SymbolizerTool {
  public:
   static InternalSymbolizer *get(LowLevelAllocator *alloc) { return 0; }
 };
@@ -478,7 +483,7 @@ Symbolizer *Symbolizer::PlatformInit() {
 }
 
 void Symbolizer::LateInitialize() {
-  Symbolizer::GetOrInit();
+  Symbolizer::GetOrInit()->LateInitializeTools();
   InitializeSwiftDemangler();
 }
 

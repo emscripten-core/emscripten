@@ -55,7 +55,7 @@ static inline void unlock_requeue(volatile int *l, volatile int *r, int w)
 	// primitive is strictly not needed, since it is more like an optimization to avoid spuriously waking
 	// all waiters, just to make them wait on another location immediately afterwards. Here we do exactly
 	// that: wake every waiter.
-	emscripten_futex_wake(l, 0x7FFFFFFF);
+	emscripten_futex_wake(l, INT_MAX);
 #else
 	if (w) __wake(l, 1, 1);
 	else __syscall(SYS_futex, l, FUTEX_REQUEUE|FUTEX_PRIVATE, 0, 1, r) != -ENOSYS
@@ -77,9 +77,7 @@ int __pthread_cond_timedwait(pthread_cond_t *restrict c, pthread_mutex_t *restri
 
 #ifdef __EMSCRIPTEN__
 	// TODO: Optimize this away in MINIMAL_RUNTIME.
-	if (pthread_self() == emscripten_main_browser_thread_id()) {
-		emscripten_check_blocking_allowed();
-	}
+	emscripten_check_blocking_allowed();
 #endif
 
 	if ((m->_m_type&15) && (m->_m_lock&INT_MAX) != __pthread_self()->tid)
@@ -186,10 +184,6 @@ done:
 		__pthread_testcancel();
 		__pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, 0);
 	}
-
-#ifdef __EMSCRIPTEN__
-	pthread_testcancel();
-#endif
 
 	return e;
 }

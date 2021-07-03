@@ -11,23 +11,18 @@ diff that makes the outputs different.
 
 from __future__ import print_function
 import os, sys, shutil
+from pathlib import Path
 from subprocess import Popen, PIPE, STDOUT
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
-exec(open(path_from_root('tools', 'shared.py'), 'r').read())
 
-file1 = open(sys.argv[1]).read()
-file2 = open(sys.argv[2]).read()
+exec(Path(path_from_root('tools', 'shared.py')).read_text())
 
-leftf = open('left', 'w')
-leftf.write(file1)
-leftf.close()
-
-rightf = open('right', 'w')
-rightf.write(file2)
-rightf.close()
+shutil.copyfile(sys.argv[1], 'left')
+shutil.copyfile(sys.argv[2], 'right')
 
 def run_code(name):
   shutil.copyfile(name, 'src.cpp.o.wat')

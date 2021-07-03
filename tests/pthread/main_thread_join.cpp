@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <emscripten.h>
+#include <emscripten/threading.h>
 #include <pthread.h>
 #include <stdio.h>
 
@@ -34,8 +35,12 @@ void *ThreadMain(void *arg) {
   // Delay to force the main thread to try and fail a few times before
   // succeeding.
   while (tries.load() < EXPECTED_TRIES) {}
+#else
+  // Delay a bit to force the main thread to actually block, as exited
+  // threads can be joined without blocking.
+  emscripten_thread_sleep(1000);
 #endif
-	pthread_exit((void*)0);
+  pthread_exit((void*)0);
 }
 
 pthread_t CreateThread() {

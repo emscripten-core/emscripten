@@ -94,6 +94,10 @@ uptr internal_getpid() {
   return GetProcessId(GetCurrentProcess());
 }
 
+int internal_dlinfo(void *handle, int request, void *p) {
+  UNIMPLEMENTED();
+}
+
 // In contrast to POSIX, on Windows GetCurrentThreadId()
 // returns a system-unique identifier.
 tid_t GetTid() {
@@ -344,6 +348,22 @@ bool DontDumpShadowMemory(uptr addr, uptr length) {
   return true;
 }
 
+uptr MapDynamicShadow(uptr shadow_size_bytes, uptr shadow_scale,
+                      uptr min_shadow_base_alignment,
+                      UNUSED uptr &high_mem_end) {
+  const uptr granularity = GetMmapGranularity();
+  const uptr alignment =
+      Max<uptr>(granularity << shadow_scale, 1ULL << min_shadow_base_alignment);
+  const uptr left_padding =
+      Max<uptr>(granularity, 1ULL << min_shadow_base_alignment);
+  uptr space_size = shadow_size_bytes + left_padding;
+  uptr shadow_start = FindAvailableMemoryRange(space_size, alignment,
+                                               granularity, nullptr, nullptr);
+  CHECK_NE((uptr)0, shadow_start);
+  CHECK(IsAligned(shadow_start, alignment));
+  return shadow_start;
+}
+
 uptr FindAvailableMemoryRange(uptr size, uptr alignment, uptr left_padding,
                               uptr *largest_gap_found,
                               uptr *max_occupied_addr) {
@@ -471,8 +491,6 @@ void DumpProcessMap() {
 }
 #endif
 
-void PrintModuleMap() { }
-
 void DisableCoreDumperIfNecessary() {
   // Do nothing.
 }
@@ -593,6 +611,10 @@ static uptr GetPreferredBase(const char *modname) {
   return (uptr)pe_header->ImageBase;
 }
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wframe-larger-than="
+#endif
 void ListOfModules::init() {
   clearOrInit();
   HANDLE cur_process = GetCurrentProcess();
@@ -654,6 +676,9 @@ void ListOfModules::init() {
   }
   UnmapOrDie(hmodules, modules_buffer_size);
 }
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 void ListOfModules::fallbackInit() { clear(); }
 
@@ -787,7 +812,7 @@ uptr GetRSS() {
   return counters.WorkingSetSize;
 }
 
-void *internal_start_thread(void (*func)(void *arg), void *arg) { return 0; }
+void *internal_start_thread(void *(*func)(void *arg), void *arg) { return 0; }
 void internal_join_thread(void *th) { }
 
 // ---------------------- BlockingMutex ---------------- {{{1
@@ -938,22 +963,27 @@ void SignalContext::InitPcSpBp() {
 
 uptr SignalContext::GetAddress() const {
   EXCEPTION_RECORD *exception_record = (EXCEPTION_RECORD *)siginfo;
-  return exception_record->ExceptionInformation[1];
+  if (exception_record->ExceptionCode == EXCEPTION_ACCESS_VIOLATION)
+    return exception_record->ExceptionInformation[1];
+  return (uptr)exception_record->ExceptionAddress;
 }
 
 bool SignalContext::IsMemoryAccess() const {
-  return GetWriteFlag() != SignalContext::UNKNOWN;
+  return ((EXCEPTION_RECORD *)siginfo)->ExceptionCode ==
+         EXCEPTION_ACCESS_VIOLATION;
 }
 
-bool SignalContext::IsTrueFaultingAddress() const {
-  // FIXME: Provide real implementation for this. See Linux and Mac variants.
-  return IsMemoryAccess();
-}
+bool SignalContext::IsTrueFaultingAddress() const { return true; }
 
 SignalContext::WriteFlag SignalContext::GetWriteFlag() const {
   EXCEPTION_RECORD *exception_record = (EXCEPTION_RECORD *)siginfo;
+
+  // The write flag is only available for access violation exceptions.
+  if (exception_record->ExceptionCode != EXCEPTION_ACCESS_VIOLATION)
+    return SignalContext::UNKNOWN;
+
   // The contents of this array are documented at
-  // https://msdn.microsoft.com/en-us/library/windows/desktop/aa363082(v=vs.85).aspx
+  // https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-exception_record
   // The first element indicates read as 0, write as 1, or execute as 8.  The
   // second element is the faulting address.
   switch (exception_record->ExceptionInformation[0]) {
@@ -1060,7 +1090,8 @@ char **GetEnviron() {
 }
 
 pid_t StartSubprocess(const char *program, const char *const argv[],
-                      fd_t stdin_fd, fd_t stdout_fd, fd_t stderr_fd) {
+                      const char *const envp[], fd_t stdin_fd, fd_t stdout_fd,
+                      fd_t stderr_fd) {
   // FIXME: implement on this platform
   // Should be implemented based on
   // SymbolizerProcess::StarAtSymbolizerSubprocess
@@ -1118,6 +1149,8 @@ void LogFullErrorReport(const char *buffer) {
   }
 }
 #endif // SANITIZER_WIN_TRACE
+
+void InitializePlatformCommonFlags(CommonFlags *cf) {}
 
 }  // namespace __sanitizer
 

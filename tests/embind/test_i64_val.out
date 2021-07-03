@@ -1,0 +1,19 @@
+start
+test:
+val(int64_t v)
+pass
+pass
+pass
+pass
+test:
+val(uint64_t v)
+pass
+pass
+pass
+test:
+val(int64_t v)
+pass
+pass
+pass
+pass
+end

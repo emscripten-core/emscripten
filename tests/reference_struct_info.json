@@ -324,16 +324,16 @@
         "F_DUPFD": 0,
         "F_GETFD": 1,
         "F_GETFL": 3,
-        "F_GETLK": 5,
-        "F_GETLK64": 5,
+        "F_GETLK": 12,
+        "F_GETLK64": 12,
         "F_GETOWN": 9,
         "F_GETOWN_EX": 16,
         "F_SETFD": 2,
         "F_SETFL": 4,
-        "F_SETLK": 6,
-        "F_SETLK64": 6,
-        "F_SETLKW": 7,
-        "F_SETLKW64": 7,
+        "F_SETLK": 13,
+        "F_SETLK64": 13,
+        "F_SETLKW": 14,
+        "F_SETLKW64": 14,
         "F_SETOWN": 8,
         "F_UNLCK": 2,
         "INADDR_LOOPBACK": 2130706433,
@@ -844,6 +844,7 @@
             "adapterType": 20,
             "backendType": 24,
             "deviceID": 4,
+            "driverDescription": 16,
             "name": 12,
             "nextInChain": 0,
             "vendorID": 8
@@ -873,25 +874,25 @@
             "nextInChain": 0
         },
         "WGPUBindGroupLayoutEntry": {
-            "__size__": 104,
-            "binding": 0,
-            "buffer": 40,
-            "hasDynamicOffset": 12,
-            "minBufferBindingSize": 16,
-            "sampler": 64,
-            "storageTexture": 88,
-            "storageTextureFormat": 32,
-            "texture": 72,
-            "textureComponentType": 28,
-            "type": 8,
-            "viewDimension": 24,
-            "visibility": 4
+            "__size__": 80,
+            "binding": 4,
+            "buffer": 16,
+            "nextInChain": 0,
+            "sampler": 40,
+            "storageTexture": 64,
+            "texture": 48,
+            "visibility": 8
         },
-        "WGPUBlendDescriptor": {
+        "WGPUBlendComponent": {
             "__size__": 12,
             "dstFactor": 8,
             "operation": 0,
             "srcFactor": 4
+        },
+        "WGPUBlendState": {
+            "__size__": 24,
+            "alpha": 12,
+            "color": 0
         },
         "WGPUBufferBindingLayout": {
             "__size__": 24,
@@ -920,13 +921,12 @@
             "g": 8,
             "r": 0
         },
-        "WGPUColorStateDescriptor": {
-            "__size__": 36,
-            "alphaBlend": 8,
-            "colorBlend": 20,
+        "WGPUColorTargetState": {
+            "__size__": 16,
+            "blend": 8,
             "format": 4,
             "nextInChain": 0,
-            "writeMask": 32
+            "writeMask": 12
         },
         "WGPUCommandBufferDescriptor": {
             "__size__": 8,
@@ -950,8 +950,11 @@
             "layout": 8,
             "nextInChain": 0
         },
-        "WGPUDepthStencilStateDescriptor": {
-            "__size__": 56,
+        "WGPUDepthStencilState": {
+            "__size__": 68,
+            "depthBias": 56,
+            "depthBiasClamp": 64,
+            "depthBiasSlopeScale": 60,
             "depthCompare": 12,
             "depthWriteEnabled": 8,
             "format": 4,
@@ -963,15 +966,17 @@
         },
         "WGPUExtent3D": {
             "__size__": 12,
-            "depth": 8,
+            "depthOrArrayLayers": 8,
             "height": 4,
             "width": 0
         },
-        "WGPUFenceDescriptor": {
-            "__size__": 16,
-            "initialValue": 8,
-            "label": 4,
-            "nextInChain": 0
+        "WGPUFragmentState": {
+            "__size__": 20,
+            "entryPoint": 8,
+            "module": 4,
+            "nextInChain": 0,
+            "targetCount": 12,
+            "targets": 16
         },
         "WGPUImageCopyBuffer": {
             "__size__": 40,
@@ -991,6 +996,13 @@
             "__size__": 4,
             "nextInChain": 0
         },
+        "WGPUMultisampleState": {
+            "__size__": 16,
+            "alphaToCoverageEnabled": 12,
+            "count": 4,
+            "mask": 8,
+            "nextInChain": 0
+        },
         "WGPUOrigin3D": {
             "__size__": 12,
             "x": 0,
@@ -1003,6 +1015,19 @@
             "bindGroupLayouts": 12,
             "label": 4,
             "nextInChain": 0
+        },
+        "WGPUPrimitiveDepthClampingState": {
+            "__size__": 12,
+            "chain": 0,
+            "clampDepth": 8
+        },
+        "WGPUPrimitiveState": {
+            "__size__": 20,
+            "cullMode": 16,
+            "frontFace": 12,
+            "nextInChain": 0,
+            "stripIndexFormat": 8,
+            "topology": 4
         },
         "WGPUProgrammableStageDescriptor": {
             "__size__": 12,
@@ -1019,15 +1044,6 @@
             "pipelineStatisticsCount": 20,
             "type": 8
         },
-        "WGPURasterizationStateDescriptor": {
-            "__size__": 24,
-            "cullMode": 8,
-            "depthBias": 12,
-            "depthBiasClamp": 20,
-            "depthBiasSlopeScale": 16,
-            "frontFace": 4,
-            "nextInChain": 0
-        },
         "WGPURenderBundleDescriptor": {
             "__size__": 8,
             "label": 4,
@@ -1042,17 +1058,16 @@
             "nextInChain": 0,
             "sampleCount": 20
         },
-        "WGPURenderPassColorAttachmentDescriptor": {
+        "WGPURenderPassColorAttachment": {
             "__size__": 48,
-            "attachment": 0,
             "clearColor": 16,
             "loadOp": 8,
             "resolveTarget": 4,
-            "storeOp": 12
+            "storeOp": 12,
+            "view": 0
         },
-        "WGPURenderPassDepthStencilAttachmentDescriptor": {
+        "WGPURenderPassDepthStencilAttachment": {
             "__size__": 36,
-            "attachment": 0,
             "clearDepth": 12,
             "clearStencil": 28,
             "depthLoadOp": 4,
@@ -1060,7 +1075,8 @@
             "depthStoreOp": 8,
             "stencilLoadOp": 20,
             "stencilReadOnly": 32,
-            "stencilStoreOp": 24
+            "stencilStoreOp": 24,
+            "view": 0
         },
         "WGPURenderPassDescriptor": {
             "__size__": 24,
@@ -1071,22 +1087,16 @@
             "nextInChain": 0,
             "occlusionQuerySet": 20
         },
-        "WGPURenderPipelineDescriptor": {
-            "__size__": 64,
-            "alphaToCoverageEnabled": 60,
-            "colorStateCount": 48,
-            "colorStates": 52,
-            "depthStencilState": 44,
-            "fragmentStage": 24,
+        "WGPURenderPipelineDescriptor2": {
+            "__size__": 76,
+            "depthStencil": 52,
+            "fragment": 72,
             "label": 4,
             "layout": 8,
+            "multisample": 56,
             "nextInChain": 0,
-            "primitiveTopology": 32,
-            "rasterizationState": 36,
-            "sampleCount": 40,
-            "sampleMask": 56,
-            "vertexStage": 12,
-            "vertexState": 28
+            "primitive": 32,
+            "vertex": 12
         },
         "WGPUSamplerBindingLayout": {
             "__size__": 8,
@@ -1103,6 +1113,7 @@
             "lodMaxClamp": 36,
             "lodMinClamp": 32,
             "magFilter": 20,
+            "maxAnisotropy": 44,
             "minFilter": 24,
             "mipmapFilter": 28,
             "nextInChain": 0
@@ -1123,7 +1134,7 @@
             "chain": 0,
             "source": 8
         },
-        "WGPUStencilStateFaceDescriptor": {
+        "WGPUStencilFaceState": {
             "__size__": 16,
             "compare": 0,
             "depthFailOp": 8,
@@ -1194,25 +1205,34 @@
             "mipLevelCount": 20,
             "nextInChain": 0
         },
-        "WGPUVertexAttributeDescriptor": {
+        "WGPUVertexAttribute": {
             "__size__": 24,
             "format": 0,
             "offset": 8,
             "shaderLocation": 16
         },
-        "WGPUVertexBufferLayoutDescriptor": {
+        "WGPUVertexBufferLayout": {
             "__size__": 24,
             "arrayStride": 0,
             "attributeCount": 12,
             "attributes": 16,
             "stepMode": 8
         },
-        "WGPUVertexStateDescriptor": {
+        "WGPUVertexState": {
+            "__size__": 20,
+            "bufferCount": 12,
+            "buffers": 16,
+            "entryPoint": 8,
+            "module": 4,
+            "nextInChain": 0
+        },
+        "__cxa_exception": {
             "__size__": 16,
-            "indexFormat": 4,
-            "nextInChain": 0,
-            "vertexBufferCount": 8,
-            "vertexBuffers": 12
+            "caught": 12,
+            "exceptionDestructor": 8,
+            "exceptionType": 4,
+            "referenceCount": 0,
+            "rethrown": 13
         },
         "__wasi_fdstat_t": {
             "__size__": 24,
@@ -1386,20 +1406,22 @@
             "p_proto": 8
         },
         "pthread": {
-            "__size__": 120,
-            "cancel": 44,
-            "cancelasync": 49,
-            "canceldisable": 48,
-            "detach_state": 40,
-            "locale": 104,
-            "profilerBlock": 4,
-            "robust_list": 84,
-            "self": 8,
-            "stack": 60,
-            "stack_size": 64,
-            "threadExitCode": 0,
-            "tid": 32,
-            "tsd": 80
+            "__size__": 116,
+            "cancel": 40,
+            "cancelasync": 45,
+            "canceldisable": 44,
+            "detach_state": 36,
+            "locale": 100,
+            "next": 16,
+            "prev": 12,
+            "profilerBlock": 0,
+            "result": 68,
+            "robust_list": 80,
+            "self": 4,
+            "stack": 56,
+            "stack_size": 60,
+            "tid": 28,
+            "tsd": 76
         },
         "rlimit": {
             "__size__": 16,
@@ -1465,62 +1487,62 @@
             "sin6_scope_id": 24
         },
         "stat": {
-            "__size__": 88,
-            "__st_dev_padding": 4,
-            "__st_ino_truncated": 8,
-            "__st_rdev_padding": 32,
+            "__size__": 104,
+            "__st_dev_padding": 8,
+            "__st_ino_truncated": 12,
+            "__st_rdev_padding": 40,
             "st_atim": {
                 "__size__": 8,
-                "tv_nsec": 60,
-                "tv_sec": 56
+                "tv_nsec": 84,
+                "tv_sec": 80
             },
-            "st_blksize": 48,
-            "st_blocks": 52,
+            "st_blksize": 56,
+            "st_blocks": 64,
             "st_ctim": {
                 "__size__": 8,
-                "tv_nsec": 76,
-                "tv_sec": 72
+                "tv_nsec": 100,
+                "tv_sec": 96
             },
             "st_dev": 0,
-            "st_gid": 24,
-            "st_ino": 80,
-            "st_mode": 12,
+            "st_gid": 28,
+            "st_ino": 72,
+            "st_mode": 16,
             "st_mtim": {
                 "__size__": 8,
-                "tv_nsec": 68,
-                "tv_sec": 64
+                "tv_nsec": 92,
+                "tv_sec": 88
             },
-            "st_nlink": 16,
-            "st_rdev": 28,
-            "st_size": 40,
-            "st_uid": 20
+            "st_nlink": 20,
+            "st_rdev": 32,
+            "st_size": 48,
+            "st_uid": 24
         },
         "statfs": {
-            "__size__": 64,
-            "f_bavail": 16,
-            "f_bfree": 12,
+            "__size__": 88,
+            "f_bavail": 24,
+            "f_bfree": 16,
             "f_blocks": 8,
             "f_bsize": 4,
-            "f_ffree": 24,
-            "f_files": 20,
-            "f_flags": 44,
-            "f_frsize": 40,
-            "f_fsid": 28,
-            "f_namelen": 36
+            "f_ffree": 40,
+            "f_files": 32,
+            "f_flags": 64,
+            "f_frsize": 60,
+            "f_fsid": 48,
+            "f_namelen": 56
         },
         "statvfs": {
-            "__size__": 72,
-            "f_bavail": 16,
-            "f_bfree": 12,
+            "__size__": 96,
+            "f_bavail": 24,
+            "f_bfree": 16,
             "f_blocks": 8,
             "f_bsize": 0,
-            "f_favail": 28,
-            "f_ffree": 24,
-            "f_files": 20,
-            "f_flag": 40,
+            "f_favail": 48,
+            "f_ffree": 40,
+            "f_files": 32,
+            "f_flag": 64,
             "f_frsize": 4,
-            "f_fsid": 32,
-            "f_namemax": 44
+            "f_fsid": 56,
+            "f_namemax": 68
         },
         "thread_profiler_block": {
             "__size__": 104,

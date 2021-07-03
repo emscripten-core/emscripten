@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <emscripten/fetch.h>
 
-int result = 0;
+int result = 1;
 
 // This test is run in two modes: if FILE_DOES_NOT_EXIST defined,
 // then testing an XHR of a missing file.
@@ -44,13 +44,10 @@ int main()
     assert(checksum == 0x08);
     emscripten_fetch_close(fetch);
 
-#ifdef REPORT_RESULT
 #ifndef FILE_DOES_NOT_EXIST
-    result = 1;
+    result = 0;
 #endif
-    // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
-    MAYBE_REPORT_RESULT(result);
-#endif
+    exit(result);
   };
 
   attr.onprogress = [](emscripten_fetch_t *fetch) {
@@ -63,7 +60,8 @@ int main()
       printf("Downloading.. %lld bytes complete.\n", fetch->dataOffset + fetch->numBytes);
     }
 #ifdef FILE_DOES_NOT_EXIST
-    assert(false && "onprogress handler called, but the file should not exist"); // We should not receive progress reports if the file doesn't exist.
+    // We should not receive progress reports if the file doesn't exist.
+    assert(false && "onprogress handler called, but the file should not exist");
 #endif
     // We must receive a call to the onprogress handler with 100% completion.
     if (fetch->dataOffset + fetch->numBytes == fetch->totalBytes) ++result;
@@ -77,23 +75,24 @@ int main()
   attr.onerror = [](emscripten_fetch_t *fetch) {
     printf("Download failed!\n");
 #ifndef FILE_DOES_NOT_EXIST
-    assert(false && "onerror handler called, but the transfer should have succeeded!"); // The file exists, shouldn't reach here.
+    // The file exists, shouldn't reach here.
+    assert(false && "onerror handler called, but the transfer should have succeeded!");
 #endif
     assert(fetch);
     assert(fetch->id != 0);
     assert(!strcmp(fetch->url, "gears.png"));
     assert((uintptr_t)fetch->userData == 0x12345678);
 
-#ifdef REPORT_RESULT
 #ifdef FILE_DOES_NOT_EXIST
-    result = 1;
+    result = 0;
 #endif
-    // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
-    MAYBE_REPORT_RESULT(result);
-#endif
+    exit(result);
   };
 
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
   assert(fetch != 0);
-  memset(&attr, 0, sizeof(attr)); // emscripten_fetch() must be able to operate without referencing to this structure after the call.
+  // emscripten_fetch() must be able to operate without referencing to this
+  // structure after the call.
+  memset(&attr, 0, sizeof(attr));
+  return 99;
 }

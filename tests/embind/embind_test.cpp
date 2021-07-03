@@ -425,6 +425,17 @@ public:
     };
 };
 
+class SymbolNameClass {
+public:
+    std::string iterator() {
+        return "Iterator";
+    }
+
+    static std::string species() {
+        return "Species";
+    }
+};
+
 // Begin Inheritance Hierarchy Class Definitions
 
 class Base {
@@ -1962,6 +1973,12 @@ EMSCRIPTEN_BINDINGS(tests) {
     class_<ContainsTemplatedMemberClass>("ContainsTemplatedMemberClass")
         .constructor<>()
         .function("getTestTemplate", &ContainsTemplatedMemberClass::getTestTemplate)
+        ;
+
+    class_<SymbolNameClass>("SymbolNameClass")
+        .constructor<>()
+        .function("@@iterator", &SymbolNameClass::iterator)
+        .class_function("@@species", &SymbolNameClass::species)
         ;
 
     // register Derived before Base as a test that it's possible to

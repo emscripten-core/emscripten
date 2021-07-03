@@ -1,0 +1,49 @@
+[
+    // ===========================================
+    // libc - internal
+    // ===========================================
+    {
+        "file": "pthread_impl.h",
+        "structs": {
+            "pthread": [
+              "profilerBlock",
+              "self",
+              "prev",
+              "next",
+              "tid",
+              "detach_state",
+              "cancel",
+              "canceldisable",
+              "cancelasync",
+              "stack",
+              "stack_size",
+              "result",
+              "tsd",
+              "robust_list",
+              "locale"
+            ],
+            "thread_profiler_block": [
+                "threadStatus",
+                "currentStatusStartTime",
+                "timeSpentInStatus",
+                "name"
+            ]
+        },
+        "defines": [
+            "__ATTRP_C11_THREAD",
+            "EM_THREAD_NAME_MAX",
+            "DT_EXITED",
+            "DT_EXITING",
+            "DT_JOINABLE",
+            "DT_DETACHED"
+        ]
+    },
+    {
+        "file": "libc.h",
+        "structs": {
+            "libc": [
+              "global_locale"
+            ]
+        }
+    }
+]

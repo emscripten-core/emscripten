@@ -6,7 +6,6 @@
 #endif
 
 #if defined(_DEFAULT_SOURCE) && !defined(_BSD_SOURCE)
-#error YYY
 #define _BSD_SOURCE 1
 #endif
 

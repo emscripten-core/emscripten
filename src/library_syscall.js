@@ -69,13 +69,13 @@ var SyscallsLibrary = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, '(stat.atime.getTime() / 1000)|0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, '(stat.mtime.getTime() / 1000)|0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, '(stat.ctime.getTime() / 1000)|0', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       return 0;
     },
     doMsync: function(addr, stream, len, flags, offset) {
@@ -226,7 +226,7 @@ var SyscallsLibrary = {
     }
   },
 
-  $syscallMmap2__deps: ['$SYSCALLS',
+  $syscallMmap2__deps: ['$SYSCALLS', '$zeroMemory', '$mmapAlloc',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
@@ -237,7 +237,7 @@ var SyscallsLibrary = {
     var allocated = false;
 
     // addr argument must be page aligned if MAP_FIXED flag is set.
-    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % {{{ POSIX_PAGE_SIZE }}}) !== 0) {
+    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % {{{ WASM_PAGE_SIZE }}}) !== 0) {
       return -{{{ cDefine('EINVAL') }}};
     }
 
@@ -245,9 +245,8 @@ var SyscallsLibrary = {
     // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
     // In this case fd argument is ignored.
     if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
-      ptr = _memalign({{{ POSIX_PAGE_SIZE }}}, len);
+      ptr = mmapAlloc(len);
       if (!ptr) return -{{{ cDefine('ENOMEM') }}};
-      _memset(ptr, 0, len);
       allocated = true;
     } else {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
@@ -276,12 +275,11 @@ var SyscallsLibrary = {
 #if CAN_ADDRESS_2GB
     addr >>>= 0;
 #endif
-    if ((addr | 0) === {{{ cDefine('MAP_FAILED') }}} || len === 0) {
-      return -{{{ cDefine('EINVAL') }}};
-    }
     // TODO: support unmmap'ing parts of allocations
     var info = SYSCALLS.mappings[addr];
-    if (!info) return 0;
+    if (len === 0 || !info) {
+      return -{{{ cDefine('EINVAL') }}};
+    }
     if (len === info.len) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
       var stream = FS.getStream(info.fd);
@@ -305,10 +303,6 @@ var SyscallsLibrary = {
     return 0;
   },
 
-  __sys_exit: function(status) {
-    exit(status);
-    // no return
-  },
   __sys_open: function(path, flags, varargs) {
     var pathname = SYSCALLS.getStr(path);
     var mode = varargs ? SYSCALLS.get() : 0;
@@ -394,11 +388,6 @@ var SyscallsLibrary = {
     {{{ makeSetValue('fdPtr', 4, 'res.writable_fd', 'i32') }}};
 
     return 0;
-  },
-  __sys_acct__nothrow: true,
-  __sys_acct__proxy: false,
-  __sys_acct: function(filename) {
-    return -{{{ cDefine('ENOSYS') }}}; // unsupported features
   },
   __sys_ioctl: function(fd, op, varargs) {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
@@ -494,11 +483,9 @@ var SyscallsLibrary = {
   __sys_setrlimit: function(varargs) {
     return 0; // no-op
   },
+  __sys_getrusage__deps: ['$zeroMemory'],
   __sys_getrusage: function(who, usage) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
-    _memset(usage, 0, {{{ C_STRUCTS.rusage.__size__ }}});
+    zeroMemory(usage, {{{ C_STRUCTS.rusage.__size__ }}});
     {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_utime.tv_sec, '1', 'i32') }}}; // fake some values
     {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_utime.tv_usec, '2', 'i32') }}};
     {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_stime.tv_sec, '3', 'i32') }}};
@@ -573,12 +560,6 @@ var SyscallsLibrary = {
     assert(!errno);
 #endif
     return 0;
-  },
-  __sys_socketpair: function() {
-#if SYSCALL_DEBUG
-    err('unsupported syscall: __sys_socketpair');
-#endif
-    return -{{{ cDefine('ENOSYS') }}};
   },
   __sys_setsockopt: function(fd) {
     return -{{{ cDefine('ENOPROTOOPT') }}}; // The option is unknown at the level indicated.
@@ -763,15 +744,6 @@ var SyscallsLibrary = {
     return bytesRead;
   },
 #endif // ~PROXY_POSIX_SOCKETS==0
-  __sys_setitimer__nothrow: true,
-  __sys_setitimer__proxy: false,
-  __sys_setitimer: function(which, new_value, old_value) {
-    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
-  },
-  __sys_wait4__proxy: false,
-  __sys_wait4: function(pid, wstart, options, rusage) {
-    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
-  },
   __sys_setdomainname__nothrow: true,
   __sys_setdomainname__proxy: false,
   __sys_setdomainname: function(name, size) {
@@ -799,8 +771,6 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
-  __sys_mprotect__nothrow: true,
-  __sys_mprotect__proxy: false,
   __sys_mprotect: function(addr, len, size) {
     return 0; // let's not and say we did
   },
@@ -915,32 +885,22 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
-  __sys_mlock__nothrow: true,
-  __sys_mlock__proxy: false,
   __sys_mlock__sig: 'iii',
   __sys_mlock: function(addr, len) {
     return 0;
   },
-  __sys_munlock__nothrow: true,
-  __sys_munlock__proxy: false,
   __sys_munlock__sig: 'iii',
   __sys_munlock: function(addr, len) {
     return 0;
   },
-  __sys_mlockall__nothrow: true,
-  __sys_mlockall__proxy: false,
   __sys_mlockall__sig: 'ii',
   __sys_mlockall: function(flags) {
     return 0;
   },
-  __sys_munlockall__nothrow: true,
-  __sys_munlockall__proxy: false,
   __sys_munlockall__sig: 'i',
   __sys_munlockall: function() {
     return 0;
   },
-  __sys_mremap__nothrow: true,
-  __sys_mremap__proxy: false,
   __sys_mremap: function(old_addr, old_size, new_size, flags) {
     return -{{{ cDefine('ENOMEM') }}}; // never succeed
   },
@@ -964,12 +924,7 @@ var SyscallsLibrary = {
     }
     return nonzero;
   },
-  __sys_rt_sigqueueinfo__nothrow: true,
-  __sys_rt_sigqueueinfo__proxy: false,
   __sys_rt_sigqueueinfo: function(tgid, pid, uinfo) {
-#if SYSCALL_DEBUG
-    err('warning: ignoring SYS_rt_sigqueueinfo');
-#endif
     return 0;
   },
 
@@ -982,9 +937,6 @@ var SyscallsLibrary = {
     return buf;
   },
   __sys_ugetrlimit: function(resource, rlim) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
     {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_cur, '-1', 'i32') }}};  // RLIM_INFINITY
     {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_cur + 4, '-1', 'i32') }}};  // RLIM_INFINITY
     {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_max, '-1', 'i32') }}};  // RLIM_INFINITY
@@ -1092,26 +1044,15 @@ var SyscallsLibrary = {
   __sys_getresuid32__nothrow: true,
   __sys_getresuid32__proxy: false,
   __sys_getresuid32: '__sys_getresgid32',
-  __sys_getresgid32__nothrow: true,
-  __sys_getresgid32__proxy: false,
   __sys_getresgid32: function(ruid, euid, suid) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
     {{{ makeSetValue('ruid', '0', '0', 'i32') }}};
     {{{ makeSetValue('euid', '0', '0', 'i32') }}};
     {{{ makeSetValue('suid', '0', '0', 'i32') }}};
     return 0;
   },
-  __sys_mincore__nothrow: true,
-  __sys_mincore__proxy: false,
-  __sys_mincore: function(addr, length, vec) {
-    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
-  },
-  __sys_madvise1__nothrow: true,
-  __sys_madvise1__proxy: false,
   __sys_madvise1: function(addr, length, advice) {
-    return 0; // advice is welcome, but ignored
+    // advice is welcome, but ignored
+    return 0;
   },
   __sys_getdents64: function(fd, dirp, count) {
     var stream = SYSCALLS.getStreamFromFD(fd)
@@ -1213,13 +1154,6 @@ var SyscallsLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
-#if MINIMAL_RUNTIME
-  __sys_exit_group__deps: ['$exit'],
-#endif
-  __sys_exit_group: function(status) {
-    exit(status);
-    return 0;
-  },
   __sys_statfs64: function(path, size, buf) {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
@@ -1360,15 +1294,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doAccess(path, amode);
   },
-  __sys_pselect6__nothrow: true,
-  __sys_pselect6__proxy: false,
-  __sys_pselect6: function() {
-    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
-  },
   __sys_utimensat: function(dirfd, path, times, flags) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
     assert(flags === 0);
@@ -1382,7 +1308,7 @@ var SyscallsLibrary = {
     nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
     var mtime = (seconds*1000) + (nanoseconds/(1000*1000));
     FS.utime(path, atime, mtime);
-    return 0;  
+    return 0;
   },
   __sys_fallocate: function(fd, mode, off_low, off_high, len_low, len_high) {
     var stream = SYSCALLS.getStreamFromFD(fd)
@@ -1396,7 +1322,7 @@ var SyscallsLibrary = {
   },
   __sys_dup3: function(fd, suggestFD, flags) {
 #if SYSCALL_DEBUG
-    err('warning: untested syscall');
+    err('warning: untested syscall: dup3');
 #endif
     var old = SYSCALLS.getStreamFromFD(fd);
 #if ASSERTIONS
@@ -1405,20 +1331,7 @@ var SyscallsLibrary = {
     if (old.fd === suggestFD) return -{{{ cDefine('EINVAL') }}};
     return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
-  __sys_pipe2__nothrow: true,
-  __sys_pipe2__proxy: false,
-  __sys_pipe2: function(fds, flags) {
-    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
-  },
 
-  __sys_recvmmsg__nothrow: true,
-  __sys_recvmmsg__proxy: false,
-  __sys_recvmmsg: function(sockfd, msgvec, vlen, flags) {
-#if SYSCALL_DEBUG
-    err('warning: ignoring SYS_recvmmsg');
-#endif
-    return 0;
-  },
   __sys_prlimit64: function(pid, resource, new_limit, old_limit) {
     if (old_limit) { // just report no limits
       {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_cur, '-1', 'i32') }}};  // RLIM_INFINITY
@@ -1426,14 +1339,6 @@ var SyscallsLibrary = {
       {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_max, '-1', 'i32') }}};  // RLIM_INFINITY
       {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_max + 4, '-1', 'i32') }}};  // RLIM_INFINITY
     }
-    return 0;
-  },
-  __sys_sendmmsg__nothrow: true,
-  __sys_sendmmsg__proxy: false,
-  __sys_sendmmsg: function(sockfd, msg, flags) {
-#if SYSCALL_DEBUG
-    err('warning: ignoring SYS_sendmmsg');
-#endif
     return 0;
   },
 };
@@ -1541,5 +1446,48 @@ function wrapSyscallFunction(x, library, isWasi) {
 for (var x in SyscallsLibrary) {
   wrapSyscallFunction(x, SyscallsLibrary, false);
 }
+
+function unimplementedSycall(name) {
+  SyscallsLibrary[name + '__nothrow'] = true;
+  SyscallsLibrary[name + '__proxy'] = false;
+  SyscallsLibrary[name + '__unimplemented'] = true;
+  msg = `\n  err('warning: unsupported syscall: ${name}');`;
+  if (SyscallsLibrary[name]) {
+    SyscallsLibrary[name] = modifyFunction(SyscallsLibrary[name].toString(), (name, args, body) => {
+            return `function(${args}) {\n  ${msg}${body}\n}\n`;
+          });
+  } else {
+    errcode = cDefine('ENOSYS');
+    SyscallsLibrary[name] = `function() {\n  ${msg}return -${errcode};\n}`;
+  }
+}
+
+[
+  '__sys_acct',
+  '__sys_getresgid32',
+  '__sys_getrusage',
+  '__sys_madvise1',
+  '__sys_mincore',
+  '__sys_mlock',
+  '__sys_mlockall',
+  '__sys_mprotect',
+  '__sys_mremap',
+  '__sys_munlock',
+  '__sys_munlockall',
+  '__sys_pipe2',
+  '__sys_prlimit64',
+  '__sys_pselect6',
+  '__sys_recvmmsg',
+  '__sys_rt_sigqueueinfo',
+  '__sys_sendmmsg',
+  '__sys_setitimer',
+  '__sys_getitimer',
+  '__sys_shutdown',
+  '__sys_socketpair',
+  '__sys_setsockopt',
+  '__sys_ugetrlimit',
+  '__sys_wait4',
+  '__sys_pause',
+].forEach(unimplementedSycall);
 
 mergeInto(LibraryManager.library, SyscallsLibrary);

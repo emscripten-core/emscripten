@@ -23,14 +23,22 @@ copy_dirs = [
     ('lib', 'ubsan_minimal'),
 ]
 
+preserve_files = ('readme.txt',)
+
+
 def clear(dirname):
-  if os.path.exists(dirname):
-    shutil.rmtree(dirname)
-  os.makedirs(dirname)
+  for f in os.listdir(dirname):
+    if f in preserve_files or 'emscripten' in f:
+      continue
+    full = os.path.join(dirname, f)
+    if os.path.isdir(full):
+      shutil.rmtree(full)
+    else:
+      os.remove(full)
 
 
 def main():
-  upstream_dir = os.path.abspath(sys.argv[1])
+  upstream_dir = os.path.join(os.path.abspath(sys.argv[1]), 'compiler-rt')
   assert os.path.exists(upstream_dir)
   upstream_src = os.path.join(upstream_dir, 'lib', 'builtins')
   upstream_include = os.path.join(upstream_dir, 'include', 'sanitizer')

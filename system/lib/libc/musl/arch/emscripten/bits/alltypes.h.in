@@ -1,25 +1,49 @@
+/*
+ * The .h version of this file is generated from the .h.in.
+ * See update_alltypes.sh.
+ */
+// XXX Emscripten keep in sync with musl/arch/i386/bits/alltypes.h.in
 #define _Addr __PTRDIFF_TYPE__
 #define _Int64 __INT64_TYPE__
 #define _Reg __PTRDIFF_TYPE__
 
-TYPEDEF __builtin_va_list va_list;
-TYPEDEF __builtin_va_list __isoc_va_list;
+#define __BYTE_ORDER 1234
+#define __LONG_MAX 0x7fffffffL
 
 #ifndef __cplusplus
-TYPEDEF unsigned wchar_t;
+#ifdef __WCHAR_TYPE__
+TYPEDEF __WCHAR_TYPE__ wchar_t;
+#else
+TYPEDEF long wchar_t;
 #endif
-TYPEDEF unsigned wint_t;
+#endif
+TYPEDEF __WINT_TYPE__ wint_t;
 
+#if defined(__FLT_EVAL_METHOD__) && __FLT_EVAL_METHOD__ == 0
 TYPEDEF float float_t;
 TYPEDEF double double_t;
+#else
+TYPEDEF long double float_t;
+TYPEDEF long double double_t;
+#endif
 
-TYPEDEF struct { long long __ll; long double __ld; } max_align_t;
+#ifndef __cplusplus
+TYPEDEF struct { _Alignas(8) long long __ll; long double __ld; } max_align_t;
+#elif defined(__GNUC__)
+TYPEDEF struct { __attribute__((__aligned__(8))) long long __ll; long double __ld; } max_align_t;
+#else
+TYPEDEF struct { alignas(8) long long __ll; long double __ld; } max_align_t;
+#endif
+
+// XXX Emscripten use 32-bit time (reverts musl commit d6dcfe4d0c58856690ecbad4cf191d7c9ee1a4a8)
 TYPEDEF long time_t;
 TYPEDEF long suseconds_t;
 
-TYPEDEF struct { union { int __i[10]; unsigned __s[10]; } __u; } pthread_attr_t;
-TYPEDEF struct { union { int __i[7]; void *__p[7]; } __u; } pthread_mutex_t;
-TYPEDEF struct { union { int __i[12]; void *__p[12]; } __u; } pthread_cond_t;
-TYPEDEF struct { union { int __i[8]; void *__p[8]; } __u; } pthread_rwlock_t;
-TYPEDEF struct { union { int __i[5]; void *__p[5]; } __u; } pthread_barrier_t;
+// XXX Emscripten avoid endian-specific padding (reverts musl commit 9b2921bea1d5017832e1b45d1fd64220047a9802)
+STRUCT timespec { time_t tv_sec; long tv_nsec; };
 
+#ifdef __EMSCRIPTEN__
+// For canvas transfer implementation in Emscripten, use an extra 10th control field
+// to pass a pointer to a string denoting the WebGL canvases to transfer.
+TYPEDEF struct { union { int __i[10]; volatile int __vi[10]; unsigned long __s[10]; } __u; } pthread_attr_t;
+#endif

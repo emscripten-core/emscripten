@@ -14,10 +14,6 @@
 #include "sanitizer_fuchsia.h"
 #if SANITIZER_FUCHSIA
 
-#include "sanitizer_common.h"
-#include "sanitizer_libc.h"
-#include "sanitizer_mutex.h"
-
 #include <limits.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -25,6 +21,11 @@
 #include <zircon/errors.h>
 #include <zircon/process.h>
 #include <zircon/syscalls.h>
+#include <zircon/utc.h>
+
+#include "sanitizer_common.h"
+#include "sanitizer_libc.h"
+#include "sanitizer_mutex.h"
 
 namespace __sanitizer {
 
@@ -47,8 +48,10 @@ unsigned int internal_sleep(unsigned int seconds) {
 }
 
 u64 NanoTime() {
+  zx_handle_t utc_clock = _zx_utc_reference_get();
+  CHECK_NE(utc_clock, ZX_HANDLE_INVALID);
   zx_time_t time;
-  zx_status_t status = _zx_clock_get(ZX_CLOCK_UTC, &time);
+  zx_status_t status = _zx_clock_read(utc_clock, &time);
   CHECK_EQ(status, ZX_OK);
   return time;
 }
@@ -64,6 +67,10 @@ uptr internal_getpid() {
   uptr pid = static_cast<uptr>(info.koid);
   CHECK_EQ(pid, info.koid);
   return pid;
+}
+
+int internal_dlinfo(void *handle, int request, void *p) {
+  UNIMPLEMENTED();
 }
 
 uptr GetThreadSelf() { return reinterpret_cast<uptr>(thrd_current()); }
@@ -100,8 +107,6 @@ void InstallDeadlySignalHandlers(SignalHandlerType handler) {}
 void SetAlternateSignalStack() {}
 void UnsetAlternateSignalStack() {}
 void InitTlsSize() {}
-
-void PrintModuleMap() {}
 
 bool SignalContext::IsStackOverflow() const { return false; }
 void SignalContext::DumpAllRegisters(void *context) { UNIMPLEMENTED(); }
@@ -500,6 +505,8 @@ u32 GetNumberOfCPUs() {
 
 uptr GetRSS() { UNIMPLEMENTED(); }
 
+void InitializePlatformCommonFlags(CommonFlags *cf) {}
+
 }  // namespace __sanitizer
 
 using namespace __sanitizer;
@@ -520,6 +527,10 @@ void __sanitizer_set_report_path(const char *path) {
 }
 
 void __sanitizer_set_report_fd(void *fd) {
+  UNREACHABLE("not available on Fuchsia");
+}
+
+const char *__sanitizer_get_report_path() {
   UNREACHABLE("not available on Fuchsia");
 }
 }  // extern "C"

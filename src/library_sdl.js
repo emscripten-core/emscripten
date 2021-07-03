@@ -1348,6 +1348,7 @@ var LibrarySDL = {
     return SDL.version;
   },
 
+  SDL_Init__deps: ['$zeroMemory'],
   SDL_Init__proxy: 'sync',
   SDL_Init__sig: 'ii',
   SDL_Init__docs: '/** @param{number=} initFlags */', 
@@ -1368,7 +1369,7 @@ var LibrarySDL = {
 
     window.addEventListener("unload", SDL.receiveEvent);
     SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
-    _memset(SDL.keyboardState, 0, 0x10000);
+    zeroMemory(SDL.keyboardState, 0x10000);
     // Initialize this structure carefully for closure
     SDL.DOMEventToSDLEvent['keydown']    = 0x300  /* SDL_KEYDOWN */;
     SDL.DOMEventToSDLEvent['keyup']      = 0x301  /* SDL_KEYUP */;
@@ -2414,7 +2415,7 @@ var LibrarySDL = {
 
   // SDL_Audio
 
-  SDL_OpenAudio__deps: ['$autoResumeAudioContext'],
+  SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout'],
   SDL_OpenAudio__proxy: 'sync',
   SDL_OpenAudio__sig: 'iii',
   SDL_OpenAudio: function(desired, obtained) {
@@ -2536,12 +2537,12 @@ var LibrarySDL = {
 
         if (SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
           ++SDL.audio.numAudioTimersPending;
-          SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*(secsUntilNextPlayStart-preemptBufferFeedSecs)));
+          SDL.audio.timer = safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*(secsUntilNextPlayStart-preemptBufferFeedSecs)));
 
           // If we are risking starving, immediately queue an extra buffer.
           if (SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
             ++SDL.audio.numAudioTimersPending;
-            Browser.safeSetTimeout(SDL.audio.caller, 1.0);
+            safeSetTimeout(SDL.audio.caller, 1.0);
           }
         }
       };
@@ -2638,6 +2639,7 @@ var LibrarySDL = {
   },
 
   SDL_PauseAudio__proxy: 'sync',
+  SDL_PauseAudio__deps: ['$safeSetTimeout'],
   SDL_PauseAudio__sig: 'vi',
   SDL_PauseAudio: function(pauseOn) {
     if (!SDL.audio) {
@@ -2652,7 +2654,7 @@ var LibrarySDL = {
     } else if (!SDL.audio.timer) {
       // Start the audio playback timer callback loop.
       SDL.audio.numAudioTimersPending = 1;
-      SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1);
+      SDL.audio.timer = safeSetTimeout(SDL.audio.caller, 1);
     }
     SDL.audio.paused = pauseOn;
   },

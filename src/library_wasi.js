@@ -33,7 +33,11 @@ var WasiLibrary = {
       };
       // Apply the user-provided values, if any.
       for (var x in ENV) {
-        env[x] = ENV[x];
+        // x is a key in ENV; if ENV[x] is undefined, that means it was
+        // explicitly set to be so. We allow user code to do that to
+        // force variables with default values to remain unset.
+        if (ENV[x] === undefined) delete env[x];
+        else env[x] = ENV[x];
       }
       var strings = [];
       for (var x in env) {
@@ -166,8 +170,14 @@ var WasiLibrary = {
 
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0 && (!MINIMAL_RUNTIME || EXIT_RUNTIME)
   $flush_NO_FILESYSTEM: function() {
-    // flush anything remaining in the buffers during shutdown
+    // flush anything remaining in the buffers during shutdown.
+    // Only call the streamlined fflush variant when ASSERTIONS are disabled
+    // to ensure that the warning for unflushed content is still displayed.
+#if ASSERTIONS
     if (typeof _fflush !== 'undefined') _fflush(0);
+#else
+    if (typeof ___stdio_exit !== 'undefined') ___stdio_exit();
+#endif
     var buffers = SYSCALLS.buffers;
     if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
     if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});

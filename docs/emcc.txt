@@ -123,16 +123,16 @@ Options that are modified or new in *emcc* are listed below:
         -s "EXPORTED_FUNCTIONS=['liblib.so']"
 
    You can also specify that the value of an option will be read from
-   a specified JSON-formatted file. For example, the following option
-   sets the "EXPORTED_FUNCTIONS" option with the contents of the file
-   at **path/to/file**.
+   a file. For example, the following will set "EXPORTED_FUNCTIONS"
+   based on the contents of the file at **path/to/file**.
 
       -s EXPORTED_FUNCTIONS=@/path/to/file
 
    Note:
 
-     * In this case the file might contain a JSON-formatted list of
-       functions: "["_func1", "func2"]".
+     * In this case the file should contain a list of symbols, one per
+       line.  For legacy use cases JSON-formatted files are also
+       supported: e.g. "["_func1", "func2"]".
 
      * The specified file path must be absolute, not relative.
 
@@ -198,15 +198,10 @@ Options that are modified or new in *emcc* are listed below:
    [link] Enable the Emscripten Tracing API.
 
 "--emit-symbol-map"
-   [link] Save a map file between the minified global names and the
-   original function names. This allows you, for example, to
-   reconstruct meaningful stack traces.
-
-   Note:
-
-     This is only relevant when *minifying* global names, which
-     happens in "-O2" and above, and when no "-g" option was specified
-     to prevent minification.
+   [link] Save a map file between function indexes in the wasm and
+   function names. By storing the names on a file on the side, you can
+   avoid shipping the names, and can still reconstruct meaningful
+   stack traces by translating the indexes back to the names.
 
    Note:
 
@@ -603,8 +598,6 @@ Environment variables
    * "EMMAKEN_COMPILER" [compile+link] Deprecated. Avoid using.
 
    * "EMMAKEN_JUST_CONFIGURE" [other]
-
-   * "EMMAKEN_NO_SDK" [compile+link]
 
    * "EMCC_AUTODEBUG" [compile+link]
 

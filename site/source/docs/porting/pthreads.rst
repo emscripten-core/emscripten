@@ -4,15 +4,9 @@
 Pthreads support
 ==============================
 
-.. note:: Browsers are currently shipping SharedArrayBuffer gated behind Cross Origin Opener Policy (COOP) and Cross Origin Embedder Policy (COEP) headers. Pthreads code will not work in deployed environment unless these headers are correctly set. For more information click `this <https://web.dev/coop-coep>`_
+.. note:: Browsers `that have implemented and enabled <https://webassembly.org/roadmap/>`_ SharedArrayBuffer, are gating it behind Cross Origin Opener Policy (COOP) and Cross Origin Embedder Policy (COEP) headers. Pthreads code will not work in deployed environment unless these headers are correctly set. For more information click `this <https://web.dev/coop-coep>`_
 
 Emscripten has support for multithreading using SharedArrayBuffer in browsers. That API allows sharing memory between the main thread and web workers as well as atomic operations for synchronization, which enables Emscripten to implement support for the Pthreads (POSIX threads) API. This support is considered stable in Emscripten.
-
-.. note:: As of Sep 2019, some browsers have disabled SharedArrayBuffer due to
-          the Spectre set of vulnerabilities. Until it is restored you can still
-          experiment with it if you flip a pref in those browsers. In other
-          browsers (like Chrome on desktop), SharedArrayBuffer is fully enabled
-          by default and you don't need to flip any flags.
 
 Compiling with pthreads enabled
 ===============================
@@ -20,7 +14,7 @@ Compiling with pthreads enabled
 By default, support for pthreads is not enabled. To enable code generation for pthreads, the following command line flags exist:
 
 - Pass the compiler flag ``-pthread`` when compiling any .c/.cpp files, AND when linking to generate the final output .js file.
-- Optionally, pass the linker flag ``-s PTHREAD_POOL_SIZE=<integer>`` to specify a predefined pool of web workers to populate at page preRun time before application main() is called. This is important because if the workers do not already exist then we may need to wait for the next browser event iteration for certain things, see below.
+- Optionally, pass the linker flag ``-s PTHREAD_POOL_SIZE=<expression>`` to specify a predefined pool of web workers to populate at page ``preRun`` time before application ``main()`` is called. This is important because if the workers do not already exist then we may need to wait for the next browser event iteration for certain things, see below. ``<expression>`` can be any valid JavaScript expression, including integers like ``8`` for a fixed number of threads or, say, ``navigator.hardwareConcurrency`` to create as many threads as there are CPU cores.
 
 There should be no other changes required. In C/C++ code, the preprocessor check ``#ifdef __EMSCRIPTEN_PTHREADS__`` can be used to detect whether Emscripten is currently targeting pthreads.
 
@@ -131,7 +125,7 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 
   1. Return to the main event loop (for example, use
      ``emscripten_set_main_loop``, or Asyncify).
-  2. Use the linker flag ``-s PTHREAD_POOL_SIZE=<integer>``. Using a pool
+  2. Use the linker flag ``-s PTHREAD_POOL_SIZE=<expression>``. Using a pool
      creates the Web Workers before main is called, so they can just be used
      when ``pthread_create`` is called.
   3. Use the linker flag ``-s PROXY_TO_PTHREAD``, which will run ``main()`` on

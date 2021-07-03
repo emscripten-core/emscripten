@@ -30,7 +30,7 @@ SANITIZER_WEAK_ATTRIBUTE StackDepotStats *StackDepotGetStats() {
   return nullptr;
 }
 
-void BackgroundThread(void *arg) {
+void *BackgroundThread(void *arg) {
   const uptr hard_rss_limit_mb = common_flags()->hard_rss_limit_mb;
   const uptr soft_rss_limit_mb = common_flags()->soft_rss_limit_mb;
   const bool heap_profile = common_flags()->heap_profile;
@@ -128,6 +128,69 @@ static void (*sandboxing_callback)();
 void SetSandboxingCallback(void (*f)()) {
   sandboxing_callback = f;
 }
+
+uptr ReservedAddressRange::InitAligned(uptr size, uptr align,
+                                       const char *name) {
+  CHECK(IsPowerOfTwo(align));
+  if (align <= GetPageSizeCached())
+    return Init(size, name);
+  uptr start = Init(size + align, name);
+  start += align - (start & (align - 1));
+  return start;
+}
+
+#if !SANITIZER_FUCHSIA && !SANITIZER_RTEMS
+
+// Reserve memory range [beg, end].
+// We need to use inclusive range because end+1 may not be representable.
+void ReserveShadowMemoryRange(uptr beg, uptr end, const char *name,
+                              bool madvise_shadow) {
+  CHECK_EQ((beg % GetMmapGranularity()), 0);
+  CHECK_EQ(((end + 1) % GetMmapGranularity()), 0);
+  uptr size = end - beg + 1;
+  DecreaseTotalMmap(size);  // Don't count the shadow against mmap_limit_mb.
+  if (madvise_shadow ? !MmapFixedSuperNoReserve(beg, size, name)
+                     : !MmapFixedNoReserve(beg, size, name)) {
+    Report(
+        "ReserveShadowMemoryRange failed while trying to map 0x%zx bytes. "
+        "Perhaps you're using ulimit -v\n",
+        size);
+    Abort();
+  }
+  if (madvise_shadow && common_flags()->use_madv_dontdump)
+    DontDumpShadowMemory(beg, size);
+}
+
+void ProtectGap(uptr addr, uptr size, uptr zero_base_shadow_start,
+                uptr zero_base_max_shadow_start) {
+  if (!size)
+    return;
+  void *res = MmapFixedNoAccess(addr, size, "shadow gap");
+  if (addr == (uptr)res)
+    return;
+  // A few pages at the start of the address space can not be protected.
+  // But we really want to protect as much as possible, to prevent this memory
+  // being returned as a result of a non-FIXED mmap().
+  if (addr == zero_base_shadow_start) {
+    uptr step = GetMmapGranularity();
+    while (size > step && addr < zero_base_max_shadow_start) {
+      addr += step;
+      size -= step;
+      void *res = MmapFixedNoAccess(addr, size, "shadow gap");
+      if (addr == (uptr)res)
+        return;
+    }
+  }
+
+  Report(
+      "ERROR: Failed to protect the shadow gap. "
+      "%s cannot proceed correctly. ABORTING.\n",
+      SanitizerToolName);
+  DumpProcessMap();
+  Die();
+}
+
+#endif  // !SANITIZER_FUCHSIA && !SANITIZER_RTEMS
 
 }  // namespace __sanitizer
 

@@ -11,23 +11,19 @@ var LibraryDylink = {
 #if !WASM_BIGINT
     if (direct) {
       // First look for the orig$ symbol which is the symbols without
-      // any legalization performed.   Here we look on the 'asm' object
-      // to avoid any JS wrapping of the symbol.
-      sym = Module['asm']['orig$' + symName];
+      // any legalization performed.
+      sym = asmLibraryArg['orig$' + symName];
     }
 #endif
-    // Then look for the unmangled name itself.
     if (!sym) {
-      sym = Module['asm'][symName];
+      sym = asmLibraryArg[symName];
     }
-    // fall back to the mangled name on the module object which could include
-    // JavaScript functions and wrapped native functions.
-#if !WASM_BIGINT
-    if (!sym && direct) {
-      sym = Module['_orig$' + symName];
-    }
-#endif
 
+    // Check for the symbol on the Module object.  This is the only
+    // way to dynamically access JS library symbols that were not
+    // referenced by the main module (and therefore not part of the
+    // initial set of symbols included in asmLibraryArg when it
+    // was declared.
     if (!sym) {
       sym = Module[asmjsMangle(symName)];
     }
@@ -254,18 +250,6 @@ var LibraryDylink = {
     return ret;
   },
 
-  // fetchBinary fetches binary data @ url. (async)
-  $fetchBinary: function(url) {
-    return fetch(url, { credentials: 'same-origin' }).then(function(response) {
-      if (!response['ok']) {
-        throw "failed to load binary file at '" + url + "'";
-      }
-      return response['arrayBuffer']();
-    }).then(function(buffer) {
-      return new Uint8Array(buffer);
-    });
-  },
-
   // returns the side module metadata as an object
   // { memorySize, memoryAlign, tableSize, tableAlign, neededDynlibs}
   $getDylinkMetadata: function(binary) {
@@ -328,10 +312,10 @@ var LibraryDylink = {
 
   // Module.symbols <- libModule.symbols (flags.global handler)
   $mergeLibSymbols__deps: ['$asmjsMangle'],
-  $mergeLibSymbols: function(libModule, libName) {
+  $mergeLibSymbols: function(exports, libName) {
     // add symbols into global namespace TODO: weak linking etc.
-    for (var sym in libModule) {
-      if (!libModule.hasOwnProperty(sym)) {
+    for (var sym in exports) {
+      if (!exports.hasOwnProperty(sym)) {
         continue;
       }
 
@@ -341,23 +325,24 @@ var LibraryDylink = {
       // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
 
       if (!asmLibraryArg.hasOwnProperty(sym)) {
-        asmLibraryArg[sym] = libModule[sym];
-      }
-
-      var module_sym = asmjsMangle(sym);
-
-      if (!Module.hasOwnProperty(module_sym)) {
-        Module[module_sym] = libModule[sym];
+        asmLibraryArg[sym] = exports[sym];
       }
 #if ASSERTIONS == 2
       else {
-        var curr = Module[sym], next = libModule[sym];
+        var curr = asmLibraryArg[sym], next = exports[sym];
         // don't warn on functions - might be odr, linkonce_odr, etc.
         if (!(typeof curr === 'function' && typeof next === 'function')) {
           err("warning: symbol '" + sym + "' from '" + libName + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
         }
       }
 #endif
+
+      // Export native export on the Module object.
+      // TODO(sbc): Do all users want this?  Should we skip this by default?
+      var module_sym = asmjsMangle(sym);
+      if (!Module.hasOwnProperty(module_sym)) {
+        Module[module_sym] = exports[sym];
+      }
     }
   },
 
@@ -436,7 +421,7 @@ var LibraryDylink = {
       // are. To do that here, we use a JS proxy (another option would
       // be to inspect the binary directly).
       var proxyHandler = {
-        'get': function(obj, prop) {
+        'get': function(stubs, prop) {
           // symbols that should be local to this module
           switch (prop) {
             case '__memory_base':
@@ -444,21 +429,26 @@ var LibraryDylink = {
             case '__table_base':
               return tableBase;
           }
-          if (prop in obj) {
-            return obj[prop]; // already present
+          if (prop in asmLibraryArg) {
+            // No stub needed, symbol already exists in symbol table
+            return asmLibraryArg[prop];
           }
-          // otherwise this is regular function import - call it indirectly
-          var resolved;
-          return obj[prop] = function() {
-            if (!resolved) resolved = resolveSymbol(prop, true);
-            return resolved.apply(null, arguments);
-          };
+          // Return a stub function that will resolve the symbol
+          // when first called.
+          if (!(prop in stubs)) {
+            var resolved;
+            stubs[prop] = function() {
+              if (!resolved) resolved = resolveSymbol(prop, true);
+              return resolved.apply(null, arguments);
+            };
+          }
+          return stubs[prop];
         }
       };
-      var proxy = new Proxy(asmLibraryArg, proxyHandler);
+      var proxy = new Proxy({}, proxyHandler);
       var info = {
-        'GOT.mem': new Proxy(asmLibraryArg, GOTHandler),
-        'GOT.func': new Proxy(asmLibraryArg, GOTHandler),
+        'GOT.mem': new Proxy({}, GOTHandler),
+        'GOT.func': new Proxy({}, GOTHandler),
         'env': proxy,
         {{{ WASI_MODULE_NAME }}}: proxy,
       };
@@ -574,7 +564,7 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$fetchBinary', '$isInternalSym', '$mergeLibSymbols'],
+  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$isInternalSym', '$mergeLibSymbols'],
   $loadDynamicLibrary: function(lib, flags) {
     if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
       LDSO.loadedLibs[-1] = {
@@ -626,7 +616,7 @@ var LibraryDylink = {
     // libData <- libFile
     function loadLibData(libFile) {
       // for wasm, we can use fetch for async, but for fs mode we can only imitate it
-      if (flags.fs) {
+      if (flags.fs && flags.fs.findObject(libFile)) {
         var libData = flags.fs.readFile(libFile, {encoding: 'binary'});
         if (!(libData instanceof Uint8Array)) {
           libData = new Uint8Array(libData);
@@ -635,9 +625,15 @@ var LibraryDylink = {
       }
 
       if (flags.loadAsync) {
-        return fetchBinary(libFile);
+        return new Promise(function(resolve, reject) {
+          readAsync(libFile, function(data) { resolve(new Uint8Array(data)); }, reject);
+        });
       }
+
       // load the binary synchronously
+      if (!readBinary) {
+        throw new Error(libFile + ': file not found, and synchronous loading of external files is not available');
+      }
       return readBinary(libFile);
     }
 
@@ -672,7 +668,7 @@ var LibraryDylink = {
       return getLibModule().then(function(libModule) {
         moduleLoaded(libModule);
         return handle;
-      })
+      });
     }
 
     moduleLoaded(getLibModule());
@@ -692,32 +688,24 @@ var LibraryDylink = {
       return;
     }
 
-    // if we can load dynamic libraries synchronously, do so, otherwise, preload
-    if (!readBinary) {
-      // we can't read binary data synchronously, so preload
-      addRunDependency('preloadDylibs');
-      dynamicLibraries.reduce(function(chain, lib) {
-        return chain.then(function() {
-          return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true});
-        });
-      }, Promise.resolve()).then(function() {
-        // we got them all, wonderful
-        removeRunDependency('preloadDylibs');
-        reportUndefinedSymbols();
+    // Load binaries asynchronously
+    addRunDependency('preloadDylibs');
+    dynamicLibraries.reduce(function(chain, lib) {
+      return chain.then(function() {
+        return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true});
       });
-      return;
-    }
-
-    dynamicLibraries.forEach(function(lib) {
-      // libraries linked to main never go away
-      loadDynamicLibrary(lib, {global: true, nodelete: true, allowUndefined: true});
+    }, Promise.resolve()).then(function() {
+      // we got them all, wonderful
+      reportUndefinedSymbols();
+      removeRunDependency('preloadDylibs');
+#if DYLINK_DEBUG
+    err('preloadDylibs done!');
+#endif
     });
-    reportUndefinedSymbols();
   },
 
   // void* dlopen(const char* filename, int flags);
   dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
-  dlopen__proxy: 'sync',
   dlopen__sig: 'iii',
   dlopen: function(filenameAddr, flags) {
     // void *dlopen(const char *file, int mode);
@@ -775,7 +763,6 @@ var LibraryDylink = {
 
   // int dlclose(void* handle);
   dlclose__deps: ['$DLFCN'],
-  dlclose__proxy: 'sync',
   dlclose__sig: 'ii',
   dlclose: function(handle) {
     // int dlclose(void *handle);
@@ -794,7 +781,6 @@ var LibraryDylink = {
 
   // void* dlsym(void* handle, const char* symbol);
   dlsym__deps: ['$DLFCN'],
-  dlsym__proxy: 'sync',
   dlsym__sig: 'iii',
   dlsym: function(handle, symbol) {
     // void *dlsym(void *restrict handle, const char *restrict name);
@@ -838,7 +824,6 @@ var LibraryDylink = {
 
   // char* dlerror(void);
   dlerror__deps: ['$DLFCN', '$stringToNewUTF8'],
-  dlerror__proxy: 'sync',
   dlerror__sig: 'i',
   dlerror: function() {
     // char *dlerror(void);
@@ -853,7 +838,6 @@ var LibraryDylink = {
   },
 
   dladdr__deps: ['$stringToNewUTF8', '$getExecutableName'],
-  dladdr__proxy: 'sync',
   dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way

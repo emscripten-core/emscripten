@@ -72,6 +72,7 @@ namespace __sanitizer {
   unsigned struct_group_sz = sizeof(struct group);
   unsigned siginfo_t_sz = sizeof(siginfo_t);
   unsigned struct_sigaction_sz = sizeof(struct sigaction);
+  unsigned struct_stack_t_sz = sizeof(stack_t);
   unsigned struct_itimerval_sz = sizeof(struct itimerval);
   unsigned pthread_t_sz = sizeof(pthread_t);
   unsigned pthread_mutex_t_sz = sizeof(pthread_mutex_t);
@@ -201,7 +202,8 @@ CHECK_SIZE_AND_OFFSET(dl_phdr_info, dlpi_name);
 CHECK_SIZE_AND_OFFSET(dl_phdr_info, dlpi_phdr);
 CHECK_SIZE_AND_OFFSET(dl_phdr_info, dlpi_phnum);
 
-CHECK_TYPE_SIZE(glob_t);
+// There are additional fields we are not interested in.
+COMPILER_CHECK(sizeof(__sanitizer_glob_t) <= sizeof(glob_t));
 CHECK_SIZE_AND_OFFSET(glob_t, gl_pathc);
 CHECK_SIZE_AND_OFFSET(glob_t, gl_pathv);
 CHECK_SIZE_AND_OFFSET(glob_t, gl_offs);

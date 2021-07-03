@@ -1,14 +1,14 @@
 #include <errno.h>
 #include "pthread_impl.h"
 
-#if __EMSCRIPTEN_PTHREADS__
+#ifdef __EMSCRIPTEN_PTHREADS__
 // for pthreads, use the proper location on the thread info, so each
 // thread has its own errno
 int *__errno_location(void)
 {
 	return &__pthread_self()->errno_val;
 }
-#else
+#else // !defined(__EMSCRIPTEN_PTHREADS__)
 // for single-threaded mode, avoid linking in pthreads support code
 // just for this
 static int __errno_storage = 0;

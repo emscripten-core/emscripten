@@ -9,19 +9,22 @@ import shutil
 import time
 import re
 import tempfile
+from pathlib import Path
 from subprocess import PIPE, STDOUT
 
-from runner import RunnerCore, path_from_root, env_modify, test_file
-from runner import create_file, ensure_dir, make_executable, with_env_modify
+from common import RunnerCore, path_from_root, env_modify, test_file
+from common import create_file, ensure_dir, make_executable, with_env_modify
+from common import parameterized, EMBUILDER
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
 from tools.shared import CANONICAL_TEMP_DIR
 from tools.shared import try_delete, config
 from tools.shared import EXPECTED_LLVM_VERSION, Cache
 from tools import shared, system_libs, utils
+from tools import response_file
 
 SANITY_FILE = shared.Cache.get_path('sanity.txt')
-commands = [[EMCC], [path_from_root('tests', 'runner'), 'blahblah']]
+commands = [[EMCC], [path_from_root('tests/runner'), 'blahblah']]
 
 
 def restore():
@@ -91,8 +94,6 @@ def make_fake_llc(filename, targets):
 
 
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
-
-EMBUILDER = path_from_root('embuilder.py')
 
 # arguments to build a minimal hello world program, without even libc
 # (-O1 avoids -O0's default assertions which bring in checking code;
@@ -204,7 +205,7 @@ class sanity(RunnerCore):
       self.assertContained('Please edit the file if any of those are incorrect', output)
       self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
       self.assertTrue(output.strip().endswith('============='))
-      template_file = open(path_from_root('tools', 'settings_template.py')).read()
+      template_file = Path(path_from_root('tools/settings_template.py')).read_text()
       self.assertNotContained('{{{', config_data)
       self.assertNotContained('}}}', config_data)
       self.assertContained('{{{', template_file)
@@ -488,6 +489,40 @@ fi
     self.assertExists(os.path.join(cache_dir_name, libname))
     # Exactly one child process should have triggered libc build!
     self.assertEqual(num_times_libc_was_built, 1)
+
+  @parameterized({
+    '': [False, False],
+    'response_files': [True, False],
+    'relative': [False, True]
+  })
+  def test_emcc_cache_flag(self, use_response_files, relative):
+    restore_and_set_up()
+
+    if relative:
+      cache_dir_name = 'emscripten_cache'
+    else:
+      cache_dir_name = self.in_dir('emscripten_cache')
+    self.assertFalse(os.path.exists(cache_dir_name))
+    create_file('test.c', r'''
+      #include <stdio.h>
+      int main() {
+        printf("hello, world!\n");
+        return 0;
+      }
+      ''')
+    args = ['--cache', cache_dir_name]
+    if use_response_files:
+      rsp = response_file.create_response_file(args, shared.TEMP_DIR)
+      args = ['@' + rsp]
+
+    self.run_process([EMCC, 'test.c'] + args, stderr=PIPE)
+    if use_response_files:
+      os.remove(rsp)
+
+    # The cache directory must exist after the build
+    self.assertTrue(os.path.exists(cache_dir_name))
+    # The cache directory must contain a sysroot
+    self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'sysroot')))
 
   def test_emconfig(self):
     restore_and_set_up()

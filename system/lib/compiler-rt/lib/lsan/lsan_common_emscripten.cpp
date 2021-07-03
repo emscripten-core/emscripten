@@ -102,7 +102,8 @@ void HandleLeaks() {
   if (common_flags()->exitcode) Die();
 }
 
-void LockStuffAndStopTheWorld(StopTheWorldCallback callback, void *argument) {
+void LockStuffAndStopTheWorld(StopTheWorldCallback callback,
+                              CheckForLeaksParam *argument) {
   // Currently, on Emscripten this does nothing and just calls the callback.
   // This works fine on a single-threaded environment.
   LockThreadRegistry();
@@ -121,11 +122,12 @@ u32 GetCurrentThread();
 // Finally, we can only obtain the stack pointer for the current thread,
 // so we scan the full stack for other threads.
 static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
+  tid_t os_id = tctx->os_id;
+  LOG_THREADS("Processing thread %d\n", os_id);
   if (tctx->status != ThreadStatusRunning)
     return;
 
   Frontier *frontier = reinterpret_cast<Frontier *>(arg);
-  tid_t os_id = tctx->os_id;
 
   uptr stack_begin, stack_end, tls_begin, tls_end, cache_begin, cache_end;
   DTLS *dtls;
@@ -144,11 +146,28 @@ static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
     // we can for the current thread.
     if (tctx->tid == GetCurrentThread()) {
       uptr sp = (uptr) __builtin_frame_address(0);
-      CHECK(stack_begin <= sp && sp < stack_end);
-      stack_begin = sp;
+      if (sp < stack_begin || sp >= stack_end) {
+        // SP is outside the recorded stack range (e.g. the thread is running a
+        // signal handler on alternate stack, or swapcontext was used).
+        // Again, consider the entire stack range to be reachable.
+        LOG_THREADS("WARNING: stack pointer not in stack range.\n");
+        uptr page_size = GetPageSizeCached();
+        int skipped = 0;
+        while (stack_begin < stack_end &&
+               !IsAccessibleMemoryRange(stack_begin, 1)) {
+          skipped++;
+          stack_begin += page_size;
+        }
+        LOG_THREADS("Skipped %d guard page(s) to obtain stack %p-%p.\n",
+                    skipped, stack_begin, stack_end);
+      } else {
+        // Shrink the stack range to ignore out-of-scope values.
+        stack_begin = sp;
+      }
     }
 
     ScanRangeForPointers(stack_begin, stack_end, frontier, "STACK", kReachable);
+    //ForEachExtraStackRange(os_id, ForEachExtraStackRangeCb, frontier);
   }
 
   if (flags()->use_tls && tls_begin) {
@@ -176,11 +195,4 @@ void ProcessThreads(SuspendedThreadsList const &suspended_threads,
 
 } // namespace __lsan
 
-extern "C" void __lsan_disable_in_this_thread() {
-  __lsan::DisableInThisThread();
-}
-
-extern "C" void __lsan_enable_in_this_thread() {
-  __lsan::EnableInThisThread();
-}
 #endif // CAN_SANITIZE_LEAKS && SANITIZER_EMSCRIPTEN

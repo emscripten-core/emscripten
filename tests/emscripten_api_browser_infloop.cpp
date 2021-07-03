@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <emscripten.h>
 
@@ -19,8 +20,8 @@ struct Class {
     printf("waka %d\n", x++);
 
     if (x == 7 || x < 0) {
-      REPORT_RESULT(x);
       emscripten_cancel_main_loop();
+      exit(x);
     }
   }
 

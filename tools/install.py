@@ -17,7 +17,7 @@ import shutil
 import subprocess
 import sys
 
-EXCLUDES = '''
+EXCLUDES = [os.path.normpath(x) for x in '''
 tests/third_party
 site
 node_modules
@@ -25,7 +25,7 @@ Makefile
 .git
 cache
 cache.lock
-'''.split()
+'''.split()]
 
 EXCLUDE_PATTERNS = '''
 *.pyc

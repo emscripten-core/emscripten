@@ -25,11 +25,6 @@
 
 // libc
 
-void _Exit(int status) {
-  __wasi_proc_exit(status);
-  __builtin_unreachable();
-}
-
 void abort() {
   _Exit(1);
 }

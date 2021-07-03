@@ -11,6 +11,9 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
+// Special placeholder for `import.meta`.
+var EMSCRIPTEN$IMPORT$META;
+
 // Closure externs used by library_sockfs.js
 
 /**
@@ -295,3 +298,8 @@ var sampleRate;
  */
 var GPUValidationError;
 var GPUOutOfMemoryError;
+
+/*
+ * Avoid closure minifying anything to "id". See #13965
+ */
+var id;

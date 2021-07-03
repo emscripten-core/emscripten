@@ -6,6 +6,7 @@
 import os
 import shutil
 import logging
+from pathlib import Path
 
 TAG = '1.26.2'
 HASH = 'aa63fcb08b243a1e09f7701b3d84a19d7412a87253d54d49f014fdb9e75bbc81d152a41ed750fccde901453929b2a001585a7645351b41845ad205c17a73dcc9'
@@ -30,8 +31,8 @@ def get(ports, settings, shared):
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
-    open(os.path.join(sauce_path, 'config.h'), 'w').write(config_h)
-    open(os.path.join(libmpg123_path, 'mpg123.h'), 'w').write(mpg123_h)
+    Path(sauce_path, 'config.h').write_text(config_h)
+    Path(libmpg123_path, 'mpg123.h').write_text(mpg123_h)
 
     flags = [
       '-DOPT_GENERIC',

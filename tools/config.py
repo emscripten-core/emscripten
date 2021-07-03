@@ -6,6 +6,8 @@
 import os
 import sys
 import logging
+
+from . import utils
 from .utils import path_from_root, exit_with_error, __rootpath__, which
 
 logger = logging.getLogger('shared')
@@ -106,7 +108,7 @@ def parse_config_file():
   Also check EM_<KEY> environment variables to override specific config keys.
   """
   config = {}
-  config_text = open(EM_CONFIG, 'r').read()
+  config_text = utils.read_file(EM_CONFIG)
   try:
     exec(config_text, config)
   except Exception as e:
@@ -171,8 +173,9 @@ def parse_config_file():
 def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
-  config_data = open(path_from_root('tools', 'settings_template.py')).read().splitlines()
-  config_data = config_data[3:] # remove the initial comment
+
+  config_data = utils.read_file(path_from_root('tools', 'settings_template.py'))
+  config_data = config_data.splitlines()[3:] # remove the initial comment
   config_data = '\n'.join(config_data)
   # autodetect some default paths
   config_data = config_data.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
@@ -184,8 +187,8 @@ def generate_config(path, first_time=False):
 
   abspath = os.path.abspath(os.path.expanduser(path))
   # write
-  with open(abspath, 'w') as f:
-    f.write(config_data)
+
+  utils.write_file(abspath, config_data)
 
   if first_time:
     print('''
@@ -224,7 +227,7 @@ This command will now exit. When you are done editing those paths, re-run it.
 
 embedded_config = path_from_root('.emscripten')
 # For compatibility with `emsdk --embedded` mode also look two levels up.  The
-# layout of the emsdk puts emcc two levels below emsdk.  For exmaple:
+# layout of the emsdk puts emcc two levels below emsdk.  For example:
 #  - emsdk/upstream/emscripten/emcc
 #  - emsdk/emscipten/1.38.31/emcc
 # However `emsdk --embedded` stores the config file in the emsdk root.

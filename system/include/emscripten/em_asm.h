@@ -6,6 +6,35 @@
  */
 
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+// You can use these functions by passing format string to arg_sigs.
+// Note that `code` requires you to provide a const C string known at compile time,
+// otherwise the "unable to find data for ASM/EM_JS const" error will be thrown.
+// https://github.com/WebAssembly/binaryen/blob/51c8f2469f8fd05197b7694c65041b1567f2c6b5/src/wasm/wasm-emscripten.cpp#L183
+
+// C++ needs the nothrow attribute so -O0 doesn't lower these calls as invokes.
+__attribute__((nothrow))
+int emscripten_asm_const_int(const char* code, const char* arg_sigs, ...);
+__attribute__((nothrow))
+double emscripten_asm_const_double(const char* code, const char* arg_sigs, ...);
+
+__attribute__((nothrow))
+int emscripten_asm_const_int_sync_on_main_thread(
+  const char* code, const char* arg_sigs, ...);
+__attribute__((nothrow))
+double emscripten_asm_const_double_sync_on_main_thread(
+  const char* code, const char* arg_sigs, ...);
+
+__attribute__((nothrow))
+void emscripten_asm_const_async_on_main_thread(
+  const char* code, const char* arg_sigs, ...);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 // EM_ASM does not work strict C mode.
 #if !defined(__cplusplus) && defined(__STRICT_ANSI__)
@@ -146,29 +175,6 @@ const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __e
 // because the header should be able to compile with clang's -std=c++03.
 #define _EM_ASM_PREP_ARGS(...) \
     , __em_asm_sig_builder<__typeof__(__em_asm_make_type_tuple(__VA_ARGS__))>::buffer, ##__VA_ARGS__
-
-extern "C" {
-#endif // __cplusplus
-
-// C++ needs the nothrow attribute so -O0 doesn't lower these calls as invokes.
-__attribute__((nothrow))
-int emscripten_asm_const_int(const char* code, const char* arg_sigs, ...);
-__attribute__((nothrow))
-double emscripten_asm_const_double(const char* code, const char* arg_sigs, ...);
-
-__attribute__((nothrow))
-int emscripten_asm_const_int_sync_on_main_thread(
-  const char* code, const char* arg_sigs, ...);
-__attribute__((nothrow))
-double emscripten_asm_const_double_sync_on_main_thread(
-  const char* code, const char* arg_sigs, ...);
-
-__attribute__((nothrow))
-void emscripten_asm_const_async_on_main_thread(
-  const char* code, const char* arg_sigs, ...);
-
-#ifdef __cplusplus
-}
 #endif // __cplusplus
 
 // Note: If the code block in the EM_ASM() family of functions below contains a comma,

@@ -39,12 +39,8 @@ function genArgSequence(n) {
   return args;
 }
 
-var Functions = {
-  // All functions that will be implemented in this file. Maps id to signature
-  implementedFunctions: {},
-  // functions added from the library. value 2 means asmLibraryFunction
-  libraryFunctions: {},
-};
+// List of functions that were added from the library.
+var libraryFunctions = [];
 
 var LibraryManager = {
   library: null,
@@ -74,7 +70,7 @@ var LibraryManager = {
       'library_dylink.js'
     ];
 
-    if (!EXCEPTION_HANDLING) {
+    if (LINK_AS_CXX && !EXCEPTION_HANDLING) {
       if (DISABLE_EXCEPTION_THROWING) {
         libraries.push('library_exceptions_stub.js');
       } else {
@@ -90,6 +86,7 @@ var LibraryManager = {
       libraries.push('library_strings.js');
     } else {
       libraries.push('library_browser.js');
+      libraries.push('library_wget.js');
     }
 
     if (USE_PTHREADS) { // TODO: Currently WebGL proxying makes pthreads library depend on WebGL.
@@ -290,26 +287,6 @@ var LibraryManager = {
 
     this.loaded = true;
   },
-
-  // Given an ident, see if it is an alias for something, and so forth, returning
-  // the earliest ancestor (the root)
-  getRootIdent: function(ident) {
-    if (!this.library) return null;
-    var ret = LibraryManager.library[ident];
-    if (!ret) return null;
-    var last = ident;
-    while (typeof ret === 'string') {
-      last = ret;
-      ret = LibraryManager.library[ret];
-    }
-    return last;
-  },
-
-  isStubFunction: function(ident) {
-    var libCall = LibraryManager.library[ident.substr(1)];
-    return typeof libCall === 'function' && libCall.toString().replace(/\s/g, '') === 'function(){}'
-                                         && !(ident in Functions.implementedFunctions);
-  }
 };
 
 if (!BOOTSTRAPPING_STRUCT_INFO) {
@@ -440,6 +417,7 @@ function exportRuntime() {
     'setTempRet0',
     'callMain',
     'abort',
+    'keepRuntimeAlive',
   ];
 
   if (USE_OFFSET_CONVERTER) {
@@ -529,35 +507,3 @@ function exportRuntime() {
   exports = exports.filter(function(name) { return name != '' });
   return exports.join('\n');
 }
-
-var PassManager = {
-  serialize: function() {
-    print('\n//FORWARDED_DATA:' + JSON.stringify({
-      Functions: Functions,
-      EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
-      ATINITS: ATINITS.join('\n'),
-      ATMAINS: ATMAINS.join('\n'),
-      ATEXITS: ATEXITS.join('\n'),
-    }));
-  },
-  load: function(json) {
-    var data = JSON.parse(json);
-    for (var i in data.Types) {
-      Types[i] = data.Types[i];
-    }
-    for (var i in data.Variables) {
-      Variables[i] = data.Variables[i];
-    }
-    for (var i in data.Functions) {
-      Functions[i] = data.Functions[i];
-    }
-    EXPORTED_FUNCTIONS = data.EXPORTED_FUNCTIONS;
-    /*
-    print('\n//LOADED_DATA:' + JSON.stringify({
-      Types: Types,
-      Variables: Variables,
-      Functions: Functions
-    }));
-    */
-  }
-};

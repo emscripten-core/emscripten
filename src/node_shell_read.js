@@ -25,3 +25,19 @@ readBinary = function readBinary(filename) {
   assert(ret.buffer);
   return ret;
 };
+
+readAsync = function readAsync(filename, onload, onerror) {
+#if SUPPORT_BASE64_EMBEDDING
+  var ret = tryParseAsDataURI(filename);
+  if (ret) {
+    onload(ret);
+  }
+#endif
+  if (!nodeFS) nodeFS = require('fs');
+  if (!nodePath) nodePath = require('path');
+  filename = nodePath['normalize'](filename);
+  nodeFS['readFile'](filename, function(err, data) {
+    if (err) onerror(err);
+    else onload(data.buffer);
+  });
+};

@@ -1,8 +1,8 @@
+// XXX Emscripten in sync with musl/arch/i386/bits/stat.h expect for the _REDIR_TIME64 change.
+
 /* copied from kernel definition, but with padding replaced
  * by the corresponding correctly-sized userspace types. */
-
-struct stat
-{
+struct stat {
 	dev_t st_dev;
 	int __st_dev_padding;
 	long __st_ino_truncated;
@@ -15,8 +15,14 @@ struct stat
 	off_t st_size;
 	blksize_t st_blksize;
 	blkcnt_t st_blocks;
+#if _REDIR_TIME64 // XXX Emscripten no need to activate the symbol redirections for 64-bit time_t.
+	struct {
+		long tv_sec;
+		long tv_nsec;
+	} __st_atim32, __st_mtim32, __st_ctim32;
+#endif
+	ino_t st_ino;
 	struct timespec st_atim;
 	struct timespec st_mtim;
 	struct timespec st_ctim;
-	ino_t st_ino;
 };

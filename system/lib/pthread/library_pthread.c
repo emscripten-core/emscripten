@@ -17,6 +17,7 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
@@ -26,6 +27,7 @@
 #include <sys/statvfs.h>
 #include <sys/time.h>
 #include <termios.h>
+#include <threads.h>
 #include <unistd.h>
 #include <utime.h>
 
@@ -43,27 +45,14 @@ char* gets(char*);
 // Extra pthread_attr_t field:
 #define _a_transferredcanvases __u.__s[9]
 
-void __pthread_testcancel();
-
 int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t* a, const char** str) {
   *str = (const char*)a->_a_transferredcanvases;
   return 0;
 }
 
 int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t* a, const char* str) {
-  a->_a_transferredcanvases = (int)str;
+  a->_a_transferredcanvases = (unsigned long)str;
   return 0;
-}
-
-int _pthread_getcanceltype() { return pthread_self()->cancelasync; }
-
-static void inline __pthread_mutex_locked(pthread_mutex_t* mutex) {
-  // The lock is now ours, mark this thread as the owner of this lock.
-  assert(mutex);
-  assert(mutex->_m_lock == 0);
-  mutex->_m_lock = pthread_self()->tid;
-  if (_pthread_getcanceltype() == PTHREAD_CANCEL_ASYNCHRONOUS)
-    __pthread_testcancel();
 }
 
 int sched_get_priority_max(int policy) {
@@ -99,27 +88,16 @@ int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr, int prioceiling)
   return EPERM;
 }
 
-int pthread_setcancelstate(int new, int* old) {
-  if (new > 1U)
-    return EINVAL;
-  struct pthread* self = pthread_self();
-  if (old)
-    *old = self->canceldisable;
-  self->canceldisable = new;
-  return 0;
+void __block_app_sigs(void *set)
+{
+  // no-op
+  (void)set;
 }
 
-int _pthread_isduecanceled(struct pthread* pthread_ptr) {
-  return pthread_ptr->cancel != 0;
-}
-
-void __pthread_testcancel() {
-  struct pthread* self = pthread_self();
-  if (self->canceldisable)
-    return;
-  if (_pthread_isduecanceled(self)) {
-    EM_ASM(throw 'Canceled!');
-  }
+void __restore_sigs(void *set)
+{
+  // no-op
+  (void)set;
 }
 
 static uint32_t dummyZeroAddress = 0;
@@ -128,33 +106,29 @@ void emscripten_thread_sleep(double msecs) {
   double now = emscripten_get_now();
   double target = now + msecs;
 
-  __pthread_testcancel(); // pthreads spec: sleep is a cancellation point, so must test if this
-                          // thread is cancelled during the sleep.
-  emscripten_current_thread_process_queued_calls();
-
   // If we have less than this many msecs left to wait, busy spin that instead.
-  const double minimumTimeSliceToSleep = 0.1;
+  const double minTimeSliceToSleep = 0.1;
 
-  // main thread may need to run proxied calls, so sleep in very small slices to be responsive.
+  // Main browser thread may need to run proxied calls, so sleep in very small slices to be responsive.
   const double maxMsecsSliceToSleep = emscripten_is_main_browser_thread() ? 1 : 100;
 
   emscripten_conditional_set_current_thread_status(
     EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_SLEEPING);
-  now = emscripten_get_now();
-  while (now < target) {
+
+  double msecsToSleep;
+  do {
     // Keep processing the main loop of the calling thread.
     __pthread_testcancel(); // pthreads spec: sleep is a cancellation point, so must test if this
                             // thread is cancelled during the sleep.
     emscripten_current_thread_process_queued_calls();
 
-    now = emscripten_get_now();
-    double msecsToSleep = target - now;
-    if (msecsToSleep > maxMsecsSliceToSleep)
-      msecsToSleep = maxMsecsSliceToSleep;
-    if (msecsToSleep >= minimumTimeSliceToSleep)
-      emscripten_futex_wait(&dummyZeroAddress, 0, msecsToSleep);
-    now = emscripten_get_now();
-  };
+    msecsToSleep = target - emscripten_get_now();
+    if (msecsToSleep < minTimeSliceToSleep)
+      continue;
+
+    emscripten_futex_wait(&dummyZeroAddress, 0,
+      msecsToSleep > maxMsecsSliceToSleep ? maxMsecsSliceToSleep : msecsToSleep);
+  } while (msecsToSleep > 0);
 
   emscripten_conditional_set_current_thread_status(
     EM_THREAD_STATUS_SLEEPING, EM_THREAD_STATUS_RUNNING);
@@ -187,10 +161,9 @@ extern double emscripten_receive_on_main_thread_js(int functionIndex, int numCal
 extern int _emscripten_notify_thread_queue(pthread_t targetThreadId, pthread_t mainThreadId);
 
 #if defined(__has_feature)
-#if __has_feature(address_sanitizer)
-#define HAS_ASAN
-void __lsan_disable_in_this_thread(void);
-void __lsan_enable_in_this_thread(void);
+#if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
+#define HAS_SANITIZER
+#include <sanitizer/lsan_interface.h>
 int emscripten_builtin_pthread_create(void *thread, void *attr,
                                       void *(*callback)(void *), void *arg);
 #endif
@@ -201,17 +174,17 @@ static void _do_call(em_queued_call* q) {
   assert(EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum) <= EM_QUEUED_CALL_MAX_ARGS);
   switch (q->functionEnum) {
     case EM_PROXIED_PTHREAD_CREATE:
-#ifdef HAS_ASAN
+#ifdef HAS_SANITIZER
       // ASan wraps the emscripten_builtin_pthread_create call in __lsan::ScopedInterceptorDisabler.
       // Unfortunately, that only disables it on the thread that made the call.
       // This is sufficient on the main thread.
       // On non-main threads, pthread_create gets proxied to the main thread, where LSan is not
       // disabled. This makes it necessary for us to disable LSan here, so that it does not detect
       // pthread's internal allocations as leaks.
-      __lsan_disable_in_this_thread();
+      __lsan_disable();
       q->returnValue.i =
         emscripten_builtin_pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
-      __lsan_enable_in_this_thread();
+      __lsan_enable();
 #else
       q->returnValue.i =
         pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
@@ -406,25 +379,24 @@ static CallQueue* GetOrAllocateQueue(void* target) {
   return q;
 }
 
+// TODO(kleisauke): All paths call this with timeoutMSecs == INFINITY, perhaps drop this param?
 EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeoutMSecs) {
-  int r;
-
   int done = atomic_load(&call->operationDone);
-  if (!done) {
-    double now = emscripten_get_now();
-    double waitEndTime = now + timeoutMSecs;
-    emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
-    while (!done && now < waitEndTime) {
-      r = emscripten_futex_wait(&call->operationDone, 0, waitEndTime - now);
-      done = atomic_load(&call->operationDone);
-      now = emscripten_get_now();
-    }
-    emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
-  }
-  if (done)
-    return EMSCRIPTEN_RESULT_SUCCESS;
-  else
-    return EMSCRIPTEN_RESULT_TIMED_OUT;
+  if (done) return EMSCRIPTEN_RESULT_SUCCESS;
+
+  emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
+
+  double timeoutUntilTime = emscripten_get_now() + timeoutMSecs;
+  do {
+    emscripten_futex_wait(&call->operationDone, 0, timeoutMSecs);
+    done = atomic_load(&call->operationDone);
+
+    timeoutMSecs = timeoutUntilTime - emscripten_get_now();
+  } while (!done && timeoutMSecs > 0);
+
+  emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
+
+  return done ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_TIMED_OUT;
 }
 
 EMSCRIPTEN_RESULT emscripten_wait_for_call_i(
@@ -485,7 +457,7 @@ int _emscripten_do_dispatch_to_thread(pthread_t target_thread, em_queued_call* c
     // If queue of the main browser thread is full, then we wait. (never drop messages for the main
     // browser thread)
     if (target_thread == emscripten_main_browser_thread_id()) {
-      emscripten_futex_wait((void*)&q->call_queue_head, head, INFINITY);
+      emscripten_futex_wait((void *)&q->call_queue_head, head, INFINITY);
       pthread_mutex_lock(&call_queue_lock);
       head = q->call_queue_head;
       tail = q->call_queue_tail;
@@ -647,33 +619,27 @@ void* emscripten_sync_run_in_main_thread_7(int function, void* arg1,
 
 void emscripten_current_thread_process_queued_calls() {
   // #if PTHREADS_DEBUG == 2
-  //	EM_ASM(console.error('thread ' + _pthread_self() + ':
+  //  EM_ASM(console.error('thread ' + _pthread_self() + ':
   //emscripten_current_thread_process_queued_calls(), ' + new Error().stack));
   // #endif
 
-  // TODO: Under certain conditions we may want to have a nesting guard also for pthreads (and it
-  // will certainly be cleaner that way), but we don't yet have TLS variables outside
-  // pthread_set/getspecific, so convert this to TLS after TLS is implemented.
-  static int bool_main_thread_inside_nested_process_queued_calls = 0;
+  static thread_local bool thread_is_processing_queued_calls = false;
 
-  if (emscripten_is_main_browser_thread()) {
-    // It is possible that when processing a queued call, the call flow leads back to calling this
-    // function in a nested fashion! Therefore this scenario must explicitly be detected, and
-    // processing the queue must be avoided if we are nesting, or otherwise the same queued calls
-    // would be processed again and again.
-    if (bool_main_thread_inside_nested_process_queued_calls)
-      return;
-    // This must be before pthread_mutex_lock(), since pthread_mutex_lock() can call back to this
-    // function.
-    bool_main_thread_inside_nested_process_queued_calls = 1;
-  }
+  // It is possible that when processing a queued call, the control flow leads back to calling this
+  // function in a nested fashion! Therefore this scenario must explicitly be detected, and
+  // processing the queue must be avoided if we are nesting, or otherwise the same queued calls
+  // would be processed again and again.
+  if (thread_is_processing_queued_calls)
+    return;
+  // This must be before pthread_mutex_lock(), since pthread_mutex_lock() can call back to this
+  // function.
+  thread_is_processing_queued_calls = true;
 
   pthread_mutex_lock(&call_queue_lock);
   CallQueue* q = GetQueue(pthread_self());
   if (!q) {
     pthread_mutex_unlock(&call_queue_lock);
-    if (emscripten_is_main_browser_thread())
-      bool_main_thread_inside_nested_process_queued_calls = 0;
+    thread_is_processing_queued_calls = false;
     return;
   }
 
@@ -693,10 +659,9 @@ void emscripten_current_thread_process_queued_calls() {
   pthread_mutex_unlock(&call_queue_lock);
 
   // If the queue was full and we had waiters pending to get to put data to queue, wake them up.
-  emscripten_futex_wake((void*)&q->call_queue_head, 0x7FFFFFFF);
+  emscripten_futex_wake((void *)&q->call_queue_head, INT_MAX);
 
-  if (emscripten_is_main_browser_thread())
-    bool_main_thread_inside_nested_process_queued_calls = 0;
+  thread_is_processing_queued_calls = false;
 }
 
 // At times when we disallow the main thread to process queued calls, this will
@@ -942,4 +907,34 @@ int emscripten_proxy_main(int argc, char** argv) {
   return rc;
 }
 
-weak_alias(__pthread_testcancel, pthread_testcancel);
+// See musl's pthread_create.c
+void __run_cleanup_handlers(void* _unused) {
+  pthread_t self = __pthread_self();
+  while (self->cancelbuf) {
+    void (*f)(void *) = self->cancelbuf->__f;
+    void *x = self->cancelbuf->__x;
+    self->cancelbuf = self->cancelbuf->__next;
+    f(x);
+  }
+}
+
+extern int __cxa_thread_atexit(void (*)(void *), void *, void *);
+
+extern int8_t __dso_handle;
+
+// Copied from musl's pthread_create.c
+void __do_cleanup_push(struct __ptcb *cb) {
+  struct pthread *self = __pthread_self();
+  cb->__next = self->cancelbuf;
+  self->cancelbuf = cb;
+  static thread_local bool registered = false;
+  if (!registered) {
+    __cxa_thread_atexit(__run_cleanup_handlers, NULL, &__dso_handle);
+    registered = true;
+  }
+}
+
+// Copied from musl's pthread_create.c
+void __do_cleanup_pop(struct __ptcb *cb) {
+  __pthread_self()->cancelbuf = cb->__next;
+}
