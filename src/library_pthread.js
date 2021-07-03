@@ -261,7 +261,18 @@ var LibraryPThread = {
       }
       PThread.runningWorkers = [];
     },
+#if USE_ASAN || USE_LSAN
+    freeThreadData__deps: ['$withBuiltinMalloc'],
+#endif
     freeThreadData: function(pthread) {
+#if USE_ASAN || USE_LSAN
+      // When sanitizers are enabled, free is normally instrumented to call
+      // sanitizer code that checks some things about pthreads. We are not
+      // ready for such calls, as this can be called after the sanitizers
+      // are finalized. Instead, call free directly.
+      withBuiltinMalloc(function () {
+#endif
+
       if (!pthread) return;
       if (pthread.threadInfoStruct) {
         // Free thread-specific data
@@ -282,6 +293,10 @@ var LibraryPThread = {
       if (pthread.allocatedOwnStack && pthread.stackBase) _free(pthread.stackBase);
       pthread.stackBase = 0;
       if (pthread.worker) pthread.worker.pthread = null;
+
+#if USE_ASAN || USE_LSAN
+      });
+#endif
     },
     returnWorkerToPool: function(worker, terminate) {
       // We don't want to run main thread queued calls here, since we are doing
