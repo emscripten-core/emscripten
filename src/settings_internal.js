@@ -118,6 +118,9 @@ var EMIT_SYMBOL_MAP = 0;
 // List of function explicitly exported by user on the command line.
 var USER_EXPORTED_FUNCTIONS = [];
 
+// List of all exported functions coming from LLVM backend.
+var LLVM_EXPORTS = [];
+
 // name of the file containing wasm binary, if relevant
 var WASM_BINARY_FILE = '';
 

@@ -1259,8 +1259,14 @@ function _asmjsDemangle(symbol) {
   return symbol.substr(1);
 }
 
+// Returns true if the given function is exported out in the generated JS Module object.
 function hasExportedFunction(func) {
   return Object.keys(WASM_EXPORTS).includes(_asmjsDemangle(func));
+}
+
+// Returns true if LLVM produced the given function into compiled code as a Wasm export.
+function hasLLVMExportedFunction(func) {
+  return LLVM_EXPORTS.indexOf(func) != -1;
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,

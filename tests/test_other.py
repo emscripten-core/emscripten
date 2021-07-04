@@ -10271,6 +10271,14 @@ exec "$@"
     err = self.run_process([EMCC, test_file('test_old_dyncall_format.c'), '--js-library', test_file('library_test_old_dyncall_format.js')], stderr=PIPE).stderr
     self.assertContained('syntax for makeDynCall has changed', err)
 
+  # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used
+  @parameterized({
+    'plain': [[]],
+    'asyncify': [['-sASYNCIFY']],
+    'asyncify_bigint': [['-sASYNCIFY', '-sWASM_BIGINT']]})
+  def test_closure_no_dynCalls_generated(self, args):
+    self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'] + args)
+
   def test_post_link(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '--oformat=bare', '-o', 'bare.wasm'], stderr=PIPE).stderr
     self.assertContained('--oformat=base/--post-link are experimental and subject to change', err)
