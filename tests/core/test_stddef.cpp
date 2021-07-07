@@ -26,7 +26,8 @@ void abort(void);
 
 int main() {
   // max_align_t on wasm backend is 16 due to sizeof(long double) being 16.
-  if (_Alignof(max_align_t) != 16)
+  // TODO: change this to just 8 after the new ABI rolls in.
+  if (_Alignof(max_align_t) != 16 && _Alignof(max_align_t) != 8)
     abort();
   puts("success");
   return 0;
