@@ -33,6 +33,7 @@ See docs/process.md for more on how version tagging works.
   `emscripten_dlopen()` declared in `emscropten/emscripten.h`.  See
   `docs/api_reference/emscripten.h.rst` (or the online version) for more
   details.
+- Update SDL2 to `6a72595649456d1aaa8d15e152c830aab1c4c422`.
 
 2.0.25 - 06/30/2021
 -------------------
