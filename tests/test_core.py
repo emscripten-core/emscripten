@@ -119,16 +119,6 @@ def no_wasm2js(note=''):
   return decorated
 
 
-# Async wasm compilation can't work in some tests, they are set up synchronously
-def sync(f):
-  assert callable(f)
-
-  def decorated(self, *args, **kwargs):
-    self.set_setting('WASM_ASYNC_COMPILATION', 0) # test is set up synchronously
-    f(self, *args, **kwargs)
-  return decorated
-
-
 def also_with_noderawfs(func):
   def decorated(self):
     orig_args = self.emcc_args.copy()
@@ -320,9 +310,9 @@ class TestCoreBase(RunnerCore):
     # must not emit this unneeded internal thing
     self.assertNotContained('EMSCRIPTEN_GENERATED_FUNCTIONS', read_file('test_hello_world.js'))
 
-  @sync
   def test_wasm_synchronous_compilation(self):
     self.set_setting('STRICT_JS')
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.do_core_test('test_hello_world.c')
 
   @also_with_standalone_wasm()
@@ -6297,10 +6287,10 @@ void* operator new(size_t size) {
 
   ### Integration tests
 
-  @sync
   def test_ccall(self):
     self.emcc_args.append('-Wno-return-stack-address')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
     create_file('post.js', '''
       out('*');
       var ret;
@@ -6511,9 +6501,9 @@ void* operator new(size_t size) {
     self.do_run(src, 'waka 4999!')
     self.assertContained('_exported_func_from_response_file_1', read_file('src.js'))
 
-  @sync
   def test_add_function(self):
     self.set_setting('INVOKE_RUN', 0)
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('RESERVED_FUNCTION_POINTERS')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
     src = test_file('interop/test_add_function.cpp')
@@ -6958,9 +6948,9 @@ someweirdtext
     'default': ('DEFAULT', False),
     'all_growth': ('ALL', True),
   })
-  @sync
   def test_webidl(self, mode, allow_memory_growth):
     self.uses_es6 = True
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
     if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
       self.set_setting('MODULARIZE')
@@ -7766,7 +7756,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 |IDBFS is no longer included by default; build with -lidbfs.js|'''
     self.do_run('int main() { return 0; }', expected)
 
-  @sync
   def test_stack_overflow_check(self):
     self.set_setting('TOTAL_STACK', 1048576)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
