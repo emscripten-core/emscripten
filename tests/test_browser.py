@@ -4144,6 +4144,14 @@ window.close = function() {
     self.btest(test_file('pthread/test_pthread_asan_use_after_free.cpp'), expected='1', args=['-fsanitize=address', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free.js')])
 
   @requires_threads
+  def test_pthread_asan_use_after_free_2(self):
+    # similiar to test_pthread_asan_use_after_free, but using a pool instead
+    # of proxy-to-pthread, and also the allocation happens on the pthread
+    # (which tests that it can use the offset converter to get the stack
+    # trace there)
+    self.btest(test_file('pthread/test_pthread_asan_use_after_free_2.cpp'), expected='1', args=['-fsanitize=address', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=1', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free_2.js')])
+
+  @requires_threads
   def test_pthread_exit_process(self):
     args = ['-s', 'USE_PTHREADS',
             '-s', 'PROXY_TO_PTHREAD',
