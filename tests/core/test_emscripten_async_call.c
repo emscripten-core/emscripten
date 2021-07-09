@@ -14,7 +14,7 @@ void myatexit() {
 void callback(void *arg) {
   printf("callback\n");
   doneCallback = true;
-  assert((int)arg == 42);
+  assert(arg == (void *)42);
   // Runtime should exit after this callback returns
 }
 

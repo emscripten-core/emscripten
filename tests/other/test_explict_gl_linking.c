@@ -1,5 +1,5 @@
 #include <EGL/egl.h>
 
 int main() {
-    return (int)eglGetProcAddress("foo");
+    return (int)(long)eglGetProcAddress("foo");
 }

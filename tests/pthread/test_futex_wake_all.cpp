@@ -29,7 +29,7 @@ void *WakingThread(void *arg)
 void *WaitingThread(void *arg)
 {
 	// Last waiting thread creates the waking thread - this simplifies mutual synchronization needs
-	if ((int)arg == NUM_THREADS-1)
+	if ((long)arg == NUM_THREADS-1)
 	{
 		pthread_t wakingThread;
 		pthread_create(&wakingThread, 0, WakingThread, 0);

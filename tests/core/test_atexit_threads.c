@@ -13,7 +13,7 @@ extern int __cxa_thread_atexit_impl(void (*dtor)(void *), void *obj, void *dso_s
 
 static void cleanA() { printf("A\n"); }
 static void cleanB() { printf("B\n"); }
-static void cleanCarg(void* x) { printf("C %d\n", (int)x); }
+static void cleanCarg(void* x) { printf("C %ld\n", (long)x); }
 
 int main() {
   atexit(cleanA);

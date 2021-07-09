@@ -50,9 +50,9 @@ int numThreadsToCreate = 32;
 int threadCounter = 0;
 _Atomic int destructorCounter = 0;
 
-void CreateThread(int i)
+void CreateThread(long i)
 {
-	printf("CreateThread %d\n", i);
+	printf("CreateThread %ld\n", i);
 	threadCounter++;
 	int rc = pthread_create(&thread[i], NULL, ThreadMain, (void*)i);
 	if (emscripten_has_threading_support()) assert(rc == 0);
@@ -73,20 +73,20 @@ int main()
 	}
 
 	// Create initial threads.
-	for(int i = 0; i < NUM_THREADS; ++i)
+	for(long i = 0; i < NUM_THREADS; ++i)
 		CreateThread(i);
 
 	// Join all threads and create more.
 	if (emscripten_has_threading_support())
 	{
-		for(int i = 0; i < NUM_THREADS; ++i)
+		for(long i = 0; i < NUM_THREADS; ++i)
 		{
 			if (thread[i])
 			{
 				int status;
 				int rc = pthread_join(thread[i], (void**)&status);
 				assert(rc == 0);
-				printf("Main: Joined thread idx %d with status %d\n", i, status);
+				printf("Main: Joined thread idx %ld with status %d\n", i, status);
 				assert(status == 0);
 				thread[i] = 0;
 				if (numThreadsToCreate > 0)

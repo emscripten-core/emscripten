@@ -73,11 +73,11 @@ void *thread_fetch_and_xor(void *arg)
 
 // XXX NAND support does not exist in Atomics API.
 #if 0
-volatile int fetch_and_nand_data = 0;
+volatile long fetch_and_nand_data = 0;
 void *thread_fetch_and_nand(void *arg)
 {
 	for(int i = 0; i < 9999; ++i) // Odd number of times so that the operation doesn't cancel itself out.
-		__sync_fetch_and_nand((int*)&fetch_and_nand_data, (int)arg);
+		__sync_fetch_and_nand((long*)&fetch_and_nand_data, (long)arg);
 	pthread_exit(0);
 }
 #endif

@@ -226,7 +226,7 @@ unsigned long long ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_
             __m128 diverged = _mm_cmpgt_ps(len, four);
             __m128 divergedNow = _mm_and_ps(diverged, oldIterating);
             oldIterating = _mm_andnot_ps(divergedNow, oldIterating);
-            //__m128 diverged = _mm_cmpge_ps(len, _mm_set1_ps(0)); 
+            //__m128 diverged = _mm_cmpge_ps(len, _mm_set1_ps(0));
             //__m128 old = _mm_loadu_ps((float*)d+X);
 
             if (any_ps(divergedNow))
@@ -298,11 +298,11 @@ _Atomic uint32_t tasksPending[MAX_NUM_THREADS] = {};
 #ifndef SINGLETHREADED
 void *mandelbrot_thread(void *arg)
 {
-  int idx = (int)arg;
+  long idx = (long)arg;
   numThreadsRunning++;
 
   char threadName[32];
-  sprintf(threadName, "Worker %d", idx);
+  sprintf(threadName, "Worker %ld", idx);
   emscripten_set_thread_name(pthread_self(), threadName);
 
   for(;;)
@@ -321,10 +321,10 @@ void *mandelbrot_thread(void *arg)
 #endif
 #ifdef __SSE__
     if (use_sse)
-      ni = ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
+      ni = ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, (int)idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     else
 #endif
-      ni = ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
+      ni = ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, (int)idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     double t1 = emscripten_get_now();
     numIters[idx] += ni;
     timeSpentInMandelbrot[idx] += t1-t0;
@@ -432,9 +432,9 @@ void main_tick()
           break;
         case SDL_KEYUP:
           switch (event.key.keysym.sym) {
-            case SDLK_RIGHT: 
+            case SDLK_RIGHT:
             case SDLK_LEFT: hScroll = 0.f; break;
-            case SDLK_DOWN: 
+            case SDLK_DOWN:
             case SDLK_UP: vScroll = 0.f; break;
             case SDLK_a:
             case SDLK_z: zoom = 0.f; break;

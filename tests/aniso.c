@@ -222,9 +222,9 @@ int main(int argc, char *argv[])
 
     glBegin( GL_TRIANGLE_STRIP );
     void (*f)(int, int) = glVertex2i;
-    if ((int)f % 16 == 4) f(5, 7);
+    if ((long)f % 16 == 4) f(5, 7);
     void (*g)(int, int) = glVertex3f;
-    if ((int)g % 16 == 4) g(5, 7);
-    return (int)f + (int)g;
+    if ((long)g % 16 == 4) g(5, 7);
+    return (int)((long)f + (long)g);
 }
 

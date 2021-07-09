@@ -47,37 +47,37 @@ void *thread_fetch_and_sub(void *arg)
 	pthread_exit(0);
 }
 
-volatile int fetch_and_or_data = 0;
+volatile long fetch_and_or_data = 0;
 void *thread_fetch_and_or(void *arg)
 {
 	for(int i = 0; i < 10000; ++i)
-		__sync_fetch_and_or((int*)&fetch_and_or_data, (int)arg);
+		__sync_fetch_and_or(&fetch_and_or_data, (long)arg);
 	pthread_exit(0);
 }
 
-volatile int fetch_and_and_data = 0;
+volatile long fetch_and_and_data = 0;
 void *thread_fetch_and_and(void *arg)
 {
 	for(int i = 0; i < 10000; ++i)
-		__sync_fetch_and_and((int*)&fetch_and_and_data, (int)arg);
+		__sync_fetch_and_and(&fetch_and_and_data, (long)arg);
 	pthread_exit(0);
 }
 
-volatile int fetch_and_xor_data = 0;
+volatile long fetch_and_xor_data = 0;
 void *thread_fetch_and_xor(void *arg)
 {
 	for(int i = 0; i < 9999; ++i) // Odd number of times so that the operation doesn't cancel itself out.
-		__sync_fetch_and_xor((int*)&fetch_and_xor_data, (int)arg);
+		__sync_fetch_and_xor(&fetch_and_xor_data, (long)arg);
 	pthread_exit(0);
 }
 
 // XXX NAND support does not exist in Atomics API.
 #if 0
-volatile int fetch_and_nand_data = 0;
+volatile long fetch_and_nand_data = 0;
 void *thread_fetch_and_nand(void *arg)
 {
 	for(int i = 0; i < 9999; ++i) // Odd number of times so that the operation doesn't cancel itself out.
-		__sync_fetch_and_nand((int*)&fetch_and_nand_data, (int)arg);
+		__sync_fetch_and_nand(&fetch_and_nand_data, (long)arg);
 	pthread_exit(0);
 }
 #endif
