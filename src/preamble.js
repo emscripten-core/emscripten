@@ -1125,17 +1125,41 @@ function createWasm() {
         typeof fetch === 'function') {
       return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
         var result = WebAssembly.instantiateStreaming(response, info);
+
 #if USE_OFFSET_CONVERTER
-        // This doesn't actually do another request, it only copies the Response object.
-        // Copying lets us consume it independently of WebAssembly.instantiateStreaming.
-        Promise.all([response.clone().arrayBuffer(), result]).then(function (results) {
-          wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(results[0]), results[1].module);
-          {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
-        }, function(reason) {
-          err('failed to initialize offset-converter: ' + reason);
-        });
+        // We need the wasm binary for the offset converter. Clone the response
+        // in order to get its arrayBuffer (cloning should be more efficient
+        // than doing another entire request).
+        // (We must clone the response now in order to use it later, as if we
+        // try to clone it asynchronously lower down then we will get a
+        // "response was already consumed" error.)
+        var clonedResponsePromise = response.clone().arrayBuffer();
 #endif
-        return result.then(receiveInstantiationResult, function(reason) {
+
+        return result.then(
+#if !USE_OFFSET_CONVERTER
+          receiveInstantiationResult,
+#else
+          function(instantiationResult) {
+            // When using the offset converter, we must interpose here. First,
+            // the instantiation result must arrive (if it fails, the error
+            // handling later down will handle it). Once it arrives, we can
+            // initialize the offset converter. And only then is it valid to
+            // call receiveInstantiationResult, as that function will use the
+            // offset converter (in the case of pthreads, it will create the
+            // pthreads and send them the offsets along with the wasm instance).
+
+            clonedResponsePromise.then(function(arrayBufferResult) {
+              wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
+              {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
+
+              receiveInstantiationResult(instantiationResult);
+            }, function(reason) {
+              err('failed to initialize offset-converter: ' + reason);
+            });
+          },
+#endif
+          function(reason) {
             // We expect the most common failure cause to be a bad MIME type for the binary,
             // in which case falling back to ArrayBuffer instantiation should work.
             err('wasm streaming compile failed: ' + reason);
