@@ -143,6 +143,8 @@ function callMain(args) {
   if (!entryFunction) return;
 #endif
 
+  var stackTop = stackSave();
+
 #if MAIN_READS_PARAMS && STANDALONE_WASM
   mainArgs = [thisProgram].concat(args)
 #elif MAIN_READS_PARAMS
@@ -194,6 +196,10 @@ function callMain(args) {
     exit(ret, /* implicit = */ true);
   }
   catch (e) {
+    if (e == 'unwind') {
+      stackRestore(stackTop);
+    }
+
     // Certain exception types we do not treat as errors since they are used for
     // internal control flow.
     // 1. ExitStatus, which is thrown by exit()

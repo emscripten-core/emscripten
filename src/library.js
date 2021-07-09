@@ -3595,6 +3595,9 @@ LibraryManager.library = {
 #endif
       return;
     }
+
+    var stackTop = stackSave();
+
     // For synchronous calls, let any exceptions propagate, and don't let the runtime exit.
     if (synchronous) {
       func();
@@ -3609,6 +3612,8 @@ LibraryManager.library = {
         // And actual unexpected user-exectpion occured
         if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
         throw e;
+      } else {
+        stackRestore(stackTop);
       }
     }
 #if EXIT_RUNTIME || USE_PTHREADS
