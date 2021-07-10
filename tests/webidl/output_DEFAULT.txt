@@ -42,6 +42,8 @@ Child2:9
 0
 1
 *static*
+*static*
+*virtualf*
 *virtualf*
 *virtualf*
 *virtualf2*
@@ -49,10 +51,13 @@ Parent:9
 Child2:9
 *js virtualf replacement*
 *js virtualf replacement*
+*js virtualf replacement*
 *js virtualf2 replacement*
 *js virtualf3 replacement 123*
 caught: a JSImplementation must implement all functions, you forgot Child2JS::virtualFunc4.
 *js virtualf3 replacement 43*
+*js virtualf3 replacement 43*
+*virtualf*
 *virtualf*
 *virtualf*
 *virtualf2*

@@ -671,7 +671,7 @@ for name in names:
         continue
     if not constructor:
       mid_js += [r'''
-%s.prototype['%s'] = %s.prototype.%s = ''' % (name, m.identifier.name, name, m.identifier.name)]
+%s%s['%s'] = %s.prototype.%s = ''' % (name, '' if m.isStatic() else '.prototype', m.identifier.name, name, m.identifier.name)]
     sigs = {}
     return_type = None
     for ret, args in m.signatures():
@@ -718,7 +718,7 @@ for name in names:
 
     get_name = 'get_' + attr
     mid_js += [r'''
-  %s.prototype['%s'] = %s.prototype.%s = ''' % (name, get_name, name, get_name)]
+  %s%s['%s'] = %s.prototype.%s = ''' % (name, '' if m.isStatic() else '.prototype', get_name, name, get_name)]
     render_function(name,
                     get_name, get_sigs, m.type.name,
                     None,
