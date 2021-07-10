@@ -6096,6 +6096,7 @@ void* operator new(size_t size) {
                  libraries=self.get_bullet_library(use_cmake),
                  includes=[test_file('third_party/bullet/src')])
 
+  @unittest.skip('LLVM changes have caused this C++ to no longer compile, https://github.com/emscripten-core/emscripten/issues/14614')
   @no_asan('issues with freetype itself')
   @needs_make('depends on freetype')
   @is_slow_test
