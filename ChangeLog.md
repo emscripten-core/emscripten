@@ -24,6 +24,9 @@ See docs/process.md for more on how version tagging works.
   implemented in software, is reduced from 16 to 8. The lower alignment allows
   `max_align_t` to be correctly defined as 8, and avoids raising it to 16 which
   would regress performance. (#10072)
+  `max_align_t` to properly match the alignment we use for malloc, which is 8
+  (raising malloc's alignment to achieve correctness the other way would come
+  with a performance regression). (#10072)
 - The `alignMemory` function is now a library function and therefore not
   included by default.  Debug builds will automatically abort if you try
   to use this function without including it.  The normal library `__deps`
