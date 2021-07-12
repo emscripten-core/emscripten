@@ -61,7 +61,7 @@ def print_sizes(js_file):
   if not os.path.isfile(wasm_file):
     return error('Wasm file %s not found' % wasm_file)
 
-  sizes = shared.check_call([LLVM_SIZE, '-format=sysv', wasm_file],
+  sizes = shared.check_call([LLVM_SIZE, '--format=sysv', wasm_file],
                             stdout=subprocess.PIPE).stdout
   # llvm-size may emit some number of blank lines (after the total), ignore them
   lines = [line for line in sizes.splitlines() if line]
