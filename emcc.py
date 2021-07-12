@@ -2130,11 +2130,24 @@ def phase_linker_setup(options, state, newargs, settings_map):
     max_mem = settings.INITIAL_MEMORY
     if settings.ALLOW_MEMORY_GROWTH:
       max_mem = settings.MAXIMUM_MEMORY
-      if max_mem == -1:
-        exit_with_error('ASan requires a finite MAXIMUM_MEMORY')
 
     shadow_size = max_mem // 8
     settings.GLOBAL_BASE = shadow_size
+
+    sanitizer_mem = (shadow_size + webassembly.WASM_PAGE_SIZE) & ~webassembly.WASM_PAGE_SIZE
+    # sanitizers do at least 9 page allocs of a single page during startup.
+    sanitizer_mem += webassembly.WASM_PAGE_SIZE * 9
+    # we also allocate at least 11 "regions". Each region is kRegionSize (2 << 20) but
+    # MmapAlignedOrDieOnFatalError adds another 2 << 20 for alignment.
+    sanitizer_mem += (1 << 21) * 11
+    # When running in the threaded mode asan needs to allocate an array of kMaxNumberOfThreads
+    # (1 << 22) pointers.  See compiler-rt/lib/asan/asan_thread.cpp.
+    if settings.USE_PTHREADS:
+      sanitizer_mem += (1 << 22) * 4
+
+    # Increase the size of the initial memory according to how much memory
+    # we think the sanitizers will use.
+    settings.INITIAL_MEMORY += sanitizer_mem
 
     if settings.SAFE_HEAP:
       # SAFE_HEAP instruments ASan's shadow memory accesses.

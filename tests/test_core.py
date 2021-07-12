@@ -8239,6 +8239,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_cxx_threads(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.clear_setting('ALLOW_MEMORY_GROWTH')
+    self.set_setting('INITIAL_MEMORY', '64Mb')
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_cxx_threads.cpp')
 
@@ -8595,9 +8596,9 @@ wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
 lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '--profiling', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1})
-asan = make_run('asan', emcc_args=['-fsanitize=address', '--profiling', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': '500mb'})
+asan = make_run('asan', emcc_args=['-fsanitize=address', '--profiling', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1})
 asani = make_run('asani', emcc_args=['-fsanitize=address', '--profiling', '-O2', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
-                 settings={'ALLOW_MEMORY_GROWTH': 1, 'INITIAL_MEMORY': '500mb'})
+                 settings={'ALLOW_MEMORY_GROWTH': 1})
 
 # Experimental modes (not tested by CI)
 lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})
