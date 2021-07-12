@@ -130,6 +130,8 @@ function JSify(functionsOnly) {
       // what we just added to the library.
     }
 
+    const TOP_LEVEL = 'top-level compiled C/C++ code';
+
     function addFromLibrary(item, dependent) {
       // dependencies can be JS functions, which we just run
       if (typeof item == 'function') return item();
@@ -161,7 +163,7 @@ function JSify(functionsOnly) {
           if (dependent) msg += ' (referenced by ' + dependent + ')';
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
-            if (!LLD_REPORT_UNDEFINED) {
+            if (dependent == TOP_LEVEL && !LLD_REPORT_UNDEFINED) {
               warnOnce('Link with `-s LLD_REPORT_UNDEFINED` to get more information on undefined symbols');
             }
             warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
@@ -326,7 +328,7 @@ function JSify(functionsOnly) {
     }
 
     itemsDict.functionStub.push(item);
-    item.JS = addFromLibrary(item, 'top-level compiled C/C++ code');
+    item.JS = addFromLibrary(item, TOP_LEVEL);
   }
 
   // Final combiner
