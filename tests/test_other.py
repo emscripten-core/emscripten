@@ -7387,6 +7387,13 @@ int main() {
     err = self.expect_fail(final_link)
     self.assertContained('error: libside2.wasm: shared library dependency not found: `libside1.wasm`', err)
 
+  def test_side_module_folder_deps(self):
+    # Build side modules in a subfolder
+    os.mkdir('subdir')
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'subdir/libside1.so'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'subdir/libside2.so', '-L', 'subdir', '-lside1'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'MAIN_MODULE', '-o', 'main.js', '-L', 'subdir', '-lside2'])
+
   @is_slow_test
   def test_lto(self):
     # test building of non-wasm-object-files libraries, building with them, and running them
