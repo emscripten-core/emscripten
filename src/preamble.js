@@ -350,7 +350,9 @@ assert(INITIAL_MEMORY == {{{INITIAL_MEMORY}}}, 'Detected runtime INITIAL_MEMORY 
 
 var __ATPRERUN__  = []; // functions called before the runtime is initialized
 var __ATINIT__    = []; // functions called during startup
+#if HAS_MAIN
 var __ATMAIN__    = []; // functions called when main() is to be run
+#endif
 var __ATEXIT__    = []; // functions called during shutdown
 var __ATPOSTRUN__ = []; // functions called after the main() is called
 
@@ -464,9 +466,11 @@ function addOnInit(cb) {
   __ATINIT__.unshift(cb);
 }
 
+#if HAS_MAIN
 function addOnPreMain(cb) {
   __ATMAIN__.unshift(cb);
 }
+#endif
 
 function addOnExit(cb) {
 #if EXIT_RUNTIME
