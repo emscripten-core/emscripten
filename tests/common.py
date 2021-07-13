@@ -400,7 +400,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     super().setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
-    self.node_args = []
+    self.node_args = ['--stack-trace-limit=50']
     self.v8_args = []
     self.env = {}
     self.temp_files_before_run = []
