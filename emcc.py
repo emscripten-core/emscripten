@@ -2092,6 +2092,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.USE_OFFSET_CONVERTER and settings.USE_PTHREADS:
     settings.EXPORTED_RUNTIME_METHODS += ['WasmOffsetConverter']
 
+  if settings.USE_OFFSET_CONVERTER and settings.WASM2JS:
+    exit_with_error('wasm2js is not compatible with USE_OFFSET_CONVERTER (see #14630)')
+
   if sanitize & UBSAN_SANITIZERS:
     if '-fsanitize-minimal-runtime' in newargs:
       settings.UBSAN_RUNTIME = 1
