@@ -10665,6 +10665,10 @@ kill -9 $$
     err = self.expect_fail([EMCC, '-sEXPORT_NAME=foo bar', test_file('hello_world.c')])
     self.assertContained('error: EXPORT_NAME is not a valid JS identifier: `foo bar`', err)
 
+  def test_offset_convertor_plus_wasm2js(self):
+    err = self.expect_fail([EMCC, '-sUSE_OFFSET_CONVERTER', '-s', 'WASM=0', test_file('hello_world.c')])
+    self.assertContained('wasm2js is not compatible with USE_OFFSET_CONVERTER', err)
+
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
     self.run_process([EMBUILDER, 'build', 'libc-mt', 'libcompiler_rt-mt', 'libdlmalloc-mt'])
