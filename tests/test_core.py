@@ -8052,6 +8052,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-std=c++17']
     self.do_core_test('test_template_class_deduction.cpp')
 
+  @no_wasm2js('TODO: ASAN in wasm2js')
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @parameterized({
     'c': ['test_asan_no_error.c'],
