@@ -2105,6 +2105,11 @@ var LibraryGLEmulation = {
         enabledAttributesKey |= 1 << attributes[i].name;
       }
 
+      // to prevent using more than 31 bits add another level to the maptree
+      // and reset the enabledAttributesKey for the next glemulation state bits
+      keyView.next(enabledAttributesKey);
+      enabledAttributesKey = 0;
+
       // By fog state:
       var fogParam = 0;
       if (GLEmulation.fogEnabled) {
@@ -2134,8 +2139,7 @@ var LibraryGLEmulation = {
       }
 
       // By alpha testing mode
-      enabledAttributesKey = (enabledAttributesKey << 1) | GLEmulation.alphaTestEnabled;
-      enabledAttributesKey = (enabledAttributesKey << 3) | (GLEmulation.alphaTestFunc - 0x200);
+      enabledAttributesKey = (enabledAttributesKey << 3) | (GLEmulation.alphaTestEnabled ? (GLEmulation.alphaTestFunc - 0x200) : 0x7);
 
       // By drawing mode:
       enabledAttributesKey = (enabledAttributesKey << 1) | (GLImmediate.mode == GLctx.POINTS ? 1 : 0);
@@ -2865,7 +2869,8 @@ var LibraryGLEmulation = {
 
       // User can override the maximum number of texture units that we emulate. Using fewer texture units increases runtime performance
       // slightly, so it is advantageous to choose as small value as needed.
-      GLImmediate.MAX_TEXTURES = Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || GLctx.getParameter(GLctx.MAX_TEXTURE_IMAGE_UNITS);
+      // Limit to a maximum of 28 to not overflow the state bits used for renderer caching (31 bits = 3 attributes + 28 texture units).
+      GLImmediate.MAX_TEXTURES = Math.max(Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || GLctx.getParameter(GLctx.MAX_TEXTURE_IMAGE_UNITS), 28);
 
       GLImmediate.TexEnvJIT.init(GLctx, GLImmediate.MAX_TEXTURES);
 
@@ -3391,6 +3396,11 @@ var LibraryGLEmulation = {
           GLEmulation.alphaTestFunc = func;
           GLImmediate.currentRenderer = null; // alpha test mode is part of the FFP shader state, we must re-lookup the renderer to use.
         }
+        break;
+      default: // invalid value provided
+#if GL_ASSERTIONS
+        err('glAlphaFunc: Invalid alpha comparison function 0x' + func.toString(16) + ' !');
+#endif
         break;
     }
   },
