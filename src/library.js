@@ -3542,6 +3542,9 @@ LibraryManager.library = {
     throw 'unwind';
   },
 
+#if MINIMAL_RUNTIME
+  emscripten_force_exit__deps: ['exit'],
+#endif
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
@@ -3550,11 +3553,13 @@ LibraryManager.library = {
     warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
 #endif
 #endif
-#if !MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME
+    _exit(status);
+#else
     noExitRuntime = false;
     runtimeKeepaliveCounter = 0;
-#endif
     exit(status);
+#endif
   },
 
 #if !MINIMAL_RUNTIME
