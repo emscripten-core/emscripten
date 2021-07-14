@@ -35,6 +35,8 @@ emscons
 emsize
 emdump
 emprofile
+em-dwp
+em-nm
 tools/file_packager
 tools/webidl_binder
 tests/runner
