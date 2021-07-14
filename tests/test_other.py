@@ -9191,7 +9191,10 @@ int main(void) {
     ])
 
   def test_asan_pthread_stubs(self):
-    self.do_smart_test(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1'])
+    self.do_smart_test(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'])
+
+  def test_asan_strncpy(self):
+    self.do_smart_test(test_file('other/test_asan_strncpy.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'])
 
   @node_pthreads
   def test_proxy_to_pthread_stack(self):
