@@ -25,6 +25,10 @@ set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
 # OpenCV) use this to detect bitness.
 set(CMAKE_SYSTEM_PROCESSOR x86)
 
+# WebAssembly is always little endian so avoid the cmake's checks and force this.
+set(CMAKE_C_BYTE_ORDER LITTLE_ENDIAN)
+set(CMAKE_CXX_BYTE_ORDER LITTLE_ENDIAN)
+
 # Tell CMake how it should instruct the compiler to generate multiple versions
 # of an outputted .so library: e.g. "libfoo.so, libfoo.so.1, libfoo.so.1.4" etc.
 # This feature is activated if a shared library project has the property
