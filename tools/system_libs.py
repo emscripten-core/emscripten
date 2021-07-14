@@ -732,21 +732,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     ignore += LIBC_SOCKETS
 
-    if self.is_asan:
-      # With ASan, we need to use specialized implementations of certain libc
-      # functions that do not rely on undefined behavior, for example, reading
-      # multiple bytes at once as an int and overflowing a buffer.
-      # Otherwise, ASan will catch these errors and terminate the program.
-      ignore += ['strcpy.c', 'memchr.c', 'strchrnul.c', 'strlen.c',
-                 'aligned_alloc.c', 'fcntl.c']
-      libc_files += [
-        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strcpy.c'),
-        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_memchr.c'),
-        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strchrnul.c'),
-        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strlen.c'),
-        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_fcntl.c'),
-      ]
-
     if self.is_mt:
       ignore += [
         'clone.c', '__lock.c',

@@ -5,6 +5,9 @@
 #include "syscall.h"
 #include "libc.h"
 
+#ifdef __EMSCRIPTEN__
+__attribute__((no_sanitize("address")))
+#endif
 int fcntl(int fd, int cmd, ...)
 {
 	unsigned long arg;
