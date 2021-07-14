@@ -471,9 +471,13 @@ LibraryManager.library = {
     return limit;
   },
 
-#if SHRINK_LEVEL < 2 // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm variant, so we should never emit emscripten_memcpy_big() in the build.
+  // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
+  // variant, so we should never emit emscripten_memcpy_big() in the build.
+  // In STANDALONE_WASM we aviud the emscripten_memcpy_big dependency so keep
+  // the wasm file standalone.
+#if SHRINK_LEVEL < 2 && !STANDALONE_WASM
 
-#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101 || STANDALONE_WASM
+#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
   // has outdated information for Safari, saying it would not support it.
   // https://github.com/WebKit/webkit/commit/24a800eea4d82d6d595cdfec69d0f68e733b5c52#diff-c484911d8df319ba75fce0d8e7296333R1 suggests support was added on Aug 28, 2015.
