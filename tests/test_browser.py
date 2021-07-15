@@ -4144,6 +4144,14 @@ window.close = function() {
     self.btest(test_file('pthread/test_pthread_asan_use_after_free.cpp'), expected='1', args=['-fsanitize=address', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free.js')])
 
   @requires_threads
+  def test_pthread_asan_use_after_free_2(self):
+    # similiar to test_pthread_asan_use_after_free, but using a pool instead
+    # of proxy-to-pthread, and also the allocation happens on the pthread
+    # (which tests that it can use the offset converter to get the stack
+    # trace there)
+    self.btest(test_file('pthread/test_pthread_asan_use_after_free_2.cpp'), expected='1', args=['-fsanitize=address', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=1', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free_2.js')])
+
+  @requires_threads
   def test_pthread_exit_process(self):
     args = ['-s', 'USE_PTHREADS',
             '-s', 'PROXY_TO_PTHREAD',
@@ -4311,7 +4319,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 5368), 100)
+    self.assertLess(abs(size - 5477), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4697,13 +4705,13 @@ window.close = function() {
   def test_pthread_hello_thread(self):
     for opts in [[], ['-O3']]:
       for modularize in [[], ['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')]]:
-        self.btest(test_file('pthread/hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS'] + modularize + opts)
+        self.btest_exit(test_file('pthread/hello_thread.c'), args=['-s', 'USE_PTHREADS'] + modularize + opts)
 
   # Tests that a pthreads build of -s MINIMAL_RUNTIME=1 works well in different build modes
   def test_minimal_runtime_hello_pthread(self):
     for opts in [[], ['-O3']]:
       for modularize in [[], ['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule']]:
-        self.btest(test_file('pthread/hello_thread.c'), expected='1', args=['-s', 'MINIMAL_RUNTIME', '-s', 'USE_PTHREADS'] + modularize + opts)
+        self.btest_exit(test_file('pthread/hello_thread.c'), args=['-s', 'MINIMAL_RUNTIME', '-s', 'USE_PTHREADS'] + modularize + opts)
 
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_threads
@@ -4739,9 +4747,10 @@ window.close = function() {
   @requires_threads
   def test_load_js_from_blob_with_pthreads(self):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
-    self.compile_btest([test_file('pthread/hello_thread.c'), '-s', 'USE_PTHREADS', '-o', 'hello_thread_with_blob_url.js'])
+    self.set_setting('EXIT_RUNTIME')
+    self.compile_btest([test_file('pthread/hello_thread.c'), '-s', 'USE_PTHREADS', '-o', 'hello_thread_with_blob_url.js'], reporting=Reporting.JS_ONLY)
     shutil.copyfile(test_file('pthread/main_js_as_blob_loader.html'), 'hello_thread_with_blob_url.html')
-    self.run_browser('hello_thread_with_blob_url.html', 'hello from thread!', '/report_result?1')
+    self.run_browser('hello_thread_with_blob_url.html', 'hello from thread!', '/report_result?exit:0')
 
   # Tests that base64 utils work in browser with no native atob function
   def test_base64_atob_fallback(self):

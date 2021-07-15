@@ -12,15 +12,14 @@
 void *thread_main(void *arg)
 {
 	EM_ASM(out('hello from thread!'));
-#ifdef REPORT_RESULT
-	REPORT_RESULT(1);
-#endif
-	return 0;
+	emscripten_force_exit(0);
+	__builtin_unreachable();
 }
 
 int main()
 {
 	pthread_t thread;
 	pthread_create(&thread, NULL, thread_main, NULL);
-	emscripten_unwind_to_js_event_loop();
+	emscripten_exit_with_live_runtime();
+	__builtin_unreachable();
 }

@@ -7387,6 +7387,13 @@ int main() {
     err = self.expect_fail(final_link)
     self.assertContained('error: libside2.wasm: shared library dependency not found: `libside1.wasm`', err)
 
+  def test_side_module_folder_deps(self):
+    # Build side modules in a subfolder
+    os.mkdir('subdir')
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'subdir/libside1.so'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'SIDE_MODULE', '-o', 'subdir/libside2.so', '-L', 'subdir', '-lside1'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'MAIN_MODULE', '-o', 'main.js', '-L', 'subdir', '-lside2'])
+
   @is_slow_test
   def test_lto(self):
     # test building of non-wasm-object-files libraries, building with them, and running them
@@ -9170,21 +9177,26 @@ int main(void) {
 
   def test_asan_null_deref(self):
     self.do_smart_test(test_file('other/test_asan_null_deref.c'),
-                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=314572800'],
+                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1'],
                        assert_returncode=NON_ZERO, literals=[
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
   def test_asan_no_stack_trace(self):
     self.do_smart_test(test_file('other/test_lsan_leaks.c'),
-                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1',  '-sINITIAL_MEMORY=314572800', '-DDISABLE_CONTEXT', '-s', 'EXIT_RUNTIME'],
+                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1', '-DDISABLE_CONTEXT', '-s', 'EXIT_RUNTIME'],
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
       'SUMMARY: AddressSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
     ])
 
   def test_asan_pthread_stubs(self):
-    self.do_smart_test(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=314572800'])
+    self.do_smart_test(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'])
+
+  def test_asan_strncpy(self):
+    # Regression test for asan false positives in strncpy:
+    # https://github.com/emscripten-core/emscripten/issues/14618
+    self.do_smart_test(test_file('other/test_asan_strncpy.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'])
 
   @node_pthreads
   def test_proxy_to_pthread_stack(self):
@@ -9285,7 +9297,7 @@ int main(void) {
     self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-s', 'NO_FILESYSTEM'])
 
   def test_mmap_and_munmap_anonymous_asan(self):
-    self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=314572800'])
+    self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH'])
 
   def test_mmap_memorygrowth(self):
     self.do_other_test('test_mmap_memorygrowth.cpp', ['-s', 'ALLOW_MEMORY_GROWTH'])
@@ -9987,6 +9999,14 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
   def test_chained_js_error_diagnostics(self):
     err = self.expect_fail([EMCC, test_file('test_chained_js_error_diagnostics.c'), '--js-library', test_file('test_chained_js_error_diagnostics.js')])
     self.assertContained("error: undefined symbol: nonexistent_function (referenced by bar__deps: ['nonexistent_function'], referenced by foo__deps: ['bar'], referenced by top-level compiled C/C++ code)", err)
+    # Check that we don't recommend LLD_REPORT_UNDEFINED for chained dependencies.
+    self.assertNotContained('LLD_REPORT_UNDEFINED', err)
+
+    # Test without chaining.  In this case we don't include the JS library at all resulting in `foo`
+    # being undefined in the native code and in this case we recommend LLD_REPORT_UNDEFINED.
+    err = self.expect_fail([EMCC, test_file('test_chained_js_error_diagnostics.c')])
+    self.assertContained('error: undefined symbol: foo (referenced by top-level compiled C/C++ code)', err)
+    self.assertContained('Link with `-s LLD_REPORT_UNDEFINED` to get more information on undefined symbols', err)
 
   def test_xclang_flag(self):
     create_file('foo.h', ' ')
@@ -10663,6 +10683,10 @@ kill -9 $$
   def test_bad_export_name(self):
     err = self.expect_fail([EMCC, '-sEXPORT_NAME=foo bar', test_file('hello_world.c')])
     self.assertContained('error: EXPORT_NAME is not a valid JS identifier: `foo bar`', err)
+
+  def test_offset_convertor_plus_wasm2js(self):
+    err = self.expect_fail([EMCC, '-sUSE_OFFSET_CONVERTER', '-s', 'WASM=0', test_file('hello_world.c')])
+    self.assertContained('wasm2js is not compatible with USE_OFFSET_CONVERTER', err)
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant

@@ -1083,6 +1083,7 @@ function addAtInit(code) {
 global.ATMAINS = [];
 
 function addAtMain(code) {
+  assert(HAS_MAIN, 'addAtMain called but program has no main function');
   ATMAINS.push(code);
 }
 

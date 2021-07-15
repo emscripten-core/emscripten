@@ -39,6 +39,7 @@
  *    malloc.
  */
 
+#include <stddef.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <memory.h>
@@ -60,7 +61,8 @@ extern "C"
 
 // Configuration: specifies the minimum alignment that malloc()ed memory outputs. Allocation requests with smaller alignment
 // than this will yield an allocation with this much alignment.
-#define MALLOC_ALIGNMENT 8
+#define MALLOC_ALIGNMENT alignof(max_align_t)
+_Static_assert(alignof(max_align_t) == 8, "max_align_t must be correct");
 
 #define EMMALLOC_EXPORT __attribute__((weak, __visibility__("default")))
 

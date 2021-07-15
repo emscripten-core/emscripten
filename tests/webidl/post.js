@@ -149,14 +149,14 @@ console.log(TheModule.enum_value1);
 console.log(TheModule.enum_value2);
 
 // Enums from classes are accessed via the class.
-enumClassInstance = new TheModule.EnumClass();
+var enumClassInstance = new TheModule.EnumClass();
 console.log([enumClassInstance.GetEnum(), TheModule.EnumClass.e_val].join(','));
 
 // Enums from namespaces are accessed via the top-level module, as with classes defined
 // in namespaces, see `Inner` above.
 console.log(TheModule.e_namespace_val);
 
-typeTester = new TheModule.TypeTestClass();
+var typeTester = new TheModule.TypeTestClass();
 
 console.log('return char ' + (typeTester.ReturnCharMethod() & 255));
 typeTester.AcceptCharMethod((2<<6)-1);
