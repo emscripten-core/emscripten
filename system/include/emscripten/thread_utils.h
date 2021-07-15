@@ -13,7 +13,8 @@
 
 #include <thread>
 #include <functional>
-#include <iostream>
+
+namespace emscripten {
 
 // Helper class for generic sync-to-async conversion. Creating an instance of
 // this class will spin up a pthread. You can then call doWork() to run code
@@ -117,3 +118,5 @@ void SyncToAsync::doWork(std::function<void(Callback)> newWork) {
     return finishedWork;
   });
 }
+
+} // namespace emscripten
