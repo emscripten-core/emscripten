@@ -145,7 +145,8 @@ private:
       // can reach the JS event queue.)
       emscripten_async_call(threadIter, arg, 0);
     });
-    // Run the work function the user gave us. Give it a pointer to the resume.
+    // Run the work function the user gave us. Give it a pointer to the resume
+    // function.
     work(parent->resume.get());
   }
 
