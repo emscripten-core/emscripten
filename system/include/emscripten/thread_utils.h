@@ -118,7 +118,6 @@ private:
   std::unique_lock<std::mutex> childLock;
 
   static void* threadMain(void* arg) {
-    auto* parent = (sync_to_async*)arg;
     emscripten_async_call(threadIter, arg, 0);
     return 0;
   }
@@ -141,7 +140,8 @@ private:
       parent->finishedWork = true;
       parent->childLock.unlock();
       parent->condition.notify_one();
-      // Look for more work. (We must do this asynchronously so that the work
+      // Look for more work. (We must do this asynchronously so that the JS
+      // event queue is reached, which the user code may require.)
       // can reach the JS event queue.)
       emscripten_async_call(threadIter, arg, 0);
     });
@@ -161,8 +161,7 @@ public:
   }
 
   ~sync_to_async() {
-    // Wake up the child with an empty task, so it can notice we set "quit" to
-    // true.
+    // Wake up the child to tell it to quit.
     invoke([&](Callback func){
       quit = true;
       (*func)();
