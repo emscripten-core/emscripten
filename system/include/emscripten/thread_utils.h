@@ -31,23 +31,29 @@ namespace emscripten {
 // main thread pump the event queue as it waits).
 
 template <class F>
-void emscripten_invoke_on_main_thread_async(F&& f) {
+void invoke_on_main_thread_async(F&& f) {
   using function_type = typename std::remove_reference<F>::type;
+
+  auto run_on_main_thread = [](void* f1) {
+    // Once on the main thread, run as an event from the JS event queue
+    // directly, so nothing else is on the stack when we execute. This means
+    // we are no longer ordered with respect to synchronous proxied calls,
+    // but that is ok in this case as well we care about are async ones.
+    emscripten_async_call(
+      [](void* f2) {
+        auto f = static_cast<function_type*>(f2);
+        (*f)();
+        delete f;
+      },
+      f1,
+      0
+    );
+  };
 
   // Proxy the call to the main thread.
   emscripten_async_run_in_main_runtime_thread(
     EM_FUNC_SIG_VI,
-    static_cast<void (*)(void*)>([](void* f_) {
-      // Once on the main thread, run as an event from the JS event queue
-      // directly, so nothing else is on the stack when we execute.
-      emscripten_async_call(
-        [](void* f_) {
-          auto f = static_cast<function_type*>(f_);
-          (*f)();
-          delete f;
-        },
-        f_, 0);
-    }),
+    static_cast<void (*)(void*)>(run_on_main_thread),
     // If we were passed in something we need to copy, copy it; we end up with
     // a new allocation here on the heap that we will free later.
     new function_type(std::forward<F>(f))
@@ -56,16 +62,17 @@ void emscripten_invoke_on_main_thread_async(F&& f) {
 
 // Helper class for generic sync-to-async conversion. Creating an instance of
 // this class will spin up a pthread. You can then call doWork() to run code
-// on that pthread. The work done on the pthread receives a callback method,
-// which lets you indicate when it finished working, which is useful when
-// interacting with an asynchronous JS event.
+// on that pthread. The work done on the pthread receives a callback method
+// which lets you indicate when it finished working. The call to doWork() is
+// synchronous, while the work done on the other thread can be asynchronous,
+// which allows bridging async JS APIs to sync C++ code.
 //
-// This can be useful if you are a location where blocking is possible (like a
-// thread, or when using PROXY_TO_PTHREAD), but you have code that is hard to
+// This can be useful if you are in a location where blocking is possible (like
+// a thread, or when using PROXY_TO_PTHREAD), but you have code that is hard to
 // refactor to be async, but that requires some async operation (like waiting
 // for a JS event).
 class SyncToAsync {
-  // Public API
+// Public API
 public:
 
   using Callback = std::function<void()>;
@@ -75,7 +82,7 @@ public:
   // is call the given callback function when it is done.
   void doWork(std::function<void(Callback)> newWork);
 
-  // Private API
+// Private API
 private:
   std::thread thread;
   std::mutex mutex;

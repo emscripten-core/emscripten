@@ -8321,6 +8321,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('core/pthread/sync_to_async.cpp')
 
+  @node_pthreads
+  @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
+  def test_pthread_invoke_on_main_thread(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('core/pthread/invoke_on_main_thread.cpp')
+
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('core/pthread/emscripten_atomics.c')
 
