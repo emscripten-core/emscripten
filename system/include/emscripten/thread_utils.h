@@ -104,13 +104,14 @@ public:
 // End Public API
 
 private:
-  std::thread thread;
+  std::unique_ptr<std::thread> thread;
   std::mutex mutex;
   std::condition_variable condition;
   std::function<void(Callback)> work;
   bool readyToWork = false;
   bool finishedWork;
   bool quit = false;
+  bool quitted = false;
   std::unique_ptr<std::function<void()>> resume;
 
   // The child will be asynchronous, and therefore we cannot rely on RAII to
@@ -125,6 +126,9 @@ private:
 
   static void threadIter(void* arg) {
     auto* parent = (sync_to_async*)arg;
+    if (parent->quitted) {
+      pthread_exit(0);
+    }
     // Wait until we get something to do.
     parent->childLock.lock();
     parent->condition.wait(parent->childLock, [&]() {
@@ -132,41 +136,44 @@ private:
     });
     auto work = parent->work;
     parent->readyToWork = false;
+    if (parent->quit) {
+      parent->quitted = true;
+    }
     // Allocate a resume function, and stash it on the parent.
     parent->resume = std::make_unique<std::function<void()>>([parent, arg]() {
       // We are called, so the work was finished. Notify the caller.
       parent->finishedWork = true;
       parent->childLock.unlock();
       parent->condition.notify_one();
-      if (parent->quit) {
-        // This works fine although it is a c++11 std::thread.
-        pthread_exit(0);
-      } else {
-        // Look for more work. (We do this asynchronously to avoid nesting of
-        // the stack, and to keep this function simple without a loop.)
-        emscripten_async_call(threadIter, arg, 0);
-      }
+      // Look for more work. (We must do this asynchronously so that the work
+      // can reach the JS event queue.)
+      emscripten_async_call(threadIter, arg, 0);
     });
     // Run the work function the user gave us. Give it a pointer to the resume.
     work(parent->resume.get());
   }
 
 public:
-  sync_to_async() : thread(threadMain, this), childLock(mutex) {
-    // The child lock is associated with the mutex, which takes the lock, and
-    // we free it here. Only the child will lock/unlock it from now on.
+  sync_to_async() : childLock(mutex) {
+    // The child lock is associated with the mutex, which takes the lock as we
+    // connect them, and so we must free it here so that the child can use it.
+    // Only the child will lock/unlock it from now on.
     childLock.unlock();
+
+    // Create the thread after the lock is ready.
+    thread = std::make_unique<std::thread>(threadMain, this);
   }
 
   ~sync_to_async() {
     quit = true;
 
-    // Wake up the child with an empty task.
+    // Wake up the child with an empty task, so it can notice we set "quit" to
+    // true.
     invoke([](Callback func){
       (*func)();
     });
 
-    thread.join();
+    thread->join();
   }
 };
 
