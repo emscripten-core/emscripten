@@ -142,7 +142,6 @@ private:
       parent->condition.notify_one();
       // Look for more work. (We must do this asynchronously so that the JS
       // event queue is reached, which the user code may require.)
-      // can reach the JS event queue.)
       emscripten_async_call(threadIter, arg, 0);
     });
     // Run the work function the user gave us. Give it a pointer to the resume

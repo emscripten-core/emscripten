@@ -17,7 +17,7 @@ int main() {
       // If we are on the main thread, it is time to end this test. Do so
       // asynchronously, as if we exit right now then the object Foo() we are
       // called on will not yet be destroyed, which causes a false positive in
-      // LSan lead detection.
+      // LSan leak detection.
       if (mainThread) {
         emscripten_async_call(
           [](void*) {
