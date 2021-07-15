@@ -61,9 +61,9 @@ void invoke_on_main_thread_async(F&& f) {
 }
 
 // Helper class for generic sync-to-async conversion. Creating an instance of
-// this class will spin up a pthread. You can then call doWork() to run code
+// this class will spin up a pthread. You can then call invoke() to run code
 // on that pthread. The work done on the pthread receives a callback method
-// which lets you indicate when it finished working. The call to doWork() is
+// which lets you indicate when it finished working. The call to invoke() is
 // synchronous, while the work done on the other thread can be asynchronous,
 // which allows bridging async JS APIs to sync C++ code.
 //
@@ -80,7 +80,7 @@ public:
   // Run some work on thread. This is a synchronous (blocking) call. The thread
   // where the work actually runs can do async work for us - all it needs to do
   // is call the given callback function when it is done.
-  void doWork(std::function<void(Callback)> newWork);
+  void invoke(std::function<void(Callback)> newWork);
 
 // Private API
 private:
@@ -139,7 +139,7 @@ public:
     quit = true;
 
     // Wake up the child with an empty task.
-    doWork([](Callback func){
+    invoke([](Callback func){
       func();
     });
 
@@ -147,7 +147,7 @@ public:
   }
 };
 
-void SyncToAsync::doWork(std::function<void(Callback)> newWork) {
+void SyncToAsync::invoke(std::function<void(Callback)> newWork) {
   // Send the work over.
   {
     std::lock_guard<std::mutex> lock(mutex);

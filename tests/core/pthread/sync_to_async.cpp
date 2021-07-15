@@ -3,11 +3,11 @@
 #include <emscripten/thread_utils.h>
 
 int main() {
-  emscripten::SyncToAsync helper;
+  emscripten::SyncToAsync syncToAsync;
 
   std::cout << "Perform a synchronous task.\n";
 
-  helper.doWork([](emscripten::SyncToAsync::Callback resume) {
+  syncToAsync.invoke([](emscripten::SyncToAsync::Callback resume) {
     std::cout << "  Hello from sync C++\n";
     resume();
   });
@@ -21,7 +21,7 @@ int main() {
   // remain valid, since we wait synchronously for the work to be done on the
   // thread.
   emscripten::SyncToAsync::Callback asyncFunc;
-  helper.doWork([&asyncFunc](emscripten::SyncToAsync::Callback resume) {
+  syncToAsync.invoke([&asyncFunc](emscripten::SyncToAsync::Callback resume) {
     std::cout << "  Hello from sync C++ before the async\n";
     // Set up async JS, just to prove an async JS callback happens before the
     // async C++.
@@ -42,7 +42,7 @@ int main() {
   });
 
   std::cout << "Perform another synchronous task.\n";
-  helper.doWork([](emscripten::SyncToAsync::Callback resume) {
+  syncToAsync.invoke([](emscripten::SyncToAsync::Callback resume) {
     std::cout << "  Hello again from sync C++\n";
     resume();
   });
