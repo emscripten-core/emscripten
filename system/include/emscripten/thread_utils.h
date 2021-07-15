@@ -9,12 +9,50 @@
 
 #include <assert.h>
 #include <emscripten.h>
+#include <emscripten/threading.h>
 #include <pthread.h>
 
-#include <thread>
 #include <functional>
+#include <thread>
+#include <utility>
 
 namespace emscripten {
+
+// Helper function to call a callable object on the main thread in a fully
+// asynchronous manner.
+//
+// Normal proxying to the main thread runs into the possible issue of the main
+// thread pumping the event queue while it blocks. That is necessary for e.g.
+// WebGL proxying where both sync and async events must be received and run in
+// order. With this class, only async events are allowed, and they are run in
+// an async manner on the main thread, that is, with nothing else on the stack
+// while they run, which avoids any possibility of another even running while
+// this one is (if this one blocks on a mutex, for example, which would make the
+// main thread pump the event queue as it waits).
+
+template <class F>
+void emscripten_invoke_on_main_thread_async(F&& f) {
+  using function_type = typename std::remove_reference<F>::type;
+
+  // Proxy the call to the main thread.
+  emscripten_async_run_in_main_runtime_thread(
+    EM_FUNC_SIG_VI,
+    static_cast<void (*)(void*)>([](void* f_) {
+      // Once on the main thread, run as an event from the JS event queue
+      // directly, so nothing else is on the stack when we execute.
+      emscripten_async_call(
+        [](void* f_) {
+          auto f = static_cast<function_type*>(f_);
+          (*f)();
+          delete f;
+        },
+        f_, 0);
+    }),
+    // If we were passed in something we need to copy, copy it; we end up with
+    // a new allocation here on the heap that we will free later.
+    new function_type(std::forward<F>(f))
+  );
+}
 
 // Helper class for generic sync-to-async conversion. Creating an instance of
 // this class will spin up a pthread. You can then call doWork() to run code
