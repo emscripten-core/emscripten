@@ -132,8 +132,7 @@ private:
     });
     auto work = parent->work;
     parent->readyToWork = false;
-    // Do the work, and send it an allocated std::function which we will free at
-    // the end.
+    // Allocate a resume function, and stash it on the parent.
     parent->resume = std::make_unique<std::function<void()>>([parent, arg]() {
       // We are called, so the work was finished. Notify the caller.
       parent->finishedWork = true;
@@ -148,6 +147,7 @@ private:
         emscripten_async_call(threadIter, arg, 0);
       }
     });
+    // Run the work function the user gave us. Give it a pointer to the resume.
     work(parent->resume.get());
   }
 
