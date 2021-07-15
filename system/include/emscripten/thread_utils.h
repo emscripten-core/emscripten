@@ -111,7 +111,6 @@ private:
   bool readyToWork = false;
   bool finishedWork;
   bool quit = false;
-  bool quitted = false;
   std::unique_ptr<std::function<void()>> resume;
 
   // The child will be asynchronous, and therefore we cannot rely on RAII to
@@ -126,7 +125,7 @@ private:
 
   static void threadIter(void* arg) {
     auto* parent = (sync_to_async*)arg;
-    if (parent->quitted) {
+    if (parent->quit) {
       pthread_exit(0);
     }
     // Wait until we get something to do.
@@ -136,9 +135,6 @@ private:
     });
     auto work = parent->work;
     parent->readyToWork = false;
-    if (parent->quit) {
-      parent->quitted = true;
-    }
     // Allocate a resume function, and stash it on the parent.
     parent->resume = std::make_unique<std::function<void()>>([parent, arg]() {
       // We are called, so the work was finished. Notify the caller.
@@ -165,11 +161,10 @@ public:
   }
 
   ~sync_to_async() {
-    quit = true;
-
     // Wake up the child with an empty task, so it can notice we set "quit" to
     // true.
-    invoke([](Callback func){
+    invoke([&](Callback func){
+      quit = true;
       (*func)();
     });
 
