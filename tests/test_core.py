@@ -8319,7 +8319,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_sync_to_async(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'sync_to_async.cpp')
+    self.do_run_in_out_file_test('core/pthread/sync_to_async.cpp')
 
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('core/pthread/emscripten_atomics.c')
