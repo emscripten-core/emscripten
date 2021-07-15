@@ -2016,37 +2016,37 @@ int main(int argc, char **argv) {
     self.do_runf(test_file('core/test_module_wasm_memory.c'), 'success')
 
   def test_ssr(self): # struct self-ref
-      src = '''
-        #include <stdio.h>
+    src = '''
+      #include <stdio.h>
 
-        // see related things in openjpeg
-        typedef struct opj_mqc_state {
-          unsigned int qeval;
-          int mps;
-          struct opj_mqc_state *nmps;
-          struct opj_mqc_state *nlps;
-        } opj_mqc_state_t;
+      // see related things in openjpeg
+      typedef struct opj_mqc_state {
+        unsigned int qeval;
+        int mps;
+        struct opj_mqc_state *nmps;
+        struct opj_mqc_state *nlps;
+      } opj_mqc_state_t;
 
-        static opj_mqc_state_t mqc_states[4] = {
-          {0x5600, 0, &mqc_states[2], &mqc_states[3]},
-          {0x5602, 1, &mqc_states[3], &mqc_states[2]},
-        };
+      static opj_mqc_state_t mqc_states[4] = {
+        {0x5600, 0, &mqc_states[2], &mqc_states[3]},
+        {0x5602, 1, &mqc_states[3], &mqc_states[2]},
+      };
 
-        int main() {
-          printf("*%d*\\n", (int)(mqc_states+1)-(int)mqc_states);
-          for (int i = 0; i < 2; i++)
-            printf("%d:%d,%d,%d,%d\\n", i, mqc_states[i].qeval, mqc_states[i].mps,
-                   (int)mqc_states[i].nmps-(int)mqc_states, (int)mqc_states[i].nlps-(int)mqc_states);
-          return 0;
-        }
-        '''
-      self.do_run(src, '''*16*\n0:22016,0,32,48\n1:22018,1,48,32\n''')
+      int main() {
+        printf("*%d*\\n", (int)(mqc_states+1)-(int)mqc_states);
+        for (int i = 0; i < 2; i++)
+          printf("%d:%d,%d,%d,%d\\n", i, mqc_states[i].qeval, mqc_states[i].mps,
+                 (int)mqc_states[i].nmps-(int)mqc_states, (int)mqc_states[i].nlps-(int)mqc_states);
+        return 0;
+      }
+      '''
+    self.do_run(src, '''*16*\n0:22016,0,32,48\n1:22018,1,48,32\n''')
 
   def test_tinyfuncstr(self):
-      self.do_core_test('test_tinyfuncstr.cpp')
+    self.do_core_test('test_tinyfuncstr.cpp')
 
   def test_llvmswitch(self):
-      self.do_core_test('test_llvmswitch.c')
+    self.do_core_test('test_llvmswitch.c')
 
   def test_cxx_version(self):
     self.do_core_test('test_cxx_version.cpp')
@@ -2075,45 +2075,45 @@ int main(int argc, char **argv) {
 Success!''')
 
   def test_indirectbr(self):
-      self.emcc_args = [x for x in self.emcc_args if x != '-g']
+    self.emcc_args = [x for x in self.emcc_args if x != '-g']
 
-      self.do_core_test('test_indirectbr.c')
+    self.do_core_test('test_indirectbr.c')
 
   @no_asan('local count too large for VMs')
   @no_wasm2js('extremely deep nesting, hits stack limit on some VMs')
   def test_indirectbr_many(self):
-      self.do_core_test('test_indirectbr_many.c')
+    self.do_core_test('test_indirectbr_many.c')
 
   def test_pack(self):
-      src = '''
-        #include <stdio.h>
-        #include <string.h>
+    src = '''
+      #include <stdio.h>
+      #include <string.h>
 
-        #pragma pack(push,1)
-        typedef struct header
-        {
-            unsigned char  id;
-            unsigned short colour;
-            unsigned char  desc;
-        } header;
-        #pragma pack(pop)
+      #pragma pack(push,1)
+      typedef struct header
+      {
+          unsigned char  id;
+          unsigned short colour;
+          unsigned char  desc;
+      } header;
+      #pragma pack(pop)
 
-        typedef struct fatheader
-        {
-            unsigned char  id;
-            unsigned short colour;
-            unsigned char  desc;
-        } fatheader;
+      typedef struct fatheader
+      {
+          unsigned char  id;
+          unsigned short colour;
+          unsigned char  desc;
+      } fatheader;
 
-        int main( int argc, const char *argv[] ) {
-          header h, *ph = 0;
-          fatheader fh, *pfh = 0;
-          printf("*%zu,%d,%d*\\n", sizeof(header), (int)((int)&h.desc - (int)&h.id), (int)(&ph[1])-(int)(&ph[0]));
-          printf("*%zu,%d,%d*\\n", sizeof(fatheader), (int)((int)&fh.desc - (int)&fh.id), (int)(&pfh[1])-(int)(&pfh[0]));
-          return 0;
-        }
-        '''
-      self.do_run(src, '*4,3,4*\n*6,4,6*')
+      int main( int argc, const char *argv[] ) {
+        header h, *ph = 0;
+        fatheader fh, *pfh = 0;
+        printf("*%zu,%d,%d*\\n", sizeof(header), (int)((int)&h.desc - (int)&h.id), (int)(&ph[1])-(int)(&ph[0]));
+        printf("*%zu,%d,%d*\\n", sizeof(fatheader), (int)((int)&fh.desc - (int)&fh.id), (int)(&pfh[1])-(int)(&pfh[0]));
+        return 0;
+      }
+      '''
+    self.do_run(src, '*4,3,4*\n*6,4,6*')
 
   def test_varargs(self):
     self.do_core_test('test_varargs.c')
@@ -2442,78 +2442,78 @@ The current type of b is: 9
     self.do_core_test('stackAlloc.cpp')
 
   def test_nestedstructs(self):
-      src = '''
-        #include <stdio.h>
-        #include "emscripten.h"
+    src = '''
+      #include <stdio.h>
+      #include "emscripten.h"
 
-        struct base {
-          int x;
-          float y;
-          union {
-            int a;
-            float b;
-          };
-          char c;
+      struct base {
+        int x;
+        float y;
+        union {
+          int a;
+          float b;
         };
+        char c;
+      };
 
-        struct hashtableentry {
-          int key;
-          base data;
-        };
+      struct hashtableentry {
+        int key;
+        base data;
+      };
 
-        struct hashset {
-          typedef hashtableentry entry;
-          struct chain { entry elem; chain *next; };
-        //  struct chainchunk { chain chains[100]; chainchunk *next; };
-        };
+      struct hashset {
+        typedef hashtableentry entry;
+        struct chain { entry elem; chain *next; };
+      //  struct chainchunk { chain chains[100]; chainchunk *next; };
+      };
 
-        struct hashtable : hashset {
-          hashtable() {
-            base *b = NULL;
-            entry *e = NULL;
-            chain *c = NULL;
-            printf("*%zu,%d,%d,%d,%d,%d|%zu,%d,%d,%d,%d,%d,%d,%d|%zu,%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n",
-              sizeof(base),
-              int(&(b->x)), int(&(b->y)), int(&(b->a)), int(&(b->b)), int(&(b->c)),
-              sizeof(hashtableentry),
-              int(&(e->key)), int(&(e->data)), int(&(e->data.x)), int(&(e->data.y)), int(&(e->data.a)), int(&(e->data.b)), int(&(e->data.c)),
-              sizeof(hashset::chain),
-              int(&(c->elem)), int(&(c->next)), int(&(c->elem.key)), int(&(c->elem.data)), int(&(c->elem.data.x)), int(&(c->elem.data.y)), int(&(c->elem.data.a)), int(&(c->elem.data.b)), int(&(c->elem.data.c))
-            );
-          }
-        };
-
-        struct B { char buffer[62]; int last; char laster; char laster2; };
-
-        struct Bits {
-          unsigned short A : 1;
-          unsigned short B : 1;
-          unsigned short C : 1;
-          unsigned short D : 1;
-          unsigned short x1 : 1;
-          unsigned short x2 : 1;
-          unsigned short x3 : 1;
-          unsigned short x4 : 1;
-        };
-
-        int main() {
-          hashtable t;
-
-          // Part 2 - the char[] should be compressed, BUT have a padding space at the end so the next
-          // one is aligned properly. Also handle char; char; etc. properly.
-          B *b = NULL;
-          printf("*%d,%d,%d,%d,%d,%d,%d,%d,%zu*\\n", int(b), int(&(b->buffer)), int(&(b->buffer[0])), int(&(b->buffer[1])), int(&(b->buffer[2])),
-                                                    int(&(b->last)), int(&(b->laster)), int(&(b->laster2)), sizeof(B));
-
-          // Part 3 - bitfields, and small structures
-          Bits *b2 = NULL;
-          printf("*%zu*\\n", sizeof(Bits));
-
-          return 0;
+      struct hashtable : hashset {
+        hashtable() {
+          base *b = NULL;
+          entry *e = NULL;
+          chain *c = NULL;
+          printf("*%zu,%d,%d,%d,%d,%d|%zu,%d,%d,%d,%d,%d,%d,%d|%zu,%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n",
+            sizeof(base),
+            int(&(b->x)), int(&(b->y)), int(&(b->a)), int(&(b->b)), int(&(b->c)),
+            sizeof(hashtableentry),
+            int(&(e->key)), int(&(e->data)), int(&(e->data.x)), int(&(e->data.y)), int(&(e->data.a)), int(&(e->data.b)), int(&(e->data.c)),
+            sizeof(hashset::chain),
+            int(&(c->elem)), int(&(c->next)), int(&(c->elem.key)), int(&(c->elem.data)), int(&(c->elem.data.x)), int(&(c->elem.data.y)), int(&(c->elem.data.a)), int(&(c->elem.data.b)), int(&(c->elem.data.c))
+          );
         }
-        '''
-      # Bloated memory; same layout as C/C++
-      self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
+      };
+
+      struct B { char buffer[62]; int last; char laster; char laster2; };
+
+      struct Bits {
+        unsigned short A : 1;
+        unsigned short B : 1;
+        unsigned short C : 1;
+        unsigned short D : 1;
+        unsigned short x1 : 1;
+        unsigned short x2 : 1;
+        unsigned short x3 : 1;
+        unsigned short x4 : 1;
+      };
+
+      int main() {
+        hashtable t;
+
+        // Part 2 - the char[] should be compressed, BUT have a padding space at the end so the next
+        // one is aligned properly. Also handle char; char; etc. properly.
+        B *b = NULL;
+        printf("*%d,%d,%d,%d,%d,%d,%d,%d,%zu*\\n", int(b), int(&(b->buffer)), int(&(b->buffer[0])), int(&(b->buffer[1])), int(&(b->buffer[2])),
+                                                  int(&(b->last)), int(&(b->laster)), int(&(b->laster2)), sizeof(B));
+
+        // Part 3 - bitfields, and small structures
+        Bits *b2 = NULL;
+        printf("*%zu*\\n", sizeof(Bits));
+
+        return 0;
+      }
+      '''
+    # Bloated memory; same layout as C/C++
+    self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
   def prep_dlfcn_lib(self):
     self.clear_setting('MAIN_MODULE')
@@ -6480,9 +6480,9 @@ void* operator new(size_t size) {
     num_exports = 5000
     count = 0
     while count < num_exports:
-        src += 'int exported_func_from_response_file_%d () { return %d;}\n' % (count, count)
-        js_funcs.append('_exported_func_from_response_file_%d' % count)
-        count += 1
+      src += 'int exported_func_from_response_file_%d () { return %d;}\n' % (count, count)
+      js_funcs.append('_exported_func_from_response_file_%d' % count)
+      count += 1
 
     src += r'''
       }

@@ -10,7 +10,8 @@
 
 char *__stpncpy(char *restrict d, const char *restrict s, size_t n)
 {
-#ifdef __GNUC__
+/* XXX EMSCRIPTEN: add __has_feature check */
+#if defined(__GNUC__) && !__has_feature(address_sanitizer)
 	typedef size_t __attribute__((__may_alias__)) word;
 	word *wd;
 	const word *ws;

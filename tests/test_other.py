@@ -9191,7 +9191,12 @@ int main(void) {
     ])
 
   def test_asan_pthread_stubs(self):
-    self.do_smart_test(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1'])
+    self.do_smart_test(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'])
+
+  def test_asan_strncpy(self):
+    # Regression test for asan false positives in strncpy:
+    # https://github.com/emscripten-core/emscripten/issues/14618
+    self.do_smart_test(test_file('other/test_asan_strncpy.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'])
 
   @node_pthreads
   def test_proxy_to_pthread_stack(self):
@@ -9994,6 +9999,14 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
   def test_chained_js_error_diagnostics(self):
     err = self.expect_fail([EMCC, test_file('test_chained_js_error_diagnostics.c'), '--js-library', test_file('test_chained_js_error_diagnostics.js')])
     self.assertContained("error: undefined symbol: nonexistent_function (referenced by bar__deps: ['nonexistent_function'], referenced by foo__deps: ['bar'], referenced by top-level compiled C/C++ code)", err)
+    # Check that we don't recommend LLD_REPORT_UNDEFINED for chained dependencies.
+    self.assertNotContained('LLD_REPORT_UNDEFINED', err)
+
+    # Test without chaining.  In this case we don't include the JS library at all resulting in `foo`
+    # being undefined in the native code and in this case we recommend LLD_REPORT_UNDEFINED.
+    err = self.expect_fail([EMCC, test_file('test_chained_js_error_diagnostics.c')])
+    self.assertContained('error: undefined symbol: foo (referenced by top-level compiled C/C++ code)', err)
+    self.assertContained('Link with `-s LLD_REPORT_UNDEFINED` to get more information on undefined symbols', err)
 
   def test_xclang_flag(self):
     create_file('foo.h', ' ')

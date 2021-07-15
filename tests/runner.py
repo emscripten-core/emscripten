@@ -45,10 +45,6 @@ sys.path.append(shared.path_from_root('third_party/websockify'))
 logger = logging.getLogger("runner")
 
 
-if common.EMTEST_VERBOSE:
-  logging.root.setLevel(logging.DEBUG)
-
-
 # The core test modes
 core_test_modes = [
   'wasm0',
@@ -299,19 +295,19 @@ def run_tests(options, suites):
 
 def parse_args(args):
   parser = argparse.ArgumentParser(prog='runner.py', description=__doc__)
-  parser.add_argument('--save-dir', action='store_true', default='EMTEST_SAVE_DIR' in os.environ,
+  parser.add_argument('--save-dir', action='store_true', default=None,
                       help='Save the temporary directory used during for each '
                            'test.  Implies --cores=1.')
   parser.add_argument('--no-clean', action='store_true',
                       help='Do not clean the temporary directory before each test run')
-  parser.add_argument('--verbose', action='store_true')
-  parser.add_argument('--all-engines', action='store_true')
-  parser.add_argument('--detect-leaks', action='store_true')
+  parser.add_argument('--verbose', action='store_true', default=None)
+  parser.add_argument('--all-engines', action='store_true', default=None)
+  parser.add_argument('--detect-leaks', action='store_true', default=None)
   parser.add_argument('--skip-slow', action='store_true', help='Skip tests marked as slow')
   parser.add_argument('--cores',
                       help='Set the number tests to run in parallel.  Defaults '
-                           'to the number of CPU cores.')
-  parser.add_argument('--rebaseline', action='store_true',
+                           'to the number of CPU cores.', default=None)
+  parser.add_argument('--rebaseline', action='store_true', default=None,
                       help='Automatically update test expectations for tests that support it.')
   parser.add_argument('--browser',
                       help='Command to launch web browser in which to run browser tests.')
@@ -328,6 +324,8 @@ def configure():
   common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
   common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
   common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
+  if common.EMTEST_VERBOSE:
+    logging.root.setLevel(logging.DEBUG)
 
   assert 'PARALLEL_SUITE_EMCC_CORES' not in os.environ, 'use EMTEST_CORES rather than PARALLEL_SUITE_EMCC_CORES'
   parallel_testsuite.NUM_CORES = os.environ.get('EMTEST_CORES') or os.environ.get('EMCC_CORES')
