@@ -164,16 +164,14 @@ var LibraryGLUT = {
       if (GLUT.specialFunc || GLUT.keyboardFunc) {
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
-          if( GLUT.specialFunc ) {
+          if (GLUT.specialFunc) {
             event.preventDefault();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.specialFunc') }}}(key, Browser.mouseX, Browser.mouseY);
           }
-        }
-        else
-        {
+        } else {
           key = GLUT.getASCIIKey(event);
-          if( key !== null && GLUT.keyboardFunc ) {
+          if (key !== null && GLUT.keyboardFunc) {
             event.preventDefault();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.keyboardFunc') }}}(key, Browser.mouseX, Browser.mouseY);
@@ -186,16 +184,14 @@ var LibraryGLUT = {
       if (GLUT.specialUpFunc || GLUT.keyboardUpFunc) {
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
-          if(GLUT.specialUpFunc) {
+          if (GLUT.specialUpFunc) {
             event.preventDefault ();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.specialUpFunc') }}}(key, Browser.mouseX, Browser.mouseY);
           }
-        }
-        else
-        {
+        } else {
           key = GLUT.getASCIIKey(event);
-          if( key !== null && GLUT.keyboardUpFunc ) {
+          if (key !== null && GLUT.keyboardUpFunc) {
             event.preventDefault ();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.keyboardUpFunc') }}}(key, Browser.mouseX, Browser.mouseY);
@@ -213,7 +209,7 @@ var LibraryGLUT = {
           main = touches[0],
           type = "";
 
-      switch(event.type) {
+      switch (event.type) {
         case "touchstart": type = "mousedown"; break;
         case "touchmove": type = "mousemove"; break;
         case "touchend": type = "mouseup"; break;
@@ -298,7 +294,7 @@ var LibraryGLUT = {
                                                   // Just call it once here.
       /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
       if (GLUT.reshapeFunc) {
-        // console.log("GLUT.reshapeFunc (from FS): " + width + ", " + height);
+        // out("GLUT.reshapeFunc (from FS): " + width + ", " + height);
         {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
       }
       _glutPostRedisplay();
@@ -422,24 +418,26 @@ var LibraryGLUT = {
   },
 
   glutIdleFunc__proxy: 'sync',
+  glutIdleFunc__deps: ['$safeSetTimeout'],
   glutIdleFunc__sig: 'vi',
   glutIdleFunc: function(func) {
     function callback() {
       if (GLUT.idleFunc) {
         {{{ makeDynCall('v', 'GLUT.idleFunc') }}}();
-        Browser.safeSetTimeout(callback, 4); // HTML spec specifies a 4ms minimum delay on the main thread; workers might get more, but we standardize here
+        safeSetTimeout(callback, 4); // HTML spec specifies a 4ms minimum delay on the main thread; workers might get more, but we standardize here
       }
     }
     if (!GLUT.idleFunc) {
-      Browser.safeSetTimeout(callback, 0);
+      safeSetTimeout(callback, 0);
     }
     GLUT.idleFunc = func;
   },
 
   glutTimerFunc__proxy: 'sync',
+  glutTimerFunc__deps: ['$safeSetTimeout'],
   glutTimerFunc__sig: 'viii',
   glutTimerFunc: function(msec, func, value) {
-    Browser.safeSetTimeout(function() { {{{ makeDynCall('vi', 'func') }}}(value); }, msec);
+    safeSetTimeout(function() { {{{ makeDynCall('vi', 'func') }}}(value); }, msec);
   },
 
   glutDisplayFunc__proxy: 'sync',
@@ -500,7 +498,7 @@ var LibraryGLUT = {
   glutSetCursor__sig: 'vi',
   glutSetCursor: function(cursor) {
     var cursorStyle = 'auto';
-    switch(cursor) {
+    switch (cursor) {
       case 0x0000: /* GLUT_CURSOR_RIGHT_ARROW */
         // No equivalent css cursor style, fallback to 'auto'
         break;

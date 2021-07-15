@@ -143,10 +143,9 @@ function callMain(args) {
   if (!entryFunction) return;
 #endif
 
-#if MAIN_READS_PARAMS
-#if STANDALONE_WASM
+#if MAIN_READS_PARAMS && STANDALONE_WASM
   mainArgs = [thisProgram].concat(args)
-#else
+#elif MAIN_READS_PARAMS
   args = args || [];
 
   var argc = args.length+1;
@@ -156,7 +155,6 @@ function callMain(args) {
     HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
   }
   HEAP32[(argv >> 2) + argc] = 0;
-#endif // STANDALONE_WASM
 #else
   var argc = 0;
   var argv = 0;
@@ -192,34 +190,25 @@ function callMain(args) {
     assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
 #endif
 #else
-#if ASYNCIFY
-    // if we are saving the stack, then do not call exit, we are not
-    // really exiting now, just unwinding the JS stack
-    if (!noExitRuntime) {
-#endif // ASYNCIFY
-      // if we're not running an evented main loop, it's time to exit
-      exit(ret, /* implicit = */ true);
-#if ASYNCIFY
-    }
-#endif // ASYNCIFY
+    // if we're not running an evented main loop, it's time to exit
+    exit(ret, /* implicit = */ true);
   }
-  catch(e) {
-    if (e instanceof ExitStatus) {
-      // exit() throws this once it's done to make sure execution
-      // has been stopped completely
+  catch (e) {
+    // Certain exception types we do not treat as errors since they are used for
+    // internal control flow.
+    // 1. ExitStatus, which is thrown by exit()
+    // 2. "unwind", which is thrown by emscripten_unwind_to_js_event_loop() and others
+    //    that wish to return to JS event loop.
+    if (e instanceof ExitStatus || e == 'unwind') {
       return;
-    } else if (e == 'unwind') {
-      // running an evented main loop, don't immediately exit
-      noExitRuntime = true;
-      return;
-    } else {
-      var toLog = e;
-      if (e && typeof e === 'object' && e.stack) {
-        toLog = [e, e.stack];
-      }
-      err('exception thrown: ' + toLog);
-      quit_(1, e);
     }
+    // Anything else is an unexpected exception and we treat it as hard error.
+    var toLog = e;
+    if (e && typeof e === 'object' && e.stack) {
+      toLog = [e, e.stack];
+    }
+    err('exception thrown: ' + toLog);
+    quit_(1, e);
 #endif // !PROXY_TO_PTHREAD
   } finally {
     calledMain = true;
@@ -295,7 +284,7 @@ function run(args) {
     // creation promise can be resolved, marking the pthread-Module as initialized.
     readyPromiseResolve(Module);
 #endif // MODULARIZE
-
+    initRuntime();
     postMessage({ 'cmd': 'loaded' });
     return;
   }
@@ -322,7 +311,9 @@ function run(args) {
 
     initRuntime();
 
+#if HAS_MAIN
     preMain();
+#endif
 
 #if MODULARIZE
     readyPromiseResolve(Module);
@@ -418,19 +409,13 @@ function checkUnflushedContent() {
 
 /** @param {boolean|number=} implicit */
 function exit(status, implicit) {
+  EXITSTATUS = status;
+
 #if ASSERTIONS
 #if EXIT_RUNTIME == 0
   checkUnflushedContent();
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
-
-  // if this is just main exit-ing implicitly, and the status is 0, then we
-  // don't need to do anything here and can just leave. if the status is
-  // non-zero, though, then we need to report it.
-  // (we may have warned about this earlier, if a situation justifies doing so)
-  if (implicit && noExitRuntime && status === 0) {
-    return;
-  }
 
 #if USE_PTHREADS
   if (!implicit) {
@@ -446,20 +431,20 @@ function exit(status, implicit) {
       throw new ExitStatus(status);
     } else {
 #if ASSERTIONS
-      err('main thead called exit: noExitRuntime=' + noExitRuntime);
+      err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
 #endif
     }
   }
 #endif
 
-  if (noExitRuntime) {
+  if (keepRuntimeAlive()) {
 #if ASSERTIONS
     // if exit() was called, we may warn the user if the runtime isn't actually being shut down
     if (!implicit) {
 #if EXIT_RUNTIME == 0
       var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
 #else
-      var msg = 'program exited (with status: ' + status + '), but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
+      var msg = 'program exited (with status: ' + status + '), but keepRuntimeAlive() is set (counter=' + runtimeKeepaliveCounter + ') due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
 #endif // EXIT_RUNTIME
 #if MODULARIZE
       readyPromiseReject(msg);
@@ -471,8 +456,6 @@ function exit(status, implicit) {
 #if USE_PTHREADS
     PThread.terminateAllThreads();
 #endif
-
-    EXITSTATUS = status;
 
     exitRuntime();
 
@@ -509,25 +492,18 @@ if (Module['noInitialRun']) shouldRunNow = false;
 
 #endif // HAS_MAIN
 
-#if EXIT_RUNTIME == 0
 #if USE_PTHREADS
-// EXIT_RUNTIME=0 only applies to the default behavior of the main browser
-// thread.
-// The default behaviour for pthreads is always to exit once they return
-// from their entry point (or call pthread_exit).  If we set noExitRuntime
-// to true here on pthreads they would never complete and attempt to
-// pthread_join to them would block forever.
-// pthreads can still choose to set `noExitRuntime` explicitly, or
-// call emscripten_unwind_to_js_event_loop to extend their lifetime beyond
-// their main function.  See comment in src/worker.js for more.
-noExitRuntime = !ENVIRONMENT_IS_PTHREAD;
-#else
-noExitRuntime = true;
-#endif
-#endif
-
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) PThread.initWorker();
+if (ENVIRONMENT_IS_PTHREAD) {
+  // The default behaviour for pthreads is always to exit once they return
+  // from their entry point (or call pthread_exit).  If we set noExitRuntime
+  // to true here on pthreads they would never complete and attempt to
+  // pthread_join to them would block forever.
+  // pthreads can still choose to set `noExitRuntime` explicitly, or
+  // call emscripten_unwind_to_js_event_loop to extend their lifetime beyond
+  // their main function.  See comment in src/worker.js for more.
+  noExitRuntime = false;
+  PThread.initWorker();
+}
 #endif
 
 run();

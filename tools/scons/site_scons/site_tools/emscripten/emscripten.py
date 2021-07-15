@@ -23,7 +23,7 @@ def generate(env, emscripten_path=None, **kw):
   for var in ['EM_CACHE', 'EMCC_DEBUG', 'EMTEST_BROWSER',
               'EMMAKEN_JUST_CONFIGURE', 'EMCC_CFLAGS', 'EMCC_TEMP_DIR',
               'EMCC_AUTODEBUG', 'EM_COMPILER_WRAPPER',
-              'EMMAKEN_COMPILER', 'EMMAKEN_CFLAGS', 'EMCC_JSOPT_BLACKLIST',
+              'EMMAKEN_COMPILER', 'EMMAKEN_CFLAGS',
               'MOZ_DISABLE_AUTO_SAFE_MODE', 'EMCC_STDERR_FILE',
               'EMSCRIPTEN_SUPPRESS_USAGE_WARNING', 'NODE_PATH', 'EMCC_JSOPT_MIN_CHUNK_SIZE',
               'EMCC_JSOPT_MAX_CHUNK_SIZE', 'EMCC_SAVE_OPT_TEMP', 'EMCC_CORES', 'EMCC_NO_OPT_SORT',
@@ -40,7 +40,9 @@ def generate(env, emscripten_path=None, **kw):
 
   env.Replace(CC=os.path.join(emscPath, "emcc"))
   env.Replace(CXX=os.path.join(emscPath, "em++"))
-  env.Replace(LINK=os.path.join(emscPath, "emcc"))
+  # LINK uses smark_link by default which will choose
+  # either emcc or em++ depending on if there are any C++ sources
+  # in the program, so no need to change that.
   # SHLINK and LDMODULE should use LINK so no
   # need to change them here
 

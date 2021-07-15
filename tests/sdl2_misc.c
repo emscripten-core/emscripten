@@ -18,8 +18,6 @@
 int main(int argc, char *argv[])
 {
     SDL_Window *window;
-    SDL_Surface *surface;
-    SDL_Cursor *cursor;
 
     if ( SDL_Init(SDL_INIT_VIDEO) != 0 ) {
         printf("Unable to initialize SDL: %s\n", SDL_GetError());

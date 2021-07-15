@@ -1,4 +1,4 @@
-_PC_LINK_MAX: 32000
+_PC_LINK_MAX: 8
 errno: 0
 
 _PC_MAX_CANON: 255
@@ -37,7 +37,7 @@ errno: 0
 _PC_VDISABLE: 0
 errno: 0
 
-_PC_SYNC_IO: -1
+_PC_SYNC_IO: 1
 errno: 0
 
 _PC_ASYNC_IO: -1
@@ -49,13 +49,13 @@ errno: 0
 _PC_SOCK_MAXBUF: -1
 errno: 0
 
-_PC_REC_INCR_XFER_SIZE: -1
+_PC_REC_INCR_XFER_SIZE: 4096
 errno: 0
 
-_PC_REC_MAX_XFER_SIZE: -1
+_PC_REC_MAX_XFER_SIZE: 4096
 errno: 0
 
-_PC_SYMLINK_MAX: -1
+_PC_SYMLINK_MAX: 255
 errno: 0
 
 _PC_FILESIZEBITS: 64

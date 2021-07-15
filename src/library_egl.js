@@ -46,7 +46,7 @@ var LibraryEGL = {
 
       if (attribList) {
         // read attribList if it is non-null
-        for(;;) {
+        for (;;) {
           var param = {{{ makeGetValue('attribList', '0', 'i32') }}};
           if (param == 0x3021 /*EGL_ALPHA_SIZE*/) {
             var alphaSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
@@ -176,7 +176,7 @@ var LibraryEGL = {
       return 0;
     }
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    switch(attribute) {
+    switch (attribute) {
     case 0x3020: // EGL_BUFFER_SIZE
       {{{ makeSetValue('value', '0', 'EGL.contextAttributes.alpha ? 32 : 24' /* 8 bits for each R,G,B. 8 bits for alpha if enabled*/, 'i32') }}};
       return 1;
@@ -333,7 +333,7 @@ var LibraryEGL = {
     // EGL 1.4 spec says default EGL_CONTEXT_CLIENT_VERSION is GLES1, but this is not supported by Emscripten.
     // So user must pass EGL_CONTEXT_CLIENT_VERSION == 2 to initialize EGL.
     var glesContextVersion = 1;
-    for(;;) {
+    for (;;) {
       var param = {{{ makeGetValue('contextAttribs', '0', 'i32') }}};
       if (param == 0x3098 /*EGL_CONTEXT_CLIENT_VERSION*/) {
         glesContextVersion = {{{ makeGetValue('contextAttribs', '4', 'i32') }}};
@@ -424,7 +424,7 @@ var LibraryEGL = {
       return 0;
     }
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    switch(attribute) {
+    switch (attribute) {
     case 0x3028: // EGL_CONFIG_ID
       {{{ makeSetValue('value', '0', '62002' /* A magic value for the only EGLConfig configuration ID supported by Emscripten. */, 'i32') }}};
         return 1;
@@ -493,7 +493,7 @@ var LibraryEGL = {
     }
 
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    switch(attribute) {
+    switch (attribute) {
       case 0x3028: // EGL_CONFIG_ID
         {{{ makeSetValue('value', '0', '62002' /* A magic value for the only EGLConfig configuration ID supported by Emscripten. */, 'i32') }}};
         return 1;
@@ -536,7 +536,7 @@ var LibraryEGL = {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     if (EGL.stringCache[name]) return EGL.stringCache[name];
     var ret;
-    switch(name) {
+    switch (name) {
       case 0x3053 /* EGL_VENDOR */: ret = allocateUTF8("Emscripten"); break;
       case 0x3054 /* EGL_VERSION */: ret = allocateUTF8("1.4 Emscripten EGL"); break;
       case 0x3055 /* EGL_EXTENSIONS */:  ret = allocateUTF8(""); break; // Currently not supporting any EGL extensions.
@@ -685,13 +685,6 @@ var LibraryEGL = {
       return 1 /* EGL_TRUE */;
     }
     return 0 /* EGL_FALSE */;
-  },
-
-  eglGetProcAddress__deps: ['emscripten_GetProcAddress'],
-  eglGetProcAddress__proxy: 'sync',
-  eglGetProcAddress__sig: 'ii',
-  eglGetProcAddress: function(name_) {
-    return _emscripten_GetProcAddress(name_);
   },
 
   eglReleaseThread__proxy: 'sync',

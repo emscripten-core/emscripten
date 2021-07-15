@@ -15,7 +15,9 @@
 #include <math.h>
 #include <poll.h>
 #include <pthread.h>
+#include <stdatomic.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
@@ -25,6 +27,7 @@
 #include <sys/statvfs.h>
 #include <sys/time.h>
 #include <termios.h>
+#include <threads.h>
 #include <unistd.h>
 #include <utime.h>
 
@@ -178,6 +181,7 @@ static em_queued_call* em_queued_call_malloc() {
   }
   return call;
 }
+
 static void em_queued_call_free(em_queued_call* call) {
   if (call)
     free(call->satelliteData);
@@ -365,10 +369,11 @@ static void _do_call(em_queued_call* q) {
 
 #define CALL_QUEUE_SIZE 128
 
+// Shared data synchronized by call_queue_lock.
 typedef struct CallQueue {
   void* target_thread;
   em_queued_call** call_queue;
-  int call_queue_head; // Shared data synchronized by call_queue_lock.
+  int call_queue_head;
   int call_queue_tail;
   struct CallQueue* next;
 } CallQueue;
@@ -379,9 +384,8 @@ typedef struct CallQueue {
 static pthread_mutex_t call_queue_lock = PTHREAD_MUTEX_INITIALIZER;
 static CallQueue* callQueue_head = 0;
 
-static CallQueue* GetQueue(
-  void* target) // Not thread safe, call while having call_queue_lock obtained.
-{
+// Not thread safe, call while having call_queue_lock obtained.
+static CallQueue* GetQueue(void* target) {
   assert(target);
   CallQueue* q = callQueue_head;
   while (q && q->target_thread != target)
@@ -389,9 +393,8 @@ static CallQueue* GetQueue(
   return q;
 }
 
-static CallQueue* GetOrAllocateQueue(
-  void* target) // Not thread safe, call while having call_queue_lock obtained.
-{
+// Not thread safe, call while having call_queue_lock obtained.
+static CallQueue* GetOrAllocateQueue(void* target) {
   CallQueue* q = GetQueue(target);
   if (q)
     return q;
@@ -416,14 +419,14 @@ static CallQueue* GetOrAllocateQueue(
 EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeoutMSecs) {
   int r;
 
-  int done = emscripten_atomic_load_u32(&call->operationDone);
+  int done = atomic_load(&call->operationDone);
   if (!done) {
     double now = emscripten_get_now();
     double waitEndTime = now + timeoutMSecs;
     emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
     while (!done && now < waitEndTime) {
       r = emscripten_futex_wait(&call->operationDone, 0, waitEndTime - now);
-      done = emscripten_atomic_load_u32(&call->operationDone);
+      done = atomic_load(&call->operationDone);
       now = emscripten_get_now();
     }
     emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
@@ -453,8 +456,7 @@ pthread_t emscripten_main_browser_thread_id() {
   return main_browser_thread_id_;
 }
 
-int _emscripten_do_dispatch_to_thread(
-  pthread_t target_thread, em_queued_call* call) {
+int _emscripten_do_dispatch_to_thread(pthread_t target_thread, em_queued_call* call) {
   assert(call);
 
   // #if PTHREADS_DEBUG // TODO: Create a debug version of pthreads library
@@ -483,8 +485,8 @@ int _emscripten_do_dispatch_to_thread(
     q->call_queue = malloc(
       sizeof(em_queued_call*) * CALL_QUEUE_SIZE); // Shared data synchronized by call_queue_lock.
 
-  int head = emscripten_atomic_load_u32((void*)&q->call_queue_head);
-  int tail = emscripten_atomic_load_u32((void*)&q->call_queue_tail);
+  int head = q->call_queue_head;
+  int tail = q->call_queue_tail;
   int new_tail = (tail + 1) % CALL_QUEUE_SIZE;
 
   while (new_tail == head) { // Queue is full?
@@ -495,8 +497,8 @@ int _emscripten_do_dispatch_to_thread(
     if (target_thread == emscripten_main_browser_thread_id()) {
       emscripten_futex_wait((void*)&q->call_queue_head, head, INFINITY);
       pthread_mutex_lock(&call_queue_lock);
-      head = emscripten_atomic_load_u32((void*)&q->call_queue_head);
-      tail = emscripten_atomic_load_u32((void*)&q->call_queue_tail);
+      head = q->call_queue_head;
+      tail = q->call_queue_tail;
       new_tail = (tail + 1) % CALL_QUEUE_SIZE;
     } else {
       // For the queues of other threads, just drop the message.
@@ -524,10 +526,8 @@ int _emscripten_do_dispatch_to_thread(
     }
   }
 
-  emscripten_atomic_store_u32((void*)&q->call_queue_tail, new_tail);
-
+  q->call_queue_tail = new_tail;
   pthread_mutex_unlock(&call_queue_lock);
-
   return 0;
 }
 
@@ -657,38 +657,32 @@ void* emscripten_sync_run_in_main_thread_7(int function, void* arg1,
 
 void emscripten_current_thread_process_queued_calls() {
   // #if PTHREADS_DEBUG == 2
-  //	EM_ASM(console.error('thread ' + _pthread_self() + ':
+  //  EM_ASM(console.error('thread ' + _pthread_self() + ':
   //emscripten_current_thread_process_queued_calls(), ' + new Error().stack));
   // #endif
 
-  // TODO: Under certain conditions we may want to have a nesting guard also for pthreads (and it
-  // will certainly be cleaner that way), but we don't yet have TLS variables outside
-  // pthread_set/getspecific, so convert this to TLS after TLS is implemented.
-  static int bool_main_thread_inside_nested_process_queued_calls = 0;
+  static thread_local bool thread_is_processing_queued_calls = false;
 
-  if (emscripten_is_main_browser_thread()) {
-    // It is possible that when processing a queued call, the call flow leads back to calling this
-    // function in a nested fashion! Therefore this scenario must explicitly be detected, and
-    // processing the queue must be avoided if we are nesting, or otherwise the same queued calls
-    // would be processed again and again.
-    if (bool_main_thread_inside_nested_process_queued_calls)
-      return;
-    // This must be before pthread_mutex_lock(), since pthread_mutex_lock() can call back to this
-    // function.
-    bool_main_thread_inside_nested_process_queued_calls = 1;
-  }
+  // It is possible that when processing a queued call, the control flow leads back to calling this
+  // function in a nested fashion! Therefore this scenario must explicitly be detected, and
+  // processing the queue must be avoided if we are nesting, or otherwise the same queued calls
+  // would be processed again and again.
+  if (thread_is_processing_queued_calls)
+    return;
+  // This must be before pthread_mutex_lock(), since pthread_mutex_lock() can call back to this
+  // function.
+  thread_is_processing_queued_calls = true;
 
   pthread_mutex_lock(&call_queue_lock);
   CallQueue* q = GetQueue(pthread_self());
   if (!q) {
     pthread_mutex_unlock(&call_queue_lock);
-    if (emscripten_is_main_browser_thread())
-      bool_main_thread_inside_nested_process_queued_calls = 0;
+    thread_is_processing_queued_calls = false;
     return;
   }
 
-  int head = emscripten_atomic_load_u32((void*)&q->call_queue_head);
-  int tail = emscripten_atomic_load_u32((void*)&q->call_queue_tail);
+  int head = q->call_queue_head;
+  int tail = q->call_queue_tail;
   while (head != tail) {
     // Assume that the call is heavy, so unlock access to the call queue while it is being
     // performed.
@@ -697,16 +691,15 @@ void emscripten_current_thread_process_queued_calls() {
     pthread_mutex_lock(&call_queue_lock);
 
     head = (head + 1) % CALL_QUEUE_SIZE;
-    emscripten_atomic_store_u32((void*)&q->call_queue_head, head);
-    tail = emscripten_atomic_load_u32((void*)&q->call_queue_tail);
+    q->call_queue_head = head;
+    tail = q->call_queue_tail;
   }
   pthread_mutex_unlock(&call_queue_lock);
 
   // If the queue was full and we had waiters pending to get to put data to queue, wake them up.
   emscripten_futex_wake((void*)&q->call_queue_head, 0x7FFFFFFF);
 
-  if (emscripten_is_main_browser_thread())
-    bool_main_thread_inside_nested_process_queued_calls = 0;
+  thread_is_processing_queued_calls = false;
 }
 
 // At times when we disallow the main thread to process queued calls, this will
@@ -919,12 +912,6 @@ int _emscripten_call_on_thread(
   }
 }
 
-void llvm_memory_barrier() { emscripten_atomic_fence(); }
-
-int llvm_atomic_load_add_i32_p0i32(int* ptr, int delta) {
-  return emscripten_atomic_add_u32(ptr, delta);
-}
-
 // Stores the memory address that the main thread is waiting on, if any. If
 // the main thread is waiting, we wake it up before waking up any workers.
 EMSCRIPTEN_KEEPALIVE void* _emscripten_main_thread_futex;
@@ -959,3 +946,35 @@ int emscripten_proxy_main(int argc, char** argv) {
 }
 
 weak_alias(__pthread_testcancel, pthread_testcancel);
+
+// See musl's pthread_create.c
+void __run_cleanup_handlers(void* _unused) {
+  pthread_t self = __pthread_self();
+  while (self->cancelbuf) {
+    void (*f)(void *) = self->cancelbuf->__f;
+    void *x = self->cancelbuf->__x;
+    self->cancelbuf = self->cancelbuf->__next;
+    f(x);
+  }
+}
+
+extern int __cxa_thread_atexit(void (*)(void *), void *, void *);
+
+extern int8_t __dso_handle;
+
+// Copied from musl's pthread_create.c
+void __do_cleanup_push(struct __ptcb *cb) {
+  struct pthread *self = __pthread_self();
+  cb->__next = self->cancelbuf;
+  self->cancelbuf = cb;
+  static thread_local bool registered = false;
+  if (!registered) {
+    __cxa_thread_atexit(__run_cleanup_handlers, NULL, &__dso_handle);
+    registered = true;
+  }
+}
+
+// Copied from musl's pthread_create.c
+void __do_cleanup_pop(struct __ptcb *cb) {
+  __pthread_self()->cancelbuf = cb->__next;
+}

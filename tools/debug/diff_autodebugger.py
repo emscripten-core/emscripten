@@ -9,9 +9,11 @@ and there are float differences
 '''
 from __future__ import print_function
 import os, sys
+from pathlib import Path
 
-f1 = open(sys.argv[1], 'r').readlines()
-f2 = open(sys.argv[2], 'r').readlines()
+
+f1 = Path(sys.argv[1]).read_text().splitlines(keepends=True)
+f2 = Path(sys.argv[2]).read_text().splitlines(keepends=True)
 
 for i in range(len(f1)):
   if f1[i] == f2[i]: continue

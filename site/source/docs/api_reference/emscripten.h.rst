@@ -4,7 +4,7 @@
 emscripten.h
 ============
 
-This page documents the public C++ APIs provided by `emscripten.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/emscripten.h>`_.
+This page documents the public C++ APIs provided by `emscripten.h <https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/emscripten.h>`_.
 
 Emscripten uses existing/familiar APIs where possible (for example: :term:`SDL`). This API provides C++ support for capabilities that are specific to JavaScript or the browser environment, or for which there is no existing API.
 
@@ -107,7 +107,7 @@ Defines
 
   .. code-block:: none
 
-    EM_JS(const char*, get_unicode_str, (), {
+    EM_JS(char*, get_unicode_str, (), {
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
       // 'jsString.length' would return the length of the string as UTF-16
       // units, but Emscripten C strings operate as UTF-8.
@@ -118,7 +118,7 @@ Defines
     });
 
     int main() {
-      const char* str = get_unicode_str();
+      char* str = get_unicode_str();
       printf("UTF8 string says: %s\n", str);
       // Each call to _malloc() must be paired with free(), or heap memory will leak!
       free(str);
@@ -534,7 +534,7 @@ Functions
 .. _emscripten-h-asynchronous-file-system-api:
 
 Asynchronous File System API
-=========================================
+============================
 
 Typedefs
 --------
@@ -765,9 +765,24 @@ Functions
 
     - *(void*)* : Equal to ``arg`` (user defined data).
 
+.. c:function:: void emscripten_dlopen(const char *filename, int flags, void* user_data, em_dlopen_callback onsuccess, em_arg_callback_func onerror);
+
+  Starts and asyncronous dlopen operation to load a shared library from a
+  filename or URL.  Returns immediately and requires the caller to return to the
+  event loop.  The ``onsuccess`` and ``onerror`` callbacks are used to signal
+  success or failure of the request.  Upon ``onerror`` callback the normal
+  ``dlerror`` C function can be used get the error details.  The flags are the
+  same as those used in the normal ``dlopen`` C function.
+
+  :param const char* filename: The filename (or URLs) of the shared library to load.
+  :param int flags: See dlopen flags.
+  :param void* user_data: User data passed to onsuccess, and onerror callbacks.
+  :param em_dlopen_callback onsuccess: Called if the library was loaded successfully.
+  :param em_arg_callback_func onerror: Called if there as an error loading the library.
+
 
 Asynchronous IndexedDB API
-=====================================
+==========================
 
   IndexedDB is a browser API that lets you store data persistently, that is, you can save data there and load it later when the user re-visits the web page. IDBFS provides one way to use IndexedDB, through the Emscripten filesystem layer. The ``emscripten_idb_*`` methods listed here provide an alternative API, directly to IndexedDB, thereby avoiding the overhead of the filesystem layer.
 
@@ -1254,7 +1269,7 @@ Typedefs
 
   Unaligned types. These may be used to force LLVM to emit unaligned loads/stores in places in your code where :ref:`SAFE_HEAP <debugging-SAFE-HEAP>` found an unaligned operation.
 
-  For usage examples see `tests/core/test_set_align.c <https://github.com/emscripten-core/emscripten/blob/master/tests/core/test_set_align.c>`_.
+  For usage examples see `tests/core/test_set_align.c <https://github.com/emscripten-core/emscripten/blob/main/tests/core/test_set_align.c>`_.
 
   .. note:: It is better to avoid unaligned operations, but if you are reading from a packed stream of bytes or such, these types may be useful!
 

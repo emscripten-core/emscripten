@@ -13,7 +13,7 @@ object and applies them. Note that changing the values *after* startup will not
 work in general; in a build with ``ASSERTIONS`` enabled you will get an error
 in that case.
 
-.. note:: ``Module`` is also used to provide access to Emscripten API functions (for example :js:func:`ccall`) in a safe way. Any function or runtime method exported (using ``EXPORTED_FUNCTIONS`` for compiled functions, or ``EXTRA_EXPORTED_RUNTIME_METHODS`` for runtime methods like ``ccall``) will be accessible on the ``Module`` object, without minification changing the name, and the optimizer will make sure to keep the function present (and not remove it as unused). See the :ref:`relevant FAQ entry<faq-export-stuff>`.
+.. note:: ``Module`` is also used to provide access to Emscripten API functions (for example :js:func:`ccall`) in a safe way. Any function or runtime method exported (using ``EXPORTED_FUNCTIONS`` for compiled functions, or ``EXPORTED_RUNTIME_METHODS`` for runtime methods like ``ccall``) will be accessible on the ``Module`` object, without minification changing the name, and the optimizer will make sure to keep the function present (and not remove it as unused). See the :ref:`relevant FAQ entry<faq-export-stuff>`.
 
 .. contents:: Table of Contents
   :local:
@@ -161,5 +161,5 @@ Other methods
 
 .. js:function:: Module.onCustomMessage
 
-  When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/emscripten-core/emscripten/blob/master/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/emscripten-core/emscripten/blob/master/src/proxyWorker.js>`_).
+  When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/emscripten-core/emscripten/blob/main/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/emscripten-core/emscripten/blob/main/src/proxyWorker.js>`_).
 

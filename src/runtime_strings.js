@@ -9,11 +9,34 @@
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
 
+#if USE_PTHREADS && TEXTDECODER
+// UTF8Decoder.decode may not work with a view of a SharedArrayBuffer, see
+// https://github.com/whatwg/encoding/issues/172
+// To avoid that, we wrap around it and add a copy into a normal ArrayBuffer,
+// which can still be much faster than creating a string character by
+// character.
+function TextDecoderWrapper(encoding) {
+  var textDecoder = new TextDecoder(encoding);
+  this.decode = function(data) {
+#if ASSERTIONS
+    assert(data instanceof Uint8Array);
+#endif
+    // While we compile with pthreads, this method can be called on side buffers
+    // as well, such as the stdout buffer in the filesystem code. Only copy when
+    // we have to.
+    if (data.buffer instanceof SharedArrayBuffer) {
+      data = new Uint8Array(data);
+    }
+    return textDecoder.decode.call(textDecoder, data);
+  };
+}
+#endif
+
 #if TEXTDECODER == 2
-var UTF8Decoder = new TextDecoder('utf8');
+var UTF8Decoder = new TextDecoder{{{ USE_PTHREADS ? 'Wrapper' : ''}}}('utf8');
 #else // TEXTDECODER == 2
 #if TEXTDECODER
-var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf8') : undefined;
+var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder{{{ USE_PTHREADS ? 'Wrapper' : ''}}}('utf8') : undefined;
 #endif // TEXTDECODER
 #endif // TEXTDECODER == 2
 
@@ -70,7 +93,7 @@ function UTF8ArrayToString(heap, idx, maxBytesToRead) {
         u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
       } else {
 #if ASSERTIONS
-        if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte 0x' + u0.toString(16) + ' encountered when deserializing a UTF-8 string on the asm.js/wasm heap to a JS string!');
+        if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte 0x' + u0.toString(16) + ' encountered when deserializing a UTF-8 string in wasm memory to a JS string!');
 #endif
         u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heap[idx++] & 63);
       }
@@ -111,7 +134,7 @@ function UTF8ToString(ptr, maxBytesToRead) {
 #if TEXTDECODER == 2
   if (!ptr) return '';
   var maxPtr = ptr + maxBytesToRead;
-  for(var end = ptr; !(end >= maxPtr) && HEAPU8[end];) ++end;
+  for (var end = ptr; !(end >= maxPtr) && HEAPU8[end];) ++end;
   return UTF8Decoder.decode(HEAPU8.subarray(ptr, end));
 #else
   return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
@@ -164,7 +187,7 @@ function stringToUTF8Array(str, heap, outIdx, maxBytesToWrite) {
     } else {
       if (outIdx + 3 >= endIdx) break;
 #if ASSERTIONS
-      if (u >= 0x200000) warnOnce('Invalid Unicode code point 0x' + u.toString(16) + ' encountered when serializing a JS string to an UTF-8 string on the asm.js/wasm heap! (Valid unicode code points should be in range 0-0x1FFFFF).');
+      if (u >= 0x200000) warnOnce('Invalid Unicode code point 0x' + u.toString(16) + ' encountered when serializing a JS string to a UTF-8 string in wasm memory! (Valid unicode code points should be in range 0-0x1FFFFF).');
 #endif
       heap[outIdx++] = 0xF0 | (u >> 18);
       heap[outIdx++] = 0x80 | ((u >> 12) & 63);

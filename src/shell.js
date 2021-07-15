@@ -81,22 +81,24 @@ var quit_ = function(status, toThrow) {
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
-#if ENVIRONMENT && ENVIRONMENT.indexOf(',') < 0
+#if ENVIRONMENT && !ENVIRONMENT.includes(',')
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
+#if USE_PTHREADS && ENVIRONMENT_MAY_BE_NODE
+// node+pthreads always supports workers; detect which we are at runtime
+var ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
+#else
 var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT === 'worker' }}};
+#endif
 var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT === 'node' }}};
 var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT === 'shell' }}};
 #else // ENVIRONMENT
-var ENVIRONMENT_IS_WEB = false;
-var ENVIRONMENT_IS_WORKER = false;
-var ENVIRONMENT_IS_NODE = false;
-var ENVIRONMENT_IS_SHELL = false;
-ENVIRONMENT_IS_WEB = typeof window === 'object';
-ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
+// Attempt to auto-detect the environment
+var ENVIRONMENT_IS_WEB = typeof window === 'object';
+var ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
 // N.b. Electron.js environment is simultaneously a NODE-environment, but
 // also a web environment.
-ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';
-ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
+var ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';
+var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 #endif // ENVIRONMENT
 
 #if ASSERTIONS
@@ -106,7 +108,13 @@ if (Module['ENVIRONMENT']) {
 #endif
 
 #if USE_PTHREADS
-#include "shell_pthreads.js"
+// Three configurations we can be running in:
+// 1) We could be the application main() thread running in the main JS UI thread. (ENVIRONMENT_IS_WORKER == false and ENVIRONMENT_IS_PTHREAD == false)
+// 2) We could be the application main() thread proxied to worker. (with Emscripten -s PROXY_TO_WORKER=1) (ENVIRONMENT_IS_WORKER == true, ENVIRONMENT_IS_PTHREAD == false)
+// 3) We could be an application pthread running in a worker. (ENVIRONMENT_IS_WORKER == true and ENVIRONMENT_IS_PTHREAD == true)
+
+// ENVIRONMENT_IS_PTHREAD=true will have been preset in worker.js. Make it false in the main runtime thread.
+var ENVIRONMENT_IS_PTHREAD = Module['ENVIRONMENT_IS_PTHREAD'] || false;
 #endif
 
 #if USE_PTHREADS && !MODULARIZE
@@ -190,7 +198,11 @@ if (ENVIRONMENT_IS_NODE) {
   process['on']('unhandledRejection', abort);
 #endif
 
-  quit_ = function(status) {
+  quit_ = function(status, toThrow) {
+    if (keepRuntimeAlive()) {
+      process['exitCode'] = status;
+      throw toThrow;
+    }
     process['exit'](status);
   };
 
@@ -217,7 +229,7 @@ if (ENVIRONMENT_IS_NODE) {
 
 } else
 #endif // ENVIRONMENT_MAY_BE_NODE
-#if ENVIRONMENT_MAY_BE_SHELL
+#if ENVIRONMENT_MAY_BE_SHELL || ASSERTIONS
 if (ENVIRONMENT_IS_SHELL) {
 
 #if ENVIRONMENT
@@ -252,6 +264,10 @@ if (ENVIRONMENT_IS_SHELL) {
     data = read(f, 'binary');
     assert(typeof data === 'object');
     return data;
+  };
+
+  readAsync = function readAsync(f, onload, onerror) {
+    setTimeout(function() { onload(readBinary(f)); }, 0);
   };
 
   if (typeof scriptArgs != 'undefined') {
@@ -393,10 +409,28 @@ assert(typeof Module['TOTAL_MEMORY'] === 'undefined', 'Module.TOTAL_MEMORY has b
 {{{ makeRemovedFSAssert('PROXYFS') }}}
 {{{ makeRemovedFSAssert('WORKERFS') }}}
 {{{ makeRemovedFSAssert('NODEFS') }}}
+{{{ makeRemovedRuntimeFunction('alignMemory') }}}
 
 #if USE_PTHREADS
 assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');
 #endif // USE_PTHREADS
+
+#if !ENVIRONMENT_MAY_BE_WEB
+assert(!ENVIRONMENT_IS_WEB, "web environment detected but not enabled at build time.  Add 'web' to `-s ENVIRONMENT` to enable.");
+#endif
+
+#if !ENVIRONMENT_MAY_BE_WORKER
+assert(!ENVIRONMENT_IS_WORKER, "worker environment detected but not enabled at build time.  Add 'worker' to `-s ENVIRONMENT` to enable.");
+#endif
+
+#if !ENVIRONMENT_MAY_BE_NODE
+assert(!ENVIRONMENT_IS_NODE, "node environment detected but not enabled at build time.  Add 'node' to `-s ENVIRONMENT` to enable.");
+#endif
+
+#if !ENVIRONMENT_MAY_BE_SHELL
+assert(!ENVIRONMENT_IS_SHELL, "shell environment detected but not enabled at build time.  Add 'shell' to `-s ENVIRONMENT` to enable.");
+#endif
+
 #endif // ASSERTIONS
 
 {{BODY}}

@@ -56,6 +56,12 @@ template <typename T> static void register_integer(const char* name) {
     std::numeric_limits<T>::max());
 }
 
+template <typename T> static void register_bigint(const char* name) {
+  using namespace internal;
+  _embind_register_bigint(TypeID<T>::get(), name, sizeof(T), std::numeric_limits<T>::min(),
+    std::numeric_limits<T>::max());
+}
+
 template <typename T> static void register_float(const char* name) {
   using namespace internal;
   _embind_register_float(TypeID<T>::get(), name, sizeof(T));
@@ -106,6 +112,9 @@ void EMSCRIPTEN_KEEPALIVE __embind_register_native_and_builtin_types() {
   register_integer<unsigned int>("unsigned int");
   register_integer<signed long>("long");
   register_integer<unsigned long>("unsigned long");
+
+  register_bigint<int64_t>("int64_t");
+  register_bigint<uint64_t>("uint64_t");
 
   register_float<float>("float");
   register_float<double>("double");

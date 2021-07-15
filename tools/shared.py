@@ -3,11 +3,12 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from .toolchain_profiler import ToolchainProfiler
+
 from subprocess import PIPE
 import atexit
 import binascii
 import base64
-import difflib
 import json
 import logging
 import os
@@ -15,6 +16,7 @@ import re
 import shutil
 import subprocess
 import time
+import signal
 import sys
 import tempfile
 
@@ -23,21 +25,24 @@ if sys.version_info < (3, 6):
   print('error: emscripten requires python 3.6 or above', file=sys.stderr)
   sys.exit(1)
 
-from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
 from . import cache, tempfiles, colored_logger
 from . import diagnostics
 from . import config
+from . import filelock
+from . import utils
+from .settings import settings
 
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_BINARYEN_VERSION = 99
-EXPECTED_LLVM_VERSION = "12.0"
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
-SIMD_NEON_FLAGS = ['-mfpu=neon']
+EXPECTED_LLVM_VERSION = "13.0"
 PYTHON = sys.executable
+
+# Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
+multiprocessing_pool = None
 
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
@@ -47,7 +52,7 @@ logger = logging.getLogger('shared')
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
 diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
-# unused diagnositic flags.  TODO(sbc): remove at some point
+# unused diagnostic flags.  TODO(sbc): remove at some point
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('experimental')
 diagnostics.add_warning('invalid-input')
@@ -57,7 +62,7 @@ diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined', error=True)
-diagnostics.add_warning('deprecated')
+diagnostics.add_warning('deprecated', shared=True)
 diagnostics.add_warning('version-check')
 diagnostics.add_warning('export-main')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
@@ -66,6 +71,7 @@ diagnostics.add_warning('pthreads-mem-growth')
 
 # TODO(sbc): Investigate switching to shlex.quote
 def shlex_quote(arg):
+  arg = os.fspath(arg)
   if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
     return '"' + arg.replace('"', '\\"') + '"'
 
@@ -79,7 +85,7 @@ def shlex_join(cmd):
 
 
 def run_process(cmd, check=True, input=None, *args, **kw):
-  """Runs a subpocess returning the exit code.
+  """Runs a subprocess returning the exit code.
 
   By default this function will raise an exception on failure.  Therefor this should only be
   used if you want to handle such failures.  For most subprocesses, failures are not recoverable
@@ -97,13 +103,118 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   return ret
 
 
+def get_num_cores():
+  return int(os.environ.get('EMCC_CORES', os.cpu_count()))
+
+
+def mp_run_process(command_tuple):
+  temp_files = configuration.get_temp_files()
+  cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd = command_tuple
+  std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
+  ret = std_out.name if route_stdout_to_temp_files_suffix else None
+  proc = subprocess.Popen(cmd, stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd)
+  out, _ = proc.communicate()
+  if pipe_stdout:
+    ret = out.decode('UTF-8')
+  return ret
+
+
+def returncode_to_str(code):
+  assert code != 0
+  if code < 0:
+    signal_name = signal.Signals(-code).name
+    return f'received {signal_name} ({code})'
+
+  return f'returned {code}'
+
+
+# Runs multiple subprocess commands.
+# bool 'check': If True (default), raises an exception if any of the subprocesses failed with a nonzero exit code.
+# string 'route_stdout_to_temp_files_suffix': if not None, all stdouts are instead written to files, and an array of filenames is returned.
+# bool 'pipe_stdout': If True, an array of stdouts is returned, for each subprocess.
+def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp_files_suffix=None, pipe_stdout=False, check=True, cwd=None):
+  # By default, avoid using Python multiprocessing library due to a large amount of bugs it has on Windows (#8013, #718, #13785, etc.)
+  # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be faster, but may not work on Windows.
+  if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
+    import multiprocessing
+    global multiprocessing_pool
+    if not multiprocessing_pool:
+      multiprocessing_pool = multiprocessing.Pool(processes=get_num_cores())
+    return multiprocessing_pool.map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix, pipe_stdout, check, cwd) for cmd in commands], chunksize=1)
+
+  std_outs = []
+
+  if route_stdout_to_temp_files_suffix and pipe_stdout:
+    raise Exception('Cannot simultaneously pipe stdout to file and a string! Choose one or the other.')
+
+  # TODO: Experiment with registering a signal handler here to see if that helps with Ctrl-C locking up the command prompt
+  # when multiple child processes have been spawned.
+  # import signal
+  # def signal_handler(sig, frame):
+  #   sys.exit(1)
+  # signal.signal(signal.SIGINT, signal_handler)
+
+  with ToolchainProfiler.profile_block('run_multiple_processes'):
+    processes = []
+    num_parallel_processes = get_num_cores()
+    temp_files = configuration.get_temp_files()
+    i = 0
+    num_completed = 0
+
+    while num_completed < len(commands):
+      if i < len(commands) and len(processes) < num_parallel_processes:
+        # Not enough parallel processes running, spawn a new one.
+        std_out = temp_files.get(route_stdout_to_temp_files_suffix) if route_stdout_to_temp_files_suffix else (subprocess.PIPE if pipe_stdout else None)
+        if DEBUG:
+          logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
+        processes += [(i, subprocess.Popen(commands[i], stdout=std_out, stderr=subprocess.PIPE if pipe_stdout else None, env=env, cwd=cwd))]
+        if route_stdout_to_temp_files_suffix:
+          std_outs += [(i, std_out.name)]
+        i += 1
+      else:
+        # Not spawning a new process (Too many commands running in parallel, or no commands left): find if a process has finished.
+        def get_finished_process():
+          while True:
+            j = 0
+            while j < len(processes):
+              if processes[j][1].poll() is not None:
+                out, err = processes[j][1].communicate()
+                return (j, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
+              j += 1
+            # All processes still running; wait a short while for the first (oldest) process to finish,
+            # then look again if any process has completed.
+            try:
+              out, err = processes[0][1].communicate(0.2)
+              return (0, out.decode('UTF-8') if out else '', err.decode('UTF-8') if err else '')
+            except subprocess.TimeoutExpired:
+              pass
+
+        j, out, err = get_finished_process()
+        idx, finished_process = processes[j]
+        del processes[j]
+        if pipe_stdout:
+          std_outs += [(idx, out)]
+        if check and finished_process.returncode != 0:
+          if out:
+            logger.info(out)
+          if err:
+            logger.error(err)
+
+          raise Exception('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
+        num_completed += 1
+
+  # If processes finished out of order, sort the results to the order of the input.
+  std_outs.sort(key=lambda x: x[0])
+  return [x[1] for x in std_outs]
+
+
 def check_call(cmd, *args, **kw):
   """Like `run_process` above but treat failures as fatal and exit_with_error."""
   print_compiler_stage(cmd)
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed (%d)", shlex_join(cmd), e.returncode)
+    exit_with_error("'%s' failed (%s)", shlex_join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
@@ -133,7 +244,7 @@ def timeout_run(proc, timeout=None, full_output=False, check=True):
   if check and proc.returncode != 0:
     raise subprocess.CalledProcessError(proc.returncode, '', stdout, stderr)
   if TRACK_PROCESS_SPAWNS:
-    logging.info('Process ' + str(proc.pid) + ' finished after ' + str(time.time() - start) + ' seconds. Exit code: ' + str(proc.returncode))
+    logging.info(f'Process {proc.pid} finished after {time.time() - start} seconds. Exit code: {proc.returncode}')
   return '\n'.join(out) if full_output else out[0]
 
 
@@ -143,7 +254,7 @@ def get_npm_cmd(name):
   else:
     cmd = config.NODE_JS + [path_from_root('node_modules', '.bin', name)]
   if not os.path.exists(cmd[-1]):
-    exit_with_error('%s was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies' % name)
+    exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
   return cmd
 
 
@@ -161,7 +272,7 @@ def check_llvm_version():
   actual = get_clang_version()
   if EXPECTED_LLVM_VERSION in actual:
     return True
-  diagnostics.warning('version-check', 'LLVM version appears incorrect (seeing "%s", expected "%s")', actual, EXPECTED_LLVM_VERSION)
+  diagnostics.warning('version-check', 'LLVM version for clang executable "%s" appears incorrect (seeing "%s", expected "%s")', CLANG_CC, actual, EXPECTED_LLVM_VERSION)
   return False
 
 
@@ -212,7 +323,8 @@ def check_node_version():
     return False
 
   if version < EXPECTED_NODE_VERSION:
-    diagnostics.warning('version-check', 'node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
+    expected = '.'.join(str(v) for v in EXPECTED_NODE_VERSION)
+    diagnostics.warning('version-check', f'node version appears too old (seeing "{actual}", expected "v{expected}")')
     return False
 
   return True
@@ -222,30 +334,40 @@ def set_version_globals():
   global EMSCRIPTEN_VERSION, EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY
   filename = path_from_root('emscripten-version.txt')
   with open(filename) as f:
-    EMSCRIPTEN_VERSION = f.read().strip().replace('"', '')
+    EMSCRIPTEN_VERSION = f.read().strip().strip('"')
   parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
   EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 
 
 def generate_sanity():
-  sanity_file_content = EMSCRIPTEN_VERSION + '|' + config.LLVM_ROOT + '|' + get_clang_version()
-  if config.config_file:
-    config_data = open(config.config_file).read()
-  else:
-    config_data = config.EM_CONFIG
+  sanity_file_content = f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}|{get_clang_version()}'
+  config_data = utils.read_file(config.EM_CONFIG)
   checksum = binascii.crc32(config_data.encode())
   sanity_file_content += '|%#x\n' % checksum
   return sanity_file_content
 
 
 def perform_sanity_checks():
+  # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
+  check_node_version()
+  check_llvm_version()
+
+  llvm_ok = check_llvm()
+
+  if os.environ.get('EM_IGNORE_SANITY'):
+    logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
+    return
+
   logger.info('(Emscripten: Running sanity checks)')
+
+  if not llvm_ok:
+    exit_with_error('failing sanity checks due to previous llvm failure')
 
   with ToolchainProfiler.profile_block('sanity compiler_engine'):
     try:
       run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
     except Exception as e:
-      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.config_file_location(), str(e))
+      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG_CC, LLVM_AR, LLVM_NM]:
@@ -253,6 +375,7 @@ def perform_sanity_checks():
         exit_with_error('Cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 
 
+@ToolchainProfiler.profile_block('sanity')
 def check_sanity(force=False):
   """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
   and LLVM) exists.
@@ -264,29 +387,37 @@ def check_sanity(force=False):
   """
   if not force and os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
     return
+
   # We set EMCC_SKIP_SANITY_CHECK so that any subprocesses that we launch will
   # not re-run the tests.
   os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
-  with ToolchainProfiler.profile_block('sanity'):
-    check_llvm_version()
-    if not config.config_file:
-      return # config stored directly in EM_CONFIG => skip sanity checks
-    expected = generate_sanity()
 
-    sanity_file = Cache.get_path('sanity.txt')
+  if DEBUG:
+    force = True
+
+  if config.FROZEN_CACHE:
+    if force:
+      perform_sanity_checks()
+    return
+
+  if os.environ.get('EM_IGNORE_SANITY'):
+    perform_sanity_checks()
+    return
+
+  expected = generate_sanity()
+
+  sanity_file = Cache.get_path('sanity.txt')
+  with Cache.lock():
     if os.path.exists(sanity_file):
-      sanity_data = open(sanity_file).read()
+      sanity_data = utils.read_file(sanity_file)
       if sanity_data != expected:
         logger.debug('old sanity: %s' % sanity_data)
         logger.debug('new sanity: %s' % expected)
-        if config.FROZEN_CACHE:
-          logger.info('(Emscripten: config changed, cache may need to be cleared, but FROZEN_CACHE is set)')
-        else:
-          logger.info('(Emscripten: config changed, clearing cache)')
-          Cache.erase()
-          # the check actually failed, so definitely write out the sanity file, to
-          # avoid others later seeing failures too
-          force = False
+        logger.info('(Emscripten: config changed, clearing cache)')
+        Cache.erase()
+        # the check actually failed, so definitely write out the sanity file, to
+        # avoid others later seeing failures too
+        force = False
       else:
         if force:
           logger.debug(f'sanity file up-to-date but check forced: {sanity_file}')
@@ -296,23 +427,10 @@ def check_sanity(force=False):
     else:
       logger.debug(f'sanity file not found: {sanity_file}')
 
-    # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
-    check_node_version()
-
-    llvm_ok = check_llvm()
-
-    if os.environ.get('EM_IGNORE_SANITY'):
-      logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
-      return
-
-    if not llvm_ok:
-      exit_with_error('failing sanity checks due to previous llvm failure')
-
     perform_sanity_checks()
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
-      Cache.ensure()
       with open(sanity_file, 'w') as f:
         f.write(expected)
 
@@ -353,7 +471,7 @@ def replace_suffix(filename, new_suffix):
 # Retain the original naming scheme in traditional runtime.
 def replace_or_append_suffix(filename, new_suffix):
   assert new_suffix[0] == '.'
-  return replace_suffix(filename, new_suffix) if Settings.MINIMAL_RUNTIME else filename + new_suffix
+  return replace_suffix(filename, new_suffix) if settings.MINIMAL_RUNTIME else filename + new_suffix
 
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use the canonical
@@ -364,12 +482,14 @@ def get_emscripten_temp_dir():
   if not EMSCRIPTEN_TEMP_DIR:
     EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
 
-    def prepare_to_clean_temp(d):
-      def clean_temp():
-        try_delete(d)
+    if not DEBUG_SAVE:
+      def prepare_to_clean_temp(d):
+        def clean_temp():
+          try_delete(d)
 
-      atexit.register(clean_temp)
-    prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
+        atexit.register(clean_temp)
+      # this global var might change later
+      prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR)
   return EMSCRIPTEN_TEMP_DIR
 
 
@@ -377,13 +497,13 @@ def get_canonical_temp_dir(temp_dir):
   return os.path.join(temp_dir, 'emscripten_temp')
 
 
-class Configuration(object):
+class Configuration:
   def __init__(self):
     self.EMSCRIPTEN_TEMP_DIR = None
 
     self.TEMP_DIR = os.environ.get("EMCC_TEMP_DIR", tempfile.gettempdir())
     if not os.path.isdir(self.TEMP_DIR):
-      exit_with_error("The temporary directory `" + self.TEMP_DIR + "` does not exist! Please make sure that the path is correct.")
+      exit_with_error(f'The temporary directory `{self.TEMP_DIR}` does not exist! Please make sure that the path is correct.')
 
     self.CANONICAL_TEMP_DIR = get_canonical_temp_dir(self.TEMP_DIR)
 
@@ -392,12 +512,31 @@ class Configuration(object):
       try:
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
-        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.config_file_location())
+        exit_with_error(str(e) + f'Could not create canonical temp dir. Check definition of TEMP_DIR in {config.EM_CONFIG}')
+
+      # Since the canonical temp directory is, by definition, the same
+      # between all processes that run in DEBUG mode we need to use a multi
+      # process lock to prevent more than one process from writing to it.
+      # This is because emcc assumes that it can use non-unique names inside
+      # the temp directory.
+      # Sadly we need to allow child processes to access this directory
+      # though, since emcc can recursively call itself when building
+      # libraries and ports.
+      if 'EM_HAVE_TEMP_DIR_LOCK' not in os.environ:
+        filelock_name = os.path.join(self.EMSCRIPTEN_TEMP_DIR, 'emscripten.lock')
+        lock = filelock.FileLock(filelock_name)
+        os.environ['EM_HAVE_TEMP_DIR_LOCK'] = '1'
+        lock.acquire()
+        atexit.register(lock.release)
 
   def get_temp_files(self):
-    return tempfiles.TempFiles(
-      tmp=self.TEMP_DIR if not DEBUG else get_emscripten_temp_dir(),
-      save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
+    if DEBUG_SAVE:
+      # In debug mode store all temp files in the emscripten-specific temp dir
+      # and don't worry about cleaning them up.
+      return tempfiles.TempFiles(get_emscripten_temp_dir(), save_debug_files=True)
+    else:
+      # Otherwise use the system tempdir and try to clean up after ourselves.
+      return tempfiles.TempFiles(self.TEMP_DIR, save_debug_files=False)
 
 
 def apply_configuration():
@@ -408,273 +547,8 @@ def apply_configuration():
   TEMP_DIR = configuration.TEMP_DIR
 
 
-def get_llvm_target():
-  if Settings.MEMORY64:
-    return 'wasm64-unknown-emscripten'
-  else:
-    return 'wasm32-unknown-emscripten'
-
-
-def emsdk_ldflags(user_args):
-  if os.environ.get('EMMAKEN_NO_SDK'):
-    return []
-
-  library_paths = [
-      Cache.get_lib_dir(absolute=True)
-  ]
-  ldflags = ['-L' + l for l in library_paths]
-
-  if '-nostdlib' in user_args:
-    return ldflags
-
-  # TODO(sbc): Add system libraries here rather than conditionally including
-  # them via .symbols files.
-  libraries = []
-  ldflags += ['-l' + l for l in libraries]
-
-  return ldflags
-
-
-def emsdk_cflags(user_args):
-  # Disable system C and C++ include directories, and add our own (using
-  # -isystem so they are last, like system dirs, which allows projects to
-  # override them)
-
-  c_opts = ['--sysroot=' + Cache.get_sysroot_dir(absolute=True)]
-
-  def array_contains_any_of(hay, needles):
-    for n in needles:
-      if n in hay:
-        return True
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    if '-msimd128' not in user_args:
-      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128!')
-    c_opts += ['-D__SSE__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
-    c_opts += ['-D__SSE2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
-    c_opts += ['-D__SSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
-    c_opts += ['-D__SSSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
-    c_opts += ['-D__SSE4_1__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
-    c_opts += ['-D__SSE4_2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[6:]):
-    c_opts += ['-D__AVX__=1']
-
-  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    c_opts += ['-D__ARM_NEON__=1']
-
-  return c_opts + ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
-
-
-def get_clang_flags():
-  return ['-target', get_llvm_target()]
-
-
-def get_cflags(user_args):
-  c_opts = get_clang_flags()
-
-  # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
-  # data and other nice fixes.
-  c_opts += [# '-fno-threadsafe-statics', # disabled due to issue 1289
-             '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
-             '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
-             '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
-             '-D_LIBCPP_ABI_VERSION=2']
-
-  # For compatability with the fastcomp compiler that defined these
-  c_opts += ['-Dunix',
-             '-D__unix',
-             '-D__unix__']
-
-  # Changes to default clang behavior
-
-  # Implicit functions can cause horribly confusing function pointer type errors, see #2175
-  # If your codebase really needs them - very unrecommended! - you can disable the error with
-  #   -Wno-error=implicit-function-declaration
-  # or disable even a warning about it with
-  #   -Wno-implicit-function-declaration
-  c_opts += ['-Werror=implicit-function-declaration']
-
-  if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
-    return c_opts
-
-  return c_opts + emsdk_cflags(user_args)
-
-
-# Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
-class SettingsManager(object):
-
-  class __impl(object):
-    attrs = {}
-    internal_settings = set()
-
-    def __init__(self):
-      self.reset()
-
-    @classmethod
-    def reset(cls):
-      cls.attrs = {}
-
-      # Load the JS defaults into python.
-      settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
-      settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
-      # Variable TARGET_NOT_SUPPORTED is referenced by value settings.js (also beyond declaring it),
-      # so must pass it there explicitly.
-      exec(settings, {'attrs': cls.attrs})
-
-      settings = open(path_from_root('src', 'settings_internal.js')).read().replace('//', '#')
-      settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
-      internal_attrs = {}
-      exec(settings, {'attrs': internal_attrs})
-      cls.attrs.update(internal_attrs)
-
-      if 'EMCC_STRICT' in os.environ:
-        cls.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
-
-      # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
-      # details
-      cls.legacy_settings = {}
-      cls.alt_names = {}
-      for legacy in cls.attrs['LEGACY_SETTINGS']:
-        if len(legacy) == 2:
-          name, new_name = legacy
-          cls.legacy_settings[name] = (None, 'setting renamed to ' + new_name)
-          cls.alt_names[name] = new_name
-          cls.alt_names[new_name] = name
-          default_value = cls.attrs[new_name]
-        else:
-          name, fixed_values, err = legacy
-          cls.legacy_settings[name] = (fixed_values, err)
-          default_value = fixed_values[0]
-        assert name not in cls.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
-        if not cls.attrs['STRICT']:
-          cls.attrs[name] = default_value
-
-      cls.internal_settings = set(internal_attrs.keys())
-
-    # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
-    # the reverse of load_settings, except for -Ox which is relevant there but not here
-    @classmethod
-    def serialize(cls):
-      ret = []
-      for key, value in cls.attrs.items():
-        if key == key.upper():  # this is a hack. all of our settings are ALL_CAPS, python internals are not
-          jsoned = json.dumps(value, sort_keys=True)
-          ret += ['-s', key + '=' + jsoned]
-      return ret
-
-    @classmethod
-    def to_dict(cls):
-      return cls.attrs.copy()
-
-    @classmethod
-    def copy(cls, values):
-      cls.attrs = values
-
-    @classmethod
-    def apply_opt_level(cls, opt_level, shrink_level=0, noisy=False):
-      if opt_level >= 1:
-        cls.attrs['ASSERTIONS'] = 0
-      if shrink_level >= 2:
-        cls.attrs['EVAL_CTORS'] = 1
-
-    def keys(self):
-      return self.attrs.keys()
-
-    def __getattr__(self, attr):
-      if attr in self.attrs:
-        return self.attrs[attr]
-      else:
-        raise AttributeError("Settings object has no attribute '%s'" % attr)
-
-    def __setattr__(self, attr, value):
-      if attr == 'STRICT' and value:
-        for a in self.legacy_settings:
-          self.attrs.pop(a, None)
-
-      if attr in self.legacy_settings:
-        # TODO(sbc): Rather then special case this we should have STRICT turn on the
-        # legacy-settings warning below
-        if self.attrs['STRICT']:
-          exit_with_error('legacy setting used in strict mode: %s', attr)
-        fixed_values, error_message = self.legacy_settings[attr]
-        if fixed_values and value not in fixed_values:
-          exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
-        diagnostics.warning('legacy-settings', 'use of legacy setting: %s (%s)', attr, error_message)
-
-      if attr in self.alt_names:
-        alt_name = self.alt_names[attr]
-        self.attrs[alt_name] = value
-
-      if attr not in self.attrs:
-        msg = "Attempt to set a non-existent setting: '%s'\n" % attr
-        suggestions = difflib.get_close_matches(attr, list(self.attrs.keys()))
-        suggestions = [s for s in suggestions if s not in self.legacy_settings]
-        suggestions = ', '.join(suggestions)
-        if suggestions:
-          msg += ' - did you mean one of %s?\n' % suggestions
-        msg += " - perhaps a typo in emcc's  -s X=Y  notation?\n"
-        msg += ' - (see src/settings.js for valid values)'
-        exit_with_error(msg)
-
-      self.attrs[attr] = value
-
-    @classmethod
-    def get(cls, key):
-      return cls.attrs.get(key)
-
-    @classmethod
-    def __getitem__(cls, key):
-      return cls.attrs[key]
-
-    @classmethod
-    def target_environment_may_be(self, environment):
-      return self.attrs['ENVIRONMENT'] == '' or environment in self.attrs['ENVIRONMENT'].split(',')
-
-  __instance = None
-
-  @staticmethod
-  def instance():
-    if SettingsManager.__instance is None:
-      SettingsManager.__instance = SettingsManager.__impl()
-    return SettingsManager.__instance
-
-  def __getattr__(self, attr):
-    return getattr(self.instance(), attr)
-
-  def __setattr__(self, attr, value):
-    return setattr(self.instance(), attr, value)
-
-  def get(self, key):
-    return self.instance().get(key)
-
-  def __getitem__(self, key):
-    return self.instance()[key]
-
-
-def verify_settings():
-  if Settings.SAFE_HEAP not in [0, 1]:
-    exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
-
-  if not Settings.WASM:
-    # When the user requests non-wasm output, we enable wasm2js. that is,
-    # we still compile to wasm normally, but we compile the final output
-    # to js.
-    Settings.WASM = 1
-    Settings.WASM2JS = 1
-  if Settings.WASM == 2:
-    # Requesting both Wasm and Wasm2JS support
-    Settings.WASM2JS = 1
+def target_environment_may_be(environment):
+  return not settings.ENVIRONMENT or environment in settings.ENVIRONMENT.split(',')
 
 
 def print_compiler_stage(cmd):
@@ -700,7 +574,7 @@ def is_c_symbol(name):
 def treat_as_user_function(name):
   if name.startswith('dynCall_'):
     return False
-  if name in Settings.WASM_SYSTEM_EXPORTS:
+  if name in settings.WASM_SYSTEM_EXPORTS:
     return False
   return True
 
@@ -717,7 +591,12 @@ def asmjs_mangle(name):
     return name
 
 
-class JS(object):
+def reconfigure_cache():
+  global Cache
+  Cache = cache.Cache(config.CACHE)
+
+
+class JS:
   emscripten_license = '''\
 /**
  * @license
@@ -744,7 +623,7 @@ class JS(object):
       js = f.read()
     # first, remove the license as there may be more than once
     processed_js = re.sub(JS.emscripten_license_regex, '', js)
-    if Settings.EMIT_EMSCRIPTEN_LICENSE:
+    if settings.EMIT_EMSCRIPTEN_LICENSE:
       processed_js = JS.emscripten_license + processed_js
     if processed_js != js:
       with open(js_target, 'w') as f:
@@ -764,21 +643,21 @@ class JS(object):
   @staticmethod
   def get_subresource_location(path, data_uri=None):
     if data_uri is None:
-      data_uri = Settings.SINGLE_FILE
+      data_uri = settings.SINGLE_FILE
     if data_uri:
       # if the path does not exist, then there is no data to encode
       if not os.path.exists(path):
         return ''
       with open(path, 'rb') as f:
         data = base64.b64encode(f.read())
-      return 'data:application/octet-stream;base64,' + asstr(data)
+      return 'data:application/octet-stream;base64,' + data.decode('ascii')
     else:
       return os.path.basename(path)
 
   @staticmethod
   def legalize_sig(sig):
     # with BigInt support all sigs are legal since we can use i64s.
-    if Settings.WASM_BIGINT:
+    if settings.WASM_BIGINT:
       return sig
     legal = [sig[0]]
     # a return of i64 is legalized into an i32 (and the high bits are
@@ -797,16 +676,21 @@ class JS(object):
   @staticmethod
   def is_legal_sig(sig):
     # with BigInt support all sigs are legal since we can use i64s.
-    if Settings.WASM_BIGINT:
+    if settings.WASM_BIGINT:
       return True
     return sig == JS.legalize_sig(sig)
 
   @staticmethod
+  def isidentifier(name):
+    # https://stackoverflow.com/questions/43244604/check-that-a-string-is-a-valid-javascript-identifier-name-using-python-3
+    return name.replace('$', '_').isidentifier()
+
+  @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
-    if Settings.USE_LEGACY_DYNCALLS or not JS.is_legal_sig(sig):
+    if settings.DYNCALLS or not JS.is_legal_sig(sig):
       args = ','.join(args)
-      if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
+      if not settings.MAIN_MODULE and not settings.SIDE_MODULE:
         # Optimize dynCall accesses in the case when not building with dynamic
         # linking enabled.
         return 'dynCall_%s(%s)' % (sig, args)
@@ -822,7 +706,7 @@ class JS(object):
     ret = 'return ' if sig[0] != 'v' else ''
     body = '%s%s;' % (ret, JS.make_dynCall(sig, args))
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
-    if Settings.SUPPORT_LONGJMP:
+    if settings.SUPPORT_LONGJMP:
       rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"
     else:
       rethrow = "if (e !== e+0) throw e;"
@@ -843,31 +727,13 @@ function%s(%s) {
     return ret
 
 
-# Python 2-3 compatibility helper function:
-# Converts a string to the native str type.
-def asstr(s):
-  if str is bytes:
-    if isinstance(s, type(u'')):
-      return s.encode('utf-8')
-  elif isinstance(s, bytes):
-    return s.decode('utf-8')
-  return s
-
-
-def asbytes(s):
-  if isinstance(s, bytes):
-    # Do not attempt to encode bytes
-    return s
-  return s.encode('utf-8')
-
-
 def suffix(name):
   """Return the file extension"""
   return os.path.splitext(name)[1]
 
 
 def unsuffixed(name):
-  """Return the filename without the extention.
+  """Return the filename without the extension.
 
   If there are multiple extensions this strips only the final one.
   """
@@ -878,17 +744,9 @@ def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
 
 
-def safe_move(src, dst):
-  logging.debug('move: %s -> %s', src, dst)
-  src = os.path.abspath(src)
-  dst = os.path.abspath(dst)
-  if os.path.isdir(dst):
-    dst = os.path.join(dst, os.path.basename(src))
-  if src == dst:
-    return
-  if dst == os.devnull:
-    return
-  shutil.move(src, dst)
+def strip_prefix(string, prefix):
+  assert string.startswith(prefix)
+  return string[len(prefix):]
 
 
 def safe_copy(src, dst):
@@ -901,15 +759,20 @@ def safe_copy(src, dst):
     return
   if dst == os.devnull:
     return
-  shutil.copyfile(src, dst)
+  # Copies data and permission bits, but not other metadata such as timestamp
+  shutil.copy(src, dst)
 
 
 def read_and_preprocess(filename, expand_macros=False):
   temp_dir = get_emscripten_temp_dir()
   # Create a settings file with the current settings to pass to the JS preprocessor
-  # Note: Settings.serialize returns an array of -s options i.e. ['-s', '<setting1>', '-s', '<setting2>', ...]
-  #       we only want the actual settings, hence the [1::2] slice operation.
-  settings_str = "var " + ";\nvar ".join(Settings.serialize()[1::2])
+
+  settings_str = ''
+  for key, value in settings.dict().items():
+    assert key == key.upper()  # should only ever be uppercase keys in settings
+    jsoned = json.dumps(value, sort_keys=True)
+    settings_str += f'var {key} = {jsoned};\n'
+
   settings_file = os.path.join(temp_dir, 'settings.js')
   with open(settings_file, 'w') as f:
     f.write(settings_str)
@@ -927,9 +790,15 @@ def read_and_preprocess(filename, expand_macros=False):
     args += ['--expandMacros']
 
   run_js_tool(path_from_root('tools/preprocessor.js'), args, True, stdout=open(stdout, 'w'), cwd=dirname)
-  out = open(stdout, 'r').read()
+  out = utils.read_file(stdout)
 
   return out
+
+
+def do_replace(input_, pattern, replacement):
+  if pattern not in input_:
+    exit_with_error('expected to find pattern in input JS: %s' % pattern)
+  return input_.replace(pattern, replacement)
 
 
 # ============================================================================
@@ -967,12 +836,12 @@ EMCC = bat_suffix(path_from_root('emcc'))
 EMXX = bat_suffix(path_from_root('em++'))
 EMAR = bat_suffix(path_from_root('emar'))
 EMRANLIB = bat_suffix(path_from_root('emranlib'))
+EMCMAKE = bat_suffix(path_from_root('emcmake'))
+EMCONFIGURE = bat_suffix(path_from_root('emconfigure'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools', 'file_packager'))
 
 apply_configuration()
 
-Settings = SettingsManager()
-verify_settings()
 Cache = cache.Cache(config.CACHE)
 
 PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))

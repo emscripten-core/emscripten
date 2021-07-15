@@ -8,41 +8,40 @@
 #include <assert.h>
 #include <math.h>
 
-volatile int func_called = 0;
+_Atomic int func_called = 0;
 
 void v()
 {
-	emscripten_atomic_add_u32((void*)&func_called, 1);
+	func_called++;
 }
 
 void test_sync()
 {
 	printf("Testing sync proxied runs:\n");
-	emscripten_atomic_store_u32((void*)&func_called, 0);
+	func_called = 0;
 	for(int i = 0; i < 1000; ++i)
 	{
 		emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_V, v);
-		assert(emscripten_atomic_load_u32((void*)&func_called) == i+1);
+		assert(func_called == i+1);
 	}
 }
 
 void test_async()
 {
 	printf("Testing async proxied runs:\n");
-	emscripten_atomic_store_u32((void*)&func_called, 0);
+	func_called = 0;
 	for(int i = 0; i < 1000; ++i)
 	{
 		emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_V, v);
 	}
 
-	while(emscripten_atomic_load_u32((void*)&func_called) != 1000)
-		;
+	while(func_called != 1000) {}
 }
 
 void test_async_waitable()
 {
 	printf("Testing waitable async proxied runs:\n");
-	emscripten_atomic_store_u32((void*)&func_called, 0);
+	func_called = 0;
 	em_queued_call* handles[1000];
 
 	for(int i = 0; i < 1000; ++i)
@@ -55,7 +54,7 @@ void test_async_waitable()
 
 	// Since ordering is guaranteed we know that all the other tasks must
 	// also have already been completed.
-	int final_count = emscripten_atomic_load_u32((void*)&func_called);
+	int final_count = func_called;
 	printf("final_count: %d\n", final_count);
 	assert(final_count == 1000);
 

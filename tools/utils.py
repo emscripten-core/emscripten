@@ -24,13 +24,7 @@ def path_from_root(*pathelems):
 
 
 def safe_ensure_dirs(dirname):
-  try:
-    os.makedirs(dirname)
-  except OSError:
-    # Python 2 compatibility: makedirs does not support exist_ok parameter
-    # Ignore error for already existing dirname as exist_ok does
-    if not os.path.isdir(dirname):
-      raise
+  os.makedirs(dirname, exist_ok=True)
 
 
 @contextlib.contextmanager
@@ -74,3 +68,21 @@ def which(program):
             return exe_file + suffix
 
   return None
+
+
+def read_file(file_path):
+  """Read from a file opened in text mode"""
+  with open(file_path) as fh:
+    return fh.read()
+
+
+def read_binary(file_path):
+  """Read from a file opened in binary mode"""
+  with open(file_path, 'rb') as fh:
+    return fh.read()
+
+
+def write_file(file_path, text):
+  """Write to a file opened in text mode"""
+  with open(file_path, 'w') as fh:
+    fh.write(text)

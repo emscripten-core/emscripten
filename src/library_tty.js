@@ -108,7 +108,7 @@ mergeInto(LibraryManager.library, {
           if (ENVIRONMENT_IS_NODE) {
             // we will read data by chunks of BUFSIZE
             var BUFSIZE = 256;
-            var buf = Buffer.alloc ? Buffer.alloc(BUFSIZE) : new Buffer(BUFSIZE);
+            var buf = Buffer.alloc(BUFSIZE);
             var bytesRead = 0;
 
             try {
@@ -116,7 +116,7 @@ mergeInto(LibraryManager.library, {
             } catch(e) {
               // Cross-platform differences: on Windows, reading EOF throws an exception, but on other OSes,
               // reading EOF returns 0. Uniformize behavior by treating the EOF exception to return 0.
-              if (e.toString().indexOf('EOF') != -1) bytesRead = 0;
+              if (e.toString().includes('EOF')) bytesRead = 0;
               else throw e;
             }
 

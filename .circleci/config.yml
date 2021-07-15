@@ -4,6 +4,9 @@ orbs:
   win: circleci/windows@1.0.0
 
 executors:
+  linux-node:
+    docker:
+      - image: circleci/node:stretch
   bionic:
     docker:
       - image: emscripten/emscripten-ci
@@ -13,11 +16,9 @@ executors:
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
-      PYTHON_BIN: "python3"
   mac:
     environment:
       EMSDK_NOTTY: "1"
-      PYTHON_BIN: "python3"
     macos:
       xcode: "12.2.0"
 
@@ -38,9 +39,9 @@ commands:
       - run:
           name: install emsdk
           command: |
-            curl -# -L -o ~/emsdk-master.tar.gz https://github.com/emscripten-core/emsdk/archive/master.tar.gz
-            tar -C ~ -xf ~/emsdk-master.tar.gz
-            mv ~/emsdk-master ~/emsdk
+            curl -# -L -o ~/emsdk-main.tar.gz https://github.com/emscripten-core/emsdk/archive/main.tar.gz
+            tar -C ~ -xf ~/emsdk-main.tar.gz
+            mv ~/emsdk-main ~/emsdk
             cd ~/emsdk
             ./emsdk update-tags
             ./emsdk install tot-upstream
@@ -56,13 +57,14 @@ commands:
             # test v8 with --wasm-staging which enables new features. we use v8
             # as a "bleeding edge" shell here, basically, with node being the
             # primary shell (which we run without any special flags)
+            # Refer to commit 0bc3640 if we need to pin V8 version.
             echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> .emscripten
             echo "JS_ENGINES = [NODE_JS]" >> .emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
             echo "WASM_ENGINES = []" >> .emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> .emscripten || true
-            test -d ~/wasi-sdk && cp -ar ~/wasi-sdk/lib/ ~/emsdk/upstream/lib/clang/12.0.0/
+            test -d ~/wasi-sdk && cp -ar ~/wasi-sdk/lib/ ~/emsdk/upstream/lib/clang/13.0.0/
             cd -
             echo "final .emscripten:"
             cat ~/emsdk/.emscripten
@@ -71,30 +73,30 @@ commands:
       - run:
           name: clear cache
           command: |
-            $PYTHON_BIN ./emcc.py --clear-cache
+            ./emcc --clear-cache
   build-libs-and-freeze:
     description: "Build all libraries, and freeze the cache"
     steps:
       - run:
           name: embuilder build ALL
           command: |
-            $PYTHON_BIN ./embuilder.py build ALL
-            $PYTHON_BIN tests/runner.py test_hello_world
+            ./embuilder build ALL
+            ./tests/runner test_hello_world
       - run:
           name: embuilder (LTO)
           command: |
-            $PYTHON_BIN ./embuilder.py build MINIMAL --lto
-            $PYTHON_BIN tests/runner.py test_hello_world
+            ./embuilder build MINIMAL --lto
+            ./tests/runner test_hello_world
       - run:
           name: embuilder (PIC)
           command: |
-            $PYTHON_BIN ./embuilder.py build SYSTEM --pic
-            $PYTHON_BIN tests/runner.py test_hello_world
+            ./embuilder build SYSTEM --pic
+            ./tests/runner test_hello_world
       - run:
           name: embuilder (PIC+LTO)
           command: |
-            $PYTHON_BIN ./embuilder.py build MINIMAL --pic --lto
-            $PYTHON_BIN tests/runner.py test_hello_world
+            ./embuilder build MINIMAL --pic --lto
+            ./tests/runner test_hello_world
       - run:
           name: freeze cache
           command: |
@@ -131,8 +133,8 @@ commands:
       - run:
           name: run tests
           command: |
-            $PYTHON_BIN tests/runner.py << parameters.test_targets >>
-            $PYTHON_BIN tools/check_clean.py
+            ./tests/runner << parameters.test_targets >>
+            $EMSDK_PYTHON ./tools/check_clean.py
   run-tests-mac:
     description: "Runs emscripten tests"
     parameters:
@@ -150,12 +152,14 @@ commands:
           name: Install brew package dependencies
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: brew install python3 cmake
+          command: |
+            brew list cmake || brew install cmake
+            brew list python3 || brew install python3
       - run:
           name: run tests
           command: |
-            python3 tests/runner.py << parameters.test_targets >>
-            tools/check_clean.py
+            ./tests/runner << parameters.test_targets >>
+            $EMSDK_PYTHON ./tools/check_clean.py
   test-firefox:
     description: "Runs emscripten tests under firefox"
     steps:
@@ -183,49 +187,6 @@ commands:
             user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
             EOF
       - run:
-          name: configure openbox
-          command: |
-            # Set up X and Openbox config (if we move to a headless browser, this may not be needed).
-            mkdir -p ~/.config/X11
-            cat > ~/.config/X11/xorg.conf \<<EOF
-            Section "ServerLayout"
-              Identifier "X.org Configured"
-              Screen 0 "Screen0" 0 0
-            EndSection
-
-            Section "Monitor"
-              Identifier "Monitor0"
-              HorizSync 72
-              Modeline "1920x1080@60" 144 1920 1920 1960 2000 1080 1080 1140 1200
-            EndSection
-
-            Section "Device"
-              Identifier "Card0"
-              Driver "dummy"
-              VideoRam 1048576
-            EndSection
-
-            Section "Screen"
-              Identifier "Screen0"
-              Device "Card0"
-              Monitor "Monitor0"
-              DefaultDepth 24
-              SubSection "Display"
-                Depth 24
-                Modes "1920x1080@60"
-              EndSubSection
-            EndSection
-            EOF
-            mkdir -p ~/.config/openbox
-            echo "[ -f \"\$EXTRA_AUTOSTART\" ] && sh \"\$EXTRA_AUTOSTART\"" > ~/.config/openbox/autostart
-            mkdir -p ~/.config/autostart
-            cat > ~/.config/autostart/at-spi-dbus-bus.desktop \<<EOF
-            [Desktop Entry]
-            Type=Application
-            Name=AT-SPI D-Bus Bus
-            Hidden=true # do not auto-start AT-SPI to suppress one warning
-            EOF
-      - run:
           # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
           # to be failing here, and the root cause might be related with the
           # initial position of the mouse pointer relative to the canvas.
@@ -235,31 +196,28 @@ commands:
           # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
           # are crashing Firefox (bugzil.la/1281796). The former case is
           # further blocked by issue #6897.
-          # TODO: use Firefox headless mode when https://bugzil.la/1375585 resolves
+          # browser.test_sdl2_misc_main_module: Requires PIC version of libSDL
+          # which is not included in emsdk (not compatible with FROZEN_CACHE).
           name: run tests
           environment:
             GALLIUM_DRIVER: softpipe # TODO: use the default llvmpipe when it supports more extensions
+            # TODO: Do GL testing when https://bugzil.la/1375585 (lack of WebGL
+            #       support in headless mode) resolves
+            EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             # OffscreenCanvas support is not yet done in Firefox.
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             DISPLAY: ":0"
           command: |
-            export EMTEST_BROWSER="$HOME/firefox/firefox -profile $HOME/tmp-firefox-profile/"
-            # Start an X session. Openbox might be optional for now, but
-            # an ICCCM/EWMH compliant window manager is potentially needed
-            # for tests with fullscreen toggling (if we move to a headless
-            # browser, this may not be needed eventually).
-            TMPDIR=`mktemp -d`
-            mkfifo $TMPDIR/fifo
-            echo "echo -n > $TMPDIR/fifo" > $TMPDIR/autostart
-            EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
-            cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
-            rm -r $TMPDIR
-            python3 tests/runner.py browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
-            python3 tests/runner.py emrun
-            openbox --exit
-            wait || true # wait for startx to shutdown cleanly, or not
+            export EMTEST_BROWSER="$HOME/firefox/firefox -headless -profile $HOME/tmp-firefox-profile/"
+            echo "-----"
+            echo "Running browser tests"
+            echo "-----"
+            tests/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget skip:browser.test_sdl2_misc_main_module
+            # posix and emrun suites are disabled because firefox errors on
+            #  "Firefox is already running, but is not responding."
+            # TODO: find out a way to shut down and restart firefox
   test-chrome:
     description: "Runs emscripten browser tests under chrome"
     steps:
@@ -275,7 +233,9 @@ commands:
       - run:
           name: download chrome
           command: |
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            # Using stable rather than beta until we can fix
+            # https://github.com/emscripten-core/emscripten/issues/14369
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
       - run:
           name: run tests
@@ -286,13 +246,15 @@ commands:
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
             CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
-            CHROME_FLAGS_WASM: "--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
+            CHROME_FLAGS_WASM: "--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            # skip test_zzz_zzz_4GB_fail as it OOMs on the current bot
-            python3 tests/runner.py browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4GB_fail
-            python3 tests/runner.py emrun
+            # skip test_zzz_zzz_4gb_fail as it OOMs on the current bot
+            # browser.test_sdl2_misc_main_module: Requires PIC version of libSDL
+            # which is not included in emsdk (not compatible with FROZEN_CACHE).
+            tests/runner browser posixtest_browser.test_pthread_create_1_1 skip:browser.test_zzz_zzz_4gb_fail skip:browser.test_sdl2_misc_main_module
+            tests/runner emrun
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
@@ -320,7 +282,7 @@ commands:
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            python3 tests/runner.py sockets
+            tests/runner sockets
 
 jobs:
   build-docs:
@@ -339,6 +301,12 @@ jobs:
       - checkout
       - run: pip3 install -r requirements-dev.txt
       - run: python3 -m flake8 --show-source --statistics
+  eslint:
+    executor: linux-node
+    steps:
+      - checkout
+      - npm-install
+      - run: npm run lint
   test-sanity:
     executor: bionic
     steps:
@@ -399,7 +367,7 @@ jobs:
     steps:
       - run-tests:
           # also add a few asan tests
-          test_targets: "wasm2 asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread*"
+          test_targets: "wasm2 asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread* asan.test_dyncall_specific_minimal_runtime"
   test-wasm3:
     executor: bionic
     steps:
@@ -437,20 +405,21 @@ jobs:
       name: win/vs2019
       shell: bash.exe -eo pipefail
     environment:
-      # on windows the python binary is always called python.exe and never
-      # python3.exe
-      PYTHON_BIN: "python"
       PYTHONUNBUFFERED: "1"
+      # Override the default locale to use UTF-8 encoding for all files and stdio 
+      # streams (see PEP540), since oure test files are encoded with UTF-8.
+      PYTHONUTF8: "1"
       EMSDK_NOTTY: "1"
       # clang can compile but not link in the current setup, see
       # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
       EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMTEST_SKIP_V8: "1"
     steps:
       - checkout
       - run:
           name: Install packages
           command: |
-            choco install make cmake.portable ninja
+            choco install cmake.portable ninja
             choco install python --version 3.8.0
       - run:
           name: Add python to bash path
@@ -459,15 +428,19 @@ jobs:
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - run-tests:
-          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths"
+          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file wasm2.test_utf16 other.test_special_chars_in_arguments"
   test-mac:
     executor: mac
+    environment:
+      EMTEST_SKIP_V8: "1"
     steps:
       - run:
           name: Install brew package dependencies
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: brew install python3 cmake
+          command: |
+            brew list cmake || brew install cmake
+            brew list python3 || brew install python3
       - checkout
       - build
       # note we do *not* build all libraries and freeze the cache; as we run
@@ -479,6 +452,7 @@ workflows:
   build-test:
     jobs:
       - flake8
+      - eslint
       - build-docs
       - build-linux
       - test-sanity:

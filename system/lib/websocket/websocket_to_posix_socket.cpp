@@ -53,7 +53,7 @@ struct PosixSocketCallResult
 {
   PosixSocketCallResult *next;
   int callId;
-  int operationCompleted;
+  _Atomic uint32_t operationCompleted;
 
   // Before the call has finished, this field represents the minimum expected number of bytes that server will need to report back.
   // After the call has finished, this field reports back the number of bytes pointed to by data, >= the expected value.
@@ -150,7 +150,7 @@ void wait_for_call_result(PosixSocketCallResult *b)
 #ifdef POSIX_SOCKET_DEEP_DEBUG
   emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "wait_for_call_result: Waiting for call ID %d\n", b->callId);
 #endif
-  while(!emscripten_atomic_load_u32(&b->operationCompleted))
+  while(!b->operationCompleted)
     emscripten_futex_wait(&b->operationCompleted, 0, 1e9);
 #ifdef POSIX_SOCKET_DEEP_DEBUG
   emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "wait_for_call_result: Waiting for call ID %d done\n", b->callId);
@@ -200,7 +200,7 @@ static EM_BOOL bridge_socket_on_message(int eventType, const EmscriptenWebSocket
     emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "Memory corruption(?): the received result for completed operation at address %p was expected to be in state 0, but it was at state %d!\n", &b->operationCompleted, (int)b->operationCompleted);
   }
 
-  emscripten_atomic_store_u32(&b->operationCompleted, 1);
+  b->operationCompleted = 1;
   emscripten_futex_wake(&b->operationCompleted, 0x7FFFFFFF);
 
   return EM_TRUE;

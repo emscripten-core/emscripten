@@ -7,15 +7,13 @@
 // === Auto-generated postamble setup entry stuff ===
 {{{ exportRuntime() }}}
 
-#if hasExportedFunction('_main') // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
+#if HAS_MAIN // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
 function run() {
 #if MEMORYPROFILER
   emscriptenMemoryProfiler.onPreloadComplete();
 #endif
 
-#if STACK_OVERFLOW_CHECK >= 2
-  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
-#endif
+  <<< ATMAINS >>>
 
 #if PROXY_TO_PTHREAD
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
@@ -26,11 +24,11 @@ function run() {
   var ret = _main();
 
 #if EXIT_RUNTIME
-  callRuntimeCallbacks(__ATEXIT__);
-  <<< ATEXITS >>>
 #if USE_PTHREADS
   PThread.runExitHandlers();
 #endif
+  callRuntimeCallbacks(__ATEXIT__);
+  <<< ATEXITS >>>
 #endif
 
 #if IN_TEST_HARNESS
@@ -53,7 +51,7 @@ function run() {
 #endif
 
 function initRuntime(asm) {
-#if ASSERTIONS
+#if ASSERTIONS || SAFE_HEAP || USE_ASAN
   runtimeInitialized = true;
 #endif
 
@@ -73,9 +71,12 @@ function initRuntime(asm) {
 #if STACK_OVERFLOW_CHECK
   _emscripten_stack_init();
   writeStackCookie();
+#if STACK_OVERFLOW_CHECK >= 2
+  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+#endif
 #endif
 
-#if '___wasm_call_ctors' in IMPLEMENTED_FUNCTIONS
+#if hasExportedFunction('___wasm_call_ctors')
   asm['__wasm_call_ctors']();
 #endif
 
@@ -120,7 +121,7 @@ function loadWasmModuleToWorkers() {
 #endif
 
 #if DECLARE_ASM_MODULE_EXPORTS
-/*** ASM_MODULE_EXPORTS_DECLARES ***/
+<<< WASM_MODULE_EXPORTS_DECLARES >>>
 #endif
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
@@ -196,7 +197,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #if !DECLARE_ASM_MODULE_EXPORTS
   exportAsmFunctions(asm);
 #else
-  /*** ASM_MODULE_EXPORTS ***/
+  <<< WASM_MODULE_EXPORTS >>>
 #endif
   wasmTable = asm['__indirect_function_table'];
 #if ASSERTIONS

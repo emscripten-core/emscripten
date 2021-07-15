@@ -70,6 +70,7 @@ What if my codebase depends on a desktop OpenGL feature that is currently unsupp
 --------------------------------------------------------------------------------------
 
 You can consider building the codebase against the `Regal <https://github.com/p3/regal>`_ Desktop OpenGL emulation library, which aims to support Desktop OpenGL features on top of OpenGL ES 2.0. This may work better or worse than Emscripten's GL emulation depending on the project.
+Another option is to use `gl4es <https://github.com/ptitSeb/gl4es>`_ wich aims at fast OpenGL to GLES conversion for games. It targets OpenGL 2.1 profile on top of OpenGL ES 2.0 and has been used to port a few games with Emscripten already.
 
 OpenGL ES extensions
 ====================
@@ -83,9 +84,9 @@ When migrating from WebGL 1 to WebGL 2, take note that some WebGL 1 extensions a
 Test code/examples
 ==================
 
-The files in `tests/glbook <https://github.com/emscripten-core/emscripten/tree/master/tests/glbook>`_ provide a number of simple examples that use only the :ref:`opengl-support-webgl-subset`.
+The files in `tests/glbook <https://github.com/emscripten-core/emscripten/tree/main/tests/glbook>`_ provide a number of simple examples that use only the :ref:`opengl-support-webgl-subset`.
 
-The other modes are covered in various tests, including several in `tests/test_browser.py <https://github.com/emscripten-core/emscripten/blob/master/tests/test_browser.py>`_. The best way to locate the tests is to search the source code for the appropriate compiler flags: ``FULL_ES2``, ``LEGACY_GL_EMULATION`` etc.
+The other modes are covered in various tests, including several in `tests/test_browser.py <https://github.com/emscripten-core/emscripten/blob/main/tests/test_browser.py>`_. The best way to locate the tests is to search the source code for the appropriate compiler flags: ``FULL_ES2``, ``LEGACY_GL_EMULATION`` etc.
 
 Bug Reports
 ===========

@@ -1,79 +1,75 @@
 var b = Module;
 
-var c = new TextDecoder("utf8");
+var c = new TextDecoder("utf8"), d, f;
 
-function e(a) {
-    if (!a) return "";
-    for (var m = a + NaN, d = a; !(d >= m) && f[d]; ) ++d;
-    return c.decode(f.subarray(a, d));
-}
-
-var f, g;
-
-g = new function(a) {
+f = new function(a) {
     this.buffer = new ArrayBuffer(65536 * a.initial);
 }({
     initial: 256,
     maximum: 256
 });
 
-var h = g.buffer;
+var g = f.buffer;
 
-f = new Uint8Array(h);
+d = new Uint8Array(g);
 
-var k = {
+var h = {
     a: function(a) {
-        console.log(e(a));
+        if (a) {
+            for (var l = a + void 0, e = a; !(e >= l) && d[e]; ) ++e;
+            a = c.decode(d.subarray(a, e));
+        } else a = "";
+        console.log(a);
     },
-    memory: g
-}, l, n = (new function() {
-    this.exports = function instantiate(t) {
-        function r(u) {
-            u.set = function(v, w) {
-                this[v] = w;
+    memory: f
+}, k, m = (new function() {
+    this.exports = function instantiate(v) {
+        function c(d) {
+            d.set = function(a, b) {
+                this[a] = b;
             };
-            u.get = function(v) {
-                return this[v];
+            d.get = function(a) {
+                return this[a];
             };
-            return u;
+            return d;
         }
-        function s(x) {
-            var a = Math.imul;
-            var b = Math.fround;
-            var c = Math.abs;
-            var d = Math.clz32;
-            var e = Math.min;
-            var f = Math.max;
-            var g = Math.floor;
-            var h = Math.ceil;
-            var i = Math.trunc;
-            var j = Math.sqrt;
-            var k = x.abort;
-            var l = NaN;
-            var m = Infinity;
-            var n = x.a;
-            function q(a, b) {
+        function t(u) {
+            var e = Math.imul;
+            var f = Math.fround;
+            var g = Math.abs;
+            var h = Math.clz32;
+            var i = Math.min;
+            var j = Math.max;
+            var k = Math.floor;
+            var l = Math.ceil;
+            var m = Math.trunc;
+            var n = Math.sqrt;
+            var o = u.abort;
+            var p = NaN;
+            var q = Infinity;
+            var r = u.a;
+            function x(a, b) {
                 a = a | 0;
                 b = b | 0;
-                n(1024);
+                r(1024);
                 return 0;
             }
-            function p() {}
-            var o = r([]);
+            function w() {}
+            var s = c([]);
             return {
-                b: p,
-                c: q,
-                d: o
+                b: w,
+                c: x,
+                d: s
             };
         }
-        return s(t);
-    }(k);
+        return t(v);
+    }(h);
 }).exports;
 
-l = n.c;
+k = m.c;
 
-f.set(new Uint8Array(b.mem), 1024);
+d.set(new Uint8Array(b.mem), 1024);
 
-n.b();
+m.b();
 
-l();
+k();

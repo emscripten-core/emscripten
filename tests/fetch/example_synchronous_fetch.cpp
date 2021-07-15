@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -16,7 +17,6 @@ int main()
   attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS;
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
   printf("Fetch finished with status %d\n", fetch->status);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(fetch->status);
-#endif
+  assert(fetch->status == 200);
+  return 0;
 }

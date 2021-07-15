@@ -41,8 +41,10 @@ int main() {
   assert(file);
   res = fread(buffer, sizeof(char), 6, file);
   assert(res == 6);
+  buffer[6] = '\0';
   fclose(file);
 
+  printf("fread -> '%s'\n", buffer);
   assert(!strcmp(buffer, "yeehaw"));
 
   // write out something new

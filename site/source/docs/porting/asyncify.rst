@@ -19,8 +19,9 @@ synchronous way.
 
 See the
 `Asyncify introduction blogpost <https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html>`_
-for general background and details of how it works internally. The following
-expands on the Emscripten examples from that post.
+for general background and details of how it works internally (you can also view
+`this talk about Asyncify <https://www.youtube.com/watch?v=qQOP6jqZqf8>`_).
+The following expands on the Emscripten examples from that post.
 
 .. _yielding_to_main_loop:
 
@@ -161,7 +162,7 @@ To run this example, first compile it with
 
 ::
 
-    ./emcc example.c -O3 -o a.html -s ASYNCIFY -s 'ASYNCIFY_IMPORTS=["do_fetch"]'
+    emcc example.c -O3 -o a.html -s ASYNCIFY -s 'ASYNCIFY_IMPORTS=["do_fetch"]'
 
 Note that you must tell the compiler that ``do_fetch()`` can do an
 asynchronous operation, using ``ASYNCIFY_IMPORTS``, otherwise it won't
@@ -227,14 +228,14 @@ You can build this with
 
 ::
 
-    ../emcc example.c -s ASYNCIFY=1 -s 'ASYNCIFY_IMPORTS=["get_digest_size"]' -o a.html -O2
+    emcc example.c -s ASYNCIFY=1 -s 'ASYNCIFY_IMPORTS=["get_digest_size"]' -o a.html -O2
 
 This example calls the Promise-returning ``window.crypto.subtle()`` API (the
 example is based off of
 `this MDN example <https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest#Basic_example>`_
 ).
 
-Note that we must propagate the value returned from ``handleSleep()``. The calling C code then
+Note that we must propagate the value returned from ``handleAsync()``. The calling C code then
 gets it normally, after the Promise completes.
 
 If you're using the ``handleSleep`` API, the value needs to be also passed to the ``wakeUp`` callback, instead of being returned from our handler:
@@ -271,6 +272,22 @@ and want to ``await`` a dynamically retrieved ``Promise``, you can call an
 In this case you don't need to worry about ``ASYNCIFY_IMPORTS``, since it's an
 internal implementation detail of ``val::await`` and Emscripten takes care of it
 automatically.
+
+Usage with ``ccall``
+####################
+
+To make use of an Asyncify-using wasm export from Javascript, you can use the
+``Module.ccall`` function and pass ``async: true`` to its call options object.
+``ccall`` will then return a Promise, which will resolve with the result of the
+function once the computation completes.
+
+In this example, a function "func" is called which returns a Number.
+
+.. code-block:: javascript
+
+    Module.ccall("func", "number", [], [], {async: true}).then(result => {
+      console.log("js_func: " + result);
+    });
 
 Optimizing
 ##########

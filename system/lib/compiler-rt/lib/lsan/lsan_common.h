@@ -29,18 +29,19 @@
 // To enable LeakSanitizer on a new architecture, one needs to implement the
 // internal_clone function as well as (probably) adjust the TLS machinery for
 // the new architecture inside the sanitizer library.
-#if (SANITIZER_LINUX && !SANITIZER_ANDROID || SANITIZER_MAC) && \
-    (SANITIZER_WORDSIZE == 64) &&                               \
-    (defined(__x86_64__) || defined(__mips64) || defined(__aarch64__) || \
-     defined(__powerpc64__))
+// Exclude leak-detection on arm32 for Android because `__aeabi_read_tp`
+// is missing. This caused a link error.
+#if SANITIZER_ANDROID && (__ANDROID_API__ < 28 || defined(__arm__))
+#define CAN_SANITIZE_LEAKS 0
+#elif (SANITIZER_LINUX || SANITIZER_MAC) && (SANITIZER_WORDSIZE == 64) && \
+    (defined(__x86_64__) || defined(__mips64) || defined(__aarch64__) ||  \
+     defined(__powerpc64__) || defined(__s390x__))
 #define CAN_SANITIZE_LEAKS 1
-#elif defined(__i386__) && \
-    (SANITIZER_LINUX && !SANITIZER_ANDROID || SANITIZER_MAC)
+#elif defined(__i386__) && (SANITIZER_LINUX || SANITIZER_MAC)
 #define CAN_SANITIZE_LEAKS 1
-#elif defined(__arm__) && \
-    SANITIZER_LINUX && !SANITIZER_ANDROID
+#elif defined(__arm__) && SANITIZER_LINUX
 #define CAN_SANITIZE_LEAKS 1
-#elif SANITIZER_EMSCRIPTEN
+#elif SANITIZER_NETBSD || SANITIZER_FUCHSIA || SANITIZER_EMSCRIPTEN
 #define CAN_SANITIZE_LEAKS 1
 #else
 #define CAN_SANITIZE_LEAKS 0
@@ -49,6 +50,7 @@
 namespace __sanitizer {
 class FlagParser;
 class ThreadRegistry;
+class ThreadContextBase;
 struct DTLS;
 }
 
@@ -102,8 +104,9 @@ class LeakReport {
                       ChunkTag tag);
   void ReportTopLeaks(uptr max_leaks);
   void PrintSummary();
-  void ApplySuppressions();
+  uptr ApplySuppressions();
   uptr UnsuppressedLeakCount();
+  uptr IndirectUnsuppressedLeakCount();
 
  private:
   void PrintReportForLeak(uptr index);
@@ -126,12 +129,25 @@ struct RootRegion {
   uptr size;
 };
 
+// LockStuffAndStopTheWorld can start to use Scan* calls to collect into
+// this Frontier vector before the StopTheWorldCallback actually runs.
+// This is used when the OS has a unified callback API for suspending
+// threads and enumerating roots.
+struct CheckForLeaksParam {
+  Frontier frontier;
+  LeakReport leak_report;
+  bool success = false;
+};
+
 InternalMmapVector<RootRegion> const *GetRootRegions();
 void ScanRootRegion(Frontier *frontier, RootRegion const &region,
                     uptr region_begin, uptr region_end, bool is_readable);
+void ForEachExtraStackRangeCb(uptr begin, uptr end, void* arg);
+void GetAdditionalThreadContextPtrs(ThreadContextBase *tctx, void *ptrs);
 // Run stoptheworld while holding any platform-specific locks, as well as the
 // allocator and thread registry locks.
-void LockStuffAndStopTheWorld(StopTheWorldCallback callback, void* argument);
+void LockStuffAndStopTheWorld(StopTheWorldCallback callback,
+                              CheckForLeaksParam* argument);
 
 void ScanRangeForPointers(uptr begin, uptr end,
                           Frontier *frontier,
@@ -211,6 +227,7 @@ ThreadRegistry *GetThreadRegistryLocked();
 bool GetThreadRangesLocked(tid_t os_id, uptr *stack_begin, uptr *stack_end,
                            uptr *tls_begin, uptr *tls_end, uptr *cache_begin,
                            uptr *cache_end, DTLS **dtls);
+void GetAllThreadAllocatorCachesLocked(InternalMmapVector<uptr> *caches);
 void ForEachExtraStackRange(tid_t os_id, RangeIteratorCallback callback,
                             void *arg);
 // Scans thread data (stacks and TLS) for heap pointers.

@@ -26,14 +26,13 @@ void success()
 void test() {
 
   int fd;
+  struct stat st;
   
 #if FIRST
 
   // for each file, we first make sure it doesn't currently exist
   // (we delete it at the end of !FIRST).  We then test an empty
   // file plus two files each with a small amount of content
-
-  struct stat st;
 
   // the empty file
   if ((stat("/working1/empty.txt", &st) != -1) || (errno != ENOENT))
@@ -72,55 +71,72 @@ void test() {
       result = -11000 - errno;
   }
 
+  // a directory
+  if ((stat("/working1/dir", &st) != -1) || (errno != ENOENT))
+    result = -12000 - errno;
+  else if (mkdir("/working1/dir", 0777) != 0)
+    result = -13000 - errno;
+
 #else
 
   // does the empty file exist?
   fd = open("/working1/empty.txt", O_RDONLY);
   if (fd == -1)
-    result = -12000 - errno;
-  else if (close(fd) != 0)
-    result = -13000 - errno;
-  if (unlink("/working1/empty.txt") != 0)
     result = -14000 - errno;
+  else if (close(fd) != 0)
+    result = -15000 - errno;
+  if (unlink("/working1/empty.txt") != 0)
+    result = -16000 - errno;
 
   // does the 'az' file exist, and does it contain 'az'?
   fd = open("/working1/waka.txt", O_RDONLY);
   if (fd == -1)
-    result = -15000 - errno;
+    result = -17000 - errno;
   else
   {
     char bf[4];
     int bytes_read = read(fd,&bf[0],sizeof(bf));
     if (bytes_read != 2)
-      result = -16000;
+      result = -18000;
     else if ((bf[0] != 'a') || (bf[1] != 'z'))
-      result = -17000;
+      result = -19000;
     if (close(fd) != 0)
-      result = -18000 - errno;
+      result = -20000 - errno;
     if (unlink("/working1/waka.txt") != 0)
-      result = -19000 - errno;
+      result = -21000 - errno;
   }
   
   // does the random-ish file exist and does it contain SECRET?
   fd = open("/working1/moar.txt", O_RDONLY);
   if (fd == -1)
-    result = -20000 - errno;
+    result = -22000 - errno;
   else
   {
     char bf[256];
     int bytes_read = read(fd,&bf[0],sizeof(bf));
     if (bytes_read != strlen(SECRET))
-      result = -21000;
+      result = -23000;
     else
     {
       bf[strlen(SECRET)] = 0;
       if (strcmp(bf,SECRET) != 0)
-        result = -22000;
+        result = -24000;
     }
     if (close(fd) != 0)
-      result = -23000 - errno;
+      result = -25000 - errno;
     if (unlink("/working1/moar.txt") != 0)
-      result = -24000 - errno;
+      result = -26000 - errno;
+  }
+
+  // does the directory exist?
+  if (stat("/working1/dir", &st) != 0)
+    result = -27000 - errno;
+  else
+  {
+    if (!S_ISDIR(st.st_mode))
+      result = -28000;
+	if (rmdir("/working1/dir") != 0)
+		result = -29000 - errno;
   }
 
 #endif
@@ -152,6 +168,11 @@ int main() {
   EM_ASM(
     FS.mkdir('/working1');
     FS.mount(IDBFS, {}, '/working1');
+
+#if !FIRST
+	// syncfs(true, f) should not break on already-existing directories:
+	FS.mkdir('/working1/dir');
+#endif
     
     // sync from persisted state into memory and then
     // run the 'test' function

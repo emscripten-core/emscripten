@@ -6,8 +6,6 @@
 
 var STACK_ALIGN = {{{ STACK_ALIGN }}};
 
-{{{ alignMemory }}}
-
 {{{ getNativeTypeSize }}}
 
 function warnOnce(text) {
@@ -21,10 +19,6 @@ function warnOnce(text) {
 #include "runtime_functions.js"
 
 #include "runtime_debug.js"
-
-function makeBigInt(low, high, unsigned) {
-  return unsigned ? ((+((low>>>0)))+((+((high>>>0)))*4294967296.0)) : ((+((low>>>0)))+((+((high|0)))*4294967296.0));
-}
 
 var tempRet0 = 0;
 
@@ -43,12 +37,6 @@ function getCompilerSetting(name) {
   if (!(name in compilerSettings)) return 'invalid compiler setting: ' + name;
   return compilerSettings[name];
 }
-#else // RETAIN_COMPILER_SETTINGS
-#if ASSERTIONS
-function getCompilerSetting(name) {
-  throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for getCompilerSetting or emscripten_get_compiler_setting to work';
-}
-#endif // ASSERTIONS
 #endif // RETAIN_COMPILER_SETTINGS
 
 #if USE_PTHREADS

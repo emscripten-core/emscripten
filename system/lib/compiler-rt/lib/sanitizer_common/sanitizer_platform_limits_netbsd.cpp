@@ -34,6 +34,7 @@
 #include <sys/chio.h>
 #include <sys/clockctl.h>
 #include <sys/cpuio.h>
+#include <sys/dkbad.h>
 #include <sys/dkio.h>
 #include <sys/drvctlio.h>
 #include <sys/dvdio.h>
@@ -83,6 +84,7 @@
 
 #include <sys/resource.h>
 #include <sys/sem.h>
+#include <sys/scsiio.h>
 #include <sys/sha1.h>
 #include <sys/sha2.h>
 #include <sys/shm.h>
@@ -139,7 +141,158 @@
 #include <dev/ir/irdaio.h>
 #include <dev/isa/isvio.h>
 #include <dev/isa/wtreg.h>
+#if __has_include(<dev/iscsi/iscsi_ioctl.h>)
 #include <dev/iscsi/iscsi_ioctl.h>
+#else
+/* Fallback for MKISCSI=no */
+
+typedef struct {
+  uint32_t status;
+  uint32_t session_id;
+  uint32_t connection_id;
+} iscsi_conn_status_parameters_t;
+
+typedef struct {
+  uint32_t status;
+  uint16_t interface_version;
+  uint16_t major;
+  uint16_t minor;
+  uint8_t version_string[224];
+} iscsi_get_version_parameters_t;
+
+typedef struct {
+  uint32_t status;
+  uint32_t session_id;
+  uint32_t connection_id;
+  struct {
+    unsigned int immediate : 1;
+  } options;
+  uint64_t lun;
+  scsireq_t req; /* from <sys/scsiio.h> */
+} iscsi_iocommand_parameters_t;
+
+typedef enum {
+  ISCSI_AUTH_None = 0,
+  ISCSI_AUTH_CHAP = 1,
+  ISCSI_AUTH_KRB5 = 2,
+  ISCSI_AUTH_SRP = 3
+} iscsi_auth_types_t;
+
+typedef enum {
+  ISCSI_LOGINTYPE_DISCOVERY = 0,
+  ISCSI_LOGINTYPE_NOMAP = 1,
+  ISCSI_LOGINTYPE_MAP = 2
+} iscsi_login_session_type_t;
+
+typedef enum { ISCSI_DIGEST_None = 0, ISCSI_DIGEST_CRC32C = 1 } iscsi_digest_t;
+
+typedef enum {
+  ISCSI_SESSION_TERMINATED = 1,
+  ISCSI_CONNECTION_TERMINATED,
+  ISCSI_RECOVER_CONNECTION,
+  ISCSI_DRIVER_TERMINATING
+} iscsi_event_t;
+
+typedef struct {
+  unsigned int mutual_auth : 1;
+  unsigned int is_secure : 1;
+  unsigned int auth_number : 4;
+  iscsi_auth_types_t auth_type[4];
+} iscsi_auth_info_t;
+
+typedef struct {
+  uint32_t status;
+  int socket;
+  struct {
+    unsigned int HeaderDigest : 1;
+    unsigned int DataDigest : 1;
+    unsigned int MaxConnections : 1;
+    unsigned int DefaultTime2Wait : 1;
+    unsigned int DefaultTime2Retain : 1;
+    unsigned int MaxRecvDataSegmentLength : 1;
+    unsigned int auth_info : 1;
+    unsigned int user_name : 1;
+    unsigned int password : 1;
+    unsigned int target_password : 1;
+    unsigned int TargetName : 1;
+    unsigned int TargetAlias : 1;
+    unsigned int ErrorRecoveryLevel : 1;
+  } is_present;
+  iscsi_auth_info_t auth_info;
+  iscsi_login_session_type_t login_type;
+  iscsi_digest_t HeaderDigest;
+  iscsi_digest_t DataDigest;
+  uint32_t session_id;
+  uint32_t connection_id;
+  uint32_t MaxRecvDataSegmentLength;
+  uint16_t MaxConnections;
+  uint16_t DefaultTime2Wait;
+  uint16_t DefaultTime2Retain;
+  uint16_t ErrorRecoveryLevel;
+  void *user_name;
+  void *password;
+  void *target_password;
+  void *TargetName;
+  void *TargetAlias;
+} iscsi_login_parameters_t;
+
+typedef struct {
+  uint32_t status;
+  uint32_t session_id;
+} iscsi_logout_parameters_t;
+
+typedef struct {
+  uint32_t status;
+  uint32_t event_id;
+} iscsi_register_event_parameters_t;
+
+typedef struct {
+  uint32_t status;
+  uint32_t session_id;
+  uint32_t connection_id;
+} iscsi_remove_parameters_t;
+
+typedef struct {
+  uint32_t status;
+  uint32_t session_id;
+  void *response_buffer;
+  uint32_t response_size;
+  uint32_t response_used;
+  uint32_t response_total;
+  uint8_t key[224];
+} iscsi_send_targets_parameters_t;
+
+typedef struct {
+  uint32_t status;
+  uint8_t InitiatorName[224];
+  uint8_t InitiatorAlias[224];
+  uint8_t ISID[6];
+} iscsi_set_node_name_parameters_t;
+
+typedef struct {
+  uint32_t status;
+  uint32_t event_id;
+  iscsi_event_t event_kind;
+  uint32_t session_id;
+  uint32_t connection_id;
+  uint32_t reason;
+} iscsi_wait_event_parameters_t;
+
+#define ISCSI_GET_VERSION _IOWR(0, 1, iscsi_get_version_parameters_t)
+#define ISCSI_LOGIN _IOWR(0, 2, iscsi_login_parameters_t)
+#define ISCSI_LOGOUT _IOWR(0, 3, iscsi_logout_parameters_t)
+#define ISCSI_ADD_CONNECTION _IOWR(0, 4, iscsi_login_parameters_t)
+#define ISCSI_RESTORE_CONNECTION _IOWR(0, 5, iscsi_login_parameters_t)
+#define ISCSI_REMOVE_CONNECTION _IOWR(0, 6, iscsi_remove_parameters_t)
+#define ISCSI_CONNECTION_STATUS _IOWR(0, 7, iscsi_conn_status_parameters_t)
+#define ISCSI_SEND_TARGETS _IOWR(0, 8, iscsi_send_targets_parameters_t)
+#define ISCSI_SET_NODE_NAME _IOWR(0, 9, iscsi_set_node_name_parameters_t)
+#define ISCSI_IO_COMMAND _IOWR(0, 10, iscsi_iocommand_parameters_t)
+#define ISCSI_REGISTER_EVENT _IOWR(0, 11, iscsi_register_event_parameters_t)
+#define ISCSI_DEREGISTER_EVENT _IOWR(0, 12, iscsi_register_event_parameters_t)
+#define ISCSI_WAIT_EVENT _IOWR(0, 13, iscsi_wait_event_parameters_t)
+#define ISCSI_POLL_EVENT _IOWR(0, 14, iscsi_wait_event_parameters_t)
+#endif
 #include <dev/ofw/openfirmio.h>
 #include <dev/pci/amrio.h>
 #include <dev/pci/mlyreg.h>
@@ -161,12 +314,121 @@
 #include <net/slip.h>
 #include <netbt/hci.h>
 #include <netinet/ip_compat.h>
+#if __has_include(<netinet/ip_fil.h>)
 #include <netinet/ip_fil.h>
 #include <netinet/ip_nat.h>
 #include <netinet/ip_proxy.h>
+#else
+/* Fallback for MKIPFILTER=no */
+
+typedef struct ap_control {
+  char apc_label[16];
+  char apc_config[16];
+  unsigned char apc_p;
+  unsigned long apc_cmd;
+  unsigned long apc_arg;
+  void *apc_data;
+  size_t apc_dsize;
+} ap_ctl_t;
+
+typedef struct ipftq {
+  ipfmutex_t ifq_lock;
+  unsigned int ifq_ttl;
+  void *ifq_head;
+  void **ifq_tail;
+  void *ifq_next;
+  void **ifq_pnext;
+  int ifq_ref;
+  unsigned int ifq_flags;
+} ipftq_t;
+
+typedef struct ipfobj {
+  uint32_t ipfo_rev;
+  uint32_t ipfo_size;
+  void *ipfo_ptr;
+  int ipfo_type;
+  int ipfo_offset;
+  int ipfo_retval;
+  unsigned char ipfo_xxxpad[28];
+} ipfobj_t;
+
+#define SIOCADNAT _IOW('r', 60, struct ipfobj)
+#define SIOCRMNAT _IOW('r', 61, struct ipfobj)
+#define SIOCGNATS _IOWR('r', 62, struct ipfobj)
+#define SIOCGNATL _IOWR('r', 63, struct ipfobj)
+#define SIOCPURGENAT _IOWR('r', 100, struct ipfobj)
+#endif
 #include <netinet6/in6_var.h>
 #include <netinet6/nd6.h>
+#if !__NetBSD_Prereq__(9, 99, 51)
 #include <netsmb/smb_dev.h>
+#else
+struct smbioc_flags {
+  int ioc_level;
+  int ioc_mask;
+  int ioc_flags;
+};
+struct smbioc_oshare {
+  int ioc_opt;
+  int ioc_stype;
+  char ioc_share[129];
+  char ioc_password[129];
+  uid_t ioc_owner;
+  gid_t ioc_group;
+  mode_t ioc_mode;
+  mode_t ioc_rights;
+};
+struct smbioc_ossn {
+  int ioc_opt;
+  uint32_t ioc_svlen;
+  struct sockaddr *ioc_server;
+  uint32_t ioc_lolen;
+  struct sockaddr *ioc_local;
+  char ioc_srvname[16];
+  int ioc_timeout;
+  int ioc_retrycount;
+  char ioc_localcs[16];
+  char ioc_servercs[16];
+  char ioc_user[129];
+  char ioc_workgroup[129];
+  char ioc_password[129];
+  uid_t ioc_owner;
+  gid_t ioc_group;
+  mode_t ioc_mode;
+  mode_t ioc_rights;
+};
+struct smbioc_lookup {
+  int ioc_level;
+  int ioc_flags;
+  struct smbioc_ossn ioc_ssn;
+  struct smbioc_oshare ioc_sh;
+};
+struct smbioc_rq {
+  u_char ioc_cmd;
+  u_char ioc_twc;
+  void *ioc_twords;
+  u_short ioc_tbc;
+  void *ioc_tbytes;
+  int ioc_rpbufsz;
+  char *ioc_rpbuf;
+  u_char ioc_rwc;
+  u_short ioc_rbc;
+};
+struct smbioc_rw {
+  u_int16_t ioc_fh;
+  char *ioc_base;
+  off_t ioc_offset;
+  int ioc_cnt;
+};
+#define SMBIOC_OPENSESSION _IOW('n', 100, struct smbioc_ossn)
+#define SMBIOC_OPENSHARE _IOW('n', 101, struct smbioc_oshare)
+#define SMBIOC_REQUEST _IOWR('n', 102, struct smbioc_rq)
+#define SMBIOC_T2RQ _IOWR('n', 103, struct smbioc_t2rq)
+#define SMBIOC_SETFLAGS _IOW('n', 104, struct smbioc_flags)
+#define SMBIOC_LOOKUP _IOW('n', 106, struct smbioc_lookup)
+#define SMBIOC_READ _IOWR('n', 107, struct smbioc_rw)
+#define SMBIOC_WRITE _IOWR('n', 108, struct smbioc_rw)
+#endif
 #include <dev/biovar.h>
 #include <dev/bluetooth/btdev.h>
 #include <dev/bluetooth/btsco.h>
@@ -190,7 +452,21 @@
 #include <dev/sun/vuid_event.h>
 #include <dev/tc/sticio.h>
 #include <dev/usb/ukyopon.h>
+#if !__NetBSD_Prereq__(9, 99, 44)
 #include <dev/usb/urio.h>
+#else
+struct urio_command {
+  unsigned short length;
+  int request;
+  int requesttype;
+  int value;
+  int index;
+  void *buffer;
+  int timeout;
+};
+#define URIO_SEND_COMMAND      _IOWR('U', 200, struct urio_command)
+#define URIO_RECV_COMMAND      _IOWR('U', 201, struct urio_command)
+#endif
 #include <dev/usb/usb.h>
 #include <dev/usb/utoppy.h>
 #include <dev/vme/xio.h>
@@ -199,6 +475,7 @@
 #include <dev/wscons/wsdisplay_usl_io.h>
 #include <fs/autofs/autofs_ioctl.h>
 #include <dirent.h>
+#include <dlfcn.h>
 #include <glob.h>
 #include <grp.h>
 #include <ifaddrs.h>
@@ -244,9 +521,15 @@
 
 // Include these after system headers to avoid name clashes and ambiguities.
 #include "sanitizer_internal_defs.h"
+#include "sanitizer_libc.h"
 #include "sanitizer_platform_limits_netbsd.h"
 
 namespace __sanitizer {
+void *__sanitizer_get_link_map_by_dlopen_handle(void *handle) {
+  void *p = nullptr;
+  return internal_dlinfo(handle, RTLD_DI_LINKMAP, &p) == 0 ? p : nullptr;
+}
+
 unsigned struct_utsname_sz = sizeof(struct utsname);
 unsigned struct_stat_sz = sizeof(struct stat);
 unsigned struct_rusage_sz = sizeof(struct rusage);
@@ -255,6 +538,7 @@ unsigned struct_passwd_sz = sizeof(struct passwd);
 unsigned struct_group_sz = sizeof(struct group);
 unsigned siginfo_t_sz = sizeof(siginfo_t);
 unsigned struct_sigaction_sz = sizeof(struct sigaction);
+unsigned struct_stack_t_sz = sizeof(stack_t);
 unsigned struct_itimerval_sz = sizeof(struct itimerval);
 unsigned pthread_t_sz = sizeof(pthread_t);
 unsigned pthread_mutex_t_sz = sizeof(pthread_mutex_t);

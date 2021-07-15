@@ -7,7 +7,7 @@
 //"use strict";
 
 // See browser tests for examples (tests/runner.py, search for sdl_). Run with
-//    python tests/runner.py browser
+//    tests/runner browser
 
 // Notes:
 //  SDL_VIDEORESIZE: This is sent when the canvas is resized. Note that the user
@@ -560,7 +560,7 @@ var LibrarySDL = {
           });
         }
       };
-      switch(event.type) {
+      switch (event.type) {
         case 'touchstart': case 'touchmove': {
           event.preventDefault();
 
@@ -585,7 +585,7 @@ var LibrarySDL = {
               SDL.DOMButtons[0] = 1;
             }
             var mouseEventType;
-            switch(event.type) {
+            switch (event.type) {
               case 'touchstart': mouseEventType = 'mousedown'; break;
               case 'touchmove': mouseEventType = 'mousemove'; break;
             }
@@ -612,7 +612,7 @@ var LibrarySDL = {
 
           // Remove the entry in the SDL.downFingers hash
           // because the finger is no longer down.
-          for(var i = 0; i < event.changedTouches.length; i++) {
+          for (var i = 0; i < event.changedTouches.length; i++) {
             var touch = event.changedTouches[i];
             if (SDL.downFingers[touch.identifier] === true) {
               delete SDL.downFingers[touch.identifier];
@@ -1190,22 +1190,22 @@ var LibrarySDL = {
       // so perform a buffer conversion for the data.
       var audio = SDL_audio();
       var numChannels = audio.channels;
-      for(var c = 0; c < numChannels; ++c) {
+      for (var c = 0; c < numChannels; ++c) {
         var channelData = dstAudioBuffer['getChannelData'](c);
         if (channelData.length != sizeSamplesPerChannel) {
           throw 'Web Audio output buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + sizeSamplesPerChannel + ' samples!';
         }
         if (audio.format == 0x8010 /*AUDIO_S16LSB*/) {
-          for(var j = 0; j < sizeSamplesPerChannel; ++j) {
+          for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*2', 'i16', 0, 0) }}}) / 0x8000;
           }
         } else if (audio.format == 0x0008 /*AUDIO_U8*/) {
-          for(var j = 0; j < sizeSamplesPerChannel; ++j) {
+          for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             var v = ({{{ makeGetValue('heapPtr', 'j*numChannels + c', 'i8', 0, 0) }}});
             channelData[j] = ((v >= 0) ? v-128 : v+128) /128;
           }
         } else if (audio.format == 0x8120 /*AUDIO_F32*/) {
-          for(var j = 0; j < sizeSamplesPerChannel; ++j) {
+          for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*4', 'float', 0, 0) }}});
           }
         } else {
@@ -1217,12 +1217,12 @@ var LibrarySDL = {
     // Debugging
 
     debugSurface: function(surfData) {
-      console.log('dumping surface ' + [surfData.surf, surfData.source, surfData.width, surfData.height]);
+      out('dumping surface ' + [surfData.surf, surfData.source, surfData.width, surfData.height]);
       var image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
       var data = image.data;
       var num = Math.min(surfData.width, surfData.height);
       for (var i = 0; i < num; i++) {
-        console.log('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
+        out('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
       }
     },
 
@@ -1348,6 +1348,7 @@ var LibrarySDL = {
     return SDL.version;
   },
 
+  SDL_Init__deps: ['$zeroMemory'],
   SDL_Init__proxy: 'sync',
   SDL_Init__sig: 'ii',
   SDL_Init__docs: '/** @param{number=} initFlags */', 
@@ -1368,7 +1369,7 @@ var LibrarySDL = {
 
     window.addEventListener("unload", SDL.receiveEvent);
     SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
-    _memset(SDL.keyboardState, 0, 0x10000);
+    zeroMemory(SDL.keyboardState, 0x10000);
     // Initialize this structure carefully for closure
     SDL.DOMEventToSDLEvent['keydown']    = 0x300  /* SDL_KEYDOWN */;
     SDL.DOMEventToSDLEvent['keyup']      = 0x301  /* SDL_KEYUP */;
@@ -1829,7 +1830,7 @@ var LibrarySDL = {
         return !Browser.pointerLock;
         break;
       default:
-        console.log( "SDL_ShowCursor called with unknown toggle parameter value: " + toggle + "." );
+        out( "SDL_ShowCursor called with unknown toggle parameter value: " + toggle + "." );
         break;
     }
   },
@@ -1869,7 +1870,7 @@ var LibrarySDL = {
     if (depth !== 32) {
       // TODO: Actually fill pixel data to created surface.
       // TODO: Take into account depth and pitch parameters.
-      console.log('TODO: Partially unimplemented SDL_CreateRGBSurfaceFrom called!');
+      out('TODO: Partially unimplemented SDL_CreateRGBSurfaceFrom called!');
       return surf;
     }
 
@@ -2077,7 +2078,7 @@ var LibrarySDL = {
   SDL_PeepEvents__proxy: 'sync',
   SDL_PeepEvents__sig: 'iiiiii',
   SDL_PeepEvents: function(events, requestedEventCount, action, from, to) {
-    switch(action) {
+    switch (action) {
       case 2: { // SDL_GETEVENT
         // We only handle 1 event right now
         assert(requestedEventCount == 1);
@@ -2414,7 +2415,7 @@ var LibrarySDL = {
 
   // SDL_Audio
 
-  SDL_OpenAudio__deps: ['$autoResumeAudioContext'],
+  SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout'],
   SDL_OpenAudio__proxy: 'sync',
   SDL_OpenAudio__sig: 'iii',
   SDL_OpenAudio: function(desired, obtained) {
@@ -2461,7 +2462,7 @@ var LibrarySDL = {
       } else if (SDL.audio.channels < 0 || SDL.audio.channels > 32) {
         throw 'Unsupported number of audio channels for SDL audio: ' + SDL.audio.channels + '!';
       } else if (SDL.audio.channels != 1 && SDL.audio.channels != 2) { // Unsure what SDL audio spec supports. Web Audio spec supports up to 32 channels.
-        console.log('Warning: Using untested number of audio channels ' + SDL.audio.channels);
+        out('Warning: Using untested number of audio channels ' + SDL.audio.channels);
       }
       if (SDL.audio.samples < 128 || SDL.audio.samples > 524288 /* arbitrary cap */) {
         throw 'Unsupported audio callback buffer size ' + SDL.audio.samples + '!';
@@ -2495,7 +2496,7 @@ var LibrarySDL = {
       SDL.audio.queueNewAudioData = function SDL_queueNewAudioData() {
         if (!SDL.audio) return;
 
-        for(var i = 0; i < SDL.audio.numSimultaneouslyQueuedBuffers; ++i) {
+        for (var i = 0; i < SDL.audio.numSimultaneouslyQueuedBuffers; ++i) {
           // Only queue new data if we don't have enough audio data already in queue. Otherwise skip this time slot
           // and wait to queue more in the next time the callback is run.
           var secsUntilNextPlayStart = SDL.audio.nextPlayTime - SDL.audioContext['currentTime'];
@@ -2536,12 +2537,12 @@ var LibrarySDL = {
 
         if (SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
           ++SDL.audio.numAudioTimersPending;
-          SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*(secsUntilNextPlayStart-preemptBufferFeedSecs)));
+          SDL.audio.timer = safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*(secsUntilNextPlayStart-preemptBufferFeedSecs)));
 
           // If we are risking starving, immediately queue an extra buffer.
           if (SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
             ++SDL.audio.numAudioTimersPending;
-            Browser.safeSetTimeout(SDL.audio.caller, 1.0);
+            safeSetTimeout(SDL.audio.caller, 1.0);
           }
         }
       };
@@ -2579,7 +2580,7 @@ var LibrarySDL = {
           var curtime = SDL.audioContext['currentTime'];
 #if ASSERTIONS
           if (curtime > SDL.audio.nextPlayTime && SDL.audio.nextPlayTime != 0) {
-            console.log('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
+            out('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
           }
 #endif
           // Don't ever start buffer playbacks earlier from current time than a given constant 'SDL.audio.bufferingDelay', since a browser
@@ -2594,14 +2595,14 @@ var LibrarySDL = {
           // Uncomment to debug SDL buffer feed starves.
           if (SDL.audio.curBufferEnd) {
             var thisBufferStart = Math.round(playtime * SDL.audio.freq);
-            if (thisBufferStart != SDL.audio.curBufferEnd) console.log('SDL starved ' + (thisBufferStart - SDL.audio.curBufferEnd) + ' samples!');
+            if (thisBufferStart != SDL.audio.curBufferEnd) out('SDL starved ' + (thisBufferStart - SDL.audio.curBufferEnd) + ' samples!');
           }
           SDL.audio.curBufferEnd = Math.round(playtime * SDL.audio.freq + sizeSamplesPerChannel);
           */
 
           SDL.audio.nextPlayTime = playtime + SDL.audio.bufferDurationSecs;
         } catch(e) {
-          console.log('Web Audio API error playing back audio: ' + e.toString());
+          out('Web Audio API error playing back audio: ' + e.toString());
         }
       }
 
@@ -2618,7 +2619,7 @@ var LibrarySDL = {
       SDL.allocateChannels(32);
 
     } catch(e) {
-      console.log('Initializing SDL audio threw an exception: "' + e.toString() + '"! Continuing without audio.');
+      out('Initializing SDL audio threw an exception: "' + e.toString() + '"! Continuing without audio.');
       SDL.audio = null;
       SDL.allocateChannels(0);
       if (obtained) {
@@ -2638,6 +2639,7 @@ var LibrarySDL = {
   },
 
   SDL_PauseAudio__proxy: 'sync',
+  SDL_PauseAudio__deps: ['$safeSetTimeout'],
   SDL_PauseAudio__sig: 'vi',
   SDL_PauseAudio: function(pauseOn) {
     if (!SDL.audio) {
@@ -2652,7 +2654,7 @@ var LibrarySDL = {
     } else if (!SDL.audio.timer) {
       // Start the audio playback timer callback loop.
       SDL.audio.numAudioTimersPending = 1;
-      SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1);
+      SDL.audio.timer = safeSetTimeout(SDL.audio.caller, 1);
     }
     SDL.audio.paused = pauseOn;
   },
@@ -3448,11 +3450,6 @@ var LibrarySDL = {
     if (value) {{{ makeSetValue('value', '0', 'SDL.glAttributes[attr]', 'i32') }}};
 
     return 0;
-  },
-
-  SDL_GL_GetProcAddress__deps: ['emscripten_GetProcAddress'],
-  SDL_GL_GetProcAddress: function(name_) {
-    return _emscripten_GetProcAddress(name_);
   },
 
   SDL_GL_SwapBuffers__proxy: 'sync',

@@ -33,7 +33,11 @@ var WasiLibrary = {
       };
       // Apply the user-provided values, if any.
       for (var x in ENV) {
-        env[x] = ENV[x];
+        // x is a key in ENV; if ENV[x] is undefined, that means it was
+        // explicitly set to be so. We allow user code to do that to
+        // force variables with default values to remain unset.
+        if (ENV[x] === undefined) delete env[x];
+        else env[x] = ENV[x];
       }
       var strings = [];
       for (var x in env) {
@@ -74,6 +78,9 @@ var WasiLibrary = {
     return 0;
   },
 
+  // In normal (non-standalone) mode arguments are passed direclty
+  // to main, and the `mainArgs` global does not exist.
+#if STANDALONE_WASM
   args_sizes_get__sig: 'iii',
   args_sizes_get: function(pargc, pargv_buf_size) {
 #if MAIN_READS_PARAMS
@@ -105,6 +112,7 @@ var WasiLibrary = {
 #endif
     return 0;
   },
+#endif
 
   $checkWasiClock: function(clock_id) {
     return clock_id == {{{ cDefine('__WASI_CLOCKID_REALTIME') }}} ||

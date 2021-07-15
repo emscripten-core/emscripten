@@ -7,9 +7,11 @@
 #include <emscripten.h>
 #include <assert.h>
 
-int calc(int x) {
+__attribute__((noinline)) int calc(int x) {
   printf("..%d..\n", x);
-  if (x < 5) {
+  if (x == 0) {
+    // We reached the desired number of stack frames. Log out the stack trace
+    // for purposes of debugging this test.
     char buffer[10000];
     emscripten_get_callstack(EM_LOG_JS_STACK, buffer, 10000);
     int newlines = 0;
@@ -18,20 +20,30 @@ int calc(int x) {
       if (*b == '\n') newlines++;
       b++;
     }
+    // The runtime adds more frames from JS, so do not look for a specific
+    // number, but ensure it is quite large.
     if (newlines > 40) newlines = 40;
     printf("stack: %s => %d, sleeping...\n", buffer, newlines);
-    emscripten_sleep(1000);
+    // Sleep to test the saving of a fairly deep stack, including locals along
+    // the way.
+    emscripten_sleep(1);
     printf("..and we're back, returning %d!\n", newlines);
+    // Return a value to test it passing through all the stack frames to the
+    // caller, after the sleep.
     return newlines;
   }
-  if (x % 6 == 0) return calc(5*x/6);
-  if (x % 4 == 1) return calc(x-2);
-  return calc(x-1);
+  // Keep the recursion by passing the function pointer between C++ and JS, so
+  // that we have a deeply nested stack.
+  int (*fp)(int) = (int(*)(int))EM_ASM_INT({
+    return $0;
+  }, &calc);
+  return fp(x - 1);
 }
 
 int main() {
-  volatile int x = 100;
-  volatile int result = calc(x);
+  // Ensure at least 40 stack frames.
+  int x = 40;
+  int result = calc(x);
   printf("calc(%d) = %d\n", x, result);
   REPORT_RESULT(result);
 }

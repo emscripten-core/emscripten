@@ -6,13 +6,13 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file is a part of LeakSanitizer. Linux/NetBSD-specific code.
+// This file is a part of LeakSanitizer. Linux/NetBSD/Fuchsia-specific code.
 //
 //===----------------------------------------------------------------------===//
 
 #include "sanitizer_common/sanitizer_platform.h"
 
-#if SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
+#if SANITIZER_LINUX || SANITIZER_NETBSD || SANITIZER_FUCHSIA || SANITIZER_EMSCRIPTEN
 
 #include "lsan_allocator.h"
 
@@ -29,4 +29,4 @@ void ReplaceSystemMalloc() {}
 
 } // namespace __lsan
 
-#endif // SANITIZER_LINUX
+#endif  // SANITIZER_LINUX || SANITIZER_NETBSD || SANITIZER_FUCHSIA || SANITIZER_EMSCRIPTEN

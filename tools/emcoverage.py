@@ -38,6 +38,8 @@ from glob import glob
 
 import coverage.cmdline
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def main():
   # We hack sys.executable to point to this file, which is executable via #! line.
@@ -46,8 +48,9 @@ def main():
   # all of them will execute under the watchful eye of emcoverage.py, and resulting
   # in their code coverage being tracked.
   sys.executable = os.path.abspath(__file__)
+  os.environ['EMSDK_PYTHON'] = sys.executable
 
-  store = os.path.join(os.path.dirname(sys.executable), 'coverage')
+  store = os.path.join(SCRIPT_DIR, 'coverage')
 
   if len(sys.argv) < 2 or sys.argv[1] == 'help':
     print(__doc__.replace('emcoverage.py', sys.argv[0]).strip())
@@ -64,7 +67,7 @@ def main():
       coverage.cmdline.main()
     except SystemExit:
       pass
-    sys.argv = old_argv
+    sys.argv = old_argv + ['-i']
     return coverage.cmdline.main()
 
   if not os.path.exists(sys.argv[1]):
@@ -78,7 +81,7 @@ def main():
     if e.errno != errno.EEXIST:
       raise
   os.environ['COVERAGE_FILE'] = os.path.join(store, str(uuid.uuid4()))
-  sys.argv[0:1] = ['coverage', 'run', '--parallel-mode', '--concurrency=multiprocessing', '--']
+  sys.argv[0:1] = ['coverage', 'run', '--parallel-mode', '--']
 
   return coverage.cmdline.main()
 

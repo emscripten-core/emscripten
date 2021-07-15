@@ -9,6 +9,8 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
+from tools.toolchain_profiler import ToolchainProfiler
+
 import os
 import json
 import subprocess
@@ -23,16 +25,11 @@ from tools import diagnostics
 from tools import shared
 from tools import gen_struct_info
 from tools import webassembly
-from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
-from tools.toolchain_profiler import ToolchainProfiler
+from tools.shared import WINDOWS, path_from_root, exit_with_error, asmjs_mangle
+from tools.shared import treat_as_user_function, strip_prefix
+from tools.settings import settings
 
 logger = logging.getLogger('emscripten')
-
-STDERR_FILE = os.environ.get('EMCC_STDERR_FILE')
-if STDERR_FILE:
-  STDERR_FILE = os.path.abspath(STDERR_FILE)
-  logger.info('logging stderr in js compiler phase into %s' % STDERR_FILE)
-  STDERR_FILE = open(STDERR_FILE, 'w')
 
 WASM_INIT_FUNC = '__wasm_call_ctors'
 
@@ -44,20 +41,23 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   exports_that_are_not_initializers = [x for x in exports if x not in WASM_INIT_FUNC]
   # In Wasm backend the exports are still unmangled at this point, so mangle the names here
   exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
-  post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ',\n  '.join(exports_that_are_not_initializers) + ';')
 
-  # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
-  post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
+  # Decide whether we should generate the global dynCalls dictionary for the dynCall() function?
+  if settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports_that_are_not_initializers if x.startswith('dynCall_')]) > 0:
+    exports_that_are_not_initializers += ['dynCalls = {}']
+
+  declares = 'var ' + ',\n '.join(exports_that_are_not_initializers) + ';'
+  post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
+
+  # Generate assignments from all wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
+  post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS >>>', receiving)
   return post
 
 
-def write_output_file(outfile, post, module):
+def write_output_file(outfile, module):
   for i in range(len(module)): # do this loop carefully to save memory
     module[i] = normalize_line_endings(module[i])
     outfile.write(module[i])
-
-  post = normalize_line_endings(post)
-  outfile.write(post)
 
 
 def optimize_syscalls(declares, DEBUG):
@@ -70,12 +70,12 @@ def optimize_syscalls(declares, DEBUG):
   MAIN_MODULE since a side module might need the filesystem.
   """
   relevant_settings = ['FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY', 'MAIN_MODULE']
-  if any(shared.Settings[s] for s in relevant_settings):
+  if any(settings[s] for s in relevant_settings):
     return
 
-  if shared.Settings.FILESYSTEM == 0:
+  if settings.FILESYSTEM == 0:
     # without filesystem support, it doesn't matter what syscalls need
-    shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
+    settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
   else:
     syscall_prefixes = ('__sys', 'fd_')
     syscalls = [d for d in declares if d.startswith(syscall_prefixes)]
@@ -90,7 +90,7 @@ def optimize_syscalls(declares, DEBUG):
     ])):
       if DEBUG:
         logger.debug('very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls))
-      shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
+      settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
 
 
 def is_int(x):
@@ -109,77 +109,73 @@ def update_settings_glue(metadata, DEBUG):
   optimize_syscalls(metadata['declares'], DEBUG)
 
   # Integrate info from backend
-  if shared.Settings.SIDE_MODULE:
+  if settings.SIDE_MODULE:
     # we don't need any JS library contents in side modules
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
-  all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
-  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(metadata['exports']))
+  all_funcs = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(metadata['exports']))
 
-  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [x[1:] for x in metadata['externs']]
-  # With the wasm backend the set of implemented functions is identical to the set of exports
-  shared.Settings.IMPLEMENTED_FUNCTIONS = [asmjs_mangle(x) for x in metadata['exports']]
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += metadata['globalImports']
 
-  if metadata['asmConsts']:
-    # emit the EM_ASM signature-reading helper function only if we have any EM_ASM
-    # functions in the module.
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$readAsmConstArgs']
+  settings.WASM_EXPORTS = metadata['exports'] + list(metadata['namedGlobals'].keys())
+  # Store function exports so that Closure and metadce can track these even in
+  # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
+  settings.WASM_FUNCTION_EXPORTS = metadata['exports']
 
-    # Extract the list of function signatures that MAIN_THREAD_EM_ASM blocks in
-    # the compiled code have, each signature will need a proxy function invoker
-    # generated for it.
-    def read_proxied_function_signatures(asmConsts):
-      proxied_function_signatures = set()
-      for _, sigs, proxying_types in asmConsts.values():
-        for sig, proxying_type in zip(sigs, proxying_types):
-          if proxying_type == 'sync_on_main_thread_':
-            proxied_function_signatures.add(sig + '_sync')
-          elif proxying_type == 'async_on_main_thread_':
-            proxied_function_signatures.add(sig + '_async')
-      return list(proxied_function_signatures)
+  # start with the MVP features, and add any detected features.
+  settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata['features']
+  if settings.USE_PTHREADS:
+    assert '--enable-threads' in settings.BINARYEN_FEATURES
+  if settings.MEMORY64:
+    assert '--enable-memory64' in settings.BINARYEN_FEATURES
 
-    shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
-
-  shared.Settings.BINARYEN_FEATURES = metadata['features']
-  if shared.Settings.RELOCATABLE:
+  if settings.RELOCATABLE:
     # When building relocatable output (e.g. MAIN_MODULE) the reported table
     # size does not include the reserved slot at zero for the null pointer.
     # Instead we use __table_base to offset the elements by 1.
-    if shared.Settings.INITIAL_TABLE == -1:
-      shared.Settings.INITIAL_TABLE = metadata['tableSize'] + 1
+    if settings.INITIAL_TABLE == -1:
+      settings.INITIAL_TABLE = metadata['tableSize'] + 1
 
-  shared.Settings.MAIN_READS_PARAMS = metadata['mainReadsParams']
+  settings.HAS_MAIN = settings.MAIN_MODULE or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS
 
-  # Store exports for Closure compiler to be able to track these as globals in
-  # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
-  shared.Settings.MODULE_EXPORTS = [(asmjs_mangle(f), f) for f in metadata['exports']]
+  # When using dynamic linking the main function might be in a side module.
+  # To be safe assume they do take input parametes.
+  settings.MAIN_READS_PARAMS = metadata['mainReadsParams'] or settings.MAIN_MODULE
 
-  if shared.Settings.STACK_OVERFLOW_CHECK:
-    if 'emscripten_stack_get_end' not in metadata['exports']:
-      logger.warning('STACK_OVERFLOW_CHECK disabled because emscripten stack helpers not exported')
-      shared.Settings.STACK_OVERFLOW_CHECK = 0
-    else:
-      shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+  if settings.STACK_OVERFLOW_CHECK and not settings.SIDE_MODULE:
+    settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+    # writeStackCookie and checkStackCookie both rely on emscripten_stack_get_end being
+    # exported.  In theory it should always be present since its defined in compiler-rt.
+    assert 'emscripten_stack_get_end' in metadata['exports']
 
 
 def apply_static_code_hooks(forwarded_json, code):
-  code = code.replace('<<< ATINITS >>>', str(forwarded_json['ATINITS']))
-  code = code.replace('<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
-  code = code.replace('<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))
+  code = shared.do_replace(code, '<<< ATINITS >>>', str(forwarded_json['ATINITS']))
+  if settings.HAS_MAIN:
+    code = shared.do_replace(code, '<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
+  if settings.EXIT_RUNTIME:
+    code = shared.do_replace(code, '<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))
   return code
 
 
-def compile_settings(temp_files):
+def compile_settings():
+  stderr_file = os.environ.get('EMCC_STDERR_FILE')
+  if stderr_file:
+    stderr_file = os.path.abspath(stderr_file)
+    logger.info('logging stderr in js compiler phase into %s' % stderr_file)
+    stderr_file = open(stderr_file, 'w')
+
   # Save settings to a file to work around v8 issue 1579
-  with temp_files.get_file('.txt') as settings_file:
+  with shared.configuration.get_temp_files().get_file('.txt') as settings_file:
     with open(settings_file, 'w') as s:
-      json.dump(shared.Settings.to_dict(), s, sort_keys=True)
+      json.dump(settings.dict(), s, sort_keys=True)
 
     # Call js compiler
     env = os.environ.copy()
     env['EMCC_BUILD_DIR'] = os.getcwd()
     out = shared.run_js_tool(path_from_root('src', 'compiler.js'),
-                             [settings_file], stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                             [settings_file], stdout=subprocess.PIPE, stderr=stderr_file,
                              cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
@@ -187,43 +183,48 @@ def compile_settings(temp_files):
 
 
 def set_memory(static_bump):
-  stack_low = align_memory(shared.Settings.GLOBAL_BASE + static_bump)
-  stack_high = align_memory(stack_low + shared.Settings.TOTAL_STACK)
-  shared.Settings.STACK_BASE = stack_high
-  shared.Settings.STACK_MAX = stack_low
-  shared.Settings.HEAP_BASE = align_memory(stack_high)
+  stack_low = align_memory(settings.GLOBAL_BASE + static_bump)
+  stack_high = align_memory(stack_low + settings.TOTAL_STACK)
+  settings.STACK_BASE = stack_high
+  settings.STACK_MAX = stack_low
+  settings.HEAP_BASE = align_memory(stack_high)
 
 
-def report_missing_symbols(all_implemented, pre):
-  # the initial list of missing functions are that the user explicitly exported
-  # but were not implemented in compiled code
-  missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)
-
-  for requested in missing:
-    if ('function ' + asstr(requested) + '(') in pre:
-      continue
-    diagnostics.warning('undefined', 'undefined exported symbol: "%s"', requested)
+def report_missing_symbols(js_library_funcs):
+  # Report any symbol that was explicitly exported but is present neither
+  # as a native function nor as a JS library function.
+  defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_library_funcs)
+  missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
+  for symbol in sorted(missing):
+    diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
 
   # Special hanlding for the `_main` symbol
 
-  if shared.Settings.STANDALONE_WASM:
+  if settings.STANDALONE_WASM:
     # standalone mode doesn't use main, and it always reports missing entry point at link time.
     # In this mode we never expect _main in the export list.
     return
 
-  if shared.Settings.IGNORE_MISSING_MAIN:
+  # PROXY_TO_PTHREAD only makes sense with a main(), so error if one is
+  # missing. note that when main() might arrive from another module we cannot
+  # error here.
+  if settings.PROXY_TO_PTHREAD and '_main' not in defined_symbols and \
+     not settings.RELOCATABLE:
+    exit_with_error('PROXY_TO_PTHREAD proxies main() for you, but no main exists')
+
+  if settings.IGNORE_MISSING_MAIN:
     # The default mode for emscripten is to ignore the missing main function allowing
     # maximum compatibility.
     return
 
-  if shared.Settings.EXPECT_MAIN and '_main' not in all_implemented:
+  if settings.EXPECT_MAIN and 'main' not in settings.WASM_EXPORTS:
     # For compatibility with the output of wasm-ld we use the same wording here in our
     # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
     exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
 
 
 def proxy_debug_print(sync):
-  if shared.Settings.PTHREADS_DEBUG:
+  if settings.PTHREADS_DEBUG:
     if sync:
       return 'warnOnce("sync proxying function " + code);'
     else:
@@ -265,10 +266,10 @@ def create_named_globals(metadata):
   named_globals = []
   for k, v in metadata['namedGlobals'].items():
     v = int(v)
-    if shared.Settings.RELOCATABLE:
-      v += shared.Settings.GLOBAL_BASE
+    if settings.RELOCATABLE:
+      v += settings.GLOBAL_BASE
     mangled = asmjs_mangle(k)
-    if shared.Settings.MINIMAL_RUNTIME:
+    if settings.MINIMAL_RUNTIME:
       named_globals.append("var %s = %s;" % (mangled, v))
     else:
       named_globals.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
@@ -276,24 +277,28 @@ def create_named_globals(metadata):
   return '\n'.join(named_globals)
 
 
-def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
+def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
   #   * Use the metadata to generate the JS glue that goes with the wasm
 
-  if shared.Settings.SINGLE_FILE:
+  if settings.SINGLE_FILE:
     # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
-    shared.Settings.WASM_BINARY_FILE = '<<< WASM_BINARY_FILE >>>'
+    settings.WASM_BINARY_FILE = '<<< WASM_BINARY_FILE >>>'
   else:
     # set file locations, so that JS glue can find what it needs
-    shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(out_wasm))
+    settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(out_wasm))
 
   metadata = finalize_wasm(in_wasm, out_wasm, memfile, DEBUG)
 
   update_settings_glue(metadata, DEBUG)
 
-  if shared.Settings.SIDE_MODULE:
+  if settings.SIDE_MODULE:
+    if metadata['asmConsts']:
+      exit_with_error('EM_ASM is not supported in side modules')
+    if metadata['emJsFuncs']:
+      exit_with_error('EM_JS is not supported in side modules')
     logger.debug('emscript: skipping remaining js glue generation')
     return
 
@@ -303,47 +308,40 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
 
   # memory and global initializers
 
-  if shared.Settings.RELOCATABLE:
-    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm)[0])
+  if settings.RELOCATABLE:
+    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm).mem_size)
     set_memory(static_bump)
-    logger.debug('stack_base: %d, stack_max: %d, heap_base: %d', shared.Settings.STACK_BASE, shared.Settings.STACK_MAX, shared.Settings.HEAP_BASE)
+    logger.debug('stack_base: %d, stack_max: %d, heap_base: %d', settings.STACK_BASE, settings.STACK_MAX, settings.HEAP_BASE)
 
-  glue, forwarded_data = compile_settings(temp_files)
+  glue, forwarded_data = compile_settings()
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
 
   forwarded_json = json.loads(forwarded_data)
-  # For the wasm backend the implementedFunctions from compiler.js should
-  # always be empty. This only gets populated for __asm function when using
-  # the JS backend.
-  assert not forwarded_json['Functions']['implementedFunctions']
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
   exports = metadata['exports']
 
-  if shared.Settings.ASYNCIFY:
+  if settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
-  all_exports = exports + list(metadata['namedGlobals'].keys())
-  all_exports = set([asmjs_mangle(e) for e in all_exports])
-  report_missing_symbols(all_exports, pre)
+  report_missing_symbols(forwarded_json['libraryFunctions'])
 
   if not outfile_js:
     logger.debug('emscript: skipping remaining js glue generation')
     return
 
-  # In regular runtime, atinits etc. exist in the preamble part
-  pre = apply_static_code_hooks(forwarded_json, pre)
-  # In MINIMAL_RUNTIME, atinit exists in the postamble part
-  post = apply_static_code_hooks(forwarded_json, post)
-
-  # merge forwarded data
-  shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
+  if settings.MINIMAL_RUNTIME:
+    # In MINIMAL_RUNTIME, atinit exists in the postamble part
+    post = apply_static_code_hooks(forwarded_json, post)
+  else:
+    # In regular runtime, atinits etc. exist in the preamble part
+    pre = apply_static_code_hooks(forwarded_json, pre)
 
   asm_consts = create_asm_consts(metadata)
-  em_js_funcs = create_em_js(forwarded_json, metadata)
+  em_js_funcs = create_em_js(metadata)
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
   asm_const_map = 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
   pre = pre.replace(
@@ -352,20 +350,23 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, temp_files, DEBUG):
      '\n'.join(em_js_funcs) + '\n'))
 
   with open(outfile_js, 'w') as out:
-    out.write(pre)
+    out.write(normalize_line_endings(pre))
     pre = None
 
     invoke_funcs = metadata['invokeFuncs']
     sending = create_sending(invoke_funcs, metadata)
     receiving = create_receiving(exports)
 
-    if shared.Settings.MINIMAL_RUNTIME:
-      post = compute_minimal_runtime_initializer_and_exports(post, exports, receiving)
+    if settings.MINIMAL_RUNTIME:
+      if settings.DECLARE_ASM_MODULE_EXPORTS:
+        post = compute_minimal_runtime_initializer_and_exports(post, exports, receiving)
       receiving = ''
 
     module = create_module(sending, receiving, invoke_funcs, metadata)
 
-    write_output_file(out, post, module)
+    write_output_file(out, module)
+
+    out.write(normalize_line_endings(post))
     module = None
 
 
@@ -381,58 +382,58 @@ def remove_trailing_zeros(memfile):
 
 def finalize_wasm(infile, outfile, memfile, DEBUG):
   building.save_intermediate(infile, 'base.wasm')
-  args = ['--detect-features', '--minimize-wasm-changes']
+  # tell binaryen to look at the features section, and if there isn't one, to use MVP
+  # (which matches what llvm+lld has given us)
+  args = ['--minimize-wasm-changes']
 
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
   modify_wasm = False
 
-  if shared.Settings.WASM2JS:
+  if settings.WASM2JS:
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
     modify_wasm = True
-  if shared.Settings.GENERATE_SOURCE_MAP:
+  if settings.GENERATE_SOURCE_MAP:
     building.emit_wasm_source_map(infile, infile + '.map', outfile)
     building.save_intermediate(infile + '.map', 'base_wasm.map')
-    args += ['--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(outfile) + '.map']
+    args += ['--output-source-map-url=' + settings.SOURCE_MAP_BASE + os.path.basename(outfile) + '.map']
     modify_wasm = True
-  # tell binaryen to look at the features section, and if there isn't one, to use MVP
-  # (which matches what llvm+lld has given us)
-  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.ASYNCIFY_ADD or shared.Settings.ASYNCIFY_ADVISE or shared.Settings.ASYNCIFY_ONLY or shared.Settings.ASYNCIFY_REMOVE or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.PROFILING_FUNCS:
+  if settings.DEBUG_LEVEL >= 2 or settings.ASYNCIFY_ADD or settings.ASYNCIFY_ADVISE or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.EMIT_SYMBOL_MAP or settings.PROFILING_FUNCS:
     args.append('-g')
-  if shared.Settings.WASM_BIGINT:
+  if settings.WASM_BIGINT:
     args.append('--bigint')
-  if shared.Settings.USE_LEGACY_DYNCALLS:
+  if settings.DYNCALLS:
     # we need to add all dyncalls to the wasm
     modify_wasm = True
   else:
-    if shared.Settings.WASM_BIGINT:
+    if settings.WASM_BIGINT:
       args.append('--no-dyncalls')
     else:
       args.append('--dyncalls-i64')
       # we need to add some dyncalls to the wasm
       modify_wasm = True
-  if shared.Settings.LEGALIZE_JS_FFI:
+  if settings.LEGALIZE_JS_FFI:
     # When we dynamically link our JS loader adds functions from wasm modules to
     # the table. It must add the original versions of them, not legalized ones,
     # so that indirect calls have the right type, so export those.
-    if shared.Settings.RELOCATABLE:
+    if settings.RELOCATABLE:
       args.append('--pass-arg=legalize-js-interface-export-originals')
     modify_wasm = True
   else:
     args.append('--no-legalize-javascript-ffi')
   if memfile:
     args.append(f'--separate-data-segments={memfile}')
-    args.append(f'--global-base={shared.Settings.GLOBAL_BASE}')
+    args.append(f'--global-base={settings.GLOBAL_BASE}')
     modify_wasm = True
-  if shared.Settings.SIDE_MODULE:
+  if settings.SIDE_MODULE:
     args.append('--side-module')
-  if shared.Settings.STACK_OVERFLOW_CHECK >= 2:
+  if settings.STACK_OVERFLOW_CHECK >= 2:
     args.append('--check-stack-overflow')
     modify_wasm = True
-  if shared.Settings.STANDALONE_WASM:
+  if settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
 
-  if shared.Settings.DEBUG_LEVEL >= 3:
+  if settings.DEBUG_LEVEL >= 3:
     args.append('--dwarf')
   stdout = building.run_binaryen_command('wasm-emscripten-finalize',
                                          infile=infile,
@@ -443,7 +444,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
     building.save_intermediate(infile, 'post_finalize.wasm')
   elif infile != outfile:
     shutil.copy(infile, outfile)
-  if shared.Settings.GENERATE_SOURCE_MAP:
+  if settings.GENERATE_SOURCE_MAP:
     building.save_intermediate(infile + '.map', 'post_finalize.map')
 
   if memfile:
@@ -458,9 +459,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
 
 def create_asm_consts(metadata):
   asm_consts = {}
-  for k, v in metadata['asmConsts'].items():
-    const, sigs, call_types = v
-    const = asstr(const)
+  for addr, const in metadata['asmConsts'].items():
     const = trim_asm_const_body(const)
     args = []
     max_arity = 16
@@ -471,13 +470,13 @@ def create_asm_consts(metadata):
     for i in range(arity):
       args.append('$' + str(i))
     const = 'function(' + ', '.join(args) + ') {' + const + '}'
-    asm_consts[int(k)] = const
+    asm_consts[int(addr)] = const
   asm_consts = [(key, value) for key, value in asm_consts.items()]
   asm_consts.sort()
   return asm_consts
 
 
-def create_em_js(forwarded_json, metadata):
+def create_em_js(metadata):
   em_js_funcs = []
   separator = '<::>'
   for name, raw in metadata.get('emJsFuncs', {}).items():
@@ -489,40 +488,34 @@ def create_em_js(forwarded_json, metadata):
     else:
       args = args.split(',')
     arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
-    func = 'function {}({}){}'.format(name, ','.join(arg_names), asstr(body))
+    func = 'function {}({}){}'.format(name, ','.join(arg_names), body)
     em_js_funcs.append(func)
-    forwarded_json['Functions']['libraryFunctions'][name] = 1
 
   return em_js_funcs
 
 
 def add_standard_wasm_imports(send_items_map):
-  if shared.Settings.IMPORTED_MEMORY:
+  if settings.IMPORTED_MEMORY:
     memory_import = 'wasmMemory'
-    if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
+    if settings.MODULARIZE and settings.USE_PTHREADS:
       # Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
       # Module scope, so lookup via Module as well.
       memory_import += " || Module['wasmMemory']"
     send_items_map['memory'] = memory_import
 
-  # With the wasm backend __memory_base and __table_base are only needed for
-  # relocatable output.
-  if shared.Settings.RELOCATABLE:
-    # tell the memory segments where to place themselves
-    send_items_map['__memory_base'] = str(shared.Settings.GLOBAL_BASE)
+  if settings.SAFE_HEAP:
+    send_items_map['segfault'] = 'segfault'
+    send_items_map['alignfault'] = 'alignfault'
+
+  if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
 
-    # the wasm backend reserves slot 0 for the NULL function pointer
-    send_items_map['__table_base'] = '1'
-  if shared.Settings.RELOCATABLE:
-    send_items_map['__stack_pointer'] = "__stack_pointer"
-
-  if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
+  if settings.MAYBE_WASM2JS or settings.AUTODEBUG or settings.LINKABLE:
     # legalization of i64 support code may require these in some modes
     send_items_map['setTempRet0'] = 'setTempRet0'
     send_items_map['getTempRet0'] = 'getTempRet0'
 
-  if shared.Settings.AUTODEBUG:
+  if settings.AUTODEBUG:
     send_items_map['log_execution'] = '''function(loc) {
       console.log('log_execution ' + loc);
     }'''
@@ -621,13 +614,11 @@ def add_standard_wasm_imports(send_items_map):
 
 
 def create_sending(invoke_funcs, metadata):
-  basic_funcs = []
-  if shared.Settings.SAFE_HEAP:
-    basic_funcs += ['segfault', 'alignfault']
-
-  em_js_funcs = list(metadata['emJsFuncs'].keys())
-  declared_items = ['_' + item for item in metadata['declares']]
-  send_items = set(basic_funcs + invoke_funcs + em_js_funcs + declared_items)
+  em_js_funcs = set(metadata['emJsFuncs'].keys())
+  declares = [asmjs_mangle(d) for d in metadata['declares']]
+  externs = [asmjs_mangle(e) for e in metadata['globalImports']]
+  send_items = set(invoke_funcs + declares + externs)
+  send_items.update(em_js_funcs)
 
   def fix_import_name(g):
     # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
@@ -636,7 +627,7 @@ def create_sending(invoke_funcs, metadata):
     # strip them again here.
     # note that we don't do this for EM_JS functions (which, rarely, may have
     # a '_' prefix)
-    if g.startswith('_') and g not in metadata['emJsFuncs']:
+    if g.startswith('_') and g not in em_js_funcs:
       return g[1:]
     return g
 
@@ -660,7 +651,7 @@ def make_export_wrappers(exports, delay_assignment):
     # The emscripten stack functions are called very early (by writeStackCookie) before
     # the runtime is initialized so we can't create these wrappers that check for
     # runtimeInitialized.
-    if shared.Settings.ASSERTIONS and not name.startswith('emscripten_stack_'):
+    if settings.ASSERTIONS and not name.startswith('emscripten_stack_'):
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
       if delay_assignment:
@@ -693,7 +684,7 @@ var %(mangled)s = Module["%(mangled)s"] = asm["%(name)s"]
 def create_receiving(exports):
   # When not declaring asm exports this section is empty and we instead programatically export
   # symbols on the global object by calling exportAsmFunctions after initialization
-  if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
+  if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 
   exports_that_are_not_initializers = [x for x in exports if x != WASM_INIT_FUNC]
@@ -702,21 +693,25 @@ def create_receiving(exports):
 
   # with WASM_ASYNC_COMPILATION that asm object may not exist at this point in time
   # so we need to support delayed assignment.
-  delay_assignment = shared.Settings.WASM_ASYNC_COMPILATION and not shared.Settings.MINIMAL_RUNTIME
+  delay_assignment = settings.WASM_ASYNC_COMPILATION and not settings.MINIMAL_RUNTIME
   if not delay_assignment:
-    if shared.Settings.MINIMAL_RUNTIME:
+    if settings.MINIMAL_RUNTIME:
       # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.
       # var _main;
       # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
       # var asm = output.instance.exports;
       # _main = asm["_main"];
-      receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports_that_are_not_initializers]
+      generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
+      for s in exports_that_are_not_initializers:
+        mangled = asmjs_mangle(s)
+        dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
+        receiving += [dynCallAssignment + mangled + ' = asm["' + s + '"];']
     else:
-      if shared.Settings.MINIMAL_RUNTIME:
+      if settings.MINIMAL_RUNTIME:
         # In wasm2js exports can be directly processed at top level, i.e.
         # var asm = Module["asm"](asmLibraryArg, buffer);
         # var _main = asm["_main"];
-        if shared.Settings.USE_PTHREADS and shared.Settings.MODULARIZE:
+        if settings.USE_PTHREADS and settings.MODULARIZE:
           # TODO: As a temp solution, multithreaded MODULARIZED MINIMAL_RUNTIME builds export all
           # symbols like regular runtime does.
           # Fix this by migrating worker.js code to reside inside the Module so it is in the same
@@ -730,7 +725,7 @@ def create_receiving(exports):
   else:
     receiving += make_export_wrappers(exports, delay_assignment)
 
-  if shared.Settings.MINIMAL_RUNTIME:
+  if settings.MINIMAL_RUNTIME:
     return '\n  '.join(receiving) + '\n'
   else:
     return '\n'.join(receiving) + '\n'
@@ -741,11 +736,11 @@ def create_module(sending, receiving, invoke_funcs, metadata):
   receiving += create_named_globals(metadata)
   module = []
 
-  module.append('var asmLibraryArg = %s;\n' % (sending))
-  if shared.Settings.ASYNCIFY and shared.Settings.ASSERTIONS:
+  module.append('var asmLibraryArg = %s;\n' % sending)
+  if settings.ASYNCIFY and settings.ASSERTIONS:
     module.append('Asyncify.instrumentWasmImports(asmLibraryArg);\n')
 
-  if not shared.Settings.MINIMAL_RUNTIME:
+  if not settings.MINIMAL_RUNTIME:
     module.append("var asm = createWasm();\n")
 
   module.append(receiving)
@@ -762,7 +757,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
 
   metadata = {
     'declares': [],
-    'externs': [],
+    'globalImports': [],
     'staticBump': 0,
     'tableSize': 0,
     'exports': [],
@@ -773,23 +768,24 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'features': [],
     'mainReadsParams': 1,
   }
-  legacy_keys = set(['implementedFunctions', 'initializers', 'simd'])
+  legacy_keys = set(['implementedFunctions', 'initializers', 'simd', 'externs'])
 
   assert 'tableSize' in metadata_json.keys()
   for key, value in metadata_json.items():
     if key in legacy_keys:
       continue
-    # json.loads returns `unicode` for strings but other code in this file
-    # generally works with utf8 encoded `str` objects, and they don't alwasy
-    # mix well.  e.g. s.replace(x, y) will blow up is `s` a uts8 str containing
-    # non-ascii and either x or y are unicode objects.
-    # TODO(sbc): Remove this encoding if we switch to unicode elsewhere
-    # (specifically the glue returned from compile_settings)
-    if type(value) == list:
-      value = [asstr(v) for v in value]
     if key not in metadata:
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
+
+  # TODO(sbc): Remove this once binaryen change to globalImports has been around for a while.
+  if 'externs' in metadata_json:
+    metadata['globalImports'] = [x[1:] for x in metadata_json['externs']]
+
+  # Support older metadata when asmConsts values were lists.  We only use the first element
+  # nowadays
+  # TODO(sbc): remove this once binaryen has been changed to only emit the single element
+  metadata['asmConsts'] = {k: v[0] if type(v) is list else v for k, v in metadata['asmConsts'].items()}
 
   if DEBUG:
     logger.debug("Metadata parsed: " + pprint.pformat(metadata))
@@ -799,8 +795,9 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   # not known auto-generated system functions.
   unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
-  unexpected_exports = [e for e in unexpected_exports if e not in shared.Settings.EXPORTED_FUNCTIONS]
-  building.user_requested_exports += unexpected_exports
+  unexpected_exports = [e for e in unexpected_exports if e not in settings.EXPORTED_FUNCTIONS]
+  building.user_requested_exports.update(unexpected_exports)
+  settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
 
   return metadata
 
@@ -809,7 +806,7 @@ def create_invoke_wrappers(invoke_funcs):
   """Asm.js-style exception handling: invoke wrapper generation."""
   invoke_wrappers = ''
   for invoke in invoke_funcs:
-    sig = invoke[len('invoke_'):]
+    sig = strip_prefix(invoke, 'invoke_')
     invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
   return invoke_wrappers
 
@@ -825,22 +822,21 @@ def normalize_line_endings(text):
 
 
 def generate_struct_info():
+  # If we are running in BOOTSTRAPPING_STRUCT_INFO we don't populate STRUCT_INFO
+  # otherwise that would lead to infinite recursion.
+  if settings.BOOTSTRAPPING_STRUCT_INFO:
+    return
+
   generated_struct_info_name = 'generated_struct_info.json'
 
-  def generate_struct_info():
-    with ToolchainProfiler.profile_block('gen_struct_info'):
-      out = shared.Cache.get_path(generated_struct_info_name)
-      gen_struct_info.main(['-q', '-o', out])
-      return out
+  @ToolchainProfiler.profile_block('gen_struct_info')
+  def generate_struct_info(out):
+    gen_struct_info.main(['-q', '-o', out])
 
-  shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
+  settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile):
-  temp_files = shared.configuration.get_temp_files()
-  if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
-    generate_struct_info()
+  generate_struct_info()
 
-  return temp_files.run_and_clean(lambda: emscript(
-      in_wasm, out_wasm, outfile_js, memfile, temp_files, shared.DEBUG)
-  )
+  emscript(in_wasm, out_wasm, outfile_js, memfile, shared.DEBUG)

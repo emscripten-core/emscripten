@@ -7,8 +7,8 @@ import logging
 import os
 import shutil
 
-TAG = '1.70.0'
-HASH = '3ba0180a4a3c20d64727750a3233c82aadba95f265a45052297b955902741edac1befd963400958d6915e5b8d9ade48195eeaf8524f06fdb4cfe43b98677f196'
+TAG = '1.75.0'
+HASH = '8c38be1ebef1b8ada358ad6b7c9ec17f5e0a300e8085db3473a13e19712c95eeb3c3defacd3c53482eb96368987c4b022efa8da2aac2431a154e40153d3c3dcd'
 
 
 def needed(settings):
@@ -16,11 +16,10 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('boost_headers', 'https://github.com/emscripten-ports/boost/releases/download/boost-1.70.0/boost-headers-' + TAG + '.zip',
+  ports.fetch_project('boost_headers', 'https://github.com/emscripten-ports/boost/releases/download/boost-1.75.0/boost-headers-' + TAG + '.zip',
                       'boost', sha512hash=HASH)
-  libname = 'libboost_headers.a'
 
-  def create():
+  def create(final):
     logging.info('building port: boost_headers')
     ports.clear_project_build('boost_headers')
 
@@ -43,16 +42,14 @@ def get(ports, settings, shared):
     command = [shared.EMCC, '-c', dummy_file, '-o', obj]
     commands.append(command)
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'boost_headers', libname)
     o_s.append(obj)
     ports.create_lib(final, o_s)
-    return final
 
-  return [shared.Cache.get_lib(libname, create, what='port')]
+  return [shared.Cache.get_lib('libboost_headers.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file('libboost_headers.a')
+  shared.Cache.erase_lib('libboost_headers.a')
 
 
 def process_args(ports):

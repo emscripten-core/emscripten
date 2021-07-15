@@ -22,12 +22,7 @@ void fetchFromIndexedDB()
     assert(fetch->data != 0);
     printf("Finished downloading %llu bytes\n", fetch->numBytes);
     emscripten_fetch_close(fetch);
-
-#ifdef REPORT_RESULT
-    // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
-    MAYBE_REPORT_RESULT(1);
-#endif
-
+    exit(0);
   };
   attr.onprogress = [](emscripten_fetch_t *fetch) {
     if (fetch->totalBytes > 0) {
@@ -66,4 +61,5 @@ int main()
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
   assert(fetch != 0);
   memset(&attr, 0, sizeof(attr)); // emscripten_fetch() must be able to operate without referencing to this structure after the call.
+  return 99;
 }

@@ -11,6 +11,9 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
+// Special placeholder for `import.meta`.
+var EMSCRIPTEN$IMPORT$META;
+
 // Closure externs used by library_sockfs.js
 
 /**
@@ -86,6 +89,11 @@ WebAssembly.Memory = function(memoryDescriptor) {};
  * @param {TableDescriptor} tableDescriptor
  */
 WebAssembly.Table = function(tableDescriptor) {};
+/**
+ * @constructor
+ * @param {GlobalDescriptotr} globalDescriptor
+ */
+WebAssembly.Global = function(globalDescriptor) {};
 /**
  * @constructor
  * @extends {Error}
@@ -190,29 +198,6 @@ var wakaUnknownBefore;
  */
 var MozBlobBuilder;
 
-/**
- * Some JS libraries make conditional calls to dynCall_xxx function when
- * callbacks are registered.  For example the exit runtime handler makes
- * conditional calles to dynCall_v and dynCall_vi, but not all wasm binaryies
- * will contain these.
- */
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var dynCall_v;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var dynCall_vi;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var dynCall_vii;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var dynCall_iii;
-
 // Module loaders externs, for AMD etc.
 
 /**
@@ -307,3 +292,14 @@ var registerProcessor = function(name, obj) {};
 var currentFrame;
 var currentTime;
 var sampleRate;
+
+/*
+ * WebGPU globals
+ */
+var GPUValidationError;
+var GPUOutOfMemoryError;
+
+/*
+ * Avoid closure minifying anything to "id". See #13965
+ */
+var id;

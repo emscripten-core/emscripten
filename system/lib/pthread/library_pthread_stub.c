@@ -42,18 +42,26 @@ int pthread_mutex_init(
   return 0;
 }
 
-int pthread_mutex_lock(pthread_mutex_t* mutex) { return 0; }
+int __pthread_mutex_lock(pthread_mutex_t* mutex) { return 0; }
 
-int pthread_mutex_unlock(pthread_mutex_t* mutex) { return 0; }
+weak_alias(__pthread_mutex_lock, pthread_mutex_lock);
 
-int pthread_mutex_trylock(pthread_mutex_t* mutex) { return 0; }
+int __pthread_mutex_unlock(pthread_mutex_t* mutex) { return 0; }
+
+weak_alias(__pthread_mutex_unlock, pthread_mutex_unlock);
+
+int __pthread_mutex_trylock(pthread_mutex_t* mutex) { return 0; }
+
+weak_alias(__pthread_mutex_trylock, pthread_mutex_trylock);
 
 struct timespec;
 
-int pthread_mutex_timedlock(
+int __pthread_mutex_timedlock(
   pthread_mutex_t* __restrict mutex, const struct timespec* __restrict t) {
   return 0;
 }
+
+weak_alias(__pthread_mutex_timedlock, pthread_mutex_timedlock);
 
 int pthread_mutex_destroy(pthread_mutex_t* mutex) { return 0; }
 
@@ -68,6 +76,20 @@ int pthread_barrier_destroy(pthread_barrier_t* mutex) { return 0; }
 
 int pthread_barrier_wait(pthread_barrier_t* mutex) { return 0; }
 
+int __pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg) {
+  return EAGAIN;
+}
+
+weak_alias(__pthread_create, emscripten_builtin_pthread_create);
+weak_alias(__pthread_create, pthread_create);
+
+int __pthread_join(pthread_t thread, void **retval) {
+  return EINVAL;
+}
+
+weak_alias(__pthread_join, emscripten_builtin_pthread_join);
+weak_alias(__pthread_join, pthread_join);
+
 // pthread_key_t is 32-bit, so to be able to store pointers in there, we sadly
 // have to track an array of them.
 static size_t num_tls_entries = 0;
@@ -75,7 +97,7 @@ static size_t max_tls_entries = 0;
 struct entry_t { const void* value; int allocated; };
 static struct entry_t* tls_entries = NULL;
 
-int pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
+int __pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
   if (key == 0)
     return EINVAL;
   if (!max_tls_entries) {
@@ -106,7 +128,7 @@ int pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
   return 0;
 }
 
-int pthread_key_delete(pthread_key_t key) {
+int __pthread_key_delete(pthread_key_t key) {
   if (key == 0 || key > num_tls_entries)
     return EINVAL;
   struct entry_t* e = &tls_entries[key - 1];
@@ -116,6 +138,9 @@ int pthread_key_delete(pthread_key_t key) {
   e->allocated = 0;
   return 0;
 }
+
+weak_alias(__pthread_key_delete, pthread_key_delete);
+weak_alias(__pthread_key_create, pthread_key_create);
 
 void* pthread_getspecific(pthread_key_t key) {
   if (key == 0 || key > num_tls_entries)
@@ -139,7 +164,7 @@ int pthread_setspecific(pthread_key_t key, const void* value) {
 /*magic number to detect if we have not run yet*/
 #define PTHREAD_ONCE_MAGIC_ID 0x13579BDF
 
-int pthread_once(pthread_once_t* once_control, void (*init_routine)(void)) {
+int __pthread_once(pthread_once_t* once_control, void (*init_routine)(void)) {
   if (*once_control != PTHREAD_ONCE_MAGIC_ID) {
     init_routine();
     *once_control = PTHREAD_ONCE_MAGIC_ID;
@@ -147,11 +172,17 @@ int pthread_once(pthread_once_t* once_control, void (*init_routine)(void)) {
   return 0;
 }
 
+weak_alias(__pthread_once, pthread_once);
+
 int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex) {
   return 0;
 }
 
 int pthread_cond_signal(pthread_cond_t *cond) {
+  return 0;
+}
+
+int __private_cond_signal(pthread_cond_t *c, int n) {
   return 0;
 }
 
@@ -167,9 +198,11 @@ int pthread_cond_destroy(pthread_cond_t * x) {
   return 0;
 }
 
-int pthread_cond_timedwait(pthread_cond_t *__restrict x, pthread_mutex_t *__restrict y, const struct timespec *__restrict z) {
+int __pthread_cond_timedwait(pthread_cond_t *__restrict x, pthread_mutex_t *__restrict y, const struct timespec *__restrict z) {
   return 0;
 }
+
+weak_alias(__pthread_cond_timedwait, pthread_cond_timedwait);
 
 int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(void)) {
   return 0;
@@ -183,9 +216,13 @@ _Noreturn void pthread_exit(void* status) {
    exit((int)status);
 }
 
-int pthread_detach(pthread_t t) {
+int __pthread_detach(pthread_t t) {
   return 0;
 }
+
+weak_alias(__pthread_detach, emscripten_builtin_pthread_detach);
+weak_alias(__pthread_detach, pthread_detach);
+weak_alias(__pthread_detach, thrd_detach);
 
 pthread_t emscripten_main_browser_thread_id() {
   return __pthread_self();
