@@ -26,9 +26,9 @@ namespace emscripten {
 // WebGL proxying where both sync and async events must be received and run in
 // order. With this class, only async events are allowed, and they are run in
 // an async manner on the main thread, that is, with nothing else on the stack
-// while they run, which avoids any possibility of another even running while
-// this one is (if this one blocks on a mutex, for example, which would make the
-// main thread pump the event queue as it waits).
+// while they run, which avoids any possibility of another event running while
+// this one does (if this one blocks on a mutex, for example, which would make
+// the main thread pump the event queue as it waits).
 
 template <class F>
 void invoke_on_main_thread_async(F&& f) {
@@ -72,17 +72,33 @@ void invoke_on_main_thread_async(F&& f) {
 // refactor to be async, but that requires some async operation (like waiting
 // for a JS event).
 class sync_to_async {
+
 // Public API
+//==============================================================================
 public:
 
   using Callback = std::function<void()>;
 
+  //
   // Run some work on thread. This is a synchronous (blocking) call. The thread
   // where the work actually runs can do async work for us - all it needs to do
   // is call the given callback function when it is done.
+  //
+  // Note that you need to call the callback even if you are not async, as the
+  // code here does not know if you are async or not. For example,
+  //
+  //  instance.invoke([](emscripten::sync_to_async::Callback resume) {
+  //    std::cout << "Hello from sync C++ on the pthread\n";
+  //    resume();
+  //  });
+  //
+  // In the async case, you would call resume() at some later time.
+  //
   void invoke(std::function<void(Callback)> newWork);
 
-// Private API
+//==============================================================================
+// End Public API
+
 private:
   std::thread thread;
   std::mutex mutex;
