@@ -71,7 +71,7 @@ void invoke_on_main_thread_async(F&& f) {
 // a thread, or when using PROXY_TO_PTHREAD), but you have code that is hard to
 // refactor to be async, but that requires some async operation (like waiting
 // for a JS event).
-class SyncToAsync {
+class sync_to_async {
 // Public API
 public:
 
@@ -97,13 +97,13 @@ private:
   std::unique_lock<std::mutex> childLock;
 
   static void* threadMain(void* arg) {
-    auto* parent = (SyncToAsync*)arg;
+    auto* parent = (sync_to_async*)arg;
     emscripten_async_call(threadIter, arg, 0);
     return 0;
   }
 
   static void threadIter(void* arg) {
-    auto* parent = (SyncToAsync*)arg;
+    auto* parent = (sync_to_async*)arg;
     // Wait until we get something to do.
     parent->childLock.lock();
     parent->condition.wait(parent->childLock, [&]() {
@@ -129,13 +129,13 @@ private:
   }
 
 public:
-  SyncToAsync() : thread(threadMain, this), childLock(mutex) {
+  sync_to_async() : thread(threadMain, this), childLock(mutex) {
     // The child lock is associated with the mutex, which takes the lock, and
     // we free it here. Only the child will lock/unlock it from now on.
     childLock.unlock();
   }
 
-  ~SyncToAsync() {
+  ~sync_to_async() {
     quit = true;
 
     // Wake up the child with an empty task.
@@ -147,7 +147,7 @@ public:
   }
 };
 
-void SyncToAsync::invoke(std::function<void(Callback)> newWork) {
+void sync_to_async::invoke(std::function<void(Callback)> newWork) {
   // Send the work over.
   {
     std::lock_guard<std::mutex> lock(mutex);
