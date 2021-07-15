@@ -26,9 +26,9 @@ namespace emscripten {
 // WebGL proxying where both sync and async events must be received and run in
 // order. With this class, only async events are allowed, and they are run in
 // an async manner on the main thread, that is, with nothing else on the stack
-// while they run, which avoids any possibility of another event running while
-// this one does (if this one blocks on a mutex, for example, which would make
-// the main thread pump the event queue as it waits).
+// while they run (even if this event blocks on something, which causes the
+// main event loop to run events, if another event like this arrives, it would
+// be queued to run later, avoiding a collision).
 
 template <class F>
 void invoke_on_main_thread_async(F&& f) {
@@ -38,7 +38,7 @@ void invoke_on_main_thread_async(F&& f) {
     // Once on the main thread, run as an event from the JS event queue
     // directly, so nothing else is on the stack when we execute. This means
     // we are no longer ordered with respect to synchronous proxied calls,
-    // but that is ok in this case as well we care about are async ones.
+    // but that is ok in this case as all we care about are async ones.
     emscripten_async_call(
       [](void* f2) {
         auto f = static_cast<function_type*>(f2);
