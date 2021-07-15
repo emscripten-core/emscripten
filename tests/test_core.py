@@ -8326,6 +8326,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_invoke_on_main_thread(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
+    # increase memory for ASan to not hit "internal allocator is out of memory"
+    self.set_setting('INITIAL_MEMORY', '32MB')
     self.do_run_in_out_file_test('core/pthread/invoke_on_main_thread.cpp')
 
   def test_emscripten_atomics_stub(self):
