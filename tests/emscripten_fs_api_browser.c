@@ -20,10 +20,10 @@ int data_ok = 0;
 int data_bad = 0;
 
 void onLoadedData(void *arg, void *buffer, int size) {
-  printf("onLoadedData %d\n", (int)arg);
+  printf("onLoadedData %ld\n", (long)arg);
   get_count++;
   assert(size == 329895);
-  assert((int)arg == 135);
+  assert((long)arg == 135);
   unsigned char *b = (unsigned char*)buffer;
   assert(b[0] == 137);
   assert(b[1122] == 128);
@@ -33,9 +33,9 @@ void onLoadedData(void *arg, void *buffer, int size) {
 }
 
 void onErrorData(void *arg) {
-  printf("onErrorData %d\n", (int)arg);
+  printf("onErrorData %ld\n", (long)arg);
   get_count++;
-  assert((int)arg == 246);
+  assert((long)arg == 246);
   data_bad = 1;
 }
 

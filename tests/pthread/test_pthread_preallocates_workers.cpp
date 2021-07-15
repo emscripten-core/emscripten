@@ -19,12 +19,12 @@ pthread_t threads[5];
 static void *thread_start(void *arg)
 {
   // This should be long enough for threads to pile up.
-  int idx = (int)arg;
-  printf("Starting thread %d\n", idx);
+  long idx = (long)arg;
+  printf("Starting thread %ld\n", idx);
   while (true) {
     sleep(1);
   }
-  printf("Finishing thread %d\n", idx);
+  printf("Finishing thread %ld\n", idx);
   pthread_exit((void*)0);
 }
 

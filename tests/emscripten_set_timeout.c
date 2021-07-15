@@ -10,7 +10,7 @@ int func2Executed = 0;
 void func1(void *userData);
 
 void func2(void *userData) {
-  assert((int)userData == 2);
+  assert((long)userData == 2);
   ++func2Executed;
 
   if (func2Executed == 1)
@@ -29,7 +29,7 @@ void func2(void *userData) {
 }
 
 void func1(void *userData) {
-  assert((int)userData == 1);
+  assert((long)userData == 1);
   ++func1Executed;
 
   assert(func1Executed == 1);

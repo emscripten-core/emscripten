@@ -12,7 +12,7 @@
 #include <emscripten.h>
 #include <emscripten/websocket.h>
 #include <emscripten/threading.h>
- 
+
 EMSCRIPTEN_WEBSOCKET_T bridgeSocket = 0;
 
 extern "C" {
@@ -65,7 +65,7 @@ _Atomic uint32_t pendingMessages = 0;
 
 void *send_thread(void *arg)
 {
-  int sock = (int)arg;
+  int sock = (int)(intptr_t)arg;
 
   for(int i = 0; i < 10; ++i)
   {
@@ -89,7 +89,7 @@ void *send_thread(void *arg)
 
 void *recv_thread(void *arg)
 {
-  int sock = (int)arg;
+  int sock = (int)(intptr_t)arg;
 
   for(int i = 0; i < 10; ++i)
   {
@@ -101,7 +101,7 @@ void *recv_thread(void *arg)
       pthread_exit((void*)1);
     }
     printf("Recv() done\n");
-     
+
     puts("Server reply: ");
     puts(server_reply);
     pendingMessages--;
@@ -156,7 +156,7 @@ int main(int argc , char *argv[])
   pthread_join(recvThread, &recvRet);
   printf("Send thread and recv thread finished\n");
   close(sock);
-  if ((int)sendRet != 0) fprintf(stderr, "pthread send failed!\n");
-  if ((int)recvRet != 0) fprintf(stderr, "pthread recv failed!\n");
+  if ((long)sendRet != 0) fprintf(stderr, "pthread send failed!\n");
+  if ((long)recvRet != 0) fprintf(stderr, "pthread recv failed!\n");
   return 0;
 }

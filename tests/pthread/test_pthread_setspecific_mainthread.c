@@ -8,7 +8,7 @@
 #include <pthread.h>
 
 void destructor(void* arg) {
-  printf("destructor: %d\n", (int)arg);
+  printf("destructor: %ld\n", (long)arg);
   assert(arg == (void*)42);
 }
 

@@ -17,15 +17,15 @@ int main() {
 
   s->match_start = (char *)32522;
   s->strstart = (char *)(32780);
-  printf("*%d,%d,%d*\n", (int)s->strstart, (int)s->match_start,
-         (int)(s->strstart - s->match_start));
+  printf("*%ld,%ld,%ld*\n", (long)s->strstart, (long)s->match_start,
+         (long)(s->strstart - s->match_start));
   sh = s->strstart - s->match_start;
   printf("*%d,%d*\n", sh, sh >> 7);
 
   s->match_start = (char *)32999;
   s->strstart = (char *)(32780);
-  printf("*%d,%d,%d*\n", (int)s->strstart, (int)s->match_start,
-         (int)(s->strstart - s->match_start));
+  printf("*%ld,%ld,%ld*\n", (long)s->strstart, (long)s->match_start,
+         (long)(s->strstart - s->match_start));
   sh = s->strstart - s->match_start;
   printf("*%d,%d*\n", sh, sh >> 7);
 }

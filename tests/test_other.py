@@ -5305,7 +5305,7 @@ int main() {
 #include <stdlib.h>
 
 int main() {
-  volatile int x = (int)malloc(1024 * 1024 * 1400);
+  volatile long x = (long)malloc(1024 * 1024 * 1400);
   return x == 0; // can't alloc it, but don't fail catastrophically, expect null
 }
     ''')
@@ -7511,7 +7511,7 @@ int main() {
       f.write('''
         char muchData[128 * 1024];
         int main() {
-          return (int)&muchData;
+          return (int)(long)&muchData;
         }
       ''')
     err = self.expect_fail([EMXX, 'src.cpp', '-s', 'TOTAL_STACK=1KB', '-s', 'INITIAL_MEMORY=64KB'])
@@ -10465,7 +10465,7 @@ exec "$@"
       create_file(function + '.c', '''
       void %s();
       int main() {
-        return (int)&%s;
+        return (int)(long)&%s;
       }
       ''' % (function, function))
       # Compile with -O2 so we get JSDCE run to remove any false positives.  This
@@ -10721,7 +10721,7 @@ void foo() {}
     create_file('main.c', '''
     #include <sys/socket.h>
     int main() {
-       return (int)&accept;
+       return (int)(long)&accept;
     }
     ''')
 

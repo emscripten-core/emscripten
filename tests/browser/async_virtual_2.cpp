@@ -16,7 +16,7 @@ public:
 DOS_Device *Devices[10];
 
 bool __attribute__((noinline)) DOS_Device::Read(unsigned char * data,unsigned short * size) {
-    printf("DOS_Device::Read (this = %i)\n", (int)this);
+    printf("DOS_Device::Read (this = %ld)\n", (long)this);
     return Devices[devnum]->Read(data,size);
 }
 
@@ -26,7 +26,7 @@ public:
 };
 
 bool device_CON::Read(unsigned char * data,unsigned short * size) {
-    printf("device_CON::Read (this = %i) Sleep--> \n", (int)this);
+    printf("device_CON::Read (this = %ld) Sleep--> \n", (long)this);
     EM_ASM({
       Module.the_this = $0;
       out('first this ' + Module.the_this);
@@ -36,7 +36,7 @@ bool device_CON::Read(unsigned char * data,unsigned short * size) {
       out('second this ' + $0);
       assert(Module.the_this === $0, 'this must be unchanged');
     }, this);
-    printf("<--Sleep (this = %i)\n", (int)this);
+    printf("<--Sleep (this = %ld)\n", (long)this);
     return true;
 }
 

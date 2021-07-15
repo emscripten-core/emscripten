@@ -13,7 +13,7 @@
 #include <emscripten.h>
 #include <emscripten/threading.h>
 
-int fib(int n)
+long fib(long n)
 {
   if (n <= 0) return 0;
   if (n == 1) return 1;
@@ -22,9 +22,9 @@ int fib(int n)
 
 static void *thread_start(void *arg)
 {
-  int n = (int)arg;
+  long n = (long)arg;
   EM_ASM(out('Thread: Computing fib('+$0+')...'), n);
-  int fibn = fib(n);
+  long fibn = fib(n);
   EM_ASM(out('Thread: Computation done. fib('+$0+') = '+$1+'.'), n, fibn);
   pthread_exit((void*)fibn);
 }

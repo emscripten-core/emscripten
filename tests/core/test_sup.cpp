@@ -21,12 +21,12 @@ int main()
   #define TEST(struc) \
   { \
     struc *s = 0; \
-    printf("*%s: %d,%d,%d,%d<%zu*\n", #struc, (int)&(s->a), (int)&(s->b), (int)&(s->c), (int)&(s->later), sizeof(struc)); \
+    printf("*%s: %ld,%ld,%ld,%ld<%zu*\n", #struc, (long)&(s->a), (long)&(s->b), (long)&(s->c), (long)&(s->later), sizeof(struc)); \
   }
   #define TEST_ARR(struc) \
   { \
     struc *s = 0; \
-    printf("*%s: %d,%d,%d,%d<%zu*\n", #struc, (int)&(s->a[0]), (int)&(s->a[1]), (int)&(s->a[2]), (int)&(s->later), sizeof(struc)); \
+    printf("*%s: %ld,%ld,%ld,%ld<%zu*\n", #struc, (long)&(s->a[0]), (long)&(s->a[1]), (long)&(s->a[2]), (long)&(s->later), sizeof(struc)); \
   }
   printf("sizeofs:%zu,%zu\n", sizeof(S6), sizeof(S6z));
   TEST(C___);

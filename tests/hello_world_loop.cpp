@@ -19,7 +19,7 @@ int main() {
   for (int i = 0; i < strlen(original); i += 2) {
     copy[i/2] = original[i];
   }
-  copy[strlen(copy)+1] = (int)&original; // force original to be on the stack
+  copy[strlen(copy)+1] = (long)&original; // force original to be on the stack
   dump(copy);
   return 0;
 }

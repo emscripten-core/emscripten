@@ -511,7 +511,7 @@ class TestCoreBase(RunnerCore):
         p++;
         short *q = (short*)p;
         *q = 300;
-        printf("*%d:%d*\n", *q, ((int)q)%2);
+        printf("*%d:%ld*\n", *q, ((long)q)%2);
         int *r = (int*)p;
         *r = 515559;
         printf("*%d*\n", *r);
@@ -558,8 +558,8 @@ class TestCoreBase(RunnerCore):
         int base = argc-1;
         Object *o = NULL;
         printf("%zu,%zu\n", sizeof(Object), sizeof(Principal));
-        printf("%d,%d,%d,%d\n", (int)&o[base].type, (int)&o[base].intg, (int)&o[base].real, (int)&o[base].name);
-        printf("%d,%d,%d,%d\n", (int)&o[base+1].type, (int)&o[base+1].intg, (int)&o[base+1].real, (int)&o[base+1].name);
+        printf("%ld,%ld,%ld,%ld\n", (long)&o[base].type, (long)&o[base].intg, (long)&o[base].real, (long)&o[base].name);
+        printf("%ld,%ld,%ld,%ld\n", (long)&o[base+1].type, (long)&o[base+1].intg, (long)&o[base+1].real, (long)&o[base+1].name);
         Principal p, q;
         p.x = p.y = q.x = q.y = 0;
         p.a.type = A;
@@ -2033,10 +2033,10 @@ int main(int argc, char **argv) {
       };
 
       int main() {
-        printf("*%d*\\n", (int)(mqc_states+1)-(int)mqc_states);
+        printf("*%ld*\\n", (long)(mqc_states+1)-(long)mqc_states);
         for (int i = 0; i < 2; i++)
-          printf("%d:%d,%d,%d,%d\\n", i, mqc_states[i].qeval, mqc_states[i].mps,
-                 (int)mqc_states[i].nmps-(int)mqc_states, (int)mqc_states[i].nlps-(int)mqc_states);
+          printf("%d:%d,%d,%ld,%ld\\n", i, mqc_states[i].qeval, mqc_states[i].mps,
+                 (long)mqc_states[i].nmps-(long)mqc_states, (long)mqc_states[i].nlps-(long)mqc_states);
         return 0;
       }
       '''
@@ -2108,8 +2108,8 @@ Success!''')
       int main( int argc, const char *argv[] ) {
         header h, *ph = 0;
         fatheader fh, *pfh = 0;
-        printf("*%zu,%d,%d*\\n", sizeof(header), (int)((int)&h.desc - (int)&h.id), (int)(&ph[1])-(int)(&ph[0]));
-        printf("*%zu,%d,%d*\\n", sizeof(fatheader), (int)((int)&fh.desc - (int)&fh.id), (int)(&pfh[1])-(int)(&pfh[0]));
+        printf("*%zu,%ld,%ld*\\n", sizeof(header), (long)((long)&h.desc - (long)&h.id), (long)(&ph[1])-(long)(&ph[0]));
+        printf("*%zu,%ld,%ld*\\n", sizeof(fatheader), (long)((long)&fh.desc - (long)&fh.id), (long)(&pfh[1])-(long)(&pfh[0]));
         return 0;
       }
       '''
@@ -2472,13 +2472,13 @@ The current type of b is: 9
           base *b = NULL;
           entry *e = NULL;
           chain *c = NULL;
-          printf("*%zu,%d,%d,%d,%d,%d|%zu,%d,%d,%d,%d,%d,%d,%d|%zu,%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n",
+          printf("*%zu,%ld,%ld,%ld,%ld,%ld|%zu,%ld,%ld,%ld,%ld,%ld,%ld,%ld|%zu,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld*\\n",
             sizeof(base),
-            int(&(b->x)), int(&(b->y)), int(&(b->a)), int(&(b->b)), int(&(b->c)),
+            long(&(b->x)), long(&(b->y)), long(&(b->a)), long(&(b->b)), long(&(b->c)),
             sizeof(hashtableentry),
-            int(&(e->key)), int(&(e->data)), int(&(e->data.x)), int(&(e->data.y)), int(&(e->data.a)), int(&(e->data.b)), int(&(e->data.c)),
+            long(&(e->key)), long(&(e->data)), long(&(e->data.x)), long(&(e->data.y)), long(&(e->data.a)), long(&(e->data.b)), long(&(e->data.c)),
             sizeof(hashset::chain),
-            int(&(c->elem)), int(&(c->next)), int(&(c->elem.key)), int(&(c->elem.data)), int(&(c->elem.data.x)), int(&(c->elem.data.y)), int(&(c->elem.data.a)), int(&(c->elem.data.b)), int(&(c->elem.data.c))
+            long(&(c->elem)), long(&(c->next)), long(&(c->elem.key)), long(&(c->elem.data)), long(&(c->elem.data.x)), long(&(c->elem.data.y)), long(&(c->elem.data.a)), long(&(c->elem.data.b)), long(&(c->elem.data.c))
           );
         }
       };
@@ -2502,8 +2502,8 @@ The current type of b is: 9
         // Part 2 - the char[] should be compressed, BUT have a padding space at the end so the next
         // one is aligned properly. Also handle char; char; etc. properly.
         B *b = NULL;
-        printf("*%d,%d,%d,%d,%d,%d,%d,%d,%zu*\\n", int(b), int(&(b->buffer)), int(&(b->buffer[0])), int(&(b->buffer[1])), int(&(b->buffer[2])),
-                                                  int(&(b->last)), int(&(b->laster)), int(&(b->laster2)), sizeof(B));
+        printf("*%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%zu*\\n", long(b), long(&(b->buffer)), long(&(b->buffer[0])), long(&(b->buffer[1])), long(&(b->buffer[2])),
+                                                  long(&(b->last)), long(&(b->laster)), long(&(b->laster2)), sizeof(B));
 
         // Part 3 - bitfields, and small structures
         Bits *b2 = NULL;
@@ -2916,7 +2916,7 @@ Var: 42
         int num = 120 * 1024 * 1024; // total is 128; we'll use 5*5 = 25 at least, so allocate pretty much all of it
         void* mem = malloc(num);
         assert(mem);
-        printf("setting this range to non-zero: %d - %d\n", (int)mem, ((int)mem) + num);
+        printf("setting this range to non-zero: %ld - %ld\n", (long)mem, ((long)mem) + num);
         memset(mem, 1, num);
         EM_ASM({
           var value = HEAP8[64*1024*1024];
@@ -2936,7 +2936,7 @@ Var: 42
           printf("getting superAligned\n");
           int* superAligned = (int*)dlsym(lib_handle, "superAligned");
           assert(superAligned);
-          assert(((int)superAligned) % 1024 == 0); // alignment
+          assert(((long)superAligned) % 1024 == 0); // alignment
           printf("checking value of superAligned, at %p\n", superAligned);
           assert(*superAligned == 12345); // value
           printf("getting prezero\n");
@@ -3754,8 +3754,8 @@ ok
   def test_missing_signatures(self):
     create_file('test_sig.c', r'''#include <emscripten.h>
                                        int main() {
-                                         return 0 == ( (int)&emscripten_run_script_string +
-                                                       (int)&emscripten_run_script );
+                                         return 0 == ( (long)&emscripten_run_script_string +
+                                                       (long)&emscripten_run_script );
                                        }''')
     self.set_setting('MAIN_MODULE', 1)
     # also test main module with 4GB of memory. we need to emit a "maximum"
@@ -8204,12 +8204,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ''', '''
       #include <string.h>
 
-      static int accumulator = 0;
+      static long accumulator = 0;
 
       int f(int *b) {
         // Infinite recursion while recording stack pointer locations
         // so that compiler can't eliminate the stack allocs.
-        accumulator += (int)b;
+        accumulator += (long)b;
         int a[1024];
         return f(a);
       }
@@ -8504,7 +8504,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(test_file('core/test_main_module_js_symbol.c'))
 
   def test_REVERSE_DEPS(self):
-    create_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)&connect; }')
+    create_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)(long)&connect; }')
     self.run_process([EMCC, 'connect.c'])
     base_size = os.path.getsize('a.out.wasm')
 

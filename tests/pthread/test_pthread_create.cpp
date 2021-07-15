@@ -23,7 +23,7 @@ unsigned int global_shared_data[NUM_THREADS];
 
 void *ThreadMain(void *arg)
 {
-	int idx = (int)arg;
+	long idx = (long)arg;
 	unsigned int param = global_shared_data[idx];
 
 #define N 100

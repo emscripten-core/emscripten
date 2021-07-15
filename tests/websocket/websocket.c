@@ -4,7 +4,7 @@
 
 EM_BOOL WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void *userData)
 {
-	printf("open(eventType=%d, userData=%d)\n", eventType, (int)userData);
+	printf("open(eventType=%d, userData=%ld)\n", eventType, (long)userData);
 
 	emscripten_websocket_send_utf8_text(e->socket, "hello on the other side");
 
@@ -17,19 +17,19 @@ EM_BOOL WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void
 
 EM_BOOL WebSocketClose(int eventType, const EmscriptenWebSocketCloseEvent *e, void *userData)
 {
-	printf("close(eventType=%d, wasClean=%d, code=%d, reason=%s, userData=%d)\n", eventType, e->wasClean, e->code, e->reason, (int)userData);
+	printf("close(eventType=%d, wasClean=%d, code=%d, reason=%s, userData=%ld)\n", eventType, e->wasClean, e->code, e->reason, (long)userData);
 	return 0;
 }
 
 EM_BOOL WebSocketError(int eventType, const EmscriptenWebSocketErrorEvent *e, void *userData)
 {
-	printf("error(eventType=%d, userData=%d)\n", eventType, (int)userData);
+	printf("error(eventType=%d, userData=%ld)\n", eventType, (long)userData);
 	return 0;
 }
 
 EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, void *userData)
 {
-	printf("message(eventType=%d, userData=%d, data=%p, numBytes=%d, isText=%d)\n", eventType, (int)userData, e->data, e->numBytes, e->isText);
+	printf("message(eventType=%d, userData=%ld, data=%p, numBytes=%d, isText=%d)\n", eventType, (long)userData, e->data, e->numBytes, e->isText);
 	if (e->isText)
 		printf("text data: \"%s\"\n", e->data);
 	else

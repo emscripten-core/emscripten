@@ -7,7 +7,7 @@
 int funcExecuted = 0;
 
 void testDone(void *userData) {
-  assert((int)userData == 2);
+  assert((long)userData == 2);
   assert(funcExecuted == 10);
   exit(0);
 }
@@ -15,7 +15,7 @@ void testDone(void *userData) {
 long intervalId = 0;
 
 void tick(void *userData) {
-  assert((int)userData == 1);
+  assert((long)userData == 1);
   ++funcExecuted;
   if (funcExecuted == 10) {
     emscripten_set_timeout(testDone, 300, (void*)2);

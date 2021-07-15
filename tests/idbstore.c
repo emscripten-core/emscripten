@@ -15,24 +15,24 @@
 
 #define DB "THE_DB"
 
-int expected;
+long expected;
 int result;
 
 void ok(void* arg)
 {
-  assert(expected == (int)arg);
+  assert(expected == (long)arg);
   REPORT_RESULT(result);
 }
 
 void onerror(void* arg)
 {
-  assert(expected == (int)arg);
+  assert(expected == (long)arg);
   REPORT_RESULT(999);
 }
 
 void onload(void* arg, void* ptr, int num)
 {
-  assert(expected == (int)arg);
+  assert(expected == (long)arg);
   printf("loaded %s\n", (char*)ptr);
   assert(num == strlen(SECRET)+1);
   assert(strcmp(ptr, SECRET) == 0);
@@ -47,7 +47,7 @@ void onbadload(void* arg, void* ptr, int num)
 
 void oncheck(void* arg, int exists)
 {
-  assert(expected == (int)arg);
+  assert(expected == (long)arg);
   printf("exists? %d\n", exists);
   assert(exists);
   REPORT_RESULT(result);
@@ -55,7 +55,7 @@ void oncheck(void* arg, int exists)
 
 void onchecknope(void* arg, int exists)
 {
-  assert(expected == (int)arg);
+  assert(expected == (long)arg);
   printf("exists (hopefully not)? %d\n", exists);
   assert(!exists);
   REPORT_RESULT(result);
