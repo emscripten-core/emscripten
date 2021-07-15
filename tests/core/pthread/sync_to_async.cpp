@@ -9,7 +9,7 @@ int main() {
 
   sync_to_async.invoke([](emscripten::sync_to_async::Callback resume) {
     std::cout << "  Hello from sync C++\n";
-    resume();
+    (*resume)();
   });
 
   std::cout << "Perform an async task.\n";
@@ -20,8 +20,7 @@ int main() {
   // that reason, define asyncFunc on our stack here, which will definitely
   // remain valid, since we wait synchronously for the work to be done on the
   // thread.
-  emscripten::sync_to_async::Callback asyncFunc;
-  sync_to_async.invoke([&asyncFunc](emscripten::sync_to_async::Callback resume) {
+  sync_to_async.invoke([](emscripten::sync_to_async::Callback resume) {
     std::cout << "  Hello from sync C++ before the async\n";
     // Set up async JS, just to prove an async JS callback happens before the
     // async C++.
@@ -30,21 +29,18 @@ int main() {
         console.log("  Hello from async JS");
       }, 0);
     });
-    // Set up async C++.
-    asyncFunc = [resume]() {
-      std::cout << "  Hello from async C++\n";
-      resume();
-    };
+    // Set up async C++, and also call resume after running it.
     emscripten_async_call([](void* arg) {
-      auto* funcAddr = (emscripten::sync_to_async::Callback*)arg;
-      (*funcAddr)();
-    }, &asyncFunc, 1);
+      auto resume = (emscripten::sync_to_async::Callback)arg;
+      std::cout << "  Hello from async C++\n";
+      (*resume)();
+    }, resume, 1);
   });
 
   std::cout << "Perform another synchronous task.\n";
   sync_to_async.invoke([](emscripten::sync_to_async::Callback resume) {
     std::cout << "  Hello again from sync C++\n";
-    resume();
+    (*resume)();
   });
   return 0;
 }

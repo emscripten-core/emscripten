@@ -77,7 +77,11 @@ class sync_to_async {
 //==============================================================================
 public:
 
-  using Callback = std::function<void()>;
+  // Pass around the callback as a pointer to a std::function. Using a pointer
+  // means that it can be sent easily to JS, as a void* parameter to a C API,
+  // etc., and also means we do not need to worry about the lifetime of the
+  // std::function in user code.
+  using Callback = std::function<void()>*;
 
   //
   // Run some work on thread. This is a synchronous (blocking) call. The thread
@@ -89,7 +93,7 @@ public:
   //
   //  instance.invoke([](emscripten::sync_to_async::Callback resume) {
   //    std::cout << "Hello from sync C++ on the pthread\n";
-  //    resume();
+  //    (*resume)();
   //  });
   //
   // In the async case, you would call resume() at some later time.
@@ -107,6 +111,7 @@ private:
   bool readyToWork = false;
   bool finishedWork;
   bool quit = false;
+  std::unique_ptr<std::function<void()>> resume;
 
   // The child will be asynchronous, and therefore we cannot rely on RAII to
   // unlock for us, we must do it manually.
@@ -127,8 +132,9 @@ private:
     });
     auto work = parent->work;
     parent->readyToWork = false;
-    // Do the work.
-    work([parent, arg]() {
+    // Do the work, and send it an allocated std::function which we will free at
+    // the end.
+    parent->resume = std::make_unique<std::function<void()>>([parent, arg]() {
       // We are called, so the work was finished. Notify the caller.
       parent->finishedWork = true;
       parent->childLock.unlock();
@@ -142,6 +148,7 @@ private:
         emscripten_async_call(threadIter, arg, 0);
       }
     });
+    work(parent->resume.get());
   }
 
 public:
@@ -156,7 +163,7 @@ public:
 
     // Wake up the child with an empty task.
     invoke([](Callback func){
-      func();
+      (*func)();
     });
 
     thread.join();
