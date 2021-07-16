@@ -4749,17 +4749,36 @@ Failed to open file for writing: /tmp/file; errno=2; Permission denied
 
   def test_force_exit(self):
     create_file('src.c', r'''
+#include <stdio.h>
+#include <assert.h>
 #include <emscripten/emscripten.h>
+#include <emscripten/stack.h>
+
+intptr_t initial_sp;
 
 EMSCRIPTEN_KEEPALIVE void callback() {
   EM_ASM({ out('callback pre()') });
+  assert(emscripten_stack_get_current() == initial_sp);
+  printf("stackptr callback: 0x%lu\n", emscripten_stack_get_current());
   emscripten_force_exit(42);
+  __builtin_unreachable();
   EM_ASM({ out('callback post()') });
 }
 
-int main() {
+__attribute__((noinline)) int doUnwind() {
+  char array[1024] = { 1 };
+  printf("current sp: %p\n", &array[1000]);
+  printf("doUnwind: stack used=0x%lu\n", initial_sp - emscripten_stack_get_current());
+  assert(emscripten_stack_get_current() < initial_sp - 1024);
   EM_ASM({ setTimeout(function() { out("calling callback()"); _callback() }, 100) });
   emscripten_exit_with_live_runtime();
+  __builtin_unreachable();
+}
+
+int main() {
+  initial_sp = emscripten_stack_get_current();
+  printf("stackptr main: 0x%lu\n", initial_sp);
+  doUnwind();
   return 123;
 }
 ''')

@@ -3606,9 +3606,11 @@ LibraryManager.library = {
       func();
       return;
     }
+    var sp = stackSave();
     try {
       func();
     } catch (e) {
+      stackRestore(sp);
       if (e instanceof ExitStatus) {
         return;
       } else if (e !== 'unwind') {

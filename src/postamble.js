@@ -160,6 +160,7 @@ function callMain(args) {
   var argv = 0;
 #endif // MAIN_READS_PARAMS
 
+  var sp = stackSave(sp);
   try {
 #if BENCHMARK
     var start = Date.now();
@@ -194,6 +195,7 @@ function callMain(args) {
     exit(ret, /* implicit = */ true);
   }
   catch (e) {
+    stackRestore(sp);
     // Certain exception types we do not treat as errors since they are used for
     // internal control flow.
     // 1. ExitStatus, which is thrown by exit()
