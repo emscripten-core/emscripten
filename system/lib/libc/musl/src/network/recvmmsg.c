@@ -5,7 +5,7 @@
 
 int recvmmsg(int fd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags, struct timespec *timeout)
 {
-#if LONG_MAX > INT_MAX
+#if LONG_MAX > INT_MAX && 0  // XXX EMSCRIPTEN: __pad fields don't exist.
 	struct mmsghdr *mh = msgvec;
 	unsigned int i;
 	for (i = vlen; i; i--, mh++)

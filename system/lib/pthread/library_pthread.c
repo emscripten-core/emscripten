@@ -42,18 +42,15 @@
 char* gets(char*);
 #endif
 
-// Extra pthread_attr_t field:
-#define _a_transferredcanvases __u.__s[9]
-
 void __pthread_testcancel();
 
 int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t* a, const char** str) {
-  *str = (const char*)a->_a_transferredcanvases;
+  *str = a->_a_transferredcanvases;
   return 0;
 }
 
 int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t* a, const char* str) {
-  a->_a_transferredcanvases = (int)str;
+  a->_a_transferredcanvases = str;
   return 0;
 }
 
@@ -236,7 +233,7 @@ static void _do_call(em_queued_call* q) {
       break;
     case EM_PROXIED_JS_FUNCTION:
       q->returnValue.d =
-        emscripten_receive_on_main_thread_js((int)q->functionPtr, q->args[0].i, &q->args[1].d);
+        emscripten_receive_on_main_thread_js((int)(size_t)q->functionPtr, q->args[0].i, &q->args[1].d);
       break;
     case EM_FUNC_SIG_V:
       ((em_func_v)q->functionPtr)();
@@ -568,7 +565,7 @@ void* emscripten_sync_run_in_main_thread_2(
 }
 
 void* emscripten_sync_run_in_main_thread_xprintf_varargs(
-  int function, int param0, const char* format, ...) {
+  int function, long param0, const char* format, ...) {
   va_list args;
   va_start(args, format);
   const int CAP = 128;
@@ -755,7 +752,7 @@ double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t
   }
   c->calleeDelete = 1-sync;
   c->functionEnum = EM_PROXIED_JS_FUNCTION;
-  c->functionPtr = (void*)index;
+  c->functionPtr = (void*)(size_t)index;
   assert(num_args+1 <= EM_QUEUED_JS_CALL_MAX_ARGS);
   // The types are only known at runtime in these calls, so we store values that
   // must be able to contain any valid JS value, including a 64-bit BigInt if
@@ -919,7 +916,7 @@ EMSCRIPTEN_KEEPALIVE void* _emscripten_main_thread_futex;
 static int _main_argc;
 static char** _main_argv;
 
-extern int __call_main(int argc, char** argv);
+extern long __call_main(int argc, char** argv);
 
 static void* _main_thread(void* param) {
   // This is the main runtime thread for the application.

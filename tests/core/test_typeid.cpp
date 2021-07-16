@@ -11,14 +11,14 @@
 int main() {
   printf("*\n");
 #define MAX 100
-  int ptrs[MAX];
+  long ptrs[MAX];
   int groups[MAX];
-  memset(ptrs, 0, MAX * sizeof(int));
+  memset(ptrs, 0, MAX * sizeof(long));
   memset(groups, 0, MAX * sizeof(int));
   int next_group = 1;
 #define TEST(X)                         \
   {                                     \
-    int ptr = (int)&typeid(X);          \
+    long ptr = (long)&typeid(X);          \
     int group = 0;                      \
     int i;                              \
     for (i = 0; i < MAX; i++) {         \

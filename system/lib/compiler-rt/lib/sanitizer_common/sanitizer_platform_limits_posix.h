@@ -449,13 +449,13 @@ struct __sanitizer_msghdr {
   void *msg_name;
   unsigned msg_namelen;
   struct __sanitizer_iovec *msg_iov;
-  uptr msg_iovlen;
+  unsigned msg_iovlen;
   void *msg_control;
-  uptr msg_controllen;
+  unsigned msg_controllen;
   int msg_flags;
 };
 struct __sanitizer_cmsghdr {
-  uptr cmsg_len;
+  unsigned cmsg_len;
   int cmsg_level;
   int cmsg_type;
 };

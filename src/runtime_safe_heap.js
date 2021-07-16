@@ -14,7 +14,7 @@
     @param {number|boolean=} noSafe */
 function setValue(ptr, value, type, noSafe) {
   type = type || 'i8';
-  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
+  if (type.charAt(type.length-1) === '*') type = {{{ `${POINTER_TYPE}` }}};
 #if SAFE_HEAP
   if (noSafe) {
     switch (type) {
@@ -49,7 +49,7 @@ function setValue(ptr, value, type, noSafe) {
     @param {number|boolean=} noSafe */
 function getValue(ptr, type, noSafe) {
   type = type || 'i8';
-  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
+  if (type.charAt(type.length-1) === '*') type = {{{ `${POINTER_TYPE}` }}};
 #if SAFE_HEAP
   if (noSafe) {
     switch (type) {
@@ -89,7 +89,7 @@ function getSafeHeapType(bytes, isFloat) {
     case 1: return 'i8';
     case 2: return 'i16';
     case 4: return isFloat ? 'float' : 'i32';
-    case 8: return 'double';
+    case 8: return isFloat ? 'double' : 'i64';
     default: assert(0);
   }
 }

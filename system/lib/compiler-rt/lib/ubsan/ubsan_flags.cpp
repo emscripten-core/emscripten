@@ -74,8 +74,8 @@ void InitializeFlags() {
   // Override from user-specified string.
   parser.ParseString(__ubsan_default_options());
   // Override from environment variable.
-#if SANITIZER_EMSCRIPTEN
-  char *options = (char*) EM_ASM_INT({
+#if SANITIZER_EMSCRIPTEN && !MEMORY64/*FIXME*/
+  char *options = (char*)(long)EM_ASM_DOUBLE({
     return withBuiltinMalloc(function () {
       return allocateUTF8(Module['UBSAN_OPTIONS'] || 0);
     });

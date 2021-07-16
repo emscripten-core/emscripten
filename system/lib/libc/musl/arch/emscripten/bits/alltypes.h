@@ -83,13 +83,18 @@ typedef long suseconds_t;
 
 
 #if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
+typedef struct {
+    union {
+        int __i[10];
+        volatile int __vi[10];
+        unsigned __s[10];
+    } __u;
 #ifdef __EMSCRIPTEN__
-// For canvas transfer implementation in Emscripten, use an extra 11th control field
-// to pass a pointer to a string denoting the WebGL canvases to transfer.
-typedef struct { union { int __i[11]; volatile int __vi[11]; unsigned __s[11]; } __u; } pthread_attr_t;
-#else
-typedef struct { union { int __i[10]; volatile int __vi[10]; unsigned __s[10]; } __u; } pthread_attr_t;
+    // For canvas transfer implementation in Emscripten, use an extra control field
+    // to pass a pointer to a string denoting the WebGL canvases to transfer.
+    const char *_a_transferredcanvases;
 #endif
+} pthread_attr_t;
 #define __DEFINED_pthread_attr_t
 #endif
 
@@ -114,7 +119,7 @@ typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12]; } __
 #endif
 
 #if defined(__NEED_pthread_rwlock_t) && !defined(__DEFINED_pthread_rwlock_t)
-typedef struct { union { int __i[8]; volatile int __vi[8]; void *__p[8]; } __u; } pthread_rwlock_t;
+typedef struct { union { int __i[sizeof(long)==8?14:8]; volatile int __vi[sizeof(long)==8?14:8]; void *__p[sizeof(long)==8?7:8]; } __u; } pthread_rwlock_t;
 #define __DEFINED_pthread_rwlock_t
 #endif
 

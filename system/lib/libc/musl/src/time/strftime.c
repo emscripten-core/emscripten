@@ -181,9 +181,9 @@ const char *__strftime_fmt_1(char (*s)[100], size_t *l, int f, const struct tm *
 			*l = 0;
 			return "";
 		}
-		*l = snprintf(*s, sizeof *s, "%+.2ld%.2d", // XXX EMSCRIPTEN: %d => %ld
+		*l = snprintf(*s, sizeof *s, "%+.2ld%.2ld", // XXX EMSCRIPTEN: %d => %ld
 			(tm->__tm_gmtoff)/3600,
-			abs(tm->__tm_gmtoff%3600)/60);
+			labs(tm->__tm_gmtoff%3600)/60); // XXX EMSCRIPTEN: abs => labs
 		return *s;
 	case 'Z':
 		if (tm->tm_isdst < 0) {

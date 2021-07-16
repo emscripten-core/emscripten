@@ -6,7 +6,7 @@
 ssize_t recvmsg(int fd, struct msghdr *msg, int flags)
 {
 	ssize_t r;
-#if LONG_MAX > INT_MAX
+#if LONG_MAX > INT_MAX && 0  // XXX EMSCRIPTEN: __pad fields don't exist.
 	struct msghdr h, *orig = msg;
 	if (msg) {
 		h = *msg;
@@ -15,7 +15,7 @@ ssize_t recvmsg(int fd, struct msghdr *msg, int flags)
 	}
 #endif
 	r = socketcall_cp(recvmsg, fd, msg, flags, 0, 0, 0);
-#if LONG_MAX > INT_MAX
+#if LONG_MAX > INT_MAX && 0  // XXX EMSCRIPTEN: __pad fields don't exist.
 	if (orig) *orig = h;
 #endif
 	return r;

@@ -91,6 +91,7 @@ LibraryManager.library = {
   utime__proxy: 'sync',
   utime__sig: 'iii',
   utime: function(path, times) {
+    {{{ from64('times') }}};
     // int utime(const char *path, const struct utimbuf *times);
     // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/utime.h.html
     var time;
@@ -295,7 +296,7 @@ LibraryManager.library = {
 
     // Memory resize rules:
     // 1. Always increase heap size to at least the requested size, rounded up to next page multiple.
-    // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to 
+    // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to
     //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
     //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
     // 2b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
@@ -521,6 +522,7 @@ LibraryManager.library = {
 
   time__sig: 'ii',
   time: function(ptr) {
+    {{{ from64('ptr') }}};
     var ret = (Date.now()/1000)|0;
     if (ptr) {
       {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}};
@@ -720,7 +722,7 @@ LibraryManager.library = {
     var summerOffset = summer.getTimezoneOffset();
 
     // Local standard timezone offset. Local standard time is not adjusted for daylight savings.
-    // This code uses the fact that getTimezoneOffset returns a greater value during Standard Time versus Daylight Saving Time (DST). 
+    // This code uses the fact that getTimezoneOffset returns a greater value during Standard Time versus Daylight Saving Time (DST).
     // Thus it determines the expected output during Standard Time, and it compares whether the output of the given date the same (Standard) or less (DST).
     var stdTimezoneOffset = Math.max(winterOffset, summerOffset);
 
@@ -3222,6 +3224,7 @@ LibraryManager.library = {
   $readAsmConstArgsArray: '=[]',
   $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
+    {{{ from64(['sigPtr', 'buf']) }}};
 #if ASSERTIONS
     // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
     assert(Array.isArray(readAsmConstArgsArray));
@@ -3716,7 +3719,12 @@ LibraryManager.library = {
   // mode are created here and imported by the module.
   // Mark with `__import` so these are usable from native code.  This is needed
   // because, by default, only functions can be be imported.
-  __stack_pointer: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, {{{ STACK_BASE }}})",
+  __stack_pointer:
+#if MEMORY64
+    "new WebAssembly.Global({'value': 'i64', 'mutable': true}, {{{ STACK_BASE }}})",
+#else
+    "new WebAssembly.Global({'value': 'i32', 'mutable': true}, {{{ STACK_BASE }}})",
+#endif
   __stack_pointer__import: true,
   // tell the memory segments where to place themselves
   __memory_base: '{{{ GLOBAL_BASE }}}',
@@ -3724,6 +3732,9 @@ LibraryManager.library = {
   // the wasm backend reserves slot 0 for the NULL function pointer
   __table_base: 1,
   __table_base__import: true,
+#if MEMORY64
+  __table_base32: 1,
+#endif
   // To support such allocations during startup, track them on __heap_base and
   // then when the main module is loaded it reads that value and uses it to
   // initialize sbrk (the main module is relocatable itself, and so it does not

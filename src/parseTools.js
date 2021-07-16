@@ -197,8 +197,18 @@ function isStructPointerType(type) {
   return !Compiletime.isNumberType(type) && type[0] == '%';
 }
 
+let POINTER_SIZE = MEMORY64 ? 8 : 4;
+let POINTER_BITS = POINTER_SIZE * 8;
+let POINTER_TYPE = 'i' + POINTER_BITS;
+
+let SIZE_TYPE = POINTER_TYPE;
+
 function isPointerType(type) {
   return type[type.length - 1] == '*';
+}
+
+function sizeT(x) {
+  return MEMORY64 ? `BigInt(${x})` : x;
 }
 
 function isArrayType(type) {
@@ -235,7 +245,7 @@ function isIntImplemented(type) {
 
 // Note: works for iX types and structure types, not pointers (even though they are implemented as ints)
 function getBits(type, allowPointers) {
-  if (allowPointers && isPointerType(type)) return 32;
+  if (allowPointers && isPointerType(type)) return pointerBits();
   if (!type) return 0;
   if (type[0] == 'i') {
     const left = type.substr(1);
@@ -480,7 +490,7 @@ function checkSafeHeap() {
 }
 
 function getHeapOffset(offset, type) {
-  if (Runtime.getNativeFieldSize(type) > 4 && type == 'i64') {
+  if (!WASM_BIGINT && Runtime.getNativeFieldSize(type) > 4 && type == 'i64') {
     // we emulate 64-bit integer values as 32 in asmjs-unknown-emscripten, but not double
     type = 'i32';
   }
@@ -623,7 +633,16 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
       return asmCoercion('SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned + 0) + ')', type, unsigned ? 'u' : undefined);
     }
   }
-  return getHeapForType(type, unsigned) + '[' + getHeapOffset(offset, type) + ']';
+
+  var slab = getHeapForType(type, unsigned);
+  var ret = slab + '[' + getHeapOffset(offset, type) + ']';
+  if (slab.substr(slab.length - 2) == '64') {
+    ret = `Number(${ret})`;
+  }
+  if (forceAsm) {
+    ret = asmCoercion(ret, type);
+  }
+  return ret;
 }
 
 /**
@@ -665,7 +684,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
             makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
-  } else if (type == 'i64') {
+  } else if (!WASM_BIGINT && type == 'i64') {
     return '(tempI64 = [' + splitI64(value) + '],' +
             makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
@@ -705,7 +724,12 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
       return 'SAFE_HEAP_STORE' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ')';
     }
   }
-  return getHeapForType(type) + '[' + getHeapOffset(offset, type) + '] = ' + value;
+
+  var slab = getHeapForType(type);
+  if (slab.substr(slab.length - 2) == '64') {
+    value = `BigInt(${value})`;
+  }
+  return slab + '[' + getHeapOffset(offset, type) + '] = ' + value;
 }
 
 const UNROLL_LOOP_MAX = 8;
@@ -868,7 +892,7 @@ function calcFastOffset(ptr, pos, noNeedFirst) {
 function getHeapForType(type, unsigned) {
   assert(type);
   if (isPointerType(type)) {
-    type = 'i32'; // Hardcoded 32-bit
+    type = POINTER_TYPE;
   }
   switch (type) {
     case 'i1':
@@ -876,9 +900,13 @@ function getHeapForType(type, unsigned) {
       return unsigned ? 'HEAPU8' : 'HEAP8';
     case 'i16':
       return unsigned ? 'HEAPU16' : 'HEAP16';
+    case 'i64':
+      if (WASM_BIGINT) {
+        return unsigned ? 'HEAPU64' : 'HEAP64';
+      }
+      // fall through
     case '<4 x i32>':
     case 'i32':
-    case 'i64':
       return unsigned ? 'HEAPU32' : 'HEAP32';
     case 'double':
       return 'HEAPF64';
@@ -908,10 +936,7 @@ function makeThrow(what) {
 }
 
 function makeSignOp(value, type, op, force, ignore) {
-  if (type == 'i64') {
-    return value; // these are always assumed to be two 32-bit unsigneds.
-  }
-  if (isPointerType(type)) type = 'i32'; // Pointers are treated as 32-bit ints
+  if (isPointerType(type)) type = POINTER_TYPE;
   if (!value) return value;
   let bits;
   let full;
@@ -1290,6 +1315,20 @@ function sendI64Argument(low, high) {
     return 'BigInt(low) | (BigInt(high) << BigInt(32))';
   }
   return low + ', ' + high;
+}
+
+// Any function called from wasm64 may have bigint args, this function takes
+// a list of variable names to convert to number.
+function from64(x) {
+  if (!MEMORY64)
+    return '';
+  if (Array.isArray(x)) {
+    var ret = '';
+    for (e of x) ret += from64(e);
+    return ret;
+  } else {
+    return `${x} = Number(${x});`;
+  }
 }
 
 // Add assertions to catch common errors when using the Promise object we

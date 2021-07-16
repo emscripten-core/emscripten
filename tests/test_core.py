@@ -229,6 +229,21 @@ def no_lsan(note):
   return decorator
 
 
+def no_memory64(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if self.get_setting('MEMORY64') != 0:
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 def make_no_decorator_for_setting(name):
   def outer_decorator(note):
     assert not callable(note)
@@ -440,6 +455,7 @@ class TestCoreBase(RunnerCore):
   def test_sha1(self):
     self.do_runf(test_file('sha1.c'), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
+  @no_memory64('tests 32-bit specific sizes')
   def test_wasm32_unknown_emscripten(self):
     # No other configuration is supported, so always run this.
     self.do_runf(test_file('wasm32-unknown-emscripten.c'), '')
@@ -8525,7 +8541,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
 
 # Generate tests for everything
-def make_run(name, emcc_args, settings=None, env=None):
+def make_run(name, emcc_args, settings=None, env=None, wasm64=False):
   if env is None:
     env = {}
   if settings is None:
@@ -8544,6 +8560,9 @@ def make_run(name, emcc_args, settings=None, env=None):
       for k, v in self.env.items():
         del os.environ[k]
 
+    if wasm64:
+      self.node_args = TT.original
+
   TT.tearDown = tearDown
 
   def setUp(self):
@@ -8559,6 +8578,10 @@ def make_run(name, emcc_args, settings=None, env=None):
 
     self.emcc_args += emcc_args
 
+    if wasm64:
+      TT.original = self.node_args
+      self.node_args.append('--experimental-wasm-bigint')
+
   TT.setUp = setUp
 
   return TT
@@ -8573,6 +8596,8 @@ wasm2g = make_run('wasm2g', emcc_args=['-O2', '-g'])
 wasm3 = make_run('wasm3', emcc_args=['-O3'])
 wasms = make_run('wasms', emcc_args=['-Os'])
 wasmz = make_run('wasmz', emcc_args=['-Oz'])
+wasm64 = make_run('wasm64', emcc_args=['-O0', '-g3', '-s', 'MEMORY64=2'],
+                  settings=None, env=None, wasm64=True)
 
 wasmlto0 = make_run('wasmlto0', emcc_args=['-flto', '-O0'])
 wasmlto1 = make_run('wasmlto1', emcc_args=['-flto', '-O1'])

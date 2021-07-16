@@ -7,7 +7,7 @@
 
 ssize_t sendmsg(int fd, const struct msghdr *msg, int flags)
 {
-#if LONG_MAX > INT_MAX
+#if LONG_MAX > INT_MAX && 0  // XXX EMSCRIPTEN: __pad fields don't exist.
 	struct msghdr h;
 	struct cmsghdr chbuf[1024/sizeof(struct cmsghdr)+1], *c;
 	if (msg) {

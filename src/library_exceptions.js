@@ -120,7 +120,8 @@ var LibraryExceptions = {
     };
 
     this.set_adjusted_ptr = function(adjustedPtr) {
-      {{{ makeSetValue('this.ptr', Runtime.POINTER_SIZE, 'adjustedPtr', '*') }}};
+      var ptrSize = {{{ `${Runtime.POINTER_SIZE}` }}};
+      {{{ makeSetValue('this.ptr', 'ptrSize', 'adjustedPtr', '*') }}};
     };
 
     this.get_adjusted_ptr_addr = function() {
@@ -128,7 +129,8 @@ var LibraryExceptions = {
     }
 
     this.get_adjusted_ptr = function() {
-      return {{{ makeGetValue('this.ptr', Runtime.POINTER_SIZE, '*') }}};
+      var ptrSize = {{{ `${Runtime.POINTER_SIZE}` }}};
+      return {{{ makeGetValue('this.ptr', 'ptrSize', '*') }}};
     };
 
     // Get pointer which is expected to be received by catch clause in C++ code. It may be adjusted
@@ -153,7 +155,7 @@ var LibraryExceptions = {
     };
 
     if (ptr === undefined) {
-      this.ptr = _malloc({{{ Runtime.POINTER_SIZE * 2 }}});
+      this.ptr = _malloc({{{ `${Runtime.POINTER_SIZE}` * 2 }}});
       this.set_adjusted_ptr(0);
     } else {
       this.ptr = ptr;

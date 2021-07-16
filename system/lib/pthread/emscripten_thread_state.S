@@ -1,4 +1,10 @@
-.globaltype thread_id, i32
+#ifdef __wasm64__
+#define PTR i64
+#else
+#define PTR i32
+#endif
+
+.globaltype thread_id, PTR
 thread_id:
 
 .globaltype is_main_thread, i32
@@ -9,13 +15,13 @@ is_runtime_thread:
 
 .globl __pthread_self
 __pthread_self:
-  .functype __pthread_self () -> (i32)
+  .functype __pthread_self () -> (PTR)
   global.get thread_id
   end_function
 
 .globl _emscripten_thread_init
 _emscripten_thread_init:
-  .functype _emscripten_thread_init (i32, i32, i32) -> ()
+  .functype _emscripten_thread_init (PTR, i32, i32) -> ()
   local.get 0
   global.set thread_id
   local.get 1

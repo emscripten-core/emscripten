@@ -679,7 +679,7 @@ var SyscallsLibrary = {
     for (var i = 0; i < num; i++) {
       var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, 'i8*') }}};
       var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
-      for (var j = 0; j < iovlen; j++) {  
+      for (var j = 0; j < iovlen; j++) {
         view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
       }
     }
@@ -796,7 +796,7 @@ var SyscallsLibrary = {
 #endif
 
     var total = 0;
-    
+
     var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
         srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
     var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
@@ -863,7 +863,7 @@ var SyscallsLibrary = {
       {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
       {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
     }
-    
+
     return total;
   },
   __sys_msync: function(addr, len, flags) {
@@ -1424,6 +1424,18 @@ function wrapSyscallFunction(x, library, isWasi) {
     var bodyEnd = t.lastIndexOf('}');
     t = t.substring(0, bodyEnd) + post + t.substring(bodyEnd);
   }
+
+  if (MEMORY64 && !isWasi) {
+    t = modifyFunction(t, function(name, args, body) {
+      var argnums = args.split(",").map((a) => 'Number(' + a + ')').join();
+      return 'function ' + name + '(' + args + ') {\n' +
+             '  return BigInt((function ' + name + '_inner(' + args + ') {\n' +
+             body +
+             '  })(' + argnums + '));' +
+             '}';
+    });
+  }
+
   library[x] = eval('(' + t + ')');
   if (!library[x + '__deps']) library[x + '__deps'] = [];
   library[x + '__deps'].push('$SYSCALLS');

@@ -83,15 +83,16 @@ var WasiLibrary = {
 #if STANDALONE_WASM
   args_sizes_get__sig: 'iii',
   args_sizes_get: function(pargc, pargv_buf_size) {
+    {{{ from64(['pargc', 'pargv_buf_size']) }}};
 #if MAIN_READS_PARAMS
-    {{{ makeSetValue('pargc', 0, 'mainArgs.length', 'i32') }}};
+    {{{ makeSetValue('pargc', 0, 'mainArgs.length', `${SIZE_TYPE}`) }}};
     var bufSize = 0;
     mainArgs.forEach(function(arg) {
       bufSize += arg.length + 1;
     });
-    {{{ makeSetValue('pargv_buf_size', 0, 'bufSize', 'i32') }}};
+    {{{ makeSetValue('pargv_buf_size', 0, 'bufSize', `${SIZE_TYPE}`) }}};
 #else
-    {{{ makeSetValue('pargc', 0, '0', 'i32') }}};
+    {{{ makeSetValue('pargc', 0, '0', `${SIZE_TYPE}`) }}};
 #endif
     return 0;
   },
@@ -101,11 +102,12 @@ var WasiLibrary = {
   args_get__deps: ['$writeAsciiToMemory'],
 #endif
   args_get: function(argv, argv_buf) {
+    {{{ from64(['argv', 'argv_buf']) }}};
 #if MAIN_READS_PARAMS
     var bufSize = 0;
     mainArgs.forEach(function(arg, i) {
       var ptr = argv_buf + bufSize;
-      {{{ makeSetValue('argv', 'i * 4', 'ptr', 'i32') }}};
+      {{{ makeSetValue('argv', `i*${Runtime.POINTER_SIZE}`, 'ptr', `${POINTER_TYPE}`) }}};
       writeAsciiToMemory(arg, ptr);
       bufSize += arg.length + 1;
     });
@@ -171,7 +173,7 @@ var WasiLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0 && (!MINIMAL_RUNTIME || EXIT_RUNTIME)
   $flush_NO_FILESYSTEM: function() {
     // flush anything remaining in the buffers during shutdown
-    if (typeof _fflush !== 'undefined') _fflush(0);
+    if (typeof _fflush !== 'undefined') _fflush({{{ sizeT(0) }}});
     var buffers = SYSCALLS.buffers;
     if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
     if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
@@ -183,6 +185,7 @@ var WasiLibrary = {
 #endif
   fd_write__sig: 'iiiii',
   fd_write: function(fd, iov, iovcnt, pnum) {
+    {{{ from64(['iov', 'iovcnt', 'pnum']) }}};
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = SYSCALLS.doWritev(stream, iov, iovcnt);
@@ -190,15 +193,15 @@ var WasiLibrary = {
     // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
     var num = 0;
     for (var i = 0; i < iovcnt; i++) {
-      var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-      var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+      var ptr = {{{ makeGetValue('iov', `i*${Runtime.POINTER_SIZE}*2`, `${POINTER_TYPE}`) }}};
+      var len = {{{ makeGetValue('iov', `i*${Runtime.POINTER_SIZE}*2 + ${Runtime.POINTER_SIZE}`, `${POINTER_TYPE}`) }}};
       for (var j = 0; j < len; j++) {
         SYSCALLS.printChar(fd, HEAPU8[ptr+j]);
       }
       num += len;
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    {{{ makeSetValue('pnum', 0, 'num', `${SIZE_TYPE}`) }}}
     return 0;
   },
 

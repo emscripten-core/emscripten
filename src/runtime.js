@@ -21,6 +21,10 @@ var Compiletime = {
 // code used both at compile time and runtime is defined here, then put on
 // the Runtime object for compile time and support.js for the generated code
 
+function getPointerSize() {
+  return MEMORY64 ? 8 : 4;
+}
+
 function getNativeTypeSize(type) {
   switch (type) {
     case 'i1': case 'i8': return 1;
@@ -31,7 +35,7 @@ function getNativeTypeSize(type) {
     case 'double': return 8;
     default: {
       if (type[type.length-1] === '*') {
-        return 4; // A pointer
+        return getPointerSize();
       } else if (type[0] === 'i') {
         var bits = Number(type.substr(1));
         assert(bits % 8 === 0, 'getNativeTypeSize invalid bits ' + bits + ', type ' + type);
@@ -53,8 +57,8 @@ var Runtime = {
     return Math.max(getNativeTypeSize(type), Runtime.QUANTUM_SIZE);
   },
 
-  POINTER_SIZE: 4,
-  QUANTUM_SIZE: 4,
+  POINTER_SIZE: getPointerSize(),
+  QUANTUM_SIZE: getPointerSize(),
 };
 
 // Additional runtime elements, that need preprocessing

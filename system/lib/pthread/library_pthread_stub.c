@@ -213,7 +213,7 @@ int pthread_cancel(pthread_t thread) {
 }
 
 _Noreturn void pthread_exit(void* status) {
-   exit((int)status);
+   exit((int)(intptr_t)status);
 }
 
 int __pthread_detach(pthread_t t) {

@@ -52,6 +52,7 @@ mergeInto(LibraryManager.library, {
 #endif
   ],
   $formatString: function(format, varargs) {
+    {{{ from64(['format', 'varargs']) }}};
 #if ASSERTIONS
     assert((varargs & 3) === 0);
 #endif
@@ -470,6 +471,7 @@ mergeInto(LibraryManager.library, {
   // printf/puts/strlen implementations for when musl is not pulled in - very
   // partial. useful for tests, and when bootstrapping structInfo
   strlen: function(ptr) {
+    {{{ from64('ptr') }}};
     var end = ptr;
     while (HEAPU8[end]) ++end;
     return end - ptr;

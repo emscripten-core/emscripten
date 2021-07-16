@@ -125,6 +125,8 @@ def update_settings_glue(metadata, DEBUG):
 
   # start with the MVP features, and add any detected features.
   settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata['features']
+  if settings.MEMORY64 and not '--enable-memory64' in settings.BINARYEN_FEATURES:
+    settings.BINARYEN_FEATURES += ['--enable-memory64']
   if settings.USE_PTHREADS:
     assert '--enable-threads' in settings.BINARYEN_FEATURES
   if settings.MEMORY64:

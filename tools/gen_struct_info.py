@@ -260,6 +260,7 @@ def inspect_headers(headers, cflags):
                                   '-Wno-format',
                                   '-nostdlib',
                                   compiler_rt,
+                                  '-s', 'MEMORY64=' + str(settings.MEMORY64),
                                   '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
                                   '-s', 'LLD_REPORT_UNDEFINED=1',
                                   '-s', 'STRICT',

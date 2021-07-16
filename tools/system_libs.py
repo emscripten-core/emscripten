@@ -757,7 +757,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         path_components=['system', 'lib', 'pthread'],
         filenames=[
           'library_pthread.c',
-          'emscripten_thread_state.s',
+          'emscripten_thread_state.S',
         ])
     else:
       ignore += ['thread']

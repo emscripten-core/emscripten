@@ -225,7 +225,7 @@ def run_js_tool(filename, jsargs=[], *args, **kw):
   This is used by emcc to run parts of the build process that are written
   implemented in javascript.
   """
-  command = config.NODE_JS + [filename] + jsargs
+  command = config.NODE_JS + ['--experimental-wasm-bigint'] + [filename] + jsargs
   return check_call(command, *args, **kw).stdout
 
 

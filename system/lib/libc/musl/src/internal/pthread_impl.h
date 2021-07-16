@@ -113,7 +113,7 @@ struct __timer {
 // XXX Emscripten: The spec allows detecting when multiple write locks would deadlock, so use an extra field
 // _rw_wr_owner to record which thread owns the write lock in order to avoid hangs.
 // Points to the pthread that currently has the write lock.
-#define _rw_wr_owner __u.__vi[3]
+#define _rw_wr_owner __u.__p[3]
 #endif
 #define _b_lock __u.__vi[0]
 #define _b_waiters __u.__vi[1]

@@ -60,6 +60,7 @@ core_test_modes = [
   'wasm2js3',
   'wasm2jss',
   'wasm2jsz',
+  'wasm64'
 ]
 
 # The default core test mode, used when none is specified
@@ -274,7 +275,7 @@ def run_tests(options, suites):
   print('Test suites:')
   print([s[0] for s in suites])
   # Run the discovered tests
-  testRunner = unittest.TextTestRunner(verbosity=2)
+  testRunner = unittest.TextTestRunner(verbosity=2, failfast=options.failfast)
   for mod_name, suite in suites:
     print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
     res = testRunner.run(suite)
@@ -312,6 +313,8 @@ def parse_args(args):
   parser.add_argument('--browser',
                       help='Command to launch web browser in which to run browser tests.')
   parser.add_argument('tests', nargs='*')
+  parser.add_argument('--failfast', dest='failfast', action='store_const',
+                      const=True, default=False)
   return parser.parse_args()
 
 

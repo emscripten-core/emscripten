@@ -129,7 +129,7 @@ void InitializeFlags() {
   char *options;
   // Override from Emscripten Module.
 #define MAKE_OPTION_LOAD(parser, name) \
-    options = (char*) EM_ASM_INT({ \
+    options = (char*)(long)EM_ASM_DOUBLE({ \
       return withBuiltinMalloc(function () { \
         return allocateUTF8(Module[name] || 0); \
       }); \
