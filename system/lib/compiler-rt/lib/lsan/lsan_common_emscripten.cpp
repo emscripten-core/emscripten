@@ -145,8 +145,15 @@ static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
     // we can for the current thread.
     if (tctx->tid == GetCurrentThread()) {
       uptr sp = (uptr) __builtin_frame_address(0);
-      CHECK(stack_begin <= sp && sp < stack_end);
-      stack_begin = sp;
+      if (sp < stack_begin || sp >= stack_end) {
+        // SP is outside the recorded stack range (e.g. the thread is running a
+        // signal handler on alternate stack, or swapcontext was used).
+        // Again, consider the entire stack range to be reachable.
+        LOG_THREADS("WARNING: stack pointer not in stack range.\n");
+      } else {
+        // Shrink the stack range to ignore out-of-scope values.
+        stack_begin = sp;
+      }
     }
 
     ScanRangeForPointers(stack_begin, stack_end, frontier, "STACK", kReachable);
