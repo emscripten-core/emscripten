@@ -718,7 +718,8 @@ function%s(%s) {
   try {
     %s
   } catch(e) {
-    stackRestore(sp);
+    if (e === e+0 || e !== 'unwind')
+      stackRestore(sp);
     %s
     _setThrew(1, 0);
   }
