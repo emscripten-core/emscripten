@@ -1402,7 +1402,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # of LTO.
     if final_suffix in EXECUTABLE_ENDINGS:
       diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix (%s) when building object files.' % final_suffix)
-    else:
+    elif not (options.shared and settings.SIDE_MODULE):
       if options.shared:
         diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file.  This is a form of emulation to support existing build systems.  If you want to build a runtime shared library use the SIDE_MODULE setting.')
       options.oformat = OFormat.OBJECT
