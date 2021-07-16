@@ -156,19 +156,16 @@ LibraryManager.library = {
   },
 
   exit__sig: 'vi',
-  exit: function(status) {
 #if MINIMAL_RUNTIME
-    throw 'exit(' + status + ')';
+  // minimal runtime doesn't do any exit cleanup handling so just
+  // map exit directly to the lower-level proc_exit syscall.
+  exit: 'proc_exit',
+  $exit: 'exit',
 #else
+  exit: function(status) {
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
     exit(status);
-#endif
-  },
-
-#if MINIMAL_RUNTIME
-  $exit: function(status) {
-    throw 'exit(' + status + ')';
   },
 #endif
 

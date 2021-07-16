@@ -5,11 +5,14 @@
  */
 
 var WasiLibrary = {
-  proc_exit__deps: ['exit'],
   proc_exit__nothrow: true,
   proc_exit__sig: 'vi',
   proc_exit: function(code) {
-    _exit(code);
+#if MINIMAL_RUNTIME
+    throw 'exit(' + code + ')';
+#else
+    procExit(code);
+#endif
   },
 
   $getEnvStrings__deps: ['$ENV', '$getExecutableName'],

@@ -456,17 +456,24 @@ function exit(status, implicit) {
 #if USE_PTHREADS
     PThread.terminateAllThreads();
 #endif
-
     exitRuntime();
-
-#if expectToReceiveOnModule('onExit')
-    if (Module['onExit']) Module['onExit'](status);
-#endif
-
-    ABORT = true;
   }
 
-  quit_(status, new ExitStatus(status));
+  procExit(status);
+}
+
+function procExit(code) {
+  EXITSTATUS = code;
+  if (!keepRuntimeAlive()) {
+#if USE_PTHREADS
+    PThread.terminateAllThreads();
+#endif
+#if expectToReceiveOnModule('onExit')
+    if (Module['onExit']) Module['onExit'](code);
+#endif
+    ABORT = true;
+  }
+  quit_(code, new ExitStatus(code));
 }
 
 #if expectToReceiveOnModule('preInit')
