@@ -4,12 +4,12 @@
 #include "asan_poisoning.h"
 #include "asan_stack.h"
 #include "asan_thread.h"
+#include "lsan/lsan_common.h"  // for CAN_SANITIZE_LEAKS
 
 #if SANITIZER_EMSCRIPTEN
 #include <emscripten.h>
 #include <cstddef>
-#include <cstdint>
-#define __ATTRP_C11_THREAD ((void*)(uintptr_t)-1)
+#define __ATTRP_C11_THREAD ((void*)(uptr)-1)
 
 namespace __asan {
 

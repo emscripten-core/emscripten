@@ -30,6 +30,9 @@ function run() {
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
 #endif
+#if USE_PTHREADS
+  PThread.terminateAllThreads();
+#endif
 
 #if IN_TEST_HARNESS
   // fflush() filesystem stdio for test harness, since there are existing
