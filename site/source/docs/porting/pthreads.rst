@@ -148,6 +148,16 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 
 Also note that when compiling code that uses pthreads, an additional JavaScript file ``NAME.worker.js`` is generated alongside the output .js file (where ``NAME`` is the basename of the main file being emitted). That file must be deployed with the rest of the generated code files. By default, ``NAME.worker.js`` will be loaded relative to the main HTML page URL. If it is desirable to load the file from a different location e.g. in a CDN environment, then one can define the ``Module.locateFile(filename)`` function in the main HTML ``Module`` object to return the URL of the target location of the ``NAME.worker.js`` entry point. If this function is not defined in ``Module``, then the default location relative to the main HTML file is used.
 
+C++ helpers
+===========
+
+High-level C++ helper code is available by including
+``emscripten/thread_utils.h``. See example code in the relevant tests:
+
+* `Async proxying to the main thread <https://github.com/emscripten-core/emscripten/tree/main/tests/core/pthread/invoke_on_main_thread.cpp>`_.
+* `Blocking while running async code on a pthread <https://github.com/emscripten-core/emscripten/tree/main/tests/core/pthread/sync_to_async.cpp>`_.
+
+
 Running code and tests
 ======================
 

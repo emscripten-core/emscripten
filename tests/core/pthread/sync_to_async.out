@@ -1,0 +1,8 @@
+Perform a synchronous task.
+  Hello from sync C++
+Perform an async task.
+  Hello from sync C++ before the async
+  Hello from async JS
+  Hello from async C++
+Perform another synchronous task.
+  Hello again from sync C++
