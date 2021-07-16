@@ -1032,11 +1032,7 @@ var LibraryEmbind = {
 
 #if ASYNCIFY
       if (Asyncify.currData) {
-        return new Promise(function(resolve) {
-          Asyncify.asyncFinalizers.push(function(ret) {
-            resolve(onDone(ret));
-          });
-        });
+        return Asyncify.whenDone().then(onDone);
       }
 #endif
 
@@ -1124,14 +1120,7 @@ var LibraryEmbind = {
 
 #if ASYNCIFY
     invokerFnBody += "}\n";
-    invokerFnBody += "if (Asyncify.currData) {\n";
-    invokerFnBody += "  return new Promise(function(resolve) {\n";
-    invokerFnBody += "    Asyncify.asyncFinalizers.push(function(ret) {\n";
-    invokerFnBody += "      resolve(onDone(ret));\n";
-    invokerFnBody += "    });\n";
-    invokerFnBody += "  });\n";
-    invokerFnBody += "}\n";
-    invokerFnBody += "return onDone(rv);\n";
+    invokerFnBody += "return Asyncify.currData ? Asyncify.whenDone().then(onDone) : onDone(rv);\n"
 #endif
 
     invokerFnBody += "}\n";
