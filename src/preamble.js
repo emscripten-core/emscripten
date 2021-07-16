@@ -595,7 +595,7 @@ function abort(what) {
 #endif
 
 #if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
+  assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
   what += '';
   err(what);
