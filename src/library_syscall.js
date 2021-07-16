@@ -277,28 +277,39 @@ var SyscallsLibrary = {
 #endif
     // TODO: support unmmap'ing parts of allocations
     var info = SYSCALLS.mappings[addr];
-    if (len === 0 || !info) {
+    if (len === 0 || !info || len > info.len) {
       return -{{{ cDefine('EINVAL') }}};
     }
-    if (len === info.len) {
-#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-      var stream = FS.getStream(info.fd);
-      if (stream) {
-        if (info.prot & {{{ cDefine('PROT_WRITE') }}}) {
-          SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
-        }
-        FS.munmap(stream);
+    if (len < info.len) {
+      // A partial munmap (i.e., not of the entire allocated region). If we did
+      // an actual allocation, this would leak, as all we have is malloc/free
+      // and not a real mmap.
+#if ASSERTIONS
+      if (info.allocated) {
+        err('munmap of part of an mmap-ed region is not supported, and will leak');
       }
+#endif
+      // Return zero as this is not an invalid input value, it's just that we
+      // can't fully support it.
+      return 0;
+    }
+#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
+    var stream = FS.getStream(info.fd);
+    if (stream) {
+      if (info.prot & {{{ cDefine('PROT_WRITE') }}}) {
+        SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
+      }
+      FS.munmap(stream);
+    }
 #else
 #if ASSERTIONS
-      // Without FS support, only anonymous mappings are supported.
-      assert(SYSCALLS.mappings[addr].flags & {{{ cDefine('MAP_ANONYMOUS') }}});
+    // Without FS support, only anonymous mappings are supported.
+    assert(SYSCALLS.mappings[addr].flags & {{{ cDefine('MAP_ANONYMOUS') }}});
 #endif
 #endif
-      SYSCALLS.mappings[addr] = null;
-      if (info.allocated) {
-        _free(info.malloc);
-      }
+    SYSCALLS.mappings[addr] = null;
+    if (info.allocated) {
+      _free(info.malloc);
     }
     return 0;
   },
