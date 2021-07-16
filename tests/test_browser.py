@@ -4985,18 +4985,6 @@ window.close = function() {
   def test_embind_with_asyncify(self):
     self.btest('embind_with_asyncify.cpp', '1', args=['--bind', '-s', 'ASYNCIFY'])
 
-  @parameterized({
-    '': ([],),
-    'no_dynamic_execution': (['-s', 'DYNAMIC_EXECUTION=0'],)
-  })
-  def test_embind_lib_with_asyncify(self, args):
-    self.btest('embind_lib_with_asyncify.cpp', 'ok', args=[
-      '--bind',
-      '-s', 'ASYNCIFY',
-      '-s', 'ASYNCIFY_IMPORTS=["sleep_and_return"]',
-      '--post-js', test_file('embind_lib_with_asyncify.test.js'),
-    ] + args)
-
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
     self.btest(test_file('emscripten_console_log.c'), '0', args=['--pre-js', test_file('emscripten_console_log_pre.js')])

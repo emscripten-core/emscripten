@@ -21,8 +21,8 @@ Module.onRuntimeInitialized = async () => {
     assert(barStaticMethodResult instanceof Promise);
     assert(await barStaticMethodResult === 50);
 
-    maybeReportResultToServer('ok');
+    console.log('ok');
   } catch (e) {
-    maybeReportResultToServer('error: ' + e);
+    console.log('error: ' + e);
   }
 };
