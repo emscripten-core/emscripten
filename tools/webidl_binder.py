@@ -29,6 +29,8 @@ CHECKS = os.environ.get('IDL_CHECKS', 'DEFAULT')
 # DEBUG=1 will print debug info in render_function
 DEBUG = os.environ.get('IDL_VERBOSE') == '1'
 
+DONT_CONFUSE = os.environ.get('IDL_DONT_CONFUSE') == '1'
+
 if DEBUG:
   print("Debug print ON, CHECKS=%s" % CHECKS)
 
@@ -299,6 +301,11 @@ void array_bounds_check(const int array_size, const int array_idx) {
 
 C_FLOATS = ['float', 'double']
 
+# confuse export function id 
+list_id = []
+def confuse_name(fid):
+  if fid not in list_id: list_id.append(fid)
+  return "a" + str(list_id.index(fid))
 
 def full_typename(arg):
   return ('const ' if arg.getExtendedAttribute('Const') else '') + arg.type.name + ('[]' if arg.type.isArray() else '')
@@ -513,9 +520,15 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
 
   c_names = {}
   for i in range(min_args, max_args):
-    c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
-    body += '  if (%s === undefined) { %s%s(%s)%s%s }\n' % (args[i], call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), call_postfix, '' if 'return ' in call_prefix else '; ' + (cache or ' ') + 'return')
-  c_names[max_args] = 'emscripten_bind_%s_%d' % (bindings_name, max_args)
+    if(DONT_CONFUSE)
+      c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
+    else
+      c_names[i] = '%s_%d' % (confuse_name(bindings_name), i)
+    body += '  if (%s === undefined) { %s%s(%s)%s%s }\n' % (args[i], call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), call_postfix, '' if 'return ' in call_prefix else '; ' + (cache or ' ') + 'return')  
+  if(DONT_CONFUSE)
+    c_names[max_args] = 'emscripten_bind_%s_%d' % (bindings_name, max_args)
+  else
+    c_names[max_args] = '%s_%d' % (confuse_name(bindings_name), max_args)
   body += '  %s%s(%s)%s;\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args), call_postfix)
   if cache:
     body += '  ' + cache + '\n'
@@ -779,7 +792,10 @@ for name, enum in enums.items():
   deferred_js += ['\n', '// ' + name + '\n']
   for value in enum.values():
     function_id = "%s_%s" % (name, value.split('::')[-1])
-    function_id = 'emscripten_enum_%s' % function_id
+    if (DONT_CONFUSE)
+      function_id = 'emscripten_enum_%s' % function_id
+    else
+      function_id = confuse_name(function_id)
     mid_c += [r'''%s EMSCRIPTEN_KEEPALIVE %s() {
   return %s;
 }
