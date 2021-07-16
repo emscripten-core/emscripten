@@ -89,9 +89,7 @@ This file system provides read-only access to ``File`` and ``Blob`` objects insi
 PROXYFS
 --------
 
-This allows a module to mount another module's file system. This is useful when separate modules need to share a file system without manually syncing file contents.
-
-For example:
+This allows a module to mount another module's file system. This is useful when separate modules need to share a file system without manually syncing file contents. For example:
 
 .. code-block:: js
 
