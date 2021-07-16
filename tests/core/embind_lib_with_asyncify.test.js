@@ -21,6 +21,15 @@ Module.onRuntimeInitialized = async () => {
     assert(barStaticMethodResult instanceof Promise);
     assert(await barStaticMethodResult === 50);
 
+    let err = '';
+    try {
+      barInstance.method();
+      barInstance.method();
+    } catch (e) {
+      err = e.message;
+    }
+    assert(err.startsWith('abort(Assertion failed: Cannot have multiple async ccalls in flight at once)'));
+
     console.log('ok');
   } catch (e) {
     console.log('error: ' + e);
