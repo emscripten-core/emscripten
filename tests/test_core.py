@@ -7262,10 +7262,16 @@ someweirdtext
   def test_exit_status(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
-    src = r'''
+    create_file('exit.c', r'''
       #include <stdio.h>
+      #include <assert.h>
       #include <stdlib.h>
+      #include <unistd.h>
+
       static void cleanup() {
+        #ifndef NORMAL_EXIT
+        assert(0 && "cleanup should only be called from normal exit()");
+        #endif
         printf("cleanup\n");
       }
 
@@ -7273,23 +7279,27 @@ someweirdtext
         atexit(cleanup); // this atexit should still be called
         printf("hello, world!\n");
         // Unusual exit status to make sure it's working!
-        if (CAPITAL_EXIT) {
+        #ifdef CAPITAL_EXIT
           _Exit(118);
-        } else {
+        #elif defined(UNDER_EXIT)
+          _exit(118);
+        #elif defined(NORMAL_EXIT)
           exit(118);
-        }
+        #endif
       }
-    '''
+    ''')
     create_file('pre.js', '''
-      Module.preInit = function() {
-        addOnExit(function () {
-          out('I see exit status: ' + EXITSTATUS);
-        });
+      Module.onExit = function() {
+        out('I see exit status: ' + EXITSTATUS);
       }
-      ''')
+    ''')
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_run(src.replace('CAPITAL_EXIT', '0'), 'hello, world!\ncleanup\nI see exit status: 118', assert_returncode=118)
-    self.do_run(src.replace('CAPITAL_EXIT', '1'), 'hello, world!\ncleanup\nI see exit status: 118', assert_returncode=118)
+    print('.. exit')
+    self.do_runf('exit.c', 'hello, world!\ncleanup\nI see exit status: 118', assert_returncode=118, emcc_args=['-DNORMAL_EXIT'])
+    print('.. _exit')
+    self.do_runf('exit.c', 'hello, world!\nI see exit status: 118', assert_returncode=118, emcc_args=['-DUNDER_EXIT'])
+    print('.. _Exit')
+    self.do_runf('exit.c', 'hello, world!\nI see exit status: 118', assert_returncode=118, emcc_args=['-DCAPITAL_EXIT'])
 
   def test_noexitruntime(self):
     src = r'''
