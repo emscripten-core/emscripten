@@ -129,35 +129,28 @@ function ccall(ident, returnType, argTypes, args, opts) {
     }
   }
   var ret = func.apply(null, cArgs);
+  function onDone(ret) {
+    if (stack !== 0) stackRestore(stack);
+    return convertReturnValue(ret);
+  }
 #if ASYNCIFY
   var asyncMode = opts && opts.async;
-  var runningAsync = typeof Asyncify === 'object' && Asyncify.currData;
-  var prevRunningAsync = typeof Asyncify === 'object' && Asyncify.asyncFinalizers.length > 0;
-#if ASSERTIONS
-  assert(!asyncMode || !prevRunningAsync, 'Cannot have multiple async ccalls in flight at once');
-#endif
   // Check if we started an async operation just now.
-  if (runningAsync && !prevRunningAsync) {
+  if (Asyncify.currData) {
     // If so, the WASM function ran asynchronous and unwound its stack.
     // We need to return a Promise that resolves the return value
     // once the stack is rewound and execution finishes.
 #if ASSERTIONS
     assert(asyncMode, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
 #endif
-    return new Promise(function(resolve) {
-      Asyncify.asyncFinalizers.push(function(ret) {
-        if (stack !== 0) stackRestore(stack);
-        resolve(convertReturnValue(ret));
-      });
-    });
+    return Asyncify.whenDone().then(onDone);
   }
 #endif
 
-  ret = convertReturnValue(ret);
-  if (stack !== 0) stackRestore(stack);
+  ret = onDone(ret);
 #if ASYNCIFY
   // If this is an async ccall, ensure we return a promise
-  if (opts && opts.async) return Promise.resolve(ret);
+  if (asyncMode) return Promise.resolve(ret);
 #endif
   return ret;
 }

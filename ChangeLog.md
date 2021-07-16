@@ -38,6 +38,12 @@ See docs/process.md for more on how version tagging works.
   `emscripten_dlopen()` declared in `emscropten/emscripten.h`.  See
   `docs/api_reference/emscripten.h.rst` (or the online version) for more
   details.
+- Constructors, functions and methods bound with Embind can now be `await`ed.
+  When Asyncify is used somewhere in the callstack, previously Embind would
+  return `0` / `null` / `false` / instance with a NULL pointer, making it
+  impossible to wait for the function to actually finish and retrieve its
+  result. Now in those cases it will return a `Promise` instead that will
+  resolve with the function's return value upon completion. (#11890)
 
 2.0.25 - 06/30/2021
 -------------------

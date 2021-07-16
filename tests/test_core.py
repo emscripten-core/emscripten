@@ -8523,6 +8523,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test(test_file('core/test_emscripten_async_call.c'))
 
+  @parameterized({
+    '': ([],),
+    'no_dynamic_execution': (['-s', 'DYNAMIC_EXECUTION=0'],)
+  })
+  def test_embind_lib_with_asyncify(self, args):
+    self.uses_es6 = True
+    self.emcc_args += [
+      '--bind',
+      '-s', 'ASYNCIFY',
+      '-s', 'ASYNCIFY_IMPORTS=["sleep_and_return"]',
+      '--post-js', test_file('core/embind_lib_with_asyncify.test.js'),
+    ]
+    self.emcc_args += args
+    self.do_core_test('embind_lib_with_asyncify.cpp')
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
