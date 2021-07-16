@@ -44,7 +44,7 @@ However, due to JavaScript's event-driven nature, most *persistent* storage opti
 File systems
 ============
 
-.. note:: Only the :ref:`MEMFS <filesystem-api-memfs>` filesystem is included by default. All others must be enabled explicitly, using ``-lnodefs.js`` (:ref:`NODEFS <filesystem-api-nodefs>`), ``-lidbfs.js`` (:ref:`IDBFS <filesystem-api-idbfs>`), ``-lworkerfs.js`` (:ref:`WORKERFS <filesystem-api-workerfs>`), or ``-lproxyfs.js`` (PROXYFS).
+.. note:: Only the :ref:`MEMFS <filesystem-api-memfs>` filesystem is included by default. All others must be enabled explicitly, using ``-lnodefs.js`` (:ref:`NODEFS <filesystem-api-nodefs>`), ``-lidbfs.js`` (:ref:`IDBFS <filesystem-api-idbfs>`), ``-lworkerfs.js`` (:ref:`WORKERFS <filesystem-api-workerfs>`), or ``-lproxyfs.js`` (:ref:`PROXYFS <filesystem-api-proxyfs>`).
 
 .. _filesystem-api-memfs:
 
@@ -83,6 +83,23 @@ WORKERFS
 .. note:: This file system is only for use when running code inside a worker.
 
 This file system provides read-only access to ``File`` and ``Blob`` objects inside a worker without copying the entire data into memory and can potentially be used for huge files.
+
+.. _filesystem-api-proxyfs:
+
+PROXYFS
+--------
+
+This allows a module to mount another module's file system. This is useful when separate modules need to share a file system without manually syncing file contents. For example:
+
+.. code-block:: js
+
+  // Module 2 can use the path "/fs1" to access and modify Module 1's filesystem
+  module2.FS.mkdir("/fs1");
+  module2.FS.mount(module2.PROXYFS, {
+      root: "/",
+      fs: module1.FS
+  }, "/fs1");
+
 
 Devices
 =======
