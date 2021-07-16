@@ -2338,6 +2338,12 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
 
+  @node_pthreads
+  def test_pthread_abort(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.add_pre_run("Module.onAbort = function() { console.log('onAbort called'); }")
+    self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
+
   def test_tcgetattr(self):
     self.do_runf(test_file('termios/test_tcgetattr.c'), 'success')
 
