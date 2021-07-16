@@ -8,7 +8,10 @@ import os
 TAG = '38fcb695276ed794f879d5d9c5ef4e5286a5200d' # Latest as of 24 November 2020
 HASH = '4c1ac5d27439d28c6d84593dd15dd80c825d68c6bf1020ab4317f2bce1efe16401b5b3280a181047c8317c38a19bbeeae8d52862e6b2c9776d5809758ee7aaa6'
 
-deps = ['freetype', 'sdl2', 'harfbuzz']
+if os.name != 'nt':
+  deps = ['freetype', 'sdl2', 'harfbuzz']
+else:
+  deps = ['freetype', 'sdl2']
 
 
 def needed(settings):
@@ -28,9 +31,14 @@ def get(ports, settings, shared):
 
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'sdl2_ttf', src + '.o')
-      command = [shared.EMCC,
-                 '-c', os.path.join(src_root, src),
-                 '-O2', '-DTTF_USE_HARFBUZZ=1', '-s', 'USE_SDL=2', '-s', 'USE_FREETYPE=1', '-s', 'USE_HARFBUZZ=1', '-o', o, '-w']
+      if os.name != 'nt':
+        command = [shared.EMCC,
+                   '-c', os.path.join(src_root, src),
+                   '-O2', '-DTTF_USE_HARFBUZZ=1', '-s', 'USE_SDL=2', '-s', 'USE_FREETYPE=1', '-s', 'USE_HARFBUZZ=1', '-o', o, '-w']
+      else:
+        command = [shared.EMCC,
+                   '-c', os.path.join(src_root, src),
+                   '-O2', '-s', 'USE_SDL=2', '-s', 'USE_FREETYPE=1', '-o', o, '-w']
       commands.append(command)
       o_s.append(o)
 
@@ -48,11 +56,15 @@ def clear(ports, settings, shared):
 def process_dependencies(settings):
   settings.USE_SDL = 2
   settings.USE_FREETYPE = 1
-  settings.USE_HARFBUZZ = 1
+
+  if os.name != 'nt':
+    settings.USE_HARFBUZZ = 1
 
 
 def process_args(ports):
-  return ['-DTTF_USE_HARFBUZZ=1']
+  if os.name != 'nt':
+    return ['-DTTF_USE_HARFBUZZ=1']
+  return []
 
 
 def show():
