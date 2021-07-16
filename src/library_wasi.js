@@ -6,6 +6,7 @@
 
 var WasiLibrary = {
   proc_exit__deps: ['exit'],
+  proc_exit__nothrow: true,
   proc_exit__sig: 'vi',
   proc_exit: function(code) {
     _exit(code);
@@ -49,6 +50,7 @@ var WasiLibrary = {
   },
 
   environ_sizes_get__deps: ['$getEnvStrings'],
+  environ_sizes_get__nothrow: true,
   environ_sizes_get__sig: 'iii',
   environ_sizes_get: function(penviron_count, penviron_buf_size) {
     var strings = getEnvStrings();
@@ -66,6 +68,7 @@ var WasiLibrary = {
     , '$writeAsciiToMemory'
 #endif
   ],
+  environ_get__nothrow: true,
   environ_get__sig: 'iii',
   environ_get: function(__environ, environ_buf) {
     var bufSize = 0;
@@ -81,6 +84,7 @@ var WasiLibrary = {
   // In normal (non-standalone) mode arguments are passed direclty
   // to main, and the `mainArgs` global does not exist.
 #if STANDALONE_WASM
+  args_sizes_get__nothrow: true,
   args_sizes_get__sig: 'iii',
   args_sizes_get: function(pargc, pargv_buf_size) {
 #if MAIN_READS_PARAMS
@@ -96,6 +100,7 @@ var WasiLibrary = {
     return 0;
   },
 
+  args_get__nothrow: true,
   args_get__sig: 'iii',
 #if MINIMAL_RUNTIME && MAIN_READS_PARAMS
   args_get__deps: ['$writeAsciiToMemory'],
@@ -125,6 +130,7 @@ var WasiLibrary = {
   // but the wasm file can't be legalized in standalone mode, which is where
   // this is needed. To get this code to be usable as a JS shim we need to
   // either wait for BigInt support or to legalize on the client.
+  clock_time_get__nothrow: true,
   clock_time_get__sig: 'iiiii',
   clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$checkWasiClock'],
   clock_time_get: function(clk_id, {{{ defineI64Param('precision') }}}, ptime) {
@@ -148,6 +154,7 @@ var WasiLibrary = {
     return 0;
   },
 
+  clock_res_get__nothrow: true,
   clock_res_get__sig: 'iii',
   clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '$checkWasiClock'],
   clock_res_get: function(clk_id, pres) {
