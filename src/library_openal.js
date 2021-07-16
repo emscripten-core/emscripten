@@ -704,7 +704,9 @@ var LibraryOpenAL = {
 
       var offset = 0.0;
       for (var i = 0; i < src.bufsProcessed; i++) {
-        offset += src.bufQueue[i].audioBuf.duration;
+        if (src.bufQueue[i].audioBuf) {
+          offset += src.bufQueue[i].audioBuf.duration;
+        }
       }
       offset += src.bufOffset;
 
@@ -4886,4 +4888,3 @@ var LibraryOpenAL = {
 
 autoAddDeps(LibraryOpenAL, '$AL');
 mergeInto(LibraryManager.library, LibraryOpenAL);
-
