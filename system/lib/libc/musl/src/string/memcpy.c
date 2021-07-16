@@ -7,7 +7,8 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n)
 	unsigned char *d = dest;
 	const unsigned char *s = src;
 
-#ifdef __GNUC__
+/* XXX EMSCRIPTEN: add __has_feature check */
+#if defined(__GNUC__) && !__has_feature(address_sanitizer)
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define LS >>

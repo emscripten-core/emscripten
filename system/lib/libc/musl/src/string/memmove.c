@@ -15,7 +15,8 @@ void *memmove(void *dest, const void *src, size_t n)
 	if ((uintptr_t)s-(uintptr_t)d-n <= -2*n) return memcpy(d, s, n);
 
 	if (d<s) {
-#ifdef __GNUC__
+/* XXX EMSCRIPTEN: add __has_feature check */
+#if defined(__GNUC__) && !__has_feature(address_sanitizer)
 		if ((uintptr_t)s % WS == (uintptr_t)d % WS) {
 			while ((uintptr_t)d % WS) {
 				if (!n--) return dest;
@@ -26,7 +27,8 @@ void *memmove(void *dest, const void *src, size_t n)
 #endif
 		for (; n; n--) *d++ = *s++;
 	} else {
-#ifdef __GNUC__
+/* XXX EMSCRIPTEN: add __has_feature check */
+#if defined(__GNUC__) && !__has_feature(address_sanitizer)
 		if ((uintptr_t)s % WS == (uintptr_t)d % WS) {
 			while ((uintptr_t)(d+n) % WS) {
 				if (!n--) return dest;

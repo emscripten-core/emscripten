@@ -10,11 +10,8 @@
 // HEAPU8.set()
 void* emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) EM_IMPORT(emscripten_memcpy_big);
 
-// XXX EMSCRIPTEN ASAN: build an uninstrumented version of memcpy
-#if defined(__EMSCRIPTEN__) && defined(__has_feature)
 #if __has_feature(address_sanitizer)
-#define memcpy __attribute__((no_sanitize("address"))) emscripten_builtin_memcpy
-#endif
+#define memcpy emscripten_builtin_memcpy
 #endif
 
 #ifdef EMSCRIPTEN_OPTIMIZE_FOR_OZ
