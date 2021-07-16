@@ -655,6 +655,14 @@ void* emscripten_sync_run_in_main_thread_7(int function, void* arg1,
   return q.returnValue.vp;
 }
 
+static thread_local bool from_evtloop = false;
+void emscripten_current_thread_process_queued_calls_from_evtloop() {
+  from_evtloop = true;
+  emscripten_current_thread_process_queued_calls();
+  from_evtloop = false;
+}
+int emscripten_is_queue_running_from_evtloop() { return from_evtloop; }
+
 void emscripten_current_thread_process_queued_calls() {
   // #if PTHREADS_DEBUG == 2
   //  EM_ASM(console.error('thread ' + _pthread_self() + ':

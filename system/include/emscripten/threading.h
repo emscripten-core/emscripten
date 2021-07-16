@@ -283,6 +283,9 @@ void emscripten_main_thread_process_queued_calls(void);
 
 void emscripten_current_thread_process_queued_calls(void);
 
+void emscripten_current_thread_process_queued_calls_from_evtloop(void);
+int emscripten_is_queue_running_from_evtloop();
+
 pthread_t emscripten_main_browser_thread_id(void);
 
 // Synchronously sleeps the calling thread for the given number of milliseconds.
