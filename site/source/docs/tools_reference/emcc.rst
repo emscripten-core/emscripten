@@ -136,6 +136,8 @@ Options that are modified or new in *emcc* are listed below:
     adds DWARF debug information to the object files.
   - When linking, this is equivalent to :ref:`-g3 <emcc-g3>`.
 
+.. _emcc-gseparate-dwarf:
+
 ``-gseparate-dwarf[=FILENAME]``
   [same as -g3 if passed at compile time, otherwise applies at link]
   Preserve debug information, but in a separate file on the side. This is the
@@ -146,6 +148,12 @@ Options that are modified or new in *emcc* are listed below:
   debug file is, so that devtools can find it. You can use
   ``-s SEPARATE_DWARF_URL=URL`` to customize that location (this is useful if
   you want to host it on a different server, for example).
+
+.. _emcc-gsplit-dwarf:
+
+``-gsplit-dwarf``
+  Enable debug fission, which creates split DWARF object files alongside the
+  wasm object files. This option must be used together with ``-c``.
 
 .. _emcc-gsource-map:
 
