@@ -299,6 +299,8 @@ var LibraryBrowser = {
         document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
         document.addEventListener('mspointerlockchange', pointerLockChange, false);
 
+        window.addEventListener("resize", Browser.updateResizeListeners, true);
+
         if (Module['elementPointerLock']) {
           canvas.addEventListener("click", function(ev) {
             if (!Browser.pointerLock && Module['canvas'].requestPointerLock) {
