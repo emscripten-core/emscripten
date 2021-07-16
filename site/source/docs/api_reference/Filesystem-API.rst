@@ -84,6 +84,8 @@ WORKERFS
 
 This file system provides read-only access to ``File`` and ``Blob`` objects inside a worker without copying the entire data into memory and can potentially be used for huge files.
 
+.. _filesystem-api-proxyfs:
+
 PROXYFS
 --------
 
@@ -99,8 +101,6 @@ For example:
       root: "/",
       fs: module1.FS
   }, "/fs1");
-
-.. _filesystem-api-proxyfs:
 
 
 Devices
