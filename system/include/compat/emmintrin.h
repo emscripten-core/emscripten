@@ -724,18 +724,9 @@ _mm_mullo_epi16(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_mul_epu32(__m128i __a, __m128i __b)
 {
-  // TODO: optimize
-  unsigned long long a0 = (unsigned long long)(unsigned int)__a[0];
-  unsigned long long a2 = (unsigned long long)(unsigned int)__a[2];
-  unsigned long long b0 = (unsigned long long)(unsigned int)__b[0];
-  unsigned long long b2 = (unsigned long long)(unsigned int)__b[2];
-  union {
-    unsigned long long x[2];
-    __m128i m;
-  } u;
-  u.x[0] = a0*b0;
-  u.x[1] = a2*b2;
-  return u.m;
+  return (__m128i)wasm_u64x2_extmul_low_u32x4(
+      wasm_v32x4_shuffle((v128_t)__a, (v128_t)__a, 0, 2, 0, 2),
+      wasm_v32x4_shuffle((v128_t)__b, (v128_t)__b, 0, 2, 0, 2));
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))

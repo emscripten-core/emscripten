@@ -587,7 +587,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_movemask_pd
      - ❌ scalarized
    * - _mm_mul_epu32
-     - ❌ scalarized
+     - ⚠️ emulated with wasm_u64x2_extmul_low_u32x4 + 2 shuffles
    * - _mm_mul_pd
      - ✅ wasm_f64x2_mul
    * - _mm_mul_sd
@@ -984,7 +984,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_mpsadbw_epu8
      - 💣 scalarized
    * - _mm_mul_epi32
-     - ❌ scalarized
+     - ⚠️ emulated with wasm_i64x2_extmul_low_i32x4 + 2 shuffles
    * - _mm_mullo_epi32
      - ✅ wasm_i32x4_mul
    * - _mm_packus_epi32
