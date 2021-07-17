@@ -197,17 +197,7 @@ _mm_storeu_ps(float *__p, __m128 __a)
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_movemask_ps(__m128 __a)
 {
-  // TODO: Use .bitmask instruction when available:
-  // https://github.com/WebAssembly/simd/pull/201
-  union {
-    __m128 __v;
-    unsigned int __x[4];
-  } __attribute__((__packed__, __may_alias__)) __p;
-  __p.__v = __a;
-  return (__p.__x[0] >> 31)
-    | ((__p.__x[1] >> 30) & 2)
-    | ((__p.__x[2] >> 29) & 4)
-    | ((__p.__x[3] >> 28) & 8);
+  return (int)wasm_i32x4_bitmask((v128_t)__a);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))

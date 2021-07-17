@@ -1386,16 +1386,7 @@ _mm_packus_epi16(__m128i __a, __m128i __b)
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_movemask_epi8(__m128i __a)
 {
-  // TODO: optimize
-  union {
-    unsigned char x[16];
-    __m128i m;
-  } src;
-  src.m = __a;
-  unsigned int x = 0;
-  for(int i = 0; i < 16; ++i)
-    x |= ((unsigned int)src.x[i] >> 7) << i;
-  return (int)x;
+  return (int)wasm_i8x16_bitmask((v128_t)__a);
 }
 
 #define _mm_shuffle_epi32(__a, __imm) __extension__ ({ \
@@ -1489,12 +1480,7 @@ _mm_unpacklo_pd(__m128d __a, __m128d __b)
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_movemask_pd(__m128d __a)
 {
-  union {
-    unsigned long long x[2];
-    __m128d m;
-  } __attribute__((__packed__, __may_alias__)) src;
-  src.m = __a;
-  return (src.x[0] >> 63) | ((src.x[1] >> 63) << 1);
+  return (int)wasm_i64x2_bitmask((v128_t)__a);
 }
 
 #define _mm_shuffle_pd(__a, __b, __i) __extension__ ({ \

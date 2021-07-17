@@ -169,7 +169,7 @@ In addition to consulting the tables below, you can turn on diagnostics for slow
    * - _mm_storeu_si64
      - 💡 emulated with scalar store
    * - _mm_movemask_ps
-     - 💣 No Wasm SIMD support. Emulated in scalar. `simd/#131 <https://github.com/WebAssembly/simd/issues/131>`_
+     - ✅ wasm_i32x4_bitmask
    * - _mm_move_ss
      - 💡 emulated with a shuffle. VM must guess type.
    * - _mm_add_ps
@@ -583,9 +583,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_move_sd
      - 💡 emulated with a shuffle. VM must guess type.
    * - _mm_movemask_epi8
-     - ❌ scalarized
+     - ✅ wasm_i8x16_bitmask
    * - _mm_movemask_pd
-     - ❌ scalarized
+     - ✅ wasm_i64x2_bitmask
    * - _mm_mul_epu32
      - ❌ scalarized
    * - _mm_mul_pd
