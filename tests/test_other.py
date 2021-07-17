@@ -6771,7 +6771,7 @@ int main() {
 
     # To this test to be successful, foo() shouldn't have been inlined above and
     # foo() should be in the function list
-    output = self.run_process([shared.LLVM_NM, 'test2.o'], stdout=PIPE).stdout
+    output = self.run_process([shared.EM_NM, 'test2.o'], stdout=PIPE).stdout
     self.assertContained('foo', output)
 
   def test_output_eol(self):
