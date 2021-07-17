@@ -83,13 +83,13 @@ _mm_load_ps(const float *__p)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_loadl_pi(__m128 __a, const void /*__m64*/ *__p)
 {
-  return (__m128)__f32x4_shuffle(wasm_f32x4_make(((float*)__p)[0], ((float*)__p)[1], 0.f, 0.f), __a, 0, 1, 6, 7);
+  return (__m128)wasm_v128_load64_lane(__p, (v128_t)__a, 0);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_loadh_pi(__m128 __a, const void /*__m64*/ *__p)
 {
-  return (__m128)__f32x4_shuffle(__a, wasm_f32x4_make(((float*)__p)[0], ((float*)__p)[1], 0.f, 0.f), 0, 1, 4, 5);
+  return (__m128)wasm_v128_load64_lane(__p, (v128_t)__a, 1);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
@@ -115,22 +115,19 @@ _mm_load_ps1(const float *__p)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_load_ss(const float *__p)
 {
-  return (__m128)wasm_f32x4_make(*__p, 0.f, 0.f, 0.f);
+  return (__m128)wasm_v128_load32_zero(__p);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_storel_pi(__m64 *__p, __m128 __a)
 {
-  *__p = (__m64) { __a[0], __a[1] };
+  wasm_v128_store64_lane((void*)__p, (v128_t)__a, 0);
 }
-
-static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
-_mm_movehl_ps(__m128 __a, __m128 __b);
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_storeh_pi(__m64 *__p, __m128 __a)
 {
-  _mm_storel_pi(__p, _mm_movehl_ps(__a, __a));
+  wasm_v128_store64_lane((void*)__p, (v128_t)__a, 1);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
@@ -179,10 +176,7 @@ _mm_store_ps1(float *__p, __m128 __a)
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_store_ss(float *__p, __m128 __a)
 {
-    struct __unaligned {
-      float __v;
-    } __attribute__((__packed__, __may_alias__));
-    ((struct __unaligned *)__p)->__v = ((__f32x4)__a)[0];
+  wasm_v128_store32_lane((void*)__p, (v128_t)__a, 0);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
