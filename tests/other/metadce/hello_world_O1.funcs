@@ -3,6 +3,7 @@ $__emscripten_stdout_seek
 $__errno_location
 $__fwritex
 $__lockfile
+$__memcpy
 $__original_main
 $__overflow
 $__stdio_write
@@ -15,7 +16,6 @@ $fputs
 $fwrite
 $legalstub$dynCall_jiji
 $main
-$memcpy
 $puts
 $stackAlloc
 $stackRestore
