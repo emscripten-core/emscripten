@@ -19,7 +19,7 @@ mergeInto(LibraryManager.library, {
     createPipe: function () {
       var pipe = {
         buckets: [],
-        closed_ends : 0,
+        refcnt : 2
       };
 
       pipe.buckets.push({
@@ -216,8 +216,8 @@ mergeInto(LibraryManager.library, {
       },
       close: function (stream) {
         var pipe = stream.node.pipe;
-        pipe.closed_ends ++;
-        if(pipe.closed_ends === 2){
+        pipe.refcnt --;
+        if(pipe.refcnt === 0){
           pipe.buckets = null;
         }
       }
