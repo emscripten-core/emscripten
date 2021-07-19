@@ -13,9 +13,6 @@
 
 #include <xmmintrin.h>
 
-#define __MIN(x, y) ((x) <= (y) ? (x) : (y))
-#define __MAX(x, y) ((x) >= (y) ? (x) : (y))
-
 // Alias different (functionally) equivalent intrinsics.
 #define _mm_set_epi64x _mm_set_epi64
 #define _mm_cvtsd_si64x _mm_cvtsd_si64
