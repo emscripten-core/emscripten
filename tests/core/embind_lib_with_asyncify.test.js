@@ -28,7 +28,7 @@ Module.onRuntimeInitialized = async () => {
     } catch (e) {
       err = e.message;
     }
-    assert(err.startsWith('abort(Assertion failed: Cannot have multiple async ccalls in flight at once)'));
+    assert(err.startsWith('abort(Assertion failed: Cannot have multiple async operations in flight at once)'));
 
     console.log('ok');
   } catch (e) {
