@@ -1500,6 +1500,7 @@ LibraryManager.library = {
   _emscripten_throw_longjmp__sig: 'v',
   _emscripten_throw_longjmp: function() { throw 'longjmp'; },
 #if !SUPPORT_LONGJMP
+#if !INCLUDE_FULL_LIBRARY
   // These are in order to print helpful error messages when either longjmp of
   // setjmp is used.
   longjmp__deps: [function() {
@@ -1516,6 +1517,7 @@ LibraryManager.library = {
   get _emscripten_throw_longjmp__deps() {
     return this.longjmp__deps;
   },
+#endif
   // will never be emitted, as the dep errors at compile time
   longjmp__unimplemented: true,
   longjmp: function(env, value) {
