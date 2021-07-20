@@ -8523,6 +8523,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test(test_file('core/test_emscripten_async_call.c'))
 
+  @no_asan('asyncify stack operations confuse asan')
   @parameterized({
     '': ([],),
     'no_dynamic_execution': (['-s', 'DYNAMIC_EXECUTION=0'],)
