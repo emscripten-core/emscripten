@@ -2323,7 +2323,6 @@ The current type of b is: 9
   def test_pthread_thread_local_storage(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('PTHREAD_POOL_SIZE', 8)
     self.set_setting('INITIAL_MEMORY', '300mb')
     self.do_run_in_out_file_test('pthread/test_pthread_thread_local_storage.cpp')
 
@@ -8268,7 +8267,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_create_pool(self):
     # with a pool, we can synchronously depend on workers being available
-    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-DALLOW_SYNC']
     self.do_run_in_out_file_test('core/pthread/create.cpp')
@@ -8291,7 +8290,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthread_exceptions(self):
-    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-fexceptions']
     self.do_run_in_out_file_test('core/pthread/exceptions.cpp')
@@ -8360,7 +8359,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_PTHREADS')
     self.set_setting('LLD_REPORT_UNDEFINED')
-    self.set_setting('PTHREAD_POOL_SIZE=2')
+    self.set_setting('PTHREAD_POOL_SIZE', 2)
     main = test_file('core/pthread/test_pthread_dylink.c')
     side = test_file('core/pthread/test_pthread_dylink_side.c')
     self.dylink_testf(main, side, "success", need_reverse=False)
