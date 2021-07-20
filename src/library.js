@@ -698,7 +698,6 @@ LibraryManager.library = {
     stackRestore(stack);
     return rv;
   },
-  __ctime_r: 'ctime_r',
 
   dysize: function(year) {
     var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
