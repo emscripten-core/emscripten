@@ -29,7 +29,7 @@ set(CMAKE_SYSTEM_PROCESSOR x86)
 # of an outputted .so library: e.g. "libfoo.so, libfoo.so.1, libfoo.so.1.4" etc.
 # This feature is activated if a shared library project has the property
 # SOVERSION defined.
-set(CMAKE_SHARED_LIBRARY_SONAME_C_FLAG "-Wl,-soname,")
+set(CMAKE_SHARED_LIBRARY_SONAME_C_FLAG "-Wl,-soname=")
 
 # In CMake, CMAKE_HOST_WIN32 is set when we are cross-compiling from Win32 to
 # Emscripten:
