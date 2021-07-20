@@ -206,12 +206,12 @@ _mm_mullo_epi32(__m128i __a, __m128i __b)
   return (__m128i)wasm_i32x4_mul(__a, __b);
 }
 
-static __inline__  __m128i __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
+static __inline__  __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_mul_epi32(__m128i __a, __m128i __b)
 {
-  return (__m128i)wasm_i64x2_make(
-      wasm_i32x4_extract_lane(__a, 0) * (long long)wasm_i32x4_extract_lane(__b, 0),
-      wasm_i32x4_extract_lane(__a, 2) * (long long)wasm_i32x4_extract_lane(__b, 2));
+  return (__m128i)wasm_i64x2_extmul_low_i32x4(
+      (v128_t)_mm_shuffle_epi32(__a, _MM_SHUFFLE(2, 0, 2, 0)),
+      (v128_t)_mm_shuffle_epi32(__b, _MM_SHUFFLE(2, 0, 2, 0)));
 }
 
 #define _mm_dp_ps(__a, __b, __imm8) __extension__ ({ \
