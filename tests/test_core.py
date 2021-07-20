@@ -8539,6 +8539,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += args
     self.do_core_test('embind_lib_with_asyncify.cpp')
 
+
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
   if env is None:
