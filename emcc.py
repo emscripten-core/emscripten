@@ -1859,6 +1859,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '_emscripten_tls_init',
       '_pthread_self',
       '_pthread_testcancel',
+      '_pthread_exit',
     ]
     # Some of these symbols are using by worker.js but otherwise unreferenced.
     # Because emitDCEGraph only considered the main js file, and not worker.js

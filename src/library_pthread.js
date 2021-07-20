@@ -662,9 +662,9 @@ var LibraryPThread = {
     return navigator['hardwareConcurrency'];
   },
     
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__sig: 'iiiii',
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['$spawnThread', 'pthread_self', 'memalign', 'emscripten_sync_run_in_main_thread_4'],
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function(pthread_ptr, attr, start_routine, arg) {
+  __pthread_create_js__sig: 'iiiii',
+  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', 'memalign', 'emscripten_sync_run_in_main_thread_4'],
+  __pthread_create_js: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return {{{ cDefine('EAGAIN') }}};
@@ -957,8 +957,8 @@ var LibraryPThread = {
     }
   },
 
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join__deps: ['_emscripten_do_pthread_join'],
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join: function(thread, status) {
+  __pthread_join_js__deps: ['_emscripten_do_pthread_join'],
+  __pthread_join_js: function(thread, status) {
     return __emscripten_do_pthread_join(thread, status, true);
   },
 
@@ -1012,8 +1012,8 @@ var LibraryPThread = {
     return 0;
   },
 
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_detach__sig: 'vi',
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_detach: function(thread) {
+  __pthread_detach_js__sig: 'vi',
+  __pthread_detach_js: function(thread) {
     if (!thread) {
       err('pthread_detach attempted on a null thread pointer!');
       return ERRNO_CODES.ESRCH;
@@ -1031,16 +1031,8 @@ var LibraryPThread = {
     return wasDetached ? ERRNO_CODES.EINVAL : 0;
   },
 
-  // C11 thread version.
-  // TODO: remove this in favor or compiling musl/src/thread/pthread_detach.c
-#if USE_LSAN
-  thrd_detach: 'emscripten_builtin_pthread_detach',
-#else
-  thrd_detach: 'pthread_detach',
-#endif
-
-  pthread_exit__deps: ['exit'],
-  pthread_exit: function(status) {
+  __pthread_exit_js__deps: ['exit'],
+  __pthread_exit_js: function(status) {
     if (!ENVIRONMENT_IS_PTHREAD) _exit(status);
     else PThread.threadExit(status);
     // pthread_exit is marked noReturn, so we must not return from it.
