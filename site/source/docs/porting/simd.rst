@@ -906,9 +906,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_ceil_ps
      - ✅ wasm_f32x4_ceil
    * - _mm_ceil_sd
-     - ❌ scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_ceil_ss
-     - ❌ scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_cmpeq_epi64
      - ⚠️ emulated with a SIMD cmp+and+shuffle
    * - _mm_cvtepi16_epi32
@@ -952,9 +952,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_floor_ps
      - ✅ wasm_f32x4_floor
    * - _mm_floor_sd
-     - ❌ scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_floor_ss
-     - ❌ scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_insert_epi32
      - ✅ wasm_i32x4_replace_lane
    * - _mm_insert_epi64
@@ -990,13 +990,13 @@ The following table highlights the availability and expected performance of diff
    * - _mm_packus_epi32
      - ✅ wasm_u16x8_narrow_i32x4
    * - _mm_round_pd
-     - 💣 scalarized
+     - ✅ wasm_f64x2_ceil/wasm_f64x2_floor/wasm_f64x2_nearest/wasm_f64x2_trunc
    * - _mm_round_ps
-     - 💣 scalarized
+     - ✅ wasm_f32x4_ceil/wasm_f32x4_floor/wasm_f32x4_nearest/wasm_f32x4_trunc
    * - _mm_round_sd
-     - 💣 scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_round_ss
-     - 💣 scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_stream_load_si128
      - 🟡 wasm_v128_load. VM must guess type. :raw-html:`<br />` Unaligned load on x86 CPUs.
    * - _mm_test_all_ones
