@@ -580,7 +580,6 @@ LibraryManager.library = {
 
     return (date.getTime() / 1000)|0;
   },
-  timelocal: 'mktime',
 
 #if MINIMAL_RUNTIME
   gmtime_r__deps: ['allocateUTF8'],
