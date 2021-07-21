@@ -820,6 +820,9 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
                          if name.endswith('.js')]
       CLOSURE_EXTERNS += BROWSER_EXTERNS
 
+  if settings.DYNCALLS:
+    CLOSURE_EXTERNS += [path_from_root('src', 'closure-externs', 'dyncall-externs.js')]
+
   if settings.MINIMAL_RUNTIME and settings.USE_PTHREADS and not settings.MODULARIZE:
     CLOSURE_EXTERNS += [path_from_root('src', 'minimal_runtime_worker_externs.js')]
 
