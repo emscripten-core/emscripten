@@ -420,3 +420,14 @@ int sem_destroy(sem_t *sem) {
 }
 
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv) {}
+
+static struct pthread __main_pthread;
+
+pthread_t __pthread_self(void) {
+  return &__main_pthread;
+}
+
+__attribute__((constructor))
+static void init_pthread_self(void) {
+  __pthread_self()->locale = &libc.global_locale;
+}
