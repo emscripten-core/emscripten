@@ -2871,6 +2871,10 @@ print("m2 read");
 m2.ccall('myread0','number',[],[]);
 print("m0 read m0");
 m0.ccall('myread0','number',[],[]);
+
+section = "test seek.";
+print("file size");
+m0.ccall('myreadSeekEnd', 'number', [], []);
 ''')
 
     create_file('proxyfs_pre.js', r'''
@@ -2969,6 +2973,18 @@ EMSCRIPTEN_KEEPALIVE int myreade() {
   fclose(in);
   return 0;
 }
+
+EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
+  FILE* in = fopen("/working2/hoge.txt","r");
+
+  fseek(in, 0L, SEEK_END);
+  int fileSize = ftell(in);
+  fseek(in, 0L, SEEK_SET);
+  printf("%d\n", fileSize);
+
+  fclose(in);
+  return 0;
+}
 ''')
 
     self.run_process([EMCC,
@@ -3012,6 +3028,8 @@ EMSCRIPTEN_KEEPALIVE int myreade() {
     self.assertContained(section + ":m1 read:test1", out)
     self.assertContained(section + ":m2 read:test2", out)
     self.assertContained(section + ":m0 read m0:test0_0", out)
+    section = "test seek."
+    self.assertContained(section + ":file size:6", out)
 
   def test_dependency_file(self):
     # Issue 1732: -MMD (and friends) create dependency files that need to be

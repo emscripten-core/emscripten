@@ -199,7 +199,7 @@ mergeInto(LibraryManager.library, {
         } else if (whence === {{{ cDefine('SEEK_END') }}}) {
           if (FS.isFile(stream.node.mode)) {
             try {
-              var stat = stream.node.mount.opts.fs.fstat(stream.nfd);
+              var stat = stream.node.node_ops.getattr(stream.node);
               position += stat.size;
             } catch (e) {
               throw new FS.ErrnoError(ERRNO_CODES[e.code]);
