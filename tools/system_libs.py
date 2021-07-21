@@ -857,7 +857,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=[
           'extras.c',
           'wasi-helpers.c',
-          'emscripten_pthread.c',
           'emscripten_get_heap_size.c',
         ])
 

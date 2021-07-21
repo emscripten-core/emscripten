@@ -967,3 +967,19 @@ void __do_cleanup_push(struct __ptcb *cb) {
 void __do_cleanup_pop(struct __ptcb *cb) {
   __pthread_self()->cancelbuf = cb->__next;
 }
+
+EM_JS(void, initPthreadsJS, (void), {
+  PThread.initRuntime();
+})
+
+// We must initialize the runtime at the proper time, which is after memory is
+// initialized and before any userland global ctors.  We must also keep this
+// function alive so it is always called.
+// This must run before any userland ctors.
+// Note that ASan constructor priority is 50, and we must be higher.
+EMSCRIPTEN_KEEPALIVE
+__attribute__((constructor(48)))
+void __emscripten_pthread_data_constructor(void) {
+  initPthreadsJS();
+  pthread_self()->locale = &libc.global_locale;
+}
