@@ -842,10 +842,10 @@ def get_cflags(options, user_args):
     cflags.append('-fvisibility=default')
 
   if settings.LTO:
-    cflags.append('-flto=' + settings.LTO)
+    if not any(a.startswith('-flto') for a in user_args):
+      cflags.append('-flto=' + settings.LTO)
   else:
-    # With LTO mode these args get passed instead
-    # at link time when the backend runs.
+    # In LTO mode these args get passed instead at link time when the backend runs.
     for a in building.llvm_backend_args():
       cflags += ['-mllvm', a]
 
