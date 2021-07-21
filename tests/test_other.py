@@ -3028,7 +3028,6 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     self.assertContained(section + ":m1 read:test1", out)
     self.assertContained(section + ":m2 read:test2", out)
     self.assertContained(section + ":m0 read m0:test0_0", out)
-
     section = "test seek."
     self.assertContained(section + ":file size:6", out)
 
