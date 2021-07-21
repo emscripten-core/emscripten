@@ -2105,7 +2105,7 @@ var LibraryGLEmulation = {
         enabledAttributesKey |= 1 << attributes[i].name;
       }
 
-      // to prevent using more than 31 bits add another level to the maptree
+      // To prevent using more than 31 bits add another level to the maptree
       // and reset the enabledAttributesKey for the next glemulation state bits
       keyView.next(enabledAttributesKey);
       enabledAttributesKey = 0;
