@@ -1,6 +1,7 @@
 $GetQueue
 $__emscripten_pthread_data_constructor
 $__errno_location
+$__pthread_create
 $__pthread_exit
 $__pthread_mutex_lock
 $__pthread_mutex_trylock
@@ -39,7 +40,6 @@ $emscripten_tls_init
 $free_tls
 $init_mparams
 $main
-$pthread_create
 $sbrk
 $stackAlloc
 $stackRestore
