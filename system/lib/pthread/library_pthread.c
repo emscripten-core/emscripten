@@ -101,16 +101,6 @@ int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr, int prioceiling)
   return EPERM;
 }
 
-int pthread_setcancelstate(int new, int* old) {
-  if (new > 1U)
-    return EINVAL;
-  struct pthread* self = pthread_self();
-  if (old)
-    *old = self->canceldisable;
-  self->canceldisable = new;
-  return 0;
-}
-
 int _pthread_isduecanceled(struct pthread* pthread_ptr) {
   return pthread_ptr->threadStatus == 2 /*canceled*/;
 }
