@@ -67,6 +67,6 @@
 
 #define EM_JS(ret, name, params, ...) _EM_JS(ret, name, name, params, __VA_ARGS__)
 
-#define EM_JS_ASYNC(ret, name, params, ...) _EM_JS(ret, name, asyncjs__##name, params, {          \
+#define EM_ASYNC_JS(ret, name, params, ...) _EM_JS(ret, name, asyncjs__##name, params, {          \
   return Asyncify.handleAsync(async () => __VA_ARGS__);                                            \
 })
