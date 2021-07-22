@@ -1842,7 +1842,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '___emscripten_pthread_data_constructor',
       '___pthread_tsd_run_dtors',
       '__emscripten_call_on_thread',
-      '__emscripten_do_dispatch_to_thread',
       '__emscripten_main_thread_futex',
       '__emscripten_thread_init',
       '_emscripten_current_thread_process_queued_calls',

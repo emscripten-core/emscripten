@@ -834,9 +834,20 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
   return q;
 }
 
-int _emscripten_call_on_thread(
-  int forceAsync,
-  pthread_t targetThread, EM_FUNC_SIGNATURE sig, void* func_ptr, void* satellite, ...) {
+typedef struct DispatchToThreadArgs {
+  pthread_t target_thread;
+  em_queued_call* q;
+} DispatchToThreadArgs;
+
+static void dispatch_to_thread_helper(void* user_data) {
+  DispatchToThreadArgs* args = (DispatchToThreadArgs*)user_data;
+  _emscripten_do_dispatch_to_thread(args->target_thread, args->q);
+  free(user_data);
+}
+
+int _emscripten_call_on_thread(int forceAsync, pthread_t targetThread, EM_FUNC_SIGNATURE sig,
+    void* func_ptr, void* satellite, ...) {
+
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call* q = em_queued_call_malloc();
   assert(q);
@@ -882,11 +893,10 @@ int _emscripten_call_on_thread(
   // The called function will not be async if we are on the same thread; force
   // async if the user asked for that.
   if (forceAsync) {
-    EM_ASM({
-      setTimeout(function() {
-        __emscripten_do_dispatch_to_thread($0, $1);
-      }, 0);
-    }, targetThread, q);
+    DispatchToThreadArgs* args = malloc(sizeof(DispatchToThreadArgs));
+    args->target_thread = targetThread;
+    args->q = q;
+    emscripten_set_timeout(dispatch_to_thread_helper, 0, args);
     return 0;
   } else {
     return _emscripten_do_dispatch_to_thread(targetThread, q);
