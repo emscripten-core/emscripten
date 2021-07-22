@@ -19,7 +19,9 @@ mergeInto(LibraryManager.library, {
     createPipe: function () {
       var pipe = {
         buckets: [],
-        refcnt : 2
+        // refcnt 2 because pipe has a read end and a write end. We need to be
+        // able to read from the read end after write end is closed.
+        refcnt : 2,
       };
 
       pipe.buckets.push({
