@@ -1636,6 +1636,14 @@ int f() {
         'side.wasm',
       ])
 
+  def test_dylink_pthread_warning(self):
+    err = self.expect_fail([EMCC, '-Werror', '-sMAIN_MODULE', '-sUSE_PTHREADS', test_file('hello_world.c')])
+    self.assertContained('error: -s MAIN_MODULE + pthreads is experimental', err)
+
+  def test_dylink_pthread_longjmp(self):
+    err = self.expect_fail([EMCC, '-sMAIN_MODULE', '-sUSE_PTHREADS', '-sSUPPORT_LONGJMP', test_file('hello_world.c')])
+    self.assertContained('SUPPORT_LONGJMP is not compatible with pthreads + dynamic linking', err)
+
   def test_dylink_no_autoload(self):
     create_file('main.c', r'''
       #include <stdio.h>
