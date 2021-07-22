@@ -747,7 +747,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         # TODO: No longer exists in the latest musl version.
         '__futex.c',
         # TODO: Could be supported in the upcoming musl upgrade
-        'lock_ptc.c', 'pthread_getattr_np.c',
+        'lock_ptc.c',
         # 'pthread_setattr_default_np.c',
         # TODO: These could be moved away from JS in the upcoming musl upgrade.
         'pthread_cancel.c', 'pthread_detach.c',
@@ -857,7 +857,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=[
           'extras.c',
           'wasi-helpers.c',
-          'emscripten_pthread.c',
           'emscripten_get_heap_size.c',
         ])
 

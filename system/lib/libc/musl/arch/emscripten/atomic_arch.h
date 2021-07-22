@@ -2,8 +2,6 @@
 #define _INTERNAL_ATOMIC_H
 
 #include <stdint.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
 
 #define a_clz_l __builtin_clz
 #define a_ctz_l __builtin_ctz
@@ -107,7 +105,7 @@ static inline void a_spin()
 #define a_crash a_crash
 static inline void a_crash()
 {
-  EM_ASM( abort() );
+  __builtin_trap();
 }
 
 #endif

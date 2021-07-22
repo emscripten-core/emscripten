@@ -1838,7 +1838,8 @@ int f() {
       }
 
       int main() {
-        printf("%p", SDL_GL_GetProcAddress("glGenTextures")); // pull in gl proc stuff, avoid warnings on emulation funcs
+        // pull in gl proc stuff, avoid warnings on emulation funcs
+        printf("%p", SDL_GL_GetProcAddress("glGenTextures"));
         something();
         elsey();
         return 0;
@@ -1874,6 +1875,22 @@ int f() {
         else:
           self.assertNotEqual(proc.returncode, 0)
           self.assertFalse(os.path.exists('a.out.js'))
+
+  def test_undefined_data_symbols(self):
+    create_file('main.c', r'''
+    extern int foo;
+
+    int main() {
+      return foo;
+    }
+    ''')
+    output = self.expect_fail([EMCC, 'main.c'])
+    self.assertContained('undefined symbol: foo', output)
+
+    # With -Wl,--unresolved-symbols=ignore-all or -Wl,--allow-undefined
+    # the linker should ignore any undefined data symbols.
+    self.run_process([EMCC, 'main.c', '-Wl,--unresolved-symbols=ignore-all'])
+    self.run_process([EMCC, 'main.c', '-Wl,--allow-undefined'])
 
   def test_GetProcAddress_LEGACY_GL_EMULATION(self):
     # without legacy gl emulation, getting a proc from there should fail
@@ -2871,6 +2888,10 @@ print("m2 read");
 m2.ccall('myread0','number',[],[]);
 print("m0 read m0");
 m0.ccall('myread0','number',[],[]);
+
+section = "test seek.";
+print("file size");
+m0.ccall('myreadSeekEnd', 'number', [], []);
 ''')
 
     create_file('proxyfs_pre.js', r'''
@@ -2969,6 +2990,18 @@ EMSCRIPTEN_KEEPALIVE int myreade() {
   fclose(in);
   return 0;
 }
+
+EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
+  FILE* in = fopen("/working2/hoge.txt","r");
+
+  fseek(in, 0L, SEEK_END);
+  int fileSize = ftell(in);
+  fseek(in, 0L, SEEK_SET);
+  printf("%d\n", fileSize);
+
+  fclose(in);
+  return 0;
+}
 ''')
 
     self.run_process([EMCC,
@@ -3012,6 +3045,8 @@ EMSCRIPTEN_KEEPALIVE int myreade() {
     self.assertContained(section + ":m1 read:test1", out)
     self.assertContained(section + ":m2 read:test2", out)
     self.assertContained(section + ":m0 read m0:test0_0", out)
+    section = "test seek."
+    self.assertContained(section + ":file size:6", out)
 
   def test_dependency_file(self):
     # Issue 1732: -MMD (and friends) create dependency files that need to be
@@ -9037,7 +9072,7 @@ int main () {
     # In strict mode C++ programs fail to link unless run with `em++`.
     self.run_process([EMXX, '-sSTRICT', test_file('hello_libcxx.cpp')])
     err = self.expect_fail([EMCC, '-sSTRICT', test_file('hello_libcxx.cpp')])
-    self.assertContained('error: undefined symbol:', err)
+    self.assertContained('undefined symbol: std::__2::cout', err)
 
   def test_strict_mode_override(self):
     create_file('empty.c', '')

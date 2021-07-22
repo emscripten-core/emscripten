@@ -109,7 +109,10 @@ class Cache:
     # if relevant, use a subdir of the cache
     subdir = []
     if settings.LTO:
-      subdir.append('lto')
+      if settings.LTO == 'thin':
+        subdir.append('thinlto')
+      else:
+        subdir.append('lto')
     if settings.RELOCATABLE:
       subdir.append('pic')
     if subdir:

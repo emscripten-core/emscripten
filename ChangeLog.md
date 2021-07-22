@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 2.0.26
 ------
+- Undefined data symbols (in static executables) are no longer silently ignored
+  at link time.  The previous behaviour (which was to silently give all
+  undefined data symbols address zero, which could lead to bugs)
+  can be enabled by passing either `-Wl,--allow-undefined` or
+  `-Wl,--unresolved-symbols=ignore-all`.
 - The alignment of `long double`, which is a 128-bit floating-point value
   implemented in software, is reduced from 16 to 8. The lower alignment allows
   `max_align_t` to properly match the alignment we use for malloc, which is 8
@@ -38,6 +43,12 @@ See docs/process.md for more on how version tagging works.
   `emscripten_dlopen()` declared in `emscropten/emscripten.h`.  See
   `docs/api_reference/emscripten.h.rst` (or the online version) for more
   details.
+- Constructors, functions and methods bound with Embind can now be `await`ed.
+  When Asyncify is used somewhere in the callstack, previously Embind would
+  return `0` / `null` / `false` / instance with a NULL pointer, making it
+  impossible to wait for the function to actually finish and retrieve its
+  result. Now in those cases it will return a `Promise` instead that will
+  resolve with the function's return value upon completion. (#11890)
 
 2.0.25 - 06/30/2021
 -------------------

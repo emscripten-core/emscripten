@@ -14,8 +14,10 @@ $_emscripten_call_on_thread
 $_emscripten_do_dispatch_to_thread
 $_emscripten_thread_init
 $_main_thread
+$_pthread_isduecanceled
 $a_cas
 $add
+$dispatch_to_thread_helper
 $dispose_chunk
 $dlfree
 $dlmalloc

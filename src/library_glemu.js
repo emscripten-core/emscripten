@@ -79,6 +79,11 @@ var LibraryGLEmulation = {
     lightPosition: [],
     // TODO attenuation modes of lights
 
+    // GL_ALPHA_TEST support
+    alphaTestEnabled: false,
+    alphaTestFunc: 0x207, // GL_ALWAYS
+    alphaTestRef: 0.0,
+
     // GL_POINTS support.
     pointSize: 1.0,
 
@@ -217,6 +222,12 @@ var LibraryGLEmulation = {
             GLEmulation.lightingEnabled = true;
           }
           return;
+        } else if (cap == 0xBC0 /* GL_ALPHA_TEST */) {
+          if (GLEmulation.alphaTestEnabled != true) {
+            GLImmediate.currentRenderer = null; // alpha testing is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.alphaTestEnabled = true;
+          }
+          return;
         } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glEnableClientState
@@ -257,8 +268,14 @@ var LibraryGLEmulation = {
           return;
         } else if (cap == 0xB50 /* GL_LIGHTING */) {
           if (GLEmulation.lightingEnabled != false) {
-            GLImmediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.lightingEnabled = false;
+          }
+          return;
+        } else if (cap == 0xBC0 /* GL_ALPHA_TEST */) {
+          if (GLEmulation.alphaTestEnabled != false) {
+            GLImmediate.currentRenderer = null; // alpha testing is part of the FFP shader state, we must re-lookup the renderer to use.
+            GLEmulation.alphaTestEnabled = false;
           }
           return;
         } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
@@ -287,6 +304,8 @@ var LibraryGLEmulation = {
           return GLEmulation.lightEnabled[lightId] ? 1 : 0;
         } else if (cap == 0xB50 /* GL_LIGHTING */) {
           return GLEmulation.lightingEnabled ? 1 : 0;
+        } else if (cap == 0xBC0 /* GL_ALPHA_TEST */) {
+          return GLEmulation.alphaTestEnabled ? 1 : 0;
         } else if (!(cap in validCapabilities)) {
           return 0;
         }
@@ -377,6 +396,10 @@ var LibraryGLEmulation = {
           }
           case 0x0BA0: { // GL_MATRIX_MODE
             {{{ makeSetValue('params', '0', 'GLImmediate.currentMatrix + 0x1700', 'i32') }}};
+            return;
+          }
+          case 0x0BC1: { // GL_ALPHA_TEST_FUNC
+            {{{ makeSetValue('params', '0', 'GLEmulation.alphaTestFunc', 'i32') }}};
             return;
           }
         }
@@ -667,6 +690,8 @@ var LibraryGLEmulation = {
           {{{ makeSetValue('params', '4', 'GLEmulation.lightModelAmbient[1]', 'float') }}};
           {{{ makeSetValue('params', '8', 'GLEmulation.lightModelAmbient[2]', 'float') }}};
           {{{ makeSetValue('params', '12', 'GLEmulation.lightModelAmbient[3]', 'float') }}};
+        } else if (pname == 0xBC2) { // GL_ALPHA_TEST_REF
+          {{{ makeSetValue('params', '0', 'GLEmulation.alphaTestRef', 'float') }}};
         } else {
           glGetFloatv(pname, params);
         }
@@ -2080,6 +2105,11 @@ var LibraryGLEmulation = {
         enabledAttributesKey |= 1 << attributes[i].name;
       }
 
+      // To prevent using more than 31 bits add another level to the maptree
+      // and reset the enabledAttributesKey for the next glemulation state bits
+      keyView.next(enabledAttributesKey);
+      enabledAttributesKey = 0;
+
       // By fog state:
       var fogParam = 0;
       if (GLEmulation.fogEnabled) {
@@ -2107,6 +2137,9 @@ var LibraryGLEmulation = {
       for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
         enabledAttributesKey = (enabledAttributesKey << 1) | (GLEmulation.lightingEnabled ? GLEmulation.lightEnabled[lightId] : 0);
       }
+
+      // By alpha testing mode
+      enabledAttributesKey = (enabledAttributesKey << 3) | (GLEmulation.alphaTestEnabled ? (GLEmulation.alphaTestFunc - 0x200) : 0x7);
 
       // By drawing mode:
       enabledAttributesKey = (enabledAttributesKey << 1) | (GLImmediate.mode == GLctx.POINTS ? 1 : 0);
@@ -2337,6 +2370,38 @@ var LibraryGLEmulation = {
               fogPass = 'gl_FragColor = vec4(mix(u_fogColor.rgb, gl_FragColor.rgb, ffog(v_fogFragCoord)), gl_FragColor.a);\n';
             }
 
+            var fsAlphaTestDefs = '';
+            var fsAlphaTestPass = '';
+            if (GLEmulation.alphaTestEnabled) {
+              fsAlphaTestDefs = 'uniform float u_alphaTestRef;';
+              switch (GLEmulation.alphaTestFunc) {
+                case 0x200: // GL_NEVER
+                  fsAlphaTestPass = 'discard;';
+                  break;
+                case 0x201: // GL_LESS
+                  fsAlphaTestPass = 'if( !(gl_FragColor.a < u_alphaTestRef) ) { discard; }';
+                  break;
+                case 0x202: // GL_EQUAL
+                  fsAlphaTestPass = 'if( !(gl_FragColor.a == u_alphaTestRef) ) { discard; }';
+                  break;
+                case 0x203: // GL_LEQUAL
+                  fsAlphaTestPass = 'if( !(gl_FragColor.a <= u_alphaTestRef) ) { discard; }';
+                  break;
+                case 0x204: // GL_GREATER
+                  fsAlphaTestPass = 'if( !(gl_FragColor.a > u_alphaTestRef) ) { discard; }';
+                  break;
+                case 0x205: // GL_NOTEQUAL
+                  fsAlphaTestPass = 'if( !(gl_FragColor.a != u_alphaTestRef) ) { discard; }';
+                  break;
+                case 0x206: // GL_GEQUAL
+                  fsAlphaTestPass = 'if( !(gl_FragColor.a >= u_alphaTestRef) ) { discard; }';
+                  break;
+                case 0x207: // GL_ALWAYS
+                  fsAlphaTestPass = '';
+                  break;
+              }
+            }
+
             var fsSource = [
               'precision mediump float;',
               texUnitVaryingList,
@@ -2344,11 +2409,13 @@ var LibraryGLEmulation = {
               'varying vec4 v_color;',
               fogHeaderIfNeeded,
               fsClipPlaneDefs,
+              fsAlphaTestDefs,
               'void main()',
               '{',
               fsClipPlanePass,
               fsTexEnvPass,
               fogPass,
+              fsAlphaTestPass,
               '}',
               ''
             ].join("\n").replace(/\n\n+/g, '\n');
@@ -2465,6 +2532,9 @@ var LibraryGLEmulation = {
             this.lightSpecularLocation[lightId] = GLctx.getUniformLocation(this.program, 'u_lightSpecular' + lightId);
             this.lightPositionLocation[lightId] = GLctx.getUniformLocation(this.program, 'u_lightPosition' + lightId);
           }
+
+          this.hasAlphaTest = GLEmulation.alphaTestEnabled;
+          this.alphaTestRefLocation = GLctx.getUniformLocation(this.program, 'u_alphaTestRef');
 
         },
 
@@ -2649,6 +2719,10 @@ var LibraryGLEmulation = {
             }
           }
 
+          if (this.hasAlphaTest) {
+            if (this.alphaTestRefLocation) GLctx.uniform1f(this.alphaTestRefLocation, GLEmulation.alphaTestRef);
+          }
+
           if (GLImmediate.mode == GLctx.POINTS) {
             if (this.pointSizeLocation) {
               GLctx.uniform1f(this.pointSizeLocation, GLEmulation.pointSize);
@@ -2795,7 +2869,8 @@ var LibraryGLEmulation = {
 
       // User can override the maximum number of texture units that we emulate. Using fewer texture units increases runtime performance
       // slightly, so it is advantageous to choose as small value as needed.
-      GLImmediate.MAX_TEXTURES = Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || GLctx.getParameter(GLctx.MAX_TEXTURE_IMAGE_UNITS);
+      // Limit to a maximum of 28 to not overflow the state bits used for renderer caching (31 bits = 3 attributes + 28 texture units).
+      GLImmediate.MAX_TEXTURES = Math.max(Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || GLctx.getParameter(GLctx.MAX_TEXTURE_IMAGE_UNITS), 28);
 
       GLImmediate.TexEnvJIT.init(GLctx, GLImmediate.MAX_TEXTURES);
 
@@ -3306,7 +3381,29 @@ var LibraryGLEmulation = {
 
   glPolygonMode: function(){}, // TODO
 
-  glAlphaFunc: function(){}, // TODO
+  glAlphaFunc: function(func, ref) {
+    switch(func) {
+      case 0x200: // GL_NEVER
+      case 0x201: // GL_LESS
+      case 0x202: // GL_EQUAL
+      case 0x203: // GL_LEQUAL
+      case 0x204: // GL_GREATER
+      case 0x205: // GL_NOTEQUAL
+      case 0x206: // GL_GEQUAL
+      case 0x207: // GL_ALWAYS
+        GLEmulation.alphaTestRef = ref;
+        if (GLEmulation.alphaTestFunc != func) {
+          GLEmulation.alphaTestFunc = func;
+          GLImmediate.currentRenderer = null; // alpha test mode is part of the FFP shader state, we must re-lookup the renderer to use.
+        }
+        break;
+      default: // invalid value provided
+#if GL_ASSERTIONS
+        err('glAlphaFunc: Invalid alpha comparison function 0x' + func.toString(16) + ' !');
+#endif
+        break;
+    }
+  },
 
   glNormal3f: function(x, y, z) {
 #if ASSERTIONS
@@ -3319,6 +3416,11 @@ var LibraryGLEmulation = {
     assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
 #endif
     GLImmediate.addRendererComponent(GLImmediate.NORMAL, 3, GLctx.FLOAT);
+  },
+
+  glNormal3fv__deps: ['glNormal3f'],
+  glNormal3fv: function(p) {
+    _glNormal3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
   },
 
 

@@ -445,6 +445,8 @@ LibraryManager.library = {
   // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
   // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
   abort__sig: 'v',
+  // Proxy synchronously, which will have the effect of halting the program
+  // and killing all threads, including this one.
   abort__proxy: 'sync',
   abort: function() {
 #if MINIMAL_RUNTIME
@@ -696,7 +698,6 @@ LibraryManager.library = {
     stackRestore(stack);
     return rv;
   },
-  __ctime_r: 'ctime_r',
 
   dysize: function(year) {
     var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));

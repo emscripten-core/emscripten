@@ -148,6 +148,16 @@ mergeInto(LibraryManager.library, {
       }
     },
 
+    whenDone: function() {
+#if ASSERTIONS
+      assert(Asyncify.currData, 'Tried to wait for an async operation when none is in progress.');
+      assert(!Asyncify.asyncFinalizers.length, 'Cannot have multiple async operations in flight at once');
+#endif
+      return new Promise(function(resolve) {
+        Asyncify.asyncFinalizers.push(resolve);
+      });
+    },
+
     allocateData: function() {
       // An asyncify data structure has three fields:
       //  0  current stack pos
