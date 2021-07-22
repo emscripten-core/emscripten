@@ -623,10 +623,18 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     wat = self.get_wasm_text(wasm)
     return ('(export "%s"' % name) in wat
 
-  def run_js(self, filename, engine=None, args=[], output_nicerizer=None, assert_returncode=0):
+  def run_js(self, filename, engine=None, args=[],
+             output_nicerizer=None,
+             assert_returncode=0,
+             interleaved_output=True):
     # use files, as PIPE can get too full and hang us
-    stdout = self.in_dir('stdout')
-    stderr = self.in_dir('stderr')
+    stdout_file = self.in_dir('stdout')
+    stderr_file = None
+    if interleaved_output:
+      stderr = STDOUT
+    else:
+      stderr_file = self.in_dir('stderr')
+      stderr = open(stderr_file, 'w')
     error = None
     if not engine:
       engine = self.js_engines[0]
@@ -638,8 +646,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       print(f"Running '{filename}' under '{shared.shlex_join(engine)}'")
     try:
       jsrun.run_js(filename, engine, args,
-                   stdout=open(stdout, 'w'),
-                   stderr=open(stderr, 'w'),
+                   stdout=open(stdout_file, 'w'),
+                   stderr=stderr,
                    assert_returncode=assert_returncode)
     except subprocess.CalledProcessError as e:
       error = e
@@ -648,17 +656,20 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if not filename.endswith('.wasm'):
       self.assertEqual(line_endings.check_line_endings(filename), 0)
 
-    out = read_file(stdout)
-    err = read_file(stderr)
+    ret = read_file(stdout_file)
+    if not interleaved_output:
+      ret += read_file(stderr_file)
     if output_nicerizer:
-      ret = output_nicerizer(out, err)
-    else:
-      ret = out + err
+      ret = output_nicerizer(ret)
     if error or EMTEST_VERBOSE:
       ret = limit_size(ret)
       print('-- begin program output --')
-      print(ret, end='')
+      print(read_file(stdout_file), end='')
       print('-- end program output --')
+      if not interleaved_output:
+        print('-- begin program stderr --')
+        print(read_file(stderr_file), end='')
+        print('-- end program stderr --')
       if error:
         if assert_returncode == NON_ZERO:
           self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
@@ -1009,7 +1020,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      js_engines=None, libraries=[],
                      includes=[],
                      assert_returncode=0, assert_identical=False, assert_all=False,
-                     check_for_error=True, force_c=False, emcc_args=[]):
+                     check_for_error=True, force_c=False, emcc_args=[],
+                     interleaved_output=True):
     logger.debug(f'_build_and_run: {filename}')
 
     if no_build:
@@ -1042,7 +1054,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if len(engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
-      js_output = self.run_js(js_file, engine, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
+      js_output = self.run_js(js_file, engine, args,
+                              output_nicerizer=output_nicerizer,
+                              assert_returncode=assert_returncode,
+                              interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
         try:
