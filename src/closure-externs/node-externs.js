@@ -93,7 +93,7 @@ Buffer.from = function(arrayBuffer, byteOffset, length) {};
  * @see https://github.com/emscripten-core/emscripten/issues/14705
  * @enum {number}
  */
-ERRNO_CODES;
+var ERRNO_CODES;
 ERRNO_CODES.EPERM;
 ERRNO_CODES.ENOENT;
 ERRNO_CODES.ESRCH;
