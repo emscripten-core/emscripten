@@ -217,7 +217,7 @@ mergeInto(LibraryManager.library, {
       close: function (stream) {
         var pipe = stream.node.pipe;
         pipe.refcnt --;
-        if(pipe.refcnt === 0){
+        if (pipe.refcnt === 0){
           pipe.buckets = null;
         }
       }
