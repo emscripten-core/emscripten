@@ -11,5 +11,5 @@
 int main() {
   __m128 a = _mm_set_ps(1.0f, 2.0f, 3.0f, 4.0f);
   __m128 b = _mm_rcp_ps(a);
-  return (int)wasm_f32x4_extract_lane(b, 0);
+  return (int)wasm_f32x4_extract_lane((v128_t)b, 0);
 }
