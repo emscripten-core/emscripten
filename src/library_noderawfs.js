@@ -82,11 +82,11 @@ mergeInto(LibraryManager.library, {
       } else if (whence === {{{ cDefine('SEEK_END') }}}) {
         position += fs.fstatSync(stream.nfd).size;
       } else if (whence !== {{{ cDefine('SEEK_SET') }}}) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
 
       if (position < 0) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       stream.position = position;
       return position;
@@ -120,7 +120,7 @@ mergeInto(LibraryManager.library, {
       return bytesWritten;
     },
     allocate: function() {
-      throw new FS.ErrnoError(ERRNO_CODES.EOPNOTSUPP);
+      throw new FS.ErrnoError({{{ cDefine('EOPNOTSUPP') }}});
     },
     mmap: function(stream, address, length, position, prot, flags) {
       if (stream.stream_ops) {
@@ -153,7 +153,7 @@ mergeInto(LibraryManager.library, {
       return 0;
     },
     ioctl: function() {
-      throw new FS.ErrnoError(ERRNO_CODES.ENOTTY);
+      throw new FS.ErrnoError({{{ cDefine('ENOTTY') }}});
     }
   }
 });
