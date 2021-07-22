@@ -827,6 +827,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return shared.run_process(cmd, check=check, **args)
     except subprocess.CalledProcessError as e:
       if check and e.returncode != 0:
+        print(e.stdout)
+        print(e.stderr)
         self.fail('subprocess exited with non-zero return code(%d): `%s`' %
                   (e.returncode, shared.shlex_join(cmd)))
 

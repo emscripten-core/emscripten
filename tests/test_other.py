@@ -1838,7 +1838,8 @@ int f() {
       }
 
       int main() {
-        printf("%p", SDL_GL_GetProcAddress("glGenTextures")); // pull in gl proc stuff, avoid warnings on emulation funcs
+        // pull in gl proc stuff, avoid warnings on emulation funcs
+        printf("%p", SDL_GL_GetProcAddress("glGenTextures"));
         something();
         elsey();
         return 0;
@@ -1874,6 +1875,22 @@ int f() {
         else:
           self.assertNotEqual(proc.returncode, 0)
           self.assertFalse(os.path.exists('a.out.js'))
+
+  def test_undefined_data_symbols(self):
+    create_file('main.c', r'''
+    extern int foo;
+
+    int main() {
+      return foo;
+    }
+    ''')
+    output = self.expect_fail([EMCC, 'main.c'])
+    self.assertContained('undefined symbol: foo', output)
+
+    # With -Wl,--unresolved-symbols=ignore-all or -Wl,--allow-undefined
+    # the linker should ignore any undefined data symbols.
+    self.run_process([EMCC, 'main.c', '-Wl,--unresolved-symbols=ignore-all'])
+    self.run_process([EMCC, 'main.c', '-Wl,--allow-undefined'])
 
   def test_GetProcAddress_LEGACY_GL_EMULATION(self):
     # without legacy gl emulation, getting a proc from there should fail
@@ -9055,7 +9072,7 @@ int main () {
     # In strict mode C++ programs fail to link unless run with `em++`.
     self.run_process([EMXX, '-sSTRICT', test_file('hello_libcxx.cpp')])
     err = self.expect_fail([EMCC, '-sSTRICT', test_file('hello_libcxx.cpp')])
-    self.assertContained('error: undefined symbol:', err)
+    self.assertContained('undefined symbol: std::__2::cout', err)
 
   def test_strict_mode_override(self):
     create_file('empty.c', '')

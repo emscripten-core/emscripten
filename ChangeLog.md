@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 2.0.26
 ------
+- Undefined data symbols (in static executables) are no longer silently ignored
+  at link time.  The previous behaviour (which was to silently give all
+  undefined data symbols address zero, which could lead to bugs)
+  can be enabled by passing either `-Wl,--allow-undefined` or
+  `-Wl,--unresolved-symbols=ignore-all`.
 - The alignment of `long double`, which is a 128-bit floating-point value
   implemented in software, is reduced from 16 to 8. The lower alignment allows
   `max_align_t` to properly match the alignment we use for malloc, which is 8
