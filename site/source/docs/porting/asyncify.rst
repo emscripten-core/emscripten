@@ -168,7 +168,7 @@ directly with ``EM_JS`` and ``Asyncify.handleAsync`` instead:
       });
     });
 
-When using this form, compiler doesn't statically know that ``do_fetch`` is
+When using this form, the compiler doesn't statically know that ``do_fetch`` is
 asynchronous anymore. Instead, you must tell the compiler that ``do_fetch()``
 can do an asynchronous operation using ``ASYNCIFY_IMPORTS``, otherwise it won't
 instrument the code to allow pausing and resuming (see more details later down):
@@ -195,9 +195,9 @@ code will resume:
       });
     });
 
-Note that when using this form, you can't return value from the function itself.
+Note that when using this form, you can't return a value from the function itself.
 Instead, you need to pass it as an argument to the ``wakeUp`` callback and
-propagate it by returning result of ``Asyncify.handleSleep`` in ``do_fetch``
+propagate it by returning the result of ``Asyncify.handleSleep`` in ``do_fetch``
 itself.
 
 More on ``ASYNCIFY_IMPORTS``
