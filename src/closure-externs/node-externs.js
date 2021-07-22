@@ -91,6 +91,7 @@ Buffer.from = function(arrayBuffer, byteOffset, length) {};
 /**
  * nodefs may use the error codes fullname at runtime, so we need to preserve them
  * @see https://github.com/emscripten-core/emscripten/issues/14705
+ * @suppress {duplicate}
  * @enum {number}
  */
 var ERRNO_CODES;
