@@ -155,17 +155,23 @@ _mm_maskload_ps(const float *__mem_addr, __m128i __mask)
 static __inline__ void __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_maskstore_pd(double *__mem_addr, __m128i __mask, __m128d __a)
 {
-  if ((wasm_i64x2_extract_lane(__mask, 0) & 0x8000000000000000ull) != 0) __mem_addr[0] = wasm_f64x2_extract_lane(__a, 0);
-  if ((wasm_i64x2_extract_lane(__mask, 1) & 0x8000000000000000ull) != 0) __mem_addr[1] = wasm_f64x2_extract_lane(__a, 1);
+  if ((wasm_i64x2_extract_lane(__mask, 0) & 0x8000000000000000ull) != 0)
+    __mem_addr[0] = wasm_f64x2_extract_lane((v128_t)__a, 0);
+  if ((wasm_i64x2_extract_lane(__mask, 1) & 0x8000000000000000ull) != 0)
+    __mem_addr[1] = wasm_f64x2_extract_lane((v128_t)__a, 1);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_maskstore_ps(float *__mem_addr, __m128i __mask, __m128 __a)
 {
-  if ((wasm_i32x4_extract_lane(__mask, 0) & 0x80000000ull) != 0) __mem_addr[0] = wasm_f32x4_extract_lane(__a, 0);
-  if ((wasm_i32x4_extract_lane(__mask, 1) & 0x80000000ull) != 0) __mem_addr[1] = wasm_f32x4_extract_lane(__a, 1);
-  if ((wasm_i32x4_extract_lane(__mask, 2) & 0x80000000ull) != 0) __mem_addr[2] = wasm_f32x4_extract_lane(__a, 2);
-  if ((wasm_i32x4_extract_lane(__mask, 3) & 0x80000000ull) != 0) __mem_addr[3] = wasm_f32x4_extract_lane(__a, 3);
+  if ((wasm_i32x4_extract_lane(__mask, 0) & 0x80000000ull) != 0)
+    __mem_addr[0] = wasm_f32x4_extract_lane((v128_t)__a, 0);
+  if ((wasm_i32x4_extract_lane(__mask, 1) & 0x80000000ull) != 0)
+    __mem_addr[1] = wasm_f32x4_extract_lane((v128_t)__a, 1);
+  if ((wasm_i32x4_extract_lane(__mask, 2) & 0x80000000ull) != 0)
+    __mem_addr[2] = wasm_f32x4_extract_lane((v128_t)__a, 2);
+  if ((wasm_i32x4_extract_lane(__mask, 3) & 0x80000000ull) != 0)
+    __mem_addr[3] = wasm_f32x4_extract_lane((v128_t)__a, 3);
 }
 
 #define _mm_permute_pd(__a, __imm) __extension__ ({ \
@@ -181,18 +187,17 @@ static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_permutevar_pd(__m128d __a, __m128d __b)
 {
   return (__m128d)wasm_f64x2_make(
-      ((__f64x2)__a)[(wasm_i64x2_extract_lane(__b, 0) >> 1) & 1],
-      ((__f64x2)__a)[(wasm_i64x2_extract_lane(__b, 1) >> 1) & 1]);
+    ((__f64x2)__a)[(wasm_i64x2_extract_lane((v128_t)__b, 0) >> 1) & 1],
+    ((__f64x2)__a)[(wasm_i64x2_extract_lane((v128_t)__b, 1) >> 1) & 1]);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_permutevar_ps(__m128 __a, __m128 __b)
 {
-  return (__m128)wasm_f32x4_make(
-      ((__f32x4)__a)[wasm_i32x4_extract_lane(__b, 0) & 3],
-      ((__f32x4)__a)[wasm_i32x4_extract_lane(__b, 1) & 3],
-      ((__f32x4)__a)[wasm_i32x4_extract_lane(__b, 2) & 3],
-      ((__f32x4)__a)[wasm_i32x4_extract_lane(__b, 3) & 3]);
+  return (__m128)wasm_f32x4_make(((__f32x4)__a)[wasm_i32x4_extract_lane((v128_t)__b, 0) & 3],
+    ((__f32x4)__a)[wasm_i32x4_extract_lane((v128_t)__b, 1) & 3],
+    ((__f32x4)__a)[wasm_i32x4_extract_lane((v128_t)__b, 2) & 3],
+    ((__f32x4)__a)[wasm_i32x4_extract_lane((v128_t)__b, 3) & 3]);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
