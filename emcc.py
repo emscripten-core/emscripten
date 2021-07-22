@@ -102,7 +102,7 @@ DEFAULT_ASYNCIFY_IMPORTS = [
   'emscripten_scan_registers', 'emscripten_lazy_load_code',
   'emscripten_fiber_swap',
   'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '_emval_await',
-  'dlopen',
+  'dlopen', 'asyncjs__*'
 ]
 
 # Target options

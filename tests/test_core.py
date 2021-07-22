@@ -8560,6 +8560,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += args
     self.do_core_test('embind_lib_with_asyncify.cpp')
 
+  @no_asan('asyncify stack operations confuse asan')
+  def test_em_js_async(self):
+    self.uses_es6 = True
+    self.emcc_args += ['-s', 'ASYNCIFY', '--closure=1', '-Os']
+    self.do_core_test('test_em_js_async.c')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
