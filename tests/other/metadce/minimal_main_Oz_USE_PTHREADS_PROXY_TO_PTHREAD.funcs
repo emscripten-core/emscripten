@@ -17,6 +17,7 @@ $_main_thread
 $_pthread_isduecanceled
 $a_cas
 $add
+$dispatch_to_thread_helper
 $dispose_chunk
 $dlfree
 $dlmalloc
