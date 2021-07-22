@@ -7810,9 +7810,6 @@ end
   def test_fd_closed(self):
     self.do_other_test('test_fd_closed.cpp')
 
-  def test_fd_pipe(self):
-    self.do_other_test('test_fd_pipe.c')
-
   def test_fflush(self):
     # fflush without the full filesystem won't quite work
     self.do_other_test('test_fflush.cpp')

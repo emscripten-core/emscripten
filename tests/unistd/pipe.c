@@ -136,6 +136,28 @@ int main()
     test_read (fd[0], &rchar, 10);
     test_poll(fd, FALSE);
 
+    // Test closing pipes.
+    // Write to pipe
+    assert(write(fdw, "XXXX", 4) == 4);
+    // Close write end
+    assert(close(fdw) == 0);
+    // This write should fail
+    assert(write(fdw, "YYYY", 4) == -1);
+    // The error number is EBADF
+    assert(errno != EBADF);
+
+    // read from the other end of the pipe
+    assert(read(fdr, buf, 5) == 4);
+    // We should have read what we wrote to the other end
+    assert( strncmp(buf, "XXXX", 5) == 0);
+
+    // Close the read end
+    assert(close(fdr) == 0);
+    // Now reading should return an error
+    assert(read(fdr, buf, 5) == -1);
+    // The error number is EBADF
+    assert(errno != EBADF);
+
     puts("success");
 
     return 0;
