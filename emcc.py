@@ -892,6 +892,17 @@ def get_file_suffix(filename):
   return ''
 
 
+def get_library_basename(filename):
+  """Similar to get_file_suffix this strips off all numeric suffixes and then
+  then final non-numeric one.  For example for 'libz.so.1.2.8' returns 'libz'"""
+  filename = os.path.basename(filename)
+  while filename:
+    filename, suffix = os.path.splitext(filename)
+    # Keep stipping suffixes until we strip a non-numeric one.
+    if not suffix[1:].isdigit():
+      return filename
+
+
 def get_secondary_target(target, ext):
   # Depending on the output format emscripten creates zero or more secondary
   # output files (e.g. the .wasm file when creating JS output, or the
@@ -1236,8 +1247,10 @@ def phase_setup(options, state, newargs, settings_map):
         # For shared libraries that are neither bitcode nor wasm, assuming its local native
         # library and attempt to find a library by the same name in our own library path.
         # TODO(sbc): Do we really need this feature?  See test_other.py:test_local_link
-        libname = strip_prefix(unsuffixed_basename(arg), 'lib')
-        add_link_flag(state, i, '-l' + libname)
+        libname = strip_prefix(get_library_basename(arg), 'lib')
+        flag = '-l' + libname
+        diagnostics.warning('map-unrecognized-libraries', f'unrecognized file type: `{arg}`.  Mapping to `{flag}` and hoping for the best')
+        add_link_flag(state, i, flag)
       else:
         input_files.append((i, arg))
     elif arg.startswith('-L'):

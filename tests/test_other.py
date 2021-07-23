@@ -1226,7 +1226,7 @@ int f() {
     ''')
 
     ensure_dir('subdir')
-    create_file('subdir/libfile.so', 'this is not llvm bitcode!')
+    create_file('subdir/libfile.so.1.2.3', 'this is not llvm bitcode!')
 
     create_file('libfile.cpp', '''
       #include <stdio.h>
@@ -1236,7 +1236,8 @@ int f() {
     ''')
 
     self.run_process([EMXX, 'libfile.cpp', '-shared', '-o', 'libfile.so'], stderr=PIPE)
-    self.run_process([EMXX, 'main.cpp', Path('subdir/libfile.so'), '-L.'])
+    err = self.run_process([EMXX, 'main.cpp', Path('subdir/libfile.so.1.2.3'), '-L.'], stderr=PIPE).stderr
+    self.assertContained('Mapping to `-lfile` and hoping for the best [-Wmap-unrecognized-libraries]', err)
     self.assertContained('hello from lib', self.run_js('a.out.js'))
 
   def test_identical_basenames(self):
