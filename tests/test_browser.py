@@ -3886,7 +3886,7 @@ window.close = function() {
   @no_chrome('pthread_kill hangs chrome renderer, and keep subsequent tests from passing')
   @requires_threads
   def test_pthread_kill(self):
-    self.btest(test_file('pthread/test_pthread_kill.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest_exit(test_file('pthread/test_pthread_kill.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that pthread cleanup stack (pthread_cleanup_push/_pop) works.
   @requires_threads
