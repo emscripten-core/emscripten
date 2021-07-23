@@ -182,7 +182,7 @@ extern int _emscripten_notify_thread_queue(pthread_t targetThreadId, pthread_t m
 #if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
 #define HAS_SANITIZER
 #include <sanitizer/lsan_interface.h>
-int emscripten_builtin_pthread_create(void *thread, void *attr,
+int emscripten_builtin_pthread_create(pthread_t *thread, const pthread_attr_t* attr,
                                       void *(*callback)(void *), void *arg);
 #endif
 #endif
@@ -985,3 +985,32 @@ void __emscripten_pthread_data_constructor(void) {
   initPthreadsJS();
   pthread_self()->locale = &libc.global_locale;
 }
+
+extern int __pthread_create_js(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
+
+int __pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg) {
+  return __pthread_create_js(thread, attr, start_routine, arg);
+}
+weak_alias(__pthread_create, emscripten_builtin_pthread_create);
+weak_alias(__pthread_create, pthread_create);
+
+extern int __pthread_join_js(pthread_t thread, void **retval);
+int __pthread_join(pthread_t thread, void **retval) {
+  return __pthread_join_js(thread, retval);
+}
+weak_alias(__pthread_join, emscripten_builtin_pthread_join);
+weak_alias(__pthread_join, pthread_join);
+
+extern int __pthread_detach_js(pthread_t t);
+int __pthread_detach(pthread_t t) {
+  return __pthread_detach_js(t);
+}
+weak_alias(__pthread_detach, emscripten_builtin_pthread_detach);
+weak_alias(__pthread_detach, pthread_detach);
+weak_alias(__pthread_detach, thrd_detach);
+
+extern _Noreturn void __pthread_exit_js(void* status);
+_Noreturn void __pthread_exit(void* status) {
+   __pthread_exit_js(status);
+}
+weak_alias(__pthread_exit, pthread_exit);

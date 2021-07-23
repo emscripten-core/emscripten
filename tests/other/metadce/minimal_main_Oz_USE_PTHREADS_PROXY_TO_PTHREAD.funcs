@@ -38,6 +38,7 @@ $emscripten_tls_init
 $free_tls
 $init_mparams
 $main
+$pthread_create
 $sbrk
 $stackAlloc
 $stackRestore
