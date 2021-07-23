@@ -137,14 +137,10 @@ var SyscallsLibrary = {
       }
       return 0;
     },
-    doDup: function(stream, suggestFD) {
+    doDup: function(path, flags, suggestFD) {
       var suggest = FS.getStream(suggestFD);
       if (suggest) FS.close(suggest);
-      if (stream.node.pipe) {
-        stream.node.pipe.refcnt ++;
-      }
-      let new_stream = Object.assign({}, stream);
-      return FS.createStream(new_stream, suggestFD, suggestFD);
+      return FS.open(path, flags, 0, suggestFD, suggestFD).fd;
     },
     doReadv: function(stream, iov, iovcnt, offset) {
       var ret = 0;
@@ -378,10 +374,7 @@ var SyscallsLibrary = {
   },
   __sys_dup: function(fd) {
     var old = SYSCALLS.getStreamFromFD(fd);
-    if (old.node.pipe) {
-      old.node.pipe.refcnt++;
-    }
-    return FS.createStream(old).fd;
+    return FS.open(old.path, old.flags, 0).fd;
   },
   __sys_pipe__deps: ['$PIPEFS'],
   __sys_pipe: function(fdPtr) {
@@ -468,7 +461,7 @@ var SyscallsLibrary = {
   __sys_dup2: function(oldfd, suggestFD) {
     var old = SYSCALLS.getStreamFromFD(oldfd);
     if (old.fd === suggestFD) return suggestFD;
-    return SYSCALLS.doDup(old, suggestFD);
+    return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
   __sys_getppid__nothrow: true,
   __sys_getppid__proxy: false,
@@ -1114,10 +1107,9 @@ var SyscallsLibrary = {
         if (arg < 0) {
           return -{{{ cDefine('EINVAL') }}};
         }
-        if (stream.node.pipe) {
-          stream.node.pipe.refcnt++;
-        }
-        return FS.createStream(stream, arg).fd;
+        var newStream;
+        newStream = FS.open(stream.path, stream.flags, 0, arg);
+        return newStream.fd;
       }
       case {{{ cDefine('F_GETFD') }}}:
       case {{{ cDefine('F_SETFD') }}}:
@@ -1337,7 +1329,7 @@ var SyscallsLibrary = {
     assert(!flags);
 #endif
     if (old.fd === suggestFD) return -{{{ cDefine('EINVAL') }}};
-    return SYSCALLS.doDup(old, suggestFD);
+    return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
 
   __sys_prlimit64: function(pid, resource, new_limit, old_limit) {
