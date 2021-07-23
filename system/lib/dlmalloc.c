@@ -32,7 +32,7 @@
   Emscripten aligns even float128 to 64-bits, to save size and increase speed.
   See https://github.com/emscripten-core/emscripten/issues/10072
 */
-// _Static_assert(MALLOC_ALIGNMENT == 8, "max_align_t must be 8");
+_Static_assert(MALLOC_ALIGNMENT == 8, "max_align_t must be 8");
 #endif
 
 #endif // __EMSCRIPTEN__

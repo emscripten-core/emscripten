@@ -140,11 +140,11 @@ var SyscallsLibrary = {
     doDup: function(stream, suggestFD) {
       var suggest = FS.getStream(suggestFD);
       if (suggest) FS.close(suggest);
-      if(stream.node.pipe){
+      if (stream.node.pipe) {
         stream.node.pipe.refcnt ++;
       }
       let new_stream = Object.assign({}, stream);
-      return FS.createStream(new_stream, suggestFD, suggestFD)
+      return FS.createStream(new_stream, suggestFD, suggestFD);
     },
     doReadv: function(stream, iov, iovcnt, offset) {
       var ret = 0;
@@ -378,7 +378,7 @@ var SyscallsLibrary = {
   },
   __sys_dup: function(fd) {
     var old = SYSCALLS.getStreamFromFD(fd);
-    if(old.node.pipe){
+    if (old.node.pipe) {
       old.node.pipe.refcnt++;
     }
     return FS.createStream(old).fd;
@@ -1114,7 +1114,7 @@ var SyscallsLibrary = {
         if (arg < 0) {
           return -{{{ cDefine('EINVAL') }}};
         }
-        if(stream.node.pipe){
+        if (stream.node.pipe) {
           stream.node.pipe.refcnt++;
         }
         return FS.createStream(stream, arg).fd;
