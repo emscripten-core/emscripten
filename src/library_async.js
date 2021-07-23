@@ -257,6 +257,7 @@ mergeInto(LibraryManager.library, {
             asyncWasmReturnValue = err;
             isError = true;
           }
+          var handled = false;
           if (!Asyncify.currData) {
             // All asynchronous execution has finished.
             // `asyncWasmReturnValue` now contains the final
@@ -274,7 +275,11 @@ mergeInto(LibraryManager.library, {
             if (asyncPromiseHandlers) {
               Asyncify.asyncPromiseHandlers = null;
               (isError ? asyncPromiseHandlers.reject : asyncPromiseHandlers.resolve)(asyncWasmReturnValue);
+              handled = true;
             }
+          }
+          if (isError && !handled) {
+            throw asyncWasmReturnValue;
           }
         });
         reachedAfterCallback = true;
