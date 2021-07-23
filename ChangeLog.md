@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 2.0.26
 ------
+- When building ports with the `embuilder` tool some of the names of the
+  libraries have changed (they now match the filenames in the `tools/ports/`
+  directory). For example `sdl-image` is now `sdl_image` (#14737).
 - Undefined data symbols (in static executables) are no longer silently ignored
   at link time.  The previous behaviour (which was to silently give all
   undefined data symbols address zero, which could lead to bugs)
