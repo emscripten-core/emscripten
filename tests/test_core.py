@@ -5194,6 +5194,7 @@ main( int argv, char ** argc ) {
 
   @also_with_noderawfs
   def test_fs_nodefs_cloexec(self):
+    self.maybe_closure()
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_cloexec.c'), 'success')
 
