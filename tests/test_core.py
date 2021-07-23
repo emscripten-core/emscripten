@@ -5202,11 +5202,6 @@ main( int argv, char ** argc ) {
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_home.c'), 'success', js_engines=[config.NODE_JS])
 
-  def test_fs_nodefs_errno_closure(self):
-    self.maybe_closure()
-    self.emcc_args += ['-lnodefs.js']
-    self.do_runf(test_file('fs/test_nodefs_errno_closure.c'), 'success', js_engines=[config.NODE_JS])
-
   def test_fs_nodefs_nofollow(self):
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
