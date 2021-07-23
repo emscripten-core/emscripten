@@ -17,7 +17,7 @@ void test() {
 int main() {
   int jmpval = setjmp(buf);
   if (jmpval != 0) {
-    printf("setjmp returned for 2nd time\n");
+    printf("setjmp returned for second time\n");
     return 0;
   }
   test();
