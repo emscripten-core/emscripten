@@ -271,9 +271,6 @@ function exitRuntime() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
-#endif
 #if !STANDALONE_WASM
   ___funcs_on_exit(); // Native atexit() functions
 #endif
