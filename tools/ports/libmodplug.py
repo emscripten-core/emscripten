@@ -24,14 +24,13 @@ def get(ports, settings, shared):
     ports.clear_project_build('libmodplug')
 
     source_path = os.path.join(ports.get_dir(), 'libmodplug', 'libmodplug-' + TAG)
-    dest_path = os.path.join(ports.get_build_dir(), 'libmodplug')
+    src_dir = os.path.join(source_path, 'src')
+    libmodplug_path = os.path.join(src_dir, 'libmodplug')
 
-    sauce_path = os.path.join(dest_path, 'src')
-    libmodplug_path = os.path.join(sauce_path, 'libmodplug')
-
-    shutil.rmtree(dest_path, ignore_errors=True)
-    shutil.copytree(source_path, dest_path)
-    Path(sauce_path, 'config.h').write_text(config_h)
+    build_dir = os.path.join(ports.get_build_dir(), 'libmodplug')
+    shutil.rmtree(build_dir, ignore_errors=True)
+    shared.safe_ensure_dirs(build_dir)
+    Path(build_dir, 'config.h').write_text(config_h)
 
     flags = [
       '-DOPT_GENERIC',
@@ -43,61 +42,60 @@ def get(ports, settings, shared):
       '-ffast-math',
       '-fno-common',
       '-fvisibility=hidden',
-      '-I' + sauce_path,
+      '-I' + build_dir,
       '-I' + libmodplug_path,
     ]
 
     srcs = [
-      os.path.join(sauce_path, 'fastmix.cpp'),
-      os.path.join(sauce_path, 'load_669.cpp'),
-      os.path.join(sauce_path, 'load_abc.cpp'),
-      os.path.join(sauce_path, 'load_amf.cpp'),
-      os.path.join(sauce_path, 'load_ams.cpp'),
-      os.path.join(sauce_path, 'load_dbm.cpp'),
-      os.path.join(sauce_path, 'load_dmf.cpp'),
-      os.path.join(sauce_path, 'load_dsm.cpp'),
-      os.path.join(sauce_path, 'load_far.cpp'),
-      os.path.join(sauce_path, 'load_it.cpp'),
-      os.path.join(sauce_path, 'load_j2b.cpp'),
-      os.path.join(sauce_path, 'load_mdl.cpp'),
-      os.path.join(sauce_path, 'load_med.cpp'),
-      os.path.join(sauce_path, 'load_mid.cpp'),
-      os.path.join(sauce_path, 'load_mod.cpp'),
-      os.path.join(sauce_path, 'load_mt2.cpp'),
-      os.path.join(sauce_path, 'load_mtm.cpp'),
-      os.path.join(sauce_path, 'load_okt.cpp'),
-      os.path.join(sauce_path, 'load_pat.cpp'),
-      os.path.join(sauce_path, 'load_psm.cpp'),
-      os.path.join(sauce_path, 'load_ptm.cpp'),
-      os.path.join(sauce_path, 'load_s3m.cpp'),
-      os.path.join(sauce_path, 'load_stm.cpp'),
-      os.path.join(sauce_path, 'load_ult.cpp'),
-      os.path.join(sauce_path, 'load_umx.cpp'),
-      os.path.join(sauce_path, 'load_wav.cpp'),
-      os.path.join(sauce_path, 'load_xm.cpp'),
-      os.path.join(sauce_path, 'mmcmp.cpp'),
-      os.path.join(sauce_path, 'modplug.cpp'),
-      os.path.join(sauce_path, 'snd_dsp.cpp'),
-      os.path.join(sauce_path, 'sndfile.cpp'),
-      os.path.join(sauce_path, 'snd_flt.cpp'),
-      os.path.join(sauce_path, 'snd_fx.cpp'),
-      os.path.join(sauce_path, 'sndmix.cpp'),
+      os.path.join(src_dir, 'fastmix.cpp'),
+      os.path.join(src_dir, 'load_669.cpp'),
+      os.path.join(src_dir, 'load_abc.cpp'),
+      os.path.join(src_dir, 'load_amf.cpp'),
+      os.path.join(src_dir, 'load_ams.cpp'),
+      os.path.join(src_dir, 'load_dbm.cpp'),
+      os.path.join(src_dir, 'load_dmf.cpp'),
+      os.path.join(src_dir, 'load_dsm.cpp'),
+      os.path.join(src_dir, 'load_far.cpp'),
+      os.path.join(src_dir, 'load_it.cpp'),
+      os.path.join(src_dir, 'load_j2b.cpp'),
+      os.path.join(src_dir, 'load_mdl.cpp'),
+      os.path.join(src_dir, 'load_med.cpp'),
+      os.path.join(src_dir, 'load_mid.cpp'),
+      os.path.join(src_dir, 'load_mod.cpp'),
+      os.path.join(src_dir, 'load_mt2.cpp'),
+      os.path.join(src_dir, 'load_mtm.cpp'),
+      os.path.join(src_dir, 'load_okt.cpp'),
+      os.path.join(src_dir, 'load_pat.cpp'),
+      os.path.join(src_dir, 'load_psm.cpp'),
+      os.path.join(src_dir, 'load_ptm.cpp'),
+      os.path.join(src_dir, 'load_s3m.cpp'),
+      os.path.join(src_dir, 'load_stm.cpp'),
+      os.path.join(src_dir, 'load_ult.cpp'),
+      os.path.join(src_dir, 'load_umx.cpp'),
+      os.path.join(src_dir, 'load_wav.cpp'),
+      os.path.join(src_dir, 'load_xm.cpp'),
+      os.path.join(src_dir, 'mmcmp.cpp'),
+      os.path.join(src_dir, 'modplug.cpp'),
+      os.path.join(src_dir, 'snd_dsp.cpp'),
+      os.path.join(src_dir, 'sndfile.cpp'),
+      os.path.join(src_dir, 'snd_flt.cpp'),
+      os.path.join(src_dir, 'snd_fx.cpp'),
+      os.path.join(src_dir, 'sndmix.cpp'),
     ]
 
     commands = []
     objects = []
 
     for src in srcs:
-      obj = src + '.o'
+      obj = os.path.join(build_dir, os.path.basename(src) + '.o')
       commands.append([shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + flags)
       objects.append(obj)
 
     ports.run_commands(commands)
     ports.create_lib(output_path, objects)
 
-    # copy header to a location so it can be used as 'MPG123/'
     ports.install_headers(libmodplug_path, pattern="*.h", target='libmodplug')
-    ports.install_headers(sauce_path, pattern="modplug.h", target='libmodplug')
+    ports.install_headers(src_dir, pattern="modplug.h", target='libmodplug')
 
   return [shared.Cache.get_lib('libmodplug.a', create, what='port')]
 
