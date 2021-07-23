@@ -1761,6 +1761,9 @@ var USES_DYNAMIC_ALLOC = 1;
 // library support.
 var SUPPORT_LONGJMP = 1;
 
+// WebAssembly setjmp-longjmp handling using Wasm EH (experimental)
+var SJLJ_HANDLING = 0;
+
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior.
 // When enabled, there is no "Module.canvas" object, no magic "null" default
 // handling, and DOM element 'target' parameters are taken to refer to CSS

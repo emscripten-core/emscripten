@@ -111,6 +111,32 @@ def with_both_exception_handling(f):
   return metafunc
 
 
+# Tests setjmp/longjmp handling in Emscripten SjLJ mode, and if possible, new
+# Wasm SjLj mode
+def with_both_sjlj_handling(f):
+  assert callable(f)
+
+  def metafunc(self, native_sjlj):
+    if native_sjlj:
+      # Wasm SjLj is currently supported only in Wasm backend and V8
+      if not self.is_wasm():
+        self.skipTest('wasm2js does not support Wasm SjLj')
+      self.require_v8()
+      self.set_setting('SJLJ_HANDLING')
+      # These are for Emscripten EH/SjLj
+      self.set_setting('SUPPORT_LONGJMP', 0)
+      self.set_setting('DISABLE_EXCEPTION_THROWING')
+      self.v8_args.append('--experimental-wasm-eh')
+      f(self)
+    else:
+      # SUPPORT_LONGJMP is enabled by default. Nothing to do.
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasm_sjlj': (True,)}
+  return metafunc
+
+
 def no_wasm2js(note=''):
   assert not callable(note)
 
@@ -923,31 +949,38 @@ base align: 0, 0, 0, 0'''])
   def test_longjmp(self):
     self.do_core_test('test_longjmp.c')
 
+  @with_both_sjlj_handling
   def test_longjmp2(self):
     self.do_core_test('test_longjmp2.c')
 
   @needs_dylink
+  @with_both_sjlj_handling
   def test_longjmp2_main_module(self):
     # Test for binaryen regression:
     # https://github.com/WebAssembly/binaryen/issues/2180
-    self.set_setting('MAIN_MODULE')
     self.do_core_test('test_longjmp2.c')
 
+  @with_both_sjlj_handling
   def test_longjmp3(self):
     self.do_core_test('test_longjmp3.c')
 
+  @with_both_sjlj_handling
   def test_longjmp4(self):
     self.do_core_test('test_longjmp4.c')
 
+  @with_both_sjlj_handling
   def test_longjmp_funcptr(self):
     self.do_core_test('test_longjmp_funcptr.c')
 
+  @with_both_sjlj_handling
   def test_longjmp_repeat(self):
     self.do_core_test('test_longjmp_repeat.c')
 
+  @with_both_sjlj_handling
   def test_longjmp_stacked(self):
     self.do_core_test('test_longjmp_stacked.c', assert_returncode=NON_ZERO)
 
+  @with_both_sjlj_handling
   def test_longjmp_exc(self):
     self.do_core_test('test_longjmp_exc.c', assert_returncode=NON_ZERO)
 
@@ -957,16 +990,20 @@ base align: 0, 0, 0, 0'''])
       self.set_setting('DISABLE_EXCEPTION_CATCHING', disable_throw)
       self.do_core_test('test_longjmp_throw.cpp')
 
+  @with_both_sjlj_handling
   def test_longjmp_unwind(self):
     self.do_core_test('test_longjmp_unwind.c', assert_returncode=NON_ZERO)
 
+  @with_both_sjlj_handling
   def test_longjmp_i64(self):
     self.emcc_args += ['-g']
     self.do_core_test('test_longjmp_i64.c', assert_returncode=NON_ZERO)
 
+  @with_both_sjlj_handling
   def test_siglongjmp(self):
     self.do_core_test('test_siglongjmp.c')
 
+  @with_both_sjlj_handling
   def test_setjmp_many(self):
     src = r'''
       #include <stdio.h>
@@ -983,6 +1020,7 @@ base align: 0, 0, 0, 0'''])
       print('NUM=%d' % num)
       self.do_run(src.replace('NUM', str(num)), '0\n' * num)
 
+  @with_both_sjlj_handling
   def test_setjmp_many_2(self):
     src = r'''
 #include <setjmp.h>
@@ -1011,6 +1049,7 @@ int main()
 
     self.do_run(src, r'''d is at 24''')
 
+  @with_both_sjlj_handling
   def test_setjmp_noleak(self):
     self.do_runf(test_file('core/test_setjmp_noleak.c'), 'ok.')
 
