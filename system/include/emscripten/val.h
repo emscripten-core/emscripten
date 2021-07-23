@@ -563,7 +563,7 @@ namespace emscripten {
             return internal::_emval_delete(handle, val(property).handle);
         }
 
-        void throw_() const {
+        [[noreturn]] void throw_() const {
             internal::_emval_throw(handle);
         }
 
