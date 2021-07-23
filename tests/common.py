@@ -183,14 +183,14 @@ def require_v8(func):
 
 
 def node_pthreads(f):
-  def decorated(self):
+  def decorated(self, *args, **kwargs):
     self.set_setting('USE_PTHREADS')
     self.emcc_args += ['-Wno-pthreads-mem-growth']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
     self.js_engines = [config.NODE_JS]
     self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
-    f(self)
+    f(self, *args, **kwargs)
   return decorated
 
 
