@@ -2335,6 +2335,11 @@ The current type of b is: 9
   @node_pthreads
   def test_pthread_setspecific_mainthread(self):
     self.set_setting('EXIT_RUNTIME')
+    print('.. return')
+    self.do_runf(test_file('pthread/test_pthread_setspecific_mainthread.c'), 'done!', emcc_args=['-DRETURN'])
+    print('.. exit')
+    self.do_runf(test_file('pthread/test_pthread_setspecific_mainthread.c'), 'done!', emcc_args=['-DEXIT'])
+    print('.. pthread_exit')
     self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
 
   @node_pthreads
