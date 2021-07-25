@@ -178,8 +178,8 @@ EM_BOOL visibilitychange_callback(int eventType, const EmscriptenVisibilityChang
 
 EM_BOOL touch_callback(int eventType, const EmscriptenTouchEvent *e, void *userData)
 {
-  printf("%s, numTouches: %d %s%s%s%s\n",
-    emscripten_event_type_to_string(eventType), e->numTouches,
+  printf("%s, numTouches: %d timestamp: %lf %s%s%s%s\n",
+    emscripten_event_type_to_string(eventType), e->numTouches, e->timestamp,
     e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "");
   for(int i = 0; i < e->numTouches; ++i)
   {

@@ -368,6 +368,7 @@ typedef struct EmscriptenTouchPoint
 } EmscriptenTouchPoint;
 
 typedef struct EmscriptenTouchEvent {
+  double timestamp;
   int numTouches;
   EM_BOOL ctrlKey;
   EM_BOOL shiftKey;
