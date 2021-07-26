@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.26
+2.0.27
 ------
+
+2.0.26 - 07/26/2021
+-------------------
 - When building ports with the `embuilder` tool some of the names of the
   libraries have changed (they now match the filenames in the `tools/ports/`
   directory). For example `sdl-image` is now `sdl_image` (#14737).
