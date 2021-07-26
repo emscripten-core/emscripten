@@ -1533,6 +1533,10 @@ Struct
 
   Specifies the data of a single `touchevent <http://www.w3.org/TR/touch-events/#touchevent-interface>`_.
 
+  .. c:member:: double timestamp
+
+    Absolute wallclock time when the data was recorded (milliseconds).
+
   .. c:member:: int numTouches
 
     The number of valid elements in the touches array.
