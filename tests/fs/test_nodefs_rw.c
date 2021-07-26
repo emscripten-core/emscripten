@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <emscripten.h>
 
 #ifdef NODERAWFS
@@ -60,6 +61,10 @@ int main() {
     var contents = fs.readFileSync('foobar.txt', { encoding: 'utf8' });
     assert(contents === 'cheez');
   );
+
+  file = fopen(CWD "csfsq", "r");
+  assert(file == NULL);
+  assert(errno == ENOENT);
 
   puts("success");
 
