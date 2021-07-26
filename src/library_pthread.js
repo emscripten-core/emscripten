@@ -8,7 +8,7 @@ var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread__deps: ['_emscripten_thread_init',
                    'emscripten_register_main_browser_thread_id',
-                   '$ERRNO_CODES', 'emscripten_futex_wake', '$killThread',
+                   'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
 #if USE_ASAN || USE_LSAN
                    , '$withBuiltinMalloc'
@@ -534,6 +534,7 @@ var LibraryPThread = {
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in killThread!';
     {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
     var pthread = PThread.pthreads[pthread_ptr];
+    delete PThread.pthreads[pthread_ptr];
     pthread.worker.terminate();
     PThread.freeThreadData(pthread);
     // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
@@ -662,9 +663,9 @@ var LibraryPThread = {
     return navigator['hardwareConcurrency'];
   },
     
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__sig: 'iiiii',
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['$spawnThread', 'pthread_self', 'memalign', 'emscripten_sync_run_in_main_thread_4'],
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function(pthread_ptr, attr, start_routine, arg) {
+  __pthread_create_js__sig: 'iiiii',
+  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', 'memalign', 'emscripten_sync_run_in_main_thread_4'],
+  __pthread_create_js: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return {{{ cDefine('EAGAIN') }}};
@@ -906,26 +907,26 @@ var LibraryPThread = {
   _emscripten_do_pthread_join: function(thread, status, block) {
     if (!thread) {
       err('pthread_join attempted on a null thread pointer!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     if (ENVIRONMENT_IS_PTHREAD && _pthread_self() == thread) {
       err('PThread ' + thread + ' is attempting to join to itself!');
-      return ERRNO_CODES.EDEADLK;
+      return {{{ cDefine('EDEADLK') }}};
     }
     else if (!ENVIRONMENT_IS_PTHREAD && _emscripten_main_browser_thread_id() == thread) {
       err('Main thread ' + thread + ' is attempting to join to itself!');
-      return ERRNO_CODES.EDEADLK;
+      return {{{ cDefine('EDEADLK') }}};
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
     if (self !== thread) {
       err('pthread_join attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
 
     var detached = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
     if (detached) {
       err('Attempted to join thread ' + thread + ', which was already detached!');
-      return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
+      return {{{ cDefine('EINVAL') }}}; // The thread is already detached, can no longer join it!
     }
 
 #if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
@@ -946,7 +947,7 @@ var LibraryPThread = {
         return 0;
       }
       if (!block) {
-        return ERRNO_CODES.EBUSY;
+        return {{{ cDefine('EBUSY') }}};
       }
       _pthread_testcancel();
       // In main runtime thread (the thread that initialized the Emscripten C
@@ -957,8 +958,8 @@ var LibraryPThread = {
     }
   },
 
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join__deps: ['_emscripten_do_pthread_join'],
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join: function(thread, status) {
+  __pthread_join_js__deps: ['_emscripten_do_pthread_join'],
+  __pthread_join_js: function(thread, status) {
     return __emscripten_do_pthread_join(thread, status, true);
   },
 
@@ -969,20 +970,20 @@ var LibraryPThread = {
 
   pthread_kill__deps: ['$killThread', 'emscripten_main_browser_thread_id'],
   pthread_kill: function(thread, signal) {
-    if (signal < 0 || signal >= 65/*_NSIG*/) return ERRNO_CODES.EINVAL;
+    if (signal < 0 || signal >= 65/*_NSIG*/) return {{{ cDefine('EINVAL') }}};
     if (thread === _emscripten_main_browser_thread_id()) {
       if (signal == 0) return 0; // signal == 0 is a no-op.
       err('Main thread (id=' + thread + ') cannot be killed with pthread_kill!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     if (!thread) {
       err('pthread_kill attempted on a null thread pointer!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
     if (self !== thread) {
       err('pthread_kill attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     if (signal != 0) {
       if (!ENVIRONMENT_IS_PTHREAD) killThread(thread);
@@ -995,16 +996,16 @@ var LibraryPThread = {
   pthread_cancel: function(thread) {
     if (thread === _emscripten_main_browser_thread_id()) {
       err('Main thread (id=' + thread + ') cannot be canceled!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     if (!thread) {
       err('pthread_cancel attempted on a null thread pointer!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
     if (self !== thread) {
       err('pthread_cancel attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0, 2); // Signal the thread that it needs to cancel itself.
     if (!ENVIRONMENT_IS_PTHREAD) cancelThread(thread);
@@ -1012,37 +1013,31 @@ var LibraryPThread = {
     return 0;
   },
 
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_detach__sig: 'vi',
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_detach: function(thread) {
+  __pthread_detach_js__sig: 'vi',
+  __pthread_detach_js: function(thread) {
     if (!thread) {
       err('pthread_detach attempted on a null thread pointer!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
     if (self !== thread) {
       err('pthread_detach attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     // Follow musl convention: detached:0 means not detached, 1 means the thread
     // was created as detached, and 2 means that the thread was detached via
     // pthread_detach.
     var wasDetached = Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 0, 2);
 
-    return wasDetached ? ERRNO_CODES.EINVAL : 0;
+    return wasDetached ? {{{ cDefine('EINVAL') }}} : 0;
   },
 
-  // C11 thread version.
-  // TODO: remove this in favor or compiling musl/src/thread/pthread_detach.c
-#if USE_LSAN
-  thrd_detach: 'emscripten_builtin_pthread_detach',
-#else
-  thrd_detach: 'pthread_detach',
-#endif
-
-  pthread_exit__deps: ['exit'],
-  pthread_exit: function(status) {
-    if (!ENVIRONMENT_IS_PTHREAD) _exit(status);
-    else PThread.threadExit(status);
+  __pthread_exit_js__deps: ['exit'],
+  __pthread_exit_js: function(status) {
+    if (!ENVIRONMENT_IS_PTHREAD) {
+      PThread.runExitHandlers();
+      _exit(status);
+    } else PThread.threadExit(status);
     // pthread_exit is marked noReturn, so we must not return from it.
     throw 'unwind';
   },

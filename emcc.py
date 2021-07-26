@@ -892,6 +892,17 @@ def get_file_suffix(filename):
   return ''
 
 
+def get_library_basename(filename):
+  """Similar to get_file_suffix this strips off all numeric suffixes and then
+  then final non-numeric one.  For example for 'libz.so.1.2.8' returns 'libz'"""
+  filename = os.path.basename(filename)
+  while filename:
+    filename, suffix = os.path.splitext(filename)
+    # Keep stipping suffixes until we strip a non-numeric one.
+    if not suffix[1:].isdigit():
+      return filename
+
+
 def get_secondary_target(target, ext):
   # Depending on the output format emscripten creates zero or more secondary
   # output files (e.g. the .wasm file when creating JS output, or the
@@ -1236,8 +1247,10 @@ def phase_setup(options, state, newargs, settings_map):
         # For shared libraries that are neither bitcode nor wasm, assuming its local native
         # library and attempt to find a library by the same name in our own library path.
         # TODO(sbc): Do we really need this feature?  See test_other.py:test_local_link
-        libname = strip_prefix(unsuffixed_basename(arg), 'lib')
-        add_link_flag(state, i, '-l' + libname)
+        libname = strip_prefix(get_library_basename(arg), 'lib')
+        flag = '-l' + libname
+        diagnostics.warning('map-unrecognized-libraries', f'unrecognized file type: `{arg}`.  Mapping to `{flag}` and hoping for the best')
+        add_link_flag(state, i, flag)
       else:
         input_files.append((i, arg))
     elif arg.startswith('-L'):
@@ -1744,7 +1757,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.FILESYSTEM = 0
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.FETCH = 1
-    settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_asmfs.js')))
+    settings.JS_LIBRARIES.append((0, 'library_asmfs.js'))
 
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
   if not settings.USES_DYNAMIC_ALLOC:
@@ -1752,7 +1765,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
     state.forced_stdlibs.append('libfetch')
-    settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_fetch.js')))
+    settings.JS_LIBRARIES.append((0, 'library_fetch.js'))
     if settings.USE_PTHREADS:
       settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
 
@@ -1837,12 +1850,11 @@ def phase_linker_setup(options, state, newargs, settings_map):
       exit_with_error('USE_PTHREADS=2 is no longer supported')
     if settings.ALLOW_MEMORY_GROWTH:
       diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
-    settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread.js')))
+    settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
     settings.EXPORTED_FUNCTIONS += [
       '___emscripten_pthread_data_constructor',
       '___pthread_tsd_run_dtors',
       '__emscripten_call_on_thread',
-      '__emscripten_do_dispatch_to_thread',
       '__emscripten_main_thread_futex',
       '__emscripten_thread_init',
       '_emscripten_current_thread_process_queued_calls',
@@ -1859,6 +1871,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '_emscripten_tls_init',
       '_pthread_self',
       '_pthread_testcancel',
+      '_pthread_exit',
     ]
     # Some of these symbols are using by worker.js but otherwise unreferenced.
     # Because emitDCEGraph only considered the main js file, and not worker.js
@@ -1872,7 +1885,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # set location of worker.js
     settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
   else:
-    settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_pthread_stub.js')))
+    settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
@@ -1935,18 +1948,23 @@ def phase_linker_setup(options, state, newargs, settings_map):
       if not settings.MINIMAL_RUNTIME:
         settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
 
-    if settings.SIDE_MODULE:
-      diagnostics.warning('experimental', '-s SIDE_MODULE + pthreads is experimental')
-    elif settings.MAIN_MODULE:
-      diagnostics.warning('experimental', '-s MAIN_MODULE + pthreads is experimental')
-    elif settings.LINKABLE:
-      diagnostics.warning('experimental', '-s LINKABLE + pthreads is experimental')
+    if settings.RELOCATABLE:
+      # phtreads + dyanmic linking has certain limitations
+      if settings.SIDE_MODULE:
+        diagnostics.warning('experimental', '-s SIDE_MODULE + pthreads is experimental')
+      elif settings.MAIN_MODULE:
+        diagnostics.warning('experimental', '-s MAIN_MODULE + pthreads is experimental')
+      elif settings.LINKABLE:
+        diagnostics.warning('experimental', '-s LINKABLE + pthreads is experimental')
+
+      default_setting('SUPPORT_LONGJMP', 0)
+      if settings.SUPPORT_LONGJMP:
+        exit_with_error('SUPPORT_LONGJMP is not compatible with pthreads + dynamic linking')
 
     if settings.PROXY_TO_WORKER:
       exit_with_error('--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker.')
-  else:
-    if settings.PROXY_TO_PTHREAD:
-      exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
+  elif settings.PROXY_TO_PTHREAD:
+    exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
   def check_memory_setting(setting):
     if settings[setting] % webassembly.WASM_PAGE_SIZE != 0:
@@ -2848,14 +2866,14 @@ def parse_args(newargs):
       options.tracing = True
       newargs[i] = ''
       settings_changes.append("EMSCRIPTEN_TRACING=1")
-      settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_trace.js')))
+      settings.JS_LIBRARIES.append((0, 'library_trace.js'))
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
       settings.EMIT_SYMBOL_MAP = 1
     elif check_flag('--bind'):
       settings.EMBIND = 1
-      settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'embind', 'emval.js')))
-      settings.SYSTEM_JS_LIBRARIES.append((0, shared.path_from_root('src', 'embind', 'embind.js')))
+      settings.JS_LIBRARIES.append((0, os.path.join('embind', 'emval.js')))
+      settings.JS_LIBRARIES.append((0, os.path.join('embind', 'embind.js')))
     elif check_arg('--embed-file'):
       options.embed_files.append(consume_arg())
     elif check_arg('--preload-file'):
@@ -2879,7 +2897,7 @@ def parse_args(newargs):
     elif check_flag('--no-entry'):
       options.no_entry = True
     elif check_arg('--js-library'):
-      settings.SYSTEM_JS_LIBRARIES.append((i + 1, os.path.abspath(consume_arg_file())))
+      settings.JS_LIBRARIES.append((i + 1, os.path.abspath(consume_arg_file())))
     elif check_flag('--remove-duplicates'):
       diagnostics.warning('legacy-settings', '--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
     elif check_flag('--jcache'):
@@ -3570,12 +3588,12 @@ def process_libraries(state, linker_inputs):
 
     new_flags.append((i, flag))
 
-  settings.SYSTEM_JS_LIBRARIES += libraries
+  settings.JS_LIBRARIES += libraries
 
-  # At this point processing SYSTEM_JS_LIBRARIES is finished, no more items will be added to it.
+  # At this point processing JS_LIBRARIES is finished, no more items will be added to it.
   # Sort the input list from (order, lib_name) pairs to a flat array in the right order.
-  settings.SYSTEM_JS_LIBRARIES.sort(key=lambda lib: lib[0])
-  settings.SYSTEM_JS_LIBRARIES = [lib[1] for lib in settings.SYSTEM_JS_LIBRARIES]
+  settings.JS_LIBRARIES.sort(key=lambda lib: lib[0])
+  settings.JS_LIBRARIES = [lib[1] for lib in settings.JS_LIBRARIES]
   state.link_flags = new_flags
 
 

@@ -289,73 +289,73 @@ _mm_cmpnge_sd(__m128d __a, __m128d __b)
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comieq_sd(__m128d __a, __m128d __b)
 {
-  return wasm_f64x2_extract_lane(__a, 0) == wasm_f64x2_extract_lane(__b, 0);
+  return wasm_f64x2_extract_lane((v128_t)__a, 0) == wasm_f64x2_extract_lane((v128_t)__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comilt_sd(__m128d __a, __m128d __b)
 {
-  return wasm_f64x2_extract_lane(__a, 0) < wasm_f64x2_extract_lane(__b, 0);
+  return wasm_f64x2_extract_lane((v128_t)__a, 0) < wasm_f64x2_extract_lane((v128_t)__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comile_sd(__m128d __a, __m128d __b)
 {
-  return wasm_f64x2_extract_lane(__a, 0) <= wasm_f64x2_extract_lane(__b, 0);
+  return wasm_f64x2_extract_lane((v128_t)__a, 0) <= wasm_f64x2_extract_lane((v128_t)__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comigt_sd(__m128d __a, __m128d __b)
 {
-  return wasm_f64x2_extract_lane(__a, 0) > wasm_f64x2_extract_lane(__b, 0);
+  return wasm_f64x2_extract_lane((v128_t)__a, 0) > wasm_f64x2_extract_lane((v128_t)__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comige_sd(__m128d __a, __m128d __b)
 {
-  return wasm_f64x2_extract_lane(__a, 0) >= wasm_f64x2_extract_lane(__b, 0);
+  return wasm_f64x2_extract_lane((v128_t)__a, 0) >= wasm_f64x2_extract_lane((v128_t)__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comineq_sd(__m128d __a, __m128d __b)
 {
-  return wasm_f64x2_extract_lane(__a, 0) != wasm_f64x2_extract_lane(__b, 0);
+  return wasm_f64x2_extract_lane((v128_t)__a, 0) != wasm_f64x2_extract_lane((v128_t)__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomieq_sd(__m128d __a, __m128d __b)
 {
-  return wasm_f64x2_extract_lane(__a, 0) == wasm_f64x2_extract_lane(__b, 0);
+  return wasm_f64x2_extract_lane((v128_t)__a, 0) == wasm_f64x2_extract_lane((v128_t)__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomilt_sd(__m128d __a, __m128d __b)
 {
-  return wasm_f64x2_extract_lane(__a, 0) < wasm_f64x2_extract_lane(__b, 0);
+  return wasm_f64x2_extract_lane((v128_t)__a, 0) < wasm_f64x2_extract_lane((v128_t)__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomile_sd(__m128d __a, __m128d __b)
 {
-  return wasm_f64x2_extract_lane(__a, 0) <= wasm_f64x2_extract_lane(__b, 0);
+  return wasm_f64x2_extract_lane((v128_t)__a, 0) <= wasm_f64x2_extract_lane((v128_t)__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomigt_sd(__m128d __a, __m128d __b)
 {
-  return wasm_f64x2_extract_lane(__a, 0) > wasm_f64x2_extract_lane(__b, 0);
+  return wasm_f64x2_extract_lane((v128_t)__a, 0) > wasm_f64x2_extract_lane((v128_t)__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomige_sd(__m128d __a, __m128d __b)
 {
-  return wasm_f64x2_extract_lane(__a, 0) >= wasm_f64x2_extract_lane(__b, 0);
+  return wasm_f64x2_extract_lane((v128_t)__a, 0) >= wasm_f64x2_extract_lane((v128_t)__b, 0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomineq_sd(__m128d __a, __m128d __b)
 {
-  return wasm_f64x2_extract_lane(__a, 0) != wasm_f64x2_extract_lane(__b, 0);
+  return wasm_f64x2_extract_lane((v128_t)__a, 0) != wasm_f64x2_extract_lane((v128_t)__b, 0);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))

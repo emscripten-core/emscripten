@@ -182,7 +182,7 @@ extern int _emscripten_notify_thread_queue(pthread_t targetThreadId, pthread_t m
 #if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
 #define HAS_SANITIZER
 #include <sanitizer/lsan_interface.h>
-int emscripten_builtin_pthread_create(void *thread, void *attr,
+int emscripten_builtin_pthread_create(pthread_t *thread, const pthread_attr_t* attr,
                                       void *(*callback)(void *), void *arg);
 #endif
 #endif
@@ -834,9 +834,20 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
   return q;
 }
 
-int _emscripten_call_on_thread(
-  int forceAsync,
-  pthread_t targetThread, EM_FUNC_SIGNATURE sig, void* func_ptr, void* satellite, ...) {
+typedef struct DispatchToThreadArgs {
+  pthread_t target_thread;
+  em_queued_call* q;
+} DispatchToThreadArgs;
+
+static void dispatch_to_thread_helper(void* user_data) {
+  DispatchToThreadArgs* args = (DispatchToThreadArgs*)user_data;
+  _emscripten_do_dispatch_to_thread(args->target_thread, args->q);
+  free(user_data);
+}
+
+int _emscripten_call_on_thread(int forceAsync, pthread_t targetThread, EM_FUNC_SIGNATURE sig,
+    void* func_ptr, void* satellite, ...) {
+
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call* q = em_queued_call_malloc();
   assert(q);
@@ -882,11 +893,10 @@ int _emscripten_call_on_thread(
   // The called function will not be async if we are on the same thread; force
   // async if the user asked for that.
   if (forceAsync) {
-    EM_ASM({
-      setTimeout(function() {
-        __emscripten_do_dispatch_to_thread($0, $1);
-      }, 0);
-    }, targetThread, q);
+    DispatchToThreadArgs* args = malloc(sizeof(DispatchToThreadArgs));
+    args->target_thread = targetThread;
+    args->q = q;
+    emscripten_set_timeout(dispatch_to_thread_helper, 0, args);
     return 0;
   } else {
     return _emscripten_do_dispatch_to_thread(targetThread, q);
@@ -975,3 +985,32 @@ void __emscripten_pthread_data_constructor(void) {
   initPthreadsJS();
   pthread_self()->locale = &libc.global_locale;
 }
+
+extern int __pthread_create_js(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
+
+int __pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg) {
+  return __pthread_create_js(thread, attr, start_routine, arg);
+}
+weak_alias(__pthread_create, emscripten_builtin_pthread_create);
+weak_alias(__pthread_create, pthread_create);
+
+extern int __pthread_join_js(pthread_t thread, void **retval);
+int __pthread_join(pthread_t thread, void **retval) {
+  return __pthread_join_js(thread, retval);
+}
+weak_alias(__pthread_join, emscripten_builtin_pthread_join);
+weak_alias(__pthread_join, pthread_join);
+
+extern int __pthread_detach_js(pthread_t t);
+int __pthread_detach(pthread_t t) {
+  return __pthread_detach_js(t);
+}
+weak_alias(__pthread_detach, emscripten_builtin_pthread_detach);
+weak_alias(__pthread_detach, pthread_detach);
+weak_alias(__pthread_detach, thrd_detach);
+
+extern _Noreturn void __pthread_exit_js(void* status);
+_Noreturn void __pthread_exit(void* status) {
+   __pthread_exit_js(status);
+}
+weak_alias(__pthread_exit, pthread_exit);
