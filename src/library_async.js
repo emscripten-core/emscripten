@@ -48,7 +48,7 @@ mergeInto(LibraryManager.library, {
     callStackIdToName: {},
     callStackId: 0,
     afterUnwind: null,
-    asyncFinalizers: [], // functions to run when *all* asynchronicity is done
+    asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
 
     getCallStackId: function(funcName) {
@@ -152,10 +152,13 @@ mergeInto(LibraryManager.library, {
     whenDone: function() {
 #if ASSERTIONS
       assert(Asyncify.currData, 'Tried to wait for an async operation when none is in progress.');
-      assert(!Asyncify.asyncFinalizers.length, 'Cannot have multiple async operations in flight at once');
+      assert(!Asyncify.asyncPromiseHandlers, 'Cannot have multiple async operations in flight at once');
 #endif
-      return new Promise(function(resolve) {
-        Asyncify.asyncFinalizers.push(resolve);
+      return new Promise(function(resolve, reject) {
+        Asyncify.asyncPromiseHandlers = {
+          resolve: resolve,
+          reject: reject
+        };
       });
     },
 
@@ -248,7 +251,15 @@ mergeInto(LibraryManager.library, {
           if (typeof Browser !== 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
-          var asyncWasmReturnValue = Asyncify.doRewind(Asyncify.currData);
+          var asyncWasmReturnValue, isError = false;
+          try {
+            asyncWasmReturnValue = Asyncify.doRewind(Asyncify.currData);
+          } catch (err) {
+            asyncWasmReturnValue = err;
+            isError = true;
+          }
+          // Track whether the return value was handled by any promise handlers.
+          var handled = false;
           if (!Asyncify.currData) {
             // All asynchronous execution has finished.
             // `asyncWasmReturnValue` now contains the final
@@ -262,11 +273,18 @@ mergeInto(LibraryManager.library, {
             // contains the return value of the exported WASM function
             // that may have called C functions that
             // call `Asyncify.handleSleep()`.
-            var asyncFinalizers = Asyncify.asyncFinalizers;
-            Asyncify.asyncFinalizers = [];
-            asyncFinalizers.forEach(function(func) {
-              func(asyncWasmReturnValue);
-            });
+            var asyncPromiseHandlers = Asyncify.asyncPromiseHandlers;
+            if (asyncPromiseHandlers) {
+              Asyncify.asyncPromiseHandlers = null;
+              (isError ? asyncPromiseHandlers.reject : asyncPromiseHandlers.resolve)(asyncWasmReturnValue);
+              handled = true;
+            }
+          }
+          if (isError && !handled) {
+            // If there was an error and it was not handled by now, we have no choice but to
+            // rethrow that error into the global scope where it can be caught only by
+            // `onerror` or `onunhandledpromiserejection`.
+            throw asyncWasmReturnValue;
           }
         });
         reachedAfterCallback = true;
