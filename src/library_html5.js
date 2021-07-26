@@ -2079,8 +2079,8 @@ var LibraryJSEvents = {
 #else
       var touchEvent = JSEvents.touchEvent;
 #endif
-      var idx = touchEvent>>2; // Pre-shift the ptr to index to HEAP32 to save code size
       {{{ makeSetValue('touchEvent', C_STRUCTS.EmscriptenTouchEvent.timestamp, 'e.timeStamp', 'double') }}};
+      var idx = touchEvent>>2; // Pre-shift the ptr to index to HEAP32 to save code size
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.ctrlKey / 4}}}] = e.ctrlKey;
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.shiftKey / 4}}}] = e.shiftKey;
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.altKey / 4}}}] = e.altKey;
