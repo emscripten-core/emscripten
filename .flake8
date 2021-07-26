@@ -10,6 +10,8 @@ exclude =
  ./tools/ffdb.py,
  ./system/lib/, # system libraries
  ./cache/, # download/built content
+ ./tests/lit/lit.cfg.py,
+ ./tests/lit/lit.site.cfg.py,
  .git
 # The ports plugins have a lot of unused imports becuase
 # they need to implement the specific plugin APIs

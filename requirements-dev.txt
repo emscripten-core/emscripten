@@ -8,3 +8,5 @@ flake8==3.9.0
 flake8-unused-arguments==0.0.6
 coverage==5.5
 sphinx==2.4.4
+filecheck==0.0.17
+lit==0.11.0.post1
