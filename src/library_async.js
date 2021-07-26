@@ -257,6 +257,7 @@ mergeInto(LibraryManager.library, {
             asyncWasmReturnValue = err;
             isError = true;
           }
+          // Track whether the return value was handled by any promise handlers.
           var handled = false;
           if (!Asyncify.currData) {
             // All asynchronous execution has finished.
@@ -279,6 +280,9 @@ mergeInto(LibraryManager.library, {
             }
           }
           if (isError && !handled) {
+            // If there was an error and it was not handled by now, we have no choice but to
+            // rethrow that error into the global scope where it can be caught only by
+            // `onerror` or `onunhandledpromiserejection`.
             throw asyncWasmReturnValue;
           }
         });
