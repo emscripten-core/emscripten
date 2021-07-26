@@ -5071,20 +5071,6 @@ window.close = function() {
   def test_system(self):
     self.btest_exit(test_file('system.c'))
 
-  # Tests that it is possible to hook into/override a symbol defined in a system library.
-  @requires_graphics_hardware
-  def test_override_system_js_lib_symbol(self):
-    # This test verifies it is possible to override a symbol from WebGL library.
-
-    # When WebGL is implicitly linked in, the implicit linking should happen before any user --js-libraries, so that they can adjust
-    # the behavior afterwards.
-    self.btest_exit(test_file('test_override_system_js_lib_symbol.c'),
-                    args=['--js-library', test_file('test_override_system_js_lib_symbol.js')])
-
-    # When WebGL is explicitly linked to in strict mode, the linking order on command line should enable overriding.
-    self.btest_exit(test_file('test_override_system_js_lib_symbol.c'),
-                    args=['-s', 'AUTO_JS_LIBRARIES=0', '-lwebgl.js', '--js-library', test_file('test_override_system_js_lib_symbol.js')])
-
   @no_firefox('no 4GB support yet')
   @require_v8
   def test_zzz_zzz_4gb(self):
