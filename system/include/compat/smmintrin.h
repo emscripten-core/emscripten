@@ -262,8 +262,8 @@ _mm_max_epu32(__m128i __a, __m128i __b)
                                         (((__imm8) & 4) ? 6 : 2), \
                                         (((__imm8) & 8) ? 7 : 3)); })
 
-#define _mm_extract_ps(__a, __imm8) __extension__ ({       \
-                                       wasm_i32x4_extract_lane((__a), (__imm8) & 3); })
+#define _mm_extract_ps(__a, __imm8)                                                                \
+  __extension__({ wasm_i32x4_extract_lane((v128_t)(__a), (__imm8)&3); })
 
 #define _MM_EXTRACT_FLOAT(D, X, N) (__extension__ ({ __f32x4 __a = (__f32x4)(X); \
                                                     (D) = __a[N]; }))

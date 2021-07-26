@@ -419,9 +419,6 @@ function exitRuntime() {
   checkStackCookie();
 #endif
 #if USE_PTHREADS
-#if EXIT_RUNTIME
-  PThread.runExitHandlers();
-#endif
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
 #if EXIT_RUNTIME

@@ -88,9 +88,11 @@ var FETCH_WORKER_FILE = '';
 
 var WASI_MODULE_NAME = "wasi_snapshot_preview1";
 
-// Specifies a list of Emscripten-provided JS libraries to link against.
-// (internal, use -lfoo or -lfoo.js to link to Emscripten system JS libraries)
-var SYSTEM_JS_LIBRARIES = [];
+// List of JS libraries explictly linked against.  This includes JS system
+// libraries (specified via -lfoo or -lfoo.js) in addition to user libraries
+// passed via `--js-library`.  It does not include implicitly linked libraries
+// added by the JS compiler.
+var JS_LIBRARIES = [];
 
 // This will contain the emscripten version. This can be useful in combination
 // with RETAIN_COMPILER_SETTINGS

@@ -29,7 +29,7 @@ var LibrarySignals = {
     return 0;
   },
 
-  kill__deps: ['$ERRNO_CODES', '$setErrNo'],
+  kill__deps: ['$setErrNo'],
   kill: function(pid, sig) {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/kill.html
     // Makes no sense in a single-process environment.
@@ -37,7 +37,7 @@ var LibrarySignals = {
 #if ASSERTIONS
     err('Calling stub instead of kill()');
 #endif
-    setErrNo(ERRNO_CODES.EPERM);
+    setErrNo({{{ cDefine('EPERM') }}});
     return -1;
   },
 
@@ -48,12 +48,12 @@ var LibrarySignals = {
     return 0;
   },
 
-  raise__deps: ['$ERRNO_CODES', '$setErrNo'],
+  raise__deps: ['$setErrNo'],
   raise: function(sig) {
 #if ASSERTIONS
     err('Calling stub instead of raise()');
 #endif
-    setErrNo(ERRNO_CODES.ENOSYS);
+    setErrNo({{{ cDefine('ENOSYS') }}});
     return -1;
   },
 

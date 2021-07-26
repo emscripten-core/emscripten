@@ -6,7 +6,7 @@
 
 #if LZ4
 mergeInto(LibraryManager.library, {
-  $LZ4__deps: ['$FS', '$ERRNO_CODES'],
+  $LZ4__deps: ['$FS'],
   $LZ4: {
     DIR_MODE: {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */,
     FILE_MODE: {{{ cDefine('S_IFREG') }}} | 511 /* 0777 */,
@@ -114,28 +114,28 @@ mergeInto(LibraryManager.library, {
         }
       },
       lookup: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       },
       mknod: function (parent, name, mode, dev) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       rename: function (oldNode, newDir, newName) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       unlink: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       rmdir: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       readdir: function(node) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       symlink: function(parent, newName, oldPath) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       readlink: function(node) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
     },
     stream_ops: {
@@ -187,7 +187,7 @@ mergeInto(LibraryManager.library, {
         return written;
       },
       write: function (stream, buffer, offset, length, position) {
-        throw new FS.ErrnoError(ERRNO_CODES.EIO);
+        throw new FS.ErrnoError({{{ cDefine('EIO') }}});
       },
       llseek: function (stream, offset, whence) {
         var position = offset;
@@ -199,7 +199,7 @@ mergeInto(LibraryManager.library, {
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
         return position;
       },

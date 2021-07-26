@@ -357,7 +357,7 @@ def lld_flags_for_executable(external_symbols):
       f.write('\n'.join(external_symbols))
     cmd.append('--allow-undefined-file=%s' % undefs)
   else:
-    cmd.append('--allow-undefined')
+    cmd.append('--import-undefined')
 
   if settings.IMPORTED_MEMORY:
     cmd.append('--import-memory')
@@ -387,7 +387,7 @@ def lld_flags_for_executable(external_symbols):
       # Filter out symbols external/JS symbols
       c_exports = [e for e in c_exports if e not in external_symbols]
     for export in c_exports:
-      cmd += ['--export', export]
+      cmd.append('--export-if-defined=' + export)
 
     for export in settings.EXPORT_IF_DEFINED:
       cmd.append('--export-if-defined=' + export)

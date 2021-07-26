@@ -38,12 +38,10 @@ private:
   int mHandle;
 };
 
-EM_JS(int, init_js_device, (), {
-  return Asyncify.handleAsync(async () => {
-    const adapter = await navigator.gpu.requestAdapter();
-    const device = await adapter.requestDevice();
-    return JsValStore.add(device);
-  });
+EM_ASYNC_JS(int, init_js_device, (), {
+  const adapter = await navigator.gpu.requestAdapter();
+  const device = await adapter.requestDevice();
+  return JsValStore.add(device);
 });
 
 wgpu::Device init_device() {

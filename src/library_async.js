@@ -80,8 +80,9 @@ mergeInto(LibraryManager.library, {
                 // indirect calls.
                 if (Asyncify.state !== originalAsyncifyState &&
                     ASYNCIFY_IMPORTS.indexOf(x) < 0 &&
+                    !x.startsWith('__asyncjs__') &&
                     !(x.startsWith('invoke_') && {{{ !ASYNCIFY_IGNORE_INDIRECT }}})) {
-                  throw 'import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state';
+                  throw new Error('import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state');
                 }
               }
             }
