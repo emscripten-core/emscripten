@@ -57,16 +57,16 @@
 // emJsFuncs metadata is read in emscripten.py's create_em_js, which creates an
 // array of JS function strings to be included in the JS output.
 
-#define _EM_JS(ret, c_name, js_name, params, ...)                                                  \
+#define _EM_JS(ret, c_name, js_name, params, code)                                                 \
   _EM_JS_CPP_BEGIN                                                                                 \
   ret c_name params EM_IMPORT(js_name);                                                            \
   EMSCRIPTEN_KEEPALIVE                                                                             \
   __attribute__((section("em_js"), aligned(1))) char __em_js__##js_name[] =                        \
-    #params "<::>" #__VA_ARGS__;                                                                   \
+    #params "<::>" code;                                                                           \
   _EM_JS_CPP_END
 
-#define EM_JS(ret, name, params, ...) _EM_JS(ret, name, name, params, __VA_ARGS__)
+#define EM_JS(ret, name, params, ...) _EM_JS(ret, name, name, params, #__VA_ARGS__)
 
 #define EM_ASYNC_JS(ret, name, params, ...) _EM_JS(ret, name, __asyncjs__##name, params, {         \
-  return Asyncify.handleAsync(async () => __VA_ARGS__);                                            \
+  return Asyncify.handleAsync(async () => #__VA_ARGS__);                                           \
 })
