@@ -519,13 +519,6 @@ var LibraryPThread = {
         PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
       }
       return PThread.unusedWorkers.pop();
-    },
-
-    busySpinWait: function(msecs) {
-      var t = performance.now() + msecs;
-      while (performance.now() < t) {
-        ;
-      }
     }
   },
 
