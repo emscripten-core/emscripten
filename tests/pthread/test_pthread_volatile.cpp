@@ -7,8 +7,6 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <errno.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
 
 // Toggle to use two different methods for updating shared data (C++03 volatile
 // vs explicit atomic ops).  Note that using a volatile variable explicitly
@@ -30,12 +28,6 @@ static void *thread_start(void *arg) // thread: just flip the shared flag and qu
 
 int main()
 {
-  if (!emscripten_has_threading_support())
-  {
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   pthread_t thr;
   int rc = pthread_create(&thr, NULL, thread_start, (void*)0);
   if (rc != 0)

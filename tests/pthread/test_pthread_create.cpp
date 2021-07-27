@@ -6,8 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
+#include <emscripten/em_asm.h>
 #include <assert.h>
 
 #define NUM_THREADS 8
@@ -70,12 +69,6 @@ void CreateThread(int i)
 
 int main()
 {
-	if (!emscripten_has_threading_support())
-	{
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
-
 	// Create initial threads.
 	for(int i = 0; i < NUM_THREADS; ++i)
 		CreateThread(i);

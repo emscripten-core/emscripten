@@ -9,12 +9,6 @@
 #include <stdio.h>
 
 int main() {
-  if (!emscripten_has_threading_support())
-  {
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   // This should fail on the main thread.
   puts("trying to block...");
   pthread_cond_t cv = PTHREAD_COND_INITIALIZER;

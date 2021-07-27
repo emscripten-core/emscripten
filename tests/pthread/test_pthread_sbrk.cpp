@@ -5,7 +5,6 @@
 
 #include <pthread.h>
 #include <emscripten.h>
-#include <emscripten/threading.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -101,11 +100,6 @@ static void *thread_start(void *arg)
 
 int main()
 {
-  if (!emscripten_has_threading_support()) {
-    printf("Skipped: threading support is not available!\n");
-    return 0;
-  }
-
   printf("starting test, aborting? %d\n", ABORTING_MALLOC);
 
   int ret = pthread_barrier_init(&barrierWaitToAlloc, NULL, NUM_THREADS);

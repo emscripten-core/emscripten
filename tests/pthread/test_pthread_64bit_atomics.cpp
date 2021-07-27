@@ -139,12 +139,6 @@ int main()
 
 	uint64_t prevU64 = emscripten_atomic_add_u64((void*)&globalU64, 1); assert(prevU64 == 4);
 
-	if (!emscripten_has_threading_support())
-	{
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
-
 	for(int i = 0; i < 7; ++i)
 		RunTest(i);
 

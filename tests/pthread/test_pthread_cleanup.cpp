@@ -10,8 +10,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <errno.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
+#include <emscripten/em_asm.h>
 
 // Stores/encodes the results of calling to cleanup handlers.
 long cleanupState = 1;
@@ -65,11 +64,6 @@ pthread_t thr[4];
 
 int main() {
   int result = 0;
-
-  if (!emscripten_has_threading_support()) {
-     printf("Skipped: Threading is not supported.\n");
-     return 0;
-  }
 
   pthread_cleanup_push(cleanup_handler1, (void*)9998);
   pthread_cleanup_push(cleanup_handler1, (void*)9999);
