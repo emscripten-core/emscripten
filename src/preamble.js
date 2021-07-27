@@ -916,6 +916,21 @@ function instantiateSync(file, info) {
 }
 #endif
 
+#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
+// When using postMessage to send an object, it is processed by the structured clone algorithm.
+// The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
+// This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
+function resetPrototype(constructor, attrs) {
+  var object = Object.create(constructor.prototype);
+  for (var key in attrs) {
+    if (attrs.hasOwnProperty(key)) {
+      object[key] = attrs[key];
+    }
+  }
+  return object;
+}
+#endif
+
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm() {
@@ -1171,28 +1186,27 @@ function createWasm() {
   // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
   // to any other async startup actions they are performing.
   if (Module['instantiateWasm']) {
+#if USE_OFFSET_CONVERTER
+#if ASSERTIONS && USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      assert(Module['wasmOffsetData'], 'wasmOffsetData not found on Module object');
+    }
+#endif
+    wasmOffsetConverter = resetPrototype(WasmOffsetConverter, Module['wasmOffsetData']);
+    {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
+#endif
+#if LOAD_SOURCE_MAP
+#if ASSERTIONS && USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      assert(Module['wasmSourceMapData'], 'wasmSourceMapData not found on Module object');
+    }
+#endif
+    wasmSourceMap = resetPrototype(WasmSourceMap, Module['wasmSourceMapData']);
+#endif
     try {
       var exports = Module['instantiateWasm'](info, receiveInstance);
 #if ASYNCIFY
       exports = Asyncify.instrumentWasmExports(exports);
-#endif
-#if USE_OFFSET_CONVERTER
-      {{{
-        runOnMainThread(`
-          // We have no way to create an OffsetConverter in this code path since
-          // we have no access to the wasm binary (only the user does). Instead,
-          // create a fake one that reports we cannot identify functions from
-          // their binary offsets.
-          // Note that we only do this on the main thread, as the workers
-          // receive the OffsetConverter data from there.
-          wasmOffsetConverter = {
-            getName: function() {
-              return 'unknown-due-to-instantiateWasm';
-            }
-          };
-          removeRunDependency('offset-converter');
-        `)
-      }}}
 #endif
       return exports;
     } catch(e) {

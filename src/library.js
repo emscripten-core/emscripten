@@ -2953,6 +2953,9 @@ LibraryManager.library = {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_generate_pc (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
 #else
+#if ASSERTIONS
+    assert(wasmOffsetConverter);
+#endif
     var match;
 
     if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
