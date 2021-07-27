@@ -4,5 +4,6 @@ Perform an async task.
   Hello from sync C++ before the async
   Hello from async JS
   Hello from async C++
-Perform another synchronous task.
-  Hello again from sync C++
+Perform another synchronous task, also showing var capture.
+  Hello again from sync C++, we captured 41
+Captured var is now 42

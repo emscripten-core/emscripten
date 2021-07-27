@@ -36,11 +36,18 @@ int main() {
     }, resume, 1);
   });
 
-  std::cout << "Perform another synchronous task.\n";
+  std::cout << "Perform another synchronous task, also showing var capture.\n";
 
-  sync_to_async.invoke([](emscripten::sync_to_async::Callback resume) {
-    std::cout << "  Hello again from sync C++\n";
+  int var = 41;
+
+  sync_to_async.invoke([&](emscripten::sync_to_async::Callback resume) {
+    std::cout << "  Hello again from sync C++, we captured " << var << '\n';
+    var++;
     (*resume)();
   });
+
+  std::cout << "Captured var is now " << var << '\n';
+  assert(var == 42);
+
   return 0;
 }
