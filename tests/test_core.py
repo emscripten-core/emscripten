@@ -1413,6 +1413,21 @@ int main() {
 }
 ''', 'bugfree code')
 
+  def test_exceptions_longjmp1(self):
+    self.set_setting('SUPPORT_LONGJMP')
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.do_core_test('test_exceptions_longjmp1.cpp')
+
+  def test_exceptions_longjmp2(self):
+    self.set_setting('SUPPORT_LONGJMP')
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.do_core_test('test_exceptions_longjmp2.cpp')
+
+  def test_exceptions_longjmp3(self):
+    self.set_setting('SUPPORT_LONGJMP')
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.do_core_test('test_exceptions_longjmp3.cpp')
+
   # Marked as impure since the WASI reactor modules (modules without main)
   # are not yet suppored by the wasm engines we test against.
   @also_with_standalone_wasm(impure=True)
