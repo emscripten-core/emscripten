@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <errno.h>
@@ -31,9 +32,6 @@ int main()
 {
   if (!emscripten_has_threading_support())
   {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
     printf("Skipped: Threading is not supported.\n");
     return 0;
   }
@@ -42,16 +40,11 @@ int main()
   int rc = pthread_create(&thr, NULL, thread_start, (void*)0);
   if (rc != 0)
   {
-#ifdef REPORT_RESULT
-    int result = (rc != EAGAIN);
-    REPORT_RESULT(result);
-    return 0;
-#endif
+    return 1;
   }
 
   while(sharedVar == 0) {}
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(sharedVar);
-#endif
+  assert(sharedVar == 1);
+  return 0;
 }

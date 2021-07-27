@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 #include <pthread.h>
+#include <cassert>
 #include <emscripten.h>
 #include <emscripten/threading.h>
 #include <math.h>
@@ -33,9 +34,9 @@ void *thread_main(void *arg)
 	double timeDifference = pthreadTime - mainThreadTime;
 	printf("Time difference between pthread and main thread is %f msecs.\n", timeDifference);
 
-#ifdef REPORT_RESULT
-	REPORT_RESULT(fabs(timeDifference) < 200); // The time difference here should be well less than 1 msec, but test against 200msecs to be super-sure.
-#endif
+	// The time difference here should be well less than 1 msec, but test against 200msecs to be super-sure.
+	assert(fabs(timeDifference) < 200);
+	emscripten_force_exit(0);
 	return 0;
 }
 

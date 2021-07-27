@@ -91,10 +91,6 @@ int main(int argc, char* argv[]) {
   assert(thrd_create(&t6, thread_main, NULL) == thrd_success);
   assert(thrd_detach(t6) == thrd_success);
 
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
   printf("done!\n");
   return 0;
 }

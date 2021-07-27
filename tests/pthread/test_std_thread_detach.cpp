@@ -7,10 +7,7 @@
 #include <math.h>
 #include <emscripten.h>
 #include <assert.h>
-
-#ifndef REPORT_RESULT
 #include <iostream>
-#endif
 
 extern "C" {
 //Create a thread that does some work
@@ -30,23 +27,13 @@ void EMSCRIPTEN_KEEPALIVE count_threads(int num_threads_spawned, int num_threads
 		return PThread.runningWorkers.length + PThread.unusedWorkers.length;
 	});
 
-#ifdef REPORT_RESULT
-	if (num_threads_spawned_extra == 0)		//check extra thread spawned
-		REPORT_RESULT(-1);
-	else {
-		if (num_workers < num_threads_spawned)		//check worker returned to pool and was assigned another thread
-			REPORT_RESULT(0);
-		else
-			REPORT_RESULT(num_workers);
-	}
-#else
 	std::cout << 
 		"Worker pool size: " << num_workers << 
 		", Number of threads spawned: " << num_threads_spawned 
 	<< "." << std::endl;
 	assert(num_threads_spawned_extra != 0);
 	assert(num_workers < num_threads_spawned);
-#endif
+	emscripten_force_exit(0);
 }
 }
 
@@ -75,4 +62,5 @@ int main(int argc, char** argv) {
 			}
 		}, threads_to_spawn*100);
 	);
+	emscripten_exit_with_live_runtime();
 }

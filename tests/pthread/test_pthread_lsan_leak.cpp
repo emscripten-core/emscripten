@@ -38,4 +38,5 @@ int main(int argc, char **argv) {
 
   __lsan_do_leak_check();
   fprintf(stderr, "LSAN TEST COMPLETE\n");
+  return 0;
 }

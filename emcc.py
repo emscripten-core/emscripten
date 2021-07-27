@@ -1408,7 +1408,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   # If no output format was sepecific we try to imply the format based on
   # the output filename extension.
-  if not options.oformat and (options.shared or options.relocatable):
+  if not options.oformat and (options.relocatable or (options.shared and not settings.SIDE_MODULE)):
     # Until we have a better story for actually producing runtime shared libraries
     # we support a compatibility mode where shared libraries are actually just
     # object files linked with `wasm-ld --relocatable` or `llvm-link` in the case

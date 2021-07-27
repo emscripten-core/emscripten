@@ -23,7 +23,5 @@ int main()
 		if (emscripten_has_threading_support())
 			for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
 	}
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#endif
+	return 0;
 }

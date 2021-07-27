@@ -898,7 +898,6 @@ function instantiateSync(file, info) {
     instance = new WebAssembly.Instance(module, info);
 #if USE_OFFSET_CONVERTER
     wasmOffsetConverter = new WasmOffsetConverter(binary, module);
-    {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
 #endif
   } catch (e) {
     var str = e.toString();
@@ -1054,10 +1053,6 @@ function createWasm() {
   }
 #endif
 
-#if USE_OFFSET_CONVERTER
-  {{{ runOnMainThread("addRunDependency('offset-converter');") }}}
-#endif
-
   // Prefer streaming instantiation if available.
 #if WASM_ASYNC_COMPILATION
 #if ASSERTIONS
@@ -1083,15 +1078,21 @@ function createWasm() {
   }
 
   function instantiateArrayBuffer(receiver) {
-    return getBinaryPromise().then(function(binary) {
-      var result = WebAssembly.instantiate(binary, info);
 #if USE_OFFSET_CONVERTER
-      result.then(function (instance) {
-        wasmOffsetConverter = new WasmOffsetConverter(binary, instance.module);
-        {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
-      });
-#endif // USE_OFFSET_CONVERTER
-      return result;
+    var savedBinary;
+#endif
+    return getBinaryPromise().then(function(binary) {
+#if USE_OFFSET_CONVERTER
+      savedBinary = binary;
+#endif
+      return WebAssembly.instantiate(binary, info);
+    }).then(function (instance) {
+#if USE_OFFSET_CONVERTER
+      // wasmOffsetConverter needs to be assigned before calling the receiver
+      // (receiveInstantiationResult).  See comments below in instantiateAsync.
+      wasmOffsetConverter = new WasmOffsetConverter(savedBinary, instance.module);
+#endif
+      return instance;
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
 
@@ -1160,8 +1161,6 @@ function createWasm() {
 
             clonedResponsePromise.then(function(arrayBufferResult) {
               wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
-              {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
-
               receiveInstantiationResult(instantiationResult);
             }, function(reason) {
               err('failed to initialize offset-converter: ' + reason);
@@ -1193,7 +1192,6 @@ function createWasm() {
     }
 #endif
     wasmOffsetConverter = resetPrototype(WasmOffsetConverter, Module['wasmOffsetData']);
-    {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
 #endif
 #if LOAD_SOURCE_MAP
 #if ASSERTIONS && USE_PTHREADS

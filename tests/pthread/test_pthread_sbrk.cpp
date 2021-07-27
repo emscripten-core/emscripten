@@ -101,11 +101,7 @@ static void *thread_start(void *arg)
 
 int main()
 {
-  int result = 0;
   if (!emscripten_has_threading_support()) {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
     printf("Skipped: threading support is not available!\n");
     return 0;
   }
@@ -135,24 +131,19 @@ int main()
     int res = 0;
     ret = pthread_join(thr[i], (void**)&res);
     assert(ret == 0);
-    if (res == RESULT_OK) {
-    } else if (res == RESULT_EXPECTED_FAILS) {
+    assert(res != RESULT_BAD_FAIL);
+    if (res == RESULT_EXPECTED_FAILS) {
       seen_expected_fails = 1;
-    } else if (res == RESULT_BAD_FAIL) {
-      result = 1;
     }
     if (res) printf("Thread %d failed with return code %d.\n", i, res);
   }
 #if !ABORTING_MALLOC
   if (!seen_expected_fails) {
     printf("Expected to see fails, but saw none :(\n");
-    result = 2;
+    return 2;
   }
 #endif
 
-  printf("Test finished with result %d\n", result);
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  printf("Test finished\n");
+  return 0;
 }

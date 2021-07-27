@@ -1,3 +1,4 @@
+#include <cassert>
 #include <thread>
 #include <cstdio>
 
@@ -10,7 +11,6 @@ void init_tls2(void) {
 }
 
 int main(void) {
-#ifdef REPORT_RESULT
-  REPORT_RESULT(tls + tls2);
-#endif
+  assert(tls + tls2 == 1330 + 7);
+  return 0;
 }

@@ -119,6 +119,9 @@ class other(RunnerCore):
   def assertIsObjectFile(self, filename):
     self.assertTrue(building.is_wasm(filename))
 
+  def assertIsWasmDylib(self, filename):
+    self.assertTrue(building.is_wasm_dylib(filename))
+
   def do_other_test(self, testname, emcc_args=[], **kwargs):
     self.do_run_in_out_file_test('other', testname, emcc_args=emcc_args, **kwargs)
 
@@ -10136,6 +10139,18 @@ int main () {
     self.assertContained('warning: -shared/-r used with executable output suffix', err)
     self.run_js('out.js')
 
+  def test_shared_and_side_module_flag(self):
+    # Test that `-shared` and `-s SIDE_MODULE` flag causes wasm dylib generation without a warning.
+    err = self.run_process([EMCC, '-shared', '-s', 'SIDE_MODULE=1', test_file('hello_world.c'), '-o', 'out.foo'], stderr=PIPE).stderr
+    self.assertNotContained('linking a library with `-shared` will emit a static object', err)
+    self.assertIsWasmDylib('out.foo')
+
+    # Test that `-shared` and `-s SIDE_MODULE` flag causes wasm dylib generation without a warning even if given exectuable output name.
+    err = self.run_process([EMCC, '-shared', '-s', 'SIDE_MODULE=1', test_file('hello_world.c'), '-o', 'out.wasm'],
+                           stderr=PIPE).stderr
+    self.assertNotContained('warning: -shared/-r used with executable output suffix', err)
+    self.assertIsWasmDylib('out.wasm')
+
   @no_windows('windows does not support shbang syntax')
   @with_env_modify({'EMMAKEN_JUST_CONFIGURE': '1'})
   def test_autoconf_mode(self):
@@ -10829,3 +10844,40 @@ void foo() {}
     # When WebGL is explicitly linked to in strict mode, the linking order on command line should enable overriding.
     self.emcc_args += ['-sAUTO_JS_LIBRARIES=0', '-lwebgl.js', '--js-library', test_file('test_override_system_js_lib_symbol.js')]
     self.do_run_in_out_file_test(test_file('test_override_system_js_lib_symbol.c'))
+
+  @node_pthreads
+  def test_pthread_lsan_no_leak(self):
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('INITIAL_MEMORY', '256MB')
+    self.emcc_args += ['-gsource-map']
+    self.do_run_in_out_file_test(test_file('pthread/test_pthread_lsan_no_leak.cpp'), emcc_args=['-fsanitize=leak'])
+    self.do_run_in_out_file_test(test_file('pthread/test_pthread_lsan_no_leak.cpp'), emcc_args=['-fsanitize=address'])
+
+  @node_pthreads
+  def test_pthread_lsan_leak(self):
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('INITIAL_MEMORY', '256MB')
+    self.add_pre_run("Module['LSAN_OPTIONS'] = 'exitcode=0'")
+    self.emcc_args += ['-gsource-map']
+    expected = [
+      'Direct leak of 3432 byte(s) in 1 object(s) allocated from',
+      'test_pthread_lsan_leak.cpp:18:17',
+      'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
+      'test_pthread_lsan_leak.cpp:36:10',
+      'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
+      'test_pthread_lsan_leak.cpp:30:16',
+      'Direct leak of 1234 byte(s) in 1 object(s) allocated from',
+      'test_pthread_lsan_leak.cpp:20:13',
+      'Direct leak of 420 byte(s) in 1 object(s) allocated from',
+      'test_pthread_lsan_leak.cpp:31:13',
+      'Direct leak of 42 byte(s) in 1 object(s) allocated from',
+      'test_pthread_lsan_leak.cpp:13:21',
+      'test_pthread_lsan_leak.cpp:35:3',
+      '8513 byte(s) leaked in 6 allocation(s).',
+    ]
+    self.do_runf(test_file('pthread/test_pthread_lsan_leak.cpp'), expected, assert_all=True, emcc_args=['-fsanitize=leak'])
+    self.do_runf(test_file('pthread/test_pthread_lsan_leak.cpp'), expected, assert_all=True, emcc_args=['-fsanitize=address'])
