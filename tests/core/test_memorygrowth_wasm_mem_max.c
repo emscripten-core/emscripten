@@ -16,7 +16,7 @@ int main() {
   // higher can prove we stop at the right point.
   for (int i = 0; 1; i++) {
     printf("%d\n", i);
-    volatile int sink = (int)malloc(MB);
+    volatile long sink = (long)malloc(MB);
     if (!sink) {
       printf("failed at %d\n", i);
       assert(i > 70);

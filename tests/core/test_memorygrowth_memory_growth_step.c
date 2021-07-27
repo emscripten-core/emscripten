@@ -35,7 +35,7 @@ int main() {
   for (int i = 0; 1; i++) {
 
     printf("%d %d %d\n", i, get_memory_size(), get_memory_size() / MB);
-    volatile int sink = (int)malloc(MB);
+    volatile long sink = (long)malloc(MB);
 
     if (!sink) {
       printf("failed at %d %d %d\n", i, get_memory_size(), get_memory_size() / MB);

@@ -101,16 +101,6 @@ int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr, int prioceiling)
   return EPERM;
 }
 
-int pthread_setcancelstate(int new, int* old) {
-  if (new > 1U)
-    return EINVAL;
-  struct pthread* self = pthread_self();
-  if (old)
-    *old = self->canceldisable;
-  self->canceldisable = new;
-  return 0;
-}
-
 int _pthread_isduecanceled(struct pthread* pthread_ptr) {
   return pthread_ptr->threadStatus == 2 /*canceled*/;
 }
@@ -122,14 +112,6 @@ void __pthread_testcancel() {
   if (_pthread_isduecanceled(self)) {
     EM_ASM(throw 'Canceled!');
   }
-}
-
-int pthread_getattr_np(pthread_t t, pthread_attr_t* a) {
-  *a = (pthread_attr_t){0};
-  a->_a_detach = !!t->detached;
-  a->_a_stackaddr = (uintptr_t)t->stack;
-  a->_a_stacksize = t->stack_size - DEFAULT_STACK_SIZE;
-  return 0;
 }
 
 static uint32_t dummyZeroAddress = 0;
@@ -197,11 +179,10 @@ extern double emscripten_receive_on_main_thread_js(int functionIndex, int numCal
 extern int _emscripten_notify_thread_queue(pthread_t targetThreadId, pthread_t mainThreadId);
 
 #if defined(__has_feature)
-#if __has_feature(address_sanitizer)
-#define HAS_ASAN
-void __lsan_disable_in_this_thread(void);
-void __lsan_enable_in_this_thread(void);
-int emscripten_builtin_pthread_create(void *thread, void *attr,
+#if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
+#define HAS_SANITIZER
+#include <sanitizer/lsan_interface.h>
+int emscripten_builtin_pthread_create(pthread_t *thread, const pthread_attr_t* attr,
                                       void *(*callback)(void *), void *arg);
 #endif
 #endif
@@ -211,17 +192,17 @@ static void _do_call(em_queued_call* q) {
   assert(EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum) <= EM_QUEUED_CALL_MAX_ARGS);
   switch (q->functionEnum) {
     case EM_PROXIED_PTHREAD_CREATE:
-#ifdef HAS_ASAN
+#ifdef HAS_SANITIZER
       // ASan wraps the emscripten_builtin_pthread_create call in __lsan::ScopedInterceptorDisabler.
       // Unfortunately, that only disables it on the thread that made the call.
       // This is sufficient on the main thread.
       // On non-main threads, pthread_create gets proxied to the main thread, where LSan is not
       // disabled. This makes it necessary for us to disable LSan here, so that it does not detect
       // pthread's internal allocations as leaks.
-      __lsan_disable_in_this_thread();
+      __lsan_disable();
       q->returnValue.i =
         emscripten_builtin_pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
-      __lsan_enable_in_this_thread();
+      __lsan_enable();
 #else
       q->returnValue.i =
         pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
@@ -853,9 +834,20 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
   return q;
 }
 
-int _emscripten_call_on_thread(
-  int forceAsync,
-  pthread_t targetThread, EM_FUNC_SIGNATURE sig, void* func_ptr, void* satellite, ...) {
+typedef struct DispatchToThreadArgs {
+  pthread_t target_thread;
+  em_queued_call* q;
+} DispatchToThreadArgs;
+
+static void dispatch_to_thread_helper(void* user_data) {
+  DispatchToThreadArgs* args = (DispatchToThreadArgs*)user_data;
+  _emscripten_do_dispatch_to_thread(args->target_thread, args->q);
+  free(user_data);
+}
+
+int _emscripten_call_on_thread(int forceAsync, pthread_t targetThread, EM_FUNC_SIGNATURE sig,
+    void* func_ptr, void* satellite, ...) {
+
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call* q = em_queued_call_malloc();
   assert(q);
@@ -901,11 +893,10 @@ int _emscripten_call_on_thread(
   // The called function will not be async if we are on the same thread; force
   // async if the user asked for that.
   if (forceAsync) {
-    EM_ASM({
-      setTimeout(function() {
-        __emscripten_do_dispatch_to_thread($0, $1);
-      }, 0);
-    }, targetThread, q);
+    DispatchToThreadArgs* args = malloc(sizeof(DispatchToThreadArgs));
+    args->target_thread = targetThread;
+    args->q = q;
+    emscripten_set_timeout(dispatch_to_thread_helper, 0, args);
     return 0;
   } else {
     return _emscripten_do_dispatch_to_thread(targetThread, q);
@@ -978,3 +969,48 @@ void __do_cleanup_push(struct __ptcb *cb) {
 void __do_cleanup_pop(struct __ptcb *cb) {
   __pthread_self()->cancelbuf = cb->__next;
 }
+
+EM_JS(void, initPthreadsJS, (void), {
+  PThread.initRuntime();
+})
+
+// We must initialize the runtime at the proper time, which is after memory is
+// initialized and before any userland global ctors.  We must also keep this
+// function alive so it is always called.
+// This must run before any userland ctors.
+// Note that ASan constructor priority is 50, and we must be higher.
+EMSCRIPTEN_KEEPALIVE
+__attribute__((constructor(48)))
+void __emscripten_pthread_data_constructor(void) {
+  initPthreadsJS();
+  pthread_self()->locale = &libc.global_locale;
+}
+
+extern int __pthread_create_js(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
+
+int __pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg) {
+  return __pthread_create_js(thread, attr, start_routine, arg);
+}
+weak_alias(__pthread_create, emscripten_builtin_pthread_create);
+weak_alias(__pthread_create, pthread_create);
+
+extern int __pthread_join_js(pthread_t thread, void **retval);
+int __pthread_join(pthread_t thread, void **retval) {
+  return __pthread_join_js(thread, retval);
+}
+weak_alias(__pthread_join, emscripten_builtin_pthread_join);
+weak_alias(__pthread_join, pthread_join);
+
+extern int __pthread_detach_js(pthread_t t);
+int __pthread_detach(pthread_t t) {
+  return __pthread_detach_js(t);
+}
+weak_alias(__pthread_detach, emscripten_builtin_pthread_detach);
+weak_alias(__pthread_detach, pthread_detach);
+weak_alias(__pthread_detach, thrd_detach);
+
+extern _Noreturn void __pthread_exit_js(void* status);
+_Noreturn void __pthread_exit(void* status) {
+   __pthread_exit_js(status);
+}
+weak_alias(__pthread_exit, pthread_exit);

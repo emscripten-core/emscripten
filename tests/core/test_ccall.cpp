@@ -16,8 +16,8 @@ const char *get_string() { return "hello world"; }
 void print_int(int x) { printf("%d\n", x); }
 void print_float(float x) { printf("%.2f\n", x); }
 void print_string(char *x) { printf("%s\n", x); }
-void print_bool(bool x) { 
-  if (x) printf("true\n"); 
+void print_bool(bool x) {
+  if (x) printf("true\n");
   else if (!x) printf("false\n");
 }
 int multi(int x, float y, int z, char *str) {
@@ -36,11 +36,11 @@ int *pointer(int *in) {
 struct test_struct {
   int arg1, arg2, arg3;
 };
-static int* stackChecker = 0;
+static intptr_t* stackChecker = 0;
 __attribute__((noinline))
-int get_stack() { int i; return (int)&i; }
+intptr_t get_stack() { int i; return (intptr_t)&i; }
 int uses_stack(test_struct* t1) {
-  if (stackChecker == 0) stackChecker = (int*)malloc(sizeof(int));
+  if (stackChecker == 0) stackChecker = (intptr_t*)malloc(sizeof(intptr_t));
   *stackChecker = get_stack();
   EM_ASM(Module['ccall']('get_int', 'number'));
   printf("stack is %s.\n", *stackChecker == get_stack() ? "ok" : "messed up");

@@ -38,7 +38,7 @@ void RunTest(int test)
 	pthread_attr_init(&attr);
 	pthread_attr_setstacksize(&attr, 4*1024);
 
-	printf("Main thread has thread ID %d\n", (int)pthread_self());
+	printf("Main thread has thread ID %ld\n", (long)pthread_self());
 	assert(pthread_self() != 0);
 
 	EM_ASM(out('Main: Starting test ' + $0), test);

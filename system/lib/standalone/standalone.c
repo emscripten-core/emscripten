@@ -90,27 +90,12 @@ long __syscall221(long fd, long cmd, ...) {
 
 // Emscripten additions
 
-void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
-  // This normally calls out into JS which can do a single fast operation,
-  // but with wasi we can't do that. As this is called when n >= 512, we
-  // can just split into smaller calls.
-  // TODO optimize, maybe build our memcpy with a wasi variant, maybe have
-  //      a SIMD variant, etc.
-  const int CHUNK = 508;
-  unsigned char* d = (unsigned char*)dest;
-  unsigned char* s = (unsigned char*)src;
-  while (n > 0) {
-    size_t curr_n = n;
-    if (curr_n > CHUNK) curr_n = CHUNK;
-    memcpy(d, s, curr_n);
-    d += CHUNK;
-    s += CHUNK;
-    n -= curr_n;
-  }
-  return dest;
-}
-
 extern void emscripten_notify_memory_growth(size_t memory_index);
+
+// Should never be called in standalone mode
+void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
+  __builtin_unreachable();
+}
 
 size_t emscripten_get_heap_max() {
   // In standalone mode we don't have any wasm instructions to access the max
@@ -120,7 +105,7 @@ size_t emscripten_get_heap_max() {
 }
 
 int emscripten_resize_heap(size_t size) {
-#ifdef __EMSCRIPTEN_MEMORY_GROWTH__
+#ifdef EMSCRIPTEN_MEMORY_GROWTH
   size_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
   assert(old_size < size);
   ssize_t diff = (size - old_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;

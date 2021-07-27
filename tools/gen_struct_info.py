@@ -253,19 +253,24 @@ def inspect_headers(headers, cflags):
   # Compile the program.
   show('Compiling generated code...')
 
+  if any('libcxxabi' in f for f in cflags):
+    compiler = shared.EMXX
+  else:
+    compiler = shared.EMCC
+
   # -Oz optimizes enough to avoid warnings on code size/num locals
-  cmd = [shared.EMXX] + cflags + ['-o', js_file[1], src_file[1],
-                                  '-O0',
-                                  '-Werror',
-                                  '-Wno-format',
-                                  '-nostdlib',
-                                  compiler_rt,
-                                  '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
-                                  '-s', 'LLD_REPORT_UNDEFINED=1',
-                                  '-s', 'STRICT',
-                                  # Use SINGLE_FILE=1 so there is only a single
-                                  # file to cleanup.
-                                  '-s', 'SINGLE_FILE']
+  cmd = [compiler] + cflags + ['-o', js_file[1], src_file[1],
+                               '-O0',
+                               '-Werror',
+                               '-Wno-format',
+                               '-nostdlib',
+                               compiler_rt,
+                               '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
+                               '-s', 'LLD_REPORT_UNDEFINED=1',
+                               '-s', 'STRICT',
+                               # Use SINGLE_FILE=1 so there is only a single
+                               # file to cleanup.
+                               '-s', 'SINGLE_FILE']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
@@ -375,7 +380,8 @@ def main(args):
 
   default_json_files = [
       shared.path_from_root('src', 'struct_info.json'),
-      shared.path_from_root('src', 'struct_info_internal.json')
+      shared.path_from_root('src', 'struct_info_internal.json'),
+      shared.path_from_root('src', 'struct_info_cxx.json'),
   ]
   parser = argparse.ArgumentParser(description='Generate JSON infos for structs.')
   parser.add_argument('json', nargs='*',
@@ -410,6 +416,9 @@ def main(args):
 
   internal_cflags = [
     '-I' + shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'),
+  ]
+
+  cxxflags = [
     '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'src'),
     '-D__USING_EMSCRIPTEN_EXCEPTIONS__',
   ]
@@ -423,6 +432,8 @@ def main(args):
     # Inspect all collected structs.
     if 'internal' in f:
       use_cflags = cflags + internal_cflags
+    elif 'cxx' in f:
+      use_cflags = cflags + cxxflags
     else:
       use_cflags = cflags
     info_fragment = inspect_code(header_files, use_cflags)

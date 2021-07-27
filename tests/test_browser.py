@@ -3158,6 +3158,12 @@ window.close = function() {
                message='glClipPlane and GL_LIGHTING emulation. You should see a torus cut open on one side with lighting from one lightsource applied.')
 
   @requires_graphics_hardware
+  def test_sdl2_glalphatest(self):
+    self.btest('sdl2_glalphatest.c', reference='sdl2_glalphatest.png',
+               args=['-s', 'LEGACY_GL_EMULATION', '-s', 'USE_SDL=2'],
+               message='GL_ALPHA_TEST emulation. You should see gradients with different alpha testing modes and reference values.')
+
+  @requires_graphics_hardware
   def test_sdl2_fog_simple(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
@@ -3880,7 +3886,7 @@ window.close = function() {
   @no_chrome('pthread_kill hangs chrome renderer, and keep subsequent tests from passing')
   @requires_threads
   def test_pthread_kill(self):
-    self.btest(test_file('pthread/test_pthread_kill.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest_exit(test_file('pthread/test_pthread_kill.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that pthread cleanup stack (pthread_cleanup_push/_pop) works.
   @requires_threads
@@ -5064,20 +5070,6 @@ window.close = function() {
 
   def test_system(self):
     self.btest_exit(test_file('system.c'))
-
-  # Tests that it is possible to hook into/override a symbol defined in a system library.
-  @requires_graphics_hardware
-  def test_override_system_js_lib_symbol(self):
-    # This test verifies it is possible to override a symbol from WebGL library.
-
-    # When WebGL is implicitly linked in, the implicit linking should happen before any user --js-libraries, so that they can adjust
-    # the behavior afterwards.
-    self.btest_exit(test_file('test_override_system_js_lib_symbol.c'),
-                    args=['--js-library', test_file('test_override_system_js_lib_symbol.js')])
-
-    # When WebGL is explicitly linked to in strict mode, the linking order on command line should enable overriding.
-    self.btest_exit(test_file('test_override_system_js_lib_symbol.c'),
-                    args=['-s', 'AUTO_JS_LIBRARIES=0', '-lwebgl.js', '--js-library', test_file('test_override_system_js_lib_symbol.js')])
 
   @no_firefox('no 4GB support yet')
   @require_v8

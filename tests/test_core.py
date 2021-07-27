@@ -327,7 +327,7 @@ class TestCoreBase(RunnerCore):
 
   def test_int53(self):
     self.emcc_args += ['-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$convertI32PairToI53,$convertU32PairToI53,$readI53FromU64,$readI53FromI64,$writeI53ToI64,$writeI53ToI64Clamped,$writeI53ToU64Clamped,$writeI53ToI64Signaling,$writeI53ToU64Signaling]']
-    self.do_core_test('test_int53.c')
+    self.do_core_test('test_int53.c', interleaved_output=False)
 
   def test_i64(self):
     self.do_core_test('test_i64.c')
@@ -511,7 +511,7 @@ class TestCoreBase(RunnerCore):
         p++;
         short *q = (short*)p;
         *q = 300;
-        printf("*%d:%d*\n", *q, ((int)q)%2);
+        printf("*%d:%ld*\n", *q, ((long)q)%2);
         int *r = (int*)p;
         *r = 515559;
         printf("*%d*\n", *r);
@@ -558,8 +558,8 @@ class TestCoreBase(RunnerCore):
         int base = argc-1;
         Object *o = NULL;
         printf("%zu,%zu\n", sizeof(Object), sizeof(Principal));
-        printf("%d,%d,%d,%d\n", (int)&o[base].type, (int)&o[base].intg, (int)&o[base].real, (int)&o[base].name);
-        printf("%d,%d,%d,%d\n", (int)&o[base+1].type, (int)&o[base+1].intg, (int)&o[base+1].real, (int)&o[base+1].name);
+        printf("%ld,%ld,%ld,%ld\n", (long)&o[base].type, (long)&o[base].intg, (long)&o[base].real, (long)&o[base].name);
+        printf("%ld,%ld,%ld,%ld\n", (long)&o[base+1].type, (long)&o[base+1].intg, (long)&o[base+1].real, (long)&o[base+1].name);
         Principal p, q;
         p.x = p.y = q.x = q.y = 0;
         p.a.type = A;
@@ -2033,10 +2033,10 @@ int main(int argc, char **argv) {
       };
 
       int main() {
-        printf("*%d*\\n", (int)(mqc_states+1)-(int)mqc_states);
+        printf("*%ld*\\n", (long)(mqc_states+1)-(long)mqc_states);
         for (int i = 0; i < 2; i++)
-          printf("%d:%d,%d,%d,%d\\n", i, mqc_states[i].qeval, mqc_states[i].mps,
-                 (int)mqc_states[i].nmps-(int)mqc_states, (int)mqc_states[i].nlps-(int)mqc_states);
+          printf("%d:%d,%d,%ld,%ld\\n", i, mqc_states[i].qeval, mqc_states[i].mps,
+                 (long)mqc_states[i].nmps-(long)mqc_states, (long)mqc_states[i].nlps-(long)mqc_states);
         return 0;
       }
       '''
@@ -2108,8 +2108,8 @@ Success!''')
       int main( int argc, const char *argv[] ) {
         header h, *ph = 0;
         fatheader fh, *pfh = 0;
-        printf("*%zu,%d,%d*\\n", sizeof(header), (int)((int)&h.desc - (int)&h.id), (int)(&ph[1])-(int)(&ph[0]));
-        printf("*%zu,%d,%d*\\n", sizeof(fatheader), (int)((int)&fh.desc - (int)&fh.id), (int)(&pfh[1])-(int)(&pfh[0]));
+        printf("*%zu,%ld,%ld*\\n", sizeof(header), (long)((long)&h.desc - (long)&h.id), (long)(&ph[1])-(long)(&ph[0]));
+        printf("*%zu,%ld,%ld*\\n", sizeof(fatheader), (long)((long)&fh.desc - (long)&fh.id), (long)(&pfh[1])-(long)(&pfh[0]));
         return 0;
       }
       '''
@@ -2311,7 +2311,7 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_dispatch_after_exit(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_dispatch_after_exit.c')
+    self.do_run_in_out_file_test('pthread/test_pthread_dispatch_after_exit.c', interleaved_output=False)
 
   @node_pthreads
   def test_pthread_nested_work_queue(self):
@@ -2323,7 +2323,6 @@ The current type of b is: 9
   def test_pthread_thread_local_storage(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('PTHREAD_POOL_SIZE', 8)
     self.set_setting('INITIAL_MEMORY', '300mb')
     self.do_run_in_out_file_test('pthread/test_pthread_thread_local_storage.cpp')
 
@@ -2336,7 +2335,18 @@ The current type of b is: 9
   @node_pthreads
   def test_pthread_setspecific_mainthread(self):
     self.set_setting('EXIT_RUNTIME')
+    print('.. return')
+    self.do_runf(test_file('pthread/test_pthread_setspecific_mainthread.c'), 'done!', emcc_args=['-DRETURN'])
+    print('.. exit')
+    self.do_runf(test_file('pthread/test_pthread_setspecific_mainthread.c'), 'done!', emcc_args=['-DEXIT'])
+    print('.. pthread_exit')
     self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
+
+  @node_pthreads
+  def test_pthread_abort(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.add_pre_run("Module.onAbort = function() { console.log('onAbort called'); }")
+    self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
 
   def test_tcgetattr(self):
     self.do_runf(test_file('termios/test_tcgetattr.c'), 'success')
@@ -2391,9 +2401,9 @@ The current type of b is: 9
   def test_memcpy_memcmp(self):
     self.banned_js_engines = [config.V8_ENGINE] # Currently broken under V8_ENGINE but not node
 
-    def check(result, err):
-      result = result.replace('\n \n', '\n') # remove extra node output
-      return hashlib.sha1(result.encode('utf-8')).hexdigest()
+    def check(output):
+      output = output.replace('\n \n', '\n') # remove extra node output
+      return hashlib.sha1(output.encode('utf-8')).hexdigest()
 
     self.do_core_test('test_memcpy_memcmp.c', output_nicerizer=check)
 
@@ -2472,13 +2482,13 @@ The current type of b is: 9
           base *b = NULL;
           entry *e = NULL;
           chain *c = NULL;
-          printf("*%zu,%d,%d,%d,%d,%d|%zu,%d,%d,%d,%d,%d,%d,%d|%zu,%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n",
+          printf("*%zu,%ld,%ld,%ld,%ld,%ld|%zu,%ld,%ld,%ld,%ld,%ld,%ld,%ld|%zu,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld*\\n",
             sizeof(base),
-            int(&(b->x)), int(&(b->y)), int(&(b->a)), int(&(b->b)), int(&(b->c)),
+            long(&(b->x)), long(&(b->y)), long(&(b->a)), long(&(b->b)), long(&(b->c)),
             sizeof(hashtableentry),
-            int(&(e->key)), int(&(e->data)), int(&(e->data.x)), int(&(e->data.y)), int(&(e->data.a)), int(&(e->data.b)), int(&(e->data.c)),
+            long(&(e->key)), long(&(e->data)), long(&(e->data.x)), long(&(e->data.y)), long(&(e->data.a)), long(&(e->data.b)), long(&(e->data.c)),
             sizeof(hashset::chain),
-            int(&(c->elem)), int(&(c->next)), int(&(c->elem.key)), int(&(c->elem.data)), int(&(c->elem.data.x)), int(&(c->elem.data.y)), int(&(c->elem.data.a)), int(&(c->elem.data.b)), int(&(c->elem.data.c))
+            long(&(c->elem)), long(&(c->next)), long(&(c->elem.key)), long(&(c->elem.data)), long(&(c->elem.data.x)), long(&(c->elem.data.y)), long(&(c->elem.data.a)), long(&(c->elem.data.b)), long(&(c->elem.data.c))
           );
         }
       };
@@ -2502,8 +2512,8 @@ The current type of b is: 9
         // Part 2 - the char[] should be compressed, BUT have a padding space at the end so the next
         // one is aligned properly. Also handle char; char; etc. properly.
         B *b = NULL;
-        printf("*%d,%d,%d,%d,%d,%d,%d,%d,%zu*\\n", int(b), int(&(b->buffer)), int(&(b->buffer[0])), int(&(b->buffer[1])), int(&(b->buffer[2])),
-                                                  int(&(b->last)), int(&(b->laster)), int(&(b->laster2)), sizeof(B));
+        printf("*%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%zu*\\n", long(b), long(&(b->buffer)), long(&(b->buffer[0])), long(&(b->buffer[1])), long(&(b->buffer[2])),
+                                                  long(&(b->last)), long(&(b->laster)), long(&(b->laster2)), sizeof(B));
 
         // Part 3 - bitfields, and small structures
         Bits *b2 = NULL;
@@ -2737,7 +2747,7 @@ The current type of b is: 9
       }
       '''
     self.do_run(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
-                output_nicerizer=lambda x, err: x.replace('\n', '*'))
+                output_nicerizer=lambda x: x.replace('\n', '*'))
 
   @needs_dylink
   def test_dlfcn_data_and_fptr(self):
@@ -2916,7 +2926,7 @@ Var: 42
         int num = 120 * 1024 * 1024; // total is 128; we'll use 5*5 = 25 at least, so allocate pretty much all of it
         void* mem = malloc(num);
         assert(mem);
-        printf("setting this range to non-zero: %d - %d\n", (int)mem, ((int)mem) + num);
+        printf("setting this range to non-zero: %ld - %ld\n", (long)mem, ((long)mem) + num);
         memset(mem, 1, num);
         EM_ASM({
           var value = HEAP8[64*1024*1024];
@@ -2936,7 +2946,7 @@ Var: 42
           printf("getting superAligned\n");
           int* superAligned = (int*)dlsym(lib_handle, "superAligned");
           assert(superAligned);
-          assert(((int)superAligned) % 1024 == 0); // alignment
+          assert(((long)superAligned) % 1024 == 0); // alignment
           printf("checking value of superAligned, at %p\n", superAligned);
           assert(*superAligned == 12345); // value
           printf("getting prezero\n");
@@ -3754,8 +3764,8 @@ ok
   def test_missing_signatures(self):
     create_file('test_sig.c', r'''#include <emscripten.h>
                                        int main() {
-                                         return 0 == ( (int)&emscripten_run_script_string +
-                                                       (int)&emscripten_run_script );
+                                         return 0 == ( (long)&emscripten_run_script_string +
+                                                       (long)&emscripten_run_script );
                                        }''')
     self.set_setting('MAIN_MODULE', 1)
     # also test main module with 4GB of memory. we need to emit a "maximum"
@@ -4849,8 +4859,8 @@ Module = {
     mem_file = 'files.js.mem'
     try_delete(mem_file)
 
-    def clean(out, err):
-      return '\n'.join([line for line in (out + err).split('\n') if 'binaryen' not in line and 'wasm' not in line and 'so not running' not in line])
+    def clean(out):
+      return '\n'.join([line for line in out.split('\n') if 'binaryen' not in line and 'wasm' not in line and 'so not running' not in line])
 
     self.do_runf(test_file('files.cpp'), ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n'),
                  output_nicerizer=clean)
@@ -4886,8 +4896,8 @@ Module = {
       }
       '''
 
-    def clean(out, err):
-      return '\n'.join(l for l in (out + err).splitlines() if 'warning' not in l and 'binaryen' not in l)
+    def clean(out):
+      return '\n'.join(l for l in out.splitlines() if 'warning' not in l and 'binaryen' not in l)
 
     self.do_run(src, ('got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1\n', 'got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1', 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15'), output_nicerizer=clean)
 
@@ -5435,7 +5445,7 @@ Module['onRuntimeInitialized'] = function() {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('unistd/misc.c', js_engines=[config.NODE_JS])
+      self.do_run_in_out_file_test('unistd/misc.c', js_engines=[config.NODE_JS], interleaved_output=False)
 
   # i64s in the API, which we'd need to legalize for JS, so in standalone mode
   # all we can test is wasm VMs
@@ -5672,7 +5682,7 @@ int main(void) {
           f.write(src)
         self.build('fasta.cpp')
         for arg, output in results:
-          self.do_run('fasta.js', output, args=[str(arg)], output_nicerizer=lambda x, err: x.replace('\n', '*'), no_build=True)
+          self.do_run('fasta.js', output, args=[str(arg)], output_nicerizer=lambda x: x.replace('\n', '*'), no_build=True)
         shutil.copyfile('fasta.js', '%s.js' % t)
 
     test([])
@@ -5958,7 +5968,7 @@ void* operator new(size_t size) {
                 args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                 libraries=libs,
                 includes=[test_file('lua')],
-                output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
+                output_nicerizer=lambda output: output.replace('\n\n', '\n').replace('\n\n', '\n'))
 
   @no_asan('issues with freetype itself')
   @needs_make('configure script')
@@ -6166,7 +6176,7 @@ void* operator new(size_t size) {
 
       # We use doubles in JS, so we get slightly different values than native code. So we
       # check our output by comparing the average pixel difference
-      def image_compare(output, err):
+      def image_compare(output):
         # Get the image generated by JS, from the JSON.stringify'd array
         m = re.search(r'\[[\d, -]*\]', output)
         self.assertIsNotNone(m, 'Failed to find proper image output in: ' + output)
@@ -6264,10 +6274,10 @@ void* operator new(size_t size) {
     # (but without the specific output, as it is logging the actual locals
     # used and so forth, which will change between opt modes and updates of
     # llvm etc.)
-    def check(out, err):
+    def check(out):
       for msg in ['log_execution', 'get_i32', 'set_i32', 'load_ptr', 'load_val', 'store_ptr', 'store_val']:
         self.assertIn(msg, out)
-      return out + err
+      return out
 
     self.do_runf(test_file('core/test_autodebug.c'),
                  'success', output_nicerizer=check)
@@ -6531,7 +6541,7 @@ void* operator new(size_t size) {
     self.emcc_args += ['-DGROWTH']
     # enable costly assertions to verify correct table behavior
     self.set_setting('ASSERTIONS', 2)
-    self.do_run_in_out_file_test('interop/test_add_function.cpp')
+    self.do_run_in_out_file_test('interop/test_add_function.cpp', interleaved_output=False)
 
   def test_getFuncWrapper_sig_alias(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$getFuncWrapper'])
@@ -7244,11 +7254,11 @@ someweirdtext
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
     self.emcc_args += ['-DRUN_FROM_JS_SHELL']
-    self.do_run_in_out_file_test('emscripten_log/emscripten_log.cpp')
+    self.do_run_in_out_file_test('emscripten_log/emscripten_log.cpp', interleaved_output=False)
     # test closure compiler as well
     if self.maybe_closure():
       self.emcc_args += ['-g1'] # extra testing
-      self.do_run_in_out_file_test('emscripten_log/emscripten_log_with_closure.cpp')
+      self.do_run_in_out_file_test('emscripten_log/emscripten_log_with_closure.cpp', interleaved_output=False)
 
   def test_float_literals(self):
     self.do_run_in_out_file_test('test_float_literals.cpp')
@@ -7256,10 +7266,16 @@ someweirdtext
   def test_exit_status(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
-    src = r'''
+    create_file('exit.c', r'''
       #include <stdio.h>
+      #include <assert.h>
       #include <stdlib.h>
+      #include <unistd.h>
+
       static void cleanup() {
+        #ifndef NORMAL_EXIT
+        assert(0 && "cleanup should only be called from normal exit()");
+        #endif
         printf("cleanup\n");
       }
 
@@ -7267,23 +7283,27 @@ someweirdtext
         atexit(cleanup); // this atexit should still be called
         printf("hello, world!\n");
         // Unusual exit status to make sure it's working!
-        if (CAPITAL_EXIT) {
+        #ifdef CAPITAL_EXIT
           _Exit(118);
-        } else {
+        #elif defined(UNDER_EXIT)
+          _exit(118);
+        #elif defined(NORMAL_EXIT)
           exit(118);
-        }
+        #endif
       }
-    '''
+    ''')
     create_file('pre.js', '''
-      Module.preInit = function() {
-        addOnExit(function () {
-          out('I see exit status: ' + EXITSTATUS);
-        });
+      Module.onExit = function() {
+        out('I see exit status: ' + EXITSTATUS);
       }
-      ''')
+    ''')
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_run(src.replace('CAPITAL_EXIT', '0'), 'hello, world!\ncleanup\nI see exit status: 118', assert_returncode=118)
-    self.do_run(src.replace('CAPITAL_EXIT', '1'), 'hello, world!\ncleanup\nI see exit status: 118', assert_returncode=118)
+    print('.. exit')
+    self.do_runf('exit.c', 'hello, world!\ncleanup\nI see exit status: 118', assert_returncode=118, emcc_args=['-DNORMAL_EXIT'])
+    print('.. _exit')
+    self.do_runf('exit.c', 'hello, world!\nI see exit status: 118', assert_returncode=118, emcc_args=['-DUNDER_EXIT'])
+    print('.. _Exit')
+    self.do_runf('exit.c', 'hello, world!\nI see exit status: 118', assert_returncode=118, emcc_args=['-DCAPITAL_EXIT'])
 
   def test_noexitruntime(self):
     src = r'''
@@ -7441,6 +7461,7 @@ Module['onRuntimeInitialized'] = function() {
   @no_asan('asyncify stack operations confuse asan')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY')
+    self.maybe_closure()
     self.do_runf(test_file('test_fibers.cpp'), '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   def test_asyncify_unused(self):
@@ -8204,12 +8225,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ''', '''
       #include <string.h>
 
-      static int accumulator = 0;
+      static long accumulator = 0;
 
       int f(int *b) {
         // Infinite recursion while recording stack pointer locations
         // so that compiler can't eliminate the stack allocs.
-        accumulator += (int)b;
+        accumulator += (long)b;
         int a[1024];
         return f(a);
       }
@@ -8252,7 +8273,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_create_pool(self):
     # with a pool, we can synchronously depend on workers being available
-    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-DALLOW_SYNC']
     self.do_run_in_out_file_test('core/pthread/create.cpp')
@@ -8275,7 +8296,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthread_exceptions(self):
-    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-fexceptions']
     self.do_run_in_out_file_test('core/pthread/exceptions.cpp')
@@ -8301,6 +8322,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_OFFSET_CONVERTER')
+    if '-g' in self.emcc_args:
+      self.emcc_args += ['-DDEBUG']
     self.do_runf(test_file('core/test_return_address.c'), 'passed')
 
   @node_pthreads
@@ -8312,6 +8335,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MODULARIZE')
     create_file('post.js', 'var m = require("./test_return_address.js"); m();')
     self.emcc_args += ['--extern-post-js', 'post.js', '-s', 'EXPORT_NAME=foo']
+    if '-g' in self.emcc_args:
+      self.emcc_args += ['-DDEBUG']
     self.do_runf(test_file('core/test_return_address.c'), 'passed')
 
   @node_pthreads
@@ -8360,7 +8385,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_PTHREADS')
     self.set_setting('LLD_REPORT_UNDEFINED')
-    self.set_setting('PTHREAD_POOL_SIZE=2')
+    self.set_setting('PTHREAD_POOL_SIZE', 2)
     main = test_file('core/pthread/test_pthread_dylink.c')
     side = test_file('core/pthread/test_pthread_dylink_side.c')
     self.dylink_testf(main, side, "success", need_reverse=False)
@@ -8506,7 +8531,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.emcc_args += ['--bind', '--post-js', test_file('core/test_abort_on_exception_post.js')]
-    self.do_core_test('test_abort_on_exception.cpp')
+    self.do_core_test('test_abort_on_exception.cpp', interleaved_output=False)
 
   @needs_dylink
   def test_gl_main_module(self):
@@ -8520,7 +8545,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(test_file('core/test_main_module_js_symbol.c'))
 
   def test_REVERSE_DEPS(self):
-    create_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)&connect; }')
+    create_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)(long)&connect; }')
     self.run_process([EMCC, 'connect.c'])
     base_size = os.path.getsize('a.out.wasm')
 
@@ -8538,6 +8563,29 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_emscripten_async_call(self):
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test(test_file('core/test_emscripten_async_call.c'))
+
+  @no_asan('asyncify stack operations confuse asan')
+  @parameterized({
+    '': ([],),
+    'no_dynamic_execution': (['-s', 'DYNAMIC_EXECUTION=0'],)
+  })
+  def test_embind_lib_with_asyncify(self, args):
+    self.uses_es6 = True
+    self.emcc_args += [
+      '--bind',
+      '-s', 'ASYNCIFY',
+      '-s', 'ASYNCIFY_IMPORTS=["sleep_and_return"]',
+      '--post-js', test_file('core/embind_lib_with_asyncify.test.js'),
+    ]
+    self.emcc_args += args
+    self.do_core_test('embind_lib_with_asyncify.cpp')
+
+  @no_asan('asyncify stack operations confuse asan')
+  def test_em_async_js(self):
+    self.uses_es6 = True
+    self.set_setting('ASYNCIFY')
+    self.maybe_closure()
+    self.do_core_test('test_em_async_js.c')
 
 
 # Generate tests for everything

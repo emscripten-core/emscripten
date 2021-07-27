@@ -15,16 +15,16 @@
 
 static void *thread_start(void *arg)
 {
-  int n = (int)arg;
-  int *mem[N] = {};
-  for(int i = 0; i < N; ++i)
+  long n = (long)arg;
+  long *mem[N] = {};
+  for(long i = 0; i < N; ++i)
   {
-    mem[i] = (int*)malloc(4);
+    mem[i] = (long*)malloc(4);
     *mem[i] = n+i;
   }
-  for(int i = 0; i < N; ++i)
+  for(long i = 0; i < N; ++i)
   {
-    int k = *mem[i];
+    long k = *mem[i];
     if (k != n+i)
     {
       EM_ASM(console.error('Memory corrupted! mem[i]: ' + $0 + ', i: ' + $1 + ', n: ' + $2), k, i, n);

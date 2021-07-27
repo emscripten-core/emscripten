@@ -26,13 +26,13 @@ int c3_7 = 0, c3_8 = 0;
 
 void c3(char *data, int size, void *arg) { // tests calls different in different workers.
   int calls = *((int*)data);
-  printf("%d: %d\n", (int)arg, calls);
-  if ((int)arg == 7) {
+  printf("%ld: %d\n", (long)arg, calls);
+  if ((long)arg == 7) {
     assert(c3_7 == 0);
     c3_7++;
     assert(calls == 5);
   } else {
-    assert((int)arg == 8);
+    assert((long)arg == 8);
     assert(c3_8 == 0);
     c3_8++;
     assert(calls == 1);
@@ -45,7 +45,7 @@ void c3(char *data, int size, void *arg) { // tests calls different in different
 }
 
 void c2(char *data, int size, void *arg) { // tests queuing up several messages, each with different data
-  assert((int)arg == stage);
+  assert((long)arg == stage);
   Info *x2 = (Info*)data;
 
   int i = stage - 3;
@@ -68,7 +68,7 @@ void c2(char *data, int size, void *arg) { // tests queuing up several messages,
 }
 
 void c1(char *data, int size, void *arg) { // tests copying + buffer enlargement
-  assert((int)arg == stage);
+  assert((long)arg == stage);
   if (stage == 1) {
     printf("wait 0? %d\n", emscripten_get_worker_queue_size(w1));
     assert(emscripten_get_worker_queue_size(w1) == 0);

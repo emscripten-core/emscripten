@@ -13,7 +13,7 @@ void *global;
 int freed = 0;
 
 void finalizer(void *ptr, void *arg) {
-  printf("finalizing %d (global == %d)\n", (int)arg, ptr == global);
+  printf("finalizing %ld (global == %d)\n", (long)arg, ptr == global);
   freed++;
   if (ptr == global) global = 0;
 }

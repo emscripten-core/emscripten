@@ -32,8 +32,8 @@ volatile void* temp;
 __attribute__((noinline)) void foo()
 {
   temp = alloca(MAJOR);
-  printf("major allocation at: %d\n", (int)temp);
-  assert(abs(emscripten_stack_get_current() - (int)temp) >= MAJOR);
+  printf("major allocation at: %ld\n", (long)temp);
+  assert(abs(emscripten_stack_get_current() - (long)temp) >= MAJOR);
   bar();
 }
 

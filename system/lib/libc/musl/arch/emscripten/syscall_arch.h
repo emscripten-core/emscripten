@@ -1,6 +1,6 @@
 #include <wasi/api.h>
 #include <wasi/wasi-helpers.h>
-#include <emscripten/emscripten.h>
+#include <emscripten/em_macros.h>
 
 #define __SYSCALL_LL_E(x) \
 ((union { long long ll; long l[2]; }){ .ll = x }).l[0], \

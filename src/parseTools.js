@@ -1215,7 +1215,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
 function makeRemovedFSAssert(fsName) {
   assert(ASSERTIONS);
   const lower = fsName.toLowerCase();
-  if (SYSTEM_JS_LIBRARIES.includes('library_' + lower + '.js')) return '';
+  if (JS_LIBRARIES.includes('library_' + lower + '.js')) return '';
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 

@@ -747,7 +747,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         # TODO: No longer exists in the latest musl version.
         '__futex.c',
         # TODO: Could be supported in the upcoming musl upgrade
-        'lock_ptc.c', 'pthread_getattr_np.c',
+        'lock_ptc.c',
         # 'pthread_setattr_default_np.c',
         # TODO: These could be moved away from JS in the upcoming musl upgrade.
         'pthread_cancel.c', 'pthread_detach.c',
@@ -857,7 +857,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=[
           'extras.c',
           'wasi-helpers.c',
-          'emscripten_pthread.c',
           'emscripten_get_heap_size.c',
         ])
 
@@ -1359,7 +1358,7 @@ class libstandalonewasm(MuslInternalLibrary):
   # LTO defeats the weak linking trick used in __original_main.c
   force_object_files = True
 
-  cflags = ['-Os']
+  cflags = ['-Os', '-fno-builtin']
   src_dir = ['system', 'lib']
 
   def __init__(self, **kwargs):
@@ -1374,9 +1373,9 @@ class libstandalonewasm(MuslInternalLibrary):
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    cflags += ['-DNDEBUG']
+    cflags += ['-DNDEBUG', '-DEMSCRIPTEN_STANDALONE_WASM']
     if self.is_mem_grow:
-      cflags += ['-D__EMSCRIPTEN_MEMORY_GROWTH__=1']
+      cflags += ['-DEMSCRIPTEN_MEMORY_GROWTH']
     return cflags
 
   @classmethod
@@ -1391,12 +1390,15 @@ class libstandalonewasm(MuslInternalLibrary):
     )
 
   def get_files(self):
-    base_files = files_in_path(
+    files = files_in_path(
         path_components=['system', 'lib', 'standalone'],
         filenames=['standalone.c', 'standalone_wasm_stdio.c', '__original_main.c',
                    '__main_void.c', '__main_argc_argv.c'])
+    files += files_in_path(
+        path_components=['system', 'lib', 'libc'],
+        filenames=['emscripten_memcpy.c'])
     # It is more efficient to use JS methods for time, normally.
-    time_files = files_in_path(
+    files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
         filenames=['strftime.c',
                    '__month_to_secs.c',
@@ -1415,10 +1417,10 @@ class libstandalonewasm(MuslInternalLibrary):
                    'time.c'])
     # It is more efficient to use JS for __assert_fail, as it avoids always
     # including fprintf etc.
-    exit_files = files_in_path(
+    files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
         filenames=['assert.c', 'atexit.c', 'exit.c'])
-    return base_files + time_files + exit_files
+    return files
 
 
 class libjsmath(Library):

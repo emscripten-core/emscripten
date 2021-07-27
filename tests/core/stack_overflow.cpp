@@ -8,18 +8,18 @@
 #include <stdint.h>
 #include <emscripten.h>
 
-void recurse(unsigned int x);
+void recurse(unsigned long x);
 
-void act(volatile unsigned int *a) {
-  printf("act     %d\n", *a);
-  unsigned int b = (int)(intptr_t)(alloca(*a));
+void act(volatile unsigned long *a) {
+  printf("act     %ld\n", *a);
+  unsigned long b = (long)(intptr_t)(alloca(*a));
   if (b < *a) *a--;
   recurse(*a);
 }
 
-void recurse(volatile unsigned int x) {
-  printf("recurse %d\n", x);
-  volatile unsigned int a = x;
+void recurse(volatile unsigned long x) {
+  printf("recurse %ld\n", x);
+  volatile unsigned long a = x;
   volatile char buffer[1000*1000];
   buffer[x/2] = 0;
   buffer[(x-1)/2] = 0;

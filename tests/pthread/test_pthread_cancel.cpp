@@ -13,11 +13,11 @@
 #include <emscripten.h>
 #include <emscripten/threading.h>
 
-volatile int res = 43;
+volatile long res = 43;
 static void cleanup_handler(void *arg)
 {
   EM_ASM(out('Called clean-up handler with arg ' + $0), arg);
-  int a = (int)arg;
+  long a = (long)arg;
   res -= a;
 }
 

@@ -40,7 +40,7 @@ static void *thread_start(void *arg)
   pthread_mutex_unlock( &mutex );
 #endif
 
-  int id = (int)(arg)+1;
+  int id = (int)(intptr_t)(arg)+1;
   int return_code = RESULT_OK;
 
   uint8_t *allocated_buffers[NUM_ALLOCATIONS] = {};

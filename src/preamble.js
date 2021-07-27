@@ -129,35 +129,28 @@ function ccall(ident, returnType, argTypes, args, opts) {
     }
   }
   var ret = func.apply(null, cArgs);
+  function onDone(ret) {
+    if (stack !== 0) stackRestore(stack);
+    return convertReturnValue(ret);
+  }
 #if ASYNCIFY
   var asyncMode = opts && opts.async;
-  var runningAsync = typeof Asyncify === 'object' && Asyncify.currData;
-  var prevRunningAsync = typeof Asyncify === 'object' && Asyncify.asyncFinalizers.length > 0;
-#if ASSERTIONS
-  assert(!asyncMode || !prevRunningAsync, 'Cannot have multiple async ccalls in flight at once');
-#endif
   // Check if we started an async operation just now.
-  if (runningAsync && !prevRunningAsync) {
+  if (Asyncify.currData) {
     // If so, the WASM function ran asynchronous and unwound its stack.
     // We need to return a Promise that resolves the return value
     // once the stack is rewound and execution finishes.
 #if ASSERTIONS
     assert(asyncMode, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
 #endif
-    return new Promise(function(resolve) {
-      Asyncify.asyncFinalizers.push(function(ret) {
-        if (stack !== 0) stackRestore(stack);
-        resolve(convertReturnValue(ret));
-      });
-    });
+    return Asyncify.whenDone().then(onDone);
   }
 #endif
 
-  ret = convertReturnValue(ret);
-  if (stack !== 0) stackRestore(stack);
+  ret = onDone(ret);
 #if ASYNCIFY
   // If this is an async ccall, ensure we return a promise
-  if (opts && opts.async) return Promise.resolve(ret);
+  if (asyncMode) return Promise.resolve(ret);
 #endif
   return ret;
 }
@@ -426,9 +419,6 @@ function exitRuntime() {
   checkStackCookie();
 #endif
 #if USE_PTHREADS
-#if EXIT_RUNTIME
-  PThread.runExitHandlers();
-#endif
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
 #if EXIT_RUNTIME
@@ -595,7 +585,7 @@ function abort(what) {
 #endif
 
 #if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
+  assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
   what += '';
   err(what);
@@ -926,6 +916,21 @@ function instantiateSync(file, info) {
 }
 #endif
 
+#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
+// When using postMessage to send an object, it is processed by the structured clone algorithm.
+// The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
+// This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
+function resetPrototype(constructor, attrs) {
+  var object = Object.create(constructor.prototype);
+  for (var key in attrs) {
+    if (attrs.hasOwnProperty(key)) {
+      object[key] = attrs[key];
+    }
+  }
+  return object;
+}
+#endif
+
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm() {
@@ -1181,28 +1186,27 @@ function createWasm() {
   // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
   // to any other async startup actions they are performing.
   if (Module['instantiateWasm']) {
+#if USE_OFFSET_CONVERTER
+#if ASSERTIONS && USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      assert(Module['wasmOffsetData'], 'wasmOffsetData not found on Module object');
+    }
+#endif
+    wasmOffsetConverter = resetPrototype(WasmOffsetConverter, Module['wasmOffsetData']);
+    {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
+#endif
+#if LOAD_SOURCE_MAP
+#if ASSERTIONS && USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      assert(Module['wasmSourceMapData'], 'wasmSourceMapData not found on Module object');
+    }
+#endif
+    wasmSourceMap = resetPrototype(WasmSourceMap, Module['wasmSourceMapData']);
+#endif
     try {
       var exports = Module['instantiateWasm'](info, receiveInstance);
 #if ASYNCIFY
       exports = Asyncify.instrumentWasmExports(exports);
-#endif
-#if USE_OFFSET_CONVERTER
-      {{{
-        runOnMainThread(`
-          // We have no way to create an OffsetConverter in this code path since
-          // we have no access to the wasm binary (only the user does). Instead,
-          // create a fake one that reports we cannot identify functions from
-          // their binary offsets.
-          // Note that we only do this on the main thread, as the workers
-          // receive the OffsetConverter data from there.
-          wasmOffsetConverter = {
-            getName: function() {
-              return 'unknown-due-to-instantiateWasm';
-            }
-          };
-          removeRunDependency('offset-converter');
-        `)
-      }}}
 #endif
       return exports;
     } catch(e) {
