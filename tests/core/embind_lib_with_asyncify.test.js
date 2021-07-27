@@ -21,6 +21,11 @@ Module.onRuntimeInitialized = async () => {
     assert(await barMethodResult === 30);
 
     assert(barInstance.method_without_async_calls() === 40);
+    assert(barInstance.void_method_without_async_calls() === undefined);
+
+    barMethodResult = barInstance.void_method_with_async_calls();
+    assert(barMethodResult instanceof Promise);
+    assert(await barMethodResult === undefined);
 
     let barStaticMethodResult = Module.Bar.static_method();
     assert(barStaticMethodResult instanceof Promise);
