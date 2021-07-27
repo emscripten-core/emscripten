@@ -36,6 +36,12 @@ public:
 		return 40;
 	}
 
+	void void_method_without_async_calls() {}
+
+	void void_method_with_async_calls() {
+		sleep_and_return(0);
+	}
+
 	static int static_method() {
 		return sleep_and_return(50);
 	}
@@ -52,6 +58,8 @@ EMSCRIPTEN_BINDINGS(embind_async) {
 		.constructor<>()
 		.function("method", &Bar::method)
 		.function("method_without_async_calls", &Bar::method_without_async_calls)
+		.function("void_method_without_async_calls", &Bar::void_method_without_async_calls)
+		.function("void_method_with_async_calls", &Bar::void_method_with_async_calls)
 		.class_function("static_method", &Bar::static_method)
 		.property("x", &Bar::getX)
 		;
