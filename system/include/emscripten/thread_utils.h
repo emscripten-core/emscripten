@@ -140,8 +140,11 @@ private:
       parent->finishedWork = true;
       parent->childLock.unlock();
       parent->condition.notify_one();
-      // Look for more work. (We must do this asynchronously so that the JS
-      // event queue is reached, which the user code may require.)
+      // Look for more work. Doing this asynchronously ensures that we continue
+      // after the current call stack unwinds (avoiding constantly adding to the
+      // stack, and also running any remaining code the caller had, like
+      // destructors). TODO: add an option to do a synchronous call here in some
+      // cases, which would avoid the time delay caused by a browser setTimeout.
       emscripten_async_call(threadIter, arg, 0);
     });
     // Run the work function the user gave us. Give it a pointer to the resume
