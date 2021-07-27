@@ -1034,8 +1034,10 @@ var LibraryPThread = {
 
   __pthread_exit_js__deps: ['exit'],
   __pthread_exit_js: function(status) {
-    if (!ENVIRONMENT_IS_PTHREAD) _exit(status);
-    else PThread.threadExit(status);
+    if (!ENVIRONMENT_IS_PTHREAD) {
+      PThread.runExitHandlers();
+      _exit(status);
+    } else PThread.threadExit(status);
     // pthread_exit is marked noReturn, so we must not return from it.
     throw 'unwind';
   },

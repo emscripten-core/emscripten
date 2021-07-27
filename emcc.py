@@ -102,7 +102,7 @@ DEFAULT_ASYNCIFY_IMPORTS = [
   'emscripten_scan_registers', 'emscripten_lazy_load_code',
   'emscripten_fiber_swap',
   'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '_emval_await',
-  'dlopen',
+  'dlopen', '__asyncjs__*'
 ]
 
 # Target options
@@ -2101,9 +2101,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
         '___global_base'
     ]
 
-  if settings.USE_OFFSET_CONVERTER and settings.USE_PTHREADS:
-    settings.EXPORTED_RUNTIME_METHODS += ['WasmOffsetConverter']
-
   if settings.USE_OFFSET_CONVERTER and settings.WASM2JS:
     exit_with_error('wasm2js is not compatible with USE_OFFSET_CONVERTER (see #14630)')
 
@@ -2176,9 +2173,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
-
-  if settings.LOAD_SOURCE_MAP and settings.USE_PTHREADS:
-    settings.EXPORTED_RUNTIME_METHODS += ['WasmSourceMap']
 
   if settings.GLOBAL_BASE == -1:
     # default if nothing else sets it

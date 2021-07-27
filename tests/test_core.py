@@ -2335,6 +2335,11 @@ The current type of b is: 9
   @node_pthreads
   def test_pthread_setspecific_mainthread(self):
     self.set_setting('EXIT_RUNTIME')
+    print('.. return')
+    self.do_runf(test_file('pthread/test_pthread_setspecific_mainthread.c'), 'done!', emcc_args=['-DRETURN'])
+    print('.. exit')
+    self.do_runf(test_file('pthread/test_pthread_setspecific_mainthread.c'), 'done!', emcc_args=['-DEXIT'])
+    print('.. pthread_exit')
     self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
 
   @node_pthreads
@@ -8317,6 +8322,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_OFFSET_CONVERTER')
+    if '-g' in self.emcc_args:
+      self.emcc_args += ['-DDEBUG']
     self.do_runf(test_file('core/test_return_address.c'), 'passed')
 
   @node_pthreads
@@ -8328,6 +8335,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MODULARIZE')
     create_file('post.js', 'var m = require("./test_return_address.js"); m();')
     self.emcc_args += ['--extern-post-js', 'post.js', '-s', 'EXPORT_NAME=foo']
+    if '-g' in self.emcc_args:
+      self.emcc_args += ['-DDEBUG']
     self.do_runf(test_file('core/test_return_address.c'), 'passed')
 
   def test_emscripten_atomics_stub(self):
@@ -8554,6 +8563,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ]
     self.emcc_args += args
     self.do_core_test('embind_lib_with_asyncify.cpp')
+
+  @no_asan('asyncify stack operations confuse asan')
+  def test_em_async_js(self):
+    self.uses_es6 = True
+    self.set_setting('ASYNCIFY')
+    self.maybe_closure()
+    self.do_core_test('test_em_async_js.c')
 
 
 # Generate tests for everything
