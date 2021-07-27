@@ -1090,7 +1090,7 @@ var LibraryEmbind = {
 #if ASYNCIFY
     args1.push("Asyncify");
     args2.push(Asyncify);
-    invokerFnBody += "function onDone(rv) {\n";
+    invokerFnBody += "function onDone(" + (returns ? "rv" : "") + ") {\n";
 #endif
 
     if (needsDestructorStack) {
