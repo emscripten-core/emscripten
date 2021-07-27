@@ -11,6 +11,11 @@ EM_JS(int, sleep_and_return, (int x), {
 	return Asyncify.handleSleep(wakeUp => setTimeout(wakeUp, 10, x));
 });
 
+void delayed_throw() {
+	sleep_and_return(0);
+	EM_ASM({ throw new Error('my message'); });
+}
+
 int foo() {
 	return sleep_and_return(10);
 }
@@ -40,6 +45,7 @@ private:
 };
 
 EMSCRIPTEN_BINDINGS(embind_async) {
+	function("delayed_throw", &delayed_throw);
 	function("foo", &foo);
 
 	class_<Bar>("Bar")

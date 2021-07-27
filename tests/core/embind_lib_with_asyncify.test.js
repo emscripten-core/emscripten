@@ -1,5 +1,10 @@
 Module.onRuntimeInitialized = async () => {
   try {
+    let delayedThrowResult = Module.delayed_throw();
+    assert(delayedThrowResult instanceof Promise);
+    let err = await delayedThrowResult.then(() => '', err => err.message);
+    assert(err === 'my message', `"${err}" doesn't contain the expected error`);
+
     let fooResult = Module.foo();
     assert(fooResult instanceof Promise);
     fooResult = await fooResult;
@@ -29,7 +34,7 @@ Module.onRuntimeInitialized = async () => {
       } catch (e) {
         err = e.message;
       }
-      assert(err.startsWith('abort(Assertion failed: Cannot have multiple async operations in flight at once)'));
+      assert(err.startsWith('abort(Assertion failed: Cannot have multiple async operations in flight at once)'), `"${err}" doesn't contain the assertion error`);
     }
 
     console.log('ok');
