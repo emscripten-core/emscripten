@@ -39,6 +39,8 @@
  *    malloc.
  */
 
+#include <stdalign.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -56,13 +58,10 @@
 // Behavior of right shifting a signed integer is compiler implementation defined.
 static_assert((((int32_t)0x80000000U) >> 31) == -1, "This malloc implementation requires that right-shifting a signed integer produces a sign-extending (arithmetic) shift!");
 
-extern "C"
-{
-
 // Configuration: specifies the minimum alignment that malloc()ed memory outputs. Allocation requests with smaller alignment
 // than this will yield an allocation with this much alignment.
 #define MALLOC_ALIGNMENT alignof(max_align_t)
-_Static_assert(alignof(max_align_t) == 8, "max_align_t must be correct");
+static_assert(alignof(max_align_t) == 8, "max_align_t must be correct");
 
 #define EMMALLOC_EXPORT __attribute__((weak, __visibility__("default")))
 
@@ -89,14 +88,14 @@ _Static_assert(alignof(max_align_t) == 8, "max_align_t must be correct");
 // A free region has the following structure:
 // <size:uint32_t> <prevptr> <nextptr> ... <size:uint32_t>
 
-struct Region
+typedef struct Region
 {
   uint32_t size;
   // Use a circular doubly linked list to represent free region data.
-  Region *prev, *next;
+  struct Region *prev, *next;
   // ... N bytes of free data
   uint32_t _at_the_end_of_this_struct_size; // do not dereference, this is present for convenient struct sizeof() computation only
-};
+} Region;
 
 #if defined(__EMSCRIPTEN_PTHREADS__)
 // In multithreaded builds, use a simple global spinlock strategy to acquire/release access to the memory allocator.
@@ -1417,5 +1416,3 @@ size_t emmalloc_compute_free_dynamic_memory_fragmentation_map(size_t freeMemoryS
 size_t emmalloc_unclaimed_heap_memory(void) {
   return emscripten_get_heap_max() - (size_t)sbrk(0);
 }
-
-} // extern "C"
