@@ -10829,3 +10829,40 @@ void foo() {}
     # When WebGL is explicitly linked to in strict mode, the linking order on command line should enable overriding.
     self.emcc_args += ['-sAUTO_JS_LIBRARIES=0', '-lwebgl.js', '--js-library', test_file('test_override_system_js_lib_symbol.js')]
     self.do_run_in_out_file_test(test_file('test_override_system_js_lib_symbol.c'))
+
+  @node_pthreads
+  def test_pthread_lsan_no_leak(self):
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('INITIAL_MEMORY', '256MB')
+    self.emcc_args += ['-gsource-map']
+    self.do_run_in_out_file_test(test_file('pthread/test_pthread_lsan_no_leak.cpp'), emcc_args=['-fsanitize=leak'])
+    self.do_run_in_out_file_test(test_file('pthread/test_pthread_lsan_no_leak.cpp'), emcc_args=['-fsanitize=address'])
+
+  @node_pthreads
+  def test_pthread_lsan_leak(self):
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('INITIAL_MEMORY', '256MB')
+    self.add_pre_run("Module['LSAN_OPTIONS'] = 'exitcode=0'")
+    self.emcc_args += ['-gsource-map']
+    expected = [
+      'Direct leak of 3432 byte(s) in 1 object(s) allocated from',
+      'test_pthread_lsan_leak.cpp:18:17',
+      'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
+      'test_pthread_lsan_leak.cpp:36:10',
+      'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
+      'test_pthread_lsan_leak.cpp:30:16',
+      'Direct leak of 1234 byte(s) in 1 object(s) allocated from',
+      'test_pthread_lsan_leak.cpp:20:13',
+      'Direct leak of 420 byte(s) in 1 object(s) allocated from',
+      'test_pthread_lsan_leak.cpp:31:13',
+      'Direct leak of 42 byte(s) in 1 object(s) allocated from',
+      'test_pthread_lsan_leak.cpp:13:21',
+      'test_pthread_lsan_leak.cpp:35:3',
+      '8513 byte(s) leaked in 6 allocation(s).',
+    ]
+    self.do_runf(test_file('pthread/test_pthread_lsan_leak.cpp'), expected, assert_all=True, emcc_args=['-fsanitize=leak'])
+    self.do_runf(test_file('pthread/test_pthread_lsan_leak.cpp'), expected, assert_all=True, emcc_args=['-fsanitize=address'])
