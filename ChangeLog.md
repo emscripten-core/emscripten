@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 2.0.27
 ------
+- Added `EM_ASYNC_JS` macro - similar to `EM_JS`, but allows using `await`
+  inside the JS block and automatically integrates with Asyncify without
+  the need for listing the declared function in `ASYNCIFY_IMPORTS` (#9709).
 
 2.0.26 - 07/26/2021
 -------------------
@@ -55,9 +58,6 @@ See docs/process.md for more on how version tagging works.
   impossible to wait for the function to actually finish and retrieve its
   result. Now in those cases it will return a `Promise` instead that will
   resolve with the function's return value upon completion. (#11890)
-- Added `EM_ASYNC_JS` macro - similar to `EM_JS`, but allows using `await`
-  inside the JS block and automatically integrates with Asyncify without
-  the need for listing the declared function in `ASYNCIFY_IMPORTS` (#9709).
 
 2.0.25 - 06/30/2021
 -------------------
