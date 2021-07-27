@@ -1088,7 +1088,7 @@ function createWasm() {
       return WebAssembly.instantiate(binary, info);
     }).then(function (instance) {
 #if USE_OFFSET_CONVERTER
-      // wasmOffsetConverter needs to be assigned because calling receiver
+      // wasmOffsetConverter needs to be assigned before calling the receiver
       // (receiveInstantiationResult).  See comments below in instantiateAsync.
       wasmOffsetConverter = new WasmOffsetConverter(savedBinary, instance.module);
 #endif
