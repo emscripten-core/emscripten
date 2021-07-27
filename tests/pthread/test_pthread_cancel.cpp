@@ -39,9 +39,6 @@ int main()
 {
   if (!emscripten_has_threading_support())
   {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
     printf("Skipped: Threading is not supported.\n");
     return 0;
   }
@@ -58,10 +55,9 @@ int main()
     if (result == 1)
     {
       EM_ASM_INT( { out('After canceling, shared variable = ' + $0 + '.'); }, result);
-#ifdef REPORT_RESULT
-      REPORT_RESULT(1);
-#endif
       return 0;
     }
   }
+
+  __builtin_unreachable();
 }

@@ -27,14 +27,8 @@ int main() {
   pthread_join(thread, 0);
 
   if (strcmp(TEST_STRING, stringBuffer) != 0) {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
     return 1;
   }
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
   return 0;
 }

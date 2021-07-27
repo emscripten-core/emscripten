@@ -26,9 +26,6 @@ int main()
   printf("prep\n");
   if (!emscripten_has_threading_support())
   {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(6765);
-#endif
     printf("Skipped: Threading is not supported.\n");
     return 0;
   }
@@ -49,8 +46,6 @@ int main()
   char* buffer = (char*)result;
   assert(*buffer == 42); // should see the value the thread wrote
   EM_ASM({ assert(HEAP8.length > 64 * 1024 * 1024, "end with >64MB") });
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1);
-#endif
+  return 0;
 }
 

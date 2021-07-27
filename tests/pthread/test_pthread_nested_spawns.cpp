@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <cassert>
 #include <stdio.h>
 #include <pthread.h>
 #include <emscripten/threading.h>
@@ -24,17 +25,15 @@ static void *thread_func(void *vptr_args) {
 }
 
 int main(void) {
+  if (!emscripten_has_threading_support()) {
+    return 0;
+  }
+
   pthread_t thread;
   puts("a");
   pthread_create(&thread, NULL, thread_func, NULL);
-  if (emscripten_has_threading_support()) {
-    pthread_join(thread, NULL);
-  } else {
-    result = 1;
-  }
+  pthread_join(thread, NULL);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  assert(result == 1);
   return 0;
 }

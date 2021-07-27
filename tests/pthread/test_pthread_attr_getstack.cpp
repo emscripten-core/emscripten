@@ -44,9 +44,6 @@ int main()
 {
 	if (!emscripten_has_threading_support())
 	{
-#ifdef REPORT_RESULT
-		REPORT_RESULT(0);
-#endif
 		printf("Skipped: Threading is not supported.\n");
 		return 0;
 	}
@@ -60,8 +57,6 @@ int main()
 	rc = pthread_join(thread, (void**)&result);
 	assert(rc == 0);
 
-#ifdef REPORT_RESULT
-	REPORT_RESULT(result);
-#endif
-	return result;
+	assert(result == 0);
+	return 0;
 }

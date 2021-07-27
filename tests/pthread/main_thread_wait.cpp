@@ -11,9 +11,6 @@
 int main() {
   if (!emscripten_has_threading_support())
   {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
     printf("Skipped: Threading is not supported.\n");
     return 0;
   }
@@ -24,8 +21,6 @@ int main() {
   pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
   pthread_cond_wait(&cv, &lock);
   puts("blocked ok.");
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1);
-#endif
+  return 0;
 }
 

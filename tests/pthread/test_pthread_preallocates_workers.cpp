@@ -38,9 +38,6 @@ int main()
 {
   if (!emscripten_has_threading_support())
   {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
     printf("Skipped: Threading is not supported.\n");
     return 0;
   }
@@ -69,7 +66,5 @@ int main()
   assert(EM_ASM_INT(return PThread.runningWorkers.length) == 5);
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 0);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

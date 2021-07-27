@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <emscripten.h>
 #include <emscripten/threading.h>
 
 int state = 0;
@@ -16,9 +17,8 @@ void increment() {
 }
 
 void finish() {
-#ifdef REPORT_RESULT
-	REPORT_RESULT(1);
-#endif
+  assert(state == 2);
+  emscripten_force_exit(0);
 }
 
 int main() {
@@ -32,4 +32,6 @@ int main() {
   emscripten_dispatch_to_thread_async(emscripten_main_browser_thread_id(), EM_FUNC_SIG_V, &increment, 0);
   assert(state == 1);
   emscripten_dispatch_to_thread_async(emscripten_main_browser_thread_id(), EM_FUNC_SIG_V, &finish, 0);
+  emscripten_exit_with_live_runtime();
+  __builtin_unreachable();
 }

@@ -403,12 +403,12 @@ void main_tick()
   wait_tasks();
   numItersDoneOnCanvas += numItersPerFrame;
 
-#if defined(TEST_THREAD_PROFILING) && defined(REPORT_RESULT)
+#if defined(TEST_THREAD_PROFILING)
   static bool reported = false;
   if (!reported && numItersDoneOnCanvas > 50000)
   {
-    REPORT_RESULT(0);
     reported = true;
+    emscripten_force_exit(0);
   }
 #endif
 

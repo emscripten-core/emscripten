@@ -3713,16 +3713,14 @@ window.close = function() {
 
   @requires_threads
   def test_pthread_c11_threads(self):
-    self.btest(test_file('pthread/test_pthread_c11_threads.c'),
-               expected='0',
-               args=['-gsource-map', '-std=gnu11', '-xc', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_MEMORY=64mb'])
+    self.btest_exit(test_file('pthread/test_pthread_c11_threads.c'),
+                    args=['-gsource-map', '-std=gnu11', '-xc', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'TOTAL_MEMORY=64mb'])
 
   @requires_threads
   def test_pthread_pool_size_strict(self):
     # Check that it doesn't fail with sufficient number of threads in the pool.
-    self.btest(test_file('pthread/test_pthread_c11_threads.c'),
-               expected='0',
-               args=['-g2', '-xc', '-std=gnu11', '-pthread', '-s', 'PTHREAD_POOL_SIZE=4', '-s', 'PTHREAD_POOL_SIZE_STRICT=2', '-s', 'TOTAL_MEMORY=64mb'])
+    self.btest_exit(test_file('pthread/test_pthread_c11_threads.c'),
+                    args=['-g2', '-xc', '-std=gnu11', '-pthread', '-s', 'PTHREAD_POOL_SIZE=4', '-s', 'PTHREAD_POOL_SIZE_STRICT=2', '-s', 'TOTAL_MEMORY=64mb'])
     # Check that it fails instead of deadlocking on insufficient number of threads in the pool.
     self.btest(test_file('pthread/test_pthread_c11_threads.c'),
                expected='abort:Assertion failed: thrd_create(&t4, thread_main, NULL) == thrd_success',
@@ -3731,9 +3729,9 @@ window.close = function() {
   @requires_threads
   def test_pthread_in_pthread_pool_size_strict(self):
     # Check that it fails when there's a pthread creating another pthread.
-    self.btest(test_file('pthread/test_pthread_create_pthread.cpp'), expected='1', args=['-g2', '-pthread', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'PTHREAD_POOL_SIZE_STRICT=2'])
+    self.btest_exit(test_file('pthread/test_pthread_create_pthread.cpp'), args=['-g2', '-pthread', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'PTHREAD_POOL_SIZE_STRICT=2'])
     # Check that it fails when there's a pthread creating another pthread.
-    self.btest(test_file('pthread/test_pthread_create_pthread.cpp'), expected='-200', args=['-g2', '-pthread', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'PTHREAD_POOL_SIZE_STRICT=2'])
+    self.btest_exit(test_file('pthread/test_pthread_create_pthread.cpp'), args=['-g2', '-pthread', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'PTHREAD_POOL_SIZE_STRICT=2', '-DSMALL_POOL'])
 
   # Test that the emscripten_ atomics api functions work.
   @parameterized({
@@ -3742,24 +3740,27 @@ window.close = function() {
   })
   @requires_threads
   def test_pthread_atomics(self, args=[]):
-    self.btest(test_file('pthread/test_pthread_atomics.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '-g1'] + args)
+    self.btest_exit(test_file('pthread/test_pthread_atomics.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '-g1'] + args)
 
   # Test 64-bit atomics.
   @requires_threads
   def test_pthread_64bit_atomics(self):
-    self.btest(test_file('pthread/test_pthread_64bit_atomics.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest_exit(test_file('pthread/test_pthread_64bit_atomics.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test 64-bit C++11 atomics.
+  @parameterized({
+    '': ([],),
+    'O3': (['-O3'],)
+  })
   @requires_threads
-  def test_pthread_64bit_cxx11_atomics(self):
-    for opt in [['-O0'], ['-O3']]:
-      for pthreads in [[], ['-s', 'USE_PTHREADS']]:
-        self.btest(test_file('pthread/test_pthread_64bit_cxx11_atomics.cpp'), expected='0', args=opt + pthreads)
+  def test_pthread_64bit_cxx11_atomics(self, opt):
+    for pthreads in [[], ['-s', 'USE_PTHREADS']]:
+      self.btest_exit(test_file('pthread/test_pthread_64bit_cxx11_atomics.cpp'), args=opt + pthreads)
 
   # Test c++ std::thread::hardware_concurrency()
   @requires_threads
   def test_pthread_hardware_concurrency(self):
-    self.btest(test_file('pthread/test_pthread_hardware_concurrency.cpp'), expected='0', args=['-O2', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE="navigator.hardwareConcurrency"'])
+    self.btest_exit(test_file('pthread/test_pthread_hardware_concurrency.cpp'), args=['-O2', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE="navigator.hardwareConcurrency"'])
 
   @parameterized({
     'join': ('join',),
@@ -3771,13 +3772,13 @@ window.close = function() {
     self.btest(test_file('pthread/main_thread_%s.cpp' % name), expected='abort:Blocking on the main thread is not allowed by default.', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
     if name == 'join':
       print('Test that by default we just warn about blocking on the main thread.')
-      self.btest(test_file('pthread/main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
+      self.btest_exit(test_file('pthread/main_thread_%s.cpp' % name), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
       print('Test that tryjoin is fine, even if not ALLOW_BLOCKING_ON_MAIN_THREAD')
-      self.btest(test_file('pthread/main_thread_join.cpp'), expected='2', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-g', '-DTRY_JOIN', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+      self.btest_exit(test_file('pthread/main_thread_join.cpp'), assert_returncode=2, args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-g', '-DTRY_JOIN', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
       print('Test that tryjoin is fine, even if not ALLOW_BLOCKING_ON_MAIN_THREAD, and even without a pool')
-      self.btest(test_file('pthread/main_thread_join.cpp'), expected='2', args=['-O3', '-s', 'USE_PTHREADS', '-g', '-DTRY_JOIN', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+      self.btest_exit(test_file('pthread/main_thread_join.cpp'), assert_returncode=2, args=['-O3', '-s', 'USE_PTHREADS', '-g', '-DTRY_JOIN', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
       print('Test that everything works ok when we are on a pthread.')
-      self.btest(test_file('pthread/main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'PROXY_TO_PTHREAD', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+      self.btest_exit(test_file('pthread/main_thread_%s.cpp' % name), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'PROXY_TO_PTHREAD', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
@@ -3787,37 +3788,37 @@ window.close = function() {
       for debug in [[], ['-g']]:
         args = opt + debug
         print(args)
-        self.btest(test_file('pthread/test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+        self.btest_exit(test_file('pthread/test_pthread_gcc_atomic_fetch_and_op.cpp'), args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
-    self.btest(test_file('pthread/test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
+    self.btest_exit(test_file('pthread/test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_atomic_op_and_fetch(self):
-    self.btest(test_file('pthread/test_pthread_gcc_atomic_op_and_fetch.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
+    self.btest_exit(test_file('pthread/test_pthread_gcc_atomic_op_and_fetch.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
 
   # 64 bit version of the above test.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
-    self.btest(test_file('pthread/test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
+    self.btest_exit(test_file('pthread/test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_atomics(self):
-    self.btest(test_file('pthread/test_pthread_gcc_atomics.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest_exit(test_file('pthread/test_pthread_gcc_atomics.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
   @requires_threads
   def test_pthread_gcc_spinlock(self):
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
-      self.btest(test_file('pthread/test_pthread_gcc_spinlock.cpp'), expected='800', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, also_asmjs=True)
+      self.btest_exit(test_file('pthread/test_pthread_gcc_spinlock.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, also_asmjs=True)
 
   # Test that basic thread creation works.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
@@ -3825,10 +3826,9 @@ window.close = function() {
   def test_pthread_create(self):
     def test(args):
       print(args)
-      self.btest(test_file('pthread/test_pthread_create.cpp'),
-                 expected='0',
-                 args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + args,
-                 extra_tries=0) # this should be 100% deterministic
+      self.btest_exit(test_file('pthread/test_pthread_create.cpp'),
+                      args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + args,
+                      extra_tries=0) # this should be 100% deterministic
     print() # new line
     test([])
     test(['-O3'])
@@ -3839,43 +3839,43 @@ window.close = function() {
   # Test that preallocating worker threads work.
   @requires_threads
   def test_pthread_preallocates_workers(self):
-    self.btest(test_file('pthread/test_pthread_preallocates_workers.cpp'), expected='0', args=['-O3', '-s', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=4', '-s', 'PTHREAD_POOL_DELAY_LOAD'])
+    self.btest_exit(test_file('pthread/test_pthread_preallocates_workers.cpp'), args=['-O3', '-s', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=4', '-s', 'PTHREAD_POOL_DELAY_LOAD'])
 
   # Test that allocating a lot of threads doesn't regress. This needs to be checked manually!
   @requires_threads
   def test_pthread_large_pthread_allocation(self):
-    self.btest(test_file('pthread/test_large_pthread_allocation.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=128MB', '-O3', '-s', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=50'], message='Check output from test to ensure that a regression in time it takes to allocate the threads has not occurred.')
+    self.btest_exit(test_file('pthread/test_large_pthread_allocation.cpp'), args=['-s', 'INITIAL_MEMORY=128MB', '-O3', '-s', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=50'], message='Check output from test to ensure that a regression in time it takes to allocate the threads has not occurred.')
 
   # Tests the -s PROXY_TO_PTHREAD=1 option.
   @requires_threads
   def test_pthread_proxy_to_pthread(self):
-    self.btest(test_file('pthread/test_pthread_proxy_to_pthread.c'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit(test_file('pthread/test_pthread_proxy_to_pthread.c'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Test that a pthread can spawn another pthread of its own.
   @requires_threads
   def test_pthread_create_pthread(self):
     for modularize in [[], ['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')]]:
-      self.btest(test_file('pthread/test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'] + modularize)
+      self.btest_exit(test_file('pthread/test_pthread_create_pthread.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'] + modularize)
 
   # Test another case of pthreads spawning pthreads, but this time the callers immediately join on the threads they created.
   @requires_threads
   def test_pthread_nested_spawns(self):
-    self.btest(test_file('pthread/test_pthread_nested_spawns.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'])
+    self.btest_exit(test_file('pthread/test_pthread_nested_spawns.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'])
 
   # Test that main thread can wait for a pthread to finish via pthread_join().
   @requires_threads
   def test_pthread_join(self):
-    self.btest(test_file('pthread/test_pthread_join.cpp'), expected='6765', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest_exit(test_file('pthread/test_pthread_join.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that threads can rejoin the pool once detached and finished
   @requires_threads
   def test_std_thread_detach(self):
-    self.btest(test_file('pthread/test_std_thread_detach.cpp'), expected='0', args=['-s', 'USE_PTHREADS'])
+    self.btest_exit(test_file('pthread/test_std_thread_detach.cpp'), args=['-s', 'USE_PTHREADS'])
 
   # Test pthread_cancel() operation
   @requires_threads
   def test_pthread_cancel(self):
-    self.btest(test_file('pthread/test_pthread_cancel.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest_exit(test_file('pthread/test_pthread_cancel.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that pthread_cancel() cancels pthread_cond_wait() operation
   @requires_threads
@@ -3897,60 +3897,60 @@ window.close = function() {
   @requires_threads
   def test_pthread_mutex(self):
     for arg in [[], ['-DSPINLOCK_TEST']]:
-      self.btest(test_file('pthread/test_pthread_mutex.cpp'), expected='50', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
+      self.btest_exit(test_file('pthread/test_pthread_mutex.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
 
   @requires_threads
   def test_pthread_attr_getstack(self):
-    self.btest(test_file('pthread/test_pthread_attr_getstack.cpp'), expected='0', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'])
+    self.btest_exit(test_file('pthread/test_pthread_attr_getstack.cpp'), args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'])
 
   # Test that memory allocation is thread-safe.
   @requires_threads
   def test_pthread_malloc(self):
-    self.btest(test_file('pthread/test_pthread_malloc.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest_exit(test_file('pthread/test_pthread_malloc.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Stress test pthreads allocating memory that will call to sbrk(), and main thread has to free up the data.
   @requires_threads
   def test_pthread_malloc_free(self):
-    self.btest(test_file('pthread/test_pthread_malloc_free.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'INITIAL_MEMORY=256MB'])
+    self.btest_exit(test_file('pthread/test_pthread_malloc_free.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'INITIAL_MEMORY=256MB'])
 
   # Test that the pthread_barrier API works ok.
   @requires_threads
   def test_pthread_barrier(self):
-    self.btest(test_file('pthread/test_pthread_barrier.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest_exit(test_file('pthread/test_pthread_barrier.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the pthread_once() function.
   @requires_threads
   def test_pthread_once(self):
-    self.btest(test_file('pthread/test_pthread_once.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest_exit(test_file('pthread/test_pthread_once.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
   @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_spawns(self):
-    self.btest(test_file('pthread/test_pthread_spawns.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '--closure=1', '-s', 'ENVIRONMENT=web,worker'])
+    self.btest_exit(test_file('pthread/test_pthread_spawns.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '--closure=1', '-s', 'ENVIRONMENT=web,worker'])
 
   # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
   # kind of scheme will work with Emscripten as well.
   @requires_threads
   def test_pthread_volatile(self):
     for arg in [[], ['-DUSE_C_VOLATILE']]:
-      self.btest(test_file('pthread/test_pthread_volatile.cpp'), expected='1', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
+      self.btest_exit(test_file('pthread/test_pthread_volatile.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
 
   # Test thread-specific data (TLS).
   @requires_threads
   def test_pthread_thread_local_storage(self):
-    self.btest(test_file('pthread/test_pthread_thread_local_storage.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ASSERTIONS'])
+    self.btest_exit(test_file('pthread/test_pthread_thread_local_storage.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ASSERTIONS'])
 
   # Test the pthread condition variable creation and waiting.
   @requires_threads
   def test_pthread_condition_variable(self):
-    self.btest(test_file('pthread/test_pthread_condition_variable.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest_exit(test_file('pthread/test_pthread_condition_variable.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that pthreads are able to do printf.
   @requires_threads
   def test_pthread_printf(self):
     def run(debug):
-       self.btest(test_file('pthread/test_pthread_printf.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'LIBRARY_DEBUG=%d' % debug])
+       self.btest_exit(test_file('pthread/test_pthread_printf.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'LIBRARY_DEBUG=%d' % debug])
 
     run(debug=True)
     run(debug=False)
@@ -3958,7 +3958,7 @@ window.close = function() {
   # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
   @requires_threads
   def test_pthread_iostream(self):
-    self.btest(test_file('pthread/test_pthread_iostream.cpp'), expected='0', args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
+    self.btest_exit(test_file('pthread/test_pthread_iostream.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   @requires_threads
   def test_pthread_unistd_io_bigint(self):
@@ -3972,13 +3972,13 @@ window.close = function() {
   # Test that pthreads have access to filesystem.
   @requires_threads
   def test_pthread_file_io(self):
-    self.btest(test_file('pthread/test_pthread_file_io.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
+    self.btest_exit(test_file('pthread/test_pthread_file_io.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Test that the pthread_create() function operates benignly in the case that threading is not supported.
   @requires_threads
   def test_pthread_supported(self):
     for args in [[], ['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8']]:
-      self.btest(test_file('pthread/test_pthread_supported.cpp'), expected='0', args=['-O3'] + args)
+      self.btest_exit(test_file('pthread/test_pthread_supported.cpp'), args=['-O3'] + args)
 
   @requires_threads
   def test_pthread_dispatch_after_exit(self):
@@ -4029,7 +4029,7 @@ window.close = function() {
   # Test that if the main thread is performing a futex wait while a pthread needs it to do a proxied operation (before that pthread would wake up the main thread), that it's not a deadlock.
   @requires_threads
   def test_pthread_proxying_in_futex_wait(self):
-    self.btest(test_file('pthread/test_pthread_proxying_in_futex_wait.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
+    self.btest_exit(test_file('pthread/test_pthread_proxying_in_futex_wait.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Test that sbrk() operates properly in multithreaded conditions
   @requires_threads
@@ -4038,7 +4038,7 @@ window.close = function() {
       print('aborting malloc=' + str(aborting_malloc))
       # With aborting malloc = 1, test allocating memory in threads
       # With aborting malloc = 0, allocate so much memory in threads that some of the allocations fail.
-      self.btest(test_file('pthread/test_pthread_sbrk.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ABORTING_MALLOC=' + str(aborting_malloc), '-DABORTING_MALLOC=' + str(aborting_malloc), '-s', 'INITIAL_MEMORY=128MB'])
+      self.btest_exit(test_file('pthread/test_pthread_sbrk.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ABORTING_MALLOC=' + str(aborting_malloc), '-DABORTING_MALLOC=' + str(aborting_malloc), '-s', 'INITIAL_MEMORY=128MB'])
 
   # Test that -s ABORTING_MALLOC=0 works in both pthreads and non-pthreads builds. (sbrk fails gracefully)
   @requires_threads
@@ -4050,24 +4050,24 @@ window.close = function() {
   # Test that the proxying operations of user code from pthreads to main thread work
   @requires_threads
   def test_pthread_run_on_main_thread(self):
-    self.btest(test_file('pthread/test_pthread_run_on_main_thread.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
+    self.btest_exit(test_file('pthread/test_pthread_run_on_main_thread.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Test how a lot of back-to-back called proxying operations behave.
   @requires_threads
   def test_pthread_run_on_main_thread_flood(self):
-    self.btest(test_file('pthread/test_pthread_run_on_main_thread_flood.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
+    self.btest_exit(test_file('pthread/test_pthread_run_on_main_thread_flood.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Test that it is possible to asynchronously call a JavaScript function on the main thread.
   @requires_threads
   def test_pthread_call_async(self):
-    self.btest(test_file('pthread/call_async.c'), expected='1', args=['-s', 'USE_PTHREADS'])
+    self.btest_exit(test_file('pthread/call_async.c'), args=['-s', 'USE_PTHREADS'])
 
   # Test that it is possible to synchronously call a JavaScript function on the main thread and get a return value back.
   @requires_threads
   def test_pthread_call_sync_on_main_thread(self):
-    self.btest(test_file('pthread/call_sync_on_main_thread.c'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-DPROXY_TO_PTHREAD=1', '--js-library', test_file('pthread/call_sync_on_main_thread.js')])
-    self.btest(test_file('pthread/call_sync_on_main_thread.c'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-DPROXY_TO_PTHREAD=0', '--js-library', test_file('pthread/call_sync_on_main_thread.js')])
-    self.btest(test_file('pthread/call_sync_on_main_thread.c'), expected='1', args=['-Oz', '-DPROXY_TO_PTHREAD=0', '--js-library', test_file('pthread/call_sync_on_main_thread.js'), '-s', 'EXPORTED_FUNCTIONS=_main,_malloc'])
+    self.btest_exit(test_file('pthread/call_sync_on_main_thread.c'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-DPROXY_TO_PTHREAD=1', '--js-library', test_file('pthread/call_sync_on_main_thread.js')])
+    self.btest_exit(test_file('pthread/call_sync_on_main_thread.c'), args=['-O3', '-s', 'USE_PTHREADS', '-DPROXY_TO_PTHREAD=0', '--js-library', test_file('pthread/call_sync_on_main_thread.js')])
+    self.btest_exit(test_file('pthread/call_sync_on_main_thread.c'), args=['-Oz', '-DPROXY_TO_PTHREAD=0', '--js-library', test_file('pthread/call_sync_on_main_thread.js'), '-s', 'EXPORTED_FUNCTIONS=_main,_malloc'])
 
   # Test that it is possible to asynchronously call a JavaScript function on the main thread.
   @requires_threads
@@ -4082,7 +4082,7 @@ window.close = function() {
     mem_init_modes = [[], ['--memory-init-file', '0'], ['--memory-init-file', '1']]
     for mem_init_mode in mem_init_modes:
       for args in [['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')], ['-O3']]:
-        self.btest(test_file('pthread/test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'PTHREAD_POOL_SIZE'])
+        self.btest_exit(test_file('pthread/test_pthread_global_data_initialization.c'), args=args + mem_init_mode + ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'PTHREAD_POOL_SIZE'])
 
   @requires_threads
   @requires_sync_compilation
@@ -4090,36 +4090,36 @@ window.close = function() {
     mem_init_modes = [[], ['--memory-init-file', '0'], ['--memory-init-file', '1']]
     for mem_init_mode in mem_init_modes:
       args = ['-s', 'WASM_ASYNC_COMPILATION=0']
-      self.btest(test_file('pthread/test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'PTHREAD_POOL_SIZE'])
+      self.btest_exit(test_file('pthread/test_pthread_global_data_initialization.c'), args=args + mem_init_mode + ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Test that emscripten_get_now() reports coherent wallclock times across all pthreads, instead of each pthread independently reporting wallclock times since the launch of that pthread.
   @requires_threads
   def test_pthread_clock_drift(self):
-    self.btest(test_file('pthread/test_pthread_clock_drift.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit(test_file('pthread/test_pthread_clock_drift.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_threads
   def test_pthread_utf8_funcs(self):
-    self.btest(test_file('pthread/test_pthread_utf8_funcs.cpp'), expected='0', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
+    self.btest_exit(test_file('pthread/test_pthread_utf8_funcs.cpp'), args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Test the emscripten_futex_wake(addr, INT_MAX); functionality to wake all waiters
   @requires_threads
   def test_pthread_wake_all(self):
-    self.btest(test_file('pthread/test_futex_wake_all.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'INITIAL_MEMORY=64MB', '-s', 'NO_EXIT_RUNTIME'], also_asmjs=True)
+    self.btest_exit(test_file('pthread/test_futex_wake_all.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'INITIAL_MEMORY=64MB'], also_asmjs=True)
 
   # Test that stack base and max correctly bound the stack on pthreads.
   @requires_threads
   def test_pthread_stack_bounds(self):
-    self.btest(test_file('pthread/test_pthread_stack_bounds.cpp'), expected='1', args=['-s', 'USE_PTHREADS'])
+    self.btest_exit(test_file('pthread/test_pthread_stack_bounds.cpp'), args=['-s', 'USE_PTHREADS'])
 
   # Test that real `thread_local` works.
   @requires_threads
   def test_pthread_tls(self):
-    self.btest(test_file('pthread/test_pthread_tls.cpp'), expected='1337', args=['-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
+    self.btest_exit(test_file('pthread/test_pthread_tls.cpp'), args=['-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
 
   # Test that real `thread_local` works in main thread without PROXY_TO_PTHREAD.
   @requires_threads
   def test_pthread_tls_main(self):
-    self.btest(test_file('pthread/test_pthread_tls_main.cpp'), expected='1337', args=['-s', 'USE_PTHREADS'])
+    self.btest_exit(test_file('pthread/test_pthread_tls_main.cpp'), args=['-s', 'USE_PTHREADS'])
 
   @requires_threads
   def test_pthread_safe_stack(self):
@@ -4707,17 +4707,23 @@ window.close = function() {
       self.btest_exit('canvas_animate_resize.cpp', args=cmd)
 
   # Tests the absolute minimum pthread-enabled application.
+  @parameterized({
+    '': ([],),
+    'O3': (['-O3'],)
+  })
   @requires_threads
-  def test_pthread_hello_thread(self):
-    for opts in [[], ['-O3']]:
-      for modularize in [[], ['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')]]:
-        self.btest_exit(test_file('pthread/hello_thread.c'), args=['-s', 'USE_PTHREADS'] + modularize + opts)
+  def test_pthread_hello_thread(self, opts):
+    for modularize in [[], ['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')]]:
+      self.btest_exit(test_file('pthread/hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS'] + modularize + opts)
 
   # Tests that a pthreads build of -s MINIMAL_RUNTIME=1 works well in different build modes
-  def test_minimal_runtime_hello_pthread(self):
-    for opts in [[], ['-O3']]:
-      for modularize in [[], ['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule']]:
-        self.btest_exit(test_file('pthread/hello_thread.c'), args=['-s', 'MINIMAL_RUNTIME', '-s', 'USE_PTHREADS'] + modularize + opts)
+  @parameterized({
+    '': ([],),
+    'O3': (['-O3'],)
+  })
+  def test_minimal_runtime_hello_thread(self, opts):
+    for modularize in [[], ['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule']]:
+      self.btest_exit(test_file('pthread/hello_thread.c'), expected='1', args=['-s', 'MINIMAL_RUNTIME', '-s', 'USE_PTHREADS'] + modularize + opts)
 
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_threads
@@ -4725,7 +4731,7 @@ window.close = function() {
     self.emcc_args.remove('-Werror')
 
     def run(emcc_args=[]):
-      self.btest(test_file('pthread/test_pthread_memory_growth_mainthread.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB'] + emcc_args, also_asmjs=False)
+      self.btest_exit(test_file('pthread/test_pthread_memory_growth_mainthread.c'), args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB'] + emcc_args, also_asmjs=False)
 
     run()
     run(['-s', 'PROXY_TO_PTHREAD'])
@@ -4736,7 +4742,7 @@ window.close = function() {
     self.emcc_args.remove('-Werror')
 
     def run(emcc_args=[]):
-      self.btest(test_file('pthread/test_pthread_memory_growth.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB', '-g'] + emcc_args, also_asmjs=False)
+      self.btest_exit(test_file('pthread/test_pthread_memory_growth.c'), args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB', '-g'] + emcc_args, also_asmjs=False)
 
     run()
     run(['-s', 'ASSERTIONS'])
@@ -4747,7 +4753,7 @@ window.close = function() {
   # clock.
   @requires_threads
   def test_pthread_reltime(self):
-    self.btest(test_file('pthread/test_pthread_reltime.cpp'), expected='3', args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
+    self.btest_exit(test_file('pthread/test_pthread_reltime.cpp'), args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
   @requires_threads
@@ -4850,13 +4856,14 @@ window.close = function() {
   # are all inside Web Workers).
   @requires_threads
   def test_pthreads_started_in_worker(self):
-    self.compile_btest([test_file('pthread/test_pthread_atomics.cpp'), '-o', 'test.js', '-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.set_setting('EXIT_RUNTIME')
+    self.compile_btest([test_file('pthread/test_pthread_atomics.cpp'), '-o', 'test.js', '-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], reporting=Reporting.JS_ONLY)
     create_file('test.html', '''
       <script>
         new Worker('test.js');
       </script>
     ''')
-    self.run_browser('test.html', None, '/report_result?0')
+    self.run_browser('test.html', None, '/report_result?exit:0')
 
   def test_access_file_after_heap_resize(self):
     create_file('test.txt', 'hello from file')
@@ -4882,7 +4889,7 @@ window.close = function() {
   # Tests the functionality of the emscripten_thread_sleep() function.
   @requires_threads
   def test_emscripten_thread_sleep(self):
-    self.btest(test_file('pthread/emscripten_thread_sleep.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'EXPORTED_RUNTIME_METHODS=[print]'])
+    self.btest_exit(test_file('pthread/emscripten_thread_sleep.c'), args=['-s', 'USE_PTHREADS', '-s', 'EXPORTED_RUNTIME_METHODS=[print]'])
 
   # Tests that Emscripten-compiled applications can be run from a relative path in browser that is different than the address of the current page
   def test_browser_run_from_different_directory(self):
@@ -5148,14 +5155,13 @@ window.close = function() {
     # the specific symptom of the hang that was fixed is that the test hangs
     # at some point, using 0% CPU. often that occured in 0-200 iterations, but
     # you may want to adjust "ITERATIONS".
-    self.btest(test_file('pthread/test_pthread_proxy_hammer.cpp'),
-               expected='0',
-               args=['-s', 'USE_PTHREADS', '-O2', '-s', 'PROXY_TO_PTHREAD',
-                     '-DITERATIONS=1024', '-g1'] + args,
-               timeout=10000,
-               # don't run this with the default extra_tries value, as this is
-               # *meant* to notice something random, a race condition.
-               extra_tries=0)
+    self.btest_exit(test_file('pthread/test_pthread_proxy_hammer.cpp'),
+                    args=['-s', 'USE_PTHREADS', '-O2', '-s', 'PROXY_TO_PTHREAD',
+                          '-DITERATIONS=1024', '-g1'] + args,
+                    timeout=10000,
+                    # don't run this with the default extra_tries value, as this is
+                    # *meant* to notice something random, a race condition.
+                    extra_tries=0)
 
   def test_assert_failure(self):
     self.btest(test_file('browser/test_assert_failure.c'), 'abort:Assertion failed: false && "this is a test"')
