@@ -10139,7 +10139,7 @@ int main () {
     self.assertContained('warning: -shared/-r used with executable output suffix', err)
     self.run_js('out.js')
 
-  def test_shared_and_shared_module_flag(self):
+  def test_shared_and_side_module_flag(self):
     # Test that `-shared` and `-s SIDE_MODULE` flag causes wasm dylib generation without a warning.
     err = self.run_process([EMCC, '-shared', '-s', 'SIDE_MODULE=1', test_file('hello_world.c'), '-o', 'out.foo'], stderr=PIPE).stderr
     self.assertNotContained('linking a library with `-shared` will emit a static object', err)
