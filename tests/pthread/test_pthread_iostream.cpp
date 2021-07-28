@@ -6,8 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
 #include <assert.h>
 #include <iostream>
 
@@ -22,12 +20,6 @@ int numThreadsToCreate = 1000;
 
 int main()
 {
-  if (!emscripten_has_threading_support())
-  {
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
 	pthread_t thread;
 	int rc = pthread_create(&thread, NULL, ThreadMain, 0);
 	assert(rc == 0);

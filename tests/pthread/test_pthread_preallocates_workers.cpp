@@ -10,8 +10,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <errno.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
+#include <emscripten/em_asm.h>
 #include <vector>
 
 pthread_t threads[5];
@@ -36,12 +35,6 @@ void CreateThread(int idx) {
 
 int main()
 {
-  if (!emscripten_has_threading_support())
-  {
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   // This test should be run with a prewarmed pool of size 4. None
   // of the threads are allocated yet.
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 4);

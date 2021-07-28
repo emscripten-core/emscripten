@@ -57,12 +57,6 @@ void *WaitingThread(void *arg)
 
 int main()
 {
-	if (!emscripten_has_threading_support())
-	{
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
-
 	for(int i = 0; i < NUM_THREADS; ++i)
 	{
 		pthread_create(waitingThreads+i, 0, WaitingThread, (void*)i);

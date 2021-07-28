@@ -32,12 +32,6 @@ void *ThreadMain(void *arg)
 
 int main()
 {
-	if (!emscripten_has_threading_support())
-	{
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
-
 	pthread_t thread;
 	int rc = pthread_create(&thread, NULL, ThreadMain, 0);
 	assert(rc == 0);

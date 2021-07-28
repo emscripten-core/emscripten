@@ -102,10 +102,6 @@ int main()
 	pthread_mutex_lock(&lock);
 	pthread_mutex_unlock(&lock);
 
-	if (!emscripten_has_threading_support()) {
-		return 0;
-	}
-
 	// Create new threads in parallel.
 	for(int i = 0; i < NUM_THREADS; ++i)
 		CreateThread(i, threadNum++);

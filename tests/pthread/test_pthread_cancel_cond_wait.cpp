@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <emscripten.h>
-#include <emscripten/threading.h>
 
 pthread_barrier_t barrier;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -55,11 +54,6 @@ static void *thread_start(void *arg) {
 }
 
 int main() {
-  if (!emscripten_has_threading_support()) {
-    printf("Skipped: Threading is not supported.\n");
-    return 1;
-  }
-
   pthread_barrier_init(&barrier, nullptr, 2);
 
   pthread_t thr;
