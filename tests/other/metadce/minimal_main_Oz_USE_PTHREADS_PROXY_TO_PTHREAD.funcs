@@ -31,7 +31,6 @@ $emscripten_current_thread_process_queued_calls
 $emscripten_get_global_libc
 $emscripten_main_thread_process_queued_calls
 $emscripten_proxy_main
-$emscripten_register_main_browser_thread_id
 $emscripten_run_in_main_runtime_thread_js
 $emscripten_stack_set_limits
 $emscripten_sync_run_in_main_thread

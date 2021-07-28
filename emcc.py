@@ -1863,7 +1863,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '_emscripten_get_global_libc',
       '_emscripten_main_browser_thread_id',
       '_emscripten_main_thread_process_queued_calls',
-      '_emscripten_register_main_browser_thread_id',
       '_emscripten_run_in_main_runtime_thread_js',
       '_emscripten_stack_set_limits',
       '_emscripten_sync_run_in_main_thread_2',

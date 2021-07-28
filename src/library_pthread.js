@@ -7,12 +7,8 @@
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread__deps: ['_emscripten_thread_init',
-                   'emscripten_register_main_browser_thread_id',
                    'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
-#if USE_ASAN || USE_LSAN
-                   , '$withBuiltinMalloc'
-#endif
                    ],
   $PThread: {
     // Contains all Workers that are idle/unused and not currently hosting an
@@ -37,33 +33,7 @@ var LibraryPThread = {
       }
 #endif
     },
-    initRuntime: function() {
-#if USE_ASAN || USE_LSAN
-      // When sanitizers are enabled, malloc is normally instrumented to call
-      // sanitizer code that checks some things about pthreads. As we are just
-      // setting up the main thread here, and are not ready for such calls,
-      // call malloc directly.
-      withBuiltinMalloc(function () {
-#endif
-
-      var tb = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
-
-      for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[tb/4+i] = 0;
-
-      // The pthread struct has a field that points to itself - this is used as
-        // a magic ID to detect whether the pthread_t structure is 'alive'.
-      {{{ makeSetValue('tb', C_STRUCTS.pthread.self, 'tb', 'i32') }}};
-
-      // pthread struct robust_list head should point to itself.
-      var headPtr = tb + {{{ C_STRUCTS.pthread.robust_list }}};
-      {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
-
-      // Allocate memory for thread-local storage.
-      var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') * 4 }}});
-      for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) HEAPU32[tlsMemory/4+i] = 0;
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, tb); // Main thread ID.
-
+    initRuntime: function(tb) {
 #if PTHREADS_PROFILING
       PThread.createProfilerBlock(tb);
       PThread.setThreadName(tb, "Browser main thread");
@@ -74,13 +44,8 @@ var LibraryPThread = {
       // globals which act as a form of TLS. Global constructors trying
       // to access this value will read the wrong value, but that is UB anyway.
       __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
-      _emscripten_register_main_browser_thread_id(tb);
 #if ASSERTIONS
       PThread.mainRuntimeThread = true;
-#endif
-
-#if USE_ASAN || USE_LSAN
-      });
 #endif
     },
     initWorker: function() {
@@ -568,6 +533,7 @@ var LibraryPThread = {
     pthread.worker.postMessage({ 'cmd': 'cancel' });
   },
 
+  $spawnThread__deps: ['$zeroMemory'],
   $spawnThread: function(threadParams) {
     if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! spawnThread() can only ever be called from main application thread!';
 
@@ -582,10 +548,8 @@ var LibraryPThread = {
     PThread.runningWorkers.push(worker);
 
     // Allocate memory for thread-local storage and initialize it to zero.
-    var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
-    for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) {
-      {{{ makeSetValue('tlsMemory', 'i*4', 0, 'i32') }}};
-    }
+    var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') * 4 }}});
+    zeroMemory(tlsMemory, {{{ cDefine('PTHREAD_KEYS_MAX') * 4 }}});
 
     var stackHigh = threadParams.stackBase + threadParams.stackSize;
 
@@ -822,7 +786,7 @@ var LibraryPThread = {
     // Allocate thread block (pthread_t structure).
     var threadInfoStruct = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
     // zero-initialize thread structure.
-    for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}} >> 2; ++i) HEAPU32[(threadInfoStruct>>2) + i] = 0;
+    zeroMemory(threadInfoStruct, {{{ C_STRUCTS.pthread.__size__ }}});
     {{{ makeSetValue('pthread_ptr', 0, 'threadInfoStruct', 'i32') }}};
 
     // The pthread struct has a field that points to itself - this is used as a
