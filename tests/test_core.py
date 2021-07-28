@@ -854,10 +854,10 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'none')
     self.emcc_args += ['-fno-builtin'] + list(args)
 
-    self.do_run(read_file(path_from_root('system/lib/emmalloc.cpp')) +
+    self.do_run(read_file(path_from_root('system/lib/emmalloc.c')) +
                 read_file(path_from_root('system/lib/sbrk.c')) +
-                read_file(test_file('core/test_emmalloc.cpp')),
-                read_file(test_file('core/test_emmalloc.out')))
+                read_file(test_file('core/test_emmalloc.c')),
+                read_file(test_file('core/test_emmalloc.out')), force_c=True)
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
