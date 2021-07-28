@@ -251,6 +251,8 @@ var LibraryJSEvents = {
 #else
       var keyEventData = JSEvents.keyEvent;
 #endif
+      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.timestamp, 'e.timeStamp', 'double') }}};
+
       var idx = keyEventData >> 2;
 
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.location / 4}}}] = e.location;
@@ -435,6 +437,7 @@ var LibraryJSEvents = {
 #if ASSERTIONS
     assert(eventStruct % 4 == 0);
 #endif
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.timestamp, 'e.timeStamp', 'double') }}};
     var idx = eventStruct >> 2;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenX / 4 }}}] = e.screenX;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenY / 4 }}}] = e.screenY;
