@@ -706,7 +706,7 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-  mktime__deps: ['tzset_impl'],
+  tzset__deps: ['tzset_impl'],
   tzset__sig: 'v',
   tzset: function() {
     // TODO: Use (malleable) environment variables instead of system settings.
