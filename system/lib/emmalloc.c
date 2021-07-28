@@ -97,16 +97,22 @@ typedef struct Region
   uint32_t _at_the_end_of_this_struct_size; // do not dereference, this is present for convenient struct sizeof() computation only
 } Region;
 
+static void initialize_malloc_heap();
+
 #if defined(__EMSCRIPTEN_PTHREADS__)
 // In multithreaded builds, use a simple global spinlock strategy to acquire/release access to the memory allocator.
 static volatile uint8_t multithreadingLock = 0;
-#define MALLOC_ACQUIRE() while(__sync_lock_test_and_set(&multithreadingLock, 1)) { while(multithreadingLock) { /*nop*/ } }
+#define MALLOC_ACQUIRE() \
+  while(__sync_lock_test_and_set(&multithreadingLock, 1)) { \
+    while(multithreadingLock) { /*nop*/ }; \
+  } \
+  if (!isInitialized) initialize_malloc_heap();
 #define MALLOC_RELEASE() __sync_lock_release(&multithreadingLock)
 // Test code to ensure we have tight malloc acquire/release guards in place.
 #define ASSERT_MALLOC_IS_ACQUIRED() assert(multithreadingLock == 1)
 #else
 // In singlethreaded builds, no need for locking.
-#define MALLOC_ACQUIRE() ((void)0)
+#define MALLOC_ACQUIRE() if (!isInitialized) initialize_malloc_heap();
 #define MALLOC_RELEASE() ((void)0)
 #define ASSERT_MALLOC_IS_ACQUIRED() ((void)0)
 #endif
@@ -135,6 +141,8 @@ static Region freeRegionBuckets[NUM_FREE_BUCKETS];
 // looking at the bitmask we can find in constant time an index to a free region bucket
 // that contains free memory of desired size.
 static BUCKET_BITMASK_T freeRegionBucketsUsed = 0;
+
+static bool isInitialized = false;
 
 // Amount of bytes taken up by allocation header data
 #define REGION_HEADER_SIZE (2*sizeof(uint32_t))
@@ -524,15 +532,11 @@ static bool claim_more_memory(size_t numBytes)
   return true;
 }
 
-// Initialize malloc during static initialization with highest constructor priority,
-// so that it initializes before any other static initializers in compilation units.
-static void EMSCRIPTEN_KEEPALIVE __attribute__((constructor(0))) initialize_malloc_heap()
+static void initialize_malloc_heap()
 {
-#if __EMSCRIPTEN_PTHREADS__
-  // This function should be called on the main thread before any pthreads have been
-  // established to initialize the malloc subsystem. (so no lock acquire needed)
-  assert(emscripten_is_main_runtime_thread());
-#endif
+  ASSERT_MALLOC_IS_ACQUIRED();
+  assert(!isInitialized);
+  isInitialized = true;
 
   // Initialize circular doubly linked lists representing free space
 #pragma clang loop unroll(disable) // Never useful to unroll this for loop, just takes up code size.
@@ -549,9 +553,12 @@ static void EMSCRIPTEN_KEEPALIVE __attribute__((constructor(0))) initialize_mall
 
 void emmalloc_blank_slate_from_orbit()
 {
+  MALLOC_ACQUIRE();
   listOfAllRegions = 0;
   freeRegionBucketsUsed = 0;
+  isInitialized = false;
   initialize_malloc_heap();
+  MALLOC_RELEASE();
 }
 
 static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
