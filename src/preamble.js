@@ -643,8 +643,10 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #include "URIUtils.js"
 
 #if ASSERTIONS
-function createExportWrapper(name, fixedasm) {
-  return function() {
+function createExportWrapper(name, mangled, fixedasm) {
+  // We create a wrapper that all calls get routed through, for the lifetime of the program.
+
+  globalThis[mangled] = Module[mangled] = function() {
     var displayName = name;
     var asm = fixedasm;
     if (!fixedasm) {
@@ -656,6 +658,14 @@ function createExportWrapper(name, fixedasm) {
       assert(asm[name], 'exported native function `' + displayName + '` not found');
     }
     return asm[name].apply(null, arguments);
+  };
+}
+#else
+function createExportWrapper(name, mangled) {
+  // With assertions disabled the wrapper will replace the global var and Module var on
+  // first use.
+  globalThis[mangled] = Module[mangled] = function() {
+    return (globalThis[mangled] = Module[mangled] = Module["asm"][name]).apply(null, arguments);
   };
 }
 #endif
