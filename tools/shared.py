@@ -38,7 +38,7 @@ from .settings import settings
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_LLVM_VERSION = "13.0"
+EXPECTED_LLVM_VERSION = "14.0"
 PYTHON = sys.executable
 
 # Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
@@ -65,6 +65,7 @@ diagnostics.add_warning('undefined', error=True)
 diagnostics.add_warning('deprecated', shared=True)
 diagnostics.add_warning('version-check')
 diagnostics.add_warning('export-main')
+diagnostics.add_warning('map-unrecognized-libraries')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 diagnostics.add_warning('pthreads-mem-growth')
 

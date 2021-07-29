@@ -8,7 +8,6 @@
 #include <memory.h>
 #include <pthread.h>
 #include <emscripten.h>
-#include <emscripten/threading.h>
 #include <assert.h>
 
 #include <thread>
@@ -65,22 +64,10 @@ void RunTest(int test)
 
 int main()
 {
-	if (!emscripten_has_threading_support())
-	{
-#ifdef REPORT_RESULT
-		REPORT_RESULT(0);
-#endif
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
-
   // Do a bunch of joins, verifying the Worker pool works.
 	for(int i = 0; i < 7; ++i)
 		RunTest(i);
 
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#else
-	EM_ASM(out('Main: Test successfully finished.'));
-#endif
+	printf("Main: Test successfully finished.\n");
+	return 0;
 }

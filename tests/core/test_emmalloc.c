@@ -14,7 +14,7 @@
 #define RANDOM_ITERS 12345
 #endif
 
-extern "C" void emmalloc_blank_slate_from_orbit();
+void emmalloc_blank_slate_from_orbit();
 
 void stage(const char* name) {
   EM_ASM({

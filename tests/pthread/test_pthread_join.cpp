@@ -10,8 +10,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <errno.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
+#include <emscripten/em_asm.h>
 
 long fib(long n)
 {
@@ -35,15 +34,6 @@ int main()
   struct timespec ts = { 1, 0 };
   nanosleep(&ts, 0);
 
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(6765);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   pthread_t thr;
 
   assert(EM_ASM_INT(return PThread.runningWorkers.length) == 0);
@@ -66,8 +56,7 @@ int main()
   assert(EM_ASM_INT(return PThread.runningWorkers.length) == 0);
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 8);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  assert(result == 6765);
+  return 0;
 }
 

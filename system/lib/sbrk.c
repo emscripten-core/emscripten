@@ -109,15 +109,16 @@ Error:
   return (void*)-1;
 }
 
-int brk(uintptr_t ptr) {
+int brk(void* ptr) {
 #if __EMSCRIPTEN_PTHREADS__
   // FIXME
   printf("brk() is not theadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
   abort();
-#endif
+#else
   uintptr_t last = (uintptr_t)sbrk(0);
-  if (sbrk(ptr - last) == (void*)-1) {
+  if (sbrk((uintptr_t)ptr - last) == (void*)-1) {
     return -1;
   }
   return 0;
+#endif
 }

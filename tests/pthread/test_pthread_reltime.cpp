@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <ctime>
+#include <cassert>
 #include <condition_variable>
 #include <pthread.h>
 #include <emscripten.h>
@@ -54,7 +55,8 @@ extern "C" int notify() {
 
         // Time measured on a worker should be relative to the main thread,
         // so that things are basically monotonic.
-        REPORT_RESULT(int(pong >= ping) + 2 * int(last >= pong));
+        assert((int(pong >= ping) + 2 * int(last >= pong)) == 3);
+        emscripten_force_exit(0);
     }
 
     return 0;
@@ -75,8 +77,7 @@ int main() {
     pthread_t thread;
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
     int error = pthread_create(&thread, &attr, thread_main, NULL);
-    if (error)
-        abort();
-
-    return 0;
+    assert(!error);
+    emscripten_exit_with_live_runtime();
+    __builtin_unreachable();
 }

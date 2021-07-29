@@ -747,7 +747,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         # TODO: No longer exists in the latest musl version.
         '__futex.c',
         # TODO: Could be supported in the upcoming musl upgrade
-        'lock_ptc.c', 'pthread_getattr_np.c',
+        'lock_ptc.c',
         # 'pthread_setattr_default_np.c',
         # TODO: These could be moved away from JS in the upcoming musl upgrade.
         'pthread_cancel.c', 'pthread_detach.c',
@@ -757,6 +757,11 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         path_components=['system', 'lib', 'pthread'],
         filenames=[
           'library_pthread.c',
+          'pthread_create.c',
+          'pthread_detach.c',
+          'pthread_join.c',
+          'pthread_testcancel.c',
+          'emscripten_proxy_main.c',
           'emscripten_thread_state.s',
         ])
     else:
@@ -857,7 +862,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=[
           'extras.c',
           'wasi-helpers.c',
-          'emscripten_pthread.c',
           'emscripten_get_heap_size.c',
         ])
 
@@ -1062,7 +1066,7 @@ class libmalloc(MTLibrary):
   def get_files(self):
     malloc_base = self.malloc.replace('-memvalidate', '').replace('-verbose', '').replace('-debug', '')
     malloc = shared.path_from_root('system', 'lib', {
-      'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp',
+      'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.c',
     }[malloc_base])
     sbrk = shared.path_from_root('system', 'lib', 'sbrk.c')
     return [malloc, sbrk]

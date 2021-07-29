@@ -7,8 +7,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
 #include <assert.h>
 
 void *ThreadMain(void *arg)
@@ -42,15 +40,6 @@ void *ThreadMain(void *arg)
 
 int main()
 {
-	if (!emscripten_has_threading_support())
-	{
-#ifdef REPORT_RESULT
-		REPORT_RESULT(0);
-#endif
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
-
 	pthread_t thread;
 	int rc, result;
 
@@ -60,8 +49,6 @@ int main()
 	rc = pthread_join(thread, (void**)&result);
 	assert(rc == 0);
 
-#ifdef REPORT_RESULT
-	REPORT_RESULT(result);
-#endif
-	return result;
+	assert(result == 0);
+	return 0;
 }

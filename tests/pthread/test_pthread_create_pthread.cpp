@@ -4,8 +4,7 @@
 // found in the LICENSE file.
 
 #include <pthread.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
+#include <emscripten/em_asm.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,25 +22,18 @@ static void *thread1_start(void *arg)
 {
   EM_ASM(out('thread1_start!'));
   pthread_t thr;
-  if (pthread_create(&thr, NULL, thread2_start, NULL) != 0) {
-    result = -200;
-    return NULL;
-  }
+  int rtn = pthread_create(&thr, NULL, thread2_start, NULL);
+#ifdef SMALL_POOL
+  assert(rtn != 0);
+#else
+  assert(rtn == 0);
   pthread_join(thr, NULL);
+#endif
   return NULL;
 }
 
 int main()
 {
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   pthread_t thr;
   pthread_create(&thr, NULL, thread1_start, NULL);
 
@@ -56,7 +48,11 @@ int main()
 
   pthread_join(thr, NULL);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
+  printf("done result=%d\n", result);
+#ifdef SMALL_POOL
+  assert(result == 0);
+#else
+  assert(result == 1);
 #endif
+  return 0;
 }

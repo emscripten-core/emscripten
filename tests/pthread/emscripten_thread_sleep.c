@@ -24,10 +24,8 @@ void *thread_main(void *arg)
 	Sleep(1000);
 	Sleep(5000);
 
-#ifdef REPORT_RESULT
-	REPORT_RESULT(1);
-#endif
-	return 0;
+	emscripten_force_exit(0);
+	return NULL;
 }
 
 int main()
@@ -41,5 +39,5 @@ int main()
 	pthread_t thread;
 	pthread_create(&thread, NULL, thread_main, NULL);
 	emscripten_exit_with_live_runtime();
-	return 0;
+	__builtin_unreachable();
 }

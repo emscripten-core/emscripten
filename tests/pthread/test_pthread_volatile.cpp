@@ -3,11 +3,10 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <errno.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
 
 // Toggle to use two different methods for updating shared data (C++03 volatile
 // vs explicit atomic ops).  Note that using a volatile variable explicitly
@@ -29,29 +28,15 @@ static void *thread_start(void *arg) // thread: just flip the shared flag and qu
 
 int main()
 {
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   pthread_t thr;
   int rc = pthread_create(&thr, NULL, thread_start, (void*)0);
   if (rc != 0)
   {
-#ifdef REPORT_RESULT
-    int result = (rc != EAGAIN);
-    REPORT_RESULT(result);
-    return 0;
-#endif
+    return 1;
   }
 
   while(sharedVar == 0) {}
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(sharedVar);
-#endif
+  assert(sharedVar == 1);
+  return 0;
 }

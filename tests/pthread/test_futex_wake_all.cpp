@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <emscripten/threading.h>
+#include <emscripten/emscripten.h>
 #include <assert.h>
 #include <math.h>
 #include <limits.h>
@@ -16,6 +17,10 @@
 unsigned int futexVal = 0;
 
 unsigned int numAwoken = 0;
+
+pthread_t wakingThread;
+
+pthread_t waitingThreads[NUM_THREADS];
 
 void *WakingThread(void *arg)
 {
@@ -31,7 +36,6 @@ void *WaitingThread(void *arg)
 	// Last waiting thread creates the waking thread - this simplifies mutual synchronization needs
 	if ((long)arg == NUM_THREADS-1)
 	{
-		pthread_t wakingThread;
 		pthread_create(&wakingThread, 0, WakingThread, 0);
 	}
 
@@ -45,9 +49,7 @@ void *WaitingThread(void *arg)
 	uint32_t old = emscripten_atomic_add_u32(&numAwoken, 1);
 	if (old + 1 == NUM_THREADS)
 	{
-#ifdef REPORT_RESULT
-		REPORT_RESULT(0);
-#endif
+		emscripten_force_exit(0);
 	}
 
 	return 0;
@@ -55,18 +57,9 @@ void *WaitingThread(void *arg)
 
 int main()
 {
-	if (!emscripten_has_threading_support())
-	{
-#ifdef REPORT_RESULT
-		REPORT_RESULT(0);
-#endif
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
-
-	pthread_t waitingThreads[NUM_THREADS];
 	for(int i = 0; i < NUM_THREADS; ++i)
 	{
 		pthread_create(waitingThreads+i, 0, WaitingThread, (void*)i);
 	}
+	emscripten_exit_with_live_runtime();
 }

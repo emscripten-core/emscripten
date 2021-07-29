@@ -13,10 +13,12 @@ void g(void) {
   void *stuff = malloc(3432);
   tls_ptr = malloc(1234);
   atomic_store(&thread_done, true);
+  printf("thread done\n");
   while (1);
 }
 
 int main(int argc, char **argv) {
+  printf("start\n");
   std::thread t(g);
   t.detach();
 
@@ -28,4 +30,5 @@ int main(int argc, char **argv) {
 
   __lsan_do_leak_check();
   fprintf(stderr, "LSAN TEST COMPLETE\n");
+  return 0;
 }

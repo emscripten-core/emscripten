@@ -99,37 +99,6 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
 };
 #endif
 
-#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
-// When using postMessage to send an object, it is processed by the structured clone algorithm.
-// The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
-// This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
-function resetPrototype(constructor, attrs) {
-  var object = Object.create(constructor.prototype);
-  for (var key in attrs) {
-    if (attrs.hasOwnProperty(key)) {
-      object[key] = attrs[key];
-    }
-  }
-  return object;
-}
-#endif
-
-#if LOAD_SOURCE_MAP
-var wasmSourceMapData;
-#endif
-#if USE_OFFSET_CONVERTER
-var wasmOffsetData, wasmOffsetConverter;
-#endif
-
-function moduleLoaded() {
-#if LOAD_SOURCE_MAP
-  wasmSourceMap = resetPrototype(Module['WasmSourceMap'], wasmSourceMapData);
-#endif
-#if USE_OFFSET_CONVERTER
-  wasmOffsetConverter = resetPrototype(Module['WasmOffsetConverter'], wasmOffsetData);
-#endif
-}
-
 self.onmessage = function(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
@@ -155,10 +124,10 @@ self.onmessage = function(e) {
       {{{ makeAsmImportsAccessInPthread('wasmMemory') }}} = e.data.wasmMemory;
 
 #if LOAD_SOURCE_MAP
-      wasmSourceMapData = e.data.wasmSourceMap;
+      Module['wasmSourceMapData'] = e.data.wasmSourceMap;
 #endif
 #if USE_OFFSET_CONVERTER
-      wasmOffsetData = e.data.wasmOffsetConverter;
+      Module['wasmOffsetData'] = e.data.wasmOffsetConverter;
 #endif
 
       {{{ makeAsmImportsAccessInPthread('buffer') }}} = {{{ makeAsmImportsAccessInPthread('wasmMemory') }}}.buffer;
@@ -172,7 +141,6 @@ self.onmessage = function(e) {
         return exports.default(Module);
       }).then(function(instance) {
         Module = instance;
-        moduleLoaded();
       });
 #else
       if (typeof e.data.urlOrBlob === 'string') {
@@ -186,24 +154,14 @@ self.onmessage = function(e) {
 #if MINIMAL_RUNTIME
       {{{ EXPORT_NAME }}}(imports).then(function (instance) {
         Module = instance;
-        moduleLoaded();
       });
 #else
       {{{ EXPORT_NAME }}}(Module).then(function (instance) {
         Module = instance;
-        moduleLoaded();
       });
 #endif
 #endif
-
-#if !MODULARIZE && !MINIMAL_RUNTIME
-      // MINIMAL_RUNTIME always compiled Wasm (&Wasm2JS) asynchronously, even in pthreads. But
-      // regular runtime and asm.js are loaded synchronously, so in those cases
-      // we are now loaded, and can post back to main thread.
-      moduleLoaded();
-#endif
-
-#endif
+#endif // MODULARIZE && EXPORT_ES6
     } else if (e.data.cmd === 'objectTransfer') {
       Module['PThread'].receiveObjectTransfer(e.data);
     } else if (e.data.cmd === 'run') {

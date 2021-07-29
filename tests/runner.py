@@ -300,7 +300,7 @@ def parse_args(args):
                            'test.  Implies --cores=1.')
   parser.add_argument('--no-clean', action='store_true',
                       help='Do not clean the temporary directory before each test run')
-  parser.add_argument('--verbose', action='store_true', default=None)
+  parser.add_argument('--verbose', '-v', action='store_true', default=None)
   parser.add_argument('--all-engines', action='store_true', default=None)
   parser.add_argument('--detect-leaks', action='store_true', default=None)
   parser.add_argument('--skip-slow', action='store_true', help='Skip tests marked as slow')

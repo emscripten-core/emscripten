@@ -59,34 +59,20 @@ MINIMAL_TASKS = [
     'libunwind-except'
 ]
 
-USER_TASKS = [
-    'boost_headers',
-    'bullet',
-    'bzip2',
-    'cocos2d',
-    'freetype',
-    'giflib',
-    'harfbuzz',
-    'icu',
-    'libjpeg',
-    'libpng',
-    'ogg',
-    'regal',
-    'regal-mt',
-    'sdl2',
-    'sdl2-mt',
-    'sdl2-gfx',
-    'sdl2-image',
-    'sdl2-image-png',
-    'sdl2-image-jpg',
-    'sdl2-mixer',
-    'sdl2-mixer-ogg',
-    'sdl2-mixer-mp3',
-    'sdl2-net',
-    'sdl2-ttf',
-    'vorbis',
-    'zlib',
-]
+# Variant builds that we want to support for cetain ports
+# TODO: It would be nice if the ports themselves could specify the variants that they
+# support.
+PORT_VARIANTS = {
+    'regal-mt': ('regal', {'USE_PTHREADS': 1}),
+    'harfbuzz-mt': ('harfbuzz', {'USE_PTHREADS': 1}),
+    'sdl2-mt': ('sdl2', {'USE_PTHREADS': 1}),
+    'sdl2_mixer_mp3': ('sdl2_mixer', {'SDL2_MIXER_FORMATS': ["mp3"]}),
+    'sdl2_mixer_none': ('sdl2_mixer', {'SDL2_MIXER_FORMATS': []}),
+    'sdl2_image_png': ('sdl2_image', {'SDL2_IMAGE_FORMATS': ["png"]}),
+    'sdl2_image_jpg': ('sdl2_image', {'SDL2_IMAGE_FORMATS': ["jpg"]}),
+}
+
+PORTS = sorted(list(system_libs.ports.ports_by_name.keys()) + list(PORT_VARIANTS.keys()))
 
 temp_files = shared.configuration.get_temp_files()
 logger = logging.getLogger('embuilder')
@@ -97,7 +83,7 @@ legacy_prefixes = {
 
 
 def get_help():
-  all_tasks = SYSTEM_TASKS + USER_TASKS
+  all_tasks = SYSTEM_TASKS + PORTS
   all_tasks.sort()
   return '''
 Available targets:
@@ -109,10 +95,20 @@ Issuing 'embuilder.py build ALL' causes each task to be built.
 
 
 def build_port(port_name):
+  if port_name in PORT_VARIANTS:
+    port_name, extra_settings = PORT_VARIANTS[port_name]
+    old_settings = settings.dict().copy()
+    for key, value in extra_settings.items():
+      setattr(settings, key, value)
+  else:
+    old_settings = None
+
   if force:
     system_libs.clear_port(port_name, settings)
 
   system_libs.build_port(port_name, settings)
+  if old_settings:
+    settings.dict().update(old_settings)
 
 
 def main():
@@ -158,13 +154,13 @@ def main():
     tasks = SYSTEM_TASKS
     auto_tasks = True
   elif 'USER' in tasks:
-    tasks = USER_TASKS
+    tasks = PORTS
     auto_tasks = True
   elif 'MINIMAL' in tasks:
     tasks = MINIMAL_TASKS
     auto_tasks = True
   elif 'ALL' in tasks:
-    tasks = SYSTEM_TASKS + USER_TASKS
+    tasks = SYSTEM_TASKS + PORTS
     auto_tasks = True
   if auto_tasks:
     # cocos2d: must be ported, errors on
@@ -191,83 +187,8 @@ def main():
       if force:
         shared.Cache.erase_file('generated_struct_info.json')
       emscripten.generate_struct_info()
-    elif what == 'icu':
-      build_port('icu')
-    elif what == 'zlib':
-      settings.USE_ZLIB = 1
-      build_port('zlib')
-      settings.USE_ZLIB = 0
-    elif what == 'bzip2':
-      build_port('bzip2')
-    elif what == 'bullet':
-      build_port('bullet')
-    elif what == 'vorbis':
-      build_port('vorbis')
-    elif what == 'ogg':
-      build_port('ogg')
-    elif what == 'giflib':
-      build_port('giflib')
-    elif what == 'libjpeg':
-      build_port('libjpeg')
-    elif what == 'libpng':
-      build_port('libpng')
-    elif what == 'sdl2':
-      build_port('sdl2')
-    elif what == 'sdl2-mt':
-      settings.USE_PTHREADS = 1
-      build_port('sdl2')
-      settings.USE_PTHREADS = 0
-    elif what == 'sdl2-gfx':
-      build_port('sdl2_gfx')
-    elif what == 'sdl2-image':
-      build_port('sdl2_image')
-    elif what == 'sdl2-image-png':
-      settings.SDL2_IMAGE_FORMATS = ["png"]
-      build_port('sdl2_image')
-      settings.SDL2_IMAGE_FORMATS = []
-    elif what == 'sdl2-image-jpg':
-      settings.SDL2_IMAGE_FORMATS = ["jpg"]
-      build_port('sdl2_image')
-      settings.SDL2_IMAGE_FORMATS = []
-    elif what == 'sdl2-net':
-      build_port('sdl2_net')
-    elif what == 'sdl2-mixer':
-      old_formats = settings.SDL2_MIXER_FORMATS
-      settings.SDL2_MIXER_FORMATS = []
-      build_port('sdl2_mixer')
-      settings.SDL2_MIXER_FORMATS = old_formats
-    elif what == 'sdl2-mixer-ogg':
-      old_formats = settings.SDL2_MIXER_FORMATS
-      settings.SDL2_MIXER_FORMATS = ["ogg"]
-      build_port('sdl2_mixer')
-      settings.SDL2_MIXER_FORMATS = old_formats
-    elif what == 'sdl2-mixer-mp3':
-      old_formats = settings.SDL2_MIXER_FORMATS
-      settings.SDL2_MIXER_FORMATS = ["mp3"]
-      build_port('sdl2_mixer')
-      settings.SDL2_MIXER_FORMATS = old_formats
-    elif what == 'freetype':
-      build_port('freetype')
-    elif what == 'harfbuzz':
-      build_port('harfbuzz')
-    elif what == 'harfbuzz-mt':
-      settings.USE_PTHREADS = 1
-      build_port('harfbuzz')
-      settings.USE_PTHREADS = 0
-    elif what == 'sdl2-ttf':
-      build_port('sdl2_ttf')
-    elif what == 'cocos2d':
-      build_port('cocos2d')
-    elif what == 'regal':
-      build_port('regal')
-    elif what == 'regal-mt':
-      settings.USE_PTHREADS = 1
-      build_port('regal')
-      settings.USE_PTHREADS = 0
-    elif what == 'boost_headers':
-      build_port('boost_headers')
-    elif what == 'mpg123':
-      build_port('mpg123')
+    elif what in PORTS:
+      build_port(what)
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

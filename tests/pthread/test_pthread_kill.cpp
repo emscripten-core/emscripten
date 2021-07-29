@@ -12,7 +12,6 @@
 #include <errno.h>
 #include <signal.h>
 #include <emscripten.h>
-#include <emscripten/threading.h>
 
 _Atomic int sharedVar = 0;
 
@@ -37,15 +36,6 @@ void BusySleep(double msecs)
 
 int main()
 {
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   sharedVar = 0;
   int s = pthread_create(&thr, NULL, thread_start, 0);
   assert(s == 0);
@@ -75,7 +65,5 @@ int main()
   // Finally test that the thread is not doing any work and it is dead.
   assert(sharedVar == 0);
   printf("Main: Done. Successfully killed thread. sharedVar: %d\n", sharedVar);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(sharedVar);
-#endif
+  return 0;
 }

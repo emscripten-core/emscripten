@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <emscripten.h>
-#include <emscripten/threading.h>
 #include <vector>
 
 pthread_t threads[50];
@@ -34,15 +33,6 @@ void JoinThread(int idx) {
 
 int main()
 {
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   // This test should be run with a prewarmed pool of size 50. They should be fully allocated.
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 50);
 
@@ -62,8 +52,5 @@ int main()
   }
 
   printf("Final average %f ms.\n", total / 10.0);
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

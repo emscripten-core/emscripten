@@ -33,14 +33,6 @@
 
 #include <emscripten.h>
 #include <emscripten/threading.h>
-#include <emscripten/stack.h>
-
-// With LLVM 3.6, C11 is the default compilation mode.
-// gets() is deprecated under that standard, but emcc
-// still provides it, so always include it in the build.
-#if __STDC_VERSION__ >= 201112L
-char* gets(char*);
-#endif
 
 // Extra pthread_attr_t field:
 #define _a_transferredcanvases __u.__s[9]
@@ -99,37 +91,6 @@ int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr, int prioceiling)
 {
   // Not supported either in Emscripten or musl, return an error.
   return EPERM;
-}
-
-int pthread_setcancelstate(int new, int* old) {
-  if (new > 1U)
-    return EINVAL;
-  struct pthread* self = pthread_self();
-  if (old)
-    *old = self->canceldisable;
-  self->canceldisable = new;
-  return 0;
-}
-
-int _pthread_isduecanceled(struct pthread* pthread_ptr) {
-  return pthread_ptr->threadStatus == 2 /*canceled*/;
-}
-
-void __pthread_testcancel() {
-  struct pthread* self = pthread_self();
-  if (self->canceldisable)
-    return;
-  if (_pthread_isduecanceled(self)) {
-    EM_ASM(throw 'Canceled!');
-  }
-}
-
-int pthread_getattr_np(pthread_t t, pthread_attr_t* a) {
-  *a = (pthread_attr_t){0};
-  a->_a_detach = !!t->detached;
-  a->_a_stackaddr = (uintptr_t)t->stack;
-  a->_a_stacksize = t->stack_size - DEFAULT_STACK_SIZE;
-  return 0;
 }
 
 static uint32_t dummyZeroAddress = 0;
@@ -197,11 +158,10 @@ extern double emscripten_receive_on_main_thread_js(int functionIndex, int numCal
 extern int _emscripten_notify_thread_queue(pthread_t targetThreadId, pthread_t mainThreadId);
 
 #if defined(__has_feature)
-#if __has_feature(address_sanitizer)
-#define HAS_ASAN
-void __lsan_disable_in_this_thread(void);
-void __lsan_enable_in_this_thread(void);
-int emscripten_builtin_pthread_create(void *thread, void *attr,
+#if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
+#define HAS_SANITIZER
+#include <sanitizer/lsan_interface.h>
+int emscripten_builtin_pthread_create(pthread_t *thread, const pthread_attr_t* attr,
                                       void *(*callback)(void *), void *arg);
 #endif
 #endif
@@ -211,17 +171,17 @@ static void _do_call(em_queued_call* q) {
   assert(EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum) <= EM_QUEUED_CALL_MAX_ARGS);
   switch (q->functionEnum) {
     case EM_PROXIED_PTHREAD_CREATE:
-#ifdef HAS_ASAN
+#ifdef HAS_SANITIZER
       // ASan wraps the emscripten_builtin_pthread_create call in __lsan::ScopedInterceptorDisabler.
       // Unfortunately, that only disables it on the thread that made the call.
       // This is sufficient on the main thread.
       // On non-main threads, pthread_create gets proxied to the main thread, where LSan is not
       // disabled. This makes it necessary for us to disable LSan here, so that it does not detect
       // pthread's internal allocations as leaks.
-      __lsan_disable_in_this_thread();
+      __lsan_disable();
       q->returnValue.i =
         emscripten_builtin_pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
-      __lsan_enable_in_this_thread();
+      __lsan_enable();
 #else
       q->returnValue.i =
         pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
@@ -445,15 +405,10 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_i(
   return res;
 }
 
-static pthread_t main_browser_thread_id_ = 0;
-
-void emscripten_register_main_browser_thread_id(
-  pthread_t main_browser_thread_id) {
-  main_browser_thread_id_ = main_browser_thread_id;
-}
+static struct pthread __main_pthread;
 
 pthread_t emscripten_main_browser_thread_id() {
-  return main_browser_thread_id_;
+  return &__main_pthread;
 }
 
 int _emscripten_do_dispatch_to_thread(pthread_t target_thread, em_queued_call* call) {
@@ -853,9 +808,20 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
   return q;
 }
 
-int _emscripten_call_on_thread(
-  int forceAsync,
-  pthread_t targetThread, EM_FUNC_SIGNATURE sig, void* func_ptr, void* satellite, ...) {
+typedef struct DispatchToThreadArgs {
+  pthread_t target_thread;
+  em_queued_call* q;
+} DispatchToThreadArgs;
+
+static void dispatch_to_thread_helper(void* user_data) {
+  DispatchToThreadArgs* args = (DispatchToThreadArgs*)user_data;
+  _emscripten_do_dispatch_to_thread(args->target_thread, args->q);
+  free(user_data);
+}
+
+int _emscripten_call_on_thread(int forceAsync, pthread_t targetThread, EM_FUNC_SIGNATURE sig,
+    void* func_ptr, void* satellite, ...) {
+
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call* q = em_queued_call_malloc();
   assert(q);
@@ -901,11 +867,10 @@ int _emscripten_call_on_thread(
   // The called function will not be async if we are on the same thread; force
   // async if the user asked for that.
   if (forceAsync) {
-    EM_ASM({
-      setTimeout(function() {
-        __emscripten_do_dispatch_to_thread($0, $1);
-      }, 0);
-    }, targetThread, q);
+    DispatchToThreadArgs* args = malloc(sizeof(DispatchToThreadArgs));
+    args->target_thread = targetThread;
+    args->q = q;
+    emscripten_set_timeout(dispatch_to_thread_helper, 0, args);
     return 0;
   } else {
     return _emscripten_do_dispatch_to_thread(targetThread, q);
@@ -916,65 +881,27 @@ int _emscripten_call_on_thread(
 // the main thread is waiting, we wake it up before waking up any workers.
 EMSCRIPTEN_KEEPALIVE void* _emscripten_main_thread_futex;
 
-static int _main_argc;
-static char** _main_argv;
+EM_JS(void, initPthreadsJS, (void* tb), {
+  PThread.initRuntime(tb);
+})
 
-extern int __call_main(int argc, char** argv);
+// We must initialize the runtime at the proper time, which is after memory is
+// initialized and before any userland global ctors.  We must also keep this
+// function alive so it is always called.
+// This must run before any userland ctors.
+// Note that ASan constructor priority is 50, and we must be higher.
+EMSCRIPTEN_KEEPALIVE
+__attribute__((constructor(48)))
+void __emscripten_pthread_data_constructor(void) {
+  initPthreadsJS(&__main_pthread);
+  // The pthread struct has a field that points to itself - this is used as
+  // a magic ID to detect whether the pthread_t structure is 'alive'.
+  __main_pthread.self = &__main_pthread;
+      // pthread struct robust_list head should point to itself.
+  __main_pthread.robust_list.head = &__main_pthread.robust_list;
 
-static void* _main_thread(void* param) {
-  // This is the main runtime thread for the application.
-  emscripten_set_thread_name(pthread_self(), "Application main thread");
-  return (void*)__call_main(_main_argc, _main_argv);
-}
+  // Main thread ID.
+  __main_pthread.tid = (long)&__main_pthread;
 
-int emscripten_proxy_main(int argc, char** argv) {
-  pthread_attr_t attr;
-  pthread_attr_init(&attr);
-  // Use the size of the current stack, which is the normal size of the stack
-  // that main() would have without PROXY_TO_PTHREAD.
-  pthread_attr_setstacksize(&attr, emscripten_stack_get_base() - emscripten_stack_get_end());
-  // Pass special ID -1 to the list of transferred canvases to denote that the thread creation
-  // should instead take a list of canvases that are specified from the command line with
-  // -s OFFSCREENCANVASES_TO_PTHREAD linker flag.
-  emscripten_pthread_attr_settransferredcanvases(&attr, (const char*)-1);
-  _main_argc = argc;
-  _main_argv = argv;
-  pthread_t thread;
-  int rc = pthread_create(&thread, &attr, _main_thread, NULL);
-  pthread_attr_destroy(&attr);
-  return rc;
-}
-
-weak_alias(__pthread_testcancel, pthread_testcancel);
-
-// See musl's pthread_create.c
-void __run_cleanup_handlers(void* _unused) {
-  pthread_t self = __pthread_self();
-  while (self->cancelbuf) {
-    void (*f)(void *) = self->cancelbuf->__f;
-    void *x = self->cancelbuf->__x;
-    self->cancelbuf = self->cancelbuf->__next;
-    f(x);
-  }
-}
-
-extern int __cxa_thread_atexit(void (*)(void *), void *, void *);
-
-extern int8_t __dso_handle;
-
-// Copied from musl's pthread_create.c
-void __do_cleanup_push(struct __ptcb *cb) {
-  struct pthread *self = __pthread_self();
-  cb->__next = self->cancelbuf;
-  self->cancelbuf = cb;
-  static thread_local bool registered = false;
-  if (!registered) {
-    __cxa_thread_atexit(__run_cleanup_handlers, NULL, &__dso_handle);
-    registered = true;
-  }
-}
-
-// Copied from musl's pthread_create.c
-void __do_cleanup_pop(struct __ptcb *cb) {
-  __pthread_self()->cancelbuf = cb->__next;
+  __main_pthread.locale = &libc.global_locale;
 }

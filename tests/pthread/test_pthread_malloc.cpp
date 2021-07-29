@@ -4,8 +4,7 @@
 // found in the LICENSE file.
 
 #include <pthread.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
+#include <emscripten/em_asm.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -40,14 +39,6 @@ static void *thread_start(void *arg)
 
 int main()
 {
-  if (!emscripten_has_threading_support()) {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
-    printf("Skipped: threading support is not available!\n");
-    return 0;
-  }
-
   pthread_t thr[NUM_THREADS];
   for(int i = 0; i < NUM_THREADS; ++i)
     pthread_create(&thr[i], NULL, thread_start, (void*)(i*N));
@@ -58,8 +49,6 @@ int main()
     result += res;
   }
   printf("Test finished with result %d\n", result);
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  assert(result == 0);
+  return 0;
 }
