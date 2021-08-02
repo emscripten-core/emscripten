@@ -264,6 +264,10 @@ cat > $test.c <<EOF
 #include <sys/types.h>
 off64_t dummy = 0;
 EOF
+
+# XXX EMSCRIPTEN: this is necessary for gcc to work
+CFLAGS="${CFLAGS} -fPIE"
+
 if test "`($CC -c $CFLAGS -D_LARGEFILE64_SOURCE=1 $test.c) 2>&1`" = ""; then
   CFLAGS="${CFLAGS} -D_LARGEFILE64_SOURCE=1"
   SFLAGS="${SFLAGS} -D_LARGEFILE64_SOURCE=1"
