@@ -355,7 +355,7 @@ class CheerpBenchmarker(Benchmarker):
 # Benchmarkers
 
 benchmarkers = [
-  # NativeBenchmarker('clang', CLANG_CC, CLANG_CXX),
+  NativeBenchmarker('clang', CLANG_CC, CLANG_CXX),
   # NativeBenchmarker('gcc',   'gcc',    'g++')
 ]
 
