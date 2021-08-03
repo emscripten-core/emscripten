@@ -151,7 +151,7 @@ int main()
     // read from the other end of the pipe
     assert(read(fd[0], buf, 5) == 4);
     // We should have read what we wrote to the other end
-    assert( strncmp((const char *)buf, "XXXX", 5) == 0);
+    assert(memcmp(buf, "XXXX", 4) == 0);
 
     // Close the read end
     assert(close(fd[0]) == 0);
