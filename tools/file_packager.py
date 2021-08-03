@@ -459,7 +459,7 @@ def main():
         ''' % (create_preloaded if use_preload_plugins else create_data, '''
               var files = metadata['files'];
               for (var i = 0; i < files.length; ++i) {
-                new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio']).open('GET', files[i]['filename']);
+                new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
               }
       ''')
 
@@ -478,12 +478,16 @@ def main():
     elif file_['mode'] == 'preload':
       # Preload
       counter += 1
-      metadata['files'].append({
+
+      metadata_el = {
         'filename': file_['dstpath'],
         'start': file_['data_start'],
         'end': file_['data_end'],
-        'audio': 1 if filename[-4:] in AUDIO_SUFFIXES else 0,
-      })
+      }
+      if filename[-4:] in AUDIO_SUFFIXES:
+        metadata_el['audio'] = 1
+
+      metadata['files'].append(metadata_el)
     else:
       assert 0
 
