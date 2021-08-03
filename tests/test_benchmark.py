@@ -19,6 +19,7 @@ if __name__ == '__main__':
 import clang_native
 import jsrun
 import common
+from tools.shared import CLANG_CC, CLANG_CXX
 from common import TEST_ROOT, test_file, read_file, read_binary
 from tools.shared import run_process, PIPE, try_delete, EMCC, config
 from tools import building
@@ -207,6 +208,7 @@ class EmscriptenBenchmarker(Benchmarker):
       '-s', 'FILESYSTEM=0',
       '--closure=1',
       '-s', 'MINIMAL_RUNTIME',
+      '-s', 'ENVIRONMENT=node,shell',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + emcc_args + LLVM_FEATURE_FLAGS + self.extra_args
@@ -353,7 +355,7 @@ class CheerpBenchmarker(Benchmarker):
 # Benchmarkers
 
 benchmarkers = [
-  # NativeBenchmarker('clang', shared.CLANG_CC, shared.CLANG_CXX),
+  NativeBenchmarker('clang', CLANG_CC, CLANG_CXX),
   # NativeBenchmarker('gcc',   'gcc',    'g++')
 ]
 
