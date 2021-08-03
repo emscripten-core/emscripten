@@ -658,24 +658,20 @@ def make_export_wrappers(exports, delay_assignment):
       # first use.
       if settings.ASSERTIONS and not delay_assignment:
         wrappers.append(f'''\
-/** @type {{function(...*):?}} */
 createExportWrapper("{name}", "{mangled}", asm);
 ''')
       else:
         wrappers.append(f'''\
-/** @type {{function(...*):?}} */
 createExportWrapper("{name}", "{mangled}");
 ''')
     elif delay_assignment:
       wrappers.append('''\
-/** @type {function(...*):?} */
 var %(mangled)s = Module["%(mangled)s"] = function() {
   return (%(mangled)s = Module["%(mangled)s"] = Module["asm"]["%(name)s"]).apply(null, arguments);
 };
 ''' % {'mangled': mangled, 'name': name})
     else:
       wrappers.append(f'''\
-/** @type {{function(...*):?}} */
 var {mangled} = Module["{mangled}"] = asm["{name}"]
 ''')
   return wrappers
