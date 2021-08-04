@@ -136,6 +136,30 @@ int main()
     test_read (fd[0], &rchar, 10);
     test_poll(fd, FALSE);
 
+    // Clear buffer
+    memset(buf, 0, sizeof(buf));
+    // Test closing pipes.
+    // Write to pipe
+    assert(write(fd[1], "XXXX", 4) == 4);
+    // Close write end
+    assert(close(fd[1]) == 0);
+    // This write should fail
+    assert(write(fd[1], "YYYY", 4) == -1);
+    // The error number is EBADF
+    assert(errno == EBADF);
+
+    // read from the other end of the pipe
+    assert(read(fd[0], buf, 5) == 4);
+    // We should have read what we wrote to the other end
+    assert(memcmp(buf, "XXXX", 4) == 0);
+
+    // Close the read end
+    assert(close(fd[0]) == 0);
+    // Now reading should return an error
+    assert(read(fd[0], buf, 5) == -1);
+    // The error number is EBADF
+    assert(errno == EBADF);
+
     puts("success");
 
     return 0;

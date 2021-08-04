@@ -18,7 +18,10 @@ mergeInto(LibraryManager.library, {
     },
     createPipe: function () {
       var pipe = {
-        buckets: []
+        buckets: [],
+        // refcnt 2 because pipe has a read end and a write end. We need to be
+        // able to read from the read end after write end is closed.
+        refcnt : 2,
       };
 
       pipe.buckets.push({
@@ -215,7 +218,10 @@ mergeInto(LibraryManager.library, {
       },
       close: function (stream) {
         var pipe = stream.node.pipe;
-        pipe.buckets = null;
+        pipe.refcnt--;
+        if (pipe.refcnt === 0) {
+          pipe.buckets = null;
+        }
       }
     },
     nextname: function () {
