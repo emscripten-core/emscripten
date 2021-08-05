@@ -7,8 +7,8 @@ int get_side_tls2();
 int* get_side_tls_address();
 int* get_side_tls_address2();
 
-__thread int main_tls = 10;
-__thread int main_tls2 = 11;
+static __thread int main_tls = 10;
+static __thread int main_tls2 = 11;
 extern __thread int side_tls;
 extern __thread int side_tls2;
 
