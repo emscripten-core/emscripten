@@ -6891,26 +6891,24 @@ int main() {
     self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'INITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'WASM_ASYNC_COMPILATION=0', '-s', 'IMPORTED_MEMORY'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
-  def test_binaryen_mem(self):
+  def test_memory_size(self):
     for args, expect_initial, expect_max in [
-        (['-s', 'INITIAL_MEMORY=20971520'], 320, 320),
-        (['-s', 'INITIAL_MEMORY=20971520', '-s', 'ALLOW_MEMORY_GROWTH'], 320, None),
-        (['-s', 'INITIAL_MEMORY=20971520',                                '-s', 'MAXIMUM_MEMORY=41943040'], 320, 640),
-        (['-s', 'INITIAL_MEMORY=20971520', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=41943040'], 320, 640),
+        ([], 320, 320),
+        (['-s', 'ALLOW_MEMORY_GROWTH'], 320, 32768),
+        (['-s', 'MAXIMUM_MEMORY=40MB'], 320, 320),
+        (['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=40MB'], 320, 640),
       ]:
-      cmd = [EMCC, test_file('hello_world.c'), '-O2'] + args
+      cmd = [EMCC, test_file('hello_world.c'), '-O2', '-s', 'INITIAL_MEMORY=20MB'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
       wat = self.run_process([wasm_dis, 'a.out.wasm'], stdout=PIPE).stdout
-      for line in wat:
-        if '(import "env" "memory" (memory ' in line:
-          parts = line.strip().replace('(', '').replace(')', '').split(' ')
-          print(parts)
-          self.assertEqual(parts[5], str(expect_initial))
-          if not expect_max:
-            self.assertEqual(len(parts), 6)
-          else:
-            self.assertEqual(parts[6], str(expect_max))
+      memories = [l for l in wat.splitlines() if '(memory ' in l]
+      self.assertEqual(len(memories), 2)
+      line = memories[0]
+      parts = line.strip().replace('(', '').replace(')', '').split()
+      print(parts)
+      self.assertEqual(parts[2], str(expect_initial))
+      self.assertEqual(parts[3], str(expect_max))
 
   def test_invalid_mem(self):
     # A large amount is fine, multiple of 16MB or not
