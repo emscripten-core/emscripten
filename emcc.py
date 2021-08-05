@@ -1970,16 +1970,13 @@ def phase_linker_setup(options, state, newargs, settings_map):
       exit_with_error(f'{setting} must be a multiple of WebAssembly page size (64KiB), was {settings[setting]}')
 
   check_memory_setting('INITIAL_MEMORY')
+  check_memory_setting('MAXIMUM_MEMORY')
   if settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
     exit_with_error('INITIAL_MEMORY must be less than 2GB due to current spec limitations')
   if settings.INITIAL_MEMORY < settings.TOTAL_STACK:
     exit_with_error(f'INITIAL_MEMORY must be larger than TOTAL_STACK, was {settings.INITIAL_MEMORY} (TOTAL_STACK={settings.TOTAL_STACK})')
-  if settings.MAXIMUM_MEMORY != -1:
-    check_memory_setting('MAXIMUM_MEMORY')
   if settings.MEMORY_GROWTH_LINEAR_STEP != -1:
     check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
-  if settings.USE_PTHREADS and settings.ALLOW_MEMORY_GROWTH and settings.MAXIMUM_MEMORY == -1:
-    exit_with_error('If pthreads and memory growth are enabled, MAXIMUM_MEMORY must be set')
 
   if settings.EXPORT_ES6 and not settings.MODULARIZE:
     # EXPORT_ES6 requires output to be a module
