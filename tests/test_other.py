@@ -6895,7 +6895,6 @@ int main() {
     for args, expect_initial, expect_max in [
         ([], 320, 320),
         (['-s', 'ALLOW_MEMORY_GROWTH'], 320, 32768),
-        (['-s', 'MAXIMUM_MEMORY=40MB'], 320, 320),
         (['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=40MB'], 320, 640),
       ]:
       cmd = [EMCC, test_file('hello_world.c'), '-O2', '-s', 'INITIAL_MEMORY=20MB'] + args
@@ -6924,10 +6923,14 @@ int main() {
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', 'INITIAL_MEMORY=33554433']) # 32MB + 1 byte
     self.assertContained('INITIAL_MEMORY must be a multiple of WebAssembly page size (64KiB)', ret)
 
-    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'MAXIMUM_MEMORY=33MB'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'MAXIMUM_MEMORY=33MB', '-s', 'ALLOW_MEMORY_GROWTH'])
 
-    ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', 'MAXIMUM_MEMORY=34603009']) # 33MB + 1 byte
+    ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', 'MAXIMUM_MEMORY=34603009', '-s', 'ALLOW_MEMORY_GROWTH']) # 33MB + 1 byte
     self.assertContained('MAXIMUM_MEMORY must be a multiple of WebAssembly page size (64KiB)', ret)
+
+  def test_invalid_memory_max(self):
+    err = self.expect_fail([EMCC, '-Werror', test_file('hello_world.c'), '-sMAXIMUM_MEMORY=41943040'])
+    self.assertContained('emcc: error: MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH', err)
 
   def test_dasho_invalid_dir(self):
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', Path('NONEXISTING_DIRECTORY/out.js')])

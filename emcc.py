@@ -1978,6 +1978,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.MEMORY_GROWTH_LINEAR_STEP != -1:
     check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
 
+  if 'MAXIMUM_MEMORY' in settings_map and not settings.ALLOW_MEMORY_GROWTH:
+    diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
+
   if settings.EXPORT_ES6 and not settings.MODULARIZE:
     # EXPORT_ES6 requires output to be a module
     if 'MODULARIZE' in settings_map:
