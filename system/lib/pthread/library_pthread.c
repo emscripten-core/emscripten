@@ -885,12 +885,7 @@ EM_JS(void, initPthreadsJS, (void* tb), {
   PThread.initRuntime(tb);
 })
 
-// We must initialize the runtime at the proper time, which is after memory is
-// initialized and before any userland global ctors.  We must also keep this
-// function alive so it is always called.
-// This must run before any userland ctors.
-// Note that ASan constructor priority is 50, and we must be higher.
-EMSCRIPTEN_KEEPALIVE
+// See system/lib/README.md for static constructor ordering.
 __attribute__((constructor(48)))
 void __emscripten_pthread_data_constructor(void) {
   initPthreadsJS(&__main_pthread);

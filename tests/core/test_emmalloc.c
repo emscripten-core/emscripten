@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include <emscripten.h>
+#include <emscripten/emmalloc.h>
 
 #ifndef RANDOM_ITERS
 #define RANDOM_ITERS 12345
@@ -17,9 +18,14 @@
 void emmalloc_blank_slate_from_orbit();
 
 void stage(const char* name) {
+  // Using printf here over out, at least until we can fix
+  // https://github.com/emscripten-core/emscripten/issues/14804
+  printf(">> %s\n", name);
+  /*
   EM_ASM({
-    out('\n>> ' + UTF8ToString($0) + '\n');
+    out('>> ' + UTF8ToString($0) + '\n');
   }, name);
+  */
 }
 
 void basics() {
@@ -147,7 +153,7 @@ void aligned() {
       emmalloc_blank_slate_from_orbit();
       size_t first = (size_t)memalign(i, 100);
       size_t second = (size_t)memalign(j, 100);
-      printf("%d %d => %d %d\n", i, j, first, second);
+      printf("%d %d => %zu %zu\n", i, j, first, second);
       check_aligned(i, first);
       check_aligned(j, second);
     }

@@ -524,23 +524,19 @@ static bool claim_more_memory(size_t numBytes)
   return true;
 }
 
-// Initialize malloc during static initialization with highest constructor priority,
-// so that it initializes before any other static initializers in compilation units.
-static void EMSCRIPTEN_KEEPALIVE __attribute__((constructor(0))) initialize_malloc_heap()
+// Initialize emmalloc during static initialization.
+// See system/lib/README.md for static constructor ordering.
+__attribute__((constructor(47)))
+static void initialize_emmalloc_heap()
 {
-#if __EMSCRIPTEN_PTHREADS__
-  // This function should be called on the main thread before any pthreads have been
-  // established to initialize the malloc subsystem. (so no lock acquire needed)
-  assert(emscripten_is_main_runtime_thread());
-#endif
-
   // Initialize circular doubly linked lists representing free space
-#pragma clang loop unroll(disable) // Never useful to unroll this for loop, just takes up code size.
+  // Never useful to unroll this for loop, just takes up code size.
+#pragma clang loop unroll(disable)
   for(int i = 0; i < NUM_FREE_BUCKETS; ++i)
     freeRegionBuckets[i].prev = freeRegionBuckets[i].next = &freeRegionBuckets[i];
 
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('initialize_malloc_heap()'));
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('initialize_emmalloc_heap()'));
 #endif
 
   // Start with a tiny dynamic region.
@@ -549,9 +545,11 @@ static void EMSCRIPTEN_KEEPALIVE __attribute__((constructor(0))) initialize_mall
 
 void emmalloc_blank_slate_from_orbit()
 {
+  MALLOC_ACQUIRE();
   listOfAllRegions = 0;
   freeRegionBucketsUsed = 0;
-  initialize_malloc_heap();
+  initialize_emmalloc_heap();
+  MALLOC_RELEASE();
 }
 
 static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)

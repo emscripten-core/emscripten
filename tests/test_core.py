@@ -2363,6 +2363,17 @@ The current type of b is: 9
     self.add_pre_run("Module.onAbort = function() { console.log('onAbort called'); }")
     self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
 
+  @no_asan('ASan does not support custom memory allocators')
+  @no_lsan('LSan does not support custom memory allocators')
+  @node_pthreads
+  def test_pthread_emmalloc(self):
+    self.emcc_args += ['-fno-builtin']
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('ASSERTIONS=2')
+    self.set_setting('MALLOC', 'emmalloc')
+    self.do_core_test('test_emmalloc.c')
+
   def test_tcgetattr(self):
     self.do_runf(test_file('termios/test_tcgetattr.c'), 'success')
 
