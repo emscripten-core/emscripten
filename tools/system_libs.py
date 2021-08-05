@@ -876,13 +876,15 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
 class libprintf_long_double(libc):
   name = 'libprintf_long_double'
-
   cflags = ['-DEMSCRIPTEN_PRINTF_LONG_DOUBLE']
 
   def get_files(self):
     return files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'stdio'],
         filenames=['vfprintf.c'])
+
+  def can_use(self):
+    return super(libprintf_long_double, self).can_use() and settings.PRINTF_LONG_DOUBLE
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):
@@ -894,6 +896,9 @@ class libsockets(MuslInternalLibrary, MTLibrary):
     network_dir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'network')
     return [os.path.join(network_dir, x) for x in LIBC_SOCKETS]
 
+  def can_use(self):
+    return super(libsockets, self).can_use() and not settings.PROXY_POSIX_SOCKETS
+
 
 class libsockets_proxy(MTLibrary):
   name = 'libsockets_proxy'
@@ -902,6 +907,9 @@ class libsockets_proxy(MTLibrary):
 
   def get_files(self):
     return [shared.path_from_root('system', 'lib', 'websocket', 'websocket_to_posix_socket.cpp')]
+
+  def can_use(self):
+    return super(libsockets_proxy, self).can_use() and settings.PROXY_POSIX_SOCKETS
 
 
 class crt1(MuslInternalLibrary):
@@ -944,6 +952,9 @@ class crtbegin(Library):
 
   def get_ext(self):
     return '.o'
+
+  def can_use(self):
+    return super().can_use() and settings.USE_PTHREADS
 
 
 class libcxxabi(NoExceptLibrary, MTLibrary):
@@ -1346,6 +1357,7 @@ class libasan_rt(SanitizerLibrary):
 
 class libasan_js(Library):
   name = 'libasan_js'
+  never_force = True
 
   cflags = ['-fsanitize=address']
 
@@ -1427,12 +1439,18 @@ class libstandalonewasm(MuslInternalLibrary):
         filenames=['assert.c', 'atexit.c', 'exit.c'])
     return files
 
+  def can_use(self):
+    return super(libstandalonewasm, self).can_use() and settings.STANDALONE_WASM
+
 
 class libjsmath(Library):
   name = 'libjsmath'
   cflags = ['-Os']
   src_dir = ['system', 'lib']
   src_files = ['jsmath.c']
+
+  def can_use(self):
+    return super(libjsmath, self).can_use() and settings.JS_MATH
 
 
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
