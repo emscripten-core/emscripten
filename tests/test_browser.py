@@ -244,6 +244,7 @@ If manually bisecting:
       print('make main at', path)
       path = path.replace('\\', '\\\\').replace('"', '\\"') # Escape tricky path name for use inside a C string.
       create_file('main.cpp', r'''
+        #include <assert.h>
         #include <stdio.h>
         #include <string.h>
         #include <emscripten.h>
@@ -255,8 +256,7 @@ If manually bisecting:
           fclose(f);
           printf("|%%s|\n", buf);
 
-          int result = !strcmp("load me right before", buf);
-          REPORT_RESULT(result);
+          assert(strcmp("load me right before", buf) == 0);
           return 0;
         }
         ''' % path)
@@ -283,8 +283,7 @@ If manually bisecting:
     for srcpath, dstpath in test_cases:
       print('Testing', srcpath, dstpath)
       make_main(dstpath)
-      self.compile_btest(['main.cpp', '--preload-file', srcpath, '-o', 'page.html'])
-      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+      self.btest_exit('main.cpp', args=['--preload-file', srcpath])
     if WINDOWS:
       # On Windows, the following non-alphanumeric non-control code ASCII characters are supported.
       # The characters <, >, ", |, ?, * are not allowed, because the Windows filesystem doesn't support those.
@@ -295,14 +294,12 @@ If manually bisecting:
     create_file(tricky_filename, 'load me right before running the code please')
     make_main(tricky_filename)
     # As an Emscripten-specific feature, the character '@' must be escaped in the form '@@' to not confuse with the 'src@dst' notation.
-    self.compile_btest(['main.cpp', '--preload-file', tricky_filename.replace('@', '@@'), '-o', 'page.html'])
-    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+    self.btest_exit('main.cpp', args=['--preload-file', tricky_filename.replace('@', '@@')])
 
     # By absolute path
 
     make_main('somefile.txt') # absolute becomes relative
-    self.compile_btest(['main.cpp', '--preload-file', absolute_src_path, '-o', 'page.html'])
-    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+    self.btest_exit('main.cpp', args=['--preload-file', absolute_src_path])
 
     # Test subdirectory handling with asset packaging.
     try_delete('assets')
@@ -317,6 +314,7 @@ If manually bisecting:
     def make_main_two_files(path1, path2, nonexistingpath):
       create_file('main.cpp', r'''
         #include <stdio.h>
+        #include <assert.h>
         #include <string.h>
         #include <emscripten.h>
         int main() {
@@ -327,18 +325,15 @@ If manually bisecting:
           fclose(f);
           printf("|%%s|\n", buf);
 
-          int result = !strcmp("load me right before", buf);
+          assert(strcmp("load me right before", buf) == 0);
 
           f = fopen("%s", "r");
-          if (f == NULL)
-            result = 0;
+          assert(f != NULL);
           fclose(f);
 
           f = fopen("%s", "r");
-          if (f != NULL)
-            result = 0;
+          assert(f == NULL);
 
-          REPORT_RESULT(result);
           return 0;
         }
       ''' % (path1, path2, nonexistingpath))
@@ -357,15 +352,14 @@ If manually bisecting:
       (srcpath, dstpath1, dstpath2, nonexistingpath) = test
       make_main_two_files(dstpath1, dstpath2, nonexistingpath)
       print(srcpath)
-      self.compile_btest(['main.cpp', '--preload-file', srcpath, '--exclude-file', '*/.*', '-o', 'page.html'])
-      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+      self.btest_exit('main.cpp', args=['--preload-file', srcpath, '--exclude-file', '*/.*'])
 
     # Should still work with -o subdir/..
 
     make_main('somefile.txt') # absolute becomes relative
     ensure_dir('dirrey')
-    self.compile_btest(['main.cpp', '--preload-file', absolute_src_path, '-o', 'dirrey/page.html'])
-    self.run_browser('dirrey/page.html', 'You should see |load me right before|.', '/report_result?1')
+    self.compile_btest(['main.cpp', '--preload-file', absolute_src_path, '-o', 'dirrey/page.html'], reporting=Reporting.JS_ONLY)
+    self.run_browser('dirrey/page.html', 'You should see |load me right before|.', '/report_result?exit:0')
 
     # With FS.preloadFile
 
@@ -375,8 +369,7 @@ If manually bisecting:
       };
     ''')
     make_main('someotherfile.txt')
-    self.compile_btest(['main.cpp', '--pre-js', 'pre.js', '-o', 'page.html', '--use-preload-plugins'])
-    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+    self.btest_exit('main.cpp', args=['--pre-js', 'pre.js', '--use-preload-plugins'])
 
   # Tests that user .html shell files can manually download .data files created with --preload-file cmdline.
   def test_preload_file_with_manual_data_download(self):
@@ -391,17 +384,18 @@ If manually bisecting:
   # Tests that if the output files have single or double quotes in them, that it will be handled by
   # correctly escaping the names.
   def test_output_file_escaping(self):
+    self.set_setting('EXIT_RUNTIME')
     tricky_part = '\'' if WINDOWS else '\' and \"' # On Windows, files/directories may not contain a double quote character. On non-Windowses they can, so test that.
 
     d = 'dir with ' + tricky_part
     abs_d = os.path.abspath(d)
     ensure_dir(abs_d)
     txt = 'file with ' + tricky_part + '.txt'
-    abs_txt = os.path.join(abs_d, txt)
-    open(abs_txt, 'w').write('load me right before')
+    create_file(os.path.join(d, txt), 'load me right before')
 
     cpp = os.path.join(d, 'file with ' + tricky_part + '.cpp')
-    open(cpp, 'w').write(r'''
+    create_file(cpp, r'''
+      #include <assert.h>
       #include <stdio.h>
       #include <string.h>
       #include <emscripten.h>
@@ -412,19 +406,19 @@ If manually bisecting:
         buf[20] = 0;
         fclose(f);
         printf("|%%s|\n", buf);
-        int result = !strcmp("|load me right before|", buf);
-        REPORT_RESULT(result);
+        assert(strcmp("load me right before", buf) == 0);
         return 0;
       }
     ''' % (txt.replace('\'', '\\\'').replace('\"', '\\"')))
 
     data_file = os.path.join(abs_d, 'file with ' + tricky_part + '.data')
     data_js_file = os.path.join(abs_d, 'file with ' + tricky_part + '.js')
+    abs_txt = os.path.join(abs_d, txt)
     self.run_process([FILE_PACKAGER, data_file, '--use-preload-cache', '--indexedDB-name=testdb', '--preload', abs_txt + '@' + txt, '--js-output=' + data_js_file])
     page_file = os.path.join(d, 'file with ' + tricky_part + '.html')
     abs_page_file = os.path.abspath(page_file)
-    self.compile_btest([cpp, '--pre-js', data_js_file, '-o', abs_page_file, '-s', 'FORCE_FILESYSTEM'])
-    self.run_browser(page_file, '|load me right before|.', '/report_result?0')
+    self.compile_btest([cpp, '--pre-js', data_js_file, '-o', abs_page_file, '-s', 'FORCE_FILESYSTEM'], reporting=Reporting.JS_ONLY)
+    self.run_browser(page_file, '|load me right before|.', '/report_result?exit:0')
 
   @parameterized({
     '0': (0,),
@@ -433,14 +427,14 @@ If manually bisecting:
     '150mb': (150 * 1024 * 1024,),
   })
   def test_preload_caching(self, extra_size):
-    create_file('main.cpp', r'''
+    self.set_setting('EXIT_RUNTIME')
+    create_file('main.c', r'''
+      #include <assert.h>
       #include <stdio.h>
       #include <string.h>
       #include <emscripten.h>
 
-      extern "C" {
-        extern int checkPreloadResults();
-      }
+      extern int checkPreloadResults();
 
       int main(int argc, char** argv) {
         FILE *f = fopen("%s", "r");
@@ -450,13 +444,8 @@ If manually bisecting:
         fclose(f);
         printf("|%%s|\n", buf);
 
-        int result = 0;
-
-        result += !strcmp("load me right before", buf);
-        result += checkPreloadResults();
-
-        REPORT_RESULT(result);
-        return 0;
+        assert(strcmp("load me right before", buf) == 0);
+        return checkPreloadResults();
       }
     ''' % 'somefile.txt')
 
@@ -483,23 +472,23 @@ If manually bisecting:
       self.skipTest('chrome bug')
     create_file('somefile.txt', '''load me right before running the code please''' + ('_' * extra_size))
     print('size:', os.path.getsize('somefile.txt'))
-    self.compile_btest(['main.cpp', '--use-preload-cache', '--js-library', 'test.js', '--preload-file', 'somefile.txt', '-o', 'page.html', '-s', 'ALLOW_MEMORY_GROWTH'])
-    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
-    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?2')
+    self.compile_btest(['main.c', '--use-preload-cache', '--js-library', 'test.js', '--preload-file', 'somefile.txt', '-o', 'page.html', '-s', 'ALLOW_MEMORY_GROWTH'], reporting=Reporting.JS_ONLY)
+    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?exit:0')
+    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?exit:1')
 
   def test_preload_caching_indexeddb_name(self):
+    self.set_setting('EXIT_RUNTIME')
     create_file('somefile.txt', '''load me right before running the code please''')
 
     def make_main(path):
       print(path)
-      create_file('main.cpp', r'''
+      create_file('main.c', r'''
+        #include <assert.h>
         #include <stdio.h>
         #include <string.h>
         #include <emscripten.h>
 
-        extern "C" {
-          extern int checkPreloadResults();
-        }
+        extern int checkPreloadResults();
 
         int main(int argc, char** argv) {
           FILE *f = fopen("%s", "r");
@@ -511,11 +500,8 @@ If manually bisecting:
 
           int result = 0;
 
-          result += !strcmp("load me right before", buf);
-          result += checkPreloadResults();
-
-          REPORT_RESULT(result);
-          return 0;
+          assert(strcmp("load me right before", buf) == 0);
+          return checkPreloadResults();
         }
       ''' % path)
 
@@ -536,16 +522,17 @@ If manually bisecting:
 
     make_main('somefile.txt')
     self.run_process([FILE_PACKAGER, 'somefile.data', '--use-preload-cache', '--indexedDB-name=testdb', '--preload', 'somefile.txt', '--js-output=' + 'somefile.js'])
-    self.compile_btest(['main.cpp', '--js-library', 'test.js', '--pre-js', 'somefile.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM'])
-    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
-    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?2')
+    self.compile_btest(['main.c', '--js-library', 'test.js', '--pre-js', 'somefile.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM'], reporting=Reporting.JS_ONLY)
+    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?exit:0')
+    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?exit:1')
 
   def test_multifile(self):
     # a few files inside a directory
     ensure_dir('subdirr/moar')
     create_file('subdirr/data1.txt', '1214141516171819')
     create_file('subdirr/moar/data2.txt', '3.14159265358979')
-    create_file('main.cpp', r'''
+    create_file('main.c', r'''
+      #include <assert.h>
       #include <stdio.h>
       #include <string.h>
       #include <emscripten.h>
@@ -557,29 +544,27 @@ If manually bisecting:
         buf[16] = 0;
         fclose(f);
         printf("|%s|\n", buf);
-        int result = !strcmp("1214141516171819", buf);
+        assert(strcmp("1214141516171819", buf) == 0);
 
         FILE *f2 = fopen("subdirr/moar/data2.txt", "r");
         fread(buf, 1, 16, f2);
         buf[16] = 0;
         fclose(f2);
         printf("|%s|\n", buf);
-        result = result && !strcmp("3.14159265358979", buf);
+        assert(strcmp("3.14159265358979", buf) == 0);
 
-        REPORT_RESULT(result);
         return 0;
       }
     ''')
 
     # by individual files
-    self.compile_btest(['main.cpp', '--preload-file', 'subdirr/data1.txt', '--preload-file', 'subdirr/moar/data2.txt', '-o', 'page.html'])
-    self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
-    os.remove('page.html')
+    self.btest_exit('main.c', args=['--preload-file', 'subdirr/data1.txt', '--preload-file', 'subdirr/moar/data2.txt'])
 
     # by directory, and remove files to make sure
-    self.compile_btest(['main.cpp', '--preload-file', 'subdirr', '-o', 'page.html'])
+    self.set_setting('EXIT_RUNTIME')
+    self.compile_btest(['main.c', '--preload-file', 'subdirr', '-o', 'page.html'], reporting=Reporting.JS_ONLY)
     shutil.rmtree('subdirr')
-    self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
+    self.run_browser('page.html', 'You should see two cool numbers', '/report_result?exit:0')
 
   def test_custom_file_package_url(self):
     # a few files inside a directory
@@ -600,7 +585,8 @@ If manually bisecting:
         }
       },
     '''))
-    create_file('main.cpp', r'''
+    create_file('main.c', r'''
+      #include <assert.h>
       #include <stdio.h>
       #include <string.h>
       #include <emscripten.h>
@@ -612,16 +598,16 @@ If manually bisecting:
         buf[16] = 0;
         fclose(f);
         printf("|%s|\n", buf);
-        int result = !strcmp("1214141516171819", buf);
+        assert(strcmp("1214141516171819", buf) == 0);
 
-        REPORT_RESULT(result);
         return 0;
       }
     ''')
 
-    self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '--preload-file', 'subdirr/data1.txt', '-o', 'test.html'])
+    self.set_setting('EXIT_RUNTIME')
+    self.compile_btest(['main.c', '--shell-file', 'shell.html', '--preload-file', 'subdirr/data1.txt', '-o', 'test.html'], reporting=Reporting.JS_ONLY)
     shutil.move('test.data', Path('cdn/test.data'))
-    self.run_browser('test.html', '', '/report_result?1')
+    self.run_browser('test.html', '', '/report_result?exit:0')
 
   def test_missing_data_throws_error(self):
     def setup(assetLocalization):
@@ -633,7 +619,6 @@ If manually bisecting:
         #include <emscripten.h>
         int main() {
           // This code should never be executed in terms of missing required dependency file.
-          REPORT_RESULT(0);
           return 0;
         }
       ''')
@@ -2750,6 +2735,7 @@ Module["preRun"].push(function () {
     'es6': (['-s', 'EXPORT_ES6=1'],),
   })
   def test_locate_file(self, args):
+    self.set_setting('EXIT_RUNTIME')
     for wasm in [0, 1]:
       self.clear()
       create_file('src.cpp', r'''
@@ -2764,9 +2750,8 @@ Module["preRun"].push(function () {
           assert(num == 20 && "could not read 20 bytes");
           buf[20] = 0;
           fclose(f);
-          int result = !strcmp("load me right before", buf);
-          printf("|%s| : %d\n", buf, result);
-          REPORT_RESULT(result);
+          printf("|%s|\n", buf);
+          assert(strcmp("load me right before", buf) == 0);
           return 0;
         }
       ''')
@@ -2774,14 +2759,14 @@ Module["preRun"].push(function () {
       create_file('pre.js', 'Module.locateFile = function(x) { return "sub/" + x };')
       self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
       # put pre.js first, then the file packager data, so locateFile is there for the file loading code
-      self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM', '-s', 'WASM=' + str(wasm)] + args)
+      self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM', '-s', 'WASM=' + str(wasm)] + args, reporting=Reporting.JS_ONLY)
       ensure_dir('sub')
       if wasm:
         shutil.move('page.wasm', Path('sub/page.wasm'))
       else:
         shutil.move('page.html.mem', Path('sub/page.html.mem'))
       shutil.move('test.data', Path('sub/test.data'))
-      self.run_browser('page.html', None, '/report_result?1')
+      self.run_browser('page.html', None, '/report_result?exit:0')
 
       # alternatively, put locateFile in the HTML
       print('in html')
@@ -2799,14 +2784,14 @@ Module["preRun"].push(function () {
       ''')
 
       def in_html(expected):
-        self.compile_btest(['src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'SAFE_HEAP', '-s', 'ASSERTIONS', '-s', 'FORCE_FILESYSTEM', '-s', 'WASM=' + str(wasm)] + args)
+        self.compile_btest(['src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'SAFE_HEAP', '-s', 'ASSERTIONS', '-s', 'FORCE_FILESYSTEM', '-s', 'WASM=' + str(wasm)] + args, reporting=Reporting.JS_ONLY)
         if wasm:
           shutil.move('page.wasm', Path('sub/page.wasm'))
         else:
           shutil.move('page.html.mem', Path('sub/page.html.mem'))
-        self.run_browser('page.html', None, '/report_result?' + expected)
+        self.run_browser('page.html', None, '/report_result?exit:' + expected)
 
-      in_html('1')
+      in_html('0')
 
       # verify that the mem init request succeeded in the latter case
       if not wasm:
@@ -2819,8 +2804,7 @@ Module["preRun"].push(function () {
               return Module['memoryInitializerRequest'].status;
             });
             printf("memory init request: %d\n", result);
-            REPORT_RESULT(result);
-            return 0;
+            return result;
           }
           ''')
 
@@ -3456,6 +3440,7 @@ window.close = function() {
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
   def test_modularize_and_preload_files(self):
+    self.set_setting('EXIT_RUNTIME')
     # amount of memory different from the default one that will be allocated for the emscripten heap
     totalMemory = 33554432
     for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure=1']]:
@@ -3469,7 +3454,6 @@ window.close = function() {
             var totalMemory = Module['INITIAL_MEMORY'];
             assert(totalMemory === %d, 'bad memory size');
           });
-          REPORT_RESULT(0);
           return 0;
         }
       ''' % totalMemory)
@@ -3477,7 +3461,7 @@ window.close = function() {
       create_file('dummy_file', 'dummy')
       # compile the code with the modularize feature and the preload-file option enabled
       # no wasm, since this tests customizing total memory at runtime
-      self.compile_btest(['test.c', '-s', 'WASM=0', '-s', 'MODULARIZE', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts)
+      self.compile_btest(['test.c', '-s', 'WASM=0', '-s', 'MODULARIZE', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts, reporting=Reporting.JS_ONLY)
       create_file('a.html', '''
         <script src="a.out.js"></script>
         <script>
@@ -3485,7 +3469,7 @@ window.close = function() {
           var foo = Foo({ INITIAL_MEMORY: %d });
         </script>
       ''' % totalMemory)
-      self.run_browser('a.html', '...', '/report_result?0')
+      self.run_browser('a.html', '...', '/report_result?exit:0')
 
   def test_webidl(self):
     # see original in test_core.py
@@ -3614,7 +3598,6 @@ window.close = function() {
         const char *exts = side();
         puts(side());
         assert(strstr(exts, "GL_EXT_texture_env_combine"));
-        REPORT_RESULT(1);
         return 0;
       }
     ''')
@@ -3629,7 +3612,7 @@ window.close = function() {
     ''')
     self.run_process([EMCC, 'side.c', '-s', 'SIDE_MODULE', '-O2', '-o', 'side.wasm', '-lSDL'])
 
-    self.btest(self.in_dir('main.c'), '1', args=['-s', 'MAIN_MODULE=2', '-O2', '-s', 'LEGACY_GL_EMULATION', '-lSDL', '-lGL', 'side.wasm'])
+    self.btest_exit(self.in_dir('main.c'), args=['-s', 'MAIN_MODULE=2', '-O2', '-s', 'LEGACY_GL_EMULATION', '-lSDL', '-lGL', 'side.wasm'])
 
   def test_dynamic_link_many(self):
     # test asynchronously loading two side modules during startup
@@ -3664,7 +3647,9 @@ window.close = function() {
     # populated in the same order as in a pthread worker to
     # guarantee function pointer interop.
     create_file('main.cpp', r'''
+      #include <cassert>
       #include <thread>
+      #include <emscripten/emscripten.h>
       int side1();
       int side2();
       int main() {
@@ -3673,12 +3658,11 @@ window.close = function() {
         // Don't join the thread since this is running in the
         // browser's main thread.
         std::thread([=]{
-          REPORT_RESULT(int(
-            side1_ptr == &side1 &&
-            side2_ptr == &side2
-          ));
+          assert(side1_ptr == &side1);
+          assert(side2_ptr == &side2);
+          emscripten_force_exit(0);
         }).detach();
-        return 0;
+        emscripten_exit_with_live_runtime();
       }
     ''')
 
@@ -3694,8 +3678,8 @@ window.close = function() {
     ''')
     self.run_process([EMCC, 'side1.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side1.wasm'])
     self.run_process([EMCC, 'side2.cpp', '-Wno-experimental', '-pthread', '-s', 'SIDE_MODULE', '-o', 'side2.wasm'])
-    self.btest(self.in_dir('main.cpp'), '1',
-               args=['-Wno-experimental', '-pthread', '-s', 'MAIN_MODULE=2', 'side1.wasm', 'side2.wasm'])
+    self.btest_exit(self.in_dir('main.cpp'),
+                    args=['-Wno-experimental', '-pthread', '-s', 'MAIN_MODULE=2', 'side1.wasm', 'side2.wasm'])
 
   def test_memory_growth_during_startup(self):
     create_file('data.dat', 'X' * (30 * 1024 * 1024))
@@ -3985,46 +3969,46 @@ window.close = function() {
     self.btest_exit(test_file('pthread/test_pthread_dispatch_after_exit.c'), args=['-s', 'USE_PTHREADS'])
 
   # Test the operation of Module.pthreadMainPrefixURL variable
-  @no_wasm_backend('uses js')
   @requires_threads
   def test_pthread_custom_pthread_main_url(self):
+    self.set_setting('EXIT_RUNTIME')
     ensure_dir('cdn')
     create_file('main.cpp', r'''
+      #include <assert.h>
       #include <stdio.h>
       #include <string.h>
       #include <emscripten/emscripten.h>
       #include <emscripten/threading.h>
       #include <pthread.h>
-      int result = 0;
+
+      _Atomic int result = 0;
       void *thread_main(void *arg) {
-        emscripten_atomic_store_u32(&result, 1);
+        result = 1;
         pthread_exit(0);
       }
 
       int main() {
         pthread_t t;
-        if (emscripten_has_threading_support()) {
-          pthread_create(&t, 0, thread_main, 0);
-          pthread_join(t, 0);
-        } else {
-          result = 1;
-        }
-        REPORT_RESULT(result);
+        pthread_create(&t, 0, thread_main, 0);
+        pthread_join(t, 0);
+        assert(result == 1);
+        return 0;
       }
     ''')
 
     # Test that it is possible to define "Module.locateFile" string to locate where worker.js will be loaded from.
     create_file('shell.html', read_file(path_from_root('src', 'shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
-    self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-o', 'test.html'])
+    self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-o', 'test.html'], reporting=Reporting.JS_ONLY)
     shutil.move('test.worker.js', Path('cdn/test.worker.js'))
-    shutil.copyfile('test.html.mem', Path('cdn/test.html.mem'))
-    self.run_browser('test.html', '', '/report_result?1')
+    if os.path.exists('test.html.mem'):
+      shutil.copyfile('test.html.mem', Path('cdn/test.html.mem'))
+    self.run_browser('test.html', '', '/report_result?exit:0')
 
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     create_file('shell2.html', read_file(path_from_root('src', 'shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.worker.js") return "cdn/test.worker.js"; else return filename; }, '))
-    self.compile_btest(['main.cpp', '--shell-file', 'shell2.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-o', 'test2.html'])
+    self.compile_btest(['main.cpp', '--shell-file', 'shell2.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-o', 'test2.html'], reporting=Reporting.JS_ONLY)
     try_delete('test.worker.js')
-    self.run_browser('test2.html', '', '/report_result?1')
+    self.run_browser('test2.html', '', '/report_result?exit:0')
 
   # Test that if the main thread is performing a futex wait while a pthread needs it to do a proxied operation (before that pthread would wake up the main thread), that it's not a deadlock.
   @requires_threads
@@ -4881,13 +4865,11 @@ window.close = function() {
   def test_unicode_html_shell(self):
     create_file('main.cpp', r'''
       int main() {
-        REPORT_RESULT(0);
         return 0;
       }
     ''')
     create_file('shell.html', read_file(path_from_root('src', 'shell.html')).replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
-    self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-o', 'test.html'])
-    self.run_browser('test.html', None, '/report_result?0')
+    self.btest_exit('main.cpp', args=['--shell-file', 'shell.html'])
 
   # Tests the functionality of the emscripten_thread_sleep() function.
   @requires_threads
