@@ -4468,16 +4468,19 @@ window.close = function() {
       print(str(cmd))
       self.btest('gl_in_proxy_pthread.cpp', expected='1', args=cmd)
 
+  @parameterized({
+    'proxy': (['-sPROXY_TO_PTHREAD'],),
+    '': ([],),
+  })
   @requires_threads
   @requires_graphics_hardware
   @requires_offscreen_canvas
-  def test_webgl_resize_offscreencanvas_from_main_thread(self):
-    for args1 in [[], ['-s', 'PROXY_TO_PTHREAD']]:
-      for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
-        for args3 in [[], ['-s', 'OFFSCREENCANVAS_SUPPORT', '-s', 'OFFSCREEN_FRAMEBUFFER']]:
-          cmd = args1 + args2 + args3 + ['-s', 'USE_PTHREADS', '-lGL', '-s', 'GL_DEBUG']
-          print(str(cmd))
-          self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
+  def test_webgl_resize_offscreencanvas_from_main_thread(self, args):
+    for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
+      for args3 in [[], ['-s', 'OFFSCREENCANVAS_SUPPORT', '-s', 'OFFSCREEN_FRAMEBUFFER']]:
+        cmd = args + args2 + args3 + ['-s', 'USE_PTHREADS', '-lGL', '-s', 'GL_DEBUG']
+        print(str(cmd))
+        self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
 
   @requires_graphics_hardware
   def test_webgl_simple_enable_extensions(self):
