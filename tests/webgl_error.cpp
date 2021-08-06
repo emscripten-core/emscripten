@@ -14,7 +14,5 @@ int main()
   glReadPixels(0, 0, 1, 1, 0/*invalid*/, 0/*invalid*/, p);
   assert(glGetError());
   assert(!glGetError());
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

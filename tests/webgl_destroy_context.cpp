@@ -12,33 +12,28 @@
 #include <emscripten.h>
 #include <emscripten/html5.h>
 
-int result = 0;
-void report_result()
+void report_result(int result)
 {
   printf("Test finished with result %d\n", result);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  emscripten_force_exit(result);
 }
 
 void finish(void*)
 {
-  report_result();  
+  report_result(0);
 }
 
 EM_BOOL context_lost(int eventType, const void *reserved, void *userData)
 {
   printf("C code received a signal for WebGL context lost! This should not happen!\n");
-  result = 1;
-  report_result();
+  report_result(1);
   return 0;
 }
 
 EM_BOOL context_restored(int eventType, const void *reserved, void *userData)
 {
   printf("C code received a signal for WebGL context restored! This should not happen!\n");
-  result = 1;
-  report_result();
+  report_result(1);
   return 0;
 }
 
@@ -62,4 +57,5 @@ int main()
     }, context);
 
   emscripten_async_call(finish, 0, 3000);
+  return 99;
 }

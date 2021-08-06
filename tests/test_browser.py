@@ -1253,45 +1253,45 @@ keydown(100);keyup(100); // trigger the end
     shutil.copyfile(filepath, temp_filepath)
 
     # perform tests with attributes activated
-    self.btest('test_webgl_context_attributes_glut.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglut', '-lGLEW'])
-    self.btest('test_webgl_context_attributes_sdl.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lSDL', '-lGLEW'])
-    self.btest('test_webgl_context_attributes_sdl2.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-s', 'USE_SDL=2', '-lGLEW'])
-    self.btest('test_webgl_context_attributes_glfw.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglfw', '-lGLEW'])
+    self.btest_exit('test_webgl_context_attributes_glut.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglut', '-lGLEW'])
+    self.btest_exit('test_webgl_context_attributes_sdl.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lSDL', '-lGLEW'])
+    self.btest_exit('test_webgl_context_attributes_sdl2.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-s', 'USE_SDL=2', '-lGLEW'])
+    self.btest_exit('test_webgl_context_attributes_glfw.c', args=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglfw', '-lGLEW'])
 
     # perform tests with attributes desactivated
-    self.btest('test_webgl_context_attributes_glut.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lglut', '-lGLEW'])
-    self.btest('test_webgl_context_attributes_sdl.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lSDL', '-lGLEW'])
-    self.btest('test_webgl_context_attributes_glfw.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lglfw', '-lGLEW'])
+    self.btest_exit('test_webgl_context_attributes_glut.c', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lglut', '-lGLEW'])
+    self.btest_exit('test_webgl_context_attributes_sdl.c', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lSDL', '-lGLEW'])
+    self.btest_exit('test_webgl_context_attributes_glfw.c', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lglfw', '-lGLEW'])
 
   @requires_graphics_hardware
   def test_webgl_no_double_error(self):
-    self.btest('webgl_error.cpp', '0')
+    self.btest_exit('webgl_error.cpp')
 
   @requires_graphics_hardware
   def test_webgl_parallel_shader_compile(self):
-    self.btest('webgl_parallel_shader_compile.cpp', '1')
+    self.btest_exit('webgl_parallel_shader_compile.cpp')
 
   @requires_graphics_hardware
   def test_webgl_explicit_uniform_location(self):
-    self.btest('webgl_explicit_uniform_location.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_LOCATION=1', '-s', 'MIN_WEBGL_VERSION=2'])
+    self.btest_exit('webgl_explicit_uniform_location.c', args=['-s', 'GL_EXPLICIT_UNIFORM_LOCATION=1', '-s', 'MIN_WEBGL_VERSION=2'])
 
   @requires_graphics_hardware
   def test_webgl_sampler_layout_binding(self):
-    self.btest('webgl_sampler_layout_binding.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1'])
+    self.btest_exit('webgl_sampler_layout_binding.c', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1'])
 
   @requires_graphics_hardware
   def test_webgl2_ubo_layout_binding(self):
-    self.btest('webgl2_ubo_layout_binding.c', '1', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1', '-s', 'MIN_WEBGL_VERSION=2'])
+    self.btest_exit('webgl2_ubo_layout_binding.c', args=['-s', 'GL_EXPLICIT_UNIFORM_BINDING=1', '-s', 'MIN_WEBGL_VERSION=2'])
 
   # Test that -s GL_PREINITIALIZED_CONTEXT=1 works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
   def test_preinitialized_webgl_context(self):
-    self.btest('preinitialized_webgl_context.cpp', '5', args=['-s', 'GL_PREINITIALIZED_CONTEXT', '--shell-file', test_file('preinitialized_webgl_context.html')])
+    self.btest_exit('preinitialized_webgl_context.cpp', args=['-s', 'GL_PREINITIALIZED_CONTEXT', '--shell-file', test_file('preinitialized_webgl_context.html')])
 
   @requires_threads
   def test_emscripten_get_now(self):
     for args in [[], ['-s', 'USE_PTHREADS'], ['-s', 'ENVIRONMENT=web', '-O2', '--closure=1']]:
-      self.btest('emscripten_get_now.cpp', '1', args=args)
+      self.btest_exit('emscripten_get_now.cpp', args=args)
 
   def test_write_file_in_environment_web(self):
     self.btest_exit('write_file.c', args=['-s', 'ENVIRONMENT=web', '-Os', '--closure=1'])
@@ -2587,7 +2587,7 @@ Module["preRun"].push(function () {
   def test_html5_webgl_create_context_no_antialias(self):
     for opts in [[], ['-O2', '-g1', '--closure=1'], ['-s', 'FULL_ES2=1']]:
       print(opts)
-      self.btest(test_file('webgl_create_context.cpp'), args=opts + ['-DNO_ANTIALIAS', '-lGL'], expected='0')
+      self.btest_exit(test_file('webgl_create_context.cpp'), args=opts + ['-DNO_ANTIALIAS', '-lGL'])
 
   # This test supersedes the one above, but it's skipped in the CI because anti-aliasing is not well supported by the Mesa software renderer.
   @requires_threads
@@ -2595,12 +2595,12 @@ Module["preRun"].push(function () {
   def test_html5_webgl_create_context(self):
     for opts in [[], ['-O2', '-g1', '--closure=1'], ['-s', 'FULL_ES2=1'], ['-s', 'USE_PTHREADS']]:
       print(opts)
-      self.btest(test_file('webgl_create_context.cpp'), args=opts + ['-lGL'], expected='0')
+      self.btest_exit(test_file('webgl_create_context.cpp'), args=opts + ['-lGL'])
 
   @requires_graphics_hardware
   # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
   def test_html5_webgl_create_context2(self):
-    self.btest(test_file('webgl_create_context2.cpp'), expected='0')
+    self.btest_exit(test_file('webgl_create_context2.cpp'))
 
   @requires_graphics_hardware
   # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
@@ -2612,26 +2612,26 @@ Module["preRun"].push(function () {
   def test_html5_webgl_destroy_context(self):
     for opts in [[], ['-O2', '-g1'], ['-s', 'FULL_ES2=1']]:
       print(opts)
-      self.btest(test_file('webgl_destroy_context.cpp'), args=opts + ['--shell-file', test_file('webgl_destroy_context_shell.html'), '-lGL'], expected='0')
+      self.btest_exit(test_file('webgl_destroy_context.cpp'), args=opts + ['--shell-file', test_file('webgl_destroy_context_shell.html'), '-lGL'])
 
   @no_chrome('see #7373')
   @requires_graphics_hardware
   def test_webgl_context_params(self):
     if WINDOWS:
       self.skipTest('SKIPPED due to bug https://bugzilla.mozilla.org/show_bug.cgi?id=1310005 - WebGL implementation advertises implementation defined GL_IMPLEMENTATION_COLOR_READ_TYPE/FORMAT pair that it cannot read with')
-    self.btest(test_file('webgl_color_buffer_readpixels.cpp'), args=['-lGL'], expected='0')
+    self.btest_exit(test_file('webgl_color_buffer_readpixels.cpp'), args=['-lGL'])
 
   # Test for PR#5373 (https://github.com/emscripten-core/emscripten/pull/5373)
   @requires_graphics_hardware
   def test_webgl_shader_source_length(self):
     for opts in [[], ['-s', 'FULL_ES2=1']]:
       print(opts)
-      self.btest(test_file('webgl_shader_source_length.cpp'), args=opts + ['-lGL'], expected='0')
+      self.btest_exit(test_file('webgl_shader_source_length.cpp'), args=opts + ['-lGL'])
 
   # Tests calling glGetString(GL_UNMASKED_VENDOR_WEBGL).
   @requires_graphics_hardware
   def test_webgl_unmasked_vendor_webgl(self):
-    self.btest(test_file('webgl_unmasked_vendor_webgl.c'), args=['-lGL'], expected='0')
+    self.btest_exit(test_file('webgl_unmasked_vendor_webgl.c'), args=['-lGL'])
 
   @requires_graphics_hardware
   def test_webgl2(self):
@@ -2641,23 +2641,23 @@ Module["preRun"].push(function () {
       ['-s', 'FULL_ES2=1'],
     ]:
       print(opts)
-      self.btest(test_file('webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + opts, expected='0')
+      self.btest_exit(test_file('webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + opts)
 
   # Tests the WebGL 2 glGetBufferSubData() functionality.
   @requires_graphics_hardware
   def test_webgl2_get_buffer_sub_data(self):
-    self.btest(test_file('webgl2_get_buffer_sub_data.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
+    self.btest_exit(test_file('webgl2_get_buffer_sub_data.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'])
 
   @requires_graphics_hardware
   @requires_threads
   def test_webgl2_pthreads(self):
     # test that a program can be compiled with pthreads and render WebGL2 properly on the main thread
     # (the testcase doesn't even use threads, but is compiled with thread support).
-    self.btest(test_file('webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL', '-s', 'USE_PTHREADS'], expected='0')
+    self.btest_exit(test_file('webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL', '-s', 'USE_PTHREADS'])
 
   @requires_graphics_hardware
   def test_webgl2_objects(self):
-    self.btest(test_file('webgl2_objects.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
+    self.btest_exit(test_file('webgl2_objects.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'])
 
   @requires_graphics_hardware
   def test_html5_webgl_api(self):
@@ -2666,44 +2666,44 @@ Module["preRun"].push(function () {
                  []]:
       if 'OFFSCREENCANVAS_SUPPORT' in mode and os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'):
         continue
-      self.btest(test_file('html5_webgl.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + mode, expected='0')
+      self.btest_exit(test_file('html5_webgl.c'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + mode)
 
   @requires_graphics_hardware
   def test_webgl2_ubos(self):
-    self.btest(test_file('webgl2_ubos.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
+    self.btest_exit(test_file('webgl2_ubos.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'])
 
   @requires_graphics_hardware
   def test_webgl2_garbage_free_entrypoints(self):
-    self.btest(test_file('webgl2_garbage_free_entrypoints.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1'], expected='1')
-    self.btest(test_file('webgl2_garbage_free_entrypoints.cpp'), expected='1')
+    self.btest_exit(test_file('webgl2_garbage_free_entrypoints.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1'])
+    self.btest_exit(test_file('webgl2_garbage_free_entrypoints.cpp'))
 
   @requires_graphics_hardware
   def test_webgl2_backwards_compatibility_emulation(self):
-    self.btest(test_file('webgl2_backwards_compatibility_emulation.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-s', 'WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION=1'], expected='0')
+    self.btest_exit(test_file('webgl2_backwards_compatibility_emulation.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-s', 'WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION=1'])
 
   @requires_graphics_hardware
   def test_webgl2_runtime_no_context(self):
     # tests that if we support WebGL1 and 2, and WebGL2RenderingContext exists,
     # but context creation fails, that we can then manually try to create a
     # WebGL1 context and succeed.
-    self.btest(test_file('test_webgl2_runtime_no_context.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2'], expected='1')
+    self.btest_exit(test_file('test_webgl2_runtime_no_context.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2'])
 
   @requires_graphics_hardware
   def test_webgl2_invalid_teximage2d_type(self):
-    self.btest(test_file('webgl2_invalid_teximage2d_type.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2'], expected='0')
+    self.btest_exit(test_file('webgl2_invalid_teximage2d_type.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2'])
 
   @requires_graphics_hardware
   def test_webgl_with_closure(self):
-    self.btest(test_file('webgl_with_closure.cpp'), args=['-O2', '-s', 'MAX_WEBGL_VERSION=2', '--closure=1', '-lGL'], expected='0')
+    self.btest_exit(test_file('webgl_with_closure.cpp'), args=['-O2', '-s', 'MAX_WEBGL_VERSION=2', '--closure=1', '-lGL'])
 
   # Tests that -s GL_ASSERTIONS=1 and glVertexAttribPointer with packed types works
   @requires_graphics_hardware
   def test_webgl2_packed_types(self):
-    self.btest(test_file('webgl2_draw_packed_triangle.c'), args=['-lGL', '-s', 'MAX_WEBGL_VERSION=2', '-s', 'GL_ASSERTIONS'], expected='0')
+    self.btest_exit(test_file('webgl2_draw_packed_triangle.c'), args=['-lGL', '-s', 'MAX_WEBGL_VERSION=2', '-s', 'GL_ASSERTIONS'])
 
   @requires_graphics_hardware
   def test_webgl2_pbo(self):
-    self.btest(test_file('webgl2_pbo.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
+    self.btest_exit(test_file('webgl2_pbo.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'])
 
   @no_firefox('fails on CI likely due to GPU drivers there')
   @requires_graphics_hardware
