@@ -23,3 +23,9 @@ htmlcov/
 coverage.xml
 
 .DS_Store
+
+# PThreadfs
+pthreadfs/examples/cache
+pthreadfs/examples/dist
+pthreadfs/examples/out
+pthreadfs/examples/sqlite-src

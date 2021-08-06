@@ -1,0 +1,85 @@
+read from folder: -1
+errno: 8
+write to folder: -1
+errno: 8
+
+read from broken device: -1
+errno: 29
+write to broken device: -1
+errno: 29
+
+read from device: 4
+data: ABCD
+errno: 0
+TO DEVICE: 119
+TO DEVICE: 114
+TO DEVICE: 105
+TO DEVICE: 116
+TO DEVICE: 101
+TO DEVICE: 109
+TO DEVICE: 101
+TO DEVICE: 0
+write to device: 8
+errno: 0
+
+open read-only device from createDevice for read, errno: 0
+open read-only device from createDevice for write, errno: 2
+open write-only device from createDevice for read, errno: 2
+open write-only device from createDevice for write, errno: 0
+
+read from file: 10
+data: 1234567890
+errno: 0
+
+pread past end of file: 0
+data: 
+errno: 0
+
+seek: 3
+errno: 0
+
+partial read from file: 3
+data: 456
+errno: 0
+
+seek: 8
+errno: 0
+partial read from end of file: 2
+data: 90
+errno: 0
+
+seek: -1
+errno: 28
+partial read from before start of file: 0
+data: 
+errno: 0
+
+seek: 0
+write to start of file: 3
+errno: 0
+
+seek: 10
+write to end of file: 3
+errno: 0
+
+seek: 23
+write after end of file: 8
+errno: 0
+
+pwrite to the middle of file: 3
+errno: 0
+seek: 31
+
+pwrite past end of file: 5
+errno: 0
+seek: 31
+
+seek: 0
+read after write: 37
+errno: 0
+final: wri4567890wri\0\0\0\0ite\0\0\0writeme\0\0write
+
+seek: 0
+read after write: 37
+errno: 0
+final: wri4567890wri\0\0\0\0ite\0\0\0writeme\0\0write

@@ -1,0 +1,32 @@
+getcwd: /
+errno: 0
+
+chdir(file): -1
+errno: 54
+
+chdir(dir): -1
+errno: 44
+
+chdir(""): -1
+errno: 44
+
+chdir(device): -1
+errno: 54
+
+chdir(folder): 0
+errno: 0
+getcwd: /folder
+errno: 0
+
+chdir(nonexistent): -1
+errno: 44
+
+chdir(link): 0
+errno: 0
+getcwd: /folder
+errno: 0
+
+fchdir(/): 0
+errno: 0
+getcwd: /
+errno: 0
