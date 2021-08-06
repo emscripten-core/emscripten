@@ -2012,15 +2012,14 @@ int main(int argc, char **argv) {
     self.do_core_test('test_memorygrowth_3.c')
 
   @parameterized({
-    'nogrow': (['-s', 'ALLOW_MEMORY_GROWTH=0'],),
-    'grow': (['-s', 'ALLOW_MEMORY_GROWTH'],)
+    'nogrow': ([],),
+    'grow': (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],)
   })
   @no_asan('requires more memory when growing')
   def test_aborting_new(self, args):
     # test that C++ new properly errors if we fail to malloc when growth is
     # enabled, with or without growth
     self.emcc_args += args
-    self.set_setting('MAXIMUM_MEMORY', '18MB')
     self.do_core_test('test_aborting_new.cpp')
 
   @no_wasm2js('no WebAssembly.Memory()')
