@@ -1095,6 +1095,7 @@
         ],
         "structs": {
             "EmscriptenKeyboardEvent": [
+              "timestamp",
               "key",
               "code",
               "location",
@@ -1110,6 +1111,7 @@
               "which"
             ],
             "EmscriptenMouseEvent": [
+              "timestamp",
               "screenX",
               "screenY",
               "clientX",
@@ -1205,6 +1207,7 @@
               "canvasY"
             ],
             "EmscriptenTouchEvent": [
+              "timestamp",
               "numTouches",
               "ctrlKey",
               "shiftKey",

@@ -243,6 +243,10 @@ Struct
   Note that since the `DOM Level 3 Events spec <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#keys>`_ is very recent at the time of writing (2014-03), uniform support for the different fields in the spec is still in flux. Be sure to check the results in multiple browsers. See the `unmerged pull request #2222 <https://github.com/emscripten-core/emscripten/pull/2222>`_ for an example of how to interpret the legacy key events.
 
 
+  .. c:member:: double timestamp
+
+    Absolute wallclock time when the data was recorded (milliseconds).
+
   .. c:member:: EM_UTF8 key
 
     The printed representation of the pressed key.
@@ -370,6 +374,10 @@ Struct
 
   The event structure passed in `mouse events <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#interface-MouseEvent>`_: `click <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-click>`_, `mousedown <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousedown>`_, `mouseup <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseup>`_, `dblclick <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-dblclick>`_, `mousemove <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousemove>`_, `mouseenter <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseenter>`_ and `mouseleave <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseleave>`_.
 
+
+  .. c:member:: double timestamp
+
+    Absolute wallclock time when the data was recorded (milliseconds).
 
   .. c:member:: long screenX
     long screenY
@@ -1532,6 +1540,10 @@ Struct
 .. c:type:: EmscriptenTouchEvent
 
   Specifies the data of a single `touchevent <http://www.w3.org/TR/touch-events/#touchevent-interface>`_.
+
+  .. c:member:: double timestamp
+
+    Absolute wallclock time when the data was recorded (milliseconds).
 
   .. c:member:: int numTouches
 
