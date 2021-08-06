@@ -139,8 +139,7 @@ class NativeBenchmarker(Benchmarker):
       native_args = native_args + lib_builder(self.name, native=True, env_init=env)
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
-      cmd = [
-        compiler,
+      cmd = compiler + [
         '-fno-math-errno',
         filename,
         '-o', filename + '.native'
@@ -355,8 +354,8 @@ class CheerpBenchmarker(Benchmarker):
 # Benchmarkers
 
 benchmarkers = [
-  NativeBenchmarker('clang', CLANG_CC, CLANG_CXX),
-  # NativeBenchmarker('gcc',   'gcc',    'g++')
+  NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
+  # NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie'])
 ]
 
 if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
