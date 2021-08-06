@@ -58,7 +58,5 @@ int main(int argc, char *argv[]) {
     
     draw();
         
-    REPORT_RESULT(result);
-    
     return 0;
 }

@@ -192,7 +192,5 @@ int main(int argc, char *argv[])
   assert(!glGetError());
 
   printf("Test passed!\n");
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1);
-#endif
+  return 0;
 }

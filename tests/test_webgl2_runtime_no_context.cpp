@@ -49,11 +49,6 @@ int main()
   assert(res == EMSCRIPTEN_RESULT_SUCCESS);
 
   printf("requested: %d actual: %d\n", attrs.majorVersion, outAttrs.majorVersion);
-
-  int result = outAttrs.majorVersion;
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  assert(outAttrs.majorVersion == 1);
   return 0;
 }
