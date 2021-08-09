@@ -1037,11 +1037,11 @@ int main()
       self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING')
-      # TODO: Node currently returns 0 for unhandled promise rejections.
-      # Switch this to True when they change their default
-      expect_fail = False
-      if not self.is_wasm():
-        expect_fail = True
+      expect_fail = True
+      if self.is_wasm() and not is_optimizing(self.emcc_args):
+        # TODO: Debug builds with MINIMAL_RUNTIME currrently catch unhandled exceptions
+        # thrown during `_main`
+        expect_fail = False
       self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_uncaught.out'), assert_returncode=NON_ZERO if expect_fail else 0)
 
   @with_both_exception_handling
@@ -1895,9 +1895,11 @@ int main(int argc, char **argv) {
     self.set_setting('MINIMAL_RUNTIME')
     src = test_file('core/test_memorygrowth.c')
     # Fail without memory growth
-    expect_fail = False
-    if not self.is_wasm():
-      expect_fail = True
+    expect_fail = True
+    if self.is_wasm() and not is_optimizing(self.emcc_args):
+      # TODO: Debug builds with MINIMAL_RUNTIME currrently catch unhandled exceptions
+      # thrown during `_main`
+      expect_fail = False
     self.do_runf(src, 'OOM', assert_returncode=NON_ZERO if expect_fail else 0)
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
