@@ -2281,8 +2281,8 @@ void *getBindBuffer() {
     for mem in [0, 1]:
       self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js', '--memory-init-file', str(mem)])
 
-  @no_wasm_backend('mem init file')
   def test_mem_init(self):
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
     create_file('pre.js', '''
       function myJSCallback() { // called from main()
         Module._note(1);
@@ -2294,21 +2294,17 @@ void *getBindBuffer() {
       };
     ''')
     create_file('post.js', '''
-      var assert = function(check, text) {
-        if (!check) {
-          console.log('assert failed: ' + text);
-          maybeReportResultToServer(9);
-        }
-      }
       Module._note(4); // this happens too early! and is overwritten when the mem init arrives
     ''')
 
-    # with assertions, we notice when memory was written to too early
-    self.btest('mem_init.cpp', expected='9', args=['-s', 'WASM=0', '--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1'])
-    # otherwise, we just overwrite
-    self.btest('mem_init.cpp', expected='3', args=['-s', 'WASM=0', '--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1', '-s', 'ASSERTIONS=0'])
+    args = ['-s', 'WASM=0', '--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1']
 
-  @no_wasm_backend('mem init file')
+    # with assertions, we notice when memory was written to too early
+    expected = 'abort:Assertion failed: native function `note` called before runtime initialization'
+    self.btest('mem_init.cpp', expected=expected, args=args)
+    # otherwise, we just overwrite
+    self.btest_exit('mem_init.cpp', args=args + ['-s', 'ASSERTIONS=0'])
+
   def test_mem_init_request(self):
     def test(what, status):
       print(what, status)
@@ -2320,22 +2316,16 @@ void *getBindBuffer() {
 
         console.warn = function(x) {
           if (x.indexOf('a problem seems to have happened with Module.memoryInitializerRequest') >= 0) {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'http://localhost:%s/report_result?0');
-            setTimeout(xhr.onload = function() {
-              console.log('close!');
-              window.close();
-            }, 1000);
-            xhr.send();
-            throw 'halt';
+            maybeReportResultToServer('got_error');
           }
           console.log('WARNING: ' + x);
         };
-      ''' % self.port)
+      ''')
       self.btest('mem_init_request.cpp', expected=status, args=['-s', 'WASM=0', '--pre-js', 'pre.js', '--memory-init-file', '1'])
 
-    test('test.html.mem', '1')
-    test('nothing.nowhere', '0')
+    self.set_setting('EXIT_RUNTIME')
+    test('test.html.mem', 'exit:0')
+    test('nothing.nowhere', 'got_error')
 
   def test_runtime_misuse(self):
     post_prep = '''

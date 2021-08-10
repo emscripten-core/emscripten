@@ -1535,7 +1535,8 @@ class BrowserCore(RunnerCore):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
-    original_args = args.copy()
+    original_args = args
+    args = args.copy()
     if not os.path.exists(filename):
       filename = test_file(filename)
     if reference:
