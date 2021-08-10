@@ -7,32 +7,10 @@
 #include <emscripten.h>
 
 int main() {
-  int x = EM_ASM_INT({
-    window.onerror = function(e) {
-      var message = e.toString();
-      var success = message.indexOf("unreachable") >= 0 || // firefox
-                    message.indexOf("Script error.") >= 0; // chrome
-      if (success && !Module.reported) {
-        Module.reported = true;
-        console.log("reporting success");
-        // manually REPORT_RESULT; we shouldn't call back into native code at this point
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "http://localhost:8888/report_result?0");
-        xhr.onload = xhr.onerror = function() {
-          window.close();
-        };
-        xhr.send();
-      }
-    };
-    return 0;
-  });
-
   emscripten_sleep(1);
 
-  // We should not get here - the unwind will fail as we did now all the right
-  // functions - this function should be instrumented, but will not be.
+  // We should not get here - the unwind will fail as we did not list all the
+  // right functions - this function should be instrumented, but will not be.
   puts("We should not get here!");
-  REPORT_RESULT(1);
-
-  return 0;
+  return 1;
 }

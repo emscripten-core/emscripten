@@ -305,17 +305,6 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
        'JS engine does not provide full typed array support');
 #endif
 
-#if IN_TEST_HARNESS
-// Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
-if (ENVIRONMENT_IS_WEB) {
-  window.addEventListener('error', function(e) {
-    if (e.message.includes('unwind')) return;
-    console.error('Page threw an exception ' + e);
-    Module['pageThrewException'] = true;
-  });
-}
-#endif
-
 #if IMPORTED_MEMORY
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"

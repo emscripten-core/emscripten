@@ -627,14 +627,6 @@ If manually bisecting:
           <center><canvas id='canvas' width='256' height='256'></canvas></center>
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
-            window.onerror = function(error) {
-              window.onerror = null;
-              var result = error.indexOf("test.data") >= 0 ? 1 : 0;
-              var xhr = new XMLHttpRequest();
-              xhr.open('GET', 'http://localhost:8888/report_result?' + result, true);
-              xhr.send();
-              setTimeout(function() { window.close() }, 1000);
-            }
             var Module = {
               locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "''' + assetLocalization + r'''" + path;}},
               print: (function() {
@@ -653,17 +645,17 @@ If manually bisecting:
       setup("")
       self.compile_btest(['main.cpp', '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
       shutil.move('test.data', 'missing.data')
-      self.run_browser('test.html', '', '/report_result?1')
+      self.run_browser('test.html', '', ['/report_result?exception:', 'test.data'], assert_all=True)
 
       # test unknown protocol should go through xhr.onerror
       setup("unknown_protocol://")
       self.compile_btest(['main.cpp', '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
-      self.run_browser('test.html', '', '/report_result?1')
+      self.run_browser('test.html', '', ['/report_result?exception:', 'test.data'], assert_all=True)
 
       # test wrong protocol and port
       setup("https://localhost:8800/")
       self.compile_btest(['main.cpp', '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
-      self.run_browser('test.html', '', '/report_result?1')
+      self.run_browser('test.html', '', ['/report_result?exception:', 'test.data'], assert_all=True)
 
     test()
 
@@ -3321,22 +3313,33 @@ window.close = function() {
   # ASYNCIFY_IMPORTS.
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
-    'normal': (['-s', 'ASYNCIFY_IMPORTS=[sync_tunnel, sync_tunnel_bool]'],), # noqa
-    'response': (['-s', 'ASYNCIFY_IMPORTS=@filey.txt'],), # noqa
-    'nothing': (['-DBAD'],), # noqa
-    'empty_list': (['-DBAD', '-s', 'ASYNCIFY_IMPORTS=[]'],), # noqa
-    'em_js_bad': (['-DBAD', '-DUSE_EM_JS'],), # noqa
+    'normal': (False, ['-s', 'ASYNCIFY_IMPORTS=[sync_tunnel, sync_tunnel_bool]'],), # noqa
+    'response': (False, ['-s', 'ASYNCIFY_IMPORTS=@filey.txt'],), # noqa
+    'nothing': (True, ['-DBAD'],), # noqa
+    'empty_list': (True, ['-DBAD', '-s', 'ASYNCIFY_IMPORTS=[]'],), # noqa
+    'em_js_bad': (True, ['-DBAD', '-DUSE_EM_JS'],), # noqa
   })
-  def test_async_returnvalue(self, args):
+  def test_async_returnvalue(self, bad, args):
+    if bad:
+      expected = [
+        'exception:Uncaught Error: import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state', # firefox
+        'exception:Error: import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state' # chrome
+      ]
+    else:
+      expected = "0"
     if '@' in str(args):
       create_file('filey.txt', 'sync_tunnel\nsync_tunnel_bool\n')
-    self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/async_returnvalue.js')] + args + ['-s', 'ASSERTIONS'])
+    self.btest('browser/async_returnvalue.cpp', expected, args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/async_returnvalue.js')] + args + ['-s', 'ASSERTIONS'])
 
   def test_async_stack_overflow(self):
     self.btest('browser/async_stack_overflow.cpp', 'abort:RuntimeError: unreachable', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_STACK_SIZE=4'])
 
   def test_async_bad_list(self):
-    self.btest('browser/async_bad_list.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_ONLY=[waka]', '--profiling'])
+    expected = [
+        'exception:RuntimeError: unreachable executed', # firefox
+        'exception:Uncaught RuntimeError: unreachable', # chrome
+    ]
+    self.btest('browser/async_bad_list.cpp', expected, args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_ONLY=[waka]', '--profiling'])
 
   # Tests that when building with -s MINIMAL_RUNTIME=1, the build can use -s MODULARIZE=1 as well.
   def test_minimal_runtime_modularize(self):
@@ -4303,8 +4306,9 @@ window.close = function() {
     # Check an absolute js code size, with some slack.
     size = os.path.getsize('test.js')
     print('size:', size)
-    # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 5629), 100)
+    # Note that this size includes test harness additions (so will change when, for example,
+    # browser_reporting.js changed)
+    self.assertLess(abs(size - 5496), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4984,10 +4988,10 @@ window.close = function() {
     self.btest(test_file('emscripten_console_log.c'), '0', args=['--pre-js', test_file('emscripten_console_log_pre.js')])
 
   def test_emscripten_throw_number(self):
-    self.btest(test_file('emscripten_throw_number.c'), '0', args=['--pre-js', test_file('emscripten_throw_number_pre.js')])
+    self.btest(test_file('emscripten_throw_number.c'), 'exception:Uncaught 42')
 
   def test_emscripten_throw_string(self):
-    self.btest(test_file('emscripten_throw_string.c'), '0', args=['--pre-js', test_file('emscripten_throw_string_pre.js')])
+    self.btest(test_file('emscripten_throw_string.c'), 'exception:Uncaught Hello!')
 
   # Tests that Closure run in combination with -s ENVIRONMENT=web mode works with a minimal console.log() application
   def test_closure_in_web_only_target_environment_console_log(self):

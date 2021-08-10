@@ -1334,7 +1334,7 @@ class BrowserCore(RunnerCore):
   #                     synchronously, so we have a timeout, which can be hit if the VM
   #                     we run on stalls temporarily), so we let each test try more than
   #                     once by default
-  def run_browser(self, html_file, message, expectedResult=None, timeout=None, extra_tries=1):
+  def run_browser(self, html_file, message, expectedResult=None, timeout=None, extra_tries=1, assert_all=False):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
@@ -1372,12 +1372,16 @@ class BrowserCore(RunnerCore):
           # verify the result, and try again if we should do so
           output = unquote(output)
           try:
-            self.assertContained(expectedResult, output)
+            if assert_all:
+              for o in expectedResult:
+                self.assertContained(o, output)
+            else:
+              self.assertContained(expectedResult, output)
           except Exception as e:
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)
-              return self.run_browser(html_file, message, expectedResult, timeout, extra_tries - 1)
+              return self.run_browser(html_file, message, expectedResult, timeout, extra_tries - 1, assert_all=assert_all)
             else:
               raise e
       finally:

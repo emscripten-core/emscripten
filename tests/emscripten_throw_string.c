@@ -3,7 +3,5 @@
 int main()
 {
 	emscripten_throw_string("Hello!");
-#ifdef REPORT_RESULT
-	REPORT_RESULT(1); // failed
-#endif
+	__builtin_trap();
 }
