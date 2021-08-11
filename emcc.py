@@ -1857,6 +1857,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '__emscripten_call_on_thread',
       '__emscripten_main_thread_futex',
       '__emscripten_thread_init',
+      '__emscripten_thread_exit',
       '_emscripten_current_thread_process_queued_calls',
       '__emscripten_allow_main_runtime_queued_calls',
       '_emscripten_futex_wake',
@@ -1870,7 +1871,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '_emscripten_tls_init',
       '_pthread_self',
       '_pthread_testcancel',
-      '_pthread_exit',
     ]
     # Some of these symbols are using by worker.js but otherwise unreferenced.
     # Because emitDCEGraph only considered the main js file, and not worker.js

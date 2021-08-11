@@ -3632,20 +3632,20 @@ LibraryManager.library = {
     }
     try {
       func();
+#if EXIT_RUNTIME || USE_PTHREADS
+#if USE_PTHREADS && !EXIT_RUNTIME
+      if (ENVIRONMENT_IS_PTHREAD)
+#endif
+        maybeExit();
+#endif
     } catch (e) {
       handleException(e);
     }
-#if EXIT_RUNTIME || USE_PTHREADS
-#if USE_PTHREADS && !EXIT_RUNTIME
-    if (ENVIRONMENT_IS_PTHREAD)
-#endif
-      maybeExit();
-#endif
   },
 
   $maybeExit__deps: ['exit', '$handleException',
 #if USE_PTHREADS
-    'pthread_exit',
+    '_emscripten_thread_exit',
 #endif
   ],
   $maybeExit: function() {
@@ -3658,7 +3658,7 @@ LibraryManager.library = {
 #endif
       try {
 #if USE_PTHREADS
-        if (ENVIRONMENT_IS_PTHREAD) _pthread_exit(EXITSTATUS);
+        if (ENVIRONMENT_IS_PTHREAD) __emscripten_thread_exit(EXITSTATUS);
         else
 #endif
         _exit(EXITSTATUS);
