@@ -233,9 +233,7 @@ self.onmessage = function(e) {
         }
 #endif
       } catch(ex) {
-        if (ex === 'Canceled!') {
-          Module['PThread'].threadCancel();
-        } else if (ex != 'unwind') {
+        if (ex != 'unwind') {
 #if ASSERTIONS
           // FIXME(sbc): Figure out if this is still needed or useful.  Its not
           // clear to me how this check could ever fail.  In order to get into
