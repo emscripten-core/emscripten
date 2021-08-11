@@ -56,7 +56,6 @@ var LibraryPThread = {
       PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
       PThread['threadInit'] = PThread.threadInit;
       PThread['threadCancel'] = PThread.threadCancel;
-      PThread['threadExit'] = PThread.threadExit;
       PThread['setExitStatus'] = PThread.setExitStatus;
 #endif
     },
@@ -162,24 +161,6 @@ var LibraryPThread = {
 
     setExitStatus: function(status) {
       EXITSTATUS = status;
-    },
-
-    // Called when we are performing a pthread_exit(), either explicitly called
-    // by programmer, or implicitly when leaving the thread main function.
-    threadExit: function(exitCode) {
-      var tb = _pthread_self();
-      if (tb) { // If we haven't yet exited?
-#if PTHREADS_DEBUG
-        out('Pthread 0x' + tb.toString(16) + ' exited.');
-#endif
-        PThread.runExitHandlersAndDeinitThread(tb, exitCode);
-
-        if (ENVIRONMENT_IS_PTHREAD) {
-          // Note: in theory we would like to return any offscreen canvases back to the main thread,
-          // but if we ever fetched a rendering context for them that would not be valid, so we don't try.
-          postMessage({ 'cmd': 'exit' });
-        }
-      }
     },
 
     threadCancel: function() {
@@ -990,14 +971,28 @@ var LibraryPThread = {
     return wasDetached ? {{{ cDefine('EINVAL') }}} : 0;
   },
 
-  __pthread_exit_js__deps: ['exit'],
+  __pthread_exit_js__deps: ['exit', 'emscripten_unwind_to_js_event_loop'],
   __pthread_exit_js: function(status) {
+    // Called when we are performing a pthread_exit(), either explicitly called
+    // by programmer, or implicitly when leaving the thread main function.
+    var tb = _pthread_self();
+#if PTHREADS_DEBUG
+    out('Pthread 0x' + tb.toString(16) + ' exited.');
+#endif
     if (!ENVIRONMENT_IS_PTHREAD) {
       PThread.runExitHandlers();
       _exit(status);
-    } else PThread.threadExit(status);
-    // pthread_exit is marked noReturn, so we must not return from it.
-    throw 'unwind';
+    } else {
+      PThread.runExitHandlersAndDeinitThread(tb, status);
+
+      if (ENVIRONMENT_IS_PTHREAD) {
+        // Note: in theory we would like to return any offscreen canvases back to the main thread,
+        // but if we ever fetched a rendering context for them that would not be valid, so we don't try.
+        postMessage({ 'cmd': 'exit' });
+      }
+      // pthread_exit is marked noReturn, so we must not return from it.
+      _emscripten_unwind_to_js_event_loop();
+    }
   },
 
   __cxa_thread_atexit__sig: 'vii',

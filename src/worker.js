@@ -224,12 +224,12 @@ self.onmessage = function(e) {
         // The thread might have finished without calling pthread_exit(). If so,
         // then perform the exit operation ourselves.
         // (This is a no-op if explicit pthread_exit() had been called prior.)
-        Module['PThread'].threadExit(result);
+        Module['_pthread_exit'](result);
 #else
         if (Module['keepRuntimeAlive']()) {
           Module['PThread'].setExitStatus(result);
         } else {
-          Module['PThread'].threadExit(result);
+          Module['_pthread_exit'](result);
         }
 #endif
       } catch(ex) {
@@ -255,15 +255,15 @@ self.onmessage = function(e) {
 #endif
             } else {
 #if ASSERTIONS
-              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), calling threadExit.');
+              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), calling pthread_exit.');
 #endif
-              Module['PThread'].threadExit(ex.status);
+              Module['_pthread_exit'](ex.status);
             }
           }
           else
 #endif
           {
-            Module['PThread'].threadExit(-2);
+            Module['_pthread_exit'](-2);
             throw ex;
           }
 #if ASSERTIONS
