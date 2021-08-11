@@ -5471,6 +5471,9 @@ Module['onRuntimeInitialized'] = function() {
         self.emcc_args += ['-lnodefs.js']
       self.do_run_in_out_file_test('unistd/misc.c', js_engines=[config.NODE_JS], interleaved_output=False)
 
+  def test_unistd_fstatfs(self):
+    self.do_run_in_out_file_test('unistd/fstatfs.c')
+
   # i64s in the API, which we'd need to legalize for JS, so in standalone mode
   # all we can test is wasm VMs
   @also_with_standalone_wasm(wasm2c=True)

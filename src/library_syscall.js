@@ -1173,6 +1173,7 @@ var SyscallsLibrary = {
     {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, '255', 'i32') }}};
     return 0;
   },
+  __sys_fstatfs64__deps: ['__sys_statfs64'],
   __sys_fstatfs64: function(fd, size, buf) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return ___sys_statfs64(0, size, buf);
