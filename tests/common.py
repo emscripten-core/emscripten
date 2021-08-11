@@ -28,7 +28,6 @@ import unittest
 
 import clang_native
 import jsrun
-from jsrun import NON_ZERO
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import EM_BUILD_VERBOSE
@@ -52,6 +51,10 @@ EMTEST_SKIP_SLOW = None
 EMTEST_LACKS_NATIVE_CLANG = None
 EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
+
+# Special value for passing to assert_returncode which means we expect that program
+# to fail with non-zero return code, but we don't care about specifically which one.
+NON_ZERO = -1
 
 TEST_ROOT = path_from_root('tests')
 
@@ -829,8 +832,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if check and e.returncode != 0:
         print(e.stdout)
         print(e.stderr)
-        self.fail('subprocess exited with non-zero return code(%d): `%s`' %
-                  (e.returncode, shared.shlex_join(cmd)))
+        self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):
     if output_filename is None:
