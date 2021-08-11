@@ -10832,6 +10832,11 @@ void foo() {}
       err = self.run_js('a.out.js')
       self.assertContained('warning: unsupported syscall: __sys_mincore', err)
 
+      # Setting ASSERTIONS=0 should avoid the runtime warning
+      self.run_process(cmd + ['-sASSERTIONS=0'])
+      err = self.run_js('a.out.js')
+      self.assertNotContained('warning: unsupported syscall', err)
+
   @require_v8
   def test_missing_shell_support(self):
     # By default shell support is not included
