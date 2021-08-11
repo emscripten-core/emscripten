@@ -2562,13 +2562,8 @@ The current type of b is: 9
     self.clear_setting('SIDE_MODULE')
 
   def build_dlfcn_lib(self, filename):
-    if self.is_wasm():
-      # emcc emits a wasm in this case
-      self.build(filename, js_outfile=False)
-      shutil.move(shared.unsuffixed(filename) + '.wasm', 'liblib.so')
-    else:
-      self.build(filename)
-      shutil.move(shared.unsuffixed(filename) + '.js', 'liblib.so')
+    outfile = self.build(filename, js_outfile=not self.is_wasm())
+    shutil.move(outfile, 'liblib.so')
 
   @needs_dylink
   def test_dlfcn_missing(self):

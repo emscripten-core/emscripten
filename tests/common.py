@@ -1031,9 +1031,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if no_build:
       js_file = filename
     else:
-      self.build(filename, libraries=libraries, includes=includes,
-                 force_c=force_c, emcc_args=emcc_args)
-      js_file = shared.unsuffixed(os.path.basename(filename)) + '.js'
+      js_file = self.build(filename, libraries=libraries, includes=includes,
+                           force_c=force_c, emcc_args=emcc_args)
     self.assertExists(js_file)
 
     engines = self.filtered_js_engines(js_engines)
