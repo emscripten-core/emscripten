@@ -1451,15 +1451,21 @@ function unimplementedSycall(name) {
   SyscallsLibrary[name + '__nothrow'] = true;
   SyscallsLibrary[name + '__proxy'] = false;
   SyscallsLibrary[name + '__unimplemented'] = true;
-  msg = `\n  err('warning: unsupported syscall: ${name}');`;
+  const errcode = cDefine('ENOSYS');
+#if ASSERTIONS
+  const msg = `\n  err('warning: unsupported syscall: ${name}');`;
   if (SyscallsLibrary[name]) {
     SyscallsLibrary[name] = modifyFunction(SyscallsLibrary[name].toString(), (name, args, body) => {
             return `function(${args}) {\n  ${msg}${body}\n}\n`;
           });
   } else {
-    errcode = cDefine('ENOSYS');
     SyscallsLibrary[name] = `function() {\n  ${msg}return -${errcode};\n}`;
   }
+#else
+  if (!SyscallsLibrary[name]) {
+    SyscallsLibrary[name] = `function() { return -${errcode};\n}`;
+  }
+#endif
 }
 
 [
