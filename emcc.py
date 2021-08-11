@@ -2121,17 +2121,30 @@ def phase_linker_setup(options, state, newargs, settings_map):
     if not settings.UBSAN_RUNTIME:
       settings.UBSAN_RUNTIME = 2
 
-    settings.EXPORTED_FUNCTIONS += [
-      '_emscripten_builtin_memset',
-      '_asan_c_load_1', '_asan_c_load_1u',
-      '_asan_c_load_2', '_asan_c_load_2u',
-      '_asan_c_load_4', '_asan_c_load_4u',
-      '_asan_c_load_f', '_asan_c_load_d',
-      '_asan_c_store_1', '_asan_c_store_1u',
-      '_asan_c_store_2', '_asan_c_store_2u',
-      '_asan_c_store_4', '_asan_c_store_4u',
-      '_asan_c_store_f', '_asan_c_store_d',
+    settings.EXPORTED_FUNCTIONS.append('_emscripten_builtin_memset')
+
+    # helper functions for JS to call into C to do memory operations. these
+    # let us sanitize memory access from the JS side, by calling into C where
+    # it has been instrumented.
+    ASAN_C_HELPERS = [
+      'asan_c_load_1', 'asan_c_load_1u',
+      'asan_c_load_2', 'asan_c_load_2u',
+      'asan_c_load_4', 'asan_c_load_4u',
+      'asan_c_load_f', 'asan_c_load_d',
+      'asan_c_store_1', 'asan_c_store_1u',
+      'asan_c_store_2', 'asan_c_store_2u',
+      'asan_c_store_4', 'asan_c_store_4u',
+      'asan_c_store_f', 'asan_c_store_d',
     ]
+
+    settings.EXPORTED_FUNCTIONS += ['_' + x for x in ASAN_C_HELPERS]
+
+    if settings.ASYNCIFY:
+      # we do not want asyncify to instrument these helpers - they just access
+      # memory as small getters/setters, so they cannot pause anyhow, and also
+      # we access them in the runtime as we prepare to rewind, which would hit
+      # an asyncify assertion.
+      settings.ASYNCIFY_REMOVE += ASAN_C_HELPERS
 
     if settings.ASAN_SHADOW_SIZE != -1:
       diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')

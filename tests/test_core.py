@@ -7369,7 +7369,6 @@ someweirdtext
 
   # needs setTimeout which only node has
   @require_node
-  @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
   def test_async_hello(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
@@ -7395,7 +7394,6 @@ int main() {
     self.do_runf('main.c', 'HelloWorld!99')
 
   @require_node
-  @no_asan('asyncify stack operations confuse asan')
   def test_async_ccall_bad(self):
     # check bad ccall use
     # needs to flush stdio streams
@@ -7427,7 +7425,6 @@ Module['onRuntimeInitialized'] = function() {
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
   @require_node
-  @no_asan('asyncify stack operations confuse asan')
   def test_async_ccall_good(self):
     # check reasonable ccall use
     # needs to flush stdio streams
@@ -7452,7 +7449,6 @@ Module['onRuntimeInitialized'] = function() {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'HelloWorld')
 
-  @no_asan('asyncify stack operations confuse asan')
   def test_async_ccall_promise(self):
     print('check ccall promise')
     self.set_setting('ASYNCIFY')
@@ -7485,7 +7481,6 @@ Module['onRuntimeInitialized'] = function() {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'first\nsecond\n6.4')
 
-  @no_asan('asyncify stack operations confuse asan')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY')
     self.maybe_closure()
@@ -7508,7 +7503,6 @@ Module['onRuntimeInitialized'] = function() {
     'onlylist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
     'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
-  @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_file('response.file', response)
@@ -7537,7 +7531,6 @@ Module['onRuntimeInitialized'] = function() {
     'ignoreindirect': (['-s', 'ASYNCIFY_IGNORE_INDIRECT'], False),
     'add': (['-s', 'ASYNCIFY_IGNORE_INDIRECT', '-s', 'ASYNCIFY_ADD=["__original_main","main","virt()"]'], True),
   })
-  @no_asan('asan is not compatible with asyncify stack operations; may also need to not instrument asan_c_load_4, TODO')
   def test_asyncify_indirect_lists(self, args, should_pass):
     self.set_setting('ASYNCIFY')
     self.emcc_args += args
@@ -7550,7 +7543,6 @@ Module['onRuntimeInitialized'] = function() {
       if should_pass:
         raise
 
-  @no_asan('asyncify stack operations confuse asan')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY')
     self.do_core_test('test_emscripten_scan_registers.cpp')
