@@ -7,7 +7,6 @@
 
 #include "pthread_impl.h"
 #include <pthread.h>
-#include <emscripten/em_asm.h>
 
 int _pthread_isduecanceled(struct pthread* pthread_ptr) {
   return pthread_ptr->threadStatus == 2 /*canceled*/;
@@ -18,7 +17,7 @@ void __pthread_testcancel() {
   if (self->canceldisable)
     return;
   if (_pthread_isduecanceled(self)) {
-    EM_ASM(throw 'Canceled!');
+    pthread_exit(PTHREAD_CANCELED);
   }
 }
 
