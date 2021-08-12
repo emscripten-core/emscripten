@@ -1197,6 +1197,13 @@ def phase_setup(options, state, newargs, settings_map):
     diagnostics.warning('deprecated', 'RUNTIME_LINKED_LIBS is deprecated; you can simply list the libraries directly on the commandline now')
     newargs += settings.RUNTIME_LINKED_LIBS
 
+  def default_setting(name, new_default):
+    if name not in settings_map:
+      setattr(settings, name, new_default)
+
+  if settings.STRICT:
+    default_setting('DEFAULT_TO_CXX', 0)
+
   # Find input files
 
   # These three arrays are used to store arguments of different types for
@@ -1545,7 +1552,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
-    default_setting('DEFAULT_TO_CXX', 0)
     default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
