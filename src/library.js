@@ -583,7 +583,7 @@ LibraryManager.library = {
   timelocal: 'mktime',
 
 #if MINIMAL_RUNTIME
-  gmtime_r__deps: ['allocateUTF8'],
+  gmtime_r__deps: ['$allocateUTF8'],
 #endif
   gmtime_r__sig: 'iii',
   gmtime_r: function(time, tmPtr) {

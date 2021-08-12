@@ -1545,6 +1545,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
   # errno support by default.
   if settings.MINIMAL_RUNTIME:
     default_setting('SUPPORT_ERRNO', 0)
+    # Require explicit -lfoo.js flags to link with JS libraries.
+    default_setting('AUTO_JS_LIBRARIES', 0)
 
   if settings.STRICT:
     default_setting('STRICT_JS', 1)
@@ -1553,6 +1555,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
     default_setting('AUTO_ARCHIVE_INDEXES', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
     default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
+
+  if not settings.AUTO_JS_LIBRARIES:
+    default_setting('USE_SDL', 0)
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
@@ -2033,9 +2038,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
       # in that case. If string functions are turned to library functions in the future, then JS dependency tracking can be
       # used and this special directive can be dropped.
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
-
-    # Require explicit -lfoo.js flags to link with JS libraries.
-    settings.AUTO_JS_LIBRARIES = 0
 
   if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
      settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \

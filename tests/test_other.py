@@ -7773,6 +7773,9 @@ end
   def test_full_js_library_no_exception_throwing(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sDISABLE_EXCEPTION_THROWING'])
 
+  def test_full_js_library_minimal_runtime(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sMINIMAL_RUNTIME'])
+
   def test_closure_full_js_library(self):
     # test for closure errors in the entire JS library
     # We must ignore various types of errors that are expected in this situation, as we
