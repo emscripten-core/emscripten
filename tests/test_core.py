@@ -250,6 +250,10 @@ no_minimal_runtime = make_no_decorator_for_setting('MINIMAL_RUNTIME')
 no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 
 
+def is_sanitizing(args):
+  return '-fsanitize=' in str(args)
+
+
 class TestCoreBase(RunnerCore):
   def is_wasm2js(self):
     return self.get_setting('WASM') == 0
@@ -7517,7 +7521,7 @@ Module['onRuntimeInitialized'] = function() {
 
     # use of ASYNCIFY_* options may require intermediate debug info. that should
     # not end up emitted in the final binary
-    if self.is_wasm():
+    if self.is_wasm() and not is_sanitizing(self.emcc_args):
       binary = read_binary('test_asyncify_lists.wasm')
       # there should be no name section
       self.assertFalse(b'name' in binary)
