@@ -2143,7 +2143,12 @@ def phase_linker_setup(options, state, newargs, settings_map):
       # we do not want asyncify to instrument these helpers - they just access
       # memory as small getters/setters, so they cannot pause anyhow, and also
       # we access them in the runtime as we prepare to rewind, which would hit
-      # an asyncify assertion.
+      # an asyncify assertion, if asyncify instrumented them.
+      #
+      # note that if ASYNCIFY_ONLY was set by the user then we do not need to
+      # do anything (as the user's list won't contain these functions), and if
+      # we did add them, the pass would assert on incompatible lists, hence the
+      # condition in the above if.
       settings.ASYNCIFY_REMOVE += ASAN_C_HELPERS
 
     if settings.ASAN_SHADOW_SIZE != -1:
