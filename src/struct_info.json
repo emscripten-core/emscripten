@@ -1709,7 +1709,7 @@
                 "targetCount",
                 "targets"
             ],
-            "WGPURenderPipelineDescriptor2": [
+            "WGPURenderPipelineDescriptor": [
                 "nextInChain",
                 "label",
                 "layout",
