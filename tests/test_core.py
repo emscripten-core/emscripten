@@ -7503,11 +7503,13 @@ Module['onRuntimeInitialized'] = function() {
     'onlylist_a': (['-s', 'ASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
     'onlylist_b': (['-s', 'ASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
     'onlylist_c': (['-s', 'ASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
-    'onlylist_d': (['-s', 'ASYNCIFY_ONLY=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
+    'onlylist_d': (['-s', 'ASYNCIFY_ONLY=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False, None, True),
     'onlylist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
     'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
-  def test_asyncify_lists(self, args, should_pass, response=None):
+  def test_asyncify_lists(self, args, should_pass, response=None, no_san=False):
+    if no_san and is_sanitizing(self.emcc_args):
+      self.skipTest('remaining asyncify+sanitizer TODO')
     if response is not None:
       create_file('response.file', response)
       self.set_setting('ASYNCIFY_ONLY', '@response.file')
