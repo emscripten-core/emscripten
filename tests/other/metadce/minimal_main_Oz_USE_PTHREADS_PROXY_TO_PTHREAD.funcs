@@ -7,7 +7,6 @@ $__pthread_mutex_trylock
 $__pthread_mutex_unlock
 $__pthread_self_internal
 $__pthread_setcancelstate
-$__pthread_tsd_run_dtors
 $__wasm_call_ctors
 $__wasm_init_memory
 $_do_call

@@ -1864,7 +1864,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
     settings.EXPORTED_FUNCTIONS += [
       '___emscripten_pthread_data_constructor',
-      '___pthread_tsd_run_dtors',
       '__emscripten_call_on_thread',
       '__emscripten_main_thread_futex',
       '__emscripten_thread_init',
