@@ -7767,6 +7767,11 @@ end
   def test_full_js_library(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'])
 
+  def test_full_js_library_except(self):
+    self.set_setting('INCLUDE_FULL_LIBRARY', 1)
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.do_other_test('test_full_js_library_except.cpp')
+
   def test_full_js_library_gl_emu(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sLEGACY_GL_EMULATION'])
 
