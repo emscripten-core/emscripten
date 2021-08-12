@@ -224,12 +224,12 @@ self.onmessage = function(e) {
         // The thread might have finished without calling pthread_exit(). If so,
         // then perform the exit operation ourselves.
         // (This is a no-op if explicit pthread_exit() had been called prior.)
-        Module['PThread'].threadExit(result);
+        Module['__emscripten_thread_exit'](result);
 #else
         if (Module['keepRuntimeAlive']()) {
           Module['PThread'].setExitStatus(result);
         } else {
-          Module['PThread'].threadExit(result);
+          Module['__emscripten_thread_exit'](result);
         }
 #endif
       } catch(ex) {
@@ -239,7 +239,7 @@ self.onmessage = function(e) {
           // clear to me how this check could ever fail.  In order to get into
           // this try/catch block at all we have already called bunch of
           // functions on `Module`.. why is this one special?
-          if (typeof(Module['_emscripten_futex_wake']) !== "function") {
+          if (typeof(Module['_emscripten_futex_wake']) !== 'function') {
             err("Thread Initialisation failed.");
             throw ex;
           }
@@ -253,28 +253,29 @@ self.onmessage = function(e) {
 #endif
             } else {
 #if ASSERTIONS
-              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), calling threadExit.');
+              err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' called exit(), calling _emscripten_thread_exit.');
 #endif
-              Module['PThread'].threadExit(ex.status);
+              Module['__emscripten_thread_exit'](ex.status);
             }
           }
           else
-#endif
+#endif // !MINIMAL_RUNTIME
           {
-            Module['PThread'].threadExit(-2);
+            Module['__emscripten_thread_exit'](-2);
             throw ex;
           }
 #if ASSERTIONS
         } else {
           // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
-          err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
+          err('Pthread 0x' + Module['_pthread_self']().toString(16) + ' completed its main entry point with an `unwind`, keeping the worker alive for asynchronous operation.');
 #endif
         }
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (Module['_pthread_self']()) {
-        Module['PThread'].threadCancel();
+        Module['__emscripten_thread_exit'](-1/*PTHREAD_CANCELED*/);
       }
+      postMessage({ 'cmd': 'cancelDone' });
     } else if (e.data.target === 'setimmediate') {
       // no-op
     } else if (e.data.cmd === 'processThreadQueue') {

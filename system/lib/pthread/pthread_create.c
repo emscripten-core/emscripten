@@ -7,6 +7,7 @@
 
 #define _GNU_SOURCE
 #include "pthread_impl.h"
+#include "assert.h"
 #include <pthread.h>
 #include <stdbool.h>
 #include <threads.h>
@@ -15,7 +16,7 @@
 
 extern int __cxa_thread_atexit(void (*)(void *), void *, void *);
 extern int __pthread_create_js(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
-extern _Noreturn void __pthread_exit_js(void* status);
+extern void __pthread_exit_js(void* status);
 extern int8_t __dso_handle;
 
 void __run_cleanup_handlers(void* _unused) {
@@ -47,8 +48,19 @@ int __pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*star
   return __pthread_create_js(thread, attr, start_routine, arg);
 }
 
-_Noreturn void __pthread_exit(void* status) {
-   __pthread_exit_js(status);
+void _emscripten_thread_exit(void* retval) {
+  assert(pthread_self());
+  __pthread_exit_js(retval);
+}
+
+// Mark as `no_sanitize("address"` since emscripten_pthread_exit destroys
+// the current thread and runs its exit handlers.  Without this asan injects
+// a call to __asan_handle_no_return before emscripten_unwind_to_js_event_loop
+// which seem to cause a crash later down the line.
+__attribute__((no_sanitize("address")))
+_Noreturn void __pthread_exit(void* retval) {
+  _emscripten_thread_exit(retval);
+  emscripten_unwind_to_js_event_loop();
 }
 
 weak_alias(__pthread_create, emscripten_builtin_pthread_create);

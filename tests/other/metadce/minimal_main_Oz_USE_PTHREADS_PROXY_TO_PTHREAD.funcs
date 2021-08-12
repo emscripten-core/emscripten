@@ -2,7 +2,6 @@ $GetQueue
 $__emscripten_pthread_data_constructor
 $__errno_location
 $__pthread_create
-$__pthread_exit
 $__pthread_mutex_lock
 $__pthread_mutex_trylock
 $__pthread_mutex_unlock
@@ -14,6 +13,7 @@ $__wasm_init_memory
 $_do_call
 $_emscripten_call_on_thread
 $_emscripten_do_dispatch_to_thread
+$_emscripten_thread_exit
 $_emscripten_thread_init
 $_main_thread
 $_pthread_isduecanceled
