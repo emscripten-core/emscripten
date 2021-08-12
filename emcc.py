@@ -2139,7 +2139,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
     settings.EXPORTED_FUNCTIONS += ['_' + x for x in ASAN_C_HELPERS]
 
-    if settings.ASYNCIFY:
+    if settings.ASYNCIFY and not settings.ASYNCIFY_ONLY:
       # we do not want asyncify to instrument these helpers - they just access
       # memory as small getters/setters, so they cannot pause anyhow, and also
       # we access them in the runtime as we prepare to rewind, which would hit
