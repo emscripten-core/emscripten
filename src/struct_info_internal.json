@@ -7,13 +7,13 @@
         "structs": {
             "pthread": [
               "threadStatus",
-              "threadExitCode",
               "profilerBlock",
               "self",
               "tsd",
               "detached",
               "stack",
               "stack_size",
+              "result",
               "attr",
               "robust_list",
               "tid",

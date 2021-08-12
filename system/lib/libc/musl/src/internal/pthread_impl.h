@@ -37,7 +37,6 @@ struct pthread {
 	// Note: The specific order of these fields is important, since these are accessed
 	// by direct pointer arithmetic in worker.js.
 	int threadStatus; // 0: thread not exited, 1: exited.
-	int threadExitCode; // Thread exit code.
 	thread_profiler_block * _Atomic profilerBlock; // If --threadprofiler is enabled, this pointer is allocated to contain internal information about the thread state for profiling purposes.
 #endif
 
