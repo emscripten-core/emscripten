@@ -156,13 +156,12 @@ void emscripten_async_waitable_close(em_queued_call* call) {
 
 extern double emscripten_receive_on_main_thread_js(int functionIndex, int numCallArgs, double* args);
 extern int _emscripten_notify_thread_queue(pthread_t targetThreadId, pthread_t mainThreadId);
+extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 
 #if defined(__has_feature)
 #if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
 #define HAS_SANITIZER
 #include <sanitizer/lsan_interface.h>
-int emscripten_builtin_pthread_create(pthread_t *thread, const pthread_attr_t* attr,
-                                      void *(*callback)(void *), void *arg);
 #endif
 #endif
 
@@ -178,13 +177,13 @@ static void _do_call(em_queued_call* q) {
       // On non-main threads, pthread_create gets proxied to the main thread, where LSan is not
       // disabled. This makes it necessary for us to disable LSan here, so that it does not detect
       // pthread's internal allocations as leaks.
+      // If/when we remove all the allocations from __pthread_create_js we could also remove this.
       __lsan_disable();
+#endif
       q->returnValue.i =
-        emscripten_builtin_pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
+        __pthread_create_js(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
+#ifdef HAS_SANITIZER
       __lsan_enable();
-#else
-      q->returnValue.i =
-        pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
 #endif
       break;
     case EM_PROXIED_CREATE_CONTEXT:
@@ -892,8 +891,8 @@ void __emscripten_pthread_data_constructor(void) {
   // The pthread struct has a field that points to itself - this is used as
   // a magic ID to detect whether the pthread_t structure is 'alive'.
   __main_pthread.self = &__main_pthread;
-      // pthread struct robust_list head should point to itself.
-  __main_pthread.robust_list.head = &__main_pthread.robust_list;
+  // pthread struct robust_list head should point to itself.
+  __main_pthread.robust_list.head = &__main_pthread.robust_list.head;
 
   // Main thread ID.
   __main_pthread.tid = (long)&__main_pthread;
