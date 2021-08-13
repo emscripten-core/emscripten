@@ -94,7 +94,7 @@ def run_js(filename, engine, args=[],
   if not os.path.exists(filename):
     raise Exception('output file not found: ' + filename)
 
-  command = make_command(filename, engine, args)
+  command = make_command(os.path.abspath(filename), engine, args)
   if common.EMTEST_VERBOSE:
     print(f"Running: '{shared.shlex_join(command)}'")
   try:
