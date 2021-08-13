@@ -1086,7 +1086,7 @@
             "nextInChain": 0,
             "occlusionQuerySet": 20
         },
-        "WGPURenderPipelineDescriptor2": {
+        "WGPURenderPipelineDescriptor": {
             "__size__": 76,
             "depthStencil": 52,
             "fragment": 72,
