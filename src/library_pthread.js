@@ -164,9 +164,6 @@ var LibraryPThread = {
     freeThreadData: function(pthread) {
       if (!pthread) return;
       if (pthread.threadInfoStruct) {
-        var tlsMemory = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.tsd, 'i32') }}};
-        {{{ makeSetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.tsd, 0, 'i32') }}};
-        _free(tlsMemory);
 #if PTHREADS_PROFILING
         var profilerBlock = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.profilerBlock, 'i32') }}};
         {{{ makeSetValue('pthread.threadInfoStruct',  C_STRUCTS.pthread.profilerBlock, 0, 'i32') }}};
@@ -479,7 +476,6 @@ var LibraryPThread = {
     pthread.worker.postMessage({ 'cmd': 'cancel' });
   },
 
-  $spawnThread__deps: ['$zeroMemory'],
   $spawnThread: function(threadParams) {
     if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! spawnThread() can only ever be called from main application thread!';
 
@@ -492,10 +488,6 @@ var LibraryPThread = {
     if (worker.pthread !== undefined) throw 'Internal error!';
     if (!threadParams.pthread_ptr) throw 'Internal error, no pthread ptr!';
     PThread.runningWorkers.push(worker);
-
-    // Allocate memory for thread-local storage and initialize it to zero.
-    var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') * 4 }}});
-    zeroMemory(tlsMemory, {{{ cDefine('PTHREAD_KEYS_MAX') * 4 }}});
 
     var stackHigh = threadParams.stackBase + threadParams.stackSize;
 
@@ -512,17 +504,11 @@ var LibraryPThread = {
     // spawnThread is always called with a zero-initialized thread struct so
     // no need to set any valudes to zero here.
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.detached }}} >> 2), threadParams.detached);
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tsd }}} >> 2), tlsMemory); // Init thread-local-storage memory array.
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tid }}} >> 2), pthread.threadInfoStruct); // Main thread ID.
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack_size }}} >> 2), threadParams.stackSize);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack }}} >> 2), stackHigh);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} >> 2), threadParams.stackSize);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} + 8 >> 2), stackHigh);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} + 12 >> 2), threadParams.detached);
-
-    var global_libc = _emscripten_get_global_libc();
-    var global_locale = global_libc + {{{ C_STRUCTS.libc.global_locale }}};
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.locale }}} >> 2), global_locale);
 
 #if PTHREADS_PROFILING
     PThread.createProfilerBlock(pthread.threadInfoStruct);
@@ -565,17 +551,13 @@ var LibraryPThread = {
 #endif
     return navigator['hardwareConcurrency'];
   },
-    
+
   __pthread_create_js__sig: 'iiiii',
   __pthread_create_js__deps: ['$spawnThread', 'pthread_self', 'memalign', 'emscripten_sync_run_in_main_thread_4'],
   __pthread_create_js: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return {{{ cDefine('EAGAIN') }}};
-    }
-    if (!pthread_ptr) {
-      err('pthread_create called with a null thread pointer!');
-      return {{{ cDefine('EINVAL') }}};
     }
 
     // List of JS objects that will transfer ownership to the Worker hosting the thread
@@ -729,26 +711,12 @@ var LibraryPThread = {
       assert(stackBase > 0);
     }
 
-    // Allocate thread block (pthread_t structure).
-    var threadInfoStruct = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
-    // zero-initialize thread structure.
-    zeroMemory(threadInfoStruct, {{{ C_STRUCTS.pthread.__size__ }}});
-    {{{ makeSetValue('pthread_ptr', 0, 'threadInfoStruct', 'i32') }}};
-
-    // The pthread struct has a field that points to itself - this is used as a
-    // magic ID to detect whether the pthread_t structure is 'alive'.
-    {{{ makeSetValue('threadInfoStruct', C_STRUCTS.pthread.self, 'threadInfoStruct', 'i32') }}};
-
-    // pthread struct robust_list head should point to itself.
-    var headPtr = threadInfoStruct + {{{ C_STRUCTS.pthread.robust_list }}};
-    {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
-
 #if OFFSCREENCANVAS_SUPPORT
     // Register for each of the transferred canvases that the new thread now
     // owns the OffscreenCanvas.
     for (var i in offscreenCanvases) {
       // pthread ptr to the thread that owns this canvas.
-      {{{ makeSetValue('offscreenCanvases[i].canvasSharedPtr', 8, 'threadInfoStruct', 'i32') }}};
+      {{{ makeSetValue('offscreenCanvases[i].canvasSharedPtr', 8, 'pthread_ptr', 'i32') }}};
     }
 #endif
 
@@ -758,7 +726,7 @@ var LibraryPThread = {
       allocatedOwnStack: allocatedOwnStack,
       detached: detached,
       startRoutine: start_routine,
-      pthread_ptr: threadInfoStruct,
+      pthread_ptr: pthread_ptr,
       arg: arg,
 #if OFFSCREENCANVAS_SUPPORT
       moduleCanvasId: moduleCanvasId,
@@ -964,7 +932,7 @@ var LibraryPThread = {
 
   __cxa_thread_atexit__sig: 'vii',
   __cxa_thread_atexit: function(routine, arg) {
-    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) }); 
+    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) });
   },
   __cxa_thread_atexit_impl: '__cxa_thread_atexit',
 

@@ -10,12 +10,14 @@
 #include "assert.h"
 #include <pthread.h>
 #include <stdbool.h>
+#include <string.h>
 #include <threads.h>
+#include <emscripten/emmalloc.h>
 
 // See musl's pthread_create.c
 
 extern int __cxa_thread_atexit(void (*)(void *), void *, void *);
-extern int __pthread_create_js(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
+extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 extern void _emscripten_thread_init(int, int, int);
 extern void __pthread_exit_run_handlers();
 extern void __pthread_exit_done();
@@ -51,8 +53,35 @@ void __do_cleanup_pop(struct __ptcb *cb) {
   __pthread_self()->cancelbuf = cb->__next;
 }
 
-int __pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg) {
-  return __pthread_create_js(thread, attr, start_routine, arg);
+int __pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict attrp, void *(*entry)(void *), void *restrict arg) {
+  // Note on LSAN: lsan intercepts/wraps calls to pthread_create so any
+  // allocation we we do here should be considered leaks.
+  // See: lsan_interceptors.cpp.
+  if (!res) {
+    return EINVAL;
+  }
+
+  // Allocate thread block (pthread_t structure).
+  struct pthread *new = malloc(sizeof(struct pthread));
+  // zero-initialize thread structure.
+  memset(new, 0, sizeof(struct pthread));
+
+  // The pthread struct has a field that points to itself - this is used as a
+  // magic ID to detect whether the pthread_t structure is 'alive'.
+  new->self = new;
+  new->tid = (uintptr_t)new;
+
+  // pthread struct robust_list head should point to itself.
+  new->robust_list.head = &new->robust_list.head;
+
+  new->locale = &libc.global_locale;
+
+  // Allocate memory for thread-local storage and initialize it to zero.
+  new->tsd = malloc(PTHREAD_KEYS_MAX * sizeof(void*));
+  memset(new->tsd, 0, PTHREAD_KEYS_MAX * sizeof(void*));
+
+  *res = new;
+  return __pthread_create_js(new, attrp, entry, arg);
 }
 
 void _emscripten_thread_exit(void* result) {
@@ -74,6 +103,11 @@ void _emscripten_thread_exit(void* result) {
     exit((intptr_t)result);
     return;
   }
+
+  // We have the call the buildin free here since lsan handling for this thread
+  // gets shut down during __pthread_tsd_run_dtors.
+  emscripten_builtin_free(self->tsd);
+  self->tsd = NULL;
 
   // Mark the thread as no longer running.
   // When we publish this, the main thread is free to deallocate the thread object and we are done.
