@@ -645,8 +645,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       engine = engine + self.node_args
     if engine == config.V8_ENGINE:
       engine = engine + self.v8_args
-    if EMTEST_VERBOSE:
-      print(f"Running '{filename}' under '{shared.shlex_join(engine)}'")
     try:
       jsrun.run_js(filename, engine, args,
                    stdout=open(stdout_file, 'w'),
