@@ -156,8 +156,8 @@ var LibraryPThread = {
 #if ASSERTIONS
         assert(pthread, 'This Worker should have a pthread it is executing');
 #endif
-        PThread.freeThreadData(pthread);
         worker.terminate();
+        PThread.freeThreadData(pthread);
       }
       PThread.runningWorkers = [];
     },
