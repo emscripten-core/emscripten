@@ -7523,6 +7523,8 @@ Module['onRuntimeInitialized'] = function() {
 
     # use of ASYNCIFY_* options may require intermediate debug info. that should
     # not end up emitted in the final binary
+    # (note that we can't check this if sanitizers run, as they include a lot of
+    # static strings that would match the search)
     if self.is_wasm() and not is_sanitizing(self.emcc_args):
       binary = read_binary('test_asyncify_lists.wasm')
       # there should be no name section
