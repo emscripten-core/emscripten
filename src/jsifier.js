@@ -74,16 +74,13 @@ function JSify(functionsOnly) {
 
     LibraryManager.load();
 
-    var libFuncsToInclude;
+    var libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     if (INCLUDE_FULL_LIBRARY) {
-      libFuncsToInclude = MAIN_MODULE ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
       for (var key in LibraryManager.library) {
         if (!isJsLibraryConfigIdentifier(key)) {
           libFuncsToInclude.push(key);
         }
       }
-    } else {
-      libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     }
     libFuncsToInclude.forEach((ident) => {
       functionStubs.push({
