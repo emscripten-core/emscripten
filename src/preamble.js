@@ -574,9 +574,6 @@ function abort(what) {
   }
 #endif
 
-#if USE_PTHREADS
-  assert(!ENVIRONMENT_IS_PTHREAD);
-#endif
   what += '';
   err(what);
 
