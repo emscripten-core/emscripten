@@ -3529,6 +3529,7 @@ ok
 
   def dylink_testf(self, main, side, expected=None, force_c=False, main_emcc_args=[],
                    main_module=2,
+                   so_name='liblib.so',
                    need_reverse=True, **kwargs):
     self.maybe_closure()
     # Same as dylink_test but takes source code as filenames on disc.
@@ -3548,13 +3549,13 @@ ok
       self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', out_file])
     else:
       out_file = self.build(side, js_outfile=(side_suffix == 'js'))
-    shutil.move(out_file, 'liblib.so')
+    shutil.move(out_file, so_name)
 
     # main settings
     self.set_setting('MAIN_MODULE', main_module)
     self.clear_setting('SIDE_MODULE')
     self.emcc_args += main_emcc_args
-    self.emcc_args.append('liblib.so')
+    self.emcc_args.append(so_name)
 
     if force_c:
       self.emcc_args.append('-nostdlib++')
@@ -8399,7 +8400,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     main = test_file('core/pthread/test_pthread_dylink.c')
     side = test_file('core/pthread/test_pthread_dylink_side.c')
-    self.dylink_testf(main, side, "success", need_reverse=False)
+
+    # test with a long .so name, as a regression test for
+    # https://github.com/emscripten-core/emscripten/issues/14833
+    # where we had a bug with long names + TextDecoder + pthreads + dylink
+    very_long_name = 'very_very_very_very_very_very_very_very_very_long.so'
+
+    self.dylink_testf(main, side, "success",
+                      so_name=very_long_name,
+                      need_reverse=False)
 
   @needs_dylink
   @node_pthreads
