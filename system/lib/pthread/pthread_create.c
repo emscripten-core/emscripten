@@ -16,8 +16,15 @@
 
 extern int __cxa_thread_atexit(void (*)(void *), void *, void *);
 extern int __pthread_create_js(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
-extern void __pthread_exit_js(void* status);
+extern void _emscripten_thread_init(int, int, int);
+extern void __pthread_exit_run_handlers();
+extern void __pthread_exit_done();
 extern int8_t __dso_handle;
+
+static void dummy_0()
+{
+}
+weak_alias(dummy_0, __pthread_tsd_run_dtors);
 
 void __run_cleanup_handlers(void* _unused) {
   pthread_t self = __pthread_self();
@@ -48,9 +55,35 @@ int __pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*star
   return __pthread_create_js(thread, attr, start_routine, arg);
 }
 
-void _emscripten_thread_exit(void* retval) {
-  assert(pthread_self());
-  __pthread_exit_js(retval);
+void _emscripten_thread_exit(void* result) {
+  struct pthread *self = __pthread_self();
+  assert(self);
+
+  self->canceldisable = PTHREAD_CANCEL_DISABLE;
+  self->cancelasync = PTHREAD_CANCEL_DEFERRED;
+  self->result = result;
+
+  __pthread_exit_run_handlers();
+
+  // Call into the musl function that runs destructors of all thread-specific data.
+  __pthread_tsd_run_dtors();
+
+  if (self == emscripten_main_browser_thread_id()) {
+    // FIXME(sbc): When pthread_exit causes the entire application to exit
+    // we should be returning zero (according to the man page for pthread_exit).
+    exit((intptr_t)result);
+    return;
+  }
+
+  // Mark the thread as no longer running.
+  // When we publish this, the main thread is free to deallocate the thread object and we are done.
+  self->threadStatus = 1;
+
+  emscripten_futex_wake(&self->threadStatus, INT_MAX); // wake all threads
+
+  // Not hosting a pthread anymore in this worker, reset the info structures to null.
+  _emscripten_thread_init(0, 0, 0); // Unregister the thread block inside the wasm module.
+  __pthread_exit_done();
 }
 
 // Mark as `no_sanitize("address"` since emscripten_pthread_exit destroys
