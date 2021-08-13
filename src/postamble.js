@@ -192,9 +192,10 @@ function callMain(args) {
 #else
     // if we're not running an evented main loop, it's time to exit
     exit(ret, /* implicit = */ true);
+    return ret;
   }
   catch (e) {
-    handleException(e);
+    return handleException(e);
 #endif // !PROXY_TO_PTHREAD
   } finally {
     calledMain = true;
