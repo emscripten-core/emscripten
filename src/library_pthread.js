@@ -7,7 +7,7 @@
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread__deps: ['_emscripten_thread_init',
-                   'emscripten_futex_wake', '$killThread',
+                   'emscripten_futex_wake',
                    '$cancelThread', '$cleanupThread',
                    '$handleException',
                    ],
@@ -274,8 +274,6 @@ var LibraryPThread = {
           spawnThread(e.data);
         } else if (cmd === 'cleanupThread') {
           cleanupThread(d['thread']);
-        } else if (cmd === 'killThread') {
-          killThread(d['thread']);
         } else if (cmd === 'cancelThread') {
           cancelThread(d['thread']);
         } else if (cmd === 'loaded') {
@@ -428,20 +426,6 @@ var LibraryPThread = {
       }
       return PThread.unusedWorkers.pop();
     }
-  },
-
-  $killThread: function(pthread_ptr) {
-    if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! killThread() can only ever be called from main application thread!';
-    if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in killThread!';
-    {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
-    var pthread = PThread.pthreads[pthread_ptr];
-    delete PThread.pthreads[pthread_ptr];
-    pthread.worker.terminate();
-    PThread.freeThreadData(pthread);
-    // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
-    // but don't put it back to the pool.
-    PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(pthread.worker), 1); // Not a running Worker anymore.
-    pthread.worker.pthread = undefined;
   },
 
   $cleanupThread: function(pthread_ptr) {
@@ -839,30 +823,6 @@ var LibraryPThread = {
   pthread_tryjoin_np__deps: ['_emscripten_do_pthread_join'],
   pthread_tryjoin_np: function(thread, status) {
     return __emscripten_do_pthread_join(thread, status, false);
-  },
-
-  pthread_kill__deps: ['$killThread', 'emscripten_main_browser_thread_id'],
-  pthread_kill: function(thread, signal) {
-    if (signal < 0 || signal >= 65/*_NSIG*/) return {{{ cDefine('EINVAL') }}};
-    if (thread === _emscripten_main_browser_thread_id()) {
-      if (signal == 0) return 0; // signal == 0 is a no-op.
-      err('Main thread (id=' + thread + ') cannot be killed with pthread_kill!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-    if (!thread) {
-      err('pthread_kill attempted on a null thread pointer!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-    var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
-    if (self !== thread) {
-      err('pthread_kill attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-    if (signal != 0) {
-      if (!ENVIRONMENT_IS_PTHREAD) killThread(thread);
-      else postMessage({ 'cmd': 'killThread', 'thread': thread});
-    }
-    return 0;
   },
 
   pthread_cancel__deps: ['$cancelThread', 'emscripten_main_browser_thread_id'],

@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 2.0.27
 ------
+- Remove implemenation of `pthread_kill` which did not work on chrome and
+  was incorrecly impemented.
 - Added `EM_ASYNC_JS` macro - similar to `EM_JS`, but allows using `await`
   inside the JS block and automatically integrates with Asyncify without
   the need for listing the declared function in `ASYNCIFY_IMPORTS` (#9709).

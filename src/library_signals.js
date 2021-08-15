@@ -37,6 +37,16 @@ var LibrarySignals = {
 #if ASSERTIONS
     err('Calling stub instead of kill()');
 #endif
+    if (sig < 0 || sig >= 65/*_NSIG*/) return {{{ cDefine('EINVAL') }}};
+    setErrNo({{{ cDefine('EPERM') }}});
+    return -1;
+  },
+
+  pthread_kill: function(thread, sig) {
+#if ASSERTIONS
+    err('Calling stub instead of pthread_kill()');
+#endif
+    if (sig < 0 || sig >= 65/*_NSIG*/) return {{{ cDefine('EINVAL') }}};
     setErrNo({{{ cDefine('EPERM') }}});
     return -1;
   },
