@@ -5319,6 +5319,9 @@ Module['onRuntimeInitialized'] = function() {
   def test_sigalrm(self):
     self.do_runf(test_file('test_sigalrm.c'), 'Received alarm!')
 
+  def test_signals(self):
+    self.do_core_test(test_file('test_signals.c'))
+
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_access(self):
     self.uses_es6 = True

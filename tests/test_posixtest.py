@@ -29,8 +29,6 @@ class posixtest(RunnerCore):
 
 def filter_tests(all_tests):
   pthread_tests = [t for t in all_tests if t.startswith('pthread_')]
-  # filter out some tests we don't support
-  pthread_tests = [t for t in pthread_tests if not t.startswith('pthread_sigmask')]
   return pthread_tests
 
 
@@ -56,15 +54,15 @@ unsupported_noreturn = {
   'test_pthread_atfork_3_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_4_1': 'fork() and multiple processes are not supported',
   'test_pthread_kill_1_1': 'signals are not supported',
-  'test_pthread_create_1_5': 'semaphores are not supported',
+  'test_pthread_create_1_5': 'fork() and multiple processes are not supported',
   'test_pthread_exit_6_1': 'lacking necessary mmap() support',
   'test_pthread_spin_lock_1_1': 'signals are not supported',
   'test_pthread_mutex_lock_5_1': 'signals are not supported',
   'test_pthread_mutexattr_settype_2_1': 'interrupting pthread_mutex_lock wait via SIGALRM is not supported',
   'test_pthread_spin_lock_3_1': 'signals are not supported',
-  'test_pthread_create_14_1': 'signals are not supported',
-  'test_pthread_detach_4_3': 'signals are not supported',
-  'test_pthread_join_6_3': 'signals are not supported',
+  'test_pthread_create_14_1': 'creates too many threads',
+  'test_pthread_detach_4_3': 'creates too many threads',
+  'test_pthread_join_6_3': 'creates too many threads',
   'test_pthread_barrier_wait_3_2': 'signals are not supported',
   'test_pthread_cond_broadcast_1_2': 'tries to create 10,0000 threads, then depends on fork()',
 }

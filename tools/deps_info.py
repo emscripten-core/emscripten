@@ -51,6 +51,7 @@
 from tools.settings import settings
 
 _deps_info = {
+  'alarm': ['raise'],
   'Mix_LoadWAV_RW': ['fileno'],
   'SDL_CreateRGBSurface': ['malloc', 'free'],
   'SDL_GL_GetProcAddress': ['malloc'],
