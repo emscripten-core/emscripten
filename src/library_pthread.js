@@ -309,8 +309,6 @@ var LibraryPThread = {
           }
         } else if (cmd === 'cancelDone') {
           PThread.returnWorkerToPool(worker);
-        } else if (cmd === 'objectTransfer') {
-          PThread.receiveObjectTransfer(e.data);
         } else if (e.data.target === 'setimmediate') {
           worker.postMessage(e.data); // Worker wants to postMessage() to itself to implement setImmediate() emulation.
         } else {
