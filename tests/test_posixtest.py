@@ -68,6 +68,7 @@ unsupported_noreturn = {
   'test_pthread_join_6_3': 'signals are not supported',
   'test_pthread_cond_init_4_2': 'signals are not supported',
   'test_pthread_barrier_wait_3_2': 'signals are not supported',
+  'test_pthread_cond_broadcast_1_2': 'tries to create 10,0000 threads, then depends on fork()',
 }
 
 unsupported = {
@@ -78,7 +79,6 @@ unsupported = {
   'test_pthread_attr_setschedpolicy_4_1': 'scheduling policy/parameters are not supported',
   'test_pthread_barrierattr_getpshared_2_1': 'shm_open and shm_unlink are not supported',
   'test_pthread_barrier_wait_3_1': 'signals are not supported',
-  'test_pthread_cond_broadcast_1_2': 'lacking necessary mmap() support',
   'test_pthread_cond_broadcast_2_3': 'lacking necessary mmap() support',
   'test_pthread_cond_destroy_2_1': 'lacking necessary mmap() support',
   'test_pthread_cond_init_1_2': 'clock_settime() is not supported',
