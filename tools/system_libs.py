@@ -893,8 +893,9 @@ class libsockets(MuslInternalLibrary, MTLibrary):
   cflags = ['-Os', '-fno-builtin']
 
   def get_files(self):
-    network_dir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'network')
-    return [os.path.join(network_dir, x) for x in LIBC_SOCKETS]
+    return files_in_path(
+      path_components=['system', 'lib', 'libc', 'musl', 'src', 'network'],
+      filenames=LIBC_SOCKETS)
 
   def can_use(self):
     return super(libsockets, self).can_use() and not settings.PROXY_POSIX_SOCKETS
