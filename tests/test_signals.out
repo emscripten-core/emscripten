@@ -1,0 +1,6 @@
+test_bad_signal
+test_raise_sigusr1
+handler1: 10
+test_sigpending
+is now pending
+handler1: 10

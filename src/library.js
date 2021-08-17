@@ -2619,6 +2619,20 @@ LibraryManager.library = {
     return 0;
   },
 
+  // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
+  alarm__deps: ['raise'],
+  alarm: function(seconds) {
+    setTimeout(function() {
+      _raise({{{ cDefine('SIGALRM') }}});
+    }, seconds*1000);
+  },
+
+  // Helper for raise() to avoid signature mismatch failures:
+  // https://github.com/emscripten-core/posixtestsuite/issues/6
+  __call_sighandler: function(fp, sig) {
+    {{{ makeDynCall('vi', 'fp') }}}(sig);
+  },
+
   // ==========================================================================
   // emscripten.h
   // ==========================================================================
@@ -3681,6 +3695,12 @@ LibraryManager.library = {
   },
 #endif
 
+  $safeSetTimeout__deps: ['$callUserCallback',
+#if !MINIMAL_RUNTIME
+   '$runtimeKeepalivePush',
+   '$runtimeKeepalivePop',
+#endif
+  ],
   $safeSetTimeout: function(func, timeout) {
     {{{ runtimeKeepalivePush() }}}
     return setTimeout(function() {

@@ -845,16 +845,20 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'getitimer.c',
           'killpg.c',
           'setitimer.c',
+          'sigorset.c',
+          'sigandset.c',
           'sigaddset.c',
           'sigdelset.c',
           'sigemptyset.c',
           'sigfillset.c',
           'sigismember.c',
+          'siginterrupt.c',
           'signal.c',
           'sigprocmask.c',
           'sigrtmax.c',
           'sigrtmin.c',
           'sigwait.c',
+          'sigwaitinfo.c',
         ])
 
     libc_files += files_in_path(
@@ -863,6 +867,11 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'extras.c',
           'wasi-helpers.c',
           'emscripten_get_heap_size.c',
+          'raise.c',
+          'kill.c',
+          'sigaction.c',
+          'sigtimedwait.c',
+          'pthread_sigmask.c',
         ])
 
     libc_files += files_in_path(
