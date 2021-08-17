@@ -162,8 +162,6 @@ self.onmessage = function(e) {
 #endif
 #endif
 #endif // MODULARIZE && EXPORT_ES6
-    } else if (e.data.cmd === 'objectTransfer') {
-      Module['PThread'].receiveObjectTransfer(e.data);
     } else if (e.data.cmd === 'run') {
       // This worker was idle, and now should start executing its pthread entry
       // point.
