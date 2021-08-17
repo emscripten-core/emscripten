@@ -25,6 +25,7 @@ static void* _main_thread(void* param) {
 int emscripten_proxy_main(int argc, char** argv) {
   pthread_attr_t attr;
   pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
   // Use the size of the current stack, which is the normal size of the stack
   // that main() would have without PROXY_TO_PTHREAD.
   pthread_attr_setstacksize(&attr, emscripten_stack_get_base() - emscripten_stack_get_end());

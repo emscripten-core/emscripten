@@ -9759,6 +9759,19 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     # libpthread_stub.a
     self.do_other_test('test_pthread_stub.c')
 
+  @node_pthreads
+  def test_main_pthread_join_detach(self):
+    # Verify that we're unable to join the main thread
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('other/test_pthread_self_join_detach.c')
+
+  @node_pthreads
+  def test_proxy_pthread_join_detach(self):
+    # Verify that we're unable to detach or join the proxied main thread
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('other/test_pthread_self_join_detach.c')
+
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')
     outputStdin = self.run_process([EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
