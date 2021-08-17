@@ -2,7 +2,7 @@
 #define SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon.h :: */
+/* :: Begin simde/simde/arm/neon.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -34,7 +34,7 @@
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/types.h :: */
+/* :: Begin simde/simde/arm/neon/types.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -66,7 +66,7 @@
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-common.h :: */
+/* :: Begin simde/simde/simde-common.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -98,7 +98,7 @@
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/hedley.h :: */
+/* :: Begin simde/simde/hedley.h :: */
 /* Hedley - https://nemequ.github.io/hedley
  * Created by Evan Nemerson <evan@nemerson.com>
  *
@@ -2143,7 +2143,7 @@ HEDLEY_DIAGNOSTIC_POP
 #define HEDLEY_CLANG_HAS_WARNING(warning) HEDLEY_HAS_WARNING(warning)
 
 #endif /* !defined(HEDLEY_VERSION) || (HEDLEY_VERSION < X) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/hedley.h :: */
+/* :: End simde/simde/hedley.h :: */
 
 #define SIMDE_VERSION_MAJOR 0
 #define SIMDE_VERSION_MINOR 7
@@ -2156,7 +2156,7 @@ HEDLEY_DIAGNOSTIC_POP
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-detect-clang.h :: */
+/* :: Begin simde/simde/simde-detect-clang.h :: */
 /* Detect Clang Version
  * Created by Evan Nemerson <evan@nemerson.com>
  *
@@ -2266,10 +2266,10 @@ HEDLEY_DIAGNOSTIC_POP
 #endif
 
 #endif /* !defined(SIMDE_DETECT_CLANG_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-detect-clang.h :: */
+/* :: End simde/simde/simde-detect-clang.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-arch.h :: */
+/* :: Begin simde/simde/simde-arch.h :: */
 /* Architecture detection
  * Created by Evan Nemerson <evan@nemerson.com>
  *
@@ -2836,10 +2836,10 @@ HEDLEY_DIAGNOSTIC_POP
 #endif
 
 #endif /* !defined(SIMDE_ARCH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-arch.h :: */
+/* :: End simde/simde/simde-arch.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-features.h :: */
+/* :: Begin simde/simde/simde-features.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -2877,7 +2877,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-diagnostic.h :: */
+/* :: Begin simde/simde/simde-diagnostic.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -3326,7 +3326,7 @@ HEDLEY_DIAGNOSTIC_POP
   SIMDE_DIAGNOSTIC_DISABLE_RESERVED_ID_
 
 #endif /* !defined(SIMDE_DIAGNOSTIC_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-diagnostic.h :: */
+/* :: End simde/simde/simde-diagnostic.h :: */
 
 #if !defined(SIMDE_X86_SVML_NATIVE) && !defined(SIMDE_X86_SVML_NO_NATIVE) && !defined(SIMDE_NO_NATIVE)
   #if defined(SIMDE_ARCH_X86_SVML)
@@ -3936,12 +3936,12 @@ HEDLEY_DIAGNOSTIC_POP
 #endif
 
 #endif /* !defined(SIMDE_FEATURES_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-features.h :: */
+/* :: End simde/simde/simde-features.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-math.h :: */
+/* :: Begin simde/simde/simde-math.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -5904,10 +5904,10 @@ simde_math_subs_u64(uint64_t a, uint64_t b) {
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_MATH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-math.h :: */
+/* :: End simde/simde/simde-math.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-constify.h :: */
+/* :: Begin simde/simde/simde-constify.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -6306,10 +6306,10 @@ SIMDE_DIAGNOSTIC_DISABLE_CPP98_COMPAT_PEDANTIC_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-constify.h :: */
+/* :: End simde/simde/simde-constify.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-align.h :: */
+/* :: Begin simde/simde/simde-align.h :: */
 /* Alignment
  * Created by Evan Nemerson <evan@nemerson.com>
  *
@@ -6761,7 +6761,7 @@ HEDLEY_DIAGNOSTIC_POP
 #define SIMDE_ALIGN_ASSUME_CAST(Type, Pointer) SIMDE_ALIGN_ASSUME_LIKE(SIMDE_ALIGN_CAST(Type, Pointer), Type)
 
 #endif /* !defined(SIMDE_ALIGN_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-align.h :: */
+/* :: End simde/simde/simde-align.h :: */
 
 /* In some situations, SIMDe has to make large performance sacrifices
  * for small increases in how faithfully it reproduces an API, but
@@ -7470,7 +7470,7 @@ SIMDE_DEFINE_CONVERSION_FUNCTION_(simde_uint64_as_float64, simde_float64, uint64
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/check.h :: */
+/* :: Begin simde/simde/check.h :: */
 /* Check (assertions)
  * Portable Snippets - https://gitub.com/nemequ/portable-snippets
  * Created by Evan Nemerson <evan@nemerson.com>
@@ -7535,7 +7535,7 @@ SIMDE_DEFINE_CONVERSION_FUNCTION_(simde_uint64_as_float64, simde_float64, uint64
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/debug-trap.h :: */
+/* :: Begin simde/simde/debug-trap.h :: */
 /* Debugging assertions and traps
  * Portable Snippets - https://gitub.com/nemequ/portable-snippets
  * Created by Evan Nemerson <evan@nemerson.com>
@@ -7621,7 +7621,7 @@ SIMDE_DEFINE_CONVERSION_FUNCTION_(simde_uint64_as_float64, simde_float64, uint64
 #endif
 
 #endif /* !defined(SIMDE_DEBUG_TRAP_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/debug-trap.h :: */
+/* :: End simde/simde/debug-trap.h :: */
 
    HEDLEY_DIAGNOSTIC_PUSH
    SIMDE_DIAGNOSTIC_DISABLE_VARIADIC_MACROS_
@@ -7837,7 +7837,7 @@ SIMDE_DEFINE_CONVERSION_FUNCTION_(simde_uint64_as_float64, simde_float64, uint64
   simde_assert_ptr(ptr, !=, NULL)
 
 #endif /* !defined(SIMDE_CHECK_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/check.h :: */
+/* :: End simde/simde/check.h :: */
 
 /* GCC/clang have a bunch of functionality in builtins which we would
  * like to access, but the suffixes indicate whether the operate on
@@ -8147,7 +8147,7 @@ SIMDE_DIAGNOSTIC_DISABLE_CPP98_COMPAT_PEDANTIC_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_COMMON_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/simde-common.h :: */
+/* :: End simde/simde/simde-common.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -9108,11 +9108,11 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* SIMDE_ARM_NEON_TYPES_H */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/types.h :: */
+/* :: End simde/simde/arm/neon/types.h :: */
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/aba.h :: */
+/* :: Begin simde/simde/arm/neon/aba.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -9144,7 +9144,7 @@ HEDLEY_DIAGNOSTIC_POP
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/abd.h :: */
+/* :: Begin simde/simde/arm/neon/abd.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -9176,7 +9176,7 @@ HEDLEY_DIAGNOSTIC_POP
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/abs.h :: */
+/* :: Begin simde/simde/arm/neon/abs.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -9609,10 +9609,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ABS_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/abs.h :: */
+/* :: End simde/simde/arm/neon/abs.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/subl.h :: */
+/* :: Begin simde/simde/arm/neon/subl.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -9645,7 +9645,7 @@ HEDLEY_DIAGNOSTIC_POP
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/sub.h :: */
+/* :: Begin simde/simde/arm/neon/sub.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -10334,10 +10334,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SUB_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/sub.h :: */
+/* :: End simde/simde/arm/neon/sub.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/movl.h :: */
+/* :: Begin simde/simde/arm/neon/movl.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -10370,7 +10370,7 @@ HEDLEY_DIAGNOSTIC_POP
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/combine.h :: */
+/* :: Begin simde/simde/arm/neon/combine.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -10715,7 +10715,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_COMBINE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/combine.h :: */
+/* :: End simde/simde/arm/neon/combine.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -10923,10 +10923,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MOVL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/movl.h :: */
+/* :: End simde/simde/arm/neon/movl.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/movl_high.h :: */
+/* :: Begin simde/simde/arm/neon/movl_high.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -10963,7 +10963,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/get_high.h :: */
+/* :: Begin simde/simde/arm/neon/get_high.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -11265,7 +11265,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_GET_HIGH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/get_high.h :: */
+/* :: End simde/simde/arm/neon/get_high.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -11359,7 +11359,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MOVL_HIGH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/movl_high.h :: */
+/* :: End simde/simde/arm/neon/movl_high.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 
@@ -11455,10 +11455,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SUBL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/subl.h :: */
+/* :: End simde/simde/arm/neon/subl.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/movn.h :: */
+/* :: Begin simde/simde/arm/neon/movn.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -11655,12 +11655,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MOVN_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/movn.h :: */
+/* :: End simde/simde/arm/neon/movn.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/reinterpret.h :: */
+/* :: Begin simde/simde/arm/neon/reinterpret.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -14763,7 +14763,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/reinterpret.h :: */
+/* :: End simde/simde/arm/neon/reinterpret.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -15219,10 +15219,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ABD_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/abd.h :: */
+/* :: End simde/simde/arm/neon/abd.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/add.h :: */
+/* :: Begin simde/simde/arm/neon/add.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -15905,7 +15905,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ADD_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/add.h :: */
+/* :: End simde/simde/arm/neon/add.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -16083,12 +16083,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ABA_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/aba.h :: */
+/* :: End simde/simde/arm/neon/aba.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/abdl.h :: */
+/* :: Begin simde/simde/arm/neon/abdl.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -16240,14 +16240,14 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ABDL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/abdl.h :: */
+/* :: End simde/simde/arm/neon/abdl.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addhn.h :: */
+/* :: Begin simde/simde/arm/neon/addhn.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -16281,7 +16281,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/shr_n.h :: */
+/* :: Begin simde/simde/arm/neon/shr_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -16926,7 +16926,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SHR_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/shr_n.h :: */
+/* :: End simde/simde/arm/neon/shr_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 
@@ -17109,10 +17109,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ADDHN_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addhn.h :: */
+/* :: End simde/simde/arm/neon/addhn.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addl.h :: */
+/* :: Begin simde/simde/arm/neon/addl.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -17244,10 +17244,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ADDL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addl.h :: */
+/* :: End simde/simde/arm/neon/addl.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addlv.h :: */
+/* :: Begin simde/simde/arm/neon/addlv.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -17283,7 +17283,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addv.h :: */
+/* :: Begin simde/simde/arm/neon/addv.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -17732,7 +17732,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ADDV_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addv.h :: */
+/* :: End simde/simde/arm/neon/addv.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -18018,10 +18018,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ADDLV_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addlv.h :: */
+/* :: End simde/simde/arm/neon/addlv.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addl_high.h :: */
+/* :: Begin simde/simde/arm/neon/addl_high.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -18153,12 +18153,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ADDL_HIGH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addl_high.h :: */
+/* :: End simde/simde/arm/neon/addl_high.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addw.h :: */
+/* :: Begin simde/simde/arm/neon/addw.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -18384,10 +18384,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ADDW_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addw.h :: */
+/* :: End simde/simde/arm/neon/addw.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addw_high.h :: */
+/* :: Begin simde/simde/arm/neon/addw_high.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -18582,10 +18582,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ADDW_HIGH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/addw_high.h :: */
+/* :: End simde/simde/arm/neon/addw_high.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/and.h :: */
+/* :: Begin simde/simde/arm/neon/and.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -19139,10 +19139,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_AND_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/and.h :: */
+/* :: End simde/simde/arm/neon/and.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/bcax.h :: */
+/* :: Begin simde/simde/arm/neon/bcax.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -19177,7 +19177,7 @@ HEDLEY_DIAGNOSTIC_POP
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/eor.h :: */
+/* :: Begin simde/simde/arm/neon/eor.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -19731,10 +19731,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_EOR_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/eor.h :: */
+/* :: End simde/simde/arm/neon/eor.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/bic.h :: */
+/* :: Begin simde/simde/arm/neon/bic.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -19766,7 +19766,7 @@ HEDLEY_DIAGNOSTIC_POP
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/dup_n.h :: */
+/* :: Begin simde/simde/arm/neon/dup_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -20394,7 +20394,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_DUP_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/dup_n.h :: */
+/* :: End simde/simde/arm/neon/dup_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 
@@ -20870,7 +20870,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_BIC_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/bic.h :: */
+/* :: End simde/simde/arm/neon/bic.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -20992,12 +20992,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_BCAX_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/bcax.h :: */
+/* :: End simde/simde/arm/neon/bcax.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/bsl.h :: */
+/* :: Begin simde/simde/arm/neon/bsl.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -21705,10 +21705,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_BSL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/bsl.h :: */
+/* :: End simde/simde/arm/neon/bsl.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cage.h :: */
+/* :: Begin simde/simde/arm/neon/cage.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -21745,7 +21745,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cge.h :: */
+/* :: Begin simde/simde/arm/neon/cge.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -22480,7 +22480,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CGE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cge.h :: */
+/* :: End simde/simde/arm/neon/cge.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -22574,10 +22574,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CAGE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cage.h :: */
+/* :: End simde/simde/arm/neon/cage.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cagt.h :: */
+/* :: Begin simde/simde/arm/neon/cagt.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -22614,7 +22614,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cgt.h :: */
+/* :: Begin simde/simde/arm/neon/cgt.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -22649,7 +22649,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/get_low.h :: */
+/* :: Begin simde/simde/arm/neon/get_low.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -22983,7 +22983,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_GET_LOW_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/get_low.h :: */
+/* :: End simde/simde/arm/neon/get_low.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 
@@ -23696,7 +23696,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CGT_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cgt.h :: */
+/* :: End simde/simde/arm/neon/cgt.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -23790,10 +23790,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CAGT_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cagt.h :: */
+/* :: End simde/simde/arm/neon/cagt.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ceq.h :: */
+/* :: Begin simde/simde/arm/neon/ceq.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -24506,10 +24506,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CEQ_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ceq.h :: */
+/* :: End simde/simde/arm/neon/ceq.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ceqz.h :: */
+/* :: Begin simde/simde/arm/neon/ceqz.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -24893,12 +24893,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CEQZ_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ceqz.h :: */
+/* :: End simde/simde/arm/neon/ceqz.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cgez.h :: */
+/* :: Begin simde/simde/arm/neon/cgez.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -25322,12 +25322,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CGEZ_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cgez.h :: */
+/* :: End simde/simde/arm/neon/cgez.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cgtz.h :: */
+/* :: Begin simde/simde/arm/neon/cgtz.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -25755,10 +25755,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CGTZ_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cgtz.h :: */
+/* :: End simde/simde/arm/neon/cgtz.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cle.h :: */
+/* :: Begin simde/simde/arm/neon/cle.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -26536,10 +26536,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CLE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cle.h :: */
+/* :: End simde/simde/arm/neon/cle.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/clez.h :: */
+/* :: Begin simde/simde/arm/neon/clez.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -26963,10 +26963,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CLEZ_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/clez.h :: */
+/* :: End simde/simde/arm/neon/clez.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cls.h :: */
+/* :: Begin simde/simde/arm/neon/cls.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -27002,7 +27002,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/clz.h :: */
+/* :: Begin simde/simde/arm/neon/clz.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -27431,10 +27431,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CLZ_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/clz.h :: */
+/* :: End simde/simde/arm/neon/clz.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cltz.h :: */
+/* :: Begin simde/simde/arm/neon/cltz.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -27474,7 +27474,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/clt.h :: */
+/* :: Begin simde/simde/arm/neon/clt.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -28211,7 +28211,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CLT_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/clt.h :: */
+/* :: End simde/simde/arm/neon/clt.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 
@@ -28505,12 +28505,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CLTZ_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cltz.h :: */
+/* :: End simde/simde/arm/neon/cltz.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mvn.h :: */
+/* :: Begin simde/simde/arm/neon/mvn.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -28940,7 +28940,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MVN_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mvn.h :: */
+/* :: End simde/simde/arm/neon/mvn.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
@@ -29056,7 +29056,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CLS_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cls.h :: */
+/* :: End simde/simde/arm/neon/cls.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
@@ -29065,7 +29065,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cmla.h :: */
+/* :: Begin simde/simde/arm/neon/cmla.h :: */
 /* SPDX-License-Identifier: MIT
 *
 * Permission is hereby granted, free of charge, to any person
@@ -29199,10 +29199,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CMLA_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cmla.h :: */
+/* :: End simde/simde/arm/neon/cmla.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cmla_rot90.h :: */
+/* :: Begin simde/simde/arm/neon/cmla_rot90.h :: */
 /* SPDX-License-Identifier: MIT
 *
 * Permission is hereby granted, free of charge, to any person
@@ -29342,10 +29342,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CMLA_ROT90_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cmla_rot90.h :: */
+/* :: End simde/simde/arm/neon/cmla_rot90.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cmla_rot180.h :: */
+/* :: Begin simde/simde/arm/neon/cmla_rot180.h :: */
 /* SPDX-License-Identifier: MIT
 *
 * Permission is hereby granted, free of charge, to any person
@@ -29485,10 +29485,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CMLA_ROT180_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cmla_rot180.h :: */
+/* :: End simde/simde/arm/neon/cmla_rot180.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cmla_rot270.h :: */
+/* :: Begin simde/simde/arm/neon/cmla_rot270.h :: */
 /* SPDX-License-Identifier: MIT
 *
 * Permission is hereby granted, free of charge, to any person
@@ -29628,10 +29628,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CMLA_ROT270_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cmla_rot270.h :: */
+/* :: End simde/simde/arm/neon/cmla_rot270.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cnt.h :: */
+/* :: Begin simde/simde/arm/neon/cnt.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -29804,10 +29804,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CNT_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cnt.h :: */
+/* :: End simde/simde/arm/neon/cnt.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cvt.h :: */
+/* :: Begin simde/simde/arm/neon/cvt.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -30673,12 +30673,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* SIMDE_ARM_NEON_CVT_H */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/cvt.h :: */
+/* :: End simde/simde/arm/neon/cvt.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/create.h :: */
+/* :: Begin simde/simde/arm/neon/create.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -30868,10 +30868,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CREATE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/create.h :: */
+/* :: End simde/simde/arm/neon/create.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/dot.h :: */
+/* :: Begin simde/simde/arm/neon/dot.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -30917,7 +30917,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/paddl.h :: */
+/* :: Begin simde/simde/arm/neon/paddl.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -30960,7 +30960,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/padd.h :: */
+/* :: Begin simde/simde/arm/neon/padd.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -30995,7 +30995,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/uzp1.h :: */
+/* :: Begin simde/simde/arm/neon/uzp1.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -31640,10 +31640,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_UZP1_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/uzp1.h :: */
+/* :: End simde/simde/arm/neon/uzp1.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/uzp2.h :: */
+/* :: Begin simde/simde/arm/neon/uzp2.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -32292,12 +32292,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_UZP2_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/uzp2.h :: */
+/* :: End simde/simde/arm/neon/uzp2.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/get_lane.h :: */
+/* :: Begin simde/simde/arm/neon/get_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -32818,7 +32818,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_GET_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/get_lane.h :: */
+/* :: End simde/simde/arm/neon/get_lane.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -33172,12 +33172,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_PADD_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/padd.h :: */
+/* :: End simde/simde/arm/neon/padd.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/shl_n.h :: */
+/* :: Begin simde/simde/arm/neon/shl_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -33751,7 +33751,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SHL_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/shl_n.h :: */
+/* :: End simde/simde/arm/neon/shl_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
@@ -34063,12 +34063,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* SIMDE_ARM_NEON_PADDL_H */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/paddl.h :: */
+/* :: End simde/simde/arm/neon/paddl.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mull.h :: */
+/* :: Begin simde/simde/arm/neon/mull.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -34103,7 +34103,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mul.h :: */
+/* :: Begin simde/simde/arm/neon/mul.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -34685,7 +34685,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MUL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mul.h :: */
+/* :: End simde/simde/arm/neon/mul.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 
@@ -34891,7 +34891,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MULL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mull.h :: */
+/* :: End simde/simde/arm/neon/mull.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -35023,10 +35023,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_DOT_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/dot.h :: */
+/* :: End simde/simde/arm/neon/dot.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/dot_lane.h :: */
+/* :: Begin simde/simde/arm/neon/dot_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -35064,7 +35064,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/dup_lane.h :: */
+/* :: Begin simde/simde/arm/neon/dup_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -36267,7 +36267,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_DUP_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/dup_lane.h :: */
+/* :: End simde/simde/arm/neon/dup_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
@@ -36728,7 +36728,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_DOT_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/dot_lane.h :: */
+/* :: End simde/simde/arm/neon/dot_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
@@ -36737,7 +36737,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ext.h :: */
+/* :: Begin simde/simde/arm/neon/ext.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -37535,10 +37535,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_EXT_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ext.h :: */
+/* :: End simde/simde/arm/neon/ext.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/fma.h :: */
+/* :: Begin simde/simde/arm/neon/fma.h :: */
 /* SPDX-License-Identifier: MIT
 *
 * Permission is hereby granted, free of charge, to any person
@@ -37667,10 +37667,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CMLA_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/fma.h :: */
+/* :: End simde/simde/arm/neon/fma.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/fma_lane.h :: */
+/* :: Begin simde/simde/arm/neon/fma_lane.h :: */
 /* SPDX-License-Identifier: MIT
 *
 * Permission is hereby granted, free of charge, to any person
@@ -37710,7 +37710,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mul_lane.h :: */
+/* :: Begin simde/simde/arm/neon/mul_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -38407,7 +38407,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MUL_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mul_lane.h :: */
+/* :: End simde/simde/arm/neon/mul_lane.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -38599,10 +38599,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_FMA_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/fma_lane.h :: */
+/* :: End simde/simde/arm/neon/fma_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/fma_n.h :: */
+/* :: Begin simde/simde/arm/neon/fma_n.h :: */
 /* SPDX-License-Identifier: MIT
 *
 * Permission is hereby granted, free of charge, to any person
@@ -38703,7 +38703,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_CMLA_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/fma_n.h :: */
+/* :: End simde/simde/arm/neon/fma_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
@@ -38712,7 +38712,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/hadd.h :: */
+/* :: Begin simde/simde/arm/neon/hadd.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -39026,10 +39026,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_HADD_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/hadd.h :: */
+/* :: End simde/simde/arm/neon/hadd.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/hsub.h :: */
+/* :: Begin simde/simde/arm/neon/hsub.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -39343,10 +39343,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_HSUB_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/hsub.h :: */
+/* :: End simde/simde/arm/neon/hsub.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld1.h :: */
+/* :: Begin simde/simde/arm/neon/ld1.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -39824,10 +39824,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_LD1_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld1.h :: */
+/* :: End simde/simde/arm/neon/ld1.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld1_dup.h :: */
+/* :: Begin simde/simde/arm/neon/ld1_dup.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -40237,10 +40237,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_LD1_DUP_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld1_dup.h :: */
+/* :: End simde/simde/arm/neon/ld1_dup.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld1_lane.h :: */
+/* :: Begin simde/simde/arm/neon/ld1_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -40601,10 +40601,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_LD1_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld1_lane.h :: */
+/* :: End simde/simde/arm/neon/ld1_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld2.h :: */
+/* :: Begin simde/simde/arm/neon/ld2.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -40642,7 +40642,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/uzp.h :: */
+/* :: Begin simde/simde/arm/neon/uzp.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -40898,7 +40898,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_UZP_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/uzp.h :: */
+/* :: End simde/simde/arm/neon/uzp.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -41579,10 +41579,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_LD2_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld2.h :: */
+/* :: End simde/simde/arm/neon/ld2.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld3.h :: */
+/* :: Begin simde/simde/arm/neon/ld3.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -42194,10 +42194,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_LD3_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld3.h :: */
+/* :: End simde/simde/arm/neon/ld3.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld4.h :: */
+/* :: Begin simde/simde/arm/neon/ld4.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -42685,10 +42685,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_LD4_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld4.h :: */
+/* :: End simde/simde/arm/neon/ld4.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld4_lane.h :: */
+/* :: Begin simde/simde/arm/neon/ld4_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -43283,10 +43283,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_LD4_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/ld4_lane.h :: */
+/* :: End simde/simde/arm/neon/ld4_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/max.h :: */
+/* :: Begin simde/simde/arm/neon/max.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -43914,10 +43914,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MAX_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/max.h :: */
+/* :: End simde/simde/arm/neon/max.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/maxnm.h :: */
+/* :: Begin simde/simde/arm/neon/maxnm.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -44138,10 +44138,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MAXNM_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/maxnm.h :: */
+/* :: End simde/simde/arm/neon/maxnm.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/maxv.h :: */
+/* :: Begin simde/simde/arm/neon/maxv.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -44543,10 +44543,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MAXV_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/maxv.h :: */
+/* :: End simde/simde/arm/neon/maxv.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/min.h :: */
+/* :: Begin simde/simde/arm/neon/min.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -45232,10 +45232,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MIN_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/min.h :: */
+/* :: End simde/simde/arm/neon/min.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/minnm.h :: */
+/* :: Begin simde/simde/arm/neon/minnm.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -45458,10 +45458,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MINNM_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/minnm.h :: */
+/* :: End simde/simde/arm/neon/minnm.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/minv.h :: */
+/* :: Begin simde/simde/arm/neon/minv.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -45887,10 +45887,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MINV_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/minv.h :: */
+/* :: End simde/simde/arm/neon/minv.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mla.h :: */
+/* :: Begin simde/simde/arm/neon/mla.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -46190,10 +46190,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MLA_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mla.h :: */
+/* :: End simde/simde/arm/neon/mla.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mla_n.h :: */
+/* :: Begin simde/simde/arm/neon/mla_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -46232,7 +46232,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mul_n.h :: */
+/* :: Begin simde/simde/arm/neon/mul_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -46446,7 +46446,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MUL_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mul_n.h :: */
+/* :: End simde/simde/arm/neon/mul_n.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -46746,10 +46746,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MLA_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mla_n.h :: */
+/* :: End simde/simde/arm/neon/mla_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlal.h :: */
+/* :: Begin simde/simde/arm/neon/mlal.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -46909,10 +46909,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MLAL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlal.h :: */
+/* :: End simde/simde/arm/neon/mlal.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlal_high.h :: */
+/* :: Begin simde/simde/arm/neon/mlal_high.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -47072,10 +47072,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MLAL_HIGH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlal_high.h :: */
+/* :: End simde/simde/arm/neon/mlal_high.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlal_lane.h :: */
+/* :: Begin simde/simde/arm/neon/mlal_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -47198,10 +47198,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MLAL_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlal_lane.h :: */
+/* :: End simde/simde/arm/neon/mlal_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlal_n.h :: */
+/* :: Begin simde/simde/arm/neon/mlal_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -47334,10 +47334,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MLAL_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlal_n.h :: */
+/* :: End simde/simde/arm/neon/mlal_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mls.h :: */
+/* :: Begin simde/simde/arm/neon/mls.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -47630,10 +47630,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MLS_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mls.h :: */
+/* :: End simde/simde/arm/neon/mls.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mls_n.h :: */
+/* :: Begin simde/simde/arm/neon/mls_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -47818,10 +47818,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MLS_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mls_n.h :: */
+/* :: End simde/simde/arm/neon/mls_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlsl.h :: */
+/* :: Begin simde/simde/arm/neon/mlsl.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -47948,10 +47948,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MLSL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlsl.h :: */
+/* :: End simde/simde/arm/neon/mlsl.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlsl_high.h :: */
+/* :: Begin simde/simde/arm/neon/mlsl_high.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -47983,7 +47983,7 @@ HEDLEY_DIAGNOSTIC_POP
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mull_high.h :: */
+/* :: Begin simde/simde/arm/neon/mull_high.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -48112,7 +48112,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MULL_HIGH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mull_high.h :: */
+/* :: End simde/simde/arm/neon/mull_high.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 
@@ -48208,10 +48208,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MLSL_HIGH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlsl_high.h :: */
+/* :: End simde/simde/arm/neon/mlsl_high.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlsl_lane.h :: */
+/* :: Begin simde/simde/arm/neon/mlsl_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -48334,10 +48334,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MLSL_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlsl_lane.h :: */
+/* :: End simde/simde/arm/neon/mlsl_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlsl_n.h :: */
+/* :: Begin simde/simde/arm/neon/mlsl_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -48369,7 +48369,7 @@ HEDLEY_DIAGNOSTIC_POP
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mull_n.h :: */
+/* :: Begin simde/simde/arm/neon/mull_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -48531,7 +48531,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MULL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mull_n.h :: */
+/* :: End simde/simde/arm/neon/mull_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 
@@ -48599,7 +48599,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MLSL_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mlsl_n.h :: */
+/* :: End simde/simde/arm/neon/mlsl_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
@@ -48608,7 +48608,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/movn_high.h :: */
+/* :: Begin simde/simde/arm/neon/movn_high.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -48737,7 +48737,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MOVN_HIGH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/movn_high.h :: */
+/* :: End simde/simde/arm/neon/movn_high.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
@@ -48750,7 +48750,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mull_lane.h :: */
+/* :: Begin simde/simde/arm/neon/mull_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -48873,14 +48873,14 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_MULL_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/mull_lane.h :: */
+/* :: End simde/simde/arm/neon/mull_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/neg.h :: */
+/* :: Begin simde/simde/arm/neon/neg.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -49295,10 +49295,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_NEG_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/neg.h :: */
+/* :: End simde/simde/arm/neon/neg.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/orn.h :: */
+/* :: Begin simde/simde/arm/neon/orn.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -49330,7 +49330,7 @@ HEDLEY_DIAGNOSTIC_POP
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/orr.h :: */
+/* :: Begin simde/simde/arm/neon/orr.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -49884,7 +49884,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ORR_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/orr.h :: */
+/* :: End simde/simde/arm/neon/orr.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
@@ -50362,12 +50362,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ORN_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/orn.h :: */
+/* :: End simde/simde/arm/neon/orn.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/padal.h :: */
+/* :: Begin simde/simde/arm/neon/padal.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -50582,14 +50582,14 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* SIMDE_ARM_NEON_PADAL_H */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/padal.h :: */
+/* :: End simde/simde/arm/neon/padal.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/pmax.h :: */
+/* :: Begin simde/simde/arm/neon/pmax.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -50877,10 +50877,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_PMAX_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/pmax.h :: */
+/* :: End simde/simde/arm/neon/pmax.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/pmin.h :: */
+/* :: Begin simde/simde/arm/neon/pmin.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -51193,10 +51193,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_PMIN_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/pmin.h :: */
+/* :: End simde/simde/arm/neon/pmin.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qabs.h :: */
+/* :: Begin simde/simde/arm/neon/qabs.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -51519,10 +51519,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QABS_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qabs.h :: */
+/* :: End simde/simde/arm/neon/qabs.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qadd.h :: */
+/* :: Begin simde/simde/arm/neon/qadd.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -52295,10 +52295,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QADD_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qadd.h :: */
+/* :: End simde/simde/arm/neon/qadd.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qdmulh.h :: */
+/* :: Begin simde/simde/arm/neon/qdmulh.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -52340,7 +52340,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qdmull.h :: */
+/* :: Begin simde/simde/arm/neon/qdmull.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -52497,7 +52497,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QDMULL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qdmull.h :: */
+/* :: End simde/simde/arm/neon/qdmull.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 
@@ -52623,10 +52623,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QDMULH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qdmulh.h :: */
+/* :: End simde/simde/arm/neon/qdmulh.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qdmulh_lane.h :: */
+/* :: Begin simde/simde/arm/neon/qdmulh_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -52662,7 +52662,7 @@ HEDLEY_DIAGNOSTIC_POP
 
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qdmulh_n.h :: */
+/* :: Begin simde/simde/arm/neon/qdmulh_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -52745,7 +52745,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QDMULH_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qdmulh_n.h :: */
+/* :: End simde/simde/arm/neon/qdmulh_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 
@@ -52877,14 +52877,14 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QDMULH_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qdmulh_lane.h :: */
+/* :: End simde/simde/arm/neon/qdmulh_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qrdmulh.h :: */
+/* :: Begin simde/simde/arm/neon/qrdmulh.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -53076,10 +53076,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QRDMULH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qrdmulh.h :: */
+/* :: End simde/simde/arm/neon/qrdmulh.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qrdmulh_lane.h :: */
+/* :: Begin simde/simde/arm/neon/qrdmulh_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -53236,10 +53236,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QRDMULH_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qrdmulh_lane.h :: */
+/* :: End simde/simde/arm/neon/qrdmulh_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qrdmulh_n.h :: */
+/* :: Begin simde/simde/arm/neon/qrdmulh_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -53379,10 +53379,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QRDMULH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qrdmulh_n.h :: */
+/* :: End simde/simde/arm/neon/qrdmulh_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qrshrn_n.h :: */
+/* :: Begin simde/simde/arm/neon/qrshrn_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -53416,7 +53416,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rshr_n.h :: */
+/* :: Begin simde/simde/arm/neon/rshr_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -53461,7 +53461,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/tst.h :: */
+/* :: Begin simde/simde/arm/neon/tst.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -54039,7 +54039,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_TST_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/tst.h :: */
+/* :: End simde/simde/arm/neon/tst.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 
@@ -54517,10 +54517,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_RSHR_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rshr_n.h :: */
+/* :: End simde/simde/arm/neon/rshr_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qmovn.h :: */
+/* :: Begin simde/simde/arm/neon/qmovn.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -54799,7 +54799,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QMOVN_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qmovn.h :: */
+/* :: End simde/simde/arm/neon/qmovn.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -54910,10 +54910,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QRSHRN_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qrshrn_n.h :: */
+/* :: End simde/simde/arm/neon/qrshrn_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qrshrun_n.h :: */
+/* :: Begin simde/simde/arm/neon/qrshrun_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -54949,7 +54949,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qmovun.h :: */
+/* :: Begin simde/simde/arm/neon/qmovun.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -55114,7 +55114,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QMOVUN_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qmovun.h :: */
+/* :: End simde/simde/arm/neon/qmovun.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -55174,14 +55174,14 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QRSHRUN_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qrshrun_n.h :: */
+/* :: End simde/simde/arm/neon/qrshrun_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qmovn_high.h :: */
+/* :: Begin simde/simde/arm/neon/qmovn_high.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -55312,10 +55312,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QMOVN_HIGH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qmovn_high.h :: */
+/* :: End simde/simde/arm/neon/qmovn_high.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qneg.h :: */
+/* :: Begin simde/simde/arm/neon/qneg.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -55621,10 +55621,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QNEG_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qneg.h :: */
+/* :: End simde/simde/arm/neon/qneg.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qsub.h :: */
+/* :: Begin simde/simde/arm/neon/qsub.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -56316,10 +56316,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QSUB_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qsub.h :: */
+/* :: End simde/simde/arm/neon/qsub.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qshl.h :: */
+/* :: Begin simde/simde/arm/neon/qshl.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -57054,10 +57054,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QSHL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qshl.h :: */
+/* :: End simde/simde/arm/neon/qshl.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qshlu_n.h :: */
+/* :: Begin simde/simde/arm/neon/qshlu_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -57501,10 +57501,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QSHLU_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qshlu_n.h :: */
+/* :: End simde/simde/arm/neon/qshlu_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qshrn_n.h :: */
+/* :: Begin simde/simde/arm/neon/qshrn_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -57651,10 +57651,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QSHRN_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qshrn_n.h :: */
+/* :: End simde/simde/arm/neon/qshrn_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qshrun_n.h :: */
+/* :: Begin simde/simde/arm/neon/qshrun_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -57749,10 +57749,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QSHRUN_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qshrun_n.h :: */
+/* :: End simde/simde/arm/neon/qshrun_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qtbl.h :: */
+/* :: Begin simde/simde/arm/neon/qtbl.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -58225,10 +58225,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QTBL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qtbl.h :: */
+/* :: End simde/simde/arm/neon/qtbl.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qtbx.h :: */
+/* :: Begin simde/simde/arm/neon/qtbx.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -58722,10 +58722,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_QTBX_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/qtbx.h :: */
+/* :: End simde/simde/arm/neon/qtbx.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rbit.h :: */
+/* :: Begin simde/simde/arm/neon/rbit.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -58893,10 +58893,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_RBIT_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rbit.h :: */
+/* :: End simde/simde/arm/neon/rbit.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/recpe.h :: */
+/* :: Begin simde/simde/arm/neon/recpe.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -59163,10 +59163,10 @@ simde_vrecpeq_u32(simde_uint32x4_t a){
 SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 #endif /* !defined(SIMDE_ARM_NEON_RECPE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/recpe.h :: */
+/* :: End simde/simde/arm/neon/recpe.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/recps.h :: */
+/* :: Begin simde/simde/arm/neon/recps.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -59294,12 +59294,12 @@ simde_vrecpsq_f32(simde_float32x4_t a, simde_float32x4_t b) {
 SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 #endif /* !defined(SIMDE_ARM_NEON_RECPS_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/recps.h :: */
+/* :: End simde/simde/arm/neon/recps.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rev16.h :: */
+/* :: Begin simde/simde/arm/neon/rev16.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -59437,10 +59437,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_REV16_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rev16.h :: */
+/* :: End simde/simde/arm/neon/rev16.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rev32.h :: */
+/* :: Begin simde/simde/arm/neon/rev32.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -59675,10 +59675,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_REV32_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rev32.h :: */
+/* :: End simde/simde/arm/neon/rev32.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rev64.h :: */
+/* :: Begin simde/simde/arm/neon/rev64.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -60035,10 +60035,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_REV64_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rev64.h :: */
+/* :: End simde/simde/arm/neon/rev64.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rhadd.h :: */
+/* :: Begin simde/simde/arm/neon/rhadd.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -60472,10 +60472,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_RHADD_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rhadd.h :: */
+/* :: End simde/simde/arm/neon/rhadd.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rnd.h :: */
+/* :: Begin simde/simde/arm/neon/rnd.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -60624,10 +60624,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_RND_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rnd.h :: */
+/* :: End simde/simde/arm/neon/rnd.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rndm.h :: */
+/* :: Begin simde/simde/arm/neon/rndm.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -60776,10 +60776,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_RNDM_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rndm.h :: */
+/* :: End simde/simde/arm/neon/rndm.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rndi.h :: */
+/* :: Begin simde/simde/arm/neon/rndi.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -60920,10 +60920,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_RNDI_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rndi.h :: */
+/* :: End simde/simde/arm/neon/rndi.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rndn.h :: */
+/* :: Begin simde/simde/arm/neon/rndn.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -61085,10 +61085,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_RNDN_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rndn.h :: */
+/* :: End simde/simde/arm/neon/rndn.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rndp.h :: */
+/* :: Begin simde/simde/arm/neon/rndp.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -61237,10 +61237,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_RNDP_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rndp.h :: */
+/* :: End simde/simde/arm/neon/rndp.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rshl.h :: */
+/* :: Begin simde/simde/arm/neon/rshl.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -62197,12 +62197,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_RSHL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rshl.h :: */
+/* :: End simde/simde/arm/neon/rshl.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rshrn_n.h :: */
+/* :: Begin simde/simde/arm/neon/rshrn_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -62307,10 +62307,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_RSHRN_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rshrn_n.h :: */
+/* :: End simde/simde/arm/neon/rshrn_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rsqrte.h :: */
+/* :: Begin simde/simde/arm/neon/rsqrte.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -62699,10 +62699,10 @@ simde_vrsqrteq_f64(simde_float64x2_t a) {
 SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 #endif /* !defined(SIMDE_ARM_NEON_RSQRTE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rsqrte.h :: */
+/* :: End simde/simde/arm/neon/rsqrte.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rsqrts.h :: */
+/* :: Begin simde/simde/arm/neon/rsqrts.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -62861,10 +62861,10 @@ simde_vrsqrtsq_f64(simde_float64x2_t a, simde_float64x2_t b) {
 SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 #endif /* !defined(SIMDE_ARM_NEON_RSQRTS_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rsqrts.h :: */
+/* :: End simde/simde/arm/neon/rsqrts.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rsra_n.h :: */
+/* :: Begin simde/simde/arm/neon/rsra_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -63099,10 +63099,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_RSRA_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/rsra_n.h :: */
+/* :: End simde/simde/arm/neon/rsra_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/set_lane.h :: */
+/* :: Begin simde/simde/arm/neon/set_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -63526,10 +63526,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SET_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/set_lane.h :: */
+/* :: End simde/simde/arm/neon/set_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/shl.h :: */
+/* :: Begin simde/simde/arm/neon/shl.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -64395,12 +64395,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SHL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/shl.h :: */
+/* :: End simde/simde/arm/neon/shl.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/shll_n.h :: */
+/* :: Begin simde/simde/arm/neon/shll_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -64583,12 +64583,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SHLL_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/shll_n.h :: */
+/* :: End simde/simde/arm/neon/shll_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/shrn_n.h :: */
+/* :: Begin simde/simde/arm/neon/shrn_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -64746,10 +64746,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SHRN_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/shrn_n.h :: */
+/* :: End simde/simde/arm/neon/shrn_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/sqadd.h :: */
+/* :: Begin simde/simde/arm/neon/sqadd.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -65067,10 +65067,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SQADD_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/sqadd.h :: */
+/* :: End simde/simde/arm/neon/sqadd.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/sra_n.h :: */
+/* :: Begin simde/simde/arm/neon/sra_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -65296,10 +65296,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SRA_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/sra_n.h :: */
+/* :: End simde/simde/arm/neon/sra_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/sri_n.h :: */
+/* :: Begin simde/simde/arm/neon/sri_n.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -65578,10 +65578,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SRI_N_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/sri_n.h :: */
+/* :: End simde/simde/arm/neon/sri_n.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st1.h :: */
+/* :: Begin simde/simde/arm/neon/st1.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -65974,10 +65974,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ST1_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st1.h :: */
+/* :: End simde/simde/arm/neon/st1.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st1_lane.h :: */
+/* :: Begin simde/simde/arm/neon/st1_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -66342,10 +66342,10 @@ HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ST1_LANE_H) */
 
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st1_lane.h :: */
+/* :: End simde/simde/arm/neon/st1_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st2.h :: */
+/* :: Begin simde/simde/arm/neon/st2.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -66380,7 +66380,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/zip.h :: */
+/* :: Begin simde/simde/arm/neon/zip.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -66415,7 +66415,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/zip1.h :: */
+/* :: Begin simde/simde/arm/neon/zip1.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -67084,10 +67084,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ZIP1_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/zip1.h :: */
+/* :: End simde/simde/arm/neon/zip1.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/zip2.h :: */
+/* :: Begin simde/simde/arm/neon/zip2.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -67714,7 +67714,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ZIP2_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/zip2.h :: */
+/* :: End simde/simde/arm/neon/zip2.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -67934,7 +67934,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ZIP_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/zip.h :: */
+/* :: End simde/simde/arm/neon/zip.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -68320,10 +68320,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ST2_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st2.h :: */
+/* :: End simde/simde/arm/neon/st2.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st2_lane.h :: */
+/* :: Begin simde/simde/arm/neon/st2_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -68751,10 +68751,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ST2_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st2_lane.h :: */
+/* :: End simde/simde/arm/neon/st2_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st3.h :: */
+/* :: Begin simde/simde/arm/neon/st3.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -69534,10 +69534,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ST3_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st3.h :: */
+/* :: End simde/simde/arm/neon/st3.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st3_lane.h :: */
+/* :: Begin simde/simde/arm/neon/st3_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -69965,10 +69965,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ST3_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st3_lane.h :: */
+/* :: End simde/simde/arm/neon/st3_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st4.h :: */
+/* :: Begin simde/simde/arm/neon/st4.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -70415,10 +70415,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ST4_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st4.h :: */
+/* :: End simde/simde/arm/neon/st4.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st4_lane.h :: */
+/* :: Begin simde/simde/arm/neon/st4_lane.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -70848,12 +70848,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_ST4_LANE_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/st4_lane.h :: */
+/* :: End simde/simde/arm/neon/st4_lane.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/subhn.h :: */
+/* :: Begin simde/simde/arm/neon/subhn.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -71069,12 +71069,12 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SUBHN_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/subhn.h :: */
+/* :: End simde/simde/arm/neon/subhn.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/subw.h :: */
+/* :: Begin simde/simde/arm/neon/subw.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -71299,10 +71299,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SUBW_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/subw.h :: */
+/* :: End simde/simde/arm/neon/subw.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/subw_high.h :: */
+/* :: Begin simde/simde/arm/neon/subw_high.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -71527,10 +71527,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_SUBW_HIGH_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/subw_high.h :: */
+/* :: End simde/simde/arm/neon/subw_high.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/tbl.h :: */
+/* :: Begin simde/simde/arm/neon/tbl.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -71777,10 +71777,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_TBL_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/tbl.h :: */
+/* :: End simde/simde/arm/neon/tbl.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/tbx.h :: */
+/* :: Begin simde/simde/arm/neon/tbx.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -72038,10 +72038,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_TBX_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/tbx.h :: */
+/* :: End simde/simde/arm/neon/tbx.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/trn.h :: */
+/* :: Begin simde/simde/arm/neon/trn.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -72076,7 +72076,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/trn1.h :: */
+/* :: Begin simde/simde/arm/neon/trn1.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -72578,10 +72578,10 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_TRN1_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/trn1.h :: */
+/* :: End simde/simde/arm/neon/trn1.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/trn2.h :: */
+/* :: Begin simde/simde/arm/neon/trn2.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -73082,7 +73082,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_TRN2_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/trn2.h :: */
+/* :: End simde/simde/arm/neon/trn2.h :: */
 
 HEDLEY_DIAGNOSTIC_PUSH
 SIMDE_DISABLE_UNWANTED_DIAGNOSTICS
@@ -73302,7 +73302,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_TRN_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/trn.h :: */
+/* :: End simde/simde/arm/neon/trn.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
@@ -73311,7 +73311,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/uqadd.h :: */
+/* :: Begin simde/simde/arm/neon/uqadd.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -73638,7 +73638,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_UQADD_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/uqadd.h :: */
+/* :: End simde/simde/arm/neon/uqadd.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
@@ -73647,7 +73647,7 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
-/* :: Begin ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/xar.h :: */
+/* :: Begin simde/simde/arm/neon/xar.h :: */
 /* SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person
@@ -73713,7 +73713,7 @@ SIMDE_END_DECLS_
 HEDLEY_DIAGNOSTIC_POP
 
 #endif /* !defined(SIMDE_ARM_NEON_XAR_H) */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon/xar.h :: */
+/* :: End simde/simde/arm/neon/xar.h :: */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 /* AUTOMATICALLY GENERATED FILE, DO NOT MODIFY */
@@ -73722,6 +73722,6 @@ HEDLEY_DIAGNOSTIC_POP
 /* 3f186a0f35bb73f01ffda73fa9bf060a444bb46b */
 
 #endif /* SIMDE_ARM_NEON_H */
-/* :: End ../../tmp/emscripten_temp_3aigvmxa/simde/simde/arm/neon.h :: */
+/* :: End simde/simde/arm/neon.h :: */
 #undef SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES
 #undef SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES

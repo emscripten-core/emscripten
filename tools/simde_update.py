@@ -9,6 +9,7 @@
 """
 
 import os
+import re
 import subprocess
 import sys
 
@@ -39,7 +40,9 @@ def main():
     print("Using provided repository without updating [make sure it's up to date!]")
 
   try:
-    neon_h_buf = subprocess.check_output([path.join(simde_dir, "amalgamate.py"), path.join(simde_dir, "simde", "arm", "neon.h")])
+    neon_h_buf = subprocess.check_output(
+        [path.join(simde_dir, "amalgamate.py"), path.join(simde_dir, "simde", "arm", "neon.h")],
+        text=True)
   except subprocess.CalledProcessError as e:
     print("amalgamate.py returned error: " + str(e))
     return 1
@@ -51,13 +54,16 @@ def main():
       print("system/include/compat exists and is not a directory, exiting...")
       return 1
 
-  with open(path.join(emdir, "system", "include", "compat", "arm_neon.h"), "wb+") as f:
+  with open(path.join(emdir, "system", "include", "compat", "arm_neon.h"), "w+") as f:
     try:
-      f.write(b"#define SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
-      f.write(b"#define SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
-      f.write(neon_h_buf)
-      f.write(b"#undef SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
-      f.write(b"#undef SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
+      f.write("#define SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
+      f.write("#define SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
+      SIMDE_FILE_HEADER_RE = r'^(/\* :: )(Begin |End )[^ ]+/(simde/simde/[^ ]+ :: \*/$)'
+      # Replace file headers, which contains tmp directory names and changes every time we
+      # update simde, causing a larger diff than necessary.
+      f.write(re.sub(SIMDE_FILE_HEADER_RE, r'\1\2\3', neon_h_buf, count=0, flags=re.MULTILINE))
+      f.write("#undef SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
+      f.write("#undef SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
       print("'system/include/compat/arm_neon.h' updated")
     except Exception:
       print("error writing 'system/include/compat/arm_neon.h'")
