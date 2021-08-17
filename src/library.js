@@ -3190,6 +3190,9 @@ LibraryManager.library = {
 #endif
   },
 
+#if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
+  // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
+  // to malloc, free, and memalign.
   $withBuiltinMalloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'
 #if USE_ASAN
                              , 'emscripten_builtin_memset'
@@ -3218,6 +3221,10 @@ LibraryManager.library = {
 #endif
     }
   },
+#else
+  // Without lsan or asan withBuiltinMalloc is just a no-op.
+  $withBuiltinMalloc: function (func) { return func(); },
+#endif
 
   emscripten_builtin_mmap2__deps: ['$withBuiltinMalloc', '$syscallMmap2'],
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
