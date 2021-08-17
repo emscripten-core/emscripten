@@ -49,17 +49,6 @@ int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t* a, const char
   return 0;
 }
 
-int _pthread_getcanceltype() { return pthread_self()->cancelasync; }
-
-static void inline __pthread_mutex_locked(pthread_mutex_t* mutex) {
-  // The lock is now ours, mark this thread as the owner of this lock.
-  assert(mutex);
-  assert(mutex->_m_lock == 0);
-  mutex->_m_lock = pthread_self()->tid;
-  if (_pthread_getcanceltype() == PTHREAD_CANCEL_ASYNCHRONOUS)
-    __pthread_testcancel();
-}
-
 int sched_get_priority_max(int policy) {
   // Web workers do not actually support prioritizing threads,
   // but mimic values that Linux apparently reports, see
