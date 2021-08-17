@@ -1034,6 +1034,7 @@ int main()
     self.set_setting('EXIT_RUNTIME')
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME')
+    self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     for support_longjmp in [0, 1]:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
 
@@ -1041,12 +1042,7 @@ int main()
       self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING')
-      expect_fail = True
-      if self.is_wasm() and not is_optimizing(self.emcc_args):
-        # TODO: Debug builds with MINIMAL_RUNTIME currrently catch unhandled exceptions
-        # thrown during `_main`
-        expect_fail = False
-      self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_uncaught.out'), assert_returncode=NON_ZERO if expect_fail else 0)
+      self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_uncaught.out'), assert_returncode=NON_ZERO)
 
   @with_both_exception_handling
   def test_exceptions_custom(self):
@@ -1899,12 +1895,7 @@ int main(int argc, char **argv) {
     self.set_setting('MINIMAL_RUNTIME')
     src = test_file('core/test_memorygrowth.c')
     # Fail without memory growth
-    expect_fail = True
-    if self.is_wasm() and not is_optimizing(self.emcc_args):
-      # TODO: Debug builds with MINIMAL_RUNTIME currrently catch unhandled exceptions
-      # thrown during `_main`
-      expect_fail = False
-    self.do_runf(src, 'OOM', assert_returncode=NON_ZERO if expect_fail else 0)
+    self.do_runf(src, 'OOM', assert_returncode=NON_ZERO)
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')

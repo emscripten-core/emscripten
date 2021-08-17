@@ -2031,7 +2031,10 @@ def phase_linker_setup(options, state, newargs, settings_map):
     if options.shell_path == shared.path_from_root('src', 'shell.html'):
       options.shell_path = shared.path_from_root('src', 'shell_minimal_runtime.html')
 
-    if settings.ASSERTIONS and settings.MINIMAL_RUNTIME:
+    if settings.EXIT_RUNTIME:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['proc_exit']
+
+    if settings.ASSERTIONS:
       # In ASSERTIONS-builds, functions UTF8ArrayToString() and stringToUTF8Array() (which are not JS library functions), both
       # use warnOnce(), which in MINIMAL_RUNTIME is a JS library function, so explicitly have to mark dependency to warnOnce()
       # in that case. If string functions are turned to library functions in the future, then JS dependency tracking can be
