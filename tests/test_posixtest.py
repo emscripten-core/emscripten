@@ -62,11 +62,9 @@ unsupported_noreturn = {
   'test_pthread_mutex_lock_5_1': 'signals are not supported',
   'test_pthread_mutexattr_settype_2_1': 'interrupting pthread_mutex_lock wait via SIGALRM is not supported',
   'test_pthread_spin_lock_3_1': 'signals are not supported',
-  'test_pthread_mutex_lock_3_1': 'signals are not supported',
   'test_pthread_create_14_1': 'signals are not supported',
   'test_pthread_detach_4_3': 'signals are not supported',
   'test_pthread_join_6_3': 'signals are not supported',
-  'test_pthread_cond_init_4_2': 'signals are not supported',
   'test_pthread_barrier_wait_3_2': 'signals are not supported',
   'test_pthread_cond_broadcast_1_2': 'tries to create 10,0000 threads, then depends on fork()',
 }
