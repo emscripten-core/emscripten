@@ -1272,27 +1272,27 @@ namespace wgpu {
     static_assert(offsetof(FragmentState, targets) == offsetof(WGPUFragmentState, targets),
             "offsetof mismatch for FragmentState::targets");
 
-    // RenderPipelineDescriptor2
+    // RenderPipelineDescriptor
 
-    static_assert(sizeof(RenderPipelineDescriptor2) == sizeof(WGPURenderPipelineDescriptor2), "sizeof mismatch for RenderPipelineDescriptor2");
-    static_assert(alignof(RenderPipelineDescriptor2) == alignof(WGPURenderPipelineDescriptor2), "alignof mismatch for RenderPipelineDescriptor2");
+    static_assert(sizeof(RenderPipelineDescriptor) == sizeof(WGPURenderPipelineDescriptor), "sizeof mismatch for RenderPipelineDescriptor");
+    static_assert(alignof(RenderPipelineDescriptor) == alignof(WGPURenderPipelineDescriptor), "alignof mismatch for RenderPipelineDescriptor");
 
-    static_assert(offsetof(RenderPipelineDescriptor2, nextInChain) == offsetof(WGPURenderPipelineDescriptor2, nextInChain),
-            "offsetof mismatch for RenderPipelineDescriptor2::nextInChain");
-    static_assert(offsetof(RenderPipelineDescriptor2, label) == offsetof(WGPURenderPipelineDescriptor2, label),
-            "offsetof mismatch for RenderPipelineDescriptor2::label");
-    static_assert(offsetof(RenderPipelineDescriptor2, layout) == offsetof(WGPURenderPipelineDescriptor2, layout),
-            "offsetof mismatch for RenderPipelineDescriptor2::layout");
-    static_assert(offsetof(RenderPipelineDescriptor2, vertex) == offsetof(WGPURenderPipelineDescriptor2, vertex),
-            "offsetof mismatch for RenderPipelineDescriptor2::vertex");
-    static_assert(offsetof(RenderPipelineDescriptor2, primitive) == offsetof(WGPURenderPipelineDescriptor2, primitive),
-            "offsetof mismatch for RenderPipelineDescriptor2::primitive");
-    static_assert(offsetof(RenderPipelineDescriptor2, depthStencil) == offsetof(WGPURenderPipelineDescriptor2, depthStencil),
-            "offsetof mismatch for RenderPipelineDescriptor2::depthStencil");
-    static_assert(offsetof(RenderPipelineDescriptor2, multisample) == offsetof(WGPURenderPipelineDescriptor2, multisample),
-            "offsetof mismatch for RenderPipelineDescriptor2::multisample");
-    static_assert(offsetof(RenderPipelineDescriptor2, fragment) == offsetof(WGPURenderPipelineDescriptor2, fragment),
-            "offsetof mismatch for RenderPipelineDescriptor2::fragment");
+    static_assert(offsetof(RenderPipelineDescriptor, nextInChain) == offsetof(WGPURenderPipelineDescriptor, nextInChain),
+            "offsetof mismatch for RenderPipelineDescriptor::nextInChain");
+    static_assert(offsetof(RenderPipelineDescriptor, label) == offsetof(WGPURenderPipelineDescriptor, label),
+            "offsetof mismatch for RenderPipelineDescriptor::label");
+    static_assert(offsetof(RenderPipelineDescriptor, layout) == offsetof(WGPURenderPipelineDescriptor, layout),
+            "offsetof mismatch for RenderPipelineDescriptor::layout");
+    static_assert(offsetof(RenderPipelineDescriptor, vertex) == offsetof(WGPURenderPipelineDescriptor, vertex),
+            "offsetof mismatch for RenderPipelineDescriptor::vertex");
+    static_assert(offsetof(RenderPipelineDescriptor, primitive) == offsetof(WGPURenderPipelineDescriptor, primitive),
+            "offsetof mismatch for RenderPipelineDescriptor::primitive");
+    static_assert(offsetof(RenderPipelineDescriptor, depthStencil) == offsetof(WGPURenderPipelineDescriptor, depthStencil),
+            "offsetof mismatch for RenderPipelineDescriptor::depthStencil");
+    static_assert(offsetof(RenderPipelineDescriptor, multisample) == offsetof(WGPURenderPipelineDescriptor, multisample),
+            "offsetof mismatch for RenderPipelineDescriptor::multisample");
+    static_assert(offsetof(RenderPipelineDescriptor, fragment) == offsetof(WGPURenderPipelineDescriptor, fragment),
+            "offsetof mismatch for RenderPipelineDescriptor::fragment");
 
     // BindGroup
 
@@ -1533,12 +1533,12 @@ namespace wgpu {
         auto result = wgpuDeviceCreateRenderBundleEncoder(Get(), reinterpret_cast<WGPURenderBundleEncoderDescriptor const * >(descriptor));
         return RenderBundleEncoder::Acquire(result);
     }
-    RenderPipeline Device::CreateRenderPipeline2(RenderPipelineDescriptor2 const * descriptor) const {
-        auto result = wgpuDeviceCreateRenderPipeline2(Get(), reinterpret_cast<WGPURenderPipelineDescriptor2 const * >(descriptor));
+    RenderPipeline Device::CreateRenderPipeline(RenderPipelineDescriptor const * descriptor) const {
+        auto result = wgpuDeviceCreateRenderPipeline(Get(), reinterpret_cast<WGPURenderPipelineDescriptor const * >(descriptor));
         return RenderPipeline::Acquire(result);
     }
-    void Device::CreateRenderPipelineAsync(RenderPipelineDescriptor2 const * descriptor, CreateRenderPipelineAsyncCallback callback, void * userdata) const {
-        wgpuDeviceCreateRenderPipelineAsync(Get(), reinterpret_cast<WGPURenderPipelineDescriptor2 const * >(descriptor), callback, reinterpret_cast<void * >(userdata));
+    void Device::CreateRenderPipelineAsync(RenderPipelineDescriptor const * descriptor, CreateRenderPipelineAsyncCallback callback, void * userdata) const {
+        wgpuDeviceCreateRenderPipelineAsync(Get(), reinterpret_cast<WGPURenderPipelineDescriptor const * >(descriptor), callback, reinterpret_cast<void * >(userdata));
     }
     Sampler Device::CreateSampler(SamplerDescriptor const * descriptor) const {
         auto result = wgpuDeviceCreateSampler(Get(), reinterpret_cast<WGPUSamplerDescriptor const * >(descriptor));

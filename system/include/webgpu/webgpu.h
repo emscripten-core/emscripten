@@ -924,7 +924,7 @@ typedef struct WGPUFragmentState {
     WGPUColorTargetState const * targets;
 } WGPUFragmentState;
 
-typedef struct WGPURenderPipelineDescriptor2 {
+typedef struct WGPURenderPipelineDescriptor {
     WGPUChainedStruct const * nextInChain;
     char const * label;
     WGPUPipelineLayout layout;
@@ -933,7 +933,7 @@ typedef struct WGPURenderPipelineDescriptor2 {
     WGPUDepthStencilState const * depthStencil;
     WGPUMultisampleState multisample;
     WGPUFragmentState const * fragment;
-} WGPURenderPipelineDescriptor2;
+} WGPURenderPipelineDescriptor;
 
 #ifdef __cplusplus
 extern "C" {
@@ -1024,8 +1024,8 @@ typedef void (*WGPUProcDeviceCreateComputePipelineAsync)(WGPUDevice device, WGPU
 typedef WGPUPipelineLayout (*WGPUProcDeviceCreatePipelineLayout)(WGPUDevice device, WGPUPipelineLayoutDescriptor const * descriptor);
 typedef WGPUQuerySet (*WGPUProcDeviceCreateQuerySet)(WGPUDevice device, WGPUQuerySetDescriptor const * descriptor);
 typedef WGPURenderBundleEncoder (*WGPUProcDeviceCreateRenderBundleEncoder)(WGPUDevice device, WGPURenderBundleEncoderDescriptor const * descriptor);
-typedef WGPURenderPipeline (*WGPUProcDeviceCreateRenderPipeline2)(WGPUDevice device, WGPURenderPipelineDescriptor2 const * descriptor);
-typedef void (*WGPUProcDeviceCreateRenderPipelineAsync)(WGPUDevice device, WGPURenderPipelineDescriptor2 const * descriptor, WGPUCreateRenderPipelineAsyncCallback callback, void * userdata);
+typedef WGPURenderPipeline (*WGPUProcDeviceCreateRenderPipeline)(WGPUDevice device, WGPURenderPipelineDescriptor const * descriptor);
+typedef void (*WGPUProcDeviceCreateRenderPipelineAsync)(WGPUDevice device, WGPURenderPipelineDescriptor const * descriptor, WGPUCreateRenderPipelineAsyncCallback callback, void * userdata);
 typedef WGPUSampler (*WGPUProcDeviceCreateSampler)(WGPUDevice device, WGPUSamplerDescriptor const * descriptor);
 typedef WGPUShaderModule (*WGPUProcDeviceCreateShaderModule)(WGPUDevice device, WGPUShaderModuleDescriptor const * descriptor);
 typedef WGPUSwapChain (*WGPUProcDeviceCreateSwapChain)(WGPUDevice device, WGPUSurface surface, WGPUSwapChainDescriptor const * descriptor);
@@ -1217,8 +1217,8 @@ WGPU_EXPORT void wgpuDeviceCreateComputePipelineAsync(WGPUDevice device, WGPUCom
 WGPU_EXPORT WGPUPipelineLayout wgpuDeviceCreatePipelineLayout(WGPUDevice device, WGPUPipelineLayoutDescriptor const * descriptor);
 WGPU_EXPORT WGPUQuerySet wgpuDeviceCreateQuerySet(WGPUDevice device, WGPUQuerySetDescriptor const * descriptor);
 WGPU_EXPORT WGPURenderBundleEncoder wgpuDeviceCreateRenderBundleEncoder(WGPUDevice device, WGPURenderBundleEncoderDescriptor const * descriptor);
-WGPU_EXPORT WGPURenderPipeline wgpuDeviceCreateRenderPipeline2(WGPUDevice device, WGPURenderPipelineDescriptor2 const * descriptor);
-WGPU_EXPORT void wgpuDeviceCreateRenderPipelineAsync(WGPUDevice device, WGPURenderPipelineDescriptor2 const * descriptor, WGPUCreateRenderPipelineAsyncCallback callback, void * userdata);
+WGPU_EXPORT WGPURenderPipeline wgpuDeviceCreateRenderPipeline(WGPUDevice device, WGPURenderPipelineDescriptor const * descriptor);
+WGPU_EXPORT void wgpuDeviceCreateRenderPipelineAsync(WGPUDevice device, WGPURenderPipelineDescriptor const * descriptor, WGPUCreateRenderPipelineAsyncCallback callback, void * userdata);
 WGPU_EXPORT WGPUSampler wgpuDeviceCreateSampler(WGPUDevice device, WGPUSamplerDescriptor const * descriptor);
 WGPU_EXPORT WGPUShaderModule wgpuDeviceCreateShaderModule(WGPUDevice device, WGPUShaderModuleDescriptor const * descriptor);
 WGPU_EXPORT WGPUSwapChain wgpuDeviceCreateSwapChain(WGPUDevice device, WGPUSurface surface, WGPUSwapChainDescriptor const * descriptor);

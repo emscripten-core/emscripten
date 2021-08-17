@@ -941,7 +941,7 @@ var LibraryWebGPU = {
     abort('unimplemented (TODO)');
   },
 
-  wgpuDeviceCreateRenderPipeline2: function(deviceId, descriptor) {
+  wgpuDeviceCreateRenderPipeline: function(deviceId, descriptor) {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
     function makePrimitiveState(rsPtr) {
@@ -1114,19 +1114,19 @@ var LibraryWebGPU = {
     var desc = {
       "label": undefined,
       "layout": WebGPU.mgrPipelineLayout.get(
-        {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor2.layout, '*') }}}),
+        {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor.layout, '*') }}}),
       "vertex": makeVertexState(
-        descriptor + {{{ C_STRUCTS.WGPURenderPipelineDescriptor2.vertex }}}),
+        descriptor + {{{ C_STRUCTS.WGPURenderPipelineDescriptor.vertex }}}),
       "primitive": makePrimitiveState(
-        descriptor + {{{ C_STRUCTS.WGPURenderPipelineDescriptor2.primitive }}}),
+        descriptor + {{{ C_STRUCTS.WGPURenderPipelineDescriptor.primitive }}}),
       "depthStencil": makeDepthStencilState(
-        {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor2.depthStencil, '*') }}}),
+        {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor.depthStencil, '*') }}}),
       "multisample": makeMultisampleState(
-        descriptor + {{{ C_STRUCTS.WGPURenderPipelineDescriptor2.multisample }}}),
+        descriptor + {{{ C_STRUCTS.WGPURenderPipelineDescriptor.multisample }}}),
       "fragment": makeFragmentState(
-        {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor2.fragment, '*') }}}),
+        {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor.fragment, '*') }}}),
     };
-    var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor2.label, '*') }}};
+    var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
     var device = WebGPU["mgrDevice"].get(deviceId);

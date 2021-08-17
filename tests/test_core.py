@@ -5382,6 +5382,7 @@ Module['onRuntimeInitialized'] = function() {
   def test_unistd_truncate_noderawfs(self):
     self.uses_es6 = True
     self.set_setting('NODERAWFS')
+    self.maybe_closure()
     self.do_run_in_out_file_test('unistd/truncate.c', js_engines=[config.NODE_JS])
 
   def test_unistd_swab(self):
