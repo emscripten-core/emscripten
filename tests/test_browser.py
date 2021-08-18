@@ -2438,6 +2438,11 @@ void *getBindBuffer() {
     self.compile_btest([test_file('worker_api_worker_sleep.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER', '-s', 'EXPORTED_FUNCTIONS=_one', '-s', 'ASYNCIFY'])
     self.btest('worker_api_main.cpp', expected='566')
 
+  def test_worker_api_with_pthread_compilation_fails(self):
+    self.run_process([EMCC, '-c', '-o', 'hello.o', test_file('hello_world.c')])
+    stderr = self.expect_fail([EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure=1', '-s', 'USE_PTHREADS', '-s', 'BUILD_AS_WORKER=1'])
+    self.assertContained('error: USE_PTHREADS + BUILD_AS_WORKER require separate modes that don\'t work together, see https://github.com/emscripten-core/emscripten/issues/8854', stderr)
+
   def test_emscripten_async_wget2(self):
     self.btest_exit('test_emscripten_async_wget2.cpp')
 
