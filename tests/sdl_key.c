@@ -81,7 +81,6 @@ int main(int argc, char **argv) {
 #ifdef TEST_SLEEP
   printf("sleep...\n");
   emscripten_sleep(2000);
-  //emscripten_sleep_with_yield(1);
   printf("rise!\n");
 #endif
 

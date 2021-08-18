@@ -178,7 +178,6 @@ void emscripten_dlopen(const char *filename, int flags, void* user_data, em_dlop
 /* ===================================== */
 
 void emscripten_sleep(unsigned int ms);
-void emscripten_sleep_with_yield(unsigned int ms);
 
 #ifdef __cplusplus
 }
