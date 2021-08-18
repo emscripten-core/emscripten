@@ -2619,6 +2619,20 @@ LibraryManager.library = {
     return 0;
   },
 
+  // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
+  alarm__deps: ['raise'],
+  alarm: function(seconds) {
+    setTimeout(function() {
+      _raise({{{ cDefine('SIGALRM') }}});
+    }, seconds*1000);
+  },
+
+  // Helper for raise() to avoid signature mismatch failures:
+  // https://github.com/emscripten-core/posixtestsuite/issues/6
+  __call_sighandler: function(fp, sig) {
+    {{{ makeDynCall('vi', 'fp') }}}(sig);
+  },
+
   // ==========================================================================
   // emscripten.h
   // ==========================================================================
@@ -3190,6 +3204,9 @@ LibraryManager.library = {
 #endif
   },
 
+#if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
+  // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
+  // to malloc, free, and memalign.
   $withBuiltinMalloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'
 #if USE_ASAN
                              , 'emscripten_builtin_memset'
@@ -3218,6 +3235,10 @@ LibraryManager.library = {
 #endif
     }
   },
+#else
+  // Without lsan or asan withBuiltinMalloc is just a no-op.
+  $withBuiltinMalloc: function (func) { return func(); },
+#endif
 
   emscripten_builtin_mmap2__deps: ['$withBuiltinMalloc', '$syscallMmap2'],
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
@@ -3674,6 +3695,12 @@ LibraryManager.library = {
   },
 #endif
 
+  $safeSetTimeout__deps: ['$callUserCallback',
+#if !MINIMAL_RUNTIME
+   '$runtimeKeepalivePush',
+   '$runtimeKeepalivePop',
+#endif
+  ],
   $safeSetTimeout: function(func, timeout) {
     {{{ runtimeKeepalivePush() }}}
     return setTimeout(function() {

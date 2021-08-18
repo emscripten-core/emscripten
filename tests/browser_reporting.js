@@ -32,21 +32,26 @@ function reportErrorToServer(message) {
 }
 
 if (typeof window === 'object' && window) {
-  window.addEventListener('error', function(e) {
-    var xhr = new XMLHttpRequest();
+  function report_error(e) {
     // MINIMAL_RUNTIME doesn't handle exit or call the below onExit handler
     // so we detect the exit by parsing the uncaught exception message.
-    var offset = e.message.indexOf('exit(');
+    var message = e.message || e;
+    console.error("got top level error: " + message);
+    var offset = message.indexOf('exit(');
     if (offset != -1) {
-      var status = e.message.substring(offset + 5);
+      var status = message.substring(offset + 5);
       offset = status.indexOf(')')
       status = status.substr(0, offset)
+      console.error(status);
       maybeReportResultToServer('exit:' + status);
     } else {
+      var xhr = new XMLHttpRequest();
       xhr.open('GET', encodeURI('http://localhost:8888?exception=' + e.message + ' / ' + e.stack));
       xhr.send();
     }
-  });
+  }
+  window.addEventListener('error', report_error);
+  window.addEventListener('unhandledrejection', event => report_error(event.reason));
 }
 
 if (hasModule) {

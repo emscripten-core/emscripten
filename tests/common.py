@@ -403,7 +403,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     super().setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
-    self.node_args = ['--stack-trace-limit=50', '--unhandled-rejections=throw']
+    self.node_args = [
+      # Increate stack trace limit to maximise usefulness of test failure reports
+      '--stack-trace-limit=50',
+      # Opt in to node v15 default behaviour:
+      # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+      '--unhandled-rejections=throw',
+      # Include backtrace for all uncuaght exceptions (not just Error).
+      '--trace-uncaught',
+    ]
     self.v8_args = []
     self.env = {}
     self.temp_files_before_run = []
@@ -547,7 +555,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('es-check failed to verify ES5 output compliance')
 
   # Build JavaScript code from source code
-  def build(self, filename, libraries=[], includes=[], force_c=False, js_outfile=True, emcc_args=[]):
+  def build(self, filename, libraries=[], includes=[], force_c=False, js_outfile=True, emcc_args=[], output_basename=None):
     suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
     if compiler[0] == EMCC:
@@ -559,8 +567,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if force_c:
       compiler.append('-xc')
 
-    dirname, basename = os.path.split(filename)
-    output = shared.unsuffixed(basename) + suffix
+    if output_basename:
+      output = output_basename + suffix
+    else:
+      basename = os.path.basename(filename)
+      output = shared.unsuffixed(basename) + suffix
     cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + emcc_args + libraries
     if shared.suffix(filename) not in ('.i', '.ii'):
       # Add the location of the test file to include path.
@@ -1023,14 +1034,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      includes=[],
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True, force_c=False, emcc_args=[],
-                     interleaved_output=True):
+                     interleaved_output=True,
+                     output_basename=None):
     logger.debug(f'_build_and_run: {filename}')
 
     if no_build:
       js_file = filename
     else:
       js_file = self.build(filename, libraries=libraries, includes=includes,
-                           force_c=force_c, emcc_args=emcc_args)
+                           force_c=force_c, emcc_args=emcc_args,
+                           output_basename=output_basename)
     self.assertExists(js_file)
 
     engines = self.filtered_js_engines(js_engines)
