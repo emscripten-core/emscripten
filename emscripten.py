@@ -778,10 +778,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
 
-  # TODO(sbc): Remove this once binaryen change to globalImports has been around for a while.
-  if 'externs' in metadata_json:
-    metadata['globalImports'] = [x[1:] for x in metadata_json['externs']]
-
   # Support older metadata when asmConsts values were lists.  We only use the first element
   # nowadays
   # TODO(sbc): remove this once binaryen has been changed to only emit the single element
