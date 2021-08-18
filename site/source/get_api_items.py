@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2015 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -10,7 +10,6 @@
 # It writes api_items.py which has function that is imported into get-wiki.py
 #
 
-from __future__ import print_function
 import optparse
 import os
 import re
