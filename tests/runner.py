@@ -78,6 +78,7 @@ non_core_test_modes = [
   'wasm2ss',
   'posixtest',
   'posixtest_browser',
+  'minimal0',
 ]
 
 

@@ -8687,7 +8687,7 @@ asani = make_run('asani', emcc_args=['-fsanitize=address', '--profiling', '-O2',
 
 # Experimental modes (not tested by CI)
 lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})
-minimal0 = make_run('minimal', emcc_args=['-g'], settings={'MINIMAL_RUNTIME': 1})
+minimal0 = make_run('minimal0', emcc_args=['-g'], settings={'MINIMAL_RUNTIME': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa
