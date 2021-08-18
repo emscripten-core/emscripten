@@ -52,5 +52,5 @@ int main()
     }
   }
 
-  __builtin_unreachable();
+  __builtin_trap();
 }

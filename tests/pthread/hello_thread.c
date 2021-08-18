@@ -13,7 +13,7 @@ void *thread_main(void *arg)
 {
 	EM_ASM(out('hello from thread!'));
 	emscripten_force_exit(0);
-	__builtin_unreachable();
+	__builtin_trap();
 }
 
 int main()
@@ -21,5 +21,5 @@ int main()
 	pthread_t thread;
 	pthread_create(&thread, NULL, thread_main, NULL);
 	emscripten_exit_with_live_runtime();
-	__builtin_unreachable();
+	__builtin_trap();
 }
