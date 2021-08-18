@@ -383,14 +383,17 @@ mergeInto(LibraryManager.library, {
 
   emscripten_scan_registers: function(func) {
     Asyncify.handleSleep(function(wakeUp) {
-      // We must first unwind, so things are spilled to the stack. We
-      // can resume right after unwinding, no need for a timeout.
-      Asyncify.afterUnwind = function() {
-        var stackBegin = Asyncify.currData + {{{ C_STRUCTS.asyncify_data_s.__size__ }}};
-        var stackEnd = HEAP32[Asyncify.currData >> 2];
-        {{{ makeDynCall('vii', 'func') }}}(stackBegin, stackEnd);
-        wakeUp();
-      };
+      // We must first unwind, so things are spilled to the stack.
+      // To avoid unbounded call stack growth wakeUp must be deffered
+      // until after the Asyncify.afterUnwind callback has completed.
+      new Promise(function(resolve) {
+        Asyncify.afterUnwind = function() {
+          var stackBegin = Asyncify.currData + {{{ C_STRUCTS.asyncify_data_s.__size__ }}};
+          var stackEnd = HEAP32[Asyncify.currData >> 2];
+          {{{ makeDynCall('vii', 'func') }}}(stackBegin, stackEnd);
+          resolve();
+        };
+      }).then(wakeUp);
     });
   },
 
