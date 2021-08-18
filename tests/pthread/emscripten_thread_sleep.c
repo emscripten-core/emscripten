@@ -39,5 +39,5 @@ int main()
 	pthread_t thread;
 	pthread_create(&thread, NULL, thread_main, NULL);
 	emscripten_exit_with_live_runtime();
-	__builtin_unreachable();
+	__builtin_trap();
 }

@@ -33,5 +33,5 @@ int main() {
   assert(state == 1);
   emscripten_dispatch_to_thread_async(emscripten_main_browser_thread_id(), EM_FUNC_SIG_V, &finish, 0);
   emscripten_exit_with_live_runtime();
-  __builtin_unreachable();
+  __builtin_trap();
 }
