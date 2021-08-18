@@ -9738,10 +9738,6 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     stderr = self.run_process(cmd + ['-Wno-pthreads-mem-growth', '-s', 'USE_PTHREADS', '-s', 'ALLOW_MEMORY_GROWTH'], stderr=PIPE).stderr
     self.assertNotContained('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271', stderr)
 
-    # check that PTHREADS and BUILD_AS_WORKER exit with error
-    stderr = self.expect_fail(cmd + ['-s', 'USE_PTHREADS', '-s', 'BUILD_AS_WORKER=1'])
-    self.assertContained('error: USE_PTHREADS + BUILD_AS_WORKER require separate modes that don\'t work together, see https://github.com/emscripten-core/emscripten/issues/8854', stderr)
-
   def test_emranlib(self):
     create_file('foo.c', 'int foo = 1;')
     create_file('bar.c', 'int bar = 2;')
