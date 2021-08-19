@@ -89,6 +89,7 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared
 from tools import system_libs
+from tools import utils
 from tools.settings import settings
 
 QUIET = (__name__ != '__main__')
@@ -379,9 +380,9 @@ def main(args):
   global QUIET
 
   default_json_files = [
-      shared.path_from_root('src', 'struct_info.json'),
-      shared.path_from_root('src', 'struct_info_internal.json'),
-      shared.path_from_root('src', 'struct_info_cxx.json'),
+      utils.path_from_root('src/struct_info.json'),
+      utils.path_from_root('src/struct_info_internal.json'),
+      utils.path_from_root('src/struct_info_cxx.json'),
   ]
   parser = argparse.ArgumentParser(description='Generate JSON infos for structs.')
   parser.add_argument('json', nargs='*',
@@ -415,11 +416,11 @@ def main(args):
     cflags.append('-U' + arg)
 
   internal_cflags = [
-    '-I' + shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'),
+    '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
   ]
 
   cxxflags = [
-    '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'src'),
+    '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
     '-D__USING_EMSCRIPTEN_EXCEPTIONS__',
   ]
 

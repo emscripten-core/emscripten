@@ -174,7 +174,7 @@ def compile_settings():
     # Call js compiler
     env = os.environ.copy()
     env['EMCC_BUILD_DIR'] = os.getcwd()
-    out = shared.run_js_tool(path_from_root('src', 'compiler.js'),
+    out = shared.run_js_tool(path_from_root('src/compiler.js'),
                              [settings_file], stdout=subprocess.PIPE, stderr=stderr_file,
                              cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'

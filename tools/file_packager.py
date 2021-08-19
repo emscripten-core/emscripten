@@ -511,8 +511,8 @@ def main():
       # LZ4FS usage
       temp = data_target + '.orig'
       shutil.move(data_target, temp)
-      meta = shared.run_js_tool(shared.path_from_root('tools', 'lz4-compress.js'),
-                                [shared.path_from_root('third_party', 'mini-lz4.js'),
+      meta = shared.run_js_tool(utils.path_from_root('tools/lz4-compress.js'),
+                                [utils.path_from_root('third_party/mini-lz4.js'),
                                 temp, data_target], stdout=PIPE)
       os.unlink(temp)
       use_data = '''

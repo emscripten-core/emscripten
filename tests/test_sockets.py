@@ -364,7 +364,7 @@ class sockets(BrowserCore):
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets -> POSIX sockets bridge server
   def test_posix_proxy_sockets(self):
     # Build the websocket bridge server
-    self.run_process(['cmake', path_from_root('tools', 'websocket_to_posix_proxy')])
+    self.run_process(['cmake', path_from_root('tools/websocket_to_posix_proxy')])
     self.run_process(['cmake', '--build', '.'])
     if os.name == 'nt': # This is not quite exact, instead of "isWindows()" this should be "If CMake defaults to building with Visual Studio", but there is no good check for that, so assume Windows==VS.
       proxy_server = os.path.join(self.get_dir(), 'Debug', 'websocket_to_posix_proxy.exe')

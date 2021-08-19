@@ -15,8 +15,8 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared, utils
 
-sys.path.append(shared.path_from_root('third_party'))
-sys.path.append(shared.path_from_root('third_party', 'ply'))
+sys.path.append(utils.path_from_root('third_party'))
+sys.path.append(utils.path_from_root('third_party/ply'))
 
 import WebIDL
 
