@@ -569,8 +569,20 @@ Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
-  if (Module['onAbort']) {
-    Module['onAbort'](what);
+#if USE_PTHREADS
+  // When running on a pthread, none of the incoming parameters on the module
+  // object are present.  The `onAbort` handler only exists on the main thread
+  // and so we need to proxy the handling of these back to the main thread.
+  // TODO(sbc): Extend this to all such handlers that can be passed into on
+  // module creation.
+  if (ENVIRONMENT_IS_PTHREAD) {
+    postMessage({ 'cmd': 'onAbort', 'arg': what});
+  } else
+#endif
+  {
+    if (Module['onAbort']) {
+      Module['onAbort'](what);
+    }
   }
 #endif
 

@@ -311,6 +311,10 @@ var LibraryPThread = {
           PThread.returnWorkerToPool(worker);
         } else if (e.data.target === 'setimmediate') {
           worker.postMessage(e.data); // Worker wants to postMessage() to itself to implement setImmediate() emulation.
+        } else if (cmd === 'onAbort') {
+          if (Module['onAbort']) {
+            Module['onAbort'](d['arg']);
+          }
         } else {
           err("worker sent an unknown command " + cmd);
         }
