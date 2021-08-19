@@ -445,9 +445,6 @@ LibraryManager.library = {
   // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
   // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
   abort__sig: 'v',
-  // Proxy synchronously, which will have the effect of halting the program
-  // and killing all threads, including this one.
-  abort__proxy: 'sync',
   abort: function() {
 #if MINIMAL_RUNTIME
     // In MINIMAL_RUNTIME the module object does not exist, so its behavior to abort is to throw directly.

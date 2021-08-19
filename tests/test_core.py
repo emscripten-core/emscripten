@@ -2356,6 +2356,9 @@ The current type of b is: 9
   @node_pthreads
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
+    # Add the onAbort handler at runtime during preRun.  This means that onAbort
+    # handler will only be present in the main thread (much like it would if it
+    # was passed in by pre-populating the module object on prior to loading).
     self.add_pre_run("Module.onAbort = function() { console.log('onAbort called'); }")
     self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
 
