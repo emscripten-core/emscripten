@@ -2620,10 +2620,12 @@ LibraryManager.library = {
   },
 
   // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
-  alarm__deps: ['raise'],
+  alarm__deps: ['raise', '$callUserCallback'],
   alarm: function(seconds) {
     setTimeout(function() {
-      _raise({{{ cDefine('SIGALRM') }}});
+      callUserCallback(function() {
+        _raise({{{ cDefine('SIGALRM') }}});
+      });
     }, seconds*1000);
   },
 
