@@ -8227,13 +8227,25 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
     self.do_runf(test_file('core/test_safe_stack.c'),
-                 expected_output=['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=NON_ZERO)
+                 expected_output=['abort(stack overflow)', '__handle_stack_overflow'],
+                 assert_returncode=NON_ZERO, assert_all=True)
+
+  @node_pthreads
+  def test_safe_stack_pthread(self):
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
+    self.set_setting('TOTAL_STACK', 65536)
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('USE_PTHREADS')
+    self.do_runf(test_file('core/test_safe_stack.c'),
+                 expected_output=['abort(stack overflow)', '__handle_stack_overflow'],
+                 assert_returncode=NON_ZERO, assert_all=True)
 
   def test_safe_stack_alloca(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
     self.do_runf(test_file('core/test_safe_stack_alloca.c'),
-                 expected_output=['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=NON_ZERO)
+                 expected_output=['abort(stack overflow)', '__handle_stack_overflow'],
+                 assert_returncode=NON_ZERO, assert_all=True)
 
   @needs_dylink
   def test_safe_stack_dylink(self):
