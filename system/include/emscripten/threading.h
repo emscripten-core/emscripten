@@ -147,10 +147,8 @@ void *emscripten_sync_run_in_main_thread_7(int function, void *arg1, void *arg2,
 #define EM_FUNC_SIG_SPECIAL_INTERNAL (1 << 24)
 #define EM_PROXIED_FUNC_SPECIAL(x) (EM_FUNC_SIG_SPECIAL_INTERNAL | ((x) << 20))
 
-#define EM_PROXIED_PTHREAD_CREATE (EM_PROXIED_FUNC_SPECIAL(0) | EM_FUNC_SIG_IIIII)
-#define EM_PROXIED_CREATE_CONTEXT (EM_PROXIED_FUNC_SPECIAL(2) | EM_FUNC_SIG_III)
-#define EM_PROXIED_RESIZE_OFFSCREENCANVAS (EM_PROXIED_FUNC_SPECIAL(3) | EM_FUNC_SIG_IIII)
-#define EM_PROXIED_JS_FUNCTION (EM_PROXIED_FUNC_SPECIAL(4) | EM_FUNC_SIG_D)
+#define EM_PROXIED_RESIZE_OFFSCREENCANVAS (EM_PROXIED_FUNC_SPECIAL(0) | EM_FUNC_SIG_IIII)
+#define EM_PROXIED_JS_FUNCTION (EM_PROXIED_FUNC_SPECIAL(1) | EM_FUNC_SIG_D)
 
 // Runs the given function synchronously on the main Emscripten runtime thread.
 // If this thread is the main thread, the operation is immediately performed,

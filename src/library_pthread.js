@@ -31,7 +31,7 @@ var LibraryPThread = {
   $PThread__deps: ['_emscripten_thread_init',
                    '$killThread',
                    '$cancelThread', '$cleanupThread', '$zeroMemory',
-                   '$ptrToString',
+                   '$ptrToString', '$spawnThread',
                    '_emscripten_thread_free_data',
                    'exit',
 #if !MINIMAL_RUNTIME
@@ -635,6 +635,13 @@ var LibraryPThread = {
     PThread.threadInit();
   },
 
+  __pthread_create_proxied__sig: 'iiiii',
+  __pthread_create_proxied__proxy: 'sync',
+  __pthread_create_proxied__deps: ['__pthread_create_js'],
+  __pthread_create_proxied: function(pthread_ptr, attr, start_routine, arg) {
+    return ___pthread_create_js(pthread_ptr, attr, start_routine, arg);
+  },
+
   // ASan wraps the emscripten_builtin_pthread_create call in
   // __lsan::ScopedInterceptorDisabler.  Unfortunately, that only disables it on
   // the thread that made the call.  __pthread_create_js gets proxied to the
@@ -644,7 +651,7 @@ var LibraryPThread = {
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
   __pthread_create_js__sig: 'iiiii',
-  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', 'emscripten_sync_run_in_main_thread_4'],
+  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', '__pthread_create_proxied'],
   __pthread_create_js: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer == 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
@@ -759,7 +766,7 @@ var LibraryPThread = {
     // need to transfer ownership of objects, then proxy asynchronously via
     // postMessage.
     if (ENVIRONMENT_IS_PTHREAD && (transferList.length === 0 || error)) {
-      return _emscripten_sync_run_in_main_thread_4({{{ cDefine('EM_PROXIED_PTHREAD_CREATE') }}}, pthread_ptr, attr, start_routine, arg);
+      return ___pthread_create_proxied(pthread_ptr, attr, start_routine, arg);
     }
 
     // If on the main thread, and accessing Canvas/OffscreenCanvas failed, abort
