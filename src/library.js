@@ -449,12 +449,7 @@ LibraryManager.library = {
   // and killing all threads, including this one.
   abort__proxy: 'sync',
   abort: function() {
-#if MINIMAL_RUNTIME
-    // In MINIMAL_RUNTIME the module object does not exist, so its behavior to abort is to throw directly.
-    throw 'abort';
-#else
     abort();
-#endif
   },
 
   // This object can be modified by the user during startup, which affects
