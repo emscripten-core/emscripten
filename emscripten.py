@@ -112,11 +112,11 @@ def update_settings_glue(metadata, DEBUG):
   if settings.SIDE_MODULE:
     # we don't need any JS library contents in side modules
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
-  all_funcs = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(metadata['exports']))
-
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += metadata['globalImports']
+  else:
+    syms = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
+    syms = set(syms).difference(metadata['exports'])
+    syms.update(metadata['globalImports'])
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(syms)
 
   settings.WASM_EXPORTS = metadata['exports'] + list(metadata['namedGlobals'].keys())
   # Store function exports so that Closure and metadce can track these even in
