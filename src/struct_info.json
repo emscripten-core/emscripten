@@ -1262,8 +1262,6 @@
     {
         "file": "emscripten/threading.h",
         "defines": [
-            "EM_PROXIED_PTHREAD_CREATE",
-            "EM_PROXIED_CREATE_CONTEXT",
             "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
             "EM_PROXIED_JS_FUNCTION",
             "EM_QUEUED_CALL_MAX_ARGS",

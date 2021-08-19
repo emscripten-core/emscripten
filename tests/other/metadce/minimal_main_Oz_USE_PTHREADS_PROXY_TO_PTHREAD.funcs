@@ -31,7 +31,6 @@ $emscripten_proxy_main
 $emscripten_run_in_main_runtime_thread_js
 $emscripten_stack_set_limits
 $emscripten_sync_run_in_main_thread
-$emscripten_sync_run_in_main_thread
 $emscripten_tls_init
 $free_tls
 $init_mparams

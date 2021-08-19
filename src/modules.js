@@ -88,11 +88,6 @@ var LibraryManager = {
       libraries.push('library_wget.js');
     }
 
-    if (USE_PTHREADS) { // TODO: Currently WebGL proxying makes pthreads library depend on WebGL.
-      libraries.push('library_webgl.js');
-      libraries.push('library_html5_webgl.js');
-    }
-
     if (FILESYSTEM) {
       // Core filesystem libraries (always linked against, unless -s FILESYSTEM=0 is specified)
       libraries = libraries.concat([
