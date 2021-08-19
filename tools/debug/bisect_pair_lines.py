@@ -20,7 +20,7 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
   
-exec(Path(path_from_root('tools', 'shared.py').read())
+exec(Path(path_from_root('tools', 'shared.py')).read_text())
 
 shutil.copyfile(sys.argv[1], 'left')
 shutil.copyfile(sys.argv[2], 'right')
