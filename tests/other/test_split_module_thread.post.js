@@ -1,0 +1,1 @@
+addOnExit(makePrintProfile('bmain.profile'));

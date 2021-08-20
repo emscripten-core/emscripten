@@ -26,6 +26,11 @@ out = err = function(){};
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
 {{{ makeModuleReceiveWithVar('noExitRuntime', undefined, EXIT_RUNTIME ? 'false' : 'true') }}}
 
+// console.log('receiving afterThreadExit:', Module['afterThreadExit'].toString());
+#if USE_PTHREADS
+{{{ makeModuleReceiveWithVar('afterThreadExit', 'afterThreadExit', 'function(){}',  true) }}}
+#endif
+
 #if WASM != 2 && MAYBE_WASM2JS
 #if !WASM2JS
 if (Module['doWasm2JS']) {

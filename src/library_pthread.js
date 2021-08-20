@@ -943,6 +943,13 @@ var LibraryPThread = {
     postMessage({ 'cmd': 'exit' });
   },
 
+  __run_after_thread_exit: function() {
+    // Called after everything else that happens at thread shutdown, giving an
+    // opportunity to write a wasm-split profile that includes thread shutdown
+    // functions.
+    afterThreadExit(_pthread_self());
+  },
+
   __cxa_thread_atexit__sig: 'vii',
   __cxa_thread_atexit: function(routine, arg) {
     PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) });

@@ -10475,6 +10475,37 @@ exec "$@"
     self.assertContainedIf('Custom handler for loading split module.', result, condition=customLoader)
     self.assertIn('Hello! answer: 42', result)
 
+  def test_split_module_thread(self):
+    self.set_setting('SPLIT_MODULE')
+    self.emcc_args += ['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME=1']
+    self.emcc_args += ['-g', '-Wno-experimental']
+    self.emcc_args += ['--pre-js', test_file('other/test_split_module_thread.pre.js')]
+    self.emcc_args += ['--post-js', test_file('other/test_split_module_thread.post.js')]
+    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free,_main']
+    self.do_other_test('test_split_module_thread.c')
+
+    self.assertExists('test_split_module_thread.wasm')
+    self.assertExists('test_split_module_thread.wasm.orig')
+    self.assertExists('main.profile')
+    self.assertExists('bmain.profile')
+    self.assertExists('thread.profile')
+
+    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
+
+    self.run_process([wasm_split, '--merge-profiles', 'main.profile', 'bmain.profile', 'thread.profile', 'in-thread.profile', '-o', 'merged.profile', '-v'])
+    self.assertExists('merged.profile')
+
+    self.run_process([wasm_split, '--all-features', '--export-prefix=%', 'test_split_module_thread.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=merged.profile', '--placeholdermap', '--keep-funcs=fflush,__fflush_unlocked,__ofl_lock,__lock,__ofl_unlock,__unlock'])
+
+    os.remove('test_split_module_thread.wasm')
+    os.rename('primary.wasm', 'test_split_module_thread.wasm')
+    os.rename('secondary.wasm', 'test_split_module_thread.deferred.wasm')
+    result = self.run_js('test_split_module_thread.js')
+
+    self.assertNotIn('wrote profile', result)
+    self.assertNotIn('Loading deferred module', result)
+    self.assertIn('Hello! answer: 42', result)
+
   def test_split_main_module(self):
     initialTableSize = 17
 

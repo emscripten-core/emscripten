@@ -21,6 +21,7 @@ extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *att
 extern void _emscripten_thread_init(int, int, int);
 extern void __pthread_exit_run_handlers();
 extern void __pthread_exit_done();
+extern void __run_after_thread_exit();
 extern int8_t __dso_handle;
 
 static void dummy_0()
@@ -108,6 +109,8 @@ void _emscripten_thread_exit(void* result) {
   // gets shut down during __pthread_tsd_run_dtors.
   emscripten_builtin_free(self->tsd);
   self->tsd = NULL;
+
+  __run_after_thread_exit();
 
   // Mark the thread as no longer running.
   // When we publish this, the main thread is free to deallocate the thread object and we are done.
