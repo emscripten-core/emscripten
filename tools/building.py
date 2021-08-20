@@ -21,6 +21,7 @@ from . import response_file
 from . import shared
 from . import webassembly
 from . import config
+from . import utils
 from .shared import CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
@@ -353,8 +354,7 @@ def lld_flags_for_executable(external_symbols):
   cmd = []
   if external_symbols:
     undefs = configuration.get_temp_files().get('.undefined').name
-    with open(undefs, 'w') as f:
-      f.write('\n'.join(external_symbols))
+    utils.write_file(undefs, '\n'.join(external_symbols))
     cmd.append('--allow-undefined-file=%s' % undefs)
   else:
     cmd.append('--import-undefined')
@@ -1028,9 +1028,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     if 'import' in item:
       import_name_map[item['name']] = 'emcc$import$' + item['import'][1]
   temp = temp_files.get('.txt').name
-  txt = json.dumps(graph)
-  with open(temp, 'w') as f:
-    f.write(txt)
+  utils.write_file(temp, json.dumps(graph))
   # run wasm-metadce
   out = run_binaryen_command('wasm-metadce',
                              wasm_file,
@@ -1129,8 +1127,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
                                     debug=debug_info,
                                     stdout=PIPE)
   if DEBUG:
-    with open(os.path.join(get_emscripten_temp_dir(), 'wasm2js-output.js'), 'w') as f:
-      f.write(wasm2js_js)
+    utils.write_file(os.path.join(get_emscripten_temp_dir(), 'wasm2js-output.js'), wasm2js_js)
   # JS optimizations
   if opt_level >= 2:
     passes = []
@@ -1150,11 +1147,9 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
       wasm2js_js = wasm2js_js.replace('\n }', '\n}')
       wasm2js_js += '\n// EMSCRIPTEN_GENERATED_FUNCTIONS\n'
       temp = configuration.get_temp_files().get('.js').name
-      with open(temp, 'w') as f:
-        f.write(wasm2js_js)
+      utils.write_file(temp, wasm2js_js)
       temp = js_optimizer(temp, passes)
-      with open(temp) as f:
-        wasm2js_js = f.read()
+      wasm2js_js = utils.read_file(temp)
   # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
   # minify the wasm2js output as well, which is ok since it isn't
   # validating asm.js.
@@ -1165,15 +1160,13 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     with open(temp, 'a') as f:
       f.write(wasm2js_js)
     temp = closure_compiler(temp, pretty=not minify_whitespace, advanced=False)
-    with open(temp) as f:
-      wasm2js_js = f.read()
+    wasm2js_js = utils.read_file(temp)
     # closure may leave a trailing `;`, which would be invalid given where we place
     # this code (inside parens)
     wasm2js_js = wasm2js_js.strip()
     if wasm2js_js[-1] == ';':
       wasm2js_js = wasm2js_js[:-1]
-  with open(js_file) as f:
-    all_js = f.read()
+  all_js = utils.read_file(js_file)
   # quoted notation, something like Module['__wasm2jsInstantiate__']
   finds = re.findall(r'''[\w\d_$]+\[['"]__wasm2jsInstantiate__['"]\]''', all_js)
   if not finds:
@@ -1184,8 +1177,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   all_js = all_js.replace(marker, f'(\n{wasm2js_js}\n)')
   # replace the placeholder with the actual code
   js_file = js_file + '.wasm2js.js'
-  with open(js_file, 'w') as f:
-    f.write(all_js)
+  utils.write_file(js_file, all_js)
   return js_file
 
 
@@ -1240,10 +1232,9 @@ def apply_wasm_memory_growth(js_file):
   logger.debug('supporting wasm memory growth with pthreads')
   fixed = acorn_optimizer(js_file, ['growableHeap'])
   ret = js_file + '.pgrow.js'
-  with open(fixed, 'r') as fixed_f:
-    with open(ret, 'w') as ret_f:
-      with open(path_from_root('src/growableHeap.js')) as support_code_f:
-        ret_f.write(support_code_f.read() + '\n' + fixed_f.read())
+  fixed = utils.read_file(fixed)
+  support_code = utils.read_file(path_from_root('src/growableHeap.js'))
+  utils.write_file(ret, support_code + '\n' + fixed)
   return ret
 
 
@@ -1276,8 +1267,7 @@ def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   # ignore stderr because if wasm-opt is run without a -o it will warn
   output = run_wasm_opt(wasm_file, args=args, stdout=PIPE)
   if symbols_file:
-    with open(symbols_file, 'w') as f:
-      f.write(output)
+    utils.write_file(symbols_file, output)
 
 
 def is_ar(filename):
