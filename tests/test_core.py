@@ -8238,8 +8238,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_safe_stack(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
+    if is_optimizing(self.emcc_args):
+      expected = ['abort(stack overflow)']
+    else:
+      expected = ['abort(stack overflow)', '__handle_stack_overflow']
     self.do_runf(test_file('core/test_safe_stack.c'),
-                 expected_output=['abort(stack overflow)', '__handle_stack_overflow'],
+                 expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
 
   @node_pthreads
@@ -8248,15 +8252,23 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('TOTAL_STACK', 65536)
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('USE_PTHREADS')
+    if is_optimizing(self.emcc_args):
+      expected = ['abort(stack overflow)']
+    else:
+      expected = ['abort(stack overflow)', '__handle_stack_overflow']
     self.do_runf(test_file('core/test_safe_stack.c'),
-                 expected_output=['abort(stack overflow)', '__handle_stack_overflow'],
+                 expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
 
   def test_safe_stack_alloca(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
+    if is_optimizing(self.emcc_args):
+      expected = ['abort(stack overflow)']
+    else:
+      expected = ['abort(stack overflow)', '__handle_stack_overflow']
     self.do_runf(test_file('core/test_safe_stack_alloca.c'),
-                 expected_output=['abort(stack overflow)', '__handle_stack_overflow'],
+                 expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
 
   @needs_dylink

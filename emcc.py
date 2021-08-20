@@ -1826,7 +1826,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '$demangle',
       '$demangleAll',
       '$jsStackTrace',
-      '$stackTrace'
+      '$stackTrace',
+      # Called by `callMain` to handle exceptions
+      '$handleException'
     ]
 
   if settings.FILESYSTEM and not settings.BOOTSTRAPPING_STRUCT_INFO and not settings.STANDALONE_WASM:
