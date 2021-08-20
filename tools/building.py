@@ -682,7 +682,7 @@ def js_optimizer(filename, passes):
 
 # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
 def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
-  optimizer = path_from_root('tools', 'acorn-optimizer.js')
+  optimizer = path_from_root('tools/acorn-optimizer.js')
   original_filename = filename
   if extra_info is not None:
     temp_files = configuration.get_temp_files()
@@ -714,7 +714,7 @@ def eval_ctors(js_file, binary_file, debug_info=False): # noqa
   logger.debug('Ctor evalling in the wasm backend is disabled due to https://github.com/emscripten-core/emscripten/issues/9527')
   return
   # TODO re-enable
-  # cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(settings.INITIAL_MEMORY), str(settings.TOTAL_STACK), str(settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
+  # cmd = [PYTHON, path_from_root('tools/ctor_evaller.py'), js_file, binary_file, str(settings.INITIAL_MEMORY), str(settings.TOTAL_STACK), str(settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
   # if binaryen_bin:
   #   cmd += get_binaryen_feature_flags()
   # check_call(cmd)
@@ -783,7 +783,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
 
   # Closure externs file contains known symbols to be extern to the minification, Closure
   # should not minify these symbol names.
-  CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs', 'closure-externs.js')]
+  CLOSURE_EXTERNS = [path_from_root('src/closure-externs/closure-externs.js')]
 
   # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
   # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
@@ -799,21 +799,21 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
 
   # Node.js specific externs
   if shared.target_environment_may_be('node'):
-    NODE_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'node-externs')
+    NODE_EXTERNS_BASE = path_from_root('third_party/closure-compiler/node-externs')
     NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
     NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
                     if name.endswith('.js')]
-    CLOSURE_EXTERNS += [path_from_root('src', 'closure-externs', 'node-externs.js')] + NODE_EXTERNS
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/node-externs.js')] + NODE_EXTERNS
 
   # V8/SpiderMonkey shell specific externs
   if shared.target_environment_may_be('shell'):
-    V8_EXTERNS = [path_from_root('src', 'closure-externs', 'v8-externs.js')]
-    SPIDERMONKEY_EXTERNS = [path_from_root('src', 'closure-externs', 'spidermonkey-externs.js')]
+    V8_EXTERNS = [path_from_root('src/closure-externs/v8-externs.js')]
+    SPIDERMONKEY_EXTERNS = [path_from_root('src/closure-externs/spidermonkey-externs.js')]
     CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
 
   # Web environment specific externs
   if shared.target_environment_may_be('web') or shared.target_environment_may_be('worker'):
-    BROWSER_EXTERNS_BASE = path_from_root('src', 'closure-externs', 'browser-externs')
+    BROWSER_EXTERNS_BASE = path_from_root('src/closure-externs/browser-externs')
     if os.path.isdir(BROWSER_EXTERNS_BASE):
       BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
       BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
@@ -821,10 +821,10 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
       CLOSURE_EXTERNS += BROWSER_EXTERNS
 
   if settings.DYNCALLS:
-    CLOSURE_EXTERNS += [path_from_root('src', 'closure-externs', 'dyncall-externs.js')]
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
 
   if settings.MINIMAL_RUNTIME and settings.USE_PTHREADS and not settings.MODULARIZE:
-    CLOSURE_EXTERNS += [path_from_root('src', 'minimal_runtime_worker_externs.js')]
+    CLOSURE_EXTERNS += [path_from_root('src/minimal_runtime_worker_externs.js')]
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
   # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
@@ -1242,7 +1242,7 @@ def apply_wasm_memory_growth(js_file):
   ret = js_file + '.pgrow.js'
   with open(fixed, 'r') as fixed_f:
     with open(ret, 'w') as ret_f:
-      with open(path_from_root('src', 'growableHeap.js')) as support_code_f:
+      with open(path_from_root('src/growableHeap.js')) as support_code_f:
         ret_f.write(support_code_f.read() + '\n' + fixed_f.read())
   return ret
 
@@ -1407,7 +1407,7 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
   # source file paths must be relative to the location of the map (which is
   # emitted alongside the wasm)
   base_path = os.path.dirname(os.path.abspath(final_wasm))
-  sourcemap_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
+  sourcemap_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
                    wasm_file,
                    '--dwarfdump=' + LLVM_DWARFDUMP,
                    '-o',  map_file,

@@ -33,7 +33,7 @@ variables so that emcc etc. are used. Typical usage:
 
   # Append the Emscripten toolchain file if the user didn't specify one.
   if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
-    args.append('-DCMAKE_TOOLCHAIN_FILE=' + utils.path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
+    args.append('-DCMAKE_TOOLCHAIN_FILE=' + utils.path_from_root('cmake/Modules/Platform/Emscripten.cmake'))
 
   if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
     node_js = config.NODE_JS[0]

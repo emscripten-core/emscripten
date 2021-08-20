@@ -14,7 +14,7 @@ logger = logging.getLogger('clang_native')
 # These extra args need to be passed to Clang when targeting a native host system executable
 def get_clang_native_args():
   if MACOS:
-    return ['-isystem', path_from_root('system', 'include', 'libcxx')]
+    return ['-isystem', path_from_root('system/include/libcxx')]
   elif os.name == 'nt':
     # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program
     # Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.
