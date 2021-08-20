@@ -173,11 +173,6 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
   return decorated
 
 
-# A simple check whether the compiler arguments cause optimization.
-def is_optimizing(args):
-  return '-O' in str(args) and '-O0' not in args
-
-
 def no_optimize(note=''):
   assert not callable(note)
 
@@ -185,7 +180,7 @@ def no_optimize(note=''):
     assert callable(func)
 
     def decorated(self):
-      if is_optimizing(self.emcc_args):
+      if self.is_optimizing():
         self.skipTest(note)
       func(self)
     return decorated
@@ -257,6 +252,10 @@ def is_sanitizing(args):
 class TestCoreBase(RunnerCore):
   def is_wasm2js(self):
     return self.get_setting('WASM') == 0
+
+# A simple check whether the compiler arguments cause optimization.
+  def is_optimizing(self):
+    return '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args
 
   def can_use_closure(self):
     return '-g' not in self.emcc_args and '--profiling' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args)
@@ -2073,7 +2072,7 @@ int main(int argc, char **argv) {
   @no_wasm2js('massive switches can break js engines')
   @is_slow_test
   def test_biggerswitch(self):
-    if not is_optimizing(self.emcc_args):
+    if not self.is_optimizing():
       self.skipTest('nodejs takes >6GB to compile this if the wasm is not optimized, which OOMs, see https://github.com/emscripten-core/emscripten/issues/7928#issuecomment-458308453')
     if '-Os' in self.emcc_args:
       self.skipTest('hangs in recent upstream clang, see https://bugs.llvm.org/show_bug.cgi?id=43468')
@@ -3599,7 +3598,7 @@ ok
 
   @needs_dylink
   def test_dylink_basics_no_modify(self):
-    if is_optimizing(self.emcc_args):
+    if self.is_optimizing():
       self.skipTest('no modify mode only works with non-optimizing builds')
     self.set_setting('WASM_BIGINT')
     self.set_setting('ERROR_ON_WASM_CHANGES_AFTER_LINK')
@@ -7113,7 +7112,7 @@ someweirdtext
         seen_lines.add(m['originalLine'])
     # ensure that all the 'meaningful' lines in the original code get mapped
     # when optimizing, the binaryen optimizer may remove some of them (by inlining, etc.)
-    if is_optimizing(self.emcc_args):
+    if self.is_optimizing():
       self.assertTrue(seen_lines.issuperset([11, 12]), seen_lines)
     else:
       self.assertTrue(seen_lines.issuperset([6, 7, 11, 12]), seen_lines)
@@ -7235,7 +7234,7 @@ someweirdtext
     #
     # However, in an unoptimized build the constant may be assigned earlier in
     # some other manner, so stop here.
-    if not is_optimizing(self.emcc_args):
+    if not self.is_optimizing():
       return
 
     # get_wat_addr gets the address of one of the 3 interesting calls, by its
@@ -7598,7 +7597,7 @@ Module['onRuntimeInitialized'] = function() {
     second_size = os.path.getsize('emscripten_lazy_load_code.wasm.lazy.wasm')
     print('first wasm size', first_size)
     print('second wasm size', second_size)
-    if not conditional and is_optimizing(self.emcc_args) and '-g' not in self.emcc_args:
+    if not conditional and self.is_optimizing() and '-g' not in self.emcc_args:
       # If the call to lazy-load is unconditional, then the optimizer can dce
       # out more than half
       self.assertLess(first_size, 0.6 * second_size)
@@ -7640,7 +7639,7 @@ Module['onRuntimeInitialized'] = function() {
     # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
     # verify that by changing the first wasm to throw in that function
     found_foo_end = break_wasm('emscripten_lazy_load_code.wasm')
-    if not conditional and is_optimizing(self.emcc_args):
+    if not conditional and self.is_optimizing():
       self.assertFalse(found_foo_end, 'should have optimizd out $foo_end')
     verify_working()
     # but breaking the second wasm actually breaks us
@@ -7686,7 +7685,7 @@ Module['onRuntimeInitialized'] = function() {
     self.do_core_test('test_hello_world.c')
     # run wasm2js, bundle the code, and use the wasm2js path
     cmd = [PYTHON, path_from_root('tools/maybe_wasm2js.py'), 'test_hello_world.js', 'test_hello_world.wasm']
-    if is_optimizing(self.emcc_args):
+    if self.is_optimizing():
       cmd += ['-O2']
     self.run_process(cmd, stdout=open('do_wasm2js.js', 'w')).stdout
     # remove the wasm to make sure we never use it again
@@ -7907,7 +7906,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf(test_file('declare_asm_module_exports.cpp'), 'jsFunction: 1')
     js = read_file('declare_asm_module_exports.js')
     occurances = js.count('cFunction')
-    if is_optimizing(self.emcc_args) and '-g' not in self.emcc_args:
+    if self.is_optimizing() and '-g' not in self.emcc_args:
       # In optimized builds only the single reference cFunction that exists in the EM_ASM should exist
       if self.is_wasm():
         self.assertEqual(occurances, 1)
@@ -7985,7 +7984,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_ubsan_minimal_too_many_errors(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
     if not self.is_wasm():
-      if is_optimizing(self.emcc_args):
+      if self.is_optimizing():
         self.skipTest('test can only be run without optimizations on asm.js')
       # Need to use `-g` to get proper line numbers in asm.js
       self.emcc_args += ['-g']
@@ -7997,7 +7996,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_ubsan_minimal_errors_same_place(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
     if not self.is_wasm():
-      if is_optimizing(self.emcc_args):
+      if self.is_optimizing():
         self.skipTest('test can only be run without optimizations on asm.js')
       # Need to use `-g` to get proper line numbers in asm.js
       self.emcc_args += ['-g']
