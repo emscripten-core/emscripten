@@ -4463,14 +4463,21 @@ res64 - external 64\n''', header='''
       int side_x = -534;
       int adjust2 = main_x + 10;
       int *ptr2 = &main_x;
-      struct Class {
-        Class() {
+      struct SideClass {
+        SideClass() {
           printf("side init sees %d, %d, %d.\n", adjust2, *ptr2, side_x);
         }
       };
-      Class cs;
-    ''', expected=['side init sees 82, 72, -534.\nmain init sees -524, -534, 72.\nmain main sees -524, -534, 72.',
-                   'main init sees -524, -534, 72.\nside init sees 82, 72, -534.\nmain main sees -524, -534, 72.'])
+      SideClass cs;
+    ''', expected=['''\
+side init sees 82, 72, -534.
+main init sees -524, -534, 72.
+main main sees -524, -534, 72.
+''', '''\
+main init sees -524, -534, 72.
+side init sees 82, 72, -534.
+main main sees -524, -534, 72.
+'''])
 
   @needs_make('mingw32-make')
   @needs_dylink
