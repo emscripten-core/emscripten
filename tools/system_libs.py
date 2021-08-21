@@ -1836,8 +1836,7 @@ class Ports:
         if actual_hash != sha512hash:
           shared.exit_with_error(f'Unexpected hash: {actual_hash}\n'
                                  'If you are updating the port, please update the hash in the port module.')
-      with open(fullpath, 'wb') as f:
-        f.write(data)
+      utils.write_binary(fullpath, data)
 
     marker = os.path.join(fullname, '.emscripten_url')
 
@@ -1845,14 +1844,12 @@ class Ports:
       logger.info(f'unpacking port: {name}')
       shared.safe_ensure_dirs(fullname)
       shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
-      with open(marker, 'w') as f:
-        f.write(url + '\n')
+      utils.write_file(marker, url + '\n')
 
     def up_to_date():
       if os.path.exists(marker):
-        with open(marker) as f:
-          if f.read().strip() == url:
-            return True
+        if utils.read_file(marker).strip() == url:
+          return True
       return False
 
     # before acquiring the lock we have an early out if the port already exists
@@ -2030,8 +2027,7 @@ def install_system_headers(stamp):
   # Removing this file, or running `emcc --clear-cache` or running
   # `./embuilder build sysroot --force` will cause the re-installation of
   # the system headers.
-  with open(stamp, 'w') as f:
-    f.write('x')
+  utils.write_file(stamp, 'x')
   return stamp
 
 

@@ -23,9 +23,11 @@ from collections import OrderedDict
 from tools import building
 from tools import diagnostics
 from tools import shared
+from tools import utils
 from tools import gen_struct_info
 from tools import webassembly
-from tools.shared import WINDOWS, path_from_root, exit_with_error, asmjs_mangle
+from tools.utils import exit_with_error, path_from_root
+from tools.shared import WINDOWS, asmjs_mangle
 from tools.shared import treat_as_user_function, strip_prefix
 from tools.settings import settings
 
@@ -371,13 +373,11 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
 
 
 def remove_trailing_zeros(memfile):
-  with open(memfile, 'rb') as f:
-    mem_data = f.read()
+  mem_data = utils.read_binary(memfile)
   end = len(mem_data)
   while end > 0 and (mem_data[end - 1] == b'\0' or mem_data[end - 1] == 0):
     end -= 1
-  with open(memfile, 'wb') as f:
-    f.write(mem_data[:end])
+  utils.write_binary(memfile, mem_data[:end])
 
 
 def finalize_wasm(infile, outfile, memfile, DEBUG):

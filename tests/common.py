@@ -32,7 +32,7 @@ from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import get_canonical_temp_dir, try_delete, path_from_root
-from tools.utils import MACOS, WINDOWS
+from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary
 from tools import shared, line_endings, building, config
 
 logger = logging.getLogger('common')
@@ -72,14 +72,6 @@ def delete_contents(pathname):
 def test_file(*path_components):
   """Construct a path relative to the emscripten "tests" directory."""
   return str(Path(TEST_ROOT, *path_components))
-
-
-def read_file(*path_components):
-  return Path(*path_components).read_text()
-
-
-def read_binary(*path_components):
-  return Path(*path_components).read_bytes()
 
 
 # checks if browser testing is enabled
@@ -808,8 +800,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       generated_libs = []
       for basename, contents in self.library_cache[cache_name]:
         bc_file = os.path.join(build_dir, cache_name + '_' + basename)
-        with open(bc_file, 'wb') as f:
-          f.write(contents)
+        write_binary(bc_file, contents)
         generated_libs.append(bc_file)
       return generated_libs
 
@@ -1009,8 +1000,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         filename = 'src.c'
       else:
         filename = 'src.cpp'
-      with open(filename, 'w') as f:
-        f.write(src)
+      write_file(filename, src)
     self._build_and_run(filename, expected_output, **kwargs)
 
   def do_runf(self, filename, expected_output=None, **kwargs):
@@ -1409,8 +1399,7 @@ class BrowserCore(RunnerCore):
     basename = os.path.basename(expected)
     shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
     reporting = read_file(test_file('browser_reporting.js'))
-    with open('reftest.js', 'w') as out:
-      out.write('''
+    write_file('reftest.js', '''
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;

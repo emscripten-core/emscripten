@@ -979,8 +979,7 @@ def run(args):
     #    site/build/text/docs/tools_reference/emcc.txt
     # This then needs to be copied to its final home in docs/emcc.txt from where
     # we read it here.  We have CI rules that ensure its always up-to-date.
-    with open(utils.path_from_root('docs/emcc.txt'), 'r') as f:
-      print(f.read())
+    print(read_file(utils.path_from_root('docs/emcc.txt')))
 
     print('''
 ------------------------------------------------------------------
@@ -2639,8 +2638,8 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   if settings.USE_PTHREADS:
     target_dir = os.path.dirname(os.path.abspath(target))
     worker_output = os.path.join(target_dir, settings.PTHREAD_WORKER_FILE)
-    with open(worker_output, 'w') as f:
-      f.write(shared.read_and_preprocess(utils.path_from_root('src/worker.js'), expand_macros=True))
+    contents = shared.read_and_preprocess(utils.path_from_root('src/worker.js'), expand_macros=True)
+    write_file(worker_output, contents)
 
     # Minify the worker.js file in optimized builds
     if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
@@ -2725,8 +2724,7 @@ def version_string():
       stdout=PIPE, stderr=PIPE, cwd=utils.path_from_root()).stdout.strip()
     revision_suffix = '-git (%s)' % git_rev
   elif os.path.exists(utils.path_from_root('emscripten-revision.txt')):
-    with open(utils.path_from_root('emscripten-revision.txt')) as f:
-      git_rev = f.read().strip()
+    git_rev = read_file(utils.path_from_root('emscripten-revision.txt')).strip()
     revision_suffix = ' (%s)' % git_rev
   return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {shared.EMSCRIPTEN_VERSION}{revision_suffix}'
 
@@ -3184,8 +3182,7 @@ def phase_binaryen(target, options, wasm_target):
     symbols_file_js = None
     if settings.WASM == 2:
       wasm2js_template = wasm_target + '.js'
-      with open(wasm2js_template, 'w') as f:
-        f.write(preprocess_wasm2js_script())
+      write_file(wasm2js_template, preprocess_wasm2js_script())
       # generate secondary file for JS symbols
       if options.emit_symbol_map:
         symbols_file_js = shared.replace_or_append_suffix(wasm2js_template, '.symbols')
@@ -3250,8 +3247,7 @@ def phase_binaryen(target, options, wasm_target):
     else:
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', shared.JS.get_subresource_location(wasm_target))
     shared.try_delete(wasm_target)
-    with open(final_js, 'w') as f:
-      f.write(js)
+    write_file(final_js, js)
 
 
 def modularize():
@@ -3333,8 +3329,7 @@ else if (typeof exports === 'object')
 def module_export_name_substitution():
   global final_js
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
-  with open(final_js) as f:
-    src = f.read()
+  src = read_file(final_js)
   final_js += '.module_export_name_substitution.js'
   if settings.MINIMAL_RUNTIME:
     # In MINIMAL_RUNTIME the Module object is always present to provide the .asm.js/.wasm content
@@ -3346,8 +3341,7 @@ def module_export_name_substitution():
   # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
   if settings.MINIMAL_RUNTIME and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
     src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
-  with open(final_js, 'w') as f:
-    f.write(src)
+  write_file(final_js, src)
   shared.configuration.get_temp_files().note(final_js)
   save_intermediate('module_export_name_substitution')
 
@@ -3461,9 +3455,8 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
 
   try:
-    with open(target, 'wb') as f:
-      # Force UTF-8 output for consistency across platforms and with the web.
-      f.write(html_contents.encode('utf-8'))
+    # Force UTF-8 output for consistency across platforms and with the web.
+    utils.write_binary(target, html_contents.encode('utf-8'))
   except OSError as e:
     exit_with_error(f'cannot write output file: {e}')
 
