@@ -60,6 +60,12 @@ var LibraryHtml5WebGL = {
   emscripten_webgl_commit_frame: 'emscripten_webgl_do_commit_frame',
 #endif
 
+  emscripten_webgl_create_context_proxied__proxy: 'sync',
+  emscripten_webgl_create_context_proxied__deps: ['emscripten_webgl_create_context'],
+  emscripten_webgl_create_context_proxied: function(target, attributes) {
+    return _emscripten_webgl_create_context(target, attributes);
+  },
+
   // This code is called from the main proxying logic, which has a big switch
   // for all the messages, one of which is this GL-using one. This won't be
   // called if GL is not linked in, but also make sure to not add a dep on
@@ -68,8 +74,8 @@ var LibraryHtml5WebGL = {
 #if LibraryManager.has('library_webgl.js')
   '$GL',
 #endif
-#if (USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
-  'emscripten_sync_run_in_main_thread_2',
+#if USE_PTHREADS && OFFSCREEN_FRAMEBUFFER
+  'emscripten_webgl_create_context_proxied',
 #endif
   '$JSEvents', '_emscripten_webgl_power_preferences', '$findEventTarget', '$findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
@@ -104,7 +110,7 @@ var LibraryHtml5WebGL = {
     var targetStr = UTF8ToString(target);
 #endif
 
-#if (USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
+#if USE_PTHREADS && OFFSCREEN_FRAMEBUFFER
     // Create a WebGL context that is proxied to main thread if canvas was not found on worker, or if explicitly requested to do so.
     if (ENVIRONMENT_IS_PTHREAD) {
       if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}} ||
@@ -122,7 +128,7 @@ var LibraryHtml5WebGL = {
           {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, '1', 'i32') }}}
           {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, '1', 'i32') }}}
         }
-        return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_CREATE_CONTEXT') }}}, target, attributes);
+        return _emscripten_webgl_create_context_proxied(target, attributes);
       }
     }
 #endif
@@ -615,7 +621,7 @@ function handleWebGLProxying(funcs) {
     } else if (targetingOffscreenFramebuffer) {
       // When targeting only OFFSCREEN_FRAMEBUFFER, unconditionally proxy all GL calls to
       // main thread.
-      funcs[i + '__proxy'] = 'sync';        
+      funcs[i + '__proxy'] = 'sync';
     } else {
       // Building without OFFSCREENCANVAS_SUPPORT or OFFSCREEN_FRAMEBUFFER; or building
       // with OFFSCREENCANVAS_SUPPORT and no OFFSCREEN_FRAMEBUFFER: the application
