@@ -18,7 +18,7 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.29 - (not yet released)
+2.0.29
 -----
 2.0.28 - 08/23/2021
 ------
