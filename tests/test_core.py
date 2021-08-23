@@ -4576,10 +4576,10 @@ main main sees -524, -534, 72.
       expected='3 hello world!',
       need_reverse=False)
 
-  @disabled('https://github.com/emscripten-core/emscripten/issues/13773')
+  @needs_dylink
   def test_dylink_weak(self):
-    # Verify that weakly symbols can be defined in both side module and main
-    # module
+    # Verify that weakly defined symbols can be defined in both side module and main
+    # module but that only one gets used at runtime.
     main = test_file('core/test_dylink_weak_main.c')
     side = test_file('core/test_dylink_weak_side.c')
     self.dylink_testf(main, side, force_c=True, need_reverse=False)
