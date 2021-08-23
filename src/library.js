@@ -3591,6 +3591,7 @@ LibraryManager.library = {
 #endif
   },
 
+#if !MINIMAL_RUNTIME
   $handleException: function(e) {
     // Certain exception types we do not treat as errors since they are used for
     // internal control flow.
@@ -3598,7 +3599,7 @@ LibraryManager.library = {
     // 2. "unwind", which is thrown by emscripten_unwind_to_js_event_loop() and others
     //    that wish to return to JS event loop.
     if (e instanceof ExitStatus || e == 'unwind') {
-      return;
+      return EXITSTATUS;
     }
     // Anything else is an unexpected exception and we treat it as hard error.
     var toLog = e;
@@ -3615,7 +3616,6 @@ LibraryManager.library = {
 #endif
   },
 
-#if !MINIMAL_RUNTIME
   // Callable in pthread without __proxy needed.
   $runtimeKeepalivePush__sig: 'v',
   $runtimeKeepalivePush: function() {

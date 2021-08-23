@@ -9,7 +9,9 @@ var LibraryPThread = {
   $PThread__deps: ['_emscripten_thread_init',
                    'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
+#if !MINIMAL_RUNTIME
                    '$handleException',
+#endif
                    ],
   $PThread: {
     // Contains all Workers that are idle/unused and not currently hosting an
@@ -302,11 +304,15 @@ var LibraryPThread = {
 #if ASSERTIONS
           err("exitProcess requested by worker");
 #endif
+#if MINIMAL_RUNTIME
+          exit(d['returnCode']);
+#else
           try {
             exit(d['returnCode']);
           } catch (e) {
             handleException(e);
           }
+#endif
         } else if (cmd === 'cancelDone') {
           PThread.returnWorkerToPool(worker);
         } else if (e.data.target === 'setimmediate') {
