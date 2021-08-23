@@ -8237,7 +8237,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_safe_stack(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
-    if self.is_optimizing(self.emcc_args):
+    if self.is_optimizing():
       expected = ['abort(stack overflow)']
     else:
       expected = ['abort(stack overflow)', '__handle_stack_overflow']
@@ -8251,7 +8251,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('TOTAL_STACK', 65536)
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('USE_PTHREADS')
-    if self.is_optimizing(self.emcc_args):
+    if self.is_optimizing():
       expected = ['abort(stack overflow)']
     else:
       expected = ['abort(stack overflow)', '__handle_stack_overflow']
@@ -8262,7 +8262,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_safe_stack_alloca(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
-    if self.is_optimizing(self.emcc_args):
+    if self.is_optimizing():
       expected = ['abort(stack overflow)']
     else:
       expected = ['abort(stack overflow)', '__handle_stack_overflow']
