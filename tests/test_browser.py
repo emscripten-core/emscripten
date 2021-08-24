@@ -4701,11 +4701,12 @@ window.close = function() {
   # Tests that a pthreads build of -s MINIMAL_RUNTIME=1 works well in different build modes
   @parameterized({
     '': ([],),
-    'O3': (['-O3'],)
+    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
+    'O3': (['-O3'],),
+    'O3_modularize': (['-O3', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
   })
   def test_minimal_runtime_hello_thread(self, opts):
-    for modularize in [[], ['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule']]:
-      self.btest_exit(test_file('pthread/hello_thread.c'), expected='1', args=['-s', 'MINIMAL_RUNTIME', '-s', 'USE_PTHREADS'] + modularize + opts)
+    self.btest_exit(test_file('pthread/hello_thread.c'), expected='1', args=['--closure=1', '-sMINIMAL_RUNTIME', '-sUSE_PTHREADS'] + opts)
 
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_threads
