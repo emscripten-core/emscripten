@@ -752,6 +752,17 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
   return True
 
 
+# Remove this once we require python3.7 and can use std.isascii.
+# See: https://docs.python.org/3/library/stdtypes.html#str.isascii
+def isascii(s):
+  try:
+    s.encode('ascii')
+  except UnicodeEncodeError:
+    return False
+  else:
+    return True
+
+
 @ToolchainProfiler.profile_block('closure_compiler')
 def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   env = shared.env_with_node_in_path()
@@ -842,6 +853,8 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   outfile = tempfiles.get('.cc.js').name  # Safe 7-bit filename
 
   def move_to_safe_7bit_ascii_filename(filename):
+    if isascii(filename):
+      return filename
     safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
     shutil.copyfile(filename, safe_filename)
     return os.path.relpath(safe_filename, tempfiles.tmpdir)
