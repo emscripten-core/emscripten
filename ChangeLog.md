@@ -32,8 +32,8 @@ See docs/process.md for more on how version tagging works.
 - Remove the workaround used in emcmake and emmake that removed directories
   with sh.exe from PATH on Windows when MinGW Makefiles generator was used.
   This was needed with CMake versions older than 3.17.0. If you get an error
-  "sh.exe was found in your PATH" on Windows, please update to CMake 3.17.0
-  or newer (released on March 2020). See
+  "sh.exe was found in your PATH" on Windows, you can either update to CMake
+  3.17.0 or newer, or remove the offending directory from your PATH. See
   https://github.com/Kitware/CMake/commit/82ddcf0db1d220564145122c3cce25d25ee0e254
   for more information. (#14930)
 
