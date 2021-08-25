@@ -7498,7 +7498,6 @@ int main() {
   # We have LTO tests covered in 'wasmltoN' targets in test_core.py, but they
   # don't run as a part of Emscripten CI, so we add a separate LTO test here.
   @require_v8
-  @disabled('https://github.com/emscripten-core/emscripten/issues/14947')
   def test_lto_wasm_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.emcc_args += ['-fwasm-exceptions', '-flto']
