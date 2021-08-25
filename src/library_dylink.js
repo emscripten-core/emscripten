@@ -68,7 +68,7 @@ var LibraryDylink = {
   },
 
   $updateGOT__deps: ['$GOT', '$isInternalSym'],
-  $updateGOT: function(exports) {
+  $updateGOT: function(exports, replace) {
 #if DYLINK_DEBUG
     err("updateGOT: " + Object.keys(exports).length);
 #endif
@@ -77,7 +77,6 @@ var LibraryDylink = {
         continue;
       }
 
-      var replace = false;
       var value = exports[symName];
 #if !WASM_BIGINT
       if (symName.startsWith('orig$')) {
@@ -117,7 +116,7 @@ var LibraryDylink = {
 
   // Applies relocations to exported things.
   $relocateExports__deps: ['$updateGOT'],
-  $relocateExports: function(exports, memoryBase) {
+  $relocateExports: function(exports, memoryBase, replace) {
     var relocated = {};
 
     for (var e in exports) {
@@ -139,7 +138,7 @@ var LibraryDylink = {
       }
       relocated[e] = value;
     }
-    updateGOT(relocated);
+    updateGOT(relocated, replace);
     return relocated;
   },
 
@@ -302,7 +301,7 @@ var LibraryDylink = {
       name = getString();
     }
 
-    var customSection = { neededDynlibs: [] };
+    var customSection = { neededDynlibs: [], tlsExports: {} };
     if (name == 'dylink') {
       customSection.memorySize = getLEB();
       customSection.memoryAlign = getLEB();
@@ -320,6 +319,8 @@ var LibraryDylink = {
       assert(name === 'dylink.0');
       var WASM_DYLINK_MEM_INFO = 0x1;
       var WASM_DYLINK_NEEDED = 0x2;
+      var WASM_DYLINK_EXPORT_INFO = 0x3;
+      var WASM_SYMBOL_TLS = 0x100;
       while (offset < end) {
         var subsectionType = getU8();
         var subsectionSize = getLEB();
@@ -333,6 +334,15 @@ var LibraryDylink = {
           for (var i = 0; i < neededDynlibsCount; ++i) {
             var name = getString();
             customSection.neededDynlibs.push(name);
+          }
+        } else if (subsectionType === WASM_DYLINK_EXPORT_INFO) {
+          var count = getLEB();
+          while (count--) {
+            var name = getString();
+            var flags = getLEB();
+            if (flags & WASM_SYMBOL_TLS) {
+              customSection.tlsExports[name] = 1;
+            }
           }
         } else {
 #if ASSERTIONS
@@ -529,17 +539,7 @@ var LibraryDylink = {
 #if USE_PTHREADS
         // Only one thread (currently The main thread) should call
         // __wasm_call_ctors, but all threads need to call emscripten_tls_init
-        var initTLS = moduleExports['emscripten_tls_init'];
-#if ASSERTIONS
-        assert(initTLS);
-#endif
-#if DYLINK_DEBUG
-        out("adding to tlsInitFunctions: " + initTLS);
-#endif
-        PThread.tlsInitFunctions.push(initTLS);
-        if (runtimeInitialized) {
-          initTLS();
-        }
+        registerTlsInit(moduleExports['emscripten_tls_init'], instance.exports, metadata)
         if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
           var init = moduleExports['__wasm_call_ctors'];
