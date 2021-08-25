@@ -6,7 +6,7 @@ function reportResultToServer(result, sync, port) {
   port = port || 8888;
   if (reportResultToServer.reported) {
     // Only report one result per test, even if the test misbehaves and tries to report more.
-    reportErrorToServer("excessive reported results, sending " + result + ", test will fail");
+    reportStderrToServer("excessive reported results, sending " + result + ", test will fail");
   }
   reportResultToServer.reported = true;
   var xhr = new XMLHttpRequest();
@@ -25,9 +25,15 @@ function maybeReportResultToServer(result, sync, port) {
   reportResultToServer(result, sync, port);
 }
 
-function reportErrorToServer(message) {
+function reportStderrToServer(message) {
   var xhr = new XMLHttpRequest();
   xhr.open('GET', encodeURI('http://localhost:8888?stderr=' + message));
+  xhr.send();
+}
+
+function reportStdoutToServer(message) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + message));
   xhr.send();
 }
 
@@ -61,5 +67,19 @@ if (hasModule) {
 
   Module['onAbort'] = function(reason) {
     maybeReportResultToServer('abort:' + reason);
+  }
+
+  var oldPrint = Module['print'];
+  Module['print'] = function() {
+    reportStdoutToServer(Array.prototype.slice.call(arguments).join(' '));
+    if (oldPrint)
+      oldPrint.apply(null, arguments);
+  }
+
+  var oldPrintErr = Module['printErr'];
+  Module['printErr'] = function() {
+    reportStderrToServer(Array.prototype.slice.call(arguments).join(' '));
+    if (oldPrintErr)
+      oldPrintErr.apply(null, arguments);
   }
 }
