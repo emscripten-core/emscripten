@@ -5,6 +5,7 @@
 
 from .toolchain_profiler import ToolchainProfiler
 
+from collections import namedtuple
 import json
 import logging
 import os
