@@ -21,8 +21,6 @@ int main()
   attrs.majorVersion = 2;
   attrs.minorVersion = 0;
 
-  int result = 0;
-
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
   assert(context);
   EMSCRIPTEN_RESULT res = emscripten_webgl_make_context_current(context);
@@ -35,8 +33,5 @@ int main()
   assert(glGetError() == 0);
   emscripten_webgl_destroy_context(context);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
   return 0;
 }

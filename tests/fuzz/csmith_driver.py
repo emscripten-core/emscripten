@@ -21,6 +21,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.dirname(script_dir))))
 
 from tools import shared
 from tools import config
+from tools import utils
 
 # can add flags like --no-threads --ion-offthread-compile=off
 engine = eval('config.' + sys.argv[1]) if len(sys.argv) > 1 else config.JS_ENGINES[0]
@@ -84,7 +85,7 @@ while 1:
     continue
 
   shared.run_process([COMP, '-m32', opts, '-emit-llvm', '-c', fullname, '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.get_cflags() + ['-w'])
-  shared.run_process([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'], stderr=PIPE)
+  shared.run_process([utils.path_from_root('tools/nativize_llvm.py'), filename + '.bc'], stderr=PIPE)
   shutil.move(filename + '.bc.run', filename + '2')
   shared.run_process([COMP, fullname, '-o', filename + '3'] + CSMITH_CFLAGS + ['-w'])
   print('3) Run natively')

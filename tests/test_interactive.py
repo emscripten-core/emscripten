@@ -226,7 +226,7 @@ class interactive(BrowserCore):
             '-s', 'PTHREAD_POOL_SIZE=16',
             '-s', 'INITIAL_MEMORY=64mb',
             '--shell-file', test_file('pthread', 'test_pthread_mandelbrot_shell.html')]
-    self.btest('pthread/test_pthread_mandelbrot.cpp', expected='0', args=args)
+    self.btest_exit('pthread/test_pthread_mandelbrot.cpp', args=args)
 
   # Test that event backproxying works.
   def test_html5_callbacks_on_calling_thread(self):

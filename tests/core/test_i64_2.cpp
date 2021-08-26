@@ -98,7 +98,7 @@ int main(int argc, char **argv)
     uint64_t a = 5;
     double b = 6.8;
     uint64_t c = a * b;
-    if (truthy()) printf("*%d,%d,%d*\n", (int)&a, (int)&b, (int)&c); // printing addresses prevents optimizations
+    if (truthy()) printf("*%ld,%ld,%ld*\n", (long)&a, (long)&b, (long)&c); // printing addresses prevents optimizations
     printf("*prod:%llu*\n", c);
   }
 

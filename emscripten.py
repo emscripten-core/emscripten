@@ -23,9 +23,11 @@ from collections import OrderedDict
 from tools import building
 from tools import diagnostics
 from tools import shared
+from tools import utils
 from tools import gen_struct_info
 from tools import webassembly
-from tools.shared import WINDOWS, path_from_root, exit_with_error, asmjs_mangle
+from tools.utils import exit_with_error, path_from_root
+from tools.shared import WINDOWS, asmjs_mangle
 from tools.shared import treat_as_user_function, strip_prefix
 from tools.settings import settings
 
@@ -112,11 +114,11 @@ def update_settings_glue(metadata, DEBUG):
   if settings.SIDE_MODULE:
     # we don't need any JS library contents in side modules
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
-  all_funcs = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(metadata['exports']))
-
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += metadata['globalImports']
+  else:
+    syms = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
+    syms = set(syms).difference(metadata['exports'])
+    syms.update(metadata['globalImports'])
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(syms)
 
   settings.WASM_EXPORTS = metadata['exports'] + list(metadata['namedGlobals'].keys())
   # Store function exports so that Closure and metadce can track these even in
@@ -174,7 +176,7 @@ def compile_settings():
     # Call js compiler
     env = os.environ.copy()
     env['EMCC_BUILD_DIR'] = os.getcwd()
-    out = shared.run_js_tool(path_from_root('src', 'compiler.js'),
+    out = shared.run_js_tool(path_from_root('src/compiler.js'),
                              [settings_file], stdout=subprocess.PIPE, stderr=stderr_file,
                              cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
@@ -371,13 +373,11 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
 
 
 def remove_trailing_zeros(memfile):
-  with open(memfile, 'rb') as f:
-    mem_data = f.read()
+  mem_data = utils.read_binary(memfile)
   end = len(mem_data)
   while end > 0 and (mem_data[end - 1] == b'\0' or mem_data[end - 1] == 0):
     end -= 1
-  with open(memfile, 'wb') as f:
-    f.write(mem_data[:end])
+  utils.write_binary(memfile, mem_data[:end])
 
 
 def finalize_wasm(infile, outfile, memfile, DEBUG):
@@ -777,10 +777,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     if key not in metadata:
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
-
-  # TODO(sbc): Remove this once binaryen change to globalImports has been around for a while.
-  if 'externs' in metadata_json:
-    metadata['globalImports'] = [x[1:] for x in metadata_json['externs']]
 
   # Support older metadata when asmConsts values were lists.  We only use the first element
   # nowadays

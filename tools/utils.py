@@ -6,6 +6,7 @@
 import contextlib
 import os
 import sys
+from pathlib import Path
 
 from . import diagnostics
 
@@ -20,7 +21,7 @@ def exit_with_error(msg, *args):
 
 
 def path_from_root(*pathelems):
-  return os.path.join(__rootpath__, *pathelems)
+  return str(Path(__rootpath__, *pathelems))
 
 
 def safe_ensure_dirs(dirname):
@@ -86,3 +87,9 @@ def write_file(file_path, text):
   """Write to a file opened in text mode"""
   with open(file_path, 'w') as fh:
     fh.write(text)
+
+
+def write_binary(file_path, contents):
+  """Write to a file opened in binary mode"""
+  with open(file_path, 'wb') as fh:
+    fh.write(contents)

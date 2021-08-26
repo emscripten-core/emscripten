@@ -12,7 +12,7 @@ int w1;
 bool sawCalls[] = { false, false, false, false };
 
 void c1(char *data, int size, void *arg) {
-  assert((int)arg == 97);
+  assert((long)arg == 97);
   assert(size >= sizeof(int));
 
   int *x = (int*)data;

@@ -21,6 +21,7 @@ from . import response_file
 from . import shared
 from . import webassembly
 from . import config
+from . import utils
 from .shared import CLANG_CC, CLANG_CXX, PYTHON
 from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD, LLVM_AR
 from .shared import LLVM_LINK, LLVM_OBJCOPY
@@ -353,11 +354,10 @@ def lld_flags_for_executable(external_symbols):
   cmd = []
   if external_symbols:
     undefs = configuration.get_temp_files().get('.undefined').name
-    with open(undefs, 'w') as f:
-      f.write('\n'.join(external_symbols))
+    utils.write_file(undefs, '\n'.join(external_symbols))
     cmd.append('--allow-undefined-file=%s' % undefs)
   else:
-    cmd.append('--allow-undefined')
+    cmd.append('--import-undefined')
 
   if settings.IMPORTED_MEMORY:
     cmd.append('--import-memory')
@@ -387,7 +387,7 @@ def lld_flags_for_executable(external_symbols):
       # Filter out symbols external/JS symbols
       c_exports = [e for e in c_exports if e not in external_symbols]
     for export in c_exports:
-      cmd += ['--export', export]
+      cmd.append('--export-if-defined=' + export)
 
     for export in settings.EXPORT_IF_DEFINED:
       cmd.append('--export-if-defined=' + export)
@@ -456,12 +456,8 @@ def link_lld(args, target, external_symbols=None):
 
   # Wasm exception handling. This is a CodeGen option for the LLVM backend, so
   # wasm-ld needs to take this for the LTO mode.
-  # When wasm EH is enabled, we use the legacy pass manager because the new pass
-  # manager + wasm EH has some known bugs. See
-  # https://github.com/emscripten-core/emscripten/issues/14180.
-  # TODO Switch to the new pass manager.
   if settings.EXCEPTION_HANDLING:
-    cmd += ['-mllvm', '-exception-model=wasm', '--lto-legacy-pass-manager']
+    cmd += ['-mllvm', '-exception-model=wasm', '-mllvm', '-wasm-enable-eh']
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
@@ -686,7 +682,7 @@ def js_optimizer(filename, passes):
 
 # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
 def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
-  optimizer = path_from_root('tools', 'acorn-optimizer.js')
+  optimizer = path_from_root('tools/acorn-optimizer.js')
   original_filename = filename
   if extra_info is not None:
     temp_files = configuration.get_temp_files()
@@ -718,7 +714,7 @@ def eval_ctors(js_file, binary_file, debug_info=False): # noqa
   logger.debug('Ctor evalling in the wasm backend is disabled due to https://github.com/emscripten-core/emscripten/issues/9527')
   return
   # TODO re-enable
-  # cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(settings.INITIAL_MEMORY), str(settings.TOTAL_STACK), str(settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
+  # cmd = [PYTHON, path_from_root('tools/ctor_evaller.py'), js_file, binary_file, str(settings.INITIAL_MEMORY), str(settings.TOTAL_STACK), str(settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
   # if binaryen_bin:
   #   cmd += get_binaryen_feature_flags()
   # check_call(cmd)
@@ -756,6 +752,17 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
   return True
 
 
+# Remove this once we require python3.7 and can use std.isascii.
+# See: https://docs.python.org/3/library/stdtypes.html#str.isascii
+def isascii(s):
+  try:
+    s.encode('ascii')
+  except UnicodeEncodeError:
+    return False
+  else:
+    return True
+
+
 @ToolchainProfiler.profile_block('closure_compiler')
 def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   env = shared.env_with_node_in_path()
@@ -787,7 +794,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
 
   # Closure externs file contains known symbols to be extern to the minification, Closure
   # should not minify these symbol names.
-  CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs', 'closure-externs.js')]
+  CLOSURE_EXTERNS = [path_from_root('src/closure-externs/closure-externs.js')]
 
   # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
   # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
@@ -803,29 +810,32 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
 
   # Node.js specific externs
   if shared.target_environment_may_be('node'):
-    NODE_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'node-externs')
+    NODE_EXTERNS_BASE = path_from_root('third_party/closure-compiler/node-externs')
     NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
     NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
                     if name.endswith('.js')]
-    CLOSURE_EXTERNS += [path_from_root('src', 'closure-externs', 'node-externs.js')] + NODE_EXTERNS
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/node-externs.js')] + NODE_EXTERNS
 
   # V8/SpiderMonkey shell specific externs
   if shared.target_environment_may_be('shell'):
-    V8_EXTERNS = [path_from_root('src', 'closure-externs', 'v8-externs.js')]
-    SPIDERMONKEY_EXTERNS = [path_from_root('src', 'closure-externs', 'spidermonkey-externs.js')]
+    V8_EXTERNS = [path_from_root('src/closure-externs/v8-externs.js')]
+    SPIDERMONKEY_EXTERNS = [path_from_root('src/closure-externs/spidermonkey-externs.js')]
     CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
 
   # Web environment specific externs
   if shared.target_environment_may_be('web') or shared.target_environment_may_be('worker'):
-    BROWSER_EXTERNS_BASE = path_from_root('src', 'closure-externs', 'browser-externs')
+    BROWSER_EXTERNS_BASE = path_from_root('src/closure-externs/browser-externs')
     if os.path.isdir(BROWSER_EXTERNS_BASE):
       BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
       BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
                          if name.endswith('.js')]
       CLOSURE_EXTERNS += BROWSER_EXTERNS
 
-  if settings.MINIMAL_RUNTIME and settings.USE_PTHREADS and not settings.MODULARIZE:
-    CLOSURE_EXTERNS += [path_from_root('src', 'minimal_runtime_worker_externs.js')]
+  if settings.DYNCALLS:
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
+
+  if settings.MINIMAL_RUNTIME and settings.USE_PTHREADS:
+    CLOSURE_EXTERNS += [path_from_root('src/minimal_runtime_worker_externs.js')]
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
   # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
@@ -843,6 +853,8 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   outfile = tempfiles.get('.cc.js').name  # Safe 7-bit filename
 
   def move_to_safe_7bit_ascii_filename(filename):
+    if isascii(filename):
+      return filename
     safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
     shutil.copyfile(filename, safe_filename)
     return os.path.relpath(safe_filename, tempfiles.tmpdir)
@@ -1029,9 +1041,7 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     if 'import' in item:
       import_name_map[item['name']] = 'emcc$import$' + item['import'][1]
   temp = temp_files.get('.txt').name
-  txt = json.dumps(graph)
-  with open(temp, 'w') as f:
-    f.write(txt)
+  utils.write_file(temp, json.dumps(graph))
   # run wasm-metadce
   out = run_binaryen_command('wasm-metadce',
                              wasm_file,
@@ -1130,8 +1140,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
                                     debug=debug_info,
                                     stdout=PIPE)
   if DEBUG:
-    with open(os.path.join(get_emscripten_temp_dir(), 'wasm2js-output.js'), 'w') as f:
-      f.write(wasm2js_js)
+    utils.write_file(os.path.join(get_emscripten_temp_dir(), 'wasm2js-output.js'), wasm2js_js)
   # JS optimizations
   if opt_level >= 2:
     passes = []
@@ -1151,11 +1160,9 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
       wasm2js_js = wasm2js_js.replace('\n }', '\n}')
       wasm2js_js += '\n// EMSCRIPTEN_GENERATED_FUNCTIONS\n'
       temp = configuration.get_temp_files().get('.js').name
-      with open(temp, 'w') as f:
-        f.write(wasm2js_js)
+      utils.write_file(temp, wasm2js_js)
       temp = js_optimizer(temp, passes)
-      with open(temp) as f:
-        wasm2js_js = f.read()
+      wasm2js_js = utils.read_file(temp)
   # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
   # minify the wasm2js output as well, which is ok since it isn't
   # validating asm.js.
@@ -1166,15 +1173,13 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
     with open(temp, 'a') as f:
       f.write(wasm2js_js)
     temp = closure_compiler(temp, pretty=not minify_whitespace, advanced=False)
-    with open(temp) as f:
-      wasm2js_js = f.read()
+    wasm2js_js = utils.read_file(temp)
     # closure may leave a trailing `;`, which would be invalid given where we place
     # this code (inside parens)
     wasm2js_js = wasm2js_js.strip()
     if wasm2js_js[-1] == ';':
       wasm2js_js = wasm2js_js[:-1]
-  with open(js_file) as f:
-    all_js = f.read()
+  all_js = utils.read_file(js_file)
   # quoted notation, something like Module['__wasm2jsInstantiate__']
   finds = re.findall(r'''[\w\d_$]+\[['"]__wasm2jsInstantiate__['"]\]''', all_js)
   if not finds:
@@ -1185,8 +1190,7 @@ def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compil
   all_js = all_js.replace(marker, f'(\n{wasm2js_js}\n)')
   # replace the placeholder with the actual code
   js_file = js_file + '.wasm2js.js'
-  with open(js_file, 'w') as f:
-    f.write(all_js)
+  utils.write_file(js_file, all_js)
   return js_file
 
 
@@ -1241,10 +1245,9 @@ def apply_wasm_memory_growth(js_file):
   logger.debug('supporting wasm memory growth with pthreads')
   fixed = acorn_optimizer(js_file, ['growableHeap'])
   ret = js_file + '.pgrow.js'
-  with open(fixed, 'r') as fixed_f:
-    with open(ret, 'w') as ret_f:
-      with open(path_from_root('src', 'growableHeap.js')) as support_code_f:
-        ret_f.write(support_code_f.read() + '\n' + fixed_f.read())
+  fixed = utils.read_file(fixed)
+  support_code = utils.read_file(path_from_root('src/growableHeap.js'))
+  utils.write_file(ret, support_code + '\n' + fixed)
   return ret
 
 
@@ -1277,8 +1280,7 @@ def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   # ignore stderr because if wasm-opt is run without a -o it will warn
   output = run_wasm_opt(wasm_file, args=args, stdout=PIPE)
   if symbols_file:
-    with open(symbols_file, 'w') as f:
-      f.write(output)
+    utils.write_file(symbols_file, output)
 
 
 def is_ar(filename):
@@ -1408,7 +1410,7 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
   # source file paths must be relative to the location of the map (which is
   # emitted alongside the wasm)
   base_path = os.path.dirname(os.path.abspath(final_wasm))
-  sourcemap_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
+  sourcemap_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
                    wasm_file,
                    '--dwarfdump=' + LLVM_DWARFDUMP,
                    '-o',  map_file,

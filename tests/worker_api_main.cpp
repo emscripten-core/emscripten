@@ -10,7 +10,7 @@
 int w1;
 
 void c1(char *data, int size, void *arg) {
-  assert((int)arg == 93);
+  assert((long)arg == 93);
   int *x = (int*)data;
   printf("c1: %d,%d\n", x[0], x[1]);
 

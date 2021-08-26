@@ -13,7 +13,7 @@ int main()
 	void *ptr3 = malloc(64*1024*1024);
 	void *ptr4 = malloc(16*1024);
 	void *ptr5 = malloc(2*1024*1024);
-	printf("%d\n", (int)(ptr && ptr2 && ptr3 && ptr4 && ptr5));
+	printf("%ld\n", (long)(ptr && ptr2 && ptr3 && ptr4 && ptr5));
 	free(ptr2);
 	free(ptr4);
 	printf("%d\n", emmalloc_validate_memory_regions());

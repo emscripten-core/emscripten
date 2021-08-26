@@ -88,12 +88,12 @@ struct Test t[NUM_THREADS] = {};
 pthread_t thread[NUM_THREADS];
 
 void RunTest(int test)
-{	
+{
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	pthread_attr_setstacksize(&attr, 4*1024);
 
-	printf("Main thread has thread ID %d\n", (int)pthread_self());
+	printf("Main thread has thread ID %ld\n", pthread_self());
 	assert(pthread_self() != 0);
 
 	switch(test)
@@ -139,15 +139,6 @@ int main()
 
 	uint64_t prevU64 = emscripten_atomic_add_u64((void*)&globalU64, 1); assert(prevU64 == 4);
 
-	if (!emscripten_has_threading_support())
-	{
-#ifdef REPORT_RESULT
-		REPORT_RESULT(0);
-#endif
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
-
 	for(int i = 0; i < 7; ++i)
 		RunTest(i);
 
@@ -164,10 +155,7 @@ int main()
 		printf("totalRead: %llu, totalWritten: %llu\n", totalRead, totalWritten);
 	else
 		printf("64-bit CAS test failed! totalRead != totalWritten (%llu != %llu)\n", totalRead, totalWritten);
-#ifdef REPORT_RESULT
-	int result = (totalRead != totalWritten) ? 1 : 0;
-	REPORT_RESULT(result);
-#else
+	assert(totalRead == totalWritten);
 	EM_ASM(out('Main: Test successfully finished.'));
-#endif
+	return 0;
 }

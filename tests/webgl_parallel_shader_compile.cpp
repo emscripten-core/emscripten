@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <emscripten/emscripten.h>
@@ -71,10 +72,8 @@ EM_BOOL tick(double, void*)
   if (numShadersPending == 0)
   {
     printf("All shaders linked in %f msecs. parallel_shader_compile_is_working=%d\n", emscripten_get_now() - linkStart, parallel_shader_compile_is_working);
-#ifdef REPORT_RESULT
-    REPORT_RESULT(parallel_shader_compile_is_working);
-#endif
-    return EM_FALSE;
+    assert(parallel_shader_compile_is_working);
+    emscripten_force_exit(0);
   }
 
   ++numRafFramesElapsed;
@@ -93,9 +92,6 @@ int main()
   if (!supported)
   {
     printf("Skipping test, KHR_parallel_shader_compile WebGL extension is not supported.\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
     return 0;
   }
 

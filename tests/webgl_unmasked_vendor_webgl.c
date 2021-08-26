@@ -24,11 +24,8 @@ int main()
   EM_BOOL success = emscripten_webgl_enable_extension(ctx, "WEBGL_debug_renderer_info");
   if (!success)
   {
-  	// Browser does not have WEBGL_debug_renderer_info, skip remainder and return success.
-#ifdef REPORT_RESULT
-  	REPORT_RESULT(0);
-#endif
-  	return 0;
+    // Browser does not have WEBGL_debug_renderer_info, skip remainder and return success.
+    return 0;
   }
 
   assert(!glGetError());
@@ -37,8 +34,5 @@ int main()
   printf("%s\n", str);
   assert(strlen(str) > 3); // Should get something (dependent on hardware)
   assert(!glGetError());
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

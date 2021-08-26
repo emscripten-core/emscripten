@@ -7,11 +7,11 @@
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread__deps: ['_emscripten_thread_init',
-                   'emscripten_register_main_browser_thread_id',
-                   '$ERRNO_CODES', 'emscripten_futex_wake', '$killThread',
+                   'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
-#if USE_ASAN || USE_LSAN
-                   , '$withBuiltinMalloc'
+                   'exit',
+#if !MINIMAL_RUNTIME
+                   '$handleException',
 #endif
                    ],
   $PThread: {
@@ -37,33 +37,7 @@ var LibraryPThread = {
       }
 #endif
     },
-    initRuntime: function() {
-#if USE_ASAN || USE_LSAN
-      // When sanitizers are enabled, malloc is normally instrumented to call
-      // sanitizer code that checks some things about pthreads. As we are just
-      // setting up the main thread here, and are not ready for such calls,
-      // call malloc directly.
-      withBuiltinMalloc(function () {
-#endif
-
-      var tb = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
-
-      for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[tb/4+i] = 0;
-
-      // The pthread struct has a field that points to itself - this is used as
-        // a magic ID to detect whether the pthread_t structure is 'alive'.
-      {{{ makeSetValue('tb', C_STRUCTS.pthread.self, 'tb', 'i32') }}};
-
-      // pthread struct robust_list head should point to itself.
-      var headPtr = tb + {{{ C_STRUCTS.pthread.robust_list }}};
-      {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
-
-      // Allocate memory for thread-local storage.
-      var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') * 4 }}});
-      for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) HEAPU32[tlsMemory/4+i] = 0;
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, tb); // Main thread ID.
-
+    initRuntime: function(tb) {
 #if PTHREADS_PROFILING
       PThread.createProfilerBlock(tb);
       PThread.setThreadName(tb, "Browser main thread");
@@ -74,13 +48,8 @@ var LibraryPThread = {
       // globals which act as a form of TLS. Global constructors trying
       // to access this value will read the wrong value, but that is UB anyway.
       __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
-      _emscripten_register_main_browser_thread_id(tb);
 #if ASSERTIONS
       PThread.mainRuntimeThread = true;
-#endif
-
-#if USE_ASAN || USE_LSAN
-      });
 #endif
     },
     initWorker: function() {
@@ -89,9 +58,9 @@ var LibraryPThread = {
       // things.
       PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
       PThread['threadInit'] = PThread.threadInit;
-      PThread['threadCancel'] = PThread.threadCancel;
-      PThread['threadExit'] = PThread.threadExit;
+#if !MINIMAL_RUNTIME
       PThread['setExitStatus'] = PThread.setExitStatus;
+#endif
 #endif
     },
     // Maps pthread_t to pthread info objects
@@ -164,62 +133,11 @@ var LibraryPThread = {
     },
 #endif
 
-    runExitHandlers: function() {
-      while (PThread.threadExitHandlers.length > 0) {
-        PThread.threadExitHandlers.pop()();
-      }
-
-      // Call into the musl function that runs destructors of all thread-specific data.
-#if ASSERTIONS
-      assert(_pthread_self())
-#endif
-      ___pthread_tsd_run_dtors();
-    },
-
-    runExitHandlersAndDeinitThread: function(tb, exitCode) {
-      // Disable all cancellation so that executing the cleanup handlers won't trigger another JS
-      // canceled exception to be thrown.
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2, 1/*PTHREAD_CANCEL_DISABLE*/);
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.cancelasync }}} ) >> 2, 0/*PTHREAD_CANCEL_DEFERRED*/);
-      PThread.runExitHandlers();
-
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
-      // When we publish this, the main thread is free to deallocate the thread object and we are done.
-      // Therefore set _pthread_self = 0; above to 'release' the object in this worker thread.
-      Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
-
-      _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
-
-      // Not hosting a pthread anymore in this worker, reset the info structures to null.
-      __emscripten_thread_init(0, 0, 0); // Unregister the thread block inside the wasm module.
-    },
-
+#if !MINIMAL_RUNTIME
     setExitStatus: function(status) {
       EXITSTATUS = status;
     },
-
-    // Called when we are performing a pthread_exit(), either explicitly called
-    // by programmer, or implicitly when leaving the thread main function.
-    threadExit: function(exitCode) {
-      var tb = _pthread_self();
-      if (tb) { // If we haven't yet exited?
-#if ASSERTIONS
-        err('Pthread 0x' + tb.toString(16) + ' exited.');
 #endif
-        PThread.runExitHandlersAndDeinitThread(tb, exitCode);
-
-        if (ENVIRONMENT_IS_PTHREAD) {
-          // Note: in theory we would like to return any offscreen canvases back to the main thread,
-          // but if we ever fetched a rendering context for them that would not be valid, so we don't try.
-          postMessage({ 'cmd': 'exit' });
-        }
-      }
-    },
-
-    threadCancel: function() {
-      PThread.runExitHandlersAndDeinitThread(_pthread_self(), -1/*PTHREAD_CANCELED*/);
-      postMessage({ 'cmd': 'cancelDone' });
-    },
 
     terminateAllThreads: function() {
       for (var t in PThread.pthreads) {
@@ -245,17 +163,14 @@ var LibraryPThread = {
 #if ASSERTIONS
         assert(pthread, 'This Worker should have a pthread it is executing');
 #endif
-        PThread.freeThreadData(pthread);
         worker.terminate();
+        PThread.freeThreadData(pthread);
       }
       PThread.runningWorkers = [];
     },
     freeThreadData: function(pthread) {
       if (!pthread) return;
       if (pthread.threadInfoStruct) {
-        var tlsMemory = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.tsd, 'i32') }}};
-        {{{ makeSetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.tsd, 0, 'i32') }}};
-        _free(tlsMemory);
 #if PTHREADS_PROFILING
         var profilerBlock = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.profilerBlock, 'i32') }}};
         {{{ makeSetValue('pthread.threadInfoStruct',  C_STRUCTS.pthread.profilerBlock, 0, 'i32') }}};
@@ -353,7 +268,7 @@ var LibraryPThread = {
           if (thread) {
             thread.worker.postMessage(e.data, d['transferList']);
           } else {
-            console.error('Internal error! Worker sent a message "' + cmd + '" to target pthread ' + d['targetThread'] + ', but that thread no longer exists!');
+            err('Internal error! Worker sent a message "' + cmd + '" to target pthread ' + d['targetThread'] + ', but that thread no longer exists!');
           }
           PThread.currentProxiedOperationCallerThread = undefined;
           return;
@@ -394,18 +309,23 @@ var LibraryPThread = {
 #if ASSERTIONS
           err("exitProcess requested by worker");
 #endif
+#if MINIMAL_RUNTIME
+          _exit(d['returnCode']);
+#else
           try {
-            exit(d['returnCode']);
+            _exit(d['returnCode']);
           } catch (e) {
-            if (e instanceof ExitStatus) return;
-            throw e;
+            handleException(e);
           }
+#endif
         } else if (cmd === 'cancelDone') {
           PThread.returnWorkerToPool(worker);
-        } else if (cmd === 'objectTransfer') {
-          PThread.receiveObjectTransfer(e.data);
         } else if (e.data.target === 'setimmediate') {
           worker.postMessage(e.data); // Worker wants to postMessage() to itself to implement setImmediate() emulation.
+        } else if (cmd === 'onAbort') {
+          if (Module['onAbort']) {
+            Module['onAbort'](d['arg']);
+          }
         } else {
           err("worker sent an unknown command " + cmd);
         }
@@ -414,6 +334,7 @@ var LibraryPThread = {
 
       worker.onerror = function(e) {
         err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
+        throw e;
       };
 
 #if ENVIRONMENT_MAY_BE_NODE
@@ -421,10 +342,10 @@ var LibraryPThread = {
         worker.on('message', function(data) {
           worker.onmessage({ data: data });
         });
-        worker.on('error', function(data) {
-          worker.onerror(data);
+        worker.on('error', function(e) {
+          worker.onerror(e);
         });
-        worker.on('exit', function(data) {
+        worker.on('exit', function() {
           // TODO: update the worker queue?
           // See: https://github.com/emscripten-core/emscripten/issues/9763
         });
@@ -519,13 +440,6 @@ var LibraryPThread = {
         PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
       }
       return PThread.unusedWorkers.pop();
-    },
-
-    busySpinWait: function(msecs) {
-      var t = performance.now() + msecs;
-      while (performance.now() < t) {
-        ;
-      }
     }
   },
 
@@ -534,6 +448,7 @@ var LibraryPThread = {
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in killThread!';
     {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
     var pthread = PThread.pthreads[pthread_ptr];
+    delete PThread.pthreads[pthread_ptr];
     pthread.worker.terminate();
     PThread.freeThreadData(pthread);
     // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
@@ -587,12 +502,6 @@ var LibraryPThread = {
     if (!threadParams.pthread_ptr) throw 'Internal error, no pthread ptr!';
     PThread.runningWorkers.push(worker);
 
-    // Allocate memory for thread-local storage and initialize it to zero.
-    var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
-    for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) {
-      {{{ makeSetValue('tlsMemory', 'i*4', 0, 'i32') }}};
-    }
-
     var stackHigh = threadParams.stackBase + threadParams.stackSize;
 
     // Create a pthread info object to represent this thread.
@@ -608,17 +517,11 @@ var LibraryPThread = {
     // spawnThread is always called with a zero-initialized thread struct so
     // no need to set any valudes to zero here.
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.detached }}} >> 2), threadParams.detached);
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tsd }}} >> 2), tlsMemory); // Init thread-local-storage memory array.
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tid }}} >> 2), pthread.threadInfoStruct); // Main thread ID.
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack_size }}} >> 2), threadParams.stackSize);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack }}} >> 2), stackHigh);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} >> 2), threadParams.stackSize);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} + 8 >> 2), stackHigh);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} + 12 >> 2), threadParams.detached);
-
-    var global_libc = _emscripten_get_global_libc();
-    var global_locale = global_libc + {{{ C_STRUCTS.libc.global_locale }}};
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.locale }}} >> 2), global_locale);
 
 #if PTHREADS_PROFILING
     PThread.createProfilerBlock(pthread.threadInfoStruct);
@@ -661,17 +564,13 @@ var LibraryPThread = {
 #endif
     return navigator['hardwareConcurrency'];
   },
-    
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__sig: 'iiiii',
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['$spawnThread', 'pthread_self', 'memalign', 'emscripten_sync_run_in_main_thread_4'],
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function(pthread_ptr, attr, start_routine, arg) {
+
+  __pthread_create_js__sig: 'iiiii',
+  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', 'memalign', 'emscripten_sync_run_in_main_thread_4'],
+  __pthread_create_js: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return {{{ cDefine('EAGAIN') }}};
-    }
-    if (!pthread_ptr) {
-      err('pthread_create called with a null thread pointer!');
-      return {{{ cDefine('EINVAL') }}};
     }
 
     // List of JS objects that will transfer ownership to the Worker hosting the thread
@@ -693,7 +592,7 @@ var LibraryPThread = {
     if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
     if (transferredCanvasNames) transferredCanvasNames = transferredCanvasNames.split(',');
 #if GL_DEBUG
-    console.log('pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
+    out('pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
 #endif
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
@@ -825,26 +724,12 @@ var LibraryPThread = {
       assert(stackBase > 0);
     }
 
-    // Allocate thread block (pthread_t structure).
-    var threadInfoStruct = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
-    // zero-initialize thread structure.
-    for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}} >> 2; ++i) HEAPU32[(threadInfoStruct>>2) + i] = 0;
-    {{{ makeSetValue('pthread_ptr', 0, 'threadInfoStruct', 'i32') }}};
-
-    // The pthread struct has a field that points to itself - this is used as a
-    // magic ID to detect whether the pthread_t structure is 'alive'.
-    {{{ makeSetValue('threadInfoStruct', C_STRUCTS.pthread.self, 'threadInfoStruct', 'i32') }}};
-
-    // pthread struct robust_list head should point to itself.
-    var headPtr = threadInfoStruct + {{{ C_STRUCTS.pthread.robust_list }}};
-    {{{ makeSetValue('headPtr', 0, 'headPtr', 'i32') }}};
-
 #if OFFSCREENCANVAS_SUPPORT
     // Register for each of the transferred canvases that the new thread now
     // owns the OffscreenCanvas.
     for (var i in offscreenCanvases) {
       // pthread ptr to the thread that owns this canvas.
-      {{{ makeSetValue('offscreenCanvases[i].canvasSharedPtr', 8, 'threadInfoStruct', 'i32') }}};
+      {{{ makeSetValue('offscreenCanvases[i].canvasSharedPtr', 8, 'pthread_ptr', 'i32') }}};
     }
 #endif
 
@@ -854,7 +739,7 @@ var LibraryPThread = {
       allocatedOwnStack: allocatedOwnStack,
       detached: detached,
       startRoutine: start_routine,
-      pthread_ptr: threadInfoStruct,
+      pthread_ptr: pthread_ptr,
       arg: arg,
 #if OFFSCREENCANVAS_SUPPORT
       moduleCanvasId: moduleCanvasId,
@@ -879,19 +764,6 @@ var LibraryPThread = {
     return spawnThread(threadParams);
   },
 
-  // TODO HACK! Remove this function, it is a JS side copy of the function
-  // pthread_testcancel() in library_pthread.c.  Just call pthread_testcancel()
-  // everywhere.
-  _pthread_testcancel_js: function() {
-    if (!ENVIRONMENT_IS_PTHREAD) return;
-    var tb = _pthread_self();
-    if (!tb) return;
-    var cancelDisabled = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2);
-    if (cancelDisabled) return;
-    var canceled = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
-    if (canceled == 2) throw 'Canceled!';
-  },
-
 #if MINIMAL_RUNTIME
   emscripten_check_blocking_allowed__deps: ['$warnOnce'],
 #endif
@@ -911,7 +783,7 @@ var LibraryPThread = {
 #endif
   },
 
-  _emscripten_do_pthread_join__deps: ['$cleanupThread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'pthread_self', 'emscripten_main_browser_thread_id',
+  _emscripten_do_pthread_join__deps: ['$cleanupThread', 'pthread_testcancel', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'pthread_self', 'emscripten_main_browser_thread_id',
 #if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
   'emscripten_check_blocking_allowed'
 #endif
@@ -919,26 +791,26 @@ var LibraryPThread = {
   _emscripten_do_pthread_join: function(thread, status, block) {
     if (!thread) {
       err('pthread_join attempted on a null thread pointer!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     if (ENVIRONMENT_IS_PTHREAD && _pthread_self() == thread) {
       err('PThread ' + thread + ' is attempting to join to itself!');
-      return ERRNO_CODES.EDEADLK;
+      return {{{ cDefine('EDEADLK') }}};
     }
     else if (!ENVIRONMENT_IS_PTHREAD && _emscripten_main_browser_thread_id() == thread) {
       err('Main thread ' + thread + ' is attempting to join to itself!');
-      return ERRNO_CODES.EDEADLK;
+      return {{{ cDefine('EDEADLK') }}};
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
     if (self !== thread) {
       err('pthread_join attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
 
     var detached = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
     if (detached) {
       err('Attempted to join thread ' + thread + ', which was already detached!');
-      return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
+      return {{{ cDefine('EINVAL') }}}; // The thread is already detached, can no longer join it!
     }
 
 #if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
@@ -950,20 +822,20 @@ var LibraryPThread = {
     for (;;) {
       var threadStatus = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
       if (threadStatus == 1) { // Exited?
-        var threadExitCode = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2);
-        if (status) {{{ makeSetValue('status', 0, 'threadExitCode', 'i32') }}};
-        Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 1); // Mark the thread as detached.
-
+        if (status) {
+          var result = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.result }}} ) >> 2);
+          {{{ makeSetValue('status', 0, 'result', 'i32') }}};
+        }
+        // Mark the thread as detached.
+        Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 1);
         if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread);
         else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
         return 0;
       }
       if (!block) {
-        return ERRNO_CODES.EBUSY;
+        return {{{ cDefine('EBUSY') }}};
       }
-      // TODO HACK! Replace the _js variant with just _pthread_testcancel:
-      //_pthread_testcancel();
-      __pthread_testcancel_js();
+      _pthread_testcancel();
       // In main runtime thread (the thread that initialized the Emscripten C
       // runtime and launched main()), assist pthreads in performing operations
       // that they need to access the Emscripten main runtime for.
@@ -972,8 +844,8 @@ var LibraryPThread = {
     }
   },
 
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join__deps: ['_emscripten_do_pthread_join'],
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join: function(thread, status) {
+  __pthread_join_js__deps: ['_emscripten_do_pthread_join'],
+  __pthread_join_js: function(thread, status) {
     return __emscripten_do_pthread_join(thread, status, true);
   },
 
@@ -984,20 +856,20 @@ var LibraryPThread = {
 
   pthread_kill__deps: ['$killThread', 'emscripten_main_browser_thread_id'],
   pthread_kill: function(thread, signal) {
-    if (signal < 0 || signal >= 65/*_NSIG*/) return ERRNO_CODES.EINVAL;
+    if (signal < 0 || signal >= 65/*_NSIG*/) return {{{ cDefine('EINVAL') }}};
     if (thread === _emscripten_main_browser_thread_id()) {
       if (signal == 0) return 0; // signal == 0 is a no-op.
       err('Main thread (id=' + thread + ') cannot be killed with pthread_kill!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     if (!thread) {
       err('pthread_kill attempted on a null thread pointer!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
     if (self !== thread) {
       err('pthread_kill attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     if (signal != 0) {
       if (!ENVIRONMENT_IS_PTHREAD) killThread(thread);
@@ -1010,16 +882,16 @@ var LibraryPThread = {
   pthread_cancel: function(thread) {
     if (thread === _emscripten_main_browser_thread_id()) {
       err('Main thread (id=' + thread + ') cannot be canceled!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     if (!thread) {
       err('pthread_cancel attempted on a null thread pointer!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
     if (self !== thread) {
       err('pthread_cancel attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0, 2); // Signal the thread that it needs to cancel itself.
     if (!ENVIRONMENT_IS_PTHREAD) cancelThread(thread);
@@ -1027,44 +899,53 @@ var LibraryPThread = {
     return 0;
   },
 
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_detach__sig: 'vi',
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_detach: function(thread) {
+  __pthread_detach_js__sig: 'vi',
+  __pthread_detach_js: function(thread) {
     if (!thread) {
       err('pthread_detach attempted on a null thread pointer!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
     if (self !== thread) {
       err('pthread_detach attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
-      return ERRNO_CODES.ESRCH;
+      return {{{ cDefine('ESRCH') }}};
     }
     // Follow musl convention: detached:0 means not detached, 1 means the thread
     // was created as detached, and 2 means that the thread was detached via
     // pthread_detach.
     var wasDetached = Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 0, 2);
 
-    return wasDetached ? ERRNO_CODES.EINVAL : 0;
+    return wasDetached ? {{{ cDefine('EINVAL') }}} : 0;
   },
 
-  // C11 thread version.
-  // TODO: remove this in favor or compiling musl/src/thread/pthread_detach.c
-#if USE_LSAN
-  thrd_detach: 'emscripten_builtin_pthread_detach',
-#else
-  thrd_detach: 'pthread_detach',
+  __pthread_exit_run_handlers__deps: ['exit'],
+  __pthread_exit_run_handlers: function(status) {
+    // Called from pthread_exit, either when called explicitly called
+    // by programmer, or implicitly when leaving the thread main function.
+
+#if PTHREADS_DEBUG
+    var tb = _pthread_self();
+    assert(tb);
+    out('Pthread 0x' + tb.toString(16) + ' exited.');
 #endif
 
-  pthread_exit__deps: ['exit'],
-  pthread_exit: function(status) {
-    if (!ENVIRONMENT_IS_PTHREAD) _exit(status);
-    else PThread.threadExit(status);
-    // pthread_exit is marked noReturn, so we must not return from it.
-    throw 'unwind';
+    while (PThread.threadExitHandlers.length > 0) {
+      PThread.threadExitHandlers.pop()();
+    }
+  },
+
+  __pthread_exit_done: function() {
+    // Called at the end of pthread_exit, either when called explicitly called
+    // by programmer, or implicitly when leaving the thread main function.
+    //
+    // Note: in theory we would like to return any offscreen canvases back to the main thread,
+    // but if we ever fetched a rendering context for them that would not be valid, so we don't try.
+    postMessage({ 'cmd': 'exit' });
   },
 
   __cxa_thread_atexit__sig: 'vii',
   __cxa_thread_atexit: function(routine, arg) {
-    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) }); 
+    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) });
   },
   __cxa_thread_atexit_impl: '__cxa_thread_atexit',
 

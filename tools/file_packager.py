@@ -57,6 +57,7 @@ Notes:
     subdir\file, in JS it will be subdir/file. For simplicity we treat the web platform as a *NIX.
 """
 
+import base64
 import os
 import sys
 import shutil
@@ -93,6 +94,11 @@ AV_WORKAROUND = 0
 
 excluded_patterns = []
 new_data_files = []
+
+
+def base64_encode(b):
+  b64 = base64.b64encode(b)
+  return b64.decode('ascii')
 
 
 def has_hidden_attribute(filepath):
@@ -453,7 +459,7 @@ def main():
         ''' % (create_preloaded if use_preload_plugins else create_data, '''
               var files = metadata['files'];
               for (var i = 0; i < files.length; ++i) {
-                new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio']).open('GET', files[i]['filename']);
+                new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
               }
       ''')
 
@@ -464,29 +470,24 @@ def main():
     basename = os.path.basename(filename)
     if file_['mode'] == 'embed':
       # Embed
-      data = list(bytearray(utils.read_binary(file_['srcpath'])))
-      code += '''var fileData%d = [];\n''' % counter
-      if data:
-        parts = []
-        chunk_size = 10240
-        start = 0
-        while start < len(data):
-          parts.append('''fileData%d.push.apply(fileData%d, %s);\n'''
-                       % (counter, counter, str(data[start:start + chunk_size])))
-          start += chunk_size
-        code += ''.join(parts)
-      code += ('''Module['FS_createDataFile']('%s', '%s', fileData%d, true, true, false);\n'''
+      data = base64_encode(utils.read_binary(file_['srcpath']))
+      code += '''var fileData%d = '%s';\n''' % (counter, data)
+      code += ('''Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, false);\n'''
                % (dirname, basename, counter))
       counter += 1
     elif file_['mode'] == 'preload':
       # Preload
       counter += 1
-      metadata['files'].append({
+
+      metadata_el = {
         'filename': file_['dstpath'],
         'start': file_['data_start'],
         'end': file_['data_end'],
-        'audio': 1 if filename[-4:] in AUDIO_SUFFIXES else 0,
-      })
+      }
+      if filename[-4:] in AUDIO_SUFFIXES:
+        metadata_el['audio'] = 1
+
+      metadata['files'].append(metadata_el)
     else:
       assert 0
 
@@ -510,8 +511,8 @@ def main():
       # LZ4FS usage
       temp = data_target + '.orig'
       shutil.move(data_target, temp)
-      meta = shared.run_js_tool(shared.path_from_root('tools', 'lz4-compress.js'),
-                                [shared.path_from_root('third_party', 'mini-lz4.js'),
+      meta = shared.run_js_tool(utils.path_from_root('tools/lz4-compress.js'),
+                                [utils.path_from_root('third_party/mini-lz4.js'),
                                 temp, data_target], stdout=PIPE)
       os.unlink(temp)
       use_data = '''

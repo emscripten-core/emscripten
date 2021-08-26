@@ -79,8 +79,8 @@ var LibraryTracing = {
       EmscriptenTrace.loadWorkerViaXHR(collector_url + 'worker.js', function (worker) {
         EmscriptenTrace.worker = worker;
         EmscriptenTrace.worker.addEventListener('error', function (e) {
-          console.log('TRACE WORKER ERROR:');
-          console.log(e);
+          out('TRACE WORKER ERROR:');
+          out(e);
         }, false);
         EmscriptenTrace.worker.postMessage({ 'cmd': 'configure',
                                              'data_version': EmscriptenTrace.DATA_VERSION,
@@ -104,7 +104,7 @@ var LibraryTracing = {
       if (window && window['wtf']) {
         EmscriptenTrace.googleWTFEnabled = true;
       } else {
-        console.log('GOOGLE WTF NOT AVAILABLE TO ENABLE');
+        out('GOOGLE WTF NOT AVAILABLE TO ENABLE');
       }
     },
 

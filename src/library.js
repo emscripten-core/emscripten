@@ -125,6 +125,7 @@ LibraryManager.library = {
   // sys/file.h
   // ==========================================================================
 
+  flock__unimplemented: true,
   flock: function(fd, operation) {
     // int flock(int fd, int operation);
     // Pretend to succeed
@@ -134,6 +135,7 @@ LibraryManager.library = {
   chroot__deps: ['$setErrNo'],
   chroot__proxy: 'sync',
   chroot__sig: 'ii',
+  chroot__unimplemented: true,
   chroot: function(path) {
     // int chroot(const char *path);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chroot.html
@@ -143,6 +145,7 @@ LibraryManager.library = {
 
   execve__deps: ['$setErrNo'],
   execve__sig: 'iiii',
+  execve__unimplemented: true,
   execve: function(path, argv, envp) {
     // int execve(const char *pathname, char *const argv[],
     //            char *const envp[]);
@@ -153,19 +156,16 @@ LibraryManager.library = {
   },
 
   exit__sig: 'vi',
-  exit: function(status) {
 #if MINIMAL_RUNTIME
-    throw 'exit(' + status + ')';
+  // minimal runtime doesn't do any exit cleanup handling so just
+  // map exit directly to the lower-level proc_exit syscall.
+  exit: 'proc_exit',
+  $exit: 'exit',
 #else
+  exit: function(status) {
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
     exit(status);
-#endif
-  },
-
-#if MINIMAL_RUNTIME
-  $exit: function(status) {
-    throw 'exit(' + status + ')';
   },
 #endif
 
@@ -173,6 +173,7 @@ LibraryManager.library = {
   // processes.
   fork__deps: ['$setErrNo'],
   fork__sig: 'i',
+  fork__unimplemented: true,
   fork: function() {
     // pid_t fork(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fork.html
@@ -184,17 +185,17 @@ LibraryManager.library = {
   posix_spawn: 'fork',
 
   setgroups__deps: ['$setErrNo', 'sysconf'],
+  setgroups__unimplemented: true,
   setgroups: function(ngroups, gidset) {
     // int setgroups(int ngroups, const gid_t *gidset);
     // https://developer.apple.com/library/mac/#documentation/Darwin/Reference/ManPages/man2/setgroups.2.html
     if (ngroups < 1 || ngroups > _sysconf({{{ cDefine('_SC_NGROUPS_MAX') }}})) {
       setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
-    } else {
-      // We have just one process/user/group, so it makes no sense to set groups.
-      setErrNo({{{ cDefine('EPERM') }}});
-      return -1;
     }
+    // We have just one process/user/group, so it makes no sense to set groups.
+    setErrNo({{{ cDefine('EPERM') }}});
+    return -1;
   },
 
   emscripten_get_heap_max: function() {
@@ -245,7 +246,7 @@ LibraryManager.library = {
       return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
-      console.error('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+      err('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
     }
     // implicit 0 return to save code size (caller will cast "undefined" into 0
@@ -338,7 +339,7 @@ LibraryManager.library = {
       var replacement = emscripten_realloc_buffer(newSize);
 #if ASSERTIONS == 2
       var t1 = _emscripten_get_now();
-      console.log('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
+      out('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
 #endif
       if (replacement) {
 #if ASSERTIONS && WASM2JS
@@ -445,12 +446,7 @@ LibraryManager.library = {
   // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
   abort__sig: 'v',
   abort: function() {
-#if MINIMAL_RUNTIME
-    // In MINIMAL_RUNTIME the module object does not exist, so its behavior to abort is to throw directly.
-    throw 'abort';
-#else
     abort();
-#endif
   },
 
   // This object can be modified by the user during startup, which affects
@@ -469,9 +465,13 @@ LibraryManager.library = {
     return limit;
   },
 
-#if SHRINK_LEVEL < 2 // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm variant, so we should never emit emscripten_memcpy_big() in the build.
+  // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
+  // variant, so we should never emit emscripten_memcpy_big() in the build.
+  // In STANDALONE_WASM we aviud the emscripten_memcpy_big dependency so keep
+  // the wasm file standalone.
+#if SHRINK_LEVEL < 2 && !STANDALONE_WASM
 
-#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101 || STANDALONE_WASM
+#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
   // has outdated information for Safari, saying it would not support it.
   // https://github.com/WebKit/webkit/commit/24a800eea4d82d6d595cdfec69d0f68e733b5c52#diff-c484911d8df319ba75fce0d8e7296333R1 suggests support was added on Aug 28, 2015.
@@ -504,17 +504,6 @@ LibraryManager.library = {
   __assert_fail: function(condition, filename, line, func) {
     abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
-
-  // ==========================================================================
-  // pwd.h
-  // ==========================================================================
-
-  // TODO: Implement.
-  // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/pwd.h.html
-  getpwuid: function(uid) {
-    return 0; // NULL
-  },
-
 
   // ==========================================================================
   // time.h
@@ -586,7 +575,7 @@ LibraryManager.library = {
   timelocal: 'mktime',
 
 #if MINIMAL_RUNTIME
-  gmtime_r__deps: ['allocateUTF8'],
+  gmtime_r__deps: ['$allocateUTF8'],
 #endif
   gmtime_r__sig: 'iii',
   gmtime_r: function(time, tmPtr) {
@@ -701,7 +690,6 @@ LibraryManager.library = {
     stackRestore(stack);
     return rv;
   },
-  __ctime_r: 'ctime_r',
 
   dysize: function(year) {
     var leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
@@ -710,16 +698,21 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-  tzset__proxy: 'sync',
+  tzset__deps: ['tzset_impl'],
   tzset__sig: 'v',
-#if MINIMAL_RUNTIME
-  tzset__deps: ['$allocateUTF8'],
-#endif
   tzset: function() {
     // TODO: Use (malleable) environment variables instead of system settings.
     if (_tzset.called) return;
     _tzset.called = true;
+    _tzset_impl();
+  },
 
+  tzset_impl__proxy: 'sync',
+  tzset_impl__sig: 'v',
+#if MINIMAL_RUNTIME
+  tzset_impl__deps: ['$allocateUTF8'],
+#endif
+  tzset_impl: function() {
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
     var summer = new Date(currentYear, 6, 1);
@@ -759,6 +752,7 @@ LibraryManager.library = {
   },
 
   stime__deps: ['$setErrNo'],
+  stime__unimplemented: true,
   stime: function(when) {
     setErrNo({{{ cDefine('EPERM') }}});
     return -1;
@@ -1393,6 +1387,7 @@ LibraryManager.library = {
     return _strptime(buf, format, tm); // no locale support yet
   },
 
+  getdate__unimplemented: true,
   getdate: function(string) {
     // struct tm *getdate(const char *string);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/getdate.html
@@ -1483,6 +1478,7 @@ LibraryManager.library = {
   // ==========================================================================
 
   times__deps: ['$zeroMemory'],
+  times__unimplemented: true,
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
@@ -1494,32 +1490,13 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
-  // sys/types.h
-  // ==========================================================================
-  // http://www.kernel.org/doc/man-pages/online/pages/man3/minor.3.html
-  makedev__sig: 'iii',
-  makedev: function(maj, min) {
-    return ((maj) << 8 | (min));
-  },
-  gnu_dev_makedev: 'makedev',
-  major__sig: 'ii',
-  major: function(dev) {
-    return ((dev) >> 8);
-  },
-  gnu_dev_major: 'major',
-  minor__sig: 'ii',
-  minor: function(dev) {
-    return ((dev) & 0xff);
-  },
-  gnu_dev_minor: 'minor',
-
-  // ==========================================================================
   // setjmp.h
   // ==========================================================================
 
   _emscripten_throw_longjmp__sig: 'v',
   _emscripten_throw_longjmp: function() { throw 'longjmp'; },
 #if !SUPPORT_LONGJMP
+#if !INCLUDE_FULL_LIBRARY
   // These are in order to print helpful error messages when either longjmp of
   // setjmp is used.
   longjmp__deps: [function() {
@@ -1536,10 +1513,13 @@ LibraryManager.library = {
   get _emscripten_throw_longjmp__deps() {
     return this.longjmp__deps;
   },
+#endif
   // will never be emitted, as the dep errors at compile time
+  longjmp__unimplemented: true,
   longjmp: function(env, value) {
     abort('longjmp not supported');
   },
+  setjmp__unimplemented: true,
   setjmp: function(env, value) {
     abort('setjmp not supported');
   },
@@ -1551,6 +1531,7 @@ LibraryManager.library = {
 
   wait__deps: ['$setErrNo'],
   wait__sig: 'ii',
+  wait__unimplemented: true,
   wait: function(stat_loc) {
     // pid_t wait(int *stat_loc);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/wait.html
@@ -1568,129 +1549,130 @@ LibraryManager.library = {
   // errno.h
   // ==========================================================================
 
-  $ERRNO_CODES: {
-    EPERM: {{{ cDefine('EPERM') }}},
-    ENOENT: {{{ cDefine('ENOENT') }}},
-    ESRCH: {{{ cDefine('ESRCH') }}},
-    EINTR: {{{ cDefine('EINTR') }}},
-    EIO: {{{ cDefine('EIO') }}},
-    ENXIO: {{{ cDefine('ENXIO') }}},
-    E2BIG: {{{ cDefine('E2BIG') }}},
-    ENOEXEC: {{{ cDefine('ENOEXEC') }}},
-    EBADF: {{{ cDefine('EBADF') }}},
-    ECHILD: {{{ cDefine('ECHILD') }}},
-    EAGAIN: {{{ cDefine('EAGAIN') }}},
-    EWOULDBLOCK: {{{ cDefine('EWOULDBLOCK') }}},
-    ENOMEM: {{{ cDefine('ENOMEM') }}},
-    EACCES: {{{ cDefine('EACCES') }}},
-    EFAULT: {{{ cDefine('EFAULT') }}},
-    ENOTBLK: {{{ cDefine('ENOTBLK') }}},
-    EBUSY: {{{ cDefine('EBUSY') }}},
-    EEXIST: {{{ cDefine('EEXIST') }}},
-    EXDEV: {{{ cDefine('EXDEV') }}},
-    ENODEV: {{{ cDefine('ENODEV') }}},
-    ENOTDIR: {{{ cDefine('ENOTDIR') }}},
-    EISDIR: {{{ cDefine('EISDIR') }}},
-    EINVAL: {{{ cDefine('EINVAL') }}},
-    ENFILE: {{{ cDefine('ENFILE') }}},
-    EMFILE: {{{ cDefine('EMFILE') }}},
-    ENOTTY: {{{ cDefine('ENOTTY') }}},
-    ETXTBSY: {{{ cDefine('ETXTBSY') }}},
-    EFBIG: {{{ cDefine('EFBIG') }}},
-    ENOSPC: {{{ cDefine('ENOSPC') }}},
-    ESPIPE: {{{ cDefine('ESPIPE') }}},
-    EROFS: {{{ cDefine('EROFS') }}},
-    EMLINK: {{{ cDefine('EMLINK') }}},
-    EPIPE: {{{ cDefine('EPIPE') }}},
-    EDOM: {{{ cDefine('EDOM') }}},
-    ERANGE: {{{ cDefine('ERANGE') }}},
-    ENOMSG: {{{ cDefine('ENOMSG') }}},
-    EIDRM: {{{ cDefine('EIDRM') }}},
-    ECHRNG: {{{ cDefine('ECHRNG') }}},
-    EL2NSYNC: {{{ cDefine('EL2NSYNC') }}},
-    EL3HLT: {{{ cDefine('EL3HLT') }}},
-    EL3RST: {{{ cDefine('EL3RST') }}},
-    ELNRNG: {{{ cDefine('ELNRNG') }}},
-    EUNATCH: {{{ cDefine('EUNATCH') }}},
-    ENOCSI: {{{ cDefine('ENOCSI') }}},
-    EL2HLT: {{{ cDefine('EL2HLT') }}},
-    EDEADLK: {{{ cDefine('EDEADLK') }}},
-    ENOLCK: {{{ cDefine('ENOLCK') }}},
-    EBADE: {{{ cDefine('EBADE') }}},
-    EBADR: {{{ cDefine('EBADR') }}},
-    EXFULL: {{{ cDefine('EXFULL') }}},
-    ENOANO: {{{ cDefine('ENOANO') }}},
-    EBADRQC: {{{ cDefine('EBADRQC') }}},
-    EBADSLT: {{{ cDefine('EBADSLT') }}},
-    EDEADLOCK: {{{ cDefine('EDEADLOCK') }}},
-    EBFONT: {{{ cDefine('EBFONT') }}},
-    ENOSTR: {{{ cDefine('ENOSTR') }}},
-    ENODATA: {{{ cDefine('ENODATA') }}},
-    ETIME: {{{ cDefine('ETIME') }}},
-    ENOSR: {{{ cDefine('ENOSR') }}},
-    ENONET: {{{ cDefine('ENONET') }}},
-    ENOPKG: {{{ cDefine('ENOPKG') }}},
-    EREMOTE: {{{ cDefine('EREMOTE') }}},
-    ENOLINK: {{{ cDefine('ENOLINK') }}},
-    EADV: {{{ cDefine('EADV') }}},
-    ESRMNT: {{{ cDefine('ESRMNT') }}},
-    ECOMM: {{{ cDefine('ECOMM') }}},
-    EPROTO: {{{ cDefine('EPROTO') }}},
-    EMULTIHOP: {{{ cDefine('EMULTIHOP') }}},
-    EDOTDOT: {{{ cDefine('EDOTDOT') }}},
-    EBADMSG: {{{ cDefine('EBADMSG') }}},
-    ENOTUNIQ: {{{ cDefine('ENOTUNIQ') }}},
-    EBADFD: {{{ cDefine('EBADFD') }}},
-    EREMCHG: {{{ cDefine('EREMCHG') }}},
-    ELIBACC: {{{ cDefine('ELIBACC') }}},
-    ELIBBAD: {{{ cDefine('ELIBBAD') }}},
-    ELIBSCN: {{{ cDefine('ELIBSCN') }}},
-    ELIBMAX: {{{ cDefine('ELIBMAX') }}},
-    ELIBEXEC: {{{ cDefine('ELIBEXEC') }}},
-    ENOSYS: {{{ cDefine('ENOSYS') }}},
-    ENOTEMPTY: {{{ cDefine('ENOTEMPTY') }}},
-    ENAMETOOLONG: {{{ cDefine('ENAMETOOLONG') }}},
-    ELOOP: {{{ cDefine('ELOOP') }}},
-    EOPNOTSUPP: {{{ cDefine('EOPNOTSUPP') }}},
-    EPFNOSUPPORT: {{{ cDefine('EPFNOSUPPORT') }}},
-    ECONNRESET: {{{ cDefine('ECONNRESET') }}},
-    ENOBUFS: {{{ cDefine('ENOBUFS') }}},
-    EAFNOSUPPORT: {{{ cDefine('EAFNOSUPPORT') }}},
-    EPROTOTYPE: {{{ cDefine('EPROTOTYPE') }}},
-    ENOTSOCK: {{{ cDefine('ENOTSOCK') }}},
-    ENOPROTOOPT: {{{ cDefine('ENOPROTOOPT') }}},
-    ESHUTDOWN: {{{ cDefine('ESHUTDOWN') }}},
-    ECONNREFUSED: {{{ cDefine('ECONNREFUSED') }}},
-    EADDRINUSE: {{{ cDefine('EADDRINUSE') }}},
-    ECONNABORTED: {{{ cDefine('ECONNABORTED') }}},
-    ENETUNREACH: {{{ cDefine('ENETUNREACH') }}},
-    ENETDOWN: {{{ cDefine('ENETDOWN') }}},
-    ETIMEDOUT: {{{ cDefine('ETIMEDOUT') }}},
-    EHOSTDOWN: {{{ cDefine('EHOSTDOWN') }}},
-    EHOSTUNREACH: {{{ cDefine('EHOSTUNREACH') }}},
-    EINPROGRESS: {{{ cDefine('EINPROGRESS') }}},
-    EALREADY: {{{ cDefine('EALREADY') }}},
-    EDESTADDRREQ: {{{ cDefine('EDESTADDRREQ') }}},
-    EMSGSIZE: {{{ cDefine('EMSGSIZE') }}},
-    EPROTONOSUPPORT: {{{ cDefine('EPROTONOSUPPORT') }}},
-    ESOCKTNOSUPPORT: {{{ cDefine('ESOCKTNOSUPPORT') }}},
-    EADDRNOTAVAIL: {{{ cDefine('EADDRNOTAVAIL') }}},
-    ENETRESET: {{{ cDefine('ENETRESET') }}},
-    EISCONN: {{{ cDefine('EISCONN') }}},
-    ENOTCONN: {{{ cDefine('ENOTCONN') }}},
-    ETOOMANYREFS: {{{ cDefine('ETOOMANYREFS') }}},
-    EUSERS: {{{ cDefine('EUSERS') }}},
-    EDQUOT: {{{ cDefine('EDQUOT') }}},
-    ESTALE: {{{ cDefine('ESTALE') }}},
-    ENOTSUP: {{{ cDefine('ENOTSUP') }}},
-    ENOMEDIUM: {{{ cDefine('ENOMEDIUM') }}},
-    EILSEQ: {{{ cDefine('EILSEQ') }}},
-    EOVERFLOW: {{{ cDefine('EOVERFLOW') }}},
-    ECANCELED: {{{ cDefine('ECANCELED') }}},
-    ENOTRECOVERABLE: {{{ cDefine('ENOTRECOVERABLE') }}},
-    EOWNERDEAD: {{{ cDefine('EOWNERDEAD') }}},
-    ESTRPIPE: {{{ cDefine('ESTRPIPE') }}},
-  },
+  $ERRNO_CODES__postset: `ERRNO_CODES = {
+    'EPERM': {{{ cDefine('EPERM') }}},
+    'ENOENT': {{{ cDefine('ENOENT') }}},
+    'ESRCH': {{{ cDefine('ESRCH') }}},
+    'EINTR': {{{ cDefine('EINTR') }}},
+    'EIO': {{{ cDefine('EIO') }}},
+    'ENXIO': {{{ cDefine('ENXIO') }}},
+    'E2BIG': {{{ cDefine('E2BIG') }}},
+    'ENOEXEC': {{{ cDefine('ENOEXEC') }}},
+    'EBADF': {{{ cDefine('EBADF') }}},
+    'ECHILD': {{{ cDefine('ECHILD') }}},
+    'EAGAIN': {{{ cDefine('EAGAIN') }}},
+    'EWOULDBLOCK': {{{ cDefine('EWOULDBLOCK') }}},
+    'ENOMEM': {{{ cDefine('ENOMEM') }}},
+    'EACCES': {{{ cDefine('EACCES') }}},
+    'EFAULT': {{{ cDefine('EFAULT') }}},
+    'ENOTBLK': {{{ cDefine('ENOTBLK') }}},
+    'EBUSY': {{{ cDefine('EBUSY') }}},
+    'EEXIST': {{{ cDefine('EEXIST') }}},
+    'EXDEV': {{{ cDefine('EXDEV') }}},
+    'ENODEV': {{{ cDefine('ENODEV') }}},
+    'ENOTDIR': {{{ cDefine('ENOTDIR') }}},
+    'EISDIR': {{{ cDefine('EISDIR') }}},
+    'EINVAL': {{{ cDefine('EINVAL') }}},
+    'ENFILE': {{{ cDefine('ENFILE') }}},
+    'EMFILE': {{{ cDefine('EMFILE') }}},
+    'ENOTTY': {{{ cDefine('ENOTTY') }}},
+    'ETXTBSY': {{{ cDefine('ETXTBSY') }}},
+    'EFBIG': {{{ cDefine('EFBIG') }}},
+    'ENOSPC': {{{ cDefine('ENOSPC') }}},
+    'ESPIPE': {{{ cDefine('ESPIPE') }}},
+    'EROFS': {{{ cDefine('EROFS') }}},
+    'EMLINK': {{{ cDefine('EMLINK') }}},
+    'EPIPE': {{{ cDefine('EPIPE') }}},
+    'EDOM': {{{ cDefine('EDOM') }}},
+    'ERANGE': {{{ cDefine('ERANGE') }}},
+    'ENOMSG': {{{ cDefine('ENOMSG') }}},
+    'EIDRM': {{{ cDefine('EIDRM') }}},
+    'ECHRNG': {{{ cDefine('ECHRNG') }}},
+    'EL2NSYNC': {{{ cDefine('EL2NSYNC') }}},
+    'EL3HLT': {{{ cDefine('EL3HLT') }}},
+    'EL3RST': {{{ cDefine('EL3RST') }}},
+    'ELNRNG': {{{ cDefine('ELNRNG') }}},
+    'EUNATCH': {{{ cDefine('EUNATCH') }}},
+    'ENOCSI': {{{ cDefine('ENOCSI') }}},
+    'EL2HLT': {{{ cDefine('EL2HLT') }}},
+    'EDEADLK': {{{ cDefine('EDEADLK') }}},
+    'ENOLCK': {{{ cDefine('ENOLCK') }}},
+    'EBADE': {{{ cDefine('EBADE') }}},
+    'EBADR': {{{ cDefine('EBADR') }}},
+    'EXFULL': {{{ cDefine('EXFULL') }}},
+    'ENOANO': {{{ cDefine('ENOANO') }}},
+    'EBADRQC': {{{ cDefine('EBADRQC') }}},
+    'EBADSLT': {{{ cDefine('EBADSLT') }}},
+    'EDEADLOCK': {{{ cDefine('EDEADLOCK') }}},
+    'EBFONT': {{{ cDefine('EBFONT') }}},
+    'ENOSTR': {{{ cDefine('ENOSTR') }}},
+    'ENODATA': {{{ cDefine('ENODATA') }}},
+    'ETIME': {{{ cDefine('ETIME') }}},
+    'ENOSR': {{{ cDefine('ENOSR') }}},
+    'ENONET': {{{ cDefine('ENONET') }}},
+    'ENOPKG': {{{ cDefine('ENOPKG') }}},
+    'EREMOTE': {{{ cDefine('EREMOTE') }}},
+    'ENOLINK': {{{ cDefine('ENOLINK') }}},
+    'EADV': {{{ cDefine('EADV') }}},
+    'ESRMNT': {{{ cDefine('ESRMNT') }}},
+    'ECOMM': {{{ cDefine('ECOMM') }}},
+    'EPROTO': {{{ cDefine('EPROTO') }}},
+    'EMULTIHOP': {{{ cDefine('EMULTIHOP') }}},
+    'EDOTDOT': {{{ cDefine('EDOTDOT') }}},
+    'EBADMSG': {{{ cDefine('EBADMSG') }}},
+    'ENOTUNIQ': {{{ cDefine('ENOTUNIQ') }}},
+    'EBADFD': {{{ cDefine('EBADFD') }}},
+    'EREMCHG': {{{ cDefine('EREMCHG') }}},
+    'ELIBACC': {{{ cDefine('ELIBACC') }}},
+    'ELIBBAD': {{{ cDefine('ELIBBAD') }}},
+    'ELIBSCN': {{{ cDefine('ELIBSCN') }}},
+    'ELIBMAX': {{{ cDefine('ELIBMAX') }}},
+    'ELIBEXEC': {{{ cDefine('ELIBEXEC') }}},
+    'ENOSYS': {{{ cDefine('ENOSYS') }}},
+    'ENOTEMPTY': {{{ cDefine('ENOTEMPTY') }}},
+    'ENAMETOOLONG': {{{ cDefine('ENAMETOOLONG') }}},
+    'ELOOP': {{{ cDefine('ELOOP') }}},
+    'EOPNOTSUPP': {{{ cDefine('EOPNOTSUPP') }}},
+    'EPFNOSUPPORT': {{{ cDefine('EPFNOSUPPORT') }}},
+    'ECONNRESET': {{{ cDefine('ECONNRESET') }}},
+    'ENOBUFS': {{{ cDefine('ENOBUFS') }}},
+    'EAFNOSUPPORT': {{{ cDefine('EAFNOSUPPORT') }}},
+    'EPROTOTYPE': {{{ cDefine('EPROTOTYPE') }}},
+    'ENOTSOCK': {{{ cDefine('ENOTSOCK') }}},
+    'ENOPROTOOPT': {{{ cDefine('ENOPROTOOPT') }}},
+    'ESHUTDOWN': {{{ cDefine('ESHUTDOWN') }}},
+    'ECONNREFUSED': {{{ cDefine('ECONNREFUSED') }}},
+    'EADDRINUSE': {{{ cDefine('EADDRINUSE') }}},
+    'ECONNABORTED': {{{ cDefine('ECONNABORTED') }}},
+    'ENETUNREACH': {{{ cDefine('ENETUNREACH') }}},
+    'ENETDOWN': {{{ cDefine('ENETDOWN') }}},
+    'ETIMEDOUT': {{{ cDefine('ETIMEDOUT') }}},
+    'EHOSTDOWN': {{{ cDefine('EHOSTDOWN') }}},
+    'EHOSTUNREACH': {{{ cDefine('EHOSTUNREACH') }}},
+    'EINPROGRESS': {{{ cDefine('EINPROGRESS') }}},
+    'EALREADY': {{{ cDefine('EALREADY') }}},
+    'EDESTADDRREQ': {{{ cDefine('EDESTADDRREQ') }}},
+    'EMSGSIZE': {{{ cDefine('EMSGSIZE') }}},
+    'EPROTONOSUPPORT': {{{ cDefine('EPROTONOSUPPORT') }}},
+    'ESOCKTNOSUPPORT': {{{ cDefine('ESOCKTNOSUPPORT') }}},
+    'EADDRNOTAVAIL': {{{ cDefine('EADDRNOTAVAIL') }}},
+    'ENETRESET': {{{ cDefine('ENETRESET') }}},
+    'EISCONN': {{{ cDefine('EISCONN') }}},
+    'ENOTCONN': {{{ cDefine('ENOTCONN') }}},
+    'ETOOMANYREFS': {{{ cDefine('ETOOMANYREFS') }}},
+    'EUSERS': {{{ cDefine('EUSERS') }}},
+    'EDQUOT': {{{ cDefine('EDQUOT') }}},
+    'ESTALE': {{{ cDefine('ESTALE') }}},
+    'ENOTSUP': {{{ cDefine('ENOTSUP') }}},
+    'ENOMEDIUM': {{{ cDefine('ENOMEDIUM') }}},
+    'EILSEQ': {{{ cDefine('EILSEQ') }}},
+    'EOVERFLOW': {{{ cDefine('EOVERFLOW') }}},
+    'ECANCELED': {{{ cDefine('ECANCELED') }}},
+    'ENOTRECOVERABLE': {{{ cDefine('ENOTRECOVERABLE') }}},
+    'EOWNERDEAD': {{{ cDefine('EOWNERDEAD') }}},
+    'ESTRPIPE': {{{ cDefine('ESTRPIPE') }}},
+  };`,
+  $ERRNO_CODES: {},
   $ERRNO_MESSAGES: {
     0: 'Success',
     {{{ cDefine('EPERM') }}}: 'Not super-user',
@@ -2556,22 +2538,36 @@ LibraryManager.library = {
 
   // pwd.h
 
+  getpwnam__unimplemented: true,
   getpwnam: function() { throw 'getpwnam: TODO' },
+  getpwnam_r__unimplemented: true,
   getpwnam_r: function() { throw 'getpwnam_r: TODO' },
+  getpwuid__unimplemented: true,
   getpwuid: function() { throw 'getpwuid: TODO' },
+  getpwuid_r__unimplemented: true,
   getpwuid_r: function() { throw 'getpwuid_r: TODO' },
+  setpwent__unimplemented: true,
   setpwent: function() { throw 'setpwent: TODO' },
+  getpwent__unimplemented: true,
   getpwent: function() { throw 'getpwent: TODO' },
+  endpwent__unimplemented: true,
   endpwent: function() { throw 'endpwent: TODO' },
 
   // grp.h
 
+  getgrgid__unimplemented: true,
   getgrgid: function() { throw 'getgrgid: TODO' },
+  getgrgid_r__unimplemented: true,
   getgrgid_r: function() { throw 'getgrgid_r: TODO' },
+  getgrnam__unimplemented: true,
   getgrnam: function() { throw 'getgrnam: TODO' },
+  getgrnam_r__unimplemented: true,
   getgrnam_r: function() { throw 'getgrnam_r: TODO' },
+  getgrent__unimplemented: true,
   getgrent: function() { throw 'getgrent: TODO' },
+  endgrent__unimplemented: true,
   endgrent: function() { throw 'endgrent: TODO' },
+  setgrent__unimplemented: true,
   setgrent: function() { throw 'setgrent: TODO' },
 
   // random.h
@@ -2613,6 +2609,22 @@ LibraryManager.library = {
       {{{ makeSetValue('buffer', 'i', '_getentropy.randomDevice()', 'i8') }}}
     }
     return 0;
+  },
+
+  // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
+  alarm__deps: ['raise', '$callUserCallback'],
+  alarm: function(seconds) {
+    setTimeout(function() {
+      callUserCallback(function() {
+        _raise({{{ cDefine('SIGALRM') }}});
+      });
+    }, seconds*1000);
+  },
+
+  // Helper for raise() to avoid signature mismatch failures:
+  // https://github.com/emscripten-core/posixtestsuite/issues/6
+  __call_sighandler: function(fp, sig) {
+    {{{ makeDynCall('vi', 'fp') }}}(sig);
   },
 
   // ==========================================================================
@@ -2891,7 +2903,7 @@ LibraryManager.library = {
 
     if (flags & 1 /*EM_LOG_CONSOLE*/) {
       if (flags & 4 /*EM_LOG_ERROR*/) {
-        console.error(str);
+        err(str);
       } else if (flags & 2 /*EM_LOG_WARN*/) {
         console.warn(str);
       } else if (flags & 512 /*EM_LOG_INFO*/) {
@@ -2899,7 +2911,7 @@ LibraryManager.library = {
       } else if (flags & 256 /*EM_LOG_DEBUG*/) {
         console.debug(str);
       } else {
-        console.log(str);
+        out(str);
       }
     } else if (flags & 6 /*EM_LOG_ERROR|EM_LOG_WARN*/) {
       err(str);
@@ -2954,6 +2966,9 @@ LibraryManager.library = {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_generate_pc (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
 #else
+#if ASSERTIONS
+    assert(wasmOffsetConverter);
+#endif
     var match;
 
     if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
@@ -3183,6 +3198,9 @@ LibraryManager.library = {
 #endif
   },
 
+#if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
+  // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
+  // to malloc, free, and memalign.
   $withBuiltinMalloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'
 #if USE_ASAN
                              , 'emscripten_builtin_memset'
@@ -3211,6 +3229,10 @@ LibraryManager.library = {
 #endif
     }
   },
+#else
+  // Without lsan or asan withBuiltinMalloc is just a no-op.
+  $withBuiltinMalloc: function (func) { return func(); },
+#endif
 
   emscripten_builtin_mmap2__deps: ['$withBuiltinMalloc', '$syscallMmap2'],
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
@@ -3549,6 +3571,9 @@ LibraryManager.library = {
     throw 'unwind';
   },
 
+#if MINIMAL_RUNTIME
+  emscripten_force_exit__deps: ['exit'],
+#endif
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
@@ -3557,14 +3582,40 @@ LibraryManager.library = {
     warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
 #endif
 #endif
-#if !MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME
+    _exit(status);
+#else
     noExitRuntime = false;
     runtimeKeepaliveCounter = 0;
-#endif
     exit(status);
+#endif
   },
 
 #if !MINIMAL_RUNTIME
+  $handleException: function(e) {
+    // Certain exception types we do not treat as errors since they are used for
+    // internal control flow.
+    // 1. ExitStatus, which is thrown by exit()
+    // 2. "unwind", which is thrown by emscripten_unwind_to_js_event_loop() and others
+    //    that wish to return to JS event loop.
+    if (e instanceof ExitStatus || e == 'unwind') {
+      return EXITSTATUS;
+    }
+    // Anything else is an unexpected exception and we treat it as hard error.
+    var toLog = e;
+#if ASSERTIONS
+    if (e && typeof e === 'object' && e.stack) {
+      toLog = [e, e.stack];
+    }
+#endif
+    err('exception thrown: ' + toLog);
+#if MINIMAL_RUNTIME
+    throw e;
+#else
+    quit_(1, e);
+#endif
+  },
+
   // Callable in pthread without __proxy needed.
   $runtimeKeepalivePush__sig: 'v',
   $runtimeKeepalivePush: function() {
@@ -3592,9 +3643,11 @@ LibraryManager.library = {
   // The job of this wrapper is the handle emscripten-specfic exceptions such
   // as ExitStatus and 'unwind' and prevent these from escaping to the top
   // level.
+  $callUserCallback__deps: ['$handleException',
 #if EXIT_RUNTIME || USE_PTHREADS
-  $callUserCallback__deps: ['$maybeExit'],
+    '$maybeExit',
 #endif
+  ],
   $callUserCallback: function(func, synchronous) {
     if (ABORT) {
 #if ASSERTIONS
@@ -3609,26 +3662,20 @@ LibraryManager.library = {
     }
     try {
       func();
-    } catch (e) {
-      if (e instanceof ExitStatus) {
-        return;
-      } else if (e !== 'unwind') {
-        // And actual unexpected user-exectpion occured
-        if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
-        throw e;
-      }
-    }
 #if EXIT_RUNTIME || USE_PTHREADS
 #if USE_PTHREADS && !EXIT_RUNTIME
-    if (ENVIRONMENT_IS_PTHREAD)
+      if (ENVIRONMENT_IS_PTHREAD)
 #endif
-      maybeExit();
+        maybeExit();
 #endif
+    } catch (e) {
+      handleException(e);
+    }
   },
 
-  $maybeExit__deps: ['exit',
+  $maybeExit__deps: ['exit', '$handleException',
 #if USE_PTHREADS
-    'pthread_exit',
+    '_emscripten_thread_exit',
 #endif
   ],
   $maybeExit: function() {
@@ -3641,15 +3688,12 @@ LibraryManager.library = {
 #endif
       try {
 #if USE_PTHREADS
-        if (ENVIRONMENT_IS_PTHREAD) _pthread_exit(EXITSTATUS);
+        if (ENVIRONMENT_IS_PTHREAD) __emscripten_thread_exit(EXITSTATUS);
         else
 #endif
         _exit(EXITSTATUS);
       } catch (e) {
-        if (e instanceof ExitStatus) {
-          return;
-        }
-        throw e;
+        handleException(e);
       }
     }
   },
@@ -3660,6 +3704,12 @@ LibraryManager.library = {
   },
 #endif
 
+  $safeSetTimeout__deps: ['$callUserCallback',
+#if !MINIMAL_RUNTIME
+   '$runtimeKeepalivePush',
+   '$runtimeKeepalivePop',
+#endif
+  ],
   $safeSetTimeout: function(func, timeout) {
     {{{ runtimeKeepalivePush() }}}
     return setTimeout(function() {
@@ -3687,6 +3737,30 @@ LibraryManager.library = {
       }
     });
     if (dep) addRunDependency(dep);
+  },
+
+  $alignMemory: function(size, alignment) {
+#if ASSERTIONS
+    assert(alignment, "alignment argument is required");
+#endif
+    return Math.ceil(size / alignment) * alignment;
+  },
+
+  // Allocate memory for an mmap operation. This allocates space of the right
+  // page-aligned size, and clears the allocated space.
+  $mmapAlloc__deps: ['$zeroMemory', '$alignMemory'],
+  $mmapAlloc: function(size) {
+#if hasExportedFunction('_memalign')
+    size = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
+    var ptr = _memalign({{{ WASM_PAGE_SIZE }}}, size);
+    if (!ptr) return 0;
+    zeroMemory(ptr, size);
+    return ptr;
+#elif ASSERTIONS
+    abort('internal error: mmapAlloc called but `memalign` native symbol not exported');
+#else
+    abort();
+#endif
   },
 
 #if RELOCATABLE

@@ -1,5 +1,6 @@
 #include <string.h>
+#include <stdint.h>
 
 int main() {
-  return (int)memchr("hello", 'z', 7);
+  return (int)(intptr_t)memchr("hello", 'z', 7);
 }

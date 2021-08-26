@@ -37,16 +37,12 @@ sys.path.append(__rootpath__)
 import jsrun
 import parallel_testsuite
 import common
-from tools import shared, config
+from tools import shared, config, utils
 
 
-sys.path.append(shared.path_from_root('third_party/websockify'))
+sys.path.append(utils.path_from_root('third_party/websockify'))
 
 logger = logging.getLogger("runner")
-
-
-if common.EMTEST_VERBOSE:
-  logging.root.setLevel(logging.DEBUG)
 
 
 # The core test modes
@@ -82,6 +78,7 @@ non_core_test_modes = [
   'wasm2ss',
   'posixtest',
   'posixtest_browser',
+  'minimal0',
 ]
 
 
@@ -284,7 +281,7 @@ def run_tests(options, suites):
     res = testRunner.run(suite)
     msg = ('%s: %s run, %s errors, %s failures, %s skipped' %
            (mod_name, res.testsRun, len(res.errors), len(res.failures), len(res.skipped)))
-    num_failures += len(res.errors) + len(res.failures)
+    num_failures += len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
     resultMessages.append(msg)
 
   if len(resultMessages) > 1:
@@ -294,18 +291,80 @@ def run_tests(options, suites):
     for msg in resultMessages:
       print('    ' + msg)
 
-  # Return the number of failures as the process exit code for automating success/failure reporting.
-  return min(num_failures, 255)
+  return num_failures
 
 
 def parse_args(args):
   parser = argparse.ArgumentParser(prog='runner.py', description=__doc__)
+  parser.add_argument('--save-dir', action='store_true', default=None,
+                      help='Save the temporary directory used during for each '
+                           'test.  Implies --cores=1.')
+  parser.add_argument('--no-clean', action='store_true',
+                      help='Do not clean the temporary directory before each test run')
+  parser.add_argument('--verbose', '-v', action='store_true', default=None)
+  parser.add_argument('--all-engines', action='store_true', default=None)
+  parser.add_argument('--detect-leaks', action='store_true', default=None)
+  parser.add_argument('--skip-slow', action='store_true', help='Skip tests marked as slow')
+  parser.add_argument('--cores',
+                      help='Set the number tests to run in parallel.  Defaults '
+                           'to the number of CPU cores.', default=None)
+  parser.add_argument('--rebaseline', action='store_true', default=None,
+                      help='Automatically update test expectations for tests that support it.')
+  parser.add_argument('--browser',
+                      help='Command to launch web browser in which to run browser tests.')
   parser.add_argument('tests', nargs='*')
   return parser.parse_args()
 
 
+def configure():
+  common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
+  common.EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
+  common.EMTEST_SAVE_DIR = int(os.getenv('EMTEST_SAVE_DIR', '0'))
+  common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
+  common.EMTEST_SKIP_SLOW = int(os.getenv('EMTEST_SKIP_SLOW', '0'))
+  common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
+  common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
+  common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
+  if common.EMTEST_VERBOSE:
+    logging.root.setLevel(logging.DEBUG)
+
+  assert 'PARALLEL_SUITE_EMCC_CORES' not in os.environ, 'use EMTEST_CORES rather than PARALLEL_SUITE_EMCC_CORES'
+  parallel_testsuite.NUM_CORES = os.environ.get('EMTEST_CORES') or os.environ.get('EMCC_CORES')
+
+
 def main(args):
   options = parse_args(args)
+
+  # We set the environments variables here and then call configure,
+  # to apply them.  This means the python's multiprocessing child
+  # process will see the same configuration even though they don't
+  # parse the command line.
+  def set_env(name, option_value):
+    if option_value is None:
+      return
+    if option_value is False:
+      value = '0'
+    elif option_value is True:
+      value = '1'
+    else:
+      value = str(option_value)
+    os.environ[name] = value
+
+  set_env('EMTEST_BROWSER', options.browser)
+  set_env('EMTEST_DETECT_TEMPFILE_LEAKS', options.detect_leaks)
+  set_env('EMTEST_SAVE_DIR', options.save_dir)
+  if options.no_clean:
+    set_env('EMTEST_SAVE_DIR', 2)
+  else:
+    set_env('EMTEST_SAVE_DIR', options.save_dir)
+  set_env('EMTEST_SKIP_SLOW', options.skip_slow)
+  set_env('EMTEST_ALL_ENGINES', options.all_engines)
+  set_env('EMTEST_REBASELINE', options.rebaseline)
+  set_env('EMTEST_VERBOSE', options.verbose)
+  set_env('EMTEST_CORES', options.cores)
+
+  configure()
+
   check_js_engines()
 
   def prepend_default(arg):
@@ -325,8 +384,14 @@ def main(args):
     print('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
     return 1
 
-  return run_tests(options, suites)
+  num_failures = run_tests(options, suites)
+  # Return the number of failures as the process exit code
+  # for automating success/failure reporting.  Return codes
+  # over 125 are not well supported on UNIX.
+  return min(num_failures, 125)
 
+
+configure()
 
 if __name__ == '__main__':
   try:

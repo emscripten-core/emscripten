@@ -51,6 +51,7 @@
 from tools.settings import settings
 
 _deps_info = {
+  'alarm': ['raise'],
   'Mix_LoadWAV_RW': ['fileno'],
   'SDL_CreateRGBSurface': ['malloc', 'free'],
   'SDL_GL_GetProcAddress': ['malloc'],
@@ -98,8 +99,8 @@ _deps_info = {
   # a trick to include these dependencies for setjmp even when setjmp does not
   # exist. Refer to setjmp's entry for more details.
   'emscripten_longjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
-  'emscripten_pc_get_file': ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'malloc', 'free'],
-  'emscripten_pc_get_function': ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'malloc', 'free'],
+  'emscripten_pc_get_file': ['malloc', 'free'],
+  'emscripten_pc_get_function': ['malloc', 'free'],
   'emscripten_run_preload_plugins_data': ['malloc'],
   'emscripten_run_script_string': ['malloc', 'free'],
   'emscripten_set_batterychargingchange_callback_on_thread': ['malloc', 'free'],
@@ -170,11 +171,9 @@ _deps_info = {
   'localtime': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
   'localtime_r': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
   'mktime': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
-  'mmap': ['memalign', 'malloc'],
-  'munmap': ['malloc', 'free'],
+  'mmap': ['memalign'],
+  'munmap': ['free'],
   'pthread_create': ['malloc', 'free', 'emscripten_main_thread_process_queued_calls'],
-  'readdir': ['malloc'],
-  'realpath': ['malloc'],
   'recv': ['htons'],
   'accept': ['htons'],
   'recvfrom': ['htons'],
@@ -189,9 +188,8 @@ _deps_info = {
   'setprotoent': ['malloc'],
   'setgroups': ['sysconf'],
   'syslog': ['malloc', 'ntohs'],
+  'vsyslog': ['malloc', 'ntohs'],
   'timegm': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
-  'tmpnam': ['malloc'],
-  'ttyname': ['malloc'],
   'tzset': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
   'uuid_compare': ['memcmp'],
   'uuid_copy': ['memcpy'],

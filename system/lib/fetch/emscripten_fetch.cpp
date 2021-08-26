@@ -163,7 +163,7 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
       || (synchronous &&
            (readFromIndexedDB || writeToIndexedDB))) // Synchronous IndexedDB access needs proxying
   {
-    emscripten_atomic_store_u32(&fetch->__proxyState, 1); // sent to proxy worker.
+    fetch->__proxyState = 1; // sent to proxy worker.
     emscripten_proxy_fetch(fetch);
 
     if (synchronous)
@@ -178,7 +178,7 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t* fetch, double timeou
 #if __EMSCRIPTEN_PTHREADS__
   if (!fetch)
     return EMSCRIPTEN_RESULT_INVALID_PARAM;
-  uint32_t proxyState = emscripten_atomic_load_u32(&fetch->__proxyState);
+  uint32_t proxyState = fetch->__proxyState;
   if (proxyState == 2)
     return EMSCRIPTEN_RESULT_SUCCESS; // already finished.
   if (proxyState != 1)
@@ -193,7 +193,7 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t* fetch, double timeou
       int ret = emscripten_futex_wait(&fetch->__proxyState, proxyState, timeoutMsecs);
       if (ret == -ETIMEDOUT)
         return EMSCRIPTEN_RESULT_TIMED_OUT;
-      proxyState = emscripten_atomic_load_u32(&fetch->__proxyState);
+      proxyState = fetch->__proxyState;
     } else {
       EM_ASM({console.error(
         'fetch: emscripten_fetch_wait failed: main thread cannot block to wait for long periods of time! Migrate the application to run in a worker to perform synchronous file IO, or switch to using asynchronous IO.')});
@@ -228,7 +228,7 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t* fetch) {
     return EMSCRIPTEN_RESULT_SUCCESS; // Closing null pointer is ok, same as with free().
 
 #if __EMSCRIPTEN_PTHREADS__
-  emscripten_atomic_store_u32(&fetch->__proxyState, 0);
+  fetch->__proxyState = 0;
 #endif
   // This function frees the fetch pointer so that it is invalid to access it anymore.
   // Use a few key fields as an integrity check that we are being passed a good pointer to a valid

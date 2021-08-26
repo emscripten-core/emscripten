@@ -7,13 +7,13 @@
         "structs": {
             "pthread": [
               "threadStatus",
-              "threadExitCode",
               "profilerBlock",
               "self",
               "tsd",
               "detached",
               "stack",
               "stack_size",
+              "result",
               "attr",
               "robust_list",
               "tid",
@@ -38,18 +38,6 @@
         "structs": {
             "libc": [
               "global_locale"
-            ]
-        }
-    },
-    {
-        "file": "cxa_exception.h",
-        "structs": {
-            "__cxxabiv1::__cxa_exception": [
-              "exceptionDestructor",
-              "referenceCount",
-              "exceptionType",
-              "caught",
-              "rethrown"
             ]
         }
     }

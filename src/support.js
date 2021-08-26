@@ -6,8 +6,6 @@
 
 var STACK_ALIGN = {{{ STACK_ALIGN }}};
 
-{{{ alignMemory }}}
-
 {{{ getNativeTypeSize }}}
 
 function warnOnce(text) {

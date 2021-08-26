@@ -8,6 +8,8 @@
 #include <webgl/webgl1_ext.h>
 #include <webgl/webgl2.h>
 
+#include "webgl_internal.h"
+
 #if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
 extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_do_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes);

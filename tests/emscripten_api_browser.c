@@ -19,26 +19,26 @@ bool pre2ed = false;
 void pre1(void *arg) {
   assert(!pre1ed);
   assert(!pre2ed);
-  assert((int)arg == 123);
+  assert((long)arg == 123);
   pre1ed = true;
 }
 void pre2(void *arg) {
   assert(pre1ed);
   assert(!pre2ed);
-  assert((int)arg == 98);
+  assert((long)arg == 98);
   pre2ed = true;
 }
 
 bool fived = false;
 void five(void *arg) {
-  assert((int)arg == 55);
+  assert((long)arg == 55);
   fived = true;
   emscripten_resume_main_loop();
 }
 
 void argey(void* arg) {
   static int counter = 0;
-  assert((int)arg == 17);
+  assert((long)arg == 17);
   counter++;
   printf("argey: %d\n", counter);
   if (counter == 5) {
@@ -69,7 +69,7 @@ void mainey() {
 }
 
 void four(void *arg) {
-  assert((int)arg == 43);
+  assert((long)arg == 43);
   printf("four!\n");
   emscripten_set_main_loop(mainey, 0, 0);
 }

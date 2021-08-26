@@ -70,6 +70,7 @@ What if my codebase depends on a desktop OpenGL feature that is currently unsupp
 --------------------------------------------------------------------------------------
 
 You can consider building the codebase against the `Regal <https://github.com/p3/regal>`_ Desktop OpenGL emulation library, which aims to support Desktop OpenGL features on top of OpenGL ES 2.0. This may work better or worse than Emscripten's GL emulation depending on the project.
+Another option is to use `gl4es <https://github.com/ptitSeb/gl4es>`_ wich aims at fast OpenGL to GLES conversion for games. It targets OpenGL 2.1 profile on top of OpenGL ES 2.0 and has been used to port a few games with Emscripten already.
 
 OpenGL ES extensions
 ====================

@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int bottom, top;
+intptr_t bottom, top;
 
 int run(int y) {
   // confuse stack
@@ -19,7 +19,7 @@ int run(int y) {
   s[y] = y;
   s[y / 2] = y * 2;
   volatile int x = s[y];
-  top = (int)alloca(4);
+  top = (intptr_t)alloca(4);
   if (x <= 2) return x;
   jmp_buf buf;
   printf("setjmp of %d\n", x);
@@ -35,7 +35,7 @@ int run(int y) {
 int main(int argc, char **argv) {
   int sum = 0;
   for (int i = 0; i < argc * 2; i++) {
-    bottom = (int)alloca(4);
+    bottom = (intptr_t)alloca(4);
     sum += run(10);
     // scorch the earth
     if (bottom < top) {

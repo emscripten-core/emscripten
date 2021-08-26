@@ -63,8 +63,6 @@ int main(int argc, char *argv[]) {
     initGlObjects();
     
     draw();
-        
-    REPORT_RESULT(result);
     
     return 0;
 }

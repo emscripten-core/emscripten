@@ -12,15 +12,14 @@ import logging
 import os
 import sys
 
-from . import shared
 from . import utils
 from .settings import settings
 
-sys.path.append(shared.path_from_root('third_party'))
+sys.path.append(utils.path_from_root('third_party'))
 
 import leb128
 
-logger = logging.getLogger('shared')
+logger = logging.getLogger('webassembly')
 
 
 # For the Emscripten-specific WASM metadata section, follows semver, changes

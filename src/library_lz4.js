@@ -6,7 +6,7 @@
 
 #if LZ4
 mergeInto(LibraryManager.library, {
-  $LZ4__deps: ['$FS', '$ERRNO_CODES'],
+  $LZ4__deps: ['$FS'],
   $LZ4: {
     DIR_MODE: {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */,
     FILE_MODE: {{{ cDefine('S_IFREG') }}} | 511 /* 0777 */,
@@ -114,33 +114,33 @@ mergeInto(LibraryManager.library, {
         }
       },
       lookup: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       },
       mknod: function (parent, name, mode, dev) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       rename: function (oldNode, newDir, newName) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       unlink: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       rmdir: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       readdir: function(node) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       symlink: function(parent, newName, oldPath) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       readlink: function(node) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
     },
     stream_ops: {
       read: function (stream, buffer, offset, length, position) {
-        //console.log('LZ4 read ' + [offset, length, position]);
+        //out('LZ4 read ' + [offset, length, position]);
         length = Math.min(length, stream.node.size - position);
         if (length <= 0) return 0;
         var contents = stream.node.contents;
@@ -149,7 +149,7 @@ mergeInto(LibraryManager.library, {
         while (written < length) {
           var start = contents.start + position + written; // start index in uncompressed data
           var desired = length - written;
-          //console.log('current read: ' + ['start', start, 'desired', desired]);
+          //out('current read: ' + ['start', start, 'desired', desired]);
           var chunkIndex = Math.floor(start / LZ4.CHUNK_SIZE);
           var compressedStart = compressedData['offsets'][chunkIndex];
           var compressedSize = compressedData['sizes'][chunkIndex];
@@ -165,13 +165,13 @@ mergeInto(LibraryManager.library, {
               currChunk = compressedData['cachedChunks'].pop();
               compressedData['cachedChunks'].unshift(currChunk);
               if (compressedData['debug']) {
-                console.log('decompressing chunk ' + chunkIndex);
+                out('decompressing chunk ' + chunkIndex);
                 Module['decompressedChunks'] = (Module['decompressedChunks'] || 0) + 1;
               }
               var compressed = compressedData['data'].subarray(compressedStart, compressedStart + compressedSize);
               //var t = Date.now();
               var originalSize = LZ4.codec.uncompress(compressed, currChunk);
-              //console.log('decompress time: ' + (Date.now() - t));
+              //out('decompress time: ' + (Date.now() - t));
               if (chunkIndex < compressedData['successes'].length-1) assert(originalSize === LZ4.CHUNK_SIZE); // all but the last chunk must be full-size
             }
           } else {
@@ -187,7 +187,7 @@ mergeInto(LibraryManager.library, {
         return written;
       },
       write: function (stream, buffer, offset, length, position) {
-        throw new FS.ErrnoError(ERRNO_CODES.EIO);
+        throw new FS.ErrnoError({{{ cDefine('EIO') }}});
       },
       llseek: function (stream, offset, whence) {
         var position = offset;
@@ -199,7 +199,7 @@ mergeInto(LibraryManager.library, {
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
         return position;
       },

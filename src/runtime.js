@@ -43,11 +43,6 @@ function getNativeTypeSize(type) {
   }
 }
 
-function alignMemory(size, factor) {
-  if (!factor) factor = STACK_ALIGN; // stack alignment (16-byte) by default
-  return Math.ceil(size / factor) * factor;
-}
-
 var Runtime = {
   getNativeTypeSize: getNativeTypeSize,
 

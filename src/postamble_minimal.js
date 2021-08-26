@@ -24,9 +24,6 @@ function run() {
   var ret = _main();
 
 #if EXIT_RUNTIME
-#if USE_PTHREADS
-  PThread.runExitHandlers();
-#endif
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
 #endif
@@ -42,7 +39,11 @@ function run() {
 #if ASSERTIONS
   runtimeExited = true;
 #endif
+
+#if EXIT_RUNTIME
+  _proc_exit(ret);
 #endif
+#endif // PROXY_TO_PTHREAD
 
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
@@ -224,7 +225,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   initRuntime(asm);
 #if USE_PTHREADS && PTHREAD_POOL_SIZE
   if (!ENVIRONMENT_IS_PTHREAD) loadWasmModuleToWorkers();
-#if !PTHREAD_POOL_DELAY_LOAD  
+#if !PTHREAD_POOL_DELAY_LOAD
   else
 #endif
     ready();
@@ -235,13 +236,13 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #if USE_PTHREADS
   // This Worker is now ready to host pthreads, tell the main thread we can proceed.
   if (ENVIRONMENT_IS_PTHREAD) {
-    moduleLoaded();
     postMessage({ 'cmd': 'loaded' });
   }
 #endif
+}
 
 #if ASSERTIONS || WASM == 2
-}).catch(function(error) {
+, function(error) {
 #if ASSERTIONS
   console.error(error);
 #endif
@@ -259,5 +260,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   }
 #endif
 #endif // WASM == 2
+}
 #endif // ASSERTIONS || WASM == 2
-});
+);

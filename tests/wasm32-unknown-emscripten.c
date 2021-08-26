@@ -98,7 +98,7 @@ int main() {
   assert(sizeof(intmax_t) == 8);
   assert(__alignof(double) == 8);
   assert(sizeof(long double) == 16);
-  assert(__alignof(long double) == 16);
+  assert(__alignof(long double) == 8);
   assert(sizeof(intptr_t) == 4);
   assert(sizeof(size_t) == 4);
   assert(sizeof(ptrdiff_t) == 4);

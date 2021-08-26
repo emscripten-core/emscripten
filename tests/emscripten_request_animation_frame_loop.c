@@ -6,7 +6,7 @@ int funcExecuted = 0;
 
 void testDone(void *userData)
 {
-	assert((int)userData == 2);
+	assert((long)userData == 2);
 	assert(funcExecuted == 10);
 #ifdef REPORT_RESULT
 	REPORT_RESULT(0);
@@ -17,7 +17,7 @@ EM_BOOL tick(double time, void *userData)
 {
 	assert(time > previousRafTime);
 	previousRafTime = time;
-	assert((int)userData == 1);
+	assert((long)userData == 1);
 	++funcExecuted;
 	if (funcExecuted == 10)
 	{

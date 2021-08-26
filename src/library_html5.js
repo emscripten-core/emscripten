@@ -251,6 +251,8 @@ var LibraryJSEvents = {
 #else
       var keyEventData = JSEvents.keyEvent;
 #endif
+      {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.timestamp, 'e.timeStamp', 'double') }}};
+
       var idx = keyEventData >> 2;
 
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.location / 4}}}] = e.location;
@@ -435,6 +437,7 @@ var LibraryJSEvents = {
 #if ASSERTIONS
     assert(eventStruct % 4 == 0);
 #endif
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.timestamp, 'e.timeStamp', 'double') }}};
     var idx = eventStruct >> 2;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenX / 4 }}}] = e.screenX;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenY / 4 }}}] = e.screenY;
@@ -2079,6 +2082,7 @@ var LibraryJSEvents = {
 #else
       var touchEvent = JSEvents.touchEvent;
 #endif
+      {{{ makeSetValue('touchEvent', C_STRUCTS.EmscriptenTouchEvent.timestamp, 'e.timeStamp', 'double') }}};
       var idx = touchEvent>>2; // Pre-shift the ptr to index to HEAP32 to save code size
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.ctrlKey / 4}}}] = e.ctrlKey;
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.shiftKey / 4}}}] = e.shiftKey;
@@ -2427,7 +2431,7 @@ var LibraryJSEvents = {
         // TODO: Perhaps autoResizeViewport should only be true if FBO 0 is currently active?
         autoResizeViewport = (prevViewport[0] === 0 && prevViewport[1] === 0 && prevViewport[2] === canvas.width && prevViewport[3] === canvas.height);
 #if GL_DEBUG
-        console.error('Resizing canvas from ' + canvas.width + 'x' + canvas.height + ' to ' + width + 'x' + height + '. Previous GL viewport size was ' 
+        err('Resizing canvas from ' + canvas.width + 'x' + canvas.height + ' to ' + width + 'x' + height + '. Previous GL viewport size was ' 
           + prevViewport + ', so autoResizeViewport=' + autoResizeViewport);
 #endif
       }
@@ -2435,7 +2439,7 @@ var LibraryJSEvents = {
       canvas.height = height;
       if (autoResizeViewport) {
 #if GL_DEBUG
-        console.error('Automatically resizing GL viewport to cover whole render target ' + width + 'x' + height);
+        err('Automatically resizing GL viewport to cover whole render target ' + width + 'x' + height);
 #endif
         // TODO: Add -s CANVAS_RESIZE_SETS_GL_VIEWPORT=0/1 option (default=1). This is commonly done and several graphics engines depend on this,
         // but this can be quite disruptive.
@@ -2447,7 +2451,7 @@ var LibraryJSEvents = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_DEFERRED') }}}; // This will have to be done asynchronously
     } else {
 #if GL_DEBUG
-      console.error('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
+      err('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     }
@@ -2491,7 +2495,7 @@ var LibraryJSEvents = {
   emscripten_set_canvas_element_size__sig: 'iiii',
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
-    console.error('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
+    err('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
 #endif
     var canvas = findCanvasEventTarget(target);
     if (canvas) {
@@ -2505,7 +2509,7 @@ var LibraryJSEvents = {
   emscripten_set_canvas_element_size__sig: 'iiii',
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
-    console.error('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
+    err('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
 #endif
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
@@ -2521,7 +2525,7 @@ var LibraryJSEvents = {
   $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size'],
   $setCanvasElementSize: function(target, width, height) {
 #if GL_DEBUG
-    console.error('setCanvasElementSize(target='+target+',width='+width+',height='+height);
+    err('setCanvasElementSize(target='+target+',width='+width+',height='+height);
 #endif
     if (!target.controlTransferredOffscreen) {
       target.width = width;
@@ -2559,7 +2563,7 @@ var LibraryJSEvents = {
       {{{ makeSetValue('height', 0, 'canvas.height', 'i32') }}};
     } else {
 #if GL_DEBUG
-      console.error('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
+      err('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     }
@@ -2771,17 +2775,27 @@ var LibraryJSEvents = {
     clearTimeout(id);
   },
 
+  emscripten_set_timeout_loop__deps: ['$callUserCallback',
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
+#endif
+  ],
   emscripten_set_timeout_loop: function(cb, msecs, userData) {
     function tick() {
       var t = performance.now();
       var n = t + msecs;
-      if ({{{ makeDynCall('idi', 'cb') }}}(t, userData)) {
-        // Save a little bit of code space: modern browsers should treat
-        // negative setTimeout as timeout of 0
-        // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
-        setTimeout(tick, n - performance.now());
-      }
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(function() {
+        if ({{{ makeDynCall('idi', 'cb') }}}(t, userData)) {
+          // Save a little bit of code space: modern browsers should treat
+          // negative setTimeout as timeout of 0
+          // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
+          {{{ runtimeKeepalivePush() }}}
+          setTimeout(tick, n - performance.now());
+        }
+      });
     }
+    {{{ runtimeKeepalivePush() }}}
     return setTimeout(tick, 0);
   },
 
@@ -2819,7 +2833,7 @@ var LibraryJSEvents = {
 #if ASSERTIONS
     assert(typeof str === 'number');
 #endif
-    console.log(UTF8ToString(str));
+    out(UTF8ToString(str));
   },
 
   emscripten_console_warn: function(str) {
@@ -2833,7 +2847,7 @@ var LibraryJSEvents = {
 #if ASSERTIONS
     assert(typeof str === 'number');
 #endif
-    console.error(UTF8ToString(str));
+    err(UTF8ToString(str));
   },
 
   emscripten_throw_number: function(number) {

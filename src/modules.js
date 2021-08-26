@@ -61,7 +61,6 @@ var LibraryManager = {
       'library_formatString.js',
       'library_math.js',
       'library_path.js',
-      'library_signals.js',
       'library_syscall.js',
       'library_html5.js',
       'library_stack_trace.js',
@@ -106,7 +105,7 @@ var LibraryManager = {
 
       if (NODERAWFS) {
         // NODERAWFS requires NODEFS
-        if (!SYSTEM_JS_LIBRARIES.includes('library_nodefs.js')) {
+        if (!JS_LIBRARIES.includes('library_nodefs.js')) {
           libraries.push('library_nodefs.js');
         }
         libraries.push('library_noderawfs.js');
@@ -142,7 +141,7 @@ var LibraryManager = {
     }
 
     // Add any explicitly specified system JS libraries to link to, add those to link.
-    libraries = libraries.concat(SYSTEM_JS_LIBRARIES)
+    libraries = libraries.concat(JS_LIBRARIES)
 
     if (LZ4) {
       libraries.push('library_lz4.js');

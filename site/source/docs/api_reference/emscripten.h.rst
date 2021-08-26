@@ -107,7 +107,7 @@ Defines
 
   .. code-block:: none
 
-    EM_JS(const char*, get_unicode_str, (), {
+    EM_JS(char*, get_unicode_str, (), {
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
       // 'jsString.length' would return the length of the string as UTF-16
       // units, but Emscripten C strings operate as UTF-8.
@@ -118,7 +118,7 @@ Defines
     });
 
     int main() {
-      const char* str = get_unicode_str();
+      char* str = get_unicode_str();
       printf("UTF8 string says: %s\n", str);
       // Each call to _malloc() must be paired with free(), or heap memory will leak!
       free(str);
@@ -534,7 +534,7 @@ Functions
 .. _emscripten-h-asynchronous-file-system-api:
 
 Asynchronous File System API
-=========================================
+============================
 
 Typedefs
 --------
@@ -765,9 +765,24 @@ Functions
 
     - *(void*)* : Equal to ``arg`` (user defined data).
 
+.. c:function:: void emscripten_dlopen(const char *filename, int flags, void* user_data, em_dlopen_callback onsuccess, em_arg_callback_func onerror);
+
+  Starts and asyncronous dlopen operation to load a shared library from a
+  filename or URL.  Returns immediately and requires the caller to return to the
+  event loop.  The ``onsuccess`` and ``onerror`` callbacks are used to signal
+  success or failure of the request.  Upon ``onerror`` callback the normal
+  ``dlerror`` C function can be used get the error details.  The flags are the
+  same as those used in the normal ``dlopen`` C function.
+
+  :param const char* filename: The filename (or URLs) of the shared library to load.
+  :param int flags: See dlopen flags.
+  :param void* user_data: User data passed to onsuccess, and onerror callbacks.
+  :param em_dlopen_callback onsuccess: Called if the library was loaded successfully.
+  :param em_arg_callback_func onerror: Called if there as an error loading the library.
+
 
 Asynchronous IndexedDB API
-=====================================
+==========================
 
   IndexedDB is a browser API that lets you store data persistently, that is, you can save data there and load it later when the user re-visits the web page. IDBFS provides one way to use IndexedDB, through the Emscripten filesystem layer. The ``emscripten_idb_*`` methods listed here provide an alternative API, directly to IndexedDB, thereby avoiding the overhead of the filesystem layer.
 
@@ -917,6 +932,8 @@ Functions
   Creates a worker.
 
   A worker must be compiled separately from the main program, and with the ``BUILD_AS_WORKER`` flag set to 1.
+  
+  That worker must not be compiled with the ``-pthread`` flag as the POSIX threads implementation and this Worker API are incompatible.
 
   :param url: The URL of the worker script.
   :type url: const char*

@@ -8,7 +8,7 @@ double previousSetTimeouTime = 0;
 int funcExecuted = 0;
 
 void testDone(void *userData) {
-  assert((int)userData == 2);
+  assert((long)userData == 2);
   assert(funcExecuted == 10);
   exit(0);
 }
@@ -16,7 +16,7 @@ void testDone(void *userData) {
 EM_BOOL tick(double time, void *userData) {
   assert(time >= previousSetTimeouTime);
   previousSetTimeouTime = time;
-  assert((int)userData == 1);
+  assert((long)userData == 1);
   ++funcExecuted;
   if (funcExecuted == 10)
   {

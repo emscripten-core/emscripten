@@ -8,8 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
+#include <emscripten/em_asm.h>
 
 static void *thread_start(void *arg)
 {
@@ -31,14 +30,6 @@ char* test() {
 int main()
 {
   printf("prep\n");
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(6765);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
 
   printf("start main\n");
   EM_ASM({ assert(HEAP8.length === 32 * 1024 * 1024, "start at 32MB") });
@@ -58,8 +49,6 @@ int main()
 
   printf("finish\n");
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1);
-#endif
+  return 0;
 }
 

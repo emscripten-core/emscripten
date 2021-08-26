@@ -12,7 +12,7 @@
 #include <emscripten.h>
 #include <emscripten/websocket.h>
 #include <emscripten/threading.h>
- 
+
 EMSCRIPTEN_WEBSOCKET_T bridgeSocket = 0;
 
 extern "C" {
@@ -61,18 +61,18 @@ int lookup_host(const char *host)
   return 0;
 }
 
-int pendingMessages = 0;
+_Atomic uint32_t pendingMessages = 0;
 
 void *send_thread(void *arg)
 {
-  int sock = (int)arg;
+  int sock = (int)(intptr_t)arg;
 
   for(int i = 0; i < 10; ++i)
   {
     char message[] = "hella";
     message[4] += i;
 
-    while(emscripten_atomic_load_u32(&pendingMessages) != 0)
+    while(pendingMessages != 0)
       emscripten_thread_sleep(10);
 
     printf("Send()ing\n");
@@ -82,14 +82,14 @@ void *send_thread(void *arg)
       pthread_exit((void*)1);
     }
     printf("Send() done\n");
-    emscripten_atomic_add_u32(&pendingMessages, 1);
+    pendingMessages++;
   }
   pthread_exit(0);
 }
 
 void *recv_thread(void *arg)
 {
-  int sock = (int)arg;
+  int sock = (int)(intptr_t)arg;
 
   for(int i = 0; i < 10; ++i)
   {
@@ -101,10 +101,10 @@ void *recv_thread(void *arg)
       pthread_exit((void*)1);
     }
     printf("Recv() done\n");
-     
+
     puts("Server reply: ");
     puts(server_reply);
-    emscripten_atomic_sub_u32(&pendingMessages, 1);
+    pendingMessages--;
   }
   pthread_exit(0);
 }
@@ -156,7 +156,7 @@ int main(int argc , char *argv[])
   pthread_join(recvThread, &recvRet);
   printf("Send thread and recv thread finished\n");
   close(sock);
-  if ((int)sendRet != 0) fprintf(stderr, "pthread send failed!\n");
-  if ((int)recvRet != 0) fprintf(stderr, "pthread recv failed!\n");
+  if ((long)sendRet != 0) fprintf(stderr, "pthread send failed!\n");
+  if ((long)recvRet != 0) fprintf(stderr, "pthread recv failed!\n");
   return 0;
 }

@@ -35,6 +35,8 @@ emscons
 emsize
 emdump
 emprofile
+emdwp
+emnm
 tools/file_packager
 tools/webidl_binder
 tests/runner
@@ -46,6 +48,8 @@ tests/runner
 entry_remap = {
   'emdump': 'tools/emdump',
   'emprofile': 'tools/emprofile',
+  'emdwp': 'tools/emdwp',
+  'emnm': 'tools/emnm',
 }
 
 tools_dir = os.path.dirname(os.path.abspath(__file__))

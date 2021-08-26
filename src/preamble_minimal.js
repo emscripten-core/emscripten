@@ -108,7 +108,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #if USE_PTHREADS
 } else {
 #if MODULARIZE
-  updateGlobalBufferAndViews({{{EXPORT_NAME}}}.buffer);
+  updateGlobalBufferAndViews(Module.buffer);
 #else
   updateGlobalBufferAndViews(wasmMemory.buffer);
 #endif

@@ -18,8 +18,66 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.25
+2.0.29
+-----
+2.0.28 - 08/23/2021
 ------
+- Added some support for signal handling libc functions (raise, kill,
+  sigaction, sigpending, etc).  We still don't have a way to deliver signals from
+  the outside but these at least now work for sending signals to the current
+  thread (JS context) (#14883).
+
+2.0.27 - 08/12/2021
+-------------------
+- Added `EM_ASYNC_JS` macro - similar to `EM_JS`, but allows using `await`
+  inside the JS block and automatically integrates with Asyncify without
+  the need for listing the declared function in `ASYNCIFY_IMPORTS` (#9709).
+- Errors that occur on pthreads (e.g. uncaught exception) will now get re-thrown
+  on the main thread rather than simply being logged (#13666).
+
+2.0.26 - 07/26/2021
+-------------------
+- When building ports with the `embuilder` tool some of the names of the
+  libraries have changed (they now match the filenames in the `tools/ports/`
+  directory). For example `sdl-image` is now `sdl_image` (#14737).
+- Undefined data symbols (in static executables) are no longer silently ignored
+  at link time.  The previous behaviour (which was to silently give all
+  undefined data symbols address zero, which could lead to bugs)
+  can be enabled by passing either `-Wl,--allow-undefined` or
+  `-Wl,--unresolved-symbols=ignore-all`.
+- The alignment of `long double`, which is a 128-bit floating-point value
+  implemented in software, is reduced from 16 to 8. The lower alignment allows
+  `max_align_t` to properly match the alignment we use for malloc, which is 8
+  (raising malloc's alignment to achieve correctness the other way would come
+  with a performance regression). (#10072)
+- The `alignMemory` function is now a library function and therefore not
+  included by default.  Debug builds will automatically abort if you try
+  to use this function without including it.  The normal library `__deps`
+  mechanism can be used to include it, or can be added to
+  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`.
+- dlopen can now load libraries at runtime from the web without preloading
+  or embedding.  This features relies on `ASYNCIFY` to suspend execution until
+  the library is loaded and then continue on as if dlopen was blocking.  For
+  users who don't want to use `ASYNCIFY` (which has a size and runtime cost)
+  there is a async (callback-based) version of the dlopen API available as
+  `emscripten_dlopen()` declared in `emscropten/emscripten.h`.  See
+  `docs/api_reference/emscripten.h.rst` (or the online version) for more
+  details.
+- Constructors, functions and methods bound with Embind can now be `await`ed.
+  When Asyncify is used somewhere in the callstack, previously Embind would
+  return `0` / `null` / `false` / instance with a NULL pointer, making it
+  impossible to wait for the function to actually finish and retrieve its
+  result. Now in those cases it will return a `Promise` instead that will
+  resolve with the function's return value upon completion. (#11890)
+
+2.0.25 - 06/30/2021
+-------------------
+
+- Support for the 'shell' environment is now disabled by default.  Running under
+  `d8`, `js`, or `jsc` is not something that most emscripten users ever want to
+  do, so including the support code is, more often than not, unnecessary.  Users
+  who want shell support can enable it by including 'shell' in `-s ENVIRONMENT`
+  (#14535).
 - A new setting called `ALLOW_UNIMPLEMENTED_SYSCALLS` was added.  This setting
   is enabled by default but, if disabled, will generate link-time errors if
   a program references an unimplemented syscall.  This setting is disabled

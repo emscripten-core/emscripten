@@ -169,7 +169,7 @@ In addition to consulting the tables below, you can turn on diagnostics for slow
    * - _mm_storeu_si64
      - 💡 emulated with scalar store
    * - _mm_movemask_ps
-     - 💣 No Wasm SIMD support. Emulated in scalar. `simd/#131 <https://github.com/WebAssembly/simd/issues/131>`_
+     - ✅ wasm_i32x4_bitmask
    * - _mm_move_ss
      - 💡 emulated with a shuffle. VM must guess type.
    * - _mm_add_ps
@@ -583,19 +583,19 @@ The following table highlights the availability and expected performance of diff
    * - _mm_move_sd
      - 💡 emulated with a shuffle. VM must guess type.
    * - _mm_movemask_epi8
-     - ❌ scalarized
+     - ✅ wasm_i8x16_bitmask
    * - _mm_movemask_pd
-     - ❌ scalarized
+     - ✅ wasm_i64x2_bitmask
    * - _mm_mul_epu32
-     - ❌ scalarized
+     - ⚠️ emulated with wasm_u64x2_extmul_low_u32x4 + 2 shuffles
    * - _mm_mul_pd
      - ✅ wasm_f64x2_mul
    * - _mm_mul_sd
      - ⚠️ emulated with a shuffle
    * - _mm_mulhi_epi16
-     - ⚠️ emulated with a SIMD four widen+two mul+generic shuffle
+     - ⚠️ emulated with a 2x SIMD extmul+generic shuffle
    * - _mm_mulhi_epu16
-     - ⚠️ emulated with a SIMD four widen+two mul+generic shuffle
+     - ⚠️ emulated with a 2x SIMD extmul+generic shuffle
    * - _mm_mullo_epi16
      - ✅ wasm_i16x8_mul
    * - _mm_or_pd
@@ -906,9 +906,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_ceil_ps
      - ✅ wasm_f32x4_ceil
    * - _mm_ceil_sd
-     - ❌ scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_ceil_ss
-     - ❌ scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_cmpeq_epi64
      - ⚠️ emulated with a SIMD cmp+and+shuffle
    * - _mm_cvtepi16_epi32
@@ -952,9 +952,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_floor_ps
      - ✅ wasm_f32x4_floor
    * - _mm_floor_sd
-     - ❌ scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_floor_ss
-     - ❌ scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_insert_epi32
      - ✅ wasm_i32x4_replace_lane
    * - _mm_insert_epi64
@@ -984,19 +984,19 @@ The following table highlights the availability and expected performance of diff
    * - _mm_mpsadbw_epu8
      - 💣 scalarized
    * - _mm_mul_epi32
-     - ❌ scalarized
+     - ⚠️ emulated with wasm_i64x2_extmul_low_i32x4 + 2 shuffles
    * - _mm_mullo_epi32
      - ✅ wasm_i32x4_mul
    * - _mm_packus_epi32
      - ✅ wasm_u16x8_narrow_i32x4
    * - _mm_round_pd
-     - 💣 scalarized
+     - ✅ wasm_f64x2_ceil/wasm_f64x2_floor/wasm_f64x2_nearest/wasm_f64x2_trunc
    * - _mm_round_ps
-     - 💣 scalarized
+     - ✅ wasm_f32x4_ceil/wasm_f32x4_floor/wasm_f32x4_nearest/wasm_f32x4_trunc
    * - _mm_round_sd
-     - 💣 scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_round_ss
-     - 💣 scalarized
+     - ⚠️ emulated with a shuffle
    * - _mm_stream_load_si128
      - 🟡 wasm_v128_load. VM must guess type. :raw-html:`<br />` Unaligned load on x86 CPUs.
    * - _mm_test_all_ones

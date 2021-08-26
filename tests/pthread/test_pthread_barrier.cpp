@@ -5,7 +5,6 @@
 
 // This file tests pthread barrier usage.
 
-#include <emscripten/threading.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -21,7 +20,7 @@ int intermediate[N] = {};
 pthread_barrier_t barr;
 
 // Sums a single row of a matrix.
-int sum_row(int r)
+int sum_row(long r)
 {
     int sum = 0;
     for(int i = 0; i < N; ++i)
@@ -32,8 +31,8 @@ int sum_row(int r)
 void *thread_main(void *arg)
 {
     // Each thread sums individual rows.
-    int id = (int)arg;
-    for(int i = id; i < N; i += THREADS)
+    long id = (long)arg;
+    for(long i = id; i < N; i += THREADS)
         intermediate[i] = sum_row(i);
 
     // Synchronization point
@@ -69,20 +68,15 @@ int main(int argc, char **argv)
 
     // Barrier initialization
     int ret = pthread_barrier_init(&barr, NULL, THREADS);
-    assert(ret == 0); 
+    assert(ret == 0);
 
     for(int i = 0; i < THREADS; ++i) pthread_create(&thr[i], NULL, &thread_main, (void*)i);
-    if (emscripten_has_threading_support())
+    for(int i = 0; i < THREADS; ++i)
     {
-        for(int i = 0; i < THREADS; ++i)
-        {
-            int totalSum = 0;
-            pthread_join(thr[i], (void**)&totalSum);
-            assert(totalSum == expectedTotalSum);
-        }
+        int totalSum = 0;
+        pthread_join(thr[i], (void**)&totalSum);
+        assert(totalSum == expectedTotalSum);
     }
 
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
+    return 0;
 }

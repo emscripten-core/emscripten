@@ -226,7 +226,7 @@ var SyscallsLibrary = {
     }
   },
 
-  $syscallMmap2__deps: ['$SYSCALLS', '$zeroMemory',
+  $syscallMmap2__deps: ['$SYSCALLS', '$zeroMemory', '$mmapAlloc',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
@@ -245,9 +245,8 @@ var SyscallsLibrary = {
     // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
     // In this case fd argument is ignored.
     if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
-      ptr = _memalign({{{ WASM_PAGE_SIZE }}}, len);
+      ptr = mmapAlloc(len);
       if (!ptr) return -{{{ cDefine('ENOMEM') }}};
-      zeroMemory(ptr, len);
       allocated = true;
     } else {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
@@ -1174,6 +1173,7 @@ var SyscallsLibrary = {
     {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, '255', 'i32') }}};
     return 0;
   },
+  __sys_fstatfs64__deps: ['__sys_statfs64'],
   __sys_fstatfs64: function(fd, size, buf) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return ___sys_statfs64(0, size, buf);
@@ -1452,15 +1452,21 @@ function unimplementedSycall(name) {
   SyscallsLibrary[name + '__nothrow'] = true;
   SyscallsLibrary[name + '__proxy'] = false;
   SyscallsLibrary[name + '__unimplemented'] = true;
-  msg = `\n  err('warning: unsupported syscall: ${name}');`;
+  const errcode = cDefine('ENOSYS');
+#if ASSERTIONS
+  const msg = `\n  err('warning: unsupported syscall: ${name}');`;
   if (SyscallsLibrary[name]) {
     SyscallsLibrary[name] = modifyFunction(SyscallsLibrary[name].toString(), (name, args, body) => {
             return `function(${args}) {\n  ${msg}${body}\n}\n`;
           });
   } else {
-    errcode = cDefine('ENOSYS');
     SyscallsLibrary[name] = `function() {\n  ${msg}return -${errcode};\n}`;
   }
+#else
+  if (!SyscallsLibrary[name]) {
+    SyscallsLibrary[name] = `function() { return -${errcode};\n}`;
+  }
+#endif
 }
 
 [

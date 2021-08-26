@@ -27,8 +27,6 @@ int main()
   attrs.minorVersion = 0;
   attrs.powerPreference = EM_WEBGL_POWER_PREFERENCE_DEFAULT;
 
-  int result = 0;
-
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
   if (context)
   {
@@ -51,12 +49,8 @@ int main()
       if (strstr(ext, "GL_") == 0)
         hasGLExtension = true;
     }
-    if (!hasGLExtension)
-      result = 1;
+    assert(hasGLExtension);
   }
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
   return 0;
 }

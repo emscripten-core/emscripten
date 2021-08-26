@@ -25,7 +25,5 @@ int main()
 	if (emscripten_has_threading_support()) assert(rc == 0);
 	else assert(rc == EAGAIN);
 
-#ifdef REPORT_RESULT
-	REPORT_RESULT(0);
-#endif
+	return 0;
 }

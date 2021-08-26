@@ -11,7 +11,6 @@
 #include <assert.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
-#include <emscripten/threading.h>
 #include <bits/errno.h>
 #include <stdlib.h>
 
@@ -19,7 +18,7 @@ pthread_t thread;
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx;
 
-int threadRunning = 0;
+_Atomic bool threadRunning = false;
 
 void *ThreadMain(void *arg)
 {
@@ -45,7 +44,7 @@ void *ThreadMain(void *arg)
 
   emscripten_webgl_make_context_current(0);
   emscripten_webgl_destroy_context(ctx);
-  emscripten_atomic_store_u32(&threadRunning, 0);
+  threadRunning = false;
   printf("Thread quit\n");
   pthread_exit(0);
 }
@@ -65,7 +64,7 @@ void CreateThread()
     exit(0);
   }
   pthread_attr_destroy(&attr);
-  emscripten_atomic_store_u32(&threadRunning, 1);
+  threadRunning = true;
 }
 
 //#define TEST_MAIN_THREAD_EXPLICIT_COMMIT
@@ -96,7 +95,7 @@ void MainThreadRender()
 
 void PollThreadExit(void *)
 {
-  if (!emscripten_atomic_load_u32(&threadRunning))
+  if (!threadRunning))
   {
     EmscriptenWebGLContextAttributes attr;
     emscripten_webgl_init_context_attributes(&attr);

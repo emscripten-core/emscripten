@@ -11,7 +11,7 @@ void do_call(void (*puts)(const char *), const char *str);
 
 void do_print(const char *str) {
   if (!str) do_call(NULL, "delusion");
-  if ((int)str == -1) do_print(str + 10);
+  if ((long)str == -1) do_print(str + 10);
   puts("====");
   puts(str);
   puts("====");
@@ -19,7 +19,7 @@ void do_print(const char *str) {
 
 void do_call(void (*puts)(const char *), const char *str) {
   if (!str) do_print("confusion");
-  if ((int)str == -1) do_call(NULL, str - 10);
+  if ((long)str == -1) do_call(NULL, str - 10);
   (*puts)(str);
 }
 

@@ -192,23 +192,10 @@ function callMain(args) {
 #else
     // if we're not running an evented main loop, it's time to exit
     exit(ret, /* implicit = */ true);
+    return ret;
   }
   catch (e) {
-    // Certain exception types we do not treat as errors since they are used for
-    // internal control flow.
-    // 1. ExitStatus, which is thrown by exit()
-    // 2. "unwind", which is thrown by emscripten_unwind_to_js_event_loop() and others
-    //    that wish to return to JS event loop.
-    if (e instanceof ExitStatus || e == 'unwind') {
-      return;
-    }
-    // Anything else is an unexpected exception and we treat it as hard error.
-    var toLog = e;
-    if (e && typeof e === 'object' && e.stack) {
-      toLog = [e, e.stack];
-    }
-    err('exception thrown: ' + toLog);
-    quit_(1, e);
+    return handleException(e);
 #endif // !PROXY_TO_PTHREAD
   } finally {
     calledMain = true;
@@ -456,17 +443,24 @@ function exit(status, implicit) {
 #if USE_PTHREADS
     PThread.terminateAllThreads();
 #endif
-
     exitRuntime();
-
-#if expectToReceiveOnModule('onExit')
-    if (Module['onExit']) Module['onExit'](status);
-#endif
-
-    ABORT = true;
   }
 
-  quit_(status, new ExitStatus(status));
+  procExit(status);
+}
+
+function procExit(code) {
+  EXITSTATUS = code;
+  if (!keepRuntimeAlive()) {
+#if USE_PTHREADS
+    PThread.terminateAllThreads();
+#endif
+#if expectToReceiveOnModule('onExit')
+    if (Module['onExit']) Module['onExit'](code);
+#endif
+    ABORT = true;
+  }
+  quit_(code, new ExitStatus(code));
 }
 
 #if expectToReceiveOnModule('preInit')

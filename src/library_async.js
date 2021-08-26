@@ -47,8 +47,7 @@ mergeInto(LibraryManager.library, {
     callStackNameToId: {},
     callStackIdToName: {},
     callStackId: 0,
-    afterUnwind: null,
-    asyncFinalizers: [], // functions to run when *all* asynchronicity is done
+    asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
 
     getCallStackId: function(funcName) {
@@ -80,8 +79,9 @@ mergeInto(LibraryManager.library, {
                 // indirect calls.
                 if (Asyncify.state !== originalAsyncifyState &&
                     ASYNCIFY_IMPORTS.indexOf(x) < 0 &&
+                    !x.startsWith('__asyncjs__') &&
                     !(x.startsWith('invoke_') && {{{ !ASYNCIFY_IGNORE_INDIRECT }}})) {
-                  throw 'import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state';
+                  throw new Error('import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state');
                 }
               }
             }
@@ -141,11 +141,20 @@ mergeInto(LibraryManager.library, {
         if (typeof Fibers !== 'undefined') {
           Fibers.trampoline();
         }
-        if (Asyncify.afterUnwind) {
-          Asyncify.afterUnwind();
-          Asyncify.afterUnwind = null;
-        }
       }
+    },
+
+    whenDone: function() {
+#if ASSERTIONS
+      assert(Asyncify.currData, 'Tried to wait for an async operation when none is in progress.');
+      assert(!Asyncify.asyncPromiseHandlers, 'Cannot have multiple async operations in flight at once');
+#endif
+      return new Promise(function(resolve, reject) {
+        Asyncify.asyncPromiseHandlers = {
+          resolve: resolve,
+          reject: reject
+        };
+      });
     },
 
     allocateData: function() {
@@ -237,7 +246,15 @@ mergeInto(LibraryManager.library, {
           if (typeof Browser !== 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
-          var asyncWasmReturnValue = Asyncify.doRewind(Asyncify.currData);
+          var asyncWasmReturnValue, isError = false;
+          try {
+            asyncWasmReturnValue = Asyncify.doRewind(Asyncify.currData);
+          } catch (err) {
+            asyncWasmReturnValue = err;
+            isError = true;
+          }
+          // Track whether the return value was handled by any promise handlers.
+          var handled = false;
           if (!Asyncify.currData) {
             // All asynchronous execution has finished.
             // `asyncWasmReturnValue` now contains the final
@@ -251,11 +268,18 @@ mergeInto(LibraryManager.library, {
             // contains the return value of the exported WASM function
             // that may have called C functions that
             // call `Asyncify.handleSleep()`.
-            var asyncFinalizers = Asyncify.asyncFinalizers;
-            Asyncify.asyncFinalizers = [];
-            asyncFinalizers.forEach(function(func) {
-              func(asyncWasmReturnValue);
-            });
+            var asyncPromiseHandlers = Asyncify.asyncPromiseHandlers;
+            if (asyncPromiseHandlers) {
+              Asyncify.asyncPromiseHandlers = null;
+              (isError ? asyncPromiseHandlers.reject : asyncPromiseHandlers.resolve)(asyncWasmReturnValue);
+              handled = true;
+            }
+          }
+          if (isError && !handled) {
+            // If there was an error and it was not handled by now, we have no choice but to
+            // rethrow that error into the global scope where it can be caught only by
+            // `onerror` or `onunhandledpromiserejection`.
+            throw asyncWasmReturnValue;
           }
         });
         reachedAfterCallback = true;
@@ -352,16 +376,19 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers: function(func) {
     Asyncify.handleSleep(function(wakeUp) {
-      // We must first unwind, so things are spilled to the stack. We
-      // can resume right after unwinding, no need for a timeout.
-      Asyncify.afterUnwind = function() {
+      // We must first unwind, so things are spilled to the stack. Then while
+      // we are pausing we do the actual scan. After that we can resume. Note
+      // how using a timeout here avoids unbounded call stack growth, which
+      // could happen if we tried to scan the stack immediately after unwinding.
+      safeSetTimeout(function() {
         var stackBegin = Asyncify.currData + {{{ C_STRUCTS.asyncify_data_s.__size__ }}};
         var stackEnd = HEAP32[Asyncify.currData >> 2];
         {{{ makeDynCall('vii', 'func') }}}(stackBegin, stackEnd);
         wakeUp();
-      };
+      }, 0);
     });
   },
 
