@@ -1935,7 +1935,6 @@ int main(int argc, char **argv) {
     # Tracing of memory growths should work
     # (SAFE_HEAP would instrument the tracing code itself, leading to recursion)
     if not self.get_setting('SAFE_HEAP'):
-      self.set_setting('EMSCRIPTEN_TRACING')
       self.emcc_args += ['--tracing']
       self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
