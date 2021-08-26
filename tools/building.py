@@ -755,21 +755,21 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
 
   # Node.js specific externs
   if shared.target_environment_may_be('node'):
-  NODE_EXTERNS_BASE = path_from_root('third_party/closure-compiler/node-externs')
+    NODE_EXTERNS_BASE = path_from_root('third_party/closure-compiler/node-externs')
     NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
     NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
                     if name.endswith('.js')]
-  CLOSURE_EXTERNS += [path_from_root('src/closure-externs/node-externs.js')] + NODE_EXTERNS
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/node-externs.js')] + NODE_EXTERNS
 
   # V8/SpiderMonkey shell specific externs
   if shared.target_environment_may_be('shell'):
-  V8_EXTERNS = [path_from_root('src/closure-externs/v8-externs.js')]
-  SPIDERMONKEY_EXTERNS = [path_from_root('src/closure-externs/spidermonkey-externs.js')]
+    V8_EXTERNS = [path_from_root('src/closure-externs/v8-externs.js')]
+    SPIDERMONKEY_EXTERNS = [path_from_root('src/closure-externs/spidermonkey-externs.js')]
     CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
 
   # Web environment specific externs
   if shared.target_environment_may_be('web') or shared.target_environment_may_be('worker'):
-  BROWSER_EXTERNS_BASE = path_from_root('src/closure-externs/browser-externs')
+    BROWSER_EXTERNS_BASE = path_from_root('src/closure-externs/browser-externs')
     if os.path.isdir(BROWSER_EXTERNS_BASE):
       BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
       BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
@@ -798,8 +798,8 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   outfile = tempfiles.get('.cc.js').name  # Safe 7-bit filename
 
   def move_to_safe_7bit_ascii_filename(filename):
-  if isascii(filename):
-    return filename
+    if isascii(filename):
+      return filename
     safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
     shutil.copyfile(filename, safe_filename)
     return os.path.relpath(safe_filename, tempfiles.tmpdir)
@@ -849,7 +849,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and settings.CLOSURE_WARNINGS != 'quiet')):
     input_file = open(filename, 'r').read().splitlines()
     for i in range(len(input_file)):
-    sys.stderr.write(f'{i + 1}: {input_file[i]}\n')
+      sys.stderr.write(f'{i + 1}: {input_file[i]}\n')
 
   if proc.returncode != 0:
     logger.error(proc.stderr) # print list of errors (possibly long wall of text if input was minified)
@@ -876,7 +876,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
     if settings.CLOSURE_WARNINGS == 'error':
       exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS=error enabled')
 
-    return outfile
+  return outfile
 
 
 # minify the final wasm+JS combination. this is done after all the JS
