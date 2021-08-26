@@ -207,7 +207,7 @@ def llvm_nm_multiple(files):
     if results.returncode != 0:
       logger.debug(f'Subcommand {" ".join(cmd)} failed with return code {results.returncode}! (An input file was corrupt?)')
 
-    for key, value in parse_llvm_nm_symbols(results.stdout, llvm_nm_files):
+    for key, value in parse_llvm_nm_symbols(results.stdout, llvm_nm_files).items():
       nm_cache[key] = value
 
   return [nm_cache[f] if f in nm_cache else SymbolSet(set(), set(), set(), True) for f in files]
