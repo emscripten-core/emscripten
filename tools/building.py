@@ -40,7 +40,8 @@ logger = logging.getLogger('building')
 binaryen_checked = False
 
 EXPECTED_BINARYEN_VERSION = 101
-# cache results of nm - it can be slow to run
+SymbolSet = namedtuple('SymbolSet', ['defs', 'undefs', 'commons', 'parse_error'])
+# cache results of nm as a map of filename string -> SymbolSet entries - it can be slow to run
 nm_cache = {}
 # Stores the object files contained in different archive files passed as input
 ar_contents = {}
@@ -209,7 +210,7 @@ def llvm_nm_multiple(files):
     for key, value in parse_llvm_nm_symbols(results.stdout, llvm_nm_files):
       nm_cache[key] = value
 
-  return [nm_cache[f] if f in nm_cache else {'defs': set(), 'undefs': set(), 'commons': set(), 'valid': False} for f in files]
+  return [nm_cache[f] if f in nm_cache else SymbolSet(set(), set(), set(), True) for f in files]
 
 
 def llvm_nm(file):
@@ -430,13 +431,13 @@ def link_bitcode(args, target, force_archive_contents=False):
     new_symbols = llvm_nm(f)
     # Check if the object was valid according to llvm-nm. It also accepts
     # native object files.
-    if not new_symbols['valid']:
+    if new_symbols.parse_error:
       diagnostics.warning('emcc', 'object %s is not valid according to llvm-nm, cannot link', f)
       return False
     # Check the object is valid for us, and not a native object file.
     if not is_bitcode(f):
       exit_with_error('unknown file type: %s', f)
-    provided = new_symbols['defs'].union(new_symbols['commons'])
+    provided = new_symbols.defs.union(new_symbols.commons)
     do_add = force_add or not unresolved_symbols.isdisjoint(provided)
     if do_add:
       logger.debug('adding object %s to link (forced: %d)' % (f, force_add))
@@ -444,7 +445,7 @@ def link_bitcode(args, target, force_archive_contents=False):
       resolved_symbols.update(provided)
       # Update unresolved_symbols table by adding newly unresolved symbols and
       # removing newly resolved symbols.
-      unresolved_symbols.update(new_symbols['undefs'].difference(resolved_symbols))
+      unresolved_symbols.update(new_symbols.undefs.difference(resolved_symbols))
       unresolved_symbols.difference_update(provided)
       files_to_link.append(f)
     return do_add
@@ -559,14 +560,9 @@ def get_command_with_possible_response_file(cmd):
 # To map the symbols back to the original filenames that the function was called for, the
 # list of input functions should be passed in input_filenames.
 def parse_llvm_nm_symbols(output, input_filenames):
-  # a dictionary from 'filename' -> { 'defs': set(), 'undefs': set(), 'commons': set(), 'valid': True }
   symbols = {}
-  cur_file = symbols[input_filenames[0]] = {
-    'defs': set(),
-    'undefs': set(),
-    'commons': set(),
-    'valid': True
-  }
+  cur_file = symbols[input_filenames[0]] = SymbolSet(set(), set(), set(), False)
+
   for line in output.split('\n'):
     if not line or line[0] == '#':
       continue
@@ -574,12 +570,7 @@ def parse_llvm_nm_symbols(output, input_filenames):
     if ':' in line:
       filename = line[0:line.find(':')].strip()
       if filename in input_filenames:
-        cur_file = symbols[filename] = {
-          'defs': set(),
-          'undefs': set(),
-          'commons': set(),
-          'valid': True
-        }
+        cur_file = symbols[filename] = SymbolSet(set(), set(), set(), False)
       continue
     parts = [seg for seg in line.split(' ') if len(seg)]
     # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols
@@ -591,13 +582,13 @@ def parse_llvm_nm_symbols(output, input_filenames):
       # e.g. |00000630 t d_source_name|
       status, symbol = parts
       if status == 'U':
-        cur_file['undefs'] |= {symbol}
+        cur_file.undefs |= {symbol}
       elif status == 'C':
-        cur_file['commons'] |= {symbol}
+        cur_file.commons |= {symbol}
       elif status == status.upper():
         # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
         #        so for now we assume all uppercase are normally defined external symbols
-        cur_file['defs'] |= {symbol}
+        cur_file.defs |= {symbol}
   return symbols
 
 
