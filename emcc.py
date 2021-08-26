@@ -232,10 +232,10 @@ class EmccOptions:
     self.use_closure_compiler = None
     self.closure_args = []
     self.js_transform = None
-    self.pre_js = '' # before all js
-    self.post_js = '' # after all js
-    self.extern_pre_js = '' # before all js, external to optimized code
-    self.extern_post_js = '' # after all js, external to optimized code
+    self.pre_js = [] # before all js
+    self.post_js = [] # after all js
+    self.extern_pre_js = [] # before all js, external to optimized code
+    self.extern_post_js = [] # after all js, external to optimized code
     self.preload_files = []
     self.embed_files = []
     self.exclude_files = []
@@ -496,6 +496,11 @@ def fix_windows_newlines(text):
   if WINDOWS:
     text = text.replace('\r\n', '\n')
   return text
+
+
+def read_js_files(files):
+  contents = '\n'.join(read_file(f) for f in files)
+  return fix_windows_newlines(contents)
 
 
 def cxx_to_c_compiler(cxx):
@@ -1366,19 +1371,24 @@ def phase_linker_setup(options, state, newargs, settings_map):
     add_link_flag(state, sys.maxsize, f)
 
   if options.emrun:
-    options.pre_js += read_file(utils.path_from_root('src/emrun_prejs.js')) + '\n'
-    options.post_js += read_file(utils.path_from_root('src/emrun_postjs.js')) + '\n'
+    options.pre_js.append(utils.path_from_root('src/emrun_prejs.js'))
+    options.post_js.append(utils.path_from_root('src/emrun_postjs.js'))
     # emrun mode waits on program exit
     settings.EXIT_RUNTIME = 1
 
   if options.cpu_profiler:
-    options.post_js += read_file(utils.path_from_root('src/cpuprofiler.js')) + '\n'
+    options.post_js.append(utils.path_from_root('src/cpuprofiler.js'))
 
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
 
   if options.thread_profiler:
-    options.post_js += read_file(utils.path_from_root('src/threadprofiler.js')) + '\n'
+    options.post_js.append(utils.path_from_root('src/threadprofiler.js'))
+
+  options.pre_js = read_js_files(options.pre_js)
+  options.post_js = read_js_files(options.post_js)
+  options.extern_pre_js = read_js_files(options.extern_pre_js)
+  options.extern_post_js = read_js_files(options.extern_post_js)
 
   if options.memory_init_file is None:
     options.memory_init_file = settings.OPT_LEVEL >= 2
@@ -2597,9 +2607,8 @@ def phase_source_transforms(options, target):
     with open(final_js, 'w') as f:
       # pre-js code goes right after the Module integration code (so it
       # can use Module), we have a marker for it
-      f.write(do_replace(src, '// {{PRE_JSES}}', fix_windows_newlines(options.pre_js)))
-      f.write(fix_windows_newlines(options.post_js))
-    options.pre_js = src = options.post_js = None
+      f.write(do_replace(src, '// {{PRE_JSES}}', options.pre_js))
+      f.write(options.post_js)
     save_intermediate('pre-post')
 
   # Apply a source code transformation, if requested
@@ -2675,9 +2684,9 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     src = read_file(final_js)
     final_js += '.epp.js'
     with open(final_js, 'w') as f:
-      f.write(fix_windows_newlines(options.extern_pre_js))
+      f.write(options.extern_pre_js)
       f.write(src)
-      f.write(fix_windows_newlines(options.extern_post_js))
+      f.write(options.extern_post_js)
     save_intermediate('extern-pre-post')
 
   shared.JS.handle_license(final_js)
@@ -2816,13 +2825,13 @@ def parse_args(newargs):
     elif check_arg('--js-transform'):
       options.js_transform = consume_arg()
     elif check_arg('--pre-js'):
-      options.pre_js += read_file(consume_arg_file()) + '\n'
+      options.pre_js.append(consume_arg_file())
     elif check_arg('--post-js'):
-      options.post_js += read_file(consume_arg_file()) + '\n'
+      options.post_js.append(consume_arg_file())
     elif check_arg('--extern-pre-js'):
-      options.extern_pre_js += read_file(consume_arg_file()) + '\n'
+      options.extern_pre_js.append(consume_arg_file())
     elif check_arg('--extern-post-js'):
-      options.extern_post_js += read_file(consume_arg_file()) + '\n'
+      options.extern_post_js.append(consume_arg_file())
     elif check_arg('--compiler-wrapper'):
       config.COMPILER_WRAPPER = consume_arg()
     elif check_flag('--post-link'):
