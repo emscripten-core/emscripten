@@ -424,7 +424,6 @@ var LibraryPThread = {
       // Use Trusted Types compatible wrappers.
       if (typeof trustedTypes !== 'undefined' && trustedTypes.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: function(ignored) { return pthreadMainJs } });
-        // Use bundler-friendly `new Worker(new URL(..., import.meta.url))` pattern; works in browsers too.
         PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
       } else {
         PThread.unusedWorkers.push(new Worker(pthreadMainJs));
