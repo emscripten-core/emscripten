@@ -227,7 +227,6 @@ class EmccOptions:
     self.oformat = None
     self.requested_debug = ''
     self.profiling_funcs = False
-    self.tracing = False
     self.emit_symbol_map = False
     self.use_closure_compiler = None
     self.closure_args = []
@@ -244,7 +243,6 @@ class EmccOptions:
     self.source_map_base = ''
     self.emrun = False
     self.cpu_profiler = False
-    self.thread_profiler = False
     self.memory_profiler = False
     self.memory_init_file = None
     self.use_preload_cache = False
@@ -814,7 +812,7 @@ def get_llvm_target():
 cflags = None
 
 
-def get_cflags(options, user_args):
+def get_cflags(user_args):
   global cflags
   if cflags:
     return cflags
@@ -823,7 +821,7 @@ def get_cflags(options, user_args):
   # We add these to the user's flags (newargs), but not when building .s or .S assembly files
   cflags = get_clang_flags()
 
-  if options.tracing:
+  if settings.EMSCRIPTEN_TRACING:
     cflags.append('-D__EMSCRIPTEN_TRACING__=1')
 
   if settings.USE_PTHREADS:
@@ -1382,7 +1380,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
 
-  if options.thread_profiler:
+  if settings.PTHREADS_PROFILING:
     options.post_js.append(utils.path_from_root('src/threadprofiler.js'))
 
   options.pre_js = read_js_files(options.pre_js)
@@ -2292,7 +2290,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if not shared.JS.isidentifier(settings.EXPORT_NAME):
     exit_with_error(f'EXPORT_NAME is not a valid JS identifier: `{settings.EXPORT_NAME}`')
 
-  if options.tracing and settings.ALLOW_MEMORY_GROWTH:
+  if settings.EMSCRIPTEN_TRACING and settings.ALLOW_MEMORY_GROWTH:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
     settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_current',
                                     '_emscripten_stack_get_base',
@@ -2381,7 +2379,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return CC
 
   def get_clang_command(src_file):
-    return get_compiler(use_cxx(src_file)) + get_cflags(options, state.orig_args) + compile_args + [src_file]
+    return get_compiler(use_cxx(src_file)) + get_cflags(state.orig_args) + compile_args + [src_file]
 
   def get_clang_command_asm(src_file):
     return get_compiler(use_cxx(src_file)) + get_clang_flags() + compile_args + [src_file]
@@ -2894,9 +2892,8 @@ def parse_args(newargs):
     elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':
       if newargs[i] == '--memoryprofiler':
         options.memory_profiler = True
-      options.tracing = True
       newargs[i] = ''
-      settings_changes.append("EMSCRIPTEN_TRACING=1")
+      settings_changes.append('EMSCRIPTEN_TRACING=1')
       settings.JS_LIBRARIES.append((0, 'library_trace.js'))
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
@@ -2979,7 +2976,6 @@ def parse_args(newargs):
     elif check_flag('--cpuprofiler'):
       options.cpu_profiler = True
     elif check_flag('--threadprofiler'):
-      options.thread_profiler = True
       settings_changes.append('PTHREADS_PROFILING=1')
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
