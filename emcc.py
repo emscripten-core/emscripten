@@ -824,9 +824,6 @@ def get_cflags(user_args):
   if settings.EMSCRIPTEN_TRACING:
     cflags.append('-D__EMSCRIPTEN_TRACING__=1')
 
-  if settings.USE_PTHREADS:
-    cflags.append('-D__EMSCRIPTEN_PTHREADS__=1')
-
   if not settings.STRICT:
     # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
     # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
@@ -859,11 +856,6 @@ def get_cflags(user_args):
              '-D__EMSCRIPTEN_minor__=' + str(shared.EMSCRIPTEN_VERSION_MINOR),
              '-D__EMSCRIPTEN_tiny__=' + str(shared.EMSCRIPTEN_VERSION_TINY),
              '-D_LIBCPP_ABI_VERSION=2']
-
-  # For compatability with the fastcomp compiler that defined these
-  cflags += ['-Dunix',
-             '-D__unix',
-             '-D__unix__']
 
   # Changes to default clang behavior
 
