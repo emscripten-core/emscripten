@@ -719,7 +719,7 @@ def main():
     node_support_code = ''
     if support_node:
       node_support_code = r'''
-        if (typeof process === 'object') {
+        if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
           require('fs').readFile(packageName, function(err, contents) {
             if (err) {
               errback(err);
