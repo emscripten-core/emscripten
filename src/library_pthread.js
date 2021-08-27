@@ -402,8 +402,14 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
         out('Allocating a new web worker from ' + new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
 #endif
-        // Use bundler-friendly `new Worker(new URL(..., import.meta.url))` pattern; works in browsers too.
-        PThread.unusedWorkers.push(new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url)));
+        // Use Trusted Types compatible wrappers.
+        if (typeof trustedTypes !== 'undefined' && trustedTypes.createPolicy) {
+          var p = trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: function(ignored) { return new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url)} });
+          // Use bundler-friendly `new Worker(new URL(..., import.meta.url))` pattern; works in browsers too.
+          PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
+        } else {
+          PThread.unusedWorkers.push(new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url)));
+        }
         return;
       }
 #endif
@@ -415,7 +421,14 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
       out('Allocating a new web worker from ' + pthreadMainJs);
 #endif
-      PThread.unusedWorkers.push(new Worker(pthreadMainJs));
+      // Use Trusted Types compatible wrappers.
+      if (typeof trustedTypes !== 'undefined' && trustedTypes.createPolicy) {
+        var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: function(ignored) { return pthreadMainJs } });
+        // Use bundler-friendly `new Worker(new URL(..., import.meta.url))` pattern; works in browsers too.
+        PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
+      } else {
+        PThread.unusedWorkers.push(new Worker(pthreadMainJs));
+      }
     },
 
     getNewWorker: function() {
