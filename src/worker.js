@@ -144,10 +144,20 @@ self.onmessage = function(e) {
       });
 #else
       if (typeof e.data.urlOrBlob === 'string') {
-        importScripts(e.data.urlOrBlob);
+        if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
+          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return e.data.urlOrBlob } });
+          importScripts(p.createScriptURL('ignored'));
+        } else {
+          importScripts(e.data.urlOrBlob);
+        }
       } else {
         var objectUrl = URL.createObjectURL(e.data.urlOrBlob);
-        importScripts(objectUrl);
+        if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
+          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return objectUrl } });
+          importScripts(p.createScriptURL('ignored'));
+        } else {
+          importScripts(objectUrl);
+        }
         URL.revokeObjectURL(objectUrl);
       }
 #if MODULARIZE
