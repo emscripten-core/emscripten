@@ -74,10 +74,14 @@ mergeInto(LibraryManager.library, {
               try {
                 return original.apply(null, arguments);
               } finally {
-                // Only functions in the list of known relevant imports are allowed to change the state.
-                // Note that invoke_* functions are allowed to change the state if we do not ignore
-                // indirect calls.
+                // Only functions in the list of known relevant imports are
+                // allowed to change the state (with the exception that changing
+                // the state to "disabled" is allowed, as that is what shutdown
+                // does).
+                // Note that invoke_* functions are allowed to change the state
+                // if we do not ignore indirect calls.
                 if (Asyncify.state !== originalAsyncifyState &&
+                    Asyncify.state !== Asyncify.State.Disabled &&
                     ASYNCIFY_IMPORTS.indexOf(x) < 0 &&
                     !x.startsWith('__asyncjs__') &&
                     !(x.startsWith('invoke_') && {{{ !ASYNCIFY_IGNORE_INDIRECT }}})) {

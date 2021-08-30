@@ -10,7 +10,7 @@
 extern "C" {
 
 void EMSCRIPTEN_KEEPALIVE finish(int result) {
-  REPORT_RESULT(result);
+  emscripten_force_exit(result);
 }
 
 int counter = 0;
