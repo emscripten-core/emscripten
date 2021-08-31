@@ -10,7 +10,7 @@ import logging
 from . import utils
 from .utils import path_from_root, exit_with_error, __rootpath__, which
 
-logger = logging.getLogger('shared')
+logger = logging.getLogger('config')
 
 # The following class can be overridden by the config file and/or
 # environment variables.  Specifically any variable whose name
