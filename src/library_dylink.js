@@ -496,11 +496,6 @@ var LibraryDylink = {
         } else {
 #endif
           var init = moduleExports['__wasm_call_ctors'];
-          // TODO(sbc): Remove this once extra check once the binaryen
-          // change propogates: https://github.com/WebAssembly/binaryen/pull/3811
-          if (!init) {
-            init = moduleExports['__post_instantiate'];
-          }
           if (init) {
             if (runtimeInitialized) {
               init();
