@@ -28,8 +28,6 @@ static void free_tls(void* tls_block) {
   emscripten_builtin_free(tls_block);
 }
 
-//See system/lib/README.md for static constructor ordering.
-__attribute__((constructor(49)))
 void emscripten_tls_init(void) {
   size_t tls_size = __builtin_wasm_tls_size();
   size_t tls_align = __builtin_wasm_tls_align();

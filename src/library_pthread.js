@@ -37,21 +37,7 @@ var LibraryPThread = {
       }
 #endif
     },
-    initRuntime: function(tb) {
-#if PTHREADS_PROFILING
-      PThread.createProfilerBlock(tb);
-      PThread.setThreadName(tb, "Browser main thread");
-      PThread.setThreadStatus(tb, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
-#endif
 
-      // Pass the thread address to the native code where they stored in wasm
-      // globals which act as a form of TLS. Global constructors trying
-      // to access this value will read the wrong value, but that is UB anyway.
-      __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
-#if ASSERTIONS
-      PThread.mainRuntimeThread = true;
-#endif
-    },
     initWorker: function() {
 #if USE_CLOSURE_COMPILER
       // worker.js is not compiled together with us, and must access certain
@@ -237,7 +223,7 @@ var LibraryPThread = {
     // Called by worker.js each time a thread is started.
     threadInit: function() {
 #if PTHREADS_DEBUG
-      out("threadInit");
+      out('Pthread 0x' + _pthread_self().toString(16) + ' threadInit.');
 #endif
 #if PTHREADS_PROFILING
       PThread.setThreadStatus(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
@@ -563,6 +549,22 @@ var LibraryPThread = {
     if (ENVIRONMENT_IS_NODE) return require('os').cpus().length;
 #endif
     return navigator['hardwareConcurrency'];
+  },
+
+  __emscripten_init_main_thread_js: function(tb) {
+#if PTHREADS_PROFILING
+    PThread.createProfilerBlock(tb);
+    PThread.setThreadName(tb, "Browser main thread");
+#endif
+
+    // Pass the thread address to the native code where they stored in wasm
+    // globals which act as a form of TLS. Global constructors trying
+    // to access this value will read the wrong value, but that is UB anyway.
+    __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+#if ASSERTIONS
+    PThread.mainRuntimeThread = true;
+#endif
+    PThread.threadInit();
   },
 
   __pthread_create_js__sig: 'iiiii',
