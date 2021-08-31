@@ -1864,7 +1864,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       exit_with_error('USE_PTHREADS + BUILD_AS_WORKER require separate modes that don\'t work together, see https://github.com/emscripten-core/emscripten/issues/8854')
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
     settings.EXPORTED_FUNCTIONS += [
-      '___emscripten_pthread_data_constructor',
+      '___emscripten_init_main_thread',
       '__emscripten_call_on_thread',
       '__emscripten_main_thread_futex',
       '__emscripten_thread_init',

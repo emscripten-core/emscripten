@@ -58,7 +58,6 @@ function initRuntime(asm) {
 
 #if USE_PTHREADS
   // Export needed variables that worker.js needs to Module.
-  Module['_emscripten_tls_init'] = _emscripten_tls_init;
   Module['HEAPU32'] = HEAPU32;
   Module['__emscripten_thread_init'] = __emscripten_thread_init;
   Module['_pthread_self'] = _pthread_self;
@@ -75,6 +74,10 @@ function initRuntime(asm) {
 #if STACK_OVERFLOW_CHECK >= 2
   ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
+#endif
+
+#if USE_PTHREADS
+  PThread.tlsInitFunctions.push(asm['emscripten_tls_init']);
 #endif
 
 #if hasExportedFunction('___wasm_call_ctors')

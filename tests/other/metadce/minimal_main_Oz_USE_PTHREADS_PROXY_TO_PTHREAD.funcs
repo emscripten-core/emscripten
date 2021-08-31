@@ -1,5 +1,5 @@
 $GetQueue
-$__emscripten_pthread_data_constructor
+$__emscripten_init_main_thread
 $__errno_location
 $__pthread_mutex_lock
 $__pthread_mutex_trylock
