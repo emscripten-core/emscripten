@@ -10605,6 +10605,8 @@ exec "$@"
         cmd.append('-sUSE_WEBGPU')
       if function.startswith('__cxa_'):
         cmd.append('-fexceptions')
+      if function.startswith('glfwGetMonitors'):
+        cmd.append('-sUSE_GLFW=3')
       # In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function
       # calls that exist in the same function with setjmp are converted to some
       # code sequence that includes emscripten_longjmp. emscripten_longjmp is
