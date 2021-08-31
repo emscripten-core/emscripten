@@ -4592,31 +4592,8 @@ main main sees -524, -534, 72.
 
     # TODO(sbc): Add tests that depend on importing/exported TLS symbols
     # once we figure out how to do that.
-    create_file('main.c', r'''
-      #include <stdio.h>
-
-      _Thread_local int foo = 10;
-
-      void sidey();
-
-      int main(int argc, char const *argv[]) {
-        printf("main TLS: %d\n", foo);
-        sidey();
-        return 0;
-      }
-    ''')
-    create_file('side.c', r'''
-      #include <stdio.h>
-
-      _Thread_local int bar = 11;
-
-      void sidey() {
-        printf("side TLS: %d\n", bar);
-      }
-    ''')
     self.emcc_args.append('-Wno-experimental')
-    self.dylink_testf('main.c', 'side.c',
-                      expected='main TLS: 10\nside TLS: 11\n',
+    self.dylink_testf(test_file('core/test_dylink_tls.c'), test_file('core/test_dylink_tls_side.c'),
                       need_reverse=False)
 
   def test_random(self):
