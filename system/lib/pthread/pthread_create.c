@@ -109,14 +109,15 @@ void _emscripten_thread_exit(void* result) {
   emscripten_builtin_free(self->tsd);
   self->tsd = NULL;
 
-  // Mark the thread as no longer running.
-  // When we publish this, the main thread is free to deallocate the thread object and we are done.
-  self->threadStatus = 1;
+  // Not hosting a pthread anymore in this worker set __pthread_self to NULL
+  _emscripten_thread_init(0, 0, 0);
 
+  // Mark the thread as no longer running.
+  // Once we publish this, any threads that are waiting to join with us can
+  // proceed and this worker can be recycled and used to another thread.
+  self->threadStatus = 1;
   emscripten_futex_wake(&self->threadStatus, INT_MAX); // wake all threads
 
-  // Not hosting a pthread anymore in this worker, reset the info structures to null.
-  _emscripten_thread_init(0, 0, 0); // Unregister the thread block inside the wasm module.
   __pthread_exit_done();
 }
 
