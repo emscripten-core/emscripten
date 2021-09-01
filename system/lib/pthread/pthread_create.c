@@ -20,7 +20,7 @@ extern int __cxa_thread_atexit(void (*)(void *), void *, void *);
 extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 extern void _emscripten_thread_init(int, int, int);
 extern void __pthread_exit_run_handlers();
-extern void __pthread_exit_done();
+extern void __pthread_detached_exit();
 extern int8_t __dso_handle;
 
 static void dummy_0()
@@ -97,6 +97,8 @@ void _emscripten_thread_exit(void* result) {
   // Call into the musl function that runs destructors of all thread-specific data.
   __pthread_tsd_run_dtors();
 
+  __lock(self->exitlock);
+
   if (self == emscripten_main_browser_thread_id()) {
     // FIXME(sbc): When pthread_exit causes the entire application to exit
     // we should be returning zero (according to the man page for pthread_exit).
@@ -112,13 +114,19 @@ void _emscripten_thread_exit(void* result) {
   // Not hosting a pthread anymore in this worker set __pthread_self to NULL
   _emscripten_thread_init(0, 0, 0);
 
-  // Mark the thread as no longer running.
+  // Cache deteched state since once we set threadStatus to 1, the `self` struct
+  // could be freed and reused.
+  int detatched = self->detached;
+
+  // Mark the thread as no longer running so it can be joined.
   // Once we publish this, any threads that are waiting to join with us can
-  // proceed and this worker can be recycled and used to another thread.
+  // proceed and this worker can be recycled and used on another thread.
   self->threadStatus = 1;
   emscripten_futex_wake(&self->threadStatus, INT_MAX); // wake all threads
 
-  __pthread_exit_done();
+  if (detatched) {
+    __pthread_detached_exit();
+  }
 }
 
 // Mark as `no_sanitize("address"` since emscripten_pthread_exit destroys
