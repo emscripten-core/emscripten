@@ -235,7 +235,10 @@ commands:
           command: |
             # Using stable rather than beta until we can fix
             # https://github.com/emscripten-core/emscripten/issues/14369
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            # Currently downloading form our own buckets due to:
+            # https://github.com/emscripten-core/emscripten/issues/14987
+            #wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
       - run:
           name: run tests
@@ -264,7 +267,10 @@ commands:
       - run:
           name: download chrome
           command: |
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            # Currently downloading form our own buckets due to:
+            # https://github.com/emscripten-core/emscripten/issues/14987
+            #wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
       - checkout
       - emsdk-env
