@@ -13,23 +13,38 @@ from tools import utils
 from subprocess import CalledProcessError
 
 
-#
-# Main run() function
-#
-def run():
-  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
+# Conditionally add a toolchain and run emulator.
+def create_command():
+  if len(sys.argv) < 2 or sys.argv[1] in ('--help', '--version'):
     print('''\
 emcmake is a helper for cmake, setting various environment
 variables so that emcc etc. are used. Typical usage:
 
   emcmake cmake [FLAGS]
 ''', file=sys.stderr)
-    return 1
+    sys.exit(1)
 
+  unsupported = {
+    '--build',
+    '--install',
+    '--open',
+    '-E',
+    '--find-package',
+    '--help',
+    '--version',
+  }
   args = sys.argv[1:]
+  if len(args) < 2 or args[1] in unsupported:
+    return args
 
   def has_substr(args, substr):
     return any(substr in s for s in args)
+
+  # Check if it's called as a script argument, which is an unsupported case.
+  # Script arguments can lead with as many `-D` cases, just check if
+  # we have a `-P` in the arg list.
+  if '-P' in args:
+    return args
 
   # Append the Emscripten toolchain file if the user didn't specify one.
   if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
@@ -49,7 +64,16 @@ variables so that emcc etc. are used. Typical usage:
       args += ['-G', 'Ninja']
     else:
       print('emcmake: no compatible cmake generator found; Please install ninja or mingw32-make, or specify a generator explicitly using -G', file=sys.stderr)
-      return 1
+      sys.exit(1)
+
+  return args
+
+
+#
+# Main run() function
+#
+def run():
+  args = create_command()
 
   # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles
   # is being used. This happens quite often, so do this automatically on
