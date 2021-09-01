@@ -958,6 +958,7 @@ base align: 0, 0, 0, 0'''])
   def test_longjmp2_main_module(self):
     # Test for binaryen regression:
     # https://github.com/WebAssembly/binaryen/issues/2180
+    self.set_setting('MAIN_MODULE')
     self.do_core_test('test_longjmp2.c')
 
   @with_both_sjlj_handling
