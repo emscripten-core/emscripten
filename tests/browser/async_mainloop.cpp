@@ -10,7 +10,8 @@
 extern "C" {
 
 void EMSCRIPTEN_KEEPALIVE finish(int result) {
-  emscripten_force_exit(result);
+  assert(result == 121);
+  emscripten_force_exit(0);
 }
 
 int counter = 0;

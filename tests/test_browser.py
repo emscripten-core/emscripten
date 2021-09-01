@@ -3301,7 +3301,7 @@ window.close = function() {
   def test_async_mainloop(self):
     for opts in [0, 3]:
       print(opts)
-      self.btest_exit('browser/async_mainloop.cpp', assert_returncode=121, args=['-O' + str(opts), '-s', 'ASYNCIFY'])
+      self.btest_exit('browser/async_mainloop.cpp', args=['-O' + str(opts), '-s', 'ASYNCIFY'])
 
   @requires_sound_hardware
   def test_sdl_audio_beep_sleep(self):
