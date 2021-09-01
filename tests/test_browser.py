@@ -231,7 +231,7 @@ If manually bisecting:
 
   def test_emscripten_log(self):
     self.btest_exit(test_file('emscripten_log/emscripten_log.cpp'),
-                    args=['--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-gsource-map'])
+                    args=['--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
 
   def test_preload_file(self):
     create_file('somefile.txt', 'load me right before running the code please')
@@ -574,7 +574,7 @@ If manually bisecting:
     # change the file package base dir to look in a "cdn". note that normally
     # you would add this in your own custom html file etc., and not by
     # modifying the existing shell in this manner
-    default_shell = read_file(path_from_root('src', 'shell.html'))
+    default_shell = read_file(path_from_root('src/shell.html'))
     create_file('shell.html', default_shell.replace('var Module = {', '''
     var Module = {
       locateFile: function(path, prefix) {
@@ -668,7 +668,7 @@ If manually bisecting:
     test()
 
     # TODO: CORS, test using a full url for locateFile
-    # create_file('shell.html', read_file(path_from_root('src', 'shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
+    # create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
     # test()
 
   def test_dev_random(self):
@@ -2438,6 +2438,11 @@ void *getBindBuffer() {
     self.compile_btest([test_file('worker_api_worker_sleep.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER', '-s', 'EXPORTED_FUNCTIONS=_one', '-s', 'ASYNCIFY'])
     self.btest('worker_api_main.cpp', expected='566')
 
+  def test_worker_api_with_pthread_compilation_fails(self):
+    self.run_process([EMCC, '-c', '-o', 'hello.o', test_file('hello_world.c')])
+    stderr = self.expect_fail([EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure=1', '-s', 'USE_PTHREADS', '-s', 'BUILD_AS_WORKER=1'])
+    self.assertContained('error: USE_PTHREADS + BUILD_AS_WORKER require separate modes that don\'t work together, see https://github.com/emscripten-core/emscripten/issues/8854', stderr)
+
   def test_emscripten_async_wget2(self):
     self.btest_exit('test_emscripten_async_wget2.cpp')
 
@@ -3678,7 +3683,7 @@ window.close = function() {
   # pthreads tests
 
   def prep_no_SAB(self):
-    create_file('html.html', read_file(path_from_root('src', 'shell_minimal.html')).replace('''<body>''', '''<body>
+    create_file('html.html', read_file(path_from_root('src/shell_minimal.html')).replace('''<body>''', '''<body>
       <script>
         SharedArrayBuffer = undefined;
         Atomics = undefined;
@@ -3987,7 +3992,7 @@ window.close = function() {
     ''')
 
     # Test that it is possible to define "Module.locateFile" string to locate where worker.js will be loaded from.
-    create_file('shell.html', read_file(path_from_root('src', 'shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
+    create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
     self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-o', 'test.html'], reporting=Reporting.JS_ONLY)
     shutil.move('test.worker.js', Path('cdn/test.worker.js'))
     if os.path.exists('test.html.mem'):
@@ -3995,7 +4000,7 @@ window.close = function() {
     self.run_browser('test.html', '', '/report_result?exit:0')
 
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
-    create_file('shell2.html', read_file(path_from_root('src', 'shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.worker.js") return "cdn/test.worker.js"; else return filename; }, '))
+    create_file('shell2.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.worker.js") return "cdn/test.worker.js"; else return filename; }, '))
     self.compile_btest(['main.cpp', '--shell-file', 'shell2.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-o', 'test2.html'], reporting=Reporting.JS_ONLY)
     try_delete('test.worker.js')
     self.run_browser('test2.html', '', '/report_result?exit:0')
@@ -4263,7 +4268,7 @@ window.close = function() {
   def test_wasm_locate_file(self):
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     ensure_dir('cdn')
-    create_file('shell2.html', read_file(path_from_root('src', 'shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
+    create_file('shell2.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
     self.compile_btest([test_file('browser_test_hello_world.c'), '--shell-file', 'shell2.html', '-o', 'test.html'])
     shutil.move('test.wasm', Path('cdn/test.wasm'))
     self.run_browser('test.html', '', '/report_result?0')
@@ -4299,7 +4304,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 5477), 100)
+    self.assertLess(abs(size - 5629), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4696,11 +4701,12 @@ window.close = function() {
   # Tests that a pthreads build of -s MINIMAL_RUNTIME=1 works well in different build modes
   @parameterized({
     '': ([],),
-    'O3': (['-O3'],)
+    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
+    'O3': (['-O3'],),
+    'O3_modularize': (['-O3', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
   })
   def test_minimal_runtime_hello_thread(self, opts):
-    for modularize in [[], ['-s', 'MODULARIZE', '-s', 'EXPORT_NAME=MyModule']]:
-      self.btest_exit(test_file('pthread/hello_thread.c'), expected='1', args=['-s', 'MINIMAL_RUNTIME', '-s', 'USE_PTHREADS'] + modularize + opts)
+    self.btest_exit(test_file('pthread/hello_thread.c'), expected='1', args=['--closure=1', '-sMINIMAL_RUNTIME', '-sUSE_PTHREADS'] + opts)
 
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_threads
@@ -4858,7 +4864,7 @@ window.close = function() {
         return 0;
       }
     ''')
-    create_file('shell.html', read_file(path_from_root('src', 'shell.html')).replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
+    create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
     self.btest_exit('main.cpp', args=['--shell-file', 'shell.html'])
 
   # Tests the functionality of the emscripten_thread_sleep() function.
@@ -5010,7 +5016,7 @@ window.close = function() {
   # Tests that -s MINIMAL_RUNTIME=1 works well in different build modes
   def test_minimal_runtime_hello_world(self):
     for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', '--closure=1'], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', '--closure', '1']]:
-      self.btest(test_file('small_hello_world.c'), '0', args=args + ['-s', 'MINIMAL_RUNTIME'])
+      self.btest_exit(test_file('small_hello_world.c'), args=args + ['-s', 'MINIMAL_RUNTIME'])
 
   @requires_threads
   def test_offset_converter(self, *args):
@@ -5021,13 +5027,14 @@ window.close = function() {
     self.btest_exit(test_file('browser/test_emscripten_unwind_to_js_event_loop.c'))
 
   def test_wasm2js_fallback(self):
+    self.set_setting('EXIT_RUNTIME')
     for args in [[], ['-s', 'MINIMAL_RUNTIME']]:
       self.compile_btest([test_file('small_hello_world.c'), '-s', 'WASM=2', '-o', 'test.html'] + args)
 
       # First run with WebAssembly support enabled
       # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
       os.rename('test.wasm.js', 'test.wasm.js.unused')
-      self.run_browser('test.html', 'hello!', '/report_result?0')
+      self.run_browser('test.html', 'hello!', '/report_result?exit:0')
       os.rename('test.wasm.js.unused', 'test.wasm.js')
 
       # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
@@ -5035,20 +5042,21 @@ window.close = function() {
       html = html.replace('<body>', '<body><script>delete WebAssembly;</script>')
       open('test.html', 'w').write(html)
       os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
-      self.run_browser('test.html', 'hello!', '/report_result?0')
+      self.run_browser('test.html', 'hello!', '/report_result?exit:0')
 
   def test_wasm2js_fallback_on_wasm_compilation_failure(self):
+    self.set_setting('EXIT_RUNTIME')
     for args in [[], ['-s', 'MINIMAL_RUNTIME']]:
       self.compile_btest([test_file('small_hello_world.c'), '-s', 'WASM=2', '-o', 'test.html'] + args)
 
       # Run without the .wasm.js file present: with Wasm support, the page should still run
       os.rename('test.wasm.js', 'test.wasm.js.unused')
-      self.run_browser('test.html', 'hello!', '/report_result?0')
+      self.run_browser('test.html', 'hello!', '/report_result?exit:0')
 
       # Restore the .wasm.js file, then corrupt the .wasm file, that should trigger the Wasm2js fallback to run
       os.rename('test.wasm.js.unused', 'test.wasm.js')
       shutil.copyfile('test.js', 'test.wasm')
-      self.run_browser('test.html', 'hello!', '/report_result?0')
+      self.run_browser('test.html', 'hello!', '/report_result?exit:0')
 
   def test_system(self):
     self.btest_exit(test_file('system.c'))

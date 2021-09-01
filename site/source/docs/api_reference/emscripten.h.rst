@@ -932,6 +932,8 @@ Functions
   Creates a worker.
 
   A worker must be compiled separately from the main program, and with the ``BUILD_AS_WORKER`` flag set to 1.
+  
+  That worker must not be compiled with the ``-pthread`` flag as the POSIX threads implementation and this Worker API are incompatible.
 
   :param url: The URL of the worker script.
   :type url: const char*

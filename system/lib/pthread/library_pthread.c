@@ -49,17 +49,6 @@ int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t* a, const char
   return 0;
 }
 
-int _pthread_getcanceltype() { return pthread_self()->cancelasync; }
-
-static void inline __pthread_mutex_locked(pthread_mutex_t* mutex) {
-  // The lock is now ours, mark this thread as the owner of this lock.
-  assert(mutex);
-  assert(mutex->_m_lock == 0);
-  mutex->_m_lock = pthread_self()->tid;
-  if (_pthread_getcanceltype() == PTHREAD_CANCEL_ASYNCHRONOUS)
-    __pthread_testcancel();
-}
-
 int sched_get_priority_max(int policy) {
   // Web workers do not actually support prioritizing threads,
   // but mimic values that Linux apparently reports, see
@@ -880,14 +869,12 @@ int _emscripten_call_on_thread(int forceAsync, pthread_t targetThread, EM_FUNC_S
 // the main thread is waiting, we wake it up before waking up any workers.
 EMSCRIPTEN_KEEPALIVE void* _emscripten_main_thread_futex;
 
-EM_JS(void, initPthreadsJS, (void* tb), {
-  PThread.initRuntime(tb);
-})
+void __emscripten_init_main_thread_js(void* tb);
 
 // See system/lib/README.md for static constructor ordering.
 __attribute__((constructor(48)))
-void __emscripten_pthread_data_constructor(void) {
-  initPthreadsJS(&__main_pthread);
+void __emscripten_init_main_thread(void) {
+  __emscripten_init_main_thread_js(&__main_pthread);
   // The pthread struct has a field that points to itself - this is used as
   // a magic ID to detect whether the pthread_t structure is 'alive'.
   __main_pthread.self = &__main_pthread;

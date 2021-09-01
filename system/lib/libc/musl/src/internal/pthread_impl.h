@@ -36,7 +36,7 @@ struct pthread {
 #ifdef __EMSCRIPTEN__
 	// Note: The specific order of these fields is important, since these are accessed
 	// by direct pointer arithmetic in worker.js.
-	int threadStatus; // 0: thread not exited, 1: exited.
+	_Atomic int threadStatus; // 0: thread not exited, 1: exited.
 	thread_profiler_block * _Atomic profilerBlock; // If --threadprofiler is enabled, this pointer is allocated to contain internal information about the thread state for profiling purposes.
 #endif
 
@@ -184,10 +184,4 @@ void __restore_sigs(void *);
 
 #define __ATTRP_C11_THREAD ((void*)(uintptr_t)-1)
 
-#ifdef __EMSCRIPTEN__
-void __emscripten_init_pthread(pthread_t thread);
-#if !__EMSCRIPTEN_PTHREADS__
-pthread_t __emscripten_pthread_stub(void);
-#endif
-#endif
 #endif

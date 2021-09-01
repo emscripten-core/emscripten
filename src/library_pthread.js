@@ -9,7 +9,10 @@ var LibraryPThread = {
   $PThread__deps: ['_emscripten_thread_init',
                    'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
+                   'exit',
+#if !MINIMAL_RUNTIME
                    '$handleException',
+#endif
                    ],
   $PThread: {
     // Contains all Workers that are idle/unused and not currently hosting an
@@ -34,28 +37,16 @@ var LibraryPThread = {
       }
 #endif
     },
-    initRuntime: function(tb) {
-#if PTHREADS_PROFILING
-      PThread.createProfilerBlock(tb);
-      PThread.setThreadName(tb, "Browser main thread");
-      PThread.setThreadStatus(tb, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
-#endif
 
-      // Pass the thread address to the native code where they stored in wasm
-      // globals which act as a form of TLS. Global constructors trying
-      // to access this value will read the wrong value, but that is UB anyway.
-      __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
-#if ASSERTIONS
-      PThread.mainRuntimeThread = true;
-#endif
-    },
     initWorker: function() {
 #if USE_CLOSURE_COMPILER
       // worker.js is not compiled together with us, and must access certain
       // things.
       PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
       PThread['threadInit'] = PThread.threadInit;
+#if !MINIMAL_RUNTIME
       PThread['setExitStatus'] = PThread.setExitStatus;
+#endif
 #endif
     },
     // Maps pthread_t to pthread info objects
@@ -128,9 +119,11 @@ var LibraryPThread = {
     },
 #endif
 
+#if !MINIMAL_RUNTIME
     setExitStatus: function(status) {
       EXITSTATUS = status;
     },
+#endif
 
     terminateAllThreads: function() {
       for (var t in PThread.pthreads) {
@@ -230,7 +223,7 @@ var LibraryPThread = {
     // Called by worker.js each time a thread is started.
     threadInit: function() {
 #if PTHREADS_DEBUG
-      out("threadInit");
+      out('Pthread 0x' + _pthread_self().toString(16) + ' threadInit.');
 #endif
 #if PTHREADS_PROFILING
       PThread.setThreadStatus(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
@@ -302,17 +295,23 @@ var LibraryPThread = {
 #if ASSERTIONS
           err("exitProcess requested by worker");
 #endif
+#if MINIMAL_RUNTIME
+          _exit(d['returnCode']);
+#else
           try {
-            exit(d['returnCode']);
+            _exit(d['returnCode']);
           } catch (e) {
             handleException(e);
           }
+#endif
         } else if (cmd === 'cancelDone') {
           PThread.returnWorkerToPool(worker);
-        } else if (cmd === 'objectTransfer') {
-          PThread.receiveObjectTransfer(e.data);
         } else if (e.data.target === 'setimmediate') {
           worker.postMessage(e.data); // Worker wants to postMessage() to itself to implement setImmediate() emulation.
+        } else if (cmd === 'onAbort') {
+          if (Module['onAbort']) {
+            Module['onAbort'](d['arg']);
+          }
         } else {
           err("worker sent an unknown command " + cmd);
         }
@@ -550,6 +549,22 @@ var LibraryPThread = {
     if (ENVIRONMENT_IS_NODE) return require('os').cpus().length;
 #endif
     return navigator['hardwareConcurrency'];
+  },
+
+  __emscripten_init_main_thread_js: function(tb) {
+#if PTHREADS_PROFILING
+    PThread.createProfilerBlock(tb);
+    PThread.setThreadName(tb, "Browser main thread");
+#endif
+
+    // Pass the thread address to the native code where they stored in wasm
+    // globals which act as a form of TLS. Global constructors trying
+    // to access this value will read the wrong value, but that is UB anyway.
+    __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+#if ASSERTIONS
+    PThread.mainRuntimeThread = true;
+#endif
+    PThread.threadInit();
   },
 
   __pthread_create_js__sig: 'iiiii',

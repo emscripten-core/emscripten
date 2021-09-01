@@ -445,16 +445,8 @@ LibraryManager.library = {
   // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
   // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
   abort__sig: 'v',
-  // Proxy synchronously, which will have the effect of halting the program
-  // and killing all threads, including this one.
-  abort__proxy: 'sync',
   abort: function() {
-#if MINIMAL_RUNTIME
-    // In MINIMAL_RUNTIME the module object does not exist, so its behavior to abort is to throw directly.
-    throw 'abort';
-#else
     abort();
-#endif
   },
 
   // This object can be modified by the user during startup, which affects
@@ -1460,6 +1452,7 @@ LibraryManager.library = {
     if (clk_id) {{{ makeSetValue('clk_id', 0, 2/*CLOCK_PROCESS_CPUTIME_ID*/, 'i32') }}};
     return 0;
   },
+  gettimeofday__sig: 'iii',
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
     var now = Date.now();
@@ -2619,6 +2612,22 @@ LibraryManager.library = {
     return 0;
   },
 
+  // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
+  alarm__deps: ['raise', '$callUserCallback'],
+  alarm: function(seconds) {
+    setTimeout(function() {
+      callUserCallback(function() {
+        _raise({{{ cDefine('SIGALRM') }}});
+      });
+    }, seconds*1000);
+  },
+
+  // Helper for raise() to avoid signature mismatch failures:
+  // https://github.com/emscripten-core/posixtestsuite/issues/6
+  __call_sighandler: function(fp, sig) {
+    {{{ makeDynCall('vi', 'fp') }}}(sig);
+  },
+
   // ==========================================================================
   // emscripten.h
   // ==========================================================================
@@ -3190,6 +3199,9 @@ LibraryManager.library = {
 #endif
   },
 
+#if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
+  // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
+  // to malloc, free, and memalign.
   $withBuiltinMalloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'
 #if USE_ASAN
                              , 'emscripten_builtin_memset'
@@ -3218,6 +3230,10 @@ LibraryManager.library = {
 #endif
     }
   },
+#else
+  // Without lsan or asan withBuiltinMalloc is just a no-op.
+  $withBuiltinMalloc: function (func) { return func(); },
+#endif
 
   emscripten_builtin_mmap2__deps: ['$withBuiltinMalloc', '$syscallMmap2'],
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
@@ -3576,16 +3592,31 @@ LibraryManager.library = {
 #endif
   },
 
+#if !MINIMAL_RUNTIME
   $handleException: function(e) {
-    if (e instanceof ExitStatus || e === 'unwind') {
-      return;
+    // Certain exception types we do not treat as errors since they are used for
+    // internal control flow.
+    // 1. ExitStatus, which is thrown by exit()
+    // 2. "unwind", which is thrown by emscripten_unwind_to_js_event_loop() and others
+    //    that wish to return to JS event loop.
+    if (e instanceof ExitStatus || e == 'unwind') {
+      return EXITSTATUS;
     }
-    // And actual unexpected user-exectpion occured
-    if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
+    // Anything else is an unexpected exception and we treat it as hard error.
+    var toLog = e;
+#if ASSERTIONS
+    if (e && typeof e === 'object' && e.stack) {
+      toLog = [e, e.stack];
+    }
+#endif
+    err('exception thrown: ' + toLog);
+#if MINIMAL_RUNTIME
     throw e;
+#else
+    quit_(1, e);
+#endif
   },
 
-#if !MINIMAL_RUNTIME
   // Callable in pthread without __proxy needed.
   $runtimeKeepalivePush__sig: 'v',
   $runtimeKeepalivePush: function() {
@@ -3674,6 +3705,12 @@ LibraryManager.library = {
   },
 #endif
 
+  $safeSetTimeout__deps: ['$callUserCallback',
+#if !MINIMAL_RUNTIME
+   '$runtimeKeepalivePush',
+   '$runtimeKeepalivePop',
+#endif
+  ],
   $safeSetTimeout: function(func, timeout) {
     {{{ runtimeKeepalivePush() }}}
     return setTimeout(function() {

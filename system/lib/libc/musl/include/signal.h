@@ -259,7 +259,7 @@ int sigandset(sigset_t *, const sigset_t *, const sigset_t *);
 
 #define SIG_ERR  ((void (*)(int))-1)
 #define SIG_DFL  ((void (*)(int)) 0)
-#define SIG_IGN  ((void (*)(int)) 1)
+#define SIG_IGN  ((void (*)(int))-2) /* XXX EMSCRIPTEN: use -2 since 1 is a valid function address */
 
 typedef int sig_atomic_t;
 

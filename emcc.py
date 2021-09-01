@@ -38,7 +38,7 @@ from urllib.parse import quote
 
 
 import emscripten
-from tools import shared, system_libs
+from tools import shared, system_libs, utils
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
@@ -227,24 +227,22 @@ class EmccOptions:
     self.oformat = None
     self.requested_debug = ''
     self.profiling_funcs = False
-    self.tracing = False
     self.emit_symbol_map = False
     self.use_closure_compiler = None
     self.closure_args = []
     self.js_transform = None
-    self.pre_js = '' # before all js
-    self.post_js = '' # after all js
-    self.extern_pre_js = '' # before all js, external to optimized code
-    self.extern_post_js = '' # after all js, external to optimized code
+    self.pre_js = [] # before all js
+    self.post_js = [] # after all js
+    self.extern_pre_js = [] # before all js, external to optimized code
+    self.extern_post_js = [] # after all js, external to optimized code
     self.preload_files = []
     self.embed_files = []
     self.exclude_files = []
     self.ignore_dynamic_linking = False
-    self.shell_path = shared.path_from_root('src', 'shell.html')
+    self.shell_path = utils.path_from_root('src/shell.html')
     self.source_map_base = ''
     self.emrun = False
     self.cpu_profiler = False
-    self.thread_profiler = False
     self.memory_profiler = False
     self.memory_init_file = None
     self.use_preload_cache = False
@@ -496,6 +494,11 @@ def fix_windows_newlines(text):
   if WINDOWS:
     text = text.replace('\r\n', '\n')
   return text
+
+
+def read_js_files(files):
+  contents = '\n'.join(read_file(f) for f in files)
+  return fix_windows_newlines(contents)
 
 
 def cxx_to_c_compiler(cxx):
@@ -809,7 +812,7 @@ def get_llvm_target():
 cflags = None
 
 
-def get_cflags(options, user_args):
+def get_cflags(user_args):
   global cflags
   if cflags:
     return cflags
@@ -818,11 +821,8 @@ def get_cflags(options, user_args):
   # We add these to the user's flags (newargs), but not when building .s or .S assembly files
   cflags = get_clang_flags()
 
-  if options.tracing:
+  if settings.EMSCRIPTEN_TRACING:
     cflags.append('-D__EMSCRIPTEN_TRACING__=1')
-
-  if settings.USE_PTHREADS:
-    cflags.append('-D__EMSCRIPTEN_PTHREADS__=1')
 
   if not settings.STRICT:
     # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
@@ -856,11 +856,6 @@ def get_cflags(options, user_args):
              '-D__EMSCRIPTEN_minor__=' + str(shared.EMSCRIPTEN_VERSION_MINOR),
              '-D__EMSCRIPTEN_tiny__=' + str(shared.EMSCRIPTEN_VERSION_TINY),
              '-D_LIBCPP_ABI_VERSION=2']
-
-  # For compatability with the fastcomp compiler that defined these
-  cflags += ['-Dunix',
-             '-D__unix',
-             '-D__unix__']
 
   # Changes to default clang behavior
 
@@ -979,8 +974,7 @@ def run(args):
     #    site/build/text/docs/tools_reference/emcc.txt
     # This then needs to be copied to its final home in docs/emcc.txt from where
     # we read it here.  We have CI rules that ensure its always up-to-date.
-    with open(shared.path_from_root('docs', 'emcc.txt'), 'r') as f:
-      print(f.read())
+    print(read_file(utils.path_from_root('docs/emcc.txt')))
 
     print('''
 ------------------------------------------------------------------
@@ -1023,7 +1017,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     args = [x for x in args if x != '--cflags']
     with misc_temp_files.get_file(suffix='.o') as temp_target:
       input_file = 'hello_world.c'
-      cmd = [shared.PYTHON, sys.argv[0], shared.path_from_root('tests', input_file), '-v', '-c', '-o', temp_target] + args
+      cmd = [shared.PYTHON, sys.argv[0], utils.path_from_root('tests', input_file), '-v', '-c', '-o', temp_target] + args
       proc = run_process(cmd, stderr=PIPE, check=False)
       if proc.returncode != 0:
         print(proc.stderr)
@@ -1367,19 +1361,24 @@ def phase_linker_setup(options, state, newargs, settings_map):
     add_link_flag(state, sys.maxsize, f)
 
   if options.emrun:
-    options.pre_js += read_file(shared.path_from_root('src', 'emrun_prejs.js')) + '\n'
-    options.post_js += read_file(shared.path_from_root('src', 'emrun_postjs.js')) + '\n'
+    options.pre_js.append(utils.path_from_root('src/emrun_prejs.js'))
+    options.post_js.append(utils.path_from_root('src/emrun_postjs.js'))
     # emrun mode waits on program exit
     settings.EXIT_RUNTIME = 1
 
   if options.cpu_profiler:
-    options.post_js += read_file(shared.path_from_root('src', 'cpuprofiler.js')) + '\n'
+    options.post_js.append(utils.path_from_root('src/cpuprofiler.js'))
 
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
 
-  if options.thread_profiler:
-    options.post_js += read_file(shared.path_from_root('src', 'threadprofiler.js')) + '\n'
+  if settings.PTHREADS_PROFILING:
+    options.post_js.append(utils.path_from_root('src/threadprofiler.js'))
+
+  options.pre_js = read_js_files(options.pre_js)
+  options.post_js = read_js_files(options.post_js)
+  options.extern_pre_js = read_js_files(options.extern_pre_js)
+  options.extern_post_js = read_js_files(options.extern_post_js)
 
   if options.memory_init_file is None:
     options.memory_init_file = settings.OPT_LEVEL >= 2
@@ -1591,10 +1590,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
     exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION are mutually exclusive!')
 
-  if options.emrun:
-    if settings.MINIMAL_RUNTIME:
-      exit_with_error('--emrun is not compatible with -s MINIMAL_RUNTIME=1')
-    settings.EXPORTED_RUNTIME_METHODS.append('addOnExit')
+  if options.emrun and settings.MINIMAL_RUNTIME:
+    exit_with_error('--emrun is not compatible with MINIMAL_RUNTIME')
 
   if options.use_closure_compiler:
     settings.USE_CLOSURE_COMPILER = options.use_closure_compiler
@@ -1826,7 +1823,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '$demangle',
       '$demangleAll',
       '$jsStackTrace',
-      '$stackTrace'
+      '$stackTrace',
+      # Called by `callMain` to handle exceptions
+      '$handleException'
     ]
 
   if settings.FILESYSTEM and not settings.BOOTSTRAPPING_STRUCT_INFO and not settings.STANDALONE_WASM:
@@ -1861,9 +1860,11 @@ def phase_linker_setup(options, state, newargs, settings_map):
       exit_with_error('USE_PTHREADS=2 is no longer supported')
     if settings.ALLOW_MEMORY_GROWTH:
       diagnostics.warning('pthreads-mem-growth', 'USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
+    if settings.BUILD_AS_WORKER:
+      exit_with_error('USE_PTHREADS + BUILD_AS_WORKER require separate modes that don\'t work together, see https://github.com/emscripten-core/emscripten/issues/8854')
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
     settings.EXPORTED_FUNCTIONS += [
-      '___emscripten_pthread_data_constructor',
+      '___emscripten_init_main_thread',
       '__emscripten_call_on_thread',
       '__emscripten_main_thread_futex',
       '__emscripten_thread_init',
@@ -1881,6 +1882,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '_emscripten_tls_init',
       '_pthread_self',
       '_pthread_testcancel',
+      '_exit',
     ]
     # Some of these symbols are using by worker.js but otherwise unreferenced.
     # Because emitDCEGraph only considered the main js file, and not worker.js
@@ -2028,10 +2030,13 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if settings.MINIMAL_RUNTIME:
     # Minimal runtime uses a different default shell file
-    if options.shell_path == shared.path_from_root('src', 'shell.html'):
-      options.shell_path = shared.path_from_root('src', 'shell_minimal_runtime.html')
+    if options.shell_path == utils.path_from_root('src/shell.html'):
+      options.shell_path = utils.path_from_root('src/shell_minimal_runtime.html')
 
-    if settings.ASSERTIONS and settings.MINIMAL_RUNTIME:
+    if settings.EXIT_RUNTIME:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['proc_exit']
+
+    if settings.ASSERTIONS:
       # In ASSERTIONS-builds, functions UTF8ArrayToString() and stringToUTF8Array() (which are not JS library functions), both
       # use warnOnce(), which in MINIMAL_RUNTIME is a JS library function, so explicitly have to mark dependency to warnOnce()
       # in that case. If string functions are turned to library functions in the future, then JS dependency tracking can be
@@ -2040,7 +2045,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
      settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
-     (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
+     (options.shell_path == utils.path_from_root('src/shell.html') or options.shell_path == utils.path_from_root('src/shell_minimal.html')):
     exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_path}" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
   if settings.STANDALONE_WASM:
@@ -2277,7 +2282,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if not shared.JS.isidentifier(settings.EXPORT_NAME):
     exit_with_error(f'EXPORT_NAME is not a valid JS identifier: `{settings.EXPORT_NAME}`')
 
-  if options.tracing and settings.ALLOW_MEMORY_GROWTH:
+  if settings.EMSCRIPTEN_TRACING and settings.ALLOW_MEMORY_GROWTH:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
     settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_current',
                                     '_emscripten_stack_get_base',
@@ -2366,7 +2371,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return CC
 
   def get_clang_command(src_file):
-    return get_compiler(use_cxx(src_file)) + get_cflags(options, state.orig_args) + compile_args + [src_file]
+    return get_compiler(use_cxx(src_file)) + get_cflags(state.orig_args) + compile_args + [src_file]
 
   def get_clang_command_asm(src_file):
     return get_compiler(use_cxx(src_file)) + get_clang_flags() + compile_args + [src_file]
@@ -2592,9 +2597,8 @@ def phase_source_transforms(options, target):
     with open(final_js, 'w') as f:
       # pre-js code goes right after the Module integration code (so it
       # can use Module), we have a marker for it
-      f.write(do_replace(src, '// {{PRE_JSES}}', fix_windows_newlines(options.pre_js)))
-      f.write(fix_windows_newlines(options.post_js))
-    options.pre_js = src = options.post_js = None
+      f.write(do_replace(src, '// {{PRE_JSES}}', options.pre_js))
+      f.write(options.post_js)
     save_intermediate('pre-post')
 
   # Apply a source code transformation, if requested
@@ -2632,8 +2636,8 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   if settings.USE_PTHREADS:
     target_dir = os.path.dirname(os.path.abspath(target))
     worker_output = os.path.join(target_dir, settings.PTHREAD_WORKER_FILE)
-    with open(worker_output, 'w') as f:
-      f.write(shared.read_and_preprocess(shared.path_from_root('src', 'worker.js'), expand_macros=True))
+    contents = shared.read_and_preprocess(utils.path_from_root('src/worker.js'), expand_macros=True)
+    write_file(worker_output, contents)
 
     # Minify the worker.js file in optimized builds
     if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
@@ -2654,7 +2658,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     # Process .js runtime file. Note that we need to handle the license text
     # here, so that it will not confuse the hacky script.
     shared.JS.handle_license(final_js)
-    shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), final_js])
+    shared.run_process([shared.PYTHON, utils.path_from_root('tools/hacky_postprocess_around_closure_limitations.py'), final_js])
 
   # Unmangle previously mangled `import.meta` references in both main code and libraries.
   # See also: `preprocess` in parseTools.js.
@@ -2670,9 +2674,9 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     src = read_file(final_js)
     final_js += '.epp.js'
     with open(final_js, 'w') as f:
-      f.write(fix_windows_newlines(options.extern_pre_js))
+      f.write(options.extern_pre_js)
       f.write(src)
-      f.write(fix_windows_newlines(options.extern_post_js))
+      f.write(options.extern_post_js)
     save_intermediate('extern-pre-post')
 
   shared.JS.handle_license(final_js)
@@ -2712,14 +2716,13 @@ def version_string():
   # if the emscripten folder is not a git repo, don't run git show - that can
   # look up and find the revision in a parent directory that is a git repo
   revision_suffix = ''
-  if os.path.exists(shared.path_from_root('.git')):
+  if os.path.exists(utils.path_from_root('.git')):
     git_rev = run_process(
       ['git', 'rev-parse', 'HEAD'],
-      stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.strip()
+      stdout=PIPE, stderr=PIPE, cwd=utils.path_from_root()).stdout.strip()
     revision_suffix = '-git (%s)' % git_rev
-  elif os.path.exists(shared.path_from_root('emscripten-revision.txt')):
-    with open(shared.path_from_root('emscripten-revision.txt')) as f:
-      git_rev = f.read().strip()
+  elif os.path.exists(utils.path_from_root('emscripten-revision.txt')):
+    git_rev = read_file(utils.path_from_root('emscripten-revision.txt')).strip()
     revision_suffix = ' (%s)' % git_rev
   return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {shared.EMSCRIPTEN_VERSION}{revision_suffix}'
 
@@ -2812,13 +2815,13 @@ def parse_args(newargs):
     elif check_arg('--js-transform'):
       options.js_transform = consume_arg()
     elif check_arg('--pre-js'):
-      options.pre_js += read_file(consume_arg_file()) + '\n'
+      options.pre_js.append(consume_arg_file())
     elif check_arg('--post-js'):
-      options.post_js += read_file(consume_arg_file()) + '\n'
+      options.post_js.append(consume_arg_file())
     elif check_arg('--extern-pre-js'):
-      options.extern_pre_js += read_file(consume_arg_file()) + '\n'
+      options.extern_pre_js.append(consume_arg_file())
     elif check_arg('--extern-post-js'):
-      options.extern_post_js += read_file(consume_arg_file()) + '\n'
+      options.extern_post_js.append(consume_arg_file())
     elif check_arg('--compiler-wrapper'):
       config.COMPILER_WRAPPER = consume_arg()
     elif check_flag('--post-link'):
@@ -2881,9 +2884,8 @@ def parse_args(newargs):
     elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':
       if newargs[i] == '--memoryprofiler':
         options.memory_profiler = True
-      options.tracing = True
       newargs[i] = ''
-      settings_changes.append("EMSCRIPTEN_TRACING=1")
+      settings_changes.append('EMSCRIPTEN_TRACING=1')
       settings.JS_LIBRARIES.append((0, 'library_trace.js'))
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
@@ -2966,7 +2968,6 @@ def parse_args(newargs):
     elif check_flag('--cpuprofiler'):
       options.cpu_profiler = True
     elif check_flag('--threadprofiler'):
-      options.thread_profiler = True
       settings_changes.append('PTHREADS_PROFILING=1')
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
@@ -3158,7 +3159,7 @@ def phase_binaryen(target, options, wasm_target):
     building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
   def preprocess_wasm2js_script():
-    return read_and_preprocess(shared.path_from_root('src', 'wasm2js.js'), expand_macros=True)
+    return read_and_preprocess(utils.path_from_root('src/wasm2js.js'), expand_macros=True)
 
   def run_closure_compiler():
     global final_js
@@ -3177,8 +3178,7 @@ def phase_binaryen(target, options, wasm_target):
     symbols_file_js = None
     if settings.WASM == 2:
       wasm2js_template = wasm_target + '.js'
-      with open(wasm2js_template, 'w') as f:
-        f.write(preprocess_wasm2js_script())
+      write_file(wasm2js_template, preprocess_wasm2js_script())
       # generate secondary file for JS symbols
       if options.emit_symbol_map:
         symbols_file_js = shared.replace_or_append_suffix(wasm2js_template, '.symbols')
@@ -3243,8 +3243,7 @@ def phase_binaryen(target, options, wasm_target):
     else:
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', shared.JS.get_subresource_location(wasm_target))
     shared.try_delete(wasm_target)
-    with open(final_js, 'w') as f:
-      f.write(js)
+    write_file(final_js, js)
 
 
 def modularize():
@@ -3326,8 +3325,7 @@ else if (typeof exports === 'object')
 def module_export_name_substitution():
   global final_js
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
-  with open(final_js) as f:
-    src = f.read()
+  src = read_file(final_js)
   final_js += '.module_export_name_substitution.js'
   if settings.MINIMAL_RUNTIME:
     # In MINIMAL_RUNTIME the Module object is always present to provide the .asm.js/.wasm content
@@ -3339,8 +3337,7 @@ def module_export_name_substitution():
   # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
   if settings.MINIMAL_RUNTIME and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
     src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
-  with open(final_js, 'w') as f:
-    f.write(src)
+  write_file(final_js, src)
   shared.configuration.get_temp_files().note(final_js)
   save_intermediate('module_export_name_substitution')
 
@@ -3436,7 +3433,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
   if script.inline:
     for filename in ('arrayUtils.js', 'base64Utils.js', 'URIUtils.js'):
-      content = read_and_preprocess(shared.path_from_root('src', filename))
+      content = read_and_preprocess(utils.path_from_root('src', filename))
       script.inline = content + script.inline
 
     script.inline = 'var ASSERTIONS = %s;\n%s' % (settings.ASSERTIONS, script.inline)
@@ -3454,9 +3451,8 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
 
   try:
-    with open(target, 'wb') as f:
-      # Force UTF-8 output for consistency across platforms and with the web.
-      f.write(html_contents.encode('utf-8'))
+    # Force UTF-8 output for consistency across platforms and with the web.
+    utils.write_binary(target, html_contents.encode('utf-8'))
   except OSError as e:
     exit_with_error(f'cannot write output file: {e}')
 
@@ -3511,7 +3507,7 @@ def generate_html(target, options, js_target, target_basename,
 
   if settings.EXPORT_NAME != 'Module' and \
      not settings.MINIMAL_RUNTIME and \
-     options.shell_path == shared.path_from_root('src', 'shell.html'):
+     options.shell_path == utils.path_from_root('src/shell.html'):
     # the minimal runtime shell HTML is designed to support changing the export
     # name, but the normal one does not support that currently
     exit_with_error('Customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
@@ -3542,9 +3538,9 @@ def generate_worker_js(target, js_target, target_basename):
 
 
 def worker_js_script(proxy_worker_filename):
-  web_gl_client_src = read_file(shared.path_from_root('src', 'webGLClient.js'))
-  idb_store_src = read_file(shared.path_from_root('src', 'IDBStore.js'))
-  proxy_client_src = read_file(shared.path_from_root('src', 'proxyClient.js'))
+  web_gl_client_src = read_file(utils.path_from_root('src/webGLClient.js'))
+  idb_store_src = read_file(utils.path_from_root('src/IDBStore.js'))
+  proxy_client_src = read_file(utils.path_from_root('src/proxyClient.js'))
   proxy_client_src = do_replace(proxy_client_src, '{{{ filename }}}', proxy_worker_filename)
   proxy_client_src = do_replace(proxy_client_src, '{{{ IDBStore.js }}}', idb_store_src)
   return web_gl_client_src + '\n' + proxy_client_src
@@ -3657,7 +3653,7 @@ class ScriptSource:
 
 def is_valid_abspath(options, path_name):
   # Any path that is underneath the emscripten repository root must be ok.
-  if shared.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
+  if utils.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
     return True
 
   def in_directory(root, child):

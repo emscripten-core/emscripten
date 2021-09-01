@@ -25,9 +25,19 @@ if sys.version_info < (3, 6):
   print('error: emscripten requires python 3.6 or above', file=sys.stderr)
   sys.exit(1)
 
+from . import colored_logger
+
+# Configure logging before importing any other local modules so even
+# log message during import are shown as expected.
+DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+# can add  %(asctime)s  to see timestamps
+logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
+                    level=logging.DEBUG if DEBUG else logging.INFO)
+colored_logger.enable()
+
 from .tempfiles import try_delete
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
-from . import cache, tempfiles, colored_logger
+from . import cache, tempfiles
 from . import diagnostics
 from . import config
 from . import filelock
@@ -35,7 +45,6 @@ from . import utils
 from .settings import settings
 
 
-DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 EXPECTED_NODE_VERSION = (4, 1, 1)
 EXPECTED_LLVM_VERSION = "14.0"
@@ -43,11 +52,6 @@ PYTHON = sys.executable
 
 # Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
 multiprocessing_pool = None
-
-# can add  %(asctime)s  to see timestamps
-logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
-                    level=logging.DEBUG if DEBUG else logging.INFO)
-colored_logger.enable()
 logger = logging.getLogger('shared')
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
@@ -251,9 +255,9 @@ def timeout_run(proc, timeout=None, full_output=False, check=True):
 
 def get_npm_cmd(name):
   if WINDOWS:
-    cmd = [path_from_root('node_modules', '.bin', name + '.cmd')]
+    cmd = [path_from_root('node_modules/.bin', name + '.cmd')]
   else:
-    cmd = config.NODE_JS + [path_from_root('node_modules', '.bin', name)]
+    cmd = config.NODE_JS + [path_from_root('node_modules/.bin', name)]
   if not os.path.exists(cmd[-1]):
     exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
   return cmd
@@ -334,8 +338,7 @@ def check_node_version():
 def set_version_globals():
   global EMSCRIPTEN_VERSION, EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY
   filename = path_from_root('emscripten-version.txt')
-  with open(filename) as f:
-    EMSCRIPTEN_VERSION = f.read().strip().strip('"')
+  EMSCRIPTEN_VERSION = utils.read_file(filename).strip().strip('"')
   parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
   EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 
@@ -432,8 +435,7 @@ def check_sanity(force=False):
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
-      with open(sanity_file, 'w') as f:
-        f.write(expected)
+      utils.write_file(sanity_file, expected)
 
 
 # Some distributions ship with multiple llvm versions so they add
@@ -620,15 +622,13 @@ class JS:
   @staticmethod
   def handle_license(js_target):
     # ensure we emit the license if and only if we need to, and exactly once
-    with open(js_target) as f:
-      js = f.read()
+    js = utils.read_file(js_target)
     # first, remove the license as there may be more than once
     processed_js = re.sub(JS.emscripten_license_regex, '', js)
     if settings.EMIT_EMSCRIPTEN_LICENSE:
       processed_js = JS.emscripten_license + processed_js
     if processed_js != js:
-      with open(js_target, 'w') as f:
-        f.write(processed_js)
+      utils.write_file(js_target, processed_js)
 
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent
@@ -649,8 +649,7 @@ class JS:
       # if the path does not exist, then there is no data to encode
       if not os.path.exists(path):
         return ''
-      with open(path, 'rb') as f:
-        data = base64.b64encode(f.read())
+      data = base64.b64encode(utils.read_binary(path))
       return 'data:application/octet-stream;base64,' + data.decode('ascii')
     else:
       return os.path.basename(path)
@@ -775,8 +774,7 @@ def read_and_preprocess(filename, expand_macros=False):
     settings_str += f'var {key} = {jsoned};\n'
 
   settings_file = os.path.join(temp_dir, 'settings.js')
-  with open(settings_file, 'w') as f:
-    f.write(settings_str)
+  utils.write_file(settings_file, settings_str)
 
   # Run the JS preprocessor
   # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs
@@ -841,7 +839,7 @@ EMRANLIB = bat_suffix(path_from_root('emranlib'))
 EMCMAKE = bat_suffix(path_from_root('emcmake'))
 EMCONFIGURE = bat_suffix(path_from_root('emconfigure'))
 EM_NM = bat_suffix(path_from_root('emnm'))
-FILE_PACKAGER = bat_suffix(path_from_root('tools', 'file_packager'))
+FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 
 apply_configuration()
 

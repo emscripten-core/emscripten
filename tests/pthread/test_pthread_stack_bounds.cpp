@@ -16,5 +16,5 @@ int main(void) {
   std::thread t(thread);
   t.detach();
   emscripten_exit_with_live_runtime();
-  __builtin_unreachable();
+  __builtin_trap();
 }
