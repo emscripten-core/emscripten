@@ -203,105 +203,115 @@ class Module:
       yield Section(section_type, section_size, section_offset)
       offset = section_offset + section_size
 
+  def parse_dylink_section(self):
+    dylink_section = next(self.sections())
+    assert dylink_section.type == SecType.CUSTOM
+    self.seek(dylink_section.offset)
+    # section name
+    section_name = self.readString()
+    needed = []
+    export_info = {}
+
+    if section_name == 'dylink':
+      mem_size = self.readULEB()
+      mem_align = self.readULEB()
+      table_size = self.readULEB()
+      table_align = self.readULEB()
+
+      needed_count = self.readULEB()
+      while needed_count:
+        libname = self.readString()
+        needed.append(libname)
+        needed_count -= 1
+    elif section_name == 'dylink.0':
+      section_end = dylink_section.offset + dylink_section.size
+      while self.tell() < section_end:
+        subsection_type = self.readULEB()
+        subsection_size = self.readULEB()
+        end = self.tell() + subsection_size
+        if subsection_type == DylinkType.MEM_INFO:
+          mem_size = self.readULEB()
+          mem_align = self.readULEB()
+          table_size = self.readULEB()
+          table_align = self.readULEB()
+        elif subsection_type == DylinkType.NEEDED:
+          needed_count = self.readULEB()
+          while needed_count:
+            libname = self.readString()
+            needed.append(libname)
+            needed_count -= 1
+        elif subsection_type == DylinkType.EXPORT_INFO:
+          count = self.readULEB()
+          while count:
+            sym = self.readString()
+            flags = self.readULEB()
+            export_info[sym] = flags
+            count -= 1
+        else:
+          print(f'unknown subsection: {subsection_type}')
+          # ignore unknown subsections
+          self.skip(subsection_size)
+        assert(self.tell() == end)
+    else:
+      utils.exit_with_error('error parsing shared library')
+
+    return Dylink(mem_size, mem_align, table_size, table_align, needed, export_info)
+
+  def get_exports(self):
+    export_section = next((s for s in self.sections() if s.type == SecType.EXPORT), None)
+    if not export_section:
+      return []
+
+    self.seek(export_section.offset)
+    num_exports = self.readULEB()
+    exports = []
+    for i in range(num_exports):
+      name = self.readString()
+      kind = ExternType(self.readByte())
+      index = self.readULEB()
+      exports.append(Export(name, kind, index))
+
+    return exports
+
+  def get_imports(self):
+    import_section = next((s for s in self.sections() if s.type == SecType.IMPORT), None)
+    if not import_section:
+      return []
+
+    self.seek(import_section.offset)
+    num_imports = self.readULEB()
+    imports = []
+    for i in range(num_imports):
+      mod = self.readString()
+      field = self.readString()
+      kind = ExternType(self.readByte())
+      imports.append(Import(kind, mod, field))
+      if kind == ExternType.FUNC:
+        self.readULEB()  # sig
+      elif kind == ExternType.GLOBAL:
+        self.readSLEB()  # global type
+        self.readByte()  # mutable
+      elif kind == ExternType.MEMORY:
+        self.readLimits()  # limits
+      elif kind == ExternType.TABLE:
+        self.readSLEB()  # table type
+        self.readLimits()  # limits
+      else:
+        assert False
+
+    return imports
+
 
 def parse_dylink_section(wasm_file):
   module = Module(wasm_file)
-
-  dylink_section = next(module.sections())
-  assert dylink_section.type == SecType.CUSTOM
-  module.seek(dylink_section.offset)
-  # section name
-  section_name = module.readString()
-  needed = []
-  export_info = {}
-
-  if section_name == 'dylink':
-    mem_size = module.readULEB()
-    mem_align = module.readULEB()
-    table_size = module.readULEB()
-    table_align = module.readULEB()
-
-    needed_count = module.readULEB()
-    while needed_count:
-      libname = module.readString()
-      needed.append(libname)
-      needed_count -= 1
-  elif section_name == 'dylink.0':
-    section_end = dylink_section.offset + dylink_section.size
-    while module.tell() < section_end:
-      subsection_type = module.readULEB()
-      subsection_size = module.readULEB()
-      end = module.tell() + subsection_size
-      if subsection_type == DylinkType.MEM_INFO:
-        mem_size = module.readULEB()
-        mem_align = module.readULEB()
-        table_size = module.readULEB()
-        table_align = module.readULEB()
-      elif subsection_type == DylinkType.NEEDED:
-        needed_count = module.readULEB()
-        while needed_count:
-          libname = module.readString()
-          needed.append(libname)
-          needed_count -= 1
-      elif subsection_type == DylinkType.EXPORT_INFO:
-        count = module.readULEB()
-        while count:
-          sym = module.readString()
-          flags = module.readULEB()
-          export_info[sym] = flags
-          count -= 1
-      else:
-        print(f'unknown subsection: {subsection_type}')
-        # ignore unknown subsections
-        module.skip(subsection_size)
-      assert(module.tell() == end)
-  else:
-    utils.exit_with_error('error parsing shared library')
-
-  return Dylink(mem_size, mem_align, table_size, table_align, needed, export_info)
+  return module.parse_dylink_section()
 
 
 def get_exports(wasm_file):
   module = Module(wasm_file)
-  export_section = next((s for s in module.sections() if s.type == SecType.EXPORT), None)
-
-  module.seek(export_section.offset)
-  num_exports = module.readULEB()
-  exports = []
-  for i in range(num_exports):
-    name = module.readString()
-    kind = ExternType(module.readByte())
-    index = module.readULEB()
-    exports.append(Export(name, kind, index))
-
-  return exports
+  return module.get_exports()
 
 
 def get_imports(wasm_file):
   module = Module(wasm_file)
-  import_section = next((s for s in module.sections() if s.type == SecType.IMPORT), None)
-  if not import_section:
-    return []
-
-  module.seek(import_section.offset)
-  num_imports = module.readULEB()
-  imports = []
-  for i in range(num_imports):
-    mod = module.readString()
-    field = module.readString()
-    kind = ExternType(module.readByte())
-    imports.append(Import(kind, mod, field))
-    if kind == ExternType.FUNC:
-      module.readULEB()  # sig
-    elif kind == ExternType.GLOBAL:
-      module.readSLEB()  # global type
-      module.readByte()  # mutable
-    elif kind == ExternType.MEMORY:
-      module.readLimits()  # limits
-    elif kind == ExternType.TABLE:
-      module.readSLEB()  # table type
-      module.readLimits()  # limits
-    else:
-      assert False
-
-  return imports
+  return module.get_imports()
