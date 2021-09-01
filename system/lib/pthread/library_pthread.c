@@ -869,14 +869,12 @@ int _emscripten_call_on_thread(int forceAsync, pthread_t targetThread, EM_FUNC_S
 // the main thread is waiting, we wake it up before waking up any workers.
 EMSCRIPTEN_KEEPALIVE void* _emscripten_main_thread_futex;
 
-EM_JS(void, initPthreadsJS, (void* tb), {
-  PThread.initRuntime(tb);
-})
+void __emscripten_init_main_thread_js(void* tb);
 
 // See system/lib/README.md for static constructor ordering.
 __attribute__((constructor(48)))
-void __emscripten_pthread_data_constructor(void) {
-  initPthreadsJS(&__main_pthread);
+void __emscripten_init_main_thread(void) {
+  __emscripten_init_main_thread_js(&__main_pthread);
   // The pthread struct has a field that points to itself - this is used as
   // a magic ID to detect whether the pthread_t structure is 'alive'.
   __main_pthread.self = &__main_pthread;

@@ -23,6 +23,18 @@ executors:
       xcode: "12.2.0"
 
 commands:
+  download-chrome:
+    description: "Download chrome"
+    steps:
+      - run:
+          name: download chrome
+          command: |
+            # Using stable rather than beta until we can fix
+            # Currently downloading form our own buckets due to:
+            # https://github.com/emscripten-core/emscripten/issues/14987
+            #wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
+            dpkg -i ~/chrome.deb
   emsdk-env:
     description: "emsdk_env.sh"
     steps:
@@ -230,13 +242,7 @@ commands:
           command: git submodule update --init
       - emsdk-env
       - npm-install
-      - run:
-          name: download chrome
-          command: |
-            # Using stable rather than beta until we can fix
-            # https://github.com/emscripten-core/emscripten/issues/14369
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-            dpkg -i ~/chrome.deb
+      - download-chrome
       - run:
           name: run tests
           environment:
@@ -261,14 +267,10 @@ commands:
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
-      - run:
-          name: download chrome
-          command: |
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
-            dpkg -i ~/chrome.deb
       - checkout
       - emsdk-env
       - npm-install
+      - download-chrome
       - run:
           name: run sockets tests
           environment:

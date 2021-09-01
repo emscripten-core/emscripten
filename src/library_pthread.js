@@ -37,21 +37,7 @@ var LibraryPThread = {
       }
 #endif
     },
-    initRuntime: function(tb) {
-#if PTHREADS_PROFILING
-      PThread.createProfilerBlock(tb);
-      PThread.setThreadName(tb, "Browser main thread");
-      PThread.setThreadStatus(tb, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
-#endif
 
-      // Pass the thread address to the native code where they stored in wasm
-      // globals which act as a form of TLS. Global constructors trying
-      // to access this value will read the wrong value, but that is UB anyway.
-      __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
-#if ASSERTIONS
-      PThread.mainRuntimeThread = true;
-#endif
-    },
     initWorker: function() {
 #if USE_CLOSURE_COMPILER
       // worker.js is not compiled together with us, and must access certain
@@ -237,7 +223,7 @@ var LibraryPThread = {
     // Called by worker.js each time a thread is started.
     threadInit: function() {
 #if PTHREADS_DEBUG
-      out("threadInit");
+      out('Pthread 0x' + _pthread_self().toString(16) + ' threadInit.');
 #endif
 #if PTHREADS_PROFILING
       PThread.setThreadStatus(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
@@ -299,11 +285,13 @@ var LibraryPThread = {
           err('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (cmd === 'alert') {
           alert('Thread ' + d['threadId'] + ': ' + d['text']);
-        } else if (cmd === 'exit') {
-          var detached = worker.pthread && Atomics.load(HEAPU32, (worker.pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
-          if (detached) {
-            PThread.returnWorkerToPool(worker);
-          }
+        } else if (cmd === 'detachedExit') {
+#if ASSERTIONS
+          assert(worker.pthread);
+          var detached = Atomics.load(HEAPU32, (worker.pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
+          assert(detached);
+#endif
+          PThread.returnWorkerToPool(worker);
         } else if (cmd === 'exitProcess') {
           // A pthread has requested to exit the whole application process (runtime).
 #if ASSERTIONS
@@ -345,7 +333,7 @@ var LibraryPThread = {
         worker.on('error', function(e) {
           worker.onerror(e);
         });
-        worker.on('exit', function() {
+        worker.on('detachedExit', function() {
           // TODO: update the worker queue?
           // See: https://github.com/emscripten-core/emscripten/issues/9763
         });
@@ -563,6 +551,22 @@ var LibraryPThread = {
     if (ENVIRONMENT_IS_NODE) return require('os').cpus().length;
 #endif
     return navigator['hardwareConcurrency'];
+  },
+
+  __emscripten_init_main_thread_js: function(tb) {
+#if PTHREADS_PROFILING
+    PThread.createProfilerBlock(tb);
+    PThread.setThreadName(tb, "Browser main thread");
+#endif
+
+    // Pass the thread address to the native code where they stored in wasm
+    // globals which act as a form of TLS. Global constructors trying
+    // to access this value will read the wrong value, but that is UB anyway.
+    __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+#if ASSERTIONS
+    PThread.mainRuntimeThread = true;
+#endif
+    PThread.threadInit();
   },
 
   __pthread_create_js__sig: 'iiiii',
@@ -899,29 +903,14 @@ var LibraryPThread = {
     return 0;
   },
 
-  __pthread_detach_js__sig: 'vi',
-  __pthread_detach_js: function(thread) {
-    if (!thread) {
-      err('pthread_detach attempted on a null thread pointer!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-    var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
-    if (self !== thread) {
-      err('pthread_detach attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-    // Follow musl convention: detached:0 means not detached, 1 means the thread
-    // was created as detached, and 2 means that the thread was detached via
-    // pthread_detach.
-    var wasDetached = Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 0, 2);
-
-    return wasDetached ? {{{ cDefine('EINVAL') }}} : 0;
-  },
-
   __pthread_exit_run_handlers__deps: ['exit'],
   __pthread_exit_run_handlers: function(status) {
     // Called from pthread_exit, either when called explicitly called
     // by programmer, or implicitly when leaving the thread main function.
+    //
+    // Note: in theory we would like to return any offscreen canvases back to
+    // the main thread, but if we ever fetched a rendering context for them that
+    // would not be valid, so we don't try.
 
 #if PTHREADS_DEBUG
     var tb = _pthread_self();
@@ -934,13 +923,10 @@ var LibraryPThread = {
     }
   },
 
-  __pthread_exit_done: function() {
-    // Called at the end of pthread_exit, either when called explicitly called
-    // by programmer, or implicitly when leaving the thread main function.
-    //
-    // Note: in theory we would like to return any offscreen canvases back to the main thread,
-    // but if we ever fetched a rendering context for them that would not be valid, so we don't try.
-    postMessage({ 'cmd': 'exit' });
+  __pthread_detached_exit: function() {
+    // Called at the end of pthread_exit (which occurs also when leaving the
+    // thread main function) if an only if the thread is in a detached state.
+    postMessage({ 'cmd': 'detachedExit' });
   },
 
   __cxa_thread_atexit__sig: 'vii',
