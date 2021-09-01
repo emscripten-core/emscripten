@@ -74,18 +74,24 @@ mergeInto(LibraryManager.library, {
               try {
                 return original.apply(null, arguments);
               } finally {
-                // Only functions in the list of known relevant imports are
-                // allowed to change the state.
+                // Only asyncify-declared imports are allowed to change the
+                // state.
+                var isAsyncifyImport = ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
+                                       x.startsWith('__asyncjs__');
+                // Changing the state from normal to disabled is allowed (in any
+                // function) as that is what shutdown does (and we don't have an
+                // explicit list of shutdown imports).
+                var changedToDisabled =
+                      originalAsyncifyState === Asyncify.State.Normal &&
+                      Asyncify.state        === Asyncify.State.Disabled;
+                // invoke_* functions are allowed to change the state if we do
+                // not ignore indirect calls.
+                var ignoredInvoke = x.startsWith('invoke_') &&
+                                    {{{ !ASYNCIFY_IGNORE_INDIRECT }}};
                 if (Asyncify.state !== originalAsyncifyState &&
-                    // Changing the state from normal to disabled is allowed, as
-                    // that is what shutdown does.
-                    !(originalAsyncifyState === Asyncify.State.Normal &&
-                      Asyncify.state        === Asyncify.State.Disabled) &&
-                    ASYNCIFY_IMPORTS.indexOf(x) < 0 &&
-                    !x.startsWith('__asyncjs__') &&
-                    // invoke_* functions are allowed to change the state if we
-                    // do not ignore indirect calls.
-                    !(x.startsWith('invoke_') && {{{ !ASYNCIFY_IGNORE_INDIRECT }}})) {
+                    !isAsyncifyImport &&
+                    !changedToDisabled &&
+                    !ignoredInvoke) {
                   throw new Error('import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state');
                 }
               }
