@@ -650,8 +650,8 @@ void emscripten_current_thread_process_queued_calls() {
 int _emscripten_allow_main_runtime_queued_calls = 1;
 
 void emscripten_main_thread_process_queued_calls() {
-  if (!emscripten_is_main_runtime_thread() ||
-      !_emscripten_allow_main_runtime_queued_calls)
+  assert(emscripten_is_main_runtime_thread());
+  if (!_emscripten_allow_main_runtime_queued_calls)
     return;
 
   emscripten_current_thread_process_queued_calls();
