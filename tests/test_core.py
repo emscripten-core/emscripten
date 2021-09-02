@@ -3523,7 +3523,7 @@ ok
 
     return self.dylink_testf(main, side, expected, force_c, main_module=main_module, **kwargs)
 
-  def dylink_testf(self, main, side, expected=None, force_c=False, main_emcc_args=[],
+  def dylink_testf(self, main, side=None, expected=None, force_c=False, main_emcc_args=[],
                    main_module=2,
                    so_name='liblib.so',
                    need_reverse=True, **kwargs):
@@ -3532,8 +3532,10 @@ ok
     old_args = self.emcc_args.copy()
     if not expected:
       outfile = shared.unsuffixed(main) + '.out'
-      if os.path.exists(outfile):
-        expected = read_file(outfile)
+      expected = read_file(outfile)
+    if not side:
+      side, ext = os.path.splitext(main)
+      side += '_side' + ext
 
     # side settings
     self.clear_setting('MAIN_MODULE')
@@ -4579,9 +4581,7 @@ main main sees -524, -534, 72.
   def test_dylink_weak(self):
     # Verify that weakly defined symbols can be defined in both side module and main
     # module but that only one gets used at runtime.
-    main = test_file('core/test_dylink_weak_main.c')
-    side = test_file('core/test_dylink_weak_side.c')
-    self.dylink_testf(main, side, force_c=True, need_reverse=False)
+    self.dylink_testf(test_file('core/test_dylink_weak.c'), need_reverse=False)
 
   @node_pthreads
   @needs_dylink
@@ -4593,7 +4593,7 @@ main main sees -524, -534, 72.
     # TODO(sbc): Add tests that depend on importing/exported TLS symbols
     # once we figure out how to do that.
     self.emcc_args.append('-Wno-experimental')
-    self.dylink_testf(test_file('core/test_dylink_tls.c'), test_file('core/test_dylink_tls_side.c'),
+    self.dylink_testf(test_file('core/test_dylink_tls.c'),
                       need_reverse=False)
 
   def test_random(self):
@@ -8405,15 +8405,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('LLD_REPORT_UNDEFINED')
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     main = test_file('core/pthread/test_pthread_dylink.c')
-    side = test_file('core/pthread/test_pthread_dylink_side.c')
 
     # test with a long .so name, as a regression test for
     # https://github.com/emscripten-core/emscripten/issues/14833
     # where we had a bug with long names + TextDecoder + pthreads + dylink
     very_long_name = 'very_very_very_very_very_very_very_very_very_long.so'
 
-    self.dylink_testf(main, side, "success",
-                      so_name=very_long_name,
+    self.dylink_testf(main, so_name=very_long_name,
                       need_reverse=False)
 
   @needs_dylink
@@ -8424,8 +8422,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_PTHREADS')
     self.set_setting('PTHREAD_POOL_SIZE=1')
     main = test_file('core/pthread/test_pthread_dylink_tls.c')
-    side = test_file('core/pthread/test_pthread_dylink_tls_side.c')
-    self.dylink_testf(main, side, need_reverse=False)
+    self.dylink_testf(main, need_reverse=False)
 
   @needs_dylink
   @node_pthreads
