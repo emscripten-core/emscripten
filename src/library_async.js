@@ -97,6 +97,9 @@ mergeInto(LibraryManager.library, {
               }
             }
 #if MAIN_MODULE
+            // The dynamic library loader needs to be able to read .sig
+            // properties, so that it knows function signatures when it adds
+            // them to the table.
             imports[x].sig = original.sig;
 #endif
           }
