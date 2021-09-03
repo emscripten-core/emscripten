@@ -10,8 +10,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <errno.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
+#include <emscripten/em_asm.h>
 
 long fib(long n)
 {
@@ -34,12 +33,6 @@ int main()
   // Test existence of nanosleep(), https://github.com/emscripten-core/emscripten/issues/4578
   struct timespec ts = { 1, 0 };
   nanosleep(&ts, 0);
-
-  if (!emscripten_has_threading_support())
-  {
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
 
   pthread_t thr;
 

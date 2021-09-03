@@ -3,15 +3,9 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <stdio.h>
 #include "emscripten.h"
-
-#ifndef REPORT_RESULT
-// To be able to run this test outside the browser harness in node.js/spidermonkey:
-#define REPORT_RESULT(result)
-#endif
-
-int result = 0;
 
 const double good_enough = 5.0; // good as we can do, given spectre...
 
@@ -35,7 +29,6 @@ int main() {
     double delta = t2 - t;
     if (delta < 0.) { // Timer must be monotonous.
       printf("Timer is not monotonous!\n");
-      REPORT_RESULT(0);
       return 1;
     }
     if (delta < smallest_delta) {
@@ -48,18 +41,17 @@ int main() {
 
   if (smallest_delta <= 0.) {
     printf("Smallest delta is invalid %f\n", smallest_delta);
-    REPORT_RESULT(0);
+    return 1;
   }
 
   printf("Timer resolution (smallest delta): %.20f msecs\n", smallest_delta);
 
   if (smallest_delta <= good_enough) {
     printf("Timer resolution is good (or as good as spectre allows...).\n");
-    result = 1;
-  } else {
-    printf("Error: Bad timer precision, too large\n");
-    result = 0;
+    return 0;
   }
-  REPORT_RESULT(result);
-  return 0;
+
+  printf("Error: Bad timer precision, too large\n");
+  assert(false);
+  return 1;
 }

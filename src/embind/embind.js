@@ -762,8 +762,12 @@ var LibraryEmbind = {
   },
 
   _embind_register_std_wstring__deps: [
-    '$readLatin1String', '$registerType',
-    '$simpleReadValueFromPointer'],
+    '$readLatin1String', '$registerType', '$simpleReadValueFromPointer',
+#if MINIMAL_RUNTIME
+    '$UTF16ToString', '$stringToUTF16', '$lengthBytesUTF16',
+    '$UTF32ToString', '$stringToUTF32', '$lengthBytesUTF32',
+#endif
+    ],
   _embind_register_std_wstring: function(rawType, charSize, name) {
     name = readLatin1String(name);
     var decodeString, encodeString, getHeap, lengthBytesUTF, shift;

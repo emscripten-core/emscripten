@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <emscripten/emscripten.h>
-#include <emscripten/threading.h>
 
 #define NUM_THREADS  3
 #define TCOUNT 10
@@ -83,21 +82,18 @@ int main (int argc, char *argv[])
 
   /* Initialize mutex and condition variable objects */
   pthread_mutex_init(&count_mutex, NULL);
-  pthread_cond_init (&count_threshold_cv, NULL);
+  pthread_cond_init(&count_threshold_cv, NULL);
 
   /* For portability, explicitly create threads in a joinable state */
   pthread_create(&threads[0], NULL, watch_count, (void *)t1);
   pthread_create(&threads[1], NULL, inc_count, (void *)t2);
   pthread_create(&threads[2], NULL, inc_count, (void *)t3);
 
-  if (emscripten_has_threading_support())
-  {
-    /* Wait for all threads to complete */
-    for (i=0; i<NUM_THREADS; i++) {
-      pthread_join(threads[i], NULL);
-    }
-    printf ("Main(): Waited on %d  threads. Done.\n", NUM_THREADS);
+  /* Wait for all threads to complete */
+  for (i=0; i<NUM_THREADS; i++) {
+    pthread_join(threads[i], NULL);
   }
+  printf ("Main(): Waited on %d  threads. Done.\n", NUM_THREADS);
 
   /* Clean up and exit */
   pthread_mutex_destroy(&count_mutex);

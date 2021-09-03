@@ -10,7 +10,7 @@ import logging
 from . import utils
 from .utils import path_from_root, exit_with_error, __rootpath__, which
 
-logger = logging.getLogger('shared')
+logger = logging.getLogger('config')
 
 # The following class can be overridden by the config file and/or
 # environment variables.  Specifically any variable whose name
@@ -144,8 +144,9 @@ def parse_config_file():
     elif key in config:
       globals()[key] = config[key]
 
-  # Handle legacy environment variables that were previously honored by the
-  # default config file.
+  # In the past the default-generated .emscripten config file would read certain environment
+  # variables. We used generate a warning here but that could generates false positives
+  # See https://github.com/emscripten-core/emsdk/issues/862
   LEGACY_ENV_VARS = {
     'LLVM': 'EM_LLVM_ROOT',
     'BINARYEN': 'EM_BINARYEN_ROOT',
@@ -154,8 +155,7 @@ def parse_config_file():
   for key, new_key in LEGACY_ENV_VARS.items():
     env_value = os.environ.get(key)
     if env_value and new_key not in os.environ:
-      logger.warning(f'warning: honoring legacy environment variable `{key}`.  Please switch to using `{new_key}` instead`')
-      globals()[new_key] = env_value
+      logger.debug(f'legacy environment variable found: `{key}`.  Please switch to using `{new_key}` instead`')
 
   # Certain keys are mandatory
   for key in ('LLVM_ROOT', 'NODE_JS', 'BINARYEN_ROOT'):
@@ -174,7 +174,7 @@ def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
 
-  config_data = utils.read_file(path_from_root('tools', 'settings_template.py'))
+  config_data = utils.read_file(path_from_root('tools/settings_template.py'))
   config_data = config_data.splitlines()[3:] # remove the initial comment
   config_data = '\n'.join(config_data)
   # autodetect some default paths

@@ -459,7 +459,7 @@ def main():
         ''' % (create_preloaded if use_preload_plugins else create_data, '''
               var files = metadata['files'];
               for (var i = 0; i < files.length; ++i) {
-                new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio']).open('GET', files[i]['filename']);
+                new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
               }
       ''')
 
@@ -478,12 +478,16 @@ def main():
     elif file_['mode'] == 'preload':
       # Preload
       counter += 1
-      metadata['files'].append({
+
+      metadata_el = {
         'filename': file_['dstpath'],
         'start': file_['data_start'],
         'end': file_['data_end'],
-        'audio': 1 if filename[-4:] in AUDIO_SUFFIXES else 0,
-      })
+      }
+      if filename[-4:] in AUDIO_SUFFIXES:
+        metadata_el['audio'] = 1
+
+      metadata['files'].append(metadata_el)
     else:
       assert 0
 
@@ -507,8 +511,8 @@ def main():
       # LZ4FS usage
       temp = data_target + '.orig'
       shutil.move(data_target, temp)
-      meta = shared.run_js_tool(shared.path_from_root('tools', 'lz4-compress.js'),
-                                [shared.path_from_root('third_party', 'mini-lz4.js'),
+      meta = shared.run_js_tool(utils.path_from_root('tools/lz4-compress.js'),
+                                [utils.path_from_root('third_party/mini-lz4.js'),
                                 temp, data_target], stdout=PIPE)
       os.unlink(temp)
       use_data = '''
@@ -715,7 +719,7 @@ def main():
     node_support_code = ''
     if support_node:
       node_support_code = r'''
-        if (typeof process === 'object') {
+        if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
           require('fs').readFile(packageName, function(err, contents) {
             if (err) {
               errback(err);

@@ -52,9 +52,6 @@ int main() {
   
     glfwTerminate();
   
-    REPORT_RESULT(result);
-  
     return 0;
-
 }
  

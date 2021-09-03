@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <emscripten.h>
-#include <emscripten/threading.h>
 
 static void *thread_start(void *arg)
 {
@@ -24,11 +23,6 @@ static void *thread_start(void *arg)
 int main()
 {
   printf("prep\n");
-  if (!emscripten_has_threading_support())
-  {
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
 
   pthread_t thr;
 

@@ -79,5 +79,5 @@ int main() {
     int error = pthread_create(&thread, &attr, thread_main, NULL);
     assert(!error);
     emscripten_exit_with_live_runtime();
-    __builtin_unreachable();
+    __builtin_trap();
 }

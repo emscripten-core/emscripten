@@ -107,6 +107,7 @@ extern "C" {
 #define EM_HTML5_LONG_STRING_LEN_BYTES 128
 
 typedef struct EmscriptenKeyboardEvent {
+  double timestamp;
   unsigned long location;
   EM_BOOL ctrlKey;
   EM_BOOL shiftKey;
@@ -129,6 +130,7 @@ EMSCRIPTEN_RESULT emscripten_set_keydown_callback_on_thread(const char *target, 
 EMSCRIPTEN_RESULT emscripten_set_keyup_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_key_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenMouseEvent {
+  double timestamp;
   long screenX;
   long screenY;
   long clientX;
@@ -368,6 +370,7 @@ typedef struct EmscriptenTouchPoint
 } EmscriptenTouchPoint;
 
 typedef struct EmscriptenTouchEvent {
+  double timestamp;
   int numTouches;
   EM_BOOL ctrlKey;
   EM_BOOL shiftKey;

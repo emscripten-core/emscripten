@@ -47,7 +47,6 @@ mergeInto(LibraryManager.library, {
     callStackNameToId: {},
     callStackIdToName: {},
     callStackId: 0,
-    afterUnwind: null,
     asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
 
@@ -141,10 +140,6 @@ mergeInto(LibraryManager.library, {
         runAndAbortIfError(Module['_asyncify_stop_unwind']);
         if (typeof Fibers !== 'undefined') {
           Fibers.trampoline();
-        }
-        if (Asyncify.afterUnwind) {
-          Asyncify.afterUnwind();
-          Asyncify.afterUnwind = null;
         }
       }
     },
@@ -381,16 +376,19 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers: function(func) {
     Asyncify.handleSleep(function(wakeUp) {
-      // We must first unwind, so things are spilled to the stack. We
-      // can resume right after unwinding, no need for a timeout.
-      Asyncify.afterUnwind = function() {
+      // We must first unwind, so things are spilled to the stack. Then while
+      // we are pausing we do the actual scan. After that we can resume. Note
+      // how using a timeout here avoids unbounded call stack growth, which
+      // could happen if we tried to scan the stack immediately after unwinding.
+      safeSetTimeout(function() {
         var stackBegin = Asyncify.currData + {{{ C_STRUCTS.asyncify_data_s.__size__ }}};
         var stackEnd = HEAP32[Asyncify.currData >> 2];
         {{{ makeDynCall('vii', 'func') }}}(stackBegin, stackEnd);
         wakeUp();
-      };
+      }, 0);
     });
   },
 

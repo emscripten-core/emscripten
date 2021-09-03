@@ -306,7 +306,6 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
 #endif
 
 #if IN_TEST_HARNESS
-
 // Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
 if (ENVIRONMENT_IS_WEB) {
   window.addEventListener('error', function(e) {
@@ -315,15 +314,6 @@ if (ENVIRONMENT_IS_WEB) {
     Module['pageThrewException'] = true;
   });
 }
-
-#if USE_PTHREADS
-if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
-  xhr.send();
-  setTimeout(function() { window.close() }, 2000);
-}
-#endif
 #endif
 
 #if IMPORTED_MEMORY
@@ -579,14 +569,23 @@ Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
-  if (Module['onAbort']) {
-    Module['onAbort'](what);
+#if USE_PTHREADS
+  // When running on a pthread, none of the incoming parameters on the module
+  // object are present.  The `onAbort` handler only exists on the main thread
+  // and so we need to proxy the handling of these back to the main thread.
+  // TODO(sbc): Extend this to all such handlers that can be passed into on
+  // module creation.
+  if (ENVIRONMENT_IS_PTHREAD) {
+    postMessage({ 'cmd': 'onAbort', 'arg': what});
+  } else
+#endif
+  {
+    if (Module['onAbort']) {
+      Module['onAbort'](what);
+    }
   }
 #endif
 
-#if USE_PTHREADS
-  assert(!ENVIRONMENT_IS_PTHREAD);
-#endif
   what += '';
   err(what);
 

@@ -62,4 +62,10 @@ int main() {
   assert(seenInts.size() < 1000);
   assert(scans == 6);
   puts("ok");
+
+  // Also test a very large amount of scans in a loop, to check that we avoid
+  // unbounded call stack growth.
+  for (int i = 0; i < 100; i++) {
+    DO_SCAN
+  }
 }

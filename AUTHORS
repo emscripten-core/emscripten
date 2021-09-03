@@ -1,5 +1,10 @@
-The following authors have all licensed their contributions to Emscripten
-under the licensing terms detailed in LICENSE.
+Contributors to Emscripten may optionally add themselves to this list of
+authors if they choose to do so. This is optional because the git history is
+good enough for that purpose, and in fact most projects do not maintain such a
+manual list.
+
+While the file is not necessary, to preserve the history of the project we are
+not removing it.
 
 (Authors keep copyright of their contributions, of course; they just grant
 a license to everyone to use it as detailed in LICENSE.)
@@ -574,3 +579,7 @@ a license to everyone to use it as detailed in LICENSE.)
 * Le Yao <le.yao@intel.com> (copyright owned by Intel Corporation)
 * José Cadete <crudelios@gmail.com>
 * Cynthia K. Rey <cynthia@cynthia.dev>
+* Andrew Shaitorov <andrew.shaitorov@gmail.com>
+* on-keyday <rokenboo47803@gmail.com>
+* Matthew Balch <matt5sean3@gmail.com>
+* James Price <jrprice@google.com> (copyright owned by Google, Inc.)

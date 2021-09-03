@@ -5,7 +5,6 @@
 
 #include <assert.h>
 #include <emscripten.h>
-#include <emscripten/threading.h>
 #include <pthread.h>
 #include <stdio.h>
 
@@ -45,11 +44,6 @@ pthread_t CreateThread() {
 }
 
 int main() {
-  if (!emscripten_has_threading_support()) {
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   thread = CreateThread();
 #ifdef TRY_JOIN
   emscripten_set_main_loop(loop, 0, 0);

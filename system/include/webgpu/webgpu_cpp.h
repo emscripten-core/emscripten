@@ -624,7 +624,7 @@ namespace wgpu {
     struct RenderPassDescriptor;
     struct VertexState;
     struct FragmentState;
-    struct RenderPipelineDescriptor2;
+    struct RenderPipelineDescriptor;
 
     template<typename Derived, typename CType>
     class ObjectBase {
@@ -828,8 +828,8 @@ namespace wgpu {
         PipelineLayout CreatePipelineLayout(PipelineLayoutDescriptor const * descriptor) const;
         QuerySet CreateQuerySet(QuerySetDescriptor const * descriptor) const;
         RenderBundleEncoder CreateRenderBundleEncoder(RenderBundleEncoderDescriptor const * descriptor) const;
-        RenderPipeline CreateRenderPipeline2(RenderPipelineDescriptor2 const * descriptor) const;
-        void CreateRenderPipelineAsync(RenderPipelineDescriptor2 const * descriptor, CreateRenderPipelineAsyncCallback callback, void * userdata) const;
+        RenderPipeline CreateRenderPipeline(RenderPipelineDescriptor const * descriptor) const;
+        void CreateRenderPipelineAsync(RenderPipelineDescriptor const * descriptor, CreateRenderPipelineAsyncCallback callback, void * userdata) const;
         Sampler CreateSampler(SamplerDescriptor const * descriptor = nullptr) const;
         ShaderModule CreateShaderModule(ShaderModuleDescriptor const * descriptor) const;
         SwapChain CreateSwapChain(Surface const& surface, SwapChainDescriptor const * descriptor) const;
@@ -1470,7 +1470,7 @@ namespace wgpu {
         ColorTargetState const * targets;
     };
 
-    struct RenderPipelineDescriptor2 {
+    struct RenderPipelineDescriptor {
         ChainedStruct const * nextInChain = nullptr;
         char const * label = nullptr;
         PipelineLayout layout = nullptr;

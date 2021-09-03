@@ -199,11 +199,7 @@ void nextTest(void *unused = 0) {
     return;
   }
 
-#ifndef __wasm__
-  emscripten_sleep_with_yield(100);
-#else
   emscripten_sleep(100);
-#endif
 
   printf("Playing back a beep for %d msecs at %d Hz tone with audio format %s, %d channels, and %d samples/sec.\n",
       tone_duration, (int)Hz, SdlAudioFormatToString(sdlAudioFormats[s]), channels[c], freqs[f]);

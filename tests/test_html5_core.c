@@ -40,10 +40,11 @@ const char *emscripten_result_to_string(EMSCRIPTEN_RESULT result) {
 // Returning 0 signals that the event was not consumed by the code, and will allow the event to pass on and bubble up normally.
 EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
 {
-  printf("%s, key: \"%s\", code: \"%s\", location: %lu,%s%s%s%s repeat: %d, locale: \"%s\", char: \"%s\", charCode: %lu, keyCode: %lu, which: %lu\n",
+  printf("%s, key: \"%s\", code: \"%s\", location: %lu,%s%s%s%s repeat: %d, locale: \"%s\", char: \"%s\", charCode: %lu, keyCode: %lu, which: %lu, timestamp: %lf\n",
     emscripten_event_type_to_string(eventType), e->key, e->code, e->location, 
     e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "", 
-    e->repeat, e->locale, e->charValue, e->charCode, e->keyCode, e->which);
+    e->repeat, e->locale, e->charValue, e->charCode, e->keyCode, e->which,
+    e->timestamp);
 
   if (eventType == EMSCRIPTEN_EVENT_KEYPRESS && (!strcmp(e->key, "f") || e->which == 102)) {
     EmscriptenFullscreenChangeEvent fsce;
@@ -90,21 +91,23 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
 
 EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData)
 {
-  printf("%s, screen: (%ld,%ld), client: (%ld,%ld),%s%s%s%s button: %hu, buttons: %hu, movement: (%ld,%ld), canvas: (%ld,%ld)\n",
+  printf("%s, screen: (%ld,%ld), client: (%ld,%ld),%s%s%s%s button: %hu, buttons: %hu, movement: (%ld,%ld), canvas: (%ld,%ld), timestamp: %lf\n",
     emscripten_event_type_to_string(eventType), e->screenX, e->screenY, e->clientX, e->clientY,
     e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "", 
-    e->button, e->buttons, e->movementX, e->movementY, e->canvasX, e->canvasY);
+    e->button, e->buttons, e->movementX, e->movementY, e->canvasX, e->canvasY,
+    e->timestamp);
 
   return 0;
 }
 
 EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userData)
 {
-  printf("%s, screen: (%ld,%ld), client: (%ld,%ld),%s%s%s%s button: %hu, buttons: %hu, canvas: (%ld,%ld), delta:(%g,%g,%g), deltaMode:%lu\n",
+  printf("%s, screen: (%ld,%ld), client: (%ld,%ld),%s%s%s%s button: %hu, buttons: %hu, canvas: (%ld,%ld), delta:(%g,%g,%g), deltaMode:%lu, timestamp: %lf\n",
     emscripten_event_type_to_string(eventType), e->mouse.screenX, e->mouse.screenY, e->mouse.clientX, e->mouse.clientY,
     e->mouse.ctrlKey ? " CTRL" : "", e->mouse.shiftKey ? " SHIFT" : "", e->mouse.altKey ? " ALT" : "", e->mouse.metaKey ? " META" : "", 
     e->mouse.button, e->mouse.buttons, e->mouse.canvasX, e->mouse.canvasY,
-    (float)e->deltaX, (float)e->deltaY, (float)e->deltaZ, e->deltaMode);
+    (float)e->deltaX, (float)e->deltaY, (float)e->deltaZ, e->deltaMode,
+    e->mouse.timestamp);
 
   return 0;
 }
@@ -178,8 +181,8 @@ EM_BOOL visibilitychange_callback(int eventType, const EmscriptenVisibilityChang
 
 EM_BOOL touch_callback(int eventType, const EmscriptenTouchEvent *e, void *userData)
 {
-  printf("%s, numTouches: %d %s%s%s%s\n",
-    emscripten_event_type_to_string(eventType), e->numTouches,
+  printf("%s, numTouches: %d timestamp: %lf %s%s%s%s\n",
+    emscripten_event_type_to_string(eventType), e->numTouches, e->timestamp,
     e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "");
   for(int i = 0; i < e->numTouches; ++i)
   {

@@ -13,15 +13,13 @@
 #include <emscripten/html5.h>
 #include <assert.h>
 
-int result = 0;
-
 #define GL_CALL( x ) \
     { \
         x; \
         GLenum error = glGetError(); \
         if( error != GL_NO_ERROR ) { \
             printf( "GL ERROR: %d,  %s\n", (int)error, #x ); \
-            result = 1; \
+            assert(false); \
         } \
     } \
 
@@ -39,9 +37,6 @@ int main()
   if (!context)
   {
     printf("Skipped: WebGL 2 is not supported.\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(result);
-#endif
     return 0;
   }
   emscripten_webgl_make_context_current(context);
@@ -170,8 +165,5 @@ int main()
       printf("offset for index %d: %d\n", i, indices[i]);
   }
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
   return 0;
 }

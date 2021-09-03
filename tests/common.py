@@ -28,12 +28,11 @@ import unittest
 
 import clang_native
 import jsrun
-from jsrun import NON_ZERO
 from tools.shared import TEMP_DIR, EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import EMSCRIPTEN_TEMP_DIR
 from tools.shared import EM_BUILD_VERBOSE
 from tools.shared import get_canonical_temp_dir, try_delete, path_from_root
-from tools.utils import MACOS, WINDOWS
+from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary
 from tools import shared, line_endings, building, config
 
 logger = logging.getLogger('common')
@@ -53,6 +52,10 @@ EMTEST_LACKS_NATIVE_CLANG = None
 EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
 
+# Special value for passing to assert_returncode which means we expect that program
+# to fail with non-zero return code, but we don't care about specifically which one.
+NON_ZERO = -1
+
 TEST_ROOT = path_from_root('tests')
 
 WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
@@ -69,14 +72,6 @@ def delete_contents(pathname):
 def test_file(*path_components):
   """Construct a path relative to the emscripten "tests" directory."""
   return str(Path(TEST_ROOT, *path_components))
-
-
-def read_file(*path_components):
-  return Path(*path_components).read_text()
-
-
-def read_binary(*path_components):
-  return Path(*path_components).read_bytes()
 
 
 # checks if browser testing is enabled
@@ -113,9 +108,9 @@ def needs_dylink(func):
   assert callable(func)
 
   @wraps(func)
-  def decorated(self):
+  def decorated(self, *args, **kwargs):
     self.check_dylink()
-    return func(self)
+    return func(self, *args, **kwargs)
 
   return decorated
 
@@ -400,7 +395,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     super().setUp()
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
-    self.node_args = ['--stack-trace-limit=50']
+    self.node_args = [
+      # Increate stack trace limit to maximise usefulness of test failure reports
+      '--stack-trace-limit=50',
+      # Opt in to node v15 default behaviour:
+      # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+      '--unhandled-rejections=throw',
+      # Include backtrace for all uncuaght exceptions (not just Error).
+      '--trace-uncaught',
+    ]
     self.v8_args = []
     self.env = {}
     self.temp_files_before_run = []
@@ -544,7 +547,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('es-check failed to verify ES5 output compliance')
 
   # Build JavaScript code from source code
-  def build(self, filename, libraries=[], includes=[], force_c=False, js_outfile=True, emcc_args=[]):
+  def build(self, filename, libraries=[], includes=[], force_c=False, js_outfile=True, emcc_args=[], output_basename=None):
     suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
     if compiler[0] == EMCC:
@@ -556,8 +559,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if force_c:
       compiler.append('-xc')
 
-    dirname, basename = os.path.split(filename)
-    output = shared.unsuffixed(basename) + suffix
+    if output_basename:
+      output = output_basename + suffix
+    else:
+      basename = os.path.basename(filename)
+      output = shared.unsuffixed(basename) + suffix
     cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True) + emcc_args + libraries
     if shared.suffix(filename) not in ('.i', '.ii'):
       # Add the location of the test file to include path.
@@ -642,8 +648,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       engine = engine + self.node_args
     if engine == config.V8_ENGINE:
       engine = engine + self.v8_args
-    if EMTEST_VERBOSE:
-      print(f"Running '{filename}' under '{shared.shlex_join(engine)}'")
     try:
       jsrun.run_js(filename, engine, args,
                    stdout=open(stdout_file, 'w'),
@@ -796,8 +800,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       generated_libs = []
       for basename, contents in self.library_cache[cache_name]:
         bc_file = os.path.join(build_dir, cache_name + '_' + basename)
-        with open(bc_file, 'wb') as f:
-          f.write(contents)
+        write_binary(bc_file, contents)
         generated_libs.append(bc_file)
       return generated_libs
 
@@ -829,8 +832,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if check and e.returncode != 0:
         print(e.stdout)
         print(e.stderr)
-        self.fail('subprocess exited with non-zero return code(%d): `%s`' %
-                  (e.returncode, shared.shlex_join(cmd)))
+        self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):
     if output_filename is None:
@@ -998,8 +1000,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         filename = 'src.c'
       else:
         filename = 'src.cpp'
-      with open(filename, 'w') as f:
-        f.write(src)
+      write_file(filename, src)
     self._build_and_run(filename, expected_output, **kwargs)
 
   def do_runf(self, filename, expected_output=None, **kwargs):
@@ -1023,15 +1024,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      includes=[],
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True, force_c=False, emcc_args=[],
-                     interleaved_output=True):
+                     interleaved_output=True,
+                     output_basename=None):
     logger.debug(f'_build_and_run: {filename}')
 
     if no_build:
       js_file = filename
     else:
-      self.build(filename, libraries=libraries, includes=includes,
-                 force_c=force_c, emcc_args=emcc_args)
-      js_file = shared.unsuffixed(os.path.basename(filename)) + '.js'
+      js_file = self.build(filename, libraries=libraries, includes=includes,
+                           force_c=force_c, emcc_args=emcc_args,
+                           output_basename=output_basename)
     self.assertExists(js_file)
 
     engines = self.filtered_js_engines(js_engines)
@@ -1397,8 +1399,7 @@ class BrowserCore(RunnerCore):
     basename = os.path.basename(expected)
     shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
     reporting = read_file(test_file('browser_reporting.js'))
-    with open('reftest.js', 'w') as out:
-      out.write('''
+    write_file('reftest.js', '''
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;
@@ -1535,7 +1536,8 @@ class BrowserCore(RunnerCore):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
-    original_args = args.copy()
+    original_args = args
+    args = args.copy()
     if not os.path.exists(filename):
       filename = test_file(filename)
     if reference:

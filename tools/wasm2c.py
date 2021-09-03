@@ -78,8 +78,8 @@ def get_func_types(code):
 
 def do_wasm2c(infile):
   assert settings.STANDALONE_WASM
-  WASM2C = config.NODE_JS + [path_from_root('node_modules', 'wasm2c', 'wasm2c.js')]
-  WASM2C_DIR = path_from_root('node_modules', 'wasm2c')
+  WASM2C = config.NODE_JS + [path_from_root('node_modules/wasm2c/wasm2c.js')]
+  WASM2C_DIR = path_from_root('node_modules/wasm2c')
   c_file = unsuffixed(infile) + '.wasm.c'
   h_file = unsuffixed(infile) + '.wasm.h'
   cmd = WASM2C + [infile, '-o', c_file]
@@ -132,7 +132,7 @@ def do_wasm2c(infile):
 extern void wasmbox_init(void);
 ''')
   for support_file in support_files:
-    total = bundle_file(total, path_from_root('tools', 'wasm2c', support_file + '.c'))
+    total = bundle_file(total, path_from_root('tools/wasm2c', support_file + '.c'))
   # remove #includes of the headers we bundled
   for header in headers:
     total = total.replace('#include "%s"\n' % header[1], '/* include of %s */\n' % header[1])

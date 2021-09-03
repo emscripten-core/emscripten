@@ -8,5 +8,5 @@
 
 int main() {
   abort();
-  __builtin_unreachable();
+  __builtin_trap();
 }

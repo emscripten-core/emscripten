@@ -47,6 +47,7 @@ scons_path = utils.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
+emprofile = shared.bat_suffix(path_from_root('emprofile'))
 wasm_dis = Path(building.get_binaryen_bin(), 'wasm-dis')
 wasm_opt = Path(building.get_binaryen_bin(), 'wasm-opt')
 
@@ -1957,9 +1958,9 @@ int f() {
         # Calling main later should still work, filesystem etc. must be set up.
         print('call main later')
         src = read_file('a.out.js')
-        src += '\nModule.callMain();\n'
+        src += '\nconsole.log("callMain -> " + Module.callMain());\n'
         create_file('a.out.js', src)
-        self.assertContained('hello from main', self.run_js('a.out.js'))
+        self.assertContained('hello from main\ncallMain -> 0\n', self.run_js('a.out.js'))
 
     # Use postInit
     create_file('pre.js', '''
@@ -6891,26 +6892,23 @@ int main() {
     self.run_process([EMXX, test_file('hello_world.cpp'), '-s', 'INITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'WASM_ASYNC_COMPILATION=0', '-s', 'IMPORTED_MEMORY'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
-  def test_binaryen_mem(self):
+  def test_memory_size(self):
     for args, expect_initial, expect_max in [
-        (['-s', 'INITIAL_MEMORY=20971520'], 320, 320),
-        (['-s', 'INITIAL_MEMORY=20971520', '-s', 'ALLOW_MEMORY_GROWTH'], 320, None),
-        (['-s', 'INITIAL_MEMORY=20971520',                                '-s', 'MAXIMUM_MEMORY=41943040'], 320, 640),
-        (['-s', 'INITIAL_MEMORY=20971520', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=41943040'], 320, 640),
+        ([], 320, 320),
+        (['-s', 'ALLOW_MEMORY_GROWTH'], 320, 32768),
+        (['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=40MB'], 320, 640),
       ]:
-      cmd = [EMCC, test_file('hello_world.c'), '-O2'] + args
+      cmd = [EMCC, test_file('hello_world.c'), '-O2', '-s', 'INITIAL_MEMORY=20MB'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
       wat = self.run_process([wasm_dis, 'a.out.wasm'], stdout=PIPE).stdout
-      for line in wat:
-        if '(import "env" "memory" (memory ' in line:
-          parts = line.strip().replace('(', '').replace(')', '').split(' ')
-          print(parts)
-          self.assertEqual(parts[5], str(expect_initial))
-          if not expect_max:
-            self.assertEqual(len(parts), 6)
-          else:
-            self.assertEqual(parts[6], str(expect_max))
+      memories = [l for l in wat.splitlines() if '(memory ' in l]
+      self.assertEqual(len(memories), 2)
+      line = memories[0]
+      parts = line.strip().replace('(', '').replace(')', '').split()
+      print(parts)
+      self.assertEqual(parts[2], str(expect_initial))
+      self.assertEqual(parts[3], str(expect_max))
 
   def test_invalid_mem(self):
     # A large amount is fine, multiple of 16MB or not
@@ -6926,10 +6924,14 @@ int main() {
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', 'INITIAL_MEMORY=33554433']) # 32MB + 1 byte
     self.assertContained('INITIAL_MEMORY must be a multiple of WebAssembly page size (64KiB)', ret)
 
-    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'MAXIMUM_MEMORY=33MB'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-s', 'MAXIMUM_MEMORY=33MB', '-s', 'ALLOW_MEMORY_GROWTH'])
 
-    ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', 'MAXIMUM_MEMORY=34603009']) # 33MB + 1 byte
+    ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', 'MAXIMUM_MEMORY=34603009', '-s', 'ALLOW_MEMORY_GROWTH']) # 33MB + 1 byte
     self.assertContained('MAXIMUM_MEMORY must be a multiple of WebAssembly page size (64KiB)', ret)
+
+  def test_invalid_memory_max(self):
+    err = self.expect_fail([EMCC, '-Werror', test_file('hello_world.c'), '-sMAXIMUM_MEMORY=41943040'])
+    self.assertContained('emcc: error: MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH', err)
 
   def test_dasho_invalid_dir(self):
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', Path('NONEXISTING_DIRECTORY/out.js')])
@@ -7765,11 +7767,24 @@ end
   def test_full_js_library(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'])
 
+  def test_full_js_library_undefined(self):
+    create_file('main.c', 'void foo(); int main() { foo(); return 0; }')
+    err = self.expect_fail([EMCC, 'main.c', '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'])
+    self.assertContained('error: undefined symbol: foo', err)
+
+  def test_full_js_library_except(self):
+    self.set_setting('INCLUDE_FULL_LIBRARY', 1)
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.do_other_test('test_full_js_library_except.cpp')
+
   def test_full_js_library_gl_emu(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sLEGACY_GL_EMULATION'])
 
   def test_full_js_library_no_exception_throwing(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sDISABLE_EXCEPTION_THROWING'])
+
+  def test_full_js_library_minimal_runtime(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY', '-sMINIMAL_RUNTIME'])
 
   def test_closure_full_js_library(self):
     # test for closure errors in the entire JS library
@@ -7794,9 +7809,19 @@ end
     self.run_process([EMCC, test, '--closure=1', '--closure-args', '--externs "' + externs + '"'])
 
   def test_toolchain_profiler(self):
-    with env_modify({'EMPROFILE': '1'}):
-      # replaced subprocess functions should not cause errors
-      self.run_process([EMCC, test_file('hello_world.c')])
+    # Verify some basic functionality of EMPROFILE
+    environ = os.environ.copy()
+    environ['EMPROFILE'] = '1'
+
+    self.run_process([emprofile, '--reset'])
+    err = self.expect_fail([emprofile, '--graph'])
+    self.assertContained('No profiler logs were found', err)
+
+    self.run_process([EMCC, test_file('hello_world.c')], env=environ)
+    self.assertEqual('hello, world!', self.run_js('a.out.js').strip())
+
+    self.run_process([emprofile, '--graph'])
+    self.assertTrue(glob.glob('toolchain_profiler.results*.html'))
 
   def test_noderawfs(self):
     fopen_write = read_file(test_file('asmfs/fopen_write.cpp'))
@@ -9734,6 +9759,19 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     # libpthread_stub.a
     self.do_other_test('test_pthread_stub.c')
 
+  @node_pthreads
+  def test_main_pthread_join_detach(self):
+    # Verify that we're unable to join the main thread
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('other/test_pthread_self_join_detach.c')
+
+  @node_pthreads
+  def test_proxy_pthread_join_detach(self):
+    # Verify that we're unable to detach or join the proxied main thread
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('other/test_pthread_self_join_detach.c')
+
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')
     outputStdin = self.run_process([EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
@@ -9989,10 +10027,15 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     err = self.expect_fail([EMCC, '-std=gnu11', '-c', 'foo.h'])
     self.assertContained("'-std=gnu11' not allowed with 'C++'", err)
 
-    # If we disable DEFAULT_TO_CXX the emcc can be used with cflags, but can't be used to build
-    # C++ headers
+    # If we disable DEFAULT_TO_CXX the emcc can be used with C-only flags (e.g. -std=gnu11),
     self.run_process([EMCC, '-std=gnu11', '-c', 'foo.h', '-s', 'DEFAULT_TO_CXX=0'])
+
+    # But can't be used to build C++ headers
     err = self.expect_fail([EMCC, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0'])
+    self.assertContained("'string' file not found", err)
+
+    # Check that STRICT also disables DEFAULT_TO_CXX
+    err = self.expect_fail([EMCC, '-c', 'cxxfoo.h', '-s', 'STRICT'])
     self.assertContained("'string' file not found", err)
 
     # Using em++ should alwasy work for C++ headers
@@ -10562,6 +10605,8 @@ exec "$@"
         cmd.append('-sUSE_WEBGPU')
       if function.startswith('__cxa_'):
         cmd.append('-fexceptions')
+      if function.startswith('glfwGetMonitors'):
+        cmd.append('-sUSE_GLFW=3')
       # In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function
       # calls that exist in the same function with setjmp are converted to some
       # code sequence that includes emscripten_longjmp. emscripten_longjmp is
@@ -10820,6 +10865,11 @@ void foo() {}
       err = self.run_js('a.out.js')
       self.assertContained('warning: unsupported syscall: __sys_mincore', err)
 
+      # Setting ASSERTIONS=0 should avoid the runtime warning
+      self.run_process(cmd + ['-sASSERTIONS=0'])
+      err = self.run_js('a.out.js')
+      self.assertNotContained('warning: unsupported syscall', err)
+
   @require_v8
   def test_missing_shell_support(self):
     # By default shell support is not included
@@ -10881,3 +10931,14 @@ void foo() {}
     ]
     self.do_runf(test_file('pthread/test_pthread_lsan_leak.cpp'), expected, assert_all=True, emcc_args=['-fsanitize=leak'])
     self.do_runf(test_file('pthread/test_pthread_lsan_leak.cpp'), expected, assert_all=True, emcc_args=['-fsanitize=address'])
+
+  @node_pthreads
+  def test_pthread_js_exception(self):
+    # Ensure that JS exceptions propagate back to the main main thread and cause node
+    # to exit with an error.
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.build(test_file('other', 'test_pthread_js_exception.c'))
+    err = self.run_js('test_pthread_js_exception.js', assert_returncode=NON_ZERO)
+    self.assertContained('missing is not defined', err)

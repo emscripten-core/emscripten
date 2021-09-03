@@ -57,6 +57,12 @@ fs.truncate = function(fd, len, callback) {};
 fs.truncateSync = function(fd, len) {};
 
 /**
+ * @param {*} fd
+ * @param {number} len
+ */
+fs.ftruncateSync = function(fd, len) {};
+
+/**
  * @param {string} path
  * @param {number} uid
  * @param {number} gid

@@ -18,13 +18,27 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.27
+2.0.30
 ------
 - Add `emscripten/thread_utils.h` helper header, which includes C++ utilities
   for proxying code to other threads.
+2.0.29
+-----
+- Bug fixes
+2.0.28 - 08/23/2021
+------
+- Added some support for signal handling libc functions (raise, kill,
+  sigaction, sigpending, etc).  We still don't have a way to deliver signals from
+  the outside but these at least now work for sending signals to the current
+  thread (JS context) (#14883).
+
+2.0.27 - 08/12/2021
+-------------------
 - Added `EM_ASYNC_JS` macro - similar to `EM_JS`, but allows using `await`
   inside the JS block and automatically integrates with Asyncify without
   the need for listing the declared function in `ASYNCIFY_IMPORTS` (#9709).
+- Errors that occur on pthreads (e.g. uncaught exception) will now get re-thrown
+  on the main thread rather than simply being logged (#13666).
 
 2.0.26 - 07/26/2021
 -------------------

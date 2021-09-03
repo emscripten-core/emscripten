@@ -6,7 +6,6 @@
 #include <cassert>
 #include <stdio.h>
 #include <pthread.h>
-#include <emscripten/threading.h>
 
 int result = 0;
 
@@ -25,10 +24,6 @@ static void *thread_func(void *vptr_args) {
 }
 
 int main(void) {
-  if (!emscripten_has_threading_support()) {
-    return 0;
-  }
-
   pthread_t thread;
   puts("a");
   pthread_create(&thread, NULL, thread_func, NULL);

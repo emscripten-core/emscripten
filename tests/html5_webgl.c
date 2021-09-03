@@ -211,7 +211,5 @@ int main()
   assert(psUniformVec[2] == 3.0f);
   assert(psUniformVec[3] == 4.0f);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

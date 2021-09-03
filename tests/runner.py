@@ -15,7 +15,7 @@ see
 http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 """
 
-# XXX Use EMTEST_ALL_ENGINES=1 in the env to test all engines!
+# Use EMTEST_ALL_ENGINES=1 in the environment or pass --all-engined to test all engines!
 
 import argparse
 import atexit
@@ -37,10 +37,10 @@ sys.path.append(__rootpath__)
 import jsrun
 import parallel_testsuite
 import common
-from tools import shared, config
+from tools import shared, config, utils
 
 
-sys.path.append(shared.path_from_root('third_party/websockify'))
+sys.path.append(utils.path_from_root('third_party/websockify'))
 
 logger = logging.getLogger("runner")
 
@@ -78,6 +78,7 @@ non_core_test_modes = [
   'wasm2ss',
   'posixtest',
   'posixtest_browser',
+  'minimal0',
 ]
 
 
@@ -89,9 +90,6 @@ def check_js_engines():
 
   if common.EMTEST_ALL_ENGINES:
     print('(using ALL js engines)')
-  else:
-    logger.warning('use EMTEST_ALL_ENGINES=1 in the env to run against all JS '
-                   'engines, which is slower but provides more coverage')
 
 
 def get_and_import_modules():

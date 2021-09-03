@@ -61,7 +61,6 @@ var LibraryManager = {
       'library_formatString.js',
       'library_math.js',
       'library_path.js',
-      'library_signals.js',
       'library_syscall.js',
       'library_html5.js',
       'library_stack_trace.js',
