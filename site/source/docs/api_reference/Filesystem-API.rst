@@ -674,6 +674,75 @@ File system API
 
 
 
+.. js:data:: FS.trackingDelegate[callback name]
+
+  Users can specify callbacks to receive different filesystem events. This is useful for tracking changes in the filesystem.
+
+  .. _fs-callback-names:
+
+  - ``willMovePath`` — Indicates path is about to be moved.
+  - ``onMovePath`` — Indicates path is moved.
+  - ``willDeletePath`` — Indicates path is about to be deleted.
+  - ``onDeletePath`` — Indicates path deleted.
+  - ``onOpenFile`` — Indicates file is opened.
+  - ``onWriteToFile`` — Indicates file is being written to.
+
+  :callback name: The name of the callback that indicates the filesystem event
+
+  Example Code
+
+  .. code-block:: javascript
+
+    EM_ASM(
+      FS.trackingDelegate['willMovePath'] = function(oldpath, newpath) {
+        Module.print('About to move "' + oldpath + '" to "' + newpath + '"');
+      };
+      FS.trackingDelegate['onMovePath'] = function(oldpath, newpath) {
+        Module.print('Moved "' + oldpath + '" to "' + newpath + '"');
+      };
+      FS.trackingDelegate['willDeletePath'] = function(path) {
+        Module.print('About to delete "' + path + '"');
+      };
+      FS.trackingDelegate['onDeletePath'] = function(path) {
+        Module.print('Deleted "' + path + '"');
+      };
+      FS.trackingDelegate['onOpenFile'] = function(path, flags) {
+        Module.print('Opened "' + path + '" with flags ' + flags);
+      };
+      FS.trackingDelegate['onWriteToFile'] = function(path) {
+        Module.print('Wrote to file "' + path + '"');
+      };
+    );
+
+    FILE *file;
+    file = fopen("/test.txt", "w");
+    fputs("hello world", file);
+    fclose(file);
+    rename("/test.txt", "/renamed.txt");
+    file = fopen("/renamed.txt", "r");
+    char str[256] = {};
+    fgets(str, 255, file);
+    printf("File read returned '%s'\n", str);
+    fclose(file);
+    remove("/renamed.txt");
+
+
+  Example Output
+
+  .. code-block:: text
+
+    Opened "/test.txt" with flags 2
+    Wrote to file "/test.txt"
+    About to move "/test.txt" to "/renamed.txt"
+    Moved "/test.txt" to "/renamed.txt"
+    Opened "/renamed.txt" with flags 1
+    File read returned 'hello world'
+    Wrote to file "/dev/tty"
+    About to delete "/renamed.txt"
+    Deleted "/renamed.txt"
+
+
+
 File types
 ==========
 
@@ -783,12 +852,12 @@ Paths
 .. js:function:: FS.analyzePath(path, dontResolveLastLink)
 
   Looks up the incoming path and returns an object containing information about
-  file stats and nodes. Built on top of ``FS.lookupPath`` and provides more 
-  information about given path and its parent. If any error occurs it won't 
+  file stats and nodes. Built on top of ``FS.lookupPath`` and provides more
+  information about given path and its parent. If any error occurs it won't
   throw but returns an ``error`` property.
 
   :param string path: The incoming path.
-  :param boolean dontResolveLastLink: If true, don't follow the last component 
+  :param boolean dontResolveLastLink: If true, don't follow the last component
     if it is a symlink.
 
   :returns: an object with the format:
@@ -797,13 +866,13 @@ Paths
 
       {
         isRoot: boolean,
-        exists: boolean, 
-        error: Error, 
-        name: string, 
-        path: resolved_path, 
+        exists: boolean,
+        error: Error,
+        name: string,
+        path: resolved_path,
         object: resolved_node,
-        parentExists: boolean, 
-        parentPath: resolved_parent_path, 
+        parentExists: boolean,
+        parentPath: resolved_parent_path,
         parentObject: resolved_parent_node
       }
 
