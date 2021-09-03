@@ -458,12 +458,8 @@ def link_lld(args, target, external_symbols=None):
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
 
-  # Wasm exception handling. This is a CodeGen option for the LLVM backend, so
-  # wasm-ld needs to take this for the LTO mode.
   if settings.EXCEPTION_HANDLING:
-    cmd += ['-mllvm', '-exception-model=wasm', '-mllvm', '-wasm-enable-eh']
-  # Wasm SjLj handling. This is a CodeGen option for the LLVM backend, so
-  # wasm-ld needs to take this for the LTO mode.
+    cmd += ['-mllvm', '-wasm-enable-eh']
   if settings.EXCEPTION_HANDLING or settings.SJLJ_HANDLING:
     cmd += ['-mllvm', '-exception-model=wasm']
 
