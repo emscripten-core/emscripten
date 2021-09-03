@@ -743,10 +743,6 @@ File system API
 
 
 
-
-
-
-
 File types
 ==========
 
