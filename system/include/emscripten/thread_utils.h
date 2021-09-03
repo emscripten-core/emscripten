@@ -98,6 +98,10 @@ public:
   //
   // In the async case, you would call resume() at some later time.
   //
+  // It is safe to call this method from multiple threads, as it locks itself.
+  // That is, you can create an instance of this and call it from multiple
+  // threads freely.
+  //
   void invoke(std::function<void(Callback)> newWork);
 
 //==============================================================================
@@ -112,6 +116,7 @@ private:
   bool finishedWork;
   bool quit = false;
   std::unique_ptr<std::function<void()>> resume;
+  std::mutex invokeMutex;
 
   // The child will be asynchronous, and therefore we cannot rely on RAII to
   // unlock for us, we must do it manually.
@@ -175,6 +180,10 @@ public:
 };
 
 void sync_to_async::invoke(std::function<void(Callback)> newWork) {
+  // Use the invokeMutex to prevent more than one invoke being in flight at a
+  // time, so that this is usable from multiple threads safely.
+  std::lock_guard<std::mutex> invokeLock(invokeMutex);
+
   // Send the work over.
   {
     std::lock_guard<std::mutex> lock(mutex);
