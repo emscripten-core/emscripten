@@ -85,6 +85,9 @@ mergeInto(LibraryManager.library, {
                 }
               }
             }
+#if MAIN_MODULE
+            imports[x].sig = original.sig;
+#endif
           }
         })(x);
       }
