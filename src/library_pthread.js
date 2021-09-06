@@ -413,7 +413,6 @@ var LibraryPThread = {
               }
             }
           );
-          // Use bundler-friendly `new Worker(new URL(..., import.meta.url))` pattern; works in browsers too.
           PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
         } else {
           PThread.unusedWorkers.push(new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url)));
