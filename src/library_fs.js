@@ -1178,7 +1178,6 @@ FS.staticInit();` +
       try {
         if (stream.path && FS.trackingDelegate['onReadFile']) {
           FS.trackingDelegate['onReadFile'](stream.path, bytesRead);
-
         }
       } catch(e) {
         err("FS.trackingDelegate['onReadFile']('"+stream.path+", bytesRead') threw an exception: " + e.message);
