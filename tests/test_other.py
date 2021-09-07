@@ -294,9 +294,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       self.clear()
       self.run_process([compiler, '-c', test_file('hello_world' + suffix)] + args)
       syms = building.llvm_nm(target)
-      self.assertIn('main', syms.defs)
+      self.assertIn('main', syms['defs'])
       # wasm backend will also have '__original_main' or such
-      self.assertEqual(len(syms.defs), 2)
+      self.assertEqual(len(syms['defs']), 2)
       if target == 'js': # make sure emcc can recognize the target as a bitcode file
         shutil.move(target, target + '.bc')
         target += '.bc'
@@ -457,8 +457,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Should be two symbols (and in the wasm backend, also __original_main)
     syms = building.llvm_nm('combined.o')
-    self.assertIn('main', syms.defs)
-    self.assertEqual(len(syms.defs), 3)
+    self.assertIn('main', syms['defs'])
+    self.assertEqual(len(syms['defs']), 3)
 
     self.run_process([EMCC, 'combined.o', '-o', 'combined.o.js'])
     self.assertContained('side got: hello from main, over', self.run_js('combined.o.js'))
@@ -479,8 +479,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Should be two symbols (and in the wasm backend, also __original_main)
     syms = building.llvm_nm('combined.o')
-    self.assertIn('main', syms.defs)
-    self.assertEqual(len(syms.defs), 3)
+    self.assertIn('main', syms['defs'])
+    self.assertEqual(len(syms['defs']), 3)
 
     self.run_process([EMXX, 'combined.o', '-o', 'combined.o.js'])
     self.assertContained('side got: hello from main, over', self.run_js('combined.o.js'))
