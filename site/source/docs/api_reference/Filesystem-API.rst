@@ -684,8 +684,10 @@ File system API
   - ``onMovePath`` — Indicates path is moved.
   - ``willDeletePath`` — Indicates path is about to be deleted.
   - ``onDeletePath`` — Indicates path deleted.
-  - ``onOpenFile`` — Indicates file is opened.
-  - ``onWriteToFile`` — Indicates file is being written to.
+  - ``onOpenFile`` — Indicates file is opened and reports file size.
+  - ``onWriteToFile`` — Indicates file is being written to and number of bytes written.
+  - ``onReadFile`` — Indicates file is being read and number of bytes read.
+  - ``onSeekFile`` — Indicates seeking within a file and the position.
 
   :callback name: The name of the callback that indicates the filesystem event
 
@@ -695,22 +697,28 @@ File system API
 
     EM_ASM(
       FS.trackingDelegate['willMovePath'] = function(oldpath, newpath) {
-        Module.print('About to move "' + oldpath + '" to "' + newpath + '"');
+        out('About to move "' + oldpath + '" to "' + newpath + '"');
       };
       FS.trackingDelegate['onMovePath'] = function(oldpath, newpath) {
-        Module.print('Moved "' + oldpath + '" to "' + newpath + '"');
+        out('Moved "' + oldpath + '" to "' + newpath + '"');
       };
       FS.trackingDelegate['willDeletePath'] = function(path) {
-        Module.print('About to delete "' + path + '"');
+        out('About to delete "' + path + '"');
       };
       FS.trackingDelegate['onDeletePath'] = function(path) {
-        Module.print('Deleted "' + path + '"');
+        out('Deleted "' + path + '"');
       };
-      FS.trackingDelegate['onOpenFile'] = function(path, flags) {
-        Module.print('Opened "' + path + '" with flags ' + flags);
+      FS.trackingDelegate['onOpenFile'] = function(path, flags, fileSize) {
+        out('Opened "' + path + '" with flags ' + flags + ' and size ' + fileSize);
       };
-      FS.trackingDelegate['onWriteToFile'] = function(path) {
-        Module.print('Wrote to file "' + path + '"');
+      FS.trackingDelegate['onReadFile'] = function(path, bytesRead) {
+        out('Read ' + bytesRead + ' bytes from "' + path + '"');
+      };
+      FS.trackingDelegate['onWriteToFile'] = function(path, bytesWritten) {
+        out('Wrote to file "' + path + '" with ' + bytesWritten + ' bytes written');
+      };
+      FS.trackingDelegate['onSeekFile'] = function(path, position) {
+        out('Seek on "' + path + '" with position ' + position);
       };
     );
 
@@ -731,13 +739,19 @@ File system API
 
   .. code-block:: text
 
-    Opened "/test.txt" with flags 2
-    Wrote to file "/test.txt"
+    Opened "/test.txt" with flags 2 and size 0
+    Wrote to file "/test.txt" with 11 bytes written
+    Wrote to file "/test.txt" with 0 bytes written
     About to move "/test.txt" to "/renamed.txt"
     Moved "/test.txt" to "/renamed.txt"
-    Opened "/renamed.txt" with flags 1
+    Opened "/renamed.txt" with flags 1 and size 11
+    Read 0 bytes from "/renamed.txt"
+    Read 11 bytes from "/renamed.txt"
+    Read 0 bytes from "/renamed.txt"
+    Read 0 bytes from "/renamed.txt"
+    Wrote to file "/dev/tty" with 31 bytes written
     File read returned 'hello world'
-    Wrote to file "/dev/tty"
+    Wrote to file "/dev/tty" with 2 bytes written
     About to delete "/renamed.txt"
     Deleted "/renamed.txt"
 
