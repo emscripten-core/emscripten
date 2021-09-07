@@ -29,6 +29,13 @@ See docs/process.md for more on how version tagging works.
   sigaction, sigpending, etc).  We still don't have a way to deliver signals from
   the outside but these at least now work for sending signals to the current
   thread (JS context) (#14883).
+- Remove the workaround used in emcmake and emmake that removed directories
+  with sh.exe from PATH on Windows when MinGW Makefiles generator was used.
+  This was needed with CMake versions older than 3.17.0. If you get an error
+  "sh.exe was found in your PATH" on Windows, you can either update to CMake
+  3.17.0 or newer, or remove the offending directory from your PATH. See
+  https://github.com/Kitware/CMake/commit/82ddcf0db1d220564145122c3cce25d25ee0e254
+  for more information. (#14930)
 
 2.0.27 - 08/12/2021
 -------------------
