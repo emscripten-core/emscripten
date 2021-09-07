@@ -24,17 +24,29 @@ int main() {
     FS.trackingDelegate['onDeletePath'] = function(path) {
       out('Deleted "' + path + '"');
     };
-    FS.trackingDelegate['onOpenFile'] = function(path, flags) { 
-      out('Opened "' + path + '" with flags ' + flags);
+    FS.trackingDelegate['onOpenFile'] = function(path, flags, fileSize) {
+      out('Opened "' + path + '" with flags ' + flags + ' and size ' + fileSize);
     };
-    FS.trackingDelegate['onWriteToFile'] = function(path) {
-      out('Wrote to file "' + path + '"');
+    FS.trackingDelegate['onReadFile'] = function(path, bytesRead) {
+      out('Read ' + bytesRead + ' bytes from "' + path + '"');
+    };
+    FS.trackingDelegate['onWriteToFile'] = function(path, bytesWritten) {
+      out('Wrote to file "' + path + '" with ' + bytesWritten + ' bytes written');
+    };
+    FS.trackingDelegate['onSeekFile'] = function(path, position) {
+      out('Seek on "' + path + '" with position ' + position);
     };
   );
 
   FILE *file;
-  file = fopen("/file.txt", "w");
-  fputs("hello!", file);
+  char buffer[100];
+
+  file = fopen("/file.txt", "w+");
+  fputs("hello", file);
+  fwrite(" world", 7, 1, file);
+  fseek(file, 0, SEEK_SET);
+  fread(buffer, 13, 1, file);
+  printf("%s\n", buffer);
   fclose(file);
   rename("/file.txt", "/renamed.txt");
   file = fopen("/renamed.txt", "r");

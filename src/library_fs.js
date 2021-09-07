@@ -1098,10 +1098,12 @@ FS.staticInit();` +
           if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}) {
             trackingFlags |= FS.tracking.openFlags.WRITE;
           }
-          FS.trackingDelegate['onOpenFile'](path, trackingFlags);
+          var stat = FS.stat(path);
+          var fileSize = stat.size;
+          FS.trackingDelegate['onOpenFile'](path, trackingFlags, fileSize);
         }
       } catch(e) {
-        err("FS.trackingDelegate['onOpenFile']('"+path+"', flags) threw an exception: " + e.message);
+        err("FS.trackingDelegate['onOpenFile']('"+path+"', flags, fileSize) threw an exception: " + e.message);
       }
       return stream;
     },
@@ -1136,6 +1138,14 @@ FS.staticInit();` +
       }
       stream.position = stream.stream_ops.llseek(stream, offset, whence);
       stream.ungotten = [];
+      try {
+        if (stream.path && FS.trackingDelegate['onSeekFile']) {
+          FS.trackingDelegate['onSeekFile'](stream.path, stream.position);
+
+        }
+      } catch(e) {
+        err("FS.trackingDelegate['onSeekFile']('"+stream.path+", streamPosition') threw an exception: " + e.message);
+      }
       return stream.position;
     },
     read: function(stream, buffer, offset, length, position) {
@@ -1165,6 +1175,14 @@ FS.staticInit();` +
       }
       var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position);
       if (!seeking) stream.position += bytesRead;
+      try {
+        if (stream.path && FS.trackingDelegate['onReadFile']) {
+          FS.trackingDelegate['onReadFile'](stream.path, bytesRead);
+
+        }
+      } catch(e) {
+        err("FS.trackingDelegate['onReadFile']('"+stream.path+", bytesRead') threw an exception: " + e.message);
+      }
       return bytesRead;
     },
     write: function(stream, buffer, offset, length, position, canOwn) {
@@ -1199,9 +1217,12 @@ FS.staticInit();` +
       var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
       try {
-        if (stream.path && FS.trackingDelegate['onWriteToFile']) FS.trackingDelegate['onWriteToFile'](stream.path);
+        if (stream.path && FS.trackingDelegate['onWriteToFile']) {
+          FS.trackingDelegate['onWriteToFile'](stream.path, bytesWritten);
+
+        }
       } catch(e) {
-        err("FS.trackingDelegate['onWriteToFile']('"+stream.path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['onWriteToFile']('"+stream.path+", bytesWritten') threw an exception: " + e.message);
       }
       return bytesWritten;
     },
