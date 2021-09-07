@@ -49,12 +49,6 @@ Submitting patches
 
 Patches should be submitted as *pull requests* in the normal way on GitHub.
 
-.. note::
-   Together with your first patch, add yourself to the
-   `AUTHORS <https://github.com/emscripten-core/emscripten/blob/main/AUTHORS>`_
-   file. By doing so, you agree to license your code under the project's
-   :ref:`open source licenses (MIT/LLVM) <emscripten-license>`.
-
 When submitting patches, please:
 
 - Add an automatic test if you add any new functionality or fix a bug. Search
