@@ -58,7 +58,10 @@ var LibraryDylink = {
       '__cpp_exception',
       '__wasm_apply_data_relocs',
       '__dso_handle',
-      '__set_stack_limits'
+      '__set_stack_limits',
+#if SPLIT_MODULE
+      'profile-memory'
+#endif
     ].includes(symName)
 #if SPLIT_MODULE
         // Exports synthesized by wasm-split should be prefixed with '%'
