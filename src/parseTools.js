@@ -1067,11 +1067,6 @@ function hasExportedFunction(func) {
   return WASM_EXPORTS.has(_asmjsDemangle(func));
 }
 
-// Returns true if the given function is exported out in the generated JS Module object.
-function hasExportedFunction(func) {
-  return Object.keys(EXPORTED_FUNCTIONS).includes(func);
-}
-
 // Returns true if LLVM produced the given function into compiled code as a Wasm export.
 function hasLLVMExportedFunction(func) {
   return LLVM_EXPORTS.includes(func);
