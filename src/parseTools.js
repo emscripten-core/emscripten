@@ -832,6 +832,13 @@ New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). \
 Please update to new syntax.`);
 
     if (DYNCALLS) {
+      if (!hasExportedFunction(`dynCall_${sig}`)) {
+        if (ASSERTIONS) {
+          return `(function() { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
+        } else {
+          return `(function() { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
+        }
+      }
       return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${args}) })`;
     } else {
       return `(function(cb, ${args}) { ${returnExpr} getWasmTableEntry(cb)(${args}) })`;
@@ -839,6 +846,14 @@ Please update to new syntax.`);
   }
 
   if (DYNCALLS) {
+    if (!hasExportedFunction(`dynCall_${sig}`)) {
+      if (ASSERTIONS) {
+        return `(function() { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'; })`;
+      } else {
+        return `(function() { /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */ })`;
+      }
+    }
+
     const dyncall = exportedAsmFunc(`dynCall_${sig}`);
     if (sig.length > 1) {
       return `(function(${args}) { ${returnExpr} ${dyncall}.apply(null, [${funcPtr}, ${args}]); })`;
