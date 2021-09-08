@@ -22,6 +22,7 @@ int main() {
     var O_EXCL = 128;
     var O_TRUNC = 512;
     var O_APPEND = 1024;
+    var O_ACCMODE = 2097155;
 
     FS.trackingDelegate['willMovePath'] = function(oldpath, newpath) {
       out('About to move "' + oldpath + '" to "' + newpath + '"');
@@ -38,23 +39,39 @@ int main() {
     FS.trackingDelegate['onOpenFile'] = function(path, flags) {
       var stat = FS.stat(path);
       var fileSize = stat.size;
+      var trackingFlags = [];
+
       if (flags & O_CREAT) {
-        flags &= O_CREAT;
-      } else if (flags & O_TRUNC) {
-        flags &= O_TRUNC;
-      } else if (flags & O_APPEND) {
-        flags &= O_APPEND;
-      } else if (flags & O_EXCL) {
-        flags &= O_EXCL;
-      } else if (flags & O_WRONLY) {
-        flags &= O_WRONLY;
-      } else if (flags & O_RDWR) {
-        flags &= O_RDWR;
-      // O_RDONLY = 32768
-      } else if (flags === 32768) {
-        flags &= O_RDONLY;
+        trackingFlags.push('O_CREAT');
       }
-      out('Opened "' + path + '" with flags ' + flags + ' and file size ' + fileSize);
+      if (flags & O_TRUNC) {
+        trackingFlags.push('O_TRUNC');
+      }
+      if (flags & O_APPEND) {
+        trackingFlags.push('O_APPEND');
+      }
+      if (flags & O_EXCL) {
+        trackingFlags.push('O_EXCL');
+      }
+      // The argument flags must include one of the following access
+      // modes: O_RDONLY, O_WRONLY, or O_RDWR.  These request opening the
+      // file read-only, write-only, or read/write, respectively.
+      // https://man7.org/linux/man-pages/man2/open.2.html
+      if ((flags & O_ACCMODE) == O_WRONLY) {
+        trackingFlags.push('O_WRONLY');
+      }
+      if ((flags & O_ACCMODE) == O_RDWR) {
+        trackingFlags.push('O_RDWR');
+      }
+      if ((flags & O_ACCMODE) == O_RDONLY) {
+        trackingFlags.push('O_RDONLY');
+      }
+      var output = 'Opened "' + path + '" with flags ';
+      for (var i = 0; i < trackingFlags.length; i++) {
+        output += trackingFlags[i] + ' ';
+      }
+      output += 'and ' + fileSize;
+      out(output)
     };
     FS.trackingDelegate['onReadFile'] = function(path, bytesRead) {
       out('Read ' + bytesRead + ' bytes from "' + path + '"');
@@ -69,10 +86,10 @@ int main() {
       out('Closed ' + path);
     };
     FS.trackingDelegate['onMakeDirectory'] = function(path, mode) {
-      out('Created directory ' + path + ' with mode ' + mode);
+      out('Created directory "' + path + '" with mode ' + mode);
     };
     FS.trackingDelegate['onMakeSymlink'] = function(oldpath, newpath) {
-      out('Created symlink from ' + oldpath + ' to ' + newpath);
+      out('Created symlink from "' + oldpath + '" to "' + newpath + '"');
     };
   );
 
@@ -108,11 +125,15 @@ int main() {
   close(fd);
   fd = open("/renamed.txt", O_CREAT);
   close(fd);
-  fd = open("/renamed.txt", O_EXCL);
+  fd = open("/renamed.txt", O_EXCL | O_WRONLY);
   close(fd);
   fd = open("/renamed.txt", O_TRUNC);
   close(fd);
-  fd = open("/renamed.txt", O_APPEND);
+  fd = open("/renamed.txt", O_TRUNC | O_WRONLY);
+  close(fd);
+  fd = open("/renamed.txt", O_TRUNC | O_RDWR);
+  close(fd);
+  fd = open("/renamed.txt", O_APPEND | O_RDONLY);
   close(fd);
   remove("/renamed.txt");
   mkdir("/home/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
