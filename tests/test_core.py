@@ -7555,6 +7555,13 @@ Module['onRuntimeInitialized'] = function() {
     self.do_core_test('test_asyncify_during_exit.cpp', emcc_args=['-DNO_ASYNC'], out_suffix='_no_async')
 
   @no_asan('asyncify stack operations confuse asan')
+  @no_wasm2js('dynamic linking support in wasm2js')
+  def test_asyncify_main_module(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.set_setting('MAIN_MODULE', 2)
+    self.do_core_test('test_hello_world.c')
+
+  @no_asan('asyncify stack operations confuse asan')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
     'conditional': (True,),
