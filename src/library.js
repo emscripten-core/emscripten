@@ -3279,7 +3279,7 @@ LibraryManager.library = {
           // Run the wasm function ptr with signature 'v'. If no function
           // with such signature was exported, this call does not need
           // to be emitted (and would confuse Closure)
-#if !DYNCALLS || hasLLVMExportedFunction('dynCall_v')
+#if !DYNCALLS || hasExportedFunction('dynCall_v')
           {{{ makeDynCall('v', 'func') }}}();
 #else
 #if ASSERTIONS
@@ -3289,7 +3289,7 @@ LibraryManager.library = {
         } else {
           // If any function with signature 'vi' was exported, run
           // the callback with that signature.
-#if !DYNCALLS || hasLLVMExportedFunction('dynCall_vi')
+#if !DYNCALLS || hasExportedFunction('dynCall_vi')
           {{{ makeDynCall('vi', 'func') }}}(callback.arg);
 #else
 #if ASSERTIONS

@@ -296,10 +296,6 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
   metadata = finalize_wasm(in_wasm, out_wasm, memfile)
 
-  # Store all exports into an internal Settings variable so that JS preamble can
-  # configure codegen based on which functions are generated
-  settings.LLVM_EXPORTS = metadata['exports']
-
   update_settings_glue(metadata)
 
   if settings.SIDE_MODULE:

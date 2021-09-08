@@ -1058,6 +1058,9 @@ function _asmjsDemangle(symbol) {
   if (symbol in WASM_SYSTEM_EXPORTS) {
     return symbol;
   }
+  if (symbol.startsWith('dynCall_')) {
+    return symbol;
+  }
   // Strip leading "_"
   assert(symbol.startsWith('_'));
   return symbol.substr(1);
@@ -1065,11 +1068,6 @@ function _asmjsDemangle(symbol) {
 
 function hasExportedFunction(func) {
   return WASM_EXPORTS.has(_asmjsDemangle(func));
-}
-
-// Returns true if LLVM produced the given function into compiled code as a Wasm export.
-function hasLLVMExportedFunction(func) {
-  return LLVM_EXPORTS.includes(func);
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
