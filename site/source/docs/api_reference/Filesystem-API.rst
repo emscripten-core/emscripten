@@ -751,13 +751,13 @@ File system API
 
   .. code-block:: text
 
-    Opened "/test.txt" with flags 2
+    Opened "/test.txt" with flags O_CREAT O_TRUNC O_WRONLY and file size 0
     Wrote to file "/test.txt" with 11 bytes written
     Wrote to file "/test.txt" with 0 bytes written
     Closed /test.txt
     About to move "/test.txt" to "/renamed.txt"
     Moved "/test.txt" to "/renamed.txt"
-    Opened "/renamed.txt" with flags 1
+    Opened "/renamed.txt" with flags O_RDONLY and file size 11
     Read 0 bytes from "/renamed.txt"
     Read 11 bytes from "/renamed.txt"
     Read 0 bytes from "/renamed.txt"
@@ -765,11 +765,11 @@ File system API
     Wrote to file "/dev/tty" with 31 bytes written
     File read returned 'hello world'
     Wrote to file "/dev/tty" with 2 bytes written
-    About to delete "/renamed.txt"
     Closed /renamed.txt
+    About to delete "/renamed.txt"
     Deleted "/renamed.txt"
-    Created directory /home/test with mode 16893
-    Created symlink from /renamed.txt to /file.txt
+    Created directory "/home/test" with mode 16893
+    Created symlink from "/renamed.txt" to "/file.txt"
 
 
 
