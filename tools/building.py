@@ -723,7 +723,7 @@ def eval_ctors(js_file, binary_file, debug_info=False): # noqa
 def get_closure_compiler():
   # First check if the user configured a specific CLOSURE_COMPILER in thier settings
   if config.CLOSURE_COMPILER:
-    return shared.CLOSURE_COMPILER
+    return config.CLOSURE_COMPILER
 
   # Otherwise use the one installed vai npm
   cmd = shared.get_npm_cmd('google-closure-compiler')
@@ -736,12 +736,15 @@ def get_closure_compiler():
 
 
 def check_closure_compiler(cmd, args, env, allowed_to_fail):
+  cmd = cmd + args + ['--version']
   try:
-    output = run_process(cmd + args + ['--version'], stdout=PIPE, env=env).stdout
+    output = run_process(cmd, stdout=PIPE, env=env).stdout
   except Exception as e:
     if allowed_to_fail:
       return False
-    logger.warn(str(e))
+    if isinstance(e, subprocess.CalledProcessError):
+      sys.stderr.write(e.stdout)
+    sys.stderr.write(str(e) + '\n')
     exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(cmd))
 
   if 'Version:' not in output:
