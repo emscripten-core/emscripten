@@ -51,7 +51,7 @@ Tools and SDK targets
 
 The ``<tool/sdk>`` given above as a command argument is one of the targets listed using ``./emsdk list`` (or ``./emsdk list --old``).
 
-Note that some of the tools and SDK names include  *master* or *incoming*: these targets are used to clone and pull the very latest versions from the Emscripten incoming and master branches.
+Note that some of the tools and SDK names include  *master* or *main*: these targets are used to clone and pull the very latest versions from the Emscripten main and master branches.
 
 You can also specify a target of ``latest`` to grab the most current SDK.
 
@@ -66,8 +66,8 @@ The current set of available :term:`tools <Tool>` and :term:`SDKs <SDK>` are lis
 
 The :term:`SDK` targets are a convenience mechanism for specifying the full set of tools used by a particular Emscripten release. For example, the two lines below are equivalent: ::
 
-  ./emsdk install sdk-incoming-64bit
-  ./emsdk install git-1.8.3 clang-incoming-64bit node-0.10.17-64bit python-2.7.5.3-64bit java-7.45-64bit emscripten-incoming
+  ./emsdk install sdk-upstream-main-64bit
+  ./emsdk install git-1.8.3 clang-upstream-main-64bit node-0.10.17-64bit python-2.7.5.3-64bit java-7.45-64bit llvm-git-main-64bit emscripten-main-64bit
 
 A particular installed SDK (or tool) can then be set as :term:`active <Active
 Tool/SDK>`, meaning that it will be used when Emscripten is run. The active
@@ -156,7 +156,7 @@ How do I install a tool/SDK version?
 Use the ``install`` argument to download and install a new tool or SDK version: ::
 
   ./emsdk install <tool/sdk name>
-  
+
 For example: ::
 
   ./emsdk install sdk-1.38.21-64bit
@@ -233,20 +233,18 @@ How do I track the latest Emscripten development with the SDK?
 
 It is also possible to use the latest and greatest versions of the tools on the GitHub repositories! This allows you to obtain new features and latest fixes immediately as they are pushed to GitHub, without having to wait for release to be tagged. **No GitHub account or fork of Emscripten is required.**
 
-To switch to using the latest upstream git development branch (``incoming``), run the following:
+To switch to using the latest upstream git development branch (``main``), run the following:
 
 ::
 
   # Install git. Skip if the system already has it.
   ./emsdk install git-1.8.3
 
-  # Clone+pull the latest emscripten-core/emscripten/incoming.
-  ./emsdk install sdk-incoming-64bit
+  # Clone+pull the latest emscripten-core/emscripten/main.
+  ./emsdk install sdk-upstream-main-64bit
 
-  # Set the "incoming SDK" as the active version.
-  ./emsdk activate sdk-incoming-64bit
-
-If you want to use the upstream stable branch ``master``, then replace ``-incoming-`` with ``-master-`` in the commands above.
+  # Set the "upstream-main SDK" as the active version.
+  ./emsdk activate sdk-upstream-main-64bit
 
 .. _emsdk-howto-use-own-fork:
 
@@ -255,11 +253,11 @@ How do I use my own Emscripten GitHub fork with the SDK?
 
 It is also possible to use your own fork of the Emscripten repository via the SDK. This is useful in the case when you want to make your own modifications to the Emscripten toolchain, but still keep using the SDK environment and tools.
 
-The way this works is that you first install the ``sdk-incoming`` SDK as in the :ref:`previous section <emsdk-dev-sdk>`. Then you use familiar git commands to replace this branch with the information from your own fork:
+The way this works is that you first install the ``sdk-upstream-main`` SDK as in the :ref:`previous section <emsdk-dev-sdk>`. Then you use familiar git commands to replace this branch with the information from your own fork:
 
 ::
 
-  cd emscripten/incoming
+  cd emscripten/main
 
   # Add a git remote link to your own repository.
   git remote add myremote https://github.com/mygituseraccount/emscripten.git
@@ -267,8 +265,8 @@ The way this works is that you first install the ``sdk-incoming`` SDK as in the 
   # Obtain the changes in your link.
   git fetch myremote
 
-  # Switch the emscripten-incoming tool to use your fork.
-  git checkout -b myincoming --track myremote/incoming
+  # Switch the emscripten-main tool to use your fork.
+  git checkout -b mymain --track myremote/main
 
 You can switch back and forth between remotes via the ``git checkout`` command as usual.
 
