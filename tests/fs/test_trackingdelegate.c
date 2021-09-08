@@ -70,7 +70,7 @@ int main() {
       for (var i = 0; i < trackingFlags.length; i++) {
         output += trackingFlags[i] + ' ';
       }
-      output += 'and ' + fileSize;
+      output += 'and file size ' + fileSize;
       out(output)
     };
     FS.trackingDelegate['onReadFile'] = function(path, bytesRead) {
