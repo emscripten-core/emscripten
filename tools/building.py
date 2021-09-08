@@ -460,7 +460,7 @@ def link_lld(args, target, external_symbols=None):
 
   if settings.EXCEPTION_HANDLING:
     cmd += ['-mllvm', '-wasm-enable-eh']
-  if settings.EXCEPTION_HANDLING or settings.SJLJ_HANDLING:
+  if settings.EXCEPTION_HANDLING or settings.SUPPORT_LONGJMP == 'wasm':
     cmd += ['-mllvm', '-exception-model=wasm']
 
   # For relocatable output (generating an object file) we don't pass any of the
