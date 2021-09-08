@@ -688,6 +688,7 @@ File system API
   - ``onWriteToFile`` — Indicates file is being written to and number of bytes written.
   - ``onReadFile`` — Indicates file is being read and number of bytes read.
   - ``onSeekFile`` — Indicates seeking within a file and the position.
+  - ``onCloseFile`` — Indicates a file being closed.
 
   :callback name: The name of the callback that indicates the filesystem event
 
@@ -720,6 +721,9 @@ File system API
       FS.trackingDelegate['onSeekFile'] = function(path, position) {
         out('Seek on "' + path + '" with position ' + position);
       };
+      FS.trackingDelegate['onCloseFile'] = function(path) {
+        out('Closed ' + path);
+      };
     );
 
     FILE *file;
@@ -742,6 +746,7 @@ File system API
     Opened "/test.txt" with flags 2 and size 0
     Wrote to file "/test.txt" with 11 bytes written
     Wrote to file "/test.txt" with 0 bytes written
+    Closed /test.txt
     About to move "/test.txt" to "/renamed.txt"
     Moved "/test.txt" to "/renamed.txt"
     Opened "/renamed.txt" with flags 1 and size 11
@@ -753,6 +758,7 @@ File system API
     File read returned 'hello world'
     Wrote to file "/dev/tty" with 2 bytes written
     About to delete "/renamed.txt"
+    Closed /renamed.txt
     Deleted "/renamed.txt"
 
 
