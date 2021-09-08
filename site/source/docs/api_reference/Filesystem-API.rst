@@ -724,6 +724,12 @@ File system API
       FS.trackingDelegate['onCloseFile'] = function(path) {
         out('Closed ' + path);
       };
+      FS.trackingDelegate['onMakeDirectory'] = function(path, mode) {
+        out('Created directory ' + path + ' with mode ' + mode);
+      };
+      FS.trackingDelegate['onMakeSymlink'] = function(oldpath, newpath) {
+        out('Created symlink from ' + oldpath + ' to ' + newpath);
+      };
     );
 
     FILE *file;
@@ -737,6 +743,8 @@ File system API
     printf("File read returned '%s'\n", str);
     fclose(file);
     remove("/renamed.txt");
+    mkdir("/home/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    symlink("/renamed.txt", "/file.txt");
 
 
   Example Output
@@ -760,6 +768,8 @@ File system API
     About to delete "/renamed.txt"
     Closed /renamed.txt
     Deleted "/renamed.txt"
+    Created directory /home/test with mode 16893
+    Created symlink from /renamed.txt to /file.txt
 
 
 

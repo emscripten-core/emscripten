@@ -43,3 +43,5 @@ Opened "/renamed.txt" with flags 1024 and file size 0
 Closed /renamed.txt
 About to delete "/renamed.txt"
 Deleted "/renamed.txt"
+Created directory /home/test with mode 16893
+Created symlink from /renamed.txt to /file.txt

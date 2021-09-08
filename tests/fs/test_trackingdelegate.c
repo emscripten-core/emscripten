@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <emscripten.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -67,6 +68,12 @@ int main() {
     FS.trackingDelegate['onCloseFile'] = function(path) {
       out('Closed ' + path);
     };
+    FS.trackingDelegate['onMakeDirectory'] = function(path, mode) {
+      out('Created directory ' + path + ' with mode ' + mode);
+    };
+    FS.trackingDelegate['onMakeSymlink'] = function(oldpath, newpath) {
+      out('Created symlink from ' + oldpath + ' to ' + newpath);
+    };
   );
 
   FILE *file;
@@ -108,4 +115,6 @@ int main() {
   fd = open("/renamed.txt", O_APPEND);
   close(fd);
   remove("/renamed.txt");
+  mkdir("/home/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+  symlink("/renamed.txt", "/file.txt");
 }

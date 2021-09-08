@@ -665,6 +665,15 @@ FS.staticInit();` +
       mode = mode !== undefined ? mode : 511 /* 0777 */;
       mode &= {{{ cDefine('S_IRWXUGO') }}} | {{{ cDefine('S_ISVTX') }}};
       mode |= {{{ cDefine('S_IFDIR') }}};
+      #if FS_DEBUG
+      try {
+        if (FS.trackingDelegate['onMakeDirectory']) {
+          FS.trackingDelegate['onMakeDirectory'](path, mode);
+        }
+      } catch(e) {
+        err("FS.trackingDelegate['onMakeDirectory']('"+path+"', " + mode + ") threw an exception: " + e.message);
+      }
+      #endif
       return FS.mknod(path, mode, 0);
     },
     // Creates a whole directory tree chain if it doesn't yet exist
@@ -706,6 +715,15 @@ FS.staticInit();` +
       if (!parent.node_ops.symlink) {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
+      #if FS_DEBUG
+      try {
+        if (FS.trackingDelegate['onMakeSymlink']) {
+          FS.trackingDelegate['onMakeSymlink'](oldpath, newpath);
+        }
+      } catch(e) {
+        err("FS.trackingDelegate['onMakeSymlink']('"+oldpath+"', '" + newpath + "') threw an exception: " + e.message);
+      }
+      #endif
       return parent.node_ops.symlink(parent, newname, oldpath);
     },
     rename: function(old_path, new_path) {
