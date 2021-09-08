@@ -67,7 +67,7 @@ The current set of available :term:`tools <Tool>` and :term:`SDKs <SDK>` are lis
 The :term:`SDK` targets are a convenience mechanism for specifying the full set of tools used by a particular Emscripten release. For example, the two lines below are equivalent: ::
 
   ./emsdk install sdk-upstream-main-64bit
-  ./emsdk install git-1.8.3 clang-upstream-main-64bit node-0.10.17-64bit python-2.7.5.3-64bit java-7.45-64bit emscripten-upstream-main
+  ./emsdk install git-1.8.3 clang-upstream-main-64bit node-0.10.17-64bit python-2.7.5.3-64bit java-7.45-64bit llvm-git-main-64bit emscripten-main-64bit
 
 A particular installed SDK (or tool) can then be set as :term:`active <Active
 Tool/SDK>`, meaning that it will be used when Emscripten is run. The active
@@ -253,7 +253,7 @@ How do I use my own Emscripten GitHub fork with the SDK?
 
 It is also possible to use your own fork of the Emscripten repository via the SDK. This is useful in the case when you want to make your own modifications to the Emscripten toolchain, but still keep using the SDK environment and tools.
 
-The way this works is that you first install the ``sdk-main`` SDK as in the :ref:`previous section <emsdk-dev-sdk>`. Then you use familiar git commands to replace this branch with the information from your own fork:
+The way this works is that you first install the ``sdk-upstream-main`` SDK as in the :ref:`previous section <emsdk-dev-sdk>`. Then you use familiar git commands to replace this branch with the information from your own fork:
 
 ::
 
