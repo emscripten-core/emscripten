@@ -24,8 +24,8 @@ from tools.shared import try_delete, PIPE
 from tools.shared import PYTHON, EMCC, EMAR
 from tools.utils import WINDOWS, MACOS
 from tools import shared, building, config, webassembly
-from common import RunnerCore, path_from_root, requires_native_clang, test_file
-from common import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
+from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
+from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads
 from common import read_file, read_binary, require_node, require_v8
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER
@@ -2352,6 +2352,7 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
 
   @node_pthreads
+  @no_mac('https://github.com/emscripten-core/emscripten/issues/15014')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
@@ -7554,6 +7555,13 @@ Module['onRuntimeInitialized'] = function() {
     self.do_core_test('test_asyncify_during_exit.cpp', assert_returncode=NON_ZERO)
     print('NO_ASYNC')
     self.do_core_test('test_asyncify_during_exit.cpp', emcc_args=['-DNO_ASYNC'], out_suffix='_no_async')
+
+  @no_asan('asyncify stack operations confuse asan')
+  @no_wasm2js('dynamic linking support in wasm2js')
+  def test_asyncify_main_module(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.set_setting('MAIN_MODULE', 2)
+    self.do_core_test('test_hello_world.c')
 
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm2js('TODO: lazy loading in wasm2js')
