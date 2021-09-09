@@ -414,12 +414,9 @@ var LibraryPThread = {
             }
           );
           PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
-        } else {
-          PThread.unusedWorkers.push(new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url)));
-        }
- #else
-        PThread.unusedWorkers.push(new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url)));
+        } else
  #endif
+        PThread.unusedWorkers.push(new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url)));
         return;
       }
 #endif
@@ -436,12 +433,9 @@ var LibraryPThread = {
       if (typeof trustedTypes !== 'undefined' && trustedTypes.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: function(ignored) { return pthreadMainJs } });
         PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
-      } else {
-        PThread.unusedWorkers.push(new Worker(pthreadMainJs));
-      }
-#else
-      PThread.unusedWorkers.push(new Worker(pthreadMainJs));
+      } else
 #endif
+      PThread.unusedWorkers.push(new Worker(pthreadMainJs));
     },
 
     getNewWorker: function() {

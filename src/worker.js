@@ -148,24 +148,18 @@ self.onmessage = function(e) {
         if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
           var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return e.data.urlOrBlob } });
           importScripts(p.createScriptURL('ignored'));
-        } else {
-          importScripts(e.data.urlOrBlob);
-        }
-#else
-        importScripts(e.data.urlOrBlob);
+        } else
 #endif
+        importScripts(e.data.urlOrBlob);
       } else {
         var objectUrl = URL.createObjectURL(e.data.urlOrBlob);
 #if TRUSTED_TYPES
         if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
           var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return objectUrl } });
           importScripts(p.createScriptURL('ignored'));
-        } else {
-          importScripts(objectUrl);
-        }
-#else
-        importScripts(objectUrl);
+        } else
 #endif
+        importScripts(objectUrl);
         URL.revokeObjectURL(objectUrl);
       }
 #if MODULARIZE
