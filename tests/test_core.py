@@ -2325,6 +2325,7 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_atexit(self):
+    # Test whether we can terminate a running thread during atexit.
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('pthread/test_pthread_atexit.c')

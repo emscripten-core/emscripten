@@ -3,33 +3,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "emscripten.h"
-#include "emscripten/threading.h"
+pthread_mutex_t count_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t count_nonzero = PTHREAD_COND_INITIALIZER;
+unsigned count;
 
-static _Atomic int threadCounter = 0;
-static _Atomic int running = 1;
-static pthread_t thread;
+pthread_t thread;
 
 void *workerThread(void* arg) {
-  threadCounter++;
-
-  while (running)
-    emscripten_thread_sleep(1000);
-
-  threadCounter--;
+  pthread_mutex_lock(&count_lock);
+  while (count == 0)
+    pthread_cond_wait(&count_nonzero, &count_lock);
+  count--;
+  pthread_mutex_unlock(&count_lock);
 
   return NULL;
 }
 
 void terminateThread() {
-  running = 0;
+  pthread_mutex_lock(&count_lock);
+  if (count == 0)
+    pthread_cond_signal(&count_nonzero);
+  count++;
+  pthread_mutex_unlock(&count_lock);
 
   int res = 0;
   int rc = pthread_join(thread, (void**)&res);
   assert(rc == 0);
   assert(res == 0);
 
-  printf("done waiting - counter is: %d\n", threadCounter);
+  printf("done waiting - counter is: %d\n", count);
 }
 
 int main(int argc, char* argv[]) {
