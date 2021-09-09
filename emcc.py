@@ -55,7 +55,7 @@ from tools.utils import read_file, write_file, read_binary
 
 logger = logging.getLogger('emcc')
 
-# endings = dot + a suffix, safe to test by  filename.endswith(endings)
+# endings = dot + a suffix, compare against result of shared.suffix()
 C_ENDINGS = ('.c', '.i')
 CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii')
 OBJC_ENDINGS = ('.m', '.mi')
@@ -753,7 +753,7 @@ def emsdk_ldflags(user_args):
   library_paths = [
      shared.Cache.get_lib_dir(absolute=True)
   ]
-  ldflags = ['-L' + l for l in library_paths]
+  ldflags = [f'-L{l}' for l in library_paths]
 
   if '-nostdlib' in user_args:
     return ldflags
@@ -1775,7 +1775,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     state.forced_stdlibs.append('libfetch')
     settings.JS_LIBRARIES.append((0, 'library_fetch.js'))
     if settings.USE_PTHREADS:
-      settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
+      settings.FETCH_WORKER_FILE = unsuffixed_basename(target) + '.fetch.js'
 
   if settings.DEMANGLE_SUPPORT:
     settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
@@ -1894,7 +1894,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     building.user_requested_exports.add('_emscripten_current_thread_process_queued_calls')
 
     # set location of worker.js
-    settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
+    settings.PTHREAD_WORKER_FILE = unsuffixed_basename(target) + '.worker.js'
   else:
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
@@ -2090,7 +2090,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.MEM_INIT_IN_WASM = True
 
   # wasm side modules have suffix .wasm
-  if settings.SIDE_MODULE and target.endswith('.js'):
+  if settings.SIDE_MODULE and shared.suffix(target) == '.js':
     diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
   sanitize = set()
@@ -2350,10 +2350,11 @@ def phase_compile_inputs(options, state, newargs, input_files):
   def use_cxx(src):
     if 'c++' in language_mode or run_via_emxx:
       return True
+    suffix = shared.suffix(src)
     # Next consider the filename
-    if src.endswith(C_ENDINGS + OBJC_ENDINGS):
+    if suffix in C_ENDINGS + OBJC_ENDINGS:
       return False
-    if src.endswith(CXX_ENDINGS):
+    if suffix in CXX_ENDINGS:
       return True
     # Finally fall back to the default
     if settings.DEFAULT_TO_CXX:
@@ -2393,7 +2394,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
   if state.mode == Mode.PCH:
     headers = [header for _, header in input_files]
     for header in headers:
-      if not header.endswith(HEADER_ENDINGS):
+      if not shared.suffix(header) in HEADER_ENDINGS:
         exit_with_error(f'cannot mix precompiled headers with non-header inputs: {headers} : {header}')
       cmd = get_clang_command(header)
       if options.output_file:
@@ -2423,7 +2424,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
   def compile_source_file(i, input_file):
-    logger.debug('compiling source file: ' + input_file)
+    logger.debug(f'compiling source file: {input_file}')
     output_file = get_object_filename(input_file)
     if state.mode not in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
       linker_inputs.append((i, output_file))
@@ -2452,10 +2453,10 @@ def phase_compile_inputs(options, state, newargs, input_files):
     if file_suffix in SOURCE_ENDINGS + ASSEMBLY_ENDINGS or (state.has_dash_c and file_suffix == '.bc'):
       compile_source_file(i, input_file)
     elif file_suffix in DYNAMICLIB_ENDINGS:
-      logger.debug('using shared library: ' + input_file)
+      logger.debug(f'using shared library: {input_file}')
       linker_inputs.append((i, input_file))
     elif building.is_ar(input_file):
-      logger.debug('using static library: ' + input_file)
+      logger.debug(f'using static library: {input_file}')
       ensure_archive_index(input_file)
       linker_inputs.append((i, input_file))
     elif language_mode:
@@ -2464,7 +2465,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       exit_with_error('-E or -x required when input is from standard input')
     else:
       # Default to assuming the inputs are object files and pass them to the linker
-      logger.debug('using object file: ' + input_file)
+      logger.debug(f'using object file: {input_file}')
       linker_inputs.append((i, input_file))
 
   return linker_inputs
@@ -2586,7 +2587,7 @@ def phase_source_transforms(options, target):
       file_args.append('--use-preload-plugins')
     if not settings.ENVIRONMENT_MAY_BE_NODE:
       file_args.append('--no-node')
-    file_code = shared.check_call([shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
+    file_code = shared.check_call([shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args, stdout=PIPE).stdout
     options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
 
   # Apply pre and postjs files
@@ -3529,7 +3530,7 @@ def generate_worker_js(target, js_target, target_basename):
 
   # compiler output goes in .worker.js file
   else:
-    move_file(js_target, unsuffixed(js_target) + '.worker.js')
+    move_file(js_target, shared.replace_suffix(js_target, '.worker.js'))
     worker_target_basename = target_basename + '.worker'
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 

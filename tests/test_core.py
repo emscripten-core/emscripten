@@ -1735,7 +1735,7 @@ int main() {
 
   def test_emscripten_get_compiler_setting(self):
     src = test_file('core/emscripten_get_compiler_setting.c')
-    output = shared.unsuffixed(src) + '.out'
+    output = shared.replace_suffix(src, '.out')
     # with assertions, a nice message is shown
     self.set_setting('ASSERTIONS')
     self.do_runf(src, 'You must build with -s RETAIN_COMPILER_SETTINGS=1', assert_returncode=NON_ZERO)
@@ -3532,7 +3532,7 @@ ok
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.emcc_args.copy()
     if not expected:
-      outfile = shared.unsuffixed(main) + '.out'
+      outfile = shared.replace_suffix(main, '.out')
       expected = read_file(outfile)
     if not side:
       side, ext = os.path.splitext(main)
