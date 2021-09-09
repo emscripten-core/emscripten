@@ -666,12 +666,8 @@ FS.staticInit();` +
       mode &= {{{ cDefine('S_IRWXUGO') }}} | {{{ cDefine('S_ISVTX') }}};
       mode |= {{{ cDefine('S_IFDIR') }}};
 #if FS_DEBUG
-      try {
-        if (FS.trackingDelegate['onMakeDirectory']) {
-          FS.trackingDelegate['onMakeDirectory'](path, mode);
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['onMakeDirectory']('" + path + "', " + mode + ") threw an exception: " + e.message);
+      if (FS.trackingDelegate['onMakeDirectory']) {
+        FS.trackingDelegate['onMakeDirectory'](path, mode);
       }
 #endif
       return FS.mknod(path, mode, 0);
@@ -716,12 +712,8 @@ FS.staticInit();` +
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
 #if FS_DEBUG
-      try {
-        if (FS.trackingDelegate['onMakeSymlink']) {
-          FS.trackingDelegate['onMakeSymlink'](oldpath, newpath);
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['onMakeSymlink']('" + oldpath + "', '" + newpath + "') threw an exception: " + e.message);
+      if (FS.trackingDelegate['onMakeSymlink']) {
+        FS.trackingDelegate['onMakeSymlink'](oldpath, newpath);
       }
 #endif
       return parent.node_ops.symlink(parent, newname, oldpath);
@@ -796,12 +788,8 @@ FS.staticInit();` +
         }
       }
 #if FS_DEBUG
-      try {
-        if (FS.trackingDelegate['willMovePath']) {
-          FS.trackingDelegate['willMovePath'](old_path, new_path);
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['willMovePath']('" + old_path + "', '" + new_path + "') threw an exception: " + e.message);
+      if (FS.trackingDelegate['willMovePath']) {
+        FS.trackingDelegate['willMovePath'](old_path, new_path);
       }
 #endif
       // remove the node from the lookup hash
@@ -817,10 +805,8 @@ FS.staticInit();` +
         FS.hashAddNode(old_node);
       }
 #if FS_DEBUG
-      try {
-        if (FS.trackingDelegate['onMovePath']) FS.trackingDelegate['onMovePath'](old_path, new_path);
-      } catch(e) {
-        err("FS.trackingDelegate['onMovePath']('" + old_path + "', '" + new_path + "') threw an exception: " + e.message);
+      if (FS.trackingDelegate['onMovePath']) {
+        FS.trackingDelegate['onMovePath'](old_path, new_path);
       }
 #endif
     },
@@ -840,21 +826,15 @@ FS.staticInit();` +
         throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
       }
 #if FS_DEBUG
-      try {
-        if (FS.trackingDelegate['willDeletePath']) {
-          FS.trackingDelegate['willDeletePath'](path);
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['willDeletePath']('" + path + "') threw an exception: " + e.message);
+      if (FS.trackingDelegate['willDeletePath']) {
+        FS.trackingDelegate['willDeletePath'](path);
       }
 #endif
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
 #if FS_DEBUG
-      try {
-        if (FS.trackingDelegate['onDeletePath']) FS.trackingDelegate['onDeletePath'](path);
-      } catch(e) {
-        err("FS.trackingDelegate['onDeletePath']('" + path + "') threw an exception: " + e.message);
+      if (FS.trackingDelegate['onDeletePath']) {
+        FS.trackingDelegate['onDeletePath'](path);
       }
 #endif
     },
@@ -885,21 +865,15 @@ FS.staticInit();` +
         throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
       }
 #if FS_DEBUG
-      try {
-        if (FS.trackingDelegate['willDeletePath']) {
-          FS.trackingDelegate['willDeletePath'](path);
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['willDeletePath']('" + path + "') threw an exception: " + e.message);
+      if (FS.trackingDelegate['willDeletePath']) {
+        FS.trackingDelegate['willDeletePath'](path);
       }
 #endif
       parent.node_ops.unlink(parent, name);
       FS.destroyNode(node);
 #if FS_DEBUG
-      try {
-        if (FS.trackingDelegate['onDeletePath']) FS.trackingDelegate['onDeletePath'](path);
-      } catch(e) {
-        err("FS.trackingDelegate['onDeletePath']('" + path + "') threw an exception: " + e.message);
+      if (FS.trackingDelegate['onDeletePath']) {
+        FS.trackingDelegate['onDeletePath'](path);
       }
 #endif
     },
@@ -1121,12 +1095,8 @@ FS.staticInit();` +
         }
       }
 #if FS_DEBUG
-      try {
-        if (FS.trackingDelegate['onOpenFile']) {
-          FS.trackingDelegate['onOpenFile'](path, trackingFlags);
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['onOpenFile']('" + path + "', " + trackingFlags + ") threw an exception: " + e.message);
+      if (FS.trackingDelegate['onOpenFile']) {
+        FS.trackingDelegate['onOpenFile'](path, trackingFlags);
       }
 #endif
       return stream;
@@ -1147,12 +1117,8 @@ FS.staticInit();` +
       }
       stream.fd = null;
 #if FS_DEBUG
-      try {
-        if (stream.path && FS.trackingDelegate['onCloseFile']) {
-          FS.trackingDelegate['onCloseFile'](stream.path);
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['onCloseFile']('" + stream.path + "') threw an exception: " + e.message);
+      if (stream.path && FS.trackingDelegate['onCloseFile']) {
+        FS.trackingDelegate['onCloseFile'](stream.path);
       }
 #endif
     },
@@ -1172,12 +1138,8 @@ FS.staticInit();` +
       stream.position = stream.stream_ops.llseek(stream, offset, whence);
       stream.ungotten = [];
 #if FS_DEBUG
-      try {
-        if (stream.path && FS.trackingDelegate['onSeekFile']) {
-          FS.trackingDelegate['onSeekFile'](stream.path, stream.position, whence);
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['onSeekFile']('" + stream.path + "', " + stream.position + ", " + whence + ") threw an exception: " + e.message);
+      if (stream.path && FS.trackingDelegate['onSeekFile']) {
+        FS.trackingDelegate['onSeekFile'](stream.path, stream.position, whence);
       }
 #endif
       return stream.position;
@@ -1210,12 +1172,8 @@ FS.staticInit();` +
       var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position);
       if (!seeking) stream.position += bytesRead;
 #if FS_DEBUG
-      try {
-        if (stream.path && FS.trackingDelegate['onReadFile']) {
-          FS.trackingDelegate['onReadFile'](stream.path, bytesRead);
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['onReadFile']('" + stream.path + "', " + bytesRead + ") threw an exception: " + e.message);
+      if (stream.path && FS.trackingDelegate['onReadFile']) {
+        FS.trackingDelegate['onReadFile'](stream.path, bytesRead);
       }
 #endif
       return bytesRead;
@@ -1252,13 +1210,8 @@ FS.staticInit();` +
       var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
 #if FS_DEBUG
-      try {
-        if (stream.path && FS.trackingDelegate['onWriteToFile']) {
-          FS.trackingDelegate['onWriteToFile'](stream.path, bytesWritten);
-
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['onWriteToFile']('" + stream.path + "', " + bytesWritten + ") threw an exception: " + e.message);
+      if (stream.path && FS.trackingDelegate['onWriteToFile']) {
+        FS.trackingDelegate['onWriteToFile'](stream.path, bytesWritten);
       }
 #endif
       return bytesWritten;
