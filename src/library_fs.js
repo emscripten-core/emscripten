@@ -400,7 +400,7 @@ FS.staticInit();` +
     // SOCKFS is completed.
     createStream: (stream, fd_start, fd_end) => {
       if (!FS.FSStream) {
-        FS.FSStream = /** @constructor */ function(){};
+        FS.FSStream = /** @constructor */ function(){ this.shared = {}; };
         FS.FSStream.prototype = {
           object: {
             get: function() { return this.node; },
@@ -414,7 +414,11 @@ FS.staticInit();` +
           },
           isAppend: {
             get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); }
-          }
+          },
+          get flags() { return this.shared.flags; },
+          set flags(value) { this.shared.flags = value; },
+          get position() { return this.shared.position; },
+          set position(value) { this.shared.position = value; },
         };
       }
       // clone it, so we can return an instance of FSStream
