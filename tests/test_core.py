@@ -24,8 +24,8 @@ from tools.shared import try_delete, PIPE
 from tools.shared import PYTHON, EMCC, EMAR
 from tools.utils import WINDOWS, MACOS
 from tools import shared, building, config, webassembly
-from common import RunnerCore, path_from_root, requires_native_clang, test_file
-from common import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
+from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
+from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads
 from common import read_file, read_binary, require_node, require_v8
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER
@@ -2352,6 +2352,7 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
 
   @node_pthreads
+  @no_mac('https://github.com/emscripten-core/emscripten/issues/15014')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
