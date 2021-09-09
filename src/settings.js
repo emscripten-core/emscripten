@@ -1955,6 +1955,12 @@ var AUTOLOAD_DYLIBS = 1;
 // though these syscalls will fail (or do nothing) at runtime.
 var ALLOW_UNIMPLEMENTED_SYSCALLS = 1;
 
+// Allow calls to Worker(...) and importScripts(...) to be Trusted Types compatible.
+// Trusted Types is a Web Platform feature designed to mitigate DOM XSS by restricting
+// the usage of DOM sink APIs. See https://w3c.github.io/webappsec-trusted-types/.
+// [link]
+var TRUSTED_TYPES = 0;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
