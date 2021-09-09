@@ -183,6 +183,8 @@ LibraryManager.library = {
   },
   vfork: 'fork',
   posix_spawn: 'fork',
+  popen: 'fork',
+  pclose: 'fork',
 
   setgroups__deps: ['$setErrNo', 'sysconf'],
   setgroups__unimplemented: true,
