@@ -287,5 +287,14 @@ if (isMemoryGrowthAllowed) {
 
 //
 
+  const arrayTestObj = new TheModule.ArrayArgumentTest();
+  const bufferAddr = TheModule._malloc(35);
+  TheModule.stringToUTF8('I should match the member variable', bufferAddr, 35);
+  const arrayTestResult = arrayTestObj.byteArrayTest(bufferAddr);
+  TheModule._free(bufferAddr);
+  const arrayDomStringResult = arrayTestObj.domStringTest('I should match the member variable');
+  console.log(arrayTestResult);
+  console.log(arrayDomStringResult);
+
 console.log('\ndone.')
 })();
