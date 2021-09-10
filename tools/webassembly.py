@@ -135,6 +135,11 @@ class ExternType(IntEnum):
   EVENT = 4
 
 
+class DylinkType(IntEnum):
+  MEM_INFO = 1
+  NEEDED = 2
+
+
 Section = namedtuple('Section', ['type', 'size', 'offset'])
 Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
 Import = namedtuple('Import', ['kind', 'module', 'field'])
@@ -178,7 +183,13 @@ class Module:
     return Limits(flags, initial, maximum)
 
   def seek(self, offset):
-    self.buf.seek(offset)
+    return self.buf.seek(offset)
+
+  def tell(self):
+    return self.buf.tell()
+
+  def skip(self, count):
+    self.buf.seek(count, os.SEEK_CUR)
 
   def sections(self):
     """Generator that lazily returns sections from the wasm file."""
@@ -200,18 +211,43 @@ def parse_dylink_section(wasm_file):
   module.seek(dylink_section.offset)
   # section name
   section_name = module.readString()
-  assert section_name == 'dylink'
-  mem_size = module.readULEB()
-  mem_align = module.readULEB()
-  table_size = module.readULEB()
-  table_align = module.readULEB()
-
   needed = []
-  needed_count = module.readULEB()
-  while needed_count:
-    libname = module.readString()
-    needed.append(libname)
-    needed_count -= 1
+
+  if section_name == 'dylink':
+    mem_size = module.readULEB()
+    mem_align = module.readULEB()
+    table_size = module.readULEB()
+    table_align = module.readULEB()
+
+    needed_count = module.readULEB()
+    while needed_count:
+      libname = module.readString()
+      needed.append(libname)
+      needed_count -= 1
+  elif section_name == 'dylink.0':
+    section_end = dylink_section.offset + dylink_section.size
+    while module.tell() < section_end:
+      subsection_type = module.readULEB()
+      subsection_size = module.readULEB()
+      end = module.tell() + subsection_size
+      if subsection_type == DylinkType.MEM_INFO:
+        mem_size = module.readULEB()
+        mem_align = module.readULEB()
+        table_size = module.readULEB()
+        table_align = module.readULEB()
+      elif subsection_type == DylinkType.NEEDED:
+        needed_count = module.readULEB()
+        while needed_count:
+          libname = module.readString()
+          needed.append(libname)
+          needed_count -= 1
+      else:
+        print(f'unknown subsection: {subsection_type}')
+        # ignore unknown subsections
+        module.skip(subsection_size)
+      assert(module.tell() == end)
+  else:
+    utils.exit_with_error('error parsing shared library')
 
   return Dylink(mem_size, mem_align, table_size, table_align, needed)
 

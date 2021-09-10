@@ -1266,7 +1266,7 @@ def is_wasm_dylib(filename):
   section = next(module.sections())
   if section.type == webassembly.SecType.CUSTOM:
     module.seek(section.offset)
-    if module.readString() == 'dylink':
+    if module.readString() in ('dylink', 'dylink.0'):
       return True
   return False
 
