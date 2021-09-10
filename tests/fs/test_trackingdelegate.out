@@ -33,8 +33,6 @@ Wrote to file "/dev/tty" with 18 bytes written
 read returned test
 Wrote to file "/dev/tty" with 1 bytes written
 Closed /renamed.txt
-Opened "/renamed.txt" with flags O_CREAT O_RDONLY and file size 12
-Closed /renamed.txt
 Opened "/renamed.txt" with flags O_EXCL O_WRONLY and file size 12
 Closed /renamed.txt
 Opened "/renamed.txt" with flags O_TRUNC O_RDONLY and file size 0
