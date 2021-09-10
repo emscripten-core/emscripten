@@ -123,7 +123,7 @@ int main() {
   read(fd, output, 100);
   printf("read returned %s\n", output);
   close(fd);
-  fd = open("/renamed.txt", O_CREAT);
+  fd = open("/renamed.txt", O_CREAT, 0666);
   close(fd);
   fd = open("/renamed.txt", O_EXCL | O_WRONLY);
   close(fd);
