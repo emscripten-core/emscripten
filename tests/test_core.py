@@ -581,7 +581,8 @@ class TestCoreBase(RunnerCore):
 
   @no_asan('asan errors on corner cases we check')
   def test_aligned_alloc(self):
-    self.do_runf(test_file('test_aligned_alloc.c'), '')
+    self.do_runf(test_file('test_aligned_alloc.c'), '',
+                 emcc_args=['-Wno-non-power-of-two-alignment'])
 
   def test_unsigned(self):
     src = '''
