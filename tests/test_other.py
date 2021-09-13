@@ -10950,3 +10950,24 @@ void foo() {}
     self.assertContained('closure compiler', err)
     self.assertContained(sys.executable, err)
     self.assertContained('not execute properly!', err)
+
+  def test_node_unhandled_rejection(self):
+    # Test that the NODEJS_CATCH_REJECTION option, which we enable
+    # by default in the test suite, does it job and turns unhandled
+    # rejections into aborts.
+    version = self.run_process(config.NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
+    version = [int(v) for v in version.replace('v', '').replace('-pre', '').split('.')]
+    if version[0] >= 15:
+      self.skipTest('This setting only works on with node 14 and older')
+
+    create_file('main.c', '''
+    #include <emscripten.h>
+
+    int main() {
+      EM_ASM(a = missing);
+      return 0;
+    }
+    ''')
+    self.run_process([EMCC, '-sNODEJS_CATCH_REJECTION', 'main.c'])
+    output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContained('abort(ReferenceError: missing is not defined)', output)

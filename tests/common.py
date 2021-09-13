@@ -393,12 +393,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def setUp(self):
     super().setUp()
-    self.settings_mods = {}
-    self.emcc_args = ['-Werror']
+    # In the test environment to pass `--unhandled-rejections=throw` to
+    # get the node v15 behaviour.  This means can avoid setting
+    # `NODEJS_CATCH_REJECTION` which is enabled by default but can
+    # loose stack trace information because it catches and rethrows
+    # all uncaught promise rejections.
+    self.settings_mods = {'NODEJS_CATCH_REJECTION': 0}
+    self.emcc_args = ['-Werror', '-Wno-unused-command-line-argument']
     self.node_args = [
       # Increate stack trace limit to maximise usefulness of test failure reports
       '--stack-trace-limit=50',
-      # Opt in to node v15 default behaviour:
+      # Opt into node v15 default behaviour:
       # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
       '--unhandled-rejections=throw',
       # Include backtrace for all uncuaght exceptions (not just Error).

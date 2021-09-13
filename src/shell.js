@@ -195,7 +195,13 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 #if NODEJS_CATCH_REJECTION
-  process['on']('unhandledRejection', abort);
+  // The default behaviour for unhandled rejections changed from emitting
+  // a warning to thowing in node v15.  For older versions of node we
+  // don't want unhandled rejections to be ignored in this way.
+  // See https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+  if (process['versions']['node'].split('.')[0] < 15) {
+    process['on']('unhandledRejection', abort);
+  }
 #endif
 
   quit_ = function(status, toThrow) {
