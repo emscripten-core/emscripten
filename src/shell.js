@@ -158,12 +158,12 @@ var nodeFS;
 var nodePath;
 
 if (ENVIRONMENT_IS_NODE) {
-#if ENVIRONMENT
-#if ASSERTIONS
-  if (!(typeof process === 'object' && typeof require === 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-#endif
-#endif
   if (ENVIRONMENT_IS_WORKER) {
+#if ASSERTIONS
+    if ((!typeof process === 'object' && typeof require === 'function')) {
+      throw new Error("node's require function not found, but is needed in this configuration");
+    }
+#endif
     scriptDirectory = require('path').dirname(scriptDirectory) + '/';
   } else {
     scriptDirectory = __dirname + '/';
@@ -232,10 +232,14 @@ if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_SHELL || ASSERTIONS
 if (ENVIRONMENT_IS_SHELL) {
 
-#if ENVIRONMENT
-#if ASSERTIONS
-  if ((typeof process === 'object' && typeof require === 'function') || typeof window === 'object' || typeof importScripts === 'function') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-#endif
+#if ENVIRONMENT && ASSERTIONS
+  if ((typeof process === 'object'
+       && typeof process.versions === 'object'
+       && typeof process.versions.node === 'string') /* NODE */
+    || typeof window === 'object' /* WEB */
+    || typeof importScripts === 'function' /* WORKER */) {
+    throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  }
 #endif
 
   if (typeof read != 'undefined') {
