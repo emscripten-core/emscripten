@@ -4,7 +4,7 @@
 C++ exceptions support
 ==============================
 
-By default, exception support is disabled in Emscripten to avoid overhead.
+By default, exception catching is disabled in Emscripten to avoid overhead.
 
 For example, if you compile the following program:
 
