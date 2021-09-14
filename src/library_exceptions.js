@@ -161,20 +161,20 @@ var LibraryExceptions = {
   },
 
   $exception_addRef: function (info) {
-#if EXCEPTION_DEBUG
-    err('addref ' + info.excPtr);
+#if TRACING
+    trace('EXCEPTION', 'addref ' + info.excPtr);
 #endif
     info.add_ref();
   },
 
   $exception_decRef__deps: ['__cxa_free_exception'
-#if EXCEPTION_DEBUG
+#if ASSERTIONS
     , '$exceptionLast', '$exceptionCaught'
 #endif
   ],
   $exception_decRef: function(info) {
-#if EXCEPTION_DEBUG
-    err('decref ' + info.excPtr);
+#if TRACING
+    trace('EXCEPTION', 'decref ' + info.excPtr);
 #endif
     // A rethrown exception can reach refcount 0; it must not be discarded
     // Its next handler will clear the rethrown flag and addRef it, prior to
@@ -186,8 +186,8 @@ var LibraryExceptions = {
         {{{ makeDynCall('ii', 'destructor') }}}(info.excPtr);
       }
       ___cxa_free_exception(info.excPtr);
-#if EXCEPTION_DEBUG
-      err('decref freeing exception ' + [info.excPtr, exceptionLast, 'stack', exceptionCaught]);
+#if TRACING
+      trace('EXCEPTION', 'decref freeing exception ' + [info.excPtr, exceptionLast, 'stack', exceptionCaught]);
 #endif
     }
   },
@@ -232,8 +232,8 @@ var LibraryExceptions = {
   __cxa_throw__sig: 'viii',
   __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount'],
   __cxa_throw: function(ptr, type, destructor) {
-#if EXCEPTION_DEBUG
-    err('Compiled code throwing an exception, ' + [ptr,type,destructor]);
+#if TRACING
+    trace('EXCEPTION', 'Compiled code throwing an exception, ' + [ptr,type,destructor]);
 #endif
     var info = new ExceptionInfo(ptr);
     // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
@@ -264,8 +264,8 @@ var LibraryExceptions = {
     } else {
       catchInfo.free();
     }
-#if EXCEPTION_DEBUG
-    err('Compiled code RE-throwing an exception, popped ' +
+#if TRACING
+    trace('EXCEPTION', 'Compiled code RE-throwing an exception, popped ' +
       [ptr, exceptionLast, 'stack', exceptionCaught]);
 #endif
     exceptionLast = ptr;
@@ -287,8 +287,8 @@ var LibraryExceptions = {
     }
     info.set_rethrown(false);
     exceptionCaught.push(catchInfo);
-#if EXCEPTION_DEBUG
-    err('cxa_begin_catch ' + [ptr, 'stack', exceptionCaught]);
+#if TRACING
+    trace('EXCEPTION', 'cxa_begin_catch ' + [ptr, 'stack', exceptionCaught]);
 #endif
     exception_addRef(info);
     return catchInfo.get_exception_ptr();
@@ -310,8 +310,8 @@ var LibraryExceptions = {
     // Call destructor if one is registered then clear it.
     var catchInfo = exceptionCaught.pop();
 
-#if EXCEPTION_DEBUG
-    err('cxa_end_catch popped ' + [catchInfo, exceptionLast, 'stack', exceptionCaught]);
+#if TRACING
+    trace('EXCEPTION', 'cxa_end_catch popped ' + [catchInfo, exceptionLast, 'stack', exceptionCaught]);
 #endif
     exception_decRef(catchInfo.get_exception_info());
     catchInfo.free();
@@ -320,8 +320,8 @@ var LibraryExceptions = {
 
   __cxa_get_exception_ptr__deps: ['$CatchInfo'],
   __cxa_get_exception_ptr: function(ptr) {
-#if EXCEPTION_DEBUG
-    err('cxa_get_exception_ptr ' + ptr);
+#if TRACING
+    trace('EXCEPTION', 'cxa_get_exception_ptr ' + ptr);
 #endif
     return new CatchInfo(ptr).get_exception_ptr();
   },
@@ -388,8 +388,8 @@ var LibraryExceptions = {
     var typeArray = Array.prototype.slice.call(arguments);
 
     // can_catch receives a **, add indirection
-#if EXCEPTION_DEBUG
-    out("can_catch on " + [thrown]);
+#if TRACING
+    trace('EXCEPTION', "can_catch on " + [thrown]);
 #endif
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
@@ -402,8 +402,8 @@ var LibraryExceptions = {
         break;
       }
       if ({{{ exportedAsmFunc('___cxa_can_catch') }}}(caughtType, thrownType, catchInfo.get_adjusted_ptr_addr())) {
-#if EXCEPTION_DEBUG
-        out("  can_catch found " + [catchInfo.get_adjusted_ptr(), caughtType]);
+#if TRACING
+        trace('EXCEPTION', '  can_catch found ' + [catchInfo.get_adjusted_ptr(), caughtType]);
 #endif
         {{{ makeStructuralReturn(['catchInfo.ptr', 'caughtType']) }}};
       }
@@ -415,8 +415,8 @@ var LibraryExceptions = {
   __resumeException: function(catchInfoPtr) {
     var catchInfo = new CatchInfo(catchInfoPtr);
     var ptr = catchInfo.get_base_ptr();
-#if EXCEPTION_DEBUG
-    out("Resuming exception " + [ptr, exceptionLast]);
+#if TRACING
+    trace('EXCEPTION', 'Resuming exception ' + [ptr, exceptionLast]);
 #endif
     if (!exceptionLast) { exceptionLast = ptr; }
     catchInfo.free();

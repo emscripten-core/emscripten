@@ -2430,16 +2430,16 @@ var LibraryJSEvents = {
         var prevViewport = canvas.GLctxObject.GLctx.getParameter(0xBA2 /* GL_VIEWPORT */);
         // TODO: Perhaps autoResizeViewport should only be true if FBO 0 is currently active?
         autoResizeViewport = (prevViewport[0] === 0 && prevViewport[1] === 0 && prevViewport[2] === canvas.width && prevViewport[3] === canvas.height);
-#if GL_DEBUG
-        err('Resizing canvas from ' + canvas.width + 'x' + canvas.height + ' to ' + width + 'x' + height + '. Previous GL viewport size was ' 
+#if TRACING
+        trace(GL, 'Resizing canvas from ' + canvas.width + 'x' + canvas.height + ' to ' + width + 'x' + height + '. Previous GL viewport size was ' 
           + prevViewport + ', so autoResizeViewport=' + autoResizeViewport);
 #endif
       }
       canvas.width = width;
       canvas.height = height;
       if (autoResizeViewport) {
-#if GL_DEBUG
-        err('Automatically resizing GL viewport to cover whole render target ' + width + 'x' + height);
+#if TRACING
+        trace(GL, 'Automatically resizing GL viewport to cover whole render target ' + width + 'x' + height);
 #endif
         // TODO: Add -s CANVAS_RESIZE_SETS_GL_VIEWPORT=0/1 option (default=1). This is commonly done and several graphics engines depend on this,
         // but this can be quite disruptive.
@@ -2450,8 +2450,8 @@ var LibraryJSEvents = {
       _emscripten_set_offscreencanvas_size_on_target_thread(targetThread, target, width, height);
       return {{{ cDefine('EMSCRIPTEN_RESULT_DEFERRED') }}}; // This will have to be done asynchronously
     } else {
-#if GL_DEBUG
-      err('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
+#if TRACING
+      trace(GL, 'canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     }
@@ -2494,8 +2494,8 @@ var LibraryJSEvents = {
   emscripten_set_canvas_element_size__deps: ['$JSEvents', 'emscripten_set_canvas_element_size_calling_thread', 'emscripten_set_canvas_element_size_main_thread', '$findCanvasEventTarget'],
   emscripten_set_canvas_element_size__sig: 'iiii',
   emscripten_set_canvas_element_size: function(target, width, height) {
-#if GL_DEBUG
-    err('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
+#if TRACING
+    trace(GL, 'emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
 #endif
     var canvas = findCanvasEventTarget(target);
     if (canvas) {
@@ -2508,8 +2508,8 @@ var LibraryJSEvents = {
   emscripten_set_canvas_element_size__deps: ['$JSEvents', '$findCanvasEventTarget'],
   emscripten_set_canvas_element_size__sig: 'iiii',
   emscripten_set_canvas_element_size: function(target, width, height) {
-#if GL_DEBUG
-    err('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
+#if TRACING
+    trace(GL, 'emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
 #endif
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
@@ -2524,8 +2524,8 @@ var LibraryJSEvents = {
 
   $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size'],
   $setCanvasElementSize: function(target, width, height) {
-#if GL_DEBUG
-    err('setCanvasElementSize(target='+target+',width='+width+',height='+height);
+#if TRACING
+    trace(GL, 'setCanvasElementSize(target='+target+',width='+width+',height='+height);
 #endif
     if (!target.controlTransferredOffscreen) {
       target.width = width;
@@ -2562,8 +2562,8 @@ var LibraryJSEvents = {
       {{{ makeSetValue('width', 0, 'canvas.width', 'i32') }}};
       {{{ makeSetValue('height', 0, 'canvas.height', 'i32') }}};
     } else {
-#if GL_DEBUG
-      err('canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
+#if TRACING
+      trace(GL, 'canvas.controlTransferredOffscreen but we do not own the canvas, and do not know who has (no canvas.canvasSharedPtr present, an internal bug?)!\n');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     }

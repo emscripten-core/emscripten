@@ -428,7 +428,7 @@ var LibraryGLEmulation = {
       // tandem with the rest of the program, by itself it cannot suffice.
       // Note that we need to remember shader types for this rewriting, saving sources makes it easier to debug.
       GL.shaderInfos = {};
-#if GL_DEBUG
+#if TRACING
       GL.shaderSources = {};
       GL.shaderOriginalSources = {};
 #endif
@@ -453,7 +453,7 @@ var LibraryGLEmulation = {
       var glShaderSource = _glShaderSource;
       _glShaderSource = _emscripten_glShaderSource = function _glShaderSource(shader, count, string, length) {
         var source = GL.getSource(shader, count, string, length);
-#if GL_DEBUG
+#if TRACING
         out("glShaderSource: Input: \n" + source);
         GL.shaderOriginalSources[shader] = source;
 #endif
@@ -556,7 +556,7 @@ var LibraryGLEmulation = {
           }
           source = ensurePrecision(source);
         }
-#if GL_DEBUG
+#if TRACING
         GL.shaderSources[shader] = source;
         out("glShaderSource: Output: \n" + source);
 #endif
@@ -567,12 +567,12 @@ var LibraryGLEmulation = {
       var glCompileShader = _glCompileShader;
       _glCompileShader = _emscripten_glCompileShader = function _glCompileShader(shader) {
         GLctx.compileShader(GL.shaders[shader]);
-#if GL_DEBUG
+#if TRACING
         if (!GLctx.getShaderParameter(GL.shaders[shader], GLctx.COMPILE_STATUS)) {
-          err('Failed to compile shader: ' + GLctx.getShaderInfoLog(GL.shaders[shader]));
-          err('Info: ' + JSON.stringify(GL.shaderInfos[shader]));
-          err('Original source: ' + GL.shaderOriginalSources[shader]);
-          err('Source: ' + GL.shaderSources[shader]);
+          trace('GL', 'Failed to compile shader: ' + GLctx.getShaderInfoLog(GL.shaders[shader]));
+          trace('GL', 'Info: ' + JSON.stringify(GL.shaderInfos[shader]));
+          trace('GL', 'Original source: ' + GL.shaderOriginalSources[shader]);
+          trace('GL', 'Source: ' + GL.shaderSources[shader]);
           throw 'Shader compilation halt';
         }
 #endif
@@ -603,13 +603,13 @@ var LibraryGLEmulation = {
 
       var glUseProgram = _glUseProgram;
       _glUseProgram = _emscripten_glUseProgram = function _glUseProgram(program) {
-#if GL_DEBUG
-        if (GL.debug) {
-          err('[using program with shaders]');
+#if TRACING
+        if (trace_channel_enabled('GL')) {
+          trace('GL', '[using program with shaders]');
           if (program) {
             GL.programShaders[program].forEach(function(shader) {
-              err('  shader ' + shader + ', original source: ' + GL.shaderOriginalSources[shader]);
-              err('         Source: ' + GL.shaderSources[shader]);
+              trace('GL', '  shader ' + shader + ', original source: ' + GL.shaderOriginalSources[shader]);
+              trace('GL', '         Source: ' + GL.shaderSources[shader]);
             });
           }
         }
@@ -2159,8 +2159,8 @@ var LibraryGLEmulation = {
       // If we don't already have it, create it.
       var renderer = keyView.get();
       if (!renderer) {
-#if GL_DEBUG
-        err('generating renderer for ' + JSON.stringify(attributes));
+#if TRACING
+        trace('GL', 'generating renderer for ' + JSON.stringify(attributes));
 #endif
         renderer = GLImmediate.createRenderer();
         GLImmediate.currentRenderer = renderer;
@@ -3667,8 +3667,8 @@ var LibraryGLEmulation = {
   },
 
   glLoadMatrixf: function(matrix) {
-#if GL_DEBUG
-    if (GL.debug) err('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
+#if TRACING
+    if (trace_channel_enabled('GL')) trace('GL', 'glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
 #endif
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;

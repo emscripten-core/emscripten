@@ -100,7 +100,7 @@ var LibraryHtml5WebGL = {
 
     var canvas = findCanvasEventTarget(target);
 
-#if GL_DEBUG
+#if TRACING
     var targetStr = UTF8ToString(target);
 #endif
 
@@ -112,10 +112,10 @@ var LibraryHtml5WebGL = {
         // When WebGL context is being proxied via the main thread, we must render using an offscreen FBO render target to avoid WebGL's
         // "implicit swap when callback exits" behavior. TODO: If OffscreenCanvas is supported, explicitSwapControl=true and still proxying,
         // then this can be avoided, since OffscreenCanvas enables explicit swap control.
-#if GL_DEBUG
-        if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}}) err('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS enabled, proxying WebGL rendering from pthread to main thread.');
-        if (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK') }}}) err('Specified canvas target "' + targetStr + '" is not an OffscreenCanvas in the current pthread, but EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK is set. Proxying WebGL rendering from pthread to main thread.');
-        err('Performance warning: forcing renderViaOffscreenBackBuffer=true and preserveDrawingBuffer=true since proxying WebGL rendering.');
+#if TRACING
+        if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}}) trace('GL', 'EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS enabled, proxying WebGL rendering from pthread to main thread.');
+        if (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK') }}}) trace('GL', 'Specified canvas target "' + targetStr + '" is not an OffscreenCanvas in the current pthread, but EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK is set. Proxying WebGL rendering from pthread to main thread.');
+        trace('GL', 'Performance warning: forcing renderViaOffscreenBackBuffer=true and preserveDrawingBuffer=true since proxying WebGL rendering.');
 #endif
         // We will be proxying - if OffscreenCanvas is supported, we can proxy a bit more efficiently by avoiding having to create an Offscreen FBO.
         if (typeof OffscreenCanvas === 'undefined') {
@@ -128,8 +128,8 @@ var LibraryHtml5WebGL = {
 #endif
 
     if (!canvas) {
-#if GL_DEBUG
-      err('emscripten_webgl_create_context failed: Unknown canvas target "' + targetStr + '"!');
+#if TRACING
+      trace('GL', 'emscripten_webgl_create_context failed: Unknown canvas target "' + targetStr + '"!');
 #endif
       return 0;
     }
@@ -137,7 +137,7 @@ var LibraryHtml5WebGL = {
 #if OFFSCREENCANVAS_SUPPORT
     if (canvas.offscreenCanvas) canvas = canvas.offscreenCanvas;
 
-#if GL_DEBUG
+#if TRACING
     if (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) out('emscripten_webgl_create_context: Creating an OffscreenCanvas-based WebGL context on target "' + targetStr + '"');
     else if (typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement) out('emscripten_webgl_create_context: Creating an HTMLCanvasElement-based WebGL context on target "' + targetStr + '"');
 #endif
@@ -149,20 +149,20 @@ var LibraryHtml5WebGL = {
 #if OFFSCREEN_FRAMEBUFFER
         if (!contextAttributes.renderViaOffscreenBackBuffer) {
           contextAttributes.renderViaOffscreenBackBuffer = true;
-#if GL_DEBUG
-          err('emscripten_webgl_create_context: Performance warning, OffscreenCanvas is not supported but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
+#if TRACING
+          trace('GL', 'emscripten_webgl_create_context: Performance warning, OffscreenCanvas is not supported but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
 #endif
         }
 #else
-#if GL_DEBUG
-        err('emscripten_webgl_create_context failed: OffscreenCanvas is not supported but explicitSwapControl was requested!');
+#if TRACING
+        trace('GL', 'emscripten_webgl_create_context failed: OffscreenCanvas is not supported but explicitSwapControl was requested!');
 #endif
         return 0;
 #endif
       }
 
       if (canvas.transferControlToOffscreen) {
-#if GL_DEBUG
+#if TRACING
         out('explicitSwapControl requested: canvas.transferControlToOffscreen() on canvas "' + targetStr + '" to get .commit() function and not rely on implicit WebGL swap');
 #endif
         if (!canvas.controlTransferredOffscreen) {
@@ -173,8 +173,8 @@ var LibraryHtml5WebGL = {
           };
           canvas.controlTransferredOffscreen = true;
         } else if (!GL.offscreenCanvases[canvas.id]) {
-#if GL_DEBUG
-          err('OffscreenCanvas is supported, and canvas "' + canvas.id + '" has already before been transferred offscreen, but there is no known OffscreenCanvas with that name!');
+#if TRACING
+          trace('GL', 'OffscreenCanvas is supported, and canvas "' + canvas.id + '" has already before been transferred offscreen, but there is no known OffscreenCanvas with that name!');
 #endif
           return 0;
         }
@@ -185,14 +185,14 @@ var LibraryHtml5WebGL = {
 #if OFFSCREEN_FRAMEBUFFER
     if (contextAttributes.explicitSwapControl && !contextAttributes.renderViaOffscreenBackBuffer) {
       contextAttributes.renderViaOffscreenBackBuffer = true;
-#if GL_DEBUG
-      err('emscripten_webgl_create_context: Performance warning, not building with OffscreenCanvas support enabled but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
+#if TRACING
+      trace('GL', 'emscripten_webgl_create_context: Performance warning, not building with OffscreenCanvas support enabled but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
 #endif
     }
 #else
     if (contextAttributes.explicitSwapControl) {
-#if GL_DEBUG
-      err('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
+#if TRACING
+      trace('GL', 'emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
 #endif
       return 0;
     }
@@ -250,8 +250,8 @@ var LibraryHtml5WebGL = {
     err('[Thread ' + threadId() + ', GL ctx: ' + GL.currentContext.handle + ']: emscripten_webgl_do_commit_frame()');
 #endif
     if (!GL.currentContext || !GL.currentContext.GLctx) {
-#if GL_DEBUG
-      err('emscripten_webgl_commit_frame() failed: no GL context set current via emscripten_webgl_make_context_current()!');
+#if TRACING
+      trace('GL', 'emscripten_webgl_commit_frame() failed: no GL context set current via emscripten_webgl_make_context_current()!');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
@@ -259,15 +259,15 @@ var LibraryHtml5WebGL = {
 #if OFFSCREEN_FRAMEBUFFER
     if (GL.currentContext.defaultFbo) {
       GL.blitOffscreenFramebuffer(GL.currentContext);
-#if GL_DEBUG && OFFSCREENCANVAS_SUPPORT
-      if (GL.currentContext.GLctx.commit) err('emscripten_webgl_commit_frame(): Offscreen framebuffer should never have gotten created when canvas is in OffscreenCanvas mode, since it is redundant and not necessary');
+#if TRACING && OFFSCREENCANVAS_SUPPORT
+      if (GL.currentContext.GLctx.commit) trace('GL', 'emscripten_webgl_commit_frame(): Offscreen framebuffer should never have gotten created when canvas is in OffscreenCanvas mode, since it is redundant and not necessary');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
     }
 #endif
     if (!GL.currentContext.attributes.explicitSwapControl) {
-#if GL_DEBUG
-      err('emscripten_webgl_commit_frame() cannot be called for canvases with implicit swap control mode!');
+#if TRACING
+      trace('GL', 'emscripten_webgl_commit_frame() cannot be called for canvases with implicit swap control mode!');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }

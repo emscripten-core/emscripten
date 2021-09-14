@@ -116,7 +116,7 @@ mergeInto(LibraryManager.library, {
           if (typeof original === 'function') {
             ret[x] = function() {
 #if ASYNCIFY_DEBUG >= 2
-              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + x);
+              trace('ASYNCIFY', '  '.repeat(Asyncify.exportCallStack.length) + ' try ' + x);
 #endif
               Asyncify.exportCallStack.push(x);
               try {
@@ -126,7 +126,7 @@ mergeInto(LibraryManager.library, {
                   var y = Asyncify.exportCallStack.pop();
                   assert(y === x);
 #if ASYNCIFY_DEBUG >= 2
-                  err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + x);
+                  trace('ASYNCIFY', '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + x);
 #endif
                   Asyncify.maybeStopUnwind();
                 }
@@ -141,15 +141,15 @@ mergeInto(LibraryManager.library, {
     },
 
     maybeStopUnwind: function() {
-#if ASYNCIFY_DEBUG
-      err('ASYNCIFY: maybe stop unwind', Asyncify.exportCallStack);
+#if TRACING
+      trace('ASYNCIFY', 'maybe stop unwind', Asyncify.exportCallStack);
 #endif
       if (Asyncify.currData &&
           Asyncify.state === Asyncify.State.Unwinding &&
           Asyncify.exportCallStack.length === 0) {
         // We just finished unwinding.
-#if ASYNCIFY_DEBUG
-        err('ASYNCIFY: stop unwind');
+#if TRACING
+        trace('ASYNCIFY', 'stop unwind');
 #endif
         {{{ runtimeKeepalivePush(); }}}
         Asyncify.state = Asyncify.State.Normal;
@@ -197,7 +197,7 @@ mergeInto(LibraryManager.library, {
     setDataRewindFunc: function(ptr) {
       var bottomOfCallStack = Asyncify.exportCallStack[0];
 #if ASYNCIFY_DEBUG >= 2
-      err('ASYNCIFY: setDataRewindFunc('+ptr+'), bottomOfCallStack is', bottomOfCallStack, new Error().stack);
+      trace('ASYNCIFY', 'setDataRewindFunc('+ptr+'), bottomOfCallStack is', bottomOfCallStack, new Error().stack);
 #endif
       var rewindId = Asyncify.getCallStackId(bottomOfCallStack);
       {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', 'i32') }}};
@@ -212,8 +212,8 @@ mergeInto(LibraryManager.library, {
 
     doRewind: function(ptr) {
       var start = Asyncify.getDataRewindFunc(ptr);
-#if ASYNCIFY_DEBUG
-      err('ASYNCIFY: start:', start);
+#if TRACING
+      trace('ASYNCIFY', 'start:', start);
 #endif
       // Once we have rewound and the stack we no longer need to artificially keep
       // the runtime alive.
@@ -226,8 +226,8 @@ mergeInto(LibraryManager.library, {
       assert(Asyncify.state !== Asyncify.State.Disabled, 'Asyncify cannot be done during or after the runtime exits');
 #endif
       if (ABORT) return;
-#if ASYNCIFY_DEBUG
-      err('ASYNCIFY: handleSleep ' + Asyncify.state);
+#if TRACING
+      trace('ASYNCIFY', 'handleSleep ' + Asyncify.state);
 #endif
       if (Asyncify.state === Asyncify.State.Normal) {
         // Prepare to sleep. Call startAsync, and see what happens:
@@ -255,8 +255,8 @@ mergeInto(LibraryManager.library, {
           // too).
           assert(!Asyncify.exportCallStack.length, 'Waking up (starting to rewind) must be done from JS, without compiled code on the stack.');
 #endif
-#if ASYNCIFY_DEBUG
-          err('ASYNCIFY: start rewind ' + Asyncify.currData);
+#if TRACING
+          trace('ASYNCIFY', 'start rewind ' + Asyncify.currData);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(function() { Module['_asyncify_start_rewind'](Asyncify.currData) });
@@ -305,8 +305,8 @@ mergeInto(LibraryManager.library, {
           Asyncify.state = Asyncify.State.Unwinding;
           // TODO: reuse, don't alloc/free every sleep
           Asyncify.currData = Asyncify.allocateData();
-#if ASYNCIFY_DEBUG
-          err('ASYNCIFY: start unwind ' + Asyncify.currData);
+#if TRACING
+          trace('ASYNCIFY', 'start unwind ' + Asyncify.currData);
 #endif
           runAndAbortIfError(function() { Module['_asyncify_start_unwind'](Asyncify.currData) });
           if (typeof Browser !== 'undefined' && Browser.mainLoop.func) {
@@ -315,8 +315,8 @@ mergeInto(LibraryManager.library, {
         }
       } else if (Asyncify.state === Asyncify.State.Rewinding) {
         // Stop a resume.
-#if ASYNCIFY_DEBUG
-        err('ASYNCIFY: stop rewind');
+#if TRACING
+        trace('ASYNCIFY', 'stop rewind');
 #endif
         Asyncify.state = Asyncify.State.Normal;
         runAndAbortIfError(Module['_asyncify_stop_rewind']);
@@ -431,7 +431,7 @@ mergeInto(LibraryManager.library, {
           var fiber = Fibers.nextFiber;
           Fibers.nextFiber = 0;
 #if ASYNCIFY_DEBUG >= 2
-          err("ASYNCIFY/FIBER: trampoline jump into fiber", fiber, new Error().stack);
+          trace('ASYNCIFY', "trampoline jump into fiber", fiber, new Error().stack);
 #endif
           Fibers.finishContextSwitch(fiber);
         } while (Fibers.nextFiber);
@@ -458,8 +458,8 @@ mergeInto(LibraryManager.library, {
 #if STACK_OVERFLOW_CHECK
         writeStackCookie();
 #endif
-#if ASYNCIFY_DEBUG
-        err('ASYNCIFY/FIBER: entering fiber', newFiber, 'for the first time');
+#if TRACING
+        trace('ASYNCIFY', 'entering fiber', newFiber, 'for the first time');
 #endif
         Asyncify.currData = null;
         {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, 'i32') }}};
@@ -470,8 +470,8 @@ mergeInto(LibraryManager.library, {
         var asyncifyData = newFiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
         Asyncify.currData = asyncifyData;
 
-#if ASYNCIFY_DEBUG
-        err('ASYNCIFY/FIBER: start rewind', asyncifyData, '(resuming fiber', newFiber, ')');
+#if TRACING
+        trace('ASYNCIFY', 'start rewind', asyncifyData, '(resuming fiber', newFiber, ')');
 #endif
         Asyncify.state = Asyncify.State.Rewinding;
         Module['_asyncify_start_rewind'](asyncifyData);
@@ -510,8 +510,8 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(oldFiber, newFiber) {
     if (ABORT) return;
-#if ASYNCIFY_DEBUG
-    err('ASYNCIFY/FIBER: swap', oldFiber, '->', newFiber, 'state:', Asyncify.state);
+#if TRACING
+    trace('ASYNCIFY', 'swap', oldFiber, '->', newFiber, 'state:', Asyncify.state);
 #endif
     if (Asyncify.state === Asyncify.State.Normal) {
       Asyncify.state = Asyncify.State.Unwinding;
@@ -520,8 +520,8 @@ mergeInto(LibraryManager.library, {
       Asyncify.setDataRewindFunc(asyncifyData);
       Asyncify.currData = asyncifyData;
 
-#if ASYNCIFY_DEBUG
-      err('ASYNCIFY/FIBER: start unwind', asyncifyData);
+#if TRACING
+      trace('ASYNCIFY', 'start unwind', asyncifyData);
 #endif
       Module['_asyncify_start_unwind'](asyncifyData);
 
@@ -533,8 +533,8 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
       assert(Asyncify.state === Asyncify.State.Rewinding);
 #endif
-#if ASYNCIFY_DEBUG
-      err('ASYNCIFY/FIBER: stop rewind');
+#if TRACING
+      trace('ASYNCIFY', 'stop rewind');
 #endif
       Asyncify.state = Asyncify.State.Normal;
       Module['_asyncify_stop_rewind']();

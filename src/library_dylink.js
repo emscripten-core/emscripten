@@ -44,8 +44,8 @@ var LibraryDylink = {
     'get': function(obj, symName) {
       if (!GOT[symName]) {
         GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
-#if DYLINK_DEBUG
-        err("new GOT entry: " + symName);
+#if TRACING
+        trace('DYLINK', "new GOT entry: " + symName);
 #endif
       }
       return GOT[symName]
@@ -69,8 +69,8 @@ var LibraryDylink = {
 
   $updateGOT__deps: ['$GOT', '$isInternalSym'],
   $updateGOT: function(exports, replace) {
-#if DYLINK_DEBUG
-    err("updateGOT: " + Object.keys(exports).length);
+#if TRACING
+    trace('DYLINK', "updateGOT: " + Object.keys(exports).length);
 #endif
     for (var symName in exports) {
       if (isInternalSym(symName)) {
@@ -91,26 +91,26 @@ var LibraryDylink = {
       if (replace || GOT[symName].value == 0) {
         if (typeof value === 'function') {
           GOT[symName].value = addFunctionWasm(value);
-#if DYLINK_DEBUG
-          err("updateGOT FUNC: " + symName + ' : ' + GOT[symName].value);
+#if TRACING
+          trace('DYLINK', "updateGOT FUNC: " + symName + ' : ' + GOT[symName].value);
 #endif
         } else if (typeof value === 'number') {
           GOT[symName].value = value;
         } else {
           err("unhandled export type for `" + symName + "`: " + (typeof value));
         }
-#if DYLINK_DEBUG
-        err("updateGOT: " + symName + ' : ' + GOT[symName].value);
+#if TRACING
+        trace('DYLINK', "updateGOT: " + symName + ' : ' + GOT[symName].value);
 #endif
       }
-#if DYLINK_DEBUG
+#if TRACING
       else if (GOT[symName].value != value) {
-        err("updateGOT: EXISTING SYMBOL: " + symName + ' : ' + GOT[symName].value + " " + value);
+        trace('DYLINK', "updateGOT: EXISTING SYMBOL: " + symName + ' : ' + GOT[symName].value + " " + value);
       }
 #endif
     }
-#if DYLINK_DEBUG
-    err("done updateGOT");
+#if TRACING
+    trace('DYLINK', "done updateGOT");
 #endif
   },
 
@@ -144,8 +144,8 @@ var LibraryDylink = {
 
   $reportUndefinedSymbols__deps: ['$GOT', '$resolveGlobalSymbol'],
   $reportUndefinedSymbols: function() {
-#if DYLINK_DEBUG
-    err('reportUndefinedSymbols');
+#if TRACING
+    trace('DYLINK', 'reportUndefinedSymbols');
 #endif
     for (var symName in GOT) {
       if (GOT[symName].value == 0) {
@@ -153,13 +153,13 @@ var LibraryDylink = {
 #if ASSERTIONS
         assert(value, 'undefined symbol `' + symName + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
-#if DYLINK_DEBUG
-        err('assigning dynamic symbol from main module: ' + symName + ' -> ' + value);
+#if TRACING
+        trace('DYLINK', 'assigning dynamic symbol from main module: ' + symName + ' -> ' + value);
 #endif
         if (typeof value === 'function') {
           GOT[symName].value = addFunctionWasm(value, value.sig);
-#if DYLINK_DEBUG
-          err('assigning table entry for : ' + symName + ' -> ' + GOT[symName].value);
+#if TRACING
+          trace('DYLINK', 'assigning table entry for : ' + symName + ' -> ' + GOT[symName].value);
 #endif
         } else if (typeof value === 'number') {
           GOT[symName].value = value;
@@ -168,8 +168,8 @@ var LibraryDylink = {
         }
       }
     }
-#if DYLINK_DEBUG
-    err('done reportUndefinedSymbols');
+#if TRACING
+    trace('DYLINK', 'done reportUndefinedSymbols');
 #endif
   },
 #endif
@@ -237,8 +237,8 @@ var LibraryDylink = {
   $getMemory__deps: ['$GOT', '__heap_base'],
   $getMemory: function(size) {
     // After the runtime is initialized, we must only use sbrk() normally.
-#if DYLINK_DEBUG
-    err("getMemory: " + size + " runtimeInitialized=" + runtimeInitialized);
+#if TRACING
+    trace('DYLINK', "getMemory: " + size + " runtimeInitialized=" + runtimeInitialized);
 #endif
     if (runtimeInitialized)
       return _malloc(size);
@@ -359,8 +359,8 @@ var LibraryDylink = {
     assert(tableAlign === 1, 'invalid tableAlign ' + tableAlign);
 #endif
 
-#if DYLINK_DEBUG
-    err('dylink needed:' + customSection.neededDynlibs);
+#if TRACING
+    trace('DYLINK', 'dylink needed:' + customSection.neededDynlibs);
 #endif
 
     assert(offset == end);
@@ -421,8 +421,8 @@ var LibraryDylink = {
       memAlign = Math.max(memAlign, STACK_ALIGN); // we at least need stack alignment
       // prepare memory
       var memoryBase = alignMemory(getMemory(metadata.memorySize + memAlign), memAlign); // TODO: add to cleanups
-#if DYLINK_DEBUG
-      err("loadModule: memoryBase=" + memoryBase);
+#if TRACING
+      trace('DYLINK', "loadModule: memoryBase=" + memoryBase);
 #endif
       // TODO: use only __memory_base and __table_base, need to update asm.js backend
       var tableBase = wasmTable.length;
@@ -722,12 +722,12 @@ var LibraryDylink = {
 
   $preloadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
   $preloadDylibs: function() {
-#if DYLINK_DEBUG
-    err('preloadDylibs');
+#if TRACING
+    trace('DYLINK', 'preloadDylibs');
 #endif
     if (!dynamicLibraries.length) {
-#if DYLINK_DEBUG
-      err('preloadDylibs: no libraries to preload');
+#if TRACING
+      trace('DYLINK', 'preloadDylibs: no libraries to preload');
 #endif
       reportUndefinedSymbols();
       return;
@@ -743,8 +743,8 @@ var LibraryDylink = {
       // we got them all, wonderful
       reportUndefinedSymbols();
       removeRunDependency('preloadDylibs');
-#if DYLINK_DEBUG
-    err('preloadDylibs done!');
+#if TRACING
+    trace('DYLINK', 'preloadDylibs done!');
 #endif
     });
   },

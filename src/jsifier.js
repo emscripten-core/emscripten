@@ -104,10 +104,11 @@ function JSify(functionsOnly) {
       snippet = modifyFunction(snippet, (name, args, body) => {
         return `\
 function ${name}(${args}) {
-  var ret = (function() { if (runtimeDebug) err("[library call:${finalName}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
-  ${body}
+  var ret = (function() {
+    trace('LIBRARY', "[library call:${finalName}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+    ${body}
   }).apply(this, arguments);
-  if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret));
+  if (ret !== "undefined") trace('LIBRARY', "  [     return:" + prettyPrint(ret));
   return ret;
 }`
       });

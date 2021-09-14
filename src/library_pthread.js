@@ -222,8 +222,8 @@ var LibraryPThread = {
     },
     // Called by worker.js each time a thread is started.
     threadInit: function() {
-#if PTHREADS_DEBUG
-      err('Pthread 0x' + _pthread_self().toString(16) + ' threadInit.');
+#if TRACING
+      trace('PTHREADS', 'Pthread 0x' + _pthread_self().toString(16) + ' threadInit.');
 #endif
 #if PTHREADS_PROFILING
       PThread.setThreadStatus(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
@@ -387,8 +387,8 @@ var LibraryPThread = {
 #if EXPORT_ES6 && USE_ES6_IMPORT_META
       // If we're using module output and there's no explicit override, use bundler-friendly pattern.
       if (!Module['locateFile']) {
-#if PTHREADS_DEBUG
-        err('Allocating a new web worker from ' + new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
+#if TRACING
+        trace('PTHREADS', 'Allocating a new web worker from ', new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
 #endif
 #if TRUSTED_TYPES
         // Use Trusted Types compatible wrappers.
@@ -413,8 +413,8 @@ var LibraryPThread = {
       // to the main html file is loaded.
       var pthreadMainJs = locateFile('{{{ PTHREAD_WORKER_FILE }}}');
 #endif
-#if PTHREADS_DEBUG
-      err('Allocating a new web worker from ' + pthreadMainJs);
+#if TRACING
+      trace('PTHREADS', 'Allocating a new web worker from ', pthreadMainJs);
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
@@ -491,8 +491,8 @@ var LibraryPThread = {
   },
 
   $registerTlsInit: function(tlsInitFunc, moduleExports, metadata) {
-#if DYLINK_DEBUG
-    out("registerTlsInit: " + tlsInitFunc);
+#if TRACING
+    trace('DYLINK', 'registerTlsInit: ' + tlsInitFunc);
 #endif
 #if RELOCATABLE
     // In relocatable builds, we use the result of calling tlsInitFunc
@@ -500,8 +500,8 @@ var LibraryPThread = {
     // according to this new __tls_base.
     function tlsInitWrapper() {
       var __tls_base = tlsInitFunc();
-#if DYLINK_DEBUG
-      err('tlsInit -> ' + __tls_base);
+#if TRACING
+      trace('DYLINK', 'tlsInit -> ' + __tls_base);
 #endif
       for (var sym in metadata.tlsExports) {
         metadata.tlsExports[sym] = moduleExports[sym];
@@ -649,8 +649,8 @@ var LibraryPThread = {
 #endif
     if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
     if (transferredCanvasNames) transferredCanvasNames = transferredCanvasNames.split(',');
-#if GL_DEBUG
-    out('pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
+#if TRACING
+    trace('GL', 'pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
 #endif
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
@@ -687,8 +687,8 @@ var LibraryPThread = {
             break;
           }
           if (canvas.transferControlToOffscreen) {
-#if GL_DEBUG
-            err('pthread_create: canvas.transferControlToOffscreen(), transferring canvas by name "' + name + '" (DOM id="' + canvas.id + '") from main thread to pthread');
+#if TRACING
+            trace('GL', 'pthread_create: canvas.transferControlToOffscreen(), transferring canvas by name "' + name + '" (DOM id="' + canvas.id + '") from main thread to pthread');
 #endif
             // Create a shared information block in heap so that we can control
             // the canvas size from any thread.
@@ -966,10 +966,10 @@ var LibraryPThread = {
     // the main thread, but if we ever fetched a rendering context for them that
     // would not be valid, so we don't try.
 
-#if PTHREADS_DEBUG
+#if TRACING
     var tb = _pthread_self();
     assert(tb);
-    err('Pthread 0x' + tb.toString(16) + ' exited.');
+    trace('PTHREADS', 'Pthread 0x' + tb.toString(16) + ' exited.');
 #endif
 
     while (PThread.threadExitHandlers.length > 0) {
@@ -1172,16 +1172,16 @@ var LibraryPThread = {
 #if EXIT_RUNTIME
     if (!keepRuntimeAlive()) {
       // exitRuntime enabled, proxied main() finished in a pthread, shut down the process.
-#if PTHREADS_DEBUG
-      err('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
+#if TRACING
+      trace('PTHREADS', 'Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
 #endif
       postMessage({ 'cmd': 'exitProcess', 'returnCode': returnCode });
       return returnCode;
     }
 #else
     // EXIT_RUNTIME==0 set on command line, keeping main thread alive.
-#if PTHREADS_DEBUG
-    err('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
+#if TRACING
+    trace('PTHREADS', 'Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
 #endif
 #endif
   },

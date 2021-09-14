@@ -10297,7 +10297,7 @@ exec "$@"
 
   def test_SYSCALL_DEBUG(self):
     self.set_setting('SYSCALL_DEBUG')
-    self.do_runf(test_file('hello_world.c'), 'syscall! fd_write: [1,')
+    self.do_runf(test_file('hello_world.c'), 'SYSCALL: fd_write: [1,')
 
   def test_LIBRARY_DEBUG(self):
     self.set_setting('LIBRARY_DEBUG')

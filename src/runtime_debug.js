@@ -4,9 +4,103 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if RUNTIME_DEBUG
-var runtimeDebug = true; // Switch to false at runtime to disable logging at the right times
+#if TRACING
+var trace_channels = {
+  'RUNTIME': 1,
+  'EXCEPTION': 1,
+  'LIBRARY': 1,
+  'SYSCALL': 1,
+  'SOCKET': 1,
+  'DYLINK': 1,
+  'FS': 1,
+  'OPENAL': 1,
+  'WEBSOCKET': 1,
+  'GL': 1,
+  'ASYNCIFY': 1,
+  'PTHREADS': 1,
+  'FETCH': 1,
+};
 
+var trace_channels_enabled = {
+  // The core RUNTIME channel is the only one that is
+  // enabled by default.
+  'RUNTIME': true,
+#if EXCEPTION_DEBUG
+  'EXCEPTION': true,
+#endif
+#if LIBRARY_DEBUG
+  'LIBRARY': true,
+#endif
+#if SYSCALL_DEBUG
+  'SYSCALL': true,
+#endif
+#if SOCKET_DEBUG
+  'SOCKET': true,
+#endif
+#if DYLINK_DEBUG
+  'DYLINK': true,
+#endif
+#if FS_DEBUG
+  'FS': true,
+#endif
+#if OPENAL_DEBUG
+  'OPENAL': true,
+#endif
+#if WEBSOCKET_DEBUG
+  'WEBSOCKET_DEBUG': true,
+#endif
+#if GL_DEBUG
+  'GL': true,
+#endif
+#if ASYNCIFY_DEBUG
+  'ASYNCIFY': true;
+#endif
+#if PTHREADS_DEBUG
+  'PTHREADS': true,
+#endif
+#if FETCH_DEBUG
+  'FETCH': true,
+#endif
+};
+
+function enable_trace_channel(channel) {
+#if ASSERTIONS
+  assert(channel in trace_channels, 'unknown trace channel: ' + channel);
+#endif
+  err('enabling trace channel: ' + channel);
+  trace_channels_enabled[channel] = true;
+}
+
+function trace_channel_enabled(channel) {
+  return trace_channels_enabled[channel] === true;
+}
+
+function trace(channel, msg) {
+#if ASSERTIONS
+  assert(channel in trace_channels, 'unknown trace channel: ' + channel);
+#endif
+  if (trace_channels_enabled[channel]) {
+    err(channel + ': ' + msg);
+  }
+}
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE && process.env['EM_DEBUG']) {
+  if (process.env['EM_DEBUG'] == 'all') {
+    for (var channel in trace_channels) {
+      trace_channels_enabled[channel] = true;
+    }
+  } else {
+    var channels = process.env['EM_DEBUG'].split(',');
+    for (var i in channels) {
+      enable_trace_channel(channels[i].toUpperCase());
+    }
+  }
+}
+#endif
+#endif
+
+#if LIBRARY_DEBUG
 var printObjectList = [];
 
 function prettyPrint(arg) {

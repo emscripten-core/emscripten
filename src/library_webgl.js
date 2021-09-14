@@ -162,10 +162,6 @@ var LibraryGL = {
     ],
 #endif
   $GL: {
-#if GL_DEBUG
-    debug: true,
-#endif
-
 /* We do not depend on the exact initial values of falsey member fields - these fields can be populated on-demand
    to save code size.
    (but still documented here to keep track of what is supposed to be present)
@@ -382,7 +378,7 @@ var LibraryGL = {
             GLEmulation.findToken(source, "fwidth")) {
           source = "#extension GL_OES_standard_derivatives : enable\n" + source;
           var extension = GLctx.getExtension("OES_standard_derivatives");
-#if GL_DEBUG
+#if TRACING
           if (!extension) {
             err("Shader attempts to use the standard derivatives extension which is not available.");
           }
@@ -574,7 +570,7 @@ var LibraryGL = {
     // Returns the context handle to the new context.
     createContext: function(canvas, webGLContextAttributes) {
 #if OFFSCREEN_FRAMEBUFFER
-      // In proxied operation mode, rAF()/setTimeout() functions do not delimit frame boundaries, so can't have WebGL implementation
+      // In proxied operation mode, rAF()/setTimetrace('GL', ) functions do not delimit frame boundaries, so can't have WebGL implementation
       // try to detect when it's ok to discard contents of the rendered backbuffer.
       if (webGLContextAttributes.renderViaOffscreenBackBuffer) webGLContextAttributes['preserveDrawingBuffer'] = true;
 #endif
@@ -595,7 +591,7 @@ var LibraryGL = {
       }
 #endif
 
-#if GL_DEBUG
+#if TRACING
       var errorInfo = '?';
       function onContextCreationError(event) {
         errorInfo = event.statusMessage || errorInfo;
@@ -658,7 +654,7 @@ var LibraryGL = {
       }
 #endif
 
-#if GL_DEBUG
+#if TRACING
       canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
       if (!ctx) {
         err('Could not create canvas: ' + [errorInfo, JSON.stringify(webGLContextAttributes)]);
@@ -1021,7 +1017,7 @@ var LibraryGL = {
       if (webGLContextAttributes.renderViaOffscreenBackBuffer) GL.createOffscreenFramebuffer(context);
 #else
 
-#if GL_DEBUG
+#if TRACING
       if (webGLContextAttributes.renderViaOffscreenBackBuffer) err('renderViaOffscreenBackBuffer=true specified in WebGL context creation attributes, pass linker flag -s OFFSCREEN_FRAMEBUFFER=1 to enable support!');
 #endif
 
@@ -1030,7 +1026,7 @@ var LibraryGL = {
     },
 
     makeContextCurrent: function(contextHandle) {
-#if GL_DEBUG
+#if TRACING
       if (contextHandle && !GL.contexts[contextHandle]) {
 #if USE_PTHREADS
         err('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist, or was created on another thread!');
@@ -3079,14 +3075,14 @@ var LibraryGL = {
 #endif
 
 #if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
-#if GL_DEBUG
-    out('Input shader source: ' + source);
+#if TRACING
+    trace('GL', 'Input shader source: ' + source);
 #endif
     // Remove comments and C-preprocess the input shader first, so that we can appropriately
     // parse the layout location directives.
     source = preprocess_c_code(remove_cpp_comments_in_shaders(source), { 'GL_FRAGMENT_PRECISION_HIGH': function() { return 1; }});
-#if GL_DEBUG
-    out('Shader source after preprocessing: ' + source);
+#if TRACING
+    trace('GL', 'Shader source after preprocessing: ' + source);
 #endif
 #endif // ~GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
 
@@ -3094,7 +3090,7 @@ var LibraryGL = {
     // Extract the layout(location = x) directives.
     var regex = /layout\s*\(\s*location\s*=\s*(-?\d+)\s*\)\s*(uniform\s+((lowp|mediump|highp)\s+)?\w+\s+(\w+))/g, explicitUniformLocations = {}, match;
     while(match = regex.exec(source)) {
-#if GL_DEBUG
+#if TRACING
       console.dir(match);
 #endif
       explicitUniformLocations[match[5]] = jstoi_q(match[1]);
@@ -3114,9 +3110,9 @@ var LibraryGL = {
     // Remember all the directives to be handled after glLinkProgram is called.
     GL.shaders[shader].explicitUniformLocations = explicitUniformLocations;
 
-#if GL_DEBUG
-    out('Shader source after removing layout location directives: ' + source);
-    out('Explicit uniform locations recorded in the shader:');
+#if TRACING
+    trace('GL', 'Shader source after removing layout location directives: ' + source);
+    trace('GL', 'Explicit uniform locations recorded in the shader:');
     console.dir(explicitUniformLocations);
 #endif
 
@@ -3142,7 +3138,7 @@ var LibraryGL = {
         }
         if (source[i] == '{') i = find_closing_parens_index(source, i, '{', '}') - 1;
       }
-#if GL_DEBUG
+#if TRACING
       console.dir(bindingMatch);
 #endif
       var binding = jstoi_q(bindingMatch[1]);
@@ -3174,11 +3170,11 @@ var LibraryGL = {
     source = source.replace(/(layout\s*\((.*?)),\s*binding\s*=\s*([-\d]+)\)/g, '$1)'); // "layout(std140, binding = 1)" -> "layout(std140)"
     source = source.replace(/layout\s*\(\s*binding\s*=\s*([-\d]+)\s*,(.*?)\)/g, 'layout($2)'); // "layout(binding = 1, std140)" -> "layout(std140)"
 
-#if GL_DEBUG
-    out('Shader source after removing layout binding directives: ' + source);
-    out('Sampler binding locations recorded in the shader:');
+#if TRACING
+    trace('GL', 'Shader source after removing layout binding directives: ' + source);
+    trace('GL', 'Sampler binding locations recorded in the shader:');
     console.dir(samplerBindings);
-    out('Uniform binding locations recorded in the shader:');
+    trace('GL', 'Uniform binding locations recorded in the shader:');
     console.dir(uniformBindings);
 #endif
 
@@ -3208,7 +3204,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.shaders, shader, 'glCompileShader', 'shader');
 #endif
     GLctx.compileShader(GL.shaders[shader]);
-#if GL_DEBUG
+#if TRACING
     var log = (GLctx.getShaderInfoLog(GL.shaders[shader]) || '').trim();
     if (log) err('glCompileShader: ' + log);
 #endif
@@ -3393,10 +3389,10 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
     GLctx.linkProgram(program);
-#if GL_DEBUG
+#if TRACING
     var log = (GLctx.getProgramInfoLog(program) || '').trim();
     if (log) err('glLinkProgram: ' + log);
-    if (program.uniformLocsById) out('glLinkProgram invalidated ' + Object.keys(program.uniformLocsById).length + ' uniform location mappings');
+    if (program.uniformLocsById) trace('GL', 'glLinkProgram invalidated ' + Object.keys(program.uniformLocsById).length + ' uniform location mappings');
 #endif
     // Invalidate earlier computed uniform->ID mappings, those have now become stale
     program.uniformLocsById = 0; // Mark as null-like so that glGetUniformLocation() knows to populate this again.
@@ -3411,8 +3407,8 @@ var LibraryGL = {
         // with size=1. This is not true, but on the first glGetUniformLocation() call
         // the array sizes will get populated to correct sizes.
         program.uniformSizeAndIdsByName[shaderLocation] = [1, loc];
-#if GL_DEBUG
-        out('Marking uniform ' + loc + ' to location ' + shaderLocation);
+#if TRACING
+        trace('GL', 'Marking uniform ' + loc + ' to location ' + shaderLocation);
 #endif
 
         // Make sure we will never automatically assign locations within the range
@@ -3468,8 +3464,8 @@ var LibraryGL = {
           var bindings = p.explicitUniformBindings[ubo];
           for(var i = 0; i < bindings[1]; ++i) {
             var blockIndex = GLctx.getUniformBlockIndex(p, ubo + (bindings[1] > 1 ? '[' + i + ']' : ''));
-#if GL_DEBUG
-            out('Applying initial UBO binding point ' + (bindings[0]+i) + ' for UBO "' + (ubo + (bindings[1] > 1 ? '[' + i + ']' : '')) + '" at block index ' + blockIndex + ' ' + (bindings[1] > 1 ? ' (array index='+i+')' : ''));
+#if TRACING
+            trace('GL', 'Applying initial UBO binding point ' + (bindings[0]+i) + ' for UBO "' + (ubo + (bindings[1] > 1 ? '[' + i + ']' : '')) + '" at block index ' + blockIndex + ' ' + (bindings[1] > 1 ? ' (array index='+i+')' : ''));
 #endif
             GLctx.uniformBlockBinding(p, blockIndex, bindings[0]+i);
           }
@@ -3481,8 +3477,8 @@ var LibraryGL = {
       Object.keys(p.explicitSamplerBindings).forEach(function(sampler) {
         var bindings = p.explicitSamplerBindings[sampler];
         for(var i = 0; i < bindings[1]; ++i) {
-#if GL_DEBUG
-          out('Applying initial sampler binding point ' + (bindings[0]+i) + ' for sampler "' + sampler + (i > 0 ? '['+i+']' : '') +  '"');
+#if TRACING
+          trace('GL', 'Applying initial sampler binding point ' + (bindings[0]+i) + ' for sampler "' + sampler + (i > 0 ? '['+i+']' : '') +  '"');
 #endif
           GLctx.uniform1i(GLctx.getUniformLocation(p, sampler + (i ? '['+i+']' : '')), bindings[0]+i);
         }

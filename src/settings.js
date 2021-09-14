@@ -65,6 +65,8 @@ var ASSERTIONS = 1;
 // [link]
 var RUNTIME_LOGGING = 0;
 
+var TRACING = 0;
+
 // Chooses what kind of stack smash checks to emit to generated code:
 // Building with ASSERTIONS=1 causes STACK_OVERFLOW_CHECK default to 1.
 // Since ASSERTIONS=1 is the default at -O0, which itself is the default

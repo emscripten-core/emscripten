@@ -3623,8 +3623,8 @@ LibraryManager.library = {
   $runtimeKeepalivePush__sig: 'v',
   $runtimeKeepalivePush: function() {
     runtimeKeepaliveCounter += 1;
-#if RUNTIME_DEBUG
-    err('runtimeKeepalivePush -> counter=' + runtimeKeepaliveCounter);
+#if TRACING
+    trace('RUNTIME', 'runtimeKeepalivePush -> counter=' + runtimeKeepaliveCounter);
 #endif
   },
 
@@ -3634,8 +3634,8 @@ LibraryManager.library = {
     assert(runtimeKeepaliveCounter > 0);
 #endif
     runtimeKeepaliveCounter -= 1;
-#if RUNTIME_DEBUG
-    err('runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
+#if TRACING
+    trace('RUNTIME', 'runtimeKeepalivePop -> counter=' + runtimeKeepaliveCounter);
 #endif
   },
 
@@ -3682,12 +3682,12 @@ LibraryManager.library = {
 #endif
   ],
   $maybeExit: function() {
-#if RUNTIME_DEBUG
-    err('maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
+#if TRACING
+    trace('RUNTIME', 'maybeExit: user callback done: runtimeKeepaliveCounter=' + runtimeKeepaliveCounter);
 #endif
     if (!keepRuntimeAlive()) {
-#if RUNTIME_DEBUG
-      err('maybeExit: calling exit() implicitly after user callback completed: ' + EXITSTATUS);
+#if TRACING
+      trace('RUNTIME', 'maybeExit: calling exit() implicitly after user callback completed: ' + EXITSTATUS);
 #endif
       try {
 #if USE_PTHREADS

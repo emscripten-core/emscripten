@@ -996,8 +996,8 @@ var LibraryBrowser = {
 #endif
     function checkIsRunning() {
       if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) {
-#if RUNTIME_DEBUG
-        err('main loop exiting..');
+#if TRACING
+        trace('RUNTIME', 'main loop exiting..');
 #endif
         {{{ runtimeKeepalivePop() }}}
 #if !MINIMAL_RUNTIME

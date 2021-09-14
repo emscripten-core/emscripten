@@ -1089,8 +1089,8 @@ FS.staticInit();` +
         if (!FS.readFiles) FS.readFiles = {};
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
-#if FS_DEBUG
-          err("FS.trackingDelegate error on read file: " + path);
+#if TRACING
+          trace('FS', 'FS.trackingDelegate error on read file: ' + path);
 #endif
         }
       }

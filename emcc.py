@@ -2314,6 +2314,20 @@ def phase_linker_setup(options, state, newargs, settings_map):
   settings.PROFILING_FUNCS = options.profiling_funcs
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
+  if (settings.EXCEPTION_DEBUG or
+      settings.LIBRARY_DEBUG or
+      settings.SYSCALL_DEBUG or
+      settings.SOCKET_DEBUG or
+      settings.DYLINK_DEBUG or
+      settings.FS_DEBUG or
+      settings.OPENAL_DEBUG or
+      settings.WEBSOCKET_DEBUG or
+      settings.GL_DEBUG or
+      settings.ASYNCIFY_DEBUG or
+      settings.PTHREADS_DEBUG or
+      settings.FETCH_DEBUG): # noqa
+    default_setting('TRACING', 1)
+
   return target, wasm_target
 
 
