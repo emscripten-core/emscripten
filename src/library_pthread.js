@@ -223,7 +223,7 @@ var LibraryPThread = {
     // Called by worker.js each time a thread is started.
     threadInit: function() {
 #if PTHREADS_DEBUG
-      out('Pthread 0x' + _pthread_self().toString(16) + ' threadInit.');
+      err('Pthread 0x' + _pthread_self().toString(16) + ' threadInit.');
 #endif
 #if PTHREADS_PROFILING
       PThread.setThreadStatus(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
@@ -388,7 +388,7 @@ var LibraryPThread = {
       // If we're using module output and there's no explicit override, use bundler-friendly pattern.
       if (!Module['locateFile']) {
 #if PTHREADS_DEBUG
-        out('Allocating a new web worker from ' + new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
+        err('Allocating a new web worker from ' + new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
 #endif
 #if TRUSTED_TYPES
         // Use Trusted Types compatible wrappers.
@@ -414,7 +414,7 @@ var LibraryPThread = {
       var pthreadMainJs = locateFile('{{{ PTHREAD_WORKER_FILE }}}');
 #endif
 #if PTHREADS_DEBUG
-      out('Allocating a new web worker from ' + pthreadMainJs);
+      err('Allocating a new web worker from ' + pthreadMainJs);
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
@@ -935,7 +935,7 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
     var tb = _pthread_self();
     assert(tb);
-    out('Pthread 0x' + tb.toString(16) + ' exited.');
+    err('Pthread 0x' + tb.toString(16) + ' exited.');
 #endif
 
     while (PThread.threadExitHandlers.length > 0) {
@@ -1138,16 +1138,16 @@ var LibraryPThread = {
 #if EXIT_RUNTIME
     if (!keepRuntimeAlive()) {
       // exitRuntime enabled, proxied main() finished in a pthread, shut down the process.
-#if ASSERTIONS
-      out('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
+#if PTHREADS_DEBUG
+      err('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
 #endif
       postMessage({ 'cmd': 'exitProcess', 'returnCode': returnCode });
       return returnCode;
     }
 #else
     // EXIT_RUNTIME==0 set on command line, keeping main thread alive.
-#if ASSERTIONS
-    out('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
+#if PTHREADS_DEBUG
+    err('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
 #endif
 #endif
   },
