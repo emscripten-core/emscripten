@@ -4,7 +4,7 @@
 C++ exceptions support
 ==============================
 
-By default, exception catching is disabled in Emscripten to avoid overhead.
+By default, exception catching is disabled in Emscripten.
 
 For example, if you compile the following program:
 
@@ -46,7 +46,7 @@ When you rebuild the example above with this flag, the output will change to:
   throw...
   catch!
 
-Note that this option has relatively high overhead, but it will work on all
+Note that this option has relatively high overhead, but it will work on all JavaScript
 engines with WebAssembly support. You can reduce the overhead by specifying a
 list of allowed functions in which exceptions are enabled, see the
 ``EXCEPTION_CATCHING_ALLOWED`` setting.
@@ -71,6 +71,5 @@ This option leverages a new feature that brings built-in instructions for
 throwing and catching exceptions to WebAssembly.
 
 As a result, it can reduce amount of custom glue and performance overhead
-compared to the JavaScript-based implementation, but it's also highly
-experimental and `not yet supported in most engines by default
-<https://webassembly.org/roadmap/>`_.
+compared to the JavaScript-based implementation. However, it's still
+brand-new and `not yet supported by default in most engines <https://webassembly.org/roadmap/>`_.
