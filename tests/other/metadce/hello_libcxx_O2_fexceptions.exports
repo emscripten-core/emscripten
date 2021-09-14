@@ -13,6 +13,7 @@ free
 main
 malloc
 memory
+saveSetjmp
 setThrew
 stackAlloc
 stackRestore
