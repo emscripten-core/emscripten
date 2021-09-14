@@ -55,7 +55,8 @@ WebAssembly exception handling proposal
 #######################################
 
 Alternatively, you can opt-in to the `native WebAssembly exception handling
-<https://github.com/WebAssembly/exception-handling/blob/master/proposals/exception-handling/Exceptions.md>`_.
+<https://github.com/WebAssembly/exception-handling/blob/master/proposals/exception-handling/Exceptions.md>`_
+extension.
 
 To enable it, pass ``-fwasm-exceptions`` at both compile time and link time.
 
