@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 2.0.30
 ------
+- Add `emscripten/thread_utils.h` helper header, which includes C++ utilities
+  for proxying code to other threads.
 2.0.29
 -----
 - Bug fixes
