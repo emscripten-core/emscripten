@@ -13,7 +13,7 @@ This document provides the command syntax, and a :ref:`set of guides <emsdk_howt
 Command line syntax
 ===================
 
-**./emsdk** [**help** [**--old**] | **list** | **update** | **install** *<tool/sdk>* | **uninstall** *<tool/sdk>* | **activate** *<tool/sdk>*]
+**./emsdk** [**help** | **list** [**--old**] | **update** | **install** *<tool/sdk>* | **uninstall** *<tool/sdk>* | **activate** *<tool/sdk>*]
 
 
 Arguments
