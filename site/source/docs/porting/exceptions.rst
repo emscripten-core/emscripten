@@ -56,7 +56,7 @@ WebAssembly exception handling proposal
 
 Alternatively, you can opt-in to the `native WebAssembly exception handling
 <https://github.com/WebAssembly/exception-handling/blob/master/proposals/exception-handling/Exceptions.md>`_
-extension.
+proposal.
 
 To enable it, pass ``-fwasm-exceptions`` at both compile time and link time.
 
@@ -71,6 +71,6 @@ Rebuilding the example with this flag will result in the same output as with
 This option leverages a new feature that brings built-in instructions for
 throwing and catching exceptions to WebAssembly.
 
-As a result, it can reduce amount of custom glue and performance overhead
-compared to the JavaScript-based implementation. However, it's still
-brand-new and `not yet supported by default in most engines <https://webassembly.org/roadmap/>`_.
+As a result, it can reduce code size and performance overhead compared
+to the JavaScript-based implementation. However, it's still brand-new
+and `not yet supported by default in most engines <https://webassembly.org/roadmap/>`_.
