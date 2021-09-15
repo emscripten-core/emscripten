@@ -44,7 +44,7 @@ When generating HTML, Emscripten creates a ``Module`` object with default method
 
     Module['print'] = function(text) { alert('stdout: ' + text) };
 
-Note that once the Module object is received by the main JavaScript file, it will look for `Module['print']` and so forth at that time, and use them accordingly. Changing their values later may not be noticed.
+Note that once the Module object is received by the main JavaScript file, it will look for ``Module['print']`` and so forth at that time, and use them accordingly. Changing their values later may not be noticed.
 
 Affecting execution
 ===================
