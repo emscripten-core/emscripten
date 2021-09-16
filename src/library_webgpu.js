@@ -173,6 +173,7 @@ var LibraryWebGPU = {
       {{{ gpu.makeInitManager('Surface') }}}
       {{{ gpu.makeInitManager('SwapChain') }}}
 
+      {{{ gpu.makeInitManager('Adapter') }}}
       this["mgrDevice"] = this["mgrDevice"] || makeManager();
       {{{ gpu.makeInitManager('Queue') }}}
 
@@ -527,6 +528,7 @@ var LibraryWebGPU = {
   {{{ gpu.makeReferenceRelease('Surface') }}}
   {{{ gpu.makeReferenceRelease('SwapChain') }}}
 
+  {{{ gpu.makeReferenceRelease('Adapter') }}}
   {{{ gpu.makeReferenceRelease('Device') }}}
   {{{ gpu.makeReferenceRelease('Queue') }}}
 
@@ -558,6 +560,8 @@ var LibraryWebGPU = {
   wgpuQuerySetDestroy: function(querySetId) { WebGPU.mgrQuerySet.get(querySetId)["destroy"](); },
 
   // wgpuDevice
+
+  wgpuDeviceDestroy: function(deviceId) { WebGPU["mgrDevice"].get(deviceId)["destroy"](); },
 
   wgpuDeviceGetQueue: function(deviceId) {
     var queueId = WebGPU.deviceQueues[deviceId];
@@ -1901,17 +1905,67 @@ var LibraryWebGPU = {
     abort('wgpuInstanceProcessEvents is unsupported (use requestAnimationFrame via html5.h instead)');
 #endif
   },
-  wgpuInstanceRequestAdapter: function() {
-    abort('unimplemented (TODO)');
+  wgpuInstanceRequestAdapter: function(instanceId, options, callback, userdata) {
+    {{{ gpu.makeCheck('instanceId === 0, "WGPUInstance is ignored"') }}}
+
+    var opts = {
+    };
+
+    if (options) {
+      {{{ gpu.makeCheckDescriptor('options') }}}
+      // TODO: Add support for powerPreference and forceFallbackAdapter
+    }
+
+    if (!('gpu' in navigator)) {
+      // WebGPU is not supported by the browser
+      {{{ makeDynCall('vii', 'callback') }}}(
+        {{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, userdata);
+    }
+
+    navigator["gpu"]["requestAdapter"](opts)["then"](function(adapter) {
+      if (adapter) {
+        {{{ makeDynCall('vii', 'callback') }}}(
+          {{{ gpu.RequestAdapterStatus.Success }}},
+          WebGPU.mgrAdapter.create(adapter), userdata);
+      } else {
+        {{{ makeDynCall('vii', 'callback') }}}(
+          {{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, userdata);
+      }
+    }, function() {
+      {{{ makeDynCall('vii', 'callback') }}}(
+        {{{ gpu.RequestAdapterStatus.Error }}}, 0, userdata);
+    });
   },
 
   // WGPUAdapter
 
-  wgpuAdapterGetProperties: function() {
-    abort('unimplemented (TODO)');
+  wgpuAdapterGetProperties: function(adapterId, properties) {
+    {{{ gpu.makeCheckDescriptor('properties') }}}
+    {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.vendorID, '0', 'i32') }}};
+    {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.deviceID, '0', 'i32') }}};
+    {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.name, '0', 'i32') }}};
+    {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.driverDescription, '0', 'i32') }}};
+    {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.adapterType, gpu.AdapterType.Unknown, 'i32') }}};
+    {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.backendType, gpu.BackendType.WebGPU, 'i32') }}};
   },
-  wgpuAdapterRequestDevice: function() {
-    abort('unimplemented (TODO)');
+  wgpuAdapterRequestDevice: function(adapterId, descriptor, callback, userdata) {
+    var adapter = WebGPU.mgrAdapter.get(adapterId);
+
+    var desc = {
+    };
+    if (descriptor) {
+      {{{ gpu.makeCheckDescriptor('descriptor') }}}
+      // TODO: Add support for requiredFeatures and requiredLimits
+    }
+
+    adapter["requestDevice"](desc)["then"](function(device) {
+      var result = WebGPU.mgrDevice.create(device);
+      {{{ makeDynCall('vii', 'callback') }}}(
+        {{{ gpu.RequestDeviceStatus.Success }}}, result, userdata);
+    }, function() {
+      {{{ makeDynCall('vii', 'callback') }}}(
+        {{{ gpu.RequestDeviceStatus.Error }}}, 0, userdata);
+    });
   },
 
   // WGPUSurface
