@@ -20,8 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 2.0.31
 ------
-2.0.30
+- The `JAVA` config settings has been removed.  Today, java is not be needed
+  except in the rare case of using closure-compiler on a plaform where not native
+  version of closure-compiler is available.  In this case, simply having `java`
+  available in the `PATH` should be sufficient.
 
+2.0.30
 ------
 - Bug fixes
 

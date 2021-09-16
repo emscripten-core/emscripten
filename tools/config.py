@@ -25,7 +25,6 @@ LLVM_ROOT = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
-JAVA = None
 JS_ENGINE = None
 JS_ENGINES = None
 WASMER = None
@@ -56,7 +55,7 @@ def root_is_writable():
 
 
 def normalize_config_settings():
-  global CACHE, PORTS, JAVA, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
+  global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
   global NODE_JS, V8_ENGINE, JS_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
 
   # EM_CONFIG stuff
@@ -91,10 +90,6 @@ def normalize_config_settings():
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
 
-  if JAVA is None:
-    logger.debug('JAVA not defined in ' + EM_CONFIG + ', using "java"')
-    JAVA = 'java'
-
   # Tools/paths
   if LLVM_ADD_VERSION is None:
     LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
@@ -124,7 +119,6 @@ def parse_config_file():
     'LLVM_ADD_VERSION',
     'CLANG_ADD_VERSION',
     'CLOSURE_COMPILER',
-    'JAVA',
     'JS_ENGINE',
     'JS_ENGINES',
     'WASMER',

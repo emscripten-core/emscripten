@@ -710,22 +710,12 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   if extra_closure_args:
     user_args += extra_closure_args
 
-  # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
-  # to enable use the java backend.  Without this it will only try the native and JavaScript
-  # versions of the compiler.
-  java_bin = os.path.dirname(config.JAVA)
-  if java_bin:
-    def add_to_path(dirname):
-      env['PATH'] = env['PATH'] + os.pathsep + dirname
-    add_to_path(java_bin)
-    java_home = os.path.dirname(java_bin)
-    env.setdefault('JAVA_HOME', java_home)
-
   closure_cmd = get_closure_compiler()
 
   native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
   if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
     # Run with Java Closure compiler as a fallback if the native version does not work
+    diagnostics.warning('closure-compiler', 'Failed to run native closure compiler.  Falling back to Java version')
     user_args.append('--platform=java')
     check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
 
@@ -819,6 +809,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   # 7-bit ASCII range. Therefore make sure the command line we pass does not contain any such
   # input files by passing all input filenames relative to the cwd. (user temp directory might
   # be in user's home directory, and user's profile name might contain unicode characters)
+  shared.print_compiler_stage(cmd)
   proc = run_process(cmd, stderr=PIPE, check=False, env=env, cwd=tempfiles.tmpdir)
 
   # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
