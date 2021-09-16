@@ -1916,8 +1916,11 @@ var LibraryWebGPU = {
 
   // WGPUSurface
 
-  wgpuSurfaceGetPreferredFormat: function(surfaceId, adapterId, callback, userdata) {
-    abort('unimplemented (TODO)');
+  wgpuSurfaceGetPreferredFormat: function(surfaceId, adapterId) {
+    var context = WebGPU.mgrSurface.get(surfaceId);
+    var adapter = WebGPU.mgrAdapter.get(adapterId);
+    const format = context["getPreferredFormat"](adapter);
+    return WebGPU.PreferredFormat[format];
   },
 
   // WGPUSwapChain
