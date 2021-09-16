@@ -28,7 +28,7 @@ Most `clang options <http://linux.die.net/man/1/clang>`_ will work, as will `gcc
   # Display this information
   emcc --help
 
-  Display compiler version information
+  # Display compiler version information
   emcc --version
 
 
