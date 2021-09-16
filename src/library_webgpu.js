@@ -13,6 +13,12 @@
  * Dawn (https://dawn.googlesource.com/dawn/) to also target the Web with the
  * same graphics API and fairly minimal changes - similar to OpenGL ES 2.0/3.0
  * on WebGL 1.0/2.0.
+ *
+ * To test this, run the following tests:
+ * - tests/runner.py other.test_webgpu_compiletest
+ * - EMTEST_BROWSERS="/path/to/chrome --user-data-dir=chromeuserdata --enable-unsafe-webgpu" \
+ *   tests/runner.py browser.test_webgpu_basic_rendering
+ *   (requires WebGPU to be available - otherwise the test will skip itself and pass)
  */
 
 {{{ (function() {
