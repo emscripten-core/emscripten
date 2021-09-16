@@ -642,6 +642,7 @@ var LibraryWebGPU = {
     var id = WebGPU.mgrBuffer.create(device["createBuffer"](desc));
     if (mappedAtCreation) {
       var bufferWrapper = WebGPU.mgrBuffer.objects[id];
+      {{{ gpu.makeCheckDefined('bufferWrapper') }}}
       bufferWrapper.mapMode = {{{ gpu.MapMode.Write }}};
       bufferWrapper.onUnmap = [];
     }
@@ -1436,6 +1437,7 @@ var LibraryWebGPU = {
 
   wgpuBufferGetConstMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
+    {{{ gpu.makeCheckDefined('bufferWrapper') }}}
 
     // TODO: if the sentinel value becomes WGPU_WHOLE_SIZE instead of 0, update this.
     if (size === 0) size = undefined;
@@ -1461,6 +1463,7 @@ var LibraryWebGPU = {
 
   wgpuBufferGetMappedRange: function(bufferId, offset, size) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
+    {{{ gpu.makeCheckDefined('bufferWrapper') }}}
 
     // TODO: if the sentinel value becomes WGPU_WHOLE_SIZE instead of 0, update this.
     if (size === 0) size = undefined;
@@ -1495,6 +1498,7 @@ var LibraryWebGPU = {
 
   wgpuBufferMapAsync: function(bufferId, mode, offset, size, callback, userdata) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
+    {{{ gpu.makeCheckDefined('bufferWrapper') }}}
     bufferWrapper.mapMode = mode;
     bufferWrapper.onUnmap = [];
     var buffer = bufferWrapper.object;
@@ -1511,6 +1515,7 @@ var LibraryWebGPU = {
 
   wgpuBufferUnmap: function(bufferId) {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
+    {{{ gpu.makeCheckDefined('bufferWrapper') }}}
 
     if (!bufferWrapper.onUnmap) {
       // Already unmapped
