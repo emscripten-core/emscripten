@@ -1614,7 +1614,6 @@ keydown(100);keyup(100); // trigger the end
       <!doctype html>
       <html>
       <head><meta charset="utf-8"><title>Chunked XHR</title></head>
-      <html>
       <body>
         Chunked XHR Web Worker Test
         <script>
