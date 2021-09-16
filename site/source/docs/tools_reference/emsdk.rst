@@ -207,6 +207,8 @@ particular tool: ::
 
   On Windows, calling ``activate`` automatically sets up the required paths and environment variables.
 
+.. warning:: We don't recommand you to add ``./emsdk_env.sh`` into your default shell config, because it adds emsdk's tools paths into the environment variable ``$PATH`` which probably change the directing of the ``node`` command.
+
 .. _emsdk-install-old-tools:
 
 How do I install and activate old Emscripten SDKs and tools?
