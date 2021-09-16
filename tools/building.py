@@ -710,17 +710,6 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   if extra_closure_args:
     user_args += extra_closure_args
 
-  # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
-  # to enable use the java backend.  Without this it will only try the native and JavaScript
-  # versions of the compiler.
-  java_bin = os.path.dirname(config.JAVA)
-  if java_bin:
-    def add_to_path(dirname):
-      env['PATH'] = env['PATH'] + os.pathsep + dirname
-    add_to_path(java_bin)
-    java_home = os.path.dirname(java_bin)
-    env.setdefault('JAVA_HOME', java_home)
-
   closure_cmd = get_closure_compiler()
 
   native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
@@ -728,6 +717,18 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
     # Run with Java Closure compiler as a fallback if the native version does not work
     user_args.append('--platform=java')
     check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
+
+  if config.JAVA and '--platform=java' in user_args:
+    # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
+    # to enable use the java backend.  Without this it will only try the native and JavaScript
+    # versions of the compiler.
+    java_bin = os.path.dirname(config.JAVA)
+    if java_bin:
+      def add_to_path(dirname):
+        env['PATH'] = env['PATH'] + os.pathsep + dirname
+      add_to_path(java_bin)
+      java_home = os.path.dirname(java_bin)
+      env.setdefault('JAVA_HOME', java_home)
 
   # Closure externs file contains known symbols to be extern to the minification, Closure
   # should not minify these symbol names.
