@@ -449,6 +449,9 @@ function exit(status, implicit) {
 function procExit(code) {
   EXITSTATUS = code;
   if (!keepRuntimeAlive()) {
+#if USE_PTHREADS
+    PThread.terminateAllThreads();
+#endif
 #if expectToReceiveOnModule('onExit')
     if (Module['onExit']) Module['onExit'](code);
 #endif
