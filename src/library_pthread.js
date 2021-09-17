@@ -629,7 +629,7 @@ var LibraryPThread = {
   },
 
   __pthread_create_js__sig: 'iiiii',
-  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', 'emscripten_builtin_memalign', 'emscripten_sync_run_in_main_thread_4'],
+  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', 'memalign', 'emscripten_sync_run_in_main_thread_4'],
   __pthread_create_js: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
@@ -778,7 +778,7 @@ var LibraryPThread = {
     if (allocatedOwnStack) {
       // Allocate a stack if the user doesn't want to place the stack in a
       // custom memory area.
-      stackBase = _emscripten_builtin_memalign({{{ STACK_ALIGN }}}, stackSize);
+      stackBase = _memalign({{{ STACK_ALIGN }}}, stackSize);
     } else {
       // Musl stores the stack base address assuming stack grows downwards, so
       // adjust it to Emscripten convention that the
