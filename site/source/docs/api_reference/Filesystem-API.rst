@@ -674,6 +674,105 @@ File system API
 
 
 
+.. js:data:: FS.trackingDelegate[callback name]
+
+  Users can specify callbacks to receive different filesystem events. This is useful for tracking changes in the filesystem.
+
+  .. _fs-callback-names:
+
+  - ``willMovePath`` — Indicates path is about to be moved.
+  - ``onMovePath`` — Indicates path is moved.
+  - ``willDeletePath`` — Indicates path is about to be deleted.
+  - ``onDeletePath`` — Indicates path deleted.
+  - ``onOpenFile`` — Indicates file is opened.
+  - ``onWriteToFile`` — Indicates file is being written to and number of bytes written.
+  - ``onReadFile`` — Indicates file is being read and number of bytes read.
+  - ``onSeekFile`` — Indicates seeking within a file, position, and whence.
+  - ``onCloseFile`` — Indicates a file being closed.
+
+  :callback name: The name of the callback that indicates the filesystem event
+
+  Example Code
+
+  .. code-block:: javascript
+
+    EM_ASM(
+      FS.trackingDelegate['willMovePath'] = function(oldpath, newpath) {
+        out('About to move "' + oldpath + '" to "' + newpath + '"');
+      };
+      FS.trackingDelegate['onMovePath'] = function(oldpath, newpath) {
+        out('Moved "' + oldpath + '" to "' + newpath + '"');
+      };
+      FS.trackingDelegate['willDeletePath'] = function(path) {
+        out('About to delete "' + path + '"');
+      };
+      FS.trackingDelegate['onDeletePath'] = function(path) {
+        out('Deleted "' + path + '"');
+      };
+      FS.trackingDelegate['onOpenFile'] = function(path, flags) {
+        out('Opened "' + path + '" with flags ' + flags);
+      };
+      FS.trackingDelegate['onReadFile'] = function(path, bytesRead) {
+        out('Read ' + bytesRead + ' bytes from "' + path + '"');
+      };
+      FS.trackingDelegate['onWriteToFile'] = function(path, bytesWritten) {
+        out('Wrote to file "' + path + '" with ' + bytesWritten + ' bytes written');
+      };
+      FS.trackingDelegate['onSeekFile'] = function(path, position, whence) {
+        out('Seek on "' + path + '" with position ' + position + ' and whence ' + whence);
+      };
+      FS.trackingDelegate['onCloseFile'] = function(path) {
+        out('Closed ' + path);
+      };
+      FS.trackingDelegate['onMakeDirectory'] = function(path, mode) {
+        out('Created directory ' + path + ' with mode ' + mode);
+      };
+      FS.trackingDelegate['onMakeSymlink'] = function(oldpath, newpath) {
+        out('Created symlink from ' + oldpath + ' to ' + newpath);
+      };
+    );
+
+    FILE *file;
+    file = fopen("/test.txt", "w");
+    fputs("hello world", file);
+    fclose(file);
+    rename("/test.txt", "/renamed.txt");
+    file = fopen("/renamed.txt", "r");
+    char str[256] = {};
+    fgets(str, 255, file);
+    printf("File read returned '%s'\n", str);
+    fclose(file);
+    remove("/renamed.txt");
+    mkdir("/home/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    symlink("/renamed.txt", "/file.txt");
+
+
+  Example Output
+
+  .. code-block:: text
+
+    Opened "/test.txt" with flags O_CREAT O_TRUNC O_WRONLY and file size 0
+    Wrote to file "/test.txt" with 11 bytes written
+    Wrote to file "/test.txt" with 0 bytes written
+    Closed /test.txt
+    About to move "/test.txt" to "/renamed.txt"
+    Moved "/test.txt" to "/renamed.txt"
+    Opened "/renamed.txt" with flags O_RDONLY and file size 11
+    Read 0 bytes from "/renamed.txt"
+    Read 11 bytes from "/renamed.txt"
+    Read 0 bytes from "/renamed.txt"
+    Read 0 bytes from "/renamed.txt"
+    Wrote to file "/dev/tty" with 31 bytes written
+    File read returned 'hello world'
+    Wrote to file "/dev/tty" with 2 bytes written
+    Closed /renamed.txt
+    About to delete "/renamed.txt"
+    Deleted "/renamed.txt"
+    Created directory "/home/test" with mode 16893
+    Created symlink from "/renamed.txt" to "/file.txt"
+
+
+
 File types
 ==========
 
@@ -783,12 +882,12 @@ Paths
 .. js:function:: FS.analyzePath(path, dontResolveLastLink)
 
   Looks up the incoming path and returns an object containing information about
-  file stats and nodes. Built on top of ``FS.lookupPath`` and provides more 
-  information about given path and its parent. If any error occurs it won't 
+  file stats and nodes. Built on top of ``FS.lookupPath`` and provides more
+  information about given path and its parent. If any error occurs it won't
   throw but returns an ``error`` property.
 
   :param string path: The incoming path.
-  :param boolean dontResolveLastLink: If true, don't follow the last component 
+  :param boolean dontResolveLastLink: If true, don't follow the last component
     if it is a symlink.
 
   :returns: an object with the format:
@@ -797,13 +896,13 @@ Paths
 
       {
         isRoot: boolean,
-        exists: boolean, 
-        error: Error, 
-        name: string, 
-        path: resolved_path, 
+        exists: boolean,
+        error: Error,
+        name: string,
+        path: resolved_path,
         object: resolved_node,
-        parentExists: boolean, 
-        parentPath: resolved_parent_path, 
+        parentExists: boolean,
+        parentPath: resolved_parent_path,
         parentObject: resolved_parent_node
       }
 

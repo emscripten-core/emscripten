@@ -193,7 +193,7 @@ var MAXIMUM_MEMORY = 2147483648;
 
 // If false, we abort with an error if we try to allocate more memory than
 // we can (INITIAL_MEMORY). If true, we will grow the memory arrays at
-// runtime, seamlessly and dynamically. 
+// runtime, seamlessly and dynamically.
 // See https://code.google.com/p/v8/issues/detail?id=3907 regarding
 // memory growth performance in chrome.
 // Note that growing memory means we replace the JS typed array views, as
@@ -353,6 +353,10 @@ var SOCKET_DEBUG = 0;
 // Log dynamic linker information
 // [link]
 var DYLINK_DEBUG = 0;
+
+// Register file system callbacks using trackingDelegate in library_fs.js
+// [link]
+var FS_DEBUG = 0;
 
 // Select socket backend, either webrtc or websockets. XXX webrtc is not
 // currently tested, may be broken
@@ -1950,6 +1954,12 @@ var AUTOLOAD_DYLIBS = 1;
 // allows programs that depend on these syscalls at runtime to be compiled, even
 // though these syscalls will fail (or do nothing) at runtime.
 var ALLOW_UNIMPLEMENTED_SYSCALLS = 1;
+
+// Allow calls to Worker(...) and importScripts(...) to be Trusted Types compatible.
+// Trusted Types is a Web Platform feature designed to mitigate DOM XSS by restricting
+// the usage of DOM sink APIs. See https://w3c.github.io/webappsec-trusted-types/.
+// [link]
+var TRUSTED_TYPES = 0;
 
 //===========================================
 // Internal, used for testing only, from here

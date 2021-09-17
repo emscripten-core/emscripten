@@ -842,11 +842,11 @@
             "__size__": 28,
             "adapterType": 20,
             "backendType": 24,
-            "deviceID": 4,
+            "deviceID": 8,
             "driverDescription": 16,
             "name": 12,
             "nextInChain": 0,
-            "vendorID": 8
+            "vendorID": 4
         },
         "WGPUBindGroupDescriptor": {
             "__size__": 20,
@@ -857,13 +857,14 @@
             "nextInChain": 0
         },
         "WGPUBindGroupEntry": {
-            "__size__": 32,
-            "binding": 0,
-            "buffer": 4,
-            "offset": 8,
-            "sampler": 24,
-            "size": 16,
-            "textureView": 28
+            "__size__": 40,
+            "binding": 4,
+            "buffer": 8,
+            "nextInChain": 0,
+            "offset": 16,
+            "sampler": 32,
+            "size": 24,
+            "textureView": 36
         },
         "WGPUBindGroupLayoutDescriptor": {
             "__size__": 16,
@@ -937,6 +938,20 @@
             "label": 4,
             "nextInChain": 0
         },
+        "WGPUCompilationInfo": {
+            "__size__": 8,
+            "messageCount": 0,
+            "messages": 4
+        },
+        "WGPUCompilationMessage": {
+            "__size__": 40,
+            "length": 32,
+            "lineNum": 8,
+            "linePos": 16,
+            "message": 0,
+            "offset": 24,
+            "type": 4
+        },
         "WGPUComputePassDescriptor": {
             "__size__": 8,
             "label": 4,
@@ -944,7 +959,7 @@
         },
         "WGPUComputePipelineDescriptor": {
             "__size__": 24,
-            "computeStage": 12,
+            "compute": 12,
             "label": 4,
             "layout": 8,
             "nextInChain": 0
@@ -962,6 +977,10 @@
             "stencilFront": 16,
             "stencilReadMask": 48,
             "stencilWriteMask": 52
+        },
+        "WGPUDeviceDescriptor": {
+            "__size__": 4,
+            "nextInChain": 0
         },
         "WGPUExtent3D": {
             "__size__": 12,
@@ -1096,6 +1115,11 @@
             "nextInChain": 0,
             "primitive": 32,
             "vertex": 12
+        },
+        "WGPURequestAdapterOptions": {
+            "__size__": 8,
+            "compatibleSurface": 4,
+            "nextInChain": 0
         },
         "WGPUSamplerBindingLayout": {
             "__size__": 8,

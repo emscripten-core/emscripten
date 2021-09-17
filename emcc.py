@@ -55,7 +55,7 @@ from tools.utils import read_file, write_file, read_binary
 
 logger = logging.getLogger('emcc')
 
-# endings = dot + a suffix, safe to test by  filename.endswith(endings)
+# endings = dot + a suffix, compare against result of shared.suffix()
 C_ENDINGS = ('.c', '.i')
 CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii')
 OBJC_ENDINGS = ('.m', '.mi')
@@ -227,7 +227,6 @@ class EmccOptions:
     self.oformat = None
     self.requested_debug = ''
     self.profiling_funcs = False
-    self.tracing = False
     self.emit_symbol_map = False
     self.use_closure_compiler = None
     self.closure_args = []
@@ -244,7 +243,6 @@ class EmccOptions:
     self.source_map_base = ''
     self.emrun = False
     self.cpu_profiler = False
-    self.thread_profiler = False
     self.memory_profiler = False
     self.memory_init_file = None
     self.use_preload_cache = False
@@ -755,7 +753,7 @@ def emsdk_ldflags(user_args):
   library_paths = [
      shared.Cache.get_lib_dir(absolute=True)
   ]
-  ldflags = ['-L' + l for l in library_paths]
+  ldflags = [f'-L{l}' for l in library_paths]
 
   if '-nostdlib' in user_args:
     return ldflags
@@ -814,7 +812,7 @@ def get_llvm_target():
 cflags = None
 
 
-def get_cflags(options, user_args):
+def get_cflags(user_args):
   global cflags
   if cflags:
     return cflags
@@ -823,11 +821,8 @@ def get_cflags(options, user_args):
   # We add these to the user's flags (newargs), but not when building .s or .S assembly files
   cflags = get_clang_flags()
 
-  if options.tracing:
+  if settings.EMSCRIPTEN_TRACING:
     cflags.append('-D__EMSCRIPTEN_TRACING__=1')
-
-  if settings.USE_PTHREADS:
-    cflags.append('-D__EMSCRIPTEN_PTHREADS__=1')
 
   if not settings.STRICT:
     # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
@@ -861,11 +856,6 @@ def get_cflags(options, user_args):
              '-D__EMSCRIPTEN_minor__=' + str(shared.EMSCRIPTEN_VERSION_MINOR),
              '-D__EMSCRIPTEN_tiny__=' + str(shared.EMSCRIPTEN_VERSION_TINY),
              '-D_LIBCPP_ABI_VERSION=2']
-
-  # For compatability with the fastcomp compiler that defined these
-  cflags += ['-Dunix',
-             '-D__unix',
-             '-D__unix__']
 
   # Changes to default clang behavior
 
@@ -1382,7 +1372,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
 
-  if options.thread_profiler:
+  if settings.PTHREADS_PROFILING:
     options.post_js.append(utils.path_from_root('src/threadprofiler.js'))
 
   options.pre_js = read_js_files(options.pre_js)
@@ -1633,7 +1623,15 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.EXPORT_ALL = 1
 
   if settings.MAIN_MODULE:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getDylinkMetadata', '$mergeLibSymbols']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        '$getDylinkMetadata',
+        '$mergeLibSymbols',
+    ]
+
+  if settings.USE_PTHREADS:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        '$registerTlsInit',
+    ]
 
   if settings.RELOCATABLE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
@@ -1785,7 +1783,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     state.forced_stdlibs.append('libfetch')
     settings.JS_LIBRARIES.append((0, 'library_fetch.js'))
     if settings.USE_PTHREADS:
-      settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
+      settings.FETCH_WORKER_FILE = unsuffixed_basename(target) + '.fetch.js'
 
   if settings.DEMANGLE_SUPPORT:
     settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
@@ -1874,7 +1872,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       exit_with_error('USE_PTHREADS + BUILD_AS_WORKER require separate modes that don\'t work together, see https://github.com/emscripten-core/emscripten/issues/8854')
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
     settings.EXPORTED_FUNCTIONS += [
-      '___emscripten_pthread_data_constructor',
+      '___emscripten_init_main_thread',
       '__emscripten_call_on_thread',
       '__emscripten_main_thread_futex',
       '__emscripten_thread_init',
@@ -1904,7 +1902,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     building.user_requested_exports.add('_emscripten_current_thread_process_queued_calls')
 
     # set location of worker.js
-    settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
+    settings.PTHREAD_WORKER_FILE = unsuffixed_basename(target) + '.worker.js'
   else:
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
@@ -2105,7 +2103,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.MEM_INIT_IN_WASM = True
 
   # wasm side modules have suffix .wasm
-  if settings.SIDE_MODULE and target.endswith('.js'):
+  if settings.SIDE_MODULE and shared.suffix(target) == '.js':
     diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
   sanitize = set()
@@ -2297,7 +2295,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if not shared.JS.isidentifier(settings.EXPORT_NAME):
     exit_with_error(f'EXPORT_NAME is not a valid JS identifier: `{settings.EXPORT_NAME}`')
 
-  if options.tracing and settings.ALLOW_MEMORY_GROWTH:
+  if settings.EMSCRIPTEN_TRACING and settings.ALLOW_MEMORY_GROWTH:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
     settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_current',
                                     '_emscripten_stack_get_base',
@@ -2365,10 +2363,11 @@ def phase_compile_inputs(options, state, newargs, input_files):
   def use_cxx(src):
     if 'c++' in language_mode or run_via_emxx:
       return True
+    suffix = shared.suffix(src)
     # Next consider the filename
-    if src.endswith(C_ENDINGS + OBJC_ENDINGS):
+    if suffix in C_ENDINGS + OBJC_ENDINGS:
       return False
-    if src.endswith(CXX_ENDINGS):
+    if suffix in CXX_ENDINGS:
       return True
     # Finally fall back to the default
     if settings.DEFAULT_TO_CXX:
@@ -2386,7 +2385,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return CC
 
   def get_clang_command(src_file):
-    return get_compiler(use_cxx(src_file)) + get_cflags(options, state.orig_args) + compile_args + [src_file]
+    return get_compiler(use_cxx(src_file)) + get_cflags(state.orig_args) + compile_args + [src_file]
 
   def get_clang_command_asm(src_file):
     return get_compiler(use_cxx(src_file)) + get_clang_flags() + compile_args + [src_file]
@@ -2408,7 +2407,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
   if state.mode == Mode.PCH:
     headers = [header for _, header in input_files]
     for header in headers:
-      if not header.endswith(HEADER_ENDINGS):
+      if not shared.suffix(header) in HEADER_ENDINGS:
         exit_with_error(f'cannot mix precompiled headers with non-header inputs: {headers} : {header}')
       cmd = get_clang_command(header)
       if options.output_file:
@@ -2438,7 +2437,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
   def compile_source_file(i, input_file):
-    logger.debug('compiling source file: ' + input_file)
+    logger.debug(f'compiling source file: {input_file}')
     output_file = get_object_filename(input_file)
     if state.mode not in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
       linker_inputs.append((i, output_file))
@@ -2467,10 +2466,10 @@ def phase_compile_inputs(options, state, newargs, input_files):
     if file_suffix in SOURCE_ENDINGS + ASSEMBLY_ENDINGS or (state.has_dash_c and file_suffix == '.bc'):
       compile_source_file(i, input_file)
     elif file_suffix in DYNAMICLIB_ENDINGS:
-      logger.debug('using shared library: ' + input_file)
+      logger.debug(f'using shared library: {input_file}')
       linker_inputs.append((i, input_file))
     elif building.is_ar(input_file):
-      logger.debug('using static library: ' + input_file)
+      logger.debug(f'using static library: {input_file}')
       ensure_archive_index(input_file)
       linker_inputs.append((i, input_file))
     elif language_mode:
@@ -2479,7 +2478,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       exit_with_error('-E or -x required when input is from standard input')
     else:
       # Default to assuming the inputs are object files and pass them to the linker
-      logger.debug('using object file: ' + input_file)
+      logger.debug(f'using object file: {input_file}')
       linker_inputs.append((i, input_file))
 
   return linker_inputs
@@ -2601,7 +2600,7 @@ def phase_source_transforms(options, target):
       file_args.append('--use-preload-plugins')
     if not settings.ENVIRONMENT_MAY_BE_NODE:
       file_args.append('--no-node')
-    file_code = shared.check_call([shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
+    file_code = shared.check_call([shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args, stdout=PIPE).stdout
     options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
 
   # Apply pre and postjs files
@@ -2899,9 +2898,8 @@ def parse_args(newargs):
     elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':
       if newargs[i] == '--memoryprofiler':
         options.memory_profiler = True
-      options.tracing = True
       newargs[i] = ''
-      settings_changes.append("EMSCRIPTEN_TRACING=1")
+      settings_changes.append('EMSCRIPTEN_TRACING=1')
       settings.JS_LIBRARIES.append((0, 'library_trace.js'))
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
@@ -2984,7 +2982,6 @@ def parse_args(newargs):
     elif check_flag('--cpuprofiler'):
       options.cpu_profiler = True
     elif check_flag('--threadprofiler'):
-      options.thread_profiler = True
       settings_changes.append('PTHREADS_PROFILING=1')
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
@@ -3546,7 +3543,7 @@ def generate_worker_js(target, js_target, target_basename):
 
   # compiler output goes in .worker.js file
   else:
-    move_file(js_target, unsuffixed(js_target) + '.worker.js')
+    move_file(js_target, shared.replace_suffix(js_target, '.worker.js'))
     worker_target_basename = target_basename + '.worker'
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 

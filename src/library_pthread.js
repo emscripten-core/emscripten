@@ -37,21 +37,7 @@ var LibraryPThread = {
       }
 #endif
     },
-    initRuntime: function(tb) {
-#if PTHREADS_PROFILING
-      PThread.createProfilerBlock(tb);
-      PThread.setThreadName(tb, "Browser main thread");
-      PThread.setThreadStatus(tb, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
-#endif
 
-      // Pass the thread address to the native code where they stored in wasm
-      // globals which act as a form of TLS. Global constructors trying
-      // to access this value will read the wrong value, but that is UB anyway.
-      __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
-#if ASSERTIONS
-      PThread.mainRuntimeThread = true;
-#endif
-    },
     initWorker: function() {
 #if USE_CLOSURE_COMPILER
       // worker.js is not compiled together with us, and must access certain
@@ -237,7 +223,7 @@ var LibraryPThread = {
     // Called by worker.js each time a thread is started.
     threadInit: function() {
 #if PTHREADS_DEBUG
-      out("threadInit");
+      err('Pthread 0x' + _pthread_self().toString(16) + ' threadInit.');
 #endif
 #if PTHREADS_PROFILING
       PThread.setThreadStatus(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
@@ -299,11 +285,13 @@ var LibraryPThread = {
           err('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (cmd === 'alert') {
           alert('Thread ' + d['threadId'] + ': ' + d['text']);
-        } else if (cmd === 'exit') {
-          var detached = worker.pthread && Atomics.load(HEAPU32, (worker.pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
-          if (detached) {
-            PThread.returnWorkerToPool(worker);
-          }
+        } else if (cmd === 'detachedExit') {
+#if ASSERTIONS
+          assert(worker.pthread);
+          var detached = Atomics.load(HEAPU32, (worker.pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
+          assert(detached);
+#endif
+          PThread.returnWorkerToPool(worker);
         } else if (cmd === 'exitProcess') {
           // A pthread has requested to exit the whole application process (runtime).
 #if ASSERTIONS
@@ -345,7 +333,7 @@ var LibraryPThread = {
         worker.on('error', function(e) {
           worker.onerror(e);
         });
-        worker.on('exit', function() {
+        worker.on('detachedExit', function() {
           // TODO: update the worker queue?
           // See: https://github.com/emscripten-core/emscripten/issues/9763
         });
@@ -400,9 +388,22 @@ var LibraryPThread = {
       // If we're using module output and there's no explicit override, use bundler-friendly pattern.
       if (!Module['locateFile']) {
 #if PTHREADS_DEBUG
-        out('Allocating a new web worker from ' + new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
+        err('Allocating a new web worker from ' + new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
 #endif
-        // Use bundler-friendly `new Worker(new URL(..., import.meta.url))` pattern; works in browsers too.
+#if TRUSTED_TYPES
+        // Use Trusted Types compatible wrappers.
+        if (typeof trustedTypes !== 'undefined' && trustedTypes.createPolicy) {
+          var p = trustedTypes.createPolicy(
+            'emscripten#workerPolicy1',
+            {
+              createScriptURL: function(ignored) {
+                return new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url);
+              }
+            }
+          );
+          PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
+        } else
+ #endif
         PThread.unusedWorkers.push(new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url)));
         return;
       }
@@ -413,7 +414,14 @@ var LibraryPThread = {
       var pthreadMainJs = locateFile('{{{ PTHREAD_WORKER_FILE }}}');
 #endif
 #if PTHREADS_DEBUG
-      out('Allocating a new web worker from ' + pthreadMainJs);
+      err('Allocating a new web worker from ' + pthreadMainJs);
+#endif
+#if TRUSTED_TYPES
+      // Use Trusted Types compatible wrappers.
+      if (typeof trustedTypes !== 'undefined' && trustedTypes.createPolicy) {
+        var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: function(ignored) { return pthreadMainJs } });
+        PThread.unusedWorkers.push(new Worker(p.createScriptURL('ignored')));
+      } else
 #endif
       PThread.unusedWorkers.push(new Worker(pthreadMainJs));
     },
@@ -480,6 +488,40 @@ var LibraryPThread = {
       var worker = pthread.worker;
       PThread.returnWorkerToPool(worker);
     }
+  },
+
+  $registerTlsInit: function(tlsInitFunc, moduleExports, metadata) {
+#if DYLINK_DEBUG
+    out("registerTlsInit: " + tlsInitFunc);
+#endif
+#if RELOCATABLE
+    // In relocatable builds, we use the result of calling tlsInitFunc
+    // (`emscripten_tls_init`) to relocate the TLS exports of the module
+    // according to this new __tls_base.
+    function tlsInitWrapper() {
+      var __tls_base = tlsInitFunc();
+#if DYLINK_DEBUG
+      err('tlsInit -> ' + __tls_base);
+#endif
+      for (var sym in metadata.tlsExports) {
+        metadata.tlsExports[sym] = moduleExports[sym];
+      }
+      relocateExports(metadata.tlsExports, __tls_base, /*replace=*/true);
+    }
+
+    // Register this function so that its gets called for each thread on
+    // startup.
+    PThread.tlsInitFunctions.push(tlsInitWrapper);
+
+    // If the main thread is already running we also need to call this function
+    // now.  If the main thread is not yet running this will happen when it
+    // is initialized and processes `PThread.tlsInitFunctions`.
+    if (runtimeInitialized) {
+      tlsInitWrapper();
+    }
+#else
+    PThread.tlsInitFunctions.push(tlsInitFunc);
+#endif
   },
 
   $cancelThread: function(pthread_ptr) {
@@ -563,6 +605,22 @@ var LibraryPThread = {
     if (ENVIRONMENT_IS_NODE) return require('os').cpus().length;
 #endif
     return navigator['hardwareConcurrency'];
+  },
+
+  __emscripten_init_main_thread_js: function(tb) {
+#if PTHREADS_PROFILING
+    PThread.createProfilerBlock(tb);
+    PThread.setThreadName(tb, "Browser main thread");
+#endif
+
+    // Pass the thread address to the native code where they stored in wasm
+    // globals which act as a form of TLS. Global constructors trying
+    // to access this value will read the wrong value, but that is UB anyway.
+    __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+#if ASSERTIONS
+    PThread.mainRuntimeThread = true;
+#endif
+    PThread.threadInit();
   },
 
   __pthread_create_js__sig: 'iiiii',
@@ -899,34 +957,19 @@ var LibraryPThread = {
     return 0;
   },
 
-  __pthread_detach_js__sig: 'vi',
-  __pthread_detach_js: function(thread) {
-    if (!thread) {
-      err('pthread_detach attempted on a null thread pointer!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-    var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
-    if (self !== thread) {
-      err('pthread_detach attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-    // Follow musl convention: detached:0 means not detached, 1 means the thread
-    // was created as detached, and 2 means that the thread was detached via
-    // pthread_detach.
-    var wasDetached = Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 0, 2);
-
-    return wasDetached ? {{{ cDefine('EINVAL') }}} : 0;
-  },
-
   __pthread_exit_run_handlers__deps: ['exit'],
   __pthread_exit_run_handlers: function(status) {
     // Called from pthread_exit, either when called explicitly called
     // by programmer, or implicitly when leaving the thread main function.
+    //
+    // Note: in theory we would like to return any offscreen canvases back to
+    // the main thread, but if we ever fetched a rendering context for them that
+    // would not be valid, so we don't try.
 
 #if PTHREADS_DEBUG
     var tb = _pthread_self();
     assert(tb);
-    out('Pthread 0x' + tb.toString(16) + ' exited.');
+    err('Pthread 0x' + tb.toString(16) + ' exited.');
 #endif
 
     while (PThread.threadExitHandlers.length > 0) {
@@ -934,13 +977,10 @@ var LibraryPThread = {
     }
   },
 
-  __pthread_exit_done: function() {
-    // Called at the end of pthread_exit, either when called explicitly called
-    // by programmer, or implicitly when leaving the thread main function.
-    //
-    // Note: in theory we would like to return any offscreen canvases back to the main thread,
-    // but if we ever fetched a rendering context for them that would not be valid, so we don't try.
-    postMessage({ 'cmd': 'exit' });
+  __pthread_detached_exit: function() {
+    // Called at the end of pthread_exit (which occurs also when leaving the
+    // thread main function) if an only if the thread is in a detached state.
+    postMessage({ 'cmd': 'detachedExit' });
   },
 
   __cxa_thread_atexit__sig: 'vii',
@@ -1132,16 +1172,16 @@ var LibraryPThread = {
 #if EXIT_RUNTIME
     if (!keepRuntimeAlive()) {
       // exitRuntime enabled, proxied main() finished in a pthread, shut down the process.
-#if ASSERTIONS
-      out('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
+#if PTHREADS_DEBUG
+      err('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
 #endif
       postMessage({ 'cmd': 'exitProcess', 'returnCode': returnCode });
       return returnCode;
     }
 #else
     // EXIT_RUNTIME==0 set on command line, keeping main thread alive.
-#if ASSERTIONS
-    out('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
+#if PTHREADS_DEBUG
+    err('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
 #endif
 #endif
   },

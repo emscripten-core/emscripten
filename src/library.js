@@ -183,6 +183,8 @@ LibraryManager.library = {
   },
   vfork: 'fork',
   posix_spawn: 'fork',
+  popen: 'fork',
+  pclose: 'fork',
 
   setgroups__deps: ['$setErrNo', 'sysconf'],
   setgroups__unimplemented: true,
@@ -1452,6 +1454,7 @@ LibraryManager.library = {
     if (clk_id) {{{ makeSetValue('clk_id', 0, 2/*CLOCK_PROCESS_CPUTIME_ID*/, 'i32') }}};
     return 0;
   },
+  gettimeofday__sig: 'iii',
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
     var now = Date.now();

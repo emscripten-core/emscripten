@@ -166,6 +166,7 @@ _deps_info = {
   'glfwGetProcAddress': ['malloc'],
   'glfwInit': ['malloc', 'free'],
   'glfwSleep': ['sleep'],
+  'glfwGetMonitors': ['malloc'],
   'gmtime':  ['malloc'],
   'gmtime_r':  ['malloc'],
   'localtime': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],

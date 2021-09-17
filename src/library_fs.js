@@ -104,13 +104,9 @@ FS.staticInit();` +
     // This is set to false during `preInit`, allowing you to modify the
     // filesystem freely up until that point (e.g. during `preRun`).
     ignorePermissions: true,
+#if FS_DEBUG
     trackingDelegate: {},
-    tracking: {
-      openFlags: {
-        READ: 1 << 0,
-        WRITE: 1 << 1
-      }
-    },
+#endif
     ErrnoError: null, // set during init
     genericErrors: {},
     filesystems: null,
@@ -669,6 +665,11 @@ FS.staticInit();` +
       mode = mode !== undefined ? mode : 511 /* 0777 */;
       mode &= {{{ cDefine('S_IRWXUGO') }}} | {{{ cDefine('S_ISVTX') }}};
       mode |= {{{ cDefine('S_IFDIR') }}};
+#if FS_DEBUG
+      if (FS.trackingDelegate['onMakeDirectory']) {
+        FS.trackingDelegate['onMakeDirectory'](path, mode);
+      }
+#endif
       return FS.mknod(path, mode, 0);
     },
     // Creates a whole directory tree chain if it doesn't yet exist
@@ -710,6 +711,11 @@ FS.staticInit();` +
       if (!parent.node_ops.symlink) {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
+#if FS_DEBUG
+      if (FS.trackingDelegate['onMakeSymlink']) {
+        FS.trackingDelegate['onMakeSymlink'](oldpath, newpath);
+      }
+#endif
       return parent.node_ops.symlink(parent, newname, oldpath);
     },
     rename: function(old_path, new_path) {
@@ -781,13 +787,11 @@ FS.staticInit();` +
           throw new FS.ErrnoError(errCode);
         }
       }
-      try {
-        if (FS.trackingDelegate['willMovePath']) {
-          FS.trackingDelegate['willMovePath'](old_path, new_path);
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['willMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
+#if FS_DEBUG
+      if (FS.trackingDelegate['willMovePath']) {
+        FS.trackingDelegate['willMovePath'](old_path, new_path);
       }
+#endif
       // remove the node from the lookup hash
       FS.hashRemoveNode(old_node);
       // do the underlying fs rename
@@ -800,11 +804,11 @@ FS.staticInit();` +
         // changed its name)
         FS.hashAddNode(old_node);
       }
-      try {
-        if (FS.trackingDelegate['onMovePath']) FS.trackingDelegate['onMovePath'](old_path, new_path);
-      } catch(e) {
-        err("FS.trackingDelegate['onMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
+#if FS_DEBUG
+      if (FS.trackingDelegate['onMovePath']) {
+        FS.trackingDelegate['onMovePath'](old_path, new_path);
       }
+#endif
     },
     rmdir: function(path) {
       var lookup = FS.lookupPath(path, { parent: true });
@@ -821,20 +825,18 @@ FS.staticInit();` +
       if (FS.isMountpoint(node)) {
         throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
       }
-      try {
-        if (FS.trackingDelegate['willDeletePath']) {
-          FS.trackingDelegate['willDeletePath'](path);
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
+#if FS_DEBUG
+      if (FS.trackingDelegate['willDeletePath']) {
+        FS.trackingDelegate['willDeletePath'](path);
       }
+#endif
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
-      try {
-        if (FS.trackingDelegate['onDeletePath']) FS.trackingDelegate['onDeletePath'](path);
-      } catch(e) {
-        err("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
+#if FS_DEBUG
+      if (FS.trackingDelegate['onDeletePath']) {
+        FS.trackingDelegate['onDeletePath'](path);
       }
+#endif
     },
     readdir: function(path) {
       var lookup = FS.lookupPath(path, { follow: true });
@@ -862,20 +864,18 @@ FS.staticInit();` +
       if (FS.isMountpoint(node)) {
         throw new FS.ErrnoError({{{ cDefine('EBUSY') }}});
       }
-      try {
-        if (FS.trackingDelegate['willDeletePath']) {
-          FS.trackingDelegate['willDeletePath'](path);
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
+#if FS_DEBUG
+      if (FS.trackingDelegate['willDeletePath']) {
+        FS.trackingDelegate['willDeletePath'](path);
       }
+#endif
       parent.node_ops.unlink(parent, name);
       FS.destroyNode(node);
-      try {
-        if (FS.trackingDelegate['onDeletePath']) FS.trackingDelegate['onDeletePath'](path);
-      } catch(e) {
-        err("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
+#if FS_DEBUG
+      if (FS.trackingDelegate['onDeletePath']) {
+        FS.trackingDelegate['onDeletePath'](path);
       }
+#endif
     },
     readlink: function(path) {
       var lookup = FS.lookupPath(path);
@@ -1063,6 +1063,9 @@ FS.staticInit();` +
       if ((flags & {{{ cDefine('O_TRUNC')}}})) {
         FS.truncate(node, 0);
       }
+#if FS_DEBUG
+      var trackingFlags = flags
+#endif
       // we've already handled these, don't pass down to the underlying vfs
       flags &= ~({{{ cDefine('O_EXCL') }}} | {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_NOFOLLOW') }}});
 
@@ -1086,23 +1089,16 @@ FS.staticInit();` +
         if (!FS.readFiles) FS.readFiles = {};
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
+#if FS_DEBUG
           err("FS.trackingDelegate error on read file: " + path);
+#endif
         }
       }
-      try {
-        if (FS.trackingDelegate['onOpenFile']) {
-          var trackingFlags = 0;
-          if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}) {
-            trackingFlags |= FS.tracking.openFlags.READ;
-          }
-          if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}) {
-            trackingFlags |= FS.tracking.openFlags.WRITE;
-          }
-          FS.trackingDelegate['onOpenFile'](path, trackingFlags);
-        }
-      } catch(e) {
-        err("FS.trackingDelegate['onOpenFile']('"+path+"', flags) threw an exception: " + e.message);
+#if FS_DEBUG
+      if (FS.trackingDelegate['onOpenFile']) {
+        FS.trackingDelegate['onOpenFile'](path, trackingFlags);
       }
+#endif
       return stream;
     },
     close: function(stream) {
@@ -1120,6 +1116,11 @@ FS.staticInit();` +
         FS.closeStream(stream.fd);
       }
       stream.fd = null;
+#if FS_DEBUG
+      if (stream.path && FS.trackingDelegate['onCloseFile']) {
+        FS.trackingDelegate['onCloseFile'](stream.path);
+      }
+#endif
     },
     isClosed: function(stream) {
       return stream.fd === null;
@@ -1136,6 +1137,11 @@ FS.staticInit();` +
       }
       stream.position = stream.stream_ops.llseek(stream, offset, whence);
       stream.ungotten = [];
+#if FS_DEBUG
+      if (stream.path && FS.trackingDelegate['onSeekFile']) {
+        FS.trackingDelegate['onSeekFile'](stream.path, stream.position, whence);
+      }
+#endif
       return stream.position;
     },
     read: function(stream, buffer, offset, length, position) {
@@ -1165,6 +1171,11 @@ FS.staticInit();` +
       }
       var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position);
       if (!seeking) stream.position += bytesRead;
+#if FS_DEBUG
+      if (stream.path && FS.trackingDelegate['onReadFile']) {
+        FS.trackingDelegate['onReadFile'](stream.path, bytesRead);
+      }
+#endif
       return bytesRead;
     },
     write: function(stream, buffer, offset, length, position, canOwn) {
@@ -1198,11 +1209,11 @@ FS.staticInit();` +
       }
       var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
-      try {
-        if (stream.path && FS.trackingDelegate['onWriteToFile']) FS.trackingDelegate['onWriteToFile'](stream.path);
-      } catch(e) {
-        err("FS.trackingDelegate['onWriteToFile']('"+stream.path+"') threw an exception: " + e.message);
+#if FS_DEBUG
+      if (stream.path && FS.trackingDelegate['onWriteToFile']) {
+        FS.trackingDelegate['onWriteToFile'](stream.path, bytesWritten);
       }
+#endif
       return bytesWritten;
     },
     allocate: function(stream, offset, length) {

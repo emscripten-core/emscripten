@@ -129,6 +129,12 @@ int main() {
   printf("vfork: %d", vfork());
   printf(", errno: %d\n", errno);
   errno = 0;
+  printf("popen: %p", popen("/bin/ls", "r"));
+  printf(", errno: %d\n", errno);
+  errno = 0;
+  printf("pclose: %d", pclose(NULL));
+  printf(", errno: %d\n", errno);
+  errno = 0;
 
   printf("crypt: %s", crypt("foo", "bar"));
   printf(", errno: %d\n", errno);

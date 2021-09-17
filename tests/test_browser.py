@@ -1614,7 +1614,6 @@ keydown(100);keyup(100); // trigger the end
       <!doctype html>
       <html>
       <head><meta charset="utf-8"><title>Chunked XHR</title></head>
-      <html>
       <body>
         Chunked XHR Web Worker Test
         <script>
@@ -3301,7 +3300,7 @@ window.close = function() {
   def test_async_mainloop(self):
     for opts in [0, 3]:
       print(opts)
-      self.btest('browser/async_mainloop.cpp', '121', args=['-O' + str(opts), '-s', 'ASYNCIFY'])
+      self.btest_exit('browser/async_mainloop.cpp', args=['-O' + str(opts), '-s', 'ASYNCIFY'])
 
   @requires_sound_hardware
   def test_sdl_audio_beep_sleep(self):
@@ -4471,6 +4470,11 @@ window.close = function() {
                '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=' + str(simple_enable_extensions),
                '-s', 'GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=' + str(simple_enable_extensions)]
         self.btest_exit('webgl2_simple_enable_extensions.c', args=cmd)
+
+  @requires_graphics_hardware
+  def test_webgpu_basic_rendering(self):
+    for args in [[], ['-s', 'ASSERTIONS'], ['-s', 'MAIN_MODULE=1']]:
+      self.btest_exit('webgpu_basic_rendering.cpp', args=['-s', 'USE_WEBGPU', '-s', 'EXPORTED_RUNTIME_METHODS=["ccall"]'] + args)
 
   # Tests the feature that shell html page can preallocate the typed array and place it
   # to Module.buffer before loading the script page.

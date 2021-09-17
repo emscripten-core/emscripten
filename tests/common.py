@@ -1048,8 +1048,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       engines += self.wasm_engines
       if self.get_setting('WASM2C') and not EMTEST_LACKS_NATIVE_CLANG:
         # compile the c file to a native executable.
-        c = shared.unsuffixed(js_file) + '.wasm.c'
-        executable = shared.unsuffixed(js_file) + '.exe'
+        c = shared.replace_suffix(js_file, '.wasm.c')
+        executable = shared.replace_suffix(js_file, '.exe')
         cmd = [shared.CLANG_CC, c, '-o', executable] + clang_native.get_clang_native_args()
         self.run_process(cmd, env=clang_native.get_clang_native_env())
         # we can now run the executable directly, without an engine, which

@@ -24,8 +24,8 @@ from tools.shared import try_delete, PIPE
 from tools.shared import PYTHON, EMCC, EMAR
 from tools.utils import WINDOWS, MACOS
 from tools import shared, building, config, webassembly
-from common import RunnerCore, path_from_root, requires_native_clang, test_file
-from common import skip_if, needs_dylink, no_windows, is_slow_test, create_file, parameterized
+from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
+from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, node_pthreads
 from common import read_file, read_binary, require_node, require_v8
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER
@@ -581,7 +581,8 @@ class TestCoreBase(RunnerCore):
 
   @no_asan('asan errors on corner cases we check')
   def test_aligned_alloc(self):
-    self.do_runf(test_file('test_aligned_alloc.c'), '')
+    self.do_runf(test_file('test_aligned_alloc.c'), '',
+                 emcc_args=['-Wno-non-power-of-two-alignment'])
 
   def test_unsigned(self):
     src = '''
@@ -1735,7 +1736,7 @@ int main() {
 
   def test_emscripten_get_compiler_setting(self):
     src = test_file('core/emscripten_get_compiler_setting.c')
-    output = shared.unsuffixed(src) + '.out'
+    output = shared.replace_suffix(src, '.out')
     # with assertions, a nice message is shown
     self.set_setting('ASSERTIONS')
     self.do_runf(src, 'You must build with -s RETAIN_COMPILER_SETTINGS=1', assert_returncode=NON_ZERO)
@@ -1935,7 +1936,6 @@ int main(int argc, char **argv) {
     # Tracing of memory growths should work
     # (SAFE_HEAP would instrument the tracing code itself, leading to recursion)
     if not self.get_setting('SAFE_HEAP'):
-      self.set_setting('EMSCRIPTEN_TRACING')
       self.emcc_args += ['--tracing']
       self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
@@ -2353,6 +2353,7 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
 
   @node_pthreads
+  @no_mac('https://github.com/emscripten-core/emscripten/issues/15014')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
@@ -3524,7 +3525,7 @@ ok
 
     return self.dylink_testf(main, side, expected, force_c, main_module=main_module, **kwargs)
 
-  def dylink_testf(self, main, side, expected=None, force_c=False, main_emcc_args=[],
+  def dylink_testf(self, main, side=None, expected=None, force_c=False, main_emcc_args=[],
                    main_module=2,
                    so_name='liblib.so',
                    need_reverse=True, **kwargs):
@@ -3532,9 +3533,11 @@ ok
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.emcc_args.copy()
     if not expected:
-      outfile = shared.unsuffixed(main) + '.out'
-      if os.path.exists(outfile):
-        expected = read_file(outfile)
+      outfile = shared.replace_suffix(main, '.out')
+      expected = read_file(outfile)
+    if not side:
+      side, ext = os.path.splitext(main)
+      side += '_side' + ext
 
     # side settings
     self.clear_setting('MAIN_MODULE')
@@ -4580,44 +4583,20 @@ main main sees -524, -534, 72.
   def test_dylink_weak(self):
     # Verify that weakly defined symbols can be defined in both side module and main
     # module but that only one gets used at runtime.
-    main = test_file('core/test_dylink_weak_main.c')
-    side = test_file('core/test_dylink_weak_side.c')
-    self.dylink_testf(main, side, force_c=True, need_reverse=False)
+    self.dylink_testf(test_file('core/test_dylink_weak.c'), need_reverse=False)
 
   @node_pthreads
   @needs_dylink
   def test_dylink_tls(self):
-    # We currently can't export TLS symbols from module since we don't have
-    # and ABI for signaling which exports are TLS and which are regular
-    # data exports.
-
-    # TODO(sbc): Add tests that depend on importing/exported TLS symbols
-    # once we figure out how to do that.
-    create_file('main.c', r'''
-      #include <stdio.h>
-
-      _Thread_local int foo = 10;
-
-      void sidey();
-
-      int main(int argc, char const *argv[]) {
-        printf("main TLS: %d\n", foo);
-        sidey();
-        return 0;
-      }
-    ''')
-    create_file('side.c', r'''
-      #include <stdio.h>
-
-      _Thread_local int bar = 11;
-
-      void sidey() {
-        printf("side TLS: %d\n", bar);
-      }
-    ''')
     self.emcc_args.append('-Wno-experimental')
-    self.dylink_testf('main.c', 'side.c',
-                      expected='main TLS: 10\nside TLS: 11\n',
+    self.dylink_testf(test_file('core/test_dylink_tls.c'),
+                      need_reverse=False)
+
+  @node_pthreads
+  @needs_dylink
+  def test_dylink_tls_export(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.dylink_testf(test_file('core/test_dylink_tls_export.c'),
                       need_reverse=False)
 
   def test_random(self):
@@ -5241,6 +5220,7 @@ main( int argv, char ** argc ) {
     self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
 
   def test_fs_trackingdelegate(self):
+    self.set_setting('FS_DEBUG')
     self.do_run_in_out_file_test('fs/test_trackingdelegate.c')
 
   @also_with_noderawfs
@@ -7579,6 +7559,13 @@ Module['onRuntimeInitialized'] = function() {
     self.do_core_test('test_asyncify_during_exit.cpp', emcc_args=['-DNO_ASYNC'], out_suffix='_no_async')
 
   @no_asan('asyncify stack operations confuse asan')
+  @no_wasm2js('dynamic linking support in wasm2js')
+  def test_asyncify_main_module(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.set_setting('MAIN_MODULE', 2)
+    self.do_core_test('test_hello_world.c')
+
+  @no_asan('asyncify stack operations confuse asan')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
     'conditional': (True,),
@@ -8429,15 +8416,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('LLD_REPORT_UNDEFINED')
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     main = test_file('core/pthread/test_pthread_dylink.c')
-    side = test_file('core/pthread/test_pthread_dylink_side.c')
 
     # test with a long .so name, as a regression test for
     # https://github.com/emscripten-core/emscripten/issues/14833
     # where we had a bug with long names + TextDecoder + pthreads + dylink
     very_long_name = 'very_very_very_very_very_very_very_very_very_long.so'
 
-    self.dylink_testf(main, side, "success",
-                      so_name=very_long_name,
+    self.dylink_testf(main, so_name=very_long_name,
                       need_reverse=False)
 
   @needs_dylink
@@ -8448,8 +8433,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_PTHREADS')
     self.set_setting('PTHREAD_POOL_SIZE=1')
     main = test_file('core/pthread/test_pthread_dylink_tls.c')
-    side = test_file('core/pthread/test_pthread_dylink_tls_side.c')
-    self.dylink_testf(main, side, need_reverse=False)
+    self.dylink_testf(main, need_reverse=False)
 
   @needs_dylink
   @node_pthreads
