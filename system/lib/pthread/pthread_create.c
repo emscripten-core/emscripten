@@ -7,6 +7,7 @@
 
 #define _GNU_SOURCE
 #include "pthread_impl.h"
+#include "stdio_impl.h"
 #include "assert.h"
 #include <pthread.h>
 #include <stdbool.h>
@@ -53,12 +54,31 @@ void __do_cleanup_pop(struct __ptcb *cb) {
   __pthread_self()->cancelbuf = cb->__next;
 }
 
+static FILE *volatile dummy_file = 0;
+weak_alias(dummy_file, __stdin_used);
+weak_alias(dummy_file, __stdout_used);
+weak_alias(dummy_file, __stderr_used);
+
+static void init_file_lock(FILE *f) {
+  if (f && f->lock<0) f->lock = 0;
+}
+
 int __pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict attrp, void *(*entry)(void *), void *restrict arg) {
   // Note on LSAN: lsan intercepts/wraps calls to pthread_create so any
   // allocation we we do here should be considered leaks.
   // See: lsan_interceptors.cpp.
   if (!res) {
     return EINVAL;
+  }
+
+  if (!libc.threaded) {
+    for (FILE *f=*__ofl_lock(); f; f=f->next)
+      init_file_lock(f);
+    __ofl_unlock();
+    init_file_lock(__stdin_used);
+    init_file_lock(__stdout_used);
+    init_file_lock(__stderr_used);
+    libc.threaded = 1;
   }
 
   // Allocate thread block (pthread_t structure).
