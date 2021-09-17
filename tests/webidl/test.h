@@ -194,7 +194,6 @@ typedef struct LongLongTypes {
   long long ll;
 } LongLongTypes;
 
-
 ///
 
 struct ISmallObject {
@@ -245,4 +244,8 @@ public:
 
 private:
 
+<<<<<<< HEAD
 };
+=======
+};
+>>>>>>> 4f765dec0830dce21da8ed2db74ecabbd7a48186
