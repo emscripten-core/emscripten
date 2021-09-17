@@ -1377,7 +1377,7 @@
     },
     // ===========================================
     // WebGPU
-    //   NOTE: This can be (mostly) auto-generated:
+    //   NOTE: This section is auto-generated:
     //   https://dawn.googlesource.com/dawn/+/refs/heads/main/generator/templates/webgpu_struct_info.json
     // ===========================================
     {
@@ -1390,14 +1390,15 @@
             ],
             "WGPUAdapterProperties": [
                 "nextInChain",
-                "deviceID",
                 "vendorID",
+                "deviceID",
                 "name",
                 "driverDescription",
                 "adapterType",
                 "backendType"
             ],
             "WGPUBindGroupEntry": [
+                "nextInChain",
                 "binding",
                 "buffer",
                 "offset",
@@ -1437,9 +1438,20 @@
                 "nextInChain",
                 "label"
             ],
+            "WGPUCompilationMessage": [
+                "message",
+                "type",
+                "lineNum",
+                "linePos",
+                "offset",
+                "length"
+            ],
             "WGPUComputePassDescriptor": [
                 "nextInChain",
                 "label"
+            ],
+            "WGPUDeviceDescriptor": [
+                "nextInChain"
             ],
             "WGPUExtent3D": [
                 "width",
@@ -1512,6 +1524,10 @@
                 "stencilStoreOp",
                 "clearStencil",
                 "stencilReadOnly"
+            ],
+            "WGPURequestAdapterOptions": [
+                "nextInChain",
+                "compatibleSurface"
             ],
             "WGPUSamplerBindingLayout": [
                 "nextInChain",
@@ -1621,11 +1637,15 @@
                 "color",
                 "alpha"
             ],
+            "WGPUCompilationInfo": [
+                "messageCount",
+                "messages"
+            ],
             "WGPUComputePipelineDescriptor": [
                 "nextInChain",
                 "label",
                 "layout",
-                "computeStage"
+                "compute"
             ],
             "WGPUDepthStencilState": [
                 "nextInChain",
