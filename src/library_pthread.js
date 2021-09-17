@@ -490,6 +490,40 @@ var LibraryPThread = {
     }
   },
 
+  $registerTlsInit: function(tlsInitFunc, moduleExports, metadata) {
+#if DYLINK_DEBUG
+    out("registerTlsInit: " + tlsInitFunc);
+#endif
+#if RELOCATABLE
+    // In relocatable builds, we use the result of calling tlsInitFunc
+    // (`emscripten_tls_init`) to relocate the TLS exports of the module
+    // according to this new __tls_base.
+    function tlsInitWrapper() {
+      var __tls_base = tlsInitFunc();
+#if DYLINK_DEBUG
+      err('tlsInit -> ' + __tls_base);
+#endif
+      for (var sym in metadata.tlsExports) {
+        metadata.tlsExports[sym] = moduleExports[sym];
+      }
+      relocateExports(metadata.tlsExports, __tls_base, /*replace=*/true);
+    }
+
+    // Register this function so that its gets called for each thread on
+    // startup.
+    PThread.tlsInitFunctions.push(tlsInitWrapper);
+
+    // If the main thread is already running we also need to call this function
+    // now.  If the main thread is not yet running this will happen when it
+    // is initialized and processes `PThread.tlsInitFunctions`.
+    if (runtimeInitialized) {
+      tlsInitWrapper();
+    }
+#else
+    PThread.tlsInitFunctions.push(tlsInitFunc);
+#endif
+  },
+
   $cancelThread: function(pthread_ptr) {
     if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! cancelThread() can only ever be called from main application thread!';
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in cancelThread!';

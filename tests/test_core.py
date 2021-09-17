@@ -4588,14 +4588,15 @@ main main sees -524, -534, 72.
   @node_pthreads
   @needs_dylink
   def test_dylink_tls(self):
-    # We currently can't export TLS symbols from module since we don't have
-    # and ABI for signaling which exports are TLS and which are regular
-    # data exports.
-
-    # TODO(sbc): Add tests that depend on importing/exported TLS symbols
-    # once we figure out how to do that.
     self.emcc_args.append('-Wno-experimental')
     self.dylink_testf(test_file('core/test_dylink_tls.c'),
+                      need_reverse=False)
+
+  @node_pthreads
+  @needs_dylink
+  def test_dylink_tls_export(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.dylink_testf(test_file('core/test_dylink_tls_export.c'),
                       need_reverse=False)
 
   def test_random(self):

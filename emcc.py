@@ -1623,7 +1623,15 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.EXPORT_ALL = 1
 
   if settings.MAIN_MODULE:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getDylinkMetadata', '$mergeLibSymbols']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        '$getDylinkMetadata',
+        '$mergeLibSymbols',
+    ]
+
+  if settings.USE_PTHREADS:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        '$registerTlsInit',
+    ]
 
   if settings.RELOCATABLE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
