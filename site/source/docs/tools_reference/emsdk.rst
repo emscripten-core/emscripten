@@ -207,7 +207,7 @@ particular tool: ::
 
   On Windows, calling ``activate`` automatically sets up the required paths and environment variables.
 
-.. warning:: We don't recommand you to add ``./emsdk_env.sh`` into your default shell config, because it adds emsdk's tools paths into the environment variable ``$PATH`` which probably change the directing of the ``node`` command.
+.. note:: If you add ``./emsdk_env.sh`` to you default shell config emsdk tools (including the emsdk version of node) will be added to your PATH and this could effect the default version of node used on your system.
 
 .. _emsdk-install-old-tools:
 
