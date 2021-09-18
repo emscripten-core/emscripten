@@ -155,22 +155,17 @@ var LibraryPThread = {
       PThread.runningWorkers = [];
     },
     freeThreadData: function(pthread) {
-      // When sanitizers are enabled, free is normally instrumented to call
-      // sanitizer code that checks some things about pthreads. We are not
-      // ready for such calls, as this can be called after the sanitizers
-      // are finalized. Instead, call free directly by using
-      // _emscripten_builtin_free.
       if (!pthread) return;
       if (pthread.threadInfoStruct) {
 #if PTHREADS_PROFILING
         var profilerBlock = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.profilerBlock, 'i32') }}};
         {{{ makeSetValue('pthread.threadInfoStruct',  C_STRUCTS.pthread.profilerBlock, 0, 'i32') }}};
-        _emscripten_builtin_free(profilerBlock);
+        _free(profilerBlock);
 #endif
-        _emscripten_builtin_free(pthread.threadInfoStruct);
+        _free(pthread.threadInfoStruct);
       }
       pthread.threadInfoStruct = 0;
-      if (pthread.allocatedOwnStack && pthread.stackBase) _emscripten_builtin_free(pthread.stackBase);
+      if (pthread.allocatedOwnStack && pthread.stackBase) _free(pthread.stackBase);
       pthread.stackBase = 0;
       if (pthread.worker) pthread.worker.pthread = null;
     },
