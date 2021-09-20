@@ -2324,6 +2324,13 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_dispatch_after_exit.c', interleaved_output=False)
 
   @node_pthreads
+  def test_pthread_atexit(self):
+    # Test to ensure threads are still running when atexit-registered functions are called
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.do_run_in_out_file_test('pthread/test_pthread_atexit.c')
+
+  @node_pthreads
   def test_pthread_nested_work_queue(self):
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE', 1)
