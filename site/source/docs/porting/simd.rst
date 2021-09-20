@@ -1144,29 +1144,29 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vbsl
      - ✅ native
    * - vcagt
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vceq
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vceqz
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcge
      - ✅ native
    * - vcgez
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcgt
      - ✅ native
    * - vcgtz
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcle
      - ✅ native
    * - vclez
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcls
      - ⚫ Not implemented, will trigger compiler error
    * - vclt
      - ✅ native
    * - vcltz 
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcnt
      - ⚫ Not implemented, will trigger compiler error
    * - vclz
@@ -1210,7 +1210,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vminv
      - ⚫ Not implemented, will trigger compiler error
    * - vmla 
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmlal
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vmls
@@ -1222,11 +1222,11 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vmul
      - ✅ native
    * - vmul_n 
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmull 
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmull_n
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmull_high
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vmvn
@@ -1278,13 +1278,13 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vqsubb
      - ⚫ Not implemented, will trigger compiler error
    * - vqtbl1
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vqtbl2
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vqtbl3
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vqtbl4
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vqtbx1
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vqtbx2
@@ -1294,7 +1294,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vqtbx4
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vrbit
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vreinterpret
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vrev16
@@ -1304,7 +1304,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vrev64
      - ✅ native
    * - vrhadd
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vrshl
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vrshr_n
@@ -1318,7 +1318,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vshl_n
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vshr_n
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vsra_n
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vst1
@@ -1334,7 +1334,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vsub
      - ✅ native
    * - vsubl
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️  Does not have direct implementation, but is emulated using fast NEON instructions
    * - vsubw
      - ⚫ Not implemented, will trigger compiler error
    * - vtbl1
