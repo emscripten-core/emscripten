@@ -1,10 +1,13 @@
 #ifdef __EMSCRIPTEN__
 #include <math.h>
+#include <emscripten/threading.h>
 #endif
 
 #include "pthread_impl.h"
 
+#ifdef __EMSCRIPTEN__
 int _pthread_isduecanceled(struct pthread *pthread_ptr);
+#endif
 
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 {
@@ -18,7 +21,7 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 #ifdef __EMSCRIPTEN__
 	int is_main_thread = emscripten_is_main_runtime_thread();
 	while (*addr==val) {
-		if (pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
+		if (is_main_thread || pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
 			// Must wait in slices in case this thread is cancelled in between.
 			int e;
 			do {
