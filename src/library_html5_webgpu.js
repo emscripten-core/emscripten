@@ -60,8 +60,9 @@ var LibraryHTML5WebGPU = {
 #if ASSERTIONS
     assert(Module['preinitializedWebGPUDevice']);
 #endif
+    var device = Module['preinitializedWebGPUDevice'];
     var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
-    return WebGPU["mgrDevice"].create(Module['preinitializedWebGPUDevice'], deviceWrapper);
+    return WebGPU["mgrDevice"].create(device, deviceWrapper);
   },
 };
 
