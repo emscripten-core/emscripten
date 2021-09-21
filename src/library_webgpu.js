@@ -181,6 +181,7 @@ var LibraryWebGPU = {
       {{{ gpu.makeInitManager('SwapChain') }}}
 
       {{{ gpu.makeInitManager('Adapter') }}}
+      // TODO: Change this to a makeInitManager (after some time, to avoid breakage).
       // TODO: Release() the device's default queue when the device is freed.
       this["mgrDevice"] = this["mgrDevice"] || makeManager();
       {{{ gpu.makeInitManager('Queue') }}}
@@ -1049,7 +1050,7 @@ var LibraryWebGPU = {
   },
 
   wgpuDeviceCreateComputePipelineAsync: function(deviceId, descriptor, callback, userdata) {
-    abort('unimplemented (TODO)');
+    abort('TODO: wgpuDeviceCreateComputePipelineAsync unimplemented');
   },
 
   wgpuDeviceCreateRenderPipeline: function(deviceId, descriptor) {
@@ -1245,7 +1246,7 @@ var LibraryWebGPU = {
   },
 
   wgpuDeviceCreateRenderPipelineAsync: function(deviceId, descriptor, callback, userdata) {
-    abort('unimplemented (TODO)');
+    abort('TODO: wgpuDeviceCreateRenderPipelineAsync unimplemented');
   },
 
   wgpuDeviceCreateShaderModule: function(deviceId, descriptor) {
@@ -1931,18 +1932,18 @@ var LibraryWebGPU = {
   wgpuCreateInstance: function() {
 #if ASSERTIONS
     // Once implemented, Instance should create and own the object management tables.
-    abort('unimplemented (TODO)');
+    abort('TODO: wgpuCreateInstance unimplemented');
 #endif
   },
 
   wgpuInstanceReference: function() {
 #if ASSERTIONS
-    abort('No WGPUInstance object should exist (TODO).');
+    abort('TODO: no WGPUInstance object should exist');
 #endif
   },
   wgpuInstanceRelease: function() {
 #if ASSERTIONS
-    abort('No WGPUInstance object should exist (TODO).');
+    abort('TODO: no WGPUInstance object should exist');
 #endif
   },
 
@@ -2106,7 +2107,7 @@ var LibraryWebGPU = {
 
   wgpuGetProcAddress: function() {
 #if ASSERTIONS
-    abort('unimplemented (TODO: issue #11526)');
+    abort('TODO(#11526): wgpuGetProcAddress unimplemented');
 #endif
     return 0;
   },
