@@ -7447,11 +7447,15 @@ Module['onRuntimeInitialized'] = function() {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'HelloWorld')
 
-  def test_async_ccall_promise(self):
-    print('check ccall promise')
+  @parameterized({
+    '': (False,),
+    'exit_runtime': (True,),
+  })
+  def test_async_ccall_promise(self, exit_runtime):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)
+    self.set_setting('EXIT_RUNTIME', exit_runtime)
     self.set_setting('EXPORTED_FUNCTIONS', ['_stringf', '_floatf'])
     create_file('main.c', r'''
 #include <stdio.h>

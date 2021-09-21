@@ -130,10 +130,14 @@ function ccall(ident, returnType, argTypes, args, opts) {
   }
   var ret = func.apply(null, cArgs);
   function onDone(ret) {
+#if ASYNCIFY
+    runtimeKeepalivePop();
+#endif
     if (stack !== 0) stackRestore(stack);
     return convertReturnValue(ret);
   }
 #if ASYNCIFY
+  runtimeKeepalivePush();
   var asyncMode = opts && opts.async;
   // Check if we started an async operation just now.
   if (Asyncify.currData) {
