@@ -181,6 +181,7 @@ var LibraryWebGPU = {
       {{{ gpu.makeInitManager('SwapChain') }}}
 
       {{{ gpu.makeInitManager('Adapter') }}}
+      // TODO: Release() the device's default queue when the device is freed.
       this["mgrDevice"] = this["mgrDevice"] || makeManager();
       {{{ gpu.makeInitManager('Queue') }}}
 
@@ -271,11 +272,6 @@ var LibraryWebGPU = {
         "entryPoint": UTF8ToString(
           {{{ makeGetValue('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.entryPoint, '*') }}}),
       };
-    },
-
-    // maps deviceId to the queueId of the device's queue
-    deviceQueues: {
-      0: 0
     },
 
     // Map from enum string back to enum number, for callbacks.
@@ -609,17 +605,12 @@ var LibraryWebGPU = {
   wgpuDeviceDestroy: function(deviceId) { WebGPU["mgrDevice"].get(deviceId)["destroy"](); },
 
   wgpuDeviceGetQueue: function(deviceId) {
-    var queueId = WebGPU.deviceQueues[deviceId];
+    var queueId = WebGPU.mgrDevice.objects[deviceId].queueId;
 #if ASSERTIONS
-    assert(queueId !== 0, 'got invalid queue');
+    assert(queueId, 'wgpuDeviceGetQueue: queue was missing or null');
 #endif
-    if (queueId) {
-      WebGPU.mgrQueue.reference(queueId);
-    } else { // queueId === undefined
-      var device = WebGPU["mgrDevice"].get(deviceId);
-      WebGPU.deviceQueues[deviceId] = WebGPU.mgrQueue.create(device["queue"]);
-      queueId = WebGPU.deviceQueues[deviceId];
-    }
+    // Returns a new reference to the existing queue.
+    WebGPU.mgrQueue.reference(queueId);
     return queueId;
   },
 
@@ -731,10 +722,9 @@ var LibraryWebGPU = {
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
     var device = WebGPU["mgrDevice"].get(deviceId);
-    var id = WebGPU.mgrBuffer.create(device["createBuffer"](desc));
+    var bufferWrapper = {};
+    var id = WebGPU.mgrBuffer.create(device["createBuffer"](desc), bufferWrapper);
     if (mappedAtCreation) {
-      var bufferWrapper = WebGPU.mgrBuffer.objects[id];
-      {{{ gpu.makeCheckDefined('bufferWrapper') }}}
       bufferWrapper.mapMode = {{{ gpu.MapMode.Write }}};
       bufferWrapper.onUnmap = [];
     }
@@ -2054,7 +2044,8 @@ var LibraryWebGPU = {
     }
 
     adapter["requestDevice"](desc)["then"](function(device) {
-      var deviceId = WebGPU.mgrDevice.create(device);
+      var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
+      var deviceId = WebGPU["mgrDevice"].create(device, deviceWrapper);
       {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestDeviceStatus.Success }}}, deviceId, 0, userdata);
     }, function(ex) {
       var messagePtr = allocateUTF8(ex.message);
