@@ -441,7 +441,6 @@ LibraryManager.library = {
 #endif
   },
   __cxa_atexit: 'atexit',
-
 #endif
 
   // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
@@ -2646,6 +2645,7 @@ LibraryManager.library = {
   },
 
   emscripten_run_script_string__sig: 'ii',
+  emscripten_run_script_string__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free'],
   emscripten_run_script_string: function(ptr) {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
     if (s == null) {
@@ -2655,9 +2655,9 @@ LibraryManager.library = {
     var me = _emscripten_run_script_string;
     var len = lengthBytesUTF8(s);
     if (!me.bufferSize || me.bufferSize < len+1) {
-      if (me.bufferSize) _free(me.buffer);
+      if (me.bufferSize) _emscripten_builtin_free(me.buffer);
       me.bufferSize = len+1;
-      me.buffer = _malloc(me.bufferSize);
+      me.buffer = _emscripten_builtin_malloc(me.bufferSize);
     }
     stringToUTF8(s, me.buffer, me.bufferSize);
     return me.buffer;
@@ -2930,6 +2930,7 @@ LibraryManager.library = {
     _emscripten_log_js(flags, str);
   },
 
+  emscripten_get_compiler_setting__deps: ['emscripten_builtin_malloc'],
   emscripten_get_compiler_setting: function(name) {
 #if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
@@ -2939,10 +2940,11 @@ LibraryManager.library = {
 
     if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
     var cache = _emscripten_get_compiler_setting.cache;
-    var fullname = name + '__str';
-    var fullret = cache[fullname];
+    var fullret = cache[name];
     if (fullret) return fullret;
-    return cache[fullname] = allocate(intArrayFromString(ret + ''), ALLOC_NORMAL);
+    cache[name] = _emscripten_builtin_malloc(ret.length + 1);
+    stringToUTF8(ret + '', cache[name], ret.length + 1);
+    return cache[name];
 #else
     throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for getCompilerSetting or emscripten_get_compiler_setting to work';
 #endif

@@ -3,6 +3,7 @@
 #ifdef __EMSCRIPTEN__
 #include <stdlib.h>
 #include <wasi/api.h>
+#include <emscripten/emmalloc.h>
 #endif
 
 char **__environ = 0;
@@ -21,11 +22,11 @@ void __emscripten_environ_constructor(void) {
         return;
     }
 
-    __environ = malloc(sizeof(char *) * (environ_count + 1));
+    __environ = emscripten_builtin_malloc(sizeof(char *) * (environ_count + 1));
     if (__environ == 0) {
         return;
     }
-    char *environ_buf = malloc(sizeof(char) * environ_buf_size);
+    char *environ_buf = emscripten_builtin_malloc(sizeof(char) * environ_buf_size);
     if (environ_buf == 0) {
         __environ = 0;
         return;

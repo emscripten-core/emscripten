@@ -6,5 +6,6 @@ int main() {
     int* p = new int(1);
     delete p;
     std::cout << *p;
-  }).detach();
+  }).join();
+  return 0;
 }

@@ -20,7 +20,7 @@ int main()
   rewind (file);
   printf("size: %d\n", size);
 
-  char *buffer = (char*) malloc (sizeof(char)*size);
+  char *buffer = (char*)malloc(sizeof(char)*size);
   assert(buffer);
 
   size_t read = fread(buffer, 1, size, file);
@@ -31,8 +31,8 @@ int main()
     printf(",%d", buffer[i]);
   printf("\n");
 
-  fclose (file);
-  free (buffer);
+  fclose(file);
+  free(buffer);
 
   // Do it again, with a loop on feof
 
@@ -48,7 +48,8 @@ int main()
 
   // Standard streams
 
-  printf("input:%s\n", gets((char*)malloc(1024)));
+  char gets_buffer[1024];
+  printf("input:%s\n", gets(gets_buffer));
   fwrite("texto\n", 1, 6, stdout);
   fwrite("texte\n", 1, 6, stderr);
   putchar('$');

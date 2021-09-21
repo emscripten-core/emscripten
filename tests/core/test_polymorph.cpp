@@ -44,5 +44,8 @@ int main() {
   Ls = &Other::four;
   printf("*%d*\n", (o->*(Ls))());
 
+  delete x;
+  delete y;
+  delete o;
   return 0;
 }
