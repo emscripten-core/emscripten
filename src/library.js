@@ -2644,8 +2644,10 @@ LibraryManager.library = {
     {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
   },
 
-  emscripten_run_script_string__sig: 'ii',
+  // We use builtin_malloc and builtin_free here because otherwise lsan will
+  // report the last returned string as a leak.
   emscripten_run_script_string__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free'],
+  emscripten_run_script_string__sig: 'ii',
   emscripten_run_script_string: function(ptr) {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
     if (s == null) {
@@ -2930,6 +2932,8 @@ LibraryManager.library = {
     _emscripten_log_js(flags, str);
   },
 
+  // We never free the return values of this function so we need to allocate
+  // using builtin_malloc to avoid LSan reporting these as leaks.
   emscripten_get_compiler_setting__deps: ['emscripten_builtin_malloc'],
   emscripten_get_compiler_setting: function(name) {
 #if RETAIN_COMPILER_SETTINGS
