@@ -5,6 +5,8 @@
  * found in the LICENSE file.
  */
 
+// Included for emscripten_builtin_free / emscripten_builtin_malloc
+// TODO(sbc): Should these be in their own header to avoid emmalloc here?
 #include <emscripten/emmalloc.h>
 #include <pthread.h>
 
