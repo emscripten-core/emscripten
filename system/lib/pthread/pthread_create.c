@@ -22,6 +22,7 @@ extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *att
 extern void _emscripten_thread_init(int, int, int);
 extern void __pthread_exit_run_handlers();
 extern void __pthread_detached_exit();
+extern void* _emscripten_tls_base();
 extern int8_t __dso_handle;
 
 static void dummy_0()
@@ -104,6 +105,16 @@ int __pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict att
   return __pthread_create_js(new, attrp, entry, arg);
 }
 
+static void free_tls_data() {
+  void* tls_block = _emscripten_tls_base();
+  if (tls_block) {
+#ifdef DEBUG_TLS
+    printf("tls free: thread[%p] dso[%p] <- %p\n", pthread_self(), &__dso_handle, tls_block);
+#endif
+    emscripten_builtin_free(tls_block);
+  }
+}
+
 void _emscripten_thread_exit(void* result) {
   struct pthread *self = __pthread_self();
   assert(self);
@@ -116,6 +127,8 @@ void _emscripten_thread_exit(void* result) {
 
   // Call into the musl function that runs destructors of all thread-specific data.
   __pthread_tsd_run_dtors();
+
+  free_tls_data();
 
   __lock(self->exitlock);
 

@@ -562,6 +562,7 @@ void InitializeInterceptors() {
   LSAN_MAYBE_INTERCEPT_PTHREAD_ATFORK;
 
   LSAN_MAYBE_INTERCEPT_STRERROR;
+#endif  // !SANITIZER_FUCHSIA && !SANITIZER_EMSCRIPTEN
 
 #if !SANITIZER_NETBSD && !SANITIZER_FREEBSD
   if (pthread_key_create(&g_thread_finalize_key, &thread_finalize)) {
@@ -569,8 +570,6 @@ void InitializeInterceptors() {
     Die();
   }
 #endif
-
-#endif  // !SANITIZER_FUCHSIA
 }
 
 } // namespace __lsan
