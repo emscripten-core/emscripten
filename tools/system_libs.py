@@ -1283,6 +1283,11 @@ class libasmfs(MTLibrary):
     # https://github.com/emscripten-core/emscripten/issues/9534
     return True
 
+class libwasmfs(MTLibrary):
+  name = 'libwasmfs'
+
+  def get_files(self):
+    return [utils.path_from_root('system/lib/fetch/wasmfs.cpp')]
 
 class libhtml5(Library):
   name = 'libhtml5'
