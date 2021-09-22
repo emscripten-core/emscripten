@@ -115,7 +115,7 @@ void PlatformTSDDtor(void *tsd) {
   atomic_signal_fence(memory_order_seq_cst);
   AsanThread::TSDDtor(tsd);
 }
-#elif !SANITIZER_EMSCRIPTEN
+#else
 static pthread_key_t tsd_key;
 static bool tsd_key_inited = false;
 void AsanTSDInit(void (*destructor)(void *tsd)) {
