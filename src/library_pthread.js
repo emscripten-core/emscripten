@@ -451,8 +451,10 @@ var LibraryPThread = {
   },
 
   $killThread: function(pthread_ptr) {
-    if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! killThread() can only ever be called from main application thread!';
-    if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in killThread!';
+#if ASSERTIONS
+    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! killThread() can only ever be called from main application thread!');
+    assert(pthread_ptr, 'Internal Error! Null pthread_ptr in killThread!');
+#endif
     {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
     var pthread = PThread.pthreads[pthread_ptr];
     delete PThread.pthreads[pthread_ptr];
@@ -465,8 +467,10 @@ var LibraryPThread = {
   },
 
   $cleanupThread: function(pthread_ptr) {
-    if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! cleanupThread() can only ever be called from main application thread!';
-    if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in cleanupThread!';
+#if ASSERTIONS
+    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! cleanupThread() can only ever be called from main application thread!');
+    assert(pthread_ptr, 'Internal Error! Null pthread_ptr in cleanupThread!');
+#endif
     var pthread = PThread.pthreads[pthread_ptr];
     // If pthread has been removed from this map this also means that pthread_ptr points
     // to already freed data. Such situation may occur in following circumstances:
@@ -524,23 +528,29 @@ var LibraryPThread = {
   },
 
   $cancelThread: function(pthread_ptr) {
-    if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! cancelThread() can only ever be called from main application thread!';
-    if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in cancelThread!';
+#if ASSERTIONS
+    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! cancelThread() can only ever be called from main application thread!');
+    assert(pthread_ptr, 'Internal Error! Null pthread_ptr in cancelThread!');
+#endif
     var pthread = PThread.pthreads[pthread_ptr];
     pthread.worker.postMessage({ 'cmd': 'cancel' });
   },
 
   $spawnThread: function(threadParams) {
-    if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! spawnThread() can only ever be called from main application thread!';
+#if ASSERTIONS
+    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! spawnThread() can only ever be called from main application thread!');
+    assert(threadParams.pthread_ptr, 'Internal error, no pthread ptr!');
+#endif
 
     var worker = PThread.getNewWorker();
-
     if (!worker) {
       // No available workers in the PThread pool.
       return {{{ cDefine('EAGAIN') }}};
     }
-    if (worker.pthread !== undefined) throw 'Internal error!';
-    if (!threadParams.pthread_ptr) throw 'Internal error, no pthread ptr!';
+#if ASSERTIONS
+    assert(!worker.pthread, 'Internal error!');
+#endif
+
     PThread.runningWorkers.push(worker);
 
     var stackHigh = threadParams.stackBase + threadParams.stackSize;
