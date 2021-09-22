@@ -23,7 +23,7 @@ var asmFS = {
     mkdirTree: function(path, mode) {
       var dirs = path.split('/');
       var d = '';
-      for (var i = 0; i < dirs.length; ++i) {
+      for (var i in dirs) {
         if (!dirs[i]) continue;
         d += '/' + dirs[i];
         FS.mkdir(d, mode);

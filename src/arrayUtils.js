@@ -15,7 +15,7 @@ function intArrayFromString(stringy, dontAddNull, length) {
 
 function intArrayToString(array) {
   var ret = [];
-  for (var i = 0; i < array.length; i++) {
+  for (var i in array) {
     var chr = array[i];
     if (chr > 0xFF) {
       if (ASSERTIONS) {

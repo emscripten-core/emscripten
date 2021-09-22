@@ -131,7 +131,7 @@ function isJsLibraryConfigIdentifier(ident) {
 function set() {
   var args = typeof arguments[0] === 'object' ? arguments[0] : arguments;
   var ret = {};
-  for (var i = 0; i < args.length; i++) {
+  for (var i in args) {
     ret[args[i]] = 0;
   }
   return ret;

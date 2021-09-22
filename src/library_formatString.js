@@ -251,7 +251,7 @@ mergeInto(LibraryManager.library, {
                 currArg = -currArg;
                 argText = (currAbsArg - 1).toString(16);
                 var buffer = [];
-                for (var i = 0; i < argText.length; i++) {
+                for (var i in argText) {
                   buffer.push((0xF - parseInt(argText[i], 16)).toString(16));
                 }
                 argText = buffer.join('');

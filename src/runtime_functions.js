@@ -50,7 +50,7 @@ function convertJsFunctionToWasm(func, sig) {
 
   // Parameters, length + signatures
   typeSection.push(sigParam.length);
-  for (var i = 0; i < sigParam.length; ++i) {
+  for (var i in sigParam) {
     typeSection.push(typeCodes[sigParam[i]]);
   }
 

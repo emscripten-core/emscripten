@@ -232,7 +232,7 @@ var emscriptenCpuProfiler = {
     if (this.insideMainLoopRecursionCounter != 0) return;
 
     // Aggregate total times spent in each section to memory store to wait until the next stats UI redraw period.
-    for (var i = 0; i < this.sections.length; ++i) {
+    for (var i in this.sections) {
       var sect = this.sections[i];
       if (!sect) continue;
       sect.frametimesInsideMainLoop[this.currentHistogramX] = sect.accumulatedTimeInsideMainLoop;
@@ -417,7 +417,7 @@ var emscriptenCpuProfiler = {
 
   drawBar: function drawBar(x) {
     var timeSpentInSectionsInsideMainLoop = 0;
-    for (var i = 0; i < this.sections.length; ++i) {
+    for (var i in this.sections) {
       var sect = this.sections[i];
       if (!sect) continue;
       timeSpentInSectionsInsideMainLoop += sect.frametimesInsideMainLoop[x];
@@ -428,7 +428,7 @@ var emscriptenCpuProfiler = {
     y -= h;
     this.drawContext.fillStyle = this.colorCpuTimeSpentInUserCode;
     this.drawContext.fillRect(x, y, 1, h);
-    for (var i = 0; i < this.sections.length; ++i) {
+    for (var i in this.sections) {
       var sect = this.sections[i];
       if (!sect) continue;
       h = (sect.frametimesInsideMainLoop[x] + sect.frametimesOutsideMainLoop[x]) * scale;

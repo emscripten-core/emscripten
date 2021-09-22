@@ -433,7 +433,7 @@ mergeInto(LibraryManager.library, {
         }
         // close any peer connections
         var peers = Object.keys(sock.peers);
-        for (var i = 0; i < peers.length; i++) {
+        for (var i in peers) {
           var peer = sock.peers[peers[i]];
           try {
             peer.socket.close();

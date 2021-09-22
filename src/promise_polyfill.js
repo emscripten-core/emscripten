@@ -124,7 +124,7 @@ var Promise = (function() {
       });
     }
 
-    for (var i = 0, len = self._deferreds.length; i < len; i++) {
+    for (var i in self._deferreds) {
       handle(self, self._deferreds[i]);
     }
     self._deferreds = null;
@@ -213,7 +213,7 @@ var Promise = (function() {
         }
       }
 
-      for (var i = 0; i < args.length; i++) {
+      for (var i in args) {
         res(i, args[i]);
       }
     });
@@ -241,7 +241,7 @@ var Promise = (function() {
         return reject(new TypeError('Promise.race accepts an array'));
       }
 
-      for (var i = 0, len = arr.length; i < len; i++) {
+      for (var i in arr) {
         Promise.resolve(arr[i]).then(resolve, reject);
       }
     });

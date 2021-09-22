@@ -69,7 +69,7 @@ mergeInto(LibraryManager.library, {
           return ({{{ cDefine('POLLWRNORM') }}} | {{{ cDefine('POLLOUT') }}});
         } else {
           if (pipe.buckets.length > 0) {
-            for (var i = 0; i < pipe.buckets.length; i++) {
+            for (var i in pipe.buckets) {
               var bucket = pipe.buckets[i];
               if (bucket.offset - bucket.roffset > 0) {
                 return ({{{ cDefine('POLLRDNORM') }}} | {{{ cDefine('POLLIN') }}});
@@ -90,7 +90,7 @@ mergeInto(LibraryManager.library, {
         var pipe = stream.node.pipe;
         var currentLength = 0;
 
-        for (var i = 0; i < pipe.buckets.length; i++) {
+        for (var i in pipe.buckets) {
           var bucket = pipe.buckets[i];
           currentLength += bucket.offset - bucket.roffset;
         }
@@ -114,7 +114,7 @@ mergeInto(LibraryManager.library, {
         var totalRead = toRead;
         var toRemove = 0;
 
-        for (var i = 0; i < pipe.buckets.length; i++) {
+        for (var i in pipe.buckets) {
           var currBucket = pipe.buckets[i];
           var bucketSize = currBucket.offset - currBucket.roffset;
 

@@ -121,7 +121,7 @@ var LibraryOpenAL = {
       var bufCursor = src.bufsProcessed;
 
       // Advance past any audio that is already scheduled
-      for (var i = 0; i < src.audioQueue.length; i++) {
+      for (var i in src.audioQueue) {
         var audioSrc = src.audioQueue[i];
         startTime = audioSrc._startTime + audioSrc._duration;
         startOffset = 0.0;
@@ -288,7 +288,7 @@ var LibraryOpenAL = {
         // Since we've already skipped any full-queue loops if there were any, we just need to find
         // out where in the queue the remaining time puts us, which won't require stepping through the
         // entire queue more than once.
-        for (var i = 0; i < src.bufQueue.length; i++) {
+        for (var i in src.bufQueue) {
           if (src.bufsProcessed >= src.bufQueue.length) {
             if (src.looping) {
               src.bufsProcessed %= src.bufQueue.length;
@@ -332,7 +332,7 @@ var LibraryOpenAL = {
     },
 
     stopSourceAudio: function(src) {
-      for (var i = 0; i < src.audioQueue.length; i++) {
+      for (var i in src.audioQueue) {
         src.audioQueue[i].stop();
       }
       src.audioQueue.length = 0;
@@ -400,7 +400,7 @@ var LibraryOpenAL = {
 
       // Find the first non-zero buffer in the queue to determine the proper format
       var templateBuf = AL.buffers[0];
-      for (var i = 0; i < src.bufQueue.length; i++) {
+      for (var i in src.bufQueue) {
         if (src.bufQueue[i].id !== 0) {
           templateBuf = src.bufQueue[i];
           break;
@@ -692,7 +692,7 @@ var LibraryOpenAL = {
 
     sourceDuration: function(src) {
       var length = 0.0;
-      for (var i = 0; i < src.bufQueue.length; i++) {
+      for (var i in src.bufQueue) {
         var audioBuf = src.bufQueue[i].audioBuf;
         length += audioBuf ? audioBuf.duration : 0.0;
       }
@@ -1130,7 +1130,7 @@ var LibraryOpenAL = {
       case 0x2009 /* AL_BYTE_LENGTH_SOFT */: 
         var length = 0;
         var bytesPerFrame = 0;
-        for (var i = 0; i < src.bufQueue.length; i++) {
+        for (var i in src.bufQueue) {
           length += src.bufQueue[i].length;
           if (src.bufQueue[i].id !== 0) {
             bytesPerFrame = src.bufQueue[i].bytesPerSample * src.bufQueue[i].channels;
@@ -1139,7 +1139,7 @@ var LibraryOpenAL = {
         return length * bytesPerFrame;
       case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
         var length = 0;
-        for (var i = 0; i < src.bufQueue.length; i++) {
+        for (var i in src.bufQueue) {
           length += src.bufQueue[i].length;
         }
         return length;
@@ -1832,7 +1832,7 @@ var LibraryOpenAL = {
         switch (format) {
         case 0x10010: /* AL_FORMAT_MONO_FLOAT32 */
           var channel0 = srcBuf.getChannelData(0);
-          for (var i = 0 ; i < srcBuf.length; ++i) {
+          for (var i in srcBuf) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = channel0[i];
           }
@@ -1840,7 +1840,7 @@ var LibraryOpenAL = {
         case 0x10011: /* AL_FORMAT_STEREO_FLOAT32 */
           var channel0 = srcBuf.getChannelData(0);
           var channel1 = srcBuf.getChannelData(1);
-          for (var i = 0 ; i < srcBuf.length; ++i) {
+          for (var i in srcBuf) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = channel0[i];
             c.buffers[1][wi] = channel1[i];
@@ -1848,7 +1848,7 @@ var LibraryOpenAL = {
           break;
         case 0x1101:  /* AL_FORMAT_MONO16 */
           var channel0 = srcBuf.getChannelData(0);
-          for (var i = 0 ; i < srcBuf.length; ++i) {
+          for (var i in srcBuf) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = channel0[i] * 32767;
           }
@@ -1856,7 +1856,7 @@ var LibraryOpenAL = {
         case 0x1103:  /* AL_FORMAT_STEREO16 */
           var channel0 = srcBuf.getChannelData(0);
           var channel1 = srcBuf.getChannelData(1);
-          for (var i = 0 ; i < srcBuf.length; ++i) {
+          for (var i in srcBuf) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = channel0[i] * 32767;
             c.buffers[1][wi] = channel1[i] * 32767;
@@ -1864,7 +1864,7 @@ var LibraryOpenAL = {
           break;
         case 0x1100:  /* AL_FORMAT_MONO8 */
           var channel0 = srcBuf.getChannelData(0);
-          for (var i = 0 ; i < srcBuf.length; ++i) {
+          for (var i in srcBuf) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = (channel0[i] + 1.0) * 127;
           }
@@ -1872,7 +1872,7 @@ var LibraryOpenAL = {
         case 0x1102:  /* AL_FORMAT_STEREO8 */
           var channel0 = srcBuf.getChannelData(0);
           var channel1 = srcBuf.getChannelData(1);
-          for (var i = 0 ; i < srcBuf.length; ++i) {
+          for (var i in srcBuf) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = (channel0[i] + 1.0) * 127;
             c.buffers[1][wi] = (channel1[i] + 1.0) * 127;
@@ -2511,7 +2511,7 @@ var LibraryOpenAL = {
         return;
       }
 
-      for (var i = 0; i < AL.currentCtx.attrs.length; i++) {
+      for (var i in AL.currentCtx.attrs) {
         {{{ makeSetValue('pValues', 'i*4', 'AL.currentCtx.attrs[i]', 'i32') }}};
       }
       break;
@@ -4146,7 +4146,7 @@ var LibraryOpenAL = {
 
     // Find the first non-zero buffer in the queue to determine the proper format
     var templateBuf = AL.buffers[0];
-    for (var i = 0; i < src.bufQueue.length; i++) {
+    for (var i in src.bufQueue) {
       if (src.bufQueue[i].id !== 0) {
         templateBuf = src.bufQueue[i];
         break;

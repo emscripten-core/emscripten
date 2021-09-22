@@ -30,7 +30,7 @@ function hashMemory(id) {
 
 function hashString(s) {
   var ret = 0;
-  for (var i = 0; i < s.length; i++) {
+  for (var i in s) {
     ret = (ret*17 + s.charCodeAt(i))|0;
   }
   return ret;

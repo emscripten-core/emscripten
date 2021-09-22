@@ -2827,7 +2827,7 @@ var swfobject=function(){var D="undefined",r="object",S="Shockwave Flash",W="Sho
    */
   WebSocket.prototype.dispatchEvent = function(event) {
     var events = this.__events[event.type] || [];
-    for (var i = 0; i < events.length; ++i) {
+    for (var i in events) {
       events[i](event);
     }
     var handler = this["on" + event.type];
@@ -2969,7 +2969,7 @@ var swfobject=function(){var D="undefined",r="object",S="Shockwave Flash",W="Sho
       WebSocket.__flash = document.getElementById("webSocketFlash");
       WebSocket.__flash.setCallerUrl(location.href);
       WebSocket.__flash.setDebug(!!window.WEB_SOCKET_DEBUG);
-      for (var i = 0; i < WebSocket.__tasks.length; ++i) {
+      for (var i in WebSocket.__tasks) {
         WebSocket.__tasks[i]();
       }
       WebSocket.__tasks = [];
@@ -2986,7 +2986,7 @@ var swfobject=function(){var D="undefined",r="object",S="Shockwave Flash",W="Sho
         // of Flash event. This is to make sure to keep message order.
         // It seems sometimes Flash events don't arrive in the same order as they are sent.
         var events = WebSocket.__flash.receiveEvents();
-        for (var i = 0; i < events.length; ++i) {
+        for (var i in events) {
           WebSocket.__instances[events[i].webSocketId].__handleEvent(events[i]);
         }
       } catch (e) {

@@ -1151,7 +1151,7 @@ LibraryManager.library = {
     // escape special characters
     // TODO: not sure we really need to escape all of these in JS regexps
     var SPECIAL_CHARS = '\\!@#$^&*()+=-[]/{}|:<>?,.';
-    for (var i=0, ii=SPECIAL_CHARS.length; i<ii; ++i) {
+    for (var i in SPECIAL_CHARS) {
       pattern = pattern.replace(new RegExp('\\'+SPECIAL_CHARS[i], 'g'), '\\'+SPECIAL_CHARS[i]);
     }
 
@@ -3381,7 +3381,7 @@ LibraryManager.library = {
   _Unwind_Backtrace: function(func, arg) {
     var trace = _emscripten_get_callstack_js();
     var parts = trace.split('\n');
-    for (var i = 0; i < parts.length; i++) {
+    for (var i in parts) {
       var ret = {{{ makeDynCall('iii', 'func') }}}(0, arg);
       if (ret !== 0) return;
     }
@@ -3519,7 +3519,7 @@ LibraryManager.library = {
     var argCache = [];
     return function() {
       argCache.length = arguments.length;
-      for (var i = 0; i < arguments.length; i++) {
+      for (var i in arguments) {
         argCache[i] = arguments[i];
       }
       return dynCall(sig, ptr, argCache);

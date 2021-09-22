@@ -23,7 +23,7 @@ function WasmSourceMap(sourceMap) {
     var shift = 0;
     var value = 0;
 
-    for (var i = 0; i < string.length; ++i) {
+    for (var i in string) {
       var integer = vlqMap[string[i]];
       if (integer === undefined) {
         throw new Error('Invalid character (' + string[i] + ')');

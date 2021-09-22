@@ -20,7 +20,7 @@ printErr = (x) => {
 
 function find(filename) {
   var prefixes = [__dirname, process.cwd()];
-  for (var i = 0; i < prefixes.length; ++i) {
+  for (var i in prefixes) {
     var combined = nodePath.join(prefixes[i], filename);
     if (nodeFS.existsSync(combined)) {
       return combined;

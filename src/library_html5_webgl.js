@@ -564,7 +564,7 @@ function handleWebGLProxying(funcs) {
 
   function listOfNFunctionArgs(func) {
     var args = [];
-    for (var i = 0; i < func.length; ++i) {
+    for (var i in func) {
       args.push('p' + i);
     }
     return args;

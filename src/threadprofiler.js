@@ -37,7 +37,7 @@ var emscriptenThreadProfiler = {
       threads.push(PThread.pthreads[i].threadInfoStruct);
     }
 
-    for (var i = 0; i < threads.length; ++i) {
+    for (var i in threads) {
       var threadPtr = threads[i];
       var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
       var threadName = PThread.getThreadName(threadPtr);

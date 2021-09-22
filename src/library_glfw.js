@@ -418,7 +418,7 @@ var LibraryGLFW = {
     onBlur: function(event) {
       if (!GLFW.active) return;
 
-      for (var i = 0; i < GLFW.active.domKeys.length; ++i) {
+      for (var i in GLFW.active.domKeys) {
         if (GLFW.active.domKeys[i]) {
           GLFW.onKeyChanged(i, 0); // GLFW_RELEASE
         }
@@ -662,11 +662,11 @@ var LibraryGLFW = {
 
             var data = GLFW.joys[joy];
 
-            for (var i = 0; i < gamepad.buttons.length;  ++i) {
+            for (var i in gamepad.buttons) {
               setValue(data.buttons + i, gamepad.buttons[i].pressed, 'i8');
             }
 
-            for (var i = 0; i < gamepad.axes.length; ++i) {
+            for (var i in gamepad.axes) {
               setValue(data.axes + i*4, gamepad.axes[i], 'float');
             }
           } else {
@@ -767,7 +767,7 @@ var LibraryGLFW = {
           if (++written === count) {
             {{{ makeDynCall('viii', 'GLFW.active.dropFunc') }}}(GLFW.active.id, count, filenames);
 
-            for (var i = 0; i < filenamesArray.length; ++i) {
+            for (var i in filenamesArray) {
               _free(filenamesArray[i]);
             }
             _free(filenames);
@@ -1050,7 +1050,7 @@ var LibraryGLFW = {
         GLFW.active = null;
 
       // Destroy context when no alive windows
-      for (var i = 0; i < GLFW.windows.length; i++)
+      for (var i in GLFW.windows)
         if (GLFW.windows[i] !== null) return;
 
       Module.ctx = Browser.destroyContext(Module['canvas'], true, true);

@@ -346,7 +346,7 @@ function ${name}(${args}) {
     var orderedPostSets = splitPostSets.splitOut;
 
     var limit = orderedPostSets.length * orderedPostSets.length;
-    for (var i = 0; i < orderedPostSets.length; i++) {
+    for (var i in orderedPostSets) {
       for (var j = i+1; j < orderedPostSets.length; j++) {
         if (orderedPostSets[j].ident in orderedPostSets[i].dependencies) {
           var temp = orderedPostSets[i];

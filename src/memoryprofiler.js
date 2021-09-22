@@ -437,7 +437,7 @@ var emscriptenMemoryProfiler = {
   printHeapResizeLog: function(heapResizes) {
     var demangler = typeof demangleAll !== 'undefined' ? demangleAll : function(x) { return x; };
     var html = '';
-    for (var i = 0; i < heapResizes.length; ++i) {
+    for (var i in heapResizes) {
       var j = i+1;
       while(j < heapResizes.length) {
         if ((heapResizes[j].filteredStack || heapResizes[j].stack) == (heapResizes[i].filteredStack || heapResizes[i].stack)) {

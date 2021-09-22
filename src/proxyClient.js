@@ -65,7 +65,7 @@ function renderFrame() {
   if (dst.set) {
     dst.set(renderFrameData);
   } else {
-    for (var i = 0; i < renderFrameData.length; i++) {
+    for (var i in renderFrameData) {
       dst[i] = renderFrameData[i];
     }
   }

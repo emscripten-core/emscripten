@@ -116,7 +116,7 @@ function WasmOffsetConverter(wasmBytes, wasmModule) {
   }
 
   var sections = WebAssembly.Module.customSections(wasmModule, "name");
-  for (var i = 0; i < sections.length; ++i) {
+  for (var i in sections) {
     buffer = new Uint8Array(sections[i]);
     if (buffer[0] != 1) // not a function name section
       continue;

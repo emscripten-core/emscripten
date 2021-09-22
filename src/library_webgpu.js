@@ -1576,7 +1576,7 @@ var LibraryWebGPU = {
       return;
     }
 
-    for (var i = 0; i < bufferWrapper.onUnmap.length; ++i) {
+    for (var i in bufferWrapper.onUnmap) {
       bufferWrapper.onUnmap[i]();
     }
     bufferWrapper.onUnmap = undefined;

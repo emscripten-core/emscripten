@@ -134,7 +134,7 @@ var LibraryPThread = {
       }
       PThread.pthreads = {};
 
-      for (var i = 0; i < PThread.unusedWorkers.length; ++i) {
+      for (var i in PThread.unusedWorkers) {
         var worker = PThread.unusedWorkers[i];
 #if ASSERTIONS
         assert(!worker.pthread); // This Worker should not be hosting a pthread at this time.
@@ -143,7 +143,7 @@ var LibraryPThread = {
       }
       PThread.unusedWorkers = [];
 
-      for (var i = 0; i < PThread.runningWorkers.length; ++i) {
+      for (var i in PThread.runningWorkers) {
         var worker = PThread.runningWorkers[i];
         var pthread = worker.pthread;
 #if ASSERTIONS

@@ -568,7 +568,7 @@ var LibrarySDL = {
 
           // Clear out any touchstart events that we've already processed
           if (event.type === 'touchstart') {
-            for (var i = 0; i < event.touches.length; i++) {
+            for (var i in event.touches) {
               var touch = event.touches[i];
               if (SDL.downFingers[touch.identifier] != true) {
                 SDL.downFingers[touch.identifier] = true;
@@ -598,7 +598,7 @@ var LibrarySDL = {
             SDL.events.push(mouseEvent);
           }
 
-          for (var i = 0; i < touches.length; i++) {
+          for (var i in touches) {
             var touch = touches[i];
             SDL.events.push({
               type: event.type,
@@ -612,7 +612,7 @@ var LibrarySDL = {
 
           // Remove the entry in the SDL.downFingers hash
           // because the finger is no longer down.
-          for (var i = 0; i < event.changedTouches.length; i++) {
+          for (var i in event.changedTouches) {
             var touch = event.changedTouches[i];
             if (SDL.downFingers[touch.identifier] === true) {
               delete SDL.downFingers[touch.identifier];
@@ -628,7 +628,7 @@ var LibrarySDL = {
           SDL.DOMButtons[0] = 0;
           SDL.events.push(mouseEvent);
 
-          for (var i = 0; i < event.changedTouches.length; i++) {
+          for (var i in event.changedTouches) {
             var touch = event.changedTouches[i];
             SDL.events.push({
               type: 'touchend',
@@ -932,7 +932,7 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TextInputEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           // Not filling in windowID for now
           var cStr = intArrayFromString(String.fromCharCode(event.charCode));
-          for (var i = 0; i < cStr.length; ++i) {
+          for (var i in cStr) {
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_TextInputEvent.text + ' + i', 'cStr[i]', 'i8') }}};
           }
           break;
@@ -1236,7 +1236,7 @@ var LibrarySDL = {
     recordJoystickState: function(joystick, state) {
       // Standardize button state.
       var buttons = new Array(state.buttons.length);
-      for (var i = 0; i < state.buttons.length; i++) {
+      for (var i in state.buttons) {
         buttons[i] = SDL.getJoystickButtonState(state.buttons[i]);
       }
 
@@ -3003,7 +3003,7 @@ var LibrarySDL = {
     if (channel != -1) {
       halt(channel);
     } else {
-      for (var i = 0; i < SDL.channels.length; ++i) halt(i);
+      for (var i in SDL.channels) halt(i);
     }
     return 0;
   },
@@ -3116,7 +3116,7 @@ var LibrarySDL = {
   Mix_Playing: function(channel) {
     if (channel === -1) {
       var count = 0;
-      for (var i = 0; i < SDL.channels.length; i++) {
+      for (var i in SDL.channels) {
         count += _Mix_Playing(i);
       }
       return count;
@@ -3132,7 +3132,7 @@ var LibrarySDL = {
   Mix_Pause__sig: 'vi',
   Mix_Pause: function(channel) {
     if (channel === -1) {
-      for (var i = 0; i<SDL.channels.length;i++) {
+      for (var i in SDL.channels) {
         _Mix_Pause(i);
       }
       return;
@@ -3151,7 +3151,7 @@ var LibrarySDL = {
   Mix_Paused: function(channel) {
     if (channel === -1) {
       var pausedCount = 0;
-      for (var i = 0; i<SDL.channels.length;i++) {
+      for (var i in SDL.channels) {
         pausedCount += _Mix_Paused(i);
       }
       return pausedCount;
@@ -3174,7 +3174,7 @@ var LibrarySDL = {
   Mix_Resume__sig: 'vi',
   Mix_Resume: function(channel) {
     if (channel === -1) {
-      for (var i = 0; i<SDL.channels.length;i++) {
+      for (var i in SDL.channels) {
         _Mix_Resume(i);
       }
       return;
@@ -3548,7 +3548,7 @@ var LibrarySDL = {
     var count = 0;
     var gamepads = SDL.getGamepads();
     // The length is not the number of gamepads; check which ones are defined.
-    for (var i = 0; i < gamepads.length; i++) {
+    for (var i in gamepads) {
       if (gamepads[i] !== undefined) count++;
     }
     return count;

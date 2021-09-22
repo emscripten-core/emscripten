@@ -1336,7 +1336,7 @@ var LibraryGL = {
                      result instanceof Uint32Array ||
                      result instanceof Int32Array ||
                      result instanceof Array) {
-            for (var i = 0; i < result.length; ++i) {
+            for (var i in result) {
               switch (type) {
                 case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}}; break;
                 case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}}; break;
@@ -2019,7 +2019,7 @@ var LibraryGL = {
 #endif
       }
     } else {
-      for (var i = 0; i < data.length; i++) {
+      for (var i in data) {
         switch (type) {
           case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
           case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
@@ -2215,7 +2215,7 @@ var LibraryGL = {
 #endif
       }
     } else {
-      for (var i = 0; i < data.length; i++) {
+      for (var i in data) {
         switch (type) {
           case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
           case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;

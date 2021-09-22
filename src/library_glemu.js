@@ -1600,7 +1600,7 @@ var LibraryGLEmulation = {
           s_requiredTexUnitsForPass.length = 0; // Clear the list.
           var lines = [];
           var lastPassVar = PRIM_COLOR_VARYING;
-          for (var i = 0; i < s_texUnits.length; i++) {
+          for (var i in s_texUnits) {
             if (!s_texUnits[i].enabled()) continue;
 
             s_requiredTexUnitsForPass.push(i);
@@ -1632,7 +1632,7 @@ var LibraryGLEmulation = {
         },
 
         traverseState: function(keyView) {
-          for (var i = 0; i < s_texUnits.length; i++) {
+          for (var i in s_texUnits) {
             s_texUnits[i].traverseState(keyView);
           }
         },
@@ -2101,7 +2101,7 @@ var LibraryGLEmulation = {
 
       // By attrib state:
       var enabledAttributesKey = 0;
-      for (var i = 0; i < attributes.length; i++) {
+      for (var i in attributes) {
         enabledAttributesKey |= 1 << attributes[i].name;
       }
 
@@ -2239,7 +2239,7 @@ var LibraryGLEmulation = {
             var texUnitUniformList = '';
             var vsTexCoordInits = '';
             this.usedTexUnitList = GLImmediate.TexEnvJIT.getUsedTexUnitList();
-            for (var i = 0; i < this.usedTexUnitList.length; i++) {
+            for (var i in this.usedTexUnitList) {
               var texUnit = this.usedTexUnitList[i];
               texUnitAttribList += 'attribute vec4 ' + aTexCoordPrefix + texUnit + ';\n';
               texUnitVaryingList += 'varying vec4 ' + vTexCoordPrefix + texUnit + ';\n';
@@ -2469,7 +2469,7 @@ var LibraryGLEmulation = {
             var prevBoundProg = GLctx.getParameter(GLctx.CURRENT_PROGRAM);
             GLctx.useProgram(this.program);
             {
-              for (var i = 0; i < this.usedTexUnitList.length; i++) {
+              for (var i in this.usedTexUnitList) {
                 var texUnitID = this.usedTexUnitList[i];
                 var texSamplerLoc = GLctx.getUniformLocation(this.program, uTexUnitPrefix + texUnitID);
                 GLctx.uniform1i(texSamplerLoc, texUnitID);
@@ -2972,7 +2972,7 @@ var LibraryGLEmulation = {
         var start = GLImmediate.restrideBuffer;
         bytes = 0;
         // calculate restrided offsets and total size
-        for (var i = 0; i < attributes.length; i++) {
+        for (var i in attributes) {
           var attr = attributes[i];
           var size = attr.sizeBytes;
           if (size % 4 != 0) size += 4 - (size % 4); // align everything
@@ -2980,7 +2980,7 @@ var LibraryGLEmulation = {
           bytes += size;
         }
         // copy out the data (we need to know the stride for that, and define attr.pointer)
-        for (var i = 0; i < attributes.length; i++) {
+        for (var i in attributes) {
           var attr = attributes[i];
           var srcStride = Math.max(attr.sizeBytes, attr.stride);
           if ((srcStride & 3) == 0 && (attr.sizeBytes & 3) == 0) {
@@ -3009,7 +3009,7 @@ var LibraryGLEmulation = {
         } else {
           GLImmediate.vertexPointer = clientStartPointer;
         }
-        for (var i = 0; i < attributes.length; i++) {
+        for (var i in attributes) {
           var attr = attributes[i];
           attr.offset = attr.pointer - GLImmediate.vertexPointer; // Compute what will be the offset of this attribute in the VBO after we upload.
         }
@@ -3121,7 +3121,7 @@ var LibraryGLEmulation = {
 
     GLImmediate.clientAttributes_preBegin = GLImmediate.clientAttributes;
     GLImmediate.clientAttributes = []
-    for (var i = 0; i < GLImmediate.clientAttributes_preBegin.length; i++) {
+    for (var i in GLImmediate.clientAttributes_preBegin) {
       GLImmediate.clientAttributes.push({});
     }
 

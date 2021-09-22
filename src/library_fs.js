@@ -144,8 +144,8 @@ FS.staticInit();` +
       var current = FS.root;
       var current_path = '/';
 
-      for (var i = 0; i < parts.length; i++) {
-        var islast = (i === parts.length-1);
+      for (var i in parts) {
+        var islast = (i == (parts.length-1));
         if (islast && opts.parent) {
           // stop resolving
           break;
@@ -204,7 +204,7 @@ FS.staticInit();` +
       name = name.toLowerCase();
 #endif
 
-      for (var i = 0; i < name.length; i++) {
+      for (var i in name) {
         hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
       }
       return ((parentid + hash) >>> 0) % FS.nameTable.length;
@@ -676,7 +676,7 @@ FS.staticInit();` +
     mkdirTree: function(path, mode) {
       var dirs = path.split('/');
       var d = '';
-      for (var i = 0; i < dirs.length; ++i) {
+      for (var i in dirs) {
         if (!dirs[i]) continue;
         d += '/' + dirs[i];
         try {
@@ -1512,7 +1512,7 @@ FS.staticInit();` +
       var fflush = Module['_fflush'];
       if (fflush) fflush(0);
       // close all of our streams
-      for (var i = 0; i < FS.streams.length; i++) {
+      for (var i in FS.streams) {
         var stream = FS.streams[i];
         if (!stream) {
           continue;
@@ -1594,7 +1594,7 @@ FS.staticInit();` +
       if (data) {
         if (typeof data === 'string') {
           var arr = new Array(data.length);
-          for (var i = 0, len = data.length; i < len; ++i) arr[i] = data.charCodeAt(i);
+          for (var i in data) arr[i] = data.charCodeAt(i);
           data = arr;
         }
         // make sure we can write to the file
