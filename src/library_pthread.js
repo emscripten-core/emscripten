@@ -9,6 +9,7 @@ var LibraryPThread = {
   $PThread__deps: ['_emscripten_thread_init',
                    'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
+                   '$freeThreadData',
                    'exit',
 #if !MINIMAL_RUNTIME
                    '$handleException',
@@ -150,21 +151,6 @@ var LibraryPThread = {
       }
       PThread.unusedWorkers = [];
     },
-    freeThreadData: function(pthread) {
-      if (!pthread) return;
-      if (pthread.threadInfoStruct) {
-#if PTHREADS_PROFILING
-        var profilerBlock = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.profilerBlock, 'i32') }}};
-        {{{ makeSetValue('pthread.threadInfoStruct',  C_STRUCTS.pthread.profilerBlock, 0, 'i32') }}};
-        _free(profilerBlock);
-#endif
-        _free(pthread.threadInfoStruct);
-      }
-      pthread.threadInfoStruct = 0;
-      if (pthread.allocatedOwnStack && pthread.stackBase) _free(pthread.stackBase);
-      pthread.stackBase = 0;
-      if (pthread.worker) pthread.worker.pthread = null;
-    },
     returnWorkerToPool: function(worker) {
       // We don't want to run main thread queued calls here, since we are doing
       // some operations that leave the worker queue in an invalid state until
@@ -178,7 +164,7 @@ var LibraryPThread = {
         PThread.unusedWorkers.push(worker);
         PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1);
         // Not a running Worker anymore
-        PThread.freeThreadData(worker.pthread);
+        freeThreadData(worker.pthread);
         // Detach the worker from the pthread object, and return it to the
         // worker pool as an unused worker.
         worker.pthread = undefined;
@@ -450,6 +436,27 @@ var LibraryPThread = {
     }
   },
 
+  $freeThreadData__noleakcheck: true,
+  $freeThreadData: function(pthread) {
+#if ASSERTIONS
+    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! freeThreadData() can only ever be called from main application thread!');
+#endif
+    if (!pthread) return;
+    if (pthread.threadInfoStruct) {
+#if PTHREADS_PROFILING
+      var profilerBlock = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.profilerBlock, 'i32') }}};
+      {{{ makeSetValue('pthread.threadInfoStruct',  C_STRUCTS.pthread.profilerBlock, 0, 'i32') }}};
+      _free(profilerBlock);
+#endif
+      _free(pthread.threadInfoStruct);
+    }
+    pthread.threadInfoStruct = 0;
+    if (pthread.allocatedOwnStack && pthread.stackBase) _free(pthread.stackBase);
+    pthread.stackBase = 0;
+    if (pthread.worker) pthread.worker.pthread = null;
+  },
+
+  $killThread__desp: ['$freeThreadData'],
   $killThread: function(pthread_ptr) {
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! killThread() can only ever be called from main application thread!');
@@ -459,7 +466,7 @@ var LibraryPThread = {
     var pthread = PThread.pthreads[pthread_ptr];
     delete PThread.pthreads[pthread_ptr];
     pthread.worker.terminate();
-    PThread.freeThreadData(pthread);
+    freeThreadData(pthread);
     // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
     // but don't put it back to the pool.
     PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(pthread.worker), 1); // Not a running Worker anymore.
@@ -632,6 +639,14 @@ var LibraryPThread = {
     PThread.threadInit();
   },
 
+  // ASan wraps the emscripten_builtin_pthread_create call in
+  // __lsan::ScopedInterceptorDisabler.  Unfortunately, that only disables it on
+  // the thread that made the call.  __pthread_create_js gets proxied to the
+  // main thread, where LSan is not disabled. This makes it necessary for us to
+  // disable LSan here (using __noleakcheck), so that it does not detect
+  // pthread's internal allocations as leaks.  If/when we remove all the
+  // allocations from __pthread_create_js we could also remove this.
+  __pthread_create_js__noleakcheck: true,
   __pthread_create_js__sig: 'iiiii',
   __pthread_create_js__deps: ['$spawnThread', 'pthread_self', 'memalign', 'emscripten_sync_run_in_main_thread_4'],
   __pthread_create_js: function(pthread_ptr, attr, start_routine, arg) {
