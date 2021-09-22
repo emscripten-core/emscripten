@@ -9,6 +9,7 @@
 #if SANITIZER_EMSCRIPTEN
 #include <emscripten.h>
 #include <cstddef>
+#include <pthread.h>
 #define __ATTRP_C11_THREAD ((void*)(uptr)-1)
 
 namespace __asan {
@@ -52,11 +53,9 @@ void AsanTSDInit(void (*destructor)(void *tsd)) {
 void PlatformTSDDtor(void *tsd) { UNREACHABLE(__func__); }
 
 extern "C" {
-  void *emscripten_builtin_malloc(size_t size);
-  void emscripten_builtin_free(void *memory);
-  int emscripten_builtin_pthread_create(void *thread, void *attr,
-                                        void *(*callback)(void *), void *arg);
-  int pthread_attr_getdetachstate(void *attr, int *detachstate);
+int emscripten_builtin_pthread_create(pthread_t *thread,
+                                      const pthread_attr_t *attr,
+                                      void *(*callback)(void *), void *arg);
 }
 
 static thread_return_t THREAD_CALLING_CONV asan_thread_start(void *arg) {
@@ -65,8 +64,8 @@ static thread_return_t THREAD_CALLING_CONV asan_thread_start(void *arg) {
   return t->ThreadStart(GetTid());
 }
 
-INTERCEPTOR(int, pthread_create, void *thread,
-    void *attr, void *(*start_routine)(void*), void *arg) {
+INTERCEPTOR(int, pthread_create, pthread_t *thread,
+    const pthread_attr_t *attr, void *(*start_routine)(void*), void *arg) {
   EnsureMainThreadIDIsCorrect();
   // Strict init-order checking is thread-hostile.
   if (flags()->strict_init_order)
