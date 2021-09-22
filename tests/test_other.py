@@ -668,6 +668,27 @@ f.close()
         self.assertContained('Hello! __STRICT_ANSI__: 1, __cplusplus: 201103', out)
       else:
         self.assertContained('Hello! __STRICT_ANSI__: 0, __cplusplus: 201103', out)
+        
+
+  # Tests that it's possible to build and check a c source with CMake and Emscripten
+  # needs C++11 (embind)
+  def test_cmake_check_c_source_runs(self):
+    if WINDOWS and not utils.which('ninja'):
+      self.skipTest('Skipping cmake test on windows since ninja not found')
+
+    self.clear()
+    # Use ninja generator here since we assume its always installed on our build/test machines.
+    configure = [EMCMAKE, 'cmake', test_file('cmake/check_c_source_runs')]
+    if WINDOWS:
+      configure += ['-G', 'Ninja']
+    print(str(configure))
+    self.run_process(configure)
+    build = ['cmake', '--build', '.']
+    print(str(build))
+    self.run_process(build)
+
+    self.assertExists('cmake_check_c_source_runs.html')
+    self.assertContained('<html ', read_file('cmake_check_c_source_runs.html'))
 
   # Tests that the Emscripten CMake toolchain option
   def test_cmake_bitcode_static_libraries(self):
