@@ -35,22 +35,6 @@ void InitializeAsanInterceptors() {}
 
 void FlushUnneededASanShadowMemory(uptr p, uptr size) {}
 
-// We can use a plain thread_local variable for TSD.
-static thread_local void *per_thread;
-
-void *AsanTSDGet() { return per_thread; }
-
-void AsanTSDSet(void *tsd) { per_thread = tsd; }
-
-// There's no initialization needed, and the passed-in destructor
-// will never be called.  Instead, our own thread destruction hook
-// (below) will call AsanThread::TSDDtor directly.
-void AsanTSDInit(void (*destructor)(void *tsd)) {
-  DCHECK(destructor == &PlatformTSDDtor);
-}
-
-void PlatformTSDDtor(void *tsd) { UNREACHABLE(__func__); }
-
 extern "C" {
   void *emscripten_builtin_malloc(size_t size);
   void emscripten_builtin_free(void *memory);
