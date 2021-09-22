@@ -132,27 +132,23 @@ var LibraryPThread = {
           PThread.returnWorkerToPool(pthread.worker);
         }
       }
-      PThread.pthreads = {};
+
+#if ASSERTIONS
+      // At this point there should be zero pthreads and zero runningWorkers.
+      // All workers should be now be the unused queue.
+      assert(Object.keys(PThread.pthreads).length === 0);
+      assert(PThread.runningWorkers.length === 0);
+#endif
 
       for (var i = 0; i < PThread.unusedWorkers.length; ++i) {
         var worker = PThread.unusedWorkers[i];
 #if ASSERTIONS
-        assert(!worker.pthread); // This Worker should not be hosting a pthread at this time.
+        // This Worker should not be hosting a pthread at this time.
+        assert(!worker.pthread);
 #endif
         worker.terminate();
       }
       PThread.unusedWorkers = [];
-
-      for (var i = 0; i < PThread.runningWorkers.length; ++i) {
-        var worker = PThread.runningWorkers[i];
-        var pthread = worker.pthread;
-#if ASSERTIONS
-        assert(pthread, 'This Worker should have a pthread it is executing');
-#endif
-        worker.terminate();
-        PThread.freeThreadData(pthread);
-      }
-      PThread.runningWorkers = [];
     },
     freeThreadData: function(pthread) {
       if (!pthread) return;
@@ -177,11 +173,14 @@ var LibraryPThread = {
       // modifying).
       PThread.runWithoutMainThreadQueuedCalls(function() {
         delete PThread.pthreads[worker.pthread.threadInfoStruct];
-        //Note: worker is intentionally not terminated so the pool can dynamically grow.
+        // Note: worker is intentionally not terminated so the pool can
+        // dynamically grow.
         PThread.unusedWorkers.push(worker);
-        PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1); // Not a running Worker anymore
+        PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1);
+        // Not a running Worker anymore
         PThread.freeThreadData(worker.pthread);
-        // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
+        // Detach the worker from the pthread object, and return it to the
+        // worker pool as an unused worker.
         worker.pthread = undefined;
       });
     },
