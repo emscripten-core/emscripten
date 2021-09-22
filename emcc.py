@@ -1926,11 +1926,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
       'removeRunDependency',
     ]
 
-  if not settings.MINIMAL_RUNTIME or settings.EXIT_RUNTIME:
-    # MINIMAL_RUNTIME only needs callRuntimeCallbacks in certain cases, but the normal runtime
-    # always does.
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
-
   if settings.USE_PTHREADS:
     # memalign is used to ensure allocated thread stacks are aligned.
     settings.EXPORTED_FUNCTIONS += ['_memalign']
@@ -2041,9 +2036,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
     if options.shell_path == utils.path_from_root('src/shell.html'):
       options.shell_path = utils.path_from_root('src/shell_minimal_runtime.html')
 
-    if settings.EXIT_RUNTIME:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['proc_exit']
-
     if settings.ASSERTIONS:
       # In ASSERTIONS-builds, functions UTF8ArrayToString() and stringToUTF8Array() (which are not JS library functions), both
       # use warnOnce(), which in MINIMAL_RUNTIME is a JS library function, so explicitly have to mark dependency to warnOnce()
@@ -2131,13 +2123,14 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if 'leak' in sanitize:
     settings.USE_LSAN = 1
-    settings.EXIT_RUNTIME = 1
+    default_setting('EXIT_RUNTIME', 1)
 
     if settings.LINKABLE:
       exit_with_error('LSan does not support dynamic linking')
 
   if 'address' in sanitize:
     settings.USE_ASAN = 1
+    default_setting('EXIT_RUNTIME', 1)
     if not settings.UBSAN_RUNTIME:
       settings.UBSAN_RUNTIME = 2
 
@@ -2216,6 +2209,14 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # a higher global base is useful for optimizing load/store offsets, as it
     # enables the --post-emscripten pass
     settings.GLOBAL_BASE = 1024
+
+  if settings.MINIMAL_RUNTIME:
+    if settings.EXIT_RUNTIME:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['proc_exit', '$callRuntimeCallbacks']
+  else:
+    # MINIMAL_RUNTIME only needs callRuntimeCallbacks in certain cases, but the normal runtime
+    # always does.
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
 
   # various settings require malloc/free support from JS
   if settings.RELOCATABLE or \

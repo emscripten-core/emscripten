@@ -5111,7 +5111,7 @@ main( int argv, char ** argc ) {
   @no_minimal_runtime('MINIMAL_RUNTIME does not have getValue() and setValue() (TODO add it to a JS library function to get it in)')
   def test_utf(self):
     self.banned_js_engines = [config.SPIDERMONKEY_ENGINE] # only node handles utf well
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_free'])
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8'])
     self.do_core_test('test_utf.c')
 
@@ -5797,8 +5797,8 @@ void* operator new(size_t size) {
       #include <set>
       #include <stdio.h>
       int main() {
-        std::set<int> *fetchOriginatorNums = new std::set<int>();
-        fetchOriginatorNums->insert(171);
+        std::set<int> fetchOriginatorNums;
+        fetchOriginatorNums.insert(171);
         printf("hello world\\n");
         return 0;
       }
@@ -5838,11 +5838,15 @@ void* operator new(size_t size) {
       create_file('data.dat', s)
       self.do_runf(test_file('mmap_file.c'), '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
 
+  @no_lsan('Test code contains memory leaks')
   def test_cubescript(self):
     # uses register keyword
     self.emcc_args += ['-std=c++03', '-Wno-dynamic-class-memaccess']
     self.maybe_closure()
     self.emcc_args += ['-I', test_file('third_party/cubescript')]
+    # Test code contains memory leaks
+    if '-fsanitize=address' in self.emcc_args:
+      self.emcc_args += ['--pre-js', test_file('asan-no-leak.js')]
 
     def test():
       src = test_file('third_party/cubescript/command.cpp')
@@ -6384,7 +6388,9 @@ void* operator new(size_t size) {
         ('DIRECT', []),
         ('DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall']),
       ]
-    if 'MINIMAL_RUNTIME=1' not in args:
+    if 'MINIMAL_RUNTIME=1' in args:
+      self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
+    else:
       cases += [
         ('EXPORTED', []),
         ('EXPORTED_DYNAMIC_SIG', ['-s', 'DYNCALLS=1', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall', '-s', 'EXPORTED_RUNTIME_METHODS=dynCall']),
@@ -6592,6 +6598,9 @@ void* operator new(size_t size) {
     self.do_run(src, 'func1\nfunc2\n')
 
   def test_emulate_function_pointer_casts(self):
+    # Forcibly disable EXIT_RUNTIME due to:
+    # https://github.com/emscripten-core/emscripten/issues/15081
+    self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('EMULATE_FUNCTION_POINTER_CASTS')
     self.do_core_test('test_emulate_function_pointer_casts.cpp')
 
@@ -7453,6 +7462,7 @@ Module['onRuntimeInitialized'] = function() {
   })
   def test_async_ccall_promise(self, exit_runtime):
     self.set_setting('ASYNCIFY')
+    self.set_setting('EXIT_RUNTIME')
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('EXIT_RUNTIME', exit_runtime)
@@ -7462,7 +7472,7 @@ Module['onRuntimeInitialized'] = function() {
 #include <emscripten.h>
 const char* stringf(char* param) {
   emscripten_sleep(20);
-  printf("%s", param);
+  printf("stringf: %s", param);
   return "second";
 }
 double floatf() {
@@ -7473,15 +7483,20 @@ double floatf() {
 ''')
     create_file('pre.js', r'''
 Module['onRuntimeInitialized'] = function() {
+  runtimeKeepalivePush();
   ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
     .then(function(val) {
       console.log(val);
-      ccall('floatf', 'number', null, null, { async: true }).then(console.log);
+      ccall('floatf', 'number', null, null, { async: true }).then(function(arg) {
+        console.log(arg);
+        runtimeKeepalivePop();
+        maybeExit();
+      });
     });
 };
 ''')
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_runf('main.c', 'first\nsecond\n6.4')
+    self.do_runf('main.c', 'stringf: first\nsecond\n6.4')
 
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY')
@@ -7890,6 +7905,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_postrun_exception(self):
     # verify that an exception thrown in postRun() will not trigger the
     # compilation failed handler, and will be printed to stderr.
+    # Explictly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
+    # https://github.com/emscripten-core/emscripten/issues/15080
+    self.set_setting('EXIT_RUNTIME', 0)
     self.add_post_run('ThisFunctionDoesNotExist()')
     self.build(test_file('core/test_hello_world.c'))
     output = self.run_js('test_hello_world.js', assert_returncode=NON_ZERO)
@@ -8579,6 +8597,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests settings.ABORT_ON_WASM_EXCEPTIONS
   def test_abort_on_exceptions(self):
+    # Explictly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
+    # https://github.com/emscripten-core/emscripten/issues/15080
+    self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.emcc_args += ['--bind', '--post-js', test_file('core/test_abort_on_exception_post.js')]
