@@ -43,7 +43,7 @@ __wasi_errno_t __wasi_fd_write(
           }
           num += len;
         }
-        HEAP32[((nwritten) >> 2)] = num;
+        HEAP32[nwritten >> 2] = num;
       },
       fd, iovs, iovs_len, nwritten);
   }
