@@ -768,6 +768,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=[
           'pthread_self.c',
           'pthread_cleanup_push.c',
+          'pthread_attr_get.c',
           # C11 thread library functions
           'call_once.c',
           'tss_create.c',

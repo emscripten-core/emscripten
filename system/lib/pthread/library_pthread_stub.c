@@ -263,14 +263,6 @@ int pthread_condattr_setpshared(pthread_condattr_t *attr, int shared) {
   return 0;
 }
 
-int pthread_condattr_getclock(const pthread_condattr_t *attr, clockid_t* clk) {
-  return 0;
-}
-
-int pthread_condattr_getpshared(const pthread_condattr_t *attr, int *shared) {
-  return 0;
-}
-
 int pthread_attr_init(pthread_attr_t *attr) {
   return 0;
 }
@@ -280,18 +272,6 @@ int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr) {
 }
 
 int pthread_attr_destroy(pthread_attr_t *attr) {
-  return 0;
-}
-
-int pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate) {
-  return 0;
-}
-
-int pthread_attr_getstack(const pthread_attr_t *attr, void **stackaddr, size_t *stacksize) {
-  /*FIXME: assumes that there is only one thread, and that attr is the
-    current thread*/
-  *stackaddr = (void*)emscripten_stack_get_base();
-  *stacksize = emscripten_stack_get_base() - emscripten_stack_get_end();
   return 0;
 }
 
@@ -348,10 +328,6 @@ int pthread_rwlockattr_destroy(pthread_rwlockattr_t *attr) {
 }
 
 int pthread_rwlockattr_setpshared(pthread_rwlockattr_t* attr, int pshared) {
-  return 0;
-}
-
-int pthread_rwlockattr_getpshared(const pthread_rwlockattr_t* attr, int *pshared) {
   return 0;
 }
 

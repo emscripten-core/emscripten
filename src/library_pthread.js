@@ -768,7 +768,7 @@ var LibraryPThread = {
       // pthread_*() API user does not see this offset when operating with
       // the pthread API. When reading the structure directly on JS side
       // however, we need to offset the size manually here.
-      stackSize += 81920 /*DEFAULT_STACK_SIZE*/;
+      stackSize += {{{ cDefine('DEFAULT_STACK_SIZE') }}};
       stackBase = {{{ makeGetValue('attr', 8, 'i32') }}};
       detached = {{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}} !== 0/*PTHREAD_CREATE_JOINABLE*/;
     } else {
