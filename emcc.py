@@ -1892,6 +1892,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '_pthread_testcancel',
       '_exit',
     ]
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+      '$exitOnMainThread',
+    ]
     # Some of these symbols are using by worker.js but otherwise unreferenced.
     # Because emitDCEGraph only considered the main js file, and not worker.js
     # we have explicitly mark these symbols as user-exported so that they will

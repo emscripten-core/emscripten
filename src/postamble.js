@@ -408,14 +408,14 @@ function exit(status, implicit) {
   if (!implicit) {
     if (ENVIRONMENT_IS_PTHREAD) {
 #if PTHREADS_DEBUG
-      err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitProcess.');
+      err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitOnMainThread.');
 #endif
       // When running in a pthread we propagate the exit back to the main thread
       // where it can decide if the whole process should be shut down or not.
       // The pthread may have decided not to exit its own runtime, for example
       // because it runs a main loop, but that doesn't affect the main thread.
-      postMessage({ 'cmd': 'exitProcess', 'returnCode': status });
-      throw new ExitStatus(status);
+      exitOnMainThread(status);
+      throw 'unwind';
     } else {
 #if PTHREADS_DEBUG
       err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');

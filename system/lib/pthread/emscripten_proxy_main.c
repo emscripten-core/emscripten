@@ -14,12 +14,13 @@
 static int _main_argc;
 static char** _main_argv;
 
-extern int __call_main(int argc, char** argv);
+extern void __call_main(int argc, char** argv);
 
 static void* _main_thread(void* param) {
   // This is the main runtime thread for the application.
   emscripten_set_thread_name(pthread_self(), "Application main thread");
-  return (void*)__call_main(_main_argc, _main_argv);
+  __call_main(_main_argc, _main_argv);
+  return NULL;
 }
 
 int emscripten_proxy_main(int argc, char** argv) {

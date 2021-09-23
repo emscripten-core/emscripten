@@ -1,13 +1,24 @@
 #include <assert.h>
+#include <stdatomic.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <emscripten/emscripten.h>
 
 pthread_t t;
 
 void* thread_main_exit(void* arg) {
   printf("calling exit\n");
   exit(42);
+}
+
+// This location should never get set to true.
+// We verify that it false from JS after the program exits.
+atomic_bool join_returned = false;
+
+EMSCRIPTEN_KEEPALIVE atomic_bool* join_returned_address() {
+  return &join_returned;
 }
 
 int main() {
@@ -17,16 +28,9 @@ int main() {
   void* thread_rtn = 0;
   rc = pthread_join(t, &thread_rtn);
   assert(rc == 0);
-#if EXIT_RUNTIME
-  printf("done join -- should never get here\n");
-  return 1;
-#else
-  // Since EXIT_RUNTIME is not set the exit() in the thread is not expected to
-  // bring down the whole process, only itself.
-  printf("done join -- thread exited with %ld\n", (intptr_t)thread_rtn);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(43);
-#endif
-  return 43;
-#endif
+  // pthread_join should never return becasue the runtime should
+  // exit first.
+  join_returned = true;
+  printf("done join %d -- should never get here\n", rc);
+  __builtin_trap();
 }

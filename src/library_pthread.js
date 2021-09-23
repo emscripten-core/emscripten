@@ -127,6 +127,12 @@ var LibraryPThread = {
 #endif
 
     terminateAllThreads: function() {
+#if ASSERTIONS
+      assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! terminateAllThreads() can only ever be called from main application thread!');
+#endif
+#if PTHREADS_DEBUG
+      err('terminateAllThreads');
+#endif
       for (var t in PThread.pthreads) {
         var pthread = PThread.pthreads[t];
         if (pthread && pthread.worker) {
@@ -277,20 +283,6 @@ var LibraryPThread = {
           assert(detached);
 #endif
           PThread.returnWorkerToPool(worker);
-        } else if (cmd === 'exitProcess') {
-          // A pthread has requested to exit the whole application process (runtime).
-#if ASSERTIONS
-          err("exitProcess requested by worker");
-#endif
-#if MINIMAL_RUNTIME
-          _exit(d['returnCode']);
-#else
-          try {
-            _exit(d['returnCode']);
-          } catch (e) {
-            handleException(e);
-          }
-#endif
         } else if (cmd === 'cancelDone') {
           PThread.returnWorkerToPool(worker);
         } else if (e.data.target === 'setimmediate') {
@@ -458,6 +450,9 @@ var LibraryPThread = {
 
   $killThread__desp: ['$freeThreadData'],
   $killThread: function(pthread_ptr) {
+#if PTHREADS_DEBUG
+    err('killThread 0x' + pthread_ptr.toString(16));
+#endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! killThread() can only ever be called from main application thread!');
     assert(pthread_ptr, 'Internal Error! Null pthread_ptr in killThread!');
@@ -1191,6 +1186,7 @@ var LibraryPThread = {
     return size <= 4 && (size & (size-1)) == 0 && (ptr&(size-1)) == 0;
   },
 
+  __call_main__deps: ['exit', '$exitOnMainThread'],
   __call_main: function(argc, argv) {
     var returnCode = {{{ exportedAsmFunc('_main') }}}(argc, argv);
 #if EXIT_RUNTIME
@@ -1199,8 +1195,7 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
       err('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
 #endif
-      postMessage({ 'cmd': 'exitProcess', 'returnCode': returnCode });
-      return returnCode;
+      exitOnMainThread(returnCode);
     }
 #else
     // EXIT_RUNTIME==0 set on command line, keeping main thread alive.
@@ -1252,6 +1247,28 @@ var LibraryPThread = {
     threadId = threadId|0;
     name = name|0;
     PThread.setThreadName(threadId, UTF8ToString(name));
+#endif
+  },
+
+  $exitOnMainThread__deps: ['exit',
+#if !MINIMAL_RUNTIME
+    '$handleException',
+#endif
+  ],
+  $exitOnMainThread__proxy: 'async',
+  $exitOnMainThread: function(returnCode) {
+    // A pthread has requested to exit the whole application process (runtime).
+#if PTHREADS_DEBUG
+    err('exitOnMainThread');
+#endif
+#if MINIMAL_RUNTIME
+    _exit(returnCode);
+#else
+    try {
+      _exit(returnCode);
+    } catch (e) {
+      handleException(e);
+    }
 #endif
   },
 
