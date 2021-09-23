@@ -1635,6 +1635,8 @@ var FETCH = 0;
 // [link]
 var ASMFS = 0;
 
+// ATTENTION [WIP]: Experimental feature, use at your own risk
+// Will eventually replace current JS file system implementation
 // If set to 1, uses new filesystem implementation
 // [link]
 var WASMFS = 0;

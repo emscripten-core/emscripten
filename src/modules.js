@@ -61,16 +61,13 @@ var LibraryManager = {
       'library_formatString.js',
       'library_math.js',
       'library_path.js',
+      'library_syscall.js',
       'library_html5.js',
       'library_stack_trace.js',
+      'library_wasi.js',
       'library_int53.js',
       'library_dylink.js'
     ];
-
-    if (!WASMFS) {
-      libraries.push('library_syscall.js')
-      libraries.push('library_wasi.js')
-    }
 
     if (LINK_AS_CXX && !EXCEPTION_HANDLING) {
       if (DISABLE_EXCEPTION_THROWING) {
@@ -96,9 +93,7 @@ var LibraryManager = {
       libraries.push('library_html5_webgl.js');
     }
 
-    if (WASMFS) {
-      libraries.push('library_wasmfs.js')
-    } else if (FILESYSTEM) {
+    if (FILESYSTEM) {
       // Core filesystem libraries (always linked against, unless -s FILESYSTEM=0 is specified)
       libraries = libraries.concat([
         'library_fs.js',

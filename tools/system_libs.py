@@ -1288,7 +1288,7 @@ class libwasmfs(MTLibrary):
   name = 'libwasmfs'
 
   def get_files(self):
-    return [utils.path_from_root('system/lib/fetch/wasmfs.cpp')]
+    return [utils.path_from_root('system/lib/wasmfs/wasmfs.cpp')]
 
 
 class libhtml5(Library):
