@@ -237,7 +237,7 @@ var LibraryPThread = {
         if (d['targetThread'] && d['targetThread'] != _pthread_self()) {
           var thread = PThread.pthreads[d.targetThread];
           if (thread) {
-            thread.worker.postMessage(e.data, d['transferList']);
+            thread.worker.postMessage(d, d['transferList']);
           } else {
             err('Internal error! Worker sent a message "' + cmd + '" to target pthread ' + d['targetThread'] + ', but that thread no longer exists!');
           }
@@ -249,7 +249,7 @@ var LibraryPThread = {
           // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
           _emscripten_main_thread_process_queued_calls();
         } else if (cmd === 'spawnThread') {
-          spawnThread(e.data);
+          spawnThread(d);
         } else if (cmd === 'cleanupThread') {
           cleanupThread(d['thread']);
         } else if (cmd === 'killThread') {
@@ -293,8 +293,10 @@ var LibraryPThread = {
 #endif
         } else if (cmd === 'cancelDone') {
           PThread.returnWorkerToPool(worker);
-        } else if (e.data.target === 'setimmediate') {
-          worker.postMessage(e.data); // Worker wants to postMessage() to itself to implement setImmediate() emulation.
+        } else if (d.target === 'setimmediate') {
+          // Worker wants to postMessage() to itself to implement setImmediate()
+          // emulation.
+          worker.postMessage(d);
         } else if (cmd === 'onAbort') {
           if (Module['onAbort']) {
             Module['onAbort'](d['arg']);
