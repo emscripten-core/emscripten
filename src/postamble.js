@@ -407,7 +407,7 @@ function exit(status, implicit) {
 #if USE_PTHREADS
   if (!implicit) {
     if (ENVIRONMENT_IS_PTHREAD) {
-#if ASSERTIONS
+#if PTHREADS_DEBUG
       err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitProcess.');
 #endif
       // When running in a pthread we propagate the exit back to the main thread
@@ -417,7 +417,7 @@ function exit(status, implicit) {
       postMessage({ 'cmd': 'exitProcess', 'returnCode': status });
       throw new ExitStatus(status);
     } else {
-#if ASSERTIONS
+#if PTHREADS_DEBUG
       err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
 #endif
     }
