@@ -3099,15 +3099,17 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: [
 #if USE_OFFSET_CONVERTER
+  emscripten_pc_get_function__deps: [
     '$UNWIND_CACHE',
-    '$withBuiltinMalloc',
+    'free',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
 #endif
-#endif
   ],
+  // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
+  emscripten_pc_get_function__noleakcheck: true,
+#endif
   emscripten_pc_get_function: function (pc) {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
@@ -3129,10 +3131,8 @@ LibraryManager.library = {
     } else {
       name = wasmOffsetConverter.getName(pc);
     }
-    withBuiltinMalloc(function () {
-      if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
-      _emscripten_pc_get_function.ret = allocateUTF8(name);
-    });
+    if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
+    _emscripten_pc_get_function.ret = allocateUTF8(name);
     return _emscripten_pc_get_function.ret;
 #endif
   },
@@ -3169,19 +3169,19 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', '$withBuiltinMalloc',
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'free',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
 #endif
   ],
+  // Don't treat allocation of _emscripten_pc_get_file.ret as a leak
+  emscripten_pc_get_file__noleakcheck: true,
   emscripten_pc_get_file: function (pc) {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;
 
-    withBuiltinMalloc(function () {
-      if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
-      _emscripten_pc_get_file.ret = allocateUTF8(result.file);
-    });
+    if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
+    _emscripten_pc_get_file.ret = allocateUTF8(result.file);
     return _emscripten_pc_get_file.ret;
   },
 
@@ -3238,23 +3238,18 @@ LibraryManager.library = {
 #endif
     }
   },
-#else
-  // Without lsan or asan withBuiltinMalloc is just a no-op.
-  $withBuiltinMalloc: function (func) { return func(); },
 #endif
 
-  emscripten_builtin_mmap2__deps: ['$withBuiltinMalloc', '$syscallMmap2'],
+  emscripten_builtin_mmap2__deps: ['$syscallMmap2'],
+  emscripten_builtin_mmap2__noleakcheck: true,
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
-    return withBuiltinMalloc(function () {
-      return syscallMmap2(addr, len, prot, flags, fd, off);
-    });
+    return syscallMmap2(addr, len, prot, flags, fd, off);
   },
 
-  emscripten_builtin_munmap__deps: ['$withBuiltinMalloc', '$syscallMunmap'],
+  emscripten_builtin_munmap__deps: ['$syscallMunmap'],
+  emscripten_builtin_munmap__noleakcheck: true,
   emscripten_builtin_munmap: function (addr, len) {
-    return withBuiltinMalloc(function () {
-      return syscallMunmap(addr, len);
-    });
+    return syscallMunmap(addr, len);
   },
 
   $readAsmConstArgsArray: '=[]',

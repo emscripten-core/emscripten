@@ -278,7 +278,6 @@ function ${name}(${args}) {
         }
         return addFromLibrary(dep, `${identDependents}, referenced by ${dependent}`);
       }
-      var depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
       var contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
@@ -298,6 +297,16 @@ function ${name}(${args}) {
 }\n`;
           });
           proxiedFunctionTable.push(finalName);
+        } else if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[ident + '__noleakcheck']) {
+          contentText = modifyFunction(snippet, (name, args, body) => {
+            return `
+function ${name}(${args}) {
+  return withBuiltinMalloc(function() {
+    ${body}
+  });
+}\n`;
+          });
+          deps.push('$withBuiltinMalloc');
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }
@@ -331,6 +340,7 @@ function ${name}(${args}) {
         commentText = LibraryManager.library[ident + '__docs'] + '\n';
       }
 
+      var depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
       return depsText + commentText + contentText;
     }
 
