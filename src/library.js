@@ -294,7 +294,7 @@ LibraryManager.library = {
 
     // Memory resize rules:
     // 1. Always increase heap size to at least the requested size, rounded up to next page multiple.
-    // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to 
+    // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to
     //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
     //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
     // 2b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
@@ -721,7 +721,7 @@ LibraryManager.library = {
     var summerOffset = summer.getTimezoneOffset();
 
     // Local standard timezone offset. Local standard time is not adjusted for daylight savings.
-    // This code uses the fact that getTimezoneOffset returns a greater value during Standard Time versus Daylight Saving Time (DST). 
+    // This code uses the fact that getTimezoneOffset returns a greater value during Standard Time versus Daylight Saving Time (DST).
     // Thus it determines the expected output during Standard Time, and it compares whether the output of the given date the same (Standard) or less (DST).
     var stdTimezoneOffset = Math.max(winterOffset, summerOffset);
 
@@ -3270,11 +3270,11 @@ LibraryManager.library = {
 #if ASSERTIONS
       assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/);
 #endif
-      // A double takes two 32-bit slots, and must also be aligned - the backend
+      // A double or readAsmConstArgsDouble takes two 32-bit slots, and must also be aligned - the backend
       // will emit padding to avoid that.
-      var double = ch < 105;
-      if (double && (buf & 1)) buf++;
-      readAsmConstArgsArray.push(double ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
+      var readAsmConstArgsDouble = ch < 105;
+      if (readAsmConstArgsDouble && (buf & 1)) buf++;
+      readAsmConstArgsArray.push(readAsmConstArgsDouble ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
       ++buf;
     }
     return readAsmConstArgsArray;
