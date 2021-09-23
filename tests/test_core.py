@@ -141,7 +141,11 @@ def can_do_standalone(self):
 
 def also_with_wasmfs(func):
   def decorated(self):
+    self.set_setting('WASMFS', 0)
+    func(self)
+    print('wasmfs')
     self.set_setting('WASMFS')
+    func(self)
   return decorated
 
 
@@ -314,15 +318,11 @@ class TestCoreBase(RunnerCore):
                             cache_name_extra=configure_commands[0])
 
   @also_with_standalone_wasm()
+  @also_with_wasmfs
   def test_hello_world(self):
     self.do_core_test('test_hello_world.c')
     # must not emit this unneeded internal thing
     self.assertNotContained('EMSCRIPTEN_GENERATED_FUNCTIONS', read_file('test_hello_world.js'))
-
-  @also_with_wasmfs
-  def test_wasmfs_hello_world(self):
-    self.do_core_test('test_wasmfs_hello_world.c')
-    self.assertNotContained('EMSCRIPTEN_GENERATED_FUNCTIONS', read_file('test_wasmfs_hello_world.js'))
 
   def test_wasm_synchronous_compilation(self):
     self.set_setting('STRICT_JS')
