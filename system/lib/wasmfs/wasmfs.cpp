@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #define __NEED_struct_iovec
 #include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
 #include <wasi/api.h>
 
 extern "C" {
