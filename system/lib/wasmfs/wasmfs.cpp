@@ -13,7 +13,7 @@
 
 extern "C" {
 
-int emscripten_wasmfs_printchar(__wasi_fd_t fd, const uint8_t* ptr, __wasi_size_t len);
+int emscripten_wasmfs_printbuffer(__wasi_fd_t fd, const uint8_t* ptr, __wasi_size_t len);
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
@@ -27,7 +27,7 @@ __wasi_errno_t __wasi_fd_write(
     for (size_t i = 0; i < iovs_len; i++) {
       const uint8_t* ptr = iovs[i].buf;
       __wasi_size_t len = iovs[i].buf_len;
-      emscripten_wasmfs_printchar(fd, ptr, len);
+      emscripten_wasmfs_printbuffer(fd, ptr, len);
       num += len;
     }
     *nwritten = num;
