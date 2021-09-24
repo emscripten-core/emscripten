@@ -5035,7 +5035,7 @@ window.close = function() {
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):
-    self.btest_exit(test_file('browser/test_emscripten_unwind_to_js_event_loop.c'))
+    self.btest_exit(test_file('test_emscripten_unwind_to_js_event_loop.c'))
 
   def test_wasm2js_fallback(self):
     self.set_setting('EXIT_RUNTIME')

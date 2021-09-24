@@ -11014,3 +11014,23 @@ void foo() {}
     output = self.do_runf(test_file('pthread/test_pthread_trap.c'), assert_returncode=NON_ZERO)
     self.assertContained("pthread sent an error!", output)
     self.assertContained("at thread_main", output)
+
+  @node_pthreads
+  def test_emscripten_set_interval(self):
+    self.do_runf(test_file('emscripten_set_interval.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+
+  # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
+  def test_emscripten_console_log(self):
+    self.do_runf(test_file('emscripten_console_log.c'), emcc_args=['--pre-js', test_file('emscripten_console_log_pre.js')])
+
+  # Tests emscripten_unwind_to_js_event_loop() behavior
+  def test_emscripten_unwind_to_js_event_loop(self, *args):
+    self.do_runf(test_file('test_emscripten_unwind_to_js_event_loop.c'))
+
+  @node_pthreads
+  def test_emscripten_set_timeout(self):
+    self.do_runf(test_file('emscripten_set_timeout.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+
+  @node_pthreads
+  def test_emscripten_set_timeout_loop(self):
+    self.do_runf(test_file('emscripten_set_timeout_loop.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
