@@ -49,6 +49,7 @@ def wasm_simd(f):
     f(self)
   return decorated
 
+
 def wasm_relaxed_simd(f):
   def decorated(self):
     # We don't actually run any tests yet, so don't require any engines.
@@ -57,6 +58,7 @@ def wasm_relaxed_simd(f):
     self.emcc_args.append('-mrelaxed-simd')
     f(self)
   return decorated
+
 
 def needs_non_trapping_float_to_int(f):
   def decorated(self):
