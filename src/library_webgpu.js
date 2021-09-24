@@ -139,7 +139,7 @@ var LibraryWebGPU = {
   $WebGPU__postset: 'WebGPU.initManagers();',
   $WebGPU: {
     initManagers: function() {
-      if (this["mgrDevice"]) return;
+      if (this.mgrDevice) return;
 
       function makeManager() {
         return {
@@ -182,9 +182,8 @@ var LibraryWebGPU = {
       {{{ gpu.makeInitManager('SwapChain') }}}
 
       {{{ gpu.makeInitManager('Adapter') }}}
-      // TODO: Change this to a makeInitManager (after some time, to avoid breakage).
       // TODO: Release() the device's default queue when the device is freed.
-      this["mgrDevice"] = this["mgrDevice"] || makeManager();
+      {{{ gpu.makeInitManager('Device') }}}
       {{{ gpu.makeInitManager('Queue') }}}
 
       {{{ gpu.makeInitManager('CommandBuffer') }}}
@@ -633,7 +632,7 @@ var LibraryWebGPU = {
 
   // wgpuDevice
 
-  wgpuDeviceDestroy: function(deviceId) { WebGPU["mgrDevice"].get(deviceId)["destroy"](); },
+  wgpuDeviceDestroy: function(deviceId) { WebGPU.mgrDevice.get(deviceId)["destroy"](); },
 
   wgpuDeviceGetLimits: function(deviceId, limitsOutPtr) {
 #if ASSERTIONS
@@ -652,7 +651,7 @@ var LibraryWebGPU = {
   },
 
   wgpuDevicePushErrorScope: function(deviceId, filter) {
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     device["pushErrorScope"](WebGPU.ErrorFilter[filter]);
   },
 
@@ -660,7 +659,7 @@ var LibraryWebGPU = {
   wgpuDevicePopErrorScope__deps: ['$allocateUTF8'],
 #endif
   wgpuDevicePopErrorScope: function(deviceId, callback, userdata) {
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     device["popErrorScope"]()["then"](function(gpuError) {
       if (!gpuError) {
         {{{ makeDynCall('viii', 'callback') }}}(
@@ -690,7 +689,7 @@ var LibraryWebGPU = {
   wgpuDeviceSetDeviceLostCallback__deps: ['$allocateUTF8'],
 #endif
   wgpuDeviceSetDeviceLostCallback: function(deviceId, callback, userdata) {
-    var deviceWrapper = WebGPU["mgrDevice"].objects[deviceId];
+    var deviceWrapper = WebGPU.mgrDevice.objects[deviceId];
     {{{ gpu.makeCheckDefined('deviceWrapper') }}}
     if (!deviceWrapper.lostCallback) {
       // device.lost hasn't been registered yet - register it.
@@ -710,7 +709,7 @@ var LibraryWebGPU = {
   wgpuDeviceSetUncapturedErrorCallback__deps: ['$allocateUTF8'],
 #endif
   wgpuDeviceSetUncapturedErrorCallback: function(deviceId, callback, userdata) {
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     device["onuncapturederror"] = function(ev) {
       // WGPUErrorType type, const char* message, void* userdata
       var Validation = 0x00000001;
@@ -740,7 +739,7 @@ var LibraryWebGPU = {
       var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUCommandEncoderDescriptor.label, '*') }}};
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
     }
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrCommandEncoder.create(device["createCommandEncoder"](desc));
   },
 
@@ -758,7 +757,7 @@ var LibraryWebGPU = {
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUBufferDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     var bufferWrapper = {};
     var id = WebGPU.mgrBuffer.create(device["createBuffer"](desc), bufferWrapper);
     if (mappedAtCreation) {
@@ -785,7 +784,7 @@ var LibraryWebGPU = {
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUTextureDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrTexture.create(device["createTexture"](desc));
   },
 
@@ -814,7 +813,7 @@ var LibraryWebGPU = {
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSamplerDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrSampler.create(device["createSampler"](desc));
   },
 
@@ -914,7 +913,7 @@ var LibraryWebGPU = {
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUBindGroupLayoutDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrBindGroupLayout.create(device["createBindGroupLayout"](desc));
   },
 
@@ -985,7 +984,7 @@ var LibraryWebGPU = {
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUBindGroupDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrBindGroup.create(device["createBindGroup"](desc));
   },
 
@@ -1005,7 +1004,7 @@ var LibraryWebGPU = {
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUPipelineLayoutDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrPipelineLayout.create(device["createPipelineLayout"](desc));
   },
 
@@ -1032,7 +1031,7 @@ var LibraryWebGPU = {
       "pipelineStatistics": pipelineStatistics,
     };
 
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrQuerySet.create(device["createQuerySet"](desc));
   },
 
@@ -1064,7 +1063,7 @@ var LibraryWebGPU = {
     }
 
     var desc = makeRenderBundleEncoderDescriptor(descriptor);
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrRenderBundleEncoder.create(device["createRenderBundleEncoder"](desc));
   },
 
@@ -1081,7 +1080,7 @@ var LibraryWebGPU = {
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrComputePipeline.create(device["createComputePipeline"](desc));
   },
 
@@ -1283,7 +1282,7 @@ var LibraryWebGPU = {
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrRenderPipeline.create(device["createRenderPipeline"](desc));
   },
 
@@ -1330,7 +1329,7 @@ var LibraryWebGPU = {
 #endif
     }
 
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrShaderModule.create(device["createShaderModule"](desc));
   },
 
@@ -2172,7 +2171,7 @@ var LibraryWebGPU = {
 
     adapter["requestDevice"](desc)["then"](function(device) {
       var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
-      var deviceId = WebGPU["mgrDevice"].create(device, deviceWrapper);
+      var deviceId = WebGPU.mgrDevice.create(device, deviceWrapper);
       {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestDeviceStatus.Success }}}, deviceId, 0, userdata);
     }, function(ex) {
       var messagePtr = allocateUTF8(ex.message);
@@ -2194,7 +2193,7 @@ var LibraryWebGPU = {
 
   wgpuDeviceCreateSwapChain: function(deviceId, surfaceId, descriptor) {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
-    var device = WebGPU["mgrDevice"].get(deviceId);
+    var device = WebGPU.mgrDevice.get(deviceId);
     var context = WebGPU.mgrSurface.get(surfaceId);
 
 
