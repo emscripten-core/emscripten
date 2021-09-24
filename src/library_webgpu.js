@@ -43,18 +43,15 @@
     makeU64ToNumber: function(lowName, highName) {
       var ret = '(';
       if (ASSERTIONS) {
-        ret += 'assert(' + highName + ' < 0x200000), ';
+        ret += `assert(${highName} < 0x200000), `;
       }
-      ret += highName + ' * 0x100000000 + ' + lowName + ')\n'
+      ret += `${highName} * 0x100000000 + ${lowName})\n`;
       return ret;
     },
 
     makeU64ToNumberWithSentinelAsUndefined: function(lowName, highName) {
-      var ret = '((' + highName + ' === 0xFFFFFFFF && ' + lowName + ' === 0xFFFFFFFF) ? undefined : (';
-      if (ASSERTIONS) {
-        ret += 'assert(' + highName + ' < 0x200000), ';
-      }
-      ret += highName + ' * 0x100000000 + ' + lowName + '))\n'
+      var ret = `((${highName} === 0xFFFFFFFF && ${lowName} === 0xFFFFFFFF) ? undefined : \
+          ${this.makeU64ToNumber(lowName, highName)})`;
       return ret;
     },
 
