@@ -2557,16 +2557,14 @@ The current type of b is: 9
     # Bloated memory; same layout as C/C++
     self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
-  def prep_dlfcn_lib(self):
-    self.clear_setting('MAIN_MODULE')
-    self.set_setting('SIDE_MODULE')
-
   def prep_dlfcn_main(self):
     self.set_setting('MAIN_MODULE')
     self.set_setting('NODERAWFS')
     self.clear_setting('SIDE_MODULE')
 
   def build_dlfcn_lib(self, filename):
+    self.clear_setting('MAIN_MODULE')
+    self.set_setting('SIDE_MODULE')
     outfile = self.build(filename, js_outfile=not self.is_wasm())
     shutil.move(outfile, 'liblib.so')
 
@@ -2590,7 +2588,6 @@ The current type of b is: 9
 
   @needs_dylink
   def test_dlfcn_basic(self):
-    self.prep_dlfcn_lib()
     create_file('liblib.cpp', '''
       #include <cstdio>
 
@@ -2628,7 +2625,6 @@ The current type of b is: 9
 
   @needs_dylink
   def test_dlfcn_i64(self):
-    self.prep_dlfcn_lib()
     create_file('liblib.c', '''
       #include <inttypes.h>
 
@@ -2669,7 +2665,6 @@ The current type of b is: 9
   @needs_dylink
   @disabled('EM_ASM in not yet supported in SIDE_MODULE')
   def test_dlfcn_em_asm(self):
-    self.prep_dlfcn_lib()
     create_file('liblib.cpp', '''
       #include <emscripten.h>
       class Foo {
@@ -2703,7 +2698,6 @@ The current type of b is: 9
 
   @needs_dylink
   def test_dlfcn_qsort(self):
-    self.prep_dlfcn_lib()
     self.set_setting('EXPORTED_FUNCTIONS', ['_get_cmp'])
     create_file('liblib.cpp', '''
       int lib_cmp(const void* left, const void* right) {
@@ -2782,7 +2776,6 @@ The current type of b is: 9
     if self.is_wasm():
       self.banned_js_engines = [config.V8_ENGINE]
 
-    self.prep_dlfcn_lib()
     create_file('liblib.cpp', r'''
       #include <stdio.h>
 
@@ -2881,7 +2874,6 @@ Var: 42
     # this test is not actually valid - it fails natively. the child should fail
     # to be loaded, not load and successfully see the parent print_ints func
 
-    self.prep_dlfcn_lib()
     create_file('liblib.cpp', r'''
       void print_ints(int n, ...);
       extern "C" void func() {
@@ -2926,7 +2918,6 @@ Var: 42
 
   @needs_dylink
   def test_dlfcn_alignment_and_zeroing(self):
-    self.prep_dlfcn_lib()
     self.set_setting('INITIAL_MEMORY', '16mb')
     create_file('liblib.c', r'''
       int prezero = 0;
@@ -3018,8 +3009,6 @@ Var: 42
 
   @needs_dylink
   def test_dlfcn_unique_sig(self):
-
-    self.prep_dlfcn_lib()
     create_file('liblib.c', r'''
       #include <stdio.h>
 
@@ -3059,8 +3048,6 @@ Var: 42
 
   @needs_dylink
   def test_dlfcn_info(self):
-
-    self.prep_dlfcn_lib()
     create_file('liblib.c', r'''
       #include <stdio.h>
 
@@ -3115,7 +3102,6 @@ Var: 42
 
   @needs_dylink
   def test_dlfcn_stacks(self):
-    self.prep_dlfcn_lib()
     create_file('liblib.c', r'''
       #include <assert.h>
       #include <stdio.h>
@@ -3171,7 +3157,6 @@ Var: 42
 
   @needs_dylink
   def test_dlfcn_funcs(self):
-    self.prep_dlfcn_lib()
     create_file('liblib.c', r'''
       #include <assert.h>
       #include <stdio.h>
@@ -3270,7 +3255,6 @@ ok
     # will be exhausted without functional malloc/free
     self.set_setting('INITIAL_MEMORY', '64mb')
 
-    self.prep_dlfcn_lib()
     create_file('liblib.c', r'''
       #include <assert.h>
       #include <stdio.h>
@@ -3289,7 +3273,6 @@ ok
 
   @needs_dylink
   def test_dlfcn_longjmp(self):
-    self.prep_dlfcn_lib()
     create_file('liblib.c', r'''
       #include <setjmp.h>
       #include <stdio.h>
@@ -3301,7 +3284,6 @@ ok
         printf("pre %d\n", i);
       }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_jumpy'])
     self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
@@ -3354,7 +3336,6 @@ out!
   def zzztest_dlfcn_exceptions(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
-    self.prep_dlfcn_lib()
     create_file('liblib.cpp', r'''
       extern "C" {
       int ok() {
@@ -3365,7 +3346,6 @@ out!
       }
       }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_ok', '_fail'])
     self.build_dlfcn_lib('liblib.cpp')
 
     self.prep_dlfcn_main()
@@ -3443,7 +3423,6 @@ ok
       } _;
     ''')
 
-    self.prep_dlfcn_lib()
     self.build_dlfcn_lib('a.cpp')
     shutil.move(indir('liblib.so'), indir('liba.so'))
     self.build_dlfcn_lib('b.cpp')
@@ -3483,7 +3462,6 @@ ok
   def test_dlfcn_feature_in_lib(self):
     self.emcc_args.append('-mnontrapping-fptoint')
 
-    self.prep_dlfcn_lib()
     create_file('liblib.cpp', r'''
         extern "C" int magic(float x) {
           return __builtin_wasm_trunc_saturate_s_i32_f32(x);
