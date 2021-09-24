@@ -139,6 +139,17 @@ def can_do_standalone(self):
       '-fsanitize=address' not in self.emcc_args
 
 
+def also_with_wasmfs(func):
+  def decorated(self):
+    func(self)
+    print('wasmfs')
+    if self.get_setting('STANDALONE_WASM'):
+      self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
+    self.set_setting('WASMFS')
+    func(self)
+  return decorated
+
+
 # Impure means a test that cannot run in a wasm VM yet, as it is not 100%
 # standalone. We can still run them with the JS code though.
 def also_with_standalone_wasm(wasm2c=False, impure=False):
@@ -308,6 +319,7 @@ class TestCoreBase(RunnerCore):
                             cache_name_extra=configure_commands[0])
 
   @also_with_standalone_wasm()
+  @also_with_wasmfs
   def test_hello_world(self):
     self.do_core_test('test_hello_world.c')
     # must not emit this unneeded internal thing

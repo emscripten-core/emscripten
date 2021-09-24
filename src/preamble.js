@@ -624,7 +624,7 @@ function abort(what) {
 
 #include "memoryprofiler.js"
 
-#if ASSERTIONS && !('$FS' in addedLibraryItems) && !ASMFS
+#if ASSERTIONS && !('$FS' in addedLibraryItems) && !ASMFS && !WASMFS
 // show errors on likely calls to FS when it was not included
 var FS = {
   error: function() {

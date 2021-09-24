@@ -1635,6 +1635,12 @@ var FETCH = 0;
 // [link]
 var ASMFS = 0;
 
+// ATTENTION [WIP]: Experimental feature. Please use at your own risk.
+// This will eventually replace the current JS file system implementation.
+// If set to 1, uses new filesystem implementation.
+// [link]
+var WASMFS = 0;
+
 // If set to 1, embeds all subresources in the emitted file as base64 string
 // literals. Embedded subresources may include (but aren't limited to) wasm,
 // asm.js, and static memory initialization code.
