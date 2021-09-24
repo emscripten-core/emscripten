@@ -68,6 +68,8 @@ unsupported_noreturn = {
 }
 
 unsupported = {
+  'test_pthread_attr_setinheritsched_2_2': 'scheduling policy/parameters are not supported',
+  'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setinheritsched_2_4': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setschedparam_1_3': 'scheduling policy/parameters are not supported',
@@ -89,7 +91,10 @@ unsupported = {
   'test_pthread_create_8_1': 'signals are not supported',
   'test_pthread_create_8_2': 'signals are not supported',
   'test_pthread_create_10_1': 'signals are not supported',
+  'test_pthread_create_11_1': '_POSIX_THREAD_CPUTIME not supported',
+  'test_pthread_getcpuclockid_1_1': 'pthread_getcpuclockid not supported',
   'test_pthread_getschedparam_1_3': 'scheduling policy/parameters are not supported',
+  'test_pthread_getschedparam_1_2': 'scheduling policy/parameters are not supported',
   'test_pthread_kill_1_2': 'signals are not supported',
   'test_pthread_mutexattr_getprioceiling_1_2': 'pthread_mutexattr_setprioceiling is not supported',
   'test_pthread_mutexattr_getprotocol_1_2': 'pthread_mutexattr_setprotocol is not supported',
@@ -111,6 +116,10 @@ unsupported = {
   'test_pthread_rwlock_timedwrlock_6_1': 'signals are not supported',
   'test_pthread_rwlock_timedwrlock_6_2': 'signals are not supported',
   'test_pthread_rwlock_wrlock_2_1': 'signals are not supported',
+  'test_pthread_setschedparam_1_1': 'scheduling policy/parameters are not supported',
+  'test_pthread_setschedparam_1_2': 'scheduling policy/parameters are not supported',
+  'test_pthread_setschedparam_4_1': 'scheduling policy/parameters are not supported',
+  'test_pthread_setschedprio_1_1': 'scheduling policy/parameters are not supported',
   'test_pthread_spin_init_2_1': 'shm_open and shm_unlink are not supported',
   'test_pthread_spin_init_2_2': 'shm_open and shm_unlink are not supported',
 }

@@ -4146,17 +4146,6 @@ window.close = function() {
     args += ['--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js')]
     self.btest(test_file('core/pthread/test_pthread_exit_runtime.c'), expected='onExit status: 42', args=args)
 
-  @requires_threads
-  def test_pthread_no_exit_process(self):
-    # Same as above but without EXIT_RUNTIME.  In this case we don't expect onExit to
-    # ever be called.
-    args = ['-s', 'USE_PTHREADS',
-            '-s', 'PROXY_TO_PTHREAD',
-            '-s', 'PTHREAD_POOL_SIZE=2',
-            '-O0']
-    args += ['--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js')]
-    self.btest(test_file('core/pthread/test_pthread_exit_runtime.c'), expected='43', args=args)
-
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   def test_main_thread_em_asm_signatures(self):
     self.btest_exit(test_file('core/test_em_asm_signatures.cpp'), assert_returncode=121, args=[])
