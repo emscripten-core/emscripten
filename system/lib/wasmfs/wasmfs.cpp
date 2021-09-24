@@ -21,30 +21,16 @@ __wasi_errno_t __wasi_fd_write(
   // This will not not show in HTML, a console.warn in a worker is suffficient.
   // This would be a change from the current FS.
   if (fd == 1 || fd == 2) {
-    MAIN_THREAD_EM_ASM(
-      {
-        var buffer = [];
-        var fd = $0;
-        var iovs = $1;
-        var iovs_len = $2;
-        var nwritten = $3;
-        var num = 0;
-        for (var i = 0; i < iovs_len; i++) {
-          var ptr = HEAP32[iovs + i * 8 >> 2];
-          var len = HEAP32[iovs + i * 8 + 4 >> 2];
-          for (var j = 0; j < len; j++) {
-            if (HEAPU8[ptr + j] == 0 || HEAPU8[ptr + j] == 10) {
-              (fd == 1 ? out : err)(UTF8ArrayToString(buffer, 0));
-              buffer.length = 0;
-            } else {
-              buffer.push(HEAPU8[ptr + j]);
-            }
-          }
-          num += len;
-        }
-        HEAP32[nwritten >> 2] = num;
-      },
-      fd, iovs, iovs_len, nwritten);
+    __wasi_size_t num = 0;
+    for (size_t i = 0; i < iovs_len; i++) {
+      const uint8_t* ptr = iovs[i].buf;
+      __wasi_size_t len = iovs[i].buf_len;
+      for (__wasi_size_t j = 0; j < len; j++) {
+        EM_ASM({ WASMFS.printChar($0, HEAPU8[$1]); }, fd, ptr + j);
+      }
+      num += len;
+    }
+    *nwritten = num;
   }
   return 0;
 }
