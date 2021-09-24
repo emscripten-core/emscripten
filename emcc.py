@@ -773,6 +773,7 @@ def emsdk_cflags(user_args):
   if '-mrelaxed-simd' in user_args:
       user_args += ['-msimd128']
 
+
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     if '-msimd128' not in user_args:
       exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128!')
