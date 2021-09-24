@@ -6429,31 +6429,31 @@ void* operator new(size_t size) {
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue'])
     test()
 
-  def test_FS_exports(self):
+  @parameterized({
+    '': ([],),
+    '_files': (['-DUSE_FILES'],)
+  })
+  def test_FS_exports(self, extra_args):
     # these used to be exported, but no longer are by default
-    for use_files in (0, 1):
-      print(use_files)
+    def test(output_prefix='', args=[], assert_returncode=0):
+      args += extra_args
+      print(args)
+      self.do_runf(test_file('core/FS_exports.cpp'),
+                   (read_file(test_file('core/FS_exports' + output_prefix + '.out')),
+                    read_file(test_file('core/FS_exports' + output_prefix + '_2.out'))),
+                   assert_returncode=assert_returncode, emcc_args=args)
 
-      def test(output_prefix='', args=[], assert_returncode=0):
-        if use_files:
-          args += ['-DUSE_FILES']
-        print(args)
-        self.do_runf(test_file('core/FS_exports.cpp'),
-                     (read_file(test_file('core/FS_exports' + output_prefix + '.out')),
-                      read_file(test_file('core/FS_exports' + output_prefix + '_2.out'))),
-                     assert_returncode=assert_returncode, emcc_args=args)
-
-      # see that direct usage (not on module) works. we don't export, but the use
-      # keeps it alive through JSDCE
-      test(args=['-DDIRECT', '-s', 'FORCE_FILESYSTEM'])
-      # see that with assertions, we get a nice error message
-      self.set_setting('EXPORTED_RUNTIME_METHODS', [])
-      self.set_setting('ASSERTIONS')
-      test('_assert', assert_returncode=NON_ZERO)
-      self.set_setting('ASSERTIONS', 0)
-      # see that when we export them, things work on the module
-      self.set_setting('EXPORTED_RUNTIME_METHODS', ['FS_createDataFile'])
-      test(args=['-s', 'FORCE_FILESYSTEM'])
+    # see that direct usage (not on module) works. we don't export, but the use
+    # keeps it alive through JSDCE
+    test(args=['-DDIRECT', '-s', 'FORCE_FILESYSTEM'])
+    # see that with assertions, we get a nice error message
+    self.set_setting('EXPORTED_RUNTIME_METHODS', [])
+    self.set_setting('ASSERTIONS')
+    test('_assert', assert_returncode=NON_ZERO)
+    self.set_setting('ASSERTIONS', 0)
+    # see that when we export them, things work on the module
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['FS_createDataFile'])
+    test(args=['-s', 'FORCE_FILESYSTEM'])
 
   def test_legacy_exported_runtime_numbers(self):
     # these used to be exported, but no longer are by default
@@ -7541,7 +7541,7 @@ Module['onRuntimeInitialized'] = function() {
     if should_pass:
       self.do_core_test('test_asyncify_lists.cpp', assert_identical=True)
     else:
-      self.do_runf(test_file('core/test_asyncify_lists.cpp'), 'exception thrown', assert_returncode=NON_ZERO)
+      self.do_runf(test_file('core/test_asyncify_lists.cpp'), 'Thrown at', assert_returncode=NON_ZERO)
 
     # use of ASYNCIFY_* options may require intermediate debug info. that should
     # not end up emitted in the final binary
@@ -8257,15 +8257,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_safe_heap_user_js(self):
     self.set_setting('SAFE_HEAP')
     self.do_runf(test_file('core/test_safe_heap_user_js.c'),
-                 expected_output=['abort(segmentation fault storing 1 bytes to address 0)'], assert_returncode=NON_ZERO)
+                 expected_output=['Aborted(segmentation fault storing 1 bytes to address 0)'], assert_returncode=NON_ZERO)
 
   def test_safe_stack(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
     if self.is_optimizing():
-      expected = ['abort(stack overflow)']
+      expected = ['Aborted(stack overflow)']
     else:
-      expected = ['abort(stack overflow)', '__handle_stack_overflow']
+      expected = ['Aborted(stack overflow)', '__handle_stack_overflow']
     self.do_runf(test_file('core/test_safe_stack.c'),
                  expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
@@ -8277,9 +8277,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('USE_PTHREADS')
     if self.is_optimizing():
-      expected = ['abort(stack overflow)']
+      expected = ['Aborted(stack overflow)']
     else:
-      expected = ['abort(stack overflow)', '__handle_stack_overflow']
+      expected = ['Aborted(stack overflow)', '__handle_stack_overflow']
     self.do_runf(test_file('core/test_safe_stack.c'),
                  expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
@@ -8288,9 +8288,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
     if self.is_optimizing():
-      expected = ['abort(stack overflow)']
+      expected = ['Aborted(stack overflow)']
     else:
-      expected = ['abort(stack overflow)', '__handle_stack_overflow']
+      expected = ['Aborted(stack overflow)', '__handle_stack_overflow']
     self.do_runf(test_file('core/test_safe_stack_alloca.c'),
                  expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
@@ -8321,7 +8321,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       void sidey() {
         f(NULL);
       }
-    ''', ['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=NON_ZERO, force_c=True)
+    ''', ['Aborted(stack overflow)', '__handle_stack_overflow'], assert_returncode=NON_ZERO, force_c=True)
 
   def test_fpic_static(self):
     self.emcc_args.append('-fPIC')

@@ -5439,7 +5439,7 @@ int main() {
               self.assertContained('managed another malloc!\n', output)
           else:
             # we should see an abort
-            self.assertContained('abort(Cannot enlarge memory arrays', output)
+            self.assertContained('Aborted(Cannot enlarge memory arrays', output)
             if growth:
               # when growth is enabled, the default is to not abort, so just explain that
               self.assertContained('If you want malloc to return NULL (0) instead of this abort, do not link with -s ABORTING_MALLOC=1', output)
@@ -9532,9 +9532,9 @@ int main(void) {
     ''')
     self.run_process([EMXX, 'src.cpp', '-s', 'ASSERTIONS'])
     self.assertContained('''
-Module.read has been replaced with plain read_ (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)
-Module.wasmBinary has been replaced with plain wasmBinary (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)
-Module.arguments has been replaced with plain arguments_ (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)
+Aborted(Module.read has been replaced with plain read_ (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
+Aborted(Module.wasmBinary has been replaced with plain wasmBinary (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
+Aborted(Module.arguments has been replaced with plain arguments_ (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
 ''', self.run_js('a.out.js'))
 
   def test_assertions_on_ready_promise(self):
