@@ -50,7 +50,7 @@
     },
 
     makeU64ToNumberWithSentinelAsUndefined: function(lowName, highName) {
-      var ret = '((' highName + ' === 0xFFFFFFFF && ' + lowName ' === 0xFFFFFFFF) ? undefined : (';
+      var ret = '((' + highName + ' === 0xFFFFFFFF && ' + lowName + ' === 0xFFFFFFFF) ? undefined : (';
       if (ASSERTIONS) {
         ret += 'assert(' + highName + ' < 0x200000), ';
       }
