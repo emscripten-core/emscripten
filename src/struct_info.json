@@ -1377,8 +1377,8 @@
     },
     // ===========================================
     // WebGPU
-    //   NOTE: This section is auto-generated:
-    //   https://dawn.googlesource.com/dawn/+/refs/heads/main/generator/templates/webgpu_struct_info.json
+    //   NOTE: This section is auto-generated.
+    //   See system/include/webgpu/README.md for details.
     // ===========================================
     {
         "file": "webgpu/webgpu.h",
@@ -1450,8 +1450,10 @@
                 "nextInChain",
                 "label"
             ],
-            "WGPUDeviceDescriptor": [
-                "nextInChain"
+            "WGPUConstantEntry": [
+                "nextInChain",
+                "key",
+                "value"
             ],
             "WGPUExtent3D": [
                 "width",
@@ -1460,6 +1462,34 @@
             ],
             "WGPUInstanceDescriptor": [
                 "nextInChain"
+            ],
+            "WGPULimits": [
+                "maxTextureDimension1D",
+                "maxTextureDimension2D",
+                "maxTextureDimension3D",
+                "maxTextureArrayLayers",
+                "maxBindGroups",
+                "maxDynamicUniformBuffersPerPipelineLayout",
+                "maxDynamicStorageBuffersPerPipelineLayout",
+                "maxSampledTexturesPerShaderStage",
+                "maxSamplersPerShaderStage",
+                "maxStorageBuffersPerShaderStage",
+                "maxStorageTexturesPerShaderStage",
+                "maxUniformBuffersPerShaderStage",
+                "maxUniformBufferBindingSize",
+                "maxStorageBufferBindingSize",
+                "minUniformBufferOffsetAlignment",
+                "minStorageBufferOffsetAlignment",
+                "maxVertexBuffers",
+                "maxVertexAttributes",
+                "maxVertexBufferArrayStride",
+                "maxInterStageShaderComponents",
+                "maxComputeWorkgroupStorageSize",
+                "maxComputeInvocationsPerWorkgroup",
+                "maxComputeWorkgroupSizeX",
+                "maxComputeWorkgroupSizeY",
+                "maxComputeWorkgroupSizeZ",
+                "maxComputeWorkgroupsPerDimension"
             ],
             "WGPUMultisampleState": [
                 "nextInChain",
@@ -1488,11 +1518,6 @@
                 "stripIndexFormat",
                 "frontFace",
                 "cullMode"
-            ],
-            "WGPUProgrammableStageDescriptor": [
-                "nextInChain",
-                "module",
-                "entryPoint"
             ],
             "WGPUQuerySetDescriptor": [
                 "nextInChain",
@@ -1527,7 +1552,9 @@
             ],
             "WGPURequestAdapterOptions": [
                 "nextInChain",
-                "compatibleSurface"
+                "compatibleSurface",
+                "powerPreference",
+                "forceFallbackAdapter"
             ],
             "WGPUSamplerBindingLayout": [
                 "nextInChain",
@@ -1641,12 +1668,6 @@
                 "messageCount",
                 "messages"
             ],
-            "WGPUComputePipelineDescriptor": [
-                "nextInChain",
-                "label",
-                "layout",
-                "compute"
-            ],
             "WGPUDepthStencilState": [
                 "nextInChain",
                 "format",
@@ -1672,12 +1693,27 @@
                 "origin",
                 "aspect"
             ],
+            "WGPUProgrammableStageDescriptor": [
+                "nextInChain",
+                "module",
+                "entryPoint",
+                "constantCount",
+                "constants"
+            ],
             "WGPURenderPassColorAttachment": [
                 "view",
                 "resolveTarget",
                 "loadOp",
                 "storeOp",
                 "clearColor"
+            ],
+            "WGPURequiredLimits": [
+                "nextInChain",
+                "limits"
+            ],
+            "WGPUSupportedLimits": [
+                "nextInChain",
+                "limits"
             ],
             "WGPUTextureDescriptor": [
                 "nextInChain",
@@ -1707,6 +1743,18 @@
                 "blend",
                 "writeMask"
             ],
+            "WGPUComputePipelineDescriptor": [
+                "nextInChain",
+                "label",
+                "layout",
+                "compute"
+            ],
+            "WGPUDeviceDescriptor": [
+                "nextInChain",
+                "requiredFeaturesCount",
+                "requiredFeatures",
+                "requiredLimits"
+            ],
             "WGPURenderPassDescriptor": [
                 "nextInChain",
                 "label",
@@ -1719,6 +1767,8 @@
                 "nextInChain",
                 "module",
                 "entryPoint",
+                "constantCount",
+                "constants",
                 "bufferCount",
                 "buffers"
             ],
@@ -1726,6 +1776,8 @@
                 "nextInChain",
                 "module",
                 "entryPoint",
+                "constantCount",
+                "constants",
                 "targetCount",
                 "targets"
             ],

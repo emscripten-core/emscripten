@@ -55,13 +55,14 @@ var LibraryHTML5WebGPU = {
     JsValStore.remove(id);
   },
 
-  // TODO(kainino0x): make it possible to actually create devices through webgpu.h
   emscripten_webgpu_get_device__deps: ['$WebGPU'],
   emscripten_webgpu_get_device: function() {
 #if ASSERTIONS
     assert(Module['preinitializedWebGPUDevice']);
 #endif
-    return WebGPU["mgrDevice"].create(Module['preinitializedWebGPUDevice']);
+    var device = Module['preinitializedWebGPUDevice'];
+    var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
+    return WebGPU["mgrDevice"].create(device, deviceWrapper);
   },
 };
 
