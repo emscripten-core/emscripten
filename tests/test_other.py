@@ -9938,10 +9938,9 @@ Module.arguments has been replaced with plain arguments_ (the initial value can 
     # but work with it
     self.assertContained('hello, world!', test(['-s', 'LEGACY_VM_SUPPORT'], expect_fail=False))
 
-  # Compile-test for -s USE_WEBGPU=1 and library_webgpu.js.
   def test_webgpu_compiletest(self):
-    for args in [[], ['-s', 'ASSERTIONS'], ['-s', 'MAIN_MODULE=1']]:
-      self.run_process([EMXX, test_file('webgpu_dummy.cpp'), '-s', 'USE_WEBGPU', '-s', 'ASYNCIFY'] + args)
+    for args in [[], ['-s', 'ASSERTIONS'], ['-s', 'ASSERTIONS', '--closure=1'], ['-s', 'MAIN_MODULE=1']]:
+      self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-s', 'USE_WEBGPU', '-s', 'ASYNCIFY'] + args)
 
   def test_signature_mismatch(self):
     create_file('a.c', 'void foo(); int main() { foo(); return 0; }')
@@ -10942,3 +10941,56 @@ void foo() {}
     self.build(test_file('other', 'test_pthread_js_exception.c'))
     err = self.run_js('test_pthread_js_exception.js', assert_returncode=NON_ZERO)
     self.assertContained('missing is not defined', err)
+
+  def test_config_closure_compiler(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'])
+    with env_modify({'EM_CLOSURE_COMPILER': sys.executable}):
+      err = self.expect_fail([EMCC, test_file('hello_world.c'), '--closure=1'])
+    self.assertContained('closure compiler', err)
+    self.assertContained(sys.executable, err)
+    self.assertContained('not execute properly!', err)
+
+  def test_node_unhandled_rejection(self):
+    create_file('pre.js', '''
+    async function foo() {
+      var a = missing;
+    }
+    async function doReject() {
+      return foo();
+    }
+    ''')
+    create_file('main.c', '''
+    #include <emscripten.h>
+
+    int main() {
+      EM_ASM(setTimeout(doReject, 0));
+      emscripten_exit_with_live_runtime();
+      __builtin_trap();
+    }
+    ''')
+
+    # With NODEJS_CATCH_REJECTION we expect the unhandled rejection to cause a non-zero
+    # exit code and log the stack trace correctly.
+    self.run_process([EMCC, '--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=1', 'main.c'])
+    output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContained('ReferenceError: missing is not defined', output)
+    self.assertContained('at foo (', output)
+
+    version = self.run_process(config.NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
+    version = [int(v) for v in version.replace('v', '').replace('-pre', '').split('.')]
+    if version[0] >= 15:
+      self.skipTest('old behaviour of node JS cannot be tested on node v15 or above')
+
+    # Without NODEJS_CATCH_REJECTION we expect node to log the unhandled rejection
+    # but return 0.
+    self.node_args = [a for a in self.node_args if '--unhandled-rejections' not in a]
+    self.run_process([EMCC, '--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=0', 'main.c'])
+    output = self.run_js('a.out.js')
+    self.assertContained('ReferenceError: missing is not defined', output)
+    self.assertContained('at foo (', output)
+
+  @node_pthreads
+  def test_default_pthread_stack_size(self):
+    self.do_runf(test_file('other', 'test_default_pthread_stack_size.c'))
+    self.emcc_args.append('-sUSE_PTHREADS')
+    self.do_runf(test_file('other', 'test_default_pthread_stack_size.c'))

@@ -130,10 +130,14 @@ function ccall(ident, returnType, argTypes, args, opts) {
   }
   var ret = func.apply(null, cArgs);
   function onDone(ret) {
+#if ASYNCIFY
+    runtimeKeepalivePop();
+#endif
     if (stack !== 0) stackRestore(stack);
     return convertReturnValue(ret);
   }
 #if ASYNCIFY
+  runtimeKeepalivePush();
   var asyncMode = opts && opts.async;
   // Check if we started an async operation just now.
   if (Asyncify.currData) {
@@ -414,6 +418,9 @@ function exitRuntime() {
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
+#endif
+#if USE_PTHREADS
+  PThread.terminateAllThreads();
 #endif
   runtimeExited = true;
 }
@@ -970,13 +977,21 @@ function createWasm() {
     Module['asm'] = exports;
 
 #if MAIN_MODULE
-#if AUTOLOAD_DYLIBS
     var metadata = getDylinkMetadata(module);
+#if AUTOLOAD_DYLIBS
     if (metadata.neededDynlibs) {
       dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
     }
 #endif
     mergeLibSymbols(exports, 'main')
+#endif
+
+#if USE_PTHREADS
+#if MAIN_MODULE
+    registerTlsInit(Module['asm']['emscripten_tls_init'], instance.exports, metadata);
+#else
+    registerTlsInit(Module['asm']['emscripten_tls_init']);
+#endif
 #endif
 
 #if !IMPORTED_MEMORY
@@ -1015,7 +1030,6 @@ function createWasm() {
     exportAsmFunctions(exports);
 #endif
 #if USE_PTHREADS
-    PThread.tlsInitFunctions.push(Module['asm']['emscripten_tls_init']);
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
     // Instantiation is synchronous in pthreads and we assert on run dependencies.

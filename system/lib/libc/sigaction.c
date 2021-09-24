@@ -22,7 +22,10 @@ int __sigaction(int sig, const struct sigaction *restrict sa, struct sigaction *
     *old = __sig_actions[sig];
   }
 
-  __sig_actions[sig] = *sa;
+  if (sa) {
+    __sig_actions[sig] = *sa;
+  }
+
   return 0;
 }
 

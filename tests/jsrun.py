@@ -18,7 +18,7 @@ def make_command(filename, engine, args=[]):
   # if no engine is needed, indicated by None, then there is a native executable
   # provided which we can just run
   if engine[0] is None:
-    executable = shared.unsuffixed(os.path.abspath(filename)) + '.exe'
+    executable = shared.replace_suffix(os.path.abspath(filename), '.exe')
     return [executable] + args
   if type(engine) is not list:
     engine = [engine]
@@ -44,7 +44,7 @@ def make_command(filename, engine, args=[]):
     command_flags += ['run']
   if is_wasmer or is_wasmtime:
     # in a wasm runtime, run the wasm, not the js
-    filename = shared.unsuffixed(filename) + '.wasm'
+    filename = shared.replace_suffix(filename, '.wasm')
   # Separates engine flags from script flags
   flag_separator = ['--'] if is_d8 or is_jsc else []
   return engine + command_flags + [filename] + shell_option_flags + flag_separator + args

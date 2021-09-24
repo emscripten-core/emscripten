@@ -179,7 +179,12 @@ void __block_all_sigs(void *);
 void __block_app_sigs(void *);
 void __restore_sigs(void *);
 
+#ifdef __EMSCRIPTEN__
+// Keep in sync with DEFAULT_PTHREAD_STACK_SIZE in settings.js
+#define DEFAULT_STACK_SIZE (2*1024*1024)
+#else
 #define DEFAULT_STACK_SIZE 81920
+#endif
 #define DEFAULT_GUARD_SIZE PAGE_SIZE
 
 #define __ATTRP_C11_THREAD ((void*)(uintptr_t)-1)

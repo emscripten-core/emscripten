@@ -1614,7 +1614,6 @@ keydown(100);keyup(100); // trigger the end
       <!doctype html>
       <html>
       <head><meta charset="utf-8"><title>Chunked XHR</title></head>
-      <html>
       <body>
         Chunked XHR Web Worker Test
         <script>
@@ -4147,17 +4146,6 @@ window.close = function() {
     args += ['--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js')]
     self.btest(test_file('core/pthread/test_pthread_exit_runtime.c'), expected='onExit status: 42', args=args)
 
-  @requires_threads
-  def test_pthread_no_exit_process(self):
-    # Same as above but without EXIT_RUNTIME.  In this case we don't expect onExit to
-    # ever be called.
-    args = ['-s', 'USE_PTHREADS',
-            '-s', 'PROXY_TO_PTHREAD',
-            '-s', 'PTHREAD_POOL_SIZE=2',
-            '-O0']
-    args += ['--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js')]
-    self.btest(test_file('core/pthread/test_pthread_exit_runtime.c'), expected='43', args=args)
-
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   def test_main_thread_em_asm_signatures(self):
     self.btest_exit(test_file('core/test_em_asm_signatures.cpp'), assert_returncode=121, args=[])
@@ -4471,6 +4459,11 @@ window.close = function() {
                '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=' + str(simple_enable_extensions),
                '-s', 'GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=' + str(simple_enable_extensions)]
         self.btest_exit('webgl2_simple_enable_extensions.c', args=cmd)
+
+  @requires_graphics_hardware
+  def test_webgpu_basic_rendering(self):
+    for args in [[], ['-s', 'ASSERTIONS'], ['-s', 'MAIN_MODULE=1']]:
+      self.btest_exit('webgpu_basic_rendering.cpp', args=['-s', 'USE_WEBGPU', '-s', 'EXPORTED_RUNTIME_METHODS=["ccall"]'] + args)
 
   # Tests the feature that shell html page can preallocate the typed array and place it
   # to Module.buffer before loading the script page.

@@ -1,3 +1,5 @@
+.globaltype __tls_base, i32
+
 .globaltype thread_id, i32
 thread_id:
 
@@ -22,6 +24,14 @@ _emscripten_thread_init:
   global.set is_main_thread
   local.get 2
   global.set is_runtime_thread
+  end_function
+
+# Accessor for `__tls_base` symbol which is a wasm global an not directly
+# accessible from C/C++.
+.globl _emscripten_tls_base
+_emscripten_tls_base:
+  .functype _emscripten_tls_base () -> (i32)
+  global.get __tls_base
   end_function
 
 # Semantically the same as testing "!ENVIRONMENT_IS_PTHREAD" in JS

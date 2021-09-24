@@ -55,11 +55,15 @@ if (typeof window === 'object' && window) {
 }
 
 if (hasModule) {
-  Module['onExit'] = function(status) {
-    maybeReportResultToServer('exit:' + status);
+  if (!Module['onExit']) {
+    Module['onExit'] = function(status) {
+      maybeReportResultToServer('exit:' + status);
+    }
   }
 
-  Module['onAbort'] = function(reason) {
-    maybeReportResultToServer('abort:' + reason);
+  if (!Module['onAbort']) {
+    Module['onAbort'] = function(reason) {
+      maybeReportResultToServer('abort:' + reason);
+    }
   }
 }

@@ -1377,8 +1377,8 @@
     },
     // ===========================================
     // WebGPU
-    //   NOTE: This can be (mostly) auto-generated:
-    //   https://dawn.googlesource.com/dawn/+/refs/heads/main/generator/templates/webgpu_struct_info.json
+    //   NOTE: This section is auto-generated.
+    //   See system/include/webgpu/README.md for details.
     // ===========================================
     {
         "file": "webgpu/webgpu.h",
@@ -1390,14 +1390,15 @@
             ],
             "WGPUAdapterProperties": [
                 "nextInChain",
-                "deviceID",
                 "vendorID",
+                "deviceID",
                 "name",
                 "driverDescription",
                 "adapterType",
                 "backendType"
             ],
             "WGPUBindGroupEntry": [
+                "nextInChain",
                 "binding",
                 "buffer",
                 "offset",
@@ -1437,9 +1438,22 @@
                 "nextInChain",
                 "label"
             ],
+            "WGPUCompilationMessage": [
+                "message",
+                "type",
+                "lineNum",
+                "linePos",
+                "offset",
+                "length"
+            ],
             "WGPUComputePassDescriptor": [
                 "nextInChain",
                 "label"
+            ],
+            "WGPUConstantEntry": [
+                "nextInChain",
+                "key",
+                "value"
             ],
             "WGPUExtent3D": [
                 "width",
@@ -1448,6 +1462,34 @@
             ],
             "WGPUInstanceDescriptor": [
                 "nextInChain"
+            ],
+            "WGPULimits": [
+                "maxTextureDimension1D",
+                "maxTextureDimension2D",
+                "maxTextureDimension3D",
+                "maxTextureArrayLayers",
+                "maxBindGroups",
+                "maxDynamicUniformBuffersPerPipelineLayout",
+                "maxDynamicStorageBuffersPerPipelineLayout",
+                "maxSampledTexturesPerShaderStage",
+                "maxSamplersPerShaderStage",
+                "maxStorageBuffersPerShaderStage",
+                "maxStorageTexturesPerShaderStage",
+                "maxUniformBuffersPerShaderStage",
+                "maxUniformBufferBindingSize",
+                "maxStorageBufferBindingSize",
+                "minUniformBufferOffsetAlignment",
+                "minStorageBufferOffsetAlignment",
+                "maxVertexBuffers",
+                "maxVertexAttributes",
+                "maxVertexBufferArrayStride",
+                "maxInterStageShaderComponents",
+                "maxComputeWorkgroupStorageSize",
+                "maxComputeInvocationsPerWorkgroup",
+                "maxComputeWorkgroupSizeX",
+                "maxComputeWorkgroupSizeY",
+                "maxComputeWorkgroupSizeZ",
+                "maxComputeWorkgroupsPerDimension"
             ],
             "WGPUMultisampleState": [
                 "nextInChain",
@@ -1476,11 +1518,6 @@
                 "stripIndexFormat",
                 "frontFace",
                 "cullMode"
-            ],
-            "WGPUProgrammableStageDescriptor": [
-                "nextInChain",
-                "module",
-                "entryPoint"
             ],
             "WGPUQuerySetDescriptor": [
                 "nextInChain",
@@ -1512,6 +1549,12 @@
                 "stencilStoreOp",
                 "clearStencil",
                 "stencilReadOnly"
+            ],
+            "WGPURequestAdapterOptions": [
+                "nextInChain",
+                "compatibleSurface",
+                "powerPreference",
+                "forceFallbackAdapter"
             ],
             "WGPUSamplerBindingLayout": [
                 "nextInChain",
@@ -1621,11 +1664,9 @@
                 "color",
                 "alpha"
             ],
-            "WGPUComputePipelineDescriptor": [
-                "nextInChain",
-                "label",
-                "layout",
-                "computeStage"
+            "WGPUCompilationInfo": [
+                "messageCount",
+                "messages"
             ],
             "WGPUDepthStencilState": [
                 "nextInChain",
@@ -1652,12 +1693,27 @@
                 "origin",
                 "aspect"
             ],
+            "WGPUProgrammableStageDescriptor": [
+                "nextInChain",
+                "module",
+                "entryPoint",
+                "constantCount",
+                "constants"
+            ],
             "WGPURenderPassColorAttachment": [
                 "view",
                 "resolveTarget",
                 "loadOp",
                 "storeOp",
                 "clearColor"
+            ],
+            "WGPURequiredLimits": [
+                "nextInChain",
+                "limits"
+            ],
+            "WGPUSupportedLimits": [
+                "nextInChain",
+                "limits"
             ],
             "WGPUTextureDescriptor": [
                 "nextInChain",
@@ -1687,6 +1743,18 @@
                 "blend",
                 "writeMask"
             ],
+            "WGPUComputePipelineDescriptor": [
+                "nextInChain",
+                "label",
+                "layout",
+                "compute"
+            ],
+            "WGPUDeviceDescriptor": [
+                "nextInChain",
+                "requiredFeaturesCount",
+                "requiredFeatures",
+                "requiredLimits"
+            ],
             "WGPURenderPassDescriptor": [
                 "nextInChain",
                 "label",
@@ -1699,6 +1767,8 @@
                 "nextInChain",
                 "module",
                 "entryPoint",
+                "constantCount",
+                "constants",
                 "bufferCount",
                 "buffers"
             ],
@@ -1706,6 +1776,8 @@
                 "nextInChain",
                 "module",
                 "entryPoint",
+                "constantCount",
+                "constants",
                 "targetCount",
                 "targets"
             ],

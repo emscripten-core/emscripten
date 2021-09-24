@@ -7,11 +7,14 @@
 
 #define _GNU_SOURCE
 #include "pthread_impl.h"
+#include "stdio_impl.h"
 #include "assert.h"
 #include <pthread.h>
 #include <stdbool.h>
 #include <string.h>
 #include <threads.h>
+// Included for emscripten_builtin_free / emscripten_builtin_malloc
+// TODO(sbc): Should these be in their own header to avoid emmalloc here?
 #include <emscripten/emmalloc.h>
 
 // See musl's pthread_create.c
@@ -21,6 +24,7 @@ extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *att
 extern void _emscripten_thread_init(int, int, int);
 extern void __pthread_exit_run_handlers();
 extern void __pthread_detached_exit();
+extern void* _emscripten_tls_base();
 extern int8_t __dso_handle;
 
 static void dummy_0()
@@ -53,12 +57,31 @@ void __do_cleanup_pop(struct __ptcb *cb) {
   __pthread_self()->cancelbuf = cb->__next;
 }
 
+static FILE *volatile dummy_file = 0;
+weak_alias(dummy_file, __stdin_used);
+weak_alias(dummy_file, __stdout_used);
+weak_alias(dummy_file, __stderr_used);
+
+static void init_file_lock(FILE *f) {
+  if (f && f->lock<0) f->lock = 0;
+}
+
 int __pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict attrp, void *(*entry)(void *), void *restrict arg) {
   // Note on LSAN: lsan intercepts/wraps calls to pthread_create so any
   // allocation we we do here should be considered leaks.
   // See: lsan_interceptors.cpp.
   if (!res) {
     return EINVAL;
+  }
+
+  if (!libc.threaded) {
+    for (FILE *f=*__ofl_lock(); f; f=f->next)
+      init_file_lock(f);
+    __ofl_unlock();
+    init_file_lock(__stdin_used);
+    init_file_lock(__stdout_used);
+    init_file_lock(__stderr_used);
+    libc.threaded = 1;
   }
 
   // Allocate thread block (pthread_t structure).
@@ -84,6 +107,16 @@ int __pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict att
   return __pthread_create_js(new, attrp, entry, arg);
 }
 
+static void free_tls_data() {
+  void* tls_block = _emscripten_tls_base();
+  if (tls_block) {
+#ifdef DEBUG_TLS
+    printf("tls free: thread[%p] dso[%p] <- %p\n", pthread_self(), &__dso_handle, tls_block);
+#endif
+    emscripten_builtin_free(tls_block);
+  }
+}
+
 void _emscripten_thread_exit(void* result) {
   struct pthread *self = __pthread_self();
   assert(self);
@@ -96,6 +129,8 @@ void _emscripten_thread_exit(void* result) {
 
   // Call into the musl function that runs destructors of all thread-specific data.
   __pthread_tsd_run_dtors();
+
+  free_tls_data();
 
   __lock(self->exitlock);
 

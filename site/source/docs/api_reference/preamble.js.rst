@@ -10,7 +10,7 @@ We call this "``preamble.js``" because Emscripten's output JS, at a high level, 
 
 The preamble code is included in the output JS, which is then optimized all together by the compiler, together with any ``--pre-js`` and ``--post-js`` files you added and code from any JavaScript libraries (``--js-library``). That means that you can call methods from the preamble directly, and the compiler will see that you need them, and not remove them as being unused.
 
-If you want to call preamble methods from somewhere the compiler can't see, like another script tag on the HTML, you need to **export** them. To do so, add them to ``EXPORTED_RUNTIME_METHODS`` (for example, ``-s 'EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'`` will export ``call`` and ``cwrap``). Once exported, you can access them on the ``Module`` object (as ``Module.ccall``, for example).
+If you want to call preamble methods from somewhere the compiler can't see, like another script tag on the HTML, you need to **export** them. To do so, add them to ``EXPORTED_RUNTIME_METHODS`` (for example, ``-s 'EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'`` will export ``ccall`` and ``cwrap``). Once exported, you can access them on the ``Module`` object (as ``Module.ccall``, for example).
 
 .. note:: If you try to use ``Module.ccall`` or another runtime method without exporting it, you will get an error. In a build with ``-s ASSERTIONS=1``, the compiler emits code to show you a useful error message, which will explain that you need to export it. In general, if you see something odd, it's useful to build with assertions.
 
@@ -164,7 +164,7 @@ Conversion functions — strings, pointers and arrays
   Given a pointer ``ptr`` to a null-terminated UTF8-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript ``String`` object.
 
   :param ptr: A pointer to a null-terminated UTF8-encoded string in the Emscripten HEAP.
-  :param maxBytesToRead: An optional length that specifies the maximum number of bytes to read. You can omit this parameter to scan the string until the first \0 byte. If maxBytesToRead is passed, and the string at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the string will cut short at that byte index (i.e. maxBytesToRead will not produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing frequent uses of UTF8ToString() with and without maxBytesToRead may throw JS JIT optimizations off, so it is worth to consider consistently using one style or the other.
+  :param maxBytesToRead: An optional length that specifies the maximum number of bytes to read. You can omit this parameter to scan the string until the first \0 byte. If maxBytesToRead is passed, and the string at ``[ptr, ptr+maxBytesToReadr)`` contains a null byte in the middle, then the string will cut short at that byte index (i.e. maxBytesToRead will not produce a string of exact length ``[ptr, ptr+maxBytesToRead)``) N.B. mixing frequent uses of ``UTF8ToString()`` with and without maxBytesToRead may throw JS JIT optimizations off, so it is worth to consider consistently using one style or the other.
   :returns: A JavaScript ``String`` object
 
 

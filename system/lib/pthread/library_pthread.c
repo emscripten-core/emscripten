@@ -147,33 +147,13 @@ extern double emscripten_receive_on_main_thread_js(int functionIndex, int numCal
 extern int _emscripten_notify_thread_queue(pthread_t targetThreadId, pthread_t mainThreadId);
 extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 
-#if defined(__has_feature)
-#if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
-#define HAS_SANITIZER
-#include <sanitizer/lsan_interface.h>
-#endif
-#endif
-
 static void _do_call(em_queued_call* q) {
   // C function pointer
   assert(EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum) <= EM_QUEUED_CALL_MAX_ARGS);
   switch (q->functionEnum) {
     case EM_PROXIED_PTHREAD_CREATE:
-#ifdef HAS_SANITIZER
-      // ASan wraps the emscripten_builtin_pthread_create call in __lsan::ScopedInterceptorDisabler.
-      // Unfortunately, that only disables it on the thread that made the call.
-      // This is sufficient on the main thread.
-      // On non-main threads, pthread_create gets proxied to the main thread, where LSan is not
-      // disabled. This makes it necessary for us to disable LSan here, so that it does not detect
-      // pthread's internal allocations as leaks.
-      // If/when we remove all the allocations from __pthread_create_js we could also remove this.
-      __lsan_disable();
-#endif
       q->returnValue.i =
         __pthread_create_js(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
-#ifdef HAS_SANITIZER
-      __lsan_enable();
-#endif
       break;
     case EM_PROXIED_CREATE_CONTEXT:
       q->returnValue.i = emscripten_webgl_create_context(q->args[0].cp, q->args[1].vp);

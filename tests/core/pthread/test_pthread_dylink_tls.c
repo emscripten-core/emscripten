@@ -3,12 +3,21 @@
 #include <pthread.h>
 
 int get_side_tls();
+int get_side_tls2();
 int* get_side_tls_address();
+int* get_side_tls_address2();
 
-static __thread int main_tls = 10;
+__thread int main_tls = 10;
+__thread int main_tls2 = 11;
+extern __thread int side_tls;
+extern __thread int side_tls2;
 
 int get_main_tls() {
   return main_tls;
+}
+
+int get_main_tls2() {
+  return main_tls2;
 }
 
 int* get_main_tls_address() {
@@ -17,9 +26,13 @@ int* get_main_tls_address() {
 
 void report_tls() {
   //printf("side_tls address: %p\n", get_side_tls_address());
-  printf("side_tls value  : %d\n", get_side_tls());
+  printf("side_tls  value  : %d %d\n", get_side_tls(), get_side_tls2());
+  printf("side_tls direct  : %d %d\n", side_tls, side_tls2);
   //printf("main_tls address: %p\n", get_main_tls_address());
-  printf("main_tls value  : %d\n", get_main_tls());
+  printf("main_tls  value  : %d %d\n", get_main_tls(), get_main_tls2());
+  printf("main_tls direct  : %d %d\n", main_tls, main_tls2);
+  assert(get_side_tls() == side_tls);
+  assert(get_side_tls2() == side_tls2);
 }
 
 void test_tls(int inc) {

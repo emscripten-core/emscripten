@@ -36,7 +36,7 @@ When generating only JavaScript (as opposed to HTML), no ``Module`` object is cr
       'printErr': function(text) { alert('stderr: ' + text) }
     };
 
-.. important:: If you run the :term:`Closure Compiler` on your code (which is optional, and can be done by ``--closure 1``), you will need quotation marks around the properties of ``Module`` as in the example above. In addition, you need to run closure on the compiled code together with the declaration of ``Module`` — this is done automatically for a ``-pre-js`` file.
+.. important:: If you run the :term:`Closure Compiler` on your code (which is optional, and can be done by ``--closure 1``), you will need quotation marks around the properties of ``Module`` as in the example above. In addition, you need to run closure on the compiled code together with the declaration of ``Module`` — this is done automatically for a ``--pre-js`` file.
 
 When generating HTML, Emscripten creates a ``Module`` object with default methods (see `src/shell.html <https://github.com/emscripten-core/emscripten/blob/1.29.12/src/shell.html#L1220>`_). In this case you should again use ``--pre-js``, but this time you add properties to the *existing* ``Module`` object, for example:
 
@@ -44,7 +44,7 @@ When generating HTML, Emscripten creates a ``Module`` object with default method
 
     Module['print'] = function(text) { alert('stdout: ' + text) };
 
-Note that once the Module object is received by the main JavaScript file, it will look for `Module['print']` and so forth at that time, and use them accordingly. Changing their values later may not be noticed.
+Note that once the Module object is received by the main JavaScript file, it will look for ``Module['print']`` and so forth at that time, and use them accordingly. Changing their values later may not be noticed.
 
 Affecting execution
 ===================
@@ -119,7 +119,7 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
 .. js:attribute:: Module.preinitializedWebGLContext
 
-  If building with -s GL_PREINITIALIZED_CONTEXT=1 set, you can set ``Module.preinitializedWebGLContext`` to a precreated instance of a WebGL context, which will be used later when initializing WebGL in C/C++ side. Precreating the GL context is useful if doing GL side loading (shader compilation, texture loading etc.) parallel to other page startup actions, and/or for detecting WebGL feature support, such as GL version or compressed texture support up front on a page before or in parallel to loading up any compiled code.
+  If building with ``-s GL_PREINITIALIZED_CONTEXT=1`` set, you can set ``Module.preinitializedWebGLContext`` to a precreated instance of a WebGL context, which will be used later when initializing WebGL in C/C++ side. Precreating the GL context is useful if doing GL side loading (shader compilation, texture loading etc.) parallel to other page startup actions, and/or for detecting WebGL feature support, such as GL version or compressed texture support up front on a page before or in parallel to loading up any compiled code.
 
 .. js:attribute:: Module.preRun
 

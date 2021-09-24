@@ -27,7 +27,7 @@ Most clang options will work, as will gcc options, for example:
    # Display this information
    emcc --help
 
-   Display compiler version information
+   # Display compiler version information
    emcc --version
 
 To see the full list of *Clang* options supported on the version of
@@ -63,7 +63,7 @@ Options that are modified or new in *emcc* are listed below:
      parts of the runtime may be stripped if they are not exported on
      the "Module" object. The compiler is aware of code in --pre-js
      and --post-js, so you can safely use the runtime from there.
-     Alternatively, you can use "EXTRA_EXPORTED_RUNTIME_METHODS", see
+     Alternatively, you can use "EXPORTED_RUNTIME_METHODS", see
      src/settings.js.
 
 "-O3"

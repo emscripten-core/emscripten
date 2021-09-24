@@ -296,8 +296,42 @@ var sampleRate;
 /*
  * WebGPU globals
  */
-var GPUValidationError;
+var GPUBufferUsage;
+var GPUColorWrite;
+var GPUMapMode;
+var GPUShaderStage;
+var GPUTextureUsage;
+var GPU;
+var GPUAdapter;
+var GPUBindGroup;
+var GPUBindGroupLayout;
+var GPUBuffer;
+var GPUCanvasContext;
+var GPUCommandBuffer;
+var GPUCommandEncoder;
+var GPUCompilationInfo;
+var GPUCompilationMessage;
+var GPUComputePassEncoder;
+var GPUComputePipeline;
+var GPUDevice;
+var GPUDeviceLostInfo;
+var GPUExternalTexture;
 var GPUOutOfMemoryError;
+var GPUPipelineLayout;
+var GPUQuerySet;
+var GPUQueue;
+var GPURenderBundle;
+var GPURenderBundleEncoder;
+var GPURenderPassEncoder;
+var GPURenderPipeline;
+var GPUSampler;
+var GPUShaderModule;
+var GPUSupportedFeatures;
+var GPUSupportedLimits;
+var GPUTexture;
+var GPUTextureView;
+var GPUUncapturedErrorEvent;
+var GPUValidationError;
 
 /*
  * Avoid closure minifying anything to "id". See #13965

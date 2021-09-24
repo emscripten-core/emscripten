@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdint.h>
@@ -90,52 +91,35 @@ int __pthread_join(pthread_t thread, void **retval) {
 weak_alias(__pthread_join, emscripten_builtin_pthread_join);
 weak_alias(__pthread_join, pthread_join);
 
-// pthread_key_t is 32-bit, so to be able to store pointers in there, we sadly
-// have to track an array of them.
-static size_t num_tls_entries = 0;
-static size_t max_tls_entries = 0;
-struct entry_t { const void* value; int allocated; };
-static struct entry_t* tls_entries = NULL;
+static void* tls_entries[PTHREAD_KEYS_MAX];
+static bool tls_key_used[PTHREAD_KEYS_MAX];
 
 int __pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
-  if (key == 0)
+  if (key == 0) {
     return EINVAL;
-  if (!max_tls_entries) {
-    // First time we're called, allocate entry table.
-    max_tls_entries = 4;
-    tls_entries = (struct entry_t*)malloc(max_tls_entries * sizeof(struct entry_t));
   }
   // Find empty spot.
-  size_t entry = 0;
-  for (; entry < num_tls_entries; entry++) {
-    if (!tls_entries[entry].allocated) break;
+  for (pthread_key_t entry = 0; entry < PTHREAD_KEYS_MAX; entry++) {
+    if (!tls_key_used[entry]) {
+      tls_key_used[entry] = true;
+      tls_entries[entry] = NULL;
+      *key = entry;
+      return 0;
+    }
   }
-  if (entry == max_tls_entries) {
-    // No empty spots, table full: double the table.
-    max_tls_entries *= 2;
-    tls_entries =
-      (struct entry_t*)realloc(tls_entries, max_tls_entries * sizeof(struct entry_t));
-  }
-  if (entry == num_tls_entries) {
-    // No empty spots, but table not full.
-    num_tls_entries++;
-  }
-  struct entry_t* e = &tls_entries[entry];
-  e->value = NULL;
-  e->allocated = 1;
-  // Key can't be zero.
-  *key = (pthread_key_t)entry + 1;
-  return 0;
+  // No empty spots, return an error
+  return EAGAIN;
 }
 
 int __pthread_key_delete(pthread_key_t key) {
-  if (key == 0 || key > num_tls_entries)
+  if (key < 0 || key >= PTHREAD_KEYS_MAX) {
     return EINVAL;
-  struct entry_t* e = &tls_entries[key - 1];
-  if (!e->allocated)
+  }
+  if (!tls_key_used[key]) {
     return EINVAL;
-  e->value = NULL;
-  e->allocated = 0;
+  }
+  tls_key_used[key] = false;
+  tls_entries[key] = NULL;
   return 0;
 }
 
@@ -143,21 +127,23 @@ weak_alias(__pthread_key_delete, pthread_key_delete);
 weak_alias(__pthread_key_create, pthread_key_create);
 
 void* pthread_getspecific(pthread_key_t key) {
-  if (key == 0 || key > num_tls_entries)
+  if (key < 0 || key >= PTHREAD_KEYS_MAX) {
     return NULL;
-  struct entry_t* e = &tls_entries[key - 1];
-  if (!e->allocated)
+  }
+  if (!tls_key_used[key]) {
     return NULL;
-  return (void*)e->value;
+  }
+  return tls_entries[key];
 }
 
 int pthread_setspecific(pthread_key_t key, const void* value) {
-  if (key == 0 || key > num_tls_entries)
+  if (key < 0 || key >= PTHREAD_KEYS_MAX) {
     return EINVAL;
-  struct entry_t* e = &tls_entries[key - 1];
-  if (!e->allocated)
+  }
+  if (!tls_key_used[key]) {
     return EINVAL;
-  e->value = value;
+  }
+  tls_entries[key] = (void*)value;
   return 0;
 }
 
@@ -277,14 +263,6 @@ int pthread_condattr_setpshared(pthread_condattr_t *attr, int shared) {
   return 0;
 }
 
-int pthread_condattr_getclock(const pthread_condattr_t *attr, clockid_t* clk) {
-  return 0;
-}
-
-int pthread_condattr_getpshared(const pthread_condattr_t *attr, int *shared) {
-  return 0;
-}
-
 int pthread_attr_init(pthread_attr_t *attr) {
   return 0;
 }
@@ -294,18 +272,6 @@ int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr) {
 }
 
 int pthread_attr_destroy(pthread_attr_t *attr) {
-  return 0;
-}
-
-int pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate) {
-  return 0;
-}
-
-int pthread_attr_getstack(const pthread_attr_t *attr, void **stackaddr, size_t *stacksize) {
-  /*FIXME: assumes that there is only one thread, and that attr is the
-    current thread*/
-  *stackaddr = (void*)emscripten_stack_get_base();
-  *stacksize = emscripten_stack_get_base() - emscripten_stack_get_end();
   return 0;
 }
 
@@ -362,10 +328,6 @@ int pthread_rwlockattr_destroy(pthread_rwlockattr_t *attr) {
 }
 
 int pthread_rwlockattr_setpshared(pthread_rwlockattr_t* attr, int pshared) {
-  return 0;
-}
-
-int pthread_rwlockattr_getpshared(const pthread_rwlockattr_t* attr, int *pshared) {
   return 0;
 }
 

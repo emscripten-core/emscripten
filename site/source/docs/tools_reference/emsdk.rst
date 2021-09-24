@@ -13,7 +13,7 @@ This document provides the command syntax, and a :ref:`set of guides <emsdk_howt
 Command line syntax
 ===================
 
-**./emsdk** [**help** [**--old**] | **list** | **update** | **install** *<tool/sdk>* | **uninstall** *<tool/sdk>* | **activate** *<tool/sdk>*]
+**./emsdk** [**help** | **list** [**--old**] | **update** | **install** *<tool/sdk>* | **uninstall** *<tool/sdk>* | **activate** *<tool/sdk>*]
 
 
 Arguments
@@ -206,6 +206,8 @@ particular tool: ::
 .. note:: On Linux and macOS, ``activate`` writes the required information to the configuration file, but cannot automatically set up the environment variables in the current terminal. To do this you need to call ``source ./emsdk_env.sh`` after calling ``activate``. The use of ``source`` is a security feature of Unix shells.
 
   On Windows, calling ``activate`` automatically sets up the required paths and environment variables.
+
+.. note:: If you add ``./emsdk_env.sh`` to you default shell config emsdk tools (including the emsdk version of node) will be added to your PATH and this could effect the default version of node used on your system.
 
 .. _emsdk-install-old-tools:
 

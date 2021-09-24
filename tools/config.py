@@ -38,9 +38,9 @@ COMPILER_WRAPPER = None
 
 
 def listify(x):
-  if type(x) is not list:
-    return [x]
-  return x
+  if x is None or type(x) is list:
+    return x
+  return [x]
 
 
 def fix_js_engine(old, new):
@@ -56,7 +56,7 @@ def root_is_writable():
 
 
 def normalize_config_settings():
-  global CACHE, PORTS, JAVA, LLVM_ADD_VERSION, CLANG_ADD_VERSION
+  global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
   global NODE_JS, V8_ENGINE, JS_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
 
   # EM_CONFIG stuff
@@ -76,6 +76,7 @@ def normalize_config_settings():
   JS_ENGINE = fix_js_engine(JS_ENGINE, listify(JS_ENGINE))
   JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
   WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
+  CLOSURE_COMPILER = listify(CLOSURE_COMPILER)
   if not CACHE:
     if FROZEN_CACHE or root_is_writable():
       CACHE = path_from_root('cache')
@@ -89,10 +90,6 @@ def normalize_config_settings():
       CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
-
-  if JAVA is None:
-    logger.debug('JAVA not defined in ' + EM_CONFIG + ', using "java"')
-    JAVA = 'java'
 
   # Tools/paths
   if LLVM_ADD_VERSION is None:

@@ -530,7 +530,7 @@ def link_bitcode(args, target, force_archive_contents=False):
 def get_command_with_possible_response_file(cmd):
   # 8k is a bit of an arbitrary limit, but a reasonable one
   # for max command line size before we use a response file
-  if len(' '.join(cmd)) <= 8192:
+  if len(shared.shlex_join(cmd)) <= 8192:
     return cmd
 
   logger.debug('using response file for %s' % cmd[0])
@@ -657,7 +657,7 @@ def eval_ctors(js_file, binary_file, debug_info=False): # noqa
 def get_closure_compiler():
   # First check if the user configured a specific CLOSURE_COMPILER in thier settings
   if config.CLOSURE_COMPILER:
-    return shared.CLOSURE_COMPILER
+    return config.CLOSURE_COMPILER
 
   # Otherwise use the one installed vai npm
   cmd = shared.get_npm_cmd('google-closure-compiler')
@@ -670,12 +670,15 @@ def get_closure_compiler():
 
 
 def check_closure_compiler(cmd, args, env, allowed_to_fail):
+  cmd = cmd + args + ['--version']
   try:
-    output = run_process(cmd + args + ['--version'], stdout=PIPE, env=env).stdout
+    output = run_process(cmd, stdout=PIPE, env=env).stdout
   except Exception as e:
     if allowed_to_fail:
       return False
-    logger.warn(str(e))
+    if isinstance(e, subprocess.CalledProcessError):
+      sys.stderr.write(e.stdout)
+    sys.stderr.write(str(e) + '\n')
     exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(cmd))
 
   if 'Version:' not in output:
@@ -707,17 +710,6 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   if extra_closure_args:
     user_args += extra_closure_args
 
-  # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
-  # to enable use the java backend.  Without this it will only try the native and JavaScript
-  # versions of the compiler.
-  java_bin = os.path.dirname(config.JAVA)
-  if java_bin:
-    def add_to_path(dirname):
-      env['PATH'] = env['PATH'] + os.pathsep + dirname
-    add_to_path(java_bin)
-    java_home = os.path.dirname(java_bin)
-    env.setdefault('JAVA_HOME', java_home)
-
   closure_cmd = get_closure_compiler()
 
   native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
@@ -725,6 +717,18 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
     # Run with Java Closure compiler as a fallback if the native version does not work
     user_args.append('--platform=java')
     check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
+
+  if config.JAVA and '--platform=java' in user_args:
+    # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
+    # to enable use the java backend.  Without this it will only try the native and JavaScript
+    # versions of the compiler.
+    java_bin = os.path.dirname(config.JAVA)
+    if java_bin:
+      def add_to_path(dirname):
+        env['PATH'] = env['PATH'] + os.pathsep + dirname
+      add_to_path(java_bin)
+      java_home = os.path.dirname(java_bin)
+      env.setdefault('JAVA_HOME', java_home)
 
   # Closure externs file contains known symbols to be extern to the minification, Closure
   # should not minify these symbol names.
@@ -810,7 +814,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   # Specify input file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
   args += ['--js', move_to_safe_7bit_ascii_filename(filename)]
   cmd = closure_cmd + args + user_args
-  logger.debug('closure compiler: ' + ' '.join(cmd))
+  logger.debug(f'closure compiler: {shared.shlex_join(cmd)}')
 
   # Closure compiler does not work if any of the input files contain characters outside the
   # 7-bit ASCII range. Therefore make sure the command line we pass does not contain any such
@@ -844,7 +848,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
     logger.error(proc.stderr) # print list of errors (possibly long wall of text if input was minified)
 
     # Exit and print final hint to get clearer output
-    msg = 'closure compiler failed (rc: %d): %s' % (proc.returncode, shared.shlex_join(cmd))
+    msg = f'closure compiler failed (rc: {proc.returncode}): {shared.shlex_join(cmd)}'
     if not pretty:
       msg += ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set'
     exit_with_error(msg)
@@ -1263,7 +1267,7 @@ def is_wasm_dylib(filename):
   section = next(module.sections())
   if section.type == webassembly.SecType.CUSTOM:
     module.seek(section.offset)
-    if module.readString() == 'dylink':
+    if module.readString() in ('dylink', 'dylink.0'):
       return True
   return False
 
