@@ -6237,6 +6237,9 @@ void* operator new(size_t size) {
 
         return output
 
+      # Explictly disable EXIT_RUNTIME, since otherwise addOnPostRun does not work.
+      # https://github.com/emscripten-core/emscripten/issues/15080
+      self.set_setting('EXIT_RUNTIME', 0)
       self.emcc_args += ['--minify=0'] # to compare the versions
       self.emcc_args += ['--pre-js', 'pre.js']
 
