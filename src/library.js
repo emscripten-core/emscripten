@@ -3270,7 +3270,7 @@ LibraryManager.library = {
 #if ASSERTIONS
       assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/);
 #endif
-      // A double or readAsmConstArgsDouble takes two 32-bit slots, and must also be aligned - the backend
+      // A double takes two 32-bit slots, and must also be aligned - the backend
       // will emit padding to avoid that.
       var readAsmConstArgsDouble = ch < 105;
       if (readAsmConstArgsDouble && (buf & 1)) buf++;
