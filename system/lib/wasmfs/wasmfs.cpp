@@ -37,21 +37,18 @@ __wasi_errno_t __wasi_fd_write(
 
 __wasi_errno_t __wasi_fd_seek(
   __wasi_fd_t fd, __wasi_filedelta_t offset, __wasi_whence_t whence, __wasi_filesize_t* newoffset) {
-  EM_ASM({out($0 + ' or __wasi_fd_seek has been temporarily stubbed and is inert')},
-    __PRETTY_FUNCTION__);
+  emscripten_console_log("__wasi_fd_seek has been temporarily stubbed and is inert");
   abort();
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
-  EM_ASM({out($0 + ' or __wasi_fd_close has been temporarily stubbed and is inert')},
-    __PRETTY_FUNCTION__);
+  emscripten_console_log("__wasi_fd_close has been temporarily stubbed and is inert");
   abort();
 }
 
 __wasi_errno_t __wasi_fd_read(
   __wasi_fd_t fd, const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) {
-  EM_ASM({out($0 + ' or __wasi_fd_read has been temporarily stubbed and is inert')},
-    __PRETTY_FUNCTION__);
+  emscripten_console_log("__wasi_fd_read has been temporarily stubbed and is inert");
   abort();
 }
 }
