@@ -13,6 +13,8 @@
 
 extern "C" {
 
+int emscripten_wasmfs_printchar(__wasi_fd_t fd, const uint8_t* ptr, __wasi_size_t len);
+
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
   // FD 1 = STDOUT and FD 2 = STDERR.
@@ -25,9 +27,7 @@ __wasi_errno_t __wasi_fd_write(
     for (size_t i = 0; i < iovs_len; i++) {
       const uint8_t* ptr = iovs[i].buf;
       __wasi_size_t len = iovs[i].buf_len;
-      for (__wasi_size_t j = 0; j < len; j++) {
-        EM_ASM({ WASMFS.printChar($0, HEAPU8[$1]); }, fd, ptr + j);
-      }
+      emscripten_wasmfs_printchar(fd, ptr, len);
       num += len;
     }
     *nwritten = num;

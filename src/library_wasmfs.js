@@ -1,19 +1,17 @@
 var WasmfsLibrary = {
-$WASMFS: {
-  buffers: [null, [], []], // 1 => stdout, 2 => stderr
-  printChar: function(stream, curr) {
-    if (curr === 0 || curr === 10) {
-      (stream === 1 ? out : err)(UTF8ArrayToString(WASMFS.buffers[stream], 0));
-      WASMFS.buffers[stream].length = 0;
-    } else {
-      WASMFS.buffers[stream].push(curr);
+  $wasmfsBuffers: [null, [], []],
+  emscripten_wasmfs_printchar__deps: ['$wasmfsBuffers'],
+  emscripten_wasmfs_printchar: function(stream, ptr, len) {
+    for (var j = 0; j < len; j++) {
+      if (HEAPU8[ptr+j] === 0 || HEAPU8[ptr+j] === 10) {
+        (stream === 1 ? out : err)(UTF8ArrayToString(wasmfsBuffers[stream], 0));
+        wasmfsBuffers[stream].length = 0;
+      } else {
+        wasmfsBuffers[stream].push(HEAPU8[ptr+j]);
+      }
     }
     
-    return
-  },
-}
+  }
 }
 
 mergeInto(LibraryManager.library, WasmfsLibrary);
-
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$WASMFS');
