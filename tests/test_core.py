@@ -141,7 +141,6 @@ def can_do_standalone(self):
 
 def also_with_wasmfs(func):
   def decorated(self):
-    self.set_setting('WASMFS', 0)
     func(self)
     print('wasmfs')
     if self.get_setting('STANDALONE_WASM'):
