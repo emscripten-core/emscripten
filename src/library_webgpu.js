@@ -1365,16 +1365,16 @@ var LibraryWebGPU = {
   },
 
   wgpuQueueWriteTexture: function(queueId,
-      destinationPtr, data, _dataSize, dataLayoutPtr, writeSizePtr) {
+      destinationPtr, data, dataSize, dataLayoutPtr, writeSizePtr) {
     var queue = WebGPU.mgrQueue.get(queueId);
 
     var destination = WebGPU.makeImageCopyTexture(destinationPtr);
     var dataLayout = WebGPU.makeTextureDataLayout(dataLayoutPtr);
-    // TODO(crbug.com/1134457): pass a subarray to work around Chrome bug? (complicated because this
-    // requires computing requiredBytesInCopy which needs the block/byte sizes of every texture format)
-    dataLayout["offset"] += data;
     var writeSize = WebGPU.makeExtent3D(writeSizePtr);
-    queue["writeTexture"](destination, HEAPU8, dataLayout, writeSize);
+    // This subarray isn't strictly necessary, but helps work around an issue
+    // where Chromium makes a copy of the entire heap. crbug.com/1134457
+    var subarray = HEAPU8.subarray(data, data + dataSize);
+    queue["writeTexture"](destination, subarray, dataLayout, writeSize);
   },
 
   // wgpuCommandEncoder
