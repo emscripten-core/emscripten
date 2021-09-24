@@ -4146,6 +4146,24 @@ window.close = function() {
     args += ['--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js')]
     self.btest(test_file('core/pthread/test_pthread_exit_runtime.c'), expected='onExit status: 42', args=args)
 
+  @requires_threads
+  def test_pthread_trap(self):
+    create_file('pre.js', '''
+    if (typeof window === 'object' && window) {
+      window.addEventListener('error', function(e) {
+        if (e.error && e.error.message.includes('unreachable'))
+          maybeReportResultToServer("expected exception caught");
+        else
+          maybeReportResultToServer("unexpected: " + e);
+      });
+    }''')
+    args = ['-s', 'USE_PTHREADS',
+            '-s', 'PROXY_TO_PTHREAD',
+            '-s', 'EXIT_RUNTIME',
+            '--profiling-funcs',
+            '--pre-js=pre.js']
+    self.btest(test_file('pthread/test_pthread_trap.c'), expected='expected exception caught', args=args)
+
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   def test_main_thread_em_asm_signatures(self):
     self.btest_exit(test_file('core/test_em_asm_signatures.cpp'), assert_returncode=121, args=[])
