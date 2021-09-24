@@ -144,6 +144,8 @@ def also_with_wasmfs(func):
     self.set_setting('WASMFS', 0)
     func(self)
     print('wasmfs')
+    if self.get_setting('STANDALONE_WASM'):
+      self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
     self.set_setting('WASMFS')
     func(self)
   return decorated

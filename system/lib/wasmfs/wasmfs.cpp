@@ -6,10 +6,9 @@
 // // Current Status: Work in Progress.
 // // See https://github.com/emscripten-core/emscripten/issues/15041.
 
-#include <stdlib.h>
-#define __NEED_struct_iovec
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
+#include <stdlib.h>
 #include <wasi/api.h>
 
 extern "C" {
