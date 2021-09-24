@@ -299,8 +299,7 @@ var LibraryWebGPU = {
       'bgra8unorm': 0x17,
     },
 
-    // This section is auto-generated:
-    // https://dawn.googlesource.com/dawn/+/refs/heads/master/generator/templates/library_webgpu_enum_tables.json
+    // This section is auto-generated. See system/include/webgpu/README.md for details.
     AddressMode: [
       'repeat',
       'mirror-repeat',

@@ -1377,8 +1377,8 @@
     },
     // ===========================================
     // WebGPU
-    //   NOTE: This section is auto-generated:
-    //   https://dawn.googlesource.com/dawn/+/refs/heads/main/generator/templates/webgpu_struct_info.json
+    //   NOTE: This section is auto-generated.
+    //   See system/include/webgpu/README.md for details.
     // ===========================================
     {
         "file": "webgpu/webgpu.h",
