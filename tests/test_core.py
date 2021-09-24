@@ -5981,6 +5981,11 @@ void* operator new(size_t size) {
       stderr=PIPE)
     self.assertContained('Instruction emulated via slow path.', p.stderr)
 
+  @requires_native_clang
+  def test_relaxed_simd_implies_simd128(self):
+    src = test_file('sse/test_sse1.cpp')
+    self.build(src, emcc_args=['-mrelaxed-simd', '-msse']);
+
   @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
     self.emcc_args += ['-I' + test_file('third_party/libiberty')]
