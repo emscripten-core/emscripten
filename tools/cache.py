@@ -83,7 +83,7 @@ class Cache:
   def erase(self, file=None):
     with self.lock():
       if os.path.exists(self.dirname):
-        if file == None:
+        if file is None:
           for f in os.listdir(self.dirname):
             tempfiles.try_delete(os.path.join(self.dirname, f))
         else:
