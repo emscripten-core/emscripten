@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # Copyright 2013 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -9,7 +9,8 @@
 
 import os
 import sys
-from subprocess import Popen, PIPE
+import subprocess
+from subprocess import PIPE
 
 sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'tools')]
 import shared
@@ -28,7 +29,7 @@ try:
   print('2) Compile natively')
   shared.run_process([shared.CLANG_CC, '-O2', filename, '-o', obj_filename] + CSMITH_CFLAGS)
   print('3) Run natively')
-  correct = shared.timeout_run(Popen([obj_filename], stdout=PIPE, stderr=PIPE), 3)
+  correct = subprocess.run([obj_filename], stdout=PIPE, stderr=PIPE, timeout=3).stdout
 except Exception as e:
   print('Failed or infinite looping in native, skipping', e)
   sys.exit(1) # boring
