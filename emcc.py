@@ -2949,6 +2949,11 @@ def parse_args(newargs):
       shared.Cache.erase()
       shared.check_sanity(force=True) # this is a good time for a sanity check
       should_exit = True
+    elif check_arg('--clear-cache-file'):
+      logger.info('clearing cache file as requested by --clear-cache-file: `%s`', shared.Cache.dirname)
+      shared.Cache.erase(consume_arg())
+      shared.check_sanity(force=True)
+      should_exit = True
     elif check_flag('--clear-ports'):
       logger.info('clearing ports and cache as requested by --clear-ports')
       system_libs.Ports.erase()

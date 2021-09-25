@@ -80,11 +80,15 @@ class Cache:
   def ensure(self):
     utils.safe_ensure_dirs(self.dirname)
 
-  def erase(self):
+  def erase(self, file=None):
     with self.lock():
       if os.path.exists(self.dirname):
-        for f in os.listdir(self.dirname):
-          tempfiles.try_delete(os.path.join(self.dirname, f))
+        if file == None:
+          for f in os.listdir(self.dirname):
+            tempfiles.try_delete(os.path.join(self.dirname, f))
+        else:
+          print('Attempted to clear ' + os.path.join(self.get_lib_dir(True), file))
+          tempfiles.try_delete(os.path.join(self.get_lib_dir(True), file))
 
   def get_path(self, name):
     return os.path.join(self.dirname, name)
