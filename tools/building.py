@@ -1443,6 +1443,13 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   if settings.GENERATE_SOURCE_MAP and outfile:
     cmd += [f'--input-source-map={infile}.map']
     cmd += [f'--output-source-map={outfile}.map']
+  # we should skip all validation when 'no-validation' pass is specified
+  if settings.BINARYEN_EXTRA_PASSES:
+    # BINARYEN_EXTRA_PASSES is comma-separated
+    extras = settings.BINARYEN_EXTRA_PASSES.split(',')
+    # we support both '-'-prefixed and unprefixed pass names
+    if '--no-validation' in extras or 'no-validation' in extras:
+      cmd += ['--no-validation']
   ret = check_call(cmd, stdout=stdout).stdout
   if outfile:
     save_intermediate(outfile, '%s.wasm' % tool)
