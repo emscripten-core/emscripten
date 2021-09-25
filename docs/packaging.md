@@ -53,9 +53,7 @@ was green on them.
 To see how our CI builds things, the relevant script is
 [build.py](https://github.com/WebAssembly/waterfall/blob/master/src/build.py).
 In general, the repos you need to build are LLVM and Binaryen (as emscripten
-itself doesn't have any binaries to build). (Note: If you are packaging the older
-fastcomp compiler backend then you must also get the fastcomp and fastcomp-clang
-repos, and build them together to get LLVM and clang.)
+itself doesn't have any binaries to build).
 
 When packaging build results, you need the following executables (when using
 the wasm backend):
@@ -69,6 +67,7 @@ the wasm backend):
     * llvm-ar
     * llvm-as
     * llvm-dis
+    * llvm-link
     * llvm-dwarfdump
   * From Binaryen:
     * wasm-emscripten-finalize
@@ -77,9 +76,6 @@ the wasm backend):
     * wasm-as
     * wasm2js
     * wasm-metadce
-
-(If you are packaging the older fastcomp backend instead of the wasm backend,
-you don't need wasm-ld or wasm2js, and you do need llvm-link and opt.)
 
 Node modules
 ------------
