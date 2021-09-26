@@ -7,17 +7,7 @@
 
 #pragma once
 
-#ifdef __cplusplus
-#if !defined(__DEFINED_pthread_t)
-typedef unsigned long pthread_t;
-#define __DEFINED_pthread_t
-#endif
-#else
-#if !defined(__DEFINED_pthread_t)
-typedef struct __pthread * pthread_t;
-#define __DEFINED_pthread_t
-#endif
-#endif
+#include <pthread.h>
 
 #ifdef __cplusplus
 extern "C" {
