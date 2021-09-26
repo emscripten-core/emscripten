@@ -187,18 +187,10 @@ var LibraryDylink = {
   dlsym: function(handle, symbol) {
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
-  dlerror: function() {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
   dladdr: function(address, info) {
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
 #else // MAIN_MODULE != 0
-  $DLFCN: {
-    error: null,
-    errorMsg: null,
-  },
-
   // dynamic linker/loader (a-la ld.so on ELF systems)
   $LDSO: {
     // next free handle to use for a loaded dso.
@@ -208,6 +200,18 @@ var LibraryDylink = {
     loadedLibs: {},
     // name   -> handle
     loadedLibNames: {},
+  },
+
+  $dlSetError: ['___dl_seterr',
+#if MINIMAL_RUNTIME
+   '$intArrayFromString'
+#endif
+  ],
+  $dlSetError: function(msg) {
+    var sp = stackSave();
+    var msg = allocate(intArrayFromString(msg), ALLOC_STACK);
+    ___dl_seterr(msg);
+    stackRestore(sp);
   },
 
   // Dynamic version of shared.py:make_invoke.  This is needed for invokes
@@ -750,7 +754,7 @@ var LibraryDylink = {
   },
 
   // void* dlopen(const char* filename, int flags);
-  $dlopenInternal__deps: ['$DLFCN', '$FS', '$ENV'],
+  $dlopenInternal__deps: ['$FS', '$ENV', '$dlSetError'],
   $dlopenInternal: function(filenameAddr, flags, jsflags) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
@@ -782,7 +786,7 @@ var LibraryDylink = {
     }
 
     if (!(flags & ({{{ cDefine('RTLD_LAZY') }}} | {{{ cDefine('RTLD_NOW') }}}))) {
-      DLFCN.errorMsg = 'invalid mode for dlopen(): Either RTLD_LAZY or RTLD_NOW is required';
+      dlSetError('invalid mode for dlopen(): Either RTLD_LAZY or RTLD_NOW is required');
       return 0;
     }
 
@@ -804,7 +808,7 @@ var LibraryDylink = {
 #if ASSERTIONS
       err('Error in loading dynamic library ' + filename + ": " + e);
 #endif
-      DLFCN.errorMsg = 'Could not load dynamic lib: ' + filename + '\n' + e;
+      dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);
       return 0;
     }
   },
@@ -831,7 +835,7 @@ var LibraryDylink = {
   },
 
   // Async version of dlopen.
-  emscripten_dlopen__deps: ['$DLFCN', '$dlopenInternal', '$callUserCallback',
+  emscripten_dlopen__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError',
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush',
     '$runtimeKeepalivePop',
@@ -840,7 +844,7 @@ var LibraryDylink = {
   emscripten_dlopen__sig: 'iii',
   emscripten_dlopen: function(filename, flags, user_data, onsuccess, onerror) {
     function errorCallback(e) {
-      DLFCN.errorMsg = 'Could not load dynamic lib: ' + UTF8ToString(filename) + '\n' + e;
+      dlSetError('Could not load dynamic lib: ' + UTF8ToString(filename) + '\n' + e);
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function () { {{{ makeDynCall('vi', 'onerror') }}}(user_data); });
     }
@@ -859,14 +863,14 @@ var LibraryDylink = {
   },
 
   // int dlclose(void* handle);
-  dlclose__deps: ['$DLFCN'],
+  dlclose__deps: ['$dlSetError'],
   dlclose__sig: 'ii',
   dlclose: function(handle) {
     // int dlclose(void *handle);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlclose.html
     var lib = LDSO.loadedLibs[handle];
     if (!lib) {
-      DLFCN.errorMsg = 'Tried to dlclose() unopened handle: ' + handle;
+      dlSetError('Tried to dlclose() unopened handle: ' + handle);
       return 1;
     }
     if (--lib.refcount == 0) {
@@ -877,7 +881,7 @@ var LibraryDylink = {
   },
 
   // void* dlsym(void* handle, const char* symbol);
-  dlsym__deps: ['$DLFCN'],
+  dlsym__deps: ['$dlSetError'],
   dlsym__sig: 'iii',
   dlsym: function(handle, symbol) {
     // void *dlsym(void *restrict handle, const char *restrict name);
@@ -888,17 +892,17 @@ var LibraryDylink = {
     if (handle == {{{ cDefine('RTLD_DEFAULT') }}}) {
       result = resolveGlobalSymbol(symbol, true);
       if (!result) {
-        DLFCN.errorMsg = 'Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: RTLD_DEFAULT'
+        dlSetError('Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: RTLD_DEFAULT');
         return 0;
       }
     } else {
       var lib = LDSO.loadedLibs[handle];
       if (!lib) {
-        DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
+        dlSetError('Tried to dlsym() from an unopened handle: ' + handle)
         return 0;
       }
       if (!lib.module.hasOwnProperty(symbol)) {
-        DLFCN.errorMsg = 'Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: ' + lib.name;
+        dlSetError('Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: ' + lib.name)
         return 0;
       }
 #if !WASM_BIGINT
@@ -917,21 +921,6 @@ var LibraryDylink = {
     } else {
       return result;
     }
-  },
-
-  // char* dlerror(void);
-  dlerror__deps: ['$DLFCN', '$stringToNewUTF8'],
-  dlerror__sig: 'i',
-  dlerror: function() {
-    // char *dlerror(void);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlerror.html
-    if (DLFCN.errorMsg === null) {
-      return 0;
-    }
-    if (DLFCN.error) _free(DLFCN.error);
-    DLFCN.error = stringToNewUTF8(DLFCN.errorMsg);
-    DLFCN.errorMsg = null;
-    return DLFCN.error;
   },
 
   dladdr__deps: ['$stringToNewUTF8', '$getExecutableName'],

@@ -821,6 +821,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=['_Exit.c'])
 
     libc_files += files_in_path(
+        path='system/lib/libc/musl/src/ldso',
+        filenames=['dlerror.c'])
+
+    libc_files += files_in_path(
         path='system/lib/libc/musl/src/signal',
         filenames=[
           'getitimer.c',

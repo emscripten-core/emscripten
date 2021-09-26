@@ -5501,8 +5501,8 @@ int main(int argc, char** argv) {
   def test_minimal_dynamic(self, wasm):
     library_file = 'library.wasm' if wasm else 'library.js'
 
-    def test(main_args, library_args=[], expected='hello from main\nhello from library', assert_returncode=0):
-      print('testing', main_args, library_args)
+    def test(name, main_args, library_args=[], expected='hello from main\nhello from library', assert_returncode=0):
+      print(f'testing {name}', main_args, library_args)
       self.clear()
       create_file('library.c', r'''
         #include <stdio.h>
@@ -5539,7 +5539,7 @@ int main(int argc, char** argv) {
       if wasm:
         size += os.path.getsize('a.out.wasm')
       side_size = os.path.getsize(library_file)
-      print('  sizes:', size, side_size)
+      print(f'  sizes {name}: {size}, {side_size}')
       return (size, side_size)
 
     def percent_diff(x, y):
@@ -5547,35 +5547,34 @@ int main(int argc, char** argv) {
       large = max(x, y)
       return float(100 * large) / small - 100
 
-    full = test(main_args=['-s', 'MAIN_MODULE'])
+    full = test('full', main_args=['-s', 'MAIN_MODULE'])
     # printf is not used in main, but libc was linked in, so it's there
-    printf = test(main_args=['-s', 'MAIN_MODULE'], library_args=['-DUSE_PRINTF'])
+    printf = test('printf', main_args=['-s', 'MAIN_MODULE'], library_args=['-DUSE_PRINTF'])
 
     # main module tests
 
     # dce in main, and it fails since puts is not exported
-    dce = test(main_args=['-s', 'MAIN_MODULE=2'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
+    test('dce', main_args=['-s', 'MAIN_MODULE=2'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
 
     # with exporting, it works
-    dce = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=_main,_puts'])
+    dce = test('dce', main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=_main,_puts'])
 
     # printf is not used in main, and we dce, so we failz
-    dce_fail = test(main_args=['-s', 'MAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
+    dce_fail = test('dce_fail', main_args=['-s', 'MAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
 
     # exporting printf in main keeps it alive for the library
-    dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=_main,_printf,_puts'], library_args=['-DUSE_PRINTF'])
+    test('dce_save', main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=_main,_printf,_puts'], library_args=['-DUSE_PRINTF'])
 
     self.assertLess(percent_diff(full[0], printf[0]), 4)
     self.assertLess(percent_diff(dce[0], dce_fail[0]), 4)
     self.assertLess(dce[0], 0.2 * full[0]) # big effect, 80%+ is gone
-    self.assertGreater(dce_save[0], 1.05 * dce[0]) # save exported all of printf
 
     # side module tests
 
     # mode 2, so dce in side, but library_func is not exported, so it is dce'd
-    side_dce_fail = test(main_args=['-s', 'MAIN_MODULE'], library_args=['-s', 'SIDE_MODULE=2'], expected='cannot find side function')
+    side_dce_fail = test('side_dce_fail', main_args=['-s', 'MAIN_MODULE'], library_args=['-s', 'SIDE_MODULE=2'], expected='cannot find side function')
     # mode 2, so dce in side, and library_func is not exported
-    side_dce_work = test(main_args=['-s', 'MAIN_MODULE'], library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=_library_func'], expected='hello from library')
+    side_dce_work = test('side_dce_fail', main_args=['-s', 'MAIN_MODULE'], library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=_library_func'], expected='hello from library')
 
     self.assertLess(side_dce_fail[1], 0.95 * side_dce_work[1]) # removing that function saves a chunk
 
