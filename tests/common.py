@@ -551,11 +551,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def build(self, filename, libraries=[], includes=[], force_c=False, js_outfile=True, emcc_args=[], output_basename=None):
     suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
-    if compiler[0] == EMCC:
-      # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
-      # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
-      # this if this issues is fixed.
-      compiler.append('-nostdlib++')
+    # if compiler[0] == EMCC:
+    #   # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
+    #   # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
+    #   # this if this issues is fixed.
+    #   compiler.append('-nostdlib++')
 
     if force_c:
       compiler.append('-xc')
