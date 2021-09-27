@@ -9,25 +9,35 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <stdlib.h>
+#include <string>
 #include <wasi/api.h>
 
 extern "C" {
 
 int emscripten_wasmfs_printbuffer(__wasi_fd_t fd, const uint8_t* ptr, __wasi_size_t len);
 
+std::string buffer;
+
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
   // FD 1 = STDOUT and FD 2 = STDERR.
   // Temporary hardcoding of filedescriptor values.
   // TODO: May not want to proxy stderr (fd == 2) to the main thread.
-  // This will not not show in HTML, a console.warn in a worker is suffficient.
+  // This will not show in HTML - a console.warn in a worker is suffficient.
   // This would be a change from the current FS.
   if (fd == 1 || fd == 2) {
     __wasi_size_t num = 0;
     for (size_t i = 0; i < iovs_len; i++) {
       const uint8_t* ptr = iovs[i].buf;
       __wasi_size_t len = iovs[i].buf_len;
-      emscripten_wasmfs_printbuffer(fd, ptr, len);
+      for (__wasi_size_t j = 0; j < len; j++) {
+        char current = *(ptr + j);
+        if (current == 0 || current == 10) {
+          emscripten_console_log(buffer.c_str());
+        } else {
+          buffer += current;
+        }
+      }
       num += len;
     }
     *nwritten = num;
