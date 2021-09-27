@@ -9,12 +9,12 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <stdlib.h>
-#include <string>
+#include <vector>
 #include <wasi/api.h>
 
 extern "C" {
 
-std::string buffer;
+std::vector<char> buffer;
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
@@ -31,7 +31,8 @@ __wasi_errno_t __wasi_fd_write(
       for (__wasi_size_t j = 0; j < len; j++) {
         char current = *(ptr + j);
         if (current == 0 || current == 10) {
-          emscripten_console_log(buffer.c_str());
+          buffer.push_back('\0');
+          emscripten_console_log(&buffer[0]);
           buffer.clear();
         } else {
           buffer.push_back(current);
