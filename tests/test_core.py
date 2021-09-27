@@ -50,6 +50,16 @@ def wasm_simd(f):
   return decorated
 
 
+def wasm_relaxed_simd(f):
+  def decorated(self):
+    # We don't actually run any tests yet, so don't require any engines.
+    if not self.is_wasm():
+      self.skipTest('wasm2js only supports MVP for now')
+    self.emcc_args.append('-mrelaxed-simd')
+    f(self)
+  return decorated
+
+
 def needs_non_trapping_float_to_int(f):
   def decorated(self):
     if not self.is_wasm():
@@ -5970,6 +5980,12 @@ void* operator new(size_t size) {
       [shared.EMXX, src, '-msse', '-DWASM_SIMD_COMPAT_SLOW'] + self.get_emcc_args(),
       stderr=PIPE)
     self.assertContained('Instruction emulated via slow path.', p.stderr)
+
+  @requires_native_clang
+  @wasm_relaxed_simd
+  def test_relaxed_simd_implies_simd128(self):
+    src = test_file('sse/test_sse1.cpp')
+    self.build(src, emcc_args=['-msse'])
 
   @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
