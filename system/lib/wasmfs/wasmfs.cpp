@@ -14,8 +14,6 @@
 
 extern "C" {
 
-int emscripten_wasmfs_printbuffer(__wasi_fd_t fd, const uint8_t* ptr, __wasi_size_t len);
-
 std::string buffer;
 
 __wasi_errno_t __wasi_fd_write(
@@ -34,8 +32,9 @@ __wasi_errno_t __wasi_fd_write(
         char current = *(ptr + j);
         if (current == 0 || current == 10) {
           emscripten_console_log(buffer.c_str());
+          buffer.clear();
         } else {
-          buffer += current;
+          buffer.push_back(current);
         }
       }
       num += len;
