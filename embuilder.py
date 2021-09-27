@@ -19,6 +19,7 @@ import time
 
 from tools import shared
 from tools import system_libs
+from tools import ports
 from tools.settings import settings
 import emscripten
 
@@ -72,7 +73,7 @@ PORT_VARIANTS = {
     'sdl2_image_jpg': ('sdl2_image', {'SDL2_IMAGE_FORMATS': ["jpg"]}),
 }
 
-PORTS = sorted(list(system_libs.ports.ports_by_name.keys()) + list(PORT_VARIANTS.keys()))
+PORTS = sorted(list(ports.ports_by_name.keys()) + list(PORT_VARIANTS.keys()))
 
 temp_files = shared.configuration.get_temp_files()
 logger = logging.getLogger('embuilder')
@@ -104,9 +105,9 @@ def build_port(port_name):
     old_settings = None
 
   if force:
-    system_libs.clear_port(port_name, settings)
+    ports.clear_port(port_name, settings)
 
-  system_libs.build_port(port_name, settings)
+  ports.build_port(port_name, settings)
   if old_settings:
     settings.dict().update(old_settings)
 

@@ -38,7 +38,7 @@ from urllib.parse import quote
 
 
 import emscripten
-from tools import shared, system_libs, utils
+from tools import shared, system_libs, utils, ports
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
@@ -866,7 +866,7 @@ def get_cflags(user_args):
   #   -Wno-implicit-function-declaration
   cflags += ['-Werror=implicit-function-declaration']
 
-  system_libs.add_ports_cflags(cflags, settings)
+  ports.add_cflags(cflags, settings)
 
   if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
     return cflags
@@ -2495,7 +2495,7 @@ def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, new
   # link in ports and system libraries, if necessary
   if not settings.SIDE_MODULE:
     # Ports are always linked into the main module, never the size module.
-    extra_files_to_link += system_libs.get_ports_libs(settings)
+    extra_files_to_link += ports.get_libs(settings)
   if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
     settings.LINK_AS_CXX = run_via_emxx
     # Traditionally we always link as C++.  For compatibility we continue to do that,
@@ -2951,7 +2951,7 @@ def parse_args(newargs):
       should_exit = True
     elif check_flag('--clear-ports'):
       logger.info('clearing ports and cache as requested by --clear-ports')
-      system_libs.Ports.erase()
+      ports.clear()
       shared.Cache.erase()
       shared.check_sanity(force=True) # this is a good time for a sanity check
       should_exit = True
@@ -2960,7 +2960,7 @@ def parse_args(newargs):
       shared.check_sanity(force=True)
       should_exit = True
     elif check_flag('--show-ports'):
-      system_libs.show_ports()
+      ports.show_ports()
       should_exit = True
     elif check_arg('--memory-init-file'):
       options.memory_init_file = int(consume_arg())
