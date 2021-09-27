@@ -2388,16 +2388,16 @@ def phase_compile_inputs(options, state, newargs, input_files):
       return True
     return False
 
-  def get_compiler(cxx):
-    if cxx:
+  def get_compiler(src_file):
+    if use_cxx(src_file):
       return CXX
     return CC
 
   def get_clang_command(src_file):
-    return get_compiler(use_cxx(src_file)) + get_cflags(state.orig_args) + compile_args + [src_file]
+    return get_compiler(src_file) + get_cflags(state.orig_args) + compile_args + [src_file]
 
   def get_clang_command_asm(src_file):
-    return get_compiler(use_cxx(src_file)) + get_clang_flags() + compile_args + [src_file]
+    return get_compiler(src_file) + get_clang_flags() + compile_args + [src_file]
 
   # preprocessor-only (-E) support
   if state.mode == Mode.PREPROCESS_ONLY:
