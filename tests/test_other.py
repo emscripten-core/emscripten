@@ -10475,7 +10475,10 @@ exec "$@"
     self.assertIn('Hello! answer: 42', result)
 
   def test_split_main_module(self):
-    initialTableSize = 17
+    # Set and reasonably large initial table size to avoid test fragility.
+    # The actual number of slots needed is closer to 18 but we don't want
+    # this test to fail every time that changes.
+    initialTableSize = 100
 
     side_src = test_file('other/lib_hello.c')
     post_js = test_file('other/test_split_module.post.js')
