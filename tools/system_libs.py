@@ -822,7 +822,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
-        filenames=['dlerror.c'])
+        filenames=['dlerror.c', 'dlsym.c', 'dlclose.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/signal',
@@ -849,6 +849,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     libc_files += files_in_path(
         path='system/lib/libc',
         filenames=[
+          'dynlink.c',
           'extras.c',
           'wasi-helpers.c',
           'emscripten_get_heap_size.c',

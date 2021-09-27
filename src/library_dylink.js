@@ -180,31 +180,22 @@ var LibraryDylink = {
 #endif
 
 #if MAIN_MODULE == 0
-  dlopen: function(filename, flag) {
+  _dlopen_js: function(filename, flag) {
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
-  emscripten_dlopen: function(filename, flags, user_data, onsuccess, onerror) {
+  _emscripten_dlopen_js: function(filename, flags, user_data, onsuccess, onerror) {
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
-  dlclose: function(handle) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
-  dlsym: function(handle, symbol) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
-  dladdr: function(address, info) {
+  _dlsym_js: function(handle, symbol) {
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
 #else // MAIN_MODULE != 0
   // dynamic linker/loader (a-la ld.so on ELF systems)
   $LDSO: {
-    // next free handle to use for a loaded dso.
-    // (handle=0 is avoided as it means "error" in dlopen)
-    nextHandle: 1,
-    // handle -> dso [refcount, name, module, global]
-    loadedLibs: {},
-    // name   -> handle
-    loadedLibNames: {},
+    // name -> dso [refcount, name, module, global]; Used by dlopen
+    loadedLibsByName: {},
+    // handle  -> dso; Used by dlsym
+    loadedLibsByHandle: {},
   },
 
   $dlSetError: ['___dl_seterr',
@@ -598,7 +589,8 @@ var LibraryDylink = {
     return loadModule();
   },
 
-  // loadDynamicLibrary loads dynamic library @ lib URL / path and returns handle for loaded DSO.
+  // loadDynamicLibrary loads dynamic library @ lib URL / path and returns
+  // handle for loaded DSO.
   //
   // Several flags affect the loading:
   //
@@ -619,31 +611,29 @@ var LibraryDylink = {
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$isInternalSym', '$mergeLibSymbols'],
-  $loadDynamicLibrary: function(lib, flags) {
+  $loadDynamicLibrary: function(lib, flags, handle) {
 #if DYLINK_DEBUG
-    err("loadDynamicLibrary: " + lib);
+    err('loadDynamicLibrary: ' + lib + ' handle:' + handle);
 #endif
     if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
-      LDSO.loadedLibs[-1] = {
+      LDSO.loadedLibsByName[lib] = {
         refcount: Infinity,   // = nodelete
         name:     '__main__',
         module:   Module['asm'],
         global:   true
       };
-      LDSO.loadedLibNames['__main__'] = -1;
     }
 
-    // when loadDynamicLibrary did not have flags, libraries were loaded globally & permanently
+    // when loadDynamicLibrary did not have flags, libraries were loaded
+    // globally & permanently
     flags = flags || {global: true, nodelete: true}
 
-    var handle = LDSO.loadedLibNames[lib];
-    var dso;
-    if (handle) {
+    var dso = LDSO.loadedLibsByName[lib];
+    if (dso) {
       // the library is being loaded or has been loaded already.
       //
       // however it could be previously loaded only locally and if we get
       // load request with global=true we have to make it globally visible now.
-      dso = LDSO.loadedLibs[handle];
       if (flags.global && !dso.global) {
         dso.global = true;
         if (dso.module !== 'loading') {
@@ -656,19 +646,23 @@ var LibraryDylink = {
         dso.refcount = Infinity;
       }
       dso.refcount++
-      return flags.loadAsync ? Promise.resolve(handle) : handle;
+      if (handle) {
+        LDSO.loadedLibsByHandle[handle] = dso;
+      }
+      return flags.loadAsync ? Promise.resolve(true) : true;
     }
 
-    // allocate new DSO & handle
-    handle = LDSO.nextHandle++;
+    // allocate new DSO
     dso = {
       refcount: flags.nodelete ? Infinity : 1,
       name:     lib,
       module:   'loading',
       global:   flags.global,
     };
-    LDSO.loadedLibNames[lib] = handle;
-    LDSO.loadedLibs[handle] = dso;
+    LDSO.loadedLibsByName[lib] = dso;
+    if (handle) {
+      LDSO.loadedLibsByHandle[handle] = dso;
+    }
 
     // libData <- libFile
     function loadLibData(libFile) {
@@ -727,7 +721,7 @@ var LibraryDylink = {
 #endif
       return getLibModule().then(function(libModule) {
         moduleLoaded(libModule);
-        return handle;
+        return true;
       });
     }
 
@@ -735,7 +729,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     err("loadDynamicLibrary: done");
 #endif
-    return handle;
+    return true;
   },
 
   $preloadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
@@ -769,7 +763,7 @@ var LibraryDylink = {
 
   // void* dlopen(const char* filename, int flags);
   $dlopenInternal__deps: ['$FS', '$ENV', '$dlSetError'],
-  $dlopenInternal: function(filenameAddr, flags, jsflags) {
+  $dlopenInternal: function(filenameAddr, flags, jsflags, handle) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     var searchpaths = [];
@@ -779,7 +773,7 @@ var LibraryDylink = {
     } else {
       filename = UTF8ToString(filenameAddr);
 
-      var isValidFile = function (filename) {
+      var isValidFile = function(filename) {
         var target = FS.findObject(filename);
         return target && !target.isFolder && !target.isDevice;
       };
@@ -799,11 +793,6 @@ var LibraryDylink = {
       }
     }
 
-    if (!(flags & ({{{ cDefine('RTLD_LAZY') }}} | {{{ cDefine('RTLD_NOW') }}}))) {
-      dlSetError('invalid mode for dlopen(): Either RTLD_LAZY or RTLD_NOW is required');
-      return 0;
-    }
-
     // We don't care about RTLD_NOW and RTLD_LAZY.
     var combinedFlags = {
       global:    Boolean(flags & {{{ cDefine('RTLD_GLOBAL') }}}),
@@ -813,11 +802,11 @@ var LibraryDylink = {
     }
 
     if (jsflags.loadAsync) {
-      return loadDynamicLibrary(filename, combinedFlags);
+      return loadDynamicLibrary(filename, combinedFlags, handle);
     }
 
     try {
-      return loadDynamicLibrary(filename, combinedFlags)
+      return loadDynamicLibrary(filename, combinedFlags, handle)
     } catch (e) {
 #if ASSERTIONS
       err('Error in loading dynamic library ' + filename + ": " + e);
@@ -827,16 +816,16 @@ var LibraryDylink = {
     }
   },
 
-  dlopen__deps: ['$dlopenInternal'],
-  dlopen__sig: 'iii',
-  dlopen: function(filename, flags) {
+  _dlopen_js__deps: ['$dlopenInternal'],
+  _dlopen_js__sig: 'iiii',
+  _dlopen_js: function(filename, flags, handle) {
 #if ASYNCIFY
     return Asyncify.handleSleep(function(wakeUp) {
       var jsflags = {
         loadAsync: true,
         fs: FS, // load libraries from provided filesystem
       }
-      var promise = dlopenInternal(filename, flags, jsflags);
+      var promise = dlopenInternal(filename, flags, jsflags, handle);
       promise.then(wakeUp).catch(function() { wakeUp(0) });
     });
 #else
@@ -844,31 +833,31 @@ var LibraryDylink = {
       loadAsync: false,
       fs: FS, // load libraries from provided filesystem
     }
-    return dlopenInternal(filename, flags, jsflags);
+    return dlopenInternal(filename, flags, jsflags, handle);
 #endif
   },
 
   // Async version of dlopen.
-  emscripten_dlopen__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError',
+  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError',
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush',
     '$runtimeKeepalivePop',
 #endif
   ],
-  emscripten_dlopen__sig: 'iii',
-  emscripten_dlopen: function(filename, flags, user_data, onsuccess, onerror) {
+  _emscripten_dlopen_js__sig: 'viiiii',
+  _emscripten_dlopen_js: function(filename, flags, handle, onsuccess, onerror) {
     function errorCallback(e) {
       dlSetError('Could not load dynamic lib: ' + UTF8ToString(filename) + '\n' + e);
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vi', 'onerror') }}}(user_data); });
+      callUserCallback(function () { {{{ makeDynCall('vi', 'onerror') }}}(handle); });
     }
-    function successCallback(handle) {
+    function successCallback() {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function () { {{{ makeDynCall('vii', 'onsuccess') }}}(user_data, handle); });
+      callUserCallback(function () { {{{ makeDynCall('vii', 'onsuccess') }}}(handle); });
     }
 
     {{{ runtimeKeepalivePush() }}}
-    var promise = dlopenInternal(filename, flags, { loadAsync: true });
+    var promise = dlopenInternal(filename, flags, { loadAsync: true }, handle);
     if (promise) {
       promise.then(successCallback, errorCallback);
     } else {
@@ -876,28 +865,10 @@ var LibraryDylink = {
     }
   },
 
-  // int dlclose(void* handle);
-  dlclose__deps: ['$dlSetError'],
-  dlclose__sig: 'ii',
-  dlclose: function(handle) {
-    // int dlclose(void *handle);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlclose.html
-    var lib = LDSO.loadedLibs[handle];
-    if (!lib) {
-      dlSetError('Tried to dlclose() unopened handle: ' + handle);
-      return 1;
-    }
-    if (--lib.refcount == 0) {
-      delete LDSO.loadedLibNames[lib.name];
-      delete LDSO.loadedLibs[handle];
-    }
-    return 0;
-  },
-
   // void* dlsym(void* handle, const char* symbol);
-  dlsym__deps: ['$dlSetError'],
-  dlsym__sig: 'iii',
-  dlsym: function(handle, symbol) {
+  _dlsym_js__deps: ['$dlSetError'],
+  _dlsym_js__sig: 'iii',
+  _dlsym_js: function(handle, symbol) {
     // void *dlsym(void *restrict handle, const char *restrict name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
     symbol = UTF8ToString(symbol);
@@ -910,11 +881,10 @@ var LibraryDylink = {
         return 0;
       }
     } else {
-      var lib = LDSO.loadedLibs[handle];
-      if (!lib) {
-        dlSetError('Tried to dlsym() from an unopened handle: ' + handle)
-        return 0;
-      }
+      var lib = LDSO.loadedLibsByHandle[handle];
+#if ASSERTIONS
+      assert(lib, 'Tried to dlsym() from an unopened handle: ' + handle);
+#endif
       if (!lib.module.hasOwnProperty(symbol)) {
         dlSetError('Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: ' + lib.name)
         return 0;
@@ -935,18 +905,6 @@ var LibraryDylink = {
     } else {
       return result;
     }
-  },
-
-  dladdr__deps: ['$stringToNewUTF8', '$getExecutableName'],
-  dladdr__sig: 'iii',
-  dladdr: function(addr, info) {
-    // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = stringToNewUTF8(getExecutableName()); // XXX leak
-    {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
-    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
-    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
-    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*3, '0', 'i32') }}};
-    return 1;
   },
 #endif // MAIN_MODULE != 0
 };
