@@ -2739,10 +2739,10 @@ def version_string():
     git_rev = run_process(
       ['git', 'rev-parse', 'HEAD'],
       stdout=PIPE, stderr=PIPE, cwd=utils.path_from_root()).stdout.strip()
-    revision_suffix = '-git (%s)' % git_rev
-  elif os.path.exists(utils.path_from_root('emscripten-revision.txt')):
-    git_rev = read_file(utils.path_from_root('emscripten-revision.txt')).strip()
     revision_suffix = ' (%s)' % git_rev
+  elif os.path.exists(utils.path_from_root('emscripten-revision.txt')):
+    rev = read_file(utils.path_from_root('emscripten-revision.txt')).strip()
+    revision_suffix = ' (%s)' % rev
   return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {shared.EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
