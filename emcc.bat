@@ -19,4 +19,8 @@
   set CMD=ccache "%~dp0\%~n0.bat"
 )
 
-@%CMD% %*
+:: Python Windows bug https://bugs.python.org/issue34780: If emcc.bat was invoked via a
+:: shared stdin handle from the parent process, and that parent process stdin handle is in
+:: a certain state, running python.exe might hang here. To work around this, invoke python
+:: with '< NUL' stdin to avoid sharing the parent's stdin handle to it, avoiding the hang.
+@%CMD% %* < NUL
