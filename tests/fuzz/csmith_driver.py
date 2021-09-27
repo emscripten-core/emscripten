@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # Copyright 2013 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -13,15 +13,15 @@ import os
 import sys
 import shutil
 import random
+import subprocess
+from subprocess import check_call, PIPE, STDOUT, CalledProcessError
 from distutils.spawn import find_executable
-from subprocess import check_call, Popen, PIPE, CalledProcessError
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(script_dir))))
 
 from tools import shared
 from tools import config
-from tools import utils
 
 # can add flags like --no-threads --ion-offthread-compile=off
 engine = eval('config.' + sys.argv[1]) if len(sys.argv) > 1 else config.JS_ENGINES[0]
@@ -84,22 +84,17 @@ while 1:
     notes['invalid'] += 1
     continue
 
-  shared.run_process([COMP, '-m32', opts, '-emit-llvm', '-c', fullname, '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.get_cflags() + ['-w'])
-  shared.run_process([utils.path_from_root('tools/nativize_llvm.py'), filename + '.bc'], stderr=PIPE)
-  shutil.move(filename + '.bc.run', filename + '2')
+  shared.run_process([COMP, '-m32', opts, '-emit-llvm', '-c', fullname, '-o', filename + '.bc'] + CSMITH_CFLAGS + ['-w'])
   shared.run_process([COMP, fullname, '-o', filename + '3'] + CSMITH_CFLAGS + ['-w'])
   print('3) Run natively')
   try:
-    correct1 = shared.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
-    if 'Segmentation fault' in correct1 or len(correct1) < 10:
+    correct1 = subprocess.run([filename + '1'], stdout=PIPE, stderr=STDOUT, timeout=3)
+    if b'Segmentation fault' in correct1.stdout or len(correct1.stdout) < 10:
       raise Exception('segfault')
-    correct2 = shared.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 3)
-    if 'Segmentation fault' in correct2 or len(correct2) < 10:
+    correct3 = subprocess.run([filename + '3'], stdout=PIPE, stderr=STDOUT, timeout=3)
+    if b'Segmentation fault' in correct3.stdout or len(correct3.stdout) < 10:
       raise Exception('segfault')
-    correct3 = shared.timeout_run(Popen([filename + '3'], stdout=PIPE, stderr=PIPE), 3)
-    if 'Segmentation fault' in correct3 or len(correct3) < 10:
-      raise Exception('segfault')
-    if correct1 != correct3:
+    if correct1.stdout != correct3.stdout:
       raise Exception('clang opts change result')
   except Exception as e:
     print('Failed or infinite looping in native, skipping', e)
@@ -165,12 +160,12 @@ while 1:
   def execute_js(engine):
     print('(run in %s)' % engine)
     try:
-      js = shared.timeout_run(Popen(shared.NODE_JS + [filename + '.js'], stdout=PIPE, stderr=PIPE), 15 * 60)
+      js = subprocess.run(shared.NODE_JS + [filename + '.js'], stdout=PIPE, stderr=PIPE, timeout=15 * 60)
     except Exception:
       print('failed to run in primary')
       return False
     js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)
-    return correct1 == js or correct2 == js
+    return correct1.stdout == js
 
   def fail():
     global fails
