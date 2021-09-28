@@ -31,7 +31,7 @@ __wasi_errno_t __wasi_fd_write(
       for (__wasi_size_t j = 0; j < len; j++) {
         uint8_t current = buf[j];
         if (current == 0 || current == 10) {
-          buffer.push_back('\0');
+          buffer.push_back('\0'); // for null-terminated C strings
           emscripten_console_log(&buffer[0]);
           buffer.clear();
         } else {
