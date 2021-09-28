@@ -14,7 +14,7 @@
 
 extern "C" {
 
-std::vector<char> buffer;
+static std::vector<char> fd_write_stdstream_buffer;
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
@@ -31,11 +31,15 @@ __wasi_errno_t __wasi_fd_write(
       for (__wasi_size_t j = 0; j < len; j++) {
         uint8_t current = buf[j];
         if (current == 0 || current == 10) {
-          buffer.push_back('\0'); // for null-terminated C strings
-          emscripten_console_log(&buffer[0]);
-          buffer.clear();
+          fd_write_stdstream_buffer.push_back('\0'); // for null-terminated C strings
+          if (fd == 1) {
+            emscripten_console_log(&fd_write_stdstream_buffer[0]);
+          } else if (fd == 2) {
+            emscripten_console_error(&fd_write_stdstream_buffer[0]);
+          }
+          fd_write_stdstream_buffer.clear();
         } else {
-          buffer.push_back(current);
+          fd_write_stdstream_buffer.push_back(current);
         }
       }
       num += len;
