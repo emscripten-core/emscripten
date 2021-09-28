@@ -5790,7 +5790,14 @@ int main(int argc,char** argv) {
     self.do_other_test('test_dlopen_blocking.c')
 
   def test_dlsym_rtld_default(self):
+    create_file('side.c', r'''
+    int baz() {
+      return 99;
+    }
+    ''')
+    self.run_process([EMCC, '-o', 'libside.so', 'side.c', '-sSIDE_MODULE'])
     create_file('main.c', r'''
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5808,30 +5815,41 @@ EMSCRIPTEN_KEEPALIVE int64_t foo64() {
 int main(int argc, char** argv) {
   int (*f)();
   f = dlsym(RTLD_DEFAULT, "foo");
-  if (!f) {
-    printf("dlsym failed: %s\n", dlerror());
-    return 1;
-  }
+  assert(f);
   printf("foo -> %d\n", f());
+  assert(f() == 42);
 
   int64_t (*f64)();
   f64 = dlsym(RTLD_DEFAULT, "foo64");
-  if (!f64) {
-    printf("dlsym failed: %s\n", dlerror());
-    return 1;
-  }
+  assert(f64);
   printf("foo64 -> %lld\n", f64());
+  assert(f64() == 64);
 
+  // Missing function
   f = dlsym(RTLD_DEFAULT, "bar");
   printf("bar -> %p\n", f);
+  assert(f == NULL);
+
+  // Function from side module that was loaded at startup
+  f = dlsym(RTLD_DEFAULT, "baz");
+  assert(f);
+  printf("baz -> %p\n", f);
+  assert(f() == 99);
+
+  // Check that dlopen()'ing libside.so gives that same
+  // address for baz.
+  void* handle = dlopen("libside.so", RTLD_NOW);
+  assert(handle);
+  int (*baz)() = dlsym(handle, "baz");
+  assert(baz);
+  printf("baz -> %p\n", baz);
+  assert(baz() == 99);
+  assert(baz == f);
+
   return 0;
 }
 ''')
-    self.run_process([EMCC, 'main.c', '-s', 'MAIN_MODULE=2'])
-    out = self.run_js('a.out.js')
-    self.assertContained('foo -> 42', out)
-    self.assertContained('foo64 -> 64', out)
-    self.assertContained('bar -> 0', out)
+    self.do_runf('main.c', emcc_args=['-sMAIN_MODULE=2', 'libside.so'])
 
   def test_dlsym_rtld_default_js_symbol(self):
     create_file('lib.js', '''
