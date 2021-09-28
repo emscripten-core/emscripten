@@ -3460,13 +3460,17 @@ ok
       #include <stddef.h>
 
       int main() {
-        void *liba, *libb, *liba2;
+        void *liba, *libb, *liba2, *libb2;
         int err;
 
         liba = dlopen("liba.so", RTLD_NOW);
         assert(liba != NULL);
         libb = dlopen("libb.so", RTLD_NOW);
-        assert(liba != NULL);
+        assert(libb != NULL);
+
+        // Test that opening libb a second times gives the same handle
+        libb2 = dlopen("libb.so", RTLD_NOW);
+        assert(libb == libb2);
 
         err = dlclose(liba);
         assert(!err);
