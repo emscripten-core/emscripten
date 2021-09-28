@@ -2673,12 +2673,35 @@ var LibraryJSEvents = {
     return requestAnimationFrame(tick);
   },
 
+  // Just like setImmediate but returns an i32 that can be passed back
+  // to wasm rather than a JS object.
+  $setImmediateWrapped: function(func) {
+    if (!setImmediateWrapped.mapping) setImmediateWrapped.mapping = [];
+    var id = setImmediateWrapped.mapping.length;
+    setImmediateWrapped.mapping[id] = setImmediate(function() {
+      setImmediateWrapped.mapping[id] = undefined;
+      func();
+    });
+    return id;
+  },
+
+  // Just like clearImmediate but takes an i32 rather than an object.
+  $clearImmediateWrapped: function(id) {
+#if ASSERTIONS
+    assert(id);
+    assert(setImmediateWrapped.mapping[id]);
+#endif
+    clearImmediate(setImmediateWrapped.mapping[id]);
+    setImmediateWrapped.mapping[id] = undefined;
+  },
+
+  $polyfillSetImmediate__deps: ['$setImmediateWrapped', '$clearImmediateWrapped'],
   $polyfillSetImmediate__postset:
     'var emSetImmediate;\n' +
     'var emClearImmediate;\n' +
     'if (typeof setImmediate !== "undefined") {\n' +
-      'emSetImmediate = setImmediate;\n' +
-      'emClearImmediate = clearImmediate;\n' +
+      'emSetImmediate = setImmediateWrapped;\n' +
+      'emClearImmediate = clearImmediateWrapped;\n' +
     '} else if (typeof addEventListener === "function") {\n' +
       'var __setImmediate_id_counter = 0;\n' +
       'var __setImmediate_queue = [];\n' +

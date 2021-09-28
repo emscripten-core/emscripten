@@ -10996,3 +10996,9 @@ void foo() {}
     self.do_runf(test_file('other', 'test_default_pthread_stack_size.c'))
     self.emcc_args.append('-sUSE_PTHREADS')
     self.do_runf(test_file('other', 'test_default_pthread_stack_size.c'))
+
+  def test_emscripten_set_immediate(self):
+    self.do_runf(test_file('emscripten_set_immediate.c'))
+
+  def test_emscripten_set_immediate_loop(self):
+    self.do_runf(test_file('emscripten_set_immediate_loop.c'))
