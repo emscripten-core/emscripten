@@ -11002,3 +11002,15 @@ void foo() {}
 
   def test_emscripten_set_immediate_loop(self):
     self.do_runf(test_file('emscripten_set_immediate_loop.c'))
+
+  @node_pthreads
+  def test_pthread_trap(self):
+    # TODO(https://github.com/emscripten-core/emscripten/issues/15161):
+    # Make this work without PROXY_TO_PTHREAD
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('EXIT_RUNTIME')
+    self.emcc_args += ['--profiling-funcs']
+    output = self.do_runf(test_file('pthread/test_pthread_trap.c'), assert_returncode=NON_ZERO)
+    self.assertContained("pthread sent an error!", output)
+    self.assertContained("at thread_main", output)
