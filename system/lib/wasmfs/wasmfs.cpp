@@ -26,10 +26,10 @@ __wasi_errno_t __wasi_fd_write(
   if (fd == 1 || fd == 2) {
     __wasi_size_t num = 0;
     for (size_t i = 0; i < iovs_len; i++) {
-      const uint8_t* ptr = iovs[i].buf;
+      const uint8_t* buf = iovs[i].buf;
       __wasi_size_t len = iovs[i].buf_len;
       for (__wasi_size_t j = 0; j < len; j++) {
-        char current = *(ptr + j);
+        uint8_t current = buf[j];
         if (current == 0 || current == 10) {
           buffer.push_back('\0');
           emscripten_console_log(&buffer[0]);
