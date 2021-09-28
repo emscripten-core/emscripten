@@ -2348,8 +2348,8 @@ void *getBindBuffer() {
         doCcall(1);
         ok = true; // should fail and not reach here, runtime is not ready yet so ccall will abort
       } catch(e) {
-        out('expected fail 1');
-        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
+        out('expected fail 1: ' + e.toString());
+        assert(e.toString().indexOf('Assertion failed') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
       assert(ok === expected_ok);
@@ -2359,8 +2359,8 @@ void *getBindBuffer() {
         doCwrapCall(2);
         ok = true; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
       } catch(e) {
-        out('expected fail 2');
-        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
+        out('expected fail 2: ' + e.toString());
+        assert(e.toString().indexOf('Assertion failed') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
       assert(ok === expected_ok);
@@ -2370,8 +2370,8 @@ void *getBindBuffer() {
         doDirectCall(3);
         ok = true; // should fail and not reach here, runtime is not ready yet so any code execution
       } catch(e) {
-        out('expected fail 3');
-        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
+        out('expected fail 3:' + e.toString());
+        assert(e.toString().indexOf('Assertion failed') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
       assert(ok === expected_ok);
@@ -3400,13 +3400,13 @@ window.close = function() {
             reportResultToServer("Module creation succeeded when it should have failed");
           })
           .catch(err => {
-            reportResultToServer(err.message.slice(0, 54));
+            reportResultToServer(err.message);
           });
       </script>
     ''')
     print('Deleting a.out.wasm to cause a download error')
     os.remove('a.out.wasm')
-    self.run_browser('a.html', '...', '/report_result?abort(both async and sync fetching of the wasm failed)')
+    self.run_browser('a.html', '...', '/report_result?Aborted(both async and sync fetching of the wasm failed)')
 
   def test_modularize_init_error(self):
     test_cpp_path = test_file('browser/test_modularize_init_error.cpp')

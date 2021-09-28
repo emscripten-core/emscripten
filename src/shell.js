@@ -153,6 +153,26 @@ var read_,
     readBinary,
     setWindowTitle;
 
+#if ENVIRONMENT_MAY_BE_SHELL || ENVIRONMENT_MAY_BE_NODE || ASSERTIONS
+// Normally we don't log exceptions but instead let them bubble out the top
+// level where the embedding environment (e.g. the browser) can handle
+// them.
+// However under v8 and node we sometimes exit the process direcly in which case
+// its up to use us to log the exception before exiting.
+// If we fix https://github.com/emscripten-core/emscripten/issues/15080
+// this may no longer be needed under node.
+function logExceptionOnExit(e) {
+  if (e instanceof ExitStatus) return;
+  var toLog = e;
+#if ASSERTIONS
+  if (e && typeof e === 'object' && e.stack) {
+    toLog = [e, e.stack];
+  }
+#endif
+  err('exiting due to exception: ' + toLog);
+}
+#endif
+
 #if ENVIRONMENT_MAY_BE_NODE
 var nodeFS;
 var nodePath;
@@ -208,6 +228,7 @@ if (ENVIRONMENT_IS_NODE) {
       process['exitCode'] = status;
       throw toThrow;
     }
+    logExceptionOnExit(toThrow);
     process['exit'](status);
   };
 
@@ -282,7 +303,8 @@ if (ENVIRONMENT_IS_SHELL) {
   }
 
   if (typeof quit === 'function') {
-    quit_ = function(status) {
+    quit_ = function(status, toThrow) {
+      logExceptionOnExit(toThrow);
       quit(status);
     };
   }

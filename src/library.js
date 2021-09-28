@@ -443,11 +443,17 @@ LibraryManager.library = {
   __cxa_atexit: 'atexit',
 #endif
 
-  // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
-  // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
+  // TODO: There are currently two abort() functions that get imported to asm
+  // module scope: the built-in runtime function abort(), and this library
+  // function _abort(). Remove one of these, importing two functions for the
+  // same purpose is wasteful.
   abort__sig: 'v',
   abort: function() {
-    abort();
+#if ASSERTIONS
+    abort('native code called abort()');
+#else
+    abort('');
+#endif
   },
 
   // This object can be modified by the user during startup, which affects
@@ -3604,14 +3610,6 @@ LibraryManager.library = {
     if (e instanceof ExitStatus || e == 'unwind') {
       return EXITSTATUS;
     }
-    // Anything else is an unexpected exception and we treat it as hard error.
-    var toLog = e;
-#if ASSERTIONS
-    if (e && typeof e === 'object' && e.stack) {
-      toLog = [e, e.stack];
-    }
-#endif
-    err('exception thrown: ' + toLog);
 #if MINIMAL_RUNTIME
     throw e;
 #else
