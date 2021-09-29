@@ -4309,6 +4309,32 @@ res64 - external 64\n''', header='''
       }
     ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
 
+  @with_both_exception_handling
+  @needs_dylink
+  def test_dylink_exceptions_try_catch(self):
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      extern void side();
+      int main() {
+        try {
+          throw 3;
+        } catch (int n) {
+          printf("main: caught %d\n", n);
+        }
+        side();
+        return 0;
+      }
+    ''', side=r'''
+      #include <stdio.h>
+      void side() {
+        try {
+          throw 5.3f;
+        } catch (float f) {
+          printf("side: caught %.1f\n", f);
+        }
+      }
+      ''', expected=['main: caught 3\nside: caught 5.3\n'])
+
   @needs_dylink
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
   def test_dylink_hyper_dupe(self):
