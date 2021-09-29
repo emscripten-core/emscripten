@@ -553,7 +553,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     compiler = [compiler_for(filename, force_c)]
     if compiler[0] == EMCC:
       # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
-      # For historical reasons emcc compiles and link as C++ by default.
+      # For historical reasons emcc compiles and links as C++ by default.
       # However we want to run out tests in a more strict manor.  We can
       # remove this if the issue above is ever fixed.
       compiler.append('-sNO_DEFAULT_TO_CXX')
