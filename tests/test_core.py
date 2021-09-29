@@ -1246,6 +1246,12 @@ int main(int argc, char **argv)
     err = self.expect_fail([EMCC, test_file('hello_world.c')] + self.get_emcc_args())
     self.assertContained('error: DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive', err)
 
+  def test_exceptions_std_mm2(self):
+    self.set_setting('MAIN_MODULE', 2)
+    self.emcc_args.append('-fPIC')
+    self.emcc_args.append('-fwasm-exceptions')
+    self.do_core_test('test_exceptions_std.cpp')
+
   @with_both_exception_handling
   def test_exceptions_uncaught(self):
     # needs to flush stdio streams
