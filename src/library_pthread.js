@@ -1261,7 +1261,7 @@ var LibraryPThread = {
 
   // This function is call by a pthread to signal that exit() was called and
   // that the entire process should exit.
-  // This function is always called form a pthread, but is executaed on the
+  // This function is always called from a pthread, but is executed on the
   // main thread due the __proxy attribute.
   $exitOnMainThread__deps: ['exit',
 #if !MINIMAL_RUNTIME
