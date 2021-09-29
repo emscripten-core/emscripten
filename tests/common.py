@@ -555,9 +555,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # TODO change test behaviour in the future when WASMFS becomes default file system
       # WASMFS is excluded here since it currently requires stdlib++ functions
       # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
-      # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
-      # this if this issues is fixed.
-      compiler.append('-nostdlib++')
+      # For historical reasons emcc compiles and links as C++ by default.
+      # However we want to run our tests in a more strict manner.  We can
+      # remove this if the issue above is ever fixed.
+      compiler.append('-sNO_DEFAULT_TO_CXX')
 
     if force_c:
       compiler.append('-xc')
