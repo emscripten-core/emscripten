@@ -645,6 +645,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       stderr_file = self.in_dir('stderr')
       stderr = open(stderr_file, 'w')
     error = None
+    timeout_error = None
     if not engine:
       engine = self.js_engines[0]
     if engine == config.NODE_JS:
@@ -656,6 +657,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                    stdout=open(stdout_file, 'w'),
                    stderr=stderr,
                    assert_returncode=assert_returncode)
+    except subprocess.TimeoutExpired as e:
+      timeout_error = e
     except subprocess.CalledProcessError as e:
       error = e
 
@@ -668,7 +671,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       ret += read_file(stderr_file)
     if output_nicerizer:
       ret = output_nicerizer(ret)
-    if error or EMTEST_VERBOSE:
+    if error or timeout_error or EMTEST_VERBOSE:
       ret = limit_size(ret)
       print('-- begin program output --')
       print(read_file(stdout_file), end='')
@@ -677,11 +680,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         print('-- begin program stderr --')
         print(read_file(stderr_file), end='')
         print('-- end program stderr --')
-      if error:
-        if assert_returncode == NON_ZERO:
-          self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
-        else:
-          self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
+    if timeout_error:
+      raise timeout_error
+    if error:
+      if assert_returncode == NON_ZERO:
+        self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
+      else:
+        self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
 
     #  We should pass all strict mode checks
     self.assertNotContained('strict warning:', ret)
