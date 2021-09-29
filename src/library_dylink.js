@@ -58,7 +58,12 @@ var LibraryDylink = {
       '__cpp_exception',
       '__wasm_apply_data_relocs',
       '__dso_handle',
-      '__set_stack_limits'
+      '__tls_size',
+      '__tls_align',
+      '__set_stack_limits',
+      'emscripten_tls_init',
+      '__wasm_init_tls',
+      '__wasm_call_ctors',
     ].includes(symName)
 #if SPLIT_MODULE
         // Exports synthesized by wasm-split should be prefixed with '%'
@@ -70,7 +75,7 @@ var LibraryDylink = {
   $updateGOT__deps: ['$GOT', '$isInternalSym'],
   $updateGOT: function(exports, replace) {
 #if DYLINK_DEBUG
-    err("updateGOT: " + Object.keys(exports).length);
+    err("updateGOT: adding " + Object.keys(exports).length + " symbols");
 #endif
     for (var symName in exports) {
       if (isInternalSym(symName)) {
@@ -92,7 +97,7 @@ var LibraryDylink = {
         if (typeof value === 'function') {
           GOT[symName].value = addFunctionWasm(value);
 #if DYLINK_DEBUG
-          err("updateGOT FUNC: " + symName + ' : ' + GOT[symName].value);
+          err("updateGOT: FUNC: " + symName + ' : ' + GOT[symName].value);
 #endif
         } else if (typeof value === 'number') {
           GOT[symName].value = value;
@@ -154,7 +159,7 @@ var LibraryDylink = {
         assert(value, 'undefined symbol `' + symName + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
 #if DYLINK_DEBUG
-        err('assigning dynamic symbol from main module: ' + symName + ' -> ' + value);
+        err('assigning dynamic symbol from main module: ' + symName + ' -> ' + prettyPrint(value));
 #endif
         if (typeof value === 'function') {
           GOT[symName].value = addFunctionWasm(value, value.sig);
@@ -615,6 +620,9 @@ var LibraryDylink = {
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$isInternalSym', '$mergeLibSymbols'],
   $loadDynamicLibrary: function(lib, flags) {
+#if DYLINK_DEBUG
+    err("loadDynamicLibrary: " + lib);
+#endif
     if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
       LDSO.loadedLibs[-1] = {
         refcount: Infinity,   // = nodelete
@@ -714,6 +722,9 @@ var LibraryDylink = {
     }
 
     if (flags.loadAsync) {
+#if DYLINK_DEBUG
+      err("loadDynamicLibrary: done (async)");
+#endif
       return getLibModule().then(function(libModule) {
         moduleLoaded(libModule);
         return handle;
@@ -721,6 +732,9 @@ var LibraryDylink = {
     }
 
     moduleLoaded(getLibModule());
+#if DYLINK_DEBUG
+    err("loadDynamicLibrary: done");
+#endif
     return handle;
   },
 

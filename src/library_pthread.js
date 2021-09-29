@@ -510,6 +510,13 @@ var LibraryPThread = {
 #if DYLINK_DEBUG
       err('tlsInit -> ' + __tls_base);
 #endif
+      if (!__tls_base) {
+#if ASSERTIONS
+        // __tls_base should never be zero if there are tls exports
+        assert(__tls_base || Object.keys(metadata.tlsExports).length == 0);
+#endif
+        return;
+      }
       for (var sym in metadata.tlsExports) {
         metadata.tlsExports[sym] = moduleExports[sym];
       }
