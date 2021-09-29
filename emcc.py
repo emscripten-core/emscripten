@@ -2330,6 +2330,10 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   settings.LINK_AS_CXX = (run_via_emxx or settings.DEFAULT_TO_CXX) and '-nostdlib++' not in newargs
 
+  # WASMFS itself is written in C++, and needs C++ standard libraries
+  if settings.WASMFS:
+    settings.LINK_AS_CXX = True
+
   return target, wasm_target
 
 
