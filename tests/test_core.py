@@ -274,7 +274,7 @@ class TestCoreBase(RunnerCore):
   def is_wasm2js(self):
     return self.get_setting('WASM') == 0
 
-# A simple check whether the compiler arguments cause optimization.
+  # A simple check whether the compiler arguments cause optimization.
   def is_optimizing(self):
     return '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args
 
@@ -1837,8 +1837,8 @@ int main(int argc, char **argv) {
     self.emcc_args.append('-std=gnu89')
     self.do_core_test('test_em_asm.cpp', force_c=True)
 
-  # Tests various different ways to invoke the EM_ASM(), EM_ASM_INT() and EM_ASM_DOUBLE() macros.
-  @no_asan('Cannot use ASan: test depends exactly on heap size')
+  # Tests various different ways to invoke the EM_ASM(), EM_ASM_INT()
+  # and EM_ASM_DOUBLE() macros.
   def test_em_asm_2(self):
     self.do_core_test('test_em_asm_2.cpp')
     self.emcc_args.append('-std=gnu89')
@@ -5944,6 +5944,10 @@ void* operator new(size_t size) {
   @is_slow_test
   def test_sse4_1(self):
     src = test_file('sse/test_sse4_1.cpp')
+    if not self.is_optimizing() and '-fsanitize=address' in self.emcc_args:
+      # ASan with -O0 fails with:
+      # Compiling function #69:"__original_main" failed: local count too large
+      self.emcc_args.append('-O1')
     self.run_process([shared.CLANG_CXX, src, '-msse4.1', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse4_1', stdout=PIPE).stdout
 
@@ -7577,6 +7581,7 @@ Module['onRuntimeInitialized'] = function() {
       if should_pass:
         raise
 
+  @no_asan('asyncify stack operations confuse asan')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY')
     self.do_core_test('test_emscripten_scan_registers.cpp')
@@ -8742,9 +8747,9 @@ wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
-lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '--profiling', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1})
-asan = make_run('asan', emcc_args=['-fsanitize=address', '--profiling', '-O2'], settings={'ALLOW_MEMORY_GROWTH': 1})
-asani = make_run('asani', emcc_args=['-fsanitize=address', '--profiling', '-O2', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
+lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '--profiling'], settings={'ALLOW_MEMORY_GROWTH': 1})
+asan = make_run('asan', emcc_args=['-fsanitize=address', '--profiling'], settings={'ALLOW_MEMORY_GROWTH': 1})
+asani = make_run('asani', emcc_args=['-fsanitize=address', '--profiling', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
                  settings={'ALLOW_MEMORY_GROWTH': 1})
 
 # Experimental modes (not tested by CI)
