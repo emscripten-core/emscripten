@@ -2506,6 +2506,9 @@ def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, new
     # unless running in strict mode.
     if not settings.STRICT and '-nostdlib++' not in newargs:
       settings.LINK_AS_CXX = True
+    # WASMFS itself is written in C++, and needs C++ standard libraries
+    if settings.WASMFS:
+      settings.LINK_AS_CXX = True
     extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, forced=state.forced_stdlibs)
   linker_arguments.extend(extra_files_to_link)
 
