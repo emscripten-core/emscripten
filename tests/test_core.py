@@ -3481,7 +3481,7 @@ ok
         return 0;
       }
       ''')
-    self.do_runf('main.c', 'a: loaded\nb: loaded\na: loaded\n')
+    self.do_runf('main.c', 'a: loaded\nb: loaded\n')
 
   @needs_dylink
   @needs_non_trapping_float_to_int
