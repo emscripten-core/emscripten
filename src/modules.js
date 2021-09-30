@@ -188,6 +188,9 @@ var LibraryManager = {
 
     for (var filename of libraries) {
       var src = read(filename);
+      if (VERBOSE) {
+        printErr('processing: ' + filename);
+      }
       var processed = undefined;
       try {
         processed = processMacros(preprocess(src, filename));

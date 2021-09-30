@@ -443,16 +443,21 @@ LibraryManager.library = {
   __cxa_atexit: 'atexit',
 #endif
 
-  // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
-  // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
+  // TODO: There are currently two abort() functions that get imported to asm
+  // module scope: the built-in runtime function abort(), and this library
+  // function _abort(). Remove one of these, importing two functions for the
+  // same purpose is wasteful.
   abort__sig: 'v',
   abort: function() {
-    abort();
+#if ASSERTIONS
+    abort('native code called abort()');
+#else
+    abort('');
+#endif
   },
 
   // This object can be modified by the user during startup, which affects
-  // the initial values of the environment accessible by getenv. (This works
-  // in both fastcomp and upstream).
+  // the initial values of the environment accessible by getenv.
   $ENV: {},
 
   getloadavg: function(loadavg, nelem) {
@@ -2989,9 +2994,9 @@ LibraryManager.library = {
       // we pack index and offset into a "return address"
       return wasmOffsetConverter.convert(+match[1], +match[2]);
     } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
-      // if we are in js, we can use the js line number as the "return address"
-      // this should work for wasm2js and fastcomp
-      // we tag the high bit to distinguish this from wasm addresses
+      // If we are in js, we can use the js line number as the "return address".
+      // This should work for wasm2js.  We tag the high bit to distinguish this
+      // from wasm addresses.
       return 0x80000000 | +match[1];
     } else {
       // return 0 if we can't find any
@@ -3605,14 +3610,6 @@ LibraryManager.library = {
     if (e instanceof ExitStatus || e == 'unwind') {
       return EXITSTATUS;
     }
-    // Anything else is an unexpected exception and we treat it as hard error.
-    var toLog = e;
-#if ASSERTIONS
-    if (e && typeof e === 'object' && e.stack) {
-      toLog = [e, e.stack];
-    }
-#endif
-    err('exception thrown: ' + toLog);
 #if MINIMAL_RUNTIME
     throw e;
 #else

@@ -58,7 +58,12 @@ var LibraryDylink = {
       '__cpp_exception',
       '__wasm_apply_data_relocs',
       '__dso_handle',
-      '__set_stack_limits'
+      '__tls_size',
+      '__tls_align',
+      '__set_stack_limits',
+      'emscripten_tls_init',
+      '__wasm_init_tls',
+      '__wasm_call_ctors',
     ].includes(symName)
 #if SPLIT_MODULE
         // Exports synthesized by wasm-split should be prefixed with '%'
@@ -70,7 +75,7 @@ var LibraryDylink = {
   $updateGOT__deps: ['$GOT', '$isInternalSym'],
   $updateGOT: function(exports, replace) {
 #if DYLINK_DEBUG
-    err("updateGOT: " + Object.keys(exports).length);
+    err("updateGOT: adding " + Object.keys(exports).length + " symbols");
 #endif
     for (var symName in exports) {
       if (isInternalSym(symName)) {
@@ -92,7 +97,7 @@ var LibraryDylink = {
         if (typeof value === 'function') {
           GOT[symName].value = addFunctionWasm(value);
 #if DYLINK_DEBUG
-          err("updateGOT FUNC: " + symName + ' : ' + GOT[symName].value);
+          err("updateGOT: FUNC: " + symName + ' : ' + GOT[symName].value);
 #endif
         } else if (typeof value === 'number') {
           GOT[symName].value = value;
@@ -154,7 +159,7 @@ var LibraryDylink = {
         assert(value, 'undefined symbol `' + symName + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
 #if DYLINK_DEBUG
-        err('assigning dynamic symbol from main module: ' + symName + ' -> ' + value);
+        err('assigning dynamic symbol from main module: ' + symName + ' -> ' + prettyPrint(value));
 #endif
         if (typeof value === 'function') {
           GOT[symName].value = addFunctionWasm(value, value.sig);
@@ -187,18 +192,10 @@ var LibraryDylink = {
   dlsym: function(handle, symbol) {
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
-  dlerror: function() {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
-  },
   dladdr: function(address, info) {
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
 #else // MAIN_MODULE != 0
-  $DLFCN: {
-    error: null,
-    errorMsg: null,
-  },
-
   // dynamic linker/loader (a-la ld.so on ELF systems)
   $LDSO: {
     // next free handle to use for a loaded dso.
@@ -208,6 +205,18 @@ var LibraryDylink = {
     loadedLibs: {},
     // name   -> handle
     loadedLibNames: {},
+  },
+
+  $dlSetError: ['___dl_seterr',
+#if MINIMAL_RUNTIME
+   '$intArrayFromString'
+#endif
+  ],
+  $dlSetError: function(msg) {
+    var sp = stackSave();
+    var msg = allocate(intArrayFromString(msg), ALLOC_STACK);
+    ___dl_seterr(msg);
+    stackRestore(sp);
   },
 
   // Dynamic version of shared.py:make_invoke.  This is needed for invokes
@@ -611,6 +620,9 @@ var LibraryDylink = {
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule', '$asmjsMangle', '$isInternalSym', '$mergeLibSymbols'],
   $loadDynamicLibrary: function(lib, flags) {
+#if DYLINK_DEBUG
+    err("loadDynamicLibrary: " + lib);
+#endif
     if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
       LDSO.loadedLibs[-1] = {
         refcount: Infinity,   // = nodelete
@@ -710,6 +722,9 @@ var LibraryDylink = {
     }
 
     if (flags.loadAsync) {
+#if DYLINK_DEBUG
+      err("loadDynamicLibrary: done (async)");
+#endif
       return getLibModule().then(function(libModule) {
         moduleLoaded(libModule);
         return handle;
@@ -717,6 +732,9 @@ var LibraryDylink = {
     }
 
     moduleLoaded(getLibModule());
+#if DYLINK_DEBUG
+    err("loadDynamicLibrary: done");
+#endif
     return handle;
   },
 
@@ -750,7 +768,7 @@ var LibraryDylink = {
   },
 
   // void* dlopen(const char* filename, int flags);
-  $dlopenInternal__deps: ['$DLFCN', '$FS', '$ENV'],
+  $dlopenInternal__deps: ['$FS', '$ENV', '$dlSetError'],
   $dlopenInternal: function(filenameAddr, flags, jsflags) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
@@ -782,7 +800,7 @@ var LibraryDylink = {
     }
 
     if (!(flags & ({{{ cDefine('RTLD_LAZY') }}} | {{{ cDefine('RTLD_NOW') }}}))) {
-      DLFCN.errorMsg = 'invalid mode for dlopen(): Either RTLD_LAZY or RTLD_NOW is required';
+      dlSetError('invalid mode for dlopen(): Either RTLD_LAZY or RTLD_NOW is required');
       return 0;
     }
 
@@ -804,7 +822,7 @@ var LibraryDylink = {
 #if ASSERTIONS
       err('Error in loading dynamic library ' + filename + ": " + e);
 #endif
-      DLFCN.errorMsg = 'Could not load dynamic lib: ' + filename + '\n' + e;
+      dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);
       return 0;
     }
   },
@@ -831,7 +849,7 @@ var LibraryDylink = {
   },
 
   // Async version of dlopen.
-  emscripten_dlopen__deps: ['$DLFCN', '$dlopenInternal', '$callUserCallback',
+  emscripten_dlopen__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError',
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush',
     '$runtimeKeepalivePop',
@@ -840,7 +858,7 @@ var LibraryDylink = {
   emscripten_dlopen__sig: 'iii',
   emscripten_dlopen: function(filename, flags, user_data, onsuccess, onerror) {
     function errorCallback(e) {
-      DLFCN.errorMsg = 'Could not load dynamic lib: ' + UTF8ToString(filename) + '\n' + e;
+      dlSetError('Could not load dynamic lib: ' + UTF8ToString(filename) + '\n' + e);
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function () { {{{ makeDynCall('vi', 'onerror') }}}(user_data); });
     }
@@ -859,14 +877,14 @@ var LibraryDylink = {
   },
 
   // int dlclose(void* handle);
-  dlclose__deps: ['$DLFCN'],
+  dlclose__deps: ['$dlSetError'],
   dlclose__sig: 'ii',
   dlclose: function(handle) {
     // int dlclose(void *handle);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlclose.html
     var lib = LDSO.loadedLibs[handle];
     if (!lib) {
-      DLFCN.errorMsg = 'Tried to dlclose() unopened handle: ' + handle;
+      dlSetError('Tried to dlclose() unopened handle: ' + handle);
       return 1;
     }
     if (--lib.refcount == 0) {
@@ -877,7 +895,7 @@ var LibraryDylink = {
   },
 
   // void* dlsym(void* handle, const char* symbol);
-  dlsym__deps: ['$DLFCN'],
+  dlsym__deps: ['$dlSetError'],
   dlsym__sig: 'iii',
   dlsym: function(handle, symbol) {
     // void *dlsym(void *restrict handle, const char *restrict name);
@@ -888,17 +906,17 @@ var LibraryDylink = {
     if (handle == {{{ cDefine('RTLD_DEFAULT') }}}) {
       result = resolveGlobalSymbol(symbol, true);
       if (!result) {
-        DLFCN.errorMsg = 'Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: RTLD_DEFAULT'
+        dlSetError('Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: RTLD_DEFAULT');
         return 0;
       }
     } else {
       var lib = LDSO.loadedLibs[handle];
       if (!lib) {
-        DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
+        dlSetError('Tried to dlsym() from an unopened handle: ' + handle)
         return 0;
       }
       if (!lib.module.hasOwnProperty(symbol)) {
-        DLFCN.errorMsg = 'Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: ' + lib.name;
+        dlSetError('Tried to lookup unknown symbol "' + symbol + '" in dynamic lib: ' + lib.name)
         return 0;
       }
 #if !WASM_BIGINT
@@ -917,21 +935,6 @@ var LibraryDylink = {
     } else {
       return result;
     }
-  },
-
-  // char* dlerror(void);
-  dlerror__deps: ['$DLFCN', '$stringToNewUTF8'],
-  dlerror__sig: 'i',
-  dlerror: function() {
-    // char *dlerror(void);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlerror.html
-    if (DLFCN.errorMsg === null) {
-      return 0;
-    }
-    if (DLFCN.error) _free(DLFCN.error);
-    DLFCN.error = stringToNewUTF8(DLFCN.errorMsg);
-    DLFCN.errorMsg = null;
-    return DLFCN.error;
   },
 
   dladdr__deps: ['$stringToNewUTF8', '$getExecutableName'],

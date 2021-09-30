@@ -510,6 +510,13 @@ var LibraryPThread = {
 #if DYLINK_DEBUG
       err('tlsInit -> ' + __tls_base);
 #endif
+      if (!__tls_base) {
+#if ASSERTIONS
+        // __tls_base should never be zero if there are tls exports
+        assert(__tls_base || Object.keys(metadata.tlsExports).length == 0);
+#endif
+        return;
+      }
       for (var sym in metadata.tlsExports) {
         metadata.tlsExports[sym] = moduleExports[sym];
       }
@@ -1252,6 +1259,10 @@ var LibraryPThread = {
 #endif
   },
 
+  // This function is call by a pthread to signal that exit() was called and
+  // that the entire process should exit.
+  // This function is always called from a pthread, but is executed on the
+  // main thread due the __proxy attribute.
   $exitOnMainThread__deps: ['exit',
 #if !MINIMAL_RUNTIME
     '$handleException',
@@ -1259,7 +1270,6 @@ var LibraryPThread = {
   ],
   $exitOnMainThread__proxy: 'async',
   $exitOnMainThread: function(returnCode) {
-    // A pthread has requested to exit the whole application process (runtime).
 #if PTHREADS_DEBUG
     err('exitOnMainThread');
 #endif

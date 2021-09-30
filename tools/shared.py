@@ -15,7 +15,6 @@ import os
 import re
 import shutil
 import subprocess
-import time
 import signal
 import sys
 import tempfile
@@ -234,25 +233,6 @@ def run_js_tool(filename, jsargs=[], *args, **kw):
   return check_call(command, *args, **kw).stdout
 
 
-# Only used by tests and by ctor_evaller.py.   Once fastcomp is removed
-# this can most likely be moved into the tests/jsrun.py.
-def timeout_run(proc, timeout=None, full_output=False, check=True):
-  start = time.time()
-  if timeout is not None:
-    while time.time() - start < timeout and proc.poll() is None:
-      time.sleep(0.1)
-    if proc.poll() is None:
-      proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
-      raise Exception("Timed out")
-  stdout, stderr = proc.communicate()
-  out = ['' if o is None else o for o in (stdout, stderr)]
-  if check and proc.returncode != 0:
-    raise subprocess.CalledProcessError(proc.returncode, '', stdout, stderr)
-  if TRACK_PROCESS_SPAWNS:
-    logging.info(f'Process {proc.pid} finished after {time.time() - start} seconds. Exit code: {proc.returncode}')
-  return '\n'.join(out) if full_output else out[0]
-
-
 def get_npm_cmd(name):
   if WINDOWS:
     cmd = [path_from_root('node_modules/.bin', name + '.cmd')]
@@ -339,7 +319,7 @@ def set_version_globals():
   global EMSCRIPTEN_VERSION, EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY
   filename = path_from_root('emscripten-version.txt')
   EMSCRIPTEN_VERSION = utils.read_file(filename).strip().strip('"')
-  parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
+  parts = [int(x) for x in EMSCRIPTEN_VERSION.split('-')[0].split('.')]
   EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 
 

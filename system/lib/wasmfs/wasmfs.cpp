@@ -10,13 +10,20 @@
 #include <emscripten/html5.h>
 #include <mutex>
 #include <stdlib.h>
+<<<<<<< HEAD
 #include <utility>
+=======
+>>>>>>> origin/main
 #include <vector>
 #include <wasi/api.h>
 
 extern "C" {
 
+<<<<<<< HEAD
 using block_t = uint32_t;
+=======
+static std::vector<char> fd_write_stdstream_buffer;
+>>>>>>> origin/main
 
 static std::vector<char> fd_write_stdstream_buffer;
 
@@ -86,6 +93,7 @@ public:
   // TODO: May not want to proxy stderr (fd == 2) to the main thread.
   // This will not show in HTML - a console.warn in a worker is suffficient.
   // This would be a change from the current FS.
+<<<<<<< HEAD
   __wasi_errno_t write(
     const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) override {
     return write_buffer(iovs, iovs_len, nwritten, &emscripten_console_error);
@@ -129,6 +137,28 @@ public:
         handles[i] = ptr;
         return i;
       }
+=======
+  if (fd == 1 || fd == 2) {
+    __wasi_size_t num = 0;
+    for (size_t i = 0; i < iovs_len; i++) {
+      const uint8_t* buf = iovs[i].buf;
+      __wasi_size_t len = iovs[i].buf_len;
+      for (__wasi_size_t j = 0; j < len; j++) {
+        uint8_t current = buf[j];
+        if (current == 0 || current == 10) {
+          fd_write_stdstream_buffer.push_back('\0'); // for null-terminated C strings
+          if (fd == 1) {
+            emscripten_console_log(&fd_write_stdstream_buffer[0]);
+          } else if (fd == 2) {
+            emscripten_console_error(&fd_write_stdstream_buffer[0]);
+          }
+          fd_write_stdstream_buffer.clear();
+        } else {
+          fd_write_stdstream_buffer.push_back(current);
+        }
+      }
+      num += len;
+>>>>>>> origin/main
     }
 
     // Could not find an empty open file table entry.
