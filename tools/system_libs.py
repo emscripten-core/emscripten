@@ -775,7 +775,12 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'thrd_sleep.c',
           'thrd_yield.c',
         ])
-      libc_files += [utils.path_from_root('system/lib/pthread/library_pthread_stub.c')]
+      libc_files += files_in_path(
+        path='system/lib/pthread',
+        filenames=[
+          'library_pthread_stub.c',
+          'pthread_self_stub.c'
+        ])
 
     # These are included in wasm_libc_rt instead
     ignore += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
@@ -823,6 +828,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
         filenames=['dlerror.c', 'dlsym.c', 'dlclose.c'])
+
+    libc_files += files_in_path(
+        path='system/lib/libc/musl/src/linux',
+        filenames=['gettid.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/signal',

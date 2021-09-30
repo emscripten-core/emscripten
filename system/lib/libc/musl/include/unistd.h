@@ -198,6 +198,7 @@ char *get_current_dir_name(void);
 int syncfs(int);
 int euidaccess(const char *, int);
 int eaccess(const char *, int);
+pid_t gettid(void);
 #endif
 
 #if defined(_LARGEFILE64_SOURCE) || defined(_GNU_SOURCE)

@@ -14,6 +14,7 @@ $__ofl_unlock
 $__original_main
 $__pthread_self
 $__stdio_write
+$__syscall_getpid
 $__towrite
 $__trunctfdf2
 $__unlock
@@ -32,6 +33,8 @@ $fmt_u
 $fmt_x
 $frexp
 $getint
+$getpid
+$init_pthread_self
 $isdigit
 $legalstub$dynCall_jiji
 $main

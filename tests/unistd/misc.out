@@ -37,6 +37,7 @@ getuid: 0, errno: 0
 geteuid: 0, errno: 0
 getpgrp: 42, errno: 0
 getpid: 42, errno: 0
+gettid: 42, errno: 0
 getppid: 1, errno: 0
 getpgid: 42, errno: 0
 getsid: 42, errno: 0
