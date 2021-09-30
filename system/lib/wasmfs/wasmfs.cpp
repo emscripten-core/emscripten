@@ -219,10 +219,6 @@ __wasi_fd_t __syscall41(__wasi_fd_t fd) { // dup
   // Find the first free open file entry
   __wasi_fd_t ret_fd = ft->add_open_file(curr_openfile);
 
-  // for (auto x : ft->get_file_handles()) {
-  //   EM_ASM({ Module.print("something count:" + $0); }, x.use_count());
-  // }
-
   return ret_fd;
 }
 
