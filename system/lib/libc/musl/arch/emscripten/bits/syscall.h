@@ -27,7 +27,6 @@
 #define __NR_umask		 60
 #define __NR_dup2		 63
 #define __NR_getppid		 64
-#define __NR_getpgrp		 65
 #define __NR_setsid		 66
 #define __NR_setrlimit		 75
 #define __NR_getrusage		 77
@@ -153,7 +152,6 @@
 #define SYS_umask		 60
 #define SYS_dup2		 63
 #define SYS_getppid		 64
-#define SYS_getpgrp		 65
 #define SYS_setsid		 66
 #define SYS_setrlimit		 75
 #define SYS_getrusage		 77

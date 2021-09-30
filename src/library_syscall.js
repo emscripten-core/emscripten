@@ -468,11 +468,6 @@ var SyscallsLibrary = {
   __sys_getppid: function() {
     return {{{ PROCINFO.ppid }}};
   },
-  __sys_getpgrp__nothrow: true,
-  __sys_getpgrp__proxy: false,
-  __sys_getpgrp: function() {
-    return {{{ PROCINFO.pgid }}};
-  },
   __sys_setsid__nothrow: true,
   __sys_setsid__proxy: false,
   __sys_setsid: function() {
