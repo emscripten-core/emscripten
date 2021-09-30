@@ -6,13 +6,13 @@
       s += 'LibraryHTML5WebGPU.emscripten_webgpu_import_' + snake_case + '__sig = "ii";';
       s += 'LibraryHTML5WebGPU.emscripten_webgpu_import_' + snake_case + '__deps = ["$WebGPU", "$JsValStore"];';
       s += 'LibraryHTML5WebGPU.emscripten_webgpu_import_' + snake_case + ' = function(handle) { '
-      s += 'return WebGPU["mgr' + CamelCase + '"].create(JsValStore.get(handle));'
+      s += 'return WebGPU.mgr' + CamelCase + '.create(JsValStore.get(handle));'
       s += '};';
 
       s += 'LibraryHTML5WebGPU.emscripten_webgpu_export_' + snake_case + '__sig = "ii";';
       s += 'LibraryHTML5WebGPU.emscripten_webgpu_export_' + snake_case + '__deps = ["$WebGPU", "$JsValStore"];';
       s += 'LibraryHTML5WebGPU.emscripten_webgpu_export_' + snake_case + ' = function(handle) { '
-      s += 'return JsValStore.add(WebGPU["mgr' + CamelCase + '"].get(handle));'
+      s += 'return JsValStore.add(WebGPU.mgr' + CamelCase + '.get(handle));'
       s += '};';
       return s;
     },
@@ -62,7 +62,7 @@ var LibraryHTML5WebGPU = {
 #endif
     var device = Module['preinitializedWebGPUDevice'];
     var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
-    return WebGPU["mgrDevice"].create(device, deviceWrapper);
+    return WebGPU.mgrDevice.create(device, deviceWrapper);
   },
 };
 
