@@ -5362,7 +5362,7 @@ Module['onRuntimeInitialized'] = function() {
   @also_with_noderawfs
   def test_unistd_dup(self):
     self.do_run_in_out_file_test('unistd/dup.c')
-    
+
   @also_with_wasmfs
   def test_unistd_dup_write(self):
     self.do_run_in_out_file_test('unistd/dup2.c')
