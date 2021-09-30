@@ -9,17 +9,11 @@
               "threadStatus",
               "profilerBlock",
               "self",
-              "tsd",
               "detached",
               "stack",
               "stack_size",
               "result",
-              "attr",
-              "robust_list",
-              "tid",
-              "canceldisable",
-              "cancelasync",
-              "locale"
+              "attr"
             ],
             "thread_profiler_block": [
                 "threadStatus",

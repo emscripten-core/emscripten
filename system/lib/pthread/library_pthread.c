@@ -860,9 +860,8 @@ void __emscripten_init_main_thread(void) {
   __main_pthread.self = &__main_pthread;
   // pthread struct robust_list head should point to itself.
   __main_pthread.robust_list.head = &__main_pthread.robust_list.head;
-
-  // Main thread ID.
-  __main_pthread.tid = (long)&__main_pthread;
-
+  // Main thread ID is always 1.  It can't be 0 because musl assumes
+  // tid is always non-zero.
+  __main_pthread.tid = 1;
   __main_pthread.locale = &libc.global_locale;
 }
