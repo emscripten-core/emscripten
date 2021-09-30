@@ -1,6 +1,10 @@
 #include <stdio.h>
+#include <stdbool.h>
+#include <stdatomic.h>
 #include <emscripten/threading.h>
 #include <emscripten/emscripten.h>
+
+atomic_bool work_done = false;
 
 void work() {
   // This `work` item is called from within
@@ -9,12 +13,15 @@ void work() {
   // `emscripten_current_thread_process_queued_calls`.
   printf("Begin work\n");
   emscripten_thread_sleep(1);
+  work_done = true;
   printf("End work\n");
 }
 
 void* thread_func(void* _param) {
   printf("Start thread\n");
-  emscripten_thread_sleep(1);
+  while (!work_done) {
+    emscripten_thread_sleep(1);
+  }
   printf("End thread\n");
   return NULL;
 };
