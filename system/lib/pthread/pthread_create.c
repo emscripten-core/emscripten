@@ -66,6 +66,9 @@ static void init_file_lock(FILE *f) {
   if (f && f->lock<0) f->lock = 0;
 }
 
+// The main thread is tid 1, and the first created thread gets tid 2.
+static pid_t next_tid = 2;
+
 int __pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict attrp, void *(*entry)(void *), void *restrict arg) {
   // Note on LSAN: lsan intercepts/wraps calls to pthread_create so any
   // allocation we we do here should be considered leaks.
@@ -92,7 +95,7 @@ int __pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict att
   // The pthread struct has a field that points to itself - this is used as a
   // magic ID to detect whether the pthread_t structure is 'alive'.
   new->self = new;
-  new->tid = (uintptr_t)new;
+  new->tid = next_tid++;
 
   // pthread struct robust_list head should point to itself.
   new->robust_list.head = &new->robust_list.head;
