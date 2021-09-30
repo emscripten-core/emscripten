@@ -17,21 +17,6 @@ void do_once(void) {
   printf("in do_once\n");
 }
 
-// Because this thread is detached it can still be running
-// when the main thread exits.  And becasue of an emscripten
-// bug (https://github.com/emscripten-core/emscripten/issues/15186).
-// this means we can't write to stdout after the main thread
-// exits.  This means we can't use `thread_main` below because
-// the destructor to the `tss_t key` writes to stdout.
-int thread_main_detached(void* arg) {
-  printf("in thread_main_detached %p\n", (void*)thrd_current());
-  mtx_lock(&mutex);
-  thread_counter--;
-  cnd_signal(&cond);
-  mtx_unlock(&mutex);
-  return 0;
-}
-
 int thread_main(void* arg) {
   printf("in thread_main %p\n", (void*)thrd_current());
   tss_set(key, (void*)thrd_current());
@@ -102,17 +87,8 @@ int main(int argc, char* argv[]) {
 
   // Test thrd_detach
   thrd_t t6;
-  assert(thrd_create(&t6, thread_main_detached, NULL) == thrd_success);
+  assert(thrd_create(&t6, thread_main, NULL) == thrd_success);
   assert(thrd_detach(t6) == thrd_success);
-
-  // Wait for the thread to at least be done printing before exiting
-  // the process.
-  // We shouldn't need to do this but there is a bug in emscripten
-  // where a deadlock can occur between main thread calling fflush()
-  // during exitRuntime and the detached thread calling print (and
-  // therefore holding the stdout lock).
-  // See https://github.com/emscripten-core/emscripten/issues/15186.
-  assert(cnd_wait(&cond, &mutex) == thrd_success);
 
   printf("done!\n");
   return 0;
