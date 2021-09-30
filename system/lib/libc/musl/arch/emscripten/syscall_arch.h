@@ -36,7 +36,6 @@ long SYS_IMPORT(setpgid) __syscall57(long pid, long gpid);
 long SYS_IMPORT(umask) __syscall60(long mask);
 long SYS_IMPORT(dup2) __syscall63(long oldfd, long newfd);
 long SYS_IMPORT(getppid) __syscall64(void);
-long SYS_IMPORT(getpgrp) __syscall65(void);
 long SYS_IMPORT(setsid) __syscall66(void);
 long SYS_IMPORT(setrlimit) __syscall75(long resource, long limit);
 long SYS_IMPORT(getrusage) __syscall77(long who, long usage);
