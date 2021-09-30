@@ -1459,6 +1459,39 @@ class libjsmath(Library):
     return super(libjsmath, self).can_use() and settings.JS_MATH
 
 
+class libstubs(Library):
+  name = 'libstubs'
+  cflags = ['-O2']
+  src_dir = 'system/lib/libc'
+  src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
+
+  def __init__(self, **kwargs):
+    self.is_debug = kwargs.pop('is_debug')
+    super().__init__(**kwargs)
+
+  def get_base_name(self):
+    name = super().get_base_name()
+    if self.is_debug:
+      name += '-debug'
+    return name
+
+  def get_cflags(self):
+    cflags = super().get_cflags()
+    if self.is_debug:
+      cflags += ['-UNDEBUG']
+    else:
+      cflags += ['-DNDEBUG']
+    return cflags
+
+  @classmethod
+  def vary_on(cls):
+    return super().vary_on() + ['is_debug']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(is_debug=settings.ASSERTIONS, **kwargs)
+
+
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
 # confusing, so issue a warning.
 def warn_on_unexported_main(symbolses):
@@ -1597,6 +1630,8 @@ def calculate(input_files, forced):
     if settings.PRINTF_LONG_DOUBLE:
       add_library('libprintf_long_double')
 
+    if settings.ALLOW_UNIMPLEMENTED_SYSCALLS:
+      add_library('libstubs')
     add_library('libc')
     add_library('libcompiler_rt')
     if settings.LINK_AS_CXX:

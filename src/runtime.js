@@ -56,14 +56,3 @@ var Runtime = {
   POINTER_SIZE: 4,
   QUANTUM_SIZE: 4,
 };
-
-// Additional runtime elements, that need preprocessing
-
-// "Process info" for syscalls is static and cannot change, so define it using
-// some fixed values
-var PROCINFO = {
-  ppid: 1,
-  pid: 42,
-  sid: 42,
-  pgid: 42
-};

@@ -10902,7 +10902,7 @@ void foo() {}
     cmd = [EMCC, 'main.c', '-sASSERTIONS'] + args
     if args:
       err = self.expect_fail(cmd)
-      self.assertContained('error: attempt to link unsupport syscall: __syscall_mincore (use -s ALLOW_UNIMPLEMENTED_SYSCALLS (the default) to allow linking with a stub version', err)
+      self.assertContained('error: undefined symbol: __syscall_mincore', err)
     else:
       self.run_process(cmd)
       err = self.run_js('a.out.js')

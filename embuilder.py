@@ -52,6 +52,8 @@ MINIMAL_TASKS = [
     'libGL',
     'libhtml5',
     'libsockets',
+    'libstubs',
+    'libstubs-debug',
     'libc_rt_wasm',
     'libc_rt_wasm-optz',
     'struct_info',

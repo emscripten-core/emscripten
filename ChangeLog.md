@@ -20,6 +20,15 @@ See docs/process.md for more on how version tagging works.
 
 2.0.32
 ------
+- Stub functions from `library_syscall.js` and `library.js` were replaced with
+  native code stubs (See `system/lib/libc/emscripten_syscall_stubs.c`).  This
+  should be better for wasm module portability as well as code size.  As part
+  of this change the return value of `popen` was fixed to return NULL rather
+  than -1 and the `getpwnam` family of functions were changed to return an
+  error rather than throw a JavaScript exception (this behaviour matches what
+  the other stub functions do).  As before, the `ALLOW_UNIMPLEMENTED_SYSCALLS`
+  setting controls whether of not these stubs get included at link time, and
+  `STRICT` disables this setting.
 - Emscripten will now warn when linker-only flags are specified in
   compile-only (`-c`) mode.  Just like with clang itself, this warning can be
   disabled using the flag: `-Wno-unused-command-line-argument`.
