@@ -1001,44 +1001,12 @@ var SyscallsLibrary = {
     FS.chown(path, owner, group);
     return 0;
   },
-  __sys_setreuid32__sig: 'iii',
-  __sys_setreuid32__nothrow: true,
-  __sys_setreuid32__proxy: false,
-  __sys_setreuid32: '__sys_setregid32',
-  __sys_setregid32__sig: 'iii',
-  __sys_setregid32__nothrow: true,
-  __sys_setregid32__proxy: false,
-  __sys_setregid32: function(ruid, euid) {
-    if (ruid !== 0) return -{{{ cDefine('EPERM') }}};
-    return 0;
-  },
-  __sys_setuid32__sig: 'ii',
-  __sys_setuid32__nothrow: true,
-  __sys_setuid32__proxy: false,
-  __sys_setuid32: '__sys_setgid32',
-  __sys_setgid32__sig: 'ii',
-  __sys_setgid32__nothrow: true,
-  __sys_setgid32__proxy: false,
-  __sys_setgid32: function(uid) {
-    if (uid !== 0) return -{{{ cDefine('EPERM') }}};
-    return 0;
-  },
   __sys_getgroups32__nothrow: true,
   __sys_getgroups32__proxy: false,
   __sys_getgroups32: function(size, list) {
     if (size < 1) return -{{{ cDefine('EINVAL') }}};
     {{{ makeSetValue('list', '0', '0', 'i32') }}};
     return 1;
-  },
-  __sys_setresuid32__nothrow: true,
-  __sys_setresuid32__proxy: false,
-  __sys_setresuid32__sig: 'iiii',
-  __sys_setresuid32: '__sys_setresgid32',
-  __sys_setresgid32__nothrow: true,
-  __sys_setresgid32__proxy: false,
-  __sys_setresgid32: function(ruid, euid, suid) {
-    if (euid !== 0) return -{{{ cDefine('EPERM') }}};
-    return 0;
   },
   __sys_getresuid32__sig: 'iiii',
   __sys_getresuid32__nothrow: true,
