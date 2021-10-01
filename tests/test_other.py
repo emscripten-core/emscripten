@@ -10813,6 +10813,10 @@ kill -9 $$
     err = self.run_process([EMCC, '-sALLOW_MEMORY_GROWTH', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained("warning: linker setting ignored during compilation: 'ALLOW_MEMORY_GROWTH' [-Wunused-command-line-argument]", err)
 
+  def test_link_only_flag_warning(self):
+    err = self.run_process([EMCC, '--embed-file', 'file', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
+    self.assertContained("warning: linker setting ignored during compilation: '--embed-file' [-Wunused-command-line-argument]", err)
+
   def test_no_deprecated(self):
     # Test that -Wno-deprecated is passed on to clang driver
     create_file('test.c', '''\

@@ -149,6 +149,15 @@ UBSAN_SANITIZERS = {
 VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
+LINK_ONLY_FLAGS = set([
+    '--bind', '--closure', '--cpuprofiler', '--embed-file',
+    '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
+    '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
+    '--js-transform', '--memory-init-file', '--oformat', '--output_eol',
+    '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
+    '--proxy-to-worker', '--shell-file', '--source-map-base',
+    '--threadprofiler', '--use-preload-plugins'
+])
 
 
 # this function uses the global 'final' variable, which contains the current
@@ -771,7 +780,7 @@ def emsdk_cflags(user_args):
 
   # relaxed-simd implies simd128.
   if '-mrelaxed-simd' in user_args:
-      user_args += ['-msimd128']
+    user_args += ['-msimd128']
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     if '-msimd128' not in user_args:
@@ -1309,8 +1318,15 @@ def phase_setup(options, state, newargs, settings_map):
 
   if state.mode in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
     for key in settings_map:
-       if key not in COMPILE_TIME_SETTINGS:
-         diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
+      if key not in COMPILE_TIME_SETTINGS:
+        diagnostics.warning(
+            'unused-command-line-argument',
+            "linker setting ignored during compilation: '%s'" % key)
+    for arg in state.orig_args:
+      if arg in LINK_ONLY_FLAGS:
+        diagnostics.warning(
+            'unused-command-line-argument',
+            "linker setting ignored during compilation: '%s'" % arg)
     if state.has_dash_c:
       if '-emit-llvm' in newargs:
         options.default_object_extension = '.bc'
