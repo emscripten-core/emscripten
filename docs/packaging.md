@@ -46,7 +46,7 @@ Alternatively, you may want to build our official emscripten release tags, which
 are the versions the emsdk lets users install. To find the mapping between the
 emsdk versions and the revision of the emscripten-releases repository, the emsdk
 has
-[emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.txt).
+[emscripten-releases-tags.json](https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.json).
 All versions listed there should be safe to build, as we check that the CI
 was green on them.
 
