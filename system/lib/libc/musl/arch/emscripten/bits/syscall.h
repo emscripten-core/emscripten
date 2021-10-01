@@ -66,17 +66,11 @@
 #define SYS_getgid32		200
 #define SYS_geteuid32		201
 #define SYS_getegid32		202
-#define SYS_setreuid32		203
-#define SYS_setregid32		204
 #define SYS_getgroups32	205
 #define SYS_fchown32		207
-#define SYS_setresuid32	208
 #define SYS_getresuid32	209
-#define SYS_setresgid32	210
 #define SYS_getresgid32	211
 #define SYS_chown32		212
-#define SYS_setuid32		213
-#define SYS_setgid32		214
 #define SYS_mincore		218
 #define SYS_madvise		219
 #define SYS_madvise1		219

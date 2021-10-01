@@ -55,7 +55,12 @@ void __unlockfile(FILE *) ATTR_LIBC_VISIBILITY;
 #define UNLOCK(x) __unlock(x)
 
 void __synccall(void (*)(void *), void *);
+#ifdef __EMSCRIPTEN__
+int __setxid_emscripten();
+#define __setxid(a, b, c, d) __setxid_emscripten()
+#else
 int __setxid(int, int, int, int);
+#endif
 
 extern char **__environ;
 
