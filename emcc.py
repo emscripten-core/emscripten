@@ -153,11 +153,10 @@ LINK_ONLY_FLAGS = set([
     '--bind', '--closure', '--cpuprofiler', '--embed-file',
     '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
     '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
-    '--js-transform', '--memory-init-file', '--memoryprofiler', '--oformat',
-    '--output_eol', '--post-js', '--pre-js', '--preload-file',
-    '--profiling-funcs', '--proxy-to-worker', '--shell-file',
-    '--source-map-base', '--threadprofiler', '--tracing',
-    '--use-preload-plugins'
+    '--js-transform', '--memory-init-file', '--oformat', '--output_eol',
+    '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
+    '--proxy-to-worker', '--shell-file', '--source-map-base',
+    '--threadprofiler', '--use-preload-plugins'
 ])
 
 
