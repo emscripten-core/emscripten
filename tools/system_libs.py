@@ -858,6 +858,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'sigaction.c',
           'sigtimedwait.c',
           'pthread_sigmask.c',
+          'emscripten_console.c',
         ])
 
     libc_files += files_in_path(
