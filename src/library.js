@@ -3600,6 +3600,38 @@ LibraryManager.library = {
 #endif
   },
 
+  emscripten_console_log: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    out(UTF8ToString(str));
+  },
+
+  emscripten_console_warn: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    console.warn(UTF8ToString(str));
+  },
+
+  emscripten_console_error: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    err(UTF8ToString(str));
+  },
+
+  emscripten_throw_number: function(number) {
+    throw number;
+  },
+
+  emscripten_throw_string: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    throw UTF8ToString(str);
+  },
+
 #if !MINIMAL_RUNTIME
   $handleException: function(e) {
     // Certain exception types we do not treat as errors since they are used for
