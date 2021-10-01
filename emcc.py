@@ -149,7 +149,7 @@ UBSAN_SANITIZERS = {
 VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
-LINK_TIME_FLAGS = ['--embed-file', '--exclude-file', '--preload-file']
+LINK_ONLY_FLAGS = set(['--embed-file', '--exclude-file', '--preload-file'])
 
 
 # this function uses the global 'final' variable, which contains the current
@@ -1312,9 +1312,9 @@ def phase_setup(options, state, newargs, settings_map):
     for key in settings_map:
        if key not in COMPILE_TIME_SETTINGS:
          diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
-    for flag in LINK_TIME_FLAGS:
-        if flag in state.orig_args:
-         diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % flag)
+    for arg in state.orig_args:
+        if arg in LINK_ONLY_FLAGS:
+          diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % arg)
     if state.has_dash_c:
       if '-emit-llvm' in newargs:
         options.default_object_extension = '.bc'
