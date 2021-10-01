@@ -1310,11 +1310,11 @@ def phase_setup(options, state, newargs, settings_map):
 
   if state.mode in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
     for key in settings_map:
-       if key not in COMPILE_TIME_SETTINGS:
-         diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
+      if key not in COMPILE_TIME_SETTINGS:
+        diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
     for arg in state.orig_args:
-        if arg in LINK_ONLY_FLAGS:
-          diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % arg)
+      if arg in LINK_ONLY_FLAGS:
+        diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % arg)
     if state.has_dash_c:
       if '-emit-llvm' in newargs:
         options.default_object_extension = '.bc'
