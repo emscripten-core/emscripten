@@ -150,9 +150,14 @@ VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 LINK_ONLY_FLAGS = set([
-    '--embed-file', '--exclude-file', '--preload-file', '--pre-js', '--minify',
-    '--closure', '--post-js', '--js-transform', '--closure-args',
-    '--extern-post-js', '--extern-pre-js', '--oformat'
+    '--bind', '--closure', '--cpuprofiler', '--embed-file',
+    '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
+    '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
+    '--js-transform', '--memory-init-file', '--memoryprofiler', '--oformat',
+    '--output_eol', '--post-js', '--pre-js', '--preload-file',
+    '--profiling-funcs', '--proxy-to-worker', '--shell-file',
+    '--source-map-base', '--threadprofiler', '--tracing',
+    '--use-preload-plugins'
 ])
 
 
