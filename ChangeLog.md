@@ -23,6 +23,10 @@ See docs/process.md for more on how version tagging works.
 - Emscripten will now warn when linker-only flags are specified in
   compile-only (`-c`) mode.  Just like with clang itself, this warning can be
   disabled using the flag: `-Wno-unused-command-line-argument`.
+- Internal symbol names for musl syscalls changed from number-based (e.g.
+  `__syscall22`) to name-based (e.g. `__syscall_open`).  This should not be
+  a visible change except for folks trying to intercept/implement syscalls
+  in native code (#15202).
 
 2.0.31 - 10/01/2021
 -------------------
