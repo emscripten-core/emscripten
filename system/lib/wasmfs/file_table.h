@@ -40,7 +40,7 @@ public:
 
     __wasi_fd_t addOpenFile(std::shared_ptr<OpenFileDescriptor> ptr);
 
-    bool removeOpenFile(__wasi_fd_t fd);
+    void removeOpenFile(__wasi_fd_t fd);
 
     struct Entry {
       Handle& entryHandle;

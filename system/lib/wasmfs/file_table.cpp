@@ -32,13 +32,10 @@ __wasi_fd_t FileTable::Handle::addOpenFile(std::shared_ptr<OpenFileDescriptor> p
   return fileTable.entries.size() - 1;
 }
 
-bool FileTable::Handle::removeOpenFile(__wasi_fd_t fd) {
+void FileTable::Handle::removeOpenFile(__wasi_fd_t fd) {
   // Check if the file descriptor is invalid.
-  if (fd >= fileTable.entries.size() || fd < 0) {
-    return false;
-  }
+  assert(fd < fileTable.entries.size() && fd >= 0);
 
   fileTable.entries[fd] = nullptr;
-  return true;
 }
 }
