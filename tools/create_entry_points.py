@@ -40,6 +40,7 @@ emnm
 tools/file_packager
 tools/webidl_binder
 tests/runner
+tests/em-lit
 '''.split()
 
 

@@ -26,12 +26,14 @@ import math
 import operator
 import os
 import random
+import subprocess
 import sys
 import unittest
 
 # Setup
 
-__rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootpath__ = os.path.dirname(__scriptdir__)
 sys.path.append(__rootpath__)
 
 import jsrun
@@ -68,6 +70,7 @@ default_core_test_mode = 'wasm0'
 # The non-core test modes
 non_core_test_modes = [
   'other',
+  'lit',
   'browser',
   'sanity',
   'sockets',
@@ -372,6 +375,11 @@ def main(args):
     return arg
 
   tests = [prepend_default(t) for t in options.tests]
+  if 'lit' in tests:
+    subprocess.check_call([os.path.join(__scriptdir__, 'em-lit'), os.path.join(__scriptdir__, 'lit')])
+    tests.remove('lit')
+    if not tests:
+      return 0
 
   modules = get_and_import_modules()
   all_tests = get_all_tests(modules)

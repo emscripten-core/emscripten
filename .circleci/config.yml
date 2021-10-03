@@ -388,6 +388,12 @@ jobs:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
+  test-lit:
+    executor: bionic
+    steps:
+      - run: pip3 install -r requirements-dev.txt
+      - run-tests:
+          test_targets: "lit"
   test-browser-chrome:
     executor: bionic
     steps:
