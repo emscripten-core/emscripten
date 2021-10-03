@@ -486,7 +486,7 @@ mergeInto(LibraryManager.library, {
     var result = formatString(format, varargs);
     var string = intArrayToString(result);
     if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
-    out(string);
+    stdout(string);
     return result.length;
   },
   puts: function(s) {
@@ -494,7 +494,7 @@ mergeInto(LibraryManager.library, {
     var result = UTF8ToString(s);
     var string = result.substr(0);
     if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
-    out(string);
+    stdout(string);
     return result.length;
   },
 });
