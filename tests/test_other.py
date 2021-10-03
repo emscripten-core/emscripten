@@ -10902,11 +10902,11 @@ void foo() {}
     cmd = [EMCC, 'main.c', '-sASSERTIONS'] + args
     if args:
       err = self.expect_fail(cmd)
-      self.assertContained('error: attempt to link unsupport syscall: __sys_mincore (use -s ALLOW_UNIMPLEMENTED_SYSCALLS (the default) to allow linking with a stub version', err)
+      self.assertContained('error: attempt to link unsupport syscall: __syscall_mincore (use -s ALLOW_UNIMPLEMENTED_SYSCALLS (the default) to allow linking with a stub version', err)
     else:
       self.run_process(cmd)
       err = self.run_js('a.out.js')
-      self.assertContained('warning: unsupported syscall: __sys_mincore', err)
+      self.assertContained('warning: unsupported syscall: __syscall_mincore', err)
 
       # Setting ASSERTIONS=0 should avoid the runtime warning
       self.run_process(cmd + ['-sASSERTIONS=0'])
