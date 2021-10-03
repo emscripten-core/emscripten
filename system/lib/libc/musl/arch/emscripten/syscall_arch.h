@@ -5,7 +5,7 @@
 #define __SYSCALL_LL_E(x) \
 ((union { long long ll; long l[2]; }){ .ll = x }).l[0], \
 ((union { long long ll; long l[2]; }){ .ll = x }).l[1]
-#define __SYSCALL_LL_O(x) 0, __SYSCALL_LL_E((x))
+#define __SYSCALL_LL_O(x) __SYSCALL_LL_E((x))
 
 #ifdef __cplusplus
 extern "C" {
@@ -66,8 +66,8 @@ long __syscall_rt_sigqueueinfo(long tgid, long sig, long uinfo);
 long __syscall_getcwd(long buf, long size);
 long __syscall_ugetrlimit(long resource, long rlim);
 long __syscall_mmap2(long addr, long len, long prot, long flags, long fd, long off);
-long __syscall_truncate64(long path, long zero, long low, long high);
-long __syscall_ftruncate64(long fd, long zero, long low, long high);
+long __syscall_truncate64(long path, long low, long high);
+long __syscall_ftruncate64(long fd, long low, long high);
 long __syscall_stat64(long path, long buf);
 long __syscall_lstat64(long path, long buf);
 long __syscall_fstat64(long fd, long buf);
@@ -93,7 +93,7 @@ long __syscall_getdents64(long fd, long dirp, long count);
 long __syscall_fcntl64(long fd, long cmd, ...);
 long __syscall_statfs64(long path, long size, long buf);
 long __syscall_fstatfs64(long fd, long size, long buf);
-long __syscall_fadvise64_64(long fd, long zero, long low, long high, long low2, long high2, long advice);
+long __syscall_fadvise64_64(long fd, long low, long high, long low2, long high2, long advice);
 long __syscall_openat(long dirfd, long path, long flags, ...);
 long __syscall_mkdirat(long dirfd, long path, long mode);
 long __syscall_mknodat(long dirfd, long path, long mode, long dev);

@@ -942,13 +942,13 @@ var SyscallsLibrary = {
   __syscall_mmap2: function(addr, len, prot, flags, fd, off) {
     return syscallMmap2(addr, len, prot, flags, fd, off);
   },
-  __syscall_truncate64: function(path, zero, low, high) {
+  __syscall_truncate64: function(path, low, high) {
     path = SYSCALLS.getStr(path);
     var length = SYSCALLS.get64(low, high);
     FS.truncate(path, length);
     return 0;
   },
-  __syscall_ftruncate64: function(fd, zero, low, high) {
+  __syscall_ftruncate64: function(fd, low, high) {
     var length = SYSCALLS.get64(low, high);
     FS.ftruncate(fd, length);
     return 0;
