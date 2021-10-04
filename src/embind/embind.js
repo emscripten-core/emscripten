@@ -9,9 +9,9 @@
 /*global _malloc, _free, _memcpy*/
 /*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64*/
 /*global readLatin1String*/
-/*global __emval_register, emval_handle_array, __emval_decref*/
+/*global emvalToHandle, emval_handle_array, __emval_decref*/
 /*global ___getTypeName*/
-/*global requireHandle*/
+/*global emvalFromHandle*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to specifically tell it about the symbols we define
@@ -842,19 +842,19 @@ var LibraryEmbind = {
   },
 
   _embind_register_emval__deps: [
-    '_emval_decref', '$emval_handle_array', '_emval_register',
+    '_emval_decref', '$emvalFromHandle', '$emvalToHandle',
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer'],
   _embind_register_emval: function(rawType, name) {
     name = readLatin1String(name);
     registerType(rawType, {
         name: name,
         'fromWireType': function(handle) {
-            var rv = emval_handle_array[handle].value;
+            var rv = emvalFromHandle(handle);
             __emval_decref(handle);
             return rv;
         },
         'toWireType': function(destructors, value) {
-            return __emval_register(value);
+            return emvalToHandle(value);
         },
         'argPackAdvance': 8,
         'readValueFromPointer': simpleReadValueFromPointer,
@@ -1473,7 +1473,7 @@ var LibraryEmbind = {
                     var clonedHandle = handle['clone']();
                     ptr = this.rawShare(
                         ptr,
-                        __emval_register(function() {
+                        emvalToHandle(function() {
                             clonedHandle['delete']();
                         })
                     );
@@ -2411,15 +2411,15 @@ var LibraryEmbind = {
   },
 
   _embind_create_inheriting_constructor__deps: [
-    '$createNamedFunction', '_emval_register',
+    '$createNamedFunction', '$emvalToHandle',
     '$PureVirtualError', '$readLatin1String',
-    '$registerInheritedInstance', '$requireHandle',
+    '$registerInheritedInstance', '$emvalFromHandle',
     '$requireRegisteredType', '$throwBindingError',
     '$unregisterInheritedInstance', '$detachFinalizer', '$attachFinalizer'],
   _embind_create_inheriting_constructor: function(constructorName, wrapperType, properties) {
     constructorName = readLatin1String(constructorName);
     wrapperType = requireRegisteredType(wrapperType, 'wrapper');
-    properties = requireHandle(properties);
+    properties = emvalFromHandle(properties);
 
     var arraySlice = [].slice;
 
@@ -2475,7 +2475,7 @@ var LibraryEmbind = {
     for (var p in properties) {
         ctor.prototype[p] = properties[p];
     }
-    return __emval_register(ctor);
+    return emvalToHandle(ctor);
   },
 
   $char_0: '0'.charCodeAt(0),

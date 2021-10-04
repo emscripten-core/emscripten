@@ -22,6 +22,8 @@ namespace emscripten {
 
     class val;
 
+    typedef struct _EM_VAL* EM_VAL;
+
     namespace internal {
 
         template<typename WrapperType>
@@ -38,7 +40,6 @@ namespace emscripten {
                 _EMVAL_FALSE = 4
             };
 
-            typedef struct _EM_VAL* EM_VAL;
             typedef struct _EM_DESTRUCTORS* EM_DESTRUCTORS;
             typedef struct _EM_METHOD_CALLER* EM_METHOD_CALLER;
             typedef double EM_GENERIC_WIRE_TYPE;
@@ -353,14 +354,14 @@ namespace emscripten {
         }
 
         static val undefined() {
-            return val(internal::EM_VAL(internal::_EMVAL_UNDEFINED));
+            return val(EM_VAL(internal::_EMVAL_UNDEFINED));
         }
 
         static val null() {
-            return val(internal::EM_VAL(internal::_EMVAL_NULL));
+            return val(EM_VAL(internal::_EMVAL_NULL));
         }
 
-        static val take_ownership(internal::EM_VAL e) {
+        static val take_ownership(EM_VAL e) {
             return val(e);
         }
 
@@ -405,6 +406,10 @@ namespace emscripten {
             internal::_emval_decref(handle);
         }
 
+        EM_VAL as_handle() const {
+            return handle;
+        }
+
         val& operator=(val&& v) {
             internal::_emval_decref(handle);
             handle = v.handle;
@@ -424,19 +429,19 @@ namespace emscripten {
         }
 
         bool isNull() const {
-            return handle == internal::EM_VAL(internal::_EMVAL_NULL);
+            return handle == EM_VAL(internal::_EMVAL_NULL);
         }
 
         bool isUndefined() const {
-            return handle == internal::EM_VAL(internal::_EMVAL_UNDEFINED);
+            return handle == EM_VAL(internal::_EMVAL_UNDEFINED);
         }
 
         bool isTrue() const {
-            return handle == internal::EM_VAL(internal::_EMVAL_TRUE);
+            return handle == EM_VAL(internal::_EMVAL_TRUE);
         }
 
         bool isFalse() const {
-            return handle == internal::EM_VAL(internal::_EMVAL_FALSE);
+            return handle == EM_VAL(internal::_EMVAL_FALSE);
         }
 
         bool isNumber() const {
@@ -562,13 +567,13 @@ namespace emscripten {
 // If code is not being compiled with GNU extensions enabled, typeof() is not a reserved keyword, so support that as a member function.
 #if __STRICT_ANSI__
         val typeof() const {
-            return val(_emval_typeof(handle));
+            return val(internal::_emval_typeof(handle));
         }
 #endif
 
 // Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
         val typeOf() const {
-            return val(_emval_typeof(handle));
+            return val(internal::_emval_typeof(handle));
         }
 
         bool instanceof(const val& v) const {
@@ -594,16 +599,12 @@ namespace emscripten {
 
     private:
         // takes ownership, assumes handle already incref'd
-        explicit val(internal::EM_VAL handle)
+        explicit val(EM_VAL handle)
             : handle(handle)
         {}
 
         template<typename WrapperType>
         friend val internal::wrapped_extend(const std::string& , const val& );
-
-        internal::EM_VAL __get_handle() const {
-            return handle;
-        }
 
         template<typename Implementation, typename... Args>
         val internalCall(Implementation impl, Args&&... args) const {
@@ -619,7 +620,7 @@ namespace emscripten {
                     argv));
         }
 
-        internal::EM_VAL handle;
+        EM_VAL handle;
 
         friend struct internal::BindingType<val>;
     };
@@ -627,7 +628,7 @@ namespace emscripten {
     namespace internal {
         template<>
         struct BindingType<val> {
-            typedef internal::EM_VAL WireType;
+            typedef EM_VAL WireType;
             static WireType toWireType(const val& v) {
                 _emval_incref(v.handle);
                 return v.handle;
