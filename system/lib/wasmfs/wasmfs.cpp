@@ -19,7 +19,7 @@
 
 extern "C" {
 
-__wasi_fd_t __syscall63(__wasi_fd_t oldfd, __wasi_fd_t newfd) { // dup2
+__wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
   FileTable::Handle fileTable = FileTable::get();
 
   // If oldfd is not a valid file descriptor, then the call fails,
@@ -48,7 +48,7 @@ __wasi_fd_t __syscall63(__wasi_fd_t oldfd, __wasi_fd_t newfd) { // dup2
   return newfd;
 }
 
-__wasi_fd_t __syscall41(__wasi_fd_t fd) { // dup
+__wasi_fd_t __syscall_dup(__wasi_fd_t fd) {
 
   FileTable::Handle fileTable = FileTable::get();
   if (!fileTable[fd]) {
