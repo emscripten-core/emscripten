@@ -551,9 +551,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def build(self, filename, libraries=[], includes=[], force_c=False, js_outfile=True, emcc_args=[], output_basename=None):
     suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
-    if compiler[0] == EMCC and not self.get_setting('WASMFS'):
-      # TODO change test behaviour in the future when WASMFS becomes default file system
-      # WASMFS is excluded here since it currently requires stdlib++ functions
+    if compiler[0] == EMCC:
       # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
       # For historical reasons emcc compiles and links as C++ by default.
       # However we want to run our tests in a more strict manner.  We can
