@@ -43,7 +43,7 @@ var LibraryDylink = {
   $GOTHandler: {
     'get': function(obj, symName) {
       if (!GOT[symName]) {
-        GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
+        GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': true});
 #if DYLINK_DEBUG
         err("new GOT entry: " + symName);
 #endif
@@ -101,6 +101,8 @@ var LibraryDylink = {
 #endif
         } else if (typeof value === 'number') {
           GOT[symName].value = value;
+        } else if (typeof value === 'bigint') {
+          GOT[symName].value = Number(value);
         } else {
           err("unhandled export type for `" + symName + "`: " + (typeof value));
         }
