@@ -1,5 +1,5 @@
 #include <emscripten/threading.h>
-#include <emscripten.h>
+#include <emscripten/console.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -34,7 +34,7 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *targ
   GL_FUNCTION_TRACE(__func__);
   if (!attributes)
   {
-    EM_ASM(console.error('emscripten_webgl_create_context: attributes pointer is null!'));
+    emscripten_console_error("emscripten_webgl_create_context: attributes pointer is null!");
     return 0;
   }
   pthread_once(&tlsInit, InitWebGLTls);
