@@ -245,7 +245,7 @@ function isIntImplemented(type) {
 
 // Note: works for iX types and structure types, not pointers (even though they are implemented as ints)
 function getBits(type, allowPointers) {
-  if (allowPointers && isPointerType(type)) return pointerBits();
+  if (allowPointers && isPointerType(type)) return POINTER_SIZE;
   if (!type) return 0;
   if (type[0] == 'i') {
     const left = type.substr(1);
@@ -1335,11 +1335,8 @@ function from64(x) {
 }
 
 function to64(x) {
-  if (MEMORY64) {
-    return `BigInt(${x})`;
-  } else {
-    return `${x}`;
-  }
+  if (!MEMORY64) return x;
+  return `BigInt(${x})`;
 }
 
 // Add assertions to catch common errors when using the Promise object we

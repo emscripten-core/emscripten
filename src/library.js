@@ -3649,13 +3649,13 @@ LibraryManager.library = {
   // mode are created here and imported by the module.
   // Mark with `__import` so these are usable from native code.  This is needed
   // because, by default, only functions can be be imported.
-  __stack_pointer: "new WebAssembly.Global({'value': '{{{ SIZE_TYPE }}}', 'mutable': true}, {{{ to64(STACK_BASE) }}})",
+  __stack_pointer: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': true}, {{{ to64(STACK_BASE) }}})",
   __stack_pointer__import: true,
   // tell the memory segments where to place themselves
-  __memory_base: "new WebAssembly.Global({'value': '{{{ SIZE_TYPE}}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
+  __memory_base: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
   __memory_base__import: true,
   // the wasm backend reserves slot 0 for the NULL function pointer
-  __table_base: "new WebAssembly.Global({'value': '{{{ SIZE_TYPE }}}', 'mutable': false}, {{{ to64(1) }}})",
+  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': false}, {{{ to64(1) }}})",
   __table_base__import: true,
 #if MEMORY64
   __table_base32: 1,
