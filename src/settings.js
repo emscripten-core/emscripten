@@ -237,6 +237,7 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // the full end-to-end wasm64 mode, and 2 is wasm64 for clang/lld but lowered to
 // wasm32 in Binaryen (such that it can run on wasm32 engines, while internally
 // using i64 pointers).
+// Assumes WASM_BIGINT.
 // [compile+link]
 var MEMORY64 = 0;
 

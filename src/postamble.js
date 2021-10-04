@@ -149,7 +149,7 @@ function callMain(args) {
   args = args || [];
 
   var argc = args.length+1;
-  var argv = stackAlloc((argc + 1) * {{{ Runtime.POINTER_SIZE }}});
+  var argv = stackAlloc((argc + 1) * {{{ `${Runtime.POINTER_SIZE}` }}});
   HEAP32[argv >> 2] = allocateUTF8OnStack(thisProgram);
   for (var i = 1; i < argc; i++) {
     HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
@@ -215,7 +215,7 @@ function stackCheckInit() {
   // here.
   // TODO(sbc): Move writeStackCookie to native to to avoid this.
 #if RELOCATABLE
-  _emscripten_stack_set_limits({{{ STACK_BASE }}}, {{{ STACK_MAX }}});
+  _emscripten_stack_set_limits({{{ to64(STACK_BASE) }}}, {{{ to64(STACK_MAX) }}});
 #else
   _emscripten_stack_init();
 #endif
