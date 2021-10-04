@@ -128,8 +128,9 @@ void InitializeFlags() {
 #if SANITIZER_EMSCRIPTEN
   char *options;
   // Override from Emscripten Module.
+  // TODO: add EM_ASM_I64 and avoid using a double for a 64-bit pointer.
 #define MAKE_OPTION_LOAD(parser, name) \
-    options = (char*) EM_ASM_INT({ \
+    options = (char*)(long)EM_ASM_DOUBLE({ \
       return withBuiltinMalloc(function () { \
         return allocateUTF8(Module[name] || 0); \
       }); \
