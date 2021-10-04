@@ -17,11 +17,6 @@
 #include <vector>
 #include <wasi/api.h>
 
-#define RETURN_ERRNO(errno, error_reason)                                                          \
-  do {                                                                                             \
-    return -(errno);                                                                               \
-  } while (0)
-
 extern "C" {
 
 __wasi_fd_t __syscall63(__wasi_fd_t oldfd, __wasi_fd_t newfd) { // dup2
