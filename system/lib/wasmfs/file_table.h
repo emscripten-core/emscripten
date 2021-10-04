@@ -41,6 +41,9 @@ class FileTable {
 public:
   // Handle represents an RAII wrapper object. Access to the global FileTable must go through a
   // Handle. A Handle holds the single global FileTable's lock for the duration of its lifetime.
+  // This is necessary because a FileTable may have atomic oeprations where the lock must be held
+  // across multiple methods. By providing access through the handle, callers of file table methods
+  // do not need to remember to take a lock for every access.
   class Handle {
     FileTable& fileTable;
     std::unique_lock<std::mutex> lock;
