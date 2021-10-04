@@ -10,9 +10,6 @@
 
 std::vector<std::shared_ptr<OpenFileDescriptor>> FileTable::entries;
 
-OpenFileDescriptor::OpenFileDescriptor(uint32_t offset, std::shared_ptr<File> file)
-  : offset(offset), file(file) {}
-
 std::shared_ptr<File>& OpenFileDescriptor::getFile() { return file; }
 
 FileTable::Handle FileTable::get() {

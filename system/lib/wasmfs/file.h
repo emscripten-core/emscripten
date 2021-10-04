@@ -15,14 +15,12 @@
 class File {
   // TODO: Add other File properties later.
 
+  // Mutex is used to lock File during multi-threaded access.
   std::mutex mutex;
 
 public:
-  // TODO: stubbed virtual function - convert to pure virtual function later.
-  virtual __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) {
-    emscripten_console_log("File::read() has not been implemented yet.");
-    abort();
-  };
+  virtual __wasi_errno_t read(
+    const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) = 0;
   virtual __wasi_errno_t write(
     const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) = 0;
 
@@ -34,16 +32,31 @@ public:
   // TODO: fill in write for stdin
   __wasi_errno_t write(
     const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) override;
+
+  __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
+    emscripten_console_log("StdinFile::read() has not been implemented yet.");
+    abort();
+  };
 };
 
 class StdoutFile : public File {
 public:
   __wasi_errno_t write(
     const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) override;
+
+  __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
+    emscripten_console_log("StdoutFile::read() has not been implemented yet.");
+    abort();
+  };
 };
 
 class StderrFile : public File {
 public:
   __wasi_errno_t write(
     const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) override;
+
+  __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
+    emscripten_console_log("StderrFile::read() has not been implemented yet.");
+    abort();
+  };
 };

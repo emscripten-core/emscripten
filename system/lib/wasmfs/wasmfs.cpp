@@ -54,11 +54,8 @@ __wasi_fd_t __syscall_dup(__wasi_fd_t fd) {
   if (!fileTable[fd]) {
     return __WASI_ERRNO_BADF;
   }
-
-  auto currentOpenFile = fileTable[fd];
-
   // Find the first free open file entry
-  return fileTable.addOpenFile(currentOpenFile);
+  return fileTable.addOpenFile(fileTable[fd]);
 }
 
 __wasi_errno_t __wasi_fd_write(
@@ -69,9 +66,7 @@ __wasi_errno_t __wasi_fd_write(
     return __WASI_ERRNO_BADF;
   }
 
-  auto currentOpenFile = fileTable[fd];
-
-  return currentOpenFile->getFile()->write(iovs, iovs_len, nwritten);
+  return fileTable[fd]->getFile()->write(iovs, iovs_len, nwritten);
 }
 
 __wasi_errno_t __wasi_fd_seek(

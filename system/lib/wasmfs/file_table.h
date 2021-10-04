@@ -18,10 +18,12 @@
 class OpenFileDescriptor {
   std::shared_ptr<File> file;
   __wasi_filedelta_t offset;
+  // An OpenFileDescriptor needs a mutex if there are concurrent accesses on one open file
+  // descriptor. This could occur if there are multiple seeks on the same open file descriptor.
   std::mutex mutex;
 
 public:
-  OpenFileDescriptor(uint32_t offset, std::shared_ptr<File> file);
+  OpenFileDescriptor(uint32_t offset, std::shared_ptr<File> file) : offset(offset), file(file) {}
 
   std::shared_ptr<File>& getFile();
 };
@@ -37,8 +39,8 @@ class FileTable {
   }
 
 public:
-  // Handle represents an RAII wrapper object. Access to the FileTable must go through a Handle.
-  // A Handle holds FileTable's lock for the duration of its lifetime.
+  // Handle represents an RAII wrapper object. Access to the global FileTable must go through a
+  // Handle. A Handle holds the single global FileTable's lock for the duration of its lifetime.
   class Handle {
     FileTable& fileTable;
     std::unique_lock<std::mutex> lock;
@@ -46,7 +48,7 @@ public:
   public:
     Handle(FileTable& fileTable) : fileTable(fileTable), lock(fileTable.mutex) {}
 
-    // Returns size of the associated FileTable entries.
+    // Returns size of the associated FileTable.
     size_t size() { return fileTable.entries.size(); }
 
     // Adds given OpenFileDescriptor to FileTable entries. Returns fd (insertion index in entries).
@@ -56,12 +58,12 @@ public:
     void removeOpenFile(__wasi_fd_t fd);
 
     // Entry is used to override the subscript [] operator.
-    // This allows the user to get and set values in the FileTable entries vector.
-    // Syntax: std::shared_ptr<OpenFileDescriptor> openFile = currentHandle[fd];
+    // This allows the user to get and set values in the FileTable entries vector, even entries
+    // outside the bounds of the FileTable.
     struct Entry {
       Handle& fileTableHandle;
       __wasi_fd_t fd;
-      operator std::shared_ptr<OpenFileDescriptor> &() const {
+      operator std::shared_ptr<OpenFileDescriptor>&() const {
         assert(fd < fileTableHandle.size() && fd >= 0);
 
         return fileTableHandle.fileTable.entries[fd];
