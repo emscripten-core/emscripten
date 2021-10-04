@@ -344,9 +344,11 @@ class TestCoreBase(RunnerCore):
   def test_hello_argc(self):
     self.do_core_test('test_hello_argc.c')
 
+  @also_with_wasmfs
   def test_intvars(self):
     self.do_core_test('test_intvars.cpp')
 
+  @also_with_wasmfs
   def test_sintvars(self):
     self.do_core_test('test_sintvars.c')
 
@@ -5360,6 +5362,10 @@ Module['onRuntimeInitialized'] = function() {
   @also_with_noderawfs
   def test_unistd_dup(self):
     self.do_run_in_out_file_test('unistd/dup.c')
+
+  @also_with_wasmfs
+  def test_unistd_dup_write(self):
+    self.do_run_in_out_file_test('unistd/dup2.c')
 
   def test_unistd_pathconf(self):
     self.do_run_in_out_file_test('unistd/pathconf.c')

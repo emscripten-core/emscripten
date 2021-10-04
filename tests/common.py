@@ -552,8 +552,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
     if compiler[0] == EMCC:
-      # TODO change test behaviour in the future when WASMFS becomes default file system
-      # WASMFS is excluded here since it currently requires stdlib++ functions
       # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
       # For historical reasons emcc compiles and links as C++ by default.
       # However we want to run our tests in a more strict manner.  We can

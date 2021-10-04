@@ -1277,7 +1277,7 @@ class libwasmfs(MTLibrary):
   name = 'libwasmfs'
 
   def get_files(self):
-    return [utils.path_from_root('system/lib/wasmfs/wasmfs.cpp')]
+    return [utils.path_from_root('system/lib/wasmfs/wasmfs.cpp'), utils.path_from_root('system/lib/wasmfs/file.cpp'), utils.path_from_root('system/lib/wasmfs/file_table.cpp')]
 
   def can_build(self):
     return settings.WASMFS
