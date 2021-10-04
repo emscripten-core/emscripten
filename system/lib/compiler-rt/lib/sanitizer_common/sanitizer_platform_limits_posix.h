@@ -427,7 +427,8 @@ struct __sanitizer_file_handle {
 };
 #endif
 
-#if SANITIZER_MAC
+// These fields are not actually pointers, and so wasm64 must use unsigned and not uptr for them
+#if SANITIZER_MAC || SANITIZER_EMSCRIPTEN
 struct __sanitizer_msghdr {
   void *msg_name;
   unsigned msg_namelen;
