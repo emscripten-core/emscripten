@@ -1208,6 +1208,18 @@ function wrapSyscallFunction(x, library, isWasi) {
     var bodyEnd = t.lastIndexOf('}');
     t = t.substring(0, bodyEnd) + post + t.substring(bodyEnd);
   }
+
+  if (MEMORY64 && !isWasi) {
+    t = modifyFunction(t, function(name, args, body) {
+      var argnums = args.split(",").map((a) => 'Number(' + a + ')').join();
+      return 'function ' + name + '(' + args + ') {\n' +
+             '  return BigInt((function ' + name + '_inner(' + args + ') {\n' +
+             body +
+             '  })(' + argnums + '));' +
+             '}';
+    });
+  }
+
   library[x] = eval('(' + t + ')');
   if (!library[x + '__deps']) library[x + '__deps'] = [];
   library[x + '__deps'].push('$SYSCALLS');
