@@ -28,17 +28,20 @@ static void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   int err;
-  err = mkdir("nocanread", 0111);
+  err = mkdir("working", 0777);
   assert(!err);
-  err = mkdir("foobar", 0777);
+  err = mkdir("working/nocanread", 0111);
   assert(!err);
-  create_file("foobar/file.txt", "ride into the danger zone", 0666);
+  err = mkdir("working/foobar", 0777);
+  assert(!err);
+  create_file("working/foobar/file.txt", "ride into the danger zone", 0666);
 }
 
 void cleanup() {
-  rmdir("nocanread");
-  unlink("foobar/file.txt");
-  rmdir("foobar");
+  rmdir("working/nocanread");
+  unlink("working/foobar/file.txt");
+  rmdir("working/foobar");
+  rmdir("working");
 }
 
 void test() {
@@ -51,25 +54,25 @@ void test() {
   int i;
 
   // check bad opendir input
-  dir = opendir("noexist");
+  dir = opendir("working/noexist");
   assert(!dir);
   assert(errno == ENOENT);
-  dir = opendir("nocanread");
+  dir = opendir("working/nocanread");
   assert(!dir);
   assert(errno == EACCES);
-  dir = opendir("foobar/file.txt");
+  dir = opendir("working/foobar/file.txt");
   assert(!dir);
   assert(errno == ENOTDIR);
 
   // check bad readdir input
-  //dir = opendir("foobar");
+  //dir = opendir("working/foobar");
   //closedir(dir);
   //ent = readdir(dir);
   //assert(!ent);
   // XXX musl doesn't have enough error handling for this: assert(errno == EBADF);
 
   // check bad readdir_r input
-  //dir = opendir("foobar");
+  //dir = opendir("working/foobar");
   //closedir(dir);
   //err = readdir_r(dir, NULL, &result);
   // XXX musl doesn't have enough error handling for this: assert(err == EBADF);
@@ -77,7 +80,7 @@ void test() {
   //
   // do a normal read with readdir
   //
-  dir = opendir("foobar");
+  dir = opendir("working/foobar");
   assert(dir);
   int seen[3] = { 0, 0, 0 };
   for (i = 0; i < 3; i++) {
@@ -170,7 +173,7 @@ void test_scandir() {
   struct dirent **namelist;
   int n;
 
-  n = scandir(".", &namelist, NULL, alphasort);
+  n = scandir("working", &namelist, NULL, alphasort);
   printf("n: %d\n", n);
   if (n < 0)
     return;
