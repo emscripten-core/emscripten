@@ -188,7 +188,6 @@ _deps_info = {
   # dependency.
   'setjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
   'setprotoent': ['malloc'],
-  'setgroups': ['sysconf'],
   'syslog': ['malloc', 'ntohs'],
   'vsyslog': ['malloc', 'ntohs'],
   'timegm': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
