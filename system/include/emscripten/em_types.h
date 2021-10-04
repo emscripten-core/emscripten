@@ -28,3 +28,8 @@ typedef double __attribute__((aligned(1))) emscripten_align1_double;
 typedef void (*em_callback_func)(void);
 typedef void (*em_arg_callback_func)(void*);
 typedef void (*em_str_callback_func)(const char *);
+
+#define EM_BOOL int
+#define EM_TRUE 1
+#define EM_FALSE 0
+#define EM_UTF8 char

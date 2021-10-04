@@ -66,7 +66,8 @@ var LibraryManager = {
       'library_stack_trace.js',
       'library_wasi.js',
       'library_int53.js',
-      'library_dylink.js'
+      'library_dylink.js',
+      'library_eventloop.js',
     ];
 
     if (LINK_AS_CXX && !EXCEPTION_HANDLING) {

@@ -7594,29 +7594,49 @@ int main() {
     assert os.path.isfile('b.js')
     assert not os.path.isfile('a.js')
 
-  # Tests that Emscripten-provided header files can be cleanly included in C code without
-  # any errors or warnings
+  # Tests that Emscripten-provided header files can be cleanly included standalone.
+  # Also check they can be included in C code (where possible).
   @is_slow_test
-  def test_include_system_header_in_c(self):
+  def test_standalone_system_headers(self):
     # Test oldest C standard, and the default C standard
-    for std in [[], ['-std=c89']]:
-      for directory, headers in [
-        # This directory has also bind.h, val.h and wire.h, which require C++11
-        ('emscripten', ['asmfs.h', 'dom_pk_codes.h', 'em_asm.h', 'em_js.h', 'em_macros.h', 'em_math.h', 'emmalloc.h', 'emscripten.h', 'exports.h', 'fetch.h', 'fiber.h', 'heap.h', 'html5.h', 'html5_webgl.h', 'html5_webgpu.h', 'key_codes.h', 'posix_socket.h', 'stack.h', 'threading.h', 'trace.h', 'websocket.h']),
-        ('AL', ['al.h', 'alc.h']),
-        ('EGL', ['egl.h', 'eglplatform.h']),
-        ('GL', ['freeglut_std.h', 'gl.h', 'glew.h', 'glfw.h', 'glu.h', 'glut.h']),
-        ('GLES', ['gl.h', 'glplatform.h']),
-        ('GLES2', ['gl2.h', 'gl2platform.h']),
-        ('GLES3', ['gl3.h', 'gl3platform.h', 'gl31.h', 'gl32.h']),
-        ('GLFW', ['glfw3.h']),
-        ('KHR', ['khrplatform.h'])]:
-        for header in headers:
-          inc = f'#include <{directory}/{header}>\n__attribute__((weak)) int foo;\n'
-          print(header)
+    # This also tests that each header file is self contained and includes
+    # everything it needs.
+    directories = {'': []}
+    for elem in os.listdir(path_from_root('system/include')):
+      if elem == 'compat':
+        continue
+      full = path_from_root('system/include', elem)
+      if os.path.isdir(full):
+        directories[elem] = os.listdir(full)
+      else:
+        directories[''].append(elem)
+
+    for directory, headers in directories.items():
+      print('dir: ' + directory)
+      for header in headers:
+        if not header.endswith('.h'):
+          continue
+        print('header: ' + header)
+        # These headers cannot be included in isolation.
+        # e.g: error: unknown type name 'EGLDisplay'
+        if header in ['eglext.h', 'SDL_config_macosx.h', 'glext.h', 'gl2ext.h']:
+          continue
+        # These headers are C++ only and cannot be included from C code.
+        # But we still want to check they can be included on there own without
+        # any errors or warnings.
+        cxx_only = header in ['wire.h', 'val.h', 'bind.h', 'webgpu_cpp.h']
+        if directory:
+          header = f'{directory}/{header}'
+        inc = f'#include <{header}>\n__attribute__((weak)) int foo;\n'
+        if cxx_only:
+          create_file('a.cxx', inc)
+          create_file('b.cxx', inc)
+          self.run_process([EMXX, '-Werror', '-Wall', '-pedantic', 'a.cxx', 'b.cxx'])
+        else:
           create_file('a.c', inc)
           create_file('b.c', inc)
-          self.run_process([EMCC] + std + ['-Werror', '-Wall', '-pedantic', 'a.c', 'b.c'])
+          for std in [[], ['-std=c89']]:
+            self.run_process([EMCC] + std + ['-Werror', '-Wall', '-pedantic', 'a.c', 'b.c'])
 
   @is_slow_test
   def test_single_file(self):
@@ -10793,6 +10813,10 @@ kill -9 $$
     err = self.run_process([EMCC, '-sALLOW_MEMORY_GROWTH', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained("warning: linker setting ignored during compilation: 'ALLOW_MEMORY_GROWTH' [-Wunused-command-line-argument]", err)
 
+  def test_link_only_flag_warning(self):
+    err = self.run_process([EMCC, '--embed-file', 'file', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
+    self.assertContained("warning: linker setting ignored during compilation: '--embed-file' [-Wunused-command-line-argument]", err)
+
   def test_no_deprecated(self):
     # Test that -Wno-deprecated is passed on to clang driver
     create_file('test.c', '''\
@@ -10878,11 +10902,11 @@ void foo() {}
     cmd = [EMCC, 'main.c', '-sASSERTIONS'] + args
     if args:
       err = self.expect_fail(cmd)
-      self.assertContained('error: attempt to link unsupport syscall: __sys_mincore (use -s ALLOW_UNIMPLEMENTED_SYSCALLS (the default) to allow linking with a stub version', err)
+      self.assertContained('error: attempt to link unsupport syscall: __syscall_mincore (use -s ALLOW_UNIMPLEMENTED_SYSCALLS (the default) to allow linking with a stub version', err)
     else:
       self.run_process(cmd)
       err = self.run_js('a.out.js')
-      self.assertContained('warning: unsupported syscall: __sys_mincore', err)
+      self.assertContained('warning: unsupported syscall: __syscall_mincore', err)
 
       # Setting ASSERTIONS=0 should avoid the runtime warning
       self.run_process(cmd + ['-sASSERTIONS=0'])
@@ -11032,3 +11056,23 @@ void foo() {}
     output = self.do_runf(test_file('pthread/test_pthread_trap.c'), assert_returncode=NON_ZERO)
     self.assertContained("pthread sent an error!", output)
     self.assertContained("at thread_main", output)
+
+  @node_pthreads
+  def test_emscripten_set_interval(self):
+    self.do_runf(test_file('emscripten_set_interval.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+
+  # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
+  def test_emscripten_console_log(self):
+    self.do_runf(test_file('emscripten_console_log.c'), emcc_args=['--pre-js', test_file('emscripten_console_log_pre.js')])
+
+  # Tests emscripten_unwind_to_js_event_loop() behavior
+  def test_emscripten_unwind_to_js_event_loop(self, *args):
+    self.do_runf(test_file('test_emscripten_unwind_to_js_event_loop.c'))
+
+  @node_pthreads
+  def test_emscripten_set_timeout(self):
+    self.do_runf(test_file('emscripten_set_timeout.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+
+  @node_pthreads
+  def test_emscripten_set_timeout_loop(self):
+    self.do_runf(test_file('emscripten_set_timeout_loop.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])

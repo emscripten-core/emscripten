@@ -1488,19 +1488,13 @@
         "pthread": {
             "__size__": 224,
             "attr": 100,
-            "cancelasync": 56,
-            "canceldisable": 52,
             "detached": 60,
-            "locale": 168,
             "profilerBlock": 4,
             "result": 88,
-            "robust_list": 148,
             "self": 8,
             "stack": 72,
             "stack_size": 76,
-            "threadStatus": 0,
-            "tid": 36,
-            "tsd": 96
+            "threadStatus": 0
         },
         "rlimit": {
             "__size__": 16,

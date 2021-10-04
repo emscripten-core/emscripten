@@ -173,6 +173,9 @@ void emscripten_scan_stack(em_scan_func func);
 typedef void (*em_dlopen_callback)(void* handle, void* user_data);
 void emscripten_dlopen(const char *filename, int flags, void* user_data, em_dlopen_callback onsuccess, em_arg_callback_func onerror);
 
+void emscripten_throw_number(double number);
+void emscripten_throw_string(const char *utf8String);
+
 /* ===================================== */
 /* Internal APIs. Be careful with these. */
 /* ===================================== */

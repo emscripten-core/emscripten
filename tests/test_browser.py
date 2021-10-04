@@ -4480,8 +4480,12 @@ window.close = function() {
 
   @requires_graphics_hardware
   def test_webgpu_basic_rendering(self):
-    for args in [[], ['-s', 'ASSERTIONS'], ['-s', 'MAIN_MODULE=1']]:
+    for args in [[], ['-s', 'ASSERTIONS', '--closure=1'], ['-s', 'MAIN_MODULE=1']]:
       self.btest_exit('webgpu_basic_rendering.cpp', args=['-s', 'USE_WEBGPU', '-s', 'EXPORTED_RUNTIME_METHODS=["ccall"]'] + args)
+
+  def test_webgpu_get_device(self):
+    for args in [['-s', 'ASSERTIONS', '--closure=1']]:
+      self.btest_exit('webgpu_get_device.cpp', args=['-s', 'USE_WEBGPU', '-s', 'EXPORTED_RUNTIME_METHODS=["ccall"]'] + args)
 
   # Tests the feature that shell html page can preallocate the typed array and place it
   # to Module.buffer before loading the script page.
@@ -5035,7 +5039,7 @@ window.close = function() {
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):
-    self.btest_exit(test_file('browser/test_emscripten_unwind_to_js_event_loop.c'))
+    self.btest_exit(test_file('test_emscripten_unwind_to_js_event_loop.c'))
 
   def test_wasm2js_fallback(self):
     self.set_setting('EXIT_RUNTIME')

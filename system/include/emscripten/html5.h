@@ -8,13 +8,22 @@
 #pragma once
 
 #include <pthread.h>
+#include <emscripten/em_types.h>
+
+#include <emscripten/emscripten.h>
+
+// Include eventloop.h and console.h for compat with older version of this
+// header that used to define these functions.
+#include <emscripten/eventloop.h>
+#include <emscripten/console.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* This file defines Emscripten low-level glue bindings for interfacing with HTML5 APIs
- * 
+/*
+ * This file defines Emscripten low-level glue bindings for interfacing with HTML5 APIs
+ *
  * Documentation for the public APIs defined in this file must be updated in: 
  *    site/source/docs/api_reference/html5.h.rst
  * A prebuilt local version of the documentation is available at: 
@@ -80,11 +89,6 @@ extern "C" {
 #define EMSCRIPTEN_EVENT_TARGET_DOCUMENT       ((const char*)1)
 #define EMSCRIPTEN_EVENT_TARGET_WINDOW         ((const char*)2)
 #define EMSCRIPTEN_EVENT_TARGET_SCREEN         ((const char*)3)
-
-#define EM_BOOL int
-#define EM_TRUE 1
-#define EM_FALSE 0
-#define EM_UTF8 char
 
 #define DOM_KEY_LOCATION int
 #define DOM_KEY_LOCATION_STANDARD 0x00
@@ -469,32 +473,12 @@ void emscripten_html5_remove_all_event_listeners(void);
 #define emscripten_set_batterylevelchange_callback(userData, callback)                        emscripten_set_batterylevelchange_callback_on_thread(             (userData),               (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_beforeunload_callback(userData, callback)                              emscripten_set_beforeunload_callback_on_thread(                   (userData),               (callback), EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD)
 
-long emscripten_set_timeout(void (*cb)(void *userData), double msecs, void *userData);
-void emscripten_clear_timeout(long setTimeoutId);
-void emscripten_set_timeout_loop(EM_BOOL (*cb)(double time, void *userData), double intervalMsecs, void *userData);
-
 long emscripten_request_animation_frame(EM_BOOL (*cb)(double time, void *userData), void *userData);
 void emscripten_cancel_animation_frame(long requestAnimationFrameId);
 void emscripten_request_animation_frame_loop(EM_BOOL (*cb)(double time, void *userData), void *userData);
 
-long emscripten_set_immediate(void (*cb)(void *userData), void *userData);
-void emscripten_clear_immediate(long setImmediateId);
-void emscripten_set_immediate_loop(EM_BOOL (*cb)(void *userData), void *userData);
-
-long emscripten_set_interval(void (*cb)(void *userData), double intervalMsecs, void *userData);
-void emscripten_clear_interval(long setIntervalId);
-
 double emscripten_date_now(void);
 double emscripten_performance_now(void);
-
-void emscripten_console_log(const char *utf8String);
-void emscripten_console_warn(const char *utf8String);
-void emscripten_console_error(const char *utf8String);
-
-void emscripten_throw_number(double number);
-void emscripten_throw_string(const char *utf8String);
-
-void emscripten_unwind_to_js_event_loop(void) __attribute__((noreturn));
 
 #ifdef __cplusplus
 } // ~extern "C"

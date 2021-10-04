@@ -759,10 +759,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if callable(string):
       string = string()
     if value in string:
-      self.fail("Expected to NOT find '%s' in '%s', diff:\n\n%s" % (
-        limit_size(value), limit_size(string),
-        limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(value.split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
-      ))
+      self.fail("Expected to NOT find '%s' in '%s'" % (limit_size(value), limit_size(string)))
 
   def assertContainedIf(self, value, string, condition):
     if condition:
