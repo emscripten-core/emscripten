@@ -8,7 +8,6 @@
 
 #include "file.h"
 #include "file_table.h"
-#include "open_file_descriptor.h"
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <errno.h>
@@ -18,66 +17,64 @@
 #include <vector>
 #include <wasi/api.h>
 
+#define RETURN_ERRNO(errno, error_reason)                                                          \
+  do {                                                                                             \
+    return -(errno);                                                                               \
+  } while (0)
+
 extern "C" {
 
 __wasi_fd_t __syscall63(__wasi_fd_t oldfd, __wasi_fd_t newfd) { // dup2
-  FileTable::Handle currentHandle = FileTable::get();
+  FileTable::Handle fileTable = FileTable::get();
 
   // If oldfd is not a valid file descriptor, then the call fails,
   // and newfd is not closed.
-  if (oldfd >= currentHandle.getSize() || oldfd < 0) {
-    return (__wasi_fd_t)(-1);
+  if (!fileTable[oldfd]) {
+    return __WASI_ERRNO_BADF;
   }
 
-  std::shared_ptr<OpenFileDescriptor> oldOpenFile = currentHandle[oldfd];
-
-  if (oldOpenFile == nullptr) {
-    return (__wasi_fd_t)(-1);
-  }
+  auto oldOpenFile = fileTable[oldfd];
 
   if (oldfd == newfd) {
     return oldfd;
   }
 
+  if (newfd < 0) {
+    return __WASI_ERRNO_BADF;
+  }
+
   // If the file descriptor newfd was previously open, it is closed
   // before being reused; the close is performed silently.
-  if (newfd < 0) {
-    return (__wasi_fd_t)(-1);
+  if (fileTable[newfd]) {
+    fileTable.removeOpenFile(newfd);
   }
 
-  if (newfd < currentHandle.getSize()) {
-    std::shared_ptr<OpenFileDescriptor> newOpenFile = currentHandle[newfd];
-    if (newOpenFile) {
-      currentHandle.removeOpenFile(newfd);
-    }
-  }
-
-  currentHandle[newfd] = oldOpenFile;
+  fileTable[newfd] = oldOpenFile;
   return newfd;
 }
 
 __wasi_fd_t __syscall41(__wasi_fd_t fd) { // dup
 
-  FileTable::Handle currentHandle = FileTable::get();
-  if (fd >= currentHandle.getSize() || fd < 0) {
-    return (__wasi_fd_t)(-1);
+  FileTable::Handle fileTable = FileTable::get();
+  if (!fileTable[fd]) {
+    return __WASI_ERRNO_BADF;
   }
-  std::shared_ptr<OpenFileDescriptor> currentOpenFile = currentHandle[fd];
+
+  auto currentOpenFile = fileTable[fd];
 
   // Find the first free open file entry
-  return currentHandle.addOpenFile(currentOpenFile);
+  return fileTable.addOpenFile(currentOpenFile);
 }
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
   // Get the corresponding OpenFile from the open file table
-  FileTable::Handle currentHandle = FileTable::get();
-
-  if (fd >= currentHandle.getSize() || fd < 0) {
+  FileTable::Handle fileTable = FileTable::get();
+  if (!fileTable[fd]) {
     return __WASI_ERRNO_BADF;
   }
 
-  std::shared_ptr<OpenFileDescriptor> currentOpenFile = currentHandle[fd];
+  auto currentOpenFile = fileTable[fd];
 
   return currentOpenFile->getFile()->write(iovs, iovs_len, nwritten);
 }

@@ -8,9 +8,12 @@
 
 #include "file_table.h"
 
-extern "C" {
-
 std::vector<std::shared_ptr<OpenFileDescriptor>> FileTable::entries;
+
+OpenFileDescriptor::OpenFileDescriptor(uint32_t offset, std::shared_ptr<File> file)
+  : offset(offset), file(file) {}
+
+std::shared_ptr<File>& OpenFileDescriptor::getFile() { return file; }
 
 FileTable::Handle FileTable::get() {
   static FileTable fileTable;
@@ -37,5 +40,4 @@ void FileTable::Handle::removeOpenFile(__wasi_fd_t fd) {
   assert(fd < fileTable.entries.size() && fd >= 0);
 
   fileTable.entries[fd] = nullptr;
-}
 }

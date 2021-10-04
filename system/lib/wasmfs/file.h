@@ -12,10 +12,6 @@
 #include <mutex>
 #include <wasi/api.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 class File {
   // TODO: Add other File properties later.
 
@@ -51,7 +47,3 @@ public:
   __wasi_errno_t write(
     const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) override;
 };
-
-#ifdef __cplusplus
-}
-#endif

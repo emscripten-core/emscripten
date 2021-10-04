@@ -8,15 +8,23 @@
 
 #pragma once
 
-#include "open_file_descriptor.h"
+#include "file.h"
 #include <assert.h>
 #include <mutex>
 #include <utility>
 #include <vector>
+#include <wasi/api.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+class OpenFileDescriptor {
+  std::shared_ptr<File> file;
+  __wasi_filedelta_t offset;
+  std::mutex mutex;
+
+public:
+  OpenFileDescriptor(uint32_t offset, std::shared_ptr<File> file);
+
+  std::shared_ptr<File>& getFile();
+};
 
 class FileTable {
   static std::vector<std::shared_ptr<OpenFileDescriptor>> entries;
@@ -29,6 +37,8 @@ class FileTable {
   }
 
 public:
+  // Handle represents an RAII wrapper object. Access to the FileTable must go through a Handle.
+  // A Handle holds FileTable's lock for the duration of its lifetime.
   class Handle {
     FileTable& fileTable;
     std::unique_lock<std::mutex> lock;
@@ -36,38 +46,56 @@ public:
   public:
     Handle(FileTable& fileTable) : fileTable(fileTable), lock(fileTable.mutex) {}
 
-    __wasi_fd_t getSize() { return fileTable.entries.size(); }
+    // Returns size of the associated FileTable entries.
+    size_t size() { return fileTable.entries.size(); }
 
+    // Adds given OpenFileDescriptor to FileTable entries. Returns fd (insertion index in entries).
     __wasi_fd_t addOpenFile(std::shared_ptr<OpenFileDescriptor> ptr);
 
+    // Removes OpenFileDescriptor in FileTable entries corresponding to given fd.
     void removeOpenFile(__wasi_fd_t fd);
 
+    // Entry is used to override the subscript [] operator.
+    // This allows the user to get and set values in the FileTable entries vector.
+    // Syntax: std::shared_ptr<OpenFileDescriptor> openFile = currentHandle[fd];
     struct Entry {
-      Handle& entryHandle;
+      Handle& fileTableHandle;
       __wasi_fd_t fd;
       operator std::shared_ptr<OpenFileDescriptor> &() const {
-        assert(fd < entryHandle.fileTable.entries.size() && fd >= 0);
+        assert(fd < fileTableHandle.size() && fd >= 0);
 
-        return entryHandle.fileTable.entries[fd];
+        return fileTableHandle.fileTable.entries[fd];
       }
       Entry& operator=(std::shared_ptr<OpenFileDescriptor> ptr) {
         assert(fd >= 0);
 
-        if (fd >= entryHandle.fileTable.entries.size()) {
-          entryHandle.fileTable.entries.resize(fd + 1);
+        if (fd >= fileTableHandle.size()) {
+          fileTableHandle.fileTable.entries.resize(fd + 1);
         }
-        entryHandle.fileTable.entries[fd] = ptr;
+        fileTableHandle.fileTable.entries[fd] = ptr;
 
         return *this;
+      }
+      Entry& operator=(Entry& entry) { return *this = std::shared_ptr<OpenFileDescriptor>(entry); }
+      std::shared_ptr<OpenFileDescriptor>& operator->() {
+        assert(fd < fileTableHandle.size() && fd >= 0);
+
+        return fileTableHandle.fileTable.entries[fd];
+      }
+      // Check whether the entry exists (i.e. contains an OpenFileDescriptor).
+      operator bool() const {
+        if (fd >= fileTableHandle.size() || fd < 0) {
+          return false;
+        }
+
+        return fileTableHandle.fileTable.entries[fd] != nullptr;
       }
     };
 
     Entry operator[](__wasi_fd_t fd) { return Entry{*this, fd}; };
   };
 
+  // This get method is responsible for lazily initializing the FileTable.
+  // There is only ever one FileTable in the system.
   static Handle get();
 };
-
-#ifdef __cplusplus
-}
-#endif

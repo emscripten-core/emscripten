@@ -10,8 +10,6 @@
 #include <emscripten/html5.h>
 #include <vector>
 
-extern "C" {
-
 static std::vector<char> fdWriteStdoutBuffer;
 static std::vector<char> fdWriteStderrBuffer;
 
@@ -53,5 +51,4 @@ __wasi_errno_t StdoutFile::write(
 __wasi_errno_t StderrFile::write(
   const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
   return writeStdBuffer(iovs, iovs_len, nwritten, &emscripten_console_error, fdWriteStderrBuffer);
-}
 }
