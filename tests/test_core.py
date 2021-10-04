@@ -8403,6 +8403,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('core/pthread/test_pthread_exit_runtime.c', assert_returncode=42)
 
   @node_pthreads
+  def test_pthread_exit_main(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('core/pthread/test_pthread_exit_main.c')
+
+  def test_pthread_exit_main_stub(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('core/pthread/test_pthread_exit_main.c')
+
+  @node_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   def test_pthread_offset_converter(self):
     self.set_setting('PROXY_TO_PTHREAD')

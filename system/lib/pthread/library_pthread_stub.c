@@ -199,7 +199,7 @@ int pthread_cancel(pthread_t thread) {
 }
 
 _Noreturn void __pthread_exit(void* status) {
-   exit((int)status);
+   exit(0);
 }
 
 weak_alias(__pthread_exit, pthread_exit);

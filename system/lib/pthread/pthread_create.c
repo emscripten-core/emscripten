@@ -137,9 +137,7 @@ void _emscripten_thread_exit(void* result) {
   __lock(self->exitlock);
 
   if (self == emscripten_main_browser_thread_id()) {
-    // FIXME(sbc): When pthread_exit causes the entire application to exit
-    // we should be returning zero (according to the man page for pthread_exit).
-    exit((intptr_t)result);
+    exit(0);
     return;
   }
 
