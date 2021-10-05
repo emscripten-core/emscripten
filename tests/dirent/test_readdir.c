@@ -28,7 +28,9 @@ static void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   int err;
-#ifndef NODERAWFS
+#ifdef NODERAWFS
+  err = mkdir("testtmp", 0777);
+  chdir("testtmp");
   // create directories to mimic mounted root
   err = mkdir("tmp", 0777);
   err = mkdir("proc", 0777);
@@ -51,6 +53,8 @@ void cleanup() {
   rmdir("proc");
   rmdir("home");
   rmdir("dev");
+  chdir("..");
+  rmdir("testtmp");
 #endif
 }
 
