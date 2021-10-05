@@ -28,8 +28,9 @@ static void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   int err;
-  err = mkdir("working", 0777);
+  err = mkdir("testtmp", 0777);  // can't call it tmp, that already exists
   assert(!err);
+  chdir("testtmp")
   err = mkdir("working/nocanread", 0111);
   assert(!err);
   err = mkdir("working/foobar", 0777);
@@ -38,10 +39,11 @@ void setup() {
 }
 
 void cleanup() {
-  rmdir("working/nocanread");
-  unlink("working/foobar/file.txt");
-  rmdir("working/foobar");
-  rmdir("working");
+  rmdir("nocanread");
+  unlink("foobar/file.txt");
+  rmdir("foobar");
+  chdir("..");
+  rmdir("testtmp");
 }
 
 void test() {
@@ -54,25 +56,25 @@ void test() {
   int i;
 
   // check bad opendir input
-  dir = opendir("working/noexist");
+  dir = opendir("noexist");
   assert(!dir);
   assert(errno == ENOENT);
-  dir = opendir("working/nocanread");
+  dir = opendir("nocanread");
   assert(!dir);
   assert(errno == EACCES);
-  dir = opendir("working/foobar/file.txt");
+  dir = opendir("foobar/file.txt");
   assert(!dir);
   assert(errno == ENOTDIR);
 
   // check bad readdir input
-  //dir = opendir("working/foobar");
+  //dir = opendir("foobar");
   //closedir(dir);
   //ent = readdir(dir);
   //assert(!ent);
   // XXX musl doesn't have enough error handling for this: assert(errno == EBADF);
 
   // check bad readdir_r input
-  //dir = opendir("working/foobar");
+  //dir = opendir("foobar");
   //closedir(dir);
   //err = readdir_r(dir, NULL, &result);
   // XXX musl doesn't have enough error handling for this: assert(err == EBADF);
@@ -80,7 +82,7 @@ void test() {
   //
   // do a normal read with readdir
   //
-  dir = opendir("working/foobar");
+  dir = opendir("foobar");
   assert(dir);
   int seen[3] = { 0, 0, 0 };
   for (i = 0; i < 3; i++) {
@@ -173,7 +175,7 @@ void test_scandir() {
   struct dirent **namelist;
   int n;
 
-  n = scandir("working", &namelist, NULL, alphasort);
+  n = scandir(".", &namelist, NULL, alphasort);
   printf("n: %d\n", n);
   if (n < 0)
     return;
