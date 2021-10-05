@@ -28,6 +28,13 @@ static void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   int err;
+#ifndef NODERAWFS
+  // create directories to mimic mounted root
+  err = mkdir("tmp", 0777);
+  err = mkdir("proc", 0777);
+  err = mkdir("home", 0777);
+  err = mkdir("dev", 0777);
+#endif
   err = mkdir("nocanread", 0111);
   assert(!err);
   err = mkdir("foobar", 0777);
@@ -39,6 +46,12 @@ void cleanup() {
   rmdir("nocanread");
   unlink("foobar/file.txt");
   rmdir("foobar");
+#ifndef NODERAWFS
+  rmdir("tmp");
+  rmdir("proc");
+  rmdir("home");
+  rmdir("dev");
+#endif
 }
 
 void test() {
