@@ -5059,9 +5059,17 @@ main( int argv, char ** argc ) {
     self.emcc_args += ['--embed-file', 'empty.txt']
     self.do_run(src, '3\n')
 
+  # this fails in CI!
   @also_with_noderawfs
   def test_readdir(self):
     self.do_run_in_out_file_test('dirent/test_readdir.c')
+
+  # this should not fail in CI, right? It's just NODERAWFS that fails, right?
+  def test_readdir(self):
+    self.do_run_in_out_file_test('dirent/test_readdir.c')
+
+  def test_readdir_noderawfs(self):
+    self.do_run_in_out_file_test('dirent/test_readdir_noderawfs.c')
 
   def test_readdir_empty(self):
     self.do_run_in_out_file_test('dirent/test_readdir_empty.c')
