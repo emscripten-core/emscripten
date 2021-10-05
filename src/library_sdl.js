@@ -2264,9 +2264,9 @@ var LibrarySDL = {
         }
       }
       var callStbImage = function(func, params) {
-        var x = Module['_malloc']({{{ Runtime.QUANTUM_SIZE }}});
-        var y = Module['_malloc']({{{ Runtime.QUANTUM_SIZE }}});
-        var comp = Module['_malloc']({{{ Runtime.QUANTUM_SIZE }}});
+        var x = Module['_malloc']({{{ getNativeTypeSize('i32') }}});
+        var y = Module['_malloc']({{{ getNativeTypeSize('i32') }}});
+        var comp = Module['_malloc']({{{ getNativeTypeSize('i32') }}});
         addCleanup(function() {
           Module['_free'](x);
           Module['_free'](y);
