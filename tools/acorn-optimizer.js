@@ -1839,7 +1839,7 @@ try {
     ecmaVersion: 2020,
     preserveParens: closureFriendly,
     onComment: closureFriendly ? sourceComments : undefined,
-    sourceType: exportES6 ? "module" : "script"
+    sourceType: exportES6 ? "module" : "script",
   });
 } catch (err) {
   err.message += (function() {
