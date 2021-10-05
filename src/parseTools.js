@@ -480,7 +480,7 @@ function checkSafeHeap() {
 }
 
 function getHeapOffset(offset, type) {
-  if (Runtime.getNativeFieldSize(type) > 4 && type == 'i64') {
+  if (type == 'i64') {
     // we emulate 64-bit integer values as 32 in asmjs-unknown-emscripten, but not double
     type = 'i32';
   }

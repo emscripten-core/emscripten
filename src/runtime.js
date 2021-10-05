@@ -46,9 +46,9 @@ function getNativeTypeSize(type) {
 var Runtime = {
   getNativeTypeSize: getNativeTypeSize,
 
-  //! Returns the size of a structure field, as C/C++ would have it (in 32-bit,
-  //! for now).
-  //! @param type The type, by name.
+  //! TODO(sbc): This function is unused by emscripten but we can't be
+  //! sure there are not external users.
+  //! See: https://github.com/emscripten-core/emscripten/issues/15242
   getNativeFieldSize: function(type) {
     return Math.max(getNativeTypeSize(type), Runtime.QUANTUM_SIZE);
   },
