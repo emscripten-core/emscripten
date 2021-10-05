@@ -239,7 +239,7 @@ class other(RunnerCore):
     self.run_process([EMCC, test_file('hello_world.c'), '-s', 'EXPORT_ES6=1', '--post-js', test_file('export_module.js')])
     src = read_file('a.out.js')
     self.assertContained('export {doNothing};', src)
-  
+
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
     self.run_process([EMCC, '-c', '-ofoo.o', test_file('hello_world.c')])
