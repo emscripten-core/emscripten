@@ -13,8 +13,8 @@ mergeInto(LibraryManager.library, {
     '}' +
     'else { throw new Error("NODERAWFS is currently only supported on Node.js environment.") }',
   $NODERAWFS: {
-    lookup: function(parent, child) {
-      return FS.lookupPath(parent.path + '/' + child);
+    lookup: function(parent, name) {
+      return FS.lookupPath(parent.path + '/' + name);
     },
     lookupPath: function(path) {
       var st = fs.lstatSync(path);
