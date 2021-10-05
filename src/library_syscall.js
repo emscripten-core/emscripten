@@ -452,7 +452,7 @@ var SyscallsLibrary = {
     return socket;
   },
   /** @param {boolean=} allowNull */
-  $getSocketAddress__deps: ['$readSockaddr'],
+  $getSocketAddress__deps: ['$readSockaddr', '$FS', '$DNS'],
   $getSocketAddress: function(addrp, addrlen, allowNull) {
     if (allowNull && addrp === 0) return null;
     var info = readSockaddr(addrp, addrlen);
