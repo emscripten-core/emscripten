@@ -1406,16 +1406,14 @@ var LibrarySDL = {
     return 1;
   },
 
+  SDL_GetVideoInfo__deps: ['$zeroMemory'],
   SDL_GetVideoInfo__proxy: 'sync',
   SDL_GetVideoInfo__sig: 'i',
   SDL_GetVideoInfo: function() {
-    // %struct.SDL_VideoInfo = type { i32, i32, %struct.SDL_PixelFormat*, i32, i32 } - 5 fields of quantum size
-    var ret = _malloc(5 * {{{ Runtime.QUANTUM_SIZE }}});
-    {{{ makeSetValue('ret+' + (Runtime.QUANTUM_SIZE*0), '0', '0', 'i32') }}}; // TODO
-    {{{ makeSetValue('ret+' + (Runtime.QUANTUM_SIZE*1), '0', '0', 'i32') }}}; // TODO
-    {{{ makeSetValue('ret+' + (Runtime.QUANTUM_SIZE*2), '0', '0', 'void*') }}};
-    {{{ makeSetValue('ret+' + (Runtime.QUANTUM_SIZE*3), '0', 'Module["canvas"].width', 'i32') }}};
-    {{{ makeSetValue('ret+' + (Runtime.QUANTUM_SIZE*4), '0', 'Module["canvas"].height', 'i32') }}};
+    var ret = _malloc({{{ C_STRUCTS.SDL_VideoInfo.__size__ }}});
+    zeroMemory(ret, {{{ C_STRUCTS.SDL_version.__size__ }}});
+    {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_w, 'Module["canvas"].width', 'i32') }}};
+    {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_h, 'Module["canvas"].height', 'i32') }}};
     return ret;
   },
 
