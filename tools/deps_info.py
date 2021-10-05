@@ -188,8 +188,8 @@ _deps_info = {
   # dependency.
   'setjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
   'setprotoent': ['malloc'],
-  'syslog': ['malloc', 'ntohs'],
-  'vsyslog': ['malloc', 'ntohs'],
+  'syslog': ['malloc', 'ntohs', 'htons'],
+  'vsyslog': ['malloc', 'ntohs', 'htons'],
   'timegm': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
   'tzset': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
   'uuid_compare': ['memcmp'],
