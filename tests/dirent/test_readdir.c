@@ -30,12 +30,12 @@ void setup() {
   int err;
   err = mkdir("testtmp", 0777);  // can't call it tmp, that already exists
   assert(!err);
-  chdir("testtmp")
-  err = mkdir("working/nocanread", 0111);
+  chdir("testtmp");
+  err = mkdir("nocanread", 0111);
   assert(!err);
-  err = mkdir("working/foobar", 0777);
+  err = mkdir("foobar", 0777);
   assert(!err);
-  create_file("working/foobar/file.txt", "ride into the danger zone", 0666);
+  create_file("foobar/file.txt", "ride into the danger zone", 0666);
 }
 
 void cleanup() {
