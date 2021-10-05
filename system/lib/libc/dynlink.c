@@ -80,6 +80,7 @@ static void dlopen_js_onsuccess(void* handle) {
   printf("dlopen_js_onsuccess: dso=%p\n", p);
 #endif
   load_library_done(p);
+  pthread_rwlock_unlock(&lock);
   p->onsuccess(p->user_data, p);
 }
 
@@ -88,6 +89,7 @@ static void dlopen_js_onerror(void* handle) {
 #ifdef DYLINK_DEBUG
   printf("dlopen_js_onsuccess: dso=%p\n", p);
 #endif
+  pthread_rwlock_unlock(&lock);
   p->onerror(p->user_data);
   free(p);
 }
@@ -166,8 +168,10 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
     onsuccess(user_data, head);
     return;
   }
+  pthread_rwlock_wrlock(&lock);
   struct dso* p = load_library_start(filename, flags);
   if (!p) {
+    pthread_rwlock_unlock(&lock);
     onerror(user_data);
     return;
   }
@@ -177,6 +181,7 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
 #ifdef DYLINK_DEBUG
   printf("calling emscripten_dlopen_js %p\n", p);
 #endif
+  // Unlock happens in dlopen_js_onsuccess/dlopen_js_onerror
   _emscripten_dlopen_js(p, flags, dlopen_js_onsuccess, dlopen_js_onerror);
 }
 
