@@ -747,6 +747,15 @@
     // SDL
     // ===========================================
     {
+        "file": "SDL/SDL_compat.h",
+        "structs": {
+            "SDL_VideoInfo": [
+                "current_w",
+                "current_h"
+            ]
+        }
+    },
+    {
         "file": "SDL/SDL_rect.h",
         "structs": {
             "SDL_Rect": [
