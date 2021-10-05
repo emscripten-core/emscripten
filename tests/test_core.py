@@ -5493,6 +5493,9 @@ Module['onRuntimeInitialized'] = function() {
 
   def test_env(self):
     expected = read_file(test_file('env/output.txt'))
+    print("THSI_PROGRAM options:")
+    print(self.in_dir('src.js'))
+    print('./this.program')
     self.do_runf(test_file('env/src.c'), [
       expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src.js')).replace('\\', '/'), # node, can find itself properly
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8
