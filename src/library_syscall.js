@@ -872,16 +872,7 @@ var SyscallsLibrary = {
         type = 4; // DT_DIR
       }
       else {
-        try {
-          var child = FS.lookupNode(stream, name);
-        } catch (e) {
-          if (!(e instanceof FS.ErrnoError) || e.errno !== {{{ cDefine('EACCES') }}}) {
-            throw e;
-          }
-          // Access denied; skip it in the directory listing.
-          idx++;
-          continue;
-        }
+        var child = FS.lookupNode(stream, name);
         id = child.id;
         type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
                FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
