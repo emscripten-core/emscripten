@@ -630,6 +630,8 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   # will be carried over to a later Closure run.
   if settings.USE_CLOSURE_COMPILER:
     cmd += ['--closureFriendly']
+  if settings.EXPORT_ES6:
+    cmd += ['--exportES6']
   if settings.VERBOSE:
     cmd += ['verbose']
   if not return_output:
