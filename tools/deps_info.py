@@ -71,8 +71,8 @@ _deps_info = {
   '_embind_register_std_wstring': ['free'],
   'alGetString': ['malloc'],
   'alcGetString': ['malloc'],
-  'bind': ['ntohs'],
-  'connect': ['ntohs'],
+  'bind': ['ntohs', 'htons'],
+  'connect': ['ntohs', 'htons'],
   'ctime': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
   'ctime_r': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
   'dladdr': ['malloc'],
@@ -179,7 +179,7 @@ _deps_info = {
   'recv': ['htons'],
   'accept': ['htons'],
   'recvfrom': ['htons'],
-  'send': ['ntohs'],
+  'send': ['ntohs', 'htons'],
   # In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function calls
   # that exist in the same function with setjmp are converted to some code
   # sequence that includes invokes, malloc, free, saveSetjmp, and
@@ -188,8 +188,8 @@ _deps_info = {
   # dependency.
   'setjmp': ['malloc', 'free', 'saveSetjmp', 'setThrew'],
   'setprotoent': ['malloc'],
-  'syslog': ['malloc', 'ntohs'],
-  'vsyslog': ['malloc', 'ntohs'],
+  'syslog': ['malloc', 'ntohs', 'htons'],
+  'vsyslog': ['malloc', 'ntohs', 'htons'],
   'timegm': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
   'tzset': ['_get_tzname', '_get_daylight', '_get_timezone', 'malloc'],
   'uuid_compare': ['memcmp'],
