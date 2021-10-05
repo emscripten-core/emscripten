@@ -19,10 +19,8 @@
 
 // See musl's pthread_create.c
 
-extern int __cxa_thread_atexit(void (*)(void *), void *, void *);
 extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 extern void _emscripten_thread_init(int, int, int);
-extern void __pthread_exit_run_handlers();
 extern void __pthread_detached_exit();
 extern void* _emscripten_tls_base();
 extern int8_t __dso_handle;
@@ -32,7 +30,7 @@ static void dummy_0()
 }
 weak_alias(dummy_0, __pthread_tsd_run_dtors);
 
-void __run_cleanup_handlers(void* _unused) {
+static void __run_cleanup_handlers() {
   pthread_t self = __pthread_self();
   while (self->cancelbuf) {
     void (*f)(void *) = self->cancelbuf->__f;
@@ -46,11 +44,6 @@ void __do_cleanup_push(struct __ptcb *cb) {
   struct pthread *self = __pthread_self();
   cb->__next = self->cancelbuf;
   self->cancelbuf = cb;
-  static thread_local bool registered = false;
-  if (!registered) {
-    __cxa_thread_atexit(__run_cleanup_handlers, NULL, &__dso_handle);
-    registered = true;
-  }
 }
 
 void __do_cleanup_pop(struct __ptcb *cb) {
@@ -65,6 +58,9 @@ weak_alias(dummy_file, __stderr_used);
 static void init_file_lock(FILE *f) {
   if (f && f->lock<0) f->lock = 0;
 }
+
+// The main thread is tid 1, and the first created thread gets tid 2.
+static pid_t next_tid = 2;
 
 int __pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict attrp, void *(*entry)(void *), void *restrict arg) {
   // Note on LSAN: lsan intercepts/wraps calls to pthread_create so any
@@ -92,7 +88,7 @@ int __pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict att
   // The pthread struct has a field that points to itself - this is used as a
   // magic ID to detect whether the pthread_t structure is 'alive'.
   new->self = new;
-  new->tid = (uintptr_t)new;
+  new->tid = next_tid++;
 
   // pthread struct robust_list head should point to itself.
   new->robust_list.head = &new->robust_list.head;
@@ -125,7 +121,8 @@ void _emscripten_thread_exit(void* result) {
   self->cancelasync = PTHREAD_CANCEL_DEFERRED;
   self->result = result;
 
-  __pthread_exit_run_handlers();
+  // Run any handlers registered with pthread_cleanup_push
+  __run_cleanup_handlers();
 
   // Call into the musl function that runs destructors of all thread-specific data.
   __pthread_tsd_run_dtors();
@@ -135,9 +132,7 @@ void _emscripten_thread_exit(void* result) {
   __lock(self->exitlock);
 
   if (self == emscripten_main_browser_thread_id()) {
-    // FIXME(sbc): When pthread_exit causes the entire application to exit
-    // we should be returning zero (according to the man page for pthread_exit).
-    exit((intptr_t)result);
+    exit(0);
     return;
   }
 

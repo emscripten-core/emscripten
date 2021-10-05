@@ -66,7 +66,8 @@ var LibraryManager = {
       'library_stack_trace.js',
       'library_wasi.js',
       'library_int53.js',
-      'library_dylink.js'
+      'library_dylink.js',
+      'library_eventloop.js',
     ];
 
     if (LINK_AS_CXX && !EXCEPTION_HANDLING) {
@@ -110,9 +111,8 @@ var LibraryManager = {
         }
         libraries.push('library_noderawfs.js');
       }
-    } else {
-      libraries.push('library_wasmfs.js');
-    }
+    } 
+    // TODO: populate with libraries.push('library_wasmfs.js') later
 
     // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
     if (AUTO_JS_LIBRARIES) {
@@ -189,6 +189,9 @@ var LibraryManager = {
 
     for (var filename of libraries) {
       var src = read(filename);
+      if (VERBOSE) {
+        printErr('processing: ' + filename);
+      }
       var processed = undefined;
       try {
         processed = processMacros(preprocess(src, filename));

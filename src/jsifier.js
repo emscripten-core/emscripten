@@ -197,10 +197,6 @@ function ${name}(${args}) {
         }
       }
 
-      if (!ALLOW_UNIMPLEMENTED_SYSCALLS && LibraryManager.library[ident + '__unimplemented']) {
-        error(`attempt to link unsupport syscall: ${ident} (use -s ALLOW_UNIMPLEMENTED_SYSCALLS (the default) to allow linking with a stub version`);
-      }
-
       var original = LibraryManager.library[ident];
       var snippet = original;
       var redirectedIdent = null;

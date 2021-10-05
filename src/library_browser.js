@@ -958,6 +958,7 @@ var LibraryBrowser = {
   },
 
   emscripten_set_main_loop__deps: ['$setMainLoop'],
+  emscripten_set_main_loop__sig: 'viii',
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
     var browserIterationFunc = {{{ makeDynCall('v', 'func') }}};
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop);

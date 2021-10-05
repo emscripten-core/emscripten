@@ -271,7 +271,9 @@ self.onmessage = function(e) {
           else
 #endif // !MINIMAL_RUNTIME
           {
-            Module['__emscripten_thread_exit'](-2);
+            // The pthread "crashed".  Do not call `_emscripten_thread_exit` (which
+            // would make this thread joinable.  Instead, re-throw the exception
+            // and let the top level handler propagate it back to the main thread.
             throw ex;
           }
 #if ASSERTIONS

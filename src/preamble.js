@@ -405,6 +405,9 @@ function preMain() {
 #endif
 
 function exitRuntime() {
+#if RUNTIME_DEBUG
+  err('exitRuntime');
+#endif
 #if ASYNCIFY && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
   Asyncify.state = Asyncify.State.Disabled;
@@ -593,17 +596,16 @@ function abort(what) {
   }
 #endif
 
-  what += '';
+  what = 'Aborted(' + what + ')';
+  // TODO(sbc): Should we remove printing and leave it up to whoever
+  // catches the exception?
   err(what);
 
   ABORT = true;
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
-  what = 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
-#else
-  var output = 'abort(' + what + ') at ' + stackTrace();
-  what = output;
+  what += '. Build with -s ASSERTIONS=1 for more info.';
 #endif // ASSERTIONS
 
   // Use a wasm runtime error, because a JS error might be seen as a foreign

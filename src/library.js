@@ -121,40 +121,6 @@ LibraryManager.library = {
     return setFileTime(path, time);
   },
 
-  // ==========================================================================
-  // sys/file.h
-  // ==========================================================================
-
-  flock__unimplemented: true,
-  flock: function(fd, operation) {
-    // int flock(int fd, int operation);
-    // Pretend to succeed
-    return 0;
-  },
-
-  chroot__deps: ['$setErrNo'],
-  chroot__proxy: 'sync',
-  chroot__sig: 'ii',
-  chroot__unimplemented: true,
-  chroot: function(path) {
-    // int chroot(const char *path);
-    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chroot.html
-    setErrNo({{{ cDefine('EACCES') }}});
-    return -1;
-  },
-
-  execve__deps: ['$setErrNo'],
-  execve__sig: 'iiii',
-  execve__unimplemented: true,
-  execve: function(path, argv, envp) {
-    // int execve(const char *pathname, char *const argv[],
-    //            char *const envp[]);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
-    // We don't support executing external code.
-    setErrNo({{{ cDefine('ENOEXEC') }}});
-    return -1;
-  },
-
   exit__sig: 'vi',
 #if MINIMAL_RUNTIME
   // minimal runtime doesn't do any exit cleanup handling so just
@@ -168,37 +134,6 @@ LibraryManager.library = {
     exit(status);
   },
 #endif
-
-  // fork, spawn, etc. all return an error as we don't support multiple
-  // processes.
-  fork__deps: ['$setErrNo'],
-  fork__sig: 'i',
-  fork__unimplemented: true,
-  fork: function() {
-    // pid_t fork(void);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/fork.html
-    // We don't support multiple processes.
-    setErrNo({{{ cDefine('ENOSYS') }}});
-    return -1;
-  },
-  vfork: 'fork',
-  posix_spawn: 'fork',
-  popen: 'fork',
-  pclose: 'fork',
-
-  setgroups__deps: ['$setErrNo', 'sysconf'],
-  setgroups__unimplemented: true,
-  setgroups: function(ngroups, gidset) {
-    // int setgroups(int ngroups, const gid_t *gidset);
-    // https://developer.apple.com/library/mac/#documentation/Darwin/Reference/ManPages/man2/setgroups.2.html
-    if (ngroups < 1 || ngroups > _sysconf({{{ cDefine('_SC_NGROUPS_MAX') }}})) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    // We have just one process/user/group, so it makes no sense to set groups.
-    setErrNo({{{ cDefine('EPERM') }}});
-    return -1;
-  },
 
   emscripten_get_heap_max: function() {
 #if ALLOW_MEMORY_GROWTH
@@ -443,16 +378,21 @@ LibraryManager.library = {
   __cxa_atexit: 'atexit',
 #endif
 
-  // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
-  // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
+  // TODO: There are currently two abort() functions that get imported to asm
+  // module scope: the built-in runtime function abort(), and this library
+  // function _abort(). Remove one of these, importing two functions for the
+  // same purpose is wasteful.
   abort__sig: 'v',
   abort: function() {
-    abort();
+#if ASSERTIONS
+    abort('native code called abort()');
+#else
+    abort('');
+#endif
   },
 
   // This object can be modified by the user during startup, which affects
-  // the initial values of the environment accessible by getenv. (This works
-  // in both fastcomp and upstream).
+  // the initial values of the environment accessible by getenv.
   $ENV: {},
 
   getloadavg: function(loadavg, nelem) {
@@ -750,13 +690,6 @@ LibraryManager.library = {
       {{{ makeSetValue('__get_tzname()', '0', 'summerNamePtr', 'i32') }}};
       {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'winterNamePtr', 'i32') }}};
     }
-  },
-
-  stime__deps: ['$setErrNo'],
-  stime__unimplemented: true,
-  stime: function(when) {
-    setErrNo({{{ cDefine('EPERM') }}});
-    return -1;
   },
 
   __map_file__deps: ['$setErrNo'],
@@ -1388,14 +1321,6 @@ LibraryManager.library = {
     return _strptime(buf, format, tm); // no locale support yet
   },
 
-  getdate__unimplemented: true,
-  getdate: function(string) {
-    // struct tm *getdate(const char *string);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/getdate.html
-    // TODO: Implement.
-    return 0;
-  },
-
   timespec_get__deps: ['clock_gettime', '$setErrNo'],
   timespec_get: function(ts, base) {
     //int timespec_get(struct timespec *ts, int base);
@@ -1447,12 +1372,6 @@ LibraryManager.library = {
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
     return 0;
   },
-  clock_getcpuclockid: function(pid, clk_id) {
-    if (pid < 0) return {{{ cDefine('ESRCH') }}};
-    if (pid !== 0 && pid !== {{{ PROCINFO.pid }}}) return {{{ cDefine('ENOSYS') }}};
-    if (clk_id) {{{ makeSetValue('clk_id', 0, 2/*CLOCK_PROCESS_CPUTIME_ID*/, 'i32') }}};
-    return 0;
-  },
   gettimeofday__sig: 'iii',
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
@@ -1472,22 +1391,6 @@ LibraryManager.library = {
     {{{ makeSetValue('p', C_STRUCTS.timeb.millitm, 'millis % 1000', 'i16') }}};
     {{{ makeSetValue('p', C_STRUCTS.timeb.timezone, '0', 'i16') }}}; // Obsolete field
     {{{ makeSetValue('p', C_STRUCTS.timeb.dstflag, '0', 'i16') }}}; // Obsolete field
-    return 0;
-  },
-
-  // ==========================================================================
-  // sys/times.h
-  // ==========================================================================
-
-  times__deps: ['$zeroMemory'],
-  times__unimplemented: true,
-  times: function(buffer) {
-    // clock_t times(struct tms *buffer);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
-    // NOTE: This is fake, since we can't calculate real CPU time usage in JS.
-    if (buffer !== 0) {
-      zeroMemory(buffer, {{{ C_STRUCTS.tms.__size__ }}});
-    }
     return 0;
   },
 
@@ -1517,35 +1420,13 @@ LibraryManager.library = {
   },
 #endif
   // will never be emitted, as the dep errors at compile time
-  longjmp__unimplemented: true,
   longjmp: function(env, value) {
     abort('longjmp not supported');
   },
-  setjmp__unimplemented: true,
   setjmp: function(env, value) {
     abort('setjmp not supported');
   },
 #endif
-
-  // ==========================================================================
-  // sys/wait.h
-  // ==========================================================================
-
-  wait__deps: ['$setErrNo'],
-  wait__sig: 'ii',
-  wait__unimplemented: true,
-  wait: function(stat_loc) {
-    // pid_t wait(int *stat_loc);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/wait.html
-    // Makes no sense in a single-process environment.
-    setErrNo({{{ cDefine('ECHILD') }}});
-    return -1;
-  },
-  // NOTE: These aren't really the same, but we use the same stub for them all.
-  waitid: 'wait',
-  waitpid: 'wait',
-  wait3: 'wait',
-  wait4: 'wait',
 
   // ==========================================================================
   // errno.h
@@ -2538,40 +2419,6 @@ LibraryManager.library = {
 
 #endif // PROXY_POSIX_SOCKETS == 0
 
-  // pwd.h
-
-  getpwnam__unimplemented: true,
-  getpwnam: function() { throw 'getpwnam: TODO' },
-  getpwnam_r__unimplemented: true,
-  getpwnam_r: function() { throw 'getpwnam_r: TODO' },
-  getpwuid__unimplemented: true,
-  getpwuid: function() { throw 'getpwuid: TODO' },
-  getpwuid_r__unimplemented: true,
-  getpwuid_r: function() { throw 'getpwuid_r: TODO' },
-  setpwent__unimplemented: true,
-  setpwent: function() { throw 'setpwent: TODO' },
-  getpwent__unimplemented: true,
-  getpwent: function() { throw 'getpwent: TODO' },
-  endpwent__unimplemented: true,
-  endpwent: function() { throw 'endpwent: TODO' },
-
-  // grp.h
-
-  getgrgid__unimplemented: true,
-  getgrgid: function() { throw 'getgrgid: TODO' },
-  getgrgid_r__unimplemented: true,
-  getgrgid_r: function() { throw 'getgrgid_r: TODO' },
-  getgrnam__unimplemented: true,
-  getgrnam: function() { throw 'getgrnam: TODO' },
-  getgrnam_r__unimplemented: true,
-  getgrnam_r: function() { throw 'getgrnam_r: TODO' },
-  getgrent__unimplemented: true,
-  getgrent: function() { throw 'getgrent: TODO' },
-  endgrent__unimplemented: true,
-  endgrent: function() { throw 'endgrent: TODO' },
-  setgrent__unimplemented: true,
-  setgrent: function() { throw 'setgrent: TODO' },
-
   // random.h
 
   // TODO: consider allowing the API to get a parameter for the number of
@@ -2989,9 +2836,9 @@ LibraryManager.library = {
       // we pack index and offset into a "return address"
       return wasmOffsetConverter.convert(+match[1], +match[2]);
     } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
-      // if we are in js, we can use the js line number as the "return address"
-      // this should work for wasm2js and fastcomp
-      // we tag the high bit to distinguish this from wasm addresses
+      // If we are in js, we can use the js line number as the "return address".
+      // This should work for wasm2js.  We tag the high bit to distinguish this
+      // from wasm addresses.
       return 0x80000000 | +match[1];
     } else {
       // return 0 if we can't find any
@@ -3595,6 +3442,41 @@ LibraryManager.library = {
 #endif
   },
 
+  emscripten_console_log__sig: 'vi',
+  emscripten_console_log: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    out(UTF8ToString(str));
+  },
+
+  emscripten_console_warn__sig: 'vi',
+  emscripten_console_warn: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    console.warn(UTF8ToString(str));
+  },
+
+  emscripten_console_error__sig: 'vi',
+  emscripten_console_error: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    err(UTF8ToString(str));
+  },
+
+  emscripten_throw_number: function(number) {
+    throw number;
+  },
+
+  emscripten_throw_string: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    throw UTF8ToString(str);
+  },
+
 #if !MINIMAL_RUNTIME
   $handleException: function(e) {
     // Certain exception types we do not treat as errors since they are used for
@@ -3605,14 +3487,6 @@ LibraryManager.library = {
     if (e instanceof ExitStatus || e == 'unwind') {
       return EXITSTATUS;
     }
-    // Anything else is an unexpected exception and we treat it as hard error.
-    var toLog = e;
-#if ASSERTIONS
-    if (e && typeof e === 'object' && e.stack) {
-      toLog = [e, e.stack];
-    }
-#endif
-    err('exception thrown: ' + toLog);
 #if MINIMAL_RUNTIME
     throw e;
 #else

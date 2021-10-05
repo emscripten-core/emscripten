@@ -25,7 +25,7 @@
   // Helper functions for code generation
   global.gpu = {
     makeInitManager: function(type) {
-      var mgr = 'this.mgr' + type
+      var mgr = 'WebGPU.mgr' + type
       return mgr + ' = ' + mgr + ' || makeManager();';
     },
 
@@ -145,7 +145,7 @@ var LibraryWebGPU = {
   $WebGPU__postset: 'WebGPU.initManagers();',
   $WebGPU: {
     initManagers: function() {
-      if (this.mgrDevice) return;
+      if (WebGPU.mgrDevice) return;
 
       function makeManager() {
         return {
@@ -242,7 +242,7 @@ var LibraryWebGPU = {
     makeImageCopyTexture: function(ptr) {
       {{{ gpu.makeCheckDescriptor('ptr') }}}
       return {
-        "texture": this.mgrTexture.get(
+        "texture": WebGPU.mgrTexture.get(
           {{{ makeGetValue('ptr', C_STRUCTS.WGPUImageCopyTexture.texture, '*') }}}),
         "mipLevel": {{{ gpu.makeGetU32('ptr', C_STRUCTS.WGPUImageCopyTexture.mipLevel) }}},
         "origin": WebGPU.makeOrigin3D(ptr + {{{ C_STRUCTS.WGPUImageCopyTexture.origin }}}),
@@ -264,8 +264,8 @@ var LibraryWebGPU = {
     makeImageCopyBuffer: function(ptr) {
       {{{ gpu.makeCheckDescriptor('ptr') }}}
       var layoutPtr = ptr + {{{ C_STRUCTS.WGPUImageCopyBuffer.layout }}};
-      var bufferCopyView = this.makeTextureDataLayout(layoutPtr);
-      bufferCopyView["buffer"] = this.mgrBuffer.get(
+      var bufferCopyView = WebGPU.makeTextureDataLayout(layoutPtr);
+      bufferCopyView["buffer"] = WebGPU.mgrBuffer.get(
         {{{ makeGetValue('ptr', C_STRUCTS.WGPUImageCopyBuffer.buffer, '*') }}});
       return bufferCopyView;
     },

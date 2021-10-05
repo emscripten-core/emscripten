@@ -52,7 +52,6 @@ var LibraryPThread = {
     },
     // Maps pthread_t to pthread info objects
     pthreads: {},
-    threadExitHandlers: [], // An array of C functions to run when this thread exits.
 
 #if PTHREADS_PROFILING
     createProfilerBlock: function(pthreadPtr) {
@@ -510,6 +509,13 @@ var LibraryPThread = {
 #if DYLINK_DEBUG
       err('tlsInit -> ' + __tls_base);
 #endif
+      if (!__tls_base) {
+#if ASSERTIONS
+        // __tls_base should never be zero if there are tls exports
+        assert(__tls_base || Object.keys(metadata.tlsExports).length == 0);
+#endif
+        return;
+      }
       for (var sym in metadata.tlsExports) {
         metadata.tlsExports[sym] = moduleExports[sym];
       }
@@ -978,38 +984,11 @@ var LibraryPThread = {
     return 0;
   },
 
-  __pthread_exit_run_handlers__deps: ['exit'],
-  __pthread_exit_run_handlers: function(status) {
-    // Called from pthread_exit, either when called explicitly called
-    // by programmer, or implicitly when leaving the thread main function.
-    //
-    // Note: in theory we would like to return any offscreen canvases back to
-    // the main thread, but if we ever fetched a rendering context for them that
-    // would not be valid, so we don't try.
-
-#if PTHREADS_DEBUG
-    var tb = _pthread_self();
-    assert(tb);
-    err('Pthread 0x' + tb.toString(16) + ' exited.');
-#endif
-
-    while (PThread.threadExitHandlers.length > 0) {
-      PThread.threadExitHandlers.pop()();
-    }
-  },
-
   __pthread_detached_exit: function() {
     // Called at the end of pthread_exit (which occurs also when leaving the
     // thread main function) if an only if the thread is in a detached state.
     postMessage({ 'cmd': 'detachedExit' });
   },
-
-  __cxa_thread_atexit__sig: 'vii',
-  __cxa_thread_atexit: function(routine, arg) {
-    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) });
-  },
-  __cxa_thread_atexit_impl: '__cxa_thread_atexit',
-
 
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
   emscripten_futex_wait__deps: ['emscripten_main_thread_process_queued_calls'],
@@ -1252,6 +1231,10 @@ var LibraryPThread = {
 #endif
   },
 
+  // This function is call by a pthread to signal that exit() was called and
+  // that the entire process should exit.
+  // This function is always called from a pthread, but is executed on the
+  // main thread due the __proxy attribute.
   $exitOnMainThread__deps: ['exit',
 #if !MINIMAL_RUNTIME
     '$handleException',
@@ -1259,7 +1242,6 @@ var LibraryPThread = {
   ],
   $exitOnMainThread__proxy: 'async',
   $exitOnMainThread: function(returnCode) {
-    // A pthread has requested to exit the whole application process (runtime).
 #if PTHREADS_DEBUG
     err('exitOnMainThread');
 #endif

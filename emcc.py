@@ -38,7 +38,7 @@ from urllib.parse import quote
 
 
 import emscripten
-from tools import shared, system_libs, utils
+from tools import shared, system_libs, utils, ports
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
@@ -102,7 +102,7 @@ DEFAULT_ASYNCIFY_IMPORTS = [
   'emscripten_scan_registers', 'emscripten_lazy_load_code',
   'emscripten_fiber_swap',
   'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync', '_emval_await',
-  'dlopen', '__asyncjs__*'
+  '_dlopen_js', '__asyncjs__*'
 ]
 
 # Target options
@@ -149,6 +149,15 @@ UBSAN_SANITIZERS = {
 VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
+LINK_ONLY_FLAGS = set([
+    '--bind', '--closure', '--cpuprofiler', '--embed-file',
+    '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
+    '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
+    '--js-transform', '--memory-init-file', '--oformat', '--output_eol',
+    '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
+    '--proxy-to-worker', '--shell-file', '--source-map-base',
+    '--threadprofiler', '--use-preload-plugins'
+])
 
 
 # this function uses the global 'final' variable, which contains the current
@@ -769,6 +778,10 @@ def emsdk_cflags(user_args):
       if n in hay:
         return True
 
+  # relaxed-simd implies simd128.
+  if '-mrelaxed-simd' in user_args:
+    user_args += ['-msimd128']
+
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     if '-msimd128' not in user_args:
       exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128!')
@@ -866,7 +879,7 @@ def get_cflags(user_args):
   #   -Wno-implicit-function-declaration
   cflags += ['-Werror=implicit-function-declaration']
 
-  system_libs.add_ports_cflags(cflags, settings)
+  ports.add_cflags(cflags, settings)
 
   if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
     return cflags
@@ -1305,8 +1318,15 @@ def phase_setup(options, state, newargs, settings_map):
 
   if state.mode in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
     for key in settings_map:
-       if key not in COMPILE_TIME_SETTINGS:
-         diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
+      if key not in COMPILE_TIME_SETTINGS:
+        diagnostics.warning(
+            'unused-command-line-argument',
+            "linker setting ignored during compilation: '%s'" % key)
+    for arg in state.orig_args:
+      if arg in LINK_ONLY_FLAGS:
+        diagnostics.warning(
+            'unused-command-line-argument',
+            "linker setting ignored during compilation: '%s'" % arg)
     if state.has_dash_c:
       if '-emit-llvm' in newargs:
         options.default_object_extension = '.bc'
@@ -1779,7 +1799,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     state.forced_stdlibs.append('libwasmfs')
     settings.FILESYSTEM = 0
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
-    settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
+    # settings.JS_LIBRARIES.append((0, 'library_wasmfs.js')) TODO: populate with library_wasmfs.js later
 
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
   if not settings.USES_DYNAMIC_ALLOC:
@@ -2324,6 +2344,12 @@ def phase_linker_setup(options, state, newargs, settings_map):
   settings.PROFILING_FUNCS = options.profiling_funcs
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
+  settings.LINK_AS_CXX = (run_via_emxx or settings.DEFAULT_TO_CXX) and '-nostdlib++' not in newargs
+
+  # WASMFS itself is written in C++, and needs C++ standard libraries
+  if settings.WASMFS:
+    settings.LINK_AS_CXX = True
+
   return target, wasm_target
 
 
@@ -2384,16 +2410,16 @@ def phase_compile_inputs(options, state, newargs, input_files):
       return True
     return False
 
-  def get_compiler(cxx):
-    if cxx:
+  def get_compiler(src_file):
+    if use_cxx(src_file):
       return CXX
     return CC
 
   def get_clang_command(src_file):
-    return get_compiler(use_cxx(src_file)) + get_cflags(state.orig_args) + compile_args + [src_file]
+    return get_compiler(src_file) + get_cflags(state.orig_args) + compile_args + [src_file]
 
   def get_clang_command_asm(src_file):
-    return get_compiler(use_cxx(src_file)) + get_clang_flags() + compile_args + [src_file]
+    return get_compiler(src_file) + get_clang_flags() + compile_args + [src_file]
 
   # preprocessor-only (-E) support
   if state.mode == Mode.PREPROCESS_ONLY:
@@ -2495,13 +2521,8 @@ def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, new
   # link in ports and system libraries, if necessary
   if not settings.SIDE_MODULE:
     # Ports are always linked into the main module, never the size module.
-    extra_files_to_link += system_libs.get_ports_libs(settings)
+    extra_files_to_link += ports.get_libs(settings)
   if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-    settings.LINK_AS_CXX = run_via_emxx
-    # Traditionally we always link as C++.  For compatibility we continue to do that,
-    # unless running in strict mode.
-    if not settings.STRICT and '-nostdlib++' not in newargs:
-      settings.LINK_AS_CXX = True
     extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, forced=state.forced_stdlibs)
   linker_arguments.extend(extra_files_to_link)
 
@@ -2739,10 +2760,10 @@ def version_string():
     git_rev = run_process(
       ['git', 'rev-parse', 'HEAD'],
       stdout=PIPE, stderr=PIPE, cwd=utils.path_from_root()).stdout.strip()
-    revision_suffix = '-git (%s)' % git_rev
-  elif os.path.exists(utils.path_from_root('emscripten-revision.txt')):
-    git_rev = read_file(utils.path_from_root('emscripten-revision.txt')).strip()
     revision_suffix = ' (%s)' % git_rev
+  elif os.path.exists(utils.path_from_root('emscripten-revision.txt')):
+    rev = read_file(utils.path_from_root('emscripten-revision.txt')).strip()
+    revision_suffix = ' (%s)' % rev
   return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {shared.EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
@@ -2951,7 +2972,7 @@ def parse_args(newargs):
       should_exit = True
     elif check_flag('--clear-ports'):
       logger.info('clearing ports and cache as requested by --clear-ports')
-      system_libs.Ports.erase()
+      ports.clear()
       shared.Cache.erase()
       shared.check_sanity(force=True) # this is a good time for a sanity check
       should_exit = True
@@ -2960,7 +2981,7 @@ def parse_args(newargs):
       shared.check_sanity(force=True)
       should_exit = True
     elif check_flag('--show-ports'):
-      system_libs.show_ports()
+      ports.show_ports()
       should_exit = True
     elif check_arg('--memory-init-file'):
       options.memory_init_file = int(consume_arg())
