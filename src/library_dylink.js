@@ -615,7 +615,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     err('loadDynamicLibrary: ' + lib + ' handle:' + handle);
 #endif
-    if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
+    if (lib == '__main__' && !LDSO.loadedLibsByName[lib]) {
       LDSO.loadedLibsByName[lib] = {
         refcount: Infinity,   // = nodelete
         name:     '__main__',
@@ -767,31 +767,30 @@ var LibraryDylink = {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     var searchpaths = [];
-    var filename;
-    if (filenameAddr === 0) {
-      filename = '__main__';
-    } else {
-      filename = UTF8ToString(filenameAddr);
+    var filename = UTF8ToString(filenameAddr);
 
-      var isValidFile = function(filename) {
-        var target = FS.findObject(filename);
-        return target && !target.isFolder && !target.isDevice;
-      };
+    var isValidFile = function(filename) {
+      var target = FS.findObject(filename);
+      return target && !target.isFolder && !target.isDevice;
+    };
 
-      if (!isValidFile(filename)) {
-        if (ENV['LD_LIBRARY_PATH']) {
-          searchpaths = ENV['LD_LIBRARY_PATH'].split(':');
-        }
+    if (!isValidFile(filename)) {
+      if (ENV['LD_LIBRARY_PATH']) {
+        searchpaths = ENV['LD_LIBRARY_PATH'].split(':');
+      }
 
-        for (var ident in searchpaths) {
-          var searchfile = PATH.join2(searchpaths[ident], filename);
-          if (isValidFile(searchfile)) {
-            filename = searchfile;
-            break;
-          }
+      for (var ident in searchpaths) {
+        var searchfile = PATH.join2(searchpaths[ident], filename);
+        if (isValidFile(searchfile)) {
+          filename = searchfile;
+          break;
         }
       }
     }
+
+#if DYLINK_DEBUG
+    err('dlopenInternal: ' + filename);
+#endif
 
     // We don't care about RTLD_NOW and RTLD_LAZY.
     var combinedFlags = {
