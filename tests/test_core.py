@@ -140,6 +140,7 @@ def also_with_noderawfs(func):
     func(self)
   return decorated
 
+
 def only_with_noderawfs(func):
   def decorated(self):
     orig_args = self.emcc_args.copy()
@@ -149,6 +150,7 @@ def only_with_noderawfs(func):
     self.js_engines = [config.NODE_JS]
     func(self)
   return decorated
+
 
 def can_do_standalone(self):
   return self.is_wasm() and \
@@ -5078,7 +5080,7 @@ main( int argv, char ** argc ) {
     self.do_run_in_out_file_test('dirent/test_readdir.c')
 
   @only_with_noderawfs
-  def test_readdir_no_noderawfs(self):
+  def test_readdir_only_noderawfs(self):
     self.do_run_in_out_file_test('dirent/test_readdir.c')
 
   def test_readdir_noderawfs(self):
