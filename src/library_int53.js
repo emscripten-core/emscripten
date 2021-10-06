@@ -93,23 +93,27 @@ mergeInto(LibraryManager.library, {
     return HEAPU32[ptr>>2] + HEAPU32[ptr+4>>2] * 4294967296;
   },
 
-  // Converts the given signed 32-bit low-high pair to a JavaScript Number that can
-  // represent 53 bits of precision.
+  // Converts the given 32-bit low-high pair to a signed 53-bit integer with
+  // the sign of the high word (and represented as a JavaScript Number).
+  // The signedness of the low word doesn't matter; it will be bit-cast to u32.
   // TODO: Add $convertI32PairToI53Signaling() variant.
   $convertI32PairToI53: function(lo, hi) {
 #if ASSERTIONS
-    // This function should not be getting called with too large unsigned numbers
-    // in high part (if hi >= 0x7FFFFFFFF, one should have been calling
-    // convertU32PairToI53())
-    assert(hi === (hi|0));
+    // Value should not be outside the 53-bit integer range.
+    assert(hi >= -0x200000 && hi <= 0x200000);
 #endif
     return (lo >>> 0) + hi * 4294967296;
   },
 
-  // Converts the given unsigned 32-bit low-high pair to a JavaScript Number that can
-  // represent 53 bits of precision.
+  // Converts the given 32-bit low-high pair to an unsigned 53-bit integer with
+  // the sign of the high word (and represented as a JavaScript Number).
+  // The signedness of the low word doesn't matter; it will be bit-cast to u32.
   // TODO: Add $convertU32PairToI53Signaling() variant.
   $convertU32PairToI53: function(lo, hi) {
+#if ASSERTIONS
+    // Value should not be outside the 53-bit integer range.
+    assert(hi >= 0 && hi <= 0x200000);
+#endif
     return (lo >>> 0) + (hi >>> 0) * 4294967296;
   }
 });
