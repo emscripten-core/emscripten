@@ -60,6 +60,7 @@ void cleanup() {
 
 void test() {
   int err;
+  DIR *dir;
   // check bad opendir input
   dir = opendir("noexist");
   assert(!dir);
