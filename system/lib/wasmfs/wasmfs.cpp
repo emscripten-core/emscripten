@@ -21,16 +21,12 @@
 extern "C" {
 
 __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
-
-  // static Synchronized<FileTable> syncfileTable;
-
   Locked<FileTable> fileTable = FileTable::get();
 
-  if (std::shared_ptr<OpenFileDescriptor>((*fileTable)[oldfd]) == nullptr) {
+  auto oldOpenFile = (*fileTable)[oldfd];
+  if (!oldOpenFile) {
     return __WASI_ERRNO_BADF;
   }
-
-  auto oldOpenFile = (*fileTable)[oldfd];
 
   if (oldfd == newfd) {
     return oldfd;
@@ -40,8 +36,8 @@ __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
     return __WASI_ERRNO_BADF;
   }
 
-  if (std::shared_ptr<OpenFileDescriptor>((*fileTable)[newfd]) != nullptr) {
-    fileTable->removeOpenFile(newfd);
+  if ((*fileTable)[newfd]) {
+    fileTable->remove(newfd);
   }
 
   (*fileTable)[newfd] = oldOpenFile;
@@ -49,26 +45,34 @@ __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
 }
 
 __wasi_fd_t __syscall_dup(__wasi_fd_t fd) {
-
   Locked<FileTable> fileTable = FileTable::get();
 
-  if (std::shared_ptr<OpenFileDescriptor>((*fileTable)[fd]) == nullptr) {
+  if (!(*fileTable)[fd]) {
     return __WASI_ERRNO_BADF;
   }
 
-  return fileTable->addOpenFile((*fileTable)[fd]);
+  return fileTable->add((*fileTable)[fd]);
 }
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
-  // Get the corresponding OpenFile from the open file table
   Locked<FileTable> fileTable = FileTable::get();
 
-  if (std::shared_ptr<OpenFileDescriptor>((*fileTable)[fd]) == nullptr) {
+  if (!(*fileTable)[fd]) {
     return __WASI_ERRNO_BADF;
   }
 
-  return (*fileTable)[fd]->getFile()->write(iovs, iovs_len, nwritten);
+  __wasi_size_t num = 0;
+  for (size_t i = 0; i < iovs_len; i++) {
+    const uint8_t* buf = iovs[i].buf;
+    __wasi_size_t len = iovs[i].buf_len;
+
+    (*fileTable)[fd]->getFile()->write(buf, len);
+    num += len;
+  }
+  *nwritten = num;
+
+  return 0;
 }
 
 __wasi_errno_t __wasi_fd_seek(

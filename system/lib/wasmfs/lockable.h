@@ -8,6 +8,8 @@
 
 #pragma once
 
+namespace wasmfs {
+
 // Locked represents an RAII wrapper object. Access to any template object must go through Locked. A
 // Locked<T> holds Lockable's lock for the duration of its lifetime.
 template <class T> class Locked {
@@ -38,8 +40,9 @@ public:
   T& operator*() { return resource; }
 };
 
-// Lockable represents a wrapper that holds a resource object such as the FileTable. It returns a
-// Locked<T> to provide protected access to the resource.
+// Lockable represents a wrapper that holds a resource object and its lock. It returns a
+// Locked<T> to provide protected access to the resource. Lockable hides the underlying resource and
+// ensures accessing the resource is not accessible except when the lock is acquired.
 template <typename T> class Lockable {
 
   T resource;
@@ -51,3 +54,4 @@ public:
   // Acquire a Locked<T> to access resource object.
   Locked<T> get() { return Locked<T>(resource, mutex); }
 };
+} // namespace wasmfs

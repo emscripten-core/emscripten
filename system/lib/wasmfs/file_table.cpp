@@ -8,11 +8,13 @@
 
 #include "file_table.h"
 
-std::vector<std::shared_ptr<OpenFileDescriptor>> FileTable::entries;
+namespace wasmfs {
 
-std::shared_ptr<File>& OpenFileDescriptor::getFile() { return file; }
+std::vector<std::shared_ptr<FileDescriptor>> FileTable::entries;
 
-__wasi_fd_t FileTable::addOpenFile(std::shared_ptr<OpenFileDescriptor> ptr) {
+std::shared_ptr<File>& FileDescriptor::getFile() { return file; }
+
+__wasi_fd_t FileTable::add(std::shared_ptr<FileDescriptor> ptr) {
   for (__wasi_fd_t i = 0; i < entries.size(); i++) {
     if (!entries[i]) {
       // Free open file entry.
@@ -27,7 +29,7 @@ __wasi_fd_t FileTable::addOpenFile(std::shared_ptr<OpenFileDescriptor> ptr) {
   return entries.size() - 1;
 }
 
-void FileTable::removeOpenFile(__wasi_fd_t fd) {
+void FileTable::remove(__wasi_fd_t fd) {
   // Check if the file descriptor is invalid.
   assert(fd < entries.size() && fd >= 0);
 
@@ -40,14 +42,14 @@ Locked<FileTable> FileTable::get() {
 };
 
 // Operator Overloading for FileTable::Entry
-FileTable::Entry::operator std::shared_ptr<OpenFileDescriptor>() const {
+FileTable::Entry::operator std::shared_ptr<FileDescriptor>() const {
   if (fd >= fileTable.entries.size() || fd < 0) {
     return nullptr;
   }
   return fileTable.entries[fd];
 }
 
-FileTable::Entry& FileTable::Entry::operator=(std::shared_ptr<OpenFileDescriptor> ptr) {
+FileTable::Entry& FileTable::Entry::operator=(std::shared_ptr<FileDescriptor> ptr) {
   assert(fd >= 0);
 
   if (fd >= fileTable.entries.size()) {
@@ -58,7 +60,8 @@ FileTable::Entry& FileTable::Entry::operator=(std::shared_ptr<OpenFileDescriptor
   return *this;
 }
 
-std::shared_ptr<OpenFileDescriptor>& FileTable::Entry::operator->() {
+std::shared_ptr<FileDescriptor>& FileTable::Entry::operator->() {
   assert(fd < fileTable.entries.size() && fd >= 0);
   return fileTable.entries[fd];
 }
+} // namespace wasmfs
