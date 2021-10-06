@@ -43,6 +43,13 @@ See docs/process.md for more on how version tagging works.
 
 2.0.30 - 09/14/2021
 -------------------
+- Fixed launcher batch script issues on Windows, and added two env. vars
+  EM_WORKAROUND_PYTHON_BUG_34780 and EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG that
+  can be enabled to work around a Windows Python issue
+  https://bugs.python.org/issue34780 , and a Windows 7 exit code issue (#15146)
+
+2.0.30
+------
 - Bug fixes
 
 2.0.29 - 08/26/2021

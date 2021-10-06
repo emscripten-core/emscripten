@@ -7613,7 +7613,7 @@ int main() {
 
     for directory, headers in directories.items():
       print('dir: ' + directory)
-      for header in headers:
+        for header in headers:
         if not header.endswith('.h'):
           continue
         print('header: ' + header)
@@ -7636,7 +7636,7 @@ int main() {
           create_file('a.c', inc)
           create_file('b.c', inc)
           for std in [[], ['-std=c89']]:
-            self.run_process([EMCC] + std + ['-Werror', '-Wall', '-pedantic', 'a.c', 'b.c'])
+          self.run_process([EMCC] + std + ['-Werror', '-Wall', '-pedantic', 'a.c', 'b.c'])
 
   @is_slow_test
   def test_single_file(self):
@@ -11076,3 +11076,12 @@ void foo() {}
   @node_pthreads
   def test_emscripten_set_timeout_loop(self):
     self.do_runf(test_file('emscripten_set_timeout_loop.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+
+  # Verify that we are able to successfully compile a script when the Windows 7
+  # and Python workaround env. vars are enabled.
+  # See https://bugs.python.org/issue34780
+  @with_env_modify({'EM_WORKAROUND_PYTHON_BUG_34780': '1',
+                    'EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG': '1'})
+  def test_windows_batch_script_workaround(self):
+    self.run_process([EMCC, test_file('hello_world.c')])
+    self.assertExists('a.out.js')
