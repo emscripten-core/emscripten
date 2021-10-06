@@ -8,6 +8,8 @@
 
 #pragma once
 
+// #define WASMFS_DEBUG = 1
+
 template <class T> class Locked {
   T& resource;
   std::unique_lock<std::mutex> lock;

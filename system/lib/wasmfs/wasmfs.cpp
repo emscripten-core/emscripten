@@ -26,7 +26,7 @@ __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
 
   Locked<FileTable> fileTable = FileTable::get();
 
-  if (!(*fileTable)[oldfd]) {
+  if (std::shared_ptr<OpenFileDescriptor>((*fileTable)[oldfd]) == nullptr) {
     return __WASI_ERRNO_BADF;
   }
 
@@ -40,11 +40,12 @@ __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
     return __WASI_ERRNO_BADF;
   }
 
-  if ((*fileTable)[newfd]) {
+  if (std::shared_ptr<OpenFileDescriptor>((*fileTable)[newfd]) != nullptr) {
     fileTable->removeOpenFile(newfd);
   }
 
   (*fileTable)[newfd] = oldOpenFile;
+  EM_ASM({out("here the newfd is " + $0)}, newfd);
   return newfd;
 }
 
@@ -52,7 +53,7 @@ __wasi_fd_t __syscall_dup(__wasi_fd_t fd) {
 
   Locked<FileTable> fileTable = FileTable::get();
 
-  if (!(*fileTable)[fd]) {
+  if (std::shared_ptr<OpenFileDescriptor>((*fileTable)[fd]) == nullptr) {
     return __WASI_ERRNO_BADF;
   }
 
@@ -64,7 +65,7 @@ __wasi_errno_t __wasi_fd_write(
   // Get the corresponding OpenFile from the open file table
   Locked<FileTable> fileTable = FileTable::get();
 
-  if (!((*fileTable)[fd])) {
+  if (std::shared_ptr<OpenFileDescriptor>((*fileTable)[fd]) == nullptr) {
     return __WASI_ERRNO_BADF;
   }
 
