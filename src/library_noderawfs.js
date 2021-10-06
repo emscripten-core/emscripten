@@ -60,20 +60,15 @@ mergeInto(LibraryManager.library, {
     },
     utime: function() { fs.utimesSync.apply(void 0, arguments); },
     open: function(path, flags, mode, suggestFD) {
-      console.log('open of', path);
       if (typeof flags === "string") {
         flags = VFS.modeStringToFlags(flags)
       }
       var pathTruncated = path.split('/').map(function(s) { return s.substr(0, 255); }).join('/');
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
-      console.log('flags:', flags);
-      console.log('flags for node:', NODEFS.flagsForNode(flags));
       var st = fs.fstatSync(nfd);
-      console.log('stat:', st);
       if (flags & {{{ cDefine('O_DIRECTORY') }}} && !st.isDirectory()) {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
       }
-      // TODO check for read permissions in here?
       var newMode = NODEFS.getMode(pathTruncated);
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
       var stream = { fd: fd, nfd: nfd, position: 0, path: path, id: st.ino, flags: flags, mode: newMode, node_ops: NODERAWFS, seekable: true };
