@@ -46,7 +46,7 @@ __wasi_errno_t StdoutFile::write(
 }
 
 // TODO: May not want to proxy stderr (fd == 2) to the main thread.
-// This will not show in HTML - a console.warn in a worker is suffficient.
+// This will not show in HTML - a console.warn in a worker is sufficient.
 // This would be a change from the current FS.
 __wasi_errno_t StderrFile::write(
   const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
