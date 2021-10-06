@@ -45,7 +45,6 @@ __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
   }
 
   (*fileTable)[newfd] = oldOpenFile;
-  EM_ASM({out("here the newfd is " + $0)}, newfd);
   return newfd;
 }
 

@@ -51,12 +51,7 @@ public:
     FileTable& fileTable;
     __wasi_fd_t fd;
 
-    operator std::shared_ptr<OpenFileDescriptor>() const {
-      if (fd < fileTable.entries.size() && fd >= 0) {
-        return nullptr;
-      }
-      return fileTable.entries[fd];
-    }
+    operator std::shared_ptr<OpenFileDescriptor>() const;
 
     Entry& operator=(std::shared_ptr<OpenFileDescriptor> ptr);
 

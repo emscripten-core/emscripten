@@ -21,8 +21,7 @@ int main() {
   int f2 = dup(f);
 
   // Print to stdout and print to fd = 3
-  printf("%i\n", f2);
-  // assert(f2 == 3);
+  assert(f2 == 3);
   dprintf(f, "STDOUT\n");
   dprintf(f2, "CAN PRINT TO STDOUT WITH fd = 3\n");
 

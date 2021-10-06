@@ -40,6 +40,12 @@ Locked<FileTable> FileTable::get() {
 };
 
 // Operator Overloading for FileTable::Entry
+FileTable::Entry::operator std::shared_ptr<OpenFileDescriptor>() const {
+  if (fd >= fileTable.entries.size() || fd < 0) {
+    return nullptr;
+  }
+  return fileTable.entries[fd];
+}
 
 FileTable::Entry& FileTable::Entry::operator=(std::shared_ptr<OpenFileDescriptor> ptr) {
   assert(fd >= 0);
