@@ -98,11 +98,12 @@ mergeInto(LibraryManager.library, {
   // The signedness of the low word doesn't matter; it will be bit-cast to u32.
   // TODO: Add $convertI32PairToI53Signaling() variant.
   $convertI32PairToI53: function(lo, hi) {
+    var result = (lo >>> 0) + hi * 4294967296;
 #if ASSERTIONS
-    // Value should not be outside the 53-bit integer range.
-    assert(hi >= -0x200000 && hi <= 0x200000);
+    // Value should not have been rounded: lower word should be equal.
+    assert((result >>> 0) == (lo >>> 0));
 #endif
-    return (lo >>> 0) + hi * 4294967296;
+    return result;
   },
 
   // Converts the given 32-bit low-high pair to an unsigned 53-bit integer with
@@ -110,10 +111,11 @@ mergeInto(LibraryManager.library, {
   // The signedness of the low word doesn't matter; it will be bit-cast to u32.
   // TODO: Add $convertU32PairToI53Signaling() variant.
   $convertU32PairToI53: function(lo, hi) {
+    var result = (lo >>> 0) + (hi >>> 0) * 4294967296;
 #if ASSERTIONS
-    // Value should not be outside the 53-bit integer range.
-    assert(hi >= 0 && hi <= 0x200000);
+    // Value should not have been rounded: lower word should be equal.
+    assert((result >>> 0) == (lo >>> 0));
 #endif
-    return (lo >>> 0) + (hi >>> 0) * 4294967296;
+    return result;
   }
 });
