@@ -27,18 +27,37 @@
 :: workaround this issue, which is to explicitly quit the calling process with the previous
 :: errorlevel from the above command.
 
+:: Also must use goto to jump to the command dispatch, since we cannot invoke emcc from
+:: inside a if() block, because if a cmdline param would contain a char '(' or ')', that
+:: would throw off the parsing of the cmdline arg.
 @if "%EM_WORKAROUND_PYTHON_BUG_34780%"=="" (
   @if "%EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG%"=="" (
-    "%EM_PY%" "%~dp0\%~n0.py" %*
+    goto NORMAL
   ) else (
-    "%EM_PY%" "%~dp0\%~n0.py" %*
-    exit %ERRORLEVEL%
+    goto NORMAL_EXIT
   )
 ) else (
   @if "%EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG%"=="" (
-    "%EM_PY%" "%~dp0\%~n0.py" %* < NUL
+    goto MUTE_STDIN
   ) else (
-    "%EM_PY%" "%~dp0\%~n0.py" %* < NUL
-    exit %ERRORLEVEL%
+    goto MUTE_STDIN_EXIT
   )
 )
+
+:NORMAL
+@"%EM_PY%" "%~dp0\%~n0.py" %*
+@goto END
+
+:NORMAL_EXIT
+@"%EM_PY%" "%~dp0\%~n0.py" %*
+@exit %ERRORLEVEL%
+
+:MUTE_STDIN
+@"%EM_PY%" "%~dp0\%~n0.py" %* < NUL
+@goto END
+
+:MUTE_STDIN_EXIT
+@"%EM_PY%" "%~dp0\%~n0.py" %* < NUL
+@exit %ERRORLEVEL%
+
+:END
