@@ -61,6 +61,7 @@ static wgpu::Device device;
 static wgpu::Queue queue;
 static wgpu::Buffer readbackBuffer;
 static wgpu::RenderPipeline pipeline;
+static wgpu::Buffer indexBuffer;
 static int testsCompleted = 0;
 
 void init() {
@@ -113,6 +114,19 @@ void init() {
         descriptor.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
         pipeline = device.CreateRenderPipeline(&descriptor);
     }
+
+    {
+        wgpu::BufferDescriptor descriptor{};
+        descriptor.size = 3 * sizeof(uint32_t);
+        descriptor.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
+        descriptor.mappedAtCreation = true;
+        indexBuffer = device.CreateBuffer(&descriptor);
+        uint32_t* data = static_cast<uint32_t*>(indexBuffer.GetMappedRange());
+        data[0] = 0;
+        data[1] = 1;
+        data[2] = 2;
+        indexBuffer.Unmap();
+    }
 }
 
 void render(wgpu::TextureView view) {
@@ -132,7 +146,8 @@ void render(wgpu::TextureView view) {
         {
             wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&renderpass);
             pass.SetPipeline(pipeline);
-            pass.Draw(3, 1, 0, 0);
+            pass.SetIndexBuffer(indexBuffer, wgpu::IndexFormat::Uint32, 0, WGPU_WHOLE_SIZE);
+            pass.DrawIndexed(3);
             pass.EndPass();
         }
         commands = encoder.Finish();

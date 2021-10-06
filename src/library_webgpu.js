@@ -40,21 +40,6 @@
       return s;
     },
 
-    makeU64ToNumber: function(lowName, highName) {
-      var ret = '(';
-      if (ASSERTIONS) {
-        ret += `assert(${highName} < 0x200000), `;
-      }
-      ret += `${highName} * 0x100000000 + ${lowName})\n`;
-      return ret;
-    },
-
-    makeU64ToNumberWithSentinelAsUndefined: function(lowName, highName) {
-      var ret = `((${highName} === 0xFFFFFFFF && ${lowName} === 0xFFFFFFFF) ? undefined : \
-          ${this.makeU64ToNumber(lowName, highName)})`;
-      return ret;
-    },
-
     makeGetBool: function(struct, offset) {
       // In an actual build, bool seems to be i8. But on the off-chance it's i32, on little-endian
       // this will still work as long as the value of 'true' isn't zero in the lowest byte.
@@ -62,11 +47,6 @@
     },
     makeGetU32: function(struct, offset) {
       return makeGetValue(struct, offset, 'i32', false, true);
-    },
-    makeGetU64: function(struct, offset) {
-      var l = makeGetValue(struct, offset, 'i32', false, true);
-      var h = makeGetValue('(' + struct + ' + 4)', offset, 'i32', false, true)
-      return h + ' * 0x100000000 + ' + l
     },
     makeCheck: function(str) {
       if (!ASSERTIONS) return '';
@@ -143,6 +123,7 @@
 
 var LibraryWebGPU = {
   $WebGPU__postset: 'WebGPU.initManagers();',
+  $WebGPU__deps: ['$readI53FromU64'],
   $WebGPU: {
     initManagers: function() {
       if (WebGPU.mgrDevice) return;
@@ -250,12 +231,13 @@ var LibraryWebGPU = {
       };
     },
 
+    makeTextureDataLayout__deps: ['$readI53FromU64'],
     makeTextureDataLayout: function(ptr) {
       {{{ gpu.makeCheckDescriptor('ptr') }}}
       var bytesPerRow = {{{ gpu.makeGetU32('ptr', C_STRUCTS.WGPUTextureDataLayout.bytesPerRow) }}};
       var rowsPerImage = {{{ gpu.makeGetU32('ptr', C_STRUCTS.WGPUTextureDataLayout.rowsPerImage) }}};
       return {
-        "offset": {{{ gpu.makeGetU64('ptr', C_STRUCTS.WGPUTextureDataLayout.offset) }}},
+        "offset": readI53FromU64(ptr + {{{ C_STRUCTS.WGPUTextureDataLayout.offset }}}),
         "bytesPerRow": bytesPerRow === {{{ gpu.COPY_STRIDE_UNDEFINED }}} ? undefined : bytesPerRow,
         "rowsPerImage": rowsPerImage === {{{ gpu.COPY_STRIDE_UNDEFINED }}} ? undefined : rowsPerImage,
       };
@@ -748,6 +730,7 @@ var LibraryWebGPU = {
     return WebGPU.mgrCommandEncoder.create(device["createCommandEncoder"](desc));
   },
 
+  wgpuDeviceCreateBuffer__deps: ['$readI53FromU64'],
   wgpuDeviceCreateBuffer: function(deviceId, descriptor) {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
@@ -756,7 +739,7 @@ var LibraryWebGPU = {
     var desc = {
       "label": undefined,
       "usage": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUBufferDescriptor.usage) }}},
-      "size": {{{ gpu.makeGetU64('descriptor', C_STRUCTS.WGPUBufferDescriptor.size) }}},
+      "size": readI53FromU64(descriptor + {{{ C_STRUCTS.WGPUBufferDescriptor.size }}}),
       "mappedAtCreation": mappedAtCreation,
     };
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUBufferDescriptor.label, '*') }}};
@@ -822,6 +805,7 @@ var LibraryWebGPU = {
     return WebGPU.mgrSampler.create(device["createSampler"](desc));
   },
 
+  wgpuDeviceCreateBindGroupLayout__deps: ['$readI53FromU64'],
   wgpuDeviceCreateBindGroupLayout: function(deviceId, descriptor) {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
@@ -837,7 +821,7 @@ var LibraryWebGPU = {
         "hasDynamicOffset":
           {{{ gpu.makeGetBool('entryPtr', C_STRUCTS.WGPUBufferBindingLayout.hasDynamicOffset) }}},
         "minBindingSize":
-          {{{ gpu.makeGetU64('entryPtr', C_STRUCTS.WGPUBufferBindingLayout.minBindingSize) }}},
+          readI53FromU64(entryPtr + {{{ C_STRUCTS.WGPUBufferBindingLayout.minBindingSize }}}),
       };
     }
 
@@ -922,6 +906,7 @@ var LibraryWebGPU = {
     return WebGPU.mgrBindGroupLayout.create(device["createBindGroupLayout"](desc));
   },
 
+  wgpuDeviceCreateBindGroup__deps: ['$readI53FromU64'],
   wgpuDeviceCreateBindGroup: function(deviceId, descriptor) {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
@@ -940,13 +925,13 @@ var LibraryWebGPU = {
       if (bufferId) {
         var size_low = {{{ gpu.makeGetU32('entryPtr', C_STRUCTS.WGPUBindGroupEntry.size) }}};
         var size_high = {{{ gpu.makeGetU32('entryPtr', C_STRUCTS.WGPUBindGroupEntry.size + 4) }}};
-        var size = {{{ gpu.makeU64ToNumberWithSentinelAsUndefined('size_low', 'size_high') }}};
+        var size = (size_low == -1 && size_high == -1) ? undefined : convertU32PairToI53(size_low, size_high);
 
         return {
           "binding": binding,
           "resource": {
             "buffer": WebGPU.mgrBuffer.get(bufferId),
-            "offset": {{{ gpu.makeGetU64('entryPtr', C_STRUCTS.WGPUBindGroupEntry.offset) }}},
+            "offset": readI53FromU64(entryPtr + {{{ C_STRUCTS.WGPUBindGroupEntry.offset }}}),
             "size": size,
           },
         };
@@ -1088,6 +1073,7 @@ var LibraryWebGPU = {
     abort('TODO: wgpuDeviceCreateComputePipelineAsync unimplemented');
   },
 
+  wgpuDeviceCreateRenderPipeline__deps: ['$readI53FromU64'],
   wgpuDeviceCreateRenderPipeline: function(deviceId, descriptor) {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
@@ -1184,7 +1170,7 @@ var LibraryWebGPU = {
       return {
         "format": WebGPU.VertexFormat[
           {{{ gpu.makeGetU32('vaPtr', C_STRUCTS.WGPUVertexAttribute.format) }}}],
-        "offset": {{{ gpu.makeGetU64('vaPtr', C_STRUCTS.WGPUVertexAttribute.offset) }}},
+        "offset": readI53FromU64(vaPtr + {{{ C_STRUCTS.WGPUVertexAttribute.offset }}}),
         "shaderLocation": {{{ gpu.makeGetU32('vaPtr', C_STRUCTS.WGPUVertexAttribute.shaderLocation) }}},
       };
     }
@@ -1201,7 +1187,7 @@ var LibraryWebGPU = {
       if (!vbPtr) return undefined;
 
       return {
-        "arrayStride": {{{ gpu.makeGetU64('vbPtr', C_STRUCTS.WGPUVertexBufferLayout.arrayStride) }}},
+        "arrayStride": readI53FromU64(vbPtr + {{{ C_STRUCTS.WGPUVertexBufferLayout.arrayStride }}}),
         "stepMode": WebGPU.VertexStepMode[
           {{{ gpu.makeGetU32('vbPtr', C_STRUCTS.WGPUVertexBufferLayout.stepMode) }}}],
         "attributes": makeVertexAttributes(
@@ -1355,13 +1341,14 @@ var LibraryWebGPU = {
     });
   },
 
+  wgpuQueueWriteBuffer__deps: ['$convertU32PairToI53'],
   wgpuQueueWriteBuffer: function(queueId,
       bufferId, {{{ defineI64Param('bufferOffset') }}}, data, size) {
     {{{ receiveI64ParamAsI32s('bufferOffset') }}}
 
     var queue = WebGPU.mgrQueue.get(queueId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
-    var bufferOffset = {{{ gpu.makeU64ToNumber('bufferOffset_low', 'bufferOffset_high') }}};
+    var bufferOffset = convertU32PairToI53(bufferOffset_low, bufferOffset_high);
     queue["writeBuffer"](buffer, bufferOffset, HEAPU8, data, size);
   },
 
@@ -1476,6 +1463,7 @@ var LibraryWebGPU = {
     return WebGPU.mgrRenderPassEncoder.create(commandEncoder["beginRenderPass"](desc));
   },
 
+  wgpuCommandEncoderCopyBufferToBuffer__deps: ['$convertU32PairToI53'],
   wgpuCommandEncoderCopyBufferToBuffer: function(encoderId, srcId, {{{ defineI64Param('srcOffset') }}}, dstId, {{{ defineI64Param('dstOffset') }}}, {{{ defineI64Param('size') }}}) {
     {{{ receiveI64ParamAsI32s('srcOffset') }}}
     {{{ receiveI64ParamAsI32s('dstOffset') }}}
@@ -1484,9 +1472,9 @@ var LibraryWebGPU = {
     var src = WebGPU.mgrBuffer.get(srcId);
     var dst = WebGPU.mgrBuffer.get(dstId);
     commandEncoder["copyBufferToBuffer"](
-      src, {{{ gpu.makeU64ToNumber('srcOffset_low', 'srcOffset_high') }}},
-      dst, {{{ gpu.makeU64ToNumber('dstOffset_low', 'dstOffset_high') }}},
-      {{{ gpu.makeU64ToNumber('size_low', 'size_high') }}});
+      src, convertU32PairToI53(srcOffset_low, srcOffset_high),
+      dst, convertU32PairToI53(dstOffset_low, dstOffset_high),
+      convertU32PairToI53(size_low, size_high));
   },
 
   wgpuCommandEncoderCopyBufferToTexture: function(encoderId, srcPtr, dstPtr, copySizePtr) {
@@ -1510,13 +1498,14 @@ var LibraryWebGPU = {
       WebGPU.makeImageCopyTexture(srcPtr), WebGPU.makeImageCopyTexture(dstPtr), copySize);
   },
 
+  wgpuCommandEncoderResolveQuerySet__deps: ['$convertU32PairToI53'],
   wgpuCommandEncoderResolveQuerySet: function(encoderId, querySetId, firstQuery, queryCount,
       destinationId, {{{ defineI64Param('destinationOffset') }}}) {
     {{{ receiveI64ParamAsI32s('destinationOffset') }}}
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
     var querySet = WebGPU.mgrQuerySet.get(querySetId);
     var destination = WebGPU.mgrBuffer.get(destinationId);
-    var destinationOffset = {{{ gpu.makeU64ToNumber('destinationOffset_low', 'destinationOffset_high') }}};
+    var destinationOffset = convertU32PairToI53(destinationOffset_low, destinationOffset_high);
 
     commandEncoder["resolveQuerySet"](querySet, firstQuery, queryCount, destination, destinationOffset);
   },
@@ -1722,10 +1711,11 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
     pass["dispatch"](x, y, z);
   },
+  wgpuComputePassEncoderDispatchIndirect__deps: ['$convertU32PairToI53'],
   wgpuComputePassEncoderDispatchIndirect: function(passId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
     {{{ receiveI64ParamAsI32s('indirectOffset') }}}
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
-    var indirectOffset = {{{ gpu.makeU64ToNumber('indirectOffset_low', 'indirectOffset_high') }}};
+    var indirectOffset = convertU32PairToI53(indirectOffset_low, indirectOffset_high);
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
     pass["dispatchIndirect"](indirectBuffer, indirectOffset);
   },
@@ -1784,13 +1774,14 @@ var LibraryWebGPU = {
     var color = WebGPU.makeColor(colorPtr);
     pass["setBlendConstant"](color);
   },
+  wgpuRenderPassEncoderSetIndexBuffer__deps: ['$convertU32PairToI53'],
   wgpuRenderPassEncoderSetIndexBuffer: function(passId, bufferId, format, {{{ defineI64Param('offset') }}}, {{{ defineI64Param('size') }}}) {
     {{{ receiveI64ParamAsI32s('offset') }}}
     {{{ receiveI64ParamAsI32s('size') }}}
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
-    var offset = {{{ gpu.makeU64ToNumber('offset_low', 'offset_high') }}};
-    var size = {{{ gpu.makeU64ToNumberWithSentinelAsUndefined('size_low', 'size_high') }}};
+    var offset = convertU32PairToI53(offset_low, offset_high);
+    var size = (size_low == -1 && size_high == -1) ? undefined : convertU32PairToI53(size_low, size_high);
     pass["setIndexBuffer"](buffer, WebGPU.IndexFormat[format], offset, size);
   },
   wgpuRenderPassEncoderSetPipeline: function(passId, pipelineId) {
@@ -1810,13 +1801,14 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["setStencilReference"](reference);
   },
+  wgpuRenderPassEncoderSetVertexBuffer__deps: ['$convertU32PairToI53'],
   wgpuRenderPassEncoderSetVertexBuffer: function(passId, slot, bufferId, {{{ defineI64Param('offset') }}}, {{{ defineI64Param('size') }}}) {
     {{{ receiveI64ParamAsI32s('offset') }}}
     {{{ receiveI64ParamAsI32s('size') }}}
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
-    var offset = {{{ gpu.makeU64ToNumber('offset_low', 'offset_high') }}};
-    var size = {{{ gpu.makeU64ToNumberWithSentinelAsUndefined('size_low', 'size_high') }}};
+    var offset = convertU32PairToI53(offset_low, offset_high);
+    var size = (size_low == -1 && size_high == -1) ? undefined : convertU32PairToI53(size_low, size_high);
     pass["setVertexBuffer"](slot, buffer, offset, size);
   },
 
@@ -1828,17 +1820,19 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["drawIndexed"](indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
   },
+  wgpuRenderPassEncoderDrawIndirect__deps: ['convertU32PairToI53'],
   wgpuRenderPassEncoderDrawIndirect: function(passId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
     {{{ receiveI64ParamAsI32s('indirectOffset') }}}
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
-    var indirectOffset = {{{ gpu.makeU64ToNumber('indirectOffset_low', 'indirectOffset_high') }}};
+    var indirectOffset = convertU32PairToI53(indirectOffset_low, indirectOffset_high);
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["drawIndirect"](indirectBuffer, indirectOffset);
   },
+  wgpuRenderPassEncoderDrawIndexedIndirect__deps: ['convertU32PairToI53'],
   wgpuRenderPassEncoderDrawIndexedIndirect: function(passId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
     {{{ receiveI64ParamAsI32s('indirectOffset') }}}
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
-    var indirectOffset = {{{ gpu.makeU64ToNumber('indirectOffset_low', 'indirectOffset_high') }}};
+    var indirectOffset = convertU32PairToI53(indirectOffset_low, indirectOffset_high);
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["drawIndexedIndirect"](indirectBuffer, indirectOffset);
   },
@@ -1913,13 +1907,14 @@ var LibraryWebGPU = {
       pass["setBindGroup"](groupIndex, group, offsets);
     }
   },
+  wgpuRenderBundleEncoderSetIndexBuffer__deps: ['$convertU32PairToI53'],
   wgpuRenderBundleEncoderSetIndexBuffer: function(bundleId, bufferId, format, {{{ defineI64Param('offset') }}}, {{{ defineI64Param('size') }}}) {
     {{{ receiveI64ParamAsI32s('offset') }}}
     {{{ receiveI64ParamAsI32s('size') }}}
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
-    var offset = {{{ gpu.makeU64ToNumber('offset_low', 'offset_high') }}};
-    var size = {{{ gpu.makeU64ToNumberWithSentinelAsUndefined('size_low', 'size_high') }}};
+    var offset = convertU32PairToI53(offset_low, offset_high);
+    var size = (size_low == -1 && size_high == -1) ? undefined : convertU32PairToI53(size_low, size_high);
     pass["setIndexBuffer"](buffer, WebGPU.IndexFormat[format], offset, size);
   },
   wgpuRenderBundleEncoderSetPipeline: function(bundleId, pipelineId) {
@@ -1927,13 +1922,14 @@ var LibraryWebGPU = {
     var pipeline = WebGPU.mgrRenderPipeline.get(pipelineId);
     pass["setPipeline"](pipeline);
   },
+  wgpuRenderBundleEncoderSetVertexBuffer__deps: ['$convertU32PairToI53'],
   wgpuRenderBundleEncoderSetVertexBuffer: function(bundleId, slot, bufferId, {{{ defineI64Param('offset') }}}, {{{ defineI64Param('size') }}}) {
     {{{ receiveI64ParamAsI32s('offset') }}}
     {{{ receiveI64ParamAsI32s('size') }}}
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
-    var offset = {{{ gpu.makeU64ToNumber('offset_low', 'offset_high') }}};
-    var size = {{{ gpu.makeU64ToNumberWithSentinelAsUndefined('size_low', 'size_high') }}};
+    var offset = convertU32PairToI53(offset_low, offset_high);
+    var size = (size_low == -1 && size_high == -1) ? undefined : convertU32PairToI53(size_low, size_high);
     pass["setVertexBuffer"](slot, buffer, offset, size);
   },
 
@@ -1945,17 +1941,19 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     pass["drawIndexed"](indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
   },
+  wgpuRenderBundleEncoderDrawIndirect__deps: ['$convertU32PairToI53'],
   wgpuRenderBundleEncoderDrawIndirect: function(bundleId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
     {{{ receiveI64ParamAsI32s('indirectOffset') }}}
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
-    var indirectOffset = {{{ gpu.makeU64ToNumber('indirectOffset_low', 'indirectOffset_high') }}};
+    var indirectOffset = convertU32PairToI53(indirectOffset_low, indirectOffset_high);
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     pass["drawIndirect"](indirectBuffer, indirectOffset);
   },
+  wgpuRenderBundleEncoderDrawIndexedIndirect__deps: ['$convertU32PairToI53'],
   wgpuRenderBundleEncoderDrawIndexedIndirect: function(bundleId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
     {{{ receiveI64ParamAsI32s('indirectOffset') }}}
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
-    var indirectOffset = {{{ gpu.makeU64ToNumber('indirectOffset_low', 'indirectOffset_high') }}};
+    var indirectOffset = convertU32PairToI53(indirectOffset_low, indirectOffset_high);
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     pass["drawIndexedIndirect"](indirectBuffer, indirectOffset);
   },
@@ -2102,9 +2100,12 @@ var LibraryWebGPU = {
     abort('TODO: wgpuAdapterHasFeature unimplemented');
 #endif
   },
+  wgpuAdapterRequestDevice__deps: [
+    '$readI53FromU64',
 #if MINIMAL_RUNTIME
-  wgpuAdapterRequestDevice__deps: ['$allocateUTF8'],
+    '$allocateUTF8',
 #endif
+  ],
   wgpuAdapterRequestDevice: function(adapterId, descriptor, callback, userdata) {
     var adapter = WebGPU.mgrAdapter.get(adapterId);
 
@@ -2135,7 +2136,7 @@ var LibraryWebGPU = {
           var limitPart1 = {{{ gpu.makeGetU32('ptr', 0) }}};
           var limitPart2 = {{{ gpu.makeGetU32('ptr', 4) }}};
           if (limitPart1 != 0xFFFFFFFF || limitPart2 != 0xFFFFFFFF) {
-            requiredLimits[name] = {{{ gpu.makeGetU64('ptr', 0) }}}
+            requiredLimits[name] = readI53FromU64(ptr);
           }
         }
 
