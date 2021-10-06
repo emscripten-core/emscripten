@@ -7613,7 +7613,7 @@ int main() {
 
     for directory, headers in directories.items():
       print('dir: ' + directory)
-        for header in headers:
+      for header in headers:
         if not header.endswith('.h'):
           continue
         print('header: ' + header)
@@ -7636,7 +7636,7 @@ int main() {
           create_file('a.c', inc)
           create_file('b.c', inc)
           for std in [[], ['-std=c89']]:
-          self.run_process([EMCC] + std + ['-Werror', '-Wall', '-pedantic', 'a.c', 'b.c'])
+            self.run_process([EMCC] + std + ['-Werror', '-Wall', '-pedantic', 'a.c', 'b.c'])
 
   @is_slow_test
   def test_single_file(self):
