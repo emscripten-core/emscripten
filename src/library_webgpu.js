@@ -923,8 +923,8 @@ var LibraryWebGPU = {
       var binding = {{{ gpu.makeGetU32('entryPtr', C_STRUCTS.WGPUBindGroupEntry.binding) }}};
 
       if (bufferId) {
-        var size_low = {{{ gpu.makeGetU32('entryPtr', C_STRUCTS.WGPUBindGroupEntry.size) }}};
-        var size_high = {{{ gpu.makeGetU32('entryPtr', C_STRUCTS.WGPUBindGroupEntry.size + 4) }}};
+        var size_low = {{{ makeGetValue('entryPtr', C_STRUCTS.WGPUBindGroupEntry.size, 'i32', false, false) }}};
+        var size_high = {{{ makeGetValue('entryPtr', C_STRUCTS.WGPUBindGroupEntry.size + 4, 'i32', false, false) }}};
         var size = (size_low == -1 && size_high == -1) ? undefined : convertU32PairToI53(size_low, size_high);
 
         return {
