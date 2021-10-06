@@ -53,10 +53,6 @@
   )
 )
 
-:NORMAL
-@%CMD% %*
-@exit /b %ERRORLEVEL%
-
 :NORMAL_EXIT
 @%CMD% %*
 @exit %ERRORLEVEL%
@@ -68,3 +64,6 @@
 :MUTE_STDIN_EXIT
 @%CMD% %* < NUL
 @exit %ERRORLEVEL%
+
+:NORMAL
+@%CMD% %*

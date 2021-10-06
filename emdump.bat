@@ -44,10 +44,6 @@
   )
 )
 
-:NORMAL
-@"%EM_PY%" "%~dp0\tools\emdump.py" %*
-@exit /b %ERRORLEVEL%
-
 :NORMAL_EXIT
 @"%EM_PY%" "%~dp0\tools\emdump.py" %*
 @exit %ERRORLEVEL%
@@ -59,3 +55,6 @@
 :MUTE_STDIN_EXIT
 @"%EM_PY%" "%~dp0\tools\emdump.py" %* < NUL
 @exit %ERRORLEVEL%
+
+:NORMAL
+@"%EM_PY%" "%~dp0\tools\emdump.py" %*
