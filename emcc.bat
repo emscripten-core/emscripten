@@ -24,21 +24,30 @@
 
 :: Python Windows bug https://bugs.python.org/issue34780: If this script was invoked via a
 :: shared stdin handle from the parent process, and that parent process stdin handle is in
-:: a certain state, running python.exe might hang here. To work around this, invoke python
-:: with '< NUL' stdin to avoid sharing the parent's stdin handle to it, avoiding the hang.
-@if "%EM_WORKAROUND_PYTHON_BUG_34780%"=="" (
-  %CMD% %*
-) else (
-  %CMD% %* < NUL
-)
+:: a certain state, running python.exe might hang here. To work around this, if
+:: EM_WORKAROUND_PYTHON_BUG_34780 is defined, invoke python with '< NUL' stdin to avoid
+:: sharing the parent's stdin handle to it, avoiding the hang.
 
 :: On Windows 7, the compiler batch scripts are observed to exit with a non-zero errorlevel,
 :: even when the python executable above did succeed and quit with errorlevel 0 above.
 :: On Windows 8 and newer, this issue has not been observed. It is possible that this
 :: issue is related to the above python bug, but this has not been conclusively confirmed,
-:: so using a separate env. var to enable the known workaround this issue, which is to
-:: explicitly quit the calling process with the previous errorlevel from the above command.
-:: Note that when th
-@if not "%EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG%"=="" (
-  exit %ERRORLEVEL%
+:: so using a separate env. var EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG to enable the known
+:: workaround this issue, which is to explicitly quit the calling process with the previous
+:: errorlevel from the above command.
+
+@if "%EM_WORKAROUND_PYTHON_BUG_34780%"=="" (
+  @if "%EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG%"=="" (
+    %CMD% %*
+  ) else (
+    %CMD% %*
+    exit %ERRORLEVEL%
+  )
+) else (
+  @if "%EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG%"=="" (
+    %CMD% %* < NUL
+  ) else (
+    %CMD% %* < NUL
+    exit %ERRORLEVEL%
+  )
 )
