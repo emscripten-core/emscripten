@@ -35,5 +35,13 @@
               "global_locale"
             ]
         }
+    },
+    {
+        "file": "dynlink.h",
+        "structs": {
+            "dso": [
+              "name"
+            ]
+        }
     }
 ]
