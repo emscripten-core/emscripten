@@ -8,7 +8,7 @@
 
 #include "file.h"
 #include "file_table.h"
-#include "synchronized.h"
+#include "lockable.h"
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <errno.h>

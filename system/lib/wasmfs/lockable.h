@@ -8,8 +8,8 @@
 
 #pragma once
 
-// #define WASMFS_DEBUG = 1
-
+// Locked represents an RAII wrapper object. Access to any template object must go through Locked. A
+// Locked<T> holds Lockable's lock for the duration of its lifetime.
 template <class T> class Locked {
   T& resource;
   std::unique_lock<std::mutex> lock;
@@ -38,6 +38,8 @@ public:
   T& operator*() { return resource; }
 };
 
+// Lockable represents a wrapper that holds a resource object such as the FileTable. It returns a
+// Locked<T> to provide protected access to the resource.
 template <typename T> class Lockable {
 
   T resource;
@@ -46,6 +48,6 @@ template <typename T> class Lockable {
 public:
   template <typename... Args> Lockable(Args&&... args) : resource(std::forward<Args>(args)...) {}
 
-  // return a Locked to the Lockable object
+  // Acquire a Locked<T> to access resource object.
   Locked<T> get() { return Locked<T>(resource, mutex); }
 };

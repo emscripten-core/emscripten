@@ -9,7 +9,7 @@
 #pragma once
 
 #include "file.h"
-#include "synchronized.h"
+#include "lockable.h"
 #include <assert.h>
 #include <mutex>
 #include <utility>
