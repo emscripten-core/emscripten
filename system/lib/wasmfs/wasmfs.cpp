@@ -8,6 +8,7 @@
 
 #include "file.h"
 #include "file_table.h"
+#include "synchronized.h"
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <errno.h>
@@ -20,15 +21,16 @@
 extern "C" {
 
 __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
-  FileTable::Handle fileTable = FileTable::get();
 
-  // If oldfd is not a valid file descriptor, then the call fails,
-  // and newfd is not closed.
-  if (!fileTable[oldfd]) {
+  // static Synchronized<FileTable> syncfileTable;
+
+  Locked<FileTable> fileTable = FileTable::get();
+
+  if (!(*fileTable)[oldfd]) {
     return __WASI_ERRNO_BADF;
   }
 
-  auto oldOpenFile = fileTable[oldfd];
+  auto oldOpenFile = (*fileTable)[oldfd];
 
   if (oldfd == newfd) {
     return oldfd;
@@ -38,35 +40,35 @@ __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
     return __WASI_ERRNO_BADF;
   }
 
-  // If the file descriptor newfd was previously open, it is closed
-  // before being reused; the close is performed silently.
-  if (fileTable[newfd]) {
-    fileTable.removeOpenFile(newfd);
+  if ((*fileTable)[newfd]) {
+    fileTable->removeOpenFile(newfd);
   }
 
-  fileTable[newfd] = oldOpenFile;
+  (*fileTable)[newfd] = oldOpenFile;
   return newfd;
 }
 
 __wasi_fd_t __syscall_dup(__wasi_fd_t fd) {
 
-  FileTable::Handle fileTable = FileTable::get();
-  if (!fileTable[fd]) {
+  Locked<FileTable> fileTable = FileTable::get();
+
+  if (!(*fileTable)[fd]) {
     return __WASI_ERRNO_BADF;
   }
-  // Find the first free open file entry
-  return fileTable.addOpenFile(fileTable[fd]);
+
+  return fileTable->addOpenFile((*fileTable)[fd]);
 }
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
   // Get the corresponding OpenFile from the open file table
-  FileTable::Handle fileTable = FileTable::get();
-  if (!fileTable[fd]) {
+  Locked<FileTable> fileTable = FileTable::get();
+
+  if (!((*fileTable)[fd])) {
     return __WASI_ERRNO_BADF;
   }
 
-  return fileTable[fd]->getFile()->write(iovs, iovs_len, nwritten);
+  return (*fileTable)[fd]->getFile()->write(iovs, iovs_len, nwritten);
 }
 
 __wasi_errno_t __wasi_fd_seek(
