@@ -8,7 +8,6 @@
 
 #include "file.h"
 #include "file_table.h"
-#include "lockable.h"
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <errno.h>
@@ -21,12 +20,15 @@
 extern "C" {
 
 __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
-  wasmfs::Locked<wasmfs::FileTable> fileTable = wasmfs::FileTable::get();
+  FileTable::Handle fileTable = FileTable::get();
 
-  auto oldOpenFile = (*fileTable)[oldfd];
-  if (!oldOpenFile) {
+  // If oldfd is not a valid file descriptor, then the call fails,
+  // and newfd is not closed.
+  if (!fileTable[oldfd]) {
     return __WASI_ERRNO_BADF;
   }
+
+  auto oldOpenFile = fileTable[oldfd];
 
   if (oldfd == newfd) {
     return oldfd;
@@ -36,43 +38,35 @@ __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
     return __WASI_ERRNO_BADF;
   }
 
-  if ((*fileTable)[newfd]) {
-    fileTable->remove(newfd);
+  // If the file descriptor newfd was previously open, it is closed
+  // before being reused; the close is performed silently.
+  if (fileTable[newfd]) {
+    fileTable.removeOpenFile(newfd);
   }
 
-  (*fileTable)[newfd] = oldOpenFile;
+  fileTable[newfd] = oldOpenFile;
   return newfd;
 }
 
 __wasi_fd_t __syscall_dup(__wasi_fd_t fd) {
-  wasmfs::Locked<wasmfs::FileTable> fileTable = wasmfs::FileTable::get();
 
-  if (!(*fileTable)[fd]) {
+  FileTable::Handle fileTable = FileTable::get();
+  if (!fileTable[fd]) {
     return __WASI_ERRNO_BADF;
   }
-
-  return fileTable->add((*fileTable)[fd]);
+  // Find the first free open file entry
+  return fileTable.addOpenFile(fileTable[fd]);
 }
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
-  wasmfs::Locked<wasmfs::FileTable> fileTable = wasmfs::FileTable::get();
-
-  if (!(*fileTable)[fd]) {
+  // Get the corresponding OpenFile from the open file table
+  FileTable::Handle fileTable = FileTable::get();
+  if (!fileTable[fd]) {
     return __WASI_ERRNO_BADF;
   }
 
-  __wasi_size_t num = 0;
-  for (size_t i = 0; i < iovs_len; i++) {
-    const uint8_t* buf = iovs[i].buf;
-    __wasi_size_t len = iovs[i].buf_len;
-
-    (*fileTable)[fd]->getFile()->write(buf, len);
-    num += len;
-  }
-  *nwritten = num;
-
-  return 0;
+  return fileTable[fd]->getFile()->write(iovs, iovs_len, nwritten);
 }
 
 __wasi_errno_t __wasi_fd_seek(

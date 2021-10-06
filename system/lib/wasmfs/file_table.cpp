@@ -18,15 +18,15 @@ __wasi_fd_t FileTable::add(std::shared_ptr<FileDescriptor> ptr) {
   for (__wasi_fd_t i = 0; i < entries.size(); i++) {
     if (!entries[i]) {
       // Free open file entry.
-      entries[i] = ptr;
+      fileTable.entries[i] = ptr;
       return i;
     }
   }
 
   // Could not find an empty open file table entry.
-  entries.push_back(ptr);
+  fileTable.entries.push_back(ptr);
 
-  return entries.size() - 1;
+  return fileTable.entries.size() - 1;
 }
 
 void FileTable::remove(__wasi_fd_t fd) {
@@ -62,6 +62,7 @@ FileTable::Entry& FileTable::Entry::operator=(std::shared_ptr<FileDescriptor> pt
 
 std::shared_ptr<FileDescriptor>& FileTable::Entry::operator->() {
   assert(fd < fileTable.entries.size() && fd >= 0);
-  return fileTable.entries[fd];
+
+  fileTable.entries[fd] = nullptr;
 }
 } // namespace wasmfs
