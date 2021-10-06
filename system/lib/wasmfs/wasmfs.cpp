@@ -21,7 +21,7 @@
 extern "C" {
 
 __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
-  Locked<FileTable> fileTable = FileTable::get();
+  wasmfs::Locked<wasmfs::FileTable> fileTable = wasmfs::FileTable::get();
 
   auto oldOpenFile = (*fileTable)[oldfd];
   if (!oldOpenFile) {
@@ -45,7 +45,7 @@ __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
 }
 
 __wasi_fd_t __syscall_dup(__wasi_fd_t fd) {
-  Locked<FileTable> fileTable = FileTable::get();
+  wasmfs::Locked<wasmfs::FileTable> fileTable = wasmfs::FileTable::get();
 
   if (!(*fileTable)[fd]) {
     return __WASI_ERRNO_BADF;
@@ -56,7 +56,7 @@ __wasi_fd_t __syscall_dup(__wasi_fd_t fd) {
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
-  Locked<FileTable> fileTable = FileTable::get();
+  wasmfs::Locked<wasmfs::FileTable> fileTable = wasmfs::FileTable::get();
 
   if (!(*fileTable)[fd]) {
     return __WASI_ERRNO_BADF;
