@@ -103,7 +103,26 @@ static void dlopen_js_onerror(void* handle) {
   free(p);
 }
 
+static void init_dso_list() {
+  // Initialize the dso list.  This happens on first run.
+  pthread_rwlock_wrlock(&lock);
+  if (!head) {
+    // Flags are not important since the main module is already loaded.
+    int flags = RTLD_NOW|RTLD_GLOBAL;
+    struct dso* p = load_library_start("__main__", flags);
+    assert(p);
+    void* success = _dlopen_js("__main__", flags, p);
+    assert(success);
+    load_library_done(p);
+    assert(head);
+  }
+  pthread_rwlock_unlock(&lock);
+}
+
 void* dlopen(const char* file, int flags) {
+  if (!head) {
+    init_dso_list();
+  }
   if (!file) {
     return head;
   }
@@ -139,18 +158,25 @@ void* dlopen(const char* file, int flags) {
     p = NULL;
     goto end;
   }
+#ifdef DYLINK_DEBUG
+  printf("dlopen_js: success: %p\n", p);
+#endif
   load_library_done(p);
 end:
   pthread_rwlock_unlock(&lock);
   pthread_setcancelstate(cs, 0);
-#ifdef DYLINK_DEBUG
-  printf("dlopen_js: success: %p\n", p);
-#endif
   return p;
 }
 
 void emscripten_dlopen(const char* filename, int flags, void* user_data,
-  em_dlopen_callback onsuccess, em_arg_callback_func onerror) {
+                       em_dlopen_callback onsuccess, em_arg_callback_func onerror) {
+  if (!head) {
+    init_dso_list();
+  }
+  if (!filename) {
+    onsuccess(user_data, head);
+    return;
+  }
   struct dso* p = load_library_start(filename, flags);
   if (!p) {
     onerror(user_data);
