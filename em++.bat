@@ -55,7 +55,7 @@
 
 :NORMAL
 @%CMD% %*
-@goto END
+@exit /b %ERRORLEVEL%
 
 :NORMAL_EXIT
 @%CMD% %*
@@ -63,10 +63,8 @@
 
 :MUTE_STDIN
 @%CMD% %* < NUL
-@goto END
+@exit /b %ERRORLEVEL%
 
 :MUTE_STDIN_EXIT
 @%CMD% %* < NUL
 @exit %ERRORLEVEL%
-
-:END

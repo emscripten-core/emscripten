@@ -46,7 +46,7 @@
 
 :NORMAL
 @"%EM_PY%" "%~dp0\%~n0.py" %*
-@goto END
+@exit /b %ERRORLEVEL%
 
 :NORMAL_EXIT
 @"%EM_PY%" "%~dp0\%~n0.py" %*
@@ -54,10 +54,8 @@
 
 :MUTE_STDIN
 @"%EM_PY%" "%~dp0\%~n0.py" %* < NUL
-@goto END
+@exit /b %ERRORLEVEL%
 
 :MUTE_STDIN_EXIT
 @"%EM_PY%" "%~dp0\%~n0.py" %* < NUL
 @exit %ERRORLEVEL%
-
-:END

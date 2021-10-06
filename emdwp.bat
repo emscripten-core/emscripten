@@ -46,7 +46,7 @@
 
 :NORMAL
 @"%EM_PY%" "%~dp0\tools\emdwp.py" %*
-@goto END
+@exit /b %ERRORLEVEL%
 
 :NORMAL_EXIT
 @"%EM_PY%" "%~dp0\tools\emdwp.py" %*
@@ -54,10 +54,8 @@
 
 :MUTE_STDIN
 @"%EM_PY%" "%~dp0\tools\emdwp.py" %* < NUL
-@goto END
+@exit /b %ERRORLEVEL%
 
 :MUTE_STDIN_EXIT
 @"%EM_PY%" "%~dp0\tools\emdwp.py" %* < NUL
 @exit %ERRORLEVEL%
-
-:END
