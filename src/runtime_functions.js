@@ -121,7 +121,7 @@ function addFunctionWasm(func, sig) {
   if (!functionsInTableMap) {
     functionsInTableMap = new WeakMap();
     for (var i = 0; i < wasmTable.length; i++) {
-      var item = wasmTable.get(i);
+      var item = wbind(i);
       // Ignore null values.
       if (item) {
         functionsInTableMap.set(item, i);
@@ -139,7 +139,7 @@ function addFunctionWasm(func, sig) {
   // function is not actually in the wasm Table despite not being tracked in
   // functionsInTableMap.
   for (var i = 0; i < wasmTable.length; i++) {
-    assert(wasmTable.get(i) != func, 'function in Table but not functionsInTableMap');
+    assert(wbind(i) != func, 'function in Table but not functionsInTableMap');
   }
 #endif
 
@@ -166,7 +166,7 @@ function addFunctionWasm(func, sig) {
 }
 
 function removeFunction(index) {
-  functionsInTableMap.delete(wasmTable.get(index));
+  functionsInTableMap.delete(wbind(index));
   freeTableIndexes.push(index);
 }
 

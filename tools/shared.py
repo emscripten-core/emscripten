@@ -677,7 +677,7 @@ class JS:
       else:
         return 'Module["dynCall_%s"](%s)' % (sig, args)
     else:
-      return 'wasmTable.get(%s)(%s)' % (args[0], ','.join(args[1:]))
+      return 'wbind(%s)(%s)' % (args[0], ','.join(args[1:]))
 
   @staticmethod
   def make_invoke(sig, named=True):

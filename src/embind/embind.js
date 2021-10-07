@@ -1139,25 +1139,19 @@ var LibraryEmbind = {
   $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError'
 #if DYNCALLS || !WASM_BIGINT
     , '$getDynCaller'
+#else
+    , '$wbind'
 #endif
   ],
   $embind__requireFunction: function(signature, rawFunction) {
     signature = readLatin1String(signature);
 
-    function makeDynCaller() {
-#if DYNCALLS
-      return getDynCaller(signature, rawFunction);
+#if DYNCALLS || !WASM_BIGINT
+    var fp = getDynCaller(signature, rawFunction);
 #else
-#if !WASM_BIGINT
-      if (signature.includes('j')) {
-        return getDynCaller(signature, rawFunction);
-      }
+    var fp = wbind(rawFunction);
 #endif
-      return wasmTable.get(rawFunction);
-#endif
-    }
 
-    var fp = makeDynCaller();
     if (typeof fp !== "function") {
         throwBindingError("unknown function pointer with signature " + signature + ": " + rawFunction);
     }
