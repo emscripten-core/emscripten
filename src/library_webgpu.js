@@ -906,7 +906,7 @@ var LibraryWebGPU = {
     return WebGPU.mgrBindGroupLayout.create(device["createBindGroupLayout"](desc));
   },
 
-  wgpuDeviceCreateBindGroup__deps: ['$readI53FromU64'],
+  wgpuDeviceCreateBindGroup__deps: ['$convertU32PairToI53', '$readI53FromU64'],
   wgpuDeviceCreateBindGroup: function(deviceId, descriptor) {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
@@ -1820,7 +1820,7 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["drawIndexed"](indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
   },
-  wgpuRenderPassEncoderDrawIndirect__deps: ['convertU32PairToI53'],
+  wgpuRenderPassEncoderDrawIndirect__deps: ['$convertU32PairToI53'],
   wgpuRenderPassEncoderDrawIndirect: function(passId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
     {{{ receiveI64ParamAsI32s('indirectOffset') }}}
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
@@ -1828,7 +1828,7 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["drawIndirect"](indirectBuffer, indirectOffset);
   },
-  wgpuRenderPassEncoderDrawIndexedIndirect__deps: ['convertU32PairToI53'],
+  wgpuRenderPassEncoderDrawIndexedIndirect__deps: ['$convertU32PairToI53'],
   wgpuRenderPassEncoderDrawIndexedIndirect: function(passId, indirectBufferId, {{{ defineI64Param('indirectOffset') }}}) {
     {{{ receiveI64ParamAsI32s('indirectOffset') }}}
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
