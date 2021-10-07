@@ -3367,6 +3367,8 @@ LibraryManager.library = {
   $getDynCaller__deps: ['$dynCall'],
   $getDynCaller: function(sig, ptr) {
 #if DYNCALLS || !WASM_BIGINT
+    if (!sig.includes('j')) return wbind(ptr);
+
     // Dispatch a signature via i64 args as i32 pairs.
     var argCache = [];
     return function() {
@@ -3383,7 +3385,6 @@ LibraryManager.library = {
     assert(!sig.includes('j'), 'Calling getDynCaller() with a i64 sig, but "i64 as i32 pairs" ABI is not available: build with either DYNCALLS or WASM_BIGINT==0 to get i64 as i32 pair ABI, or call wbind()/wbindArray() to use the BigInt-based i64 ABI.');
 #endif
     return wbind(ptr);
-
 #endif // DYNCALLS || !WASM_BIGINT
   },
 
@@ -3395,7 +3396,7 @@ LibraryManager.library = {
 #endif
   $dynCall: function(sig, ptr, args) {
 #if DYNCALLS || !WASM_BIGINT
-    return __dynCallI32Pair(sig, ptr, args);
+    return sig.includes('j') ? __dynCallI32Pair(sig, ptr, args) : wbind(ptr).apply(null, args);
 #else // DYNCALLS || !WASM_BIGINT
 
     // Dispatch only to a function that does not have i64 args: the required
