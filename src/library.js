@@ -3527,9 +3527,9 @@ LibraryManager.library = {
 #endif
   ],
   $callUserCallback: function(func, synchronous) {
-    if (ABORT) {
+    if (runtimeExited || ABORT) {
 #if ASSERTIONS
-      err('user callback triggered after application aborted.  Ignoring.');
+      err('user callback triggered after runtime exited or application aborted.  Ignoring.');
 #endif
       return;
     }
