@@ -93,29 +93,34 @@ mergeInto(LibraryManager.library, {
     return HEAPU32[ptr>>2] + HEAPU32[ptr+4>>2] * 4294967296;
   },
 
-  // Converts the given 32-bit low-high pair to a signed 53-bit integer with
-  // the sign of the high word (and represented as a JavaScript Number).
+  // Converts the given 32-bit low-high pair to a signed JavaScript number value
+  // (with rounding beyond +/- 2^53).
+  // The result will have the sign of the high word.
   // The signedness of the low word doesn't matter; it will be bit-cast to u32.
   // TODO: Add $convertI32PairToI53Signaling() variant.
   $convertI32PairToI53: function(lo, hi) {
+#if ASSERTIONS
+    // This function should not be getting called with too large unsigned numbers
+    // in high part (if hi >= 0x7FFFFFFFF, one should have been calling
+    // convertU32PairToI53())
+    assert(hi === (hi|0));
+#endif
     var result = (lo >>> 0) + hi * 4294967296;
 #if ASSERTIONS
-    // Value should not have been rounded: lower word should be equal.
-    assert((result >>> 0) == (lo >>> 0));
+    if ((result >>> 0) != (lo >>> 0)) warnOnce('convertI32PairToI53() resulted in rounding lo=0x' + lo.toString(16) + ', hi=0x' + hi.toString(16) + ' to 0x' + result.toString(16));
 #endif
     return result;
   },
 
-  // Converts the given 32-bit low-high pair to an unsigned 53-bit integer with
-  // the sign of the high word (and represented as a JavaScript Number).
-  // The signedness of the low word doesn't matter; it will be bit-cast to u32.
+  // Converts the given 32-bit low-high pair to an unsigned JavaScript number value
+  // (with rounding beyond 2^53).
+  // The signedness of each word doesn't matter; they will be bit-cast to u32.
   // TODO: Add $convertU32PairToI53Signaling() variant.
   $convertU32PairToI53: function(lo, hi) {
     var result = (lo >>> 0) + (hi >>> 0) * 4294967296;
 #if ASSERTIONS
-    // Value should not have been rounded: lower word should be equal.
-    assert((result >>> 0) == (lo >>> 0));
+    if ((result >>> 0) != (lo >>> 0)) warnOnce('convertU32PairToI53() resulted in rounding (lo=0x' + lo + ', hi=0x' + hi + ') to 0x' + result.toString(16));
 #endif
     return result;
-  }
+  },
 });
