@@ -5363,8 +5363,8 @@ Module['onRuntimeInitialized'] = function() {
   def test_unistd_dup(self):
     self.do_run_in_out_file_test('unistd/dup.c')
 
-  @also_with_wasmfs
   def test_unistd_dup_write(self):
+    self.set_setting('WASMFS')
     self.do_run_in_out_file_test('unistd/dup2.c')
 
   def test_unistd_pathconf(self):
