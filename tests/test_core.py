@@ -2582,9 +2582,14 @@ The current type of b is: 9
     self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
   def prep_dlfcn_main(self):
-    self.set_setting('MAIN_MODULE')
     self.set_setting('NODERAWFS')
     self.clear_setting('SIDE_MODULE')
+    # Link against the side modules but don't load them on startup.
+    self.set_setting('NO_AUTOLOAD_DYLIBS')
+    self.emcc_args.append('liblib.so')
+    # This means we can use MAIN_MODULE=2 without needing to explictly
+    # specify EXPORTED_FUNCTIONS.
+    self.set_setting('MAIN_MODULE', 2)
 
   def build_dlfcn_lib(self, filename):
     self.clear_setting('MAIN_MODULE')
