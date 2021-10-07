@@ -625,13 +625,20 @@ LibraryManager.library = {
     return buf;
   },
 
-  ctime_r__deps: ['localtime_r', '__asctime'],
+  $withStackSave__internal: true,
+  $withStackSave: function(f) {
+    var stack = stackSave();
+    var ret = f();
+    stackRestore(stack);
+    return ret;
+  },
+
+  ctime_r__deps: ['localtime_r', '__asctime', '$withStackSave'],
   ctime_r__sig: 'iii',
   ctime_r: function(time, buf) {
-    var stack = stackSave();
-    var rv = ___asctime(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
-    stackRestore(stack);
-    return rv;
+    return withStackSave(function() {
+      return ___asctime(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
+    });
   },
 
   dysize: function(year) {
