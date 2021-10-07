@@ -48,7 +48,10 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
   See :ref:`embind-val-guide` for other examples.
   
 
-  .. warning:: JavaScript values can't be shared across threads, so neither can ``val`` instances that bind them. For example, if you want to cache some JavaScript global as a ``val``, you need to retrieve that global separately in each thread and bind to thread-local ``val`` bindings:
+  .. warning:: JavaScript values can't be shared across threads, so neither can ``val`` instances that bind them.
+    
+    For example, if you want to cache some JavaScript global as a ``val``, you need to retrieve and bind separate instances of that global by its name in each thread.
+    The easiest way to do this is with a ``thread_local`` declaration:
 
     .. code:: cpp
 
