@@ -207,7 +207,7 @@ function isPointerType(type) {
   return type[type.length - 1] == '*';
 }
 
-function sizeT(x) {
+function pointerT(x) {
   return MEMORY64 ? `BigInt(${x})` : x;
 }
 
