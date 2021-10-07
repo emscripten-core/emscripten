@@ -15,6 +15,7 @@
 #include <emscripten/wire.h>
 #include <array>
 #include <vector>
+#include <climits>
 
 
 namespace emscripten {
@@ -189,10 +190,15 @@ namespace emscripten {
             union {
                 unsigned u;
                 float f;
+                #if __ILP32__
                 const void* p;
+                #endif
             } w[2];
             double d;
             uint64_t u;
+            #if __LP64__
+            const void* p;
+            #endif
         };
         static_assert(sizeof(GenericWireType) == 8, "GenericWireType must be 8 bytes");
         static_assert(alignof(GenericWireType) == 8, "GenericWireType must be 8-byte-aligned");
@@ -219,14 +225,29 @@ namespace emscripten {
 
         template<typename T>
         void writeGenericWireType(GenericWireType*& cursor, T* wt) {
+            #if __ILP32__
             cursor->w[0].p = wt;
+            #else
+            cursor->p = wt;
+            // FIXME: This requires the JS reading code to be audited to be compatible with it.
+            assert(false);
+            abort();
+            #endif
             ++cursor;
         }
 
         template<typename ElementType>
         inline void writeGenericWireType(GenericWireType*& cursor, const memory_view<ElementType>& wt) {
             cursor->w[0].u = wt.size;
+            #if __ILP32__
             cursor->w[1].p = wt.data;
+            #else
+            // FIXME: need to change GenericWireType such that it can store a 64-bit pointer?
+            // This requires the JS reading code to be audited to be compatible with it.
+            cursor->w[1].u = 0;
+            assert(false);
+            abort();
+            #endif
             ++cursor;
         }
 
