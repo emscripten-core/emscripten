@@ -115,7 +115,7 @@ var WasiLibrary = {
     var bufSize = 0;
     mainArgs.forEach(function(arg, i) {
       var ptr = argv_buf + bufSize;
-      {{{ makeSetValue('argv', `i*${Runtime.POINTER_SIZE}`, 'ptr', `${POINTER_TYPE}`) }}};
+      {{{ makeSetValue('argv', `i*${Runtime.POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
       writeAsciiToMemory(arg, ptr);
       bufSize += arg.length + 1;
     });
@@ -203,15 +203,15 @@ var WasiLibrary = {
     // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
     var num = 0;
     for (var i = 0; i < iovcnt; i++) {
-      var ptr = {{{ makeGetValue('iov', `i*${Runtime.POINTER_SIZE}*2`, `${POINTER_TYPE}`) }}};
-      var len = {{{ makeGetValue('iov', `i*${Runtime.POINTER_SIZE}*2 + ${Runtime.POINTER_SIZE}`, `${POINTER_TYPE}`) }}};
+      var ptr = {{{ makeGetValue('iov', `i*${Runtime.POINTER_SIZE}*2`, POINTER_TYPE) }}};
+      var len = {{{ makeGetValue('iov', `i*${Runtime.POINTER_SIZE}*2 + ${Runtime.POINTER_SIZE}`, POINTER_TYPE) }}};
       for (var j = 0; j < len; j++) {
         SYSCALLS.printChar(fd, HEAPU8[ptr+j]);
       }
       num += len;
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ makeSetValue('pnum', 0, 'num', `${SIZE_TYPE}`) }}}
+    {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}}
     return 0;
   },
 
