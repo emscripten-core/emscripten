@@ -83,14 +83,26 @@ mergeInto(LibraryManager.library, {
   // converts it to a JavaScript Number, which can represent 53 integer bits precisely.
   // TODO: Add $readI53FromI64Signaling() variant.
   $readI53FromI64: function(ptr) {
-    return HEAPU32[ptr>>2] + HEAP32[ptr+4>>2] * 4294967296;
+    var result = HEAPU32[ptr>>2] + HEAP32[ptr+4>>2] * 4294967296;
+#if ASSERTIONS
+    var lo = HEAPU32[ptr>>2];
+    var hi = HEAP32[ptr+4>>2];
+    if ((result >>> 0) != (lo >>> 0)) warnOnce('readI53FromI64() resulted in rounding lo=0x' + lo.toString(16) + ', hi=0x' + hi.toString(16) + ' to 0x' + result.toString(16));
+#endif
+    return result;
   },
 
   // Reads a 64-bit unsigned integer from the WebAssembly heap and
   // converts it to a JavaScript Number, which can represent 53 integer bits precisely.
   // TODO: Add $readI53FromU64Signaling() variant.
   $readI53FromU64: function(ptr) {
-    return HEAPU32[ptr>>2] + HEAPU32[ptr+4>>2] * 4294967296;
+    var result = HEAPU32[ptr>>2] + HEAPU32[ptr+4>>2] * 4294967296;
+#if ASSERTIONS
+    var lo = HEAPU32[ptr>>2];
+    var hi = HEAPU32[ptr+4>>2];
+    if ((result >>> 0) != (lo >>> 0)) warnOnce('readI53FromU64() resulted in rounding lo=0x' + lo.toString(16) + ', hi=0x' + hi.toString(16) + ' to 0x' + result.toString(16));
+#endif
+    return result;
   },
 
   // Converts the given 32-bit low-high pair to a signed JavaScript number value
