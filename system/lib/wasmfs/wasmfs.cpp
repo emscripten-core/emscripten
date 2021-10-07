@@ -77,23 +77,23 @@ __wasi_errno_t __wasi_fd_write(
   }
   *nwritten = num;
 
-  return 0;
+  return __WASI_ERRNO_SUCCESS;
 }
 
 __wasi_errno_t __wasi_fd_seek(
   __wasi_fd_t fd, __wasi_filedelta_t offset, __wasi_whence_t whence, __wasi_filesize_t* newoffset) {
   emscripten_console_log("__wasi_fd_seek has been temporarily stubbed and is inert");
-  abort();
+  return __WASI_ERRNO_INVAL;
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   emscripten_console_log("__wasi_fd_close has been temporarily stubbed and is inert");
-  abort();
+  return __WASI_ERRNO_INVAL;
 }
 
 __wasi_errno_t __wasi_fd_read(
   __wasi_fd_t fd, const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) {
   emscripten_console_log("__wasi_fd_read has been temporarily stubbed and is inert");
-  abort();
+  return __WASI_ERRNO_INVAL;
 }
 }

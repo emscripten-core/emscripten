@@ -17,20 +17,21 @@
 
 namespace wasmfs {
 
-class OpenFileInfo {
+class OpenFileState {
   std::shared_ptr<File> file;
   __wasi_filedelta_t offset;
   std::mutex mutex;
 
 public:
-  OpenFileInfo(uint32_t offset, std::shared_ptr<File> file) : offset(offset), file(file) {}
+  OpenFileState(uint32_t offset, std::shared_ptr<File> file) : offset(offset), file(file) {}
 
   class Handle {
-    OpenFileInfo& openFileInfo;
+    OpenFileState& openFileState;
     std::unique_lock<std::mutex> lock;
 
   public:
-    Handle(OpenFileInfo& openFileInfo) : openFileInfo(openFileInfo), lock(openFileInfo.mutex) {}
+    Handle(OpenFileState& openFileState)
+      : openFileState(openFileState), lock(openFileState.mutex) {}
 
     std::shared_ptr<File>& getFile();
   };
@@ -39,7 +40,7 @@ public:
 };
 
 class FileTable {
-  static std::vector<std::shared_ptr<OpenFileInfo>> entries;
+  static std::vector<std::shared_ptr<OpenFileState>> entries;
   std::mutex mutex;
 
   FileTable();
@@ -57,10 +58,10 @@ public:
   public:
     Handle(FileTable& fileTable) : fileTable(fileTable), lock(fileTable.mutex) {}
 
-    // Adds given OpenFileInfo to FileTable entries. Returns fd (insertion index in entries).
-    __wasi_fd_t add(std::shared_ptr<OpenFileInfo> ptr);
+    // Adds given OpenFileState to FileTable entries. Returns fd (insertion index in entries).
+    __wasi_fd_t add(std::shared_ptr<OpenFileState> ptr);
 
-    // Removes OpenFileInfo in FileTable entries corresponding to given fd.
+    // Removes OpenFileState in FileTable entries corresponding to given fd.
     void remove(__wasi_fd_t fd);
 
     // Entry is used to override the subscript [] operator.
@@ -70,15 +71,15 @@ public:
       Handle& fileTableHandle;
       __wasi_fd_t fd;
 
-      operator std::shared_ptr<OpenFileInfo>() const;
+      operator std::shared_ptr<OpenFileState>() const;
 
-      Entry& operator=(std::shared_ptr<OpenFileInfo> ptr);
+      Entry& operator=(std::shared_ptr<OpenFileState> ptr);
 
-      Entry& operator=(Entry& entry) { return *this = std::shared_ptr<OpenFileInfo>(entry); }
+      Entry& operator=(Entry& entry) { return *this = std::shared_ptr<OpenFileState>(entry); }
 
-      std::shared_ptr<OpenFileInfo>& operator->();
+      std::shared_ptr<OpenFileState>& operator->();
 
-      // Check whether the entry exists (i.e. contains an OpenFileInfo).
+      // Check whether the entry exists (i.e. contains an OpenFileState).
       operator bool() const;
     };
 

@@ -10,7 +10,7 @@
 
 namespace wasmfs {
 
-std::vector<std::shared_ptr<OpenFileInfo>> FileTable::entries;
+std::vector<std::shared_ptr<OpenFileState>> FileTable::entries;
 
 static __wasi_errno_t writeStdBuffer(const uint8_t* buf, __wasi_size_t len,
   void (*console_write)(const char*), std::vector<char>& fd_write_buffer) {
@@ -24,16 +24,18 @@ static __wasi_errno_t writeStdBuffer(const uint8_t* buf, __wasi_size_t len,
       fd_write_buffer.push_back(current);
     }
   }
-  return 0;
+  return __WASI_ERRNO_SUCCESS;
 }
 
 class StdinFile : public File {
 
-  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override { return 0; }
+  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override {
+    return __WASI_ERRNO_INVAL;
+  }
 
   __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
     emscripten_console_log("StdinFile::read() has not been implemented yet.");
-    abort();
+    return __WASI_ERRNO_INVAL;
   };
 
 public:
@@ -49,7 +51,7 @@ class StdoutFile : public File {
 
   __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
     emscripten_console_log("StdoutFile::read() has not been implemented yet.");
-    abort();
+    return __WASI_ERRNO_INVAL;
   };
 
 public:
@@ -68,7 +70,7 @@ class StderrFile : public File {
 
   __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
     emscripten_console_log("StderrFile::read() has not been implemented yet.");
-    abort();
+    return __WASI_ERRNO_INVAL;
   };
 
 public:
@@ -78,7 +80,7 @@ public:
 std::vector<char> StdoutFile::writeBuffer;
 std::vector<char> StderrFile::writeBuffer;
 
-std::shared_ptr<File>& OpenFileInfo::Handle::getFile() { return openFileInfo.file; }
+std::shared_ptr<File>& OpenFileState::Handle::getFile() { return openFileState.file; }
 
 FileTable::Handle FileTable::get() {
   static FileTable fileTable;
@@ -86,12 +88,12 @@ FileTable::Handle FileTable::get() {
 }
 
 FileTable::FileTable() {
-  entries.push_back(std::make_shared<OpenFileInfo>(0, std::make_shared<StdinFile>()));
-  entries.push_back(std::make_shared<OpenFileInfo>(0, std::make_shared<StdoutFile>()));
-  entries.push_back(std::make_shared<OpenFileInfo>(0, std::make_shared<StderrFile>()));
+  entries.push_back(std::make_shared<OpenFileState>(0, std::make_shared<StdinFile>()));
+  entries.push_back(std::make_shared<OpenFileState>(0, std::make_shared<StdoutFile>()));
+  entries.push_back(std::make_shared<OpenFileState>(0, std::make_shared<StderrFile>()));
 }
 
-__wasi_fd_t FileTable::Handle::add(std::shared_ptr<OpenFileInfo> ptr) {
+__wasi_fd_t FileTable::Handle::add(std::shared_ptr<OpenFileState> ptr) {
   for (__wasi_fd_t i = 0; i < fileTable.entries.size(); i++) {
     if (!fileTable.entries[i]) {
       // Free open file entry.
@@ -114,7 +116,7 @@ void FileTable::Handle::remove(__wasi_fd_t fd) {
 }
 
 // Operator Overloading for FileTable::Handle::Entry
-FileTable::Handle::Entry::operator std::shared_ptr<OpenFileInfo>() const {
+FileTable::Handle::Entry::operator std::shared_ptr<OpenFileState>() const {
   if (fd >= fileTableHandle.fileTable.entries.size() || fd < 0) {
     return nullptr;
   }
@@ -122,7 +124,7 @@ FileTable::Handle::Entry::operator std::shared_ptr<OpenFileInfo>() const {
   return fileTableHandle.fileTable.entries[fd];
 }
 
-FileTable::Handle::Entry& FileTable::Handle::Entry::operator=(std::shared_ptr<OpenFileInfo> ptr) {
+FileTable::Handle::Entry& FileTable::Handle::Entry::operator=(std::shared_ptr<OpenFileState> ptr) {
   assert(fd >= 0);
 
   if (fd >= fileTableHandle.fileTable.entries.size()) {
@@ -133,7 +135,7 @@ FileTable::Handle::Entry& FileTable::Handle::Entry::operator=(std::shared_ptr<Op
   return *this;
 }
 
-std::shared_ptr<OpenFileInfo>& FileTable::Handle::Entry::operator->() {
+std::shared_ptr<OpenFileState>& FileTable::Handle::Entry::operator->() {
   assert(fd < fileTableHandle.fileTable.entries.size() && fd >= 0);
 
   return fileTableHandle.fileTable.entries[fd];
