@@ -18,6 +18,9 @@ namespace wasmfs {
 class File {
   // TODO: Add other File properties later.
 
+  // A mutex is needed for multiple accesses to the same file.
+  std::mutex mutex;
+
 public:
   virtual __wasi_errno_t read(
     const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) = 0;

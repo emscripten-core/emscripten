@@ -24,13 +24,12 @@ using namespace wasmfs;
 __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
   FileTable::Handle fileTable = FileTable::get();
 
+  auto oldOpenFile = fileTable[oldfd];
   // If oldfd is not a valid file descriptor, then the call fails,
   // and newfd is not closed.
-  if (!fileTable[oldfd]) {
+  if (!oldOpenFile) {
     return __WASI_ERRNO_BADF;
   }
-
-  auto oldOpenFile = fileTable[oldfd];
 
   if (oldfd == newfd) {
     return oldfd;
@@ -73,7 +72,8 @@ __wasi_errno_t __wasi_fd_write(
     const uint8_t* buf = iovs[i].buf;
     __wasi_size_t len = iovs[i].buf_len;
 
-    fileTable[fd]->getFile()->write(buf, len);
+    auto fileDescription = fileTable[fd];
+    fileDescription->get().getFile()->write(buf, len);
     num += len;
   }
   *nwritten = num;

@@ -20,11 +20,23 @@ namespace wasmfs {
 class FileDescription {
   std::shared_ptr<File> file;
   __wasi_filedelta_t offset;
+  std::mutex mutex;
 
 public:
   FileDescription(uint32_t offset, std::shared_ptr<File> file) : offset(offset), file(file) {}
 
-  std::shared_ptr<File>& getFile();
+  class Handle {
+    FileDescription& fileDescription;
+    std::unique_lock<std::mutex> lock;
+
+  public:
+    Handle(FileDescription& fileDescription)
+      : fileDescription(fileDescription), lock(fileDescription.mutex) {}
+
+    std::shared_ptr<File>& getFile();
+  };
+
+  Handle get() { return Handle(*this); }
 };
 
 class FileTable {
@@ -55,6 +67,7 @@ public:
     // Entry is used to override the subscript [] operator.
     // This allows the user to get and set values in the FileTable entries vector.
     struct Entry {
+      // Need to store a reference to the single global filetable, which is a local static variable.
       Handle& fileTableHandle;
       __wasi_fd_t fd;
 

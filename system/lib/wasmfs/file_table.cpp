@@ -72,7 +72,7 @@ public:
 std::vector<char> StdoutFile::writeBuffer;
 std::vector<char> StderrFile::writeBuffer;
 
-std::shared_ptr<File>& FileDescription::getFile() { return file; }
+std::shared_ptr<File>& FileDescription::Handle::getFile() { return fileDescription.file; }
 
 FileTable::Handle FileTable::get() {
   static FileTable fileTable;
