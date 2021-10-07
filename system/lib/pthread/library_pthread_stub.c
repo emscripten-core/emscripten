@@ -395,3 +395,12 @@ __attribute__((constructor))
 static void init_pthread_self(void) {
   __pthread_self()->locale = &libc.global_locale;
 }
+
+// When pthreads is not enabled, we can't use the Atomics futex api to do
+// proper sleeps, so simulate a busy spin wait loop instead.
+void emscripten_thread_sleep(double msecs) {
+  double start = emscripten_get_now();
+  while (emscripten_get_now() - start < msecs) {
+    // Do nothing.
+  }
+}
