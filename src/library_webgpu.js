@@ -663,7 +663,7 @@ var LibraryWebGPU = {
   wgpuDevicePopErrorScope__deps: [
     '$callUserCallback',
 #if MINIMAL_RUNTIME
-    '$allocateUTF8OnStack',
+    '$allocateUTF8',
 #else
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
@@ -684,18 +684,20 @@ var LibraryWebGPU = {
 #if ASSERTIONS
           assert(gpuError instanceof GPUValidationError);
 #endif
-          var messagePtr = allocateUTF8OnStack(gpuError.message);
+          var messagePtr = allocateUTF8(gpuError.message);
           {{{ makeDynCall('viii', 'callback') }}}({{{ gpu.ErrorType.Validation }}}, messagePtr, userdata);
+          _free(messagePtr);
         }
       });
     }, function(ex) {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
-        var messagePtr = allocateUTF8OnStack(ex.message);
+        var messagePtr = allocateUTF8(ex.message);
         // TODO: This can mean either the device was lost or the error scope stack was empty. Figure
         // out how to synthesize the DeviceLost error type. (Could be by simply tracking the error
         // scope depth, but that isn't ideal.)
         {{{ makeDynCall('viii', 'callback') }}}({{{ gpu.ErrorType.Unknown }}}, messagePtr, userdata);
+        _free(messagePtr);
       });
     });
   },
@@ -703,7 +705,7 @@ var LibraryWebGPU = {
   wgpuDeviceSetDeviceLostCallback__deps: [
     '$callUserCallback',
 #if MINIMAL_RUNTIME
-    '$allocateUTF8OnStack',
+    '$allocateUTF8',
 #endif
   ],
   wgpuDeviceSetDeviceLostCallback: function(deviceId, callback, userdata) {
@@ -718,8 +720,9 @@ var LibraryWebGPU = {
     deviceWrapper.lostCallback = function(info) {
       // This will skip the callback if the runtime is no longer alive.
       callUserCallback(function() {
-        var messagePtr = allocateUTF8OnStack(info.message);
+        var messagePtr = allocateUTF8(info.message);
         {{{ makeDynCall('viii', 'callback') }}}(WebGPU.DeviceLostReason[info.reason], messagePtr, userdata);
+        _free(messagePtr);
       });
     };
   },
@@ -727,7 +730,7 @@ var LibraryWebGPU = {
   wgpuDeviceSetUncapturedErrorCallback__deps: [
     '$callUserCallback',
 #if MINIMAL_RUNTIME
-    '$allocateUTF8OnStack',
+    '$allocateUTF8',
 #endif
   ],
   wgpuDeviceSetUncapturedErrorCallback: function(deviceId, callback, userdata) {
@@ -746,8 +749,9 @@ var LibraryWebGPU = {
         if (ev.error instanceof GPUValidationError) type = Validation;
         else if (ev.error instanceof GPUOutOfMemoryError) type = OutOfMemory;
 
-        var messagePtr = allocateUTF8OnStack(ev.error.message);
+        var messagePtr = allocateUTF8(ev.error.message);
         {{{ makeDynCall('viii', 'callback') }}}(type, messagePtr, userdata);
+        _free(messagePtr);
       });
     };
   },
@@ -2092,7 +2096,7 @@ var LibraryWebGPU = {
   wgpuInstanceRequestAdapter__deps: [
     '$callUserCallback',
 #if MINIMAL_RUNTIME
-    '$allocateUTF8OnStack',
+    '$allocateUTF8',
 #else
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
@@ -2112,8 +2116,9 @@ var LibraryWebGPU = {
     }
 
     if (!('gpu' in navigator)) {
-      var messagePtr = allocateUTF8OnStack('WebGPU not available on this browser (navigator.gpu is not available)');
+      var messagePtr = allocateUTF8('WebGPU not available on this browser (navigator.gpu is not available)');
       {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
+      _free(messagePtr);
       return;
     }
 
@@ -2125,15 +2130,17 @@ var LibraryWebGPU = {
           var adapterId = WebGPU.mgrAdapter.create(adapter);
           {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestAdapterStatus.Success }}}, adapterId, 0, userdata);
         } else {
-          var messagePtr = allocateUTF8OnStack('WebGPU not available on this system (requestAdapter returned null)');
+          var messagePtr = allocateUTF8('WebGPU not available on this system (requestAdapter returned null)');
           {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
+          _free(messagePtr);
         }
       });
     }, function(ex) {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
-        var messagePtr = allocateUTF8OnStack(ex.message);
+        var messagePtr = allocateUTF8(ex.message);
         {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestAdapterStatus.Error }}}, 0, messagePtr, userdata);
+        _free(messagePtr);
       });
     });
   },
@@ -2161,7 +2168,7 @@ var LibraryWebGPU = {
   wgpuAdapterRequestDevice__deps: [
     '$callUserCallback',
 #if MINIMAL_RUNTIME
-    '$allocateUTF8OnStack',
+    '$allocateUTF8',
 #else
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
@@ -2241,8 +2248,9 @@ var LibraryWebGPU = {
     }, function(ex) {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
-        var messagePtr = allocateUTF8OnStack(ex.message);
+        var messagePtr = allocateUTF8(ex.message);
         {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestDeviceStatus.Error }}}, 0, messagePtr, userdata);
+        _free(messagePtr);
       });
     });
   },
