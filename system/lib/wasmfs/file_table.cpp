@@ -33,13 +33,9 @@ class StdinFile : public File {
     return __WASI_ERRNO_INVAL;
   }
 
-  __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
-    emscripten_console_log("StdinFile::read() has not been implemented yet.");
+  __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) override {
     return __WASI_ERRNO_INVAL;
   };
-
-public:
-  File::Handle get() { return Handle(*this); }
 };
 
 class StdoutFile : public File {
@@ -49,13 +45,9 @@ class StdoutFile : public File {
     return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
   }
 
-  __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
-    emscripten_console_log("StdoutFile::read() has not been implemented yet.");
+  __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) override {
     return __WASI_ERRNO_INVAL;
   };
-
-public:
-  File::Handle get() { return Handle(*this); }
 };
 
 class StderrFile : public File {
@@ -68,24 +60,13 @@ class StderrFile : public File {
     return writeStdBuffer(buf, len, &emscripten_console_error, writeBuffer);
   }
 
-  __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
-    emscripten_console_log("StderrFile::read() has not been implemented yet.");
+  __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) override {
     return __WASI_ERRNO_INVAL;
   };
-
-public:
-  File::Handle get() { return Handle(*this); }
 };
 
 std::vector<char> StdoutFile::writeBuffer;
 std::vector<char> StderrFile::writeBuffer;
-
-std::shared_ptr<File>& OpenFileState::Handle::getFile() { return openFileState.file; }
-
-FileTable::Handle FileTable::get() {
-  static FileTable fileTable;
-  return FileTable::Handle(fileTable);
-}
 
 FileTable::FileTable() {
   entries.push_back(std::make_shared<OpenFileState>(0, std::make_shared<StdinFile>()));
@@ -93,26 +74,9 @@ FileTable::FileTable() {
   entries.push_back(std::make_shared<OpenFileState>(0, std::make_shared<StderrFile>()));
 }
 
-__wasi_fd_t FileTable::Handle::add(std::shared_ptr<OpenFileState> ptr) {
-  for (__wasi_fd_t i = 0; i < fileTable.entries.size(); i++) {
-    if (!fileTable.entries[i]) {
-      // Free open file entry.
-      fileTable.entries[i] = ptr;
-      return i;
-    }
-  }
-
-  // Could not find an empty open file table entry.
-  fileTable.entries.push_back(ptr);
-
-  return fileTable.entries.size() - 1;
-}
-
-void FileTable::Handle::remove(__wasi_fd_t fd) {
-  // Check if the file descriptor is invalid.
-  assert(fd < fileTable.entries.size() && fd >= 0);
-
-  fileTable.entries[fd] = nullptr;
+FileTable::Handle FileTable::get() {
+  static FileTable fileTable;
+  return FileTable::Handle(fileTable);
 }
 
 // Operator Overloading for FileTable::Handle::Entry

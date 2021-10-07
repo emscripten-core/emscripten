@@ -25,6 +25,10 @@ int main() {
   dprintf(f, "STDOUT\n");
   dprintf(f2, "CAN PRINT TO STDOUT WITH fd = 3\n");
 
+  // Try calling dup with an invalid fd
+  int f_invalid = dup(-1);
+  assert(f_invalid == -1);
+
   printf("DUP2\n");
   int f3 = 5;
   int f4 = dup2(f, f3);
@@ -45,18 +49,19 @@ int main() {
   assert(f5 == 5);
   dprintf(f5, "CAN PRINT TO STDOUT WITH fd = 5\n");
 
+  // Try calling dup2 with an invalid newfd
+  f5 = dup2(f4, -1);
+  assert(f5 == -1);
+
   // Try calling dup2 with an invalid oldfd
   int f6 = dup2(-1, f5);
-  assert(errno == EBADF);
+  assert(f6 == -1);
 
   // Try assigning a large fd
   int f7 = 4069;
   int f8 = dup2(f4, f7);
 
   dprintf(f8, "CAN PRINT TO STDOUT WITH f8 = 4069\n");
-
-  int f9 = dup(-1);
-  assert(errno == EBADF);
 
   return 0;
 }

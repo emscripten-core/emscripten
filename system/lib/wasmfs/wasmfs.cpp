@@ -21,47 +21,54 @@ extern "C" {
 
 using namespace wasmfs;
 
-__wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
+long __syscall_dup2(long oldfd, long newfd) {
   FileTable::Handle fileTable = FileTable::get();
 
   auto oldOpenFile = fileTable[oldfd];
   // If oldfd is not a valid file descriptor, then the call fails,
   // and newfd is not closed.
   if (!oldOpenFile) {
-    return __WASI_ERRNO_BADF;
+    return -(EBADF);
+  }
+
+  if (newfd < 0) {
+    return -(EBADF);
   }
 
   if (oldfd == newfd) {
     return oldfd;
   }
 
-  if (newfd < 0) {
-    return __WASI_ERRNO_BADF;
-  }
-
-  // If the file descriptor newfd was previously open, it is closed
-  // before being reused; the close is performed silently.
-  if (fileTable[newfd]) {
-    fileTable.remove(newfd);
-  }
-
+  // If the file descriptor newfd was previously open, it will just be overwritten silently.
   fileTable[newfd] = oldOpenFile;
   return newfd;
 }
 
-__wasi_fd_t __syscall_dup(__wasi_fd_t fd) {
+long __syscall_dup(long fd) {
 
   FileTable::Handle fileTable = FileTable::get();
-  if (!fileTable[fd]) {
-    return __WASI_ERRNO_BADF;
+
+  // Check that an open file exists corresponding to the given fd.
+  auto currentOpenFile = fileTable[fd];
+  if (!currentOpenFile) {
+    return -(EBADF);
   }
-  // Find the first free open file entry
-  return fileTable.add(fileTable[fd]);
+
+  // Adds given OpenFileState to FileTable entries. Returns fd (insertion index in entries).
+  // If no free space is found, currentOpenFile will be appended to the back of the entries.
+  for (__wasi_fd_t i = 0;; i++) {
+    if (!fileTable[i]) {
+      // Free open file entry.
+      fileTable[i] = currentOpenFile;
+      return i;
+    }
+  }
+
+  return -(EBADF);
 }
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
-  // Get the corresponding OpenFile from the open file table
   FileTable::Handle fileTable = FileTable::get();
   if (!fileTable[fd]) {
     return __WASI_ERRNO_BADF;
@@ -83,17 +90,29 @@ __wasi_errno_t __wasi_fd_write(
 __wasi_errno_t __wasi_fd_seek(
   __wasi_fd_t fd, __wasi_filedelta_t offset, __wasi_whence_t whence, __wasi_filesize_t* newoffset) {
   emscripten_console_log("__wasi_fd_seek has been temporarily stubbed and is inert");
-  return __WASI_ERRNO_INVAL;
+  abort();
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   emscripten_console_log("__wasi_fd_close has been temporarily stubbed and is inert");
-  return __WASI_ERRNO_INVAL;
+  abort();
 }
 
 __wasi_errno_t __wasi_fd_read(
   __wasi_fd_t fd, const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) {
-  emscripten_console_log("__wasi_fd_read has been temporarily stubbed and is inert");
+  FileTable::Handle fileTable = FileTable::get();
+  if (!fileTable[fd]) {
+    return __WASI_ERRNO_BADF;
+  }
+  __wasi_size_t num = 0;
+  for (size_t i = 0; i < iovs_len; i++) {
+    const uint8_t* buf = iovs[i].buf;
+    __wasi_size_t len = iovs[i].buf_len;
+
+    fileTable[fd]->get().getFile()->get().read(buf, len);
+    num += len;
+  }
+  *nread = num;
   return __WASI_ERRNO_INVAL;
 }
 }
