@@ -671,7 +671,7 @@ var LibraryWebGPU = {
   wgpuDevicePopErrorScope: function(deviceId, callback, userdata) {
     var device = WebGPU.mgrDevice.get(deviceId);
     {{{ runtimeKeepalivePush() }}}
-    device["popErrorScope"]()["then"](function(gpuError) {
+    device["popErrorScope"]().then(function(gpuError) {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
         if (!gpuError) {
@@ -711,7 +711,7 @@ var LibraryWebGPU = {
     {{{ gpu.makeCheckDefined('deviceWrapper') }}}
     if (!deviceWrapper.lostCallback) {
       // device.lost hasn't been registered yet - register it.
-      deviceWrapper.object["lost"]["then"](function(info) {
+      deviceWrapper.object["lost"].then(function(info) {
         deviceWrapper.lostCallback(info);
       });
     }
@@ -1375,7 +1375,7 @@ var LibraryWebGPU = {
     var queue = WebGPU.mgrQueue.get(queueId);
     return queue["onSubmittedWorkDone"]();
     {{{ runtimeKeepalivePush() }}}
-    queue["onSubmittedWorkDone"]()["then"](function() {
+    queue["onSubmittedWorkDone"]().then(function() {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
         {{{ makeDynCall('vii', 'callback') }}}({{{ gpu.QueueWorkDoneStatus.Success }}}, userdata);
@@ -1686,7 +1686,7 @@ var LibraryWebGPU = {
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
     {{{ runtimeKeepalivePush() }}}
-    buffer["mapAsync"](mode, offset, size)["then"](function() {
+    buffer["mapAsync"](mode, offset, size).then(function() {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
         {{{ makeDynCall('vii', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.Success }}}, userdata);
@@ -2118,7 +2118,7 @@ var LibraryWebGPU = {
     }
 
     {{{ runtimeKeepalivePush() }}}
-    navigator["gpu"]["requestAdapter"](opts)["then"](function(adapter) {
+    navigator["gpu"]["requestAdapter"](opts).then(function(adapter) {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
         if (adapter) {
@@ -2231,7 +2231,7 @@ var LibraryWebGPU = {
     }
 
     {{{ runtimeKeepalivePush() }}}
-    adapter["requestDevice"](desc)["then"](function(device) {
+    adapter["requestDevice"](desc).then(function(device) {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function() {
         var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
