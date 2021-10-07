@@ -27,6 +27,9 @@ void GetDevice(void (*callback)(wgpu::Device)) {
         }
         if (status == WGPURequestAdapterStatus_Unavailable) {
             printf("WebGPU unavailable; exiting cleanly\n");
+            // Returning from this callback here should result in the runtime
+            // exiting since no new callbacks have been registered. This tests
+            // the implicit runtime exit (rather than using exit(0) explicitly).
             return;
         }
         assert(status == WGPURequestAdapterStatus_Success);
@@ -323,7 +326,10 @@ void frame() {
     // check the result.
 
     emscripten_cancel_main_loop();
-    // Runtime will exit now that there is nothing left to do.
+
+    // After this callback, the runtime should exit implicitly since there are
+    // no longer any callbacks registered. This tests the implicit runtime exit
+    // (rather than using exit(0) explicitly).
 }
 
 void run() {
@@ -366,4 +372,5 @@ int main() {
     // callbacks should all automatically keep the runtime alive until
     // emscripten_set_main_loop, and that should keep it alive until
     // emscripten_cancel_main_loop.
+    return 99; // Return code gets ignored if the runtime correctly stays alive.
 }
