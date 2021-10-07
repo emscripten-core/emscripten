@@ -27,7 +27,7 @@ void GetDevice(void (*callback)(wgpu::Device)) {
         }
         if (status == WGPURequestAdapterStatus_Unavailable) {
             printf("WebGPU unavailable; exiting cleanly\n");
-            exit(0);
+            return;
         }
         assert(status == WGPURequestAdapterStatus_Success);
 
@@ -315,10 +315,6 @@ void doRenderTest() {
 
 wgpu::SwapChain swapChain;
 
-void finishTest(void*) {
-  emscripten_force_exit(0);
-}
-
 void frame() {
     wgpu::TextureView backbuffer = swapChain.GetCurrentTextureView();
     render(backbuffer);
@@ -327,7 +323,7 @@ void frame() {
     // check the result.
 
     emscripten_cancel_main_loop();
-    emscripten_async_call(finishTest, (void*)0, 100);
+    // Runtime will exit now that there is nothing left to do.
 }
 
 void run() {
@@ -365,6 +361,9 @@ int main() {
         run();
     });
 
-    // result will be reported when the main_loop completes
-    emscripten_exit_with_live_runtime();
+    // Result will be reported when the main_loop completes.
+    // emscripten_exit_with_live_runtime isn't needed because the WebGPU
+    // callbacks should all automatically keep the runtime alive until
+    // emscripten_set_main_loop, and that should keep it alive until
+    // emscripten_cancel_main_loop.
 }

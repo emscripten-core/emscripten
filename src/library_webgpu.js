@@ -2114,6 +2114,7 @@ var LibraryWebGPU = {
     if (!('gpu' in navigator)) {
       var messagePtr = allocateUTF8OnStack('WebGPU not available on this browser (navigator.gpu is not available)');
       {{{ makeDynCall('viiii', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
+      return;
     }
 
     {{{ runtimeKeepalivePush() }}}
