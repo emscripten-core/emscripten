@@ -19,6 +19,8 @@
 
 extern "C" {
 
+using namespace wasmfs;
+
 __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
   FileTable::Handle fileTable = FileTable::get();
 
@@ -41,7 +43,7 @@ __wasi_fd_t __syscall_dup2(__wasi_fd_t oldfd, __wasi_fd_t newfd) {
   // If the file descriptor newfd was previously open, it is closed
   // before being reused; the close is performed silently.
   if (fileTable[newfd]) {
-    fileTable.removeOpenFile(newfd);
+    fileTable.remove(newfd);
   }
 
   fileTable[newfd] = oldOpenFile;
@@ -55,7 +57,7 @@ __wasi_fd_t __syscall_dup(__wasi_fd_t fd) {
     return __WASI_ERRNO_BADF;
   }
   // Find the first free open file entry
-  return fileTable.addOpenFile(fileTable[fd]);
+  return fileTable.add(fileTable[fd]);
 }
 
 __wasi_errno_t __wasi_fd_write(
@@ -66,7 +68,17 @@ __wasi_errno_t __wasi_fd_write(
     return __WASI_ERRNO_BADF;
   }
 
-  return fileTable[fd]->getFile()->write(iovs, iovs_len, nwritten);
+  __wasi_size_t num = 0;
+  for (size_t i = 0; i < iovs_len; i++) {
+    const uint8_t* buf = iovs[i].buf;
+    __wasi_size_t len = iovs[i].buf_len;
+
+    fileTable[fd]->getFile()->write(buf, len);
+    num += len;
+  }
+  *nwritten = num;
+
+  return 0;
 }
 
 __wasi_errno_t __wasi_fd_seek(

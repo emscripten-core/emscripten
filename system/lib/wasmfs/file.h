@@ -10,6 +10,7 @@
 
 #include <emscripten/html5.h>
 #include <mutex>
+#include <vector>
 #include <wasi/api.h>
 
 namespace wasmfs {
@@ -25,38 +26,4 @@ public:
   virtual ~File() = default;
 };
 
-class StdinFile : public File {
-public:
-  // TODO: fill in write for stdin
-  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override;
-
-  __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
-    emscripten_console_log("StdinFile::read() has not been implemented yet.");
-    abort();
-  };
-};
-
-class StdoutFile : public File {
-  static std::vector<char> writeBuffer;
-
-public:
-  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override;
-
-  __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
-    emscripten_console_log("StdoutFile::read() has not been implemented yet.");
-    abort();
-  };
-};
-
-class StderrFile : public File {
-  static std::vector<char> writeBuffer;
-
-public:
-  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override;
-
-  __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
-    emscripten_console_log("StderrFile::read() has not been implemented yet.");
-    abort();
-  };
-};
 } // namespace wasmfs

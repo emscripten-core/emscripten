@@ -10,13 +10,84 @@
 
 namespace wasmfs {
 
-std::vector<std::shared_ptr<FileDescriptor>> FileTable::entries;
+std::vector<std::shared_ptr<FileDescription>> FileTable::entries;
 
-std::shared_ptr<File>& FileDescriptor::getFile() { return file; }
+static __wasi_errno_t writeStdBuffer(const uint8_t* buf, __wasi_size_t len,
+  void (*console_write)(const char*), std::vector<char>& fd_write_buffer) {
+  for (__wasi_size_t j = 0; j < len; j++) {
+    uint8_t current = buf[j];
+    if (current == '\0' || current == '\n') {
+      fd_write_buffer.push_back('\0'); // for null-terminated C strings
+      console_write(&fd_write_buffer[0]);
+      fd_write_buffer.clear();
+    } else {
+      fd_write_buffer.push_back(current);
+    }
+  }
+  return 0;
+}
 
-__wasi_fd_t FileTable::add(std::shared_ptr<FileDescriptor> ptr) {
-  for (__wasi_fd_t i = 0; i < entries.size(); i++) {
-    if (!entries[i]) {
+class StdinFile : public File {
+public:
+  // TODO: fill in write for stdin
+  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override { return 0; }
+
+  __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
+    emscripten_console_log("StdinFile::read() has not been implemented yet.");
+    abort();
+  };
+};
+
+class StdoutFile : public File {
+  static std::vector<char> writeBuffer;
+
+public:
+  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override {
+    return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
+  }
+
+  __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
+    emscripten_console_log("StdoutFile::read() has not been implemented yet.");
+    abort();
+  };
+};
+
+class StderrFile : public File {
+  static std::vector<char> writeBuffer;
+
+public:
+  // TODO: May not want to proxy stderr (fd == 2) to the main thread.
+  // This will not show in HTML - a console.warn in a worker is sufficient.
+  // This would be a change from the current FS.
+  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override {
+    return writeStdBuffer(buf, len, &emscripten_console_error, writeBuffer);
+  }
+
+  __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
+    emscripten_console_log("StderrFile::read() has not been implemented yet.");
+    abort();
+  };
+};
+
+std::vector<char> StdoutFile::writeBuffer;
+std::vector<char> StderrFile::writeBuffer;
+
+std::shared_ptr<File>& FileDescription::getFile() { return file; }
+
+FileTable::Handle FileTable::get() {
+  static FileTable fileTable;
+  return FileTable::Handle(fileTable);
+}
+
+FileTable::FileTable() {
+  entries.push_back(std::make_shared<FileDescription>(0, std::make_shared<StdinFile>()));
+  entries.push_back(std::make_shared<FileDescription>(0, std::make_shared<StdoutFile>()));
+  entries.push_back(std::make_shared<FileDescription>(0, std::make_shared<StderrFile>()));
+}
+
+__wasi_fd_t FileTable::Handle::add(std::shared_ptr<FileDescription> ptr) {
+  for (__wasi_fd_t i = 0; i < fileTable.entries.size(); i++) {
+    if (!fileTable.entries[i]) {
       // Free open file entry.
       fileTable.entries[i] = ptr;
       return i;
@@ -29,40 +100,45 @@ __wasi_fd_t FileTable::add(std::shared_ptr<FileDescriptor> ptr) {
   return fileTable.entries.size() - 1;
 }
 
-void FileTable::remove(__wasi_fd_t fd) {
+void FileTable::Handle::remove(__wasi_fd_t fd) {
   // Check if the file descriptor is invalid.
-  assert(fd < entries.size() && fd >= 0);
+  assert(fd < fileTable.entries.size() && fd >= 0);
 
-  entries[fd] = nullptr;
+  fileTable.entries[fd] = nullptr;
 }
 
-Locked<FileTable> FileTable::get() {
-  static Lockable<FileTable> fileTable;
-  return fileTable.get();
-};
-
-// Operator Overloading for FileTable::Entry
-FileTable::Entry::operator std::shared_ptr<FileDescriptor>() const {
-  if (fd >= fileTable.entries.size() || fd < 0) {
+// Operator Overloading for FileTable::Handle::Entry
+FileTable::Handle::Entry::operator std::shared_ptr<FileDescription>() const {
+  if (fd >= fileTableHandle.fileTable.entries.size() || fd < 0) {
     return nullptr;
   }
-  return fileTable.entries[fd];
+
+  return fileTableHandle.fileTable.entries[fd];
 }
 
-FileTable::Entry& FileTable::Entry::operator=(std::shared_ptr<FileDescriptor> ptr) {
+FileTable::Handle::Entry& FileTable::Handle::Entry::operator=(
+  std::shared_ptr<FileDescription> ptr) {
   assert(fd >= 0);
 
-  if (fd >= fileTable.entries.size()) {
-    fileTable.entries.resize(fd + 1);
+  if (fd >= fileTableHandle.fileTable.entries.size()) {
+    fileTableHandle.fileTable.entries.resize(fd + 1);
   }
-  fileTable.entries[fd] = ptr;
+  fileTableHandle.fileTable.entries[fd] = ptr;
 
   return *this;
 }
 
-std::shared_ptr<FileDescriptor>& FileTable::Entry::operator->() {
-  assert(fd < fileTable.entries.size() && fd >= 0);
+std::shared_ptr<FileDescription>& FileTable::Handle::Entry::operator->() {
+  assert(fd < fileTableHandle.fileTable.entries.size() && fd >= 0);
 
-  fileTable.entries[fd] = nullptr;
+  return fileTableHandle.fileTable.entries[fd];
+}
+
+FileTable::Handle::Entry::operator bool() const {
+  if (fd >= fileTableHandle.fileTable.entries.size() || fd < 0) {
+    return false;
+  }
+
+  return fileTableHandle.fileTable.entries[fd] != nullptr;
 }
 } // namespace wasmfs
