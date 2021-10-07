@@ -1034,23 +1034,9 @@ Starting from Emscripten 2.0.2 (Aug 31st 2020), syntax for makeDynCall has chang
 New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). \
 Please update to new syntax.`);
 
-    if (DYNCALLS) {
-      return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${args}) })`;
-    } else {
-      return `(function(cb, ${args}) { ${returnExpr} wbind(cb)(${args}) })`;
-    }
+    return `(function(cb, ${args}) { ${returnExpr} wbind(cb)(${args}) })`;
   }
-
-  if (DYNCALLS) {
-    const dyncall = exportedAsmFunc(`dynCall_${sig}`);
-    if (sig.length > 1) {
-      return `(function(${args}) { ${returnExpr} ${dyncall}.apply(null, [${funcPtr}, ${args}]); })`;
-    } else {
-      return `(function() { ${returnExpr} ${dyncall}.call(null, ${funcPtr}); })`;
-    }
-  } else {
-    return `wbind(${funcPtr})`;
-  }
+  return `wbind(${funcPtr})`;
 }
 
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
