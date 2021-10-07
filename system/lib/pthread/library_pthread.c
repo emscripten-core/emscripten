@@ -18,7 +18,6 @@
 #include <stdatomic.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -487,29 +486,6 @@ void* emscripten_sync_run_in_main_thread_2(
   q.args[1].vp = arg2;
   q.returnValue.vp = 0;
   emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.vp;
-}
-
-void* emscripten_sync_run_in_main_thread_xprintf_varargs(
-  int function, int param0, const char* format, ...) {
-  va_list args;
-  va_start(args, format);
-  const int CAP = 128;
-  char str[CAP];
-  char* s = str;
-  int len = vsnprintf(s, CAP, format, args);
-  if (len >= CAP) {
-    s = (char*)malloc(len + 1);
-    va_start(args, format);
-    len = vsnprintf(s, len + 1, format, args);
-  }
-  em_queued_call q = {function};
-  q.args[0].vp = (void*)param0;
-  q.args[1].vp = s;
-  q.returnValue.vp = 0;
-  emscripten_sync_run_in_main_thread(&q);
-  if (s != str)
-    free(s);
   return q.returnValue.vp;
 }
 

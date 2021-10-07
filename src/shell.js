@@ -393,12 +393,26 @@ if (ENVIRONMENT_IS_NODE) {
     global.performance = require('perf_hooks').performance;
   }
 }
-#endif
 
 // Set up the out() and err() hooks, which are how we can print to stdout or
 // stderr, respectively.
+// Normally just binding console.log/console.warn here works fine, but
+// under node (with workers) we see missing/out-of-order messages so route
+// directly to stdout and stderr.
+// See https://github.com/emscripten-core/emscripten/issues/14804
+var defaultPrint = console.log.bind(console);
+var defaultPrintErr = console.warn.bind(console);
+if (ENVIRONMENT_IS_NODE) {
+  var fs = require('fs');
+  defaultPrint = function(str) { fs.writeSync(1, str + '\n'); };
+  defaultPrintErr = function(str) { fs.writeSync(2, str + '\n'); };
+}
+{{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint',    true) }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr', true) }}}
+#else
 {{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
 {{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)', true) }}}
+#endif
 
 // Merge back in the overrides
 for (key in moduleOverrides) {

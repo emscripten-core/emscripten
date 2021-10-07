@@ -36,6 +36,10 @@ See docs/process.md for more on how version tagging works.
   `__syscall22`) to name-based (e.g. `__syscall_open`).  This should not be
   a visible change except for folks trying to intercept/implement syscalls
   in native code (#15202).
+- Fixed launcher batch script issues on Windows, and added two env. vars
+  EM_WORKAROUND_PYTHON_BUG_34780 and EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG that
+  can be enabled to work around a Windows Python issue
+  https://bugs.python.org/issue34780 , and a Windows 7 exit code issue (#15146)
 
 2.0.31 - 10/01/2021
 -------------------

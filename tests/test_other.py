@@ -235,6 +235,11 @@ class other(RunnerCore):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', 'EXPORT_ES6=1', '-s', 'MODULARIZE=0'])
     self.assertContained('EXPORT_ES6 requires MODULARIZE to be set', err)
 
+  def test_export_es6_allows_export_in_post_js(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-O3', '-s', 'EXPORT_ES6=1', '--post-js', test_file('export_module.js')])
+    src = read_file('a.out.js')
+    self.assertContained('export{doNothing};', src)
+
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
     self.run_process([EMCC, '-c', '-ofoo.o', test_file('hello_world.c')])
@@ -11076,3 +11081,19 @@ void foo() {}
   @node_pthreads
   def test_emscripten_set_timeout_loop(self):
     self.do_runf(test_file('emscripten_set_timeout_loop.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+
+  # Verify that we are able to successfully compile a script when the Windows 7
+  # and Python workaround env. vars are enabled.
+  # See https://bugs.python.org/issue34780
+  @with_env_modify({'EM_WORKAROUND_PYTHON_BUG_34780': '1',
+                    'EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG': '1'})
+  def test_windows_batch_script_workaround(self):
+    self.run_process([EMCC, test_file('hello_world.c')])
+    self.assertExists('a.out.js')
+
+  @node_pthreads
+  def test_pthread_out_err(self):
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_other_test('test_pthread_out_err.c')

@@ -822,6 +822,11 @@
             "x": 24,
             "y": 28
         },
+        "SDL_VideoInfo": {
+            "__size__": 20,
+            "current_h": 16,
+            "current_w": 12
+        },
         "SDL_WindowEvent": {
             "__size__": 20,
             "data1": 12,
@@ -1356,6 +1361,10 @@
             "__size__": 8,
             "quot": 0,
             "rem": 4
+        },
+        "dso": {
+            "__size__": 20,
+            "name": 20
         },
         "emscripten_fetch_attr_t": {
             "__size__": 92,

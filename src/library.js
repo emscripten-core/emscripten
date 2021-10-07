@@ -587,7 +587,7 @@ LibraryManager.library = {
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
 
-    var zonePtr = {{{ makeGetValue('__get_tzname()', 'dst ? ' + Runtime.QUANTUM_SIZE + ' : 0', 'i32') }}};
+    var zonePtr = {{{ makeGetValue('__get_tzname()', 'dst ? ' + Runtime.POINTER_SIZE + ' : 0', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, 'zonePtr', 'i32') }}};
 
     return tmPtr;
@@ -687,10 +687,10 @@ LibraryManager.library = {
     if (summerOffset < winterOffset) {
       // Northern hemisphere
       {{{ makeSetValue('__get_tzname()', '0', 'winterNamePtr', 'i32') }}};
-      {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', Runtime.POINTER_SIZE, 'summerNamePtr', 'i32') }}};
     } else {
       {{{ makeSetValue('__get_tzname()', '0', 'summerNamePtr', 'i32') }}};
-      {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'winterNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', Runtime.POINTER_SIZE, 'winterNamePtr', 'i32') }}};
     }
   },
 
