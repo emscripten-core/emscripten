@@ -400,7 +400,7 @@ static void init_pthread_self(void) {
 // proper sleeps, so simulate a busy spin wait loop instead.
 void emscripten_thread_sleep(double msecs) {
   double start = _emscripten_get_now();
-  while (_emscripten_get_now() - start < msecs) {
+  while (emscripten_get_now() - start < msecs) {
     // Do nothing.
   }
 }
