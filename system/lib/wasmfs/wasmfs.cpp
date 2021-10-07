@@ -72,8 +72,7 @@ __wasi_errno_t __wasi_fd_write(
     const uint8_t* buf = iovs[i].buf;
     __wasi_size_t len = iovs[i].buf_len;
 
-    auto fileDescription = fileTable[fd];
-    fileDescription->get().getFile()->write(buf, len);
+    fileTable[fd]->get().getFile()->get().write(buf, len);
     num += len;
   }
   *nwritten = num;

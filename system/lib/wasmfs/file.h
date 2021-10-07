@@ -21,11 +21,30 @@ class File {
   // A mutex is needed for multiple accesses to the same file.
   std::mutex mutex;
 
-public:
   virtual __wasi_errno_t read(
     const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) = 0;
   virtual __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) = 0;
 
+public:
+  File() {}
+  class Handle {
+    File& file;
+    std::unique_lock<std::mutex> lock;
+
+  public:
+    Handle(File& file) : file(file), lock(file.mutex) {}
+
+    __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) {
+      return file.read(iovs, iovs_len, nread);
+    }
+    __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) { return file.write(buf, len); }
+
+    Handle(Handle&&) = default;
+
+    virtual ~Handle() = default;
+  };
+
+  Handle get() { return Handle(*this); }
   virtual ~File() = default;
 };
 

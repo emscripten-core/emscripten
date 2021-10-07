@@ -17,21 +17,20 @@
 
 namespace wasmfs {
 
-class FileDescription {
+class OpenFileInfo {
   std::shared_ptr<File> file;
   __wasi_filedelta_t offset;
   std::mutex mutex;
 
 public:
-  FileDescription(uint32_t offset, std::shared_ptr<File> file) : offset(offset), file(file) {}
+  OpenFileInfo(uint32_t offset, std::shared_ptr<File> file) : offset(offset), file(file) {}
 
   class Handle {
-    FileDescription& fileDescription;
+    OpenFileInfo& openFileInfo;
     std::unique_lock<std::mutex> lock;
 
   public:
-    Handle(FileDescription& fileDescription)
-      : fileDescription(fileDescription), lock(fileDescription.mutex) {}
+    Handle(OpenFileInfo& openFileInfo) : openFileInfo(openFileInfo), lock(openFileInfo.mutex) {}
 
     std::shared_ptr<File>& getFile();
   };
@@ -40,7 +39,7 @@ public:
 };
 
 class FileTable {
-  static std::vector<std::shared_ptr<FileDescription>> entries;
+  static std::vector<std::shared_ptr<OpenFileInfo>> entries;
   std::mutex mutex;
 
   FileTable();
@@ -58,10 +57,10 @@ public:
   public:
     Handle(FileTable& fileTable) : fileTable(fileTable), lock(fileTable.mutex) {}
 
-    // Adds given FileDescription to FileTable entries. Returns fd (insertion index in entries).
-    __wasi_fd_t add(std::shared_ptr<FileDescription> ptr);
+    // Adds given OpenFileInfo to FileTable entries. Returns fd (insertion index in entries).
+    __wasi_fd_t add(std::shared_ptr<OpenFileInfo> ptr);
 
-    // Removes FileDescription in FileTable entries corresponding to given fd.
+    // Removes OpenFileInfo in FileTable entries corresponding to given fd.
     void remove(__wasi_fd_t fd);
 
     // Entry is used to override the subscript [] operator.
@@ -71,15 +70,15 @@ public:
       Handle& fileTableHandle;
       __wasi_fd_t fd;
 
-      operator std::shared_ptr<FileDescription>() const;
+      operator std::shared_ptr<OpenFileInfo>() const;
 
-      Entry& operator=(std::shared_ptr<FileDescription> ptr);
+      Entry& operator=(std::shared_ptr<OpenFileInfo> ptr);
 
-      Entry& operator=(Entry& entry) { return *this = std::shared_ptr<FileDescription>(entry); }
+      Entry& operator=(Entry& entry) { return *this = std::shared_ptr<OpenFileInfo>(entry); }
 
-      std::shared_ptr<FileDescription>& operator->();
+      std::shared_ptr<OpenFileInfo>& operator->();
 
-      // Check whether the entry exists (i.e. contains an FileDescription).
+      // Check whether the entry exists (i.e. contains an OpenFileInfo).
       operator bool() const;
     };
 

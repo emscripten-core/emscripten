@@ -10,7 +10,7 @@
 
 namespace wasmfs {
 
-std::vector<std::shared_ptr<FileDescription>> FileTable::entries;
+std::vector<std::shared_ptr<OpenFileInfo>> FileTable::entries;
 
 static __wasi_errno_t writeStdBuffer(const uint8_t* buf, __wasi_size_t len,
   void (*console_write)(const char*), std::vector<char>& fd_write_buffer) {
@@ -28,20 +28,21 @@ static __wasi_errno_t writeStdBuffer(const uint8_t* buf, __wasi_size_t len,
 }
 
 class StdinFile : public File {
-public:
-  // TODO: fill in write for stdin
+
   __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override { return 0; }
 
   __wasi_errno_t read(const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) override {
     emscripten_console_log("StdinFile::read() has not been implemented yet.");
     abort();
   };
+
+public:
+  File::Handle get() { return Handle(*this); }
 };
 
 class StdoutFile : public File {
   static std::vector<char> writeBuffer;
 
-public:
   __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override {
     return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
   }
@@ -50,12 +51,14 @@ public:
     emscripten_console_log("StdoutFile::read() has not been implemented yet.");
     abort();
   };
+
+public:
+  File::Handle get() { return Handle(*this); }
 };
 
 class StderrFile : public File {
   static std::vector<char> writeBuffer;
 
-public:
   // TODO: May not want to proxy stderr (fd == 2) to the main thread.
   // This will not show in HTML - a console.warn in a worker is sufficient.
   // This would be a change from the current FS.
@@ -67,12 +70,15 @@ public:
     emscripten_console_log("StderrFile::read() has not been implemented yet.");
     abort();
   };
+
+public:
+  File::Handle get() { return Handle(*this); }
 };
 
 std::vector<char> StdoutFile::writeBuffer;
 std::vector<char> StderrFile::writeBuffer;
 
-std::shared_ptr<File>& FileDescription::Handle::getFile() { return fileDescription.file; }
+std::shared_ptr<File>& OpenFileInfo::Handle::getFile() { return openFileInfo.file; }
 
 FileTable::Handle FileTable::get() {
   static FileTable fileTable;
@@ -80,12 +86,12 @@ FileTable::Handle FileTable::get() {
 }
 
 FileTable::FileTable() {
-  entries.push_back(std::make_shared<FileDescription>(0, std::make_shared<StdinFile>()));
-  entries.push_back(std::make_shared<FileDescription>(0, std::make_shared<StdoutFile>()));
-  entries.push_back(std::make_shared<FileDescription>(0, std::make_shared<StderrFile>()));
+  entries.push_back(std::make_shared<OpenFileInfo>(0, std::make_shared<StdinFile>()));
+  entries.push_back(std::make_shared<OpenFileInfo>(0, std::make_shared<StdoutFile>()));
+  entries.push_back(std::make_shared<OpenFileInfo>(0, std::make_shared<StderrFile>()));
 }
 
-__wasi_fd_t FileTable::Handle::add(std::shared_ptr<FileDescription> ptr) {
+__wasi_fd_t FileTable::Handle::add(std::shared_ptr<OpenFileInfo> ptr) {
   for (__wasi_fd_t i = 0; i < fileTable.entries.size(); i++) {
     if (!fileTable.entries[i]) {
       // Free open file entry.
@@ -108,7 +114,7 @@ void FileTable::Handle::remove(__wasi_fd_t fd) {
 }
 
 // Operator Overloading for FileTable::Handle::Entry
-FileTable::Handle::Entry::operator std::shared_ptr<FileDescription>() const {
+FileTable::Handle::Entry::operator std::shared_ptr<OpenFileInfo>() const {
   if (fd >= fileTableHandle.fileTable.entries.size() || fd < 0) {
     return nullptr;
   }
@@ -116,8 +122,7 @@ FileTable::Handle::Entry::operator std::shared_ptr<FileDescription>() const {
   return fileTableHandle.fileTable.entries[fd];
 }
 
-FileTable::Handle::Entry& FileTable::Handle::Entry::operator=(
-  std::shared_ptr<FileDescription> ptr) {
+FileTable::Handle::Entry& FileTable::Handle::Entry::operator=(std::shared_ptr<OpenFileInfo> ptr) {
   assert(fd >= 0);
 
   if (fd >= fileTableHandle.fileTable.entries.size()) {
@@ -128,7 +133,7 @@ FileTable::Handle::Entry& FileTable::Handle::Entry::operator=(
   return *this;
 }
 
-std::shared_ptr<FileDescription>& FileTable::Handle::Entry::operator->() {
+std::shared_ptr<OpenFileInfo>& FileTable::Handle::Entry::operator->() {
   assert(fd < fileTableHandle.fileTable.entries.size() && fd >= 0);
 
   return fileTableHandle.fileTable.entries[fd];
