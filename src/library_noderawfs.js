@@ -66,7 +66,7 @@ mergeInto(LibraryManager.library, {
       var pathTruncated = path.split('/').map(function(s) { return s.substr(0, 255); }).join('/');
       console.log('open of', pathTruncated);
       console.log('flags:', flags);
-      console.log('flags:', mode);
+      console.log('mode:', mode);
       console.log('flags for node:', NODEFS.flagsForNode(flags))
       var os = require("os");
       console.log('userinfo:', os.userInfo());
