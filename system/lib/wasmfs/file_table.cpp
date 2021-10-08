@@ -39,7 +39,7 @@ class StdinFile : public File {
 };
 
 class StdoutFile : public File {
-  static std::vector<char> writeBuffer;
+  std::vector<char> writeBuffer;
 
   __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override {
     return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
@@ -51,7 +51,7 @@ class StdoutFile : public File {
 };
 
 class StderrFile : public File {
-  static std::vector<char> writeBuffer;
+  std::vector<char> writeBuffer;
 
   // TODO: May not want to proxy stderr (fd == 2) to the main thread.
   // This will not show in HTML - a console.warn in a worker is sufficient.
@@ -64,9 +64,6 @@ class StderrFile : public File {
     return __WASI_ERRNO_INVAL;
   };
 };
-
-std::vector<char> StdoutFile::writeBuffer;
-std::vector<char> StderrFile::writeBuffer;
 
 FileTable::FileTable() {
   entries.push_back(std::make_shared<OpenFileState>(0, std::make_shared<StdinFile>()));
