@@ -20,22 +20,16 @@ uint64_t test_func_ji(int a)
 
 void test_wbind_iijdf()
 {
-	// Test that wbind() and wbindArray() work from inside an EM_ASM() block.
+	// Test that wbind() works from inside an EM_ASM() block.
 	EM_ASM({
 		var ret = wbind($0)(1, BigInt(0x300000002), 4.2, 5.3);
-		console.log(ret);
-
-		ret = wbindArray($0)([1, BigInt(0x300000002), 4.2, 5.3]);
 		console.log(ret);
 	}, test_func_iijdf);
 }
 
-// Test that wbind() and wbindArray() work from inside an EM_JS() block.
+// Test that wbind() works from inside an EM_JS() block.
 EM_JS(void, test_wbind_ji, (int funcPtr), {
     var ret = wbind(funcPtr)(1);
-    console.log(ret);
-
-    ret = wbindArray(funcPtr)([1]);
     console.log(ret);
 })
 

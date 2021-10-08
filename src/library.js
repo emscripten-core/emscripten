@@ -3337,7 +3337,6 @@ LibraryManager.library = {
     4. getDynCaller(sig, ptr): public user facting function, binds to a function using dynamic
          signature dispatch with i64s as a i32 pair.
     5. wbind(ptr): binds to a function with i64s as BigInts calling convention.
-    6. wbindArray(ptr): same as above, but returned function should be invoked with args passed in an array.
   */
   _dynCallI32Pair: function(sig, ptr, args) {
 #if ASSERTIONS
@@ -3385,7 +3384,7 @@ LibraryManager.library = {
     // Dispatch only to a function that does not have i64 args: the required
     // dynCall machinery to support i32 pairs ABI was not compiled in.
 #if ASSERTIONS
-    assert(!sig.includes('j'), 'Calling getDynCaller() with a i64 sig, but "i64 as i32 pairs" ABI is not available: build with either DYNCALLS or WASM_BIGINT==0 to get i64 as i32 pair ABI, or call wbind()/wbindArray() to use the BigInt-based i64 ABI.');
+    assert(!sig.includes('j'), 'Calling getDynCaller() with a i64 sig, but "i64 as i32 pairs" ABI is not available: build with either DYNCALLS or WASM_BIGINT==0 to get i64 as i32 pair ABI, or call wbind() to use the BigInt-based i64 ABI.');
 #endif
     return wbind(ptr);
 #endif // DYNCALLS || !WASM_BIGINT
@@ -3407,7 +3406,7 @@ LibraryManager.library = {
     // Dispatch only to a function that does not have i64 args: the required
     // dynCall machinery to support i32 pairs ABI was not compiled in.
 #if ASSERTIONS
-    assert(!sig.includes('j'), 'Calling dynCall() with a i64 sig, but "i64 as i32 pairs" ABI is not available: build with either DYNCALLS or WASM_BIGINT==0 to get i64 as i32 pair ABI, or call wbind()/wbindArray() to use the BigInt-based i64 ABI.');
+    assert(!sig.includes('j'), 'Calling dynCall() with a i64 sig, but "i64 as i32 pairs" ABI is not available: build with either DYNCALLS or WASM_BIGINT==0 to get i64 as i32 pair ABI, or call wbind() to use the BigInt-based i64 ABI.');
 #endif
     return wbind(ptr).apply(null, args);
 
@@ -3471,23 +3470,6 @@ LibraryManager.library = {
     return wasmTable.get(funcPtr);
   },
 #endif
-
-  // A helper that binds a wasm function into a form that can be called by passing all
-  // the parameters in an array, e.g. wbindArray(func)([param1, param2, ..., paramN]).
-  $wbindArray__deps: ['$wbind'],
-  $wbindArray: function(funcPtr) {
-    var func = wbind(funcPtr);
-#if SHRINK_LEVEL == 0
-    // In optimized for speed builds, do a micro-optimization for the scenario when the
-    // target function does not take in any parameters.
-    return func.length
-      ? function(args) { return func.apply(null, args); }
-      : function() { return func(); }
-#else
-    // In optimized for size builds, conserve code size.
-    return function(args) { return func.apply(null, args); };
-#endif
-  },
 
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime__sig: 'v',

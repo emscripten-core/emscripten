@@ -417,7 +417,7 @@ class TestCoreBase(RunnerCore):
     self.node_args += ['--experimental-wasm-bigint']
     self.do_core_test('test_i64_invoke_bigint.cpp', js_engines=[config.NODE_JS])
 
-  # Tests that the wbind() and wbindArray() API works from JS library functions.
+  # Tests that the wbind() API works from JS library functions.
   @no_wasm2js('wasm_bigint')
   def test_wbind(self):
     self.set_setting('WASM_BIGINT')
@@ -425,7 +425,7 @@ class TestCoreBase(RunnerCore):
     self.node_args += ['--experimental-wasm-bigint']
     self.do_core_test('test_wbind.c', js_engines=[config.NODE_JS])
 
-  # Tests that the wbind() and wbindArray() API works from EM_ASM and EM_JS blocks.
+  # Tests that the wbind() API works from EM_ASM and EM_JS blocks.
   @no_wasm2js('wasm_bigint')
   def test_wbind_em_asm(self):
     self.set_setting('WASM_BIGINT')

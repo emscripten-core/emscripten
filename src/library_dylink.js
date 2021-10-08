@@ -213,13 +213,17 @@ var LibraryDylink = {
   // Dynamic version of shared.py:make_invoke.  This is needed for invokes
   // that originate from side modules since these are not known at JS
   // generation time.
-  $createInvokeFunction__deps: ['$dynCall', 'setThrew'],
+  $createInvokeFunction__deps: ['setThrew'
+#if !WASM_BIGINT
+    , '$dynCall'
+#endif
+],
   $createInvokeFunction: function(sig) {
     return function() {
       var sp = stackSave();
       try {
 #if WASM_BIGINT
-        return wbindArray(arguments[0])(Array.prototype.slice.call(arguments, 1));
+        return wbind(arguments[0]).apply(null, Array.prototype.slice.call(arguments, 1));
 #else
         return dynCall(sig, arguments[0], Array.prototype.slice.call(arguments, 1));
 #endif

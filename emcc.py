@@ -1625,7 +1625,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if not settings.BOOTSTRAPPING_STRUCT_INFO:
     # Include the built-in runtime to call function pointers from JS.
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wbind', '$wbindArray', '$setWasmTableEntry']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wbind', '$setWasmTableEntry']
 
   if settings.MAIN_MODULE:
     assert not settings.SIDE_MODULE

@@ -40,7 +40,7 @@ See docs/process.md for more on how version tagging works.
   EM_WORKAROUND_PYTHON_BUG_34780 and EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG that
   can be enabled to work around a Windows Python issue
   https://bugs.python.org/issue34780 , and a Windows 7 exit code issue (#15146)
-- Added a new JS runtime API wbind() and wbindArray() that can be used to bind
+- Added a new JS runtime API wbind() that can be used to bind
   to function pointers from wasm code and clarified the semantics of the
   function pointer dispatch API: use dynCall() to call a C function using the
   i64-as-i32-pairs ABI, and wbind() to call using the BigInt ABI. (#13844)
