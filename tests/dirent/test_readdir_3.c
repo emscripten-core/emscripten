@@ -64,6 +64,13 @@ void test() {
   // check bad opendir input
   dir = opendir("noexist");
   assert(!dir);
+  assert(errno == ENOENT);
+
+  
+
+  dir = opendir("nocanread");
+  assert(!dir);
+  assert(errno == EACCES);
   puts("success");
 }
 
