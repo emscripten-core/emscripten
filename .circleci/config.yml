@@ -372,12 +372,6 @@ workflows:
       - eslint
       - build-docs
       - build-linux
-      - test-sanity:
-          requires:
-            - build-linux
-      - test-posixtest:
-          requires:
-            - build-linux
       - test-readdir:
           requires:
             - build-linux
