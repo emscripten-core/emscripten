@@ -1850,29 +1850,33 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.PROXY_TO_WORKER or options.use_preload_plugins:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
-  if not settings.MINIMAL_RUNTIME:
-    # In non-MINIMAL_RUNTIME, the core runtime depends on these functions to be present. (In MINIMAL_RUNTIME, they are
-    # no longer always bundled in)
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-      '$demangle',
-      '$demangleAll',
-      '$jsStackTrace',
-      '$stackTrace',
-      # Called by `callMain` to handle exceptions
-      '$handleException'
-    ]
+  if settings.BOOTSTRAPPING_STRUCT_INFO:
+    # Called by `callMain` to handle exceptions
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$handleException']
+  else:
+    if not settings.MINIMAL_RUNTIME:
+      # In non-MINIMAL_RUNTIME, the core runtime depends on these functions to be present. (In MINIMAL_RUNTIME, they are
+      # no longer always bundled in)
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+        '$demangle',
+        '$demangleAll',
+        '$jsStackTrace',
+        '$stackTrace',
+        # Called by `callMain` to handle exceptions
+        '$handleException'
+      ]
 
-  if settings.FILESYSTEM and not settings.BOOTSTRAPPING_STRUCT_INFO and not settings.STANDALONE_WASM:
-    # to flush streams on FS exit, we need to be able to call fflush
-    # we only include it if the runtime is exitable, or when ASSERTIONS
-    # (ASSERTIONS will check that streams do not need to be flushed,
-    # helping people see when they should have enabled EXIT_RUNTIME)
-    if settings.EXIT_RUNTIME or settings.ASSERTIONS:
-      settings.EXPORTED_FUNCTIONS += ['_fflush']
+    if settings.FILESYSTEM and not settings.STANDALONE_WASM:
+      # to flush streams on FS exit, we need to be able to call fflush
+      # we only include it if the runtime is exitable, or when ASSERTIONS
+      # (ASSERTIONS will check that streams do not need to be flushed,
+      # helping people see when they should have enabled EXIT_RUNTIME)
+      if settings.EXIT_RUNTIME or settings.ASSERTIONS:
+        settings.EXPORTED_FUNCTIONS += ['_fflush']
 
-  if settings.SUPPORT_ERRNO and not settings.BOOTSTRAPPING_STRUCT_INFO:
-    # so setErrNo JS library function can report errno back to C
-    settings.EXPORTED_FUNCTIONS += ['___errno_location']
+    if settings.SUPPORT_ERRNO:
+      # so setErrNo JS library function can report errno back to C
+      settings.EXPORTED_FUNCTIONS += ['___errno_location']
 
   if settings.SAFE_HEAP:
     # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr() from wasm
