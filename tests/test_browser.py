@@ -4481,11 +4481,11 @@ window.close = function() {
   @requires_graphics_hardware
   def test_webgpu_basic_rendering(self):
     for args in [[], ['-s', 'ASSERTIONS', '--closure=1'], ['-s', 'MAIN_MODULE=1']]:
-      self.btest_exit('webgpu_basic_rendering.cpp', args=['-s', 'USE_WEBGPU', '-s', 'EXPORTED_RUNTIME_METHODS=["ccall"]'] + args)
+      self.btest_exit('webgpu_basic_rendering.cpp', args=['-s', 'USE_WEBGPU'] + args)
 
   def test_webgpu_get_device(self):
     for args in [['-s', 'ASSERTIONS', '--closure=1']]:
-      self.btest_exit('webgpu_get_device.cpp', args=['-s', 'USE_WEBGPU', '-s', 'EXPORTED_RUNTIME_METHODS=["ccall"]'] + args)
+      self.btest_exit('webgpu_get_device.cpp', args=['-s', 'USE_WEBGPU'] + args)
 
   # Tests the feature that shell html page can preallocate the typed array and place it
   # to Module.buffer before loading the script page.
