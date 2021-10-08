@@ -742,7 +742,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'pthread_join.c',
           'pthread_testcancel.c',
           'emscripten_proxy_main.c',
-          'emscripten_thread_state.s',
+          'emscripten_thread_state.S',
         ])
     else:
       ignore += ['thread']
