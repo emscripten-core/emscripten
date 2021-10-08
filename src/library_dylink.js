@@ -218,7 +218,11 @@ var LibraryDylink = {
     return function() {
       var sp = stackSave();
       try {
+#if WASM_BIGINT
+        return wbindArray(arguments[0])(Array.prototype.slice.call(arguments, 1));
+#else
         return dynCall(sig, arguments[0], Array.prototype.slice.call(arguments, 1));
+#endif
       } catch(e) {
         stackRestore(sp);
         if (e !== e+0 && e !== 'longjmp') throw e;

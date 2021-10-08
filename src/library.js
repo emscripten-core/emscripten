@@ -3436,6 +3436,11 @@ LibraryManager.library = {
   // never removed, so cannot be enabled in RELOCATABLE builds.
   $wasmTableMirror: [],
 
+  $setWasmTableEntry: function(idx, func) {
+    wasmTable.set(idx, func);
+    wasmTableMirror[idx] = func;
+  },
+
   $wbind__deps: ['$wasmTableMirror'],
   $wbind: function(funcPtr) {
     var func = wasmTableMirror[funcPtr];
@@ -3450,6 +3455,11 @@ LibraryManager.library = {
   },
 
 #else
+
+  $setWasmTableEntry: function(idx, func) {
+    wasmTable.set(idx, func);
+  },
+
   $wbind: function(funcPtr) {
     // In -Os and -Oz builds, do not implement a JS side wasm table mirror for small
     // code size, but directly access wasmTable, which is a bit slower as uncached.
