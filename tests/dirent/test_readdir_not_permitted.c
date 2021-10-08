@@ -36,6 +36,7 @@ void test() {
   assert(!dir);
   assert(errno == EACCES);
   puts("success");
+  assert(0); // just so we can see output
 }
 
 int main() {

@@ -5077,7 +5077,7 @@ main( int argv, char ** argc ) {
 
   # this is fine, virtual other filesystems work
   def test_readdir_not_permitted(self):
-    self.do_run_in_out_file_test('dirent/test_readdir_noderawfs.c')
+    self.do_run_in_out_file_test('dirent/test_readdir_not_permitted.c')
 
   # fails in CI
   @only_with_noderawfs
