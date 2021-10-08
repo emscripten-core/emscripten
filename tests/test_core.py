@@ -5075,24 +5075,16 @@ main( int argv, char ** argc ) {
   def test_readdir(self):
     self.do_run_in_out_file_test('dirent/test_readdir.c')
 
-  # this should not fail in CI, right? It's just NODERAWFS that fails, right? Seems to be.
-  def test_readdir_no_noderawfs(self):
-    self.do_run_in_out_file_test('dirent/test_readdir.c')
+  # this is fine, virtual other filesystems work
+  def test_readdir_not_permitted(self):
+    self.do_run_in_out_file_test('dirent/test_readdir_noderawfs.c')
 
+  # fails in CI
   @only_with_noderawfs
-  def test_readdir_only_noderawfs(self):
-    self.do_run_in_out_file_test('dirent/test_readdir.c')
+  def test_readdir_not_permitted_noderawfs(self):
+    self.do_run_in_out_file_test('dirent/test_readdir_not_permitted.c')
 
-  # but this works somehow!
-  def test_readdir_noderawfs(self):
-    self.do_run_in_out_file_test('dirent/test_readdir_noderawfs.c')
-
-  # what about this? (should be fine)
-  @also_with_noderawfs
-  def test_readdir_noderawfs_both(self):
-    self.do_run_in_out_file_test('dirent/test_readdir_noderawfs.c')
-
-  # what about this one? It's just like test_readdir but it stops early.
+  # This one is also fine, it doesn't really do anything.
   @also_with_noderawfs
   def test_readdir_3(self):
     self.do_run_in_out_file_test('dirent/test_readdir_3.c')
