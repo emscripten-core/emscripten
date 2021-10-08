@@ -6,47 +6,87 @@
 // Current Status: Work in Progress.
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
+#include "file.h"
+#include "file_table.h"
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
+#include <errno.h>
+#include <mutex>
 #include <stdlib.h>
+#include <utility>
 #include <vector>
 #include <wasi/api.h>
 
 extern "C" {
 
-static std::vector<char> fd_write_stdstream_buffer;
+using namespace wasmfs;
+
+long __syscall_dup2(long oldfd, long newfd) {
+  FileTable::Handle fileTable = FileTable::get();
+
+  auto oldOpenFile = fileTable[oldfd];
+  // If oldfd is not a valid file descriptor, then the call fails,
+  // and newfd is not closed.
+  if (!oldOpenFile) {
+    return -(EBADF);
+  }
+
+  if (newfd < 0) {
+    return -(EBADF);
+  }
+
+  if (oldfd == newfd) {
+    return oldfd;
+  }
+
+  // If the file descriptor newfd was previously open, it will just be overwritten silently.
+  fileTable[newfd] = oldOpenFile;
+  return newfd;
+}
+
+long __syscall_dup(long fd) {
+
+  FileTable::Handle fileTable = FileTable::get();
+
+  // Check that an open file exists corresponding to the given fd.
+  auto currentOpenFile = fileTable[fd];
+  if (!currentOpenFile) {
+    return -(EBADF);
+  }
+
+  // Adds given OpenFileState to FileTable entries. Returns fd (insertion index in entries).
+  // If no free space is found, currentOpenFile will be appended to the back of the entries.
+  for (__wasi_fd_t i = 0;; i++) {
+    if (!fileTable[i]) {
+      // Free open file entry.
+      fileTable[i] = currentOpenFile;
+      return i;
+    }
+  }
+
+  return -(EBADF);
+}
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
-  // FD 1 = STDOUT and FD 2 = STDERR.
-  // Temporary hardcoding of filedescriptor values.
-  // TODO: May not want to proxy stderr (fd == 2) to the main thread.
-  // This will not show in HTML - a console.warn in a worker is suffficient.
-  // This would be a change from the current FS.
-  if (fd == 1 || fd == 2) {
-    __wasi_size_t num = 0;
-    for (size_t i = 0; i < iovs_len; i++) {
-      const uint8_t* buf = iovs[i].buf;
-      __wasi_size_t len = iovs[i].buf_len;
-      for (__wasi_size_t j = 0; j < len; j++) {
-        uint8_t current = buf[j];
-        if (current == 0 || current == 10) {
-          fd_write_stdstream_buffer.push_back('\0'); // for null-terminated C strings
-          if (fd == 1) {
-            emscripten_console_log(&fd_write_stdstream_buffer[0]);
-          } else if (fd == 2) {
-            emscripten_console_error(&fd_write_stdstream_buffer[0]);
-          }
-          fd_write_stdstream_buffer.clear();
-        } else {
-          fd_write_stdstream_buffer.push_back(current);
-        }
-      }
-      num += len;
-    }
-    *nwritten = num;
+  FileTable::Handle fileTable = FileTable::get();
+  if (!fileTable[fd]) {
+    return __WASI_ERRNO_BADF;
   }
-  return 0;
+
+  auto file = fileTable[fd]->get().getFile()->get();
+
+  __wasi_size_t num = 0;
+  for (size_t i = 0; i < iovs_len; i++) {
+    const uint8_t* buf = iovs[i].buf;
+    __wasi_size_t len = iovs[i].buf_len;
+
+    file.write(buf, len);
+    num += len;
+  }
+  *nwritten = num;
+
+  return __WASI_ERRNO_SUCCESS;
 }
 
 __wasi_errno_t __wasi_fd_seek(
@@ -62,7 +102,21 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 
 __wasi_errno_t __wasi_fd_read(
   __wasi_fd_t fd, const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) {
-  emscripten_console_log("__wasi_fd_read has been temporarily stubbed and is inert");
-  abort();
+  FileTable::Handle fileTable = FileTable::get();
+  if (!fileTable[fd]) {
+    return __WASI_ERRNO_BADF;
+  }
+
+  auto file = fileTable[fd]->get().getFile()->get();
+  __wasi_size_t num = 0;
+  for (size_t i = 0; i < iovs_len; i++) {
+    const uint8_t* buf = iovs[i].buf;
+    __wasi_size_t len = iovs[i].buf_len;
+
+    file.read(buf, len);
+    num += len;
+  }
+  *nread = num;
+  return __WASI_ERRNO_INVAL;
 }
 }
