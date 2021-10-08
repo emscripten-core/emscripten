@@ -3367,7 +3367,10 @@ LibraryManager.library = {
   $getDynCaller__deps: ['$dynCall'],
   $getDynCaller: function(sig, ptr) {
 #if DYNCALLS || !WASM_BIGINT
+
+#if !ASYNCIFY // TODO: Not sure why wasmTable.get() does not work with ASYNCIFY
     if (!sig.includes('j')) return wbind(ptr);
+#endif
 
     // Dispatch a signature via i64 args as i32 pairs.
     var argCache = [];
@@ -3395,7 +3398,9 @@ LibraryManager.library = {
   $dynCall__deps: ['$wbind'],
 #endif
   $dynCall: function(sig, ptr, args) {
-#if DYNCALLS || !WASM_BIGINT
+#if ASYNCIFY // TODO: Not sure why wasmTable.get() does not work with ASYNCIFY
+    return __dynCallI32Pair(sig, ptr, args);
+#elif DYNCALLS || !WASM_BIGINT
     return sig.includes('j') ? __dynCallI32Pair(sig, ptr, args) : wbind(ptr).apply(null, args);
 #else // DYNCALLS || !WASM_BIGINT
 
