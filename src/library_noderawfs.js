@@ -64,7 +64,7 @@ mergeInto(LibraryManager.library, {
         flags = VFS.modeStringToFlags(flags)
       }
       var pathTruncated = path.split('/').map(function(s) { return s.substr(0, 255); }).join('/');
-      console.log('open of', pathTruncated);
+      console.log('open(', pathTruncated);
       console.log('flags:', flags);
       console.log('mode:', mode);
       console.log('flags for node:', NODEFS.flagsForNode(flags))
