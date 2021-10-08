@@ -68,7 +68,9 @@ mergeInto(LibraryManager.library, {
       console.log('flags:', flags);
       console.log('flags:', mode);
       console.log('flags for node:', NODEFS.flagsForNode(flags))
-      var pre_st = fs.fstatSync(nfd);
+      var os = require("os");
+      console.log('userinfo:', os.userInfo());
+      var pre_st = fs.statSync(pathTruncated);
       console.log('before opening stat result: ', pre_st);
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
       console.log('openSync result: ', nfd);
