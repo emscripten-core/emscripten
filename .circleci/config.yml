@@ -354,16 +354,101 @@ jobs:
       - build-libs-and-freeze
       - persist
   # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
-  test-readdir:
+  test-posixtest:
     executor: bionic
     steps:
       - run-tests:
-          test_targets: "wasm0.test_readdir"
-  test-readdir_3:
+          test_targets: "posixtest"
+  test-wasm0:
     executor: bionic
     steps:
       - run-tests:
-          test_targets: "wasm0.test_readdir_3"
+          test_targets: "wasm0"
+  test-wasm2:
+    executor: bionic
+    steps:
+      - run-tests:
+          # also add a few asan tests
+          test_targets: "wasm2 asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread* asan.test_dyncall_specific_minimal_runtime asan.test_async_hello lsan.test_stdio_locking lsan.test_pthread_create"
+  test-wasm3:
+    executor: bionic
+    steps:
+      - run-tests:
+          # also add a little select testing for wasm2js in -O3
+          test_targets: "wasm3 wasm2js3.test_memorygrowth_2"
+  test-wasm2js1:
+    executor: bionic
+    steps:
+      - run-tests:
+          test_targets: "wasm2js1"
+  test-other:
+    executor: bionic
+    steps:
+      - run-tests:
+          # some native-dependent tests fail because of the lack of native
+          # headers on emsdk-bundled clang
+          test_targets: "other skip:other.test_native_link_error_message"
+  test-browser-chrome:
+    executor: bionic
+    steps:
+      - test-chrome
+  test-browser-firefox:
+    executor: bionic
+    steps:
+      - test-firefox
+  test-sockets-chrome:
+    executor: bionic
+    steps:
+      - test-sockets-chrome
+  # windows and mac do not have separate build and test jobs, as they only run
+  # a limited set of tests; it is simpler and faster to do it all in one job.
+  test-windows:
+    executor:
+      name: win/vs2019
+      shell: bash.exe -eo pipefail
+    environment:
+      PYTHONUNBUFFERED: "1"
+      # Override the default locale to use UTF-8 encoding for all files and stdio 
+      # streams (see PEP540), since oure test files are encoded with UTF-8.
+      PYTHONUTF8: "1"
+      EMSDK_NOTTY: "1"
+      # clang can compile but not link in the current setup, see
+      # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
+      EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMTEST_SKIP_V8: "1"
+    steps:
+      - checkout
+      - run:
+          name: Install packages
+          command: |
+            choco install cmake.portable ninja
+            choco install python --version 3.8.0
+      - run:
+          name: Add python to bash path
+          command: echo "export PATH=\"$PATH:/c/python38/\"" >> $BASH_ENV
+      - build
+      # note we do *not* build all libraries and freeze the cache; as we run
+      # only limited tests here, it's more efficient to build on demand
+      - run-tests:
+          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file wasm2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler"
+  test-mac:
+    executor: mac
+    environment:
+      EMTEST_SKIP_V8: "1"
+    steps:
+      - run:
+          name: Install brew package dependencies
+          environment:
+            HOMEBREW_NO_AUTO_UPDATE: "1"
+          command: |
+            brew list cmake || brew install cmake
+            brew list python3 || brew install python3
+      - checkout
+      - build
+      # note we do *not* build all libraries and freeze the cache; as we run
+      # only limited tests here, it's more efficient to build on demand
+      - run-tests-mac:
+          test_targets: "other wasm0.test_lua wasm0.test_longjmp_standalone wasm2.test_sse1 skip:other.test_native_link_error_message"
 
 workflows:
   build-test:
@@ -372,9 +457,35 @@ workflows:
       - eslint
       - build-docs
       - build-linux
-      - test-readdir:
+      - test-sanity:
           requires:
             - build-linux
-      - test-readdir_3:
+      - test-posixtest:
           requires:
             - build-linux
+      - test-wasm0:
+          requires:
+            - build-linux
+      - test-wasm2:
+          requires:
+            - build-linux
+      - test-wasm3:
+          requires:
+            - build-linux
+      - test-wasm2js1:
+          requires:
+            - build-linux
+      - test-other:
+          requires:
+            - build-linux
+      - test-browser-chrome:
+          requires:
+            - build-linux
+      - test-browser-firefox:
+          requires:
+            - build-linux
+      - test-sockets-chrome:
+          requires:
+            - build-linux
+      - test-windows
+      - test-mac
