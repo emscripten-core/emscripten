@@ -849,6 +849,7 @@ var SyscallsLibrary = {
   },
   __syscall_getdents64: function(fd, dirp, count) {
     var stream = SYSCALLS.getStreamFromFD(fd)
+    console.log('__sys_getdents64(', fd, dirp, count);
     if (!stream.getdents) {
       stream.getdents = FS.readdir(stream.path);
     }
