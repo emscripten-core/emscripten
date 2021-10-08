@@ -64,8 +64,15 @@ mergeInto(LibraryManager.library, {
         flags = VFS.modeStringToFlags(flags)
       }
       var pathTruncated = path.split('/').map(function(s) { return s.substr(0, 255); }).join('/');
+      console.log('open of', pathTruncated);
+      console.log('flags:', flags);
+      console.log('flags:', mode);
+      console.log('flags for node:', NODEFS.flagsForNode(flags))
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
+      console.log('openSync result: ', nfd);
       var st = fs.fstatSync(nfd);
+      console.log('fstat result: ', st);
+      console.log('isDirectory(): ', st.isDirectory());
       if (flags & {{{ cDefine('O_DIRECTORY') }}} && !st.isDirectory()) {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
       }
