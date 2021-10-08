@@ -60,8 +60,11 @@ void test() {
   assert(!dir);
   assert(errno == ENOENT);
   dir = opendir("nocanread");
+// NODERAWFS tests run as root, and the root user can opendir any directory
+#ifndef NODERAWFS
   assert(!dir);
   assert(errno == EACCES);
+#endif
   dir = opendir("foobar/file.txt");
   assert(!dir);
   assert(errno == ENOTDIR);
