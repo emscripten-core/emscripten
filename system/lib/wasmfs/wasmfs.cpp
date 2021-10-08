@@ -106,12 +106,14 @@ __wasi_errno_t __wasi_fd_read(
   if (!fileTable[fd]) {
     return __WASI_ERRNO_BADF;
   }
+
+  auto file = fileTable[fd]->get().getFile()->get();
   __wasi_size_t num = 0;
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
     __wasi_size_t len = iovs[i].buf_len;
 
-    fileTable[fd]->get().getFile()->get().read(buf, len);
+    file.read(buf, len);
     num += len;
   }
   *nread = num;
