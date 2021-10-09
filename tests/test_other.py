@@ -7030,7 +7030,7 @@ int main() {
 
   def test_binaryen_passes_no_validation(self):
     def build(args=[]):
-      return self.run_process([EMXX, test_file('hello_world.cpp'), '-O3'] + args, stdout=PIPE).stdout
+      return self.run_process([EMXX, test_file('hello_world.cpp'), '-O3', '-g3'] + args, stderr=PIPE).stderr
 
     with env_modify({'BINARYEN_PASS_DEBUG': '1'}):
       out = build()
