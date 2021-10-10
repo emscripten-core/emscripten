@@ -634,6 +634,26 @@ struct GetterPolicy<GetterReturnType (GetterThisType::*)() const> {
     }
 };
 
+#ifdef __cpp_noexcept_function_type
+template<typename GetterReturnType, typename GetterThisType>
+struct GetterPolicy<GetterReturnType (GetterThisType::*)() const noexcept> {
+    typedef GetterReturnType ReturnType;
+    typedef GetterReturnType (GetterThisType::*Context)() const noexcept;
+
+    typedef internal::BindingType<ReturnType> Binding;
+    typedef typename Binding::WireType WireType;
+
+    template<typename ClassType>
+    static WireType get(const Context& context, const ClassType& ptr) {
+        return Binding::toWireType((ptr.*context)());
+    }
+
+    static void* getContext(Context context) {
+        return internal::getContext(context);
+    }
+};
+#endif
+
 template<typename GetterReturnType, typename GetterThisType>
 struct GetterPolicy<GetterReturnType (*)(const GetterThisType&)> {
     typedef GetterReturnType ReturnType;
@@ -708,6 +728,26 @@ struct SetterPolicy<SetterReturnType (SetterThisType::*)(SetterArgumentType)> {
         return internal::getContext(context);
     }
 };
+
+#ifdef __cpp_noexcept_function_type
+template<typename SetterReturnType, typename SetterThisType, typename SetterArgumentType>
+struct SetterPolicy<SetterReturnType (SetterThisType::*)(SetterArgumentType) noexcept> {
+    typedef SetterArgumentType ArgumentType;
+    typedef SetterReturnType (SetterThisType::*Context)(SetterArgumentType) noexcept;
+
+    typedef internal::BindingType<SetterArgumentType> Binding;
+    typedef typename Binding::WireType WireType;
+
+    template<typename ClassType>
+    static void set(const Context& context, ClassType& ptr, WireType wt) {
+        (ptr.*context)(Binding::fromWireType(wt));
+    }
+
+    static void* getContext(Context context) {
+        return internal::getContext(context);
+    }
+};
+#endif
 
 template<typename SetterReturnType, typename SetterThisType, typename SetterArgumentType>
 struct SetterPolicy<SetterReturnType (*)(SetterThisType&, SetterArgumentType)> {
@@ -1345,6 +1385,50 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
             isPureVirtual<Policies...>::value);
     }
 };
+
+#ifdef __cpp_noexcept_function_type
+template<typename ClassType, typename ReturnType, typename... Args>
+struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) noexcept> {
+
+    template <typename CT, typename... Policies>
+    static void invoke(const char* methodName,
+                        ReturnType (ClassType::*memberFunction)(Args...) noexcept)  {
+        auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke;
+
+        typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
+        _embind_register_class_function(
+            TypeID<ClassType>::get(),
+            methodName,
+            args.getCount(),
+            args.getTypes(),
+            getSignature(invoker),
+            reinterpret_cast<GenericFunction>(invoker),
+            getContext(memberFunction),
+            isPureVirtual<Policies...>::value);
+    }
+};
+
+template<typename ClassType, typename ReturnType, typename... Args>
+struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const noexcept> {
+
+    template <typename CT, typename... Policies>
+    static void invoke(const char* methodName,
+                        ReturnType (ClassType::*memberFunction)(Args...) const noexcept)  {
+        auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke;
+
+        typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
+        _embind_register_class_function(
+            TypeID<ClassType>::get(),
+            methodName,
+            args.getCount(),
+            args.getTypes(),
+            getSignature(invoker),
+            reinterpret_cast<GenericFunction>(invoker),
+            getContext(memberFunction),
+            isPureVirtual<Policies...>::value);
+    }
+};
+#endif
 
 template<typename ReturnType, typename ThisType, typename... Args>
 struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
