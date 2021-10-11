@@ -15,7 +15,7 @@ from subprocess import CalledProcessError
 # Main run() function
 #
 def run():
-  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help') or sys.argv[1] != 'cmake':
+  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
     print('''\
 emcmake is a helper for cmake, setting various environment
 variables so that emcc etc. are used. Typical usage:
