@@ -3662,7 +3662,7 @@ LibraryManager.library = {
   __heap_base: '{{{ HEAP_BASE }}}',
   __heap_base__import: true,
   // In dynamic linking we define tags here and feed them to each module
-  __cpp_exception: "new WebAssembly.Tag({'parameters': ['i32']})",
+  __cpp_exception: "new WebAssembly.Tag({'parameters': [{{{ POINTER_TYPE }}}]})",
   __cpp_exception__import: true,
 #endif
 };
