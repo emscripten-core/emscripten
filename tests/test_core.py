@@ -5333,12 +5333,6 @@ Module['onRuntimeInitialized'] = function() {
   def test_unistd_close(self):
     self.do_run_in_out_file_test('unistd/close.c')
 
-  def test_unistd_confstr(self):
-    self.do_run_in_out_file_test('unistd/confstr.c')
-
-  def test_unistd_ttyname(self):
-    self.do_runf(test_file('unistd/ttyname.c'), 'success')
-
   @also_with_noderawfs
   def test_unistd_pipe(self):
     self.do_runf(test_file('unistd/pipe.c'), 'success')
@@ -5346,13 +5340,6 @@ Module['onRuntimeInitialized'] = function() {
   @also_with_noderawfs
   def test_unistd_dup(self):
     self.do_run_in_out_file_test('unistd/dup.c')
-
-  def test_unistd_dup_write(self):
-    self.set_setting('WASMFS')
-    self.do_run_in_out_file_test('unistd/dup2.c')
-
-  def test_unistd_pathconf(self):
-    self.do_run_in_out_file_test('unistd/pathconf.c')
 
   def test_unistd_truncate(self):
     self.uses_es6 = True
@@ -5371,12 +5358,6 @@ Module['onRuntimeInitialized'] = function() {
     self.maybe_closure()
     self.do_run_in_out_file_test('unistd/truncate.c', js_engines=[config.NODE_JS])
 
-  def test_unistd_swab(self):
-    self.do_run_in_out_file_test('unistd/swab.c')
-
-  def test_unistd_isatty(self):
-    self.do_runf(test_file('unistd/isatty.c'), 'success')
-
   @also_with_standalone_wasm()
   def test_unistd_sysconf(self):
     self.do_run_in_out_file_test('unistd/sysconf.c')
@@ -5389,9 +5370,6 @@ Module['onRuntimeInitialized'] = function() {
     else:
       expected = 16 * 1024 * 1024 // webassembly.WASM_PAGE_SIZE
     self.do_runf(filename, str(expected) + ', errno: 0')
-
-  def test_unistd_login(self):
-    self.do_run_in_out_file_test('unistd/login.c')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_unlink(self):
@@ -5440,9 +5418,6 @@ Module['onRuntimeInitialized'] = function() {
     self.emcc_args += ['-lnodefs.js']
     self.do_run_in_out_file_test('unistd/symlink_on_nodefs.c', js_engines=[config.NODE_JS])
 
-  def test_unistd_sleep(self):
-    self.do_run_in_out_file_test('unistd/sleep.c')
-
   @also_with_wasm_bigint
   def test_unistd_io(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ERRNO_CODES'])
@@ -5463,9 +5438,6 @@ Module['onRuntimeInitialized'] = function() {
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
       self.do_run_in_out_file_test('unistd/misc.c', js_engines=[config.NODE_JS], interleaved_output=False)
-
-  def test_unistd_fstatfs(self):
-    self.do_run_in_out_file_test('unistd/fstatfs.c')
 
   # i64s in the API, which we'd need to legalize for JS, so in standalone mode
   # all we can test is wasm VMs
