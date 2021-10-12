@@ -22,7 +22,7 @@ extern "C" {
 using namespace wasmfs;
 
 long __syscall_dup2(long oldfd, long newfd) {
-  FileTable::Handle fileTable = FileTable::get();
+  auto fileTable = FileTable::get();
 
   auto oldOpenFile = fileTable[oldfd];
   // If oldfd is not a valid file descriptor, then the call fails,
@@ -45,8 +45,7 @@ long __syscall_dup2(long oldfd, long newfd) {
 }
 
 long __syscall_dup(long fd) {
-
-  FileTable::Handle fileTable = FileTable::get();
+  auto fileTable = FileTable::get();
 
   // Check that an open file exists corresponding to the given fd.
   auto currentOpenFile = fileTable[fd];
@@ -69,7 +68,7 @@ long __syscall_dup(long fd) {
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
-  FileTable::Handle fileTable = FileTable::get();
+  auto fileTable = FileTable::get();
   if (!fileTable[fd]) {
     return __WASI_ERRNO_BADF;
   }
@@ -102,7 +101,7 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 
 __wasi_errno_t __wasi_fd_read(
   __wasi_fd_t fd, const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) {
-  FileTable::Handle fileTable = FileTable::get();
+  auto fileTable = FileTable::get();
   if (!fileTable[fd]) {
     return __WASI_ERRNO_BADF;
   }
@@ -122,7 +121,7 @@ __wasi_errno_t __wasi_fd_read(
 
 __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   // Get the corresponding OpenFile from the open file table
-  FileTable::Handle fileTable = FileTable::get();
+  auto fileTable = FileTable::get();
 
   int accessMode = (flags & O_ACCMODE);
   bool canWrite = false;
@@ -156,9 +155,9 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   for (int i = 0; i < pathParts.size(); i++) {
 
     // If it is a file and we have not reached the end of the path, exit
-    // if (fileFromPath->is<DataFile>() && i != pathParts.size() - 1) {
-    //   return -(EBADF);
-    // }
+    if (fileFromPath->is<DataFile>() && i != pathParts.size() - 1) {
+      return -(EBADF);
+    }
 
     // Find the next entry in the current directory entry
     fileFromPath->get().printKeys();

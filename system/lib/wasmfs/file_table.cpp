@@ -89,16 +89,10 @@ FileTable::FileTable() {
   entries.push_back(std::make_shared<OpenFileState>(0, StderrFile::getSharedPtr()));
 }
 
+// Initialize default directories including dev/stdin, dev/stdout, dev/stderr.
+// Refers to same std streams in the open file table.
 RootDirectory::RootDirectory() {
-  // Avoid calling the destructor -
-  // go/totw/110#tip-of-the-week-110-safe-initialization-of-global-and-static-objects
-
-  // Obtain other dev/stdin, dev/stdout members, ensuring that they are initialized on demand
-  static const std::shared_ptr<Directory> devDirectory = [] {
-    return std::make_shared<Directory>();
-  }();
-
-  // Assign dev directory
+  auto devDirectory = std::make_shared<Directory>();
   entries["dev"] = devDirectory;
 
   devDirectory->get().setEntry("stdin", StdinFile::getSharedPtr());
@@ -111,7 +105,7 @@ FileTable::Handle FileTable::get() {
   return FileTable::Handle(fileTable);
 }
 
-// Operator Overloading for FileTable::Handle::Entry
+// Operator Overloading for FileTable::Handle::Entry.
 FileTable::Handle::Entry::operator std::shared_ptr<OpenFileState>() const {
   if (fd >= fileTableHandle.fileTable.entries.size() || fd < 0) {
     return nullptr;
