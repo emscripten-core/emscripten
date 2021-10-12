@@ -16,5 +16,11 @@ int main() {
 
   dprintf(fd, "WORKING\n");
 
+  // Close open file
+  close(fd);
+
+  // Attempt to write to a non-existent fd.
+  dprintf(fd, "FAILURE\n");
+
   return 0;
 }

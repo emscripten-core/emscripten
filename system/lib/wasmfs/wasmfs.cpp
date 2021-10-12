@@ -22,7 +22,7 @@ extern "C" {
 using namespace wasmfs;
 
 long __syscall_dup2(long oldfd, long newfd) {
-  auto fileTable = FileTable::get();
+  auto fileTable = [] { return FileTable::get(); }();
 
   auto oldOpenFile = fileTable[oldfd];
   // If oldfd is not a valid file descriptor, then the call fails,
@@ -68,7 +68,7 @@ long __syscall_dup(long fd) {
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
-  auto fileTable = FileTable::get();
+  auto fileTable = [] { return FileTable::get(); }();
   if (!fileTable[fd]) {
     return __WASI_ERRNO_BADF;
   }
@@ -95,8 +95,12 @@ __wasi_errno_t __wasi_fd_seek(
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
-  emscripten_console_log("__wasi_fd_close has been temporarily stubbed and is inert");
-  abort();
+  auto fileTable = [] { return FileTable::get(); }();
+
+  // Remove openFileState entry from fileTable.
+  fileTable[fd] = nullptr;
+
+  return __WASI_ERRNO_SUCCESS;
 }
 
 __wasi_errno_t __wasi_fd_read(
@@ -120,8 +124,8 @@ __wasi_errno_t __wasi_fd_read(
 }
 
 __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
-  // Get the corresponding OpenFile from the open file table
-  auto fileTable = FileTable::get();
+  // Obtain OpenFile from the open file table. Release fileTable lock using lambda function.
+  auto fileTable = [] { return FileTable::get(); }();
 
   int accessMode = (flags & O_ACCMODE);
   bool canWrite = false;
@@ -140,11 +144,10 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   std::string interim = "";
   std::vector<std::string> pathParts;
 
-  const char* newPathName = (const char*)pathname;
-  std::string newString = std::string(newPathName);
-  for (int i = 0; i < newString.size(); i++) {
-    if (newString[i] != '/') {
-      interim += newString[i];
+  auto newPathName = (const char*)pathname;
+  for (int i = 0; i < strlen(newPathName); i++) {
+    if (newPathName[i] != '/') {
+      interim += newPathName[i];
     } else {
       pathParts.push_back(interim);
       interim = "";
@@ -163,6 +166,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     fileFromPath->get().printKeys();
     fileFromPath = std::static_pointer_cast<Directory>(fileFromPath->get().getEntry(pathParts[i]));
 
+    // debugging. TODO: remove later.
     std::vector<char> temp(pathParts[i].begin(), pathParts[i].end());
     emscripten_console_log(&temp[0]);
   }
