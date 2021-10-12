@@ -124,11 +124,6 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   // Get the corresponding OpenFile from the open file table
   FileTable::Handle fileTable = FileTable::get();
 
-  // Initialize or Retrieve root directory
-  RootDirectory::Handle rootDirectory = RootDirectory::get();
-
-  rootDirectory.printKeys();
-
   int accessMode = (flags & O_ACCMODE);
   bool canWrite = false;
 

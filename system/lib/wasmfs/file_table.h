@@ -94,21 +94,12 @@ public:
 class RootDirectory : public Directory {
 public:
   RootDirectory();
-  class Handle : public Directory::Handle {
-
-  public:
-    Handle(std::shared_ptr<File> rootDirectory) : Directory::Handle(rootDirectory) {}
-  };
-
   static std::shared_ptr<Directory> getSharedPtr() {
     static const std::shared_ptr<RootDirectory> rootDirectory = [] {
       return std::make_shared<RootDirectory>();
     }();
 
     return rootDirectory;
-  }
-  static RootDirectory::Handle get() {
-    return RootDirectory::Handle(RootDirectory::getSharedPtr());
   }
 };
 } // namespace wasmfs

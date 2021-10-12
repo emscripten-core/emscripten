@@ -76,4 +76,39 @@ public:
   Handle get() { return Handle(shared_from_this()); }
 };
 
+class Directory : public File {
+protected:
+  std::unordered_map<std::string, std::shared_ptr<File>> entries;
+
+public:
+  Directory() : File(File::DirectoryType) {}
+  class Handle : public File::Handle {
+    Directory* getFile() { return static_cast<Directory*>(file.get()); }
+
+  public:
+    Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
+
+    std::shared_ptr<File> getEntry(std::string pathName) {
+      if (getFile()->entries.find(pathName) == getFile()->entries.end()) {
+        return nullptr;
+      } else {
+        return getFile()->entries[pathName];
+      }
+    }
+
+    void setEntry(std::string pathName, std::shared_ptr<File> inserted) {
+      getFile()->entries[pathName] = inserted;
+    }
+
+    void printKeys() {
+      for (auto keyPair : getFile()->entries) {
+        std::vector<char> temp(keyPair.first.begin(), keyPair.first.end());
+        emscripten_console_log(&temp[0]);
+      }
+    }
+  };
+
+  Handle get() { return Handle(shared_from_this()); }
+};
+
 } // namespace wasmfs
