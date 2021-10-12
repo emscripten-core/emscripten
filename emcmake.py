@@ -29,13 +29,14 @@ variables so that emcc etc. are used. Typical usage:
   def has_substr(args, substr):
     return any(substr in s for s in args)
 
-  # Append the Emscripten toolchain file if the user didn't specify one.
+  # Insert arg for the Emscripten toolchain file if the user didn't specify one.
+  # User specified arguments come afterwards so they can overwrite variables defined in toolchain file.
   if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
-    args.append('-DCMAKE_TOOLCHAIN_FILE=' + utils.path_from_root('cmake/Modules/Platform/Emscripten.cmake'))
+    args.insert(1, '-DCMAKE_TOOLCHAIN_FILE=' + utils.path_from_root('cmake/Modules/Platform/Emscripten.cmake'))
 
   if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
     node_js = config.NODE_JS[0]
-    args.append(f'-DCMAKE_CROSSCOMPILING_EMULATOR={node_js}')
+    args.insert(1, f'-DCMAKE_CROSSCOMPILING_EMULATOR={node_js}')
 
   # On Windows specify MinGW Makefiles or ninja if we have them and no other
   # toolchain was specified, to keep CMake from pulling in a native Visual

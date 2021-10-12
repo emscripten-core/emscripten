@@ -1,6 +1,27 @@
 #ifndef _INTERNAL_RELOC_H
 #define _INTERNAL_RELOC_H
 
+#ifdef __EMSCRIPTEN__
+// Declare `struct dso` in this header so that it is visible to gen_struct_info.
+
+#pragma once
+
+#include <emscripten/emscripten.h>
+
+struct dso {
+  struct dso *next, *prev;
+
+  // For async mode
+  em_dlopen_callback onsuccess;
+  em_arg_callback_func onerror;
+  void* user_data;
+
+  // Flexible array; must be final element of struct
+  char name[];
+};
+
+#else
+
 #include <features.h>
 #include <elf.h>
 #include <stdint.h>
@@ -94,5 +115,7 @@ struct fdpic_dummy_loadmap {
 
 typedef void (*stage2_func)(unsigned char *, size_t *);
 typedef _Noreturn void (*stage3_func)(size_t *);
+
+#endif // __EMSCRIPTEN__
 
 #endif

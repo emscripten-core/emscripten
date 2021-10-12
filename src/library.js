@@ -91,6 +91,7 @@ LibraryManager.library = {
   utime__proxy: 'sync',
   utime__sig: 'iii',
   utime: function(path, times) {
+    {{{ from64('times') }}};
     // int utime(const char *path, const struct utimbuf *times);
     // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/utime.h.html
     var time;
@@ -458,6 +459,7 @@ LibraryManager.library = {
 
   time__sig: 'ii',
   time: function(ptr) {
+    {{{ from64('ptr') }}};
     var ret = (Date.now()/1000)|0;
     if (ptr) {
       {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}};
@@ -3102,6 +3104,7 @@ LibraryManager.library = {
   $readAsmConstArgsArray: '=[]',
   $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
+    {{{ from64(['sigPtr', 'buf']) }}};
 #if ASSERTIONS
     // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
     assert(Array.isArray(readAsmConstArgsArray));
@@ -3527,9 +3530,9 @@ LibraryManager.library = {
 #endif
   ],
   $callUserCallback: function(func, synchronous) {
-    if (ABORT) {
+    if (runtimeExited || ABORT) {
 #if ASSERTIONS
-      err('user callback triggered after application aborted.  Ignoring.');
+      err('user callback triggered after runtime exited or application aborted.  Ignoring.');
 #endif
       return;
     }
@@ -3646,20 +3649,23 @@ LibraryManager.library = {
   // mode are created here and imported by the module.
   // Mark with `__import` so these are usable from native code.  This is needed
   // because, by default, only functions can be be imported.
-  __stack_pointer: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, {{{ STACK_BASE }}})",
+  __stack_pointer: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': true}, {{{ to64(STACK_BASE) }}})",
   __stack_pointer__import: true,
   // tell the memory segments where to place themselves
-  __memory_base: '{{{ GLOBAL_BASE }}}',
+  __memory_base: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
   __memory_base__import: true,
   // the wasm backend reserves slot 0 for the NULL function pointer
-  __table_base: 1,
+  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': false}, {{{ to64(1) }}})",
   __table_base__import: true,
+#if MEMORY64
+  __table_base32: 1,
+#endif
   // To support such allocations during startup, track them on __heap_base and
   // then when the main module is loaded it reads that value and uses it to
   // initialize sbrk (the main module is relocatable itself, and so it does not
   // have __heap_base hardcoded into it - it receives it from JS as an extern
   // global, basically).
-  __heap_base: '{{{ HEAP_BASE }}}',
+  __heap_base: '{{{ to64(HEAP_BASE) }}}',
   __heap_base__import: true,
   // In dynamic linking we define tags here and feed them to each module
   __cpp_exception: "new WebAssembly.Tag({'parameters': [{{{ POINTER_TYPE }}}]})",

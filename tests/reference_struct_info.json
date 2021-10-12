@@ -1362,6 +1362,10 @@
             "quot": 0,
             "rem": 4
         },
+        "dso": {
+            "__size__": 20,
+            "name": 20
+        },
         "emscripten_fetch_attr_t": {
             "__size__": 92,
             "attributes": 52,

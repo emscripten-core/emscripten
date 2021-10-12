@@ -742,7 +742,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'pthread_join.c',
           'pthread_testcancel.c',
           'emscripten_proxy_main.c',
-          'emscripten_thread_state.s',
+          'emscripten_thread_state.S',
         ])
     else:
       ignore += ['thread']
@@ -1279,7 +1279,9 @@ class libwasmfs(MTLibrary):
   name = 'libwasmfs'
 
   def get_files(self):
-    return [utils.path_from_root('system/lib/wasmfs/wasmfs.cpp')]
+    return files_in_path(
+        path='system/lib/wasmfs',
+        filenames=['wasmfs.cpp', 'file_table.cpp'])
 
   def can_build(self):
     return settings.WASMFS

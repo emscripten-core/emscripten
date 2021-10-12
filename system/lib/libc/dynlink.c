@@ -11,31 +11,20 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <dlfcn.h>
-#include <emscripten/emscripten.h>
 #include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dynlink.h>
 
 //#define DYLINK_DEBUG
 
-extern void* _dlopen_js(const char* file, int mode, void* handle);
-extern void* _dlsym_js(void* handle, const char* symbol);
-extern void _emscripten_dlopen_js(const char* filename, int flags, void* handle,
-  em_arg_callback_func onsuccess, em_arg_callback_func onerror);
-
-struct dso {
-  struct dso *next, *prev;
-
-  // For async mode
-  em_dlopen_callback onsuccess;
-  em_arg_callback_func onerror;
-  void* user_data;
-
-  // Flexible array; must be final element of struct
-  char name[];
-};
+extern void* _dlopen_js(struct dso* handle, int mode);
+extern void* _dlsym_js(struct dso* handle, const char* symbol);
+extern void _emscripten_dlopen_js(struct dso* handle, int flags,
+                                  em_arg_callback_func onsuccess,
+                                  em_arg_callback_func onerror);
 
 static struct dso *head, *tail;
 static pthread_rwlock_t lock;
@@ -91,6 +80,7 @@ static void dlopen_js_onsuccess(void* handle) {
   printf("dlopen_js_onsuccess: dso=%p\n", p);
 #endif
   load_library_done(p);
+  pthread_rwlock_unlock(&lock);
   p->onsuccess(p->user_data, p);
 }
 
@@ -99,11 +89,31 @@ static void dlopen_js_onerror(void* handle) {
 #ifdef DYLINK_DEBUG
   printf("dlopen_js_onsuccess: dso=%p\n", p);
 #endif
+  pthread_rwlock_unlock(&lock);
   p->onerror(p->user_data);
   free(p);
 }
 
+static void init_dso_list() {
+  // Initialize the dso list.  This happens on first run.
+  pthread_rwlock_wrlock(&lock);
+  if (!head) {
+    // Flags are not important since the main module is already loaded.
+    int flags = RTLD_NOW|RTLD_GLOBAL;
+    struct dso* p = load_library_start("__main__", flags);
+    assert(p);
+    void* success = _dlopen_js(p, flags);
+    assert(success);
+    load_library_done(p);
+    assert(head);
+  }
+  pthread_rwlock_unlock(&lock);
+}
+
 void* dlopen(const char* file, int flags) {
+  if (!head) {
+    init_dso_list();
+  }
   if (!file) {
     return head;
   }
@@ -130,7 +140,7 @@ void* dlopen(const char* file, int flags) {
   if (!p) {
     goto end;
   }
-  void* success = _dlopen_js(file, flags, p);
+  void* success = _dlopen_js(p, flags);
   if (!success) {
 #ifdef DYLINK_DEBUG
     printf("dlopen_js: failed\n", p);
@@ -139,20 +149,29 @@ void* dlopen(const char* file, int flags) {
     p = NULL;
     goto end;
   }
+#ifdef DYLINK_DEBUG
+  printf("dlopen_js: success: %p\n", p);
+#endif
   load_library_done(p);
 end:
   pthread_rwlock_unlock(&lock);
   pthread_setcancelstate(cs, 0);
-#ifdef DYLINK_DEBUG
-  printf("dlopen_js: success: %p\n", p);
-#endif
   return p;
 }
 
 void emscripten_dlopen(const char* filename, int flags, void* user_data,
-  em_dlopen_callback onsuccess, em_arg_callback_func onerror) {
+                       em_dlopen_callback onsuccess, em_arg_callback_func onerror) {
+  if (!head) {
+    init_dso_list();
+  }
+  if (!filename) {
+    onsuccess(user_data, head);
+    return;
+  }
+  pthread_rwlock_wrlock(&lock);
   struct dso* p = load_library_start(filename, flags);
   if (!p) {
+    pthread_rwlock_unlock(&lock);
     onerror(user_data);
     return;
   }
@@ -162,7 +181,8 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
 #ifdef DYLINK_DEBUG
   printf("calling emscripten_dlopen_js %p\n", p);
 #endif
-  _emscripten_dlopen_js(filename, flags, p, dlopen_js_onsuccess, dlopen_js_onerror);
+  // Unlock happens in dlopen_js_onsuccess/dlopen_js_onerror
+  _emscripten_dlopen_js(p, flags, dlopen_js_onsuccess, dlopen_js_onerror);
 }
 
 void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {

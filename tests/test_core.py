@@ -344,9 +344,11 @@ class TestCoreBase(RunnerCore):
   def test_hello_argc(self):
     self.do_core_test('test_hello_argc.c')
 
+  @also_with_wasmfs
   def test_intvars(self):
     self.do_core_test('test_intvars.cpp')
 
+  @also_with_wasmfs
   def test_sintvars(self):
     self.do_core_test('test_sintvars.c')
 
@@ -2720,8 +2722,7 @@ The current type of b is: 9
 
   @needs_dylink
   def test_dlfcn_qsort(self):
-    self.set_setting('EXPORTED_FUNCTIONS', ['_get_cmp'])
-    create_file('liblib.cpp', '''
+    create_file('liblib.c', '''
       int lib_cmp(const void* left, const void* right) {
         const int* a = (const int*) left;
         const int* b = (const int*) right;
@@ -2732,14 +2733,13 @@ The current type of b is: 9
 
       typedef int (*CMP_TYPE)(const void*, const void*);
 
-      extern "C" CMP_TYPE get_cmp() {
+      CMP_TYPE get_cmp() {
         return lib_cmp;
       }
       ''')
-    self.build_dlfcn_lib('liblib.cpp')
+    self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     src = '''
       #include <stdio.h>
       #include <stdlib.h>
@@ -2798,7 +2798,7 @@ The current type of b is: 9
     if self.is_wasm():
       self.banned_js_engines = [config.V8_ENGINE]
 
-    create_file('liblib.cpp', r'''
+    create_file('liblib.c', r'''
       #include <stdio.h>
 
       int theglobal = 42;
@@ -2818,14 +2818,13 @@ The current type of b is: 9
         p_f();
       }
 
-      extern "C" void (*func(int x, void(*fptr)()))() {
+      void (*func(int x, void(*fptr)()))() {
         printf("In func: %d\n", x);
         fptr();
         return lib_fptr;
       }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_func'])
-    self.build_dlfcn_lib('liblib.cpp')
+    self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -2881,7 +2880,6 @@ The current type of b is: 9
         return 0;
       }
       '''
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
     self.do_run(src, '''\
 In func: 13
 First calling main_fptr from lib.
@@ -2889,21 +2887,20 @@ Second calling lib_fptr from main.
 parent_func called from child
 parent_func called from child
 Var: 42
-''')
+''', force_c=True)
 
   @needs_dylink
   def test_dlfcn_varargs(self):
     # this test is not actually valid - it fails natively. the child should fail
     # to be loaded, not load and successfully see the parent print_ints func
 
-    create_file('liblib.cpp', r'''
+    create_file('liblib.c', r'''
       void print_ints(int n, ...);
-      extern "C" void func() {
+      void func() {
         print_ints(2, 13, 42);
       }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_func'])
-    self.build_dlfcn_lib('liblib.cpp')
+    self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -2935,8 +2932,7 @@ Var: 42
         return 0;
       }
       '''
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
-    self.do_run(src, '100\n200\n13\n42\n')
+    self.do_run(src, '100\n200\n13\n42\n', force_c=True)
 
   @needs_dylink
   def test_dlfcn_alignment_and_zeroing(self):
@@ -3038,7 +3034,6 @@ Var: 42
         return 13;
       }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_myfunc'])
     self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
@@ -3065,7 +3060,6 @@ Var: 42
         return 0;
       }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     self.do_runf('main.c', 'success')
 
   @needs_dylink
@@ -3077,7 +3071,6 @@ Var: 42
         return 13;
       }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_myfunc'])
     self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
@@ -3119,7 +3112,6 @@ Var: 42
         return 0;
       }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     self.do_runf('main.c', 'success')
 
   @needs_dylink
@@ -3139,7 +3131,6 @@ Var: 42
         return strlen(bigstack);
       }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_myfunc'])
     self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
@@ -3174,7 +3165,6 @@ Var: 42
         return 0;
       }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_strcmp'])
     self.do_runf('main.c', 'success')
 
   @needs_dylink
@@ -3210,7 +3200,6 @@ Var: 42
         }
       }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_callvoid', '_callint', '_getvoid', '_getint'])
     self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
@@ -3261,7 +3250,6 @@ Var: 42
         return 0;
       }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     self.do_runf('main.c', '''go
 void_main.
 int_main 201
@@ -3286,11 +3274,9 @@ ok
       void *mallocproxy(int n) { return malloc(n); }
       void freeproxy(void *p) { free(p); }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_mallocproxy', '_freeproxy'])
     self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_free'])
     self.do_runf(test_file('dlmalloc_proxy.c'), '*294,153*')
 
   @needs_dylink
@@ -3338,7 +3324,6 @@ ok
         return 0;
       }
       ''')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_free'])
     self.do_runf('main.c', '''go!
 pre 1
 pre 2
@@ -3410,7 +3395,6 @@ out!
         return 0;
       }
       '''
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_free'])
     self.do_run(src, '''go!
 ok: 65
 int 123
@@ -3428,8 +3412,9 @@ ok
     create_file('a.cpp', r'''
       #include <stdio.h>
 
-      static struct a {
-        a() {
+      static class A {
+      public:
+        A() {
           puts("a: loaded");
         }
       } _;
@@ -3438,8 +3423,9 @@ ok
     create_file('b.cpp', r'''
       #include <stdio.h>
 
-      static struct b {
-        b() {
+      static class B {
+      public:
+        B() {
           puts("b: loaded");
         }
       } _;
@@ -3488,12 +3474,12 @@ ok
   def test_dlfcn_feature_in_lib(self):
     self.emcc_args.append('-mnontrapping-fptoint')
 
-    create_file('liblib.cpp', r'''
-        extern "C" int magic(float x) {
+    create_file('liblib.c', r'''
+        int magic(float x) {
           return __builtin_wasm_trunc_saturate_s_i32_f32(x);
         }
       ''')
-    self.build_dlfcn_lib('liblib.cpp')
+    self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -5403,12 +5389,6 @@ Module['onRuntimeInitialized'] = function() {
   def test_unistd_close(self):
     self.do_run_in_out_file_test('unistd/close.c')
 
-  def test_unistd_confstr(self):
-    self.do_run_in_out_file_test('unistd/confstr.c')
-
-  def test_unistd_ttyname(self):
-    self.do_runf(test_file('unistd/ttyname.c'), 'success')
-
   @also_with_noderawfs
   def test_unistd_pipe(self):
     self.do_runf(test_file('unistd/pipe.c'), 'success')
@@ -5416,9 +5396,6 @@ Module['onRuntimeInitialized'] = function() {
   @also_with_noderawfs
   def test_unistd_dup(self):
     self.do_run_in_out_file_test('unistd/dup.c')
-
-  def test_unistd_pathconf(self):
-    self.do_run_in_out_file_test('unistd/pathconf.c')
 
   def test_unistd_truncate(self):
     self.uses_es6 = True
@@ -5437,12 +5414,6 @@ Module['onRuntimeInitialized'] = function() {
     self.maybe_closure()
     self.do_run_in_out_file_test('unistd/truncate.c', js_engines=[config.NODE_JS])
 
-  def test_unistd_swab(self):
-    self.do_run_in_out_file_test('unistd/swab.c')
-
-  def test_unistd_isatty(self):
-    self.do_runf(test_file('unistd/isatty.c'), 'success')
-
   @also_with_standalone_wasm()
   def test_unistd_sysconf(self):
     self.do_run_in_out_file_test('unistd/sysconf.c')
@@ -5455,9 +5426,6 @@ Module['onRuntimeInitialized'] = function() {
     else:
       expected = 16 * 1024 * 1024 // webassembly.WASM_PAGE_SIZE
     self.do_runf(filename, str(expected) + ', errno: 0')
-
-  def test_unistd_login(self):
-    self.do_run_in_out_file_test('unistd/login.c')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_unlink(self):
@@ -5506,9 +5474,6 @@ Module['onRuntimeInitialized'] = function() {
     self.emcc_args += ['-lnodefs.js']
     self.do_run_in_out_file_test('unistd/symlink_on_nodefs.c', js_engines=[config.NODE_JS])
 
-  def test_unistd_sleep(self):
-    self.do_run_in_out_file_test('unistd/sleep.c')
-
   @also_with_wasm_bigint
   def test_unistd_io(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ERRNO_CODES'])
@@ -5529,9 +5494,6 @@ Module['onRuntimeInitialized'] = function() {
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
       self.do_run_in_out_file_test('unistd/misc.c', js_engines=[config.NODE_JS], interleaved_output=False)
-
-  def test_unistd_fstatfs(self):
-    self.do_run_in_out_file_test('unistd/fstatfs.c')
 
   # i64s in the API, which we'd need to legalize for JS, so in standalone mode
   # all we can test is wasm VMs

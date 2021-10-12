@@ -43,7 +43,7 @@ var LibraryDylink = {
   $GOTHandler: {
     'get': function(obj, symName) {
       if (!GOT[symName]) {
-        GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
+        GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': true});
 #if DYLINK_DEBUG
         err("new GOT entry: " + symName);
 #endif
@@ -101,6 +101,8 @@ var LibraryDylink = {
 #endif
         } else if (typeof value === 'number') {
           GOT[symName].value = value;
+        } else if (typeof value === 'bigint') {
+          GOT[symName].value = Number(value);
         } else {
           err("unhandled export type for `" + symName + "`: " + (typeof value));
         }
@@ -615,7 +617,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     err('loadDynamicLibrary: ' + lib + ' handle:' + handle);
 #endif
-    if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
+    if (lib == '__main__' && !LDSO.loadedLibsByName[lib]) {
       LDSO.loadedLibsByName[lib] = {
         refcount: Infinity,   // = nodelete
         name:     '__main__',
@@ -763,35 +765,34 @@ var LibraryDylink = {
 
   // void* dlopen(const char* filename, int flags);
   $dlopenInternal__deps: ['$FS', '$ENV', '$dlSetError'],
-  $dlopenInternal: function(filenameAddr, flags, jsflags, handle) {
+  $dlopenInternal: function(handle, flags, jsflags) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     var searchpaths = [];
-    var filename;
-    if (filenameAddr === 0) {
-      filename = '__main__';
-    } else {
-      filename = UTF8ToString(filenameAddr);
+    var filename = UTF8ToString(handle + {{{ C_STRUCTS.dso.name }}});
 
-      var isValidFile = function(filename) {
-        var target = FS.findObject(filename);
-        return target && !target.isFolder && !target.isDevice;
-      };
+    var isValidFile = function(filename) {
+      var target = FS.findObject(filename);
+      return target && !target.isFolder && !target.isDevice;
+    };
 
-      if (!isValidFile(filename)) {
-        if (ENV['LD_LIBRARY_PATH']) {
-          searchpaths = ENV['LD_LIBRARY_PATH'].split(':');
-        }
+    if (!isValidFile(filename)) {
+      if (ENV['LD_LIBRARY_PATH']) {
+        searchpaths = ENV['LD_LIBRARY_PATH'].split(':');
+      }
 
-        for (var ident in searchpaths) {
-          var searchfile = PATH.join2(searchpaths[ident], filename);
-          if (isValidFile(searchfile)) {
-            filename = searchfile;
-            break;
-          }
+      for (var ident in searchpaths) {
+        var searchfile = PATH.join2(searchpaths[ident], filename);
+        if (isValidFile(searchfile)) {
+          filename = searchfile;
+          break;
         }
       }
     }
+
+#if DYLINK_DEBUG
+    err('dlopenInternal: ' + filename);
+#endif
 
     // We don't care about RTLD_NOW and RTLD_LAZY.
     var combinedFlags = {
@@ -818,14 +819,14 @@ var LibraryDylink = {
 
   _dlopen_js__deps: ['$dlopenInternal'],
   _dlopen_js__sig: 'iiii',
-  _dlopen_js: function(filename, flags, handle) {
+  _dlopen_js: function(handle, flags) {
 #if ASYNCIFY
     return Asyncify.handleSleep(function(wakeUp) {
       var jsflags = {
         loadAsync: true,
         fs: FS, // load libraries from provided filesystem
       }
-      var promise = dlopenInternal(filename, flags, jsflags, handle);
+      var promise = dlopenInternal(handle, flags, jsflags);
       promise.then(wakeUp).catch(function() { wakeUp(0) });
     });
 #else
@@ -833,7 +834,7 @@ var LibraryDylink = {
       loadAsync: false,
       fs: FS, // load libraries from provided filesystem
     }
-    return dlopenInternal(filename, flags, jsflags, handle);
+    return dlopenInternal(handle, flags, jsflags);
 #endif
   },
 
@@ -845,9 +846,10 @@ var LibraryDylink = {
 #endif
   ],
   _emscripten_dlopen_js__sig: 'viiiii',
-  _emscripten_dlopen_js: function(filename, flags, handle, onsuccess, onerror) {
+  _emscripten_dlopen_js: function(handle, flags, onsuccess, onerror) {
     function errorCallback(e) {
-      dlSetError('Could not load dynamic lib: ' + UTF8ToString(filename) + '\n' + e);
+      var filename = UTF8ToString({{{ makeGetValue('handle', C_STRUCTS.dso.name, '*') }}});
+      dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function () { {{{ makeDynCall('vi', 'onerror') }}}(handle); });
     }
@@ -857,7 +859,7 @@ var LibraryDylink = {
     }
 
     {{{ runtimeKeepalivePush() }}}
-    var promise = dlopenInternal(filename, flags, { loadAsync: true }, handle);
+    var promise = dlopenInternal(handle, flags, { loadAsync: true });
     if (promise) {
       promise.then(successCallback, errorCallback);
     } else {

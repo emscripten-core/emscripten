@@ -405,6 +405,7 @@ var LibraryEmbind = {
   },
 
   $heap32VectorToArray: function(count, firstElement) {
+    {{{ from64('firstElement') }}}
     var array = [];
     for (var i = 0; i < count; i++) {
         array.push(HEAP32[(firstElement >> 2) + i]);
@@ -476,6 +477,7 @@ var LibraryEmbind = {
 
   $getShiftFromSize__deps: [],
   $getShiftFromSize: function(size) {
+    {{{ from64('size') }}}
     switch (size) {
         case 1: return 0;
         case 2: return 1;
@@ -874,6 +876,10 @@ var LibraryEmbind = {
         Uint32Array,
         Float32Array,
         Float64Array,
+#if WASM_BIGINT
+        BigInt64Array,
+        BigUint64Array,
+#endif
     ];
 
     var TA = typeMapping[dataTypeIndex];
