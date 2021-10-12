@@ -203,8 +203,9 @@ var WasiLibrary = {
     // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
     var num = 0;
     for (var i = 0; i < iovcnt; i++) {
-      var ptr = {{{ makeGetValue('iov', `i*${Runtime.POINTER_SIZE}*2`, POINTER_TYPE) }}};
-      var len = {{{ makeGetValue('iov', `i*${Runtime.POINTER_SIZE}*2 + ${Runtime.POINTER_SIZE}`, POINTER_TYPE) }}};
+      var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, 'i32') }}};
+      var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, 'i32') }}};
+      iov += {{{ C_STRUCTS.iovec.__size__ }}};
       for (var j = 0; j < len; j++) {
         SYSCALLS.printChar(fd, HEAPU8[ptr+j]);
       }

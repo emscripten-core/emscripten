@@ -11097,3 +11097,35 @@ void foo() {}
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_pthread_out_err.c')
+
+  # unistd tests
+
+  def test_unistd_confstr(self):
+    self.do_run_in_out_file_test('unistd/confstr.c')
+
+  def test_unistd_ttyname(self):
+    self.do_runf(test_file('unistd/ttyname.c'), 'success')
+
+  def test_unistd_pathconf(self):
+    self.do_run_in_out_file_test('unistd/pathconf.c')
+
+  def test_unistd_swab(self):
+    self.do_run_in_out_file_test('unistd/swab.c')
+
+  def test_unistd_isatty(self):
+    self.do_runf(test_file('unistd/isatty.c'), 'success')
+
+  def test_unistd_login(self):
+    self.do_run_in_out_file_test('unistd/login.c')
+
+  def test_unistd_sleep(self):
+    self.do_run_in_out_file_test('unistd/sleep.c')
+
+  def test_unistd_fstatfs(self):
+    self.do_run_in_out_file_test('unistd/fstatfs.c')
+
+  # WASMFS tests
+
+  def test_wasmfs_unistd_dup_write(self):
+    self.set_setting('WASMFS')
+    self.do_run_in_out_file_test('unistd/dup2.c')
