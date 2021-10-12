@@ -5045,6 +5045,7 @@ main( int argv, char ** argc ) {
     self.emcc_args += ['--embed-file', 'empty.txt']
     self.do_run(src, '3\n')
 
+  @also_with_noderawfs
   def test_readdir(self):
     self.do_run_in_out_file_test('dirent/test_readdir.c')
 

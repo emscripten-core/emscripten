@@ -1,10 +1,6 @@
 success
-n: 8
-name: tmp
-name: proc
+n: 4
 name: nocanread
-name: home
 name: foobar
-name: dev
 name: ..
 name: .
