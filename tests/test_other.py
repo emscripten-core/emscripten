@@ -11133,3 +11133,7 @@ void foo() {}
   def test_wasmfs_unistd_open(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('unistd/open.c')
+
+  def test_wasmfs_unistd_fstat(self):
+    self.set_setting('WASMFS')
+    self.do_run_in_out_file_test('unistd/fstat.c')

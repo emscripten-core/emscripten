@@ -11,11 +11,15 @@
 #include <assert.h>
 #include <emscripten/html5.h>
 #include <mutex>
+#include <sys/stat.h>
 #include <unordered_map>
 #include <vector>
 #include <wasi/api.h>
 
 namespace wasmfs {
+
+class Directory;
+class DataFile;
 
 class File : public std::enable_shared_from_this<File> {
 
@@ -59,6 +63,32 @@ public:
 
   public:
     Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
+
+    void getStat(struct stat* buf) {
+      buf->st_dev = 1; // ID of device containing file: Hardcode 1 for now, no meaning at the
+      // moment for Emscripten.
+      buf->st_mode = file->mode;
+      // The number of hard links is 1 since they are unsupported.
+      buf->st_nlink = 1;
+      buf->st_uid = file->uid;
+      buf->st_gid = file->gid;
+      buf->st_rdev = 1; // Device ID (if special file) No meaning right now for Emscripten.
+      if (file->is<Directory>()) {
+        buf->st_size = 4096;
+      } else if (file->is<DataFile>()) {
+        buf->st_size = file->usedBytes;
+      } else { // TODO: add size of symlinks
+        buf->st_size = 0;
+      }
+      // The syscall docs state this is hardcoded to # of 512 byte blocks.
+      buf->st_blocks = (buf->st_size + 511) / 512;
+      buf->st_blksize = 1024 * 1024; // Specifies the preferred blocksize for efficient disk I/O.
+      buf->st_atim.tv_sec = file->atime;
+      buf->st_mtim.tv_sec = file->mtime;
+      buf->st_ctim.tv_sec = file->ctime;
+      // The syscall docs state this is hardcoded to # of 512 byte blocks.
+      buf->st_blocks = (buf->st_size + 511) / 512;
+    }
   };
 
   Handle get() { return Handle(shared_from_this()); }
@@ -69,7 +99,15 @@ protected:
   std::mutex mutex;
 
 private:
-  // TODO: Add other File properties later.
+  size_t usedBytes;
+
+  uint32_t uid;  // User ID of the owner
+  uint32_t gid;  // Group ID of the owning group
+  uint32_t mode; // r/w/x modes
+
+  time_t ctime; // Time when the inode was last modified
+  time_t mtime; // Time when the content was last modified
+  time_t atime; // Time when the content was last accessed
 
   FileKind kind;
 };

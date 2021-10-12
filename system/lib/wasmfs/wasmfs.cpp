@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <mutex>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
@@ -99,6 +100,19 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 
   // Remove openFileState entry from fileTable.
   fileTable[fd] = nullptr;
+
+  return __WASI_ERRNO_SUCCESS;
+}
+
+long __syscall_fstat64(long fd, long buf) {
+  auto fileTable = [] { return FileTable::get(); }();
+
+  auto file = fileTable[fd]->get().getFile()->get();
+
+  struct stat* buffer = (struct stat*)buf;
+  buffer->st_ino = fd;
+
+  file.getStat(buffer);
 
   return __WASI_ERRNO_SUCCESS;
 }
