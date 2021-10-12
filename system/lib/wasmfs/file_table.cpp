@@ -27,7 +27,7 @@ static __wasi_errno_t writeStdBuffer(const uint8_t* buf, __wasi_size_t len,
   return __WASI_ERRNO_SUCCESS;
 }
 
-class StdinFile : public File {
+class StdinFile : public DataFile {
 
   __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override {
     return __WASI_ERRNO_INVAL;
@@ -36,9 +36,15 @@ class StdinFile : public File {
   __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) override {
     return __WASI_ERRNO_INVAL;
   };
+
+public:
+  static std::shared_ptr<StdinFile> getSharedPtr() {
+    static const std::shared_ptr<StdinFile> stdinFile = std::make_shared<StdinFile>();
+    return stdinFile;
+  }
 };
 
-class StdoutFile : public File {
+class StdoutFile : public DataFile {
   std::vector<char> writeBuffer;
 
   __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override {
@@ -48,9 +54,15 @@ class StdoutFile : public File {
   __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) override {
     return __WASI_ERRNO_INVAL;
   };
+
+public:
+  static std::shared_ptr<StdoutFile> getSharedPtr() {
+    static const std::shared_ptr<StdoutFile> stdoutFile = std::make_shared<StdoutFile>();
+    return stdoutFile;
+  }
 };
 
-class StderrFile : public File {
+class StderrFile : public DataFile {
   std::vector<char> writeBuffer;
 
   // TODO: May not want to proxy stderr (fd == 2) to the main thread.
@@ -63,12 +75,35 @@ class StderrFile : public File {
   __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) override {
     return __WASI_ERRNO_INVAL;
   };
+
+public:
+  static std::shared_ptr<StderrFile> getSharedPtr() {
+    static const std::shared_ptr<StderrFile> stderrFile = std::make_shared<StderrFile>();
+    return stderrFile;
+  }
 };
 
 FileTable::FileTable() {
-  entries.push_back(std::make_shared<OpenFileState>(0, std::make_shared<StdinFile>()));
-  entries.push_back(std::make_shared<OpenFileState>(0, std::make_shared<StdoutFile>()));
-  entries.push_back(std::make_shared<OpenFileState>(0, std::make_shared<StderrFile>()));
+  entries.push_back(std::make_shared<OpenFileState>(0, StdinFile::getSharedPtr()));
+  entries.push_back(std::make_shared<OpenFileState>(0, StdoutFile::getSharedPtr()));
+  entries.push_back(std::make_shared<OpenFileState>(0, StderrFile::getSharedPtr()));
+}
+
+RootDirectory::RootDirectory() {
+  // Avoid calling the destructor -
+  // go/totw/110#tip-of-the-week-110-safe-initialization-of-global-and-static-objects
+
+  // Obtain other dev/stdin, dev/stdout members, ensuring that they are initialized on demand
+  static const std::shared_ptr<Directory> devDirectory = [] {
+    return std::make_shared<Directory>();
+  }();
+
+  // Assign dev directory
+  entries["dev"] = devDirectory;
+
+  devDirectory->get().setEntry("stdin", StdinFile::getSharedPtr());
+  devDirectory->get().setEntry("stdout", StdoutFile::getSharedPtr());
+  devDirectory->get().setEntry("stderr", StderrFile::getSharedPtr());
 }
 
 FileTable::Handle FileTable::get() {

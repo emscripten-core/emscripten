@@ -81,7 +81,7 @@ __wasi_errno_t __wasi_fd_write(
     const uint8_t* buf = iovs[i].buf;
     __wasi_size_t len = iovs[i].buf_len;
 
-    file.write(buf, len);
+    static_cast<DataFile::Handle&>(file).write(buf, len);
     num += len;
   }
   *nwritten = num;
@@ -113,10 +113,76 @@ __wasi_errno_t __wasi_fd_read(
     const uint8_t* buf = iovs[i].buf;
     __wasi_size_t len = iovs[i].buf_len;
 
-    file.read(buf, len);
+    static_cast<DataFile::Handle&>(file).read(buf, len);
     num += len;
   }
   *nread = num;
   return __WASI_ERRNO_INVAL;
+}
+
+__wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
+  // Get the corresponding OpenFile from the open file table
+  FileTable::Handle fileTable = FileTable::get();
+
+  // Initialize or Retrieve root directory
+  RootDirectory::Handle rootDirectory = RootDirectory::get();
+
+  rootDirectory.printKeys();
+
+  int accessMode = (flags & O_ACCMODE);
+  bool canWrite = false;
+
+  switch (accessMode) {
+    case O_RDONLY:
+      canWrite = false;
+    case O_WRONLY:
+      canWrite = true;
+    case O_RDWR:
+      canWrite = true;
+    default:
+      canWrite = false;
+  }
+
+  std::string interim = "";
+  std::vector<std::string> pathParts;
+
+  const char* newPathName = (const char*)pathname;
+  std::string newString = std::string(newPathName);
+  for (int i = 0; i < newString.size(); i++) {
+    if (newString[i] != '/') {
+      interim += newString[i];
+    } else {
+      pathParts.push_back(interim);
+      interim = "";
+    }
+  }
+
+  auto fileFromPath = RootDirectory::getSharedPtr();
+  for (int i = 0; i < pathParts.size(); i++) {
+
+    // If it is a file and we have not reached the end of the path, exit
+    // if (fileFromPath->is<DataFile>() && i != pathParts.size() - 1) {
+    //   return -(EBADF);
+    // }
+
+    // Find the next entry in the current directory entry
+    fileFromPath->get().printKeys();
+    fileFromPath = std::static_pointer_cast<Directory>(fileFromPath->get().getEntry(pathParts[i]));
+
+    std::vector<char> temp(pathParts[i].begin(), pathParts[i].end());
+    emscripten_console_log(&temp[0]);
+  }
+  auto currentOpenFile =
+    std::make_shared<OpenFileState>(0, std::static_pointer_cast<File>(fileFromPath));
+
+  for (__wasi_fd_t i = 0;; i++) {
+    if (!fileTable[i]) {
+      // Free open file entry.
+      fileTable[i] = currentOpenFile;
+      return i;
+    }
+  }
+
+  return -(EBADF);
 }
 }

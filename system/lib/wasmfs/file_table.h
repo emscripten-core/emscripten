@@ -20,6 +20,8 @@ namespace wasmfs {
 class OpenFileState {
   std::shared_ptr<File> file;
   __wasi_filedelta_t offset;
+  // An OpenFileState needs a mutex if there are concurrent accesses on one open file
+  // descriptor. This could occur if there are multiple seeks on the same open file descriptor.
   std::mutex mutex;
 
 public:
@@ -86,5 +88,27 @@ public:
   // This get method is responsible for lazily initializing the FileTable.
   // There is only ever one FileTable in the system.
   static Handle get();
+};
+
+// Root Directory is a singleton that will lazily initialize default files and directories.
+class RootDirectory : public Directory {
+public:
+  RootDirectory();
+  class Handle : public Directory::Handle {
+
+  public:
+    Handle(std::shared_ptr<File> rootDirectory) : Directory::Handle(rootDirectory) {}
+  };
+
+  static std::shared_ptr<Directory> getSharedPtr() {
+    static const std::shared_ptr<RootDirectory> rootDirectory = [] {
+      return std::make_shared<RootDirectory>();
+    }();
+
+    return rootDirectory;
+  }
+  static RootDirectory::Handle get() {
+    return RootDirectory::Handle(RootDirectory::getSharedPtr());
+  }
 };
 } // namespace wasmfs
