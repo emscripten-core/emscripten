@@ -17,6 +17,8 @@
 
 namespace wasmfs {
 
+std::shared_ptr<Directory> getRootDirectory();
+
 class OpenFileState {
   std::shared_ptr<File> file;
   __wasi_filedelta_t offset;
@@ -83,23 +85,12 @@ public:
     };
 
     Entry operator[](__wasi_fd_t fd) { return Entry{*this, fd}; };
+
+    __wasi_fd_t add(std::shared_ptr<OpenFileState> openFileState);
   };
 
   // This get method is responsible for lazily initializing the FileTable.
   // There is only ever one FileTable in the system.
   static Handle get();
-};
-
-// Root Directory is a singleton that will lazily initialize default files and directories.
-class RootDirectory : public Directory {
-public:
-  RootDirectory();
-  static std::shared_ptr<Directory> getSharedPtr() {
-    static const std::shared_ptr<RootDirectory> rootDirectory = [] {
-      return std::make_shared<RootDirectory>();
-    }();
-
-    return rootDirectory;
-  }
 };
 } // namespace wasmfs

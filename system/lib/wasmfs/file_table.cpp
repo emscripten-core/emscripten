@@ -38,7 +38,7 @@ class StdinFile : public DataFile {
   };
 
 public:
-  static std::shared_ptr<StdinFile> getSharedPtr() {
+  static std::shared_ptr<StdinFile> getSingleton() {
     static const std::shared_ptr<StdinFile> stdinFile = std::make_shared<StdinFile>();
     return stdinFile;
   }
@@ -56,7 +56,7 @@ class StdoutFile : public DataFile {
   };
 
 public:
-  static std::shared_ptr<StdoutFile> getSharedPtr() {
+  static std::shared_ptr<StdoutFile> getSingleton() {
     static const std::shared_ptr<StdoutFile> stdoutFile = std::make_shared<StdoutFile>();
     return stdoutFile;
   }
@@ -77,27 +77,36 @@ class StderrFile : public DataFile {
   };
 
 public:
-  static std::shared_ptr<StderrFile> getSharedPtr() {
+  static std::shared_ptr<StderrFile> getSingleton() {
     static const std::shared_ptr<StderrFile> stderrFile = std::make_shared<StderrFile>();
     return stderrFile;
   }
 };
 
 FileTable::FileTable() {
-  entries.push_back(std::make_shared<OpenFileState>(0, StdinFile::getSharedPtr()));
-  entries.push_back(std::make_shared<OpenFileState>(0, StdoutFile::getSharedPtr()));
-  entries.push_back(std::make_shared<OpenFileState>(0, StderrFile::getSharedPtr()));
+  entries.push_back(std::make_shared<OpenFileState>(0, StdinFile::getSingleton()));
+  entries.push_back(std::make_shared<OpenFileState>(0, StdoutFile::getSingleton()));
+  entries.push_back(std::make_shared<OpenFileState>(0, StderrFile::getSingleton()));
 }
 
 // Initialize default directories including dev/stdin, dev/stdout, dev/stderr.
 // Refers to same std streams in the open file table.
-RootDirectory::RootDirectory() {
-  auto devDirectory = std::make_shared<Directory>();
-  entries["dev"] = devDirectory;
+std::shared_ptr<Directory> getRootDirectory() {
+  static const std::shared_ptr<Directory> rootDirectory = [] {
+    std::shared_ptr<Directory> rootDirectory = std::make_shared<Directory>();
+    auto devDirectory = std::make_shared<Directory>();
+    rootDirectory->get().setEntry("dev", devDirectory);
 
-  devDirectory->get().setEntry("stdin", StdinFile::getSharedPtr());
-  devDirectory->get().setEntry("stdout", StdoutFile::getSharedPtr());
-  devDirectory->get().setEntry("stderr", StderrFile::getSharedPtr());
+    auto devDirectoryFile = devDirectory->get();
+
+    devDirectoryFile.setEntry("stdin", StdinFile::getSingleton());
+    devDirectoryFile.setEntry("stdout", StdoutFile::getSingleton());
+    devDirectoryFile.setEntry("stderr", StderrFile::getSingleton());
+
+    return rootDirectory;
+  }();
+
+  return rootDirectory;
 }
 
 FileTable::Handle FileTable::get() {
@@ -137,5 +146,22 @@ FileTable::Handle::Entry::operator bool() const {
   }
 
   return fileTableHandle.fileTable.entries[fd] != nullptr;
+}
+
+__wasi_fd_t FileTable::Handle::add(std::shared_ptr<OpenFileState> openFileState) {
+  // Adds given OpenFileState to FileTable entries. Returns fd (insertion index in entries).
+  // If no free space is found, currentOpenFile will be appended to the back of the entries.
+  for (__wasi_fd_t i = 0; i < fileTable.entries.size(); i++) {
+    if (!fileTable.entries[i]) {
+      // Free open file entry.
+      fileTable.entries[i] = openFileState;
+      return i;
+    }
+  }
+
+  // Could not find an empty open file table entry.
+  fileTable.entries.push_back(openFileState);
+
+  return fileTable.entries.size() - 1;
 }
 } // namespace wasmfs

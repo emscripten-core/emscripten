@@ -22,7 +22,7 @@ extern "C" {
 using namespace wasmfs;
 
 long __syscall_dup2(long oldfd, long newfd) {
-  auto fileTable = [] { return FileTable::get(); }();
+  auto fileTable = FileTable::get();
 
   auto oldOpenFile = fileTable[oldfd];
   // If oldfd is not a valid file descriptor, then the call fails,
@@ -53,34 +53,32 @@ long __syscall_dup(long fd) {
     return -(EBADF);
   }
 
-  // Adds given OpenFileState to FileTable entries. Returns fd (insertion index in entries).
-  // If no free space is found, currentOpenFile will be appended to the back of the entries.
-  for (__wasi_fd_t i = 0;; i++) {
-    if (!fileTable[i]) {
-      // Free open file entry.
-      fileTable[i] = currentOpenFile;
-      return i;
-    }
-  }
-
-  return -(EBADF);
+  return fileTable.add(currentOpenFile);
 }
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
-  auto fileTable = [] { return FileTable::get(); }();
-  if (!fileTable[fd]) {
+  auto currentOpenFile = [&fd] {
+    auto fileTable = FileTable::get();
+    return fileTable[fd];
+  }();
+
+  if (!currentOpenFile) {
     return __WASI_ERRNO_BADF;
   }
 
-  auto file = fileTable[fd]->get().getFile()->get();
+  if (!currentOpenFile->get().getFile()->is<DataFile>()) {
+    // TODO: Reading a directory file
+    return __WASI_ERRNO_ISDIR;
+  }
+  auto file = currentOpenFile->get().getFile()->cast<DataFile>()->get();
 
   __wasi_size_t num = 0;
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
     __wasi_size_t len = iovs[i].buf_len;
 
-    static_cast<DataFile::Handle&>(file).write(buf, len);
+    file.write(buf, len);
     num += len;
   }
   *nwritten = num;
@@ -95,7 +93,7 @@ __wasi_errno_t __wasi_fd_seek(
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
-  auto fileTable = [] { return FileTable::get(); }();
+  auto fileTable = FileTable::get();
 
   // Remove openFileState entry from fileTable.
   fileTable[fd] = nullptr;
@@ -105,18 +103,26 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 
 __wasi_errno_t __wasi_fd_read(
   __wasi_fd_t fd, const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) {
-  auto fileTable = FileTable::get();
-  if (!fileTable[fd]) {
+  auto currentOpenFile = [&fd] {
+    auto fileTable = FileTable::get();
+    return fileTable[fd];
+  }();
+
+  if (!currentOpenFile) {
     return __WASI_ERRNO_BADF;
   }
 
-  auto file = fileTable[fd]->get().getFile()->get();
+  if (!currentOpenFile->get().getFile()->is<DataFile>()) {
+    // TODO: Reading a directory file
+    return __WASI_ERRNO_ISDIR;
+  }
+  auto file = currentOpenFile->get().getFile()->cast<DataFile>()->get();
   __wasi_size_t num = 0;
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
     __wasi_size_t len = iovs[i].buf_len;
 
-    static_cast<DataFile::Handle&>(file).read(buf, len);
+    file.read(buf, len);
     num += len;
   }
   *nread = num;
@@ -124,63 +130,55 @@ __wasi_errno_t __wasi_fd_read(
 }
 
 __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
-  // Obtain OpenFile from the open file table. Release fileTable lock using lambda function.
-  auto fileTable = [] { return FileTable::get(); }();
-
   int accessMode = (flags & O_ACCMODE);
   bool canWrite = false;
 
-  switch (accessMode) {
-    case O_RDONLY:
-      canWrite = false;
-    case O_WRONLY:
-      canWrite = true;
-    case O_RDWR:
-      canWrite = true;
-    default:
-      canWrite = false;
+  if (accessMode == O_WRONLY || accessMode == O_RDWR) {
+    canWrite = true;
   }
 
   std::string interim = "";
   std::vector<std::string> pathParts;
 
   auto newPathName = (const char*)pathname;
-  for (int i = 0; i < strlen(newPathName); i++) {
+
+  for (int i = 0; newPathName[i] != '\0'; i++) {
     if (newPathName[i] != '/') {
       interim += newPathName[i];
     } else {
-      pathParts.push_back(interim);
+      // Avoid adding empty string
+      if (i > 0) {
+        pathParts.push_back(interim);
+      }
       interim = "";
     }
   }
+  // Case where there is no / at the end of the string.
+  pathParts.push_back(interim);
 
-  auto fileFromPath = RootDirectory::getSharedPtr();
+  std::shared_ptr<File> curr = getRootDirectory();
   for (int i = 0; i < pathParts.size(); i++) {
 
     // If it is a file and we have not reached the end of the path, exit
-    if (fileFromPath->is<DataFile>() && i != pathParts.size() - 1) {
+    if (curr->is<DataFile>() && i != pathParts.size() - 1) {
       return -(EBADF);
     }
 
     // Find the next entry in the current directory entry
-    fileFromPath->get().printKeys();
-    fileFromPath = std::static_pointer_cast<Directory>(fileFromPath->get().getEntry(pathParts[i]));
+#ifdef WASMFS_DEBUG
+    curr->get().printKeys();
+#endif
+    curr = curr->cast<Directory>()->get().getEntry(pathParts[i]);
 
-    // debugging. TODO: remove later.
+#ifdef WASMFS_DEBUG
     std::vector<char> temp(pathParts[i].begin(), pathParts[i].end());
     emscripten_console_log(&temp[0]);
+#endif
   }
-  auto currentOpenFile =
-    std::make_shared<OpenFileState>(0, std::static_pointer_cast<File>(fileFromPath));
+  auto currentOpenFile = std::make_shared<OpenFileState>(0, curr);
 
-  for (__wasi_fd_t i = 0;; i++) {
-    if (!fileTable[i]) {
-      // Free open file entry.
-      fileTable[i] = currentOpenFile;
-      return i;
-    }
-  }
+  auto fileTable = FileTable::get();
 
-  return -(EBADF);
+  return fileTable.add(currentOpenFile);
 }
 }
