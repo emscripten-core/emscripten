@@ -74,7 +74,7 @@ public:
   virtual ~DataFile() = default;
   class Handle : public File::Handle {
 
-    DataFile& getFile() { return *(file.get()->cast<DataFile>()); }
+    DataFile& getFile() { return *file.get()->cast<DataFile>(); }
 
   public:
     Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
@@ -97,21 +97,21 @@ public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
   Directory() : File(File::DirectoryKind) {}
   class Handle : public File::Handle {
-    Directory& getFile() { return *(file.get()->cast<Directory>()); }
+    Directory& getDir() { return *file.get()->cast<Directory>(); }
 
   public:
     Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
 
     std::shared_ptr<File> getEntry(std::string pathName) {
-      if (getFile().entries.find(pathName) == getFile().entries.end()) {
+      auto it = getDir().entries.find(pathName);
+      if (it == getDir().entries.end()) {
         return nullptr;
       } else {
-        return getFile().entries[pathName];
+        return it->second;
       }
     }
-
     void setEntry(std::string pathName, std::shared_ptr<File> inserted) {
-      getFile().entries[pathName] = inserted;
+      getDir().entries[pathName] = inserted;
     }
 
 #ifdef WASMFS_DEBUG

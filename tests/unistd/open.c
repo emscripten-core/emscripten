@@ -21,7 +21,10 @@ int main() {
   close(fd);
 
   // Attempt to write to a non-existent fd.
-  dprintf(fd, "FAILURE\n");
+  errno = 0;
+  dprintf(fd, "SHOULD NOT PRINT\n");
+  assert(errno == EBADF);
+  printf("Errno: %s\n", strerror(errno));
 
   // Attempt to open and then read/write to a directory
   int fd2 = open("dev", O_RDONLY);

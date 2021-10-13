@@ -143,7 +143,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   std::vector<std::string> pathParts;
 
   auto newPathName = (const char*)pathname;
-
+  // TODO: Support relative paths
   for (int i = 0; newPathName[i] != '\0'; i++) {
     if (newPathName[i] != '/') {
       interim += newPathName[i];

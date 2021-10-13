@@ -97,11 +97,11 @@ std::shared_ptr<Directory> getRootDirectory() {
     auto devDirectory = std::make_shared<Directory>();
     rootDirectory->get().setEntry("dev", devDirectory);
 
-    auto devDirectoryFile = devDirectory->get();
+    auto dir = devDirectory->get();
 
-    devDirectoryFile.setEntry("stdin", StdinFile::getSingleton());
-    devDirectoryFile.setEntry("stdout", StdoutFile::getSingleton());
-    devDirectoryFile.setEntry("stderr", StderrFile::getSingleton());
+    dir.setEntry("stdin", StdinFile::getSingleton());
+    dir.setEntry("stdout", StdoutFile::getSingleton());
+    dir.setEntry("stderr", StderrFile::getSingleton());
 
     return rootDirectory;
   }();
@@ -150,6 +150,7 @@ FileTable::Handle::Entry::operator bool() const {
 
 __wasi_fd_t FileTable::Handle::add(std::shared_ptr<OpenFileState> openFileState) {
   Handle& self = *this;
+  // TODO: add freelist to avoid linear lookup time.
   for (__wasi_fd_t i = 0;; i++) {
     if (!self[i]) {
       // Free open file entry.
