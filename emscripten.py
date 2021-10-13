@@ -509,6 +509,8 @@ def add_standard_wasm_imports(send_items_map):
 
   if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
+    if settings.EXCEPTION_HANDLING:
+      send_items_map['__cpp_exception'] = '___cpp_exception'
 
   if settings.MAYBE_WASM2JS or settings.AUTODEBUG or settings.LINKABLE:
     # legalization of i64 support code may require these in some modes

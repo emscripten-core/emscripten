@@ -2354,6 +2354,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.WASMFS:
     settings.LINK_AS_CXX = True
 
+  if settings.RELOCATABLE and settings.EXCEPTION_HANDLING:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__cpp_exception')
+
   return target, wasm_target
 
 
