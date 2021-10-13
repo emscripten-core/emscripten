@@ -149,8 +149,6 @@ FileTable::Handle::Entry::operator bool() const {
 }
 
 __wasi_fd_t FileTable::Handle::add(std::shared_ptr<OpenFileState> openFileState) {
-  // Adds given OpenFileState to FileTable entries. Returns fd (insertion index in entries).
-  // If no free space is found, currentOpenFile will be appended to the back of the entries.
   for (__wasi_fd_t i = 0; i < fileTable.entries.size(); i++) {
     if (!fileTable.entries[i]) {
       // Free open file entry.
