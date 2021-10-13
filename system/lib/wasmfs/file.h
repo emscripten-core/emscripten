@@ -63,16 +63,11 @@ public:
 
   public:
     Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
-    auto usedBytes() -> size_t& { return file->usedBytes; }
-    auto usedBytes() const -> const size_t& { return file->usedBytes; }
-    auto mode() -> uint32_t& { return file->mode; }
-    auto mode() const -> const uint32_t& { return file->mode; }
-    auto ctime() -> time_t& { return file->ctime; }
-    auto ctime() const -> const time_t& { return file->ctime; }
-    auto mtime() -> time_t& { return file->mtime; }
-    auto mtime() const -> const time_t& { return file->mtime; }
-    auto atime() -> time_t& { return file->atime; }
-    auto atime() const -> const time_t& { return file->atime; }
+    size_t& size() { return file->size; }
+    uint32_t& mode() { return file->mode; }
+    time_t& createTime() { return file->createTime; }
+    time_t& modifyTime() { return file->modifyTime; }
+    time_t& accessTime() { return file->accessTime; }
   };
 
   Handle get() { return Handle(shared_from_this()); }
@@ -83,13 +78,13 @@ protected:
   std::mutex mutex;
 
 private:
-  size_t usedBytes = 0;
+  size_t size = 0;
 
-  uint32_t mode; // r/w/x modes
+  uint32_t mode = 0; // r/w/x modes
 
-  time_t ctime; // Time when the inode was last modified
-  time_t mtime; // Time when the content was last modified
-  time_t atime; // Time when the content was last accessed
+  time_t createTime = 0; // Time when the file node was last modified
+  time_t modifyTime = 0; // Time when the file content was last modified
+  time_t accessTime = 0; // Time when the content was last accessed
 
   FileKind kind;
 };

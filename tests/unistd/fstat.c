@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 int main() {
+  // Test opening a file and calling fstat.
   struct stat s;
   int fd = open("dev/stdout/", O_RDONLY);
   fstat(fd, &s);
@@ -20,13 +21,18 @@ int main() {
 
   printf("%i\n", s.st_dev);
 
+  assert(s.st_size == 0);
   assert(s.st_dev);
   assert(s.st_ino == 3);
   assert(s.st_nlink);
-  assert(s.st_rdev);
-  assert(s.st_blksize == 4096);
   assert(s.st_uid == 0);
   assert(s.st_gid == 0);
+  assert(s.st_rdev);
+  assert(s.st_blocks == 0);
+  assert(s.st_blksize == 4096);
+  assert(s.st_atim.tv_sec == 0);
+  assert(s.st_mtim.tv_sec == 0);
+  assert(s.st_ctim.tv_sec == 0);
 
   return 0;
 }

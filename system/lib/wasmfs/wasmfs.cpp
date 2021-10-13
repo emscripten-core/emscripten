@@ -106,37 +106,40 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 
 long __syscall_fstat64(long fd, long buf) {
   // Release FileTable lock after accessing desired open file.
-  auto currentOpenFile = [&fd] {
+  std::shared_ptr<File> file = [&] {
     auto fileTable = FileTable::get();
-    return fileTable[fd]->get();
+    return fileTable[fd]->get().getFile();
   }();
 
-  auto file = currentOpenFile.getFile();
-  auto fileHandle = file->get();
-
   struct stat* buffer = (struct stat*)buf;
+
+  auto fileInfo = file->get();
+
+  if (file->is<Directory>()) {
+    buffer->st_size = 4096;
+  } else if (file->is<DataFile>()) {
+    buffer->st_size = fileInfo.size();
+  } else { // TODO: add size of symlinks
+    buffer->st_size = 0;
+  }
+
+  // ATTN: hard-coded constant values below match native system compatibility.
   buffer->st_dev = 1; // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
-  buffer->st_mode = fileHandle.mode();
+  buffer->st_mode = fileInfo.mode();
   buffer->st_ino = fd;
   // The number of hard links is 1 since they are unsupported.
   buffer->st_nlink = 1;
   buffer->st_uid = 0;
   buffer->st_gid = 0;
   buffer->st_rdev = 1; // Device ID (if special file) No meaning right now for Emscripten.
-  if (file->is<Directory>()) {
-    buffer->st_size = 4096;
-  } else if (file->is<DataFile>()) {
-    buffer->st_size = fileHandle.usedBytes();
-  } else { // TODO: add size of symlinks
-    buffer->st_size = 0;
-  }
+
   // The syscall docs state this is hardcoded to # of 512 byte blocks.
   buffer->st_blocks = (buffer->st_size + 511) / 512;
   buffer->st_blksize = 4096; // Specifies the preferred blocksize for efficient disk I/O.
-  buffer->st_atim.tv_sec = fileHandle.atime();
-  buffer->st_mtim.tv_sec = fileHandle.mtime();
-  buffer->st_ctim.tv_sec = fileHandle.ctime();
+  buffer->st_atim.tv_sec = fileInfo.accessTime();
+  buffer->st_mtim.tv_sec = fileInfo.modifyTime();
+  buffer->st_ctim.tv_sec = fileInfo.createTime();
 
   return __WASI_ERRNO_SUCCESS;
 }
