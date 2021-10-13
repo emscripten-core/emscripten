@@ -24,7 +24,9 @@ int main() {
   assert(s.st_ino == 3);
   assert(s.st_nlink);
   assert(s.st_rdev);
-  assert(s.st_blksize == 1024 * 1024);
+  assert(s.st_blksize == 4096);
+  assert(s.st_uid == 0);
+  assert(s.st_gid == 0);
 
   return 0;
 }

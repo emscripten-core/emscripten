@@ -63,32 +63,16 @@ public:
 
   public:
     Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
-
-    void getStat(struct stat* buf) {
-      buf->st_dev = 1; // ID of device containing file: Hardcode 1 for now, no meaning at the
-      // moment for Emscripten.
-      buf->st_mode = file->mode;
-      // The number of hard links is 1 since they are unsupported.
-      buf->st_nlink = 1;
-      buf->st_uid = file->uid;
-      buf->st_gid = file->gid;
-      buf->st_rdev = 1; // Device ID (if special file) No meaning right now for Emscripten.
-      if (file->is<Directory>()) {
-        buf->st_size = 4096;
-      } else if (file->is<DataFile>()) {
-        buf->st_size = file->usedBytes;
-      } else { // TODO: add size of symlinks
-        buf->st_size = 0;
-      }
-      // The syscall docs state this is hardcoded to # of 512 byte blocks.
-      buf->st_blocks = (buf->st_size + 511) / 512;
-      buf->st_blksize = 1024 * 1024; // Specifies the preferred blocksize for efficient disk I/O.
-      buf->st_atim.tv_sec = file->atime;
-      buf->st_mtim.tv_sec = file->mtime;
-      buf->st_ctim.tv_sec = file->ctime;
-      // The syscall docs state this is hardcoded to # of 512 byte blocks.
-      buf->st_blocks = (buf->st_size + 511) / 512;
-    }
+    auto usedBytes() -> size_t& { return file->usedBytes; }
+    auto usedBytes() const -> const size_t& { return file->usedBytes; }
+    auto mode() -> uint32_t& { return file->mode; }
+    auto mode() const -> const uint32_t& { return file->mode; }
+    auto ctime() -> time_t& { return file->ctime; }
+    auto ctime() const -> const time_t& { return file->ctime; }
+    auto mtime() -> time_t& { return file->mtime; }
+    auto mtime() const -> const time_t& { return file->mtime; }
+    auto atime() -> time_t& { return file->atime; }
+    auto atime() const -> const time_t& { return file->atime; }
   };
 
   Handle get() { return Handle(shared_from_this()); }
@@ -99,10 +83,8 @@ protected:
   std::mutex mutex;
 
 private:
-  size_t usedBytes;
+  size_t usedBytes = 0;
 
-  uint32_t uid;  // User ID of the owner
-  uint32_t gid;  // Group ID of the owning group
   uint32_t mode; // r/w/x modes
 
   time_t ctime; // Time when the inode was last modified
