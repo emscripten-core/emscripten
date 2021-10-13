@@ -16,7 +16,6 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
-
 extern "C" {
 
 using namespace wasmfs;
@@ -67,18 +66,19 @@ __wasi_errno_t __wasi_fd_write(
     return __WASI_ERRNO_BADF;
   }
 
-  if (!currentOpenFile->get().getFile()->is<DataFile>()) {
-    // TODO: Reading a directory file
+  auto file = currentOpenFile->get().getFile()->dynCast<DataFile>();
+
+  // If file is nullptr, then the file was not a DataFile.
+  if (!file) {
     return __WASI_ERRNO_ISDIR;
   }
-  auto file = currentOpenFile->get().getFile()->cast<DataFile>()->get();
 
   __wasi_size_t num = 0;
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
     __wasi_size_t len = iovs[i].buf_len;
 
-    file.write(buf, len);
+    file->get().write(buf, len);
     num += len;
   }
   *nwritten = num;
@@ -112,17 +112,19 @@ __wasi_errno_t __wasi_fd_read(
     return __WASI_ERRNO_BADF;
   }
 
-  if (!currentOpenFile->get().getFile()->is<DataFile>()) {
-    // TODO: Reading a directory file
+  auto file = currentOpenFile->get().getFile()->dynCast<DataFile>();
+
+  // If file is nullptr, then the file was not a DataFile.
+  if (!file) {
     return __WASI_ERRNO_ISDIR;
   }
-  auto file = currentOpenFile->get().getFile()->cast<DataFile>()->get();
+
   __wasi_size_t num = 0;
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
     __wasi_size_t len = iovs[i].buf_len;
 
-    file.read(buf, len);
+    file->get().read(buf, len);
     num += len;
   }
   *nread = num;
@@ -157,18 +159,21 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   pathParts.push_back(interim);
 
   std::shared_ptr<File> curr = getRootDirectory();
-  for (int i = 0; i < pathParts.size(); i++) {
+  for (int i = 0; i < pathParts.size() - 1; i++) {
 
-    // If it is a file and we have not reached the end of the path, exit
-    if (curr->is<DataFile>() && i != pathParts.size() - 1) {
+    auto file = curr->dynCast<Directory>();
+
+    // If file is nullptr, then the file was not a Directory.
+    // TODO: Change this to accommodate symlinks
+    if (!file) {
       return -(EBADF);
     }
 
     // Find the next entry in the current directory entry
 #ifdef WASMFS_DEBUG
-    curr->get().printKeys();
+    file->get().printKeys();
 #endif
-    curr = curr->cast<Directory>()->get().getEntry(pathParts[i]);
+    curr = file->get().getEntry(pathParts[i]);
 
 #ifdef WASMFS_DEBUG
     std::vector<char> temp(pathParts[i].begin(), pathParts[i].end());

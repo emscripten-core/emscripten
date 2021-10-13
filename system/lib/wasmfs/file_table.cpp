@@ -149,17 +149,14 @@ FileTable::Handle::Entry::operator bool() const {
 }
 
 __wasi_fd_t FileTable::Handle::add(std::shared_ptr<OpenFileState> openFileState) {
-  for (__wasi_fd_t i = 0; i < fileTable.entries.size(); i++) {
-    if (!fileTable.entries[i]) {
+  Handle& self = *this;
+  for (__wasi_fd_t i = 0;; i++) {
+    if (!self[i]) {
       // Free open file entry.
-      fileTable.entries[i] = openFileState;
+      self[i] = openFileState;
       return i;
     }
   }
-
-  // Could not find an empty open file table entry.
-  fileTable.entries.push_back(openFileState);
-
-  return fileTable.entries.size() - 1;
+  return -(EBADF);
 }
 } // namespace wasmfs
