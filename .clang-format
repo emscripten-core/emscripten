@@ -11,5 +11,6 @@ BinPackArguments: false
 BinPackParameters: false
 ---
 Language: JavaScript
-DisableFormat: true
+BasedOnStyle: LLVM
+ColumnLimit: 100
 ---
