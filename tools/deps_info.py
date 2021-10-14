@@ -177,9 +177,11 @@ _deps_info = {
   'munmap': ['free'],
   'pthread_create': ['malloc', 'free', 'emscripten_main_thread_process_queued_calls'],
   'recv': ['htons'],
+  'recvmsg': ['htons'],
   'accept': ['htons'],
   'recvfrom': ['htons'],
   'send': ['ntohs', 'htons'],
+  'sendmsg': ['ntohs', 'htons'],
   # In WebAssemblyLowerEmscriptenEHSjLj pass in the LLVM backend, function calls
   # that exist in the same function with setjmp are converted to some code
   # sequence that includes invokes, malloc, free, saveSetjmp, and
