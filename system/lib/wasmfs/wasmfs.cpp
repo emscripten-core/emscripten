@@ -104,10 +104,7 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 
 long __syscall_fstat64(long fd, long buf) {
   // Release FileTable lock after accessing desired open file.
-  std::shared_ptr<File> file = [&] {
-    auto fileTable = FileTable::get();
-    return fileTable[fd]->get().getFile();
-  }();
+  std::shared_ptr<File> file = FileTable::get()[fd]->get().getFile();
 
   struct stat* buffer = (struct stat*)buf;
 
@@ -121,7 +118,7 @@ long __syscall_fstat64(long fd, long buf) {
     buffer->st_size = 0;
   }
 
-  // ATTN: hard-coded constant values below match native system compatibility.
+  // ATTN: hard-coded constant values are copied from the existing JS file system.
   buffer->st_dev = 1; // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
   buffer->st_mode = fileInfo.mode();
