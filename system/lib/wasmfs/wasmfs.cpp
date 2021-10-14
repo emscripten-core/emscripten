@@ -119,6 +119,7 @@ long __syscall_fstat64(long fd, long buf) {
   }
 
   // ATTN: hard-coded constant values are copied from the existing JS file system.
+  // Specific values were chosen to match existing library_fs.js values.
   buffer->st_dev = 1; // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
   buffer->st_mode = fileInfo.mode();
