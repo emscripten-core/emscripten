@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <mutex>
 #include <stdlib.h>
+#include <string.h>
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
@@ -57,10 +58,7 @@ long __syscall_dup(long fd) {
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
-  std::shared_ptr<OpenFileState> openFile = [&] {
-    auto fileTable = FileTable::get();
-    return fileTable[fd];
-  }();
+  std::shared_ptr<OpenFileState> openFile = FileTable::get()[fd];
 
   if (!openFile) {
     return __WASI_ERRNO_BADF;
@@ -103,10 +101,7 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 
 __wasi_errno_t __wasi_fd_read(
   __wasi_fd_t fd, const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) {
-  std::shared_ptr<OpenFileState> openFile = [&] {
-    auto fileTable = FileTable::get();
-    return fileTable[fd];
-  }();
+  std::shared_ptr<OpenFileState> openFile = FileTable::get()[fd];
 
   if (!openFile) {
     return __WASI_ERRNO_BADF;
@@ -139,24 +134,19 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     canWrite = true;
   }
 
-  std::string interim = "";
   std::vector<std::string> pathParts;
 
-  auto newPathName = (const char*)pathname;
-  // TODO: Support relative paths
-  for (int i = 0; newPathName[i] != '\0'; i++) {
-    if (newPathName[i] != '/') {
-      interim += newPathName[i];
-    } else {
-      // Avoid adding empty string
-      if (i > 0) {
-        pathParts.push_back(interim);
-      }
-      interim = "";
-    }
+  auto newPathName = (char*)pathname;
+
+  // TODO: Support relative paths. i.e. specify cwd if path is relative.
+  // TODO: Other path parsing edge cases.
+  char* current;
+
+  current = strtok(newPathName, "/\n");
+  while (current != NULL) {
+    pathParts.push_back(current);
+    current = strtok(NULL, "/\n");
   }
-  // Case where there is no / at the end of the string.
-  pathParts.push_back(interim);
 
   std::shared_ptr<File> curr = getRootDirectory();
   for (int i = 0; i < pathParts.size(); i++) {
@@ -165,8 +155,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 
     // If file is nullptr, then the file was not a Directory.
     // TODO: Change this to accommodate symlinks
-    if (!directory && i < pathParts.size() - 1) {
-      return -(EBADF);
+    if (!directory) {
+      return -(ENOENT);
     }
 
     // Find the next entry in the current directory entry
@@ -177,7 +167,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 
     // Requested entry (file or directory
     if (!curr) {
-      return -(EINVAL);
+      return -(ENOENT);
     }
 
 #ifdef WASMFS_DEBUG
@@ -185,10 +175,9 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     emscripten_console_log(&temp[0]);
 #endif
   }
+
   auto openFile = std::make_shared<OpenFileState>(0, curr);
 
-  auto fileTable = FileTable::get();
-
-  return fileTable.add(openFile);
+  return FileTable::get().add(openFile);
 }
 }

@@ -15,12 +15,21 @@
 // FIXME: Merge with other existing close and open tests.
 
 int main() {
+  // Test writing to a file with a trailing slash.
   int fd = open("/dev/stdout/", O_RDONLY);
 
-  dprintf(fd, "WORKING\n");
+  dprintf(fd, "WORKING WITH TRAILING BACKSLASH\n");
 
   // Close open file
   close(fd);
+
+  // Test writing to a file with no trailing backslash.
+  int fd2 = open("/dev/stdout", O_RDONLY);
+
+  dprintf(fd2, "WORKING WITHOUT TRAILING BACKSLASH\n");
+
+  // Close open file
+  close(fd2);
 
   // Attempt to write to a non-existent fd.
   errno = 0;
@@ -29,27 +38,40 @@ int main() {
   printf("Errno: %s\n", strerror(errno));
 
   // Attempt to open and then read/write to a directory.
-  int fd2 = open("/dev", O_RDONLY);
+  int fd3 = open("/dev", O_RDONLY);
 
   const char* msg = "Test\n";
 
   errno = 0;
-  int result = write(fd2, msg, strlen(msg));
+  write(fd3, msg, strlen(msg));
   assert(errno == EISDIR);
   printf("Errno: %s\n", strerror(errno));
 
   char buf[100];
 
   errno = 0;
-  int bytes = read(fd2, buf, sizeof(buf));
+  read(fd3, buf, sizeof(buf));
   assert(errno == EISDIR);
   printf("Errno: %s\n", strerror(errno));
 
   errno = 0;
   // Attempt to open a non-existent file path.
-  int fd3 = open("/nonsense", O_RDONLY);
-  assert(errno == EINVAL);
+  int fd4 = open("/foo", O_RDONLY);
+  assert(errno == ENOENT);
   printf("Errno: %s\n", strerror(errno));
+
+  errno = 0;
+  // Attempt to open a file path with a file intermediary.
+  int fd5 = open("/dev/stdout/foo", O_RDONLY);
+  assert(errno == ENOENT);
+  printf("Errno: %s\n", strerror(errno));
+
+  errno = 0;
+  // Attempt to open and write to the root directory.
+  int fd6 = open("/", O_RDONLY);
+  write(fd6, msg, strlen(msg));
+  printf("Errno: %s\n", strerror(errno));
+  assert(errno == EISDIR);
 
   return 0;
 }
