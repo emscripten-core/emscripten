@@ -12,6 +12,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+// FIXME: Individual test to verify fstat in isolation. May get merged with others later.
+
 int main() {
   // Test opening a file and calling fstat.
   struct stat file;
