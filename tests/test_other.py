@@ -703,12 +703,12 @@ f.close()
     cmake_dir = test_file('cmake/emscripten_system_processor')
     # The default CMAKE_SYSTEM_PROCESSOR is x86.
     out = self.run_process([EMCMAKE, 'cmake', cmake_dir], stdout=PIPE).stdout
-    self.assertContained('CMAKE_SYSTEM_PROCESSOR is x86', out);
+    self.assertContained('CMAKE_SYSTEM_PROCESSOR is x86', out)
 
     # It can be overridden by setting EMSCRIPTEN_SYSTEM_PROCESSOR.
     out = self.run_process(
       [EMCMAKE, 'cmake', cmake_dir, '-DEMSCRIPTEN_SYSTEM_PROCESSOR=arm'], stdout=PIPE).stdout
-    self.assertContained('CMAKE_SYSTEM_PROCESSOR is arm', out);
+    self.assertContained('CMAKE_SYSTEM_PROCESSOR is arm', out)
 
   def test_cmake_find_stuff(self):
     # Ensure that zlib exists in the sysroot
