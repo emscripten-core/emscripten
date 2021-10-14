@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 2.0.32
 ------
+- Internal-only library functions can now be marked as `__internal: true` in JS
+  system libraries.  Such symbols should not be used by external libraries and
+  are subject to change.  As of now we generate warning when external libraries
+  depend on the these symbols.
 - Stub functions from `library_syscall.js` and `library.js` were replaced with
   native code stubs (See `system/lib/libc/emscripten_syscall_stubs.c`).  This
   should be better for wasm module portability as well as code size.  As part

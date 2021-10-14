@@ -96,6 +96,11 @@ WebAssembly.Table = function(tableDescriptor) {};
 WebAssembly.Global = function(globalDescriptor) {};
 /**
  * @constructor
+ * @param {TagDescriptotr} tagDescriptor
+ */
+WebAssembly.Tag = function(tagDescriptor) {};
+/**
+ * @constructor
  * @extends {Error}
  */
 WebAssembly.CompileError = function() {};

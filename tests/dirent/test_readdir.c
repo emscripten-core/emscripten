@@ -28,6 +28,9 @@ static void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   int err;
+  err = mkdir("testtmp", 0777);  // can't call it tmp, that already exists
+  assert(!err);
+  chdir("testtmp");
   err = mkdir("nocanread", 0111);
   assert(!err);
   err = mkdir("foobar", 0777);
@@ -39,6 +42,8 @@ void cleanup() {
   rmdir("nocanread");
   unlink("foobar/file.txt");
   rmdir("foobar");
+  chdir("..");
+  rmdir("testtmp");
 }
 
 void test() {
@@ -54,9 +59,12 @@ void test() {
   dir = opendir("noexist");
   assert(!dir);
   assert(errno == ENOENT);
+// NODERAWFS tests run as root, and the root user can opendir any directory
+#ifndef NODERAWFS
   dir = opendir("nocanread");
   assert(!dir);
   assert(errno == EACCES);
+#endif
   dir = opendir("foobar/file.txt");
   assert(!dir);
   assert(errno == ENOTDIR);

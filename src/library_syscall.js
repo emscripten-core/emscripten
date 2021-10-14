@@ -863,11 +863,16 @@ var SyscallsLibrary = {
       var id;
       var type;
       var name = stream.getdents[idx];
-      if (name[0] === '.') {
-        id = 1;
+      if (name === '.') {
+        id = stream.id;
         type = 4; // DT_DIR
-      } else {
-        var child = FS.lookupNode(stream.node, name);
+      }
+      else if (name === '..') {
+        id = FS.lookupPath(stream.path, { parent: true }).id;
+        type = 4; // DT_DIR
+      }
+      else {
+        var child = FS.lookupNode(stream, name);
         id = child.id;
         type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
                FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.

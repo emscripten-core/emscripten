@@ -179,56 +179,77 @@ var LibraryManager = {
     }
 
     // Deduplicate libraries to avoid processing any library file multiple times
-    libraries = libraries.filter(function(item, pos) {
-      return libraries.indexOf(item) == pos;
-    });
+    libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
 
     // Save the list for has() queries later.
     this.libraries = libraries;
 
     for (var filename of libraries) {
-      var src = read(filename);
+      var isUserLibrary = nodePath.isAbsolute(filename);
       if (VERBOSE) {
-        printErr('processing: ' + filename);
+        if (isUserLibrary) {
+          printErr('processing user library: ' + filename);
+        } else {
+          printErr('processing system library: ' + filename);
+        }
       }
+      var src = read(filename);
+      var origLibrary = undefined;
       var processed = undefined;
+      // When we parse user libraries also set `__user` attribute
+      // on each element so that we can distinguish them later.
+      if (isUserLibrary) {
+        origLibrary = this.library
+        this.library = new Proxy(this.library, {
+          set: (target, prop, value) => {
+            target[prop] = value;
+            if (!isJsLibraryConfigIdentifier(prop)) {
+              target[prop + '__user'] = true;
+            }
+          }
+        });
+      }
       try {
         processed = processMacros(preprocess(src, filename));
         eval(processed);
       } catch(e) {
-        var details = [e, e.lineNumber ? 'line number: ' + e.lineNumber : ''];
+        var details = [e, e.lineNumber ? `line number: ${e.lineNumber}` : ''];
         if (VERBOSE) {
           details.push((e.stack || "").toString().replace('Object.<anonymous>', filename));
         }
         if (processed) {
-          error('failure to execute js library "' + filename + '": ' + details);
+          error(`failure to execute js library "${filename}": ${details}`);
           if (VERBOSE) {
-            error('preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n' + processed + '\n=============');
+            error(`preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n${processed}\n=============`);
           } else {
             error('use -s VERBOSE to see more details')
           }
         } else {
-          error('failure to process js library "' + filename + '": ' + details);
+          error(`failure to process js library "${filename}": ${details}`);
           if (VERBOSE) {
-            error('original source:\n=============\n' + src + '\n=============');
+            error(`original source:\n=============\n${src}\n=============`);
           } else {
             error('use -s VERBOSE to see more details')
           }
         }
         throw e;
+      } finally {
+        if (origLibrary) {
+          this.library = origLibrary;
+        }
       }
     }
 
     // apply synonyms. these are typically not speed-sensitive, and doing it
     // this way makes it possible to not include hacks in the compiler
     // (and makes it simpler to switch between SDL versions, fastcomp and non-fastcomp, etc.).
-    var lib = LibraryManager.library;
+    var lib = this.library;
     libloop: for (var x in lib) {
       if (isJsLibraryConfigIdentifier(x)) {
         var index = x.lastIndexOf('__');
         var basename = x.slice(0, index);
         if (!(basename in lib)) {
-          error('Missing library element `' + basename + '` for library config `' + x + '`');
+          error(`Missing library element '${basename}' for library config '${x}'`);
         }
         continue;
       }
@@ -246,7 +267,7 @@ var LibraryManager = {
           // implemented.
           function testStringType(sig) {
             if (typeof lib[sig] !== 'undefined' && typeof typeof lib[sig] !== 'string') {
-              error(sig + ' should be a string! (was ' + typeof lib[sig]);
+              error(`${sig} should be a string! (was ${typeof lib[sig]})`);
             }
           }
           var aliasSig = x + '__sig';
@@ -254,12 +275,12 @@ var LibraryManager = {
           testStringType(aliasSig);
           testStringType(targetSig);
           if (typeof lib[aliasSig] === 'string' && typeof lib[targetSig] === 'string' && lib[aliasSig] != lib[targetSig]) {
-            error(aliasSig + ' (' + lib[aliasSig] + ')  differs from ' + targetSig + ' (' + lib[targetSig] + ')');
+            error(`${aliasSig} (${lib[aliasSig]}) differs from ${targetSig} (${lib[targetSig]})`);
           }
 
           var sig = lib[aliasSig] || lib[targetSig];
           if (typeof sig !== 'string') {
-            error('Function ' + x + ' aliases to target function ' + target + ', but neither the alias or the target provide a signature. Please add a ' + targetSig + ": 'vifj...' annotation or a " + aliasSig + ": 'vifj...' annotation to describe the type of function forwarding that is needed!");
+            error(`Function ${x} aliases to target function ${target}, but neither the alias or the target provide a signature. Please add a ${targetSig}: 'vifj...' annotation or a ${aliasSig}: 'vifj...' annotation to describe the type of function forwarding that is needed!`);
           }
 
           // If only one of the target or the alias specifies a sig then copy
@@ -280,7 +301,7 @@ var LibraryManager = {
           }
           var ret = sig == 'v' ? '' : 'return ';
           var args = genArgSequence(argCount).join(',');
-          lib[x] = new Function(args, ret + '_' + target + '(' + args + ');');
+          lib[x] = new Function(args, `${ret}_${target}(${args});`);
 
           if (!lib[x + '__deps']) lib[x + '__deps'] = [];
           lib[x + '__deps'].push(target);
@@ -304,8 +325,8 @@ if (!BOOTSTRAPPING_STRUCT_INFO) {
 
 // Safe way to access a C define. We check that we don't add library functions with missing defines.
 function cDefine(key) {
-	if (key in C_DEFINES) return C_DEFINES[key];
-	throw 'Missing C define ' + key + '! If you just added it to struct_info.json, you need to ./emcc --clear-cache';
+  if (key in C_DEFINES) return C_DEFINES[key];
+  throw `Missing C define ${key}! If you just added it to struct_info.json, you need to ./emcc --clear-cache`;
 }
 
 var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS);
@@ -345,7 +366,7 @@ function exportRuntime() {
       } else if (exported === 'printErr') {
         exported = 'err';
       }
-      return 'Module["' + name + '"] = ' + exported + ';';
+      return `Module["${name}"] = ${exported};`;
     }
     // do not export it. but if ASSERTIONS, emit a
     // stub with an error, so the user gets a message
@@ -359,9 +380,9 @@ function exportRuntime() {
         extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
       }
       if (!isNumber) {
-        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
+        return `if (!Object.getOwnPropertyDescriptor(Module, "${name}")) Module["${name}"] = function() { abort("'${name}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)${extra}") };`;
       } else {
-        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Object.defineProperty(Module, "' + name + '", { configurable: true, get: function() { abort("\'' + name + '\' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
+        return `if (!Object.getOwnPropertyDescriptor(Module, "${name}")) Object.defineProperty(Module, "${name}", { configurable: true, get: function() { abort("'${name}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)${extra}") } });`;
       }
     }
     return '';
@@ -474,7 +495,7 @@ function exportRuntime() {
       threadExports.push('ExitStatus');
     }
 
-    threadExports.forEach(function(x) {
+    threadExports.forEach(x => {
       EXPORTED_RUNTIME_METHODS_SET[x] = 1;
       runtimeElements.push(x);
     });
@@ -501,12 +522,12 @@ function exportRuntime() {
     // check all exported things exist, warn about typos
     for (var name in EXPORTED_RUNTIME_METHODS_SET) {
       if (!runtimeElements.includes(name) && !runtimeNumbers.includes(name)) {
-        printErr('warning: invalid item (maybe a typo?) in EXPORTED_RUNTIME_METHODS: ' + name);
+        printErr(`warning: invalid item (maybe a typo?) in EXPORTED_RUNTIME_METHODS: ${name}`);
       }
     }
   }
-  var exports = runtimeElements.map(function(name) { return maybeExport(name); });
-  exports = exports.concat(runtimeNumbers.map(function(name) { return maybeExportNumber(name); }));
-  exports = exports.filter(function(name) { return name != '' });
+  var exports = runtimeElements.map(name => maybeExport(name));
+  exports = exports.concat(runtimeNumbers.map(name => maybeExportNumber(name)));
+  exports = exports.filter(name => name != '');
   return exports.join('\n');
 }

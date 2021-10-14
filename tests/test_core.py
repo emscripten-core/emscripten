@@ -2582,9 +2582,14 @@ The current type of b is: 9
     self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
   def prep_dlfcn_main(self):
-    self.set_setting('MAIN_MODULE')
     self.set_setting('NODERAWFS')
     self.clear_setting('SIDE_MODULE')
+    # Link against the side modules but don't load them on startup.
+    self.set_setting('NO_AUTOLOAD_DYLIBS')
+    self.emcc_args.append('liblib.so')
+    # This means we can use MAIN_MODULE=2 without needing to explictly
+    # specify EXPORTED_FUNCTIONS.
+    self.set_setting('MAIN_MODULE', 2)
 
   def build_dlfcn_lib(self, filename):
     self.clear_setting('MAIN_MODULE')
@@ -4295,6 +4300,62 @@ res64 - external 64\n''', header='''
       }
     ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
 
+  @with_both_exception_handling
+  @needs_dylink
+  def test_dylink_exceptions_try_catch(self):
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      extern void side();
+      int main() {
+        try {
+          throw 3;
+        } catch (int n) {
+          printf("main: caught %d\n", n);
+        }
+        side();
+        return 0;
+      }
+    ''', side=r'''
+      #include <stdio.h>
+      void side() {
+        try {
+          throw 5.3f;
+        } catch (float f) {
+          printf("side: caught %.1f\n", f);
+        }
+      }
+      ''', expected=['main: caught 3\nside: caught 5.3\n'])
+
+  @with_both_exception_handling
+  @needs_dylink
+  def test_dylink_exceptions_try_catch_2(self):
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      extern void side_throw_int();
+      int main() {
+        try {
+          side_throw_int();
+        } catch (int n) {
+          printf("main: caught %d\n", n);
+        }
+        return 0;
+      }
+      void main_throw_float() {
+        throw 5.3f;
+      }
+    ''', side=r'''
+      #include <stdio.h>
+      extern void main_throw_float();
+      void side_throw_int() {
+        try {
+          main_throw_float();
+        } catch (float f) {
+          printf("side: caught %.1f\n", f);
+        }
+        throw 3;
+      }
+      ''', expected=['side: caught 5.3\nmain: caught 3\n'])
+
   @needs_dylink
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
   def test_dylink_hyper_dupe(self):
@@ -5045,6 +5106,7 @@ main( int argv, char ** argc ) {
     self.emcc_args += ['--embed-file', 'empty.txt']
     self.do_run(src, '3\n')
 
+  @also_with_noderawfs
   def test_readdir(self):
     self.do_run_in_out_file_test('dirent/test_readdir.c')
 

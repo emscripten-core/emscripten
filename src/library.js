@@ -3395,6 +3395,7 @@ LibraryManager.library = {
 #endif
   },
 
+  $callRuntimeCallbacks__internal: true,
   $callRuntimeCallbacks: function(callbacks) {
     while (callbacks.length > 0) {
       var callback = callbacks.shift();
@@ -3667,6 +3668,11 @@ LibraryManager.library = {
   // global, basically).
   __heap_base: '{{{ to64(HEAP_BASE) }}}',
   __heap_base__import: true,
+#if EXCEPTION_HANDLING
+  // In dynamic linking we define tags here and feed them to each module
+  __cpp_exception: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_TYPE }}}']})",
+  __cpp_exception__import: true,
+#endif
 #endif
 };
 

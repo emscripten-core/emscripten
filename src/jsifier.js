@@ -205,9 +205,13 @@ function ${name}(${args}) {
         error(`JS library directive ${ident}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
         return;
       }
+      var isUserSymbol = LibraryManager.library[ident + '__user'];
       deps.forEach((dep) => {
         if (typeof snippet === 'string' && !(dep in LibraryManager.library)) {
           warn(`missing library dependency ${dep}, make sure you are compiling with the right options (see #if in src/library*.js)`);
+        }
+        if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
+          warn(`user library symbol '${ident}' depends on internal symbol '${dep}'`)
         }
       });
       var isFunction = false;
