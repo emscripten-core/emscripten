@@ -3395,6 +3395,7 @@ LibraryManager.library = {
 #endif
   },
 
+  $callRuntimeCallbacks__internal: true,
   $callRuntimeCallbacks: function(callbacks) {
     while (callbacks.length > 0) {
       var callback = callbacks.shift();
