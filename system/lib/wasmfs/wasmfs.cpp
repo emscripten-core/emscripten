@@ -137,9 +137,9 @@ long __syscall_fstat64(long fd, long buf) {
   // The syscall docs state this is hardcoded to # of 512 byte blocks.
   buffer->st_blocks = (buffer->st_size + 511) / 512;
   buffer->st_blksize = 4096; // Specifies the preferred blocksize for efficient disk I/O.
-  buffer->st_atim.tv_sec = fileInfo.accessTime();
-  buffer->st_mtim.tv_sec = fileInfo.modifyTime();
-  buffer->st_ctim.tv_sec = fileInfo.createTime();
+  buffer->st_atim.tv_sec = fileInfo.atime();
+  buffer->st_mtim.tv_sec = fileInfo.mtime();
+  buffer->st_ctim.tv_sec = fileInfo.ctime();
 
   return __WASI_ERRNO_SUCCESS;
 }

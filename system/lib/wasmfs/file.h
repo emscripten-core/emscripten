@@ -65,9 +65,9 @@ public:
     Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
     size_t& size() { return file->size; }
     uint32_t& mode() { return file->mode; }
-    time_t& createTime() { return file->createTime; }
-    time_t& modifyTime() { return file->modifyTime; }
-    time_t& accessTime() { return file->accessTime; }
+    time_t& ctime() { return file->ctime; }
+    time_t& mtime() { return file->mtime; }
+    time_t& atime() { return file->atime; }
   };
 
   Handle get() { return Handle(shared_from_this()); }
@@ -82,9 +82,9 @@ private:
 
   uint32_t mode = 0; // r/w/x modes
 
-  time_t createTime = 0; // Time when the file node was last modified
-  time_t modifyTime = 0; // Time when the file content was last modified
-  time_t accessTime = 0; // Time when the content was last accessed
+  time_t ctime = 0; // Time when the file node was last modified
+  time_t mtime = 0; // Time when the file content was last modified
+  time_t atime = 0; // Time when the content was last accessed
 
   FileKind kind;
 };
