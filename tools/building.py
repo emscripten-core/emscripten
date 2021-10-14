@@ -934,6 +934,10 @@ def metadce(js_file, wasm_file, minify_whitespace, debug_info):
       export = asmjs_mangle(item['export'])
       if settings.EXPORT_ALL or export in required_symbols:
         item['root'] = True
+    # This is a quick workaround to prevent tags from being DCE'd for now
+    # TODO Fix metadce in Binaryen so it can correctly handle tags
+    if 'import' in item and item['import'][0] == 'env' and item['import'][1] == '___cpp_exception':
+        item['root'] = True
   # in standalone wasm, always export the memory
   if not settings.IMPORTED_MEMORY:
     graph.append({

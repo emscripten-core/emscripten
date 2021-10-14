@@ -117,7 +117,7 @@ class SecType(IntEnum):
   FUNCTION = 3
   TABLE = 4
   MEMORY = 5
-  EVENT = 13
+  TAG = 13
   GLOBAL = 6
   EXPORT = 7
   START = 8
@@ -132,7 +132,7 @@ class ExternType(IntEnum):
   TABLE = 1
   MEMORY = 2
   GLOBAL = 3
-  EVENT = 4
+  TAG = 4
 
 
 class DylinkType(IntEnum):
@@ -296,6 +296,9 @@ class Module:
       elif kind == ExternType.TABLE:
         self.readSLEB()  # table type
         self.readLimits()  # limits
+      elif kind == ExternType.TAG:
+        self.readByte()  # attribute
+        self.readULEB()  # sig
       else:
         assert False
 
