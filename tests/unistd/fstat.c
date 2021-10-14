@@ -44,12 +44,12 @@ int main() {
 
   assert(directory.st_size == 4096);
   assert(directory.st_dev);
-  assert(directory.st_ino == 3);
+  assert(directory.st_ino == 4);
   assert(directory.st_nlink);
   assert(directory.st_uid == 0);
   assert(directory.st_gid == 0);
   assert(directory.st_rdev);
-  assert(directory.st_blocks == 0);
+  assert(directory.st_blocks == 8);
   assert(directory.st_blksize == 4096);
   assert(directory.st_atim.tv_sec == 0);
   assert(directory.st_mtim.tv_sec == 0);
