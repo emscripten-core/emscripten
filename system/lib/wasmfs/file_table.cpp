@@ -68,9 +68,12 @@ class StderrFile : public File {
 };
 
 FileTable::FileTable() {
-  entries.push_back(std::make_shared<OpenFileState>(0, std::make_shared<StdinFile>()));
-  entries.push_back(std::make_shared<OpenFileState>(0, std::make_shared<StdoutFile>()));
-  entries.push_back(std::make_shared<OpenFileState>(0, std::make_shared<StderrFile>()));
+  entries.push_back(
+    std::make_shared<OpenFileState>(0, std::make_shared<StdinFile>()));
+  entries.push_back(
+    std::make_shared<OpenFileState>(0, std::make_shared<StdoutFile>()));
+  entries.push_back(
+    std::make_shared<OpenFileState>(0, std::make_shared<StderrFile>()));
 }
 
 FileTable::Handle FileTable::get() {
@@ -87,7 +90,8 @@ FileTable::Handle::Entry::operator std::shared_ptr<OpenFileState>() const {
   return fileTableHandle.fileTable.entries[fd];
 }
 
-FileTable::Handle::Entry& FileTable::Handle::Entry::operator=(std::shared_ptr<OpenFileState> ptr) {
+FileTable::Handle::Entry&
+FileTable::Handle::Entry::operator=(std::shared_ptr<OpenFileState> ptr) {
   assert(fd >= 0);
 
   if (fd >= fileTableHandle.fileTable.entries.size()) {
