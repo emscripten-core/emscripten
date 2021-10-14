@@ -13,7 +13,6 @@
 #include <errno.h>
 #include <mutex>
 #include <stdlib.h>
-#include <string.h>
 #include <utility>
 #include <vector>
 #include <wasi/api.h>

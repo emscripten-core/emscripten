@@ -10,8 +10,8 @@
 
 #include <assert.h>
 #include <emscripten/html5.h>
+#include <map>
 #include <mutex>
-#include <unordered_map>
 #include <vector>
 #include <wasi/api.h>
 
@@ -91,7 +91,8 @@ public:
 
 class Directory : public File {
 protected:
-  std::unordered_map<std::string, std::shared_ptr<File>> entries;
+  // TODO: maybe change to vector?
+  std::map<std::string, std::shared_ptr<File>> entries;
 
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
