@@ -3355,7 +3355,7 @@ LibraryManager.library = {
 #endif
     return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
   },
-  $dynCall__deps: ['$dynCallLegacy'],
+  $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
 
   // Used in library code to get JS function from wasm function pointer.
   // All callers should use direct table access where possible and only fall
@@ -3389,9 +3389,9 @@ LibraryManager.library = {
     }
 #endif
 #if ASSERTIONS
-    assert(wasmTable.get(ptr), 'missing table entry in dynCall: ' + ptr);
+    assert(getWasmTableEntry(ptr), 'missing table entry in dynCall: ' + ptr);
 #endif
-    return wasmTable.get(ptr).apply(null, args)
+    return getWasmTableEntry(ptr).apply(null, args)
 #endif
   },
 
@@ -3415,6 +3415,46 @@ LibraryManager.library = {
       }
     }
   },
+
+#if SHRINK_LEVEL == 0
+  // A mirror copy of contents of wasmTable in JS side, to avoid relatively
+  // slow wasmTable.get() call. Only used when not compiling with -Os or -Oz.
+  $wasmTableMirror__internal: true,
+  $wasmTableMirror: [],
+
+  $setWasmTableEntry__internal: true,
+  $setWasmTableEntry__deps: ['$wasmTableMirror'],
+  $setWasmTableEntry: function(idx, func) {
+    wasmTable.set(idx, func);
+    wasmTableMirror[idx] = func;
+  },
+
+  $getWasmTableEntry__internal: true,
+  $getWasmTableEntry__deps: ['$wasmTableMirror'],
+  $getWasmTableEntry: function(funcPtr) {
+    var func = wasmTableMirror[funcPtr];
+    if (!func) {
+      if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
+      wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
+    }
+#if ASSERTIONS
+    assert(wasmTable.get(funcPtr) == func, "JavaScript-side Wasm function table mirror is out of date!");
+#endif
+    return func;
+  },
+
+#else
+
+  $setWasmTableEntry: function(idx, func) {
+    wasmTable.set(idx, func);
+  },
+
+  $getWasmTableEntry: function(funcPtr) {
+    // In -Os and -Oz builds, do not implement a JS side wasm table mirror for small
+    // code size, but directly access wasmTable, which is a bit slower as uncached.
+    return wasmTable.get(funcPtr);
+  },
+#endif // SHRINK_LEVEL == 0
 
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime__sig: 'v',

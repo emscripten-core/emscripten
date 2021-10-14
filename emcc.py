@@ -1623,6 +1623,10 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.DYNCALLS and not settings.MINIMAL_RUNTIME:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
 
+  if not settings.BOOTSTRAPPING_STRUCT_INFO:
+    # Include the internal library function since they are used by runtime functions.
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry', '$setWasmTableEntry']
+
   if settings.MAIN_MODULE:
     assert not settings.SIDE_MODULE
     if settings.MAIN_MODULE == 1:
