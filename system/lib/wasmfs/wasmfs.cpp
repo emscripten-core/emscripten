@@ -67,8 +67,10 @@ long __syscall_dup(long fd) {
   return -(EBADF);
 }
 
-__wasi_errno_t __wasi_fd_write(
-  __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
+__wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
+                               const __wasi_ciovec_t* iovs,
+                               size_t iovs_len,
+                               __wasi_size_t* nwritten) {
   FileTable::Handle fileTable = FileTable::get();
   if (!fileTable[fd]) {
     return __WASI_ERRNO_BADF;
@@ -89,8 +91,10 @@ __wasi_errno_t __wasi_fd_write(
   return __WASI_ERRNO_SUCCESS;
 }
 
-__wasi_errno_t __wasi_fd_seek(
-  __wasi_fd_t fd, __wasi_filedelta_t offset, __wasi_whence_t whence, __wasi_filesize_t* newoffset) {
+__wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
+                              __wasi_filedelta_t offset,
+                              __wasi_whence_t whence,
+                              __wasi_filesize_t* newoffset) {
   emscripten_console_log("__wasi_fd_seek has been temporarily stubbed and is inert");
   abort();
 }
@@ -100,8 +104,8 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   abort();
 }
 
-__wasi_errno_t __wasi_fd_read(
-  __wasi_fd_t fd, const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) {
+__wasi_errno_t
+__wasi_fd_read(__wasi_fd_t fd, const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) {
   FileTable::Handle fileTable = FileTable::get();
   if (!fileTable[fd]) {
     return __WASI_ERRNO_BADF;
