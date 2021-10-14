@@ -185,11 +185,30 @@ var LibraryManager = {
     this.libraries = libraries;
 
     for (var filename of libraries) {
-      var src = read(filename);
+      var isUserLibrary = nodePath.isAbsolute(filename);
       if (VERBOSE) {
-        printErr('processing: ' + filename);
+        if (isUserLibrary) {
+          printErr('processing user library: ' + filename);
+        } else {
+          printErr('processing system library: ' + filename);
+        }
       }
+      var src = read(filename);
+      var origLibrary = undefined;
       var processed = undefined;
+      // When we parse user libraries also set `__user` attribute
+      // on each element so that we can distinguish them later.
+      if (isUserLibrary) {
+        origLibrary = this.library
+        this.library = new Proxy(this.library, {
+          set: (target, prop, value) => {
+            target[prop] = value;
+            if (!isJsLibraryConfigIdentifier(prop)) {
+              target[prop + '__user'] = true;
+            }
+          }
+        });
+      }
       try {
         processed = processMacros(preprocess(src, filename));
         eval(processed);
@@ -214,6 +233,10 @@ var LibraryManager = {
           }
         }
         throw e;
+      } finally {
+        if (origLibrary) {
+          this.library = origLibrary;
+        }
       }
     }
 

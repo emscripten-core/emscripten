@@ -5,6 +5,7 @@
 
 var LibraryDylink = {
 #if RELOCATABLE
+  $resolveGlobalSymbol__internal: true,
   $resolveGlobalSymbol__deps: ['$asmjsMangle'],
   $resolveGlobalSymbol: function(symName, direct) {
     var sym;
@@ -39,6 +40,7 @@ var LibraryDylink = {
 
   // Create globals to each imported symbol.  These are all initialized to zero
   // and get assigned later in `updateGOT`
+  $GOTHandler__internal: true,
   $GOTHandler__deps: ['$GOT'],
   $GOTHandler: {
     'get': function(obj, symName) {
@@ -52,6 +54,7 @@ var LibraryDylink = {
     }
   },
 
+  $isInternalSym__internal: true,
   $isInternalSym: function(symName) {
     // TODO: find a way to mark these in the binary or avoid exporting them.
     return [
@@ -72,6 +75,7 @@ var LibraryDylink = {
     ;
   },
 
+  $updateGOT__internal: true,
   $updateGOT__deps: ['$GOT', '$isInternalSym'],
   $updateGOT: function(exports, replace) {
 #if DYLINK_DEBUG
@@ -122,6 +126,7 @@ var LibraryDylink = {
   },
 
   // Applies relocations to exported things.
+  $relocateExports__internal: true,
   $relocateExports__deps: ['$updateGOT'],
   $relocateExports: function(exports, memoryBase, replace) {
     var relocated = {};
@@ -149,6 +154,7 @@ var LibraryDylink = {
     return relocated;
   },
 
+  $reportUndefinedSymbols__internal: true,
   $reportUndefinedSymbols__deps: ['$GOT', '$resolveGlobalSymbol'],
   $reportUndefinedSymbols: function() {
 #if DYLINK_DEBUG
@@ -200,6 +206,7 @@ var LibraryDylink = {
     loadedLibsByHandle: {},
   },
 
+  $dlSetError__internal: true,
   $dlSetError: ['___dl_seterr',
 #if MINIMAL_RUNTIME
    '$intArrayFromString'
@@ -215,6 +222,7 @@ var LibraryDylink = {
   // Dynamic version of shared.py:make_invoke.  This is needed for invokes
   // that originate from side modules since these are not known at JS
   // generation time.
+  $createInvokeFunction__internal: true,
   $createInvokeFunction__deps: ['$dynCall', 'setThrew'],
   $createInvokeFunction: function(sig) {
     return function() {
@@ -256,6 +264,7 @@ var LibraryDylink = {
 
   // returns the side module metadata as an object
   // { memorySize, memoryAlign, tableSize, tableAlign, neededDynlibs}
+  $getDylinkMetadata__internal: true,
   $getDylinkMetadata: function(binary) {
     var offset = 0;
     var end = 0;
@@ -734,6 +743,7 @@ var LibraryDylink = {
     return true;
   },
 
+  $preloadDylibs__internal: true,
   $preloadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
   $preloadDylibs: function() {
 #if DYLINK_DEBUG
