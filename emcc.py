@@ -2331,10 +2331,12 @@ def phase_linker_setup(options, state, newargs, settings_map):
                                     '_emscripten_stack_get_end']
 
   # Any "pointers" passed to JS will now be i64's, in both modes.
+  # Also turn off minifying, which clashes with instrumented functions in preamble.js
   if settings.MEMORY64:
     if settings_map.get('WASM_BIGINT') == '0':
       exit_with_error('MEMORY64 is not compatible with WASM_BIGINT=0')
     settings.WASM_BIGINT = 1
+    settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 0
 
   # check if we can address the 2GB mark and higher: either if we start at
   # 2GB, or if we allow growth to either any amount or to 2GB or more.
