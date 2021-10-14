@@ -101,12 +101,12 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
     
     Returns a raw handle representing this ``val``. This can be used for
     passing raw value handles to JavaScript and retrieving the values on the
-    other side via ``emvalFromHandle`` function. Example:
+    other side via ``EmVal.handleToValue`` function. Example:
     
     .. code:: cpp
 
       EM_JS(void, log_value, (EM_VAL val_handle), {
-        var value = emvalFromHandle(val_handle);
+        var value = EmVal.handleToValue(val_handle);
         console.log(value); // 42
       });
 
@@ -118,7 +118,7 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 
     Creates a ``val`` from a raw handle. This can be used for retrieving values
     from JavaScript, where the JavaScript side should wrap a value with
-    ``emvalToHandle``, pass it to C++, and then C++ can use ``take_ownership``
+    ``EmVal.valueToHandle``, pass it to C++, and then C++ can use ``take_ownership``
     to convert it to a ``val`` instance. Example:
     
     .. code:: cpp
@@ -127,7 +127,7 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
         var url = UTF8ToString(url);
         var response = await fetch(url);
         var json = await response.json();
-        return emvalToHandle(json);
+        return EmVal.valueToHandle(json);
       });
       
       val obj = val::take_ownership(fetch_json_from_url("https://httpbin.org/json"));
