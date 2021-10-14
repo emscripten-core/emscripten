@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 int main() {
@@ -20,7 +21,27 @@ int main() {
   close(fd);
 
   // Attempt to write to a non-existent fd.
-  dprintf(fd, "FAILURE\n");
+  errno = 0;
+  dprintf(fd, "SHOULD NOT PRINT\n");
+  assert(errno == EBADF);
+  printf("Errno: %s\n", strerror(errno));
+
+  // Attempt to open and then read/write to a directory
+  int fd2 = open("dev", O_RDONLY);
+
+  const char* msg = "Test\n";
+
+  errno = 0;
+  int result = write(fd2, msg, strlen(msg));
+  assert(errno == EISDIR);
+  printf("Errno: %s\n", strerror(errno));
+
+  char buf[100];
+
+  errno = 0;
+  int bytes = read(fd2, buf, sizeof(buf));
+  assert(errno == EISDIR);
+  printf("Errno: %s\n", strerror(errno));
 
   return 0;
 }

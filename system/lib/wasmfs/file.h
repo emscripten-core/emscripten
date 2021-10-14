@@ -29,29 +29,18 @@ public:
   // curr->is<Directory>()
   template <class T> bool is() const {
     static_assert(std::is_base_of<File, T>::value, "File is not a base of destination type T");
-    return int(kind) == int(T::SpecificFileKind);
+    return int(kind) == int(T::expectedKind);
   }
 
   template <class T> T* dynCast() {
     static_assert(std::is_base_of<File, T>::value, "File is not a base of destination type T");
-    return int(kind) == int(T::SpecificFileKind) ? (T*)this : nullptr;
-  }
-
-  template <class T> const T* dynCast() const {
-    static_assert(std::is_base_of<File, T>::value, "File is not a base of destination type T");
-    return int(kind) == int(T::SpecificFileKind) ? (const T*)this : nullptr;
+    return int(kind) == int(T::expectedKind) ? (T*)this : nullptr;
   }
 
   template <class T> T* cast() {
     static_assert(std::is_base_of<File, T>::value, "File is not a base of destination type T");
-    assert(int(kind) == int(T::SpecificFileKind));
+    assert(int(kind) == int(T::expectedKind));
     return (T*)this;
-  }
-
-  template <class T> const T* cast() const {
-    static_assert(std::is_base_of<File, T>::value, "File is not a base of destination type T");
-    assert(int(kind) == int(T::SpecificFileKind));
-    return (const T*)this;
   }
 
   class Handle {
@@ -95,20 +84,20 @@ class DataFile : public File {
   virtual __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) = 0;
 
 public:
-  enum { SpecificFileKind = File::DataFileKind };
+  static constexpr FileKind expectedKind = File::DataFileKind;
   DataFile() : File(File::DataFileKind) {}
   virtual ~DataFile() = default;
   class Handle : public File::Handle {
 
-    DataFile* getFile() { return file.get()->dynCast<DataFile>(); }
+    DataFile& getFile() { return *file.get()->cast<DataFile>(); }
 
   public:
     Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
     Handle(Handle&&) = default;
 
-    __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) { return getFile()->read(buf, len); }
+    __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) { return getFile().read(buf, len); }
     __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) {
-      return getFile()->write(buf, len);
+      return getFile().write(buf, len);
     }
   };
 
@@ -120,33 +109,34 @@ protected:
   std::unordered_map<std::string, std::shared_ptr<File>> entries;
 
 public:
-  enum { SpecificFileKind = File::DirectoryKind };
+  static constexpr FileKind expectedKind = File::DirectoryKind;
   Directory() : File(File::DirectoryKind) {}
   class Handle : public File::Handle {
-    Directory* getFile() { return file.get()->dynCast<Directory>(); }
+    Directory& getDir() { return *file.get()->cast<Directory>(); }
 
   public:
     Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
 
     std::shared_ptr<File> getEntry(std::string pathName) {
-      if (getFile()->entries.find(pathName) == getFile()->entries.end()) {
+      auto it = getDir().entries.find(pathName);
+      if (it == getDir().entries.end()) {
         return nullptr;
       } else {
-        return getFile()->entries[pathName];
+        return it->second;
       }
     }
-
     void setEntry(std::string pathName, std::shared_ptr<File> inserted) {
-      getFile()->entries[pathName] = inserted;
+      getDir().entries[pathName] = inserted;
     }
 
-    // For debugging, TODO: delete later.
+#ifdef WASMFS_DEBUG
     void printKeys() {
-      for (auto keyPair : getFile()->entries) {
+      for (auto keyPair : getFile().entries) {
         std::vector<char> temp(keyPair.first.begin(), keyPair.first.end());
         emscripten_console_log(&temp[0]);
       }
     }
+#endif
   };
 
   Handle get() { return Handle(shared_from_this()); }
