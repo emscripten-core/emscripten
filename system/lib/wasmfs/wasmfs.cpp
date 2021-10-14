@@ -135,7 +135,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 
   std::vector<std::string> pathParts;
 
-  char newPathName[strlen((char*)pathname)];
+  char newPathName[strlen((char*)pathname) + 1];
   strcpy(newPathName, (char*)pathname);
 
   // TODO: Support relative paths. i.e. specify cwd if path is relative.
