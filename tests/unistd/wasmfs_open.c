@@ -12,8 +12,10 @@
 #include <string.h>
 #include <unistd.h>
 
+// FIXME: Merge with other existing close and open tests.
+
 int main() {
-  int fd = open("dev/stdout/", O_RDONLY);
+  int fd = open("/dev/stdout/", O_RDONLY);
 
   dprintf(fd, "WORKING\n");
 
@@ -26,8 +28,8 @@ int main() {
   assert(errno == EBADF);
   printf("Errno: %s\n", strerror(errno));
 
-  // Attempt to open and then read/write to a directory
-  int fd2 = open("dev", O_RDONLY);
+  // Attempt to open and then read/write to a directory.
+  int fd2 = open("/dev", O_RDONLY);
 
   const char* msg = "Test\n";
 
@@ -41,6 +43,12 @@ int main() {
   errno = 0;
   int bytes = read(fd2, buf, sizeof(buf));
   assert(errno == EISDIR);
+  printf("Errno: %s\n", strerror(errno));
+
+  errno = 0;
+  // Attempt to open a non-existent file path.
+  int fd3 = open("/nonsense", O_RDONLY);
+  assert(errno == EINVAL);
   printf("Errno: %s\n", strerror(errno));
 
   return 0;

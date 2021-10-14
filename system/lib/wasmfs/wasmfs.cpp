@@ -47,26 +47,26 @@ long __syscall_dup(long fd) {
   auto fileTable = FileTable::get();
 
   // Check that an open file exists corresponding to the given fd.
-  auto currentOpenFile = fileTable[fd];
-  if (!currentOpenFile) {
+  auto openFile = fileTable[fd];
+  if (!openFile) {
     return -(EBADF);
   }
 
-  return fileTable.add(currentOpenFile);
+  return fileTable.add(openFile);
 }
 
 __wasi_errno_t __wasi_fd_write(
   __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
-  std::shared_ptr<OpenFileState> currentOpenFile = [&] {
+  std::shared_ptr<OpenFileState> openFile = [&] {
     auto fileTable = FileTable::get();
     return fileTable[fd];
   }();
 
-  if (!currentOpenFile) {
+  if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
 
-  auto file = currentOpenFile->get().getFile()->dynCast<DataFile>();
+  auto file = openFile->get().getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
   if (!file) {
@@ -103,16 +103,16 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 
 __wasi_errno_t __wasi_fd_read(
   __wasi_fd_t fd, const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) {
-  std::shared_ptr<OpenFileState> currentOpenFile = [&] {
+  std::shared_ptr<OpenFileState> openFile = [&] {
     auto fileTable = FileTable::get();
     return fileTable[fd];
   }();
 
-  if (!currentOpenFile) {
+  if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
 
-  auto file = currentOpenFile->get().getFile()->dynCast<DataFile>();
+  auto file = openFile->get().getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
   if (!file) {
@@ -159,31 +159,36 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   pathParts.push_back(interim);
 
   std::shared_ptr<File> curr = getRootDirectory();
-  for (int i = 0; i < pathParts.size() - 1; i++) {
+  for (int i = 0; i < pathParts.size(); i++) {
 
-    auto file = curr->dynCast<Directory>();
+    auto directory = curr->dynCast<Directory>();
 
     // If file is nullptr, then the file was not a Directory.
     // TODO: Change this to accommodate symlinks
-    if (!file) {
+    if (!directory && i < pathParts.size() - 1) {
       return -(EBADF);
     }
 
     // Find the next entry in the current directory entry
 #ifdef WASMFS_DEBUG
-    file->get().printKeys();
+    directory->get().printKeys();
 #endif
-    curr = file->get().getEntry(pathParts[i]);
+    curr = directory->get().getEntry(pathParts[i]);
+
+    // Requested entry (file or directory
+    if (!curr) {
+      return -(EINVAL);
+    }
 
 #ifdef WASMFS_DEBUG
     std::vector<char> temp(pathParts[i].begin(), pathParts[i].end());
     emscripten_console_log(&temp[0]);
 #endif
   }
-  auto currentOpenFile = std::make_shared<OpenFileState>(0, curr);
+  auto openFile = std::make_shared<OpenFileState>(0, curr);
 
   auto fileTable = FileTable::get();
 
-  return fileTable.add(currentOpenFile);
+  return fileTable.add(openFile);
 }
 }
