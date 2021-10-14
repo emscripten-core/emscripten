@@ -12,7 +12,7 @@
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
-/*global getStringOrSymbol, emval_handle_array, EmVal.valueToHandle, __emval_unregister, EmVal.handleToValue, count_emval_handles, emval_symbols, emval_free_list, get_first_emval, __emval_decref, emval_newers*/
+/*global getStringOrSymbol, emval_handle_array, EmVal, __emval_unregister, count_emval_handles, emval_symbols, emval_free_list, get_first_emval, __emval_decref, emval_newers*/
 /*global craftEmvalAllocator, __emval_addMethodCaller, emval_methodCallers, LibraryManager, mergeInto, __emval_allocateDestructors, global, __emval_lookupTypes, makeLegalFunctionName*/
 /*global emval_get_global*/
 
@@ -189,8 +189,8 @@ var LibraryEmVal = {
         "}\n";
 
     /*jshint evil:true*/
-    return (new Function("requireRegisteredType", "Module", "EmVal.valueToHandle", functionBody))(
-        requireRegisteredType, Module, EmVal.valueToHandle);
+    return (new Function("requireRegisteredType", "Module", "EmVal", functionBody))(
+        requireRegisteredType, Module, EmVal);
 #endif
   },
 
