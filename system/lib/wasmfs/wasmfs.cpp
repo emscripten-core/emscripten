@@ -135,7 +135,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 
   std::vector<std::string> pathParts;
 
-  auto newPathName = (char*)pathname;
+  char newPathName[strlen((char*)pathname)];
+  strcpy(newPathName, (char*)pathname);
 
   // TODO: Support relative paths. i.e. specify cwd if path is relative.
   // TODO: Other path parsing edge cases.
@@ -155,7 +156,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     // If file is nullptr, then the file was not a Directory.
     // TODO: Change this to accommodate symlinks
     if (!directory) {
-      return -(ENOENT);
+      return -(ENOTDIR);
     }
 
     // Find the next entry in the current directory entry

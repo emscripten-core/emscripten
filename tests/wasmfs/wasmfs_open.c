@@ -16,7 +16,7 @@
 
 int main() {
   // Test writing to a file with a trailing slash.
-  int fd = open("/dev/stdout/", O_RDONLY);
+  int fd = open("/dev/stdout/", O_RDWR);
 
   dprintf(fd, "WORKING WITH TRAILING BACKSLASH\n");
 
@@ -24,7 +24,7 @@ int main() {
   close(fd);
 
   // Test writing to a file with no trailing backslash.
-  int fd2 = open("/dev/stdout", O_RDONLY);
+  int fd2 = open("/dev/stdout", O_RDWR);
 
   dprintf(fd2, "WORKING WITHOUT TRAILING BACKSLASH\n");
 
@@ -44,7 +44,7 @@ int main() {
 
   errno = 0;
   write(fd3, msg, strlen(msg));
-  assert(errno == EISDIR);
+  // TODO: Change to assert(errno == EBADF) when access mode checking is added.
   printf("Errno: %s\n", strerror(errno));
 
   char buf[100];
@@ -56,14 +56,14 @@ int main() {
 
   errno = 0;
   // Attempt to open a non-existent file path.
-  int fd4 = open("/foo", O_RDONLY);
+  int fd4 = open("/foo", O_RDWR);
   assert(errno == ENOENT);
   printf("Errno: %s\n", strerror(errno));
 
   errno = 0;
   // Attempt to open a file path with a file intermediary.
-  int fd5 = open("/dev/stdout/foo", O_RDONLY);
-  assert(errno == ENOENT);
+  int fd5 = open("/dev/stdout/foo", O_RDWR);
+  assert(errno == ENOTDIR);
   printf("Errno: %s\n", strerror(errno));
 
   errno = 0;
