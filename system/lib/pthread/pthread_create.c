@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <threads.h>
+#include <unistd.h>
 // Included for emscripten_builtin_free / emscripten_builtin_malloc
 // TODO(sbc): Should these be in their own header to avoid emmalloc here?
 #include <emscripten/emmalloc.h>
@@ -59,8 +60,13 @@ static void init_file_lock(FILE *f) {
   if (f && f->lock<0) f->lock = 0;
 }
 
-// The main thread is tid 1, and the first created thread gets tid 2.
-static pid_t next_tid = 2;
+static pid_t next_tid = 0;
+
+// In case the stub syscall is not linked it
+static long dummy_getpid() {
+  return 42;
+}
+weak_alias(dummy_getpid, __syscall_getpid);
 
 int __pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict attrp, void *(*entry)(void *), void *restrict arg) {
   // Note on LSAN: lsan intercepts/wraps calls to pthread_create so any
@@ -68,6 +74,12 @@ int __pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict att
   // See: lsan_interceptors.cpp.
   if (!res) {
     return EINVAL;
+  }
+
+  // Create threads with monotonically increasing TID starting with the main
+  // thread which has TID == PID.
+  if (!next_tid) {
+    next_tid = getpid() + 1;
   }
 
   if (!libc.threaded) {
