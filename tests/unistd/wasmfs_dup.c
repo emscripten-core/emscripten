@@ -10,9 +10,8 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <wasi/api.h>
 
-#define __WASI_ERRNO_BADF (UINT16_C(8))
+// FIXME: Merge this standalone test back into dup.c after new FS can support it.
 
 int main() {
   int f = 1;
