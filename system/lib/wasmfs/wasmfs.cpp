@@ -150,7 +150,7 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
                               const __wasi_iovec_t* iovs,
                               size_t iovs_len,
                               __wasi_size_t* nread) {
-  std::shared_ptr<OpenFileState> currentOpenFile = [&] {
+  std::shared_ptr<OpenFileState> openFile = [&] {
     auto fileTable = FileTable::get();
     return fileTable[fd];
   }();
