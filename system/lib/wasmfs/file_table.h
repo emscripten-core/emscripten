@@ -88,7 +88,10 @@ public:
       }
 
       // Return a locked Handle to access OpenFileState members.
-      OpenFileState::Handle locked() { return unlocked()->get(); }
+      OpenFileState::Handle locked() {
+        assert(fd < fileTableHandle.fileTable.entries.size() && fd > 0);
+        return unlocked()->get();
+      }
 
       // Return an OpenFileState without member access.
       std::shared_ptr<OpenFileState> unlocked();
