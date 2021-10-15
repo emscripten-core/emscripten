@@ -61,7 +61,7 @@ public:
     time_t& atime() { return file->atime; }
   };
 
-  Handle get() { return Handle(shared_from_this()); }
+  Handle locked() { return Handle(shared_from_this()); }
 
 protected:
   File(FileKind kind) : kind(kind) {}
@@ -105,7 +105,7 @@ public:
     }
   };
 
-  Handle get() { return Handle(shared_from_this()); }
+  Handle locked() { return Handle(shared_from_this()); }
 };
 
 class Directory : public File {
@@ -144,7 +144,7 @@ public:
 #endif
   };
 
-  Handle get() { return Handle(shared_from_this()); }
+  Handle locked() { return Handle(shared_from_this()); }
 };
 
 } // namespace wasmfs

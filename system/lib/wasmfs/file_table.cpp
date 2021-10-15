@@ -103,9 +103,9 @@ std::shared_ptr<Directory> getRootDirectory() {
   static const std::shared_ptr<Directory> rootDirectory = [] {
     std::shared_ptr<Directory> rootDirectory = std::make_shared<Directory>();
     auto devDirectory = std::make_shared<Directory>();
-    rootDirectory->get().setEntry("dev", devDirectory);
+    rootDirectory->locked().setEntry("dev", devDirectory);
 
-    auto dir = devDirectory->get();
+    auto dir = devDirectory->locked();
 
     dir.setEntry("stdin", StdinFile::getSingleton());
     dir.setEntry("stdout", StdoutFile::getSingleton());
@@ -122,15 +122,6 @@ FileTable::Handle FileTable::get() {
   return FileTable::Handle(fileTable);
 }
 
-// Operator Overloading for FileTable::Handle::Entry.
-FileTable::Handle::Entry::operator std::shared_ptr<OpenFileState>() const {
-  if (fd >= fileTableHandle.fileTable.entries.size() || fd < 0) {
-    return nullptr;
-  }
-
-  return fileTableHandle.fileTable.entries[fd];
-}
-
 FileTable::Handle::Entry&
 FileTable::Handle::Entry::operator=(std::shared_ptr<OpenFileState> ptr) {
   assert(fd >= 0);
@@ -143,8 +134,10 @@ FileTable::Handle::Entry::operator=(std::shared_ptr<OpenFileState> ptr) {
   return *this;
 }
 
-std::shared_ptr<OpenFileState>& FileTable::Handle::Entry::operator->() {
-  assert(fd < fileTableHandle.fileTable.entries.size() && fd >= 0);
+std::shared_ptr<OpenFileState> FileTable::Handle::Entry::unlocked() {
+  if (fd >= fileTableHandle.fileTable.entries.size() || fd < 0) {
+    return nullptr;
+  }
 
   return fileTableHandle.fileTable.entries[fd];
 }
