@@ -108,8 +108,13 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 }
 
 long __syscall_fstat64(long fd, long buf) {
-  // Release FileTable lock after accessing desired open file.
-  auto file = FileTable::get()[fd].locked().getFile();
+  auto openFile = FileTable::get()[fd];
+
+  if (!openFile) {
+    return -(EBADF);
+  }
+
+  auto file = openFile.locked().getFile();
 
   struct stat* buffer = (struct stat*)buf;
 

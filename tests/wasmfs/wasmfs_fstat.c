@@ -9,12 +9,21 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-// FIXME: Individual test to verify fstat in isolation. May get merged with others later.
+// FIXME: Individual test to verify fstat in isolation. May get merged with
+// others later.
 
 int main() {
+  // Attempt to call fstat on an invalid fd.
+  errno = 0;
+  struct stat invalid;
+  int result = fstat(-1, &invalid);
+  assert(result == -1);
+  assert(errno == EBADF);
+
   // Test opening a file and calling fstat.
   struct stat file;
   int fd = open("/dev/stdout/", O_RDONLY);
