@@ -185,12 +185,12 @@ var LibraryEmVal = {
     }
     functionBody +=
         "var obj = new constructor("+argsList+");\n" +
-        "return EmVal.valueToHandle(obj);\n" +
+        "return valueToHandle(obj);\n" +
         "}\n";
 
     /*jshint evil:true*/
-    return (new Function("requireRegisteredType", "Module", "EmVal", functionBody))(
-        requireRegisteredType, Module, EmVal);
+    return (new Function("requireRegisteredType", "Module", "valueToHandle", functionBody))(
+        requireRegisteredType, Module, EmVal.valueToHandle);
 #endif
   },
 
