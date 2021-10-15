@@ -213,10 +213,10 @@ var LibraryDylink = {
 #endif
   ],
   $dlSetError: function(msg) {
-    var sp = stackSave();
-    var msg = allocate(intArrayFromString(msg), ALLOC_STACK);
-    ___dl_seterr(msg);
-    stackRestore(sp);
+    withStackSave(function() {
+      var cmsg = allocate(intArrayFromString(msg), ALLOC_STACK);
+      ___dl_seterr(cmsg);
+    });
   },
 
   // Dynamic version of shared.py:make_invoke.  This is needed for invokes
