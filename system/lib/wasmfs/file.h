@@ -26,7 +26,6 @@ class File : public std::enable_shared_from_this<File> {
 public:
   enum FileKind { DataFileKind = 0, DirectoryKind, SymlinkKind };
 
-  // curr->is<Directory>()
   template<class T> bool is() const {
     static_assert(std::is_base_of<File, T>::value,
                   "File is not a base of destination type T");
