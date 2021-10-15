@@ -74,12 +74,14 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
     return __WASI_ERRNO_ISDIR;
   }
 
+  auto lockedFile = file->locked();
+
   __wasi_size_t num = 0;
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
     __wasi_size_t len = iovs[i].buf_len;
 
-    file->locked().write(buf, len);
+    lockedFile.write(buf, len);
     num += len;
   }
   *nwritten = num;
@@ -107,16 +109,16 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 
 long __syscall_fstat64(long fd, long buf) {
   // Release FileTable lock after accessing desired open file.
-  std::shared_ptr<File> file = FileTable::get()[fd].locked().getFile();
+  auto file = FileTable::get()[fd].locked().getFile();
 
   struct stat* buffer = (struct stat*)buf;
 
-  auto fileInfo = file->locked();
+  auto lockedFile = file->locked();
 
   if (file->is<Directory>()) {
     buffer->st_size = 4096;
   } else if (file->is<DataFile>()) {
-    buffer->st_size = fileInfo.size();
+    buffer->st_size = lockedFile.size();
   } else { // TODO: add size of symlinks
     buffer->st_size = 0;
   }
@@ -126,7 +128,7 @@ long __syscall_fstat64(long fd, long buf) {
   buffer->st_dev =
     1; // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
-  buffer->st_mode = fileInfo.mode();
+  buffer->st_mode = lockedFile.mode();
   buffer->st_ino = fd;
   // The number of hard links is 1 since they are unsupported.
   buffer->st_nlink = 1;
@@ -139,9 +141,9 @@ long __syscall_fstat64(long fd, long buf) {
   buffer->st_blocks = (buffer->st_size + 511) / 512;
   buffer->st_blksize =
     4096; // Specifies the preferred blocksize for efficient disk I/O.
-  buffer->st_atim.tv_sec = fileInfo.atime();
-  buffer->st_mtim.tv_sec = fileInfo.mtime();
-  buffer->st_ctim.tv_sec = fileInfo.ctime();
+  buffer->st_atim.tv_sec = lockedFile.atime();
+  buffer->st_mtim.tv_sec = lockedFile.mtime();
+  buffer->st_ctim.tv_sec = lockedFile.ctime();
 
   return __WASI_ERRNO_SUCCESS;
 }
@@ -163,12 +165,14 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
     return __WASI_ERRNO_ISDIR;
   }
 
+  auto lockedFile = file->locked();
+
   __wasi_size_t num = 0;
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
     __wasi_size_t len = iovs[i].buf_len;
 
-    file->locked().read(buf, len);
+    lockedFile.read(buf, len);
     num += len;
   }
   *nread = num;
