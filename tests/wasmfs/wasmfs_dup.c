@@ -11,7 +11,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
-// FIXME: Merge this standalone test back into dup.c after new FS can support it.
+// FIXME: Merge this standalone test back into dup.c after new FS can support
+// it.
 
 int main() {
   int f = 1;
@@ -25,8 +26,10 @@ int main() {
   dprintf(f2, "CAN PRINT TO STDOUT WITH fd = 3\n");
 
   // Try calling dup with an invalid fd
+  errno = 0;
   int f_invalid = dup(-1);
   assert(f_invalid == -1);
+  assert(errno == EBADF);
 
   printf("DUP2\n");
   int f3 = 5;
@@ -50,12 +53,16 @@ int main() {
   dprintf(f5, "CAN PRINT TO STDOUT WITH fd = 5\n");
 
   // Try calling dup2 with an invalid newfd
+  errno = 0;
   f5 = dup2(f4, -1);
   assert(f5 == -1);
+  assert(errno == EBADF);
 
   // Try calling dup2 with an invalid oldfd
+  errno = 0;
   int f6 = dup2(-1, f5);
   assert(f6 == -1);
+  assert(errno == EBADF);
 
   // Try assigning a large fd
   int f7 = 4069;
@@ -63,8 +70,10 @@ int main() {
 
   dprintf(f8, "CAN PRINT TO STDOUT WITH f8 = 4069\n");
 
+  errno = 0;
   int f9 = dup(-1);
   assert(f9 == -1);
+  assert(errno == EBADF);
 
   return 0;
 }
