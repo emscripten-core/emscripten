@@ -10,9 +10,9 @@
 
 #include <assert.h>
 #include <emscripten/html5.h>
+#include <map>
 #include <mutex>
 #include <sys/stat.h>
-#include <unordered_map>
 #include <vector>
 #include <wasi/api.h>
 
@@ -27,18 +27,21 @@ public:
   enum FileKind { DataFileKind = 0, DirectoryKind, SymlinkKind };
 
   // curr->is<Directory>()
-  template <class T> bool is() const {
-    static_assert(std::is_base_of<File, T>::value, "File is not a base of destination type T");
+  template<class T> bool is() const {
+    static_assert(std::is_base_of<File, T>::value,
+                  "File is not a base of destination type T");
     return int(kind) == int(T::expectedKind);
   }
 
-  template <class T> T* dynCast() {
-    static_assert(std::is_base_of<File, T>::value, "File is not a base of destination type T");
+  template<class T> T* dynCast() {
+    static_assert(std::is_base_of<File, T>::value,
+                  "File is not a base of destination type T");
     return int(kind) == int(T::expectedKind) ? (T*)this : nullptr;
   }
 
-  template <class T> T* cast() {
-    static_assert(std::is_base_of<File, T>::value, "File is not a base of destination type T");
+  template<class T> T* cast() {
+    static_assert(std::is_base_of<File, T>::value,
+                  "File is not a base of destination type T");
     assert(int(kind) == int(T::expectedKind));
     return (T*)this;
   }
@@ -95,7 +98,9 @@ public:
     Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
     Handle(Handle&&) = default;
 
-    __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) { return getFile().read(buf, len); }
+    __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) {
+      return getFile().read(buf, len);
+    }
     __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) {
       return getFile().write(buf, len);
     }
@@ -106,7 +111,8 @@ public:
 
 class Directory : public File {
 protected:
-  std::unordered_map<std::string, std::shared_ptr<File>> entries;
+  // TODO: maybe change to vector?
+  std::map<std::string, std::shared_ptr<File>> entries;
 
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;

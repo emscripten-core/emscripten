@@ -695,7 +695,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     settings.SIDE_MODULE_EXPORTS.extend(exports)
 
     imports = webassembly.get_imports(dylib)
-    imports = [i.field for i in imports if i.kind in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL)]
+    imports = [i.field for i in imports if i.kind in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG)]
     # For now we ignore `invoke_` functions imported by side modules and rely
     # on the dynamic linker to create them on the fly.
     # TODO(sbc): Integrate with metadata['invokeFuncs'] that comes from the
@@ -1623,6 +1623,10 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.DYNCALLS and not settings.MINIMAL_RUNTIME:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$dynCall']
 
+  if not settings.BOOTSTRAPPING_STRUCT_INFO:
+    # Include the internal library function since they are used by runtime functions.
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry', '$setWasmTableEntry']
+
   if settings.MAIN_MODULE:
     assert not settings.SIDE_MODULE
     if settings.MAIN_MODULE == 1:
@@ -2331,10 +2335,12 @@ def phase_linker_setup(options, state, newargs, settings_map):
                                     '_emscripten_stack_get_end']
 
   # Any "pointers" passed to JS will now be i64's, in both modes.
+  # Also turn off minifying, which clashes with instrumented functions in preamble.js
   if settings.MEMORY64:
     if settings_map.get('WASM_BIGINT') == '0':
       exit_with_error('MEMORY64 is not compatible with WASM_BIGINT=0')
     settings.WASM_BIGINT = 1
+    settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 0
 
   # check if we can address the 2GB mark and higher: either if we start at
   # 2GB, or if we allow growth to either any amount or to 2GB or more.
@@ -2353,6 +2359,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
   # WASMFS itself is written in C++, and needs C++ standard libraries
   if settings.WASMFS:
     settings.LINK_AS_CXX = True
+
+  if settings.RELOCATABLE and settings.EXCEPTION_HANDLING:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__cpp_exception')
 
   return target, wasm_target
 

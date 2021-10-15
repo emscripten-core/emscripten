@@ -1159,7 +1159,7 @@ var LibraryEmbind = {
         return getDynCaller(signature, rawFunction);
       }
 #endif
-      return wasmTable.get(rawFunction);
+      return getWasmTableEntry(rawFunction);
 #endif
     }
 

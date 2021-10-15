@@ -12,8 +12,10 @@ namespace wasmfs {
 
 std::vector<std::shared_ptr<OpenFileState>> FileTable::entries;
 
-static __wasi_errno_t writeStdBuffer(const uint8_t* buf, __wasi_size_t len,
-  void (*console_write)(const char*), std::vector<char>& fd_write_buffer) {
+static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
+                                     __wasi_size_t len,
+                                     void (*console_write)(const char*),
+                                     std::vector<char>& fd_write_buffer) {
   for (__wasi_size_t j = 0; j < len; j++) {
     uint8_t current = buf[j];
     if (current == '\0' || current == '\n') {
@@ -39,7 +41,8 @@ class StdinFile : public DataFile {
 
 public:
   static std::shared_ptr<StdinFile> getSingleton() {
-    static const std::shared_ptr<StdinFile> stdinFile = std::make_shared<StdinFile>();
+    static const std::shared_ptr<StdinFile> stdinFile =
+      std::make_shared<StdinFile>();
     return stdinFile;
   }
 };
@@ -57,7 +60,8 @@ class StdoutFile : public DataFile {
 
 public:
   static std::shared_ptr<StdoutFile> getSingleton() {
-    static const std::shared_ptr<StdoutFile> stdoutFile = std::make_shared<StdoutFile>();
+    static const std::shared_ptr<StdoutFile> stdoutFile =
+      std::make_shared<StdoutFile>();
     return stdoutFile;
   }
 };
@@ -78,15 +82,19 @@ class StderrFile : public DataFile {
 
 public:
   static std::shared_ptr<StderrFile> getSingleton() {
-    static const std::shared_ptr<StderrFile> stderrFile = std::make_shared<StderrFile>();
+    static const std::shared_ptr<StderrFile> stderrFile =
+      std::make_shared<StderrFile>();
     return stderrFile;
   }
 };
 
 FileTable::FileTable() {
-  entries.push_back(std::make_shared<OpenFileState>(0, StdinFile::getSingleton()));
-  entries.push_back(std::make_shared<OpenFileState>(0, StdoutFile::getSingleton()));
-  entries.push_back(std::make_shared<OpenFileState>(0, StderrFile::getSingleton()));
+  entries.push_back(
+    std::make_shared<OpenFileState>(0, StdinFile::getSingleton()));
+  entries.push_back(
+    std::make_shared<OpenFileState>(0, StdoutFile::getSingleton()));
+  entries.push_back(
+    std::make_shared<OpenFileState>(0, StderrFile::getSingleton()));
 }
 
 // Initialize default directories including dev/stdin, dev/stdout, dev/stderr.
@@ -123,7 +131,8 @@ FileTable::Handle::Entry::operator std::shared_ptr<OpenFileState>() const {
   return fileTableHandle.fileTable.entries[fd];
 }
 
-FileTable::Handle::Entry& FileTable::Handle::Entry::operator=(std::shared_ptr<OpenFileState> ptr) {
+FileTable::Handle::Entry&
+FileTable::Handle::Entry::operator=(std::shared_ptr<OpenFileState> ptr) {
   assert(fd >= 0);
 
   if (fd >= fileTableHandle.fileTable.entries.size()) {
@@ -148,7 +157,8 @@ FileTable::Handle::Entry::operator bool() const {
   return fileTableHandle.fileTable.entries[fd] != nullptr;
 }
 
-__wasi_fd_t FileTable::Handle::add(std::shared_ptr<OpenFileState> openFileState) {
+__wasi_fd_t
+FileTable::Handle::add(std::shared_ptr<OpenFileState> openFileState) {
   Handle& self = *this;
   // TODO: add freelist to avoid linear lookup time.
   for (__wasi_fd_t i = 0;; i++) {
