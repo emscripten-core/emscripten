@@ -872,7 +872,7 @@ var SyscallsLibrary = {
         type = 4; // DT_DIR
       }
       else {
-        var child = FS.lookupNode(stream.node, name);
+        var child = FS.lookupNode(stream, name);
         id = child.id;
         type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
                FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.

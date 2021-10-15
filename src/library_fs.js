@@ -1072,6 +1072,7 @@ FS.staticInit();` +
       // register the stream with the filesystem
       var stream = FS.createStream({
         node: node,
+        parent: node.parent,
         path: FS.getPath(node),  // we want the absolute path to the node
         id: node.id,
         flags: flags,
