@@ -1265,39 +1265,39 @@ var LibraryPThread = {
     // all the args here.
     // We also pass 'sync' to C separately, since C needs to look at it.
     var numCallArgs = arguments.length - 2;
+    var outerArgs = arguments;
 #if ASSERTIONS
     if (numCallArgs > {{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) throw 'emscripten_proxy_to_main_thread_js: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + ({{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) + '!';
 #endif
     // Allocate a buffer, which will be copied by the C code.
-    var stack = stackSave();
-    // First passed parameter specifies the number of arguments to the function.
-    // When BigInt support is enabled, we must handle types in a more complex
-    // way, detecting at runtime if a value is a BigInt or not (as we have no
-    // type info here). To do that, add a "prefix" before each value that
-    // indicates if it is a BigInt, which effectively doubles the number of
-    // values we serialize for proxying. TODO: pack this?
-    var serializedNumCallArgs = numCallArgs {{{ WASM_BIGINT ? "* 2" : "" }}};
-    var args = stackAlloc(serializedNumCallArgs * 8);
-    var b = args >> 3;
-    for (var i = 0; i < numCallArgs; i++) {
-      var arg = arguments[2 + i];
-#if WASM_BIGINT
-      if (typeof arg === 'bigint') {
-        // The prefix is non-zero to indicate a bigint.
-        HEAP64[b + 2*i] = BigInt(1);
-        HEAP64[b + 2*i + 1] = arg;
-      } else {
-        // The prefix is zero to indicate a JS Number.
-        HEAP64[b + 2*i] = BigInt(0);
-        HEAPF64[b + 2*i + 1] = arg;
+    return withStackSave(function() {
+      // First passed parameter specifies the number of arguments to the function.
+      // When BigInt support is enabled, we must handle types in a more complex
+      // way, detecting at runtime if a value is a BigInt or not (as we have no
+      // type info here). To do that, add a "prefix" before each value that
+      // indicates if it is a BigInt, which effectively doubles the number of
+      // values we serialize for proxying. TODO: pack this?
+      var serializedNumCallArgs = numCallArgs {{{ WASM_BIGINT ? "* 2" : "" }}};
+      var args = stackAlloc(serializedNumCallArgs * 8);
+      var b = args >> 3;
+      for (var i = 0; i < numCallArgs; i++) {
+        var arg = outerArgs[2 + i];
+  #if WASM_BIGINT
+        if (typeof arg === 'bigint') {
+          // The prefix is non-zero to indicate a bigint.
+          HEAP64[b + 2*i] = BigInt(1);
+          HEAP64[b + 2*i + 1] = arg;
+        } else {
+          // The prefix is zero to indicate a JS Number.
+          HEAP64[b + 2*i] = BigInt(0);
+          HEAPF64[b + 2*i + 1] = arg;
+        }
+  #else
+        HEAPF64[b + i] = arg;
+  #endif
       }
-#else
-      HEAPF64[b + i] = arg;
-#endif
-    }
-    var ret = _emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
-    stackRestore(stack);
-    return ret;
+      return _emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
+    });
   },
 
   emscripten_receive_on_main_thread_js_callArgs: '=[]',

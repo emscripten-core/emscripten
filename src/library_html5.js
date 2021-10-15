@@ -5,6 +5,7 @@
  */
 
 var LibraryHTML5 = {
+  $JSEvents__deps: ['$withStackSave'],
   $JSEvents: {
 
 /* We do not depend on the exact initial values of falsey member fields - these fields can be populated on-demand
@@ -188,13 +189,13 @@ var LibraryHTML5 = {
 
 #if USE_PTHREADS
     queueEventHandlerOnThread_iiii: function(targetThread, eventHandlerFunc, eventTypeId, eventData, userData) {
-      var stackTop = stackSave();
-      var varargs = stackAlloc(12);
-      {{{ makeSetValue('varargs', 0, 'eventTypeId', 'i32') }}};
-      {{{ makeSetValue('varargs', 4, 'eventData', 'i32') }}};
-      {{{ makeSetValue('varargs', 8, 'userData', 'i32') }}};
-      __emscripten_call_on_thread(0, targetThread, {{{ cDefine('EM_FUNC_SIG_IIII') }}}, eventHandlerFunc, eventData, varargs);
-      stackRestore(stackTop);
+      withStackSave(function() {
+        var varargs = stackAlloc(12);
+        {{{ makeSetValue('varargs', 0, 'eventTypeId', 'i32') }}};
+        {{{ makeSetValue('varargs', 4, 'eventData', 'i32') }}};
+        {{{ makeSetValue('varargs', 8, 'userData', 'i32') }}};
+        __emscripten_call_on_thread(0, targetThread, {{{ cDefine('EM_FUNC_SIG_IIII') }}}, eventHandlerFunc, eventData, varargs);
+      });
     },
 #endif
 
@@ -2458,23 +2459,23 @@ var LibraryHTML5 = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8', '_emscripten_call_on_thread'],
+  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8', '_emscripten_call_on_thread', '$withStackSave'],
   emscripten_set_offscreencanvas_size_on_target_thread_js: function(targetThread, targetCanvas, width, height) {
-    var stackTop = stackSave();
-    var varargs = stackAlloc(12);
-    var targetCanvasPtr = 0;
-    if (targetCanvas) {
-      targetCanvasPtr = stringToNewUTF8(targetCanvas);
-    }
-    {{{ makeSetValue('varargs', 0, 'targetCanvasPtr', 'i32')}}};
-    {{{ makeSetValue('varargs', 4, 'width', 'i32')}}};
-    {{{ makeSetValue('varargs', 8, 'height', 'i32')}}};
-    // Note: If we are also a pthread, the call below could theoretically be done synchronously. However if the target pthread is waiting for a mutex from us, then
-    // these two threads will deadlock. At the moment, we'd like to consider that this kind of deadlock would be an Emscripten runtime bug, although if
-    // emscripten_set_canvas_element_size() was documented to require running an event in the queue of thread that owns the OffscreenCanvas, then that might be ok.
-    // (safer this way however)
-    __emscripten_call_on_thread(0, targetThread, {{{ cDefine('EM_PROXIED_RESIZE_OFFSCREENCANVAS') }}}, 0, targetCanvasPtr /* satellite data */, varargs);
-    stackRestore(stackTop);
+    withStackSave(function() {
+      var varargs = stackAlloc(12);
+      var targetCanvasPtr = 0;
+      if (targetCanvas) {
+        targetCanvasPtr = stringToNewUTF8(targetCanvas);
+      }
+      {{{ makeSetValue('varargs', 0, 'targetCanvasPtr', 'i32')}}};
+      {{{ makeSetValue('varargs', 4, 'width', 'i32')}}};
+      {{{ makeSetValue('varargs', 8, 'height', 'i32')}}};
+      // Note: If we are also a pthread, the call below could theoretically be done synchronously. However if the target pthread is waiting for a mutex from us, then
+      // these two threads will deadlock. At the moment, we'd like to consider that this kind of deadlock would be an Emscripten runtime bug, although if
+      // emscripten_set_canvas_element_size() was documented to require running an event in the queue of thread that owns the OffscreenCanvas, then that might be ok.
+      // (safer this way however)
+      __emscripten_call_on_thread(0, targetThread, {{{ cDefine('EM_PROXIED_RESIZE_OFFSCREENCANVAS') }}}, 0, targetCanvasPtr /* satellite data */, varargs);
+    });
   },
 
   emscripten_set_offscreencanvas_size_on_target_thread__deps: ['emscripten_set_offscreencanvas_size_on_target_thread_js'],
@@ -2519,7 +2520,7 @@ var LibraryHTML5 = {
   },
 #endif
 
-  $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size'],
+  $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size', '$withStackSave'],
   $setCanvasElementSize: function(target, width, height) {
 #if GL_DEBUG
     err('setCanvasElementSize(target='+target+',width='+width+',height='+height);
@@ -2530,13 +2531,13 @@ var LibraryHTML5 = {
     } else {
       // This function is being called from high-level JavaScript code instead of asm.js/Wasm,
       // and it needs to synchronously proxy over to another thread, so marshal the string onto the heap to do the call.
-      var stackTop = stackSave();
-      var targetInt = stackAlloc(target.id.length+1);
-      stringToUTF8(target.id, targetInt, target.id.length+1);
-      _emscripten_set_canvas_element_size(targetInt, width, height);
-      stackRestore(stackTop);
+      withStackSave(function() {
+        var targetInt = stackAlloc(target.id.length+1);
+        stringToUTF8(target.id, targetInt, target.id.length+1);
+        _emscripten_set_canvas_element_size(targetInt, width, height);
+      });
     }
-  }, 
+  },
 
 #if USE_PTHREADS
   emscripten_get_canvas_element_size_calling_thread__deps: ['$JSEvents', '$findCanvasEventTarget'],
@@ -2592,19 +2593,19 @@ var LibraryHTML5 = {
 #endif
 
   // JavaScript-friendly API, returns pair [width, height]
-  $getCanvasElementSize__deps: ['emscripten_get_canvas_element_size'],
+  $getCanvasElementSize__deps: ['emscripten_get_canvas_element_size', '$withStackSave'],
   $getCanvasElementSize: function(target) {
-    var stackTop = stackSave();
-    var w = stackAlloc(8);
-    var h = w + 4;
+    return withStackSave(function() {
+      var w = stackAlloc(8);
+      var h = w + 4;
 
-    var targetInt = stackAlloc(target.id.length+1);
-    stringToUTF8(target.id, targetInt, target.id.length+1);
-    var ret = _emscripten_get_canvas_element_size(targetInt, w, h);
-    var size = [{{{ makeGetValue('w', 0, 'i32')}}}, {{{ makeGetValue('h', 0, 'i32')}}}];
-    stackRestore(stackTop);
-    return size;
-  }, 
+      var targetInt = stackAlloc(target.id.length+1);
+      stringToUTF8(target.id, targetInt, target.id.length+1);
+      var ret = _emscripten_get_canvas_element_size(targetInt, w, h);
+      var size = [{{{ makeGetValue('w', 0, 'i32')}}}, {{{ makeGetValue('h', 0, 'i32')}}}];
+      return size;
+    });
+  },
 
   emscripten_set_element_css_size__proxy: 'sync',
   emscripten_set_element_css_size__sig: 'iiii',
