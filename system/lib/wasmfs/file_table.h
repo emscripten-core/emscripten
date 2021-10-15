@@ -17,9 +17,13 @@
 
 namespace wasmfs {
 
+std::shared_ptr<Directory> getRootDirectory();
+
 class OpenFileState {
   std::shared_ptr<File> file;
   __wasi_filedelta_t offset;
+  // An OpenFileState needs a mutex if there are concurrent accesses on one open file
+  // descriptor. This could occur if there are multiple seeks on the same open file descriptor.
   std::mutex mutex;
 
 public:
@@ -81,6 +85,8 @@ public:
     };
 
     Entry operator[](__wasi_fd_t fd) { return Entry{*this, fd}; };
+
+    __wasi_fd_t add(std::shared_ptr<OpenFileState> openFileState);
   };
 
   // This get method is responsible for lazily initializing the FileTable.

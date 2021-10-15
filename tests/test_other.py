@@ -11147,4 +11147,8 @@ void foo() {}
 
   def test_wasmfs_unistd_dup(self):
     self.set_setting('WASMFS')
-    self.do_run_in_out_file_test('unistd/wasmfs_dup.c')
+    self.do_run_in_out_file_test('wasmfs/wasmfs_dup.c')
+
+  def test_wasmfs_unistd_open(self):
+    self.set_setting('WASMFS')
+    self.do_run_in_out_file_test('wasmfs/wasmfs_open.c')
