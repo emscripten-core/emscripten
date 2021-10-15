@@ -12,29 +12,35 @@
 #include <emscripten/html5.h>
 #include <map>
 #include <mutex>
+#include <sys/stat.h>
 #include <vector>
 #include <wasi/api.h>
 
 namespace wasmfs {
+
+class Directory;
+class DataFile;
 
 class File : public std::enable_shared_from_this<File> {
 
 public:
   enum FileKind { DataFileKind = 0, DirectoryKind, SymlinkKind };
 
-  // curr->is<Directory>()
-  template <class T> bool is() const {
-    static_assert(std::is_base_of<File, T>::value, "File is not a base of destination type T");
+  template<class T> bool is() const {
+    static_assert(std::is_base_of<File, T>::value,
+                  "File is not a base of destination type T");
     return int(kind) == int(T::expectedKind);
   }
 
-  template <class T> T* dynCast() {
-    static_assert(std::is_base_of<File, T>::value, "File is not a base of destination type T");
+  template<class T> T* dynCast() {
+    static_assert(std::is_base_of<File, T>::value,
+                  "File is not a base of destination type T");
     return int(kind) == int(T::expectedKind) ? (T*)this : nullptr;
   }
 
-  template <class T> T* cast() {
-    static_assert(std::is_base_of<File, T>::value, "File is not a base of destination type T");
+  template<class T> T* cast() {
+    static_assert(std::is_base_of<File, T>::value,
+                  "File is not a base of destination type T");
     assert(int(kind) == int(T::expectedKind));
     return (T*)this;
   }
@@ -48,6 +54,11 @@ public:
 
   public:
     Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
+    size_t& size() { return file->size; }
+    uint32_t& mode() { return file->mode; }
+    time_t& ctime() { return file->ctime; }
+    time_t& mtime() { return file->mtime; }
+    time_t& atime() { return file->atime; }
   };
 
   Handle get() { return Handle(shared_from_this()); }
@@ -58,7 +69,13 @@ protected:
   std::mutex mutex;
 
 private:
-  // TODO: Add other File properties later.
+  size_t size = 0;
+
+  uint32_t mode = 0; // r/w/x modes
+
+  time_t ctime = 0; // Time when the file node was last modified
+  time_t mtime = 0; // Time when the file content was last modified
+  time_t atime = 0; // Time when the content was last accessed
 
   FileKind kind;
 };
@@ -80,7 +97,9 @@ public:
     Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
     Handle(Handle&&) = default;
 
-    __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) { return getFile().read(buf, len); }
+    __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) {
+      return getFile().read(buf, len);
+    }
     __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) {
       return getFile().write(buf, len);
     }
