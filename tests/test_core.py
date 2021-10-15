@@ -5274,7 +5274,7 @@ main( int argv, char ** argc ) {
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_home.c'), 'success', js_engines=[config.NODE_JS])
 
-  def test_nodefs_list_dir(self):
+  def test_fs_nodefs_list_dir(self):
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_list_dir.c'), 'success')
 
