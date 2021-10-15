@@ -1064,7 +1064,7 @@ Please update to new syntax.`);
     if (DYNCALLS) {
       return `(function(cb, ${args}) { ${returnExpr} getDynCaller("${sig}", cb)(${args}) })`;
     } else {
-      return `(function(cb, ${args}) { ${returnExpr} wasmTable.get(cb)(${args}) })`;
+      return `(function(cb, ${args}) { ${returnExpr} getWasmTableEntry(cb)(${args}) })`;
     }
   }
 
@@ -1076,7 +1076,7 @@ Please update to new syntax.`);
       return `(function() { ${returnExpr} ${dyncall}.call(null, ${funcPtr}); })`;
     }
   } else {
-    return `wasmTable.get(${funcPtr})`;
+    return `getWasmTableEntry(${funcPtr})`;
   }
 }
 

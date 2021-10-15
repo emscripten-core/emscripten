@@ -143,6 +143,7 @@ var ENVIRONMENT_MAY_BE_SHELL = 1;
 var ENVIRONMENT_MAY_BE_WEBVIEW = 1;
 
 // Whether to minify import and export names in the minify_wasm_js stage.
+// Currently always off for MEMORY64.
 var MINIFY_WASM_IMPORTS_AND_EXPORTS = 0;
 
 // Whether to minify imported module names.

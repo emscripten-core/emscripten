@@ -16,7 +16,7 @@ var LibraryWget = {
     },
   },
 
-  emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser',
+  emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser', '$withStackSave',
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
@@ -33,9 +33,9 @@ var LibraryWget = {
       if (callback) {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(function() {
-          var stack = stackSave();
-          {{{ makeDynCall('vi', 'callback') }}}(allocate(intArrayFromString(_file), ALLOC_STACK));
-          stackRestore(stack);
+          withStackSave(function() {
+            {{{ makeDynCall('vi', 'callback') }}}(allocate(intArrayFromString(_file), ALLOC_STACK));
+          });
         });
       }
     }
@@ -90,7 +90,7 @@ var LibraryWget = {
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
-  emscripten_async_wget2__deps: ['$PATH_FS', '$wget',
+  emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$withStackSave',
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
@@ -128,9 +128,9 @@ var LibraryWget = {
 
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(/** @type{ArrayBuffer}*/(http.response)), true, true, false);
         if (onload) {
-          var stack = stackSave();
-          {{{ makeDynCall('viii', 'onload') }}}(handle, arg, allocate(intArrayFromString(_file), ALLOC_STACK));
-          stackRestore(stack);
+          withStackSave(function() {
+            {{{ makeDynCall('viii', 'onload') }}}(handle, arg, allocate(intArrayFromString(_file), ALLOC_STACK));
+          });
         }
       } else {
         if (onerror) {{{ makeDynCall('viii', 'onerror') }}}(handle, arg, http.status);

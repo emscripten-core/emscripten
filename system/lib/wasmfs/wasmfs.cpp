@@ -2,9 +2,9 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
-// wasmfs.cpp will implement a new file system that replaces the existing JS filesystem.
-// Current Status: Work in Progress.
-// See https://github.com/emscripten-core/emscripten/issues/15041.
+// wasmfs.cpp will implement a new file system that replaces the existing JS
+// filesystem. Current Status: Work in Progress. See
+// https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include "file.h"
 #include "file_table.h"
@@ -38,7 +38,8 @@ long __syscall_dup2(long oldfd, long newfd) {
     return oldfd;
   }
 
-  // If the file descriptor newfd was previously open, it will just be overwritten silently.
+  // If the file descriptor newfd was previously open, it will just be
+  // overwritten silently.
   fileTable[newfd] = oldOpenFile;
   return newfd;
 }
@@ -55,8 +56,10 @@ long __syscall_dup(long fd) {
   return fileTable.add(openFile);
 }
 
-__wasi_errno_t __wasi_fd_write(
-  __wasi_fd_t fd, const __wasi_ciovec_t* iovs, size_t iovs_len, __wasi_size_t* nwritten) {
+__wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
+                               const __wasi_ciovec_t* iovs,
+                               size_t iovs_len,
+                               __wasi_size_t* nwritten) {
   std::shared_ptr<OpenFileState> openFile = FileTable::get()[fd];
 
   if (!openFile) {
@@ -83,9 +86,12 @@ __wasi_errno_t __wasi_fd_write(
   return __WASI_ERRNO_SUCCESS;
 }
 
-__wasi_errno_t __wasi_fd_seek(
-  __wasi_fd_t fd, __wasi_filedelta_t offset, __wasi_whence_t whence, __wasi_filesize_t* newoffset) {
-  emscripten_console_log("__wasi_fd_seek has been temporarily stubbed and is inert");
+__wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
+                              __wasi_filedelta_t offset,
+                              __wasi_whence_t whence,
+                              __wasi_filesize_t* newoffset) {
+  emscripten_console_log(
+    "__wasi_fd_seek has been temporarily stubbed and is inert");
   abort();
 }
 
@@ -98,8 +104,10 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-__wasi_errno_t __wasi_fd_read(
-  __wasi_fd_t fd, const __wasi_iovec_t* iovs, size_t iovs_len, __wasi_size_t* nread) {
+__wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
+                              const __wasi_iovec_t* iovs,
+                              size_t iovs_len,
+                              __wasi_size_t* nread) {
   std::shared_ptr<OpenFileState> openFile = FileTable::get()[fd];
 
   if (!openFile) {
