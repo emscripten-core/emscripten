@@ -1,9 +1,17 @@
+/*
+ * Copyright 2019 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <errno.h>
 #include <stdbool.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "pthread_impl.h"
 #include <emscripten/stack.h>
 #include <emscripten/threading.h>
@@ -384,17 +392,6 @@ int sem_destroy(sem_t *sem) {
 }
 
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv) {}
-
-static struct pthread __main_pthread;
-
-pthread_t __pthread_self(void) {
-  return &__main_pthread;
-}
-
-__attribute__((constructor))
-static void init_pthread_self(void) {
-  __pthread_self()->locale = &libc.global_locale;
-}
 
 // When pthreads is not enabled, we can't use the Atomics futex api to do
 // proper sleeps, so simulate a busy spin wait loop instead.
