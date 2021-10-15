@@ -757,7 +757,8 @@ function instrumentWasmTableWithAbort() {
 // BigInts. For now we keep JS as much the same as it always was, that is,
 // stackAlloc() receives and returns a Number from the JS point of view -
 // we translate BigInts automatically for that.
-// TODO: support minified export names
+// TODO: support minified export names, so we can turn MINIFY_WASM_IMPORTS_AND_EXPORTS
+// back on for MEMORY64.
 function instrumentWasmExportsForMemory64(exports) {
   var instExports = {};
   for (var name in exports) {
