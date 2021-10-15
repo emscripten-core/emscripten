@@ -111,7 +111,7 @@ long __syscall_fstat64(long fd, long buf) {
   auto openFile = FileTable::get()[fd];
 
   if (!openFile) {
-    return -(ENOENT);
+    return -(EBADF);
   }
 
   auto file = openFile.locked().getFile();

@@ -22,7 +22,7 @@ int main() {
   struct stat invalid;
   int result = fstat(-1, &invalid);
   assert(result == -1);
-  assert(errno == ENOENT);
+  assert(errno == EBADF);
 
   // Test opening a file and calling fstat.
   struct stat file;
