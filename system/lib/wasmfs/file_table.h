@@ -21,15 +21,16 @@ std::shared_ptr<Directory> getRootDirectory();
 
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   std::shared_ptr<File> file;
-  __wasi_filedelta_t offset;
+  size_t position;
+  uint32_t flags; // RD_ONLY, WR_ONLY, RDWR
   // An OpenFileState needs a mutex if there are concurrent accesses on one open
   // file descriptor. This could occur if there are multiple seeks on the same
   // open file descriptor.
   std::mutex mutex;
 
 public:
-  OpenFileState(uint32_t offset, std::shared_ptr<File> file)
-    : offset(offset), file(file) {}
+  OpenFileState(size_t position, uint32_t flags, std::shared_ptr<File> file)
+    : position(position), flags(flags), file(file) {}
 
   class Handle {
     std::shared_ptr<OpenFileState> openFileState;
@@ -40,6 +41,8 @@ public:
       : openFileState(openFileState), lock(openFileState->mutex) {}
 
     std::shared_ptr<File>& getFile() { return openFileState->file; };
+
+    size_t& position() { return openFileState->position; };
   };
 
   Handle get() { return Handle(shared_from_this()); }

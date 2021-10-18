@@ -65,10 +65,11 @@ public:
 
 protected:
   File(FileKind kind) : kind(kind) {}
+  File(FileKind kind, uint32_t mode)
+    : kind(kind), mode(mode), ctime(time(0)), mtime(time(0)), atime(time(0)) {}
   // A mutex is needed for multiple accesses to the same file.
   std::mutex mutex;
 
-private:
   size_t size = 0;
 
   uint32_t mode = 0; // r/w/x modes
@@ -82,12 +83,15 @@ private:
 
 class DataFile : public File {
 
-  virtual __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) = 0;
-  virtual __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) = 0;
+  virtual __wasi_errno_t
+  read(uint8_t* buf, __wasi_size_t len, size_t offset) = 0;
+  virtual __wasi_errno_t
+  write(const uint8_t* buf, __wasi_size_t len, size_t offset) = 0;
 
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
   DataFile() : File(File::DataFileKind) {}
+  DataFile(uint32_t mode) : File(File::DataFileKind, mode) {}
   virtual ~DataFile() = default;
   class Handle : public File::Handle {
 
@@ -97,11 +101,11 @@ public:
     Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
     Handle(Handle&&) = default;
 
-    __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) {
-      return getFile().read(buf, len);
+    __wasi_errno_t read(uint8_t* buf, __wasi_size_t len, size_t offset) {
+      return getFile().read(buf, len, offset);
     }
-    __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) {
-      return getFile().write(buf, len);
+    __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len, size_t offset) {
+      return getFile().write(buf, len, offset);
     }
   };
 
@@ -145,6 +149,27 @@ public:
   };
 
   Handle locked() { return Handle(shared_from_this()); }
+};
+
+class InMemoryFile : public DataFile {
+  std::vector<uint8_t> buffer;
+
+  __wasi_errno_t
+  write(const uint8_t* buf, __wasi_size_t len, size_t offset) override {
+    buffer.resize(buffer.size() + len);
+    memcpy(&buffer[offset], buf, len * sizeof(uint8_t));
+
+    return __WASI_ERRNO_SUCCESS;
+  }
+
+  __wasi_errno_t read(uint8_t* buf, __wasi_size_t len, size_t offset) override {
+    std::memcpy(buf, &buffer[offset], len);
+
+    return __WASI_ERRNO_SUCCESS;
+  };
+
+public:
+  InMemoryFile(uint32_t mode) : DataFile(mode) {}
 };
 
 } // namespace wasmfs

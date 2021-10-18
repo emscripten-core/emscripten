@@ -31,11 +31,12 @@ static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
 
 class StdinFile : public DataFile {
 
-  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override {
+  __wasi_errno_t
+  write(const uint8_t* buf, __wasi_size_t len, size_t offset) override {
     return __WASI_ERRNO_INVAL;
   }
 
-  __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) override {
+  __wasi_errno_t read(uint8_t* buf, __wasi_size_t len, size_t offset) override {
     return __WASI_ERRNO_INVAL;
   };
 
@@ -50,11 +51,12 @@ public:
 class StdoutFile : public DataFile {
   std::vector<char> writeBuffer;
 
-  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override {
+  __wasi_errno_t
+  write(const uint8_t* buf, __wasi_size_t len, size_t offset) override {
     return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
   }
 
-  __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) override {
+  __wasi_errno_t read(uint8_t* buf, __wasi_size_t len, size_t offset) override {
     return __WASI_ERRNO_INVAL;
   };
 
@@ -72,11 +74,12 @@ class StderrFile : public DataFile {
   // TODO: May not want to proxy stderr (fd == 2) to the main thread.
   // This will not show in HTML - a console.warn in a worker is sufficient.
   // This would be a change from the current FS.
-  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override {
+  __wasi_errno_t
+  write(const uint8_t* buf, __wasi_size_t len, size_t offset) override {
     return writeStdBuffer(buf, len, &emscripten_console_error, writeBuffer);
   }
 
-  __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) override {
+  __wasi_errno_t read(uint8_t* buf, __wasi_size_t len, size_t offset) override {
     return __WASI_ERRNO_INVAL;
   };
 
@@ -90,11 +93,11 @@ public:
 
 FileTable::FileTable() {
   entries.push_back(
-    std::make_shared<OpenFileState>(0, StdinFile::getSingleton()));
+    std::make_shared<OpenFileState>(0, O_RDWR, StdinFile::getSingleton()));
   entries.push_back(
-    std::make_shared<OpenFileState>(0, StdoutFile::getSingleton()));
+    std::make_shared<OpenFileState>(0, O_RDWR, StdoutFile::getSingleton()));
   entries.push_back(
-    std::make_shared<OpenFileState>(0, StderrFile::getSingleton()));
+    std::make_shared<OpenFileState>(0, O_RDWR, StderrFile::getSingleton()));
 }
 
 // Initialize default directories including dev/stdin, dev/stdout, dev/stderr.
