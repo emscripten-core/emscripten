@@ -26,11 +26,24 @@ class File : public std::enable_shared_from_this<File> {
 public:
   enum FileKind { DataFileKind = 0, DirectoryKind, SymlinkKind };
 
-  template<class T> bool is() const;
+  template<class T> bool is() const {
+    static_assert(std::is_base_of<File, T>::value,
+                  "File is not a base of destination type T");
+    return int(kind) == int(T::expectedKind);
+  }
 
-  template<class T> T* dynCast();
+  template<class T> T* dynCast() {
+    static_assert(std::is_base_of<File, T>::value,
+                  "File is not a base of destination type T");
+    return int(kind) == int(T::expectedKind) ? (T*)this : nullptr;
+  }
 
-  template<class T> T* cast();
+  template<class T> T* cast() {
+    static_assert(std::is_base_of<File, T>::value,
+                  "File is not a base of destination type T");
+    assert(int(kind) == int(T::expectedKind));
+    return (T*)this;
+  }
 
   class Handle {
     std::unique_lock<std::mutex> lock;
@@ -136,9 +149,10 @@ public:
 class MemoryFile : public DataFile {
   std::vector<uint8_t> buffer;
 
-  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len, size_t offset);
+  __wasi_errno_t
+  write(const uint8_t* buf, __wasi_size_t len, size_t offset) override;
 
-  __wasi_errno_t read(uint8_t* buf, __wasi_size_t len, size_t offset);
+  __wasi_errno_t read(uint8_t* buf, __wasi_size_t len, size_t offset) override;
 
 public:
   MemoryFile(uint32_t mode) : DataFile(mode) {}

@@ -9,25 +9,6 @@
 #include "file.h"
 
 namespace wasmfs {
-template<class T> bool File::is() const {
-  static_assert(std::is_base_of<File, T>::value,
-                "File is not a base of destination type T");
-  return int(kind) == int(T::expectedKind);
-}
-
-template<class T> T* File::dynCast() {
-  static_assert(std::is_base_of<File, T>::value,
-                "File is not a base of destination type T");
-  return int(kind) == int(T::expectedKind) ? (T*)this : nullptr;
-}
-
-template<class T> T* File::cast() {
-  static_assert(std::is_base_of<File, T>::value,
-                "File is not a base of destination type T");
-  assert(int(kind) == int(T::expectedKind));
-  return (T*)this;
-}
-
 std::shared_ptr<File> Directory::Handle::getEntry(std::string pathName) {
   auto it = getDir().entries.find(pathName);
   if (it == getDir().entries.end()) {
@@ -46,7 +27,7 @@ MemoryFile::write(const uint8_t* buf, __wasi_size_t len, size_t offset) {
 }
 
 __wasi_errno_t
-MemoryFile::read(uint8_t* buf, __wasi_size_t len, size_t offset) override {
+MemoryFile::read(uint8_t* buf, __wasi_size_t len, size_t offset) {
   std::memcpy(buf, &buffer[offset], len);
 
   return __WASI_ERRNO_SUCCESS;
