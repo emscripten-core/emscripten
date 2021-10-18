@@ -26,27 +26,13 @@ class File : public std::enable_shared_from_this<File> {
 public:
   enum FileKind { DataFileKind = 0, DirectoryKind, SymlinkKind };
 
-  template<class T> bool is() const {
-    static_assert(std::is_base_of<File, T>::value,
-                  "File is not a base of destination type T");
-    return int(kind) == int(T::expectedKind);
-  }
+  template<class T> bool is() const;
 
-  template<class T> T* dynCast() {
-    static_assert(std::is_base_of<File, T>::value,
-                  "File is not a base of destination type T");
-    return int(kind) == int(T::expectedKind) ? (T*)this : nullptr;
-  }
+  template<class T> T* dynCast();
 
-  template<class T> T* cast() {
-    static_assert(std::is_base_of<File, T>::value,
-                  "File is not a base of destination type T");
-    assert(int(kind) == int(T::expectedKind));
-    return (T*)this;
-  }
+  template<class T> T* cast();
 
   class Handle {
-
     std::unique_lock<std::mutex> lock;
 
   protected:
@@ -93,6 +79,7 @@ public:
   DataFile() : File(File::DataFileKind) {}
   DataFile(uint32_t mode) : File(File::DataFileKind, mode) {}
   virtual ~DataFile() = default;
+
   class Handle : public File::Handle {
 
     DataFile& getFile() { return *file.get()->cast<DataFile>(); }
@@ -120,20 +107,15 @@ protected:
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
   Directory() : File(File::DirectoryKind) {}
+
   class Handle : public File::Handle {
     Directory& getDir() { return *file.get()->cast<Directory>(); }
 
   public:
     Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
 
-    std::shared_ptr<File> getEntry(std::string pathName) {
-      auto it = getDir().entries.find(pathName);
-      if (it == getDir().entries.end()) {
-        return nullptr;
-      } else {
-        return it->second;
-      }
-    }
+    std::shared_ptr<File> getEntry(std::string pathName);
+
     void setEntry(std::string pathName, std::shared_ptr<File> inserted) {
       getDir().entries[pathName] = inserted;
     }
@@ -151,25 +133,15 @@ public:
   Handle locked() { return Handle(shared_from_this()); }
 };
 
-class InMemoryFile : public DataFile {
+class MemoryFile : public DataFile {
   std::vector<uint8_t> buffer;
 
-  __wasi_errno_t
-  write(const uint8_t* buf, __wasi_size_t len, size_t offset) override {
-    buffer.resize(buffer.size() + len);
-    memcpy(&buffer[offset], buf, len * sizeof(uint8_t));
+  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len, size_t offset);
 
-    return __WASI_ERRNO_SUCCESS;
-  }
-
-  __wasi_errno_t read(uint8_t* buf, __wasi_size_t len, size_t offset) override {
-    std::memcpy(buf, &buffer[offset], len);
-
-    return __WASI_ERRNO_SUCCESS;
-  };
+  __wasi_errno_t read(uint8_t* buf, __wasi_size_t len, size_t offset);
 
 public:
-  InMemoryFile(uint32_t mode) : DataFile(mode) {}
+  MemoryFile(uint32_t mode) : DataFile(mode) {}
 };
 
 } // namespace wasmfs

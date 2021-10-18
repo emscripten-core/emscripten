@@ -263,7 +263,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
         auto dir = directory->locked();
 
         // create empty in memory file.
-        auto created = std::make_shared<InMemoryFile>(mode);
+        auto created = std::make_shared<MemoryFile>(mode);
 
         dir.setEntry(pathParts[i], created);
         auto openFile = std::make_shared<OpenFileState>(0, flags, created);
