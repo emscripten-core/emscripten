@@ -160,9 +160,6 @@ function segfault() {
 function alignfault() {
   abort('alignment fault');
 }
-function ftfault() {
-  abort('Function table mask error');
-}
 #endif
 
 #if USE_ASAN
