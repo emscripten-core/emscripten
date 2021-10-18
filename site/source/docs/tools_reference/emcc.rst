@@ -463,15 +463,12 @@ Options that are modified or new in *emcc* are listed below:
   This can be overridden using the ``EM_CONFIG`` environment variable.
 
 ``--default-obj-ext <.ext>``
-  [compile+link]
-  Specifies the file suffix to generate if the location of a directory name is passed to the ``-o`` directive.
-
-  For example, consider the following command, which will by default generate an output name **dir/a.o**. With ``--default-obj-ext .ext`` the generated file has the custom suffix *dir/a.ext*.
-
-  ::
-
-    emcc -c a.c -o dir/
-
+  [compile]
+  Specifies the output suffix to use when compiling with ``-c`` in the absence
+  of ``-o``.  For example, when compiling multiple sources files with ``emcc -c
+  *.c`` the compiler will normally output files with the ``.o`` extension, but
+  ``--default-obj-ext .obj`` can be used to instead generate files with the
+  `.obj` extension.
 
 ``--valid-abspath <path>``
   [compile+link]
