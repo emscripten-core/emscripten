@@ -107,7 +107,9 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
   out('SAFE_HEAP store: ' + [dest, value, bytes, isFloat, SAFE_HEAP_COUNTER++]);
 #endif
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
+#if SAFE_HEAP == 1
   if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+#endif
   if (runtimeInitialized) {
     var brk = _sbrk() >>> 0;
     if (dest + bytes > brk) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. DYNAMICTOP=' + brk);
@@ -127,7 +129,9 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   dest >>>= 0;
 #endif
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
+#if SAFE_HEAP == 1
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+#endif
   if (runtimeInitialized) {
     var brk = _sbrk() >>> 0;
     if (dest + bytes > brk) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. DYNAMICTOP=' + brk);
@@ -158,7 +162,9 @@ function segfault() {
   abort('segmentation fault');
 }
 function alignfault() {
+#if SAFE_HEAP == 1
   abort('alignment fault');
+#endif
 }
 function ftfault() {
   abort('Function table mask error');
