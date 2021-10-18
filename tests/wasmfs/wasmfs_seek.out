@@ -1,0 +1,40 @@
+seek: 3
+errno: 0
+
+partial read from file: 3
+data: 456
+errno: 0
+
+seek: 8
+errno: 0
+partial read from end of file: 2
+data: 90
+errno: 0
+
+seek: -1
+errno: 28
+partial read from before start of file: 0
+data: 
+errno: 0
+
+seek: 0
+write to start of file: 3
+errno: 0
+
+seek: 10
+write to end of file: 3
+errno: 0
+
+seek: 23
+write after end of file: 8
+errno: 0
+
+seek: 0
+read after write: 21
+errno: 0
+final: wri4567890wri\0\0\0\0\0\0\0\0
+
+seek: 0
+read after write: 21
+errno: 0
+final: wri4567890wri\0\0\0\0\0\0\0\0

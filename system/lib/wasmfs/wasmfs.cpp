@@ -96,11 +96,8 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
     lockedFile.write(buf, len, offset);
     offset += len;
   }
-  // number of bytes written is new position - old position.
-  *nwritten = offset - lockedOpenFile.position();
 
-  // the size of the file is now old position + number of bytes written
-  lockedFile.size() = offset;
+  *nwritten = offset - lockedOpenFile.position();
 
   return __WASI_ERRNO_SUCCESS;
 }
@@ -144,16 +141,7 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
   }
   *nread = offset - lockedOpenFile.position();
   lockedOpenFile.position() = offset;
-  return __WASI_ERRNO_INVAL;
-}
-
-__wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
-                              __wasi_filedelta_t offset,
-                              __wasi_whence_t whence,
-                              __wasi_filesize_t* newoffset) {
-  emscripten_console_log(
-    "__wasi_fd_seek has been temporarily stubbed and is inert");
-  abort();
+  return __WASI_ERRNO_SUCCESS;
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
@@ -293,5 +281,37 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   auto openFile = std::make_shared<OpenFileState>(0, flags, curr);
 
   return FileTable::get().add(openFile);
+}
+
+__wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
+                              __wasi_filedelta_t offset,
+                              __wasi_whence_t whence,
+                              __wasi_filesize_t* newoffset) {
+  auto openFile = FileTable::get()[fd];
+  if (!openFile) {
+    return __WASI_ERRNO_BADF;
+  }
+  auto lockedOpenFile = openFile.locked();
+
+  int64_t position = offset;
+  if (whence == SEEK_CUR) {
+    position = lockedOpenFile.position() + offset;
+  } else if (whence == SEEK_END) {
+    position = lockedOpenFile.getFile()->locked().size() + offset;
+  } else if (whence != SEEK_SET) {
+    return __WASI_ERRNO_INVAL;
+  }
+
+  if (position < 0) {
+    return __WASI_ERRNO_INVAL;
+  }
+
+  lockedOpenFile.position() = position;
+
+  if (newoffset) {
+    *newoffset = position;
+  }
+
+  return __WASI_ERRNO_SUCCESS;
 }
 }
