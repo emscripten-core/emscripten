@@ -47,6 +47,9 @@ See docs/process.md for more on how version tagging works.
 - Support a new CMake propert `EMSCRIPTEN_SYSTEM_PROCESSOR` which can be used
   to override the default value of `CMAKE_SYSTEM_PROCESSOR` set by the
   toolchain file.
+- Remove support for the `EMIT_EMSCRIPTEN_METADATA` setting.  This setting has
+  been deprecated for some time now and we don't know of any remaining reasons to
+  keep it around.
 
 2.0.31 - 10/01/2021
 -------------------

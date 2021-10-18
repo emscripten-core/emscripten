@@ -13,30 +13,12 @@ import os
 import sys
 
 from . import utils
-from .settings import settings
 
 sys.path.append(utils.path_from_root('third_party'))
 
 import leb128
 
 logger = logging.getLogger('webassembly')
-
-
-# For the Emscripten-specific WASM metadata section, follows semver, changes
-# whenever metadata section changes structure.
-# NB: major version 0 implies no compatibility
-# NB: when changing the metadata format, we should only append new fields, not
-#     reorder, modify, or remove existing ones.
-EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
-# For the JS/WASM ABI, specifies the minimum ABI version required of
-# the WASM runtime implementation by the generated WASM binary. It follows
-# semver and changes whenever C types change size/signedness or
-# syscalls change signature. By semver, the maximum ABI version is
-# implied to be less than (EMSCRIPTEN_ABI_MAJOR + 1, 0). On an ABI
-# change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
-# or the ABI change is backwards compatible, otherwise increment
-# EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 29)
 
 WASM_PAGE_SIZE = 65536
 
@@ -59,55 +41,6 @@ def readULEB(iobuf):
 
 def readSLEB(iobuf):
   return leb128.i.decode_reader(iobuf)[0]
-
-
-def add_emscripten_metadata(wasm_file):
-  mem_size = settings.INITIAL_MEMORY // WASM_PAGE_SIZE
-  global_base = settings.GLOBAL_BASE
-
-  logger.debug('creating wasm emscripten metadata section with mem size %d' % mem_size)
-  name = b'\x13emscripten_metadata' # section name, including prefixed size
-  contents = (
-    # metadata section version
-    toLEB(EMSCRIPTEN_METADATA_MAJOR) +
-    toLEB(EMSCRIPTEN_METADATA_MINOR) +
-
-    # NB: The structure of the following should only be changed
-    #     if EMSCRIPTEN_METADATA_MAJOR is incremented
-    # Minimum ABI version
-    toLEB(EMSCRIPTEN_ABI_MAJOR) +
-    toLEB(EMSCRIPTEN_ABI_MINOR) +
-
-    # Wasm backend, always 1 now
-    toLEB(1) +
-
-    toLEB(mem_size) +
-    toLEB(0) +
-    toLEB(global_base) +
-    toLEB(0) +
-    # dynamictopPtr, always 0 now
-    toLEB(0) +
-
-    # tempDoublePtr, always 0 in wasm backend
-    toLEB(0) +
-
-    toLEB(int(settings.STANDALONE_WASM))
-
-    # NB: more data can be appended here as long as you increase
-    #     the EMSCRIPTEN_METADATA_MINOR
-  )
-
-  orig = utils.read_binary(wasm_file)
-  with open(wasm_file, 'wb') as f:
-    f.write(orig[0:8]) # copy magic number and version
-    # write the special section
-    f.write(b'\0') # user section is code 0
-    # need to find the size of this section
-    size = len(name) + len(contents)
-    f.write(toLEB(size))
-    f.write(name)
-    f.write(contents)
-    f.write(orig[8:])
 
 
 class SecType(IntEnum):

@@ -3175,10 +3175,6 @@ def phase_binaryen(target, options, wasm_target):
 
   # after generating the wasm, do some final operations
 
-  if settings.EMIT_EMSCRIPTEN_METADATA:
-    diagnostics.warning('deprecated', 'We hope to remove support for EMIT_EMSCRIPTEN_METADATA. See https://github.com/emscripten-core/emscripten/issues/12231')
-    webassembly.add_emscripten_metadata(wasm_target)
-
   if final_js:
     if settings.SUPPORT_BIG_ENDIAN:
       final_js = building.little_endian_heap(final_js)
