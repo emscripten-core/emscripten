@@ -9,7 +9,6 @@
 #include "file.h"
 
 namespace wasmfs {
-
 std::shared_ptr<File> Directory::Handle::getEntry(std::string pathName) {
   auto it = getDir().entries.find(pathName);
   if (it == getDir().entries.end()) {
