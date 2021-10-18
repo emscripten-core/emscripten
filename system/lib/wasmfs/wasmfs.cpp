@@ -75,29 +75,28 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
     return __WASI_ERRNO_ISDIR;
   }
 
-  ssize_t total_write_amount = 0;
-  for (int i = 0; i < iovs_len; ++i) {
-    ssize_t n = total_write_amount + iovs[i].buf_len;
-    if (n < total_write_amount)
-      return __WASI_ERRNO_INVAL;
-    if (!iovs[i].buf && iovs[i].buf_len > 0)
-      return __WASI_ERRNO_INVAL;
-    total_write_amount = n;
-  }
-
-  size_t newSize = lockedOpenFile.position() + total_write_amount;
-
-  __wasi_size_t offset = lockedOpenFile.position();
+  ssize_t offset = lockedOpenFile.position();
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
     __wasi_size_t len = iovs[i].buf_len;
 
+    // Check if the sum of the buf_len values overflows an ssize_t value.
+    if (offset + len < offset) {
+      return __WASI_ERRNO_INVAL;
+    }
+
+    // Check if iov_len specifies a positive length buffer but iov_base is a
+    // null pointer
+    if (!buf && len > 0) {
+      return __WASI_ERRNO_INVAL;
+    }
+
     file->locked().write(buf, len, offset);
     offset += len;
   }
-  *nwritten = total_write_amount;
+  *nwritten = offset - lockedOpenFile.position();
 
-  file->locked().size() = newSize;
+  file->locked().size() = offset;
 
   return __WASI_ERRNO_SUCCESS;
 }
