@@ -75,6 +75,8 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
     return __WASI_ERRNO_ISDIR;
   }
 
+  auto lockedFile = file->locked();
+
   ssize_t offset = lockedOpenFile.position();
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
@@ -91,12 +93,14 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
       return __WASI_ERRNO_INVAL;
     }
 
-    file->locked().write(buf, len, offset);
+    lockedFile.write(buf, len, offset);
     offset += len;
   }
+  // number of bytes written is new position - old position.
   *nwritten = offset - lockedOpenFile.position();
 
-  file->locked().size() = offset;
+  // the size of the file is now old position + number of bytes written
+  lockedFile.size() = offset;
 
   return __WASI_ERRNO_SUCCESS;
 }
@@ -119,8 +123,10 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
     return __WASI_ERRNO_ISDIR;
   }
 
-  __wasi_size_t offset = lockedOpenFile.position();
-  size_t size = file->locked().size();
+  auto lockedFile = file->locked();
+
+  size_t offset = lockedOpenFile.position();
+  size_t size = lockedFile.size();
   for (size_t i = 0; i < iovs_len; i++) {
     // Check if offset has exceeded size of file data.
     ssize_t dataLeft = size - offset;
@@ -133,7 +139,7 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
     size_t bytesToRead =
       (size_t)dataLeft < iovs[i].buf_len ? dataLeft : iovs[i].buf_len;
 
-    file->locked().read(buf, bytesToRead, offset);
+    lockedFile.read(buf, bytesToRead, offset);
     offset += bytesToRead;
   }
   *nread = offset - lockedOpenFile.position();
@@ -259,7 +265,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
         // create empty in memory file.
         auto created = std::make_shared<InMemoryFile>(mode);
 
-        dir.setEntry(pathParts[0], created);
+        dir.setEntry(pathParts[i], created);
         auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
         return FileTable::get().add(openFile);
