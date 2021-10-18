@@ -20,7 +20,10 @@ std::shared_ptr<File> Directory::Handle::getEntry(std::string pathName) {
 
 __wasi_errno_t
 MemoryFile::write(const uint8_t* buf, __wasi_size_t len, size_t offset) {
-  buffer.resize(buffer.size() + len);
+  if (offset + len > buffer.size()) {
+    buffer.resize(buffer.size() + len);
+    this->size = buffer.size();
+  }
   memcpy(&buffer[offset], buf, len * sizeof(uint8_t));
 
   return __WASI_ERRNO_SUCCESS;

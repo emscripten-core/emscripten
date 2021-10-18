@@ -87,7 +87,7 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
       return __WASI_ERRNO_INVAL;
     }
 
-    // Check if iov_len specifies a positive length buffer but iov_base is a
+    // Check if buf_len specifies a positive length buffer but buf is a
     // null pointer
     if (!buf && len > 0) {
       return __WASI_ERRNO_INVAL;
@@ -96,11 +96,8 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
     lockedFile.write(buf, len, offset);
     offset += len;
   }
-  // number of bytes written is new position - old position.
-  *nwritten = offset - lockedOpenFile.position();
 
-  // the size of the file is now old position + number of bytes written
-  lockedFile.size() = offset;
+  *nwritten = offset - lockedOpenFile.position();
 
   return __WASI_ERRNO_SUCCESS;
 }
@@ -135,6 +132,17 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
     }
 
     uint8_t* buf = iovs[i].buf;
+
+    // Check if the sum of the buf_len values overflows an ssize_t value.
+    if (offset + iovs[i].buf_len < offset) {
+      return __WASI_ERRNO_INVAL;
+    }
+
+    // Check if buf_len specifies a positive length buffer but buf is a
+    // null pointer
+    if (!buf && iovs[i].buf_len > 0) {
+      return __WASI_ERRNO_INVAL;
+    }
 
     size_t bytesToRead =
       (size_t)dataLeft < iovs[i].buf_len ? dataLeft : iovs[i].buf_len;
