@@ -62,6 +62,10 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
                                const __wasi_ciovec_t* iovs,
                                size_t iovs_len,
                                __wasi_size_t* nwritten) {
+  if (iovs_len < 0) {
+    return __WASI_ERRNO_INVAL;
+  }
+
   auto openFile = FileTable::get()[fd];
 
   if (!openFile) {
@@ -84,9 +88,9 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
     size_t len = iovs[i].buf_len;
 
     // Check if the sum of the buf_len values overflows a uint64_t (file size).
-    if (__wasmfs_offset_t(offset) + __wasmfs_offset_t(len) <
-        __wasmfs_offset_t(offset)) {
-      return __WASI_ERRNO_INVAL;
+    // Overflow and underflow behaviour are only defined for unsigned types.
+    if (addWillOverFlow(__wasmfs_offset_t(offset), __wasmfs_offset_t(len))) {
+      return __WASI_ERRNO_FBIG;
     }
 
     // Check if buf_len specifies a positive length buffer but buf is a
@@ -109,6 +113,10 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
                               const __wasi_iovec_t* iovs,
                               size_t iovs_len,
                               __wasi_size_t* nread) {
+  if (iovs_len < 0) {
+    return __WASI_ERRNO_INVAL;
+  }
+
   auto openFile = FileTable::get()[fd];
 
   if (!openFile) {

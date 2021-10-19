@@ -21,6 +21,13 @@ static_assert(std::is_same<size_t, __wasi_size_t>::value,
 static_assert(std::is_same<off_t, __wasi_filedelta_t>::value,
               "off_t should be the same as __wasi_filedelta_t");
 
+template<typename T> bool addWillOverFlow(T a, T b) {
+  if (a > 0 && b > std::numeric_limits<T>::max() - a) {
+    return true;
+  }
+  return false;
+}
+
 // Flags determining the method of how paths are resolved.
 using __wasmfs_oflags_t = uint32_t;
 
