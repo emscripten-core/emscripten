@@ -44,7 +44,14 @@ int main() {
   printf("errno: %d\n\n", errno);
   errno = 0;
 
-  printf("seek: %lld\n", lseek(f, -15, SEEK_CUR));
+  printf("before bad seek: %lld\n", lseek(f, 0, SEEK_CUR));
+  printf("errno: %d\n", errno);
+  errno = 0;
+
+  printf("bad seek: %lld\n", lseek(f, -15, SEEK_CUR));
+  printf("errno: %d\n", errno);
+  errno = 0;
+  printf("after bad seek: %lld\n", lseek(f, 0, SEEK_CUR));
   printf("errno: %d\n", errno);
   errno = 0;
   printf("partial read from before start of file: %zd\n",
@@ -74,26 +81,6 @@ int main() {
   printf("seek: %lld\n", lseek(f, 0, SEEK_SET));
   printf("read after write: %zd\n",
          bytesRead = read(f, readBuffer, sizeof readBuffer));
-  printf("errno: %d\n", errno);
-  errno = 0;
-  printf("final: ");
-  for (ssize_t i = 0; i < bytesRead; i++) {
-    if (readBuffer[i] == 0) {
-      printf("\\0");
-    } else {
-      printf("%c", readBuffer[i]);
-    }
-  }
-  printf("\n");
-
-  // readv
-  printf("\n");
-  memset(readBuffer, 0, sizeof readBuffer);
-  struct iovec iov;
-  iov.iov_base = readBuffer;
-  iov.iov_len = sizeof readBuffer;
-  printf("seek: %lld\n", lseek(f, 0, SEEK_SET));
-  printf("read after write: %zd\n", bytesRead = readv(f, &iov, 1));
   printf("errno: %d\n", errno);
   errno = 0;
   printf("final: ");

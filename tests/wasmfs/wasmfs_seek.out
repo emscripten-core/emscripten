@@ -11,8 +11,12 @@ partial read from end of file: 2
 data: 90
 errno: 0
 
-seek: -1
+before bad seek: 10
+errno: 0
+bad seek: -1
 errno: 28
+after bad seek: 10
+errno: 0
 partial read from before start of file: 0
 data: 
 errno: 0
@@ -28,11 +32,6 @@ errno: 0
 seek: 23
 write after end of file: 8
 errno: 0
-
-seek: 0
-read after write: 31
-errno: 0
-final: wri4567890wri\0\0\0\0\0\0\0\0\0\0writeme\0
 
 seek: 0
 read after write: 31

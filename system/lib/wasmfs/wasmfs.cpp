@@ -302,14 +302,16 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   }
   auto lockedOpenFile = openFile.locked();
 
-  off_t position = offset;
-  if (whence == SEEK_CUR) {
+  off_t position;
+  if (whence == SEEK_SET) {
+    position = offset;
+  } else if (whence == SEEK_CUR) {
     position = lockedOpenFile.position() + offset;
   } else if (whence == SEEK_END) {
     // Only the open file stat is altered in seek. Locking the underlying data
     // file here once is sufficient.
     position = lockedOpenFile.getFile()->locked().size() + offset;
-  } else if (whence != SEEK_SET) {
+  } else {
     return __WASI_ERRNO_INVAL;
   }
 
