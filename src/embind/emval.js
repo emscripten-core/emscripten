@@ -68,14 +68,14 @@ var LibraryEmVal = {
 
   $Emval__deps: ['$emval_handle_array', '$emval_free_list', '$throwBindingError', '$init_emval'],
   $Emval: {
-    handleToValue: function(handle) {
+    toValue: function(handle) {
       if (!handle) {
           throwBindingError('Cannot use deleted val. handle = ' + handle);
       }
       return emval_handle_array[handle].value;
     },
 
-    valueToHandle: function(value) {
+    toHandle: function(value) {
       switch (value) {
         case undefined :{ return 1; }
         case null :{ return 2; }
