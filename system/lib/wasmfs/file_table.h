@@ -15,10 +15,14 @@
 #include <vector>
 #include <wasi/api.h>
 
+namespace wasmfs {
+static_assert(std::is_same<size_t, __wasi_size_t>::value,
+              "size_t should be the same as __wasi_size_t");
+static_assert(std::is_same<off_t, __wasi_filedelta_t>::value,
+              "off_t should be the same as __wasi_filedelta_t");
+
 // Flags determining the method of how paths are resolved.
 using __wasmfs_oflags_t = uint32_t;
-
-namespace wasmfs {
 
 std::shared_ptr<Directory> getRootDirectory();
 
