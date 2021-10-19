@@ -697,7 +697,7 @@ function makeAbortWrapper(original) {
       if (
         ABORT // rethrow exception if abort() was called in the original function call above
         || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
-#if SUPPORT_LONGJMP
+#if SUPPORT_LONGJMP == 'emscripten'
         || e === 'longjmp' // rethrow longjmp if enabled
 #endif
       ) {

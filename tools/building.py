@@ -246,11 +246,10 @@ def llvm_backend_args():
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
   # asm.js-style setjmp/longjmp handling
-  if settings.SUPPORT_LONGJMP:
+  if settings.SUPPORT_LONGJMP == 'emscripten':
     args += ['-enable-emscripten-sjlj']
-
   # setjmp/longjmp handling using Wasm EH
-  if settings.SJLJ_HANDLING:
+  elif settings.SUPPORT_LONGJMP == 'wasm':
     args += ['-wasm-enable-sjlj']
 
   # better (smaller, sometimes faster) codegen, see binaryen#1054

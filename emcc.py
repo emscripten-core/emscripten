@@ -1369,11 +1369,16 @@ def phase_setup(options, state, newargs, settings_map):
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
+  # SUPPORT_LONGJMP=1 means SUPPORT_LONGJMP=emscripten (backward compatibility)
+  if settings.SUPPORT_LONGJMP == 1:
+    settings.SUPPORT_LONGJMP = 'emscripten'
+  if settings.SUPPORT_LONGJMP == 0:
+    settings.SUPPORT_LONGJMP = 'none'
   # Wasm SjLj cannot be used with Emscripten EH
-  if not settings.DISABLE_EXCEPTION_CATCHING and settings.SJLJ_HANDLING:
-    exit_with_error('SJLJ_HANLDING cannot be used with DISABLE_EXCEPTION_CATCHING=0')
-  if not settings.DISABLE_EXCEPTION_THROWING and settings.SJLJ_HANDLING:
-    exit_with_error('SJLJ_HANDLING cannot be used with DISABLE_EXCEPTION_THROWING=0')
+  if not settings.DISABLE_EXCEPTION_CATCHING and settings.SUPPORT_LONGJMP == 'wasm':
+    exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
+  if settings.SUPPORT_LONGJMP == 'wasm':
+    settings.DISABLE_EXCEPTION_THROWING = 1
 
   return (newargs, input_files)
 
@@ -2021,9 +2026,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
       elif settings.LINKABLE:
         diagnostics.warning('experimental', '-s LINKABLE + pthreads is experimental')
 
-      default_setting('SUPPORT_LONGJMP', 0)
-      if settings.SUPPORT_LONGJMP:
-        exit_with_error('SUPPORT_LONGJMP is not compatible with pthreads + dynamic linking')
+      default_setting('SUPPORT_LONGJMP', 'none')
+      if settings.SUPPORT_LONGJMP == 'emscripten':
+        exit_with_error('SUPPORT_LONGJMP=emscripten is not compatible with pthreads + dynamic linking')
 
     if settings.PROXY_TO_WORKER:
       exit_with_error('--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker.')

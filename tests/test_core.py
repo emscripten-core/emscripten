@@ -132,9 +132,8 @@ def with_both_sjlj_handling(f):
       if not self.is_wasm():
         self.skipTest('wasm2js does not support Wasm SjLj')
       self.require_v8()
-      self.set_setting('SJLJ_HANDLING')
+      self.set_setting('SUPPORT_LONGJMP', 'wasm')
       # These are for Emscripten EH/SjLj
-      self.set_setting('SUPPORT_LONGJMP', 0)
       self.set_setting('DISABLE_EXCEPTION_THROWING')
       self.v8_args.append('--experimental-wasm-eh')
       f(self)

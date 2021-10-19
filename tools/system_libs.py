@@ -572,20 +572,6 @@ class Exceptions(IntEnum):
   WASM = auto()
 
 
-class SjLj(IntEnum):
-  """
-  This represents setjmp/longjmp handling mode of Emscripten. Currently there are
-  two modes of exception handling:
-  - Emscripten: Emscripten provides setjmp/longjmp handling capability using JS
-    emulation. This causes code size increase and performance degradation.
-  - Wasm: Wasm setjmp/longjmp handling support uses Wasm EH instructions and
-    is meant to be fast. You need to use a VM that has the EH support to use
-    this. This is not fully working yet and still experimental.
-  """
-  EMSCRIPTEN = auto()
-  WASM = auto()
-
-
 class NoExceptLibrary(Library):
   def __init__(self, **kwargs):
     self.eh_mode = kwargs.pop('eh_mode')
@@ -631,43 +617,39 @@ class NoExceptLibrary(Library):
 
 class SjLjLibrary(Library):
   def __init__(self, **kwargs):
-    self.sjlj_mode = kwargs.pop('sjlj_mode')
+    # Whether we use Wasm EH instructions for SjLj support
+    self.is_wasm = kwargs.pop('is_wasm')
     super().__init__(**kwargs)
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.sjlj_mode == SjLj.EMSCRIPTEN:
-      cflags += ['-s', 'SUPPORT_LONGJMP=1']
-    elif self.sjlj_mode == SjLj.WASM:
-      # SUPPORT_LONGJMP=0 and DISABLE_EXCEPTION_THROWING=1 are the defaults,
-      # which are for Emscripten EH/SjLj, so we should reverse them.
-      cflags += ['-s', 'SUPPORT_LONGJMP=0',
+    if self.is_wasm:
+      # DISABLE_EXCEPTION_THROWING=1 is the default, which is for Emscripten
+      # EH/SjLj, so we should reverse it.
+      cflags += ['-s', 'SUPPORT_LONGJMP=wasm',
                  '-s', 'DISABLE_EXCEPTION_THROWING=1',
-                 '-s', 'SJLJ_HANDLING=1',
                  '-D__USING_WASM_SJLJ__']
+    else:
+      cflags += ['-s', 'SUPPORT_LONGJMP=emscripten']
     return cflags
 
   def get_base_name(self):
     name = super().get_base_name()
     # TODO Currently emscripten-based SjLj is the default mode, thus no
     # suffixes. Change the default to wasm exception later.
-    if self.sjlj_mode == SjLj.WASM:
+    if self.is_wasm:
       name += '-wasm'
     return name
 
   @classmethod
-  def variations(cls, **kwargs):  # noqa
-    combos = super().variations()
-    return ([dict(sjlj_mode=SjLj.EMSCRIPTEN, **combo) for combo in combos] +
-            [dict(sjlj_mode=SjLj.WASM, **combo) for combo in combos])
+  def vary_on(cls):
+    return super().vary_on() + ['is_wasm']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    if settings.SJLJ_HANDLING:
-      sjlj_mode = SjLj.WASM
-    else:
-      sjlj_mode = SjLj.EMSCRIPTEN
-    return super().get_default_variation(sjlj_mode=sjlj_mode, **kwargs)
+    combos = super().variations()
+    is_wasm = settings.SUPPORT_LONGJMP == 'wasm'
+    return super().get_default_variation(is_wasm=is_wasm, **kwargs)
 
 
 class MuslInternalLibrary(Library):
