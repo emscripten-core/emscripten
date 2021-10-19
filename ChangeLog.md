@@ -50,6 +50,9 @@ See docs/process.md for more on how version tagging works.
 - Remove support for the `EMIT_EMSCRIPTEN_METADATA` setting.  This setting has
   been deprecated for some time now and we don't know of any remaining reasons to
   keep it around.
+- Add JavaScript API `Emval.{toHandle, toValue}` as well as a C++ method
+  `val::as_handle()` to allow passing values between the `val` class and
+  `EM_JS`/ `EM_ASM` JavaScript snippets. (#15279)
 
 2.0.31 - 10/01/2021
 -------------------
