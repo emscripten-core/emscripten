@@ -90,7 +90,6 @@ unsupported = {
   'test_pthread_cond_wait_2_2': 'lacking necessary mmap() support',
   'test_pthread_create_8_1': 'signals are not supported',
   'test_pthread_create_8_2': 'signals are not supported',
-  'test_pthread_create_10_1': 'signals are not supported',
   'test_pthread_create_11_1': '_POSIX_THREAD_CPUTIME not supported',
   'test_pthread_getcpuclockid_1_1': 'pthread_getcpuclockid not supported',
   'test_pthread_getschedparam_1_3': 'scheduling policy/parameters are not supported',

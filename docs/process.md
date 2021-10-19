@@ -54,7 +54,7 @@ Requirements:
 How:
 
 1. Run [`./scripts/create_release.py`][create_release] in the emsdk repository.
-   This script will update [emscripten-releases-tags.txt][emscripten_releases_tags],
+   This script will update [emscripten-releases-tags.json][emscripten_releases_tags],
    adding a new version.  You can either specify the desired hash, or let the
    script pick the current tot build.  The script will create a new git branch
    that can be uploaded as a PR.
@@ -131,5 +131,5 @@ See notes above on installing sphinx.
 [emscripten_version]: https://github.com/emscripten-core/emscripten/blob/main/emscripten-version.txt
 [changelog]: https://github.com/emscripten-core/emscripten/blob/main/ChangeLog.md
 [create_release]: https://github.com/emscripten-core/emsdk/blob/main/scripts/create_release.py
-[emscripten_releases_tags]: https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.txt
+[emscripten_releases_tags]: https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.json
 [DEPS]: https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS

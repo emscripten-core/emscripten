@@ -52,7 +52,6 @@ var LibraryPThread = {
     },
     // Maps pthread_t to pthread info objects
     pthreads: {},
-    threadExitHandlers: [], // An array of C functions to run when this thread exits.
 
 #if PTHREADS_PROFILING
     createProfilerBlock: function(pthreadPtr) {
@@ -510,6 +509,13 @@ var LibraryPThread = {
 #if DYLINK_DEBUG
       err('tlsInit -> ' + __tls_base);
 #endif
+      if (!__tls_base) {
+#if ASSERTIONS
+        // __tls_base should never be zero if there are tls exports
+        assert(__tls_base || Object.keys(metadata.tlsExports).length == 0);
+#endif
+        return;
+      }
       for (var sym in metadata.tlsExports) {
         metadata.tlsExports[sym] = moduleExports[sym];
       }
@@ -660,7 +666,7 @@ var LibraryPThread = {
     // Deduce which WebGL canvases (HTMLCanvasElements or OffscreenCanvases) should be passed over to the
     // Worker that hosts the spawned pthread.
     // Comma-delimited list of CSS selectors that must identify canvases by IDs: "#canvas1, #canvas2, ..."
-    var transferredCanvasNames = attr ? {{{ makeGetValue('attr', 36, 'i32') }}} : 0;
+    var transferredCanvasNames = attr ? {{{ makeGetValue('attr', 40, POINTER_TYPE) }}} : 0;
 #if OFFSCREENCANVASES_TO_PTHREAD
     // Proxied canvases string pointer -1 is used as a special token to fetch
     // whatever canvases were passed to build in -s
@@ -978,38 +984,11 @@ var LibraryPThread = {
     return 0;
   },
 
-  __pthread_exit_run_handlers__deps: ['exit'],
-  __pthread_exit_run_handlers: function(status) {
-    // Called from pthread_exit, either when called explicitly called
-    // by programmer, or implicitly when leaving the thread main function.
-    //
-    // Note: in theory we would like to return any offscreen canvases back to
-    // the main thread, but if we ever fetched a rendering context for them that
-    // would not be valid, so we don't try.
-
-#if PTHREADS_DEBUG
-    var tb = _pthread_self();
-    assert(tb);
-    err('Pthread 0x' + tb.toString(16) + ' exited.');
-#endif
-
-    while (PThread.threadExitHandlers.length > 0) {
-      PThread.threadExitHandlers.pop()();
-    }
-  },
-
   __pthread_detached_exit: function() {
     // Called at the end of pthread_exit (which occurs also when leaving the
     // thread main function) if an only if the thread is in a detached state.
     postMessage({ 'cmd': 'detachedExit' });
   },
-
-  __cxa_thread_atexit__sig: 'vii',
-  __cxa_thread_atexit: function(routine, arg) {
-    PThread.threadExitHandlers.push(function() { {{{ makeDynCall('vi', 'routine') }}}(arg) });
-  },
-  __cxa_thread_atexit_impl: '__cxa_thread_atexit',
-
 
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
   emscripten_futex_wait__deps: ['emscripten_main_thread_process_queued_calls'],
@@ -1252,6 +1231,10 @@ var LibraryPThread = {
 #endif
   },
 
+  // This function is call by a pthread to signal that exit() was called and
+  // that the entire process should exit.
+  // This function is always called from a pthread, but is executed on the
+  // main thread due the __proxy attribute.
   $exitOnMainThread__deps: ['exit',
 #if !MINIMAL_RUNTIME
     '$handleException',
@@ -1259,7 +1242,6 @@ var LibraryPThread = {
   ],
   $exitOnMainThread__proxy: 'async',
   $exitOnMainThread: function(returnCode) {
-    // A pthread has requested to exit the whole application process (runtime).
 #if PTHREADS_DEBUG
     err('exitOnMainThread');
 #endif
@@ -1283,39 +1265,39 @@ var LibraryPThread = {
     // all the args here.
     // We also pass 'sync' to C separately, since C needs to look at it.
     var numCallArgs = arguments.length - 2;
+    var outerArgs = arguments;
 #if ASSERTIONS
     if (numCallArgs > {{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) throw 'emscripten_proxy_to_main_thread_js: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + ({{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) + '!';
 #endif
     // Allocate a buffer, which will be copied by the C code.
-    var stack = stackSave();
-    // First passed parameter specifies the number of arguments to the function.
-    // When BigInt support is enabled, we must handle types in a more complex
-    // way, detecting at runtime if a value is a BigInt or not (as we have no
-    // type info here). To do that, add a "prefix" before each value that
-    // indicates if it is a BigInt, which effectively doubles the number of
-    // values we serialize for proxying. TODO: pack this?
-    var serializedNumCallArgs = numCallArgs {{{ WASM_BIGINT ? "* 2" : "" }}};
-    var args = stackAlloc(serializedNumCallArgs * 8);
-    var b = args >> 3;
-    for (var i = 0; i < numCallArgs; i++) {
-      var arg = arguments[2 + i];
-#if WASM_BIGINT
-      if (typeof arg === 'bigint') {
-        // The prefix is non-zero to indicate a bigint.
-        HEAP64[b + 2*i] = BigInt(1);
-        HEAP64[b + 2*i + 1] = arg;
-      } else {
-        // The prefix is zero to indicate a JS Number.
-        HEAP64[b + 2*i] = BigInt(0);
-        HEAPF64[b + 2*i + 1] = arg;
+    return withStackSave(function() {
+      // First passed parameter specifies the number of arguments to the function.
+      // When BigInt support is enabled, we must handle types in a more complex
+      // way, detecting at runtime if a value is a BigInt or not (as we have no
+      // type info here). To do that, add a "prefix" before each value that
+      // indicates if it is a BigInt, which effectively doubles the number of
+      // values we serialize for proxying. TODO: pack this?
+      var serializedNumCallArgs = numCallArgs {{{ WASM_BIGINT ? "* 2" : "" }}};
+      var args = stackAlloc(serializedNumCallArgs * 8);
+      var b = args >> 3;
+      for (var i = 0; i < numCallArgs; i++) {
+        var arg = outerArgs[2 + i];
+  #if WASM_BIGINT
+        if (typeof arg === 'bigint') {
+          // The prefix is non-zero to indicate a bigint.
+          HEAP64[b + 2*i] = BigInt(1);
+          HEAP64[b + 2*i + 1] = arg;
+        } else {
+          // The prefix is zero to indicate a JS Number.
+          HEAP64[b + 2*i] = BigInt(0);
+          HEAPF64[b + 2*i + 1] = arg;
+        }
+  #else
+        HEAPF64[b + i] = arg;
+  #endif
       }
-#else
-      HEAPF64[b + i] = arg;
-#endif
-    }
-    var ret = _emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
-    stackRestore(stack);
-    return ret;
+      return _emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
+    });
   },
 
   emscripten_receive_on_main_thread_js_callArgs: '=[]',

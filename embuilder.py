@@ -19,6 +19,7 @@ import time
 
 from tools import shared
 from tools import system_libs
+from tools import ports
 from tools.settings import settings
 import emscripten
 
@@ -51,6 +52,8 @@ MINIMAL_TASKS = [
     'libGL',
     'libhtml5',
     'libsockets',
+    'libstubs',
+    'libstubs-debug',
     'libc_rt_wasm',
     'libc_rt_wasm-optz',
     'struct_info',
@@ -72,7 +75,7 @@ PORT_VARIANTS = {
     'sdl2_image_jpg': ('sdl2_image', {'SDL2_IMAGE_FORMATS': ["jpg"]}),
 }
 
-PORTS = sorted(list(system_libs.ports.ports_by_name.keys()) + list(PORT_VARIANTS.keys()))
+PORTS = sorted(list(ports.ports_by_name.keys()) + list(PORT_VARIANTS.keys()))
 
 temp_files = shared.configuration.get_temp_files()
 logger = logging.getLogger('embuilder')
@@ -104,9 +107,9 @@ def build_port(port_name):
     old_settings = None
 
   if force:
-    system_libs.clear_port(port_name, settings)
+    ports.clear_port(port_name, settings)
 
-  system_libs.build_port(port_name, settings)
+  ports.build_port(port_name, settings)
   if old_settings:
     settings.dict().update(old_settings)
 
@@ -124,6 +127,8 @@ def main():
                       help='build relocatable objects for suitable for dynamic linking')
   parser.add_argument('--force', action='store_true',
                       help='force rebuild of target (by removing it first)')
+  parser.add_argument('--wasm64', action='store_true',
+                      help='use wasm64 architecture')
   parser.add_argument('operation', help='currently only "build" is supported')
   parser.add_argument('targets', nargs='+', help='see below')
   args = parser.parse_args()
@@ -143,6 +148,9 @@ def main():
 
   if args.pic:
     settings.RELOCATABLE = 1
+
+  if args.wasm64:
+    settings.MEMORY64 = 2
 
   if args.force:
     force = True

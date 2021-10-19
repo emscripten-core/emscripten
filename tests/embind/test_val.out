@@ -23,6 +23,7 @@ pass
 test:
 val object()
 pass
+pass
 test:
 val undefined()
 pass

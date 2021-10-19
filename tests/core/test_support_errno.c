@@ -9,10 +9,10 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
-#include <unistd.h>
+#include <time.h>
 
 int main() {
-  pid_t rtn =  fork();
+  int rtn = clock_gettime(-1, NULL);
   printf("rtn     : %d\n", rtn);
   printf("errno   : %d\n", errno);
   printf("strerror: %s\n", strerror(errno));

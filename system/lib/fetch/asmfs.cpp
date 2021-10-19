@@ -1054,7 +1054,7 @@ static long open(const char* pathname, int flags, int mode) {
   return (long)desc;
 }
 
-long __syscall5(long path, long flags, ...) // open
+long __syscall_open(long path, long flags, ...)
 {
   va_list vl;
   va_start(vl, flags);
@@ -1194,7 +1194,7 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd)
   return close(fd);
 }
 
-long __syscall9(long oldpath, long newpath) // link
+long __syscall_link(long oldpath, long newpath)
 {
 #ifdef ASMFS_DEBUG
   EM_ASM(err('link(oldpath="' + UTF8ToString($0) + '", newpath="' + UTF8ToString($1) + '")'),
@@ -1206,7 +1206,7 @@ long __syscall9(long oldpath, long newpath) // link
   RETURN_ERRNO(ENOTSUP, "TODO: link() is a stub and not yet implemented in ASMFS");
 }
 
-long __syscall10(long path) // unlink
+long __syscall_unlink(long path)
 {
   const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
@@ -1267,7 +1267,7 @@ long __syscall10(long path) // unlink
   return 0;
 }
 
-long __syscall12(long path) // chdir
+long __syscall_chdir(long path)
 {
   const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
@@ -1303,7 +1303,7 @@ long __syscall12(long path) // chdir
   return 0;
 }
 
-long __syscall14(long path, long mode, long dev) // mknod
+long __syscall_mknod(long path, long mode, long dev)
 {
   const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
@@ -1318,7 +1318,7 @@ long __syscall14(long path, long mode, long dev) // mknod
   RETURN_ERRNO(ENOTSUP, "TODO: mknod() is a stub and not yet implemented in ASMFS");
 }
 
-long __syscall15(long path, long mode) // chmod
+long __syscall_chmod(long path, long mode)
 {
   const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
@@ -1358,7 +1358,7 @@ long __syscall15(long path, long mode) // chmod
   return 0;
 }
 
-long __syscall33(long path, long mode) // access
+long __syscall_access(long path, long mode)
 {
   const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
@@ -1409,7 +1409,7 @@ long __syscall33(long path, long mode) // access
   return 0;
 }
 
-long __syscall36() // sync
+long __syscall_sync()
 {
 #ifdef ASMFS_DEBUG
   EM_ASM(err('sync()'));
@@ -1504,12 +1504,12 @@ uint64_t emscripten_asmfs_compute_memory_usage() {
   return emscripten_asmfs_compute_memory_usage_at_node(filesystem_root());
 }
 
-long __syscall39(long path, long mode) // mkdir
+long __syscall_mkdir(long path, long mode)
 {
   return emscripten_asmfs_mkdir((const char *)path, mode);
 }
 
-long __syscall40(long path) // rmdir
+long __syscall_rmdir(long path)
 {
   const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
@@ -1563,7 +1563,7 @@ long __syscall40(long path) // rmdir
   return 0;
 }
 
-long __syscall41(long fd) // dup
+long __syscall_dup(long fd)
 {
 #ifdef ASMFS_DEBUG
   EM_ASM(err('dup(fd=' + $0 + ')'), fd);
@@ -1585,7 +1585,7 @@ long __syscall41(long fd) // dup
 
 // TODO: syscall42: int pipe(int pipefd[2]);
 
-long __syscall54(long fd, long request, ...) // ioctl/sysctl
+long __syscall_ioctl(long fd, long request, ...)
 {
   va_list vl;
   va_start(vl, request);
@@ -1750,7 +1750,7 @@ static long readv(int fd, const iovec *iov, int iovcnt) // syscall145
   return numRead;
 }
 
-long __syscall3(long fd, long buf, long count) // read
+long __syscall_read(long fd, long buf, long count)
 {
 #ifdef ASMFS_DEBUG
   EM_ASM(
@@ -1827,7 +1827,7 @@ static long writev(int fd, const iovec *iov, int iovcnt) // syscall146
   return total_write_amount;
 }
 
-long __syscall4(long fd, long buf, long count) // write
+long __syscall_write(long fd, long buf, long count)
 {
 #ifdef ASMFS_DEBUG
   EM_ASM(
@@ -1865,7 +1865,7 @@ __wasi_errno_t __wasi_fd_write(
 // TODO: syscall180: pread64
 // TODO: syscall181: pwrite64
 
-long __syscall183(long buf, long size) // getcwd
+long __syscall_getcwd(long buf, long size)
 {
 #ifdef ASMFS_DEBUG
   EM_ASM(err('getcwd(buf=0x' + $0 + ', size= ' + $1 + ')'), buf, size);
@@ -1929,7 +1929,7 @@ static long __stat64(inode* node, struct stat* buf) {
   return 0;
 }
 
-long __syscall195(long path, long buf) // SYS_stat64
+long __syscall_stat64(long path, long buf)
 {
   const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
@@ -1973,7 +1973,7 @@ long __syscall195(long path, long buf) // SYS_stat64
   return __stat64(node, (struct stat *)buf);
 }
 
-long __syscall196(long path, long buf) // SYS_lstat64
+long __syscall_lstat64(long path, long buf)
 {
   const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
@@ -2010,7 +2010,7 @@ long __syscall196(long path, long buf) // SYS_lstat64
   return __stat64(node, (struct stat*)buf);
 }
 
-long __syscall197(long fd, long buf) // SYS_fstat64
+long __syscall_fstat64(long fd, long buf)
 {
 #ifdef ASMFS_DEBUG
   EM_ASM(
@@ -2032,7 +2032,7 @@ long __syscall197(long fd, long buf) // SYS_fstat64
 // TODO: syscall207: fchown32
 // TODO: syscall212: chown32
 
-long __syscall220(long fd, long dirp, long count) // getdents64 (get directory entries 64-bit)
+long __syscall_getdents64(long fd, long dirp, long count) // (get directory entries 64-bit)
 {
   dirent* de = (dirent*)dirp;
   unsigned int dirents_size =

@@ -60,6 +60,7 @@ core_test_modes = [
   'wasm2js3',
   'wasm2jss',
   'wasm2jsz',
+  'wasm64'
 ]
 
 # The default core test mode, used when none is specified
@@ -312,6 +313,8 @@ def parse_args(args):
   parser.add_argument('tests', nargs='*')
   parser.add_argument('--failfast', dest='failfast', action='store_const',
                       const=True, default=False)
+  parser.add_argument('--force64', dest='force64', action='store_const',
+                      const=True, default=False)
   return parser.parse_args()
 
 
@@ -324,6 +327,8 @@ def configure():
   common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
   common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
   common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
+  global FORCE64
+  FORCE64 = int(os.getenv('EMTEST_FORCE64', '0'))
   if common.EMTEST_VERBOSE:
     logging.root.setLevel(logging.DEBUG)
 
@@ -361,6 +366,7 @@ def main(args):
   set_env('EMTEST_REBASELINE', options.rebaseline)
   set_env('EMTEST_VERBOSE', options.verbose)
   set_env('EMTEST_CORES', options.cores)
+  set_env('EMTEST_FORCE64', options.force64)
 
   configure()
 

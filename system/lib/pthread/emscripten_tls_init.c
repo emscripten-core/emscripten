@@ -19,8 +19,6 @@
 // linker-generated symbol that loads static TLS data at the given location.
 extern void __wasm_init_tls(void *memory);
 
-extern int __cxa_thread_atexit(void (*)(void *), void *, void *);
-
 extern int __dso_handle;
 
 void* emscripten_tls_init(void) {

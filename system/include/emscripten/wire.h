@@ -400,7 +400,8 @@ namespace emscripten {
             return (std::is_floating_point<T>::value &&
                         (sizeof(T) == 4 || sizeof(T) == 8)) ||
                     (std::is_integral<T>::value &&
-                        (sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4));
+                        (sizeof(T) == 1 || sizeof(T) == 2 ||
+                         sizeof(T) == 4 || sizeof(T) == 8));
         }
     }
 

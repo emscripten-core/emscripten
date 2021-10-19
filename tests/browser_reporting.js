@@ -15,7 +15,10 @@ function reportResultToServer(result, sync, port) {
   }
   xhr.open('GET', 'http://localhost:' + port + '/report_result?' + result, !sync);
   xhr.send();
-  if (typeof window === 'object' && window && hasModule && !Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
+  if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
+    /* for easy debugging, don't close window on failure */
+    setTimeout(function() { window.close() }, 1000);
+  }
 }
 
 /** @param {boolean=} sync

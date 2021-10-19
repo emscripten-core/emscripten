@@ -237,6 +237,7 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // the full end-to-end wasm64 mode, and 2 is wasm64 for clang/lld but lowered to
 // wasm32 in Binaryen (such that it can run on wasm32 engines, while internally
 // using i64 pointers).
+// Assumes WASM_BIGINT.
 // [compile+link]
 var MEMORY64 = 0;
 
@@ -1320,12 +1321,6 @@ var WASM_BIGINT = 0;
 // [link]
 var EMIT_PRODUCERS_SECTION = 0;
 
-// If set then generated WASM files will contain a custom
-// "emscripten_metadata" section that contains information necessary
-// to execute the file without the accompanying JS file.
-// [link]
-var EMIT_EMSCRIPTEN_METADATA = 0;
-
 // Emits emscripten license info in the JS output.
 // [link]
 var EMIT_EMSCRIPTEN_LICENSE = 0;
@@ -2047,4 +2042,5 @@ var LEGACY_SETTINGS = [
   ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older'],
   ['RUNTIME_FUNCS_TO_IMPORT', [[]], 'No longer needed'],
   ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
+  ['EMIT_EMSCRIPTEN_METADATA', [0], 'No longer supported'],
 ];
