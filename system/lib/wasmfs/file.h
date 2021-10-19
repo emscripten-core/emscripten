@@ -64,18 +64,17 @@ public:
 
 protected:
   File(FileKind kind) : kind(kind) {}
-  File(FileKind kind, uint32_t mode)
-    : kind(kind), mode(mode), ctime(time(0)), mtime(time(0)), atime(time(0)) {}
+  File(FileKind kind, uint32_t mode) : kind(kind), mode(mode) {}
   // A mutex is needed for multiple accesses to the same file.
   std::mutex mutex;
 
   size_t size = 0;
 
-  uint32_t mode = 0; // r/w/x modes
+  uint32_t mode = 0; // User and group mode bits for access permission.
 
-  time_t ctime = 0; // Time when the file node was last modified
-  time_t mtime = 0; // Time when the file content was last modified
-  time_t atime = 0; // Time when the content was last accessed
+  time_t ctime = 0; // Time when the file node was last modified.
+  time_t mtime = 0; // Time when the file content was last modified.
+  time_t atime = 0; // Time when the content was last accessed.
 
   FileKind kind;
 };
@@ -145,7 +144,7 @@ public:
   Handle locked() { return Handle(shared_from_this()); }
 };
 
-// This class describes a file that lives in WASM Memory.
+// This class describes a file that lives in Wasm Memory.
 class MemoryFile : public DataFile {
   std::vector<uint8_t> buffer;
 

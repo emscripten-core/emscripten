@@ -15,10 +15,8 @@
 #include <vector>
 #include <wasi/api.h>
 
-/**
- * Flags determining the method of how paths are resolved.
- */
-typedef uint32_t __wasmfs_oflags_t;
+// Flags determining the method of how paths are resolved.
+using __wasmfs_oflags_t = uint32_t;
 
 namespace wasmfs {
 

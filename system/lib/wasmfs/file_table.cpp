@@ -90,11 +90,11 @@ public:
 
 FileTable::FileTable() {
   entries.push_back(
-    std::make_shared<OpenFileState>(0, O_RDWR, StdinFile::getSingleton()));
+    std::make_shared<OpenFileState>(0, O_RDONLY, StdinFile::getSingleton()));
   entries.push_back(
-    std::make_shared<OpenFileState>(0, O_RDWR, StdoutFile::getSingleton()));
+    std::make_shared<OpenFileState>(0, O_WRONLY, StdoutFile::getSingleton()));
   entries.push_back(
-    std::make_shared<OpenFileState>(0, O_RDWR, StderrFile::getSingleton()));
+    std::make_shared<OpenFileState>(0, O_WRONLY, StderrFile::getSingleton()));
 }
 
 // Initialize default directories including dev/stdin, dev/stdout, dev/stderr.

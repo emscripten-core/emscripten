@@ -68,7 +68,7 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
   }
 
   auto lockedOpenFile = openFile.locked();
-  auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
+  auto* file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
   if (!file) {
@@ -83,7 +83,7 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
     size_t len = iovs[i].buf_len;
 
     // Check if the sum of the buf_len values overflows an ssize_t value.
-    if (offset + len < offset) {
+    if (uint64_t(offset) + uint64_t(len) < uint64_t(offset)) {
       return __WASI_ERRNO_INVAL;
     }
 
@@ -114,7 +114,7 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
   }
 
   auto lockedOpenFile = openFile.locked();
-  auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
+  auto* file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
   if (!file) {
@@ -224,8 +224,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   }
 
   // TODO: remove assert when all functionality is complete.
-  // Currently implement O_APPEND, O_TRUNC
-  assert(!(flags & O_DSYNC) && !(flags & O_NOCTTY) && !(flags & O_NONBLOCK));
+  // assert((flags & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
+  //                   O_RDWR | O_WRONLY | O_RDONLY)) == 0);
 
   std::vector<std::string> pathParts;
 
@@ -245,7 +245,6 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   std::shared_ptr<File> curr = getRootDirectory();
 
   for (int i = 0; i < pathParts.size(); i++) {
-
     auto directory = curr->dynCast<Directory>();
 
     // If file is nullptr, then the file was not a Directory.
@@ -266,7 +265,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
         // If curr is the last element and the create flag is specified
         auto dir = directory->locked();
 
-        // create empty in memory file.
+        // Create empty in-memory file.
         auto created = std::make_shared<MemoryFile>(mode);
 
         dir.setEntry(pathParts[i], created);
