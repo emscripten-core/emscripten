@@ -98,6 +98,7 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
   }
 
   *nwritten = offset - lockedOpenFile.position();
+  lockedOpenFile.position() = offset;
 
   return __WASI_ERRNO_SUCCESS;
 }
@@ -306,9 +307,9 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
 
   int64_t position = offset;
   if (whence == SEEK_CUR) {
-    position = lockedOpenFile.position() + offset;
+    position += lockedOpenFile.position();
   } else if (whence == SEEK_END) {
-    position = lockedOpenFile.getFile()->locked().size() + offset;
+    position += lockedOpenFile.getFile()->locked().size();
   } else if (whence != SEEK_SET) {
     return __WASI_ERRNO_INVAL;
   }
@@ -323,6 +324,95 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
     *newoffset = position;
   }
 
+  return __WASI_ERRNO_SUCCESS;
+}
+
+__wasi_errno_t __wasi_fd_pwrite(__wasi_fd_t fd,
+                                const __wasi_ciovec_t* iovs,
+                                size_t iovs_len,
+                                __wasi_filesize_t offset,
+                                __wasi_size_t* nwritten) {
+  auto openFile = FileTable::get()[fd];
+
+  if (!openFile) {
+    return __WASI_ERRNO_BADF;
+  }
+
+  auto lockedOpenFile = openFile.locked();
+  auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
+
+  // If file is nullptr, then the file was not a DataFile.
+  if (!file) {
+    return __WASI_ERRNO_ISDIR;
+  }
+
+  auto lockedFile = file->locked();
+
+  __wasi_filesize_t position = offset;
+  for (size_t i = 0; i < iovs_len; i++) {
+    const uint8_t* buf = iovs[i].buf;
+    __wasi_size_t len = iovs[i].buf_len;
+
+    // Check if buf_len specifies a positive length buffer but buf is a
+    // null pointer
+    if (!buf && len > 0) {
+      return __WASI_ERRNO_INVAL;
+    }
+
+    lockedFile.write(buf, len, position);
+    position += len;
+  }
+
+  *nwritten = position - offset;
+
+  return __WASI_ERRNO_SUCCESS;
+}
+
+__wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
+                               const __wasi_iovec_t* iovs,
+                               size_t iovs_len,
+                               __wasi_filesize_t offset,
+                               __wasi_size_t* nread) {
+  auto openFile = FileTable::get()[fd];
+
+  if (!openFile) {
+    return __WASI_ERRNO_BADF;
+  }
+
+  auto lockedOpenFile = openFile.locked();
+  auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
+
+  // If file is nullptr, then the file was not a DataFile.
+  if (!file) {
+    return __WASI_ERRNO_ISDIR;
+  }
+
+  auto lockedFile = file->locked();
+
+  size_t position = offset;
+  size_t size = lockedFile.size();
+  for (size_t i = 0; i < iovs_len; i++) {
+    // Check if position has exceeded size of file data.
+    ssize_t dataLeft = size - position;
+    if (dataLeft <= 0) {
+      break;
+    }
+
+    uint8_t* buf = iovs[i].buf;
+
+    // Check if buf_len specifies a positive length buffer but buf is a
+    // null pointer
+    if (!buf && iovs[i].buf_len > 0) {
+      return __WASI_ERRNO_INVAL;
+    }
+
+    size_t bytesToRead =
+      (size_t)dataLeft < iovs[i].buf_len ? dataLeft : iovs[i].buf_len;
+
+    lockedFile.read(buf, bytesToRead, position);
+    position += bytesToRead;
+  }
+  *nread = position - offset;
   return __WASI_ERRNO_SUCCESS;
 }
 }
