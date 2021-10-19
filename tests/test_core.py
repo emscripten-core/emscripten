@@ -5275,6 +5275,9 @@ main( int argv, char ** argc ) {
     self.do_runf(test_file('fs/test_nodefs_home.c'), 'success', js_engines=[config.NODE_JS])
 
   def test_fs_nodefs_list_dir(self):
+    # externally setup an existing folder structure: existing/a
+    dir = os.path.join(self.working_dir,'existing','a')
+    os.makedirs(dir)
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_list_dir.c'), 'success')
 

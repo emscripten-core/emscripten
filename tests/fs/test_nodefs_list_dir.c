@@ -4,7 +4,9 @@
 #include <stdio.h>
 
 
+
 void list_dir(const char *path) {
+    printf("listing contents of dir=%s\n",path);
     struct dirent *entry;
     DIR *dir = opendir(path);
     assert(dir);
@@ -17,14 +19,20 @@ void list_dir(const char *path) {
     closedir(dir);
 }
 
-// Test that readdir works on a mount point
-int main() {
+int main(int argc, char * argv[]) {
+  // mount the current folder as a NODEFS instance
+  // inside of emscripten and create folders nodefs/a
+  // in mounted directory
   EM_ASM(
-    FS.mkdir('working');
-    FS.mount(NODEFS, { root: '.' }, 'working');
+    FS.mkdir('/working');
+    FS.mount(NODEFS, { root: '.' }, '/working');
+    FS.mkdir('/working/nodefs');
+    FS.mkdir('/working/nodefs/a');
   );
-  list_dir("working");
+  list_dir("/working");
+  // query folders created through NODEFS
+  list_dir("/working/nodefs");
+  // query existing folders within mount point
+  list_dir("/working/existing");
   puts("success");
-
-  return 0;
 }
