@@ -15,7 +15,10 @@ function reportResultToServer(result, sync, port) {
   }
   xhr.open('GET', 'http://localhost:' + port + '/report_result?' + result, !sync);
   xhr.send();
-  if (typeof window === 'object' && window && hasModule && !Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
+  if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
+    /* for easy debugging, don't close window on failure */
+    setTimeout(function() { window.close() }, 1000);
+  }
 }
 
 /** @param {boolean=} sync
@@ -55,11 +58,15 @@ if (typeof window === 'object' && window) {
 }
 
 if (hasModule) {
-  Module['onExit'] = function(status) {
-    maybeReportResultToServer('exit:' + status);
+  if (!Module['onExit']) {
+    Module['onExit'] = function(status) {
+      maybeReportResultToServer('exit:' + status);
+    }
   }
 
-  Module['onAbort'] = function(reason) {
-    maybeReportResultToServer('abort:' + reason);
+  if (!Module['onAbort']) {
+    Module['onAbort'] = function(reason) {
+      maybeReportResultToServer('abort:' + reason);
+    }
   }
 }

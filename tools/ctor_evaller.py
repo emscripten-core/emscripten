@@ -17,7 +17,7 @@ import sys
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools import shared, utils
+from tools import utils
 
 
 js_file = sys.argv[1]
@@ -68,16 +68,11 @@ def eval_ctors(js, wasm_file, num):
   if debug_info:
     cmd += ['-g']
   logger.debug('wasm ctor cmd: ' + str(cmd))
-  proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
   try:
-    err = shared.timeout_run(proc, timeout=10, full_output=True, check=False)
-  except Exception as e:
-    if 'Timed out' not in str(e):
-      raise
+    err = subprocess.run(cmd, stderr=subprocess.PIPE, timeout=10).stdout
+  except subprocess.TimeoutExpired:
     logger.debug('ctors timed out\n')
     return 0, js
-  if proc.returncode != 0:
-    shared.exit_with_error('unexpected error while trying to eval ctors:\n' + err)
   num_successful = err.count('success on')
   logger.debug(err)
   if len(ctors) == num_successful:

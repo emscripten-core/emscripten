@@ -5,6 +5,8 @@
  * found in the LICENSE file.
  */
 
+// Included for emscripten_builtin_free / emscripten_builtin_malloc
+// TODO(sbc): Should these be in their own header to avoid emmalloc here?
 #include <emscripten/emmalloc.h>
 #include <pthread.h>
 
@@ -17,28 +19,18 @@
 // linker-generated symbol that loads static TLS data at the given location.
 extern void __wasm_init_tls(void *memory);
 
-extern int __cxa_thread_atexit(void (*)(void *), void *, void *);
-
 extern int __dso_handle;
 
-static void free_tls(void* tls_block) {
-#ifdef DEBUG_TLS
-  printf("tls free: thread[%p] dso[%p] <- %p\n", pthread_self(), &__dso_handle, tls_block);
-#endif
-  emscripten_builtin_free(tls_block);
-}
-
-//See system/lib/README.md for static constructor ordering.
-__attribute__((constructor(49)))
-void emscripten_tls_init(void) {
+void* emscripten_tls_init(void) {
   size_t tls_size = __builtin_wasm_tls_size();
   size_t tls_align = __builtin_wasm_tls_align();
-  if (tls_size) {
-    void *tls_block = emscripten_builtin_memalign(tls_align, tls_size);
-#ifdef DEBUG_TLS
-    printf("tls init: thread[%p] dso[%p] -> %p\n", pthread_self(), &__dso_handle, tls_block);
-#endif
-    __wasm_init_tls(tls_block);
-    __cxa_thread_atexit(free_tls, tls_block, &__dso_handle);
+  if (!tls_size) {
+    return NULL;
   }
+  void *tls_block = emscripten_builtin_memalign(tls_align, tls_size);
+#ifdef DEBUG_TLS
+  printf("tls init: thread[%p] dso[%p] -> %p\n", pthread_self(), &__dso_handle, tls_block);
+#endif
+  __wasm_init_tls(tls_block);
+  return tls_block;
 }

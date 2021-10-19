@@ -45,11 +45,12 @@ function prettyPrint(arg) {
     ret += 'f32:' + arr.toString().replace(/,/g, ',') + '}';
     return ret;
   }
-  if (typeof arg == 'object') {
+  if (typeof arg === 'function') {
+    return '<function>';
+  } else if (typeof arg === 'object') {
     printObjectList.push(arg);
     return '<' + arg + '|' + (printObjectList.length-1) + '>';
-  }
-  if (typeof arg == 'number') {
+  } else if (typeof arg === 'number') {
     if (arg > 0) return '0x' + arg.toString(16) + ' (' + arg + ')';
   }
   return arg;

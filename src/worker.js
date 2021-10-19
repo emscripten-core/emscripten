@@ -144,9 +144,21 @@ self.onmessage = function(e) {
       });
 #else
       if (typeof e.data.urlOrBlob === 'string') {
+#if TRUSTED_TYPES
+        if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
+          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return e.data.urlOrBlob } });
+          importScripts(p.createScriptURL('ignored'));
+        } else
+#endif
         importScripts(e.data.urlOrBlob);
       } else {
         var objectUrl = URL.createObjectURL(e.data.urlOrBlob);
+#if TRUSTED_TYPES
+        if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
+          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return objectUrl } });
+          importScripts(p.createScriptURL('ignored'));
+        } else
+#endif
         importScripts(objectUrl);
         URL.revokeObjectURL(objectUrl);
       }
@@ -259,7 +271,9 @@ self.onmessage = function(e) {
           else
 #endif // !MINIMAL_RUNTIME
           {
-            Module['__emscripten_thread_exit'](-2);
+            // The pthread "crashed".  Do not call `_emscripten_thread_exit` (which
+            // would make this thread joinable.  Instead, re-throw the exception
+            // and let the top level handler propagate it back to the main thread.
             throw ex;
           }
 #if ASSERTIONS

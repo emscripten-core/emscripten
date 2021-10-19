@@ -167,7 +167,7 @@ function callMain(args) {
 
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
-    abortWrapperDepth += 2; 
+    abortWrapperDepth += 2;
 #endif
 
 #if STANDALONE_WASM
@@ -202,7 +202,7 @@ function callMain(args) {
 
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
-    abortWrapperDepth -= 2; 
+    abortWrapperDepth -= 2;
 #endif
   }
 }
@@ -215,7 +215,7 @@ function stackCheckInit() {
   // here.
   // TODO(sbc): Move writeStackCookie to native to to avoid this.
 #if RELOCATABLE
-  _emscripten_stack_set_limits({{{ STACK_BASE }}}, {{{ STACK_MAX }}});
+  _emscripten_stack_set_limits({{{ to64(STACK_BASE) }}}, {{{ to64(STACK_MAX) }}});
 #else
   _emscripten_stack_init();
 #endif
@@ -407,17 +407,17 @@ function exit(status, implicit) {
 #if USE_PTHREADS
   if (!implicit) {
     if (ENVIRONMENT_IS_PTHREAD) {
-#if ASSERTIONS
-      err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitProcess.');
+#if PTHREADS_DEBUG
+      err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitOnMainThread.');
 #endif
       // When running in a pthread we propagate the exit back to the main thread
       // where it can decide if the whole process should be shut down or not.
       // The pthread may have decided not to exit its own runtime, for example
       // because it runs a main loop, but that doesn't affect the main thread.
-      postMessage({ 'cmd': 'exitProcess', 'returnCode': status });
-      throw new ExitStatus(status);
+      exitOnMainThread(status);
+      throw 'unwind';
     } else {
-#if ASSERTIONS
+#if PTHREADS_DEBUG
       err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
 #endif
     }
@@ -440,9 +440,6 @@ function exit(status, implicit) {
     }
 #endif // ASSERTIONS
   } else {
-#if USE_PTHREADS
-    PThread.terminateAllThreads();
-#endif
     exitRuntime();
   }
 

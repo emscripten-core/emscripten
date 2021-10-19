@@ -49,12 +49,6 @@ Submitting patches
 
 Patches should be submitted as *pull requests* in the normal way on GitHub.
 
-.. note::
-   Together with your first patch, add yourself to the
-   `AUTHORS <https://github.com/emscripten-core/emscripten/blob/main/AUTHORS>`_
-   file. By doing so, you agree to license your code under the project's
-   :ref:`open source licenses (MIT/LLVM) <emscripten-license>`.
-
 When submitting patches, please:
 
 - Add an automatic test if you add any new functionality or fix a bug. Search
@@ -126,13 +120,13 @@ the build succeeded). Each build is identified by a hash (a long string of numbe
 and characters), which is a hash of a commit in the
 `releases repo <https://chromium.googlesource.com/emscripten-releases>`_.
 The mapping of Emscripten release numbers to such hashes is tracked by
-`emscripten-releases-tags.txt in the emsdk repo <https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.txt>`_.
+`emscripten-releases-tags.json in the emsdk repo <https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.json>`_.
 
 With that background, the bisection process would look like this:
 
 1. Find the hashes to bisect between. You may already know them if you found
    the problem on ``tot`` builds. If instead you only know Emscripten version
-   numbers, use ``emscripten-releases-tags.txt`` to find the hashes.
+   numbers, use ``emscripten-releases-tags.json`` to find the hashes.
 2. Using those hashes, do a normal ``git bisect`` on the ``emscripten-releases``
    repo.
 3. In each step of the bisection, download the binary build for the current

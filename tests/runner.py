@@ -15,7 +15,7 @@ see
 http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 """
 
-# XXX Use EMTEST_ALL_ENGINES=1 in the env to test all engines!
+# Use EMTEST_ALL_ENGINES=1 in the environment or pass --all-engined to test all engines!
 
 import argparse
 import atexit
@@ -60,6 +60,7 @@ core_test_modes = [
   'wasm2js3',
   'wasm2jss',
   'wasm2jsz',
+  'wasm64'
 ]
 
 # The default core test mode, used when none is specified
@@ -90,9 +91,6 @@ def check_js_engines():
 
   if common.EMTEST_ALL_ENGINES:
     print('(using ALL js engines)')
-  else:
-    logger.warning('use EMTEST_ALL_ENGINES=1 in the env to run against all JS '
-                   'engines, which is slower but provides more coverage')
 
 
 def get_and_import_modules():
@@ -275,7 +273,7 @@ def run_tests(options, suites):
   print('Test suites:')
   print([s[0] for s in suites])
   # Run the discovered tests
-  testRunner = unittest.TextTestRunner(verbosity=2)
+  testRunner = unittest.TextTestRunner(verbosity=2, failfast=options.failfast)
   for mod_name, suite in suites:
     print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
     res = testRunner.run(suite)
@@ -313,6 +311,10 @@ def parse_args(args):
   parser.add_argument('--browser',
                       help='Command to launch web browser in which to run browser tests.')
   parser.add_argument('tests', nargs='*')
+  parser.add_argument('--failfast', dest='failfast', action='store_const',
+                      const=True, default=False)
+  parser.add_argument('--force64', dest='force64', action='store_const',
+                      const=True, default=False)
   return parser.parse_args()
 
 
@@ -325,6 +327,8 @@ def configure():
   common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
   common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
   common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
+  global FORCE64
+  FORCE64 = int(os.getenv('EMTEST_FORCE64', '0'))
   if common.EMTEST_VERBOSE:
     logging.root.setLevel(logging.DEBUG)
 
@@ -362,6 +366,7 @@ def main(args):
   set_env('EMTEST_REBASELINE', options.rebaseline)
   set_env('EMTEST_VERBOSE', options.verbose)
   set_env('EMTEST_CORES', options.cores)
+  set_env('EMTEST_FORCE64', options.force64)
 
   configure()
 

@@ -20,8 +20,9 @@ from tools.shared import EMCC
 from tools.shared import CANONICAL_TEMP_DIR
 from tools.shared import try_delete, config
 from tools.shared import EXPECTED_LLVM_VERSION, Cache
-from tools import shared, system_libs, utils
+from tools import shared, utils
 from tools import response_file
+from tools import ports
 
 SANITY_FILE = shared.Cache.get_path('sanity.txt')
 commands = [[EMCC], [path_from_root('tests/runner'), 'blahblah']]
@@ -564,7 +565,7 @@ fi
     RETRIEVING_MESSAGE = 'retrieving port'
     BUILDING_MESSAGE = 'generating port'
 
-    PORTS_DIR = system_libs.Ports.get_dir()
+    PORTS_DIR = ports.Ports.get_dir()
 
     for i in [0, 1]:
       self.do([EMCC, '--clear-cache'])

@@ -6,13 +6,13 @@
       s += 'LibraryHTML5WebGPU.emscripten_webgpu_import_' + snake_case + '__sig = "ii";';
       s += 'LibraryHTML5WebGPU.emscripten_webgpu_import_' + snake_case + '__deps = ["$WebGPU", "$JsValStore"];';
       s += 'LibraryHTML5WebGPU.emscripten_webgpu_import_' + snake_case + ' = function(handle) { '
-      s += 'return WebGPU["mgr' + CamelCase + '"].create(JsValStore.get(handle));'
+      s += 'return WebGPU.mgr' + CamelCase + '.create(JsValStore.get(handle));'
       s += '};';
 
       s += 'LibraryHTML5WebGPU.emscripten_webgpu_export_' + snake_case + '__sig = "ii";';
       s += 'LibraryHTML5WebGPU.emscripten_webgpu_export_' + snake_case + '__deps = ["$WebGPU", "$JsValStore"];';
       s += 'LibraryHTML5WebGPU.emscripten_webgpu_export_' + snake_case + ' = function(handle) { '
-      s += 'return JsValStore.add(WebGPU["mgr' + CamelCase + '"].get(handle));'
+      s += 'return JsValStore.add(WebGPU.mgr' + CamelCase + '.get(handle));'
       s += '};';
       return s;
     },
@@ -55,13 +55,14 @@ var LibraryHTML5WebGPU = {
     JsValStore.remove(id);
   },
 
-  // TODO(kainino0x): make it possible to actually create devices through webgpu.h
   emscripten_webgpu_get_device__deps: ['$WebGPU'],
   emscripten_webgpu_get_device: function() {
 #if ASSERTIONS
     assert(Module['preinitializedWebGPUDevice']);
 #endif
-    return WebGPU["mgrDevice"].create(Module['preinitializedWebGPUDevice']);
+    var device = Module['preinitializedWebGPUDevice'];
+    var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
+    return WebGPU.mgrDevice.create(device, deviceWrapper);
   },
 };
 

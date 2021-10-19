@@ -4,18 +4,9 @@
 C++ exceptions support
 ==============================
 
-C++ exceptions support can be enabled in emscripten using ``-fexceptions``.
-Note that unlike on most platforms, C++ exceptions are disabled by default due
-to their current overhead, see later.
+By default, exception catching is disabled in Emscripten.
 
-Passing ``-fexceptions`` at compile time will pass the relevant flags to
-clang, and at link time it also links in system libraries with exceptions
-support.
-
-Example
-#######
-
-For example, build the following program with ``emcc -fexceptions``:
+For example, if you compile the following program:
 
 .. code-block:: cpp
 
@@ -32,19 +23,54 @@ For example, build the following program with ``emcc -fexceptions``:
       return 0;
     }
 
-Running it will print ``throw...`` and then ``catch!``.
+The first ``throw`` will abort the program and you'll see something like this in the output:
 
-Overhead
-########
+.. code-block:: text
 
-Until wasm gets direct support for exceptions, Emscripten supports them using
-JavaScript for throwing and catching. As a result, every time we might need to
-catch an exception we call out into JavaScript to a try-catch there. This
-increases code size and adds significant overhead.
+  throw...  
+  exception thrown: 5246024 - Exception catching is disabled, this exception cannot be caught. Compile with -s NO_DISABLE_EXCEPTION_CATCHING or -s EXCEPTION_CATCHING_ALLOWED=[..] to catch.
 
-You can reduce the overhead by specifying a list of allowed functions in
-which exceptions are enabled, see the ``EXCEPTION_CATCHING_ALLOWED`` setting.
+If you want to opt-in, you have two following options.
 
-In the future direct support for exceptions in wasm will avoid that overhead.
-Usage will be as mentioned earlier, but with ``-fwasm-exceptions`` instead of
-``-fexceptions``.
+JavaScript-based exception support
+##################################
+
+First, you can enable exceptions via Emscripten's JavaScript-based support.
+
+To enable it, pass ``-fexceptions`` at both compile time and link time.
+
+When you rebuild the example above with this flag, the output will change to:
+
+.. code-block:: text
+
+  throw...
+  catch!
+
+Note that this option has relatively high overhead, but it will work on all JavaScript
+engines with WebAssembly support. You can reduce the overhead by specifying a
+list of allowed functions in which exceptions are enabled, see the
+``EXCEPTION_CATCHING_ALLOWED`` setting.
+
+WebAssembly exception handling proposal
+#######################################
+
+Alternatively, you can opt-in to the `native WebAssembly exception handling
+<https://github.com/WebAssembly/exception-handling/blob/master/proposals/exception-handling/Exceptions.md>`_
+proposal.
+
+To enable it, pass ``-fwasm-exceptions`` at both compile time and link time.
+
+Rebuilding the example with this flag will result in the same output as with
+``-fexceptions`` above:
+
+.. code-block:: text
+
+  throw...
+  catch!
+
+This option leverages a new feature that brings built-in instructions for
+throwing and catching exceptions to WebAssembly.
+
+As a result, it can reduce code size and performance overhead compared
+to the JavaScript-based implementation. However, it's still brand-new
+and `not yet supported by default in most engines <https://webassembly.org/roadmap/>`_.

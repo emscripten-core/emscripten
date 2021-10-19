@@ -28,7 +28,7 @@ Most `clang options <http://linux.die.net/man/1/clang>`_ will work, as will `gcc
   # Display this information
   emcc --help
 
-  Display compiler version information
+  # Display compiler version information
   emcc --version
 
 
@@ -62,7 +62,7 @@ Options that are modified or new in *emcc* are listed below:
   [compile+link]
   Like ``-O1``, but enables more optimizations. During link this will also enable various JavaScript optimizations.
 
-  .. note:: These JavaScript optimizations can reduce code size by removing things that the compiler does not see being used, in particular, parts of the runtime may be stripped if they are not exported on the ``Module`` object. The compiler is aware of code in :ref:`--pre-js <emcc-pre-js>` and :ref:`--post-js <emcc-post-js>`, so you can safely use the runtime from there. Alternatively, you can use ``EXTRA_EXPORTED_RUNTIME_METHODS``, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_.
+  .. note:: These JavaScript optimizations can reduce code size by removing things that the compiler does not see being used, in particular, parts of the runtime may be stripped if they are not exported on the ``Module`` object. The compiler is aware of code in :ref:`--pre-js <emcc-pre-js>` and :ref:`--post-js <emcc-post-js>`, so you can safely use the runtime from there. Alternatively, you can use ``EXPORTED_RUNTIME_METHODS``, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_.
 
 .. _emcc-O3:
 
@@ -463,15 +463,12 @@ Options that are modified or new in *emcc* are listed below:
   This can be overridden using the ``EM_CONFIG`` environment variable.
 
 ``--default-obj-ext <.ext>``
-  [compile+link]
-  Specifies the file suffix to generate if the location of a directory name is passed to the ``-o`` directive.
-
-  For example, consider the following command, which will by default generate an output name **dir/a.o**. With ``--default-obj-ext .ext`` the generated file has the custom suffix *dir/a.ext*.
-
-  ::
-
-    emcc -c a.c -o dir/
-
+  [compile]
+  Specifies the output suffix to use when compiling with ``-c`` in the absence
+  of ``-o``.  For example, when compiling multiple sources files with ``emcc -c
+  *.c`` the compiler will normally output files with the ``.o`` extension, but
+  ``--default-obj-ext .obj`` can be used to instead generate files with the
+  `.obj` extension.
 
 ``--valid-abspath <path>``
   [compile+link]

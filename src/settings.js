@@ -193,7 +193,7 @@ var MAXIMUM_MEMORY = 2147483648;
 
 // If false, we abort with an error if we try to allocate more memory than
 // we can (INITIAL_MEMORY). If true, we will grow the memory arrays at
-// runtime, seamlessly and dynamically. 
+// runtime, seamlessly and dynamically.
 // See https://code.google.com/p/v8/issues/detail?id=3907 regarding
 // memory growth performance in chrome.
 // Note that growing memory means we replace the JS typed array views, as
@@ -237,6 +237,7 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // the full end-to-end wasm64 mode, and 2 is wasm64 for clang/lld but lowered to
 // wasm32 in Binaryen (such that it can run on wasm32 engines, while internally
 // using i64 pointers).
+// Assumes WASM_BIGINT.
 // [compile+link]
 var MEMORY64 = 0;
 
@@ -353,6 +354,10 @@ var SOCKET_DEBUG = 0;
 // Log dynamic linker information
 // [link]
 var DYLINK_DEBUG = 0;
+
+// Register file system callbacks using trackingDelegate in library_fs.js
+// [link]
+var FS_DEBUG = 0;
 
 // Select socket backend, either webrtc or websockets. XXX webrtc is not
 // currently tested, may be broken
@@ -1316,12 +1321,6 @@ var WASM_BIGINT = 0;
 // [link]
 var EMIT_PRODUCERS_SECTION = 0;
 
-// If set then generated WASM files will contain a custom
-// "emscripten_metadata" section that contains information necessary
-// to execute the file without the accompanying JS file.
-// [link]
-var EMIT_EMSCRIPTEN_METADATA = 0;
-
 // Emits emscripten license info in the JS output.
 // [link]
 var EMIT_EMSCRIPTEN_LICENSE = 0;
@@ -1630,6 +1629,12 @@ var FETCH = 0;
 // wasm module, using emscripten_fetch. Implies -s FETCH=1.
 // [link]
 var ASMFS = 0;
+
+// ATTENTION [WIP]: Experimental feature. Please use at your own risk.
+// This will eventually replace the current JS file system implementation.
+// If set to 1, uses new filesystem implementation.
+// [link]
+var WASMFS = 0;
 
 // If set to 1, embeds all subresources in the emitted file as base64 string
 // literals. Embedded subresources may include (but aren't limited to) wasm,
@@ -1957,6 +1962,12 @@ var AUTOLOAD_DYLIBS = 1;
 // though these syscalls will fail (or do nothing) at runtime.
 var ALLOW_UNIMPLEMENTED_SYSCALLS = 1;
 
+// Allow calls to Worker(...) and importScripts(...) to be Trusted Types compatible.
+// Trusted Types is a Web Platform feature designed to mitigate DOM XSS by restricting
+// the usage of DOM sink APIs. See https://w3c.github.io/webappsec-trusted-types/.
+// [link]
+var TRUSTED_TYPES = 0;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
@@ -2037,4 +2048,5 @@ var LEGACY_SETTINGS = [
   ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older'],
   ['RUNTIME_FUNCS_TO_IMPORT', [[]], 'No longer needed'],
   ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
+  ['EMIT_EMSCRIPTEN_METADATA', [0], 'No longer supported'],
 ];

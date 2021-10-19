@@ -153,6 +153,26 @@ var read_,
     readBinary,
     setWindowTitle;
 
+#if ENVIRONMENT_MAY_BE_SHELL || ENVIRONMENT_MAY_BE_NODE || ASSERTIONS
+// Normally we don't log exceptions but instead let them bubble out the top
+// level where the embedding environment (e.g. the browser) can handle
+// them.
+// However under v8 and node we sometimes exit the process direcly in which case
+// its up to use us to log the exception before exiting.
+// If we fix https://github.com/emscripten-core/emscripten/issues/15080
+// this may no longer be needed under node.
+function logExceptionOnExit(e) {
+  if (e instanceof ExitStatus) return;
+  var toLog = e;
+#if ASSERTIONS
+  if (e && typeof e === 'object' && e.stack) {
+    toLog = [e, e.stack];
+  }
+#endif
+  err('exiting due to exception: ' + toLog);
+}
+#endif
+
 #if ENVIRONMENT_MAY_BE_NODE
 var nodeFS;
 var nodePath;
@@ -195,7 +215,12 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 #if NODEJS_CATCH_REJECTION
-  process['on']('unhandledRejection', abort);
+  // Without this older versions of node (< v15) will log unhandled rejections
+  // but return 0, which is not normally the desired behaviour.  This is
+  // not be needed with node v15 and about because it is now the default
+  // behaviour:
+  // See https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+  process['on']('unhandledRejection', function(reason) { throw reason; });
 #endif
 
   quit_ = function(status, toThrow) {
@@ -203,6 +228,7 @@ if (ENVIRONMENT_IS_NODE) {
       process['exitCode'] = status;
       throw toThrow;
     }
+    logExceptionOnExit(toThrow);
     process['exit'](status);
   };
 
@@ -277,7 +303,8 @@ if (ENVIRONMENT_IS_SHELL) {
   }
 
   if (typeof quit === 'function') {
-    quit_ = function(status) {
+    quit_ = function(status, toThrow) {
+      logExceptionOnExit(toThrow);
       quit(status);
     };
   }
@@ -320,8 +347,10 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   // otherwise, slice off the final part of the url to find the script directory.
   // if scriptDirectory does not contain a slash, lastIndexOf will return -1,
   // and scriptDirectory will correctly be replaced with an empty string.
+  // If scriptDirectory contains a query (starting with ?) or a fragment (starting with #),
+  // they are removed because they could contain a slash.
   if (scriptDirectory.indexOf('blob:') !== 0) {
-    scriptDirectory = scriptDirectory.substr(0, scriptDirectory.lastIndexOf('/')+1);
+    scriptDirectory = scriptDirectory.substr(0, scriptDirectory.replace(/[?#].*/, "").lastIndexOf('/')+1);
   } else {
     scriptDirectory = '';
   }
@@ -364,12 +393,26 @@ if (ENVIRONMENT_IS_NODE) {
     global.performance = require('perf_hooks').performance;
   }
 }
-#endif
 
 // Set up the out() and err() hooks, which are how we can print to stdout or
 // stderr, respectively.
+// Normally just binding console.log/console.warn here works fine, but
+// under node (with workers) we see missing/out-of-order messages so route
+// directly to stdout and stderr.
+// See https://github.com/emscripten-core/emscripten/issues/14804
+var defaultPrint = console.log.bind(console);
+var defaultPrintErr = console.warn.bind(console);
+if (ENVIRONMENT_IS_NODE) {
+  var fs = require('fs');
+  defaultPrint = function(str) { fs.writeSync(1, str + '\n'); };
+  defaultPrintErr = function(str) { fs.writeSync(2, str + '\n'); };
+}
+{{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint',    true) }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr', true) }}}
+#else
 {{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
 {{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)', true) }}}
+#endif
 
 // Merge back in the overrides
 for (key in moduleOverrides) {

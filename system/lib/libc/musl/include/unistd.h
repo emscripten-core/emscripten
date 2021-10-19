@@ -198,6 +198,7 @@ char *get_current_dir_name(void);
 int syncfs(int);
 int euidaccess(const char *, int);
 int eaccess(const char *, int);
+pid_t gettid(void);
 #endif
 
 #if defined(_LARGEFILE64_SOURCE) || defined(_GNU_SOURCE)
@@ -256,7 +257,11 @@ int eaccess(const char *, int);
 #define _POSIX_THREAD_ATTR_STACKADDR _POSIX_VERSION
 #define _POSIX_THREAD_ATTR_STACKSIZE _POSIX_VERSION
 #define _POSIX_THREAD_PRIORITY_SCHEDULING _POSIX_VERSION
+#ifdef __EMSCRIPTEN__
+#define _POSIX_THREAD_CPUTIME   -1
+#else
 #define _POSIX_THREAD_CPUTIME   _POSIX_VERSION
+#endif
 #define _POSIX_TIMERS           _POSIX_VERSION
 #define _POSIX_TIMEOUTS         _POSIX_VERSION
 #define _POSIX_MONOTONIC_CLOCK  _POSIX_VERSION

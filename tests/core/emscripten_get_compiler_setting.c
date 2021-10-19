@@ -10,7 +10,7 @@
 #include <emscripten.h>
 
 int main() {
-  printf("EXIT_RUNTIME: %d\n", emscripten_get_compiler_setting("EXIT_RUNTIME"));
+  printf("INVOKE_RUN: %d\n", emscripten_get_compiler_setting("INVOKE_RUN"));
   assert((unsigned)emscripten_get_compiler_setting("OPT_LEVEL") <= 3);
   assert((unsigned)emscripten_get_compiler_setting("DEBUG_LEVEL") <= 4);
   printf("EMSCRIPTEN_VERSION: %s\n", (char*)emscripten_get_compiler_setting("EMSCRIPTEN_VERSION"));

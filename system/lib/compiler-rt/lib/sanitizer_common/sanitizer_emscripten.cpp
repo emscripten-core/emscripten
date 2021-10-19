@@ -27,7 +27,7 @@
 namespace __sanitizer {
 
 extern "C" {
-  int emscripten_get_module_name(char *buf, uptr length);
+  uptr emscripten_get_module_name(char *buf, uptr length);
 }
 
 void ListOfModules::init() {

@@ -9,17 +9,11 @@
               "threadStatus",
               "profilerBlock",
               "self",
-              "tsd",
               "detached",
               "stack",
               "stack_size",
               "result",
-              "attr",
-              "robust_list",
-              "tid",
-              "canceldisable",
-              "cancelasync",
-              "locale"
+              "attr"
             ],
             "thread_profiler_block": [
                 "threadStatus",
@@ -29,6 +23,7 @@
             ]
         },
         "defines": [
+          "DEFAULT_STACK_SIZE",
           "__ATTRP_C11_THREAD",
           "EM_THREAD_NAME_MAX"
         ]
@@ -38,6 +33,14 @@
         "structs": {
             "libc": [
               "global_locale"
+            ]
+        }
+    },
+    {
+        "file": "dynlink.h",
+        "structs": {
+            "dso": [
+              "name"
             ]
         }
     }

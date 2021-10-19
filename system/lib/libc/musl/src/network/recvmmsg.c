@@ -5,7 +5,7 @@
 
 int recvmmsg(int fd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags, struct timespec *timeout)
 {
-#if LONG_MAX > INT_MAX
+#if LONG_MAX > INT_MAX && !defined(__EMSCRIPTEN__)
 	struct mmsghdr *mh = msgvec;
 	unsigned int i;
 	for (i = vlen; i; i--, mh++)

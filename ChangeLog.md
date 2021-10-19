@@ -18,17 +18,64 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.30
+2.0.32
 ------
-2.0.29
------
+- Internal-only library functions can now be marked as `__internal: true` in JS
+  system libraries.  Such symbols should not be used by external libraries and
+  are subject to change.  As of now we generate warning when external libraries
+  depend on the these symbols.
+- Stub functions from `library_syscall.js` and `library.js` were replaced with
+  native code stubs (See `system/lib/libc/emscripten_syscall_stubs.c`).  This
+  should be better for wasm module portability as well as code size.  As part
+  of this change the return value of `popen` was fixed to return NULL rather
+  than -1 and the `getpwnam` family of functions were changed to return an
+  error rather than throw a JavaScript exception (this behaviour matches what
+  the other stub functions do).  As before, the `ALLOW_UNIMPLEMENTED_SYSCALLS`
+  setting controls whether of not these stubs get included at link time, and
+  `STRICT` disables this setting.
+- Emscripten will now warn when linker-only flags are specified in
+  compile-only (`-c`) mode.  Just like with clang itself, this warning can be
+  disabled using the flag: `-Wno-unused-command-line-argument`.
+- Internal symbol names for musl syscalls changed from number-based (e.g.
+  `__syscall22`) to name-based (e.g. `__syscall_open`).  This should not be
+  a visible change except for folks trying to intercept/implement syscalls
+  in native code (#15202).
+- Fixed launcher batch script issues on Windows, and added two env. vars
+  EM_WORKAROUND_PYTHON_BUG_34780 and EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG that
+  can be enabled to work around a Windows Python issue
+  https://bugs.python.org/issue34780 , and a Windows 7 exit code issue (#15146)
+- Support a new CMake propert `EMSCRIPTEN_SYSTEM_PROCESSOR` which can be used
+  to override the default value of `CMAKE_SYSTEM_PROCESSOR` set by the
+  toolchain file.
+- Remove support for the `EMIT_EMSCRIPTEN_METADATA` setting.  This setting has
+  been deprecated for some time now and we don't know of any remaining reasons to
+  keep it around.
+
+2.0.31 - 10/01/2021
+-------------------
 - Bug fixes
+
+2.0.30 - 09/14/2021
+-------------------
+- Bug fixes
+
+2.0.29 - 08/26/2021
+-------------------
+- Bug fixes
+
 2.0.28 - 08/23/2021
-------
+-------------------
 - Added some support for signal handling libc functions (raise, kill,
   sigaction, sigpending, etc).  We still don't have a way to deliver signals from
   the outside but these at least now work for sending signals to the current
   thread (JS context) (#14883).
+- Remove the workaround used in emcmake and emmake that removed directories
+  with sh.exe from PATH on Windows when MinGW Makefiles generator was used.
+  This was needed with CMake versions older than 3.17.0. If you get an error
+  "sh.exe was found in your PATH" on Windows, you can either update to CMake
+  3.17.0 or newer, or remove the offending directory from your PATH. See
+  https://github.com/Kitware/CMake/commit/82ddcf0db1d220564145122c3cce25d25ee0e254
+  for more information. (#14930)
 
 2.0.27 - 08/12/2021
 -------------------

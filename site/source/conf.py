@@ -94,7 +94,8 @@ copyright = u'2015, '
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
-emscripten_version = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'emscripten-version.txt').resolve().read_text().strip().replace('"', '')
+version_path = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'emscripten-version.txt').resolve()
+emscripten_version = version_path.read_text().strip().strip('"')
 
 # The short X.Y version.
 version = emscripten_version[:emscripten_version.rindex('.')]

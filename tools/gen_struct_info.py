@@ -266,6 +266,13 @@ def inspect_headers(headers, cflags):
                                '-Wno-format',
                                '-nostdlib',
                                compiler_rt,
+                               # FIXME: this setting here won't work, since this is only
+                               # ran once on first use. If there are differences here then
+                               #  we would need a second set of json file and have them stored
+                               # separately in the cache.
+                               # Whereever generated_struct_info.json is generated, there now
+                               # needs to be a generated_struct_info64.json for MEMORY64 mode.
+                               # '-s', 'MEMORY64=' + str(settings.MEMORY64),
                                '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
                                '-s', 'LLD_REPORT_UNDEFINED=1',
                                '-s', 'STRICT',
