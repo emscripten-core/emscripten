@@ -58,12 +58,11 @@ long __map_file(int x, int y) {
   return -ENOSYS;
 }
 
-long __syscall91(int x, int y) { // munmap
+long __syscall_munmap(int x, int y) {
   return -ENOSYS;
 }
 
-// mmap2()
-long __syscall192(long addr, long len, long prot, long flags, long fd, long off) {
+long __syscall_mmap2(long addr, long len, long prot, long flags, long fd, long off) {
   return -ENOSYS;
 }
 
@@ -71,20 +70,18 @@ long __syscall192(long addr, long len, long prot, long flags, long fd, long off)
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it
 // open()
-long __syscall5(const char* path, long flags, ...) {
+long __syscall_open(const char* path, long flags, ...) {
   if (!strcmp(path, "/dev/stdin")) return STDIN_FILENO;
   if (!strcmp(path, "/dev/stdout")) return STDOUT_FILENO;
   if (!strcmp(path, "/dev/stderr")) return STDERR_FILENO;
   return -EPERM;
 }
 
-// ioctl()
-int __syscall54(int fd, int op, ...) {
+int __syscall_ioctl(int fd, int op, ...) {
   return -ENOSYS;
 }
 
-// fcntl64()
-long __syscall221(long fd, long cmd, ...) {
+long __syscall_fcntl64(long fd, long cmd, ...) {
   return -ENOSYS;
 }
 

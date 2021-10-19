@@ -24,7 +24,7 @@ from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
 from common import read_file, require_v8
 from tools import shared
-from tools import system_libs
+from tools import ports
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
 from tools.shared import try_delete
 
@@ -2348,8 +2348,8 @@ void *getBindBuffer() {
         doCcall(1);
         ok = true; // should fail and not reach here, runtime is not ready yet so ccall will abort
       } catch(e) {
-        out('expected fail 1');
-        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
+        out('expected fail 1: ' + e.toString());
+        assert(e.toString().indexOf('Assertion failed') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
       assert(ok === expected_ok);
@@ -2359,8 +2359,8 @@ void *getBindBuffer() {
         doCwrapCall(2);
         ok = true; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
       } catch(e) {
-        out('expected fail 2');
-        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
+        out('expected fail 2: ' + e.toString());
+        assert(e.toString().indexOf('Assertion failed') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
       assert(ok === expected_ok);
@@ -2370,8 +2370,8 @@ void *getBindBuffer() {
         doDirectCall(3);
         ok = true; // should fail and not reach here, runtime is not ready yet so any code execution
       } catch(e) {
-        out('expected fail 3');
-        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
+        out('expected fail 3:' + e.toString());
+        assert(e.toString().indexOf('Assertion failed') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
       assert(ok === expected_ok);
@@ -3252,7 +3252,7 @@ window.close = function() {
   @no_wasm_backend('cocos2d needs to be ported')
   @requires_graphics_hardware
   def test_cocos2d_hello(self):
-    cocos2d_root = os.path.join(system_libs.Ports.get_build_dir(), 'cocos2d')
+    cocos2d_root = os.path.join(ports.Ports.get_build_dir(), 'cocos2d')
     preload_file = os.path.join(cocos2d_root, 'samples', 'HelloCpp', 'Resources') + '@'
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
                args=['-s', 'USE_COCOS2D=3', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0',
@@ -3400,13 +3400,13 @@ window.close = function() {
             reportResultToServer("Module creation succeeded when it should have failed");
           })
           .catch(err => {
-            reportResultToServer(err.message.slice(0, 54));
+            reportResultToServer(err.message);
           });
       </script>
     ''')
     print('Deleting a.out.wasm to cause a download error')
     os.remove('a.out.wasm')
-    self.run_browser('a.html', '...', '/report_result?abort(both async and sync fetching of the wasm failed)')
+    self.run_browser('a.html', '...', '/report_result?Aborted(both async and sync fetching of the wasm failed)')
 
   def test_modularize_init_error(self):
     test_cpp_path = test_file('browser/test_modularize_init_error.cpp')
@@ -4146,6 +4146,24 @@ window.close = function() {
     args += ['--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js')]
     self.btest(test_file('core/pthread/test_pthread_exit_runtime.c'), expected='onExit status: 42', args=args)
 
+  @requires_threads
+  def test_pthread_trap(self):
+    create_file('pre.js', '''
+    if (typeof window === 'object' && window) {
+      window.addEventListener('error', function(e) {
+        if (e.error && e.error.message.includes('unreachable'))
+          maybeReportResultToServer("expected exception caught");
+        else
+          maybeReportResultToServer("unexpected: " + e);
+      });
+    }''')
+    args = ['-s', 'USE_PTHREADS',
+            '-s', 'PROXY_TO_PTHREAD',
+            '-s', 'EXIT_RUNTIME',
+            '--profiling-funcs',
+            '--pre-js=pre.js']
+    self.btest(test_file('pthread/test_pthread_trap.c'), expected='expected exception caught', args=args)
+
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   def test_main_thread_em_asm_signatures(self):
     self.btest_exit(test_file('core/test_em_asm_signatures.cpp'), assert_returncode=121, args=[])
@@ -4462,8 +4480,12 @@ window.close = function() {
 
   @requires_graphics_hardware
   def test_webgpu_basic_rendering(self):
-    for args in [[], ['-s', 'ASSERTIONS'], ['-s', 'MAIN_MODULE=1']]:
-      self.btest_exit('webgpu_basic_rendering.cpp', args=['-s', 'USE_WEBGPU', '-s', 'EXPORTED_RUNTIME_METHODS=["ccall"]'] + args)
+    for args in [[], ['-s', 'ASSERTIONS', '--closure=1'], ['-s', 'MAIN_MODULE=1']]:
+      self.btest_exit('webgpu_basic_rendering.cpp', args=['-s', 'USE_WEBGPU'] + args)
+
+  def test_webgpu_get_device(self):
+    for args in [['-s', 'ASSERTIONS', '--closure=1']]:
+      self.btest_exit('webgpu_get_device.cpp', args=['-s', 'USE_WEBGPU'] + args)
 
   # Tests the feature that shell html page can preallocate the typed array and place it
   # to Module.buffer before loading the script page.
@@ -5017,7 +5039,7 @@ window.close = function() {
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):
-    self.btest_exit(test_file('browser/test_emscripten_unwind_to_js_event_loop.c'))
+    self.btest_exit(test_file('test_emscripten_unwind_to_js_event_loop.c'))
 
   def test_wasm2js_fallback(self):
     self.set_setting('EXIT_RUNTIME')
@@ -5120,6 +5142,20 @@ window.close = function() {
     # 4GB.
     self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB', '-s', 'ABORTING_MALLOC=0']
     self.do_run_in_out_file_test('browser', 'test_4GB_fail.cpp')
+
+  # Tests that Emscripten-compiled applications can be run when a slash in the URL query or fragment of the js file
+  def test_browser_run_with_slash_in_query_and_hash(self):
+    self.compile_btest([test_file('browser_test_hello_world.c'), '-o', 'test.html', '-O0'])
+    src = open('test.html').read()
+    # Slash in query
+    create_file('test-query.html', src.replace('test.js', 'test.js?type=pass/fail'))
+    self.run_browser('test-query.html', None, '/report_result?0')
+    # Slash in fragment
+    create_file('test-hash.html', src.replace('test.js', 'test.js#pass/fail'))
+    self.run_browser('test-hash.html', None, '/report_result?0')
+    # Slash in query and fragment
+    create_file('test-query-hash.html', src.replace('test.js', 'test.js?type=pass/fail#pass/fail'))
+    self.run_browser('test-query-hash.html', None, '/report_result?0')
 
   @disabled("only run this manually, to test for race conditions")
   @parameterized({

@@ -121,8 +121,8 @@ function isJsLibraryConfigIdentifier(ident) {
     '__docs',
     '__import',
     '__nothrow',
-    '__unimplemented',
     '__noleakcheck',
+    '__internal',
   ];
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }

@@ -358,6 +358,7 @@
         "NOEXPR": 327681,
         "O_ACCMODE": 2097155,
         "O_APPEND": 1024,
+        "O_CLOEXEC": 524288,
         "O_CREAT": 64,
         "O_DIRECTORY": 65536,
         "O_DSYNC": 4096,
@@ -365,6 +366,8 @@
         "O_LARGEFILE": 32768,
         "O_NOCTTY": 256,
         "O_NOFOLLOW": 131072,
+        "O_NONBLOCK": 2048,
+        "O_PATH": 2097152,
         "O_RDONLY": 0,
         "O_RDWR": 2,
         "O_SYNC": 1052672,
@@ -821,6 +824,11 @@
             "type": 0,
             "x": 24,
             "y": 28
+        },
+        "SDL_VideoInfo": {
+            "__size__": 20,
+            "current_h": 16,
+            "current_w": 12
         },
         "SDL_WindowEvent": {
             "__size__": 20,
@@ -1357,6 +1365,10 @@
             "quot": 0,
             "rem": 4
         },
+        "dso": {
+            "__size__": 20,
+            "name": 20
+        },
         "emscripten_fetch_attr_t": {
             "__size__": 92,
             "attributes": 52,
@@ -1488,19 +1500,13 @@
         "pthread": {
             "__size__": 224,
             "attr": 100,
-            "cancelasync": 56,
-            "canceldisable": 52,
             "detached": 60,
-            "locale": 168,
             "profilerBlock": 4,
             "result": 88,
-            "robust_list": 148,
             "self": 8,
             "stack": 72,
             "stack_size": 76,
-            "threadStatus": 0,
-            "tid": 36,
-            "tsd": 96
+            "threadStatus": 0
         },
         "rlimit": {
             "__size__": 16,

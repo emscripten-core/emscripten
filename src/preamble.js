@@ -263,8 +263,10 @@ var HEAP_DATA_VIEW;
 #endif
 
 #if WASM_BIGINT
-var HEAP64;
-var HEAPU64;
+/** @type {BigInt64Array} */
+var HEAP64,
+/** @type {BigUint64Array} */
+    HEAPU64;
 #endif
 
 #if USE_PTHREADS
@@ -405,6 +407,9 @@ function preMain() {
 #endif
 
 function exitRuntime() {
+#if RUNTIME_DEBUG
+  err('exitRuntime');
+#endif
 #if ASYNCIFY && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
   Asyncify.state = Asyncify.State.Disabled;
@@ -593,17 +598,16 @@ function abort(what) {
   }
 #endif
 
-  what += '';
+  what = 'Aborted(' + what + ')';
+  // TODO(sbc): Should we remove printing and leave it up to whoever
+  // catches the exception?
   err(what);
 
   ABORT = true;
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
-  what = 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
-#else
-  var output = 'abort(' + what + ') at ' + stackTrace();
-  what = output;
+  what += '. Build with -s ASSERTIONS=1 for more info.';
 #endif // ASSERTIONS
 
   // Use a wasm runtime error, because a JS error might be seen as a foreign
@@ -734,6 +738,7 @@ function instrumentWasmTableWithAbort() {
   var realGet = wasmTable.get;
   var wrapperCache = {};
   wasmTable.get = function(i) {
+    {{{ from64('i') }}}
     var func = realGet.call(wasmTable, i);
     var cached = wrapperCache[i];
     if (!cached || cached.func !== func) {
@@ -746,6 +751,52 @@ function instrumentWasmTableWithAbort() {
   };
 }
 #endif
+
+#if MEMORY64
+// In memory64 mode wasm pointers are 64-bit. To support that in JS we must use
+// BigInts. For now we keep JS as much the same as it always was, that is,
+// stackAlloc() receives and returns a Number from the JS point of view -
+// we translate BigInts automatically for that.
+// TODO: support minified export names, so we can turn MINIFY_WASM_IMPORTS_AND_EXPORTS
+// back on for MEMORY64.
+function instrumentWasmExportsForMemory64(exports) {
+  var instExports = {};
+  for (var name in exports) {
+    (function(name) {
+      var original = exports[name];
+      var replacement = original;
+      if (name === 'stackAlloc' || name === 'malloc') {
+        // get one i64, return an i64
+        replacement = function(x) {
+          var r = Number(original(BigInt(x)));
+          return r;
+        };
+      } else if (name === 'free') {
+        // get one i64
+        replacement = function(x) {
+          original(BigInt(x));
+        };
+      } else if (name === 'emscripten_stack_get_end' ||
+                 name === 'emscripten_stack_get_base' ||
+                 name === 'emscripten_stack_get_current') {
+        // return an i64
+        replacement = function() {
+          var r = Number(original());
+          return r;
+        };
+      } else if (name === 'main') {
+        // get a i64 as second arg
+        replacement = function(x, y) {
+          var r = original(x, BigInt(y));
+          return r;
+        };
+      }
+      instExports[name] = replacement;
+    })(name);
+  }
+  return instExports;
+}
+#endif MEMORY64
 
 var wasmBinaryFile;
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE
@@ -964,6 +1015,10 @@ function createWasm() {
 
 #if RELOCATABLE
     exports = relocateExports(exports, {{{ GLOBAL_BASE }}});
+#endif
+
+#if MEMORY64
+    exports = instrumentWasmExportsForMemory64(exports);
 #endif
 
 #if ASYNCIFY

@@ -16,7 +16,7 @@ int main() {
       _allocate_too_much();
       out("no abort happened");
     } catch (e) {
-      assert(("" + e).indexOf("abort") >= 0, "expect an abort from new");
+      assert(("" + e).indexOf("Aborted") >= 0, "expect an abort from new");
       out("new aborted as expected");
     }
   });

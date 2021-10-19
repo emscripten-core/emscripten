@@ -27,7 +27,7 @@ fchown(good): 0, errno: 0
 fchown(bad): -1, errno: 8
 fork: -1, errno: 52
 vfork: -1, errno: 52
-popen: 0xffffffff, errno: 52
+popen: 0, errno: 52
 pclose: -1, errno: 52
 crypt: ba4TuD1iozTxw, errno: 0
 encrypt, errno: 0
@@ -37,6 +37,7 @@ getuid: 0, errno: 0
 geteuid: 0, errno: 0
 getpgrp: 42, errno: 0
 getpid: 42, errno: 0
+gettid: 42, errno: 0
 getppid: 1, errno: 0
 getpgid: 42, errno: 0
 getsid: 42, errno: 0

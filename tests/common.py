@@ -541,10 +541,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     es_check_env = os.environ.copy()
     es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
     try:
-      # Comment out --quiet if more detailed error logging is needed
-      shared.run_process(es_check + ['es5', os.path.abspath(filename), '--quiet'], stderr=PIPE, env=es_check_env)
+      # es-check prints the details of the errors to stdout, but it also prints
+      # stuff in the case there are no errors:
+      #  ES-Check: there were no ES version matching errors!
+      # pipe stdout and stderr so that we can choose if/when to print this
+      # output and avoid spamming stdout when tests are successful.
+      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stdout=PIPE, stderr=STDOUT, env=es_check_env)
     except subprocess.CalledProcessError as e:
-      print(e.stderr)
+      print(e.stdout)
       self.fail('es-check failed to verify ES5 output compliance')
 
   # Build JavaScript code from source code
@@ -553,9 +557,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     compiler = [compiler_for(filename, force_c)]
     if compiler[0] == EMCC:
       # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
-      # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
-      # this if this issues is fixed.
-      compiler.append('-nostdlib++')
+      # For historical reasons emcc compiles and links as C++ by default.
+      # However we want to run our tests in a more strict manner.  We can
+      # remove this if the issue above is ever fixed.
+      compiler.append('-sNO_DEFAULT_TO_CXX')
 
     if force_c:
       compiler.append('-xc')
@@ -643,6 +648,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       stderr_file = self.in_dir('stderr')
       stderr = open(stderr_file, 'w')
     error = None
+    timeout_error = None
     if not engine:
       engine = self.js_engines[0]
     if engine == config.NODE_JS:
@@ -654,6 +660,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                    stdout=open(stdout_file, 'w'),
                    stderr=stderr,
                    assert_returncode=assert_returncode)
+    except subprocess.TimeoutExpired as e:
+      timeout_error = e
     except subprocess.CalledProcessError as e:
       error = e
 
@@ -666,7 +674,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       ret += read_file(stderr_file)
     if output_nicerizer:
       ret = output_nicerizer(ret)
-    if error or EMTEST_VERBOSE:
+    if error or timeout_error or EMTEST_VERBOSE:
       ret = limit_size(ret)
       print('-- begin program output --')
       print(read_file(stdout_file), end='')
@@ -675,11 +683,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         print('-- begin program stderr --')
         print(read_file(stderr_file), end='')
         print('-- end program stderr --')
-      if error:
-        if assert_returncode == NON_ZERO:
-          self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
-        else:
-          self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
+    if timeout_error:
+      raise timeout_error
+    if error:
+      if assert_returncode == NON_ZERO:
+        self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
+      else:
+        self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
 
     #  We should pass all strict mode checks
     self.assertNotContained('strict warning:', ret)
@@ -753,10 +763,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if callable(string):
       string = string()
     if value in string:
-      self.fail("Expected to NOT find '%s' in '%s', diff:\n\n%s" % (
-        limit_size(value), limit_size(string),
-        limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(value.split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
-      ))
+      self.fail("Expected to NOT find '%s' in '%s'" % (limit_size(value), limit_size(string)))
 
   def assertContainedIf(self, value, string, condition):
     if condition:
@@ -1005,7 +1012,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self._build_and_run(filename, expected_output, **kwargs)
 
   def do_runf(self, filename, expected_output=None, **kwargs):
-    self._build_and_run(filename, expected_output, **kwargs)
+    return self._build_and_run(filename, expected_output, **kwargs)
 
   ## Just like `do_run` but with filename of expected output
   def do_run_from_file(self, filename, expected_output_filename, **kwargs):
@@ -1078,6 +1085,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         except Exception:
           print('(test did not pass in JS engine: %s)' % engine)
           raise
+    return js_output
 
   def get_freetype_library(self):
     if '-Werror' in self.emcc_args:

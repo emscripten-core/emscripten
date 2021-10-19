@@ -13,8 +13,13 @@ mergeInto(LibraryManager.library, {
     '}' +
     'else { throw new Error("NODERAWFS is currently only supported on Node.js environment.") }',
   $NODERAWFS: {
+    lookup: function(parent, name) {
+      return FS.lookupPath(parent.path + '/' + name);
+    },
     lookupPath: function(path) {
-      return { path: path, node: { mode: NODEFS.getMode(path) } };
+      var st = fs.lstatSync(path);
+      var mode = NODEFS.getMode(path);
+      return { path: path, id: st.ino, mode: mode, node: { mode: mode } };
     },
     createStandardStreams: function() {
       FS.streams[0] = { fd: 0, nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false };
@@ -36,7 +41,7 @@ mergeInto(LibraryManager.library, {
     symlink: function() { fs.symlinkSync.apply(void 0, arguments); },
     rename: function() { fs.renameSync.apply(void 0, arguments); },
     rmdir: function() { fs.rmdirSync.apply(void 0, arguments); },
-    readdir: function() { fs.readdirSync.apply(void 0, arguments); },
+    readdir: function() { return ['.', '..'].concat(fs.readdirSync.apply(void 0, arguments)); },
     unlink: function() { fs.unlinkSync.apply(void 0, arguments); },
     readlink: function() { return fs.readlinkSync.apply(void 0, arguments); },
     stat: function() { return fs.statSync.apply(void 0, arguments); },
@@ -58,9 +63,15 @@ mergeInto(LibraryManager.library, {
       if (typeof flags === "string") {
         flags = VFS.modeStringToFlags(flags)
       }
-      var nfd = fs.openSync(path, NODEFS.flagsForNode(flags), mode);
+      var pathTruncated = path.split('/').map(function(s) { return s.substr(0, 255); }).join('/');
+      var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
+      var st = fs.fstatSync(nfd);
+      if (flags & {{{ cDefine('O_DIRECTORY') }}} && !st.isDirectory()) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
+      }
+      var newMode = NODEFS.getMode(pathTruncated);
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
-      var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags, seekable: true };
+      var stream = { fd: fd, nfd: nfd, position: 0, path: path, id: st.ino, flags: flags, mode: newMode, node_ops: NODERAWFS, seekable: true };
       FS.streams[fd] = stream;
       return stream;
     },

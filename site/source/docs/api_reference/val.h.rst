@@ -1,10 +1,8 @@
 .. _val-h:
 
-================================
-val.h (under-construction)
-================================
-
-.. COMMENT (Not rendered) : This created from val.h header file on 10 Aug 2014-03
+=====
+val.h
+=====
 
 The *Embind* C++ class :cpp:class:`emscripten::val` (defined in `val.h <https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/val.h>`_) is used to *transliterate* JavaScript code to C++.
 
@@ -31,7 +29,7 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
   .. code:: cpp
 
     val xhr = val::global("XMLHttpRequest").new_();
-    xhr.call("open", std::string("GET"), std::string("http://url"));
+    xhr.call<void>("open", std::string("GET"), std::string("http://url"));
 
   You can test whether the ``open`` method call was successful using :cpp:func:`~emscripten::val::operator[]` to read an object property, then :cpp:func:`~emscripten::val::as` to coerce the type:
 
@@ -48,7 +46,16 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
     }
 
   See :ref:`embind-val-guide` for other examples.
+  
 
+  .. warning:: JavaScript values can't be shared across threads, so neither can ``val`` instances that bind them.
+    
+    For example, if you want to cache some JavaScript global as a ``val``, you need to retrieve and bind separate instances of that global by its name in each thread.
+    The easiest way to do this is with a ``thread_local`` declaration:
+
+    .. code:: cpp
+
+      thread_local const val Uint8Array = val::global("Uint8Array");
 
   .. todo::
 
@@ -74,193 +81,166 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 
     Creates and returns a new ``Array``.
 
-    :returns: The new ``Array``.
-
 
   .. cpp:function:: static val object()
 
     Creates and returns a new ``Object``.
-
-    :returns: The new ``Object``.
 
 
   .. cpp:function:: static val undefined()
 
     Creates a ``val`` that represents ``undefined``.
 
-    :returns: The ``val`` that represents ``undefined``.
-
 
   .. cpp:function:: static val null()
 
-    Creates a ``val`` that represents ``null``. ``val::undefined()`` is the same, but for undefined.
+    Creates a ``val`` that represents ``null``.
 
-    :returns: A ``val`` that represents ``null``.
+  .. _val_as_handle:
+  .. cpp:function:: EM_VAL as_handle() const
+    
+    Returns a raw handle representing this ``val``. This can be used for
+    passing raw value handles to JavaScript and retrieving the values on the
+    other side via ``Emval.toValue`` function. Example:
+    
+    .. code:: cpp
+
+      EM_JS(void, log_value, (EM_VAL val_handle), {
+        var value = Emval.toValue(val_handle);
+        console.log(value); // 42
+      });
+
+      val foo(42);
+      log_value(foo.as_handle());
 
 
-  .. cpp:function:: static val take_ownership(internal::EM_VAL e)
+  .. cpp:function:: static val take_ownership(EM_VAL e)
 
-    **HamishW**-Replace with description.
-
-    :returns: **HamishW**-Replace with description.
+    Creates a ``val`` from a raw handle. This can be used for retrieving values
+    from JavaScript, where the JavaScript side should wrap a value with
+    ``Emval.toHandle``, pass it to C++, and then C++ can use ``take_ownership``
+    to convert it to a ``val`` instance. Example:
+    
+    .. code:: cpp
+    
+      EM_ASYNC_JS(EM_VAL, fetch_json_from_url, (const char *url_ptr), {
+        var url = UTF8ToString(url);
+        var response = await fetch(url);
+        var json = await response.json();
+        return Emval.toHandle(json);
+      });
+      
+      val obj = val::take_ownership(fetch_json_from_url("https://httpbin.org/json"));
+      std::string author = obj["slideshow"]["author"].as<std::string>();
 
 
   .. cpp:function:: static val global(const char* name)
 
-    Looks up a global symbol.
-
-    :param const char* name: **HamishW**-Replace with description.
-    :returns: **HamishW**-Replace with description.
+    Looks up a global value by the specified ``name``.
 
 
 
   .. cpp:function:: static val module_property(const char* name)
 
-    Looks up a symbol on the emscripten Module object.
-
-    :param const char* name: **HamishW**-Replace with description.
-    :returns: **HamishW**-Replace with description.
+    Looks up a value by the provided ``name`` on the Emscripten Module object.
 
 
   .. cpp:function:: explicit val(T&& value)
 
     Constructor.
 
-    A ``val`` can be constructed by explicit construction from any C++ type. For example, ``val(true)`` or ``val(std::string("foo"))``.
-
-    :param T&& value: Any C++ type.
-
-
-  **HamishW** Don't know how following "floating statement works". Leaving here for discussion
-  ``val() = delete;``
+    Creates a ``val`` by conversion from any Embind-compatible C++ type.
+    For example, ``val(true)`` or ``val(std::string("foo"))``.
 
 
   .. cpp:function:: explicit val(const char* v)
 
-    **HamishW**-Replace with description.
-
-    :param const char* v: **HamishW**-Replace with description.
+    Constructs a ``val`` instance from a string literal.
 
 
   .. cpp:function:: val(val&& v)
-
-    **HamishW**-Replace with description.
-
-    :param val&& v: **HamishW**-Replace with description.
+    
+    Moves ownership of a value to a new ``val`` instance.
 
 
   .. cpp:function:: val(const val& v)
-
-    **HamishW**-Replace with description.
-
-    :param const val& v: **HamishW**-Replace with description.
+    
+    Creates another reference to the same value behind the provided ``val`` instance.
 
 
   .. cpp:function:: ~val()
 
-    Destructor. **HamishW**-Replace with further description or delete comment.
+    Removes the currently bound value by decreasing its refcount.
 
 
   .. cpp:function:: val& operator=(val&& v)
-
-    **HamishW**-Replace with description.
-
-    :param val&& v: **HamishW**-Replace with description.
-    :returns: **HamishW**-Replace with description.
+    
+    Removes a reference to the currently bound value and takes over the provided one.
 
 
   .. cpp:function:: val& operator=(const val& v)
 
-    **HamishW**-Replace with description.
-
-    :param val&& v: **HamishW**-Replace with description.
-    :returns: **HamishW**-Replace with description.
+    Removes a reference to the currently bound value and creates another reference to
+    the value behind the provided ``val`` instance.
 
 
   .. cpp:function:: bool hasOwnProperty(const char* key) const
 
-    Test whether ... **HamishW**-Replace with description.
-
-    :param const char* key: **HamishW**-Replace with description.
-    :returns: **HamishW**-Replace with description.
+    Checks if the JavaScript object has own (non-inherited) property with the specified name.
 
 
-  .. cpp:function:: val new_()
+  .. cpp:function:: val new_(Args&&... args) const
 
-    prototype:
-
-    ::
-
-      template<typename... Args>
-      val new_(Args&&... args) const
-
-    **HamishW**-Replace with description.
-
-    :param Args&&... args: **HamishW**-Replace with description. Note that this is a templated value.
-    :returns: **HamishW**-Replace with description.
+    Assumes that current value is a constructor, and creates an instance of it.
+    Equivalent to a JavaScript expression `new currentValue(...)`.
 
 
 
   .. cpp:function:: val operator[](const T& key) const
 
-    **HamishW**-Replace with description.
-
-    :param const T& key: **HamishW**-Replace with description. Note that this is a templated value.
-    :returns: **HamishW**-Replace with description.
+    Get the specified (``key``) property of a JavaScript object.
 
 
   .. cpp:function:: void set(const K& key, const val& v)
 
-    Set the specified (``key``) property of a JavaScript object (accessed through a ``val``) with the value ``v``. **HamishW**-Replace with description.
-
-    :param const K& key: **HamishW**-Replace with description. Note that this is a templated value.
-    :param const val& v: **HamishW**-Replace with description.   Note that this is a templated value.
+    Set the specified (``key``) property of a JavaScript object (accessed through a ``val``) with the value ``v``.
 
 
-  .. cpp:function:: val operator()(Args&&... args)
-
-    **HamishW**-Replace with description.
-
-    :param Args&&... args: **HamishW**-Replace with description. Note that this is a templated value.
+  .. cpp:function:: val operator()(Args&&... args) const
+    
+    Assumes that current value is a function, and invokes it with provided arguments.
 
 
   .. cpp:function:: ReturnValue call(const char* name, Args&&... args) const
 
-    **HamishW**-Replace with description.
-
-    :param const char* name: **HamishW**-Replace with description.
-    :param Args&&... args: **HamishW**-Replace with description. Note that this is a templated value.
+    Invokes the specified method (``name``) on the current object with provided arguments.
 
 
   .. cpp:function:: T as() const
 
-    **HamishW**-Replace with description.
-
-    :returns: **HamishW**-Replace with description. Note that this is a templated value.
+    Converts current value to the specified C++ type.
 
 
   .. cpp:function:: val typeof() const
 
-    **HamishW**-Replace with description.
-
-    :returns: **HamishW**-Replace with description.
+    Returns the result of a JavaScript ``typeof`` operator invoked on the current value.
 
 
   .. cpp:function:: std::vector<T> vecFromJSArray(const val& v)
 
-    Copies a javascript array into a std::vector, checking the type of each element.
-    For a more efficient but unsafe version working with numbers, see convertJSArrayToNumberVector.
+    Copies a JavaScript array into a ``std::vector<T>``, converting each element via ``.as<T>()``.
+    For a more efficient but unsafe version working with numbers, see ``convertJSArrayToNumberVector``.
 
-    :param val v: The javascript array to be copied
-    :returns: A std::vector<T> made from the javascript array
+    :param val v: The JavaScript array to be copied
+    :returns: A ``std::vector<T>`` made from the javascript array
 
   .. cpp:function:: std::vector<T> convertJSArrayToNumberVector(const val& v)
 
-    Converts a javascript object into a std::vector<T> efficiently, as if using the javascript `Number()` function on each element.
-    This is way more efficient than vecFromJSArray on any array with more than 2 values, but is less safe.
-    No type checking is done, so any invalid array entry will silently be replaced by a NaN value (or 0 for interger types).
+    Converts a JavaScript array into a ``std::vector<T>`` efficiently, as if using the javascript `Number()` function on each element.
+    This is way more efficient than ``vecFromJSArray`` on any array with more than 2 values, but is not suitable for arrays of non-numeric values.
+    No type checking is done, so any invalid array entry will silently be replaced by a NaN value (or 0 for integer types).
 
-    :param val v: The javascript (typed) array to be copied
+    :param val v: The JavaScript (typed) array to be copied
     :returns: A std::vector<T> made from the javascript array
 
 
@@ -270,7 +250,7 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 
     :returns: The fulfilled value.
 
-    This method requires :ref:`Asyncify` to be enabled.
+      .. note:: This method requires :ref:`Asyncify` to be enabled.
 
 
 .. cpp:type: EMSCRIPTEN_SYMBOL(name)

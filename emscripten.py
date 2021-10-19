@@ -79,13 +79,13 @@ def optimize_syscalls(declares, DEBUG):
     # without filesystem support, it doesn't matter what syscalls need
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
   else:
-    syscall_prefixes = ('__sys', 'fd_')
+    syscall_prefixes = ('__syscall_', 'fd_')
     syscalls = [d for d in declares if d.startswith(syscall_prefixes)]
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
     if set(syscalls).issubset(set([
-      '__sys_ioctl',
+      '__syscall_ioctl',
       'fd_seek',
       'fd_write',
       'fd_close',
@@ -509,6 +509,8 @@ def add_standard_wasm_imports(send_items_map):
 
   if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
+    if settings.EXCEPTION_HANDLING:
+      send_items_map['__cpp_exception'] = '___cpp_exception'
 
   if settings.MAYBE_WASM2JS or settings.AUTODEBUG or settings.LINKABLE:
     # legalization of i64 support code may require these in some modes

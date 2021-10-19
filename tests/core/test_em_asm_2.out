@@ -113,11 +113,11 @@ EM_ASM_INT: Return an integer back.
 5. returned int 7
 
 EM_ASM_INT: Return an integer in a single brief statement.
-1. returned statement 16777216
-2. returned statement 16777217
-3. returned statement 16777218
-4. returned statement 16777219
-5. returned statement 16777220
+1. returned statement 42
+2. returned statement 43
+3. returned statement 44
+4. returned statement 45
+5. returned statement 46
 
 EM_ASM_DOUBLE: Pass no parameters, return a double.
 1. returning double

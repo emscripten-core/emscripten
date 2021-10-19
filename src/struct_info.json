@@ -462,7 +462,10 @@
             "F_SETOWN",
             "O_TRUNC",
             "O_DIRECTORY",
-            "F_GETOWN",
+            "O_PATH",
+            "O_NONBLOCK",
+            "O_CLOEXEC",
+            "F_GETOWN", 
             "F_GETOWN_EX",
             "F_SETFD",
             "O_EXCL",
@@ -746,6 +749,15 @@
     // ===========================================
     // SDL
     // ===========================================
+    {
+        "file": "SDL/SDL_compat.h",
+        "structs": {
+            "SDL_VideoInfo": [
+                "current_w",
+                "current_h"
+            ]
+        }
+    },
     {
         "file": "SDL/SDL_rect.h",
         "structs": {

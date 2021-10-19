@@ -43,12 +43,7 @@ void ensure_not(bool value)
 
 void ensure_js(string js_code)
 {
-  js_code.append(";");
-  const char* js_code_pointer = js_code.c_str();
-  ensure(EM_ASM_INT({
-    var js_code = UTF8ToString($0);
-    return eval(js_code);
-  }, js_code_pointer));
+  ensure(emscripten_run_script_int(js_code.c_str()));
 }
 
 void ensure_js_not(string js_code)
@@ -107,6 +102,15 @@ int main()
   test("val object()");
   val::global().set("a", val::object());
   ensure_js("a instanceof Object");
+  
+  // Test emval{From,To}Handle roundtrip.
+  {
+    val a = val::global("a");
+    val a_roundtrip = val::take_ownership(EM_VAL(EM_ASM_INT({
+      return Emval.toHandle(Emval.toValue($0));
+    }, a.as_handle())));
+    ensure(a == a_roundtrip);
+  }
   
   test("val undefined()");
   val::global().set("a", val::undefined());

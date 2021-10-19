@@ -12,3 +12,4 @@ Some changes have been made to the version that was taken from upstream, includi
 Backported src/stdio/vswprintf.c from 1.1.23 to fix #9305.
 Backported src/string/{memccpy,memchr,memmove,stpcpy,stpncpy,strchrnul,strlcpy,strlen}.c from 1.2.0 to fix #7279.
 Backported src/internal/floatscan.c to latest, see #11445.
+Backported src/linux/gettid.c
