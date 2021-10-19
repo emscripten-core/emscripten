@@ -20,7 +20,7 @@
 extern "C" {
 
 using namespace wasmfs;
-using __wasmfs_offset_t = uint64_t;
+using wasmfs_offset_t = uint64_t;
 
 long __syscall_dup2(long oldfd, long newfd) {
   auto fileTable = FileTable::get();
@@ -76,6 +76,7 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
   auto* file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
+  // TODO: change to add support for symlinks.
   if (!file) {
     return __WASI_ERRNO_ISDIR;
   }
@@ -88,8 +89,7 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
     size_t len = iovs[i].buf_len;
 
     // Check if the sum of the buf_len values overflows a uint64_t (file size).
-    // Overflow and underflow behaviour are only defined for unsigned types.
-    if (addWillOverFlow(__wasmfs_offset_t(offset), __wasmfs_offset_t(len))) {
+    if (addWillOverFlow(wasmfs_offset_t(offset), wasmfs_offset_t(len))) {
       return __WASI_ERRNO_FBIG;
     }
 
@@ -127,6 +127,7 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
   auto* file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
+  // TODO: change to add support for symlinks.
   if (!file) {
     return __WASI_ERRNO_ISDIR;
   }
