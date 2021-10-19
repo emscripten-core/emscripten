@@ -12,7 +12,7 @@
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
-/*global getStringOrSymbol, emval_handle_array, EmVal, __emval_unregister, count_emval_handles, emval_symbols, emval_free_list, get_first_emval, __emval_decref, emval_newers*/
+/*global getStringOrSymbol, emval_handle_array, Emval, __emval_unregister, count_emval_handles, emval_symbols, emval_free_list, get_first_emval, __emval_decref, emval_newers*/
 /*global craftEmvalAllocator, __emval_addMethodCaller, emval_methodCallers, LibraryManager, mergeInto, __emval_allocateDestructors, global, __emval_lookupTypes, makeLegalFunctionName*/
 /*global emval_get_global*/
 
@@ -67,7 +67,7 @@ var LibraryEmVal = {
   },
 
   $EmVal__deps: ['$emval_handle_array', '$emval_free_list', '$throwBindingError', '$init_emval'],
-  $EmVal: {
+  $Emval: {
     handleToValue: function(handle) {
       if (!handle) {
           throwBindingError('Cannot use deleted val. handle = ' + handle);
@@ -111,39 +111,39 @@ var LibraryEmVal = {
   },
 
   _emval_run_destructors__sig: 'vi',
-  _emval_run_destructors__deps: ['_emval_decref', '$EmVal', '$runDestructors'],
+  _emval_run_destructors__deps: ['_emval_decref', '$Emval', '$runDestructors'],
   _emval_run_destructors: function(handle) {
-    var destructors = EmVal.handleToValue(handle);
+    var destructors = Emval.toValue(handle);
     runDestructors(destructors);
     __emval_decref(handle);
   },
 
-  _emval_new_array__deps: ['$EmVal'],
+  _emval_new_array__deps: ['$Emval'],
   _emval_new_array: function() {
-    return EmVal.valueToHandle([]);
+    return Emval.toHandle([]);
   },
 
-  _emval_new_object__deps: ['$EmVal'],
+  _emval_new_object__deps: ['$Emval'],
   _emval_new_object: function() {
-    return EmVal.valueToHandle({});
+    return Emval.toHandle({});
   },
 
   _emval_new_cstring__sig: 'ii',
-  _emval_new_cstring__deps: ['$getStringOrSymbol', '$EmVal'],
+  _emval_new_cstring__deps: ['$getStringOrSymbol', '$Emval'],
   _emval_new_cstring: function(v) {
-    return EmVal.valueToHandle(getStringOrSymbol(v));
+    return Emval.toHandle(getStringOrSymbol(v));
   },
 
   _emval_take_value__sig: 'iii',
-  _emval_take_value__deps: ['$EmVal', '$requireRegisteredType'],
+  _emval_take_value__deps: ['$Emval', '$requireRegisteredType'],
   _emval_take_value: function(type, argv) {
     type = requireRegisteredType(type, '_emval_take_value');
     var v = type['readValueFromPointer'](argv);
-    return EmVal.valueToHandle(v);
+    return Emval.toHandle(v);
   },
 
   $emval_newers: {}, // arity -> function
-  $craftEmvalAllocator__deps: ['$EmVal', '$requireRegisteredType'],
+  $craftEmvalAllocator__deps: ['$Emval', '$requireRegisteredType'],
   $craftEmvalAllocator: function(argCount) {
     /*This function returns a new function that looks like this:
     function emval_allocator_3(constructor, argTypes, args) {
@@ -154,7 +154,7 @@ var LibraryEmVal = {
         var argType2 = requireRegisteredType(HEAP32[(argTypes >> 2) + 2], "parameter 2");
         var arg2 = argType2.readValueFromPointer(args + 16);
         var obj = new constructor(arg0, arg1, arg2);
-        return EmVal.valueToHandle(obj);
+        return Emval.toHandle(obj);
     } */
 #if DYNAMIC_EXECUTION == 0
     var argsList = new Array(argCount + 1);
@@ -166,7 +166,7 @@ var LibraryEmVal = {
         args += argType.argPackAdvance;
       }
       var obj = new (constructor.bind.apply(constructor, argsList));
-      return EmVal.valueToHandle(obj);
+      return Emval.toHandle(obj);
     };
 #else
     var argsList = "";
@@ -190,13 +190,13 @@ var LibraryEmVal = {
 
     /*jshint evil:true*/
     return (new Function("requireRegisteredType", "Module", "valueToHandle", functionBody))(
-        requireRegisteredType, Module, EmVal.valueToHandle);
+        requireRegisteredType, Module, Emval.toHandle);
 #endif
   },
 
-  _emval_new__deps: ['$craftEmvalAllocator', '$emval_newers', '$EmVal'],
+  _emval_new__deps: ['$craftEmvalAllocator', '$emval_newers', '$Emval'],
   _emval_new: function(handle, argCount, argTypes, args) {
-    handle = EmVal.handleToValue(handle);
+    handle = Emval.toValue(handle);
 
     var newer = emval_newers[argCount];
     if (!newer) {
@@ -245,102 +245,102 @@ var LibraryEmVal = {
   },
 #endif
   _emval_get_global__sig: 'ii',
-  _emval_get_global__deps: ['$EmVal', '$getStringOrSymbol', '$emval_get_global'],
+  _emval_get_global__deps: ['$Emval', '$getStringOrSymbol', '$emval_get_global'],
   _emval_get_global: function(name) {
     if (name===0) {
-      return EmVal.valueToHandle(emval_get_global());
+      return Emval.toHandle(emval_get_global());
     } else {
       name = getStringOrSymbol(name);
-      return EmVal.valueToHandle(emval_get_global()[name]);
+      return Emval.toHandle(emval_get_global()[name]);
     }
   },
 
-  _emval_get_module_property__deps: ['$getStringOrSymbol', '$EmVal'],
+  _emval_get_module_property__deps: ['$getStringOrSymbol', '$Emval'],
   _emval_get_module_property: function(name) {
     name = getStringOrSymbol(name);
-    return EmVal.valueToHandle(Module[name]);
+    return Emval.toHandle(Module[name]);
   },
 
   _emval_get_property__sig: 'iii',
-  _emval_get_property__deps: ['$EmVal'],
+  _emval_get_property__deps: ['$Emval'],
   _emval_get_property: function(handle, key) {
-    handle = EmVal.handleToValue(handle);
-    key = EmVal.handleToValue(key);
-    return EmVal.valueToHandle(handle[key]);
+    handle = Emval.toValue(handle);
+    key = Emval.toValue(key);
+    return Emval.toHandle(handle[key]);
   },
 
   _emval_set_property__sig: 'viii',
-  _emval_set_property__deps: ['$EmVal'],
+  _emval_set_property__deps: ['$Emval'],
   _emval_set_property: function(handle, key, value) {
-    handle = EmVal.handleToValue(handle);
-    key = EmVal.handleToValue(key);
-    value = EmVal.handleToValue(value);
+    handle = Emval.toValue(handle);
+    key = Emval.toValue(key);
+    value = Emval.toValue(value);
     handle[key] = value;
   },
     
   _emval_as__sig: 'iiii',
-  _emval_as__deps: ['$EmVal', '$requireRegisteredType'],
+  _emval_as__deps: ['$Emval', '$requireRegisteredType'],
   _emval_as: function(handle, returnType, destructorsRef) {
-    handle = EmVal.handleToValue(handle);
+    handle = Emval.toValue(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
     var destructors = [];
-    var rd = EmVal.valueToHandle(destructors);
+    var rd = Emval.toHandle(destructors);
     HEAP32[destructorsRef >> 2] = rd;
     return returnType['toWireType'](destructors, handle);
   },
 
-  _emval_as_int64__deps: ['$EmVal', '$requireRegisteredType'],
+  _emval_as_int64__deps: ['$Emval', '$requireRegisteredType'],
   _emval_as_int64: function(handle, returnType, destructorsRef) {
-    handle = EmVal.handleToValue(handle);
+    handle = Emval.toValue(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
     return returnType['toWireType'](null, handle);
   },
 
-  _emval_as_uint64__deps: ['$EmVal', '$requireRegisteredType'],
+  _emval_as_uint64__deps: ['$Emval', '$requireRegisteredType'],
   _emval_as_uint64: function(handle, returnType, destructorsRef) {
-    handle = EmVal.handleToValue(handle);
+    handle = Emval.toValue(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
     return returnType['toWireType'](null, handle);
   },
 
-  _emval_equals__deps: ['$EmVal'],
+  _emval_equals__deps: ['$Emval'],
   _emval_equals: function(first, second) {
-    first = EmVal.handleToValue(first);
-    second = EmVal.handleToValue(second);
+    first = Emval.toValue(first);
+    second = Emval.toValue(second);
     return first == second;
   },
 
-  _emval_strictly_equals__deps: ['$EmVal'],
+  _emval_strictly_equals__deps: ['$Emval'],
   _emval_strictly_equals: function(first, second) {
-    first = EmVal.handleToValue(first);
-    second = EmVal.handleToValue(second);
+    first = Emval.toValue(first);
+    second = Emval.toValue(second);
     return first === second;
   },
 
-  _emval_greater_than__deps: ['$EmVal'],
+  _emval_greater_than__deps: ['$Emval'],
   _emval_greater_than: function(first, second) {
-    first = EmVal.handleToValue(first);
-    second = EmVal.handleToValue(second);
+    first = Emval.toValue(first);
+    second = Emval.toValue(second);
     return first > second;
   },
 
-  _emval_less_than__deps: ['$EmVal'],
+  _emval_less_than__deps: ['$Emval'],
   _emval_less_than: function(first, second) {
-    first = EmVal.handleToValue(first);
-    second = EmVal.handleToValue(second);
+    first = Emval.toValue(first);
+    second = Emval.toValue(second);
     return first < second;
   },
 
-  _emval_not__deps: ['$EmVal'],
+  _emval_not__deps: ['$Emval'],
   _emval_not: function(object) {
-    object = EmVal.handleToValue(object);
+    object = Emval.toValue(object);
     return !object;
   },
 
   _emval_call__sig: 'iiiii',
-  _emval_call__deps: ['_emval_lookupTypes', '$EmVal'],
+  _emval_call__deps: ['_emval_lookupTypes', '$Emval'],
   _emval_call: function(handle, argCount, argTypes, argv) {
-    handle = EmVal.handleToValue(handle);
+    handle = Emval.toValue(handle);
     var types = __emval_lookupTypes(argCount, argTypes);
 
     var args = new Array(argCount);
@@ -351,7 +351,7 @@ var LibraryEmVal = {
     }
 
     var rv = handle.apply(undefined, args);
-    return EmVal.valueToHandle(rv);
+    return Emval.toHandle(rv);
   },
 
   _emval_lookupTypes__deps: ['$requireRegisteredType'],
@@ -365,10 +365,10 @@ var LibraryEmVal = {
     return a;
   },
 
-  _emval_allocateDestructors__deps: ['$EmVal'],
+  _emval_allocateDestructors__deps: ['$Emval'],
   _emval_allocateDestructors: function(destructorsRef) {
     var destructors = [];
-    HEAP32[destructorsRef >> 2] = EmVal.valueToHandle(destructors);
+    HEAP32[destructorsRef >> 2] = Emval.toHandle(destructors);
     return destructors;
   },
 
@@ -451,74 +451,74 @@ var LibraryEmVal = {
     return __emval_addMethodCaller(invokerFunction);
   },
 
-  _emval_call_method__deps: ['_emval_allocateDestructors', '$getStringOrSymbol', '$emval_methodCallers', '$EmVal'],
+  _emval_call_method__deps: ['_emval_allocateDestructors', '$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
   _emval_call_method: function(caller, handle, methodName, destructorsRef, args) {
     caller = emval_methodCallers[caller];
-    handle = EmVal.handleToValue(handle);
+    handle = Emval.toValue(handle);
     methodName = getStringOrSymbol(methodName);
     return caller(handle, methodName, __emval_allocateDestructors(destructorsRef), args);
   },
 
   _emval_call_void_method__sig: 'viiii',
-  _emval_call_void_method__deps: ['_emval_allocateDestructors', '$getStringOrSymbol', '$emval_methodCallers', '$EmVal'],
+  _emval_call_void_method__deps: ['_emval_allocateDestructors', '$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
   _emval_call_void_method: function(caller, handle, methodName, args) {
     caller = emval_methodCallers[caller];
-    handle = EmVal.handleToValue(handle);
+    handle = Emval.toValue(handle);
     methodName = getStringOrSymbol(methodName);
     caller(handle, methodName, null, args);
   },
 
-  _emval_typeof__deps: ['$EmVal'],
+  _emval_typeof__deps: ['$Emval'],
   _emval_typeof: function(handle) {
-    handle = EmVal.handleToValue(handle);
-    return EmVal.valueToHandle(typeof handle);
+    handle = Emval.toValue(handle);
+    return Emval.toHandle(typeof handle);
   },
 
-  _emval_instanceof__deps: ['$EmVal'],
+  _emval_instanceof__deps: ['$Emval'],
   _emval_instanceof: function(object, constructor) {
-    object = EmVal.handleToValue(object);
-    constructor = EmVal.handleToValue(constructor);
+    object = Emval.toValue(object);
+    constructor = Emval.toValue(constructor);
     return object instanceof constructor;
   },
 
-  _emval_is_number__deps: ['$EmVal'],
+  _emval_is_number__deps: ['$Emval'],
   _emval_is_number: function(handle) {
-    handle = EmVal.handleToValue(handle);
+    handle = Emval.toValue(handle);
     return typeof handle === 'number';
   },
 
-  _emval_is_string__deps: ['$EmVal'],
+  _emval_is_string__deps: ['$Emval'],
   _emval_is_string: function(handle) {
-    handle = EmVal.handleToValue(handle);
+    handle = Emval.toValue(handle);
     return typeof handle === 'string';
   },
 
-  _emval_in__deps: ['$EmVal'],
+  _emval_in__deps: ['$Emval'],
   _emval_in: function(item, object) {
-    item = EmVal.handleToValue(item);
-    object = EmVal.handleToValue(object);
+    item = Emval.toValue(item);
+    object = Emval.toValue(object);
     return item in object;
   },
 
-  _emval_delete__deps: ['$EmVal'],
+  _emval_delete__deps: ['$Emval'],
   _emval_delete: function(object, property) {
-    object = EmVal.handleToValue(object);
-    property = EmVal.handleToValue(property);
+    object = Emval.toValue(object);
+    property = Emval.toValue(property);
     return delete object[property];
   },
 
-  _emval_throw__deps: ['$EmVal'],
+  _emval_throw__deps: ['$Emval'],
   _emval_throw: function(object) {
-    object = EmVal.handleToValue(object);
+    object = Emval.toValue(object);
     throw object;
   },
 
 #if ASYNCIFY
-  _emval_await__deps: ['$EmVal', '$Asyncify'],
+  _emval_await__deps: ['$Emval', '$Asyncify'],
   _emval_await: function(promise) {
     return Asyncify.handleAsync(function () {
-      promise = EmVal.handleToValue(promise);
-      return promise.then(EmVal.valueToHandle);
+      promise = Emval.toValue(promise);
+      return promise.then(Emval.toHandle);
     });
   },
 #endif

@@ -107,7 +107,7 @@ int main()
   {
     val a = val::global("a");
     val a_roundtrip = val::take_ownership(EM_VAL(EM_ASM_INT({
-      return EmVal.valueToHandle(EmVal.handleToValue($0));
+      return Emval.toHandle(Emval.toValue($0));
     }, a.as_handle())));
     ensure(a == a_roundtrip);
   }
