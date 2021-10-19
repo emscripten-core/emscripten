@@ -29,7 +29,7 @@ template<typename T> bool addWillOverFlow(T a, T b) {
   return false;
 }
 
-// Flags determining the method of how paths are resolved.
+// Access mode, file creation and file status flags for open.
 using wasmfs_oflags_t = uint32_t;
 
 std::shared_ptr<Directory> getRootDirectory();
