@@ -66,7 +66,7 @@ var LibraryEmVal = {
     }
   },
 
-  $EmVal__deps: ['$emval_handle_array', '$emval_free_list', '$throwBindingError', '$init_emval'],
+  $Emval__deps: ['$emval_handle_array', '$emval_free_list', '$throwBindingError', '$init_emval'],
   $Emval: {
     handleToValue: function(handle) {
       if (!handle) {
