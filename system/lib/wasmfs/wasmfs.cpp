@@ -303,4 +303,105 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 
   return FileTable::get().add(openFile);
 }
+
+long __syscall_mkdir(long path, long mode) {
+
+  std::vector<std::string> pathParts;
+
+  char newPathName[strlen((char*)path) + 1];
+  strcpy(newPathName, (char*)path);
+
+  char* current;
+
+  current = strtok(newPathName, "/\n");
+  while (current != NULL) {
+    pathParts.push_back(current);
+    current = strtok(NULL, "/\n");
+  }
+
+  std::shared_ptr<File> curr = getRootDirectory();
+
+  for (int i = 0; i < pathParts.size(); i++) {
+
+    auto directory = curr->dynCast<Directory>();
+
+    // If file is nullptr, then the file was not a Directory.
+    // TODO: Change this to accommodate symlinks
+    if (!directory) {
+      return -(ENOTDIR);
+    }
+
+    // Find the next entry in the current directory entry
+#ifdef WASMFS_DEBUG
+    directory->locked().printKeys();
+#endif
+    curr = directory->locked().getEntry(pathParts[i]);
+
+    // Requested entry (file or directory)
+    if (!curr) {
+      if (i == pathParts.size() - 1) {
+        // If curr is the last element and the create flag is specified
+        auto dir = directory->locked();
+
+        // create empty in memory file.
+        auto created = std::make_shared<Directory>(mode);
+
+        dir.setEntry(pathParts[i], created);
+        return 0;
+      } else {
+        return -(ENOENT);
+      }
+    }
+  }
+
+  // The directory already exists.
+  return -(EEXIST);
+}
+
+long __syscall_chdir(long path) {
+  std::vector<std::string> pathParts;
+
+  char newPathName[strlen((char*)path) + 1];
+  strcpy(newPathName, (char*)path);
+
+  char* current;
+
+  current = strtok(newPathName, "/\n");
+  while (current != NULL) {
+    pathParts.push_back(current);
+    current = strtok(NULL, "/\n");
+  }
+
+  std::shared_ptr<File> curr = getRootDirectory();
+
+  for (int i = 0; i < pathParts.size(); i++) {
+
+    auto directory = curr->dynCast<Directory>();
+
+    // If file is nullptr, then the file was not a Directory.
+    // TODO: Change this to accommodate symlinks
+    if (!directory) {
+      return -(ENOTDIR);
+    }
+
+    // Find the next entry in the current directory entry
+#ifdef WASMFS_DEBUG
+    directory->locked().printKeys();
+#endif
+    curr = directory->locked().getEntry(pathParts[i]);
+
+    // Requested entry (file or directory)
+    if (!curr) {
+      return -(ENOENT);
+    }
+  }
+
+  // Check if curr is a directory
+  if (!curr->is<Directory>()) {
+    return -(ENOTDIR);
+  }
+
+  setCWD(curr);
+  return 0;
+}
 }

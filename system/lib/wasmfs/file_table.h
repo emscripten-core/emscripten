@@ -17,7 +17,13 @@
 
 namespace wasmfs {
 
+extern std::shared_ptr<File> cwd;
+
 std::shared_ptr<Directory> getRootDirectory();
+
+std::shared_ptr<File> getCWD();
+
+void setCWD(std::shared_ptr<File> directory);
 
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   std::shared_ptr<File> file;

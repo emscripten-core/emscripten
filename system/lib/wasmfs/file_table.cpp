@@ -10,6 +10,8 @@
 
 namespace wasmfs {
 
+std::shared_ptr<File> cwd = nullptr;
+
 std::vector<std::shared_ptr<OpenFileState>> FileTable::entries;
 
 static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
@@ -119,6 +121,16 @@ std::shared_ptr<Directory> getRootDirectory() {
 
   return rootDirectory;
 }
+
+std::shared_ptr<File> getCWD() {
+  if (cwd) {
+    return cwd;
+  } else {
+    return getRootDirectory();
+  }
+};
+
+void setCWD(std::shared_ptr<File> directory) { cwd = directory; };
 
 FileTable::Handle FileTable::get() {
   static FileTable fileTable;
