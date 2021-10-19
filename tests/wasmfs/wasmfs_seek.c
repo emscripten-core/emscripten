@@ -6,23 +6,6 @@
  */
 
 #include <assert.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <unistd.h>
-
-// FIXME: The existing io.c file implements devices, which haven't been
-// implemented in the new FS yet.
-// This test simply implements the seek portion.
-
-/*
- * Copyright 2021 The Emscripten Authors.  All rights reserved.
- * Emscripten is available under two separate licenses, the MIT license and
- * the University of Illinois/NCSA Open Source License.  Both these licenses
- * can be found in the LICENSE file.
- */
-
-#include <assert.h>
 #include <emscripten.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -31,8 +14,9 @@
 #include <sys/uio.h>
 #include <unistd.h>
 
-// FIXME: Merge this standalone test back into dup.c after new FS can support
-// it.
+// FIXME: The existing io.c file implements devices, which haven't been
+// implemented in the new FS yet.
+// This test simply implements the seek portion.
 
 int main() {
 

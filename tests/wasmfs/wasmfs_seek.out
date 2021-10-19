@@ -30,11 +30,11 @@ write after end of file: 8
 errno: 0
 
 seek: 0
-read after write: 21
+read after write: 31
 errno: 0
-final: wri4567890wri\0\0\0\0\0\0\0\0
+final: wri4567890wri\0\0\0\0\0\0\0\0\0\0writeme\0
 
 seek: 0
-read after write: 21
+read after write: 31
 errno: 0
-final: wri4567890wri\0\0\0\0\0\0\0\0
+final: wri4567890wri\0\0\0\0\0\0\0\0\0\0writeme\0
