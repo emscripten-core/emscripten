@@ -82,10 +82,9 @@ protected:
 
 class DataFile : public File {
 
+  virtual __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) = 0;
   virtual __wasi_errno_t
-  read(uint8_t* buf, __wasi_size_t len, size_t offset) = 0;
-  virtual __wasi_errno_t
-  write(const uint8_t* buf, __wasi_size_t len, size_t offset) = 0;
+  write(const uint8_t* buf, size_t len, off_t offset) = 0;
 
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
@@ -101,10 +100,10 @@ public:
     Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
     Handle(Handle&&) = default;
 
-    __wasi_errno_t read(uint8_t* buf, __wasi_size_t len, size_t offset) {
+    __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) {
       return getFile().read(buf, len, offset);
     }
-    __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len, size_t offset) {
+    __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
       return getFile().write(buf, len, offset);
     }
   };
@@ -146,13 +145,13 @@ public:
   Handle locked() { return Handle(shared_from_this()); }
 };
 
+// This class describes a file that lives in WASM Memory.
 class MemoryFile : public DataFile {
   std::vector<uint8_t> buffer;
 
-  __wasi_errno_t
-  write(const uint8_t* buf, __wasi_size_t len, size_t offset) override;
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
 
-  __wasi_errno_t read(uint8_t* buf, __wasi_size_t len, size_t offset) override;
+  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
 
 public:
   MemoryFile(uint32_t mode) : DataFile(mode) {}

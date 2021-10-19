@@ -77,10 +77,10 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
 
   auto lockedFile = file->locked();
 
-  ssize_t offset = lockedOpenFile.position();
+  off_t offset = lockedOpenFile.position();
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
-    __wasi_size_t len = iovs[i].buf_len;
+    size_t len = iovs[i].buf_len;
 
     // Check if the sum of the buf_len values overflows an ssize_t value.
     if (offset + len < offset) {
@@ -123,7 +123,7 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
 
   auto lockedFile = file->locked();
 
-  size_t offset = lockedOpenFile.position();
+  off_t offset = lockedOpenFile.position();
   size_t size = lockedFile.size();
   for (size_t i = 0; i < iovs_len; i++) {
     // Check if offset has exceeded size of file data.
@@ -133,11 +133,6 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
     }
 
     uint8_t* buf = iovs[i].buf;
-
-    // Check if the sum of the buf_len values overflows an ssize_t value.
-    if (offset + iovs[i].buf_len < offset) {
-      return __WASI_ERRNO_INVAL;
-    }
 
     // Check if buf_len specifies a positive length buffer but buf is a
     // null pointer

@@ -9,6 +9,9 @@
 #include "file.h"
 
 namespace wasmfs {
+//
+// Directory
+//
 std::shared_ptr<File> Directory::Handle::getEntry(std::string pathName) {
   auto it = getDir().entries.find(pathName);
   if (it == getDir().entries.end()) {
@@ -17,9 +20,10 @@ std::shared_ptr<File> Directory::Handle::getEntry(std::string pathName) {
     return it->second;
   }
 }
-
-__wasi_errno_t
-MemoryFile::write(const uint8_t* buf, __wasi_size_t len, size_t offset) {
+//
+// MemoryFile
+//
+__wasi_errno_t MemoryFile::write(const uint8_t* buf, size_t len, off_t offset) {
   if (offset + len >= buffer.size()) {
     buffer.resize(offset + len);
     this->size = buffer.size();
@@ -29,8 +33,7 @@ MemoryFile::write(const uint8_t* buf, __wasi_size_t len, size_t offset) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-__wasi_errno_t
-MemoryFile::read(uint8_t* buf, __wasi_size_t len, size_t offset) {
+__wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
   std::memcpy(buf, &buffer[offset], len);
 
   return __WASI_ERRNO_SUCCESS;
