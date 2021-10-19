@@ -98,6 +98,7 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
   }
 
   *nwritten = offset - lockedOpenFile.position();
+  lockedOpenFile.position() = offset;
 
   return __WASI_ERRNO_SUCCESS;
 }
