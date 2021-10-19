@@ -16,13 +16,24 @@
 
 int main() {
   // Test creating a new file and writing and reading from it.
+  errno = 0;
   int fd = open("/test", O_RDWR | O_CREAT);
+  assert(errno == 0);
   const char* msg = "Test\n";
+  errno = 0;
   write(fd, msg, strlen(msg));
-  char buf[100];
-  read(fd, buf, sizeof(buf));
+  assert(errno == 0);
+  // Attempt to open another FD to the file just created.
+  errno = 0;
+  int test = open("/test", O_RDWR);
+  assert(errno == 0);
+  char buf[100] = {};
+  errno = 0;
+  read(test, buf, sizeof(buf));
+  assert(errno == 0);
   printf("%s", buf);
   close(fd);
+  close(test);
 
   // Try to create an existing file with O_EXCL and O_CREAT
   errno = 0;

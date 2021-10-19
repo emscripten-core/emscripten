@@ -148,7 +148,7 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
   }
   *nread = offset - lockedOpenFile.position();
   lockedOpenFile.position() = offset;
-  return __WASI_ERRNO_INVAL;
+  return __WASI_ERRNO_SUCCESS;
 }
 
 __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
