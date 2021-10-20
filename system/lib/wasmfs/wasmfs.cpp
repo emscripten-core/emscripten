@@ -246,60 +246,47 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   assert(((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
                       O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE)) == 0);
 
-  std::vector<std::string> pathParts;
+  std::vector<std::string> pathParts = splitPath(pathname);
 
-  char newPathName[strlen((char*)pathname) + 1];
-  strcpy(newPathName, (char*)pathname);
-
-  // TODO: Support relative paths. i.e. specify cwd if path is relative.
-  // TODO: Other path parsing edge cases.
-  char* current;
-
-  current = strtok(newPathName, "/\n");
-  while (current != NULL) {
-    pathParts.push_back(current);
-    current = strtok(NULL, "/\n");
+  // Root directory
+  if (pathParts.empty()) {
+    auto openFile =
+      std::make_shared<OpenFileState>(0, flags, getRootDirectory());
+    return FileTable::get().add(openFile);
   }
 
-  std::shared_ptr<File> curr = getRootDirectory();
+  long err;
+  std::shared_ptr<File> parentDir = getParent(pathParts, err);
 
-  for (int i = 0; i < pathParts.size(); i++) {
-    auto directory = curr->dynCast<Directory>();
+  if (!parentDir) {
+    // parent node doesn't exist
+    return err;
+  }
 
-    // If file is nullptr, then the file was not a Directory.
-    // TODO: Change this to accommodate symlinks
-    if (!directory) {
-      return -(ENOTDIR);
+  if (!parentDir->is<Directory>()) {
+    return -(ENOTDIR);
+  }
+
+  std::shared_ptr<File> curr =
+    parentDir->dynCast<Directory>()->locked().getEntry(
+      pathParts[pathParts.size() - 1]);
+
+  // The requested node was not found.
+  if (!curr) {
+    if (flags & O_CREAT) {
+      // If curr is the last element and the create flag is specified
+      auto lockedDir = parentDir->dynCast<Directory>()->locked();
+
+      // Create an empty in-memory file.
+      auto created = std::make_shared<MemoryFile>(mode);
+
+      lockedDir.setEntry(pathParts[pathParts.size() - 1], created);
+      auto openFile = std::make_shared<OpenFileState>(0, flags, created);
+
+      return FileTable::get().add(openFile);
+    } else {
+      return -(ENOENT);
     }
-
-    // Find the next entry in the current directory entry
-#ifdef WASMFS_DEBUG
-    directory->locked().printKeys();
-#endif
-    curr = directory->locked().getEntry(pathParts[i]);
-
-    // Requested entry (file or directory)
-    if (!curr) {
-      if (i == pathParts.size() - 1 && flags & O_CREAT) {
-        // If curr is the last element and the create flag is specified
-        auto lockedDir = directory->locked();
-
-        // Create an empty in-memory file.
-        auto created = std::make_shared<MemoryFile>(mode);
-
-        lockedDir.setEntry(pathParts[i], created);
-        auto openFile = std::make_shared<OpenFileState>(0, flags, created);
-
-        return FileTable::get().add(openFile);
-      } else {
-        return -(ENOENT);
-      }
-    }
-
-#ifdef WASMFS_DEBUG
-    std::vector<char> temp(pathParts[i].begin(), pathParts[i].end());
-    emscripten_console_log(&temp[0]);
-#endif
   }
 
   // Fail if O_DIRECTORY is specified and pathname is not a directory
@@ -319,94 +306,66 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 
 long __syscall_mkdir(long path, long mode) {
 
-  std::vector<std::string> pathParts;
+  std::vector<std::string> pathParts = splitPath(path);
 
-  char newPathName[strlen((char*)path) + 1];
-  strcpy(newPathName, (char*)path);
-
-  char* current;
-
-  current = strtok(newPathName, "/\n");
-  while (current != NULL) {
-    pathParts.push_back(current);
-    current = strtok(NULL, "/\n");
+  // Root directory
+  if (pathParts.empty()) {
+    return -(EEXIST);
   }
 
-  std::shared_ptr<File> curr = getRootDirectory();
+  long err;
+  std::shared_ptr<File> parentDir = getParent(pathParts, err);
 
-  for (int i = 0; i < pathParts.size(); i++) {
-
-    auto directory = curr->dynCast<Directory>();
-
-    // If file is nullptr, then the file was not a Directory.
-    // TODO: Change this to accommodate symlinks
-    if (!directory) {
-      return -(ENOTDIR);
-    }
-
-    // Find the next entry in the current directory entry
-#ifdef WASMFS_DEBUG
-    directory->locked().printKeys();
-#endif
-    curr = directory->locked().getEntry(pathParts[i]);
-
-    // Requested entry (file or directory)
-    if (!curr) {
-      if (i == pathParts.size() - 1) {
-        // If curr is the last element and the create flag is specified
-        auto dir = directory->locked();
-
-        // create empty in memory file.
-        auto created = std::make_shared<Directory>(mode);
-
-        dir.setEntry(pathParts[i], created);
-        return 0;
-      } else {
-        return -(ENOENT);
-      }
-    }
+  if (!parentDir) {
+    // parent node doesn't exist
+    return err;
   }
 
-  // The directory already exists.
-  return -(EEXIST);
+  if (!parentDir->is<Directory>()) {
+    return -(ENOTDIR);
+  }
+
+  std::shared_ptr<File> curr =
+    parentDir->dynCast<Directory>()->locked().getEntry(
+      pathParts[pathParts.size() - 1]);
+
+  // Check if the request directory already exists.
+  if (curr) {
+    return -(EEXIST);
+  } else {
+    auto lockedDir = parentDir->dynCast<Directory>()->locked();
+
+    // Create an empty in-memory file.
+    auto created = std::make_shared<Directory>(mode);
+
+    lockedDir.setEntry(pathParts[pathParts.size() - 1], created);
+    return 0;
+  }
 }
 
 long __syscall_chdir(long path) {
-  std::vector<std::string> pathParts;
+  std::vector<std::string> pathParts = splitPath(path);
 
-  char newPathName[strlen((char*)path) + 1];
-  strcpy(newPathName, (char*)path);
-
-  char* current;
-
-  current = strtok(newPathName, "/\n");
-  while (current != NULL) {
-    pathParts.push_back(current);
-    current = strtok(NULL, "/\n");
+  // Root directory
+  if (pathParts.empty()) {
+    setCWD(getRootDirectory());
+    return 0;
   }
 
-  std::shared_ptr<File> curr = getRootDirectory();
+  long err;
+  std::shared_ptr<File> parentDir = getParent(pathParts, err);
 
-  for (int i = 0; i < pathParts.size(); i++) {
+  if (!parentDir) {
+    // parent node doesn't exist
+    return err;
+  }
 
-    auto directory = curr->dynCast<Directory>();
+  std::shared_ptr<File> curr =
+    parentDir->dynCast<Directory>()->locked().getEntry(
+      pathParts[pathParts.size() - 1]);
 
-    // If file is nullptr, then the file was not a Directory.
-    // TODO: Change this to accommodate symlinks
-    if (!directory) {
-      return -(ENOTDIR);
-    }
-
-    // Find the next entry in the current directory entry
-#ifdef WASMFS_DEBUG
-    directory->locked().printKeys();
-#endif
-    curr = directory->locked().getEntry(pathParts[i]);
-
-    // Requested entry (file or directory)
-    if (!curr) {
-      return -(ENOENT);
-    }
+  if (!curr) {
+    return -(ENOENT);
   }
 
   // Check if curr is a directory

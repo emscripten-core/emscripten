@@ -57,8 +57,8 @@ int main() {
   errno = 0;
   // Attempt to open a non-existent file path.
   int fd4 = open("/foo", O_RDWR);
-  assert(errno == ENOENT);
   printf("Errno: %s\n", strerror(errno));
+  assert(errno == ENOENT);
 
   errno = 0;
   // Attempt to open a file path with a file intermediary.

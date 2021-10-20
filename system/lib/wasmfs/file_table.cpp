@@ -175,4 +175,57 @@ FileTable::Handle::add(std::shared_ptr<OpenFileState> openFileState) {
   }
   return -(EBADF);
 }
+
+std::vector<std::string> splitPath(long pathname) {
+  std::vector<std::string> pathParts;
+  char newPathName[strlen((char*)pathname) + 1];
+  strcpy(newPathName, (char*)pathname);
+
+  // TODO: Support relative paths. i.e. specify cwd if path is relative.
+  // TODO: Other path parsing edge cases.
+  char* current;
+
+  current = strtok(newPathName, "/\n");
+  while (current != NULL) {
+    pathParts.push_back(current);
+    current = strtok(NULL, "/\n");
+  }
+
+  return pathParts;
+}
+
+std::shared_ptr<File> getParent(const std::vector<std::string>& pathParts,
+                                long& err) {
+  std::shared_ptr<File> curr = getRootDirectory();
+
+  for (int i = 0; i < pathParts.size() - 1; i++) {
+    auto directory = curr->dynCast<Directory>();
+
+    // If file is nullptr, then the file was not a Directory.
+    // TODO: Change this to accommodate symlinks
+    if (!directory) {
+      err = -(ENOTDIR);
+      return nullptr;
+    }
+
+    // Find the next entry in the current directory entry
+#ifdef WASMFS_DEBUG
+    directory->locked().printKeys();
+#endif
+    curr = directory->locked().getEntry(pathParts[i]);
+
+    // Requested entry (file or directory)
+    if (!curr) {
+      err = -(ENOENT);
+      return nullptr;
+    }
+  }
+
+#ifdef WASMFS_DEBUG
+  std::vector<char> temp(pathParts[i].begin(), pathParts[i].end());
+  emscripten_console_log(&temp[0]);
+#endif
+
+  return curr;
+}
 } // namespace wasmfs

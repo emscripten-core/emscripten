@@ -29,6 +29,11 @@ template<typename T> bool addWillOverFlow(T a, T b) {
   return false;
 }
 
+std::shared_ptr<File> getParent(const std::vector<std::string>& pathParts,
+                                long& err);
+
+std::vector<std::string> splitPath(long pathname);
+
 // Access mode, file creation and file status flags for open.
 using wasmfs_oflags_t = uint32_t;
 
