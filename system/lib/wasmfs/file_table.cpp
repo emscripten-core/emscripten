@@ -176,14 +176,18 @@ FileTable::Handle::add(std::shared_ptr<OpenFileState> openFileState) {
   return -(EBADF);
 }
 
-std::vector<std::string> splitPath(long pathname) {
+std::vector<std::string> splitPath(char* pathname) {
   std::vector<std::string> pathParts;
-  char newPathName[strlen((char*)pathname) + 1];
-  strcpy(newPathName, (char*)pathname);
+  char newPathName[strlen(pathname) + 1];
+  strcpy(newPathName, pathname);
 
   // TODO: Support relative paths. i.e. specify cwd if path is relative.
   // TODO: Other path parsing edge cases.
   char* current;
+  // Handle absolute path.
+  if (newPathName[0] == '/') {
+    pathParts.push_back("/");
+  }
 
   current = strtok(newPathName, "/\n");
   while (current != NULL) {
@@ -194,11 +198,17 @@ std::vector<std::string> splitPath(long pathname) {
   return pathParts;
 }
 
-std::shared_ptr<File> getParent(const std::vector<std::string>& pathParts,
-                                long& err) {
-  std::shared_ptr<File> curr = getRootDirectory();
+std::shared_ptr<Directory> getParent(const std::vector<std::string>& pathParts,
+                                     long& err) {
+
+  std::shared_ptr<File> curr =
+    pathParts[0] == "/" ? getRootDirectory() : getCWD();
 
   for (int i = 0; i < pathParts.size() - 1; i++) {
+    // Skip over beginning / for absolute paths.
+    if (pathParts[i] == "/") {
+      continue;
+    }
     auto directory = curr->dynCast<Directory>();
 
     // If file is nullptr, then the file was not a Directory.
@@ -219,13 +229,20 @@ std::shared_ptr<File> getParent(const std::vector<std::string>& pathParts,
       err = -(ENOENT);
       return nullptr;
     }
-  }
 
 #ifdef WASMFS_DEBUG
-  std::vector<char> temp(pathParts[i].begin(), pathParts[i].end());
-  emscripten_console_log(&temp[0]);
+    std::vector<char> temp(pathParts[i].begin(), pathParts[i].end());
+    emscripten_console_log(&temp[0]);
 #endif
+  }
 
-  return curr;
+  std::shared_ptr<Directory> currDirectory = curr->dynCastShared<Directory>();
+
+  if (!currDirectory) {
+    err = -(ENOTDIR);
+    return nullptr;
+  }
+
+  return currDirectory;
 }
 } // namespace wasmfs

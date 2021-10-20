@@ -246,41 +246,40 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   assert(((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
                       O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE)) == 0);
 
-  std::vector<std::string> pathParts = splitPath(pathname);
+  std::vector<std::string> pathParts = splitPath((char*)pathname);
+
+  if (pathParts.empty()) {
+    return -(EINVAL);
+  }
 
   // Root directory
-  if (pathParts.empty()) {
+  if (pathParts.size() == 1 && pathParts[0] == "/") {
     auto openFile =
       std::make_shared<OpenFileState>(0, flags, getRootDirectory());
     return FileTable::get().add(openFile);
   }
 
   long err;
-  std::shared_ptr<File> parentDir = getParent(pathParts, err);
+  std::shared_ptr<Directory> parentDir = getParent(pathParts, err);
 
+  // Parent node doesn't exist.
   if (!parentDir) {
-    // parent node doesn't exist
     return err;
   }
 
-  if (!parentDir->is<Directory>()) {
-    return -(ENOTDIR);
-  }
+  auto lockedParentDir = parentDir->locked();
 
   std::shared_ptr<File> curr =
-    parentDir->dynCast<Directory>()->locked().getEntry(
-      pathParts[pathParts.size() - 1]);
+    lockedParentDir.getEntry(pathParts[pathParts.size() - 1]);
 
   // The requested node was not found.
   if (!curr) {
+    // If curr is the last element and the create flag is specified
     if (flags & O_CREAT) {
-      // If curr is the last element and the create flag is specified
-      auto lockedDir = parentDir->dynCast<Directory>()->locked();
-
       // Create an empty in-memory file.
       auto created = std::make_shared<MemoryFile>(mode);
 
-      lockedDir.setEntry(pathParts[pathParts.size() - 1], created);
+      lockedParentDir.setEntry(pathParts[pathParts.size() - 1], created);
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
       return FileTable::get().add(openFile);
@@ -305,8 +304,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 }
 
 long __syscall_mkdir(long path, long mode) {
-
-  std::vector<std::string> pathParts = splitPath(path);
+  std::vector<std::string> pathParts = splitPath((char*)path);
 
   // Root directory
   if (pathParts.empty()) {
@@ -314,37 +312,32 @@ long __syscall_mkdir(long path, long mode) {
   }
 
   long err;
-  std::shared_ptr<File> parentDir = getParent(pathParts, err);
+  std::shared_ptr<Directory> parentDir = getParent(pathParts, err);
 
   if (!parentDir) {
     // parent node doesn't exist
     return err;
   }
 
-  if (!parentDir->is<Directory>()) {
-    return -(ENOTDIR);
-  }
+  auto lockedParentDir = parentDir->locked();
 
   std::shared_ptr<File> curr =
-    parentDir->dynCast<Directory>()->locked().getEntry(
-      pathParts[pathParts.size() - 1]);
+    lockedParentDir.getEntry(pathParts[pathParts.size() - 1]);
 
   // Check if the request directory already exists.
   if (curr) {
     return -(EEXIST);
   } else {
-    auto lockedDir = parentDir->dynCast<Directory>()->locked();
-
     // Create an empty in-memory file.
     auto created = std::make_shared<Directory>(mode);
 
-    lockedDir.setEntry(pathParts[pathParts.size() - 1], created);
+    lockedParentDir.setEntry(pathParts[pathParts.size() - 1], created);
     return 0;
   }
 }
 
 long __syscall_chdir(long path) {
-  std::vector<std::string> pathParts = splitPath(path);
+  std::vector<std::string> pathParts = splitPath((char*)path);
 
   // Root directory
   if (pathParts.empty()) {
@@ -353,7 +346,7 @@ long __syscall_chdir(long path) {
   }
 
   long err;
-  std::shared_ptr<File> parentDir = getParent(pathParts, err);
+  std::shared_ptr<Directory> parentDir = getParent(pathParts, err);
 
   if (!parentDir) {
     // parent node doesn't exist
@@ -361,8 +354,7 @@ long __syscall_chdir(long path) {
   }
 
   std::shared_ptr<File> curr =
-    parentDir->dynCast<Directory>()->locked().getEntry(
-      pathParts[pathParts.size() - 1]);
+    parentDir->locked().getEntry(pathParts[pathParts.size() - 1]);
 
   if (!curr) {
     return -(ENOENT);

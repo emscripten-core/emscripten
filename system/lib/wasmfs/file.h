@@ -32,6 +32,16 @@ public:
     return int(kind) == int(T::expectedKind);
   }
 
+  template<class T> std::shared_ptr<T> dynCastShared() {
+    static_assert(std::is_base_of<File, T>::value,
+                  "File is not a base of destination type T");
+    if (int(kind) == int(T::expectedKind)) {
+      return std::static_pointer_cast<T>(shared_from_this());
+    } else {
+      return nullptr;
+    }
+  }
+
   template<class T> T* dynCast() {
     static_assert(std::is_base_of<File, T>::value,
                   "File is not a base of destination type T");
