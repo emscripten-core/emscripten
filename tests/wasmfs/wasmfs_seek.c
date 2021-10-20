@@ -6,23 +6,6 @@
  */
 
 #include <assert.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <unistd.h>
-
-// FIXME: The existing io.c file implements devices, which haven't been
-// implemented in the new FS yet.
-// This test simply implements the seek portion.
-
-/*
- * Copyright 2021 The Emscripten Authors.  All rights reserved.
- * Emscripten is available under two separate licenses, the MIT license and
- * the University of Illinois/NCSA Open Source License.  Both these licenses
- * can be found in the LICENSE file.
- */
-
-#include <assert.h>
 #include <emscripten.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -31,8 +14,9 @@
 #include <sys/uio.h>
 #include <unistd.h>
 
-// FIXME: Merge this standalone test back into dup.c after new FS can support
-// it.
+// FIXME: The existing io.c file implements devices, which haven't been
+// implemented in the new FS yet.
+// This test simply implements the seek portion.
 
 int main() {
 
@@ -74,7 +58,14 @@ int main() {
   printf("errno: %d\n\n", errno);
   errno = 0;
 
-  printf("seek: %lld\n", lseek(f, -15, SEEK_CUR));
+  printf("before bad seek: %lld\n", lseek(f, 0, SEEK_CUR));
+  printf("errno: %d\n", errno);
+  errno = 0;
+
+  printf("bad seek: %lld\n", lseek(f, -15, SEEK_CUR));
+  printf("errno: %d\n", errno);
+  errno = 0;
+  printf("after bad seek: %lld\n", lseek(f, 0, SEEK_CUR));
   printf("errno: %d\n", errno);
   errno = 0;
   printf("partial read from before start of file: %zd\n",
@@ -115,26 +106,6 @@ int main() {
   printf("seek: %lld\n", lseek(f, 0, SEEK_SET));
   printf("read after write: %zd\n",
          bytesRead = read(f, readBuffer, sizeof readBuffer));
-  printf("errno: %d\n", errno);
-  errno = 0;
-  printf("final: ");
-  for (ssize_t i = 0; i < bytesRead; i++) {
-    if (readBuffer[i] == 0) {
-      printf("\\0");
-    } else {
-      printf("%c", readBuffer[i]);
-    }
-  }
-  printf("\n");
-
-  // readv
-  printf("\n");
-  memset(readBuffer, 0, sizeof readBuffer);
-  struct iovec iov;
-  iov.iov_base = readBuffer;
-  iov.iov_len = sizeof readBuffer;
-  printf("seek: %lld\n", lseek(f, 0, SEEK_SET));
-  printf("read after write: %zd\n", bytesRead = readv(f, &iov, 1));
   printf("errno: %d\n", errno);
   errno = 0;
   printf("final: ");
