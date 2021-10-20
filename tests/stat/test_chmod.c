@@ -70,7 +70,7 @@ void test() {
   assert(s.st_mode == (0 | S_IFREG));
   assert(s.st_ctime != lastctime);
 
-  // ensure file handles opened *before* the operation behave according to previous chmod
+  // ensure file handles opened *before* the operation behave according to previous mode
   // see https://github.com/emscripten-core/emscripten/issues/14866
   assert(ftruncate(fd, s.st_size) == 0);
 
