@@ -98,15 +98,17 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
       return __WASI_ERRNO_INVAL;
     }
 
-    if (lockedFile.write(buf, len, offset) != __WASI_ERRNO_SUCCESS) {
-      break;
+    auto result = lockedFile.write(buf, len, offset);
+
+    if (result != __WASI_ERRNO_SUCCESS) {
+      *nwritten = offset - lockedOpenFile.position();
+      lockedOpenFile.position() = offset;
+      return result;
     }
     offset += len;
   }
-
   *nwritten = offset - lockedOpenFile.position();
   lockedOpenFile.position() = offset;
-
   return __WASI_ERRNO_SUCCESS;
 }
 
@@ -154,8 +156,12 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
 
     size_t bytesToRead = std::min(size_t(dataLeft), iovs[i].buf_len);
 
-    if (lockedFile.read(buf, bytesToRead, offset) != __WASI_ERRNO_SUCCESS) {
-      break;
+    auto result = lockedFile.read(buf, bytesToRead, offset);
+
+    if (result != __WASI_ERRNO_SUCCESS) {
+      *nread = offset - lockedOpenFile.position();
+      lockedOpenFile.position() = offset;
+      return result;
     }
     offset += bytesToRead;
   }
