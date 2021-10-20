@@ -410,14 +410,14 @@ namespace emscripten {
             return handle;
         }
 
-        val& operator=(val&& v) {
+        val& operator=(val&& v) & {
             internal::_emval_decref(handle);
             handle = v.handle;
             v.handle = 0;
             return *this;
         }
 
-        val& operator=(const val& v) {
+        val& operator=(const val& v) & {
             internal::_emval_incref(v.handle);
             internal::_emval_decref(handle);
             handle = v.handle;
