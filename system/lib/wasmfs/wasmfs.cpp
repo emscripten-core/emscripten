@@ -61,113 +61,30 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
                                const __wasi_ciovec_t* iovs,
                                size_t iovs_len,
                                __wasi_size_t* nwritten) {
-  if (iovs_len < 0) {
-    return __WASI_ERRNO_INVAL;
-  }
-
-  auto openFile = FileTable::get()[fd];
-
-  if (!openFile) {
-    return __WASI_ERRNO_BADF;
-  }
-
-  auto lockedOpenFile = openFile.locked();
-  auto* file = lockedOpenFile.getFile()->dynCast<DataFile>();
-
-  // If file is nullptr, then the file was not a DataFile.
-  // TODO: change to add support for symlinks.
-  if (!file) {
-    return __WASI_ERRNO_ISDIR;
-  }
-
-  auto lockedFile = file->locked();
-
-  off_t offset = lockedOpenFile.position();
-  for (size_t i = 0; i < iovs_len; i++) {
-    const uint8_t* buf = iovs[i].buf;
-    size_t len = iovs[i].buf_len;
-
-    // Check if the sum of the buf_len values overflows an off_t (63 bits).
-    if (addWillOverFlow(offset, off_t(len))) {
-      return __WASI_ERRNO_FBIG;
-    }
-
-    // Check if buf_len specifies a positive length buffer but buf is a
-    // null pointer
-    if (!buf && len > 0) {
-      return __WASI_ERRNO_INVAL;
-    }
-
-    auto result = lockedFile.write(buf, len, offset);
-
-    if (result != __WASI_ERRNO_SUCCESS) {
-      *nwritten = offset - lockedOpenFile.position();
-      lockedOpenFile.position() = offset;
-      return result;
-    }
-    offset += len;
-  }
-  *nwritten = offset - lockedOpenFile.position();
-  lockedOpenFile.position() = offset;
-  return __WASI_ERRNO_SUCCESS;
+  return offsetWrite(fd, iovs, iovs_len, NULL, nwritten, true);
 }
 
 __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
                               const __wasi_iovec_t* iovs,
                               size_t iovs_len,
                               __wasi_size_t* nread) {
-  if (iovs_len < 0) {
-    return __WASI_ERRNO_INVAL;
-  }
+  return offsetRead(fd, iovs, iovs_len, NULL, nread, true);
+}
 
-  auto openFile = FileTable::get()[fd];
+__wasi_errno_t __wasi_fd_pwrite(__wasi_fd_t fd,
+                                const __wasi_ciovec_t* iovs,
+                                size_t iovs_len,
+                                __wasi_filesize_t offset,
+                                __wasi_size_t* nwritten) {
+  return offsetWrite(fd, iovs, iovs_len, offset, nwritten, false);
+}
 
-  if (!openFile) {
-    return __WASI_ERRNO_BADF;
-  }
-
-  auto lockedOpenFile = openFile.locked();
-  auto* file = lockedOpenFile.getFile()->dynCast<DataFile>();
-
-  // If file is nullptr, then the file was not a DataFile.
-  // TODO: change to add support for symlinks.
-  if (!file) {
-    return __WASI_ERRNO_ISDIR;
-  }
-
-  auto lockedFile = file->locked();
-
-  off_t offset = lockedOpenFile.position();
-  size_t size = lockedFile.size();
-  for (size_t i = 0; i < iovs_len; i++) {
-    // Check if offset has exceeded the size of file data.
-    ssize_t dataLeft = size - offset;
-    if (dataLeft <= 0) {
-      break;
-    }
-
-    uint8_t* buf = iovs[i].buf;
-
-    // Check if buf_len specifies a positive length buffer
-    // but buf is a null pointer.
-    if (!buf && iovs[i].buf_len > 0) {
-      return __WASI_ERRNO_INVAL;
-    }
-
-    size_t bytesToRead = std::min(size_t(dataLeft), iovs[i].buf_len);
-
-    auto result = lockedFile.read(buf, bytesToRead, offset);
-
-    if (result != __WASI_ERRNO_SUCCESS) {
-      *nread = offset - lockedOpenFile.position();
-      lockedOpenFile.position() = offset;
-      return result;
-    }
-    offset += bytesToRead;
-  }
-  *nread = offset - lockedOpenFile.position();
-  lockedOpenFile.position() = offset;
-  return __WASI_ERRNO_SUCCESS;
+__wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
+                               const __wasi_iovec_t* iovs,
+                               size_t iovs_len,
+                               __wasi_filesize_t offset,
+                               __wasi_size_t* nread) {
+  return offsetRead(fd, iovs, iovs_len, offset, nread, false);
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
@@ -341,95 +258,6 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
     *newoffset = position;
   }
 
-  return __WASI_ERRNO_SUCCESS;
-}
-
-__wasi_errno_t __wasi_fd_pwrite(__wasi_fd_t fd,
-                                const __wasi_ciovec_t* iovs,
-                                size_t iovs_len,
-                                __wasi_filesize_t offset,
-                                __wasi_size_t* nwritten) {
-  auto openFile = FileTable::get()[fd];
-
-  if (!openFile) {
-    return __WASI_ERRNO_BADF;
-  }
-
-  auto lockedOpenFile = openFile.locked();
-  auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
-
-  // If file is nullptr, then the file was not a DataFile.
-  if (!file) {
-    return __WASI_ERRNO_ISDIR;
-  }
-
-  auto lockedFile = file->locked();
-
-  __wasi_filesize_t position = offset;
-  for (size_t i = 0; i < iovs_len; i++) {
-    const uint8_t* buf = iovs[i].buf;
-    __wasi_size_t len = iovs[i].buf_len;
-
-    // Check if buf_len specifies a positive length buffer but buf is a
-    // null pointer
-    if (!buf && len > 0) {
-      return __WASI_ERRNO_INVAL;
-    }
-
-    lockedFile.write(buf, len, position);
-    position += len;
-  }
-
-  *nwritten = position - offset;
-
-  return __WASI_ERRNO_SUCCESS;
-}
-
-__wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
-                               const __wasi_iovec_t* iovs,
-                               size_t iovs_len,
-                               __wasi_filesize_t offset,
-                               __wasi_size_t* nread) {
-  auto openFile = FileTable::get()[fd];
-
-  if (!openFile) {
-    return __WASI_ERRNO_BADF;
-  }
-
-  auto lockedOpenFile = openFile.locked();
-  auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
-
-  // If file is nullptr, then the file was not a DataFile.
-  if (!file) {
-    return __WASI_ERRNO_ISDIR;
-  }
-
-  auto lockedFile = file->locked();
-
-  size_t position = offset;
-  size_t size = lockedFile.size();
-  for (size_t i = 0; i < iovs_len; i++) {
-    // Check if position has exceeded size of file data.
-    ssize_t dataLeft = size - position;
-    if (dataLeft <= 0) {
-      break;
-    }
-
-    uint8_t* buf = iovs[i].buf;
-
-    // Check if buf_len specifies a positive length buffer but buf is a
-    // null pointer
-    if (!buf && iovs[i].buf_len > 0) {
-      return __WASI_ERRNO_INVAL;
-    }
-
-    size_t bytesToRead =
-      (size_t)dataLeft < iovs[i].buf_len ? dataLeft : iovs[i].buf_len;
-
-    lockedFile.read(buf, bytesToRead, position);
-    position += bytesToRead;
-  }
-  *nread = position - offset;
   return __WASI_ERRNO_SUCCESS;
 }
 }

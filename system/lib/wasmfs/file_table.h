@@ -129,4 +129,19 @@ public:
   // There is only ever one FileTable in the system.
   static Handle get();
 };
+
+__wasi_errno_t offsetWrite(__wasi_fd_t fd,
+                           const __wasi_ciovec_t* iovs,
+                           size_t iovs_len,
+                           __wasi_filesize_t offset,
+                           __wasi_size_t* nwritten,
+                           bool setPosition);
+
+__wasi_errno_t offsetRead(__wasi_fd_t fd,
+                          const __wasi_iovec_t* iovs,
+                          size_t iovs_len,
+                          __wasi_filesize_t offset,
+                          __wasi_size_t* nread,
+                          bool setPosition);
+
 } // namespace wasmfs
