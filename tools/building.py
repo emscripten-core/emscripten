@@ -385,7 +385,7 @@ def link_lld(args, target, external_symbols=None):
     cmd += ['-mllvm', '-exception-model=wasm']
 
   # For relocatable output (generating an object file) we don't pass any of the
-  # normal linker flags that are used when building and exectuable.
+  # normal linker flags that are used when building and exectuable
   if '--relocatable' not in args and '-r' not in args:
     cmd += lld_flags_for_executable(external_symbols)
 
