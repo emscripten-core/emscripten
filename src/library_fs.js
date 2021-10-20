@@ -907,14 +907,13 @@ FS.staticInit();` +
       if (typeof path === 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
         node = lookup.node;
+      } else if (path.node) {
+        node = path.node;
       } else {
         node = path;
       }
       if (!node.node_ops.setattr) {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
-      }
-      if (node.node) {
-        node = node.node;
       }
       node.node_ops.setattr(node, {
         mode: (mode & {{{ cDefine('S_IALLUGO') }}}) | (node.mode & ~{{{ cDefine('S_IALLUGO') }}}),
@@ -936,14 +935,13 @@ FS.staticInit();` +
       if (typeof path === 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
         node = lookup.node;
+      } else if (path.node) {
+        node = path.node;
       } else {
         node = path;
       }
       if (!node.node_ops.setattr) {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
-      }
-      if (node.node) {
-        node = node.node;
       }
       node.node_ops.setattr(node, {
         timestamp: Date.now()
@@ -968,6 +966,8 @@ FS.staticInit();` +
       if (typeof path === 'string') {
         var lookup = FS.lookupPath(path, { follow: true });
         node = lookup.node;
+      } else if (path.node) {
+        node = path.node;
       } else {
         node = path;
       }
@@ -980,7 +980,12 @@ FS.staticInit();` +
       if (!FS.isFile(node.mode)) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      var errCode = FS.nodePermissions(node, 'w');
+      var errCode;
+      if (path.node) { // FSStream, check perms against it instead of the node
+        errCode = FS.nodePermissions(path, 'w');
+      } else {
+        errCode = FS.nodePermissions(node, 'w');
+      }
       if (errCode) {
         throw new FS.ErrnoError(errCode);
       }
