@@ -11,7 +11,6 @@
 // effect when XMLHttpRequest is not defined, which basically means when testing
 // in the shell locally.
 if (typeof XMLHttpRequest === 'undefined') {
-  // Polyfill XHR for d8, so that --preload-file
   XMLHttpRequest = function() {
     return {
       open: function(mode, path, async) {
