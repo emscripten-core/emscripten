@@ -280,8 +280,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 
     // Requested entry (file or directory)
     if (!curr) {
+      // Create last element in path if O_CREAT is specified.
       if (i == pathParts.size() - 1 && flags & O_CREAT) {
-        // If curr is the last element and the create flag is specified
         auto lockedDir = directory->locked();
 
         // Create an empty in-memory file.
@@ -307,7 +307,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     return -(ENOTDIR);
   }
 
-  // If the file exists and O_EXCL and O_CREAT are true
+  // Return an error if the file exists and O_CREAT and O_EXCL are specified.
   if (flags & O_EXCL && flags & O_CREAT) {
     return -(EEXIST);
   }
