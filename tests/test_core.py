@@ -427,6 +427,26 @@ class TestCoreBase(RunnerCore):
   def test_i64_varargs(self):
     self.do_core_test('test_i64_varargs.c', args='waka fleefl asdfasdfasdfasdf'.split())
 
+  def test_bigint_stdfs(self):
+    self.set_setting('WASM_BIGINT')
+    self.emcc_args.append('-std=c++17')
+    src = r'''
+      #include <iostream>
+      #include <filesystem>
+
+      int main() {
+          std::string folders="";
+          for(const auto& entry : std::filesystem::directory_iterator("/"))
+          {
+            folders += entry.path();
+          }
+
+          std::cout << "OK" << std::endl;
+          return 0;
+      }
+    '''
+    self.do_run(src, 'OK\n')
+
   @no_wasm2js('wasm_bigint')
   def test_i64_invoke_bigint(self):
     self.set_setting('WASM_BIGINT')
@@ -1250,27 +1270,6 @@ int main(int argc, char **argv)
     self.set_setting('INLINING_LIMIT')
 
     self.do_core_test('test_exceptions_allowed_uncaught.cpp')
-
-  @require_v8
-  def test_exceptions_bigint_stdfs(self):
-    self.set_setting('MAIN_MODULE', 2)
-    self.set_setting('WASM_BIGINT')
-    self.emcc_args.append('-fPIC')
-    self.emcc_args.append('-std=c++17')
-    self.emcc_args.append('-fwasm-exceptions')
-    src = r'''
-      #include <iostream>
-      #include <filesystem>
-
-      int main() {
-          std::string folders="";
-          for(const auto& entry : std::filesystem::directory_iterator("/"))
-		      {  folders += entry.path(); }
-
-          std::cout << "OK";
-      }
-    '''
-    self.do_run(src, 'OK\n')
 
   def test_exceptions_allowed_misuse(self):
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['foo'])
