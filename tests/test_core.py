@@ -138,7 +138,7 @@ def with_both_sjlj_handling(f):
       self.v8_args.append('--experimental-wasm-eh')
       f(self)
     else:
-      # SUPPORT_LONGJMP is enabled by default. Nothing to do.
+      self.set_setting('SUPPORT_LONGJMP', 'emscripten')
       f(self)
 
   metafunc._parameterize = {'': (False,),
@@ -1098,7 +1098,7 @@ int main()
   def test_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.maybe_closure()
-    for support_longjmp in [0, 1]:
+    for support_longjmp in ['none', 'emscripten']:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
 
@@ -1114,7 +1114,7 @@ int main()
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    for support_longjmp in [0, 1]:
+    for support_longjmp in ['none', 'emscripten']:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -1493,17 +1493,17 @@ int main() {
 ''', 'bugfree code')
 
   def test_exceptions_longjmp1(self):
-    self.set_setting('SUPPORT_LONGJMP')
+    self.set_setting('SUPPORT_LONGJMP', 'emscripten')
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_core_test('test_exceptions_longjmp1.cpp')
 
   def test_exceptions_longjmp2(self):
-    self.set_setting('SUPPORT_LONGJMP')
+    self.set_setting('SUPPORT_LONGJMP', 'emscripten')
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_core_test('test_exceptions_longjmp2.cpp')
 
   def test_exceptions_longjmp3(self):
-    self.set_setting('SUPPORT_LONGJMP')
+    self.set_setting('SUPPORT_LONGJMP', 'emscripten')
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_core_test('test_exceptions_longjmp3.cpp')
 

@@ -1662,8 +1662,8 @@ int f() {
     self.assertContained('error: -s MAIN_MODULE + pthreads is experimental', err)
 
   def test_dylink_pthread_longjmp(self):
-    err = self.expect_fail([EMCC, '-sMAIN_MODULE', '-sUSE_PTHREADS', '-sSUPPORT_LONGJMP', test_file('hello_world.c')])
-    self.assertContained('SUPPORT_LONGJMP is not compatible with pthreads + dynamic linking', err)
+    err = self.expect_fail([EMCC, '-sMAIN_MODULE', '-sUSE_PTHREADS', '-sSUPPORT_LONGJMP=emscripten', test_file('hello_world.c')])
+    self.assertContained('SUPPORT_LONGJMP=emscripten is not compatible with pthreads + dynamic linking', err)
 
   def test_dylink_no_autoload(self):
     create_file('main.c', r'''
@@ -10359,15 +10359,15 @@ exec "$@"
     self.do_runf(test_file('hello_world.c'), '[library call:_fd_write: 0x1')
 
   def test_SUPPORT_LONGJMP_executable(self):
-    stderr = self.run_process([EMCC, test_file('core/test_longjmp.c'), '-s', 'SUPPORT_LONGJMP=0'], stderr=PIPE, check=False).stderr
-    self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)',
+    stderr = self.run_process([EMCC, test_file('core/test_longjmp.c'), '-s', 'SUPPORT_LONGJMP=none'], stderr=PIPE, check=False).stderr
+    self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=none), but it is required by the code (either set SUPPORT_LONGJMP=emscripten, or remove uses of it in the project)',
                          stderr)
 
   def test_SUPPORT_LONGJMP_object(self):
-    # compile the object *with* support, but link without
-    self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-s', 'SUPPORT_LONGJMP', '-o', 'a.o'])
-    stderr = self.run_process([EMCC, 'a.o', '-s', 'SUPPORT_LONGJMP=0'], stderr=PIPE, check=False).stderr
-    self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)',
+    # compile the object *with* Emscripten SjLj support, but link without
+    self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-s', 'SUPPORT_LONGJMP=emscripten', '-o', 'a.o'])
+    stderr = self.run_process([EMCC, 'a.o', '-s', 'SUPPORT_LONGJMP=none'], stderr=PIPE, check=False).stderr
+    self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=none), but it is required by the code (either set SUPPORT_LONGJMP=emscripten, or remove uses of it in the project)',
                          stderr)
 
   def test_pthread_MODULARIZE(self):
