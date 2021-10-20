@@ -1409,7 +1409,7 @@ LibraryManager.library = {
 
   _emscripten_throw_longjmp__sig: 'v',
   _emscripten_throw_longjmp: function() { throw 'longjmp'; },
-#if SUPPORT_LONGJMP != 'emscripten'
+#if SUPPORT_LONGJMP == 'none'
 #if !INCLUDE_FULL_LIBRARY
   // These are in order to print helpful error messages when either longjmp of
   // setjmp is used.
