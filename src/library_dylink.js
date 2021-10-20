@@ -100,7 +100,7 @@ var LibraryDylink = {
       }
       if (replace || GOT[symName].value == 0) {
         if (typeof value === 'function') {
-          GOT[symName].value = addFunctionWasm(value);
+          GOT[symName].value = addFunction(value);
 #if DYLINK_DEBUG
           err("updateGOT: FUNC: " + symName + ' : ' + GOT[symName].value);
 #endif
@@ -171,7 +171,7 @@ var LibraryDylink = {
         err('assigning dynamic symbol from main module: ' + symName + ' -> ' + prettyPrint(value));
 #endif
         if (typeof value === 'function') {
-          GOT[symName].value = addFunctionWasm(value, value.sig);
+          GOT[symName].value = addFunction(value, value.sig);
 #if DYLINK_DEBUG
           err('assigning table entry for : ' + symName + ' -> ' + GOT[symName].value);
 #endif
@@ -914,7 +914,7 @@ var LibraryDylink = {
       // the second argument will not be needed.  If its a JS function we rely
       // on the `sig` attribute being set based on the `<func>__sig` specified
       // in library JS file.
-      return addFunctionWasm(result, result.sig);
+      return addFunction(result, result.sig);
     } else {
       return result;
     }

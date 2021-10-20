@@ -114,8 +114,14 @@ function getEmptyTableSlot() {
   return wasmTable.length - 1;
 }
 
-// Add a wasm function to the table.
-function addFunctionWasm(func, sig) {
+
+// Add a function to the table.
+// 'sig' parameter is required if the function being added is a JS function.
+function addFunction(func, sig) {
+#if ASSERTIONS
+  assert(typeof func !== 'undefined');
+#endif // ASSERTIONS
+
   // Check if the function is already in the table, to ensure each function
   // gets a unique index. First, create the map if this is the first use.
   if (!functionsInTableMap) {
@@ -170,17 +176,4 @@ function removeFunction(index) {
   freeTableIndexes.push(index);
 }
 
-// 'sig' parameter is required for the llvm backend but only when func is not
-// already a WebAssembly function.
-function addFunction(func, sig) {
-#if ASSERTIONS
-  assert(typeof func !== 'undefined');
-#if ASSERTIONS == 2
-  if (typeof sig === 'undefined') {
-    err('warning: addFunction(): You should provide a wasm function signature string as a second argument. This is not necessary for asm.js and asm2wasm, but can be required for the LLVM wasm backend, so it is recommended for full portability.');
-  }
-#endif // ASSERTIONS == 2
-#endif // ASSERTIONS
 
-  return addFunctionWasm(func, sig);
-}
