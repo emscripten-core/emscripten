@@ -43,6 +43,10 @@ var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : 
 #include "promise_polyfill.js"
 #endif
 
+#if ENVIRONMENT_MAY_BE_SHELL
+#include "xhr_polyfill.js"
+#endif
+
 #if MODULARIZE
 // Set up the promise that indicates the Module is initialized
 var readyPromiseResolve, readyPromiseReject;

@@ -1448,10 +1448,13 @@ int f() {
       }
     ''')
 
-    self.run_process([EMXX, 'main.cpp'] + args)
-    # run in node.js to ensure we verify that file preloading works there
-    result = self.run_js('a.out.js', engine=config.NODE_JS)
-    self.assertContained('|hello from a file wi|', result)
+    self.run_process([EMXX, 'main.cpp', '-sENVIRONMENT=node,shell'] + args)
+    # run in all engines to ensure we verify that file preloading works in
+    # node and d8
+    for engine in config.JS_ENGINES:
+      print(engine)
+      result = self.run_js('a.out.js', engine=engine)
+      self.assertContained('|hello from a file wi|', result)
 
   def test_embed_file_dup(self):
     ensure_dir(self.in_dir('tst', 'test1'))
