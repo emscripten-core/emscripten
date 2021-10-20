@@ -1379,7 +1379,10 @@ def phase_setup(options, state, newargs, settings_map):
     exit_with_error('SUPPORT_LONGJMP=wasm cannot be used with DISABLE_EXCEPTION_CATCHING=0')
   # DISABLE_EXCEPTION_THROWING=0 is the default, so we change it here
   if settings.SUPPORT_LONGJMP == 'wasm':
-    settings.DISABLE_EXCEPTION_THROWING = 1
+    if settings.DISABLE_EXCEPTION_THROWING == 0:
+      exit_with_error('wasm sjlj is not supported with emscripten exceptions (and will not be supported)')
+    if settings.EXCEPTION_HANDLING == 0:
+      exit_with_error('wasm sjlj is not supported with wasm exceptions yet')
 
   return (newargs, input_files)
 
