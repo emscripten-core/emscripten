@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2012 The Emscripten Authors
+ * Copyright 2021 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
 
