@@ -20,7 +20,6 @@
 extern "C" {
 
 using namespace wasmfs;
-using __wasmfs_offset_t = uint64_t;
 
 long __syscall_dup2(long oldfd, long newfd) {
   auto fileTable = FileTable::get();
@@ -62,6 +61,10 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
                                const __wasi_ciovec_t* iovs,
                                size_t iovs_len,
                                __wasi_size_t* nwritten) {
+  if (iovs_len < 0) {
+    return __WASI_ERRNO_INVAL;
+  }
+
   auto openFile = FileTable::get()[fd];
 
   if (!openFile) {
@@ -72,6 +75,7 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
   auto* file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
+  // TODO: change to add support for symlinks.
   if (!file) {
     return __WASI_ERRNO_ISDIR;
   }
@@ -83,10 +87,9 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
     const uint8_t* buf = iovs[i].buf;
     size_t len = iovs[i].buf_len;
 
-    // Check if the sum of the buf_len values overflows a uint64_t (file size).
-    if (__wasmfs_offset_t(offset) + __wasmfs_offset_t(len) <
-        __wasmfs_offset_t(offset)) {
-      return __WASI_ERRNO_INVAL;
+    // Check if the sum of the buf_len values overflows an off_t (63 bits).
+    if (addWillOverFlow(offset, off_t(len))) {
+      return __WASI_ERRNO_FBIG;
     }
 
     // Check if buf_len specifies a positive length buffer but buf is a
@@ -95,7 +98,9 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
       return __WASI_ERRNO_INVAL;
     }
 
-    lockedFile.write(buf, len, offset);
+    if (lockedFile.write(buf, len, offset) != __WASI_ERRNO_SUCCESS) {
+      break;
+    }
     offset += len;
   }
 
@@ -109,6 +114,10 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
                               const __wasi_iovec_t* iovs,
                               size_t iovs_len,
                               __wasi_size_t* nread) {
+  if (iovs_len < 0) {
+    return __WASI_ERRNO_INVAL;
+  }
+
   auto openFile = FileTable::get()[fd];
 
   if (!openFile) {
@@ -119,6 +128,7 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
   auto* file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
+  // TODO: change to add support for symlinks.
   if (!file) {
     return __WASI_ERRNO_ISDIR;
   }
@@ -128,7 +138,7 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
   off_t offset = lockedOpenFile.position();
   size_t size = lockedFile.size();
   for (size_t i = 0; i < iovs_len; i++) {
-    // Check if offset has exceeded size of file data.
+    // Check if offset has exceeded the size of file data.
     ssize_t dataLeft = size - offset;
     if (dataLeft <= 0) {
       break;
@@ -136,16 +146,17 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
 
     uint8_t* buf = iovs[i].buf;
 
-    // Check if buf_len specifies a positive length buffer but buf is a
-    // null pointer
+    // Check if buf_len specifies a positive length buffer
+    // but buf is a null pointer.
     if (!buf && iovs[i].buf_len > 0) {
       return __WASI_ERRNO_INVAL;
     }
 
-    size_t bytesToRead =
-      (size_t)dataLeft < iovs[i].buf_len ? dataLeft : iovs[i].buf_len;
+    size_t bytesToRead = std::min(size_t(dataLeft), iovs[i].buf_len);
 
-    lockedFile.read(buf, bytesToRead, offset);
+    if (lockedFile.read(buf, bytesToRead, offset) != __WASI_ERRNO_SUCCESS) {
+      break;
+    }
     offset += bytesToRead;
   }
   *nread = offset - lockedOpenFile.position();
@@ -217,9 +228,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   }
 
   // TODO: remove assert when all functionality is complete.
-  assert(((unsigned long)(flags) &
-          ~(long)(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND | O_RDWR |
-                  O_WRONLY | O_RDONLY | O_LARGEFILE)) == 0);
+  assert(((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
+                      O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE)) == 0);
 
   std::vector<std::string> pathParts;
 
@@ -257,12 +267,12 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     if (!curr) {
       if (i == pathParts.size() - 1 && flags & O_CREAT) {
         // If curr is the last element and the create flag is specified
-        auto dir = directory->locked();
+        auto lockedDir = directory->locked();
 
-        // Create empty in-memory file.
+        // Create an empty in-memory file.
         auto created = std::make_shared<MemoryFile>(mode);
 
-        dir.setEntry(pathParts[i], created);
+        lockedDir.setEntry(pathParts[i], created);
         auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
         return FileTable::get().add(openFile);

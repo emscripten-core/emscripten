@@ -54,7 +54,7 @@ public:
   public:
     Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
     size_t& size() { return file->size; }
-    uint32_t& mode() { return file->mode; }
+    mode_t& mode() { return file->mode; }
     time_t& ctime() { return file->ctime; }
     time_t& mtime() { return file->mtime; }
     time_t& atime() { return file->atime; }
@@ -64,13 +64,13 @@ public:
 
 protected:
   File(FileKind kind) : kind(kind) {}
-  File(FileKind kind, uint32_t mode) : kind(kind), mode(mode) {}
+  File(FileKind kind, mode_t mode) : kind(kind), mode(mode) {}
   // A mutex is needed for multiple accesses to the same file.
   std::mutex mutex;
 
   size_t size = 0;
 
-  uint32_t mode = 0; // User and group mode bits for access permission.
+  mode_t mode = 0; // User and group mode bits for access permission.
 
   time_t ctime = 0; // Time when the file node was last modified.
   time_t mtime = 0; // Time when the file content was last modified.
@@ -88,7 +88,7 @@ class DataFile : public File {
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
   DataFile() : File(File::DataFileKind) {}
-  DataFile(uint32_t mode) : File(File::DataFileKind, mode) {}
+  DataFile(mode_t mode) : File(File::DataFileKind, mode) {}
   virtual ~DataFile() = default;
 
   class Handle : public File::Handle {
@@ -153,7 +153,7 @@ class MemoryFile : public DataFile {
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
 
 public:
-  MemoryFile(uint32_t mode) : DataFile(mode) {}
+  MemoryFile(mode_t mode) : DataFile(mode) {}
 };
 
 } // namespace wasmfs
