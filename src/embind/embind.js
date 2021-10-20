@@ -1740,7 +1740,7 @@ var LibraryEmbind = {
     // at run-time, not build-time.
     finalizationRegistry = new FinalizationRegistry(function (info) {
 #if ASSERTIONS
-      console.warn(info.leakWarning);
+      console.warn(info.leakWarning.stack.replace(/^Error: /, ''));
 #endif
       releaseClassHandle(info.$$);
     });
@@ -1756,7 +1756,7 @@ var LibraryEmbind = {
       info.leakWarning = new Error("Embind found a leaked C++ instance " + cls.name + " <0x" + $$.ptr.toString(16) + ">.\n" +
       "We'll free it automatically in this case, but this functionality is not reliable across various environments.\n" +
       "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
-      "Check the stacktrace of this message for the original allocation.");
+      "Originally allocated"); // `.stack` will add "at ..." after this sentence
       if ('captureStackTrace' in Error) {
         Error.captureStackTrace(info.leakWarning, cls.constructor);
       }
