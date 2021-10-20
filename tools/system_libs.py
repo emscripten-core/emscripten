@@ -647,7 +647,6 @@ class SjLjLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    combos = super().variations()
     is_wasm = settings.SUPPORT_LONGJMP == 'wasm'
     return super().get_default_variation(is_wasm=is_wasm, **kwargs)
 
