@@ -868,7 +868,7 @@ var SyscallsLibrary = {
         type = 4; // DT_DIR
       }
       else if (name === '..') {
-        id = FS.lookupPath(stream.path, { parent: true }).id;
+        id = FS.lookupPath(stream.path, { parent: true }).node.id;
         type = 4; // DT_DIR
       }
       else {
