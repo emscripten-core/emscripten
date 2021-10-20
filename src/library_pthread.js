@@ -496,6 +496,9 @@ var LibraryPThread = {
     }
   },
 
+#if RELOCATABLE
+  $registerTlsInit__deps: ['$updateGOT'],
+#endif
   $registerTlsInit: function(tlsInitFunc, moduleExports, metadata) {
 #if DYLINK_DEBUG
     out("registerTlsInit: " + tlsInitFunc);
@@ -519,7 +522,8 @@ var LibraryPThread = {
       for (var sym in metadata.tlsExports) {
         metadata.tlsExports[sym] = moduleExports[sym];
       }
-      relocateExports(metadata.tlsExports, __tls_base, /*replace=*/true);
+      exports = relocateExports(metadata.tlsExports, __tls_base);
+      updateGOT(exports, /*replace=*/true);
     }
 
     // Register this function so that its gets called for each thread on
