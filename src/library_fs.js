@@ -913,6 +913,9 @@ FS.staticInit();` +
       if (!node.node_ops.setattr) {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
+      if (node.node) {
+        node = node.node;
+      }
       node.node_ops.setattr(node, {
         mode: (mode & {{{ cDefine('S_IALLUGO') }}}) | (node.mode & ~{{{ cDefine('S_IALLUGO') }}}),
         timestamp: Date.now()
@@ -926,7 +929,7 @@ FS.staticInit();` +
       if (!stream) {
         throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
-      FS.chmod(stream.node, mode);
+      FS.chmod(stream, mode);
     },
     chown: function(path, uid, gid, dontFollow) {
       var node;
@@ -938,6 +941,9 @@ FS.staticInit();` +
       }
       if (!node.node_ops.setattr) {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
+      }
+      if (node.node) {
+        node = node.node;
       }
       node.node_ops.setattr(node, {
         timestamp: Date.now()
@@ -952,7 +958,7 @@ FS.staticInit();` +
       if (!stream) {
         throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
-      FS.chown(stream.node, uid, gid);
+      FS.chown(stream, uid, gid);
     },
     truncate: function(path, len) {
       if (len < 0) {
@@ -978,6 +984,9 @@ FS.staticInit();` +
       if (errCode) {
         throw new FS.ErrnoError(errCode);
       }
+      if (node.node) {
+        node = node.node;
+      }
       node.node_ops.setattr(node, {
         size: len,
         timestamp: Date.now()
@@ -991,7 +1000,7 @@ FS.staticInit();` +
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_RDONLY')}}}) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      FS.truncate(stream.node, len);
+      FS.truncate(stream, len);
     },
     utime: function(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
