@@ -16,6 +16,21 @@
 #include <wasi/api.h>
 
 namespace wasmfs {
+static_assert(std::is_same<size_t, __wasi_size_t>::value,
+              "size_t should be the same as __wasi_size_t");
+static_assert(std::is_same<off_t, __wasi_filedelta_t>::value,
+              "off_t should be the same as __wasi_filedelta_t");
+
+// Overflow and underflow behaviour are only defined for unsigned types.
+template<typename T> bool addWillOverFlow(T a, T b) {
+  if (a > 0 && b > std::numeric_limits<T>::max() - a) {
+    return true;
+  }
+  return false;
+}
+
+// Access mode, file creation and file status flags for open.
+using wasmfs_oflags_t = uint32_t;
 
 extern std::shared_ptr<File> cwd;
 
@@ -28,14 +43,16 @@ void setCWD(std::shared_ptr<File> directory);
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   std::shared_ptr<File> file;
   size_t position;
-  uint32_t flags; // RD_ONLY, WR_ONLY, RDWR
+  wasmfs_oflags_t flags; // RD_ONLY, WR_ONLY, RDWR
   // An OpenFileState needs a mutex if there are concurrent accesses on one open
   // file descriptor. This could occur if there are multiple seeks on the same
   // open file descriptor.
   std::mutex mutex;
 
 public:
-  OpenFileState(size_t position, uint32_t flags, std::shared_ptr<File> file)
+  OpenFileState(size_t position,
+                wasmfs_oflags_t flags,
+                std::shared_ptr<File> file)
     : position(position), flags(flags), file(file) {}
 
   class Handle {
