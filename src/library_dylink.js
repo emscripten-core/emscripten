@@ -527,17 +527,7 @@ var LibraryDylink = {
         assert(wasmTable === originalTable);
 #endif
         // add new entries to functionsInTableMap
-        for (var i = 0; i < metadata.tableSize; i++) {
-          var item = wasmTable.get(tableBase + i);
-#if ASSERTIONS
-          // verify that the new table region was filled in
-          assert(item !== undefined, 'table entry was not filled in');
-#endif
-          // Ignore null values.
-          if (item) {
-            functionsInTableMap.set(item, tableBase + i);
-          }
-        }
+        updateTableMap(tableBase, metadata.tableSize);
         moduleExports = relocateExports(instance.exports, memoryBase);
         if (!flags.allowUndefined) {
           reportUndefinedSymbols();
