@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.32
+2.0.33
 ------
+
+2.0.32 - 10/19/2021
+-------------------
 - Internal-only library functions can now be marked as `__internal: true` in JS
   system libraries.  Such symbols should not be used by external libraries and
   are subject to change.  As of now we generate warning when external libraries
@@ -47,6 +50,12 @@ See docs/process.md for more on how version tagging works.
 - Support a new CMake propert `EMSCRIPTEN_SYSTEM_PROCESSOR` which can be used
   to override the default value of `CMAKE_SYSTEM_PROCESSOR` set by the
   toolchain file.
+- Remove support for the `EMIT_EMSCRIPTEN_METADATA` setting.  This setting has
+  been deprecated for some time now and we don't know of any remaining reasons to
+  keep it around.
+- Add JavaScript API `Emval.{toHandle, toValue}` as well as a C++ method
+  `val::as_handle()` to allow passing values between the `val` class and
+  `EM_JS`/ `EM_ASM` JavaScript snippets. (#15279)
 
 2.0.31 - 10/01/2021
 -------------------

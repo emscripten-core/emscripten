@@ -40,12 +40,14 @@ using wasmfs_oflags_t = uint32_t;
 std::shared_ptr<File> getCWD();
 
 void setCWD(std::shared_ptr<File> directory);
+// Access mode, file creation and file status flags for open.
+using wasmfs_oflags_t = uint32_t;
 
 std::shared_ptr<Directory> getRootDirectory();
 
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   std::shared_ptr<File> file;
-  size_t position;
+  off_t position;
   wasmfs_oflags_t flags; // RD_ONLY, WR_ONLY, RDWR
   // An OpenFileState needs a mutex if there are concurrent accesses on one open
   // file descriptor. This could occur if there are multiple seeks on the same
@@ -68,7 +70,7 @@ public:
 
     std::shared_ptr<File>& getFile() { return openFileState->file; };
 
-    size_t& position() { return openFileState->position; };
+    off_t& position() { return openFileState->position; };
   };
 
   Handle get() { return Handle(shared_from_this()); }

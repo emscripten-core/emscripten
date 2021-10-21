@@ -230,21 +230,21 @@ function, but with a leading ``_``.
 .. note:: If you use :js:func:`ccall` or :js:func:`cwrap`, you do not need
    to prefix function calls with ``_`` -- just use the C name.
 
-The types of the parameters you pass to functions need to make sense.
-Integers and floating point values can be passed as is. Pointers are
-simply integers in the generated code.
 
-Strings in JavaScript must be converted to pointers for compiled
-code -- the relevant function is :js:func:`UTF8ToString`, which
-given a pointer returns a JavaScript string. Converting a JavaScript
-string ``someString`` to a pointer can be accomplished using ``ptr = ``
-allocate(intArrayFromString(someString), ALLOC_NORMAL) <allocate>``.
+The parameters you pass to and receive from functions need to be primitive values:
 
-.. note:: The conversion to a pointer allocates memory, which needs to be
-   freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side)
+  - Integer and floating point numbers can be passed as-is.
+  - Pointers can be passed as-is also, as they are simply integers in the generated code.
+  - JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = allocate(intArrayFromString(someString), ALLOC_NORMAL) <allocate>``.
 
-There are other convenience functions for converting strings and encodings
-in :ref:`preamble-js`.
+    .. note:: The conversion to a pointer allocates memory, which needs to be
+      freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side) -
+  - ``char *`` received from C/C++ can be converted to a JavaScript string using :js:func:`UTF8ToString`.
+
+    There are other convenience functions for converting strings and encodings
+    in :ref:`preamble-js`.
+  - Other values can be passed via :cpp:class:`emscripten::val`. Check out examples
+    on :ref:`as_handle and take_ownership methods <val_as_handle>`.
 
 .. _interacting-with-code-call-javascript-from-native:
 
