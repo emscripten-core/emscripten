@@ -223,13 +223,13 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
 
-def run_js_tool(filename, jsargs=[], **kw):
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are written
   implemented in javascript.
   """
-  command = config.NODE_JS + [filename] + jsargs
+  command = config.NODE_JS + node_args + [filename] + jsargs
   return check_call(command, **kw).stdout
 
 
