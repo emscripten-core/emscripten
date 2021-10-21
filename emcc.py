@@ -1372,7 +1372,7 @@ def phase_setup(options, state, newargs, settings_map):
   # SUPPORT_LONGJMP=1 means SUPPORT_LONGJMP=emscripten (backward compatibility)
   if settings.SUPPORT_LONGJMP == 0:
     settings.SUPPORT_LONGJMP = 'none'
-  if settings.SUPPORT_LONGJMP == 1:
+  elif settings.SUPPORT_LONGJMP == 1:
     settings.SUPPORT_LONGJMP = 'emscripten'
 
   # Wasm SjLj cannot be used with Emscripten EH
@@ -2382,6 +2382,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.WASMFS:
     settings.LINK_AS_CXX = True
 
+  # Export tag objects which are likely needed by the native code, but which are
+  # currently not reported in the metadata of wasm-emscripten-finalize
   if settings.RELOCATABLE:
     if settings.EXCEPTION_HANDLING:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('__cpp_exception')
