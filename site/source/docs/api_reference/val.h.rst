@@ -96,6 +96,43 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 
     Creates a ``val`` that represents ``null``.
 
+  .. _val_as_handle:
+  .. cpp:function:: EM_VAL as_handle() const
+    
+    Returns a raw handle representing this ``val``. This can be used for
+    passing raw value handles to JavaScript and retrieving the values on the
+    other side via ``Emval.toValue`` function. Example:
+    
+    .. code:: cpp
+
+      EM_JS(void, log_value, (EM_VAL val_handle), {
+        var value = Emval.toValue(val_handle);
+        console.log(value); // 42
+      });
+
+      val foo(42);
+      log_value(foo.as_handle());
+
+
+  .. cpp:function:: static val take_ownership(EM_VAL e)
+
+    Creates a ``val`` from a raw handle. This can be used for retrieving values
+    from JavaScript, where the JavaScript side should wrap a value with
+    ``Emval.toHandle``, pass it to C++, and then C++ can use ``take_ownership``
+    to convert it to a ``val`` instance. Example:
+    
+    .. code:: cpp
+    
+      EM_ASYNC_JS(EM_VAL, fetch_json_from_url, (const char *url_ptr), {
+        var url = UTF8ToString(url);
+        var response = await fetch(url);
+        var json = await response.json();
+        return Emval.toHandle(json);
+      });
+      
+      val obj = val::take_ownership(fetch_json_from_url("https://httpbin.org/json"));
+      std::string author = obj["slideshow"]["author"].as<std::string>();
+
 
   .. cpp:function:: static val global(const char* name)
 
