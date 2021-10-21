@@ -57,11 +57,20 @@ long __syscall_dup(long fd) {
   return fileTable.add(openFile.unlocked());
 }
 
-__wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
-                               const __wasi_ciovec_t* iovs,
-                               size_t iovs_len,
-                               __wasi_size_t* nwritten) {
-  if (iovs_len < 0) {
+// This enum specifies whether file offset will be provided by the open file
+// state or provided by argument in the case of pread or pwrite.
+enum class OffsetHandling { OpenFileState, Argument };
+
+// Internal write function called by __wasi_fd_write and __wasi_fd_pwrite
+// Receives an open file state offset.
+// Optionally sets open file state offset.
+static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
+                                    __wasi_fd_t fd,
+                                    const __wasi_ciovec_t* iovs,
+                                    size_t iovs_len,
+                                    __wasi_size_t* nwritten,
+                                    __wasi_filesize_t offset = 0) {
+  if (iovs_len < 0 || offset < 0) {
     return __WASI_ERRNO_INVAL;
   }
 
@@ -82,13 +91,22 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
 
   auto lockedFile = file->locked();
 
-  off_t offset = lockedOpenFile.position();
+  off_t currOffset = setOffset == OffsetHandling::OpenFileState
+                       ? lockedOpenFile.position()
+                       : offset;
+  off_t oldOffset = currOffset;
+  auto finish = [&] {
+    *nwritten = currOffset - oldOffset;
+    if (setOffset == OffsetHandling::OpenFileState) {
+      lockedOpenFile.position() = currOffset;
+    }
+  };
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
-    size_t len = iovs[i].buf_len;
+    off_t len = iovs[i].buf_len;
 
     // Check if the sum of the buf_len values overflows an off_t (63 bits).
-    if (addWillOverFlow(offset, off_t(len))) {
+    if (addWillOverFlow(currOffset, len)) {
       return __WASI_ERRNO_FBIG;
     }
 
@@ -98,25 +116,28 @@ __wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
       return __WASI_ERRNO_INVAL;
     }
 
-    auto result = lockedFile.write(buf, len, offset);
+    auto result = lockedFile.write(buf, len, currOffset);
 
     if (result != __WASI_ERRNO_SUCCESS) {
-      *nwritten = offset - lockedOpenFile.position();
-      lockedOpenFile.position() = offset;
+      finish();
       return result;
     }
-    offset += len;
+    currOffset += len;
   }
-  *nwritten = offset - lockedOpenFile.position();
-  lockedOpenFile.position() = offset;
+  finish();
   return __WASI_ERRNO_SUCCESS;
 }
 
-__wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
-                              const __wasi_iovec_t* iovs,
-                              size_t iovs_len,
-                              __wasi_size_t* nread) {
-  if (iovs_len < 0) {
+// Internal read function called by __wasi_fd_read and __wasi_fd_pread
+// Receives an open file state offset.
+// Optionally sets open file state offset.
+static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
+                                   __wasi_fd_t fd,
+                                   const __wasi_iovec_t* iovs,
+                                   size_t iovs_len,
+                                   __wasi_size_t* nread,
+                                   __wasi_filesize_t offset = 0) {
+  if (iovs_len < 0 || offset < 0) {
     return __WASI_ERRNO_INVAL;
   }
 
@@ -137,11 +158,20 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
 
   auto lockedFile = file->locked();
 
-  off_t offset = lockedOpenFile.position();
+  off_t currOffset = setOffset == OffsetHandling::OpenFileState
+                       ? lockedOpenFile.position()
+                       : offset;
+  off_t oldOffset = currOffset;
+  auto finish = [&] {
+    *nread = currOffset - oldOffset;
+    if (setOffset == OffsetHandling::OpenFileState) {
+      lockedOpenFile.position() = currOffset;
+    }
+  };
   size_t size = lockedFile.size();
   for (size_t i = 0; i < iovs_len; i++) {
-    // Check if offset has exceeded the size of file data.
-    ssize_t dataLeft = size - offset;
+    // Check if currOffset has exceeded size of file data.
+    ssize_t dataLeft = size - currOffset;
     if (dataLeft <= 0) {
       break;
     }
@@ -156,18 +186,49 @@ __wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
 
     size_t bytesToRead = std::min(size_t(dataLeft), iovs[i].buf_len);
 
-    auto result = lockedFile.read(buf, bytesToRead, offset);
+    auto result = lockedFile.read(buf, bytesToRead, currOffset);
 
     if (result != __WASI_ERRNO_SUCCESS) {
-      *nread = offset - lockedOpenFile.position();
-      lockedOpenFile.position() = offset;
+      finish();
       return result;
     }
-    offset += bytesToRead;
+    currOffset += bytesToRead;
   }
-  *nread = offset - lockedOpenFile.position();
-  lockedOpenFile.position() = offset;
+  finish();
   return __WASI_ERRNO_SUCCESS;
+}
+
+__wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
+                               const __wasi_ciovec_t* iovs,
+                               size_t iovs_len,
+                               __wasi_size_t* nwritten) {
+  return writeAtOffset(
+    OffsetHandling::OpenFileState, fd, iovs, iovs_len, nwritten);
+}
+
+__wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
+                              const __wasi_iovec_t* iovs,
+                              size_t iovs_len,
+                              __wasi_size_t* nread) {
+  return readAtOffset(OffsetHandling::OpenFileState, fd, iovs, iovs_len, nread);
+}
+
+__wasi_errno_t __wasi_fd_pwrite(__wasi_fd_t fd,
+                                const __wasi_ciovec_t* iovs,
+                                size_t iovs_len,
+                                __wasi_filesize_t offset,
+                                __wasi_size_t* nwritten) {
+  return writeAtOffset(
+    OffsetHandling::Argument, fd, iovs, iovs_len, nwritten, offset);
+}
+
+__wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
+                               const __wasi_iovec_t* iovs,
+                               size_t iovs_len,
+                               __wasi_filesize_t offset,
+                               __wasi_size_t* nread) {
+  return readAtOffset(
+    OffsetHandling::Argument, fd, iovs, iovs_len, nread, offset);
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {

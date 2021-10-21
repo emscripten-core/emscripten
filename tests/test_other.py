@@ -116,6 +116,20 @@ def parse_wasm(filename):
   return imports, exports, funcs
 
 
+def with_wasmfs(f):
+  def metafunc(self, wasmfs):
+    if wasmfs:
+      self.set_setting('WASMFS')
+      f(self)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasmfs': (True,)}
+
+  return metafunc
+
+
 class other(RunnerCore):
   def assertIsObjectFile(self, filename):
     self.assertTrue(building.is_wasm(filename))
@@ -11143,22 +11157,26 @@ void foo() {}
 
   # WASMFS tests
 
-  def test_wasmfs_unistd_dup(self):
+  @with_wasmfs
+  def test_unistd_dup(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_dup.c')
 
-  def test_wasmfs_unistd_open(self):
+  @with_wasmfs
+  def test_unistd_open(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_open.c')
 
-  def test_wasmfs_unistd_fstat(self):
+  @with_wasmfs
+  def test_unistd_fstat(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_fstat.c')
 
-  def test_wasmfs_unistd_create(self):
+  @with_wasmfs
+  def test_unistd_create(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_create.c')
 
-  def test_wasmfs_unistd_seek(self):
-    self.set_setting('WASMFS')
+  @with_wasmfs
+  def test_unistd_seek(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_seek.c')

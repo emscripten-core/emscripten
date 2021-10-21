@@ -26,6 +26,20 @@ int main() {
   int f = open("/file", O_RDWR | O_CREAT);
   const char* msg = "1234567890";
   write(f, msg, strlen(msg));
+  lseek(f, 0, SEEK_SET);
+
+  printf("read from file: %zd\n", read(f, readBuffer, sizeof readBuffer));
+  printf("data: %s\n", readBuffer);
+  memset(readBuffer, 0, sizeof readBuffer);
+  printf("errno: %d\n\n", errno);
+  errno = 0;
+
+  printf("pread past end of file: %zd\n",
+         pread(f, readBuffer, sizeof readBuffer, 999999999));
+  printf("data: %s\n", readBuffer);
+  memset(readBuffer, 0, sizeof readBuffer);
+  printf("errno: %d\n\n", errno);
+  errno = 0;
 
   printf("seek: %lld\n", lseek(f, 3, SEEK_SET));
   printf("errno: %d\n\n", errno);
@@ -75,6 +89,17 @@ int main() {
   printf("write after end of file: %zd\n",
          write(f, writeBuffer, sizeof writeBuffer));
   printf("errno: %d\n\n", errno);
+  errno = 0;
+
+  printf("pwrite to the middle of file: %zd\n",
+         pwrite(f, writeBuffer + 2, 3, 17));
+  printf("errno: %d\n", errno);
+  printf("seek: %lld\n\n", lseek(f, 0, SEEK_CUR));
+  errno = 0;
+
+  printf("pwrite past end of file: %zd\n", pwrite(f, writeBuffer, 5, 32));
+  printf("errno: %d\n", errno);
+  printf("seek: %lld\n\n", lseek(f, 0, SEEK_CUR));
   errno = 0;
 
   ssize_t bytesRead;
