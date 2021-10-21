@@ -427,22 +427,25 @@ class TestCoreBase(RunnerCore):
   def test_i64_varargs(self):
     self.do_core_test('test_i64_varargs.c', args='waka fleefl asdfasdfasdfasdf'.split())
 
-  def test_bigint_stdfs(self):
+  def test_bigint_readdir(self):
     self.set_setting('WASM_BIGINT')
-    self.emcc_args.append('-std=c++17')
     src = r'''
-      #include <iostream>
-      #include <filesystem>
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <dirent.h>
 
-      int main() {
-          std::string folders="";
-          for(const auto& entry : std::filesystem::directory_iterator("/"))
-          {
-            folders += entry.path();
-          }
+      int main()
+      {
+        DIR* dp = opendir("/");
+        struct dirent* dirp = readdir(dp);
+        if (!dirp) {
+          printf("OK\n");
+        }
+        else {
+          printf("not OK\n");
+        }
 
-          std::cout << "OK" << std::endl;
-          return 0;
+        return 0;
       }
     '''
     self.do_run(src, 'OK\n')
