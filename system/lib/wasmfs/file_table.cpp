@@ -199,11 +199,10 @@ std::vector<std::string> splitPath(char* pathname) {
   return pathParts;
 }
 
-std::shared_ptr<Directory> getParent(const std::vector<std::string>& pathParts,
-                                     long& err) {
+std::shared_ptr<Directory>
+getParentDir(const std::vector<std::string>& pathParts, long& err) {
 
-  std::shared_ptr<File> curr =
-    pathParts[0] == "/" ? getRootDirectory() : getCWD();
+  auto curr = pathParts[0] == "/" ? getRootDirectory() : getCWD();
 
   for (int i = 0; i < pathParts.size() - 1; i++) {
     // Skip over beginning / for absolute paths.
@@ -237,7 +236,7 @@ std::shared_ptr<Directory> getParent(const std::vector<std::string>& pathParts,
 #endif
   }
 
-  std::shared_ptr<Directory> currDirectory = curr->dynCastShared<Directory>();
+  auto currDirectory = curr->dynCastShared<Directory>();
 
   if (!currDirectory) {
     err = -(ENOTDIR);

@@ -298,7 +298,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   assert(((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
                       O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE)) == 0);
 
-  std::vector<std::string> pathParts = splitPath((char*)pathname);
+  auto pathParts = splitPath((char*)pathname);
+  auto base = pathParts[pathParts.size() - 1];
 
   if (pathParts.empty()) {
     return -(EINVAL);
@@ -312,7 +313,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   }
 
   long err;
-  std::shared_ptr<Directory> parentDir = getParent(pathParts, err);
+  auto parentDir = getParentDir(pathParts, err);
 
   // Parent node doesn't exist.
   if (!parentDir) {
@@ -321,8 +322,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 
   auto lockedParentDir = parentDir->locked();
 
-  std::shared_ptr<File> curr =
-    lockedParentDir.getEntry(pathParts[pathParts.size() - 1]);
+  auto curr = lockedParentDir.getEntry(base);
 
   // The requested node was not found.
   if (!curr) {
@@ -331,7 +331,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
       // Create an empty in-memory file.
       auto created = std::make_shared<MemoryFile>(mode);
 
-      lockedParentDir.setEntry(pathParts[pathParts.size() - 1], created);
+      lockedParentDir.setEntry(base, created);
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
       return FileTable::get().add(openFile);
@@ -356,7 +356,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 }
 
 long __syscall_mkdir(long path, long mode) {
-  std::vector<std::string> pathParts = splitPath((char*)path);
+  auto pathParts = splitPath((char*)path);
+  auto base = pathParts[pathParts.size() - 1];
 
   // Root directory
   if (pathParts.empty()) {
@@ -364,7 +365,7 @@ long __syscall_mkdir(long path, long mode) {
   }
 
   long err;
-  std::shared_ptr<Directory> parentDir = getParent(pathParts, err);
+  auto parentDir = getParentDir(pathParts, err);
 
   if (!parentDir) {
     // parent node doesn't exist
@@ -373,8 +374,7 @@ long __syscall_mkdir(long path, long mode) {
 
   auto lockedParentDir = parentDir->locked();
 
-  std::shared_ptr<File> curr =
-    lockedParentDir.getEntry(pathParts[pathParts.size() - 1]);
+  auto curr = lockedParentDir.getEntry(base);
 
   // Check if the request directory already exists.
   if (curr) {
@@ -383,13 +383,14 @@ long __syscall_mkdir(long path, long mode) {
     // Create an empty in-memory directory.
     auto created = std::make_shared<Directory>(mode);
 
-    lockedParentDir.setEntry(pathParts[pathParts.size() - 1], created);
+    lockedParentDir.setEntry(base, created);
     return 0;
   }
 }
 
 long __syscall_chdir(long path) {
-  std::vector<std::string> pathParts = splitPath((char*)path);
+  auto pathParts = splitPath((char*)path);
+  auto base = pathParts[pathParts.size() - 1];
 
   // Root directory
   if (pathParts.empty()) {
@@ -398,15 +399,14 @@ long __syscall_chdir(long path) {
   }
 
   long err;
-  std::shared_ptr<Directory> parentDir = getParent(pathParts, err);
+  auto parentDir = getParentDir(pathParts, err);
 
   if (!parentDir) {
     // parent node doesn't exist
     return err;
   }
 
-  std::shared_ptr<File> curr =
-    parentDir->locked().getEntry(pathParts[pathParts.size() - 1]);
+  auto curr = parentDir->locked().getEntry(base);
 
   if (!curr) {
     return -(ENOENT);
@@ -419,5 +419,41 @@ long __syscall_chdir(long path) {
 
   setCWD(curr);
   return 0;
+}
+
+__wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
+                              __wasi_filedelta_t offset,
+                              __wasi_whence_t whence,
+                              __wasi_filesize_t* newoffset) {
+  auto openFile = FileTable::get()[fd];
+  if (!openFile) {
+    return __WASI_ERRNO_BADF;
+  }
+  auto lockedOpenFile = openFile.locked();
+
+  off_t position;
+  if (whence == SEEK_SET) {
+    position = offset;
+  } else if (whence == SEEK_CUR) {
+    position = lockedOpenFile.position() + offset;
+  } else if (whence == SEEK_END) {
+    // Only the open file stat is altered in seek. Locking the underlying data
+    // file here once is sufficient.
+    position = lockedOpenFile.getFile()->locked().size() + offset;
+  } else {
+    return __WASI_ERRNO_INVAL;
+  }
+
+  if (position < 0) {
+    return __WASI_ERRNO_INVAL;
+  }
+
+  lockedOpenFile.position() = position;
+
+  if (newoffset) {
+    *newoffset = position;
+  }
+
+  return __WASI_ERRNO_SUCCESS;
 }
 }
