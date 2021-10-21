@@ -328,7 +328,7 @@ long __syscall_mkdir(long path, long mode) {
   if (curr) {
     return -(EEXIST);
   } else {
-    // Create an empty in-memory file.
+    // Create an empty in-memory directory.
     auto created = std::make_shared<Directory>(mode);
 
     lockedParentDir.setEntry(pathParts[pathParts.size() - 1], created);

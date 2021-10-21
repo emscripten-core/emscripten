@@ -10,7 +10,18 @@
 
 namespace wasmfs {
 
-std::shared_ptr<File> cwd = nullptr;
+// TODO: Locking for global filesystem state that includes the current directory
+static std::shared_ptr<File> cwd = nullptr;
+
+std::shared_ptr<File> getCWD() {
+  if (cwd) {
+    return cwd;
+  } else {
+    return getRootDirectory();
+  }
+};
+
+void setCWD(std::shared_ptr<File> directory) { cwd = directory; };
 
 std::vector<std::shared_ptr<OpenFileState>> FileTable::entries;
 
@@ -118,16 +129,6 @@ std::shared_ptr<Directory> getRootDirectory() {
 
   return rootDirectory;
 }
-
-std::shared_ptr<File> getCWD() {
-  if (cwd) {
-    return cwd;
-  } else {
-    return getRootDirectory();
-  }
-};
-
-void setCWD(std::shared_ptr<File> directory) { cwd = directory; };
 
 FileTable::Handle FileTable::get() {
   static FileTable fileTable;

@@ -128,7 +128,7 @@ protected:
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
   Directory() : File(File::DirectoryKind) {}
-  Directory(uint32_t mode) : File(File::DirectoryKind, mode) {}
+  Directory(mode_t mode) : File(File::DirectoryKind, mode) {}
 
   class Handle : public File::Handle {
     Directory& getDir() { return *file.get()->cast<Directory>(); }
