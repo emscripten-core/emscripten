@@ -28,11 +28,11 @@ long __syscall_dup2(long oldfd, long newfd) {
   // If oldfd is not a valid file descriptor, then the call fails,
   // and newfd is not closed.
   if (!oldOpenFile) {
-    return -(EBADF);
+    return -EBADF;
   }
 
   if (newfd < 0) {
-    return -(EBADF);
+    return -EBADF;
   }
 
   if (oldfd == newfd) {
@@ -51,7 +51,7 @@ long __syscall_dup(long fd) {
   // Check that an open file exists corresponding to the given fd.
   auto openFile = fileTable[fd];
   if (!openFile) {
-    return -(EBADF);
+    return -EBADF;
   }
 
   return fileTable.add(openFile.unlocked());
@@ -244,7 +244,7 @@ long __syscall_fstat64(long fd, long buf) {
   auto openFile = FileTable::get()[fd];
 
   if (!openFile) {
-    return -(EBADF);
+    return -EBADF;
   }
 
   auto file = openFile.locked().getFile();
@@ -299,11 +299,12 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
                       O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE)) == 0);
 
   auto pathParts = splitPath((char*)pathname);
-  auto base = pathParts[pathParts.size() - 1];
 
   if (pathParts.empty()) {
-    return -(EINVAL);
+    return -EINVAL;
   }
+
+  auto base = pathParts[pathParts.size() - 1];
 
   // Root directory
   if (pathParts.size() == 1 && pathParts[0] == "/") {
@@ -313,7 +314,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   }
 
   long err;
-  auto parentDir = getParentDir(pathParts, err);
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
 
   // Parent node doesn't exist.
   if (!parentDir) {
@@ -336,18 +337,18 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 
       return FileTable::get().add(openFile);
     } else {
-      return -(ENOENT);
+      return -ENOENT;
     }
   }
 
   // Fail if O_DIRECTORY is specified and pathname is not a directory
   if (flags & O_DIRECTORY && !curr->is<Directory>()) {
-    return -(ENOTDIR);
+    return -ENOTDIR;
   }
 
   // Return an error if the file exists and O_CREAT and O_EXCL are specified.
   if (flags & O_EXCL && flags & O_CREAT) {
-    return -(EEXIST);
+    return -EEXIST;
   }
 
   auto openFile = std::make_shared<OpenFileState>(0, flags, curr);
@@ -357,15 +358,19 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 
 long __syscall_mkdir(long path, long mode) {
   auto pathParts = splitPath((char*)path);
-  auto base = pathParts[pathParts.size() - 1];
 
-  // Root directory
   if (pathParts.empty()) {
-    return -(EEXIST);
+    return -ENOENT;
+  }
+  // Root (/) directory.
+  if (pathParts.empty() || pathParts.size() == 1 && pathParts[0] == "/") {
+    return -EEXIST;
   }
 
+  auto base = pathParts[pathParts.size() - 1];
+
   long err;
-  auto parentDir = getParentDir(pathParts, err);
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
 
   if (!parentDir) {
     // parent node doesn't exist
@@ -376,9 +381,9 @@ long __syscall_mkdir(long path, long mode) {
 
   auto curr = lockedParentDir.getEntry(base);
 
-  // Check if the request directory already exists.
+  // Check if the requested directory already exists.
   if (curr) {
-    return -(EEXIST);
+    return -EEXIST;
   } else {
     // Create an empty in-memory directory.
     auto created = std::make_shared<Directory>(mode);
@@ -390,34 +395,19 @@ long __syscall_mkdir(long path, long mode) {
 
 long __syscall_chdir(long path) {
   auto pathParts = splitPath((char*)path);
-  auto base = pathParts[pathParts.size() - 1];
 
-  // Root directory
   if (pathParts.empty()) {
-    setCWD(getRootDirectory());
-    return 0;
+    return -ENOENT;
   }
 
   long err;
-  auto parentDir = getParentDir(pathParts, err);
+  auto dir = getDir(pathParts.begin(), pathParts.end(), err);
 
-  if (!parentDir) {
-    // parent node doesn't exist
+  if (!dir) {
     return err;
   }
 
-  auto curr = parentDir->locked().getEntry(base);
-
-  if (!curr) {
-    return -(ENOENT);
-  }
-
-  // Check if curr is a directory
-  if (!curr->is<Directory>()) {
-    return -(ENOTDIR);
-  }
-
-  setCWD(curr);
+  setCWD(dir);
   return 0;
 }
 

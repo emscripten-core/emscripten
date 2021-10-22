@@ -174,7 +174,7 @@ FileTable::Handle::add(std::shared_ptr<OpenFileState> openFileState) {
       return i;
     }
   }
-  return -(EBADF);
+  return -EBADF;
 }
 
 std::vector<std::string> splitPath(char* pathname) {
@@ -199,14 +199,15 @@ std::vector<std::string> splitPath(char* pathname) {
   return pathParts;
 }
 
-std::shared_ptr<Directory>
-getParentDir(const std::vector<std::string>& pathParts, long& err) {
+std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
+                                  std::vector<std::string>::iterator end,
+                                  long& err) {
 
-  auto curr = pathParts[0] == "/" ? getRootDirectory() : getCWD();
+  auto curr = *begin == "/" ? getRootDirectory() : getCWD();
 
-  for (int i = 0; i < pathParts.size() - 1; i++) {
+  for (std::vector<std::string>::iterator it = begin; it != end; ++it) {
     // Skip over beginning / for absolute paths.
-    if (pathParts[i] == "/") {
+    if (*it == "/") {
       continue;
     }
     auto directory = curr->dynCast<Directory>();
@@ -214,7 +215,7 @@ getParentDir(const std::vector<std::string>& pathParts, long& err) {
     // If file is nullptr, then the file was not a Directory.
     // TODO: Change this to accommodate symlinks
     if (!directory) {
-      err = -(ENOTDIR);
+      err = -ENOTDIR;
       return nullptr;
     }
 
@@ -222,16 +223,16 @@ getParentDir(const std::vector<std::string>& pathParts, long& err) {
 #ifdef WASMFS_DEBUG
     directory->locked().printKeys();
 #endif
-    curr = directory->locked().getEntry(pathParts[i]);
+    curr = directory->locked().getEntry(*it);
 
     // Requested entry (file or directory)
     if (!curr) {
-      err = -(ENOENT);
+      err = -ENOENT;
       return nullptr;
     }
 
 #ifdef WASMFS_DEBUG
-    std::vector<char> temp(pathParts[i].begin(), pathParts[i].end());
+    std::vector<char> temp(*it.begin(), *it.end());
     emscripten_console_log(&temp[0]);
 #endif
   }
@@ -239,7 +240,7 @@ getParentDir(const std::vector<std::string>& pathParts, long& err) {
   auto currDirectory = curr->dynCastShared<Directory>();
 
   if (!currDirectory) {
-    err = -(ENOTDIR);
+    err = -ENOTDIR;
     return nullptr;
   }
 

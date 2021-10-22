@@ -31,8 +31,9 @@ template<typename T> bool addWillOverFlow(T a, T b) {
 
 // Obtains parent directory of a given pathname.
 // Will return a nullptr if the parent is not a directory.
-std::shared_ptr<Directory>
-getParentDir(const std::vector<std::string>& pathParts, long& err);
+std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
+                                  std::vector<std::string>::iterator end,
+                                  long& err);
 
 // Returns a string vector of a specified pathname.
 std::vector<std::string> splitPath(char* pathname);
