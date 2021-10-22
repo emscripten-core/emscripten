@@ -224,11 +224,45 @@ var LibraryPThread = {
         PThread.tlsInitFunctions[i]();
       }
     },
-    // Loads the WebAssembly module into the given list of Workers.
+    // Builds the initial load message for the Worker
+    buildWorkerLoadMessage: function() {
+      return {
+        'cmd': 'load',
+        // If the application main .js file was loaded from a Blob, then it is not possible
+        // to access the URL of the current script that could be passed to a Web Worker so that
+        // it could load up the same file. In that case, developer must either deliver the Blob
+        // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
+        // independently load up the same main application file.
+        'urlOrBlob': Module['mainScriptUrlOrBlob']
+#if !EXPORT_ES6
+        || _scriptDir
+#endif
+        ,
+#if WASM2JS
+        // the polyfill WebAssembly.Memory instance has function properties,
+        // which will fail in postMessage, so just send a custom object with the
+        // property we need, the buffer
+        'wasmMemory': { 'buffer': wasmMemory.buffer },
+#else // WASM2JS
+        'wasmMemory': wasmMemory,
+#endif // WASM2JS
+        'wasmModule': wasmModule,
+#if LOAD_SOURCE_MAP
+        'wasmSourceMap': wasmSourceMap,
+#endif
+#if USE_OFFSET_CONVERTER
+        'wasmOffsetConverter': wasmOffsetConverter,
+#endif
+#if MAIN_MODULE
+        'dynamicLibraries': Module['dynamicLibraries'],
+#endif
+      }
+    },
+    // Sets up the message handler on the passed in worker
     // onFinishedLoading: A callback function that will be called once all of
     //                    the workers have been initialized and are
     //                    ready to host pthreads.
-    loadWasmModuleToWorker: function(worker, onFinishedLoading) {
+    setupWorkerMessageHandler: function(worker, onFinishedLoading) {
       worker.onmessage = function(e) {
         var d = e['data'];
         var cmd = d['cmd'];
@@ -323,39 +357,6 @@ var LibraryPThread = {
       assert(wasmMemory instanceof WebAssembly.Memory, 'WebAssembly memory should have been loaded by now!');
       assert(wasmModule instanceof WebAssembly.Module, 'WebAssembly Module should have been loaded by now!');
 #endif
-
-      // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
-      worker.postMessage({
-        'cmd': 'load',
-        // If the application main .js file was loaded from a Blob, then it is not possible
-        // to access the URL of the current script that could be passed to a Web Worker so that
-        // it could load up the same file. In that case, developer must either deliver the Blob
-        // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
-        // independently load up the same main application file.
-        'urlOrBlob': Module['mainScriptUrlOrBlob']
-#if !EXPORT_ES6
-        || _scriptDir
-#endif
-        ,
-#if WASM2JS
-        // the polyfill WebAssembly.Memory instance has function properties,
-        // which will fail in postMessage, so just send a custom object with the
-        // property we need, the buffer
-        'wasmMemory': { 'buffer': wasmMemory.buffer },
-#else // WASM2JS
-        'wasmMemory': wasmMemory,
-#endif // WASM2JS
-        'wasmModule': wasmModule,
-#if LOAD_SOURCE_MAP
-        'wasmSourceMap': wasmSourceMap,
-#endif
-#if USE_OFFSET_CONVERTER
-        'wasmOffsetConverter': wasmOffsetConverter,
-#endif
-#if MAIN_MODULE
-        'dynamicLibraries': Module['dynamicLibraries'],
-#endif
-      });
     },
 
     // Creates a new web Worker and places it in the unused worker pool to wait for its use.
@@ -424,7 +425,10 @@ var LibraryPThread = {
 #endif
 #endif
         PThread.allocateUnusedWorker();
-        PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
+        PThread.setupWorkerMessageHandler(PThread.unusedWorkers[0]);
+
+        // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
+        PThread.unusedWorkers[0].postMessage(PThread.buildWorkerLoadMessage());
       }
       return PThread.unusedWorkers.pop();
     }
@@ -453,10 +457,15 @@ var LibraryPThread = {
         // Create a dummy worklet node that we use to establish the message channel
         // This worklet is not conected anywhere so 'process' doesn't get called so it's 
         // not a performance overhead to have it instantiated
+        //
+        // NOTE: We pass in the 'load' message here in processorOptions because a recent
+        // Chrome change (v95+) broke `WebAssembly.Module` sending in postMessage below, but
+        // it still works if passed through `processorOptions`
         var dummy = new AudioWorkletNode(audioCtx, 'pthread-dummy-processor', {
           numberOfInputs: 0,
           numberOfOutputs : 1,
-          outputChannelCount : [1]
+          outputChannelCount : [1],
+          processorOptions: PThread.buildWorkerLoadMessage() 
         })
 
         // Push this node into the PThread internal worker pool so it
@@ -466,10 +475,10 @@ var LibraryPThread = {
         // Add postMessage directly on the object, forwarded to port.postMessage (emulates Worker)
         dummy.postMessage = dummy.port.postMessage.bind(dummy.port);
 
-        // We still call loadWasmModuleToWorker to setup the pthread environment,
-        // but we skip the actual WASM loading since it's already been done via
+        // We still call setupWorkerMessageHandler to setup the pthread environment,
+        // but we skip the actual script loading since it's already been done via
         // addModule above.
-        PThread.loadWasmModuleToWorker(dummy);
+        PThread.setupWorkerMessageHandler(dummy);
 
         // Forward port.onMessage to onmessage on the object (emulates Worker) but
         // add a few worklet-only messages 

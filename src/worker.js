@@ -71,6 +71,11 @@ if (typeof AudioWorkletGlobalScope === "function") {
       // Workers do which makes all the code above work the same.
       this.port.onmessage = self.onmessage;
       self.postMessage = this.port.postMessage.bind(this.port);
+
+      // Pass the initial message to the message handler as if it was sent via `sendMessage`
+      self.onmessage({
+        data: arg.processorOptions
+      });
     }
     
     // Needs a dummy process method too otherwise 'registerProcessor' fails below
