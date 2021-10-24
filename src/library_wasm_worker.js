@@ -69,16 +69,23 @@ mergeInto(LibraryManager.library, {
     ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
 
-    // The Wasm Worker runtime is now up, so we can start processing
-    // any postMessage function calls that have been received. Drop the temp
-    // message handler that queued any pending incoming postMessage function calls ...
-    removeEventListener('message', __wasm_worker_appendToQueue);
-    // ... then flush whatever messages we may have already gotten in the queue,
-    //     and clear __wasm_worker_delayedMessageQueue to undefined ...
-    __wasm_worker_delayedMessageQueue = __wasm_worker_delayedMessageQueue.forEach(__wasm_worker_runPostMessage);
-    // ... and finally register the proper postMessage handler that immediately
-    // dispatches incoming function calls without queueing them.
-    addEventListener('message', __wasm_worker_runPostMessage);
+#if AUDIO_WORKLET
+    // Audio Worklets do not have postMessage()ing capabilities.
+    if (!ENVIRONMENT_IS_AUDIO_WORKLET) {
+#endif
+      // The Wasm Worker runtime is now up, so we can start processing
+      // any postMessage function calls that have been received. Drop the temp
+      // message handler that queued any pending incoming postMessage function calls ...
+      removeEventListener('message', __wasm_worker_appendToQueue);
+      // ... then flush whatever messages we may have already gotten in the queue,
+      //     and clear __wasm_worker_delayedMessageQueue to undefined ...
+      __wasm_worker_delayedMessageQueue = __wasm_worker_delayedMessageQueue.forEach(__wasm_worker_runPostMessage);
+      // ... and finally register the proper postMessage handler that immediately
+      // dispatches incoming function calls without queueing them.
+      addEventListener('message', __wasm_worker_runPostMessage);
+#if AUDIO_WORKLET
+    }
+#endif
   },
 
 #if WASM_WORKERS == 2

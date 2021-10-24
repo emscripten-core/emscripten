@@ -132,6 +132,9 @@ var PTHREAD_WORKER_FILE = '';
 // name of the file containing the Wasm Worker *.ww.js, if relevant
 var WASM_WORKER_FILE = '';
 
+// name of the file containing the Audio Worklet *.aw.js, if relevant
+var AUDIO_WORKLET_FILE = '';
+
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 

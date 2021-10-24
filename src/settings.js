@@ -1486,6 +1486,14 @@ var WASM_WORKERS = 0;
 // [link]
 var WASM_WORKERS_NO_TLS = 0;
 
+// If true, enables targeting Wasm Web Audio AudioWorklets.
+// [link]
+var AUDIO_WORKLET = 0;
+
+// If true, enables deep debugging of Web Audio backend.
+// [link]
+var WEBAUDIO_DEBUG = 0;
+
 // In web browsers, Workers cannot be created while the main browser thread
 // is executing JS/Wasm code, but the main thread must regularly yield back
 // to the browser event loop for Worker initialization to occur.

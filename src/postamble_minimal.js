@@ -216,6 +216,16 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   assert(wasmTable);
 #endif
 
+#if AUDIO_WORKLET
+  // If we are in the audio worklet environment, we can only access the Module object
+  // and not the global scope of the main JS script. Therefore we need to export
+  // all functions that the audio worklet scope needs onto the Module object.
+  Module['wasmTable'] = wasmTable;
+  Module['stackSave'] = stackSave;
+  Module['stackAlloc'] = stackAlloc;
+  Module['stackRestore'] = stackRestore;
+#endif
+
 #if !IMPORTED_MEMORY
   wasmMemory = asm['memory'];
 #if ASSERTIONS

@@ -50,6 +50,10 @@ var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE;
 var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
 #endif
 
+#if AUDIO_WORKLET
+var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
+#endif
+
 #if ASSERTIONS && ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_SHELL
 if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
   throw 'unclear environment';

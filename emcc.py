@@ -2088,6 +2088,11 @@ def phase_linker_setup(options, state, newargs, user_settings):
       settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
     settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_wasm_worker.js')))
 
+  if settings.AUDIO_WORKLET:
+    if settings.AUDIO_WORKLET == 1:
+      settings.AUDIO_WORKLET_FILE = unsuffixed(os.path.basename(target)) + '.aw.js'
+    settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_webaudio.js')))
+
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
     # may need, including filesystem usage from standalone file packager output (i.e.
@@ -2849,6 +2854,17 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
       minified_worker = building.acorn_optimizer(worker_output, ['minifyWhitespace'], return_output=True)
       open(worker_output, 'w').write(minified_worker)
 
+  # Deploy the Audio Worklet module bootstrap file (*.aw.js)
+  if settings.AUDIO_WORKLET == 1:
+    worklet_output = os.path.join(target_dir, settings.AUDIO_WORKLET_FILE)
+    with open(worklet_output, 'w') as f:
+      f.write(shared.read_and_preprocess(shared.path_from_root('src', 'audio_worklet.js'), expand_macros=True))
+
+    # Minify the audio_worklet.js file in optimized builds
+    if (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1) and not settings.DEBUG_LEVEL:
+      minified_worker = building.acorn_optimizer(worklet_output, ['minifyWhitespace'], return_output=True)
+      open(worklet_output, 'w').write(minified_worker)
+
   # track files that will need native eols
   generated_text_files_with_native_eols = []
 
@@ -3529,7 +3545,11 @@ def module_export_name_substitution():
   # For Node.js and other shell environments, create an unminified Module object so that
   # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
   if settings.MINIMAL_RUNTIME and (shared.target_environment_may_be('node') or shared.target_environment_may_be('shell')):
-    src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
+    # Do not let the Module object defined in an Audio Worklet get clobbered.
+    if settings.AUDIO_WORKLET:
+      src = 'if(typeof Module==="undefined"){var Module=globalThis.Module||{};}\n' + src
+    else:
+      src = 'if(typeof Module==="undefined"){var Module={};}\n' + src
   write_file(final_js, src)
   shared.configuration.get_temp_files().note(final_js)
   save_intermediate('module_export_name_substitution')

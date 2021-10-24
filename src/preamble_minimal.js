@@ -69,8 +69,16 @@ function updateGlobalBufferAndViews(b) {
   HEAP32 = new Int32Array(b);
   HEAPU8 = new Uint8Array(b);
   HEAPU16 = new Uint16Array(b);
+#if AUDIO_WORKLET
+  // Export to the AudioWorkletGlobalScope the needed variables to access
+  // the heap. AudioWorkletGlobalScope is unable to access global JS vars
+  // in the compiled main JS file.
+  Module['HEAPU32'] = HEAPU32 = new Uint32Array(b);
+  Module['HEAPF32'] = HEAPF32 = new Float32Array(b);
+#else
   HEAPU32 = new Uint32Array(b);
   HEAPF32 = new Float32Array(b);
+#endif
   HEAPF64 = new Float64Array(b);
 #if WASM_BIGINT
   HEAP64 = new BigInt64Array(b);
