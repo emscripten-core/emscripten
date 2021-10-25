@@ -18,7 +18,59 @@
 // FIXME: Merge with unlink test
 
 int main() {
-  mkdir("working", 0777);
-  chdir("working");
+  // Try to make a directory under the root directory.
+  errno = 0;
+  mkdir("/working", 0777);
+  assert(errno == 0);
+
+  // Try to create a file in the same directory.
+  int fd = open("/working/test", O_RDWR | O_CREAT, 0777);
+  assert(errno == 0);
+
+  // Try to read and write to the same file.
+  const char* msg = "Test\n";
+  errno = 0;
+  write(fd, msg, strlen(msg));
+  assert(errno == 0);
+  lseek(fd, 0, SEEK_SET);
+  char buf[100] = {};
+  errno = 0;
+  read(fd, buf, sizeof(buf));
+  assert(errno == 0);
+  printf("%s", buf);
+  close(fd);
+
+  // Try to make a directory with an empty pathname.
+  errno = 0;
+  mkdir("", 0777);
+  printf("Errno: %s\n", strerror(errno));
+  assert(errno == EINVAL);
+
+  // Try to make the root directory.
+  errno = 0;
+  mkdir("/", 0777);
+  assert(errno == EINVAL);
+
+  // Try to make a directory that exists already.
+  errno = 0;
+  mkdir("/dev", 0777);
+  assert(errno == EEXIST);
+
+  // Try to make a directory with a path component that is not a directory.
+  errno = 0;
+  mkdir("/dev/stdout/fake-directory", 0777);
+  printf("Errno: %s\n", strerror(errno));
+  assert(errno == EACCES);
+
+  // Try to make a directory with a path component that does not exist.
+  errno = 0;
+  mkdir("/dev/false-path/fake-directory", 0777);
+  assert(errno == ENOENT);
+
+  // Try to make a directory under the `working` directory.
+  errno = 0;
+  mkdir("/working/new-directory", 0777);
+  assert(errno == 0);
+
   return 0;
 }

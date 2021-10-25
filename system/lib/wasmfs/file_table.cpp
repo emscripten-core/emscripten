@@ -10,13 +10,6 @@
 
 namespace wasmfs {
 
-// TODO: Locking for global filesystem state that includes the current directory
-static std::shared_ptr<File> cwd = getRootDirectory();
-
-std::shared_ptr<File> getCWD() { return cwd; };
-
-void setCWD(std::shared_ptr<File> directory) { cwd = directory; };
-
 std::vector<std::shared_ptr<OpenFileState>> FileTable::entries;
 
 static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
@@ -206,8 +199,6 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
   if (*begin == "/") {
     curr = getRootDirectory();
     begin++;
-  } else {
-    curr = getCWD();
   }
 
   for (auto it = begin; it != end; ++it) {

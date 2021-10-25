@@ -359,14 +359,16 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 }
 
 long __syscall_mkdir(long path, long mode) {
+  EM_ASM({out("here stuff\n")});
   auto pathParts = splitPath((char*)path);
 
   if (pathParts.empty()) {
-    return -ENOENT;
+    EM_ASM({out("here\n")});
+    return -EINVAL;
   }
   // Root (/) directory.
   if (pathParts.empty() || pathParts.size() == 1 && pathParts[0] == "/") {
-    return -EEXIST;
+    return -EINVAL;
   }
 
   auto base = pathParts[pathParts.size() - 1];
@@ -376,6 +378,9 @@ long __syscall_mkdir(long path, long mode) {
 
   if (!parentDir) {
     // parent node doesn't exist
+    if (err == -ENOTDIR) {
+      return -EACCES;
+    }
     return err;
   }
 
@@ -393,24 +398,6 @@ long __syscall_mkdir(long path, long mode) {
     lockedParentDir.setEntry(base, created);
     return 0;
   }
-}
-
-long __syscall_chdir(long path) {
-  auto pathParts = splitPath((char*)path);
-
-  if (pathParts.empty()) {
-    return -ENOENT;
-  }
-
-  long err;
-  auto dir = getDir(pathParts.begin(), pathParts.end(), err);
-
-  if (!dir) {
-    return err;
-  }
-
-  setCWD(dir);
-  return 0;
 }
 
 __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,

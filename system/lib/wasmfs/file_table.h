@@ -42,10 +42,6 @@ std::vector<std::string> splitPath(char* pathname);
 // Access mode, file creation and file status flags for open.
 using oflags_t = uint32_t;
 
-std::shared_ptr<File> getCWD();
-
-void setCWD(std::shared_ptr<File> directory);
-
 std::shared_ptr<Directory> getRootDirectory();
 
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
