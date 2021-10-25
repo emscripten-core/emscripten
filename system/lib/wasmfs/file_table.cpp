@@ -11,15 +11,9 @@
 namespace wasmfs {
 
 // TODO: Locking for global filesystem state that includes the current directory
-static std::shared_ptr<File> cwd = nullptr;
+static std::shared_ptr<File> cwd = getRootDirectory();
 
-std::shared_ptr<File> getCWD() {
-  if (cwd) {
-    return cwd;
-  } else {
-    return getRootDirectory();
-  }
-};
+std::shared_ptr<File> getCWD() { return cwd; };
 
 void setCWD(std::shared_ptr<File> directory) { cwd = directory; };
 
@@ -190,10 +184,10 @@ std::vector<std::string> splitPath(char* pathname) {
     pathParts.push_back("/");
   }
 
-  current = strtok(newPathName, "/\n");
+  current = strtok(newPathName, "/");
   while (current != NULL) {
     pathParts.push_back(current);
-    current = strtok(NULL, "/\n");
+    current = strtok(NULL, "/");
   }
 
   return pathParts;
@@ -203,13 +197,14 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
                                   std::vector<std::string>::iterator end,
                                   long& err) {
 
-  auto curr = *begin == "/" ? getRootDirectory() : getCWD();
+  auto curr = getCWD();
+  // Check if the first path element is '/', indicating an absolute path.
+  if (*begin == "/") {
+    curr = getRootDirectory();
+    *begin++;
+  }
 
-  for (std::vector<std::string>::iterator it = begin; it != end; ++it) {
-    // Skip over beginning / for absolute paths.
-    if (*it == "/") {
-      continue;
-    }
+  for (auto it = begin; it != end; ++it) {
     auto directory = curr->dynCast<Directory>();
 
     // If file is nullptr, then the file was not a Directory.
@@ -233,7 +228,7 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
 
 #ifdef WASMFS_DEBUG
     std::vector<char> temp(*it.begin(), *it.end());
-    emscripten_console_log(&temp[0]);
+    emscripten_console_log(it->c_str());
 #endif
   }
 
