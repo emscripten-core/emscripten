@@ -96,9 +96,6 @@ public:
   virtual ~DataFile() = default;
 
   class Handle : public File::Handle {
-
-    // std::shared_ptr<DataFile> getFile() { return file->cast<DataFile>(); }
-
   public:
     Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
     Handle(Handle&&) = default;
@@ -124,8 +121,6 @@ public:
   Directory() : File(File::DirectoryKind) {}
 
   class Handle : public File::Handle {
-    // Directory& getDir() { return *file.get()->cast<Directory>(); }
-
   public:
     Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
 
