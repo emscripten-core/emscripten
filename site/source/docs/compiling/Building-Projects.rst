@@ -86,7 +86,7 @@ To use cmake with Emscripten, ``emcmake`` wrapper can be used. A simple ``CMakeL
   project(<project_name>)
 
   add_executable(<target> <sources>)
-  target_link_libraries(
+  target_link_options(
       <target>
 
       "-s WASM=1"
@@ -96,13 +96,13 @@ To use cmake with Emscripten, ``emcmake`` wrapper can be used. A simple ``CMakeL
       "-s ALLOW_MEMORY_GROWTH=1"
   )
 
-The Emscripten specific options are added to the ``target_link_libraries`` command. And assumming we are in a build directory just below the root, the build files can be generated with,
+The Emscripten specific options are added to the ``target_link_options`` command, quotes can be omitted by removing the space ``-sWASM=1``. And assumming we are in a build directory just below the root, the build files can be generated with,
 
 .. code-block:: bash
 
-  emcmake cmake .. -GNinja -DCMAKE_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
+  emcmake cmake .. -GNinja
 
-Subsequently building is just a normal call to ``ninja``, no wrappers required (same for other build systems like ``make``). This would produce the required files in the build directory. CMake automatically adds ``-g`` for Debug builds.
+The ``emcmake`` wrapper adds the flag, ``-DCMAKE_TOOLCHAIN_FILE=<emscripten cmake toolchain>`` if it is not already present. Subsequently building is just a normal call to ``ninja``, no wrappers required (same for other build systems like ``make``). This would produce the required files in the build directory. CMake automatically adds ``-g`` for Debug builds.
 
 The ``vcpkg`` C++ package manager also has a Emscripten community triplet which could used to pull in some libraries. Beware that this is community supported, so all the packages might not compile. But for the ones which do, it is pretty easy, the ``CMakeLists.txt`` won't need any extra changes other than the normal ``find_package`` call but generating the build files needs some additional arguments.
 
@@ -244,6 +244,7 @@ For example, consider the case where a project "project" uses a library "libstuf
 
   # Link the library and code together.
   emcc project.o libstuff.a -o final.html
+
 
 Emscripten Ports
 ================
