@@ -55,11 +55,7 @@ LibraryManager.library = {
   // to native code.
   segfault: function() { segfault(); },
   ftfault: function() { ftfault(); },
-  alignfault: function() {
-#if SAFE_HEAP == 1
-    alignfault();
-#endif
-  },
+  alignfault: function() { alignfault(); },
 #endif
 
   // ==========================================================================
