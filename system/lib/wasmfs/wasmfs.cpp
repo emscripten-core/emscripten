@@ -368,7 +368,7 @@ long __syscall_mkdir(long path, long mode) {
   }
   // Root (/) directory.
   if (pathParts.empty() || pathParts.size() == 1 && pathParts[0] == "/") {
-    return -EINVAL;
+    return -EEXIST;
   }
 
   auto base = pathParts[pathParts.size() - 1];
@@ -378,9 +378,6 @@ long __syscall_mkdir(long path, long mode) {
 
   if (!parentDir) {
     // parent node doesn't exist
-    if (err == -ENOTDIR) {
-      return -EACCES;
-    }
     return err;
   }
 
