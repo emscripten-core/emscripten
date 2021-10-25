@@ -32,7 +32,7 @@ public:
     return int(kind) == int(T::expectedKind);
   }
 
-  template<class T> std::shared_ptr<T> dynCastShared() {
+  template<class T> std::shared_ptr<T> dynCast() {
     static_assert(std::is_base_of<File, T>::value,
                   "File is not a base of destination type T");
     if (int(kind) == int(T::expectedKind)) {
@@ -42,17 +42,11 @@ public:
     }
   }
 
-  template<class T> T* dynCast() {
-    static_assert(std::is_base_of<File, T>::value,
-                  "File is not a base of destination type T");
-    return int(kind) == int(T::expectedKind) ? (T*)this : nullptr;
-  }
-
-  template<class T> T* cast() {
+  template<class T> std::shared_ptr<T> cast() {
     static_assert(std::is_base_of<File, T>::value,
                   "File is not a base of destination type T");
     assert(int(kind) == int(T::expectedKind));
-    return (T*)this;
+    return std::static_pointer_cast<T>(shared_from_this());
   }
 
   class Handle {
@@ -103,17 +97,17 @@ public:
 
   class Handle : public File::Handle {
 
-    DataFile& getFile() { return *file.get()->cast<DataFile>(); }
+    std::shared_ptr<DataFile> getFile() { return file->cast<DataFile>(); }
 
   public:
     Handle(std::shared_ptr<File> dataFile) : File::Handle(dataFile) {}
     Handle(Handle&&) = default;
 
     __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) {
-      return getFile().read(buf, len, offset);
+      return getFile()->read(buf, len, offset);
     }
     __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
-      return getFile().write(buf, len, offset);
+      return getFile()->write(buf, len, offset);
     }
   };
 
@@ -131,7 +125,7 @@ public:
   Directory(mode_t mode) : File(File::DirectoryKind, mode) {}
 
   class Handle : public File::Handle {
-    Directory& getDir() { return *file.get()->cast<Directory>(); }
+    std::shared_ptr<Directory> getDir() { return file->cast<Directory>(); }
 
   public:
     Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
@@ -139,12 +133,12 @@ public:
     std::shared_ptr<File> getEntry(std::string pathName);
 
     void setEntry(std::string pathName, std::shared_ptr<File> inserted) {
-      getDir().entries[pathName] = inserted;
+      getDir()->entries[pathName] = inserted;
     }
 
 #ifdef WASMFS_DEBUG
     void printKeys() {
-      for (auto keyPair : getFile().entries) {
+      for (auto keyPair : getDir()->entries) {
         std::vector<char> temp(keyPair.first.begin(), keyPair.first.end());
         emscripten_console_log(&temp[0]);
       }

@@ -81,7 +81,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
   }
 
   auto lockedOpenFile = openFile.locked();
-  auto* file = lockedOpenFile.getFile()->dynCast<DataFile>();
+  auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
   // TODO: change to add support for symlinks.
@@ -148,7 +148,7 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
   }
 
   auto lockedOpenFile = openFile.locked();
-  auto* file = lockedOpenFile.getFile()->dynCast<DataFile>();
+  auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
   // TODO: change to add support for symlinks.
