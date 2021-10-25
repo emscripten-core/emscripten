@@ -13,8 +13,8 @@ namespace wasmfs {
 // Directory
 //
 std::shared_ptr<File> Directory::Handle::getEntry(std::string pathName) {
-  auto it = getDir().entries.find(pathName);
-  if (it == getDir().entries.end()) {
+  auto it = file->cast<Directory>()->entries.find(pathName);
+  if (it == file->cast<Directory>()->entries.end()) {
     return nullptr;
   } else {
     return it->second;
