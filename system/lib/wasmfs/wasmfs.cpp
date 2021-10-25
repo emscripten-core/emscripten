@@ -359,11 +359,9 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 }
 
 long __syscall_mkdir(long path, long mode) {
-  EM_ASM({out("here stuff\n")});
   auto pathParts = splitPath((char*)path);
 
   if (pathParts.empty()) {
-    EM_ASM({out("here\n")});
     return -EINVAL;
   }
   // Root (/) directory.
