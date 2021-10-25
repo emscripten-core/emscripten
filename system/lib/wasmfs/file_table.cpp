@@ -43,7 +43,7 @@ public:
   StdinFile(mode_t mode) : DataFile(mode) {}
   static std::shared_ptr<StdinFile> getSingleton() {
     static const std::shared_ptr<StdinFile> stdinFile =
-      std::make_shared<StdinFile>(S_IRUGO | S_IXUGO);
+      std::make_shared<StdinFile>(S_IRUGO);
     return stdinFile;
   }
 };
