@@ -54,8 +54,8 @@ LibraryManager.library = {
   // Trivial wrappers around runtime functions that make these symbols available
   // to native code.
   segfault: function() { segfault(); },
-  ftfault: function() { ftfault(); },
   alignfault: function() { alignfault(); },
+  ftfault: function() { ftfault(); },
 #endif
 
   // ==========================================================================
