@@ -21,10 +21,12 @@ int main() {
   // Try to make a directory under the root directory.
   errno = 0;
   mkdir("/working", 0777);
+  printf("Errno: %s\n", strerror(errno));
   assert(errno == 0);
 
   // Try to create a file in the same directory.
   int fd = open("/working/test", O_RDWR | O_CREAT, 0777);
+  printf("Errno: %s\n", strerror(errno));
   assert(errno == 0);
 
   // Try to read and write to the same file.
@@ -58,12 +60,12 @@ int main() {
   // Try to make a directory that exists already.
   errno = 0;
   mkdir("/dev", 0777);
+  printf("Errno: %s\n", strerror(errno));
   assert(errno == EEXIST);
 
   // Try to make a directory with a path component that is not a directory.
   errno = 0;
   mkdir("/dev/stdout/fake-directory", 0777);
-  printf("Errno: %s\n", strerror(errno));
   // TODO: This may have to change when access modes are implemented, depending
   // on if we check access mode before file type.
 #ifdef WASMFS
@@ -75,11 +77,13 @@ int main() {
   // Try to make a directory with a path component that does not exist.
   errno = 0;
   mkdir("/dev/false-path/fake-directory", 0777);
+  printf("Errno: %s\n", strerror(errno));
   assert(errno == ENOENT);
 
   // Try to make a directory under the `working` directory.
   errno = 0;
   mkdir("/working/new-directory", 0777);
+  printf("Errno: %s\n", strerror(errno));
   assert(errno == 0);
 
   return 0;
