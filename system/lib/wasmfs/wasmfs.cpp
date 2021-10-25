@@ -333,6 +333,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     // Requested entry (file or directory)
     if (!curr) {
       // Create last element in path if O_CREAT is specified.
+      // If O_DIRECTORY is also specified, still create a regular file:
+      // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
       if (i == pathParts.size() - 1 && flags & O_CREAT) {
         auto lockedDir = directory->locked();
 
