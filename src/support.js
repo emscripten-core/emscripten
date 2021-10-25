@@ -6,10 +6,6 @@
 
 var STACK_ALIGN = {{{ STACK_ALIGN }}};
 
-function getPointerSize() {
-  return {{{ MEMORY64 ? 8 : 4 }}};
-}
-
 {{{ getNativeTypeSize }}}
 
 function warnOnce(text) {

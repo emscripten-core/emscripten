@@ -197,7 +197,9 @@ function isStructPointerType(type) {
   return !Compiletime.isNumberType(type) && type[0] == '%';
 }
 
-const POINTER_SIZE = MEMORY64 ? 8 : 4;
+// FIXME: this one needs to be var to be visible in runtime.js in Node.
+// eslint-disable-next-line no-var
+var POINTER_SIZE = MEMORY64 ? 8 : 4;
 const POINTER_BITS = POINTER_SIZE * 8;
 const POINTER_TYPE = 'i' + POINTER_BITS;
 
