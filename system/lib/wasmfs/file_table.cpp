@@ -47,9 +47,10 @@ class StdinFile : public DataFile {
   };
 
 public:
+  StdinFile(mode_t mode) : DataFile(mode) {}
   static std::shared_ptr<StdinFile> getSingleton() {
     static const std::shared_ptr<StdinFile> stdinFile =
-      std::make_shared<StdinFile>();
+      std::make_shared<StdinFile>(S_IRUGO | S_IXUGO);
     return stdinFile;
   }
 };
@@ -66,9 +67,10 @@ class StdoutFile : public DataFile {
   };
 
 public:
+  StdoutFile(mode_t mode) : DataFile(mode) {}
   static std::shared_ptr<StdoutFile> getSingleton() {
     static const std::shared_ptr<StdoutFile> stdoutFile =
-      std::make_shared<StdoutFile>();
+      std::make_shared<StdoutFile>(S_IWUGO);
     return stdoutFile;
   }
 };
@@ -88,9 +90,10 @@ class StderrFile : public DataFile {
   };
 
 public:
+  StderrFile(mode_t mode) : DataFile(mode) {}
   static std::shared_ptr<StderrFile> getSingleton() {
     static const std::shared_ptr<StderrFile> stderrFile =
-      std::make_shared<StderrFile>();
+      std::make_shared<StderrFile>(S_IWUGO);
     return stderrFile;
   }
 };
@@ -108,8 +111,9 @@ FileTable::FileTable() {
 // Refers to same std streams in the open file table.
 std::shared_ptr<Directory> getRootDirectory() {
   static const std::shared_ptr<Directory> rootDirectory = [] {
-    std::shared_ptr<Directory> rootDirectory = std::make_shared<Directory>();
-    auto devDirectory = std::make_shared<Directory>();
+    std::shared_ptr<Directory> rootDirectory =
+      std::make_shared<Directory>(S_IRUGO | S_IXUGO);
+    auto devDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
     rootDirectory->locked().setEntry("dev", devDirectory);
 
     auto dir = devDirectory->locked();
@@ -232,7 +236,7 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
 #endif
   }
 
-  auto currDirectory = curr->dynCastShared<Directory>();
+  auto currDirectory = curr->dynCast<Directory>();
 
   if (!currDirectory) {
     err = -ENOTDIR;

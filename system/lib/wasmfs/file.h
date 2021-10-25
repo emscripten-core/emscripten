@@ -67,7 +67,6 @@ public:
   Handle locked() { return Handle(shared_from_this()); }
 
 protected:
-  File(FileKind kind) : kind(kind) {}
   File(FileKind kind, mode_t mode) : kind(kind), mode(mode) {}
   // A mutex is needed for multiple accesses to the same file.
   std::mutex mutex;
@@ -91,7 +90,6 @@ class DataFile : public File {
 
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
-  DataFile() : File(File::DataFileKind) {}
   DataFile(mode_t mode) : File(File::DataFileKind, mode) {}
   virtual ~DataFile() = default;
 
@@ -121,7 +119,6 @@ protected:
 
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
-  Directory() : File(File::DirectoryKind) {}
   Directory(mode_t mode) : File(File::DirectoryKind, mode) {}
 
   class Handle : public File::Handle {
