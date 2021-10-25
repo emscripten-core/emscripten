@@ -109,6 +109,8 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
 #if SAFE_HEAP == 1
   if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+#else
+  if (dest % bytes !== 0) warnOnce('alignment error in a memory store operation, alignment was a multiple of ' + (((dest ^ (dest-1)) >> 1) + 1) + ', but was was expected to be aligned to a multiple of ' + bytes);
 #endif
   if (runtimeInitialized) {
     var brk = _sbrk() >>> 0;
@@ -131,6 +133,8 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
 #if SAFE_HEAP == 1
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
+#else
+  if (dest % bytes !== 0) warnOnce('alignment error in a memory load operation, alignment was a multiple of ' + (((dest ^ (dest-1)) >> 1) + 1) + ', but was was expected to be aligned to a multiple of ' + bytes);
 #endif
   if (runtimeInitialized) {
     var brk = _sbrk() >>> 0;
@@ -164,6 +168,8 @@ function segfault() {
 function alignfault() {
 #if SAFE_HEAP == 1
   abort('alignment fault');
+#else
+  warnOnce('alignment fault');
 #endif
 }
 function ftfault() {
