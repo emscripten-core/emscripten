@@ -205,7 +205,7 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
   // Check if the first path element is '/', indicating an absolute path.
   if (*begin == "/") {
     curr = getRootDirectory();
-    *begin++;
+    begin++;
   }
 
   for (auto it = begin; it != end; ++it) {
@@ -231,7 +231,6 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
     }
 
 #ifdef WASMFS_DEBUG
-    std::vector<char> temp(*it.begin(), *it.end());
     emscripten_console_log(it->c_str());
 #endif
   }

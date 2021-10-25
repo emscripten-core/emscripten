@@ -328,6 +328,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   // The requested node was not found.
   if (!curr) {
     // If curr is the last element and the create flag is specified
+    // If O_DIRECTORY is also specified, create a regular file:
+    // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
     if (flags & O_CREAT) {
       // Create an empty in-memory file.
       auto created = std::make_shared<MemoryFile>(mode);
