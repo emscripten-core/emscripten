@@ -201,11 +201,13 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
                                   std::vector<std::string>::iterator end,
                                   long& err) {
 
-  auto curr = getCWD();
+  std::shared_ptr<File> curr;
   // Check if the first path element is '/', indicating an absolute path.
   if (*begin == "/") {
     curr = getRootDirectory();
     begin++;
+  } else {
+    curr = getCWD();
   }
 
   for (auto it = begin; it != end; ++it) {
