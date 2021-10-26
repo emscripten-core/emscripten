@@ -6973,6 +6973,10 @@ someweirdtext
     self.emcc_args += ['--bind']
     self.do_run_in_out_file_test('embind/test_val.cpp')
 
+  def test_embind_val_assignment(self):
+    err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '--bind', '-c'])
+    self.assertContained('candidate function not viable: expects an lvalue for object argument', err)
+
   @no_wasm2js('wasm_bigint')
   def test_embind_i64_val(self):
     self.set_setting('WASM_BIGINT')
