@@ -9186,6 +9186,16 @@ int main () {
     # explicly setting IGNORE_MISSING_MAIN overrides the STRICT setting
     self.run_process([EMCC, '-sSTRICT', '-sIGNORE_MISSING_MAIN', 'empty.c'])
 
+  # Tests the difference between options -s SAFE_HEAP=1 and -s SAFE_HEAP=2.
+  def test_safe_heap_2(self):
+    self.run_process([EMCC, test_file('safe_heap_2.c'), '-sSAFE_HEAP=1'])
+    result = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContained('alignment fault', result)
+
+    self.run_process([EMCC, test_file('safe_heap_2.c'), '-sSAFE_HEAP=2'])
+    result = self.run_js('a.out.js')
+    self.assertContained('0 1 2 3 4', result)
+
   def test_safe_heap_log(self):
     self.set_setting('SAFE_HEAP')
     self.set_setting('SAFE_HEAP_LOG')

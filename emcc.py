@@ -1474,8 +1474,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # Otherwise the wasm file is produced alongside the final target.
     wasm_target = get_secondary_target(target, '.wasm')
 
-  if settings.SAFE_HEAP not in [0, 1]:
-    exit_with_error('emcc: SAFE_HEAP must be 0 or 1')
+  if settings.SAFE_HEAP not in [0, 1, 2]:
+    exit_with_error('emcc: SAFE_HEAP must be 0, 1 or 2')
 
   if not settings.WASM:
     # When the user requests non-wasm output, we enable wasm2js. that is,
