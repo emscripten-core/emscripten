@@ -2612,7 +2612,7 @@ The current type of b is: 9
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
     outfile = self.build(filename, js_outfile=not self.is_wasm())
-    shutil.move(outfile, 'liblib.so')
+    shutil.move(outfile, shared.unsuffixed_basename(filename) + '.so')
 
   @needs_dylink
   def test_dlfcn_missing(self):
@@ -3431,7 +3431,7 @@ ok
     def indir(name):
       return os.path.join(dirname, name)
 
-    create_file('a.cpp', r'''
+    create_file('liba.cpp', r'''
       #include <stdio.h>
 
       static class A {
@@ -3442,7 +3442,7 @@ ok
       } _;
     ''')
 
-    create_file('b.cpp', r'''
+    create_file('libb.cpp', r'''
       #include <stdio.h>
 
       static class B {
@@ -3453,10 +3453,8 @@ ok
       } _;
     ''')
 
-    self.build_dlfcn_lib('a.cpp')
-    shutil.move(indir('liblib.so'), indir('liba.so'))
-    self.build_dlfcn_lib('b.cpp')
-    shutil.move(indir('liblib.so'), indir('libb.so'))
+    self.build_dlfcn_lib('liba.cpp')
+    self.build_dlfcn_lib('libb.cpp')
 
     self.set_setting('MAIN_MODULE')
     self.set_setting('NODERAWFS')
@@ -3527,6 +3525,58 @@ ok
       }
       '''
     self.do_run(src, 'float: 42.\n')
+
+  @needs_dylink
+  def test_dlfcn_rtld_local(self):
+    create_file('liblib.c', r'''
+      int foo() { return 42; }
+      ''')
+    self.build_dlfcn_lib('liblib.c')
+
+    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
+    create_file('libbar.c', r'''
+      extern int foo();
+      int bar() { return foo(); }
+      ''')
+    self.build_dlfcn_lib('libbar.c')
+
+    self.prep_dlfcn_main()
+    src = r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <stdlib.h>
+
+      typedef int (*func_t)();
+
+      int main() {
+        void *lib_handle = dlopen("liblib.so", RTLD_LOCAL|RTLD_NOW);
+        if (!lib_handle) {
+          puts(dlerror());
+          abort();
+        }
+        func_t foo = (func_t)dlsym(lib_handle, "foo");
+        if (!foo) {
+          puts(dlerror());
+          abort();
+        }
+        printf("foo: %d\n", foo());
+
+        // Verify that "foo" is not visible in the global
+        // namespace.
+        foo = (func_t)dlsym(RTLD_DEFAULT, "foo");
+        assert(foo == NULL);
+
+        // libbar.so should not be loadable since it depends on the symbol
+        // `foo` which should not be in the global namespace.
+        void *libbar_handle = dlopen("libbar.so", RTLD_NOW);
+        printf("libbar_handle: %p\n", libbar_handle);
+        assert(libbar_handle == NULL);
+        puts(dlerror());
+        return 0;
+      }
+      '''
+    self.do_run(src, ['foo: 42', 'Error: undefined symbol: foo'], assert_all=True)
 
   def dylink_test(self, main, side, expected=None, header=None, force_c=False,
                   main_module=2, **kwargs):

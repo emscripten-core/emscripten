@@ -127,8 +127,7 @@ var LibraryDylink = {
 
   // Applies relocations to exported things.
   $relocateExports__internal: true,
-  $relocateExports__deps: ['$updateGOT'],
-  $relocateExports: function(exports, memoryBase, replace) {
+  $relocateExports: function(exports, memoryBase) {
     var relocated = {};
 
     for (var e in exports) {
@@ -150,7 +149,6 @@ var LibraryDylink = {
       }
       relocated[e] = value;
     }
-    updateGOT(relocated, replace);
     return relocated;
   },
 
@@ -379,7 +377,7 @@ var LibraryDylink = {
   },
 
   // Module.symbols <- libModule.symbols (flags.global handler)
-  $mergeLibSymbols__deps: ['$asmjsMangle'],
+  $mergeLibSymbols__deps: ['$asmjsMangle', '$updateGOT'],
   $mergeLibSymbols: function(exports, libName) {
     // add symbols into global namespace TODO: weak linking etc.
     for (var sym in exports) {
@@ -412,6 +410,7 @@ var LibraryDylink = {
         Module[module_sym] = exports[sym];
       }
     }
+    updateGOT(exports);
   },
 
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
@@ -471,9 +470,6 @@ var LibraryDylink = {
         if (!resolved) {
           resolved = moduleExports[sym];
         }
-#if ASSERTIONS
-        assert(resolved, 'undefined symbol `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
-#endif
         return resolved;
       }
 
@@ -506,14 +502,18 @@ var LibraryDylink = {
           if (!(prop in stubs)) {
             var resolved;
             stubs[prop] = function() {
-              if (!resolved) resolved = resolveSymbol(prop, true);
+              if (!resolved) resolved = resolveSymbol(prop);
+#if ASSERTIONS
+              assert(resolved, 'undefined symbol `' + prop + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
+#endif
               return resolved.apply(null, arguments);
             };
           }
           return stubs[prop];
         }
       };
-      var proxy = new Proxy({}, proxyHandler);
+      var stubs = {}
+      var proxy = new Proxy(stubs, proxyHandler);
       var info = {
         'GOT.mem': new Proxy({}, GOTHandler),
         'GOT.func': new Proxy({}, GOTHandler),
@@ -526,10 +526,18 @@ var LibraryDylink = {
         // the table should be unchanged
         assert(wasmTable === originalTable);
 #endif
+
         // add new entries to functionsInTableMap
         updateTableMap(tableBase, metadata.tableSize);
         moduleExports = relocateExports(instance.exports, memoryBase);
         if (!flags.allowUndefined) {
+          if (!flags.lazy) {
+            for (var symbol in stubs) {
+              if (!resolveSymbol(symbol)) {
+                throw Error('undefined symbol: ' + symbol);
+              }
+            }
+          }
           reportUndefinedSymbols();
         }
 #if STACK_OVERFLOW_CHECK >= 2
@@ -710,10 +718,10 @@ var LibraryDylink = {
 
     // module for lib is loaded - update the dso & global namespace
     function moduleLoaded(libModule) {
-      if (dso.global) {
-        mergeLibSymbols(libModule, lib);
-      }
       dso.module = libModule;
+      if (dso.global) {
+        mergeLibSymbols(dso.module, lib);
+      }
     }
 
     if (flags.loadAsync) {
@@ -794,10 +802,10 @@ var LibraryDylink = {
     err('dlopenInternal: ' + filename);
 #endif
 
-    // We don't care about RTLD_NOW and RTLD_LAZY.
     var combinedFlags = {
       global:    Boolean(flags & {{{ cDefine('RTLD_GLOBAL') }}}),
       nodelete:  Boolean(flags & {{{ cDefine('RTLD_NODELETE') }}}),
+      lazy:      Boolean(flags & {{{ cDefine('RTLD_LAZY') }}}),
       loadAsync: jsflags.loadAsync,
       fs:        jsflags.fs,
     }
