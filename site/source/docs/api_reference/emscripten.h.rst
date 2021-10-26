@@ -1105,7 +1105,7 @@ Functions
   The function returns pointer to loaded image or NULL — the pointer should be ``free()``'d. The width/height of the image are written to the ``w`` and ``h`` parameters if the data is valid.
 
   :param path: Full path/filename to the file containing the preloaded image.
-  :type: const char*
+  :type path: const char*
   :param int* w: Width of the image (if data is valid).
   :param int* h: Height of the image (if data is valid).
   :returns: A pointer to the preloaded image or NULL.
@@ -1116,10 +1116,9 @@ Functions
 
   Gets preloaded image data from a C ``FILE*``.
 
-  :param FILE* file: The ``FILE`` containing the preloaded image.
-  :type: const char*
-  :param int* w: Width of the image (if data is valid).
-  :param int* h: Height of the image (if data is valid).
+  :param file: The ``FILE`` containing the preloaded image.
+  :param w: Width of the image (if data is valid).
+  :param h: Height of the image (if data is valid).
   :returns: A pointer to the preloaded image or NULL.
   :rtype: char*
 
