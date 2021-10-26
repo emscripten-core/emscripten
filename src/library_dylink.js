@@ -98,6 +98,9 @@ var LibraryDylink = {
         GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
       }
       if (replace || GOT[symName].value == 0) {
+#if DYLINK_DEBUG
+        err("updateGOT: before: " + symName + ' : ' + GOT[symName].value);
+#endif
         if (typeof value === 'function') {
           GOT[symName].value = addFunction(value);
 #if DYLINK_DEBUG
@@ -111,7 +114,7 @@ var LibraryDylink = {
           err("unhandled export type for `" + symName + "`: " + (typeof value));
         }
 #if DYLINK_DEBUG
-        err("updateGOT: " + symName + ' : ' + GOT[symName].value);
+        err("updateGOT:  after: " + symName + ' : ' + GOT[symName].value);
 #endif
       }
 #if DYLINK_DEBUG
