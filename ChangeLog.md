@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.32
+2.0.33
 ------
+
+2.0.32 - 10/19/2021
+-------------------
 - Internal-only library functions can now be marked as `__internal: true` in JS
   system libraries.  Such symbols should not be used by external libraries and
   are subject to change.  As of now we generate warning when external libraries
@@ -53,6 +56,9 @@ See docs/process.md for more on how version tagging works.
 - Add JavaScript API `Emval.{toHandle, toValue}` as well as a C++ method
   `val::as_handle()` to allow passing values between the `val` class and
   `EM_JS`/ `EM_ASM` JavaScript snippets. (#15279)
+- Added SAFE_HEAP=2 option which tests safe heap behavior for wasm-only builds
+  (allowing unaligned memory accesses, which would not work in Wasm2JS but in
+   wasm would be correct but potentially slow).
 
 2.0.31 - 10/01/2021
 -------------------

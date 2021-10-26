@@ -825,7 +825,7 @@ def generate_struct_info():
   if settings.BOOTSTRAPPING_STRUCT_INFO:
     return
 
-  generated_struct_info_name = 'generated_struct_info.json'
+  generated_struct_info_name = 'generated_struct_info' + ('64' if settings.MEMORY64 else '32') + '.json'
 
   @ToolchainProfiler.profile_block('gen_struct_info')
   def generate_struct_info(out):

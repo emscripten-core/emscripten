@@ -256,7 +256,7 @@ function writeArrayToMemory(array, buffer) {
 function writeAsciiToMemory(str, buffer, dontAddNull) {
   for (var i = 0; i < str.length; ++i) {
 #if ASSERTIONS
-    assert(str.charCodeAt(i) === str.charCodeAt(i)&0xff);
+    assert(str.charCodeAt(i) === (str.charCodeAt(i) & 0xff));
 #endif
     {{{ makeSetValue('buffer++', 0, 'str.charCodeAt(i)', 'i8') }}};
   }

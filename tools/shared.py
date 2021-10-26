@@ -223,14 +223,14 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
 
-def run_js_tool(filename, jsargs=[], *args, **kw):
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are written
   implemented in javascript.
   """
-  command = config.NODE_JS + [filename] + jsargs
-  return check_call(command, *args, **kw).stdout
+  command = config.NODE_JS + node_args + [filename] + jsargs
+  return check_call(command, **kw).stdout
 
 
 def get_npm_cmd(name):
@@ -768,7 +768,7 @@ def read_and_preprocess(filename, expand_macros=False):
   if expand_macros:
     args += ['--expandMacros']
 
-  run_js_tool(path_from_root('tools/preprocessor.js'), args, True, stdout=open(stdout, 'w'), cwd=dirname)
+  run_js_tool(path_from_root('tools/preprocessor.js'), args, stdout=open(stdout, 'w'), cwd=dirname)
   out = utils.read_file(stdout)
 
   return out

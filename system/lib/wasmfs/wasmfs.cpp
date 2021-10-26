@@ -28,11 +28,11 @@ long __syscall_dup2(long oldfd, long newfd) {
   // If oldfd is not a valid file descriptor, then the call fails,
   // and newfd is not closed.
   if (!oldOpenFile) {
-    return -(EBADF);
+    return -EBADF;
   }
 
   if (newfd < 0) {
-    return -(EBADF);
+    return -EBADF;
   }
 
   if (oldfd == newfd) {
@@ -51,51 +51,184 @@ long __syscall_dup(long fd) {
   // Check that an open file exists corresponding to the given fd.
   auto openFile = fileTable[fd];
   if (!openFile) {
-    return -(EBADF);
+    return -EBADF;
   }
 
   return fileTable.add(openFile.unlocked());
 }
 
-__wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
-                               const __wasi_ciovec_t* iovs,
-                               size_t iovs_len,
-                               __wasi_size_t* nwritten) {
+// This enum specifies whether file offset will be provided by the open file
+// state or provided by argument in the case of pread or pwrite.
+enum class OffsetHandling { OpenFileState, Argument };
+
+// Internal write function called by __wasi_fd_write and __wasi_fd_pwrite
+// Receives an open file state offset.
+// Optionally sets open file state offset.
+static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
+                                    __wasi_fd_t fd,
+                                    const __wasi_ciovec_t* iovs,
+                                    size_t iovs_len,
+                                    __wasi_size_t* nwritten,
+                                    __wasi_filesize_t offset = 0) {
+  if (iovs_len < 0 || offset < 0) {
+    return __WASI_ERRNO_INVAL;
+  }
+
   auto openFile = FileTable::get()[fd];
 
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
 
-  auto file = openFile.locked().getFile()->dynCast<DataFile>();
+  auto lockedOpenFile = openFile.locked();
+  auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
+  // TODO: change to add support for symlinks.
   if (!file) {
     return __WASI_ERRNO_ISDIR;
   }
 
   auto lockedFile = file->locked();
 
-  __wasi_size_t num = 0;
+  off_t currOffset = setOffset == OffsetHandling::OpenFileState
+                       ? lockedOpenFile.position()
+                       : offset;
+  off_t oldOffset = currOffset;
+  auto finish = [&] {
+    *nwritten = currOffset - oldOffset;
+    if (setOffset == OffsetHandling::OpenFileState) {
+      lockedOpenFile.position() = currOffset;
+    }
+  };
   for (size_t i = 0; i < iovs_len; i++) {
     const uint8_t* buf = iovs[i].buf;
-    __wasi_size_t len = iovs[i].buf_len;
+    off_t len = iovs[i].buf_len;
 
-    lockedFile.write(buf, len);
-    num += len;
+    // Check if the sum of the buf_len values overflows an off_t (63 bits).
+    if (addWillOverFlow(currOffset, len)) {
+      return __WASI_ERRNO_FBIG;
+    }
+
+    // Check if buf_len specifies a positive length buffer but buf is a
+    // null pointer
+    if (!buf && len > 0) {
+      return __WASI_ERRNO_INVAL;
+    }
+
+    auto result = lockedFile.write(buf, len, currOffset);
+
+    if (result != __WASI_ERRNO_SUCCESS) {
+      finish();
+      return result;
+    }
+    currOffset += len;
   }
-  *nwritten = num;
-
+  finish();
   return __WASI_ERRNO_SUCCESS;
 }
 
-__wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
-                              __wasi_filedelta_t offset,
-                              __wasi_whence_t whence,
-                              __wasi_filesize_t* newoffset) {
-  emscripten_console_log(
-    "__wasi_fd_seek has been temporarily stubbed and is inert");
-  abort();
+// Internal read function called by __wasi_fd_read and __wasi_fd_pread
+// Receives an open file state offset.
+// Optionally sets open file state offset.
+static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
+                                   __wasi_fd_t fd,
+                                   const __wasi_iovec_t* iovs,
+                                   size_t iovs_len,
+                                   __wasi_size_t* nread,
+                                   __wasi_filesize_t offset = 0) {
+  if (iovs_len < 0 || offset < 0) {
+    return __WASI_ERRNO_INVAL;
+  }
+
+  auto openFile = FileTable::get()[fd];
+
+  if (!openFile) {
+    return __WASI_ERRNO_BADF;
+  }
+
+  auto lockedOpenFile = openFile.locked();
+  auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
+
+  // If file is nullptr, then the file was not a DataFile.
+  // TODO: change to add support for symlinks.
+  if (!file) {
+    return __WASI_ERRNO_ISDIR;
+  }
+
+  auto lockedFile = file->locked();
+
+  off_t currOffset = setOffset == OffsetHandling::OpenFileState
+                       ? lockedOpenFile.position()
+                       : offset;
+  off_t oldOffset = currOffset;
+  auto finish = [&] {
+    *nread = currOffset - oldOffset;
+    if (setOffset == OffsetHandling::OpenFileState) {
+      lockedOpenFile.position() = currOffset;
+    }
+  };
+  size_t size = lockedFile.size();
+  for (size_t i = 0; i < iovs_len; i++) {
+    // Check if currOffset has exceeded size of file data.
+    ssize_t dataLeft = size - currOffset;
+    if (dataLeft <= 0) {
+      break;
+    }
+
+    uint8_t* buf = iovs[i].buf;
+
+    // Check if buf_len specifies a positive length buffer
+    // but buf is a null pointer.
+    if (!buf && iovs[i].buf_len > 0) {
+      return __WASI_ERRNO_INVAL;
+    }
+
+    size_t bytesToRead = std::min(size_t(dataLeft), iovs[i].buf_len);
+
+    auto result = lockedFile.read(buf, bytesToRead, currOffset);
+
+    if (result != __WASI_ERRNO_SUCCESS) {
+      finish();
+      return result;
+    }
+    currOffset += bytesToRead;
+  }
+  finish();
+  return __WASI_ERRNO_SUCCESS;
+}
+
+__wasi_errno_t __wasi_fd_write(__wasi_fd_t fd,
+                               const __wasi_ciovec_t* iovs,
+                               size_t iovs_len,
+                               __wasi_size_t* nwritten) {
+  return writeAtOffset(
+    OffsetHandling::OpenFileState, fd, iovs, iovs_len, nwritten);
+}
+
+__wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
+                              const __wasi_iovec_t* iovs,
+                              size_t iovs_len,
+                              __wasi_size_t* nread) {
+  return readAtOffset(OffsetHandling::OpenFileState, fd, iovs, iovs_len, nread);
+}
+
+__wasi_errno_t __wasi_fd_pwrite(__wasi_fd_t fd,
+                                const __wasi_ciovec_t* iovs,
+                                size_t iovs_len,
+                                __wasi_filesize_t offset,
+                                __wasi_size_t* nwritten) {
+  return writeAtOffset(
+    OffsetHandling::Argument, fd, iovs, iovs_len, nwritten, offset);
+}
+
+__wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
+                               const __wasi_iovec_t* iovs,
+                               size_t iovs_len,
+                               __wasi_filesize_t offset,
+                               __wasi_size_t* nread) {
+  return readAtOffset(
+    OffsetHandling::Argument, fd, iovs, iovs_len, nread, offset);
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
@@ -111,7 +244,7 @@ long __syscall_fstat64(long fd, long buf) {
   auto openFile = FileTable::get()[fd];
 
   if (!openFile) {
-    return -(EBADF);
+    return -EBADF;
   }
 
   auto file = openFile.locked().getFile();
@@ -153,37 +286,6 @@ long __syscall_fstat64(long fd, long buf) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-__wasi_errno_t __wasi_fd_read(__wasi_fd_t fd,
-                              const __wasi_iovec_t* iovs,
-                              size_t iovs_len,
-                              __wasi_size_t* nread) {
-  auto openFile = FileTable::get()[fd];
-
-  if (!openFile) {
-    return __WASI_ERRNO_BADF;
-  }
-
-  auto file = openFile.locked().getFile()->dynCast<DataFile>();
-
-  // If file is nullptr, then the file was not a DataFile.
-  if (!file) {
-    return __WASI_ERRNO_ISDIR;
-  }
-
-  auto lockedFile = file->locked();
-
-  __wasi_size_t num = 0;
-  for (size_t i = 0; i < iovs_len; i++) {
-    const uint8_t* buf = iovs[i].buf;
-    __wasi_size_t len = iovs[i].buf_len;
-
-    lockedFile.read(buf, len);
-    num += len;
-  }
-  *nread = num;
-  return __WASI_ERRNO_INVAL;
-}
-
 __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   int accessMode = (flags & O_ACCMODE);
   bool canWrite = false;
@@ -192,51 +294,140 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     canWrite = true;
   }
 
-  std::vector<std::string> pathParts;
+  // TODO: remove assert when all functionality is complete.
+  assert(((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
+                      O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE)) == 0);
 
-  char newPathName[strlen((char*)pathname) + 1];
-  strcpy(newPathName, (char*)pathname);
+  auto pathParts = splitPath((char*)pathname);
 
-  // TODO: Support relative paths. i.e. specify cwd if path is relative.
-  // TODO: Other path parsing edge cases.
-  char* current;
-
-  current = strtok(newPathName, "/\n");
-  while (current != NULL) {
-    pathParts.push_back(current);
-    current = strtok(NULL, "/\n");
+  if (pathParts.empty()) {
+    return -EINVAL;
   }
 
-  std::shared_ptr<File> curr = getRootDirectory();
-  for (int i = 0; i < pathParts.size(); i++) {
+  auto base = pathParts[pathParts.size() - 1];
 
-    auto directory = curr->dynCast<Directory>();
-
-    // If file is nullptr, then the file was not a Directory.
-    // TODO: Change this to accommodate symlinks
-    if (!directory) {
-      return -(ENOTDIR);
-    }
-
-    // Find the next entry in the current directory entry
-#ifdef WASMFS_DEBUG
-    directory->locked().printKeys();
-#endif
-    curr = directory->locked().getEntry(pathParts[i]);
-
-    // Requested entry (file or directory
-    if (!curr) {
-      return -(ENOENT);
-    }
-
-#ifdef WASMFS_DEBUG
-    std::vector<char> temp(pathParts[i].begin(), pathParts[i].end());
-    emscripten_console_log(&temp[0]);
-#endif
+  // Root directory
+  if (pathParts.size() == 1 && pathParts[0] == "/") {
+    auto openFile =
+      std::make_shared<OpenFileState>(0, flags, getRootDirectory());
+    return FileTable::get().add(openFile);
   }
 
-  auto openFile = std::make_shared<OpenFileState>(0, curr);
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  // Parent node doesn't exist.
+  if (!parentDir) {
+    return err;
+  }
+
+  auto lockedParentDir = parentDir->locked();
+
+  auto curr = lockedParentDir.getEntry(base);
+
+  // The requested node was not found.
+  if (!curr) {
+    // If curr is the last element and the create flag is specified
+    // If O_DIRECTORY is also specified, still create a regular file:
+    // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
+    if (flags & O_CREAT) {
+      // Create an empty in-memory file.
+      auto created = std::make_shared<MemoryFile>(mode);
+
+      lockedParentDir.setEntry(base, created);
+      auto openFile = std::make_shared<OpenFileState>(0, flags, created);
+
+      return FileTable::get().add(openFile);
+    } else {
+      return -ENOENT;
+    }
+  }
+
+  // Fail if O_DIRECTORY is specified and pathname is not a directory
+  if (flags & O_DIRECTORY && !curr->is<Directory>()) {
+    return -ENOTDIR;
+  }
+
+  // Return an error if the file exists and O_CREAT and O_EXCL are specified.
+  if (flags & O_EXCL && flags & O_CREAT) {
+    return -EEXIST;
+  }
+
+  auto openFile = std::make_shared<OpenFileState>(0, flags, curr);
 
   return FileTable::get().add(openFile);
+}
+
+long __syscall_mkdir(long path, long mode) {
+  auto pathParts = splitPath((char*)path);
+
+  if (pathParts.empty()) {
+    return -EINVAL;
+  }
+  // Root (/) directory.
+  if (pathParts.empty() || pathParts.size() == 1 && pathParts[0] == "/") {
+    return -EEXIST;
+  }
+
+  auto base = pathParts[pathParts.size() - 1];
+
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  if (!parentDir) {
+    // parent node doesn't exist
+    return err;
+  }
+
+  auto lockedParentDir = parentDir->locked();
+
+  auto curr = lockedParentDir.getEntry(base);
+
+  // Check if the requested directory already exists.
+  if (curr) {
+    return -EEXIST;
+  } else {
+    // Create an empty in-memory directory.
+    auto created = std::make_shared<Directory>(mode);
+
+    lockedParentDir.setEntry(base, created);
+    return 0;
+  }
+}
+
+__wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
+                              __wasi_filedelta_t offset,
+                              __wasi_whence_t whence,
+                              __wasi_filesize_t* newoffset) {
+  auto openFile = FileTable::get()[fd];
+  if (!openFile) {
+    return __WASI_ERRNO_BADF;
+  }
+  auto lockedOpenFile = openFile.locked();
+
+  off_t position;
+  if (whence == SEEK_SET) {
+    position = offset;
+  } else if (whence == SEEK_CUR) {
+    position = lockedOpenFile.position() + offset;
+  } else if (whence == SEEK_END) {
+    // Only the open file stat is altered in seek. Locking the underlying data
+    // file here once is sufficient.
+    position = lockedOpenFile.getFile()->locked().size() + offset;
+  } else {
+    return __WASI_ERRNO_INVAL;
+  }
+
+  if (position < 0) {
+    return __WASI_ERRNO_INVAL;
+  }
+
+  lockedOpenFile.position() = position;
+
+  if (newoffset) {
+    *newoffset = position;
+  }
+
+  return __WASI_ERRNO_SUCCESS;
 }
 }

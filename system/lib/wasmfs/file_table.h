@@ -16,20 +16,46 @@
 #include <wasi/api.h>
 
 namespace wasmfs {
+static_assert(std::is_same<size_t, __wasi_size_t>::value,
+              "size_t should be the same as __wasi_size_t");
+static_assert(std::is_same<off_t, __wasi_filedelta_t>::value,
+              "off_t should be the same as __wasi_filedelta_t");
+
+// Overflow and underflow behaviour are only defined for unsigned types.
+template<typename T> bool addWillOverFlow(T a, T b) {
+  if (a > 0 && b > std::numeric_limits<T>::max() - a) {
+    return true;
+  }
+  return false;
+}
+
+// Obtains parent directory of a given pathname.
+// Will return a nullptr if the parent is not a directory.
+std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
+                                  std::vector<std::string>::iterator end,
+                                  long& err);
+
+// Return a vector of the '/'-delimited components of a path. The first element
+// will be "/" iff the path is an absolute path.
+std::vector<std::string> splitPath(char* pathname);
+
+// Access mode, file creation and file status flags for open.
+using oflags_t = uint32_t;
 
 std::shared_ptr<Directory> getRootDirectory();
 
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   std::shared_ptr<File> file;
-  __wasi_filedelta_t offset;
+  off_t position;
+  oflags_t flags; // RD_ONLY, WR_ONLY, RDWR
   // An OpenFileState needs a mutex if there are concurrent accesses on one open
   // file descriptor. This could occur if there are multiple seeks on the same
   // open file descriptor.
   std::mutex mutex;
 
 public:
-  OpenFileState(uint32_t offset, std::shared_ptr<File> file)
-    : offset(offset), file(file) {}
+  OpenFileState(size_t position, oflags_t flags, std::shared_ptr<File> file)
+    : position(position), flags(flags), file(file) {}
 
   class Handle {
     std::shared_ptr<OpenFileState> openFileState;
@@ -40,6 +66,8 @@ public:
       : openFileState(openFileState), lock(openFileState->mutex) {}
 
     std::shared_ptr<File>& getFile() { return openFileState->file; };
+
+    off_t& position() { return openFileState->position; };
   };
 
   Handle get() { return Handle(shared_from_this()); }

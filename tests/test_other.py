@@ -116,6 +116,21 @@ def parse_wasm(filename):
   return imports, exports, funcs
 
 
+def with_wasmfs(f):
+  def metafunc(self, wasmfs):
+    if wasmfs:
+      self.set_setting('WASMFS')
+      self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
+      f(self)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasmfs': (True,)}
+
+  return metafunc
+
+
 class other(RunnerCore):
   def assertIsObjectFile(self, filename):
     self.assertTrue(building.is_wasm(filename))
@@ -1660,10 +1675,6 @@ int f() {
   def test_dylink_pthread_warning(self):
     err = self.expect_fail([EMCC, '-Werror', '-sMAIN_MODULE', '-sUSE_PTHREADS', test_file('hello_world.c')])
     self.assertContained('error: -s MAIN_MODULE + pthreads is experimental', err)
-
-  def test_dylink_pthread_longjmp(self):
-    err = self.expect_fail([EMCC, '-sMAIN_MODULE', '-sUSE_PTHREADS', '-sSUPPORT_LONGJMP', test_file('hello_world.c')])
-    self.assertContained('SUPPORT_LONGJMP is not compatible with pthreads + dynamic linking', err)
 
   def test_dylink_no_autoload(self):
     create_file('main.c', r'''
@@ -9175,6 +9186,16 @@ int main () {
     # explicly setting IGNORE_MISSING_MAIN overrides the STRICT setting
     self.run_process([EMCC, '-sSTRICT', '-sIGNORE_MISSING_MAIN', 'empty.c'])
 
+  # Tests the difference between options -s SAFE_HEAP=1 and -s SAFE_HEAP=2.
+  def test_safe_heap_2(self):
+    self.run_process([EMCC, test_file('safe_heap_2.c'), '-sSAFE_HEAP=1'])
+    result = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContained('alignment fault', result)
+
+    self.run_process([EMCC, test_file('safe_heap_2.c'), '-sSAFE_HEAP=2'])
+    result = self.run_js('a.out.js')
+    self.assertContained('0 1 2 3 4', result)
+
   def test_safe_heap_log(self):
     self.set_setting('SAFE_HEAP')
     self.set_setting('SAFE_HEAP_LOG')
@@ -11143,14 +11164,30 @@ void foo() {}
 
   # WASMFS tests
 
-  def test_wasmfs_unistd_dup(self):
+  @with_wasmfs
+  def test_unistd_dup(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_dup.c')
 
-  def test_wasmfs_unistd_open(self):
+  @with_wasmfs
+  def test_unistd_open(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_open.c')
 
-  def test_wasmfs_unistd_fstat(self):
+  @with_wasmfs
+  def test_unistd_fstat(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_fstat.c')
+
+  @with_wasmfs
+  def test_unistd_create(self):
+    self.set_setting('WASMFS')
+    self.do_run_in_out_file_test('wasmfs/wasmfs_create.c')
+
+  @with_wasmfs
+  def test_unistd_seek(self):
+    self.do_run_in_out_file_test('wasmfs/wasmfs_seek.c')
+
+  @with_wasmfs
+  def test_unistd_mkdir(self):
+    self.do_run_in_out_file_test('wasmfs/wasmfs_mkdir.c')

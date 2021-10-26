@@ -99,7 +99,7 @@ var LibraryDylink = {
       }
       if (replace || GOT[symName].value == 0) {
         if (typeof value === 'function') {
-          GOT[symName].value = addFunctionWasm(value);
+          GOT[symName].value = addFunction(value);
 #if DYLINK_DEBUG
           err("updateGOT: FUNC: " + symName + ' : ' + GOT[symName].value);
 #endif
@@ -170,7 +170,7 @@ var LibraryDylink = {
         err('assigning dynamic symbol from main module: ' + symName + ' -> ' + prettyPrint(value));
 #endif
         if (typeof value === 'function') {
-          GOT[symName].value = addFunctionWasm(value, value.sig);
+          GOT[symName].value = addFunction(value, value.sig);
 #if DYLINK_DEBUG
           err('assigning table entry for : ' + symName + ' -> ' + GOT[symName].value);
 #endif
@@ -527,17 +527,7 @@ var LibraryDylink = {
         assert(wasmTable === originalTable);
 #endif
         // add new entries to functionsInTableMap
-        for (var i = 0; i < metadata.tableSize; i++) {
-          var item = wasmTable.get(tableBase + i);
-#if ASSERTIONS
-          // verify that the new table region was filled in
-          assert(item !== undefined, 'table entry was not filled in');
-#endif
-          // Ignore null values.
-          if (item) {
-            functionsInTableMap.set(item, tableBase + i);
-          }
-        }
+        updateTableMap(tableBase, metadata.tableSize);
         moduleExports = relocateExports(instance.exports, memoryBase);
         if (!flags.allowUndefined) {
           reportUndefinedSymbols();
@@ -913,7 +903,7 @@ var LibraryDylink = {
       // the second argument will not be needed.  If its a JS function we rely
       // on the `sig` attribute being set based on the `<func>__sig` specified
       // in library JS file.
-      return addFunctionWasm(result, result.sig);
+      return addFunction(result, result.sig);
     } else {
       return result;
     }

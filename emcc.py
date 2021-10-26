@@ -1474,8 +1474,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # Otherwise the wasm file is produced alongside the final target.
     wasm_target = get_secondary_target(target, '.wasm')
 
-  if settings.SAFE_HEAP not in [0, 1]:
-    exit_with_error('emcc: SAFE_HEAP must be 0 or 1')
+  if settings.SAFE_HEAP not in [0, 1, 2]:
+    exit_with_error('emcc: SAFE_HEAP must be 0, 1 or 2')
 
   if not settings.WASM:
     # When the user requests non-wasm output, we enable wasm2js. that is,
@@ -2014,10 +2014,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
         diagnostics.warning('experimental', '-s MAIN_MODULE + pthreads is experimental')
       elif settings.LINKABLE:
         diagnostics.warning('experimental', '-s LINKABLE + pthreads is experimental')
-
-      default_setting('SUPPORT_LONGJMP', 0)
-      if settings.SUPPORT_LONGJMP:
-        exit_with_error('SUPPORT_LONGJMP is not compatible with pthreads + dynamic linking')
 
     if settings.PROXY_TO_WORKER:
       exit_with_error('--proxy-to-worker is not supported with -s USE_PTHREADS>0! Use the option -s PROXY_TO_PTHREAD=1 if you want to run the main thread of a multithreaded application in a web worker.')
