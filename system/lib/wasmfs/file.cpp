@@ -34,6 +34,7 @@ __wasi_errno_t MemoryFile::write(const uint8_t* buf, size_t len, off_t offset) {
 }
 
 __wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
+  assert(offset + len - 1 < buffer.size());
   std::memcpy(buf, &buffer[offset], len);
 
   return __WASI_ERRNO_SUCCESS;

@@ -120,6 +120,7 @@ def with_wasmfs(f):
   def metafunc(self, wasmfs):
     if wasmfs:
       self.set_setting('WASMFS')
+      self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
       f(self)
     else:
       f(self)
@@ -11180,3 +11181,7 @@ void foo() {}
   @with_wasmfs
   def test_unistd_seek(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_seek.c')
+
+  @with_wasmfs
+  def test_unistd_mkdir(self):
+    self.do_run_in_out_file_test('wasmfs/wasmfs_mkdir.c')

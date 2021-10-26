@@ -28,11 +28,11 @@ long __syscall_dup2(long oldfd, long newfd) {
   // If oldfd is not a valid file descriptor, then the call fails,
   // and newfd is not closed.
   if (!oldOpenFile) {
-    return -(EBADF);
+    return -EBADF;
   }
 
   if (newfd < 0) {
-    return -(EBADF);
+    return -EBADF;
   }
 
   if (oldfd == newfd) {
@@ -51,7 +51,7 @@ long __syscall_dup(long fd) {
   // Check that an open file exists corresponding to the given fd.
   auto openFile = fileTable[fd];
   if (!openFile) {
-    return -(EBADF);
+    return -EBADF;
   }
 
   return fileTable.add(openFile.unlocked());
@@ -244,7 +244,7 @@ long __syscall_fstat64(long fd, long buf) {
   auto openFile = FileTable::get()[fd];
 
   if (!openFile) {
-    return -(EBADF);
+    return -EBADF;
   }
 
   auto file = openFile.locked().getFile();
@@ -298,77 +298,101 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   assert(((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
                       O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE)) == 0);
 
-  std::vector<std::string> pathParts;
+  auto pathParts = splitPath((char*)pathname);
 
-  char newPathName[strlen((char*)pathname) + 1];
-  strcpy(newPathName, (char*)pathname);
-
-  // TODO: Support relative paths. i.e. specify cwd if path is relative.
-  // TODO: Other path parsing edge cases.
-  char* current;
-
-  current = strtok(newPathName, "/\n");
-  while (current != NULL) {
-    pathParts.push_back(current);
-    current = strtok(NULL, "/\n");
+  if (pathParts.empty()) {
+    return -EINVAL;
   }
 
-  std::shared_ptr<File> curr = getRootDirectory();
+  auto base = pathParts[pathParts.size() - 1];
 
-  for (int i = 0; i < pathParts.size(); i++) {
-    auto directory = curr->dynCast<Directory>();
+  // Root directory
+  if (pathParts.size() == 1 && pathParts[0] == "/") {
+    auto openFile =
+      std::make_shared<OpenFileState>(0, flags, getRootDirectory());
+    return FileTable::get().add(openFile);
+  }
 
-    // If file is nullptr, then the file was not a Directory.
-    // TODO: Change this to accommodate symlinks
-    if (!directory) {
-      return -(ENOTDIR);
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  // Parent node doesn't exist.
+  if (!parentDir) {
+    return err;
+  }
+
+  auto lockedParentDir = parentDir->locked();
+
+  auto curr = lockedParentDir.getEntry(base);
+
+  // The requested node was not found.
+  if (!curr) {
+    // If curr is the last element and the create flag is specified
+    // If O_DIRECTORY is also specified, still create a regular file:
+    // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
+    if (flags & O_CREAT) {
+      // Create an empty in-memory file.
+      auto created = std::make_shared<MemoryFile>(mode);
+
+      lockedParentDir.setEntry(base, created);
+      auto openFile = std::make_shared<OpenFileState>(0, flags, created);
+
+      return FileTable::get().add(openFile);
+    } else {
+      return -ENOENT;
     }
-
-    // Find the next entry in the current directory entry
-#ifdef WASMFS_DEBUG
-    directory->locked().printKeys();
-#endif
-    curr = directory->locked().getEntry(pathParts[i]);
-
-    // Requested entry (file or directory)
-    if (!curr) {
-      // Create last element in path if O_CREAT is specified.
-      // If O_DIRECTORY is also specified, still create a regular file:
-      // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
-      if (i == pathParts.size() - 1 && flags & O_CREAT) {
-        auto lockedDir = directory->locked();
-
-        // Create an empty in-memory file.
-        auto created = std::make_shared<MemoryFile>(mode);
-
-        lockedDir.setEntry(pathParts[i], created);
-        auto openFile = std::make_shared<OpenFileState>(0, flags, created);
-
-        return FileTable::get().add(openFile);
-      } else {
-        return -(ENOENT);
-      }
-    }
-
-#ifdef WASMFS_DEBUG
-    std::vector<char> temp(pathParts[i].begin(), pathParts[i].end());
-    emscripten_console_log(&temp[0]);
-#endif
   }
 
   // Fail if O_DIRECTORY is specified and pathname is not a directory
   if (flags & O_DIRECTORY && !curr->is<Directory>()) {
-    return -(ENOTDIR);
+    return -ENOTDIR;
   }
 
   // Return an error if the file exists and O_CREAT and O_EXCL are specified.
   if (flags & O_EXCL && flags & O_CREAT) {
-    return -(EEXIST);
+    return -EEXIST;
   }
 
   auto openFile = std::make_shared<OpenFileState>(0, flags, curr);
 
   return FileTable::get().add(openFile);
+}
+
+long __syscall_mkdir(long path, long mode) {
+  auto pathParts = splitPath((char*)path);
+
+  if (pathParts.empty()) {
+    return -EINVAL;
+  }
+  // Root (/) directory.
+  if (pathParts.empty() || pathParts.size() == 1 && pathParts[0] == "/") {
+    return -EEXIST;
+  }
+
+  auto base = pathParts[pathParts.size() - 1];
+
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  if (!parentDir) {
+    // parent node doesn't exist
+    return err;
+  }
+
+  auto lockedParentDir = parentDir->locked();
+
+  auto curr = lockedParentDir.getEntry(base);
+
+  // Check if the requested directory already exists.
+  if (curr) {
+    return -EEXIST;
+  } else {
+    // Create an empty in-memory directory.
+    auto created = std::make_shared<Directory>(mode);
+
+    lockedParentDir.setEntry(base, created);
+    return 0;
+  }
 }
 
 __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
