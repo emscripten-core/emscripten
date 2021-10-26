@@ -89,14 +89,13 @@ To use cmake with Emscripten, ``emcmake`` wrapper can be used. A simple ``CMakeL
   target_link_options(
       <target>
 
-      "-s WASM=1"
-      "-s DISABLE_EXCEPTION_CATCHING=0"
-      "-s ALLOW_MEMORY_GROWTH=1"
-      "-s MODULARIZE=1"
-      "-s ALLOW_MEMORY_GROWTH=1"
+      -sDISABLE_EXCEPTION_CATCHING=0
+      -sALLOW_MEMORY_GROWTH
+      -sMODULARIZE
+      -sALLOW_MEMORY_GROWTH
   )
 
-The Emscripten specific options are added to the ``target_link_options`` command, quotes can be omitted by removing the space ``-sWASM=1``. And assumming we are in a build directory just below the root, the build files can be generated with,
+The Emscripten specific options are added to the ``target_link_options`` command. And assumming we are in a build directory just below the root, the build files can be generated with,
 
 .. code-block:: bash
 
@@ -104,6 +103,8 @@ The Emscripten specific options are added to the ``target_link_options`` command
 
 The ``emcmake`` wrapper adds the flag, ``-DCMAKE_TOOLCHAIN_FILE=<emscripten cmake toolchain>`` if it is not already present. Subsequently building is just a normal call to ``ninja``, no wrappers required (same for other build systems like ``make``). This would produce the required files in the build directory. CMake automatically adds ``-g`` for Debug builds.
 
+Using vcpkg with Emscripten
+---------------------------
 The ``vcpkg`` C++ package manager also has a Emscripten community triplet which could used to pull in some libraries. Beware that this is community supported, so all the packages might not compile. But for the ones which do, it is pretty easy, the ``CMakeLists.txt`` won't need any extra changes other than the normal ``find_package`` call but generating the build files needs some additional arguments.
 
 .. code-block:: bash
