@@ -192,9 +192,7 @@ def main():
         shared.Cache.erase_file('sysroot_install.stamp')
       system_libs.ensure_sysroot()
     elif what == 'struct_info':
-      if force:
-        shared.Cache.erase_file('generated_struct_info' + ('64' if settings.MEMORY64 else '32') + '.json')
-      emscripten.generate_struct_info()
+      emscripten.generate_struct_info(force=force)
     elif what in PORTS:
       build_port(what)
     else:
