@@ -88,11 +88,9 @@ To use cmake with Emscripten, ``emcmake`` wrapper can be used. A simple ``CMakeL
   add_executable(<target> <sources>)
   target_link_options(
       <target>
-
       -sDISABLE_EXCEPTION_CATCHING=0
       -sALLOW_MEMORY_GROWTH
       -sMODULARIZE
-      -sALLOW_MEMORY_GROWTH
   )
 
 The Emscripten specific options are added to the ``target_link_options`` command. And assumming we are in a build directory just below the root, the build files can be generated with,
