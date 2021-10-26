@@ -274,7 +274,7 @@ mergeInto(LibraryManager.library, {
         // memory can grow, we can't hold on to references of the
         // memory buffer, as they may get invalidated. That means we
         // need to do copy its contents.
-        if (buffer.buffer === HEAP8.buffer) {
+        if (HEAP8 && buffer.buffer === HEAP8.buffer) {
           canOwn = false;
         }
 #endif // ALLOW_MEMORY_GROWTH
