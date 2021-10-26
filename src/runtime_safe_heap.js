@@ -172,9 +172,6 @@ function alignfault() {
   warnOnce('alignment fault');
 #endif
 }
-function ftfault() {
-  abort('Function table mask error');
-}
 #endif
 
 #if USE_ASAN
