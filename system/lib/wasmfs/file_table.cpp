@@ -17,6 +17,12 @@ namespace wasmfs {
 static void preloadFiles() {
   static bool init = []() {
     int numDirs = EM_ASM_INT({return FS.directoryBuffer.length});
+    int numFiles = EM_ASM_INT({return FS.fileBuffer.length});
+
+    // If there are no preloaded files, exit early.
+    if (numFiles == 0) {
+      return true;
+    }
 
     auto curr = getRootDirectory();
     for (int i = 0; i < numDirs; i++) {
@@ -35,8 +41,6 @@ static void preloadFiles() {
       curr->locked().setEntry((char*)dirName, created);
       curr = created;
     }
-
-    int numFiles = EM_ASM_INT({return FS.fileBuffer.length});
 
     for (int i = 0; i < numFiles; i++) {
       int fileName = EM_ASM_INT(

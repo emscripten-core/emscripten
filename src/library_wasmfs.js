@@ -60,4 +60,6 @@ var WasmfsLibrary = {
 
 mergeInto(LibraryManager.library, WasmfsLibrary);
 
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
+if (WASMFS) {
+  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
+}
