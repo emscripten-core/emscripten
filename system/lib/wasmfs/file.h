@@ -148,14 +148,33 @@ public:
 
 // This class describes a file that lives in Wasm Memory.
 class MemoryFile : public DataFile {
-  std::vector<uint8_t> buffer;
 
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
 
+protected:
+  std::vector<uint8_t> buffer;
+
 public:
   MemoryFile(mode_t mode) : DataFile(mode) {}
+
+  class Handle : public DataFile::Handle {
+
+    std::shared_ptr<MemoryFile> getFile() { return file->cast<MemoryFile>(); }
+
+  public:
+    Handle(std::shared_ptr<File> dataFile) : DataFile::Handle(dataFile) {}
+    void writeFromJS(int JSindex, int fileSize) {
+      getFile()->buffer.resize(fileSize);
+      getFile()->size = getFile()->buffer.size();
+      EM_ASM({ HEAPU8.set(FS.wasmfsFileBuffer[$1].fileData, $0); },
+             &getFile()->buffer[0],
+             JSindex);
+    }
+  };
+
+  Handle locked() { return Handle(shared_from_this()); }
 };
 
 } // namespace wasmfs

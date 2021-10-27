@@ -10,6 +10,75 @@
 
 namespace wasmfs {
 
+// Initialize files specified by --preload-file option.
+// Set up directories and files from wasmfsDirectoryBuffer and wasmfsFileBuffer
+// from JS. This function will be called before any file operation to ensure any
+// preloaded files are eagerly available for use.
+static void preloadFiles() {
+  static bool init = []() {
+    int numDirs = EM_ASM_INT({return FS.wasmfsDirectoryBuffer.length});
+
+    auto curr = getRootDirectory();
+    for (int i = 0; i < numDirs; i++) {
+      int dirName = EM_ASM_INT(
+        {
+          var s = FS.wasmfsDirectoryBuffer[$0];
+          var len = lengthBytesUTF8(s) + 1;
+          var buf = stackAlloc(len);
+          stringToUTF8(s, buf, len);
+          return buf;
+        },
+        i);
+
+      auto created = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
+
+      curr->locked().setEntry((char*)dirName, created);
+      curr = created;
+    }
+
+    int numFiles = EM_ASM_INT({return FS.wasmfsFileBuffer.length});
+
+    for (int i = 0; i < numFiles; i++) {
+      int fileName = EM_ASM_INT(
+        {
+          var s = FS.wasmfsFileBuffer[$0].pathName;
+          var len = lengthBytesUTF8(s) + 1;
+          var buf = stackAlloc(len);
+          stringToUTF8(s, buf, len);
+          return buf;
+        },
+        i);
+
+      int mode = EM_ASM_INT(
+        {
+          var s = FS.wasmfsFileBuffer[$0].mode;
+          var len = lengthBytesUTF8(s) + 1;
+          var buf = stackAlloc(len);
+          stringToUTF8(s, buf, len);
+          return buf;
+        },
+        i);
+
+      int size =
+        EM_ASM_INT({return FS.wasmfsFileBuffer[$0].fileData.length}, i);
+
+      auto pathParts = splitPath((char*)fileName);
+
+      auto base = pathParts[pathParts.size() - 1];
+
+      auto created = std::make_shared<MemoryFile>(mode);
+
+      auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1);
+
+      parentDir->locked().setEntry(base, created);
+
+      created->locked().writeFromJS(i, size);
+    }
+
+    return true;
+  }();
+}
+
 std::vector<std::shared_ptr<OpenFileState>> FileTable::entries;
 
 static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
@@ -92,6 +161,7 @@ public:
 };
 
 FileTable::FileTable() {
+  preloadFiles();
   entries.push_back(
     std::make_shared<OpenFileState>(0, O_RDONLY, StdinFile::getSingleton()));
   entries.push_back(
@@ -103,6 +173,8 @@ FileTable::FileTable() {
 // Initialize default directories including dev/stdin, dev/stdout, dev/stderr.
 // Refers to same std streams in the open file table.
 std::shared_ptr<Directory> getRootDirectory() {
+  static std::atomic<bool> entered(false);
+
   static const std::shared_ptr<Directory> rootDirectory = [] {
     std::shared_ptr<Directory> rootDirectory =
       std::make_shared<Directory>(S_IRUGO | S_IXUGO);
@@ -117,6 +189,15 @@ std::shared_ptr<Directory> getRootDirectory() {
 
     return rootDirectory;
   }();
+
+  // Exit recursion early as preloadFiles calls getRootDirectory.
+  if (entered) {
+    return rootDirectory;
+  }
+
+  entered = true;
+
+  preloadFiles();
 
   return rootDirectory;
 }
@@ -188,6 +269,12 @@ std::vector<std::string> splitPath(char* pathname) {
   }
 
   return pathParts;
+}
+
+std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
+                                  std::vector<std::string>::iterator end) {
+  long err = 0;
+  return getDir(begin, end, err);
 }
 
 std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
