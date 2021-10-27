@@ -165,12 +165,12 @@ public:
 
   public:
     Handle(std::shared_ptr<File> dataFile) : DataFile::Handle(dataFile) {}
-    void writeFromJS(int JSindex, int fileSize) {
+    void writeFromJS(int index, int fileSize) {
       getFile()->buffer.resize(fileSize);
       getFile()->size = getFile()->buffer.size();
-      EM_ASM({ HEAPU8.set(FS.wasmfsFileBuffer[$1].fileData, $0); },
+      EM_ASM({ HEAPU8.set(FS.fileBuffer[$1].fileData, $0); },
              &getFile()->buffer[0],
-             JSindex);
+             index);
     }
   };
 

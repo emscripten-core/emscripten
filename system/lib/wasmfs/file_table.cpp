@@ -11,18 +11,18 @@
 namespace wasmfs {
 
 // Initialize files specified by --preload-file option.
-// Set up directories and files from wasmfsDirectoryBuffer and wasmfsFileBuffer
+// Set up directories and files from directoryBuffer and fileBuffer
 // from JS. This function will be called before any file operation to ensure any
 // preloaded files are eagerly available for use.
 static void preloadFiles() {
   static bool init = []() {
-    int numDirs = EM_ASM_INT({return FS.wasmfsDirectoryBuffer.length});
+    int numDirs = EM_ASM_INT({return FS.directoryBuffer.length});
 
     auto curr = getRootDirectory();
     for (int i = 0; i < numDirs; i++) {
       int dirName = EM_ASM_INT(
         {
-          var s = FS.wasmfsDirectoryBuffer[$0];
+          var s = FS.directoryBuffer[$0];
           var len = lengthBytesUTF8(s) + 1;
           var buf = stackAlloc(len);
           stringToUTF8(s, buf, len);
@@ -36,12 +36,12 @@ static void preloadFiles() {
       curr = created;
     }
 
-    int numFiles = EM_ASM_INT({return FS.wasmfsFileBuffer.length});
+    int numFiles = EM_ASM_INT({return FS.fileBuffer.length});
 
     for (int i = 0; i < numFiles; i++) {
       int fileName = EM_ASM_INT(
         {
-          var s = FS.wasmfsFileBuffer[$0].pathName;
+          var s = FS.fileBuffer[$0].pathName;
           var len = lengthBytesUTF8(s) + 1;
           var buf = stackAlloc(len);
           stringToUTF8(s, buf, len);
@@ -51,7 +51,7 @@ static void preloadFiles() {
 
       int mode = EM_ASM_INT(
         {
-          var s = FS.wasmfsFileBuffer[$0].mode;
+          var s = FS.fileBuffer[$0].mode;
           var len = lengthBytesUTF8(s) + 1;
           var buf = stackAlloc(len);
           stringToUTF8(s, buf, len);
@@ -59,8 +59,7 @@ static void preloadFiles() {
         },
         i);
 
-      int size =
-        EM_ASM_INT({return FS.wasmfsFileBuffer[$0].fileData.length}, i);
+      int size = EM_ASM_INT({return FS.fileBuffer[$0].fileData.length}, i);
 
       auto pathParts = splitPath((char*)fileName);
 
