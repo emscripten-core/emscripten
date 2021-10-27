@@ -11192,26 +11192,56 @@ void foo() {}
   def test_unistd_mkdir(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_mkdir.c')
 
-  @parameterized({
-    'preload': (['--preload-file', 'somefile.txt'],)
-  })
-  def test_wasmfs_include_file(self, args):
-    self.set_setting('WASMFS')
-    create_file('somefile.txt', 'hello from a file with lots of data and stuff in it thank you very much')
-    create_file('main.cpp', r'''
-      #include <stdio.h>
-      int main() {
-        FILE *f = fopen("somefile.txt", "r");
-        char buf[100];
-        fread(buf, 1, 20, f);
-        buf[20] = 0;
-        fclose(f);
-        printf("|%s|\n", buf);
-        return 0;
-      }
-    ''')
+  # TODO: Merge with test in test_browser when relative paths are supported.
+  @with_wasmfs
+  def test_preload_file(self):
+    create_file('somefile.txt', 'load me right before running the code please')
+    create_file('.somefile.txt', 'load me right before running the code please')
+    create_file('some@file.txt', 'load me right before running the code please')
 
-    self.run_process([EMXX, 'main.cpp'] + args)
-    # run in node.js to ensure we verify that file preloading works there
-    result = self.run_js('a.out.js', engine=config.NODE_JS)
-    self.assertContained('|hello from a file wi|', result)
+    absolute_src_path = os.path.abspath('somefile.txt')
+
+    def make_main(path):
+      print('make main at', path)
+      path = path.replace('\\', '\\\\').replace('"', '\\"') # Escape tricky path name for use inside a C string.
+      create_file('main.cpp', r'''
+        #include <assert.h>
+        #include <stdio.h>
+        #include <string.h>
+        #include <emscripten.h>
+        int main() {
+          FILE *f = fopen("%s", "r");
+          char buf[100];
+          fread(buf, 1, 20, f);
+          buf[20] = 0;
+          fclose(f);
+          printf("|%%s|\n", buf);
+          return 0;
+        }
+        ''' % path)
+
+    test_cases = [
+      # (source preload-file string, file on target FS to load)
+      ("somefile.txt", "somefile.txt"),
+      (".somefile.txt@somefile.txt", "somefile.txt"),
+      ("./somefile.txt", "somefile.txt"),
+      ("somefile.txt@file.txt", "file.txt"),
+      ("./somefile.txt@file.txt", "file.txt"),
+      ("./somefile.txt@./file.txt", "file.txt"),
+      ("somefile.txt@/file.txt", "file.txt"),
+      ("somefile.txt@/", "somefile.txt"),
+      (absolute_src_path + "@file.txt", "file.txt"),
+      (absolute_src_path + "@/file.txt", "file.txt"),
+      (absolute_src_path + "@/", "somefile.txt"),
+      ("somefile.txt@/directory/file.txt", "/directory/file.txt"),
+      ("somefile.txt@/directory/file.txt", "directory/file.txt"),
+      (absolute_src_path + "@/directory/file.txt", "directory/file.txt"),
+      ("some@@file.txt@other.txt", "other.txt"),
+      ("some@@file.txt@some@@otherfile.txt", "some@otherfile.txt")]
+
+    for srcpath, dstpath in test_cases:
+      print('Testing', srcpath, dstpath)
+      make_main(dstpath)
+      self.run_process([EMXX, 'main.cpp', '--preload-file', srcpath])
+      result = self.run_js('a.out.js', engine=config.NODE_JS)
+      self.assertContained('|load me right before|', result)
