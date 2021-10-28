@@ -16,6 +16,10 @@ struct dso {
   em_arg_callback_func onerror;
   void* user_data;
 
+  // Flags used to open the library.  We need to cache these so that
+  // (in the future) other threads can mirror the open library state.
+  int flags;
+
   // Flexible array; must be final element of struct
   char name[];
 };

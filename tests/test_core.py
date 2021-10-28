@@ -2456,7 +2456,7 @@ The current type of b is: 9
     self.emcc_args += ['-fno-builtin']
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('ASSERTIONS=2')
+    self.set_setting('ASSERTIONS', 2)
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_emmalloc.c')
 
@@ -7012,6 +7012,10 @@ someweirdtext
     self.emcc_args += ['--bind']
     self.do_run_in_out_file_test('embind/test_val.cpp')
 
+  def test_embind_val_assignment(self):
+    err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '--bind', '-c'])
+    self.assertContained('candidate function not viable: expects an lvalue for object argument', err)
+
   @no_wasm2js('wasm_bigint')
   def test_embind_i64_val(self):
     self.set_setting('WASM_BIGINT')
@@ -8566,7 +8570,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-Wno-experimental')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_PTHREADS')
-    self.set_setting('LLD_REPORT_UNDEFINED')
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     main = test_file('core/pthread/test_pthread_dylink.c')
 
@@ -8584,8 +8587,18 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-Wno-experimental')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_PTHREADS')
-    self.set_setting('PTHREAD_POOL_SIZE=1')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
     main = test_file('core/pthread/test_pthread_dylink_tls.c')
+    self.dylink_testf(main, need_reverse=False)
+
+  @needs_dylink
+  @node_pthreads
+  def test_pthread_dylink_longjmp(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PTHREAD_POOL_SIZE=1')
+    main = test_file('core/pthread/test_pthread_dylink_longjmp.c')
     self.dylink_testf(main, need_reverse=False)
 
   @needs_dylink

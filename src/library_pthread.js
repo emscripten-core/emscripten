@@ -498,7 +498,7 @@ var LibraryPThread = {
 
   $registerTlsInit: function(tlsInitFunc, moduleExports, metadata) {
 #if DYLINK_DEBUG
-    out("registerTlsInit: " + tlsInitFunc);
+    err("registerTlsInit: " + tlsInitFunc);
 #endif
 #if RELOCATABLE
     // In relocatable builds, we use the result of calling tlsInitFunc
@@ -677,7 +677,7 @@ var LibraryPThread = {
     if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
     if (transferredCanvasNames) transferredCanvasNames = transferredCanvasNames.split(',');
 #if GL_DEBUG
-    out('pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
+    err('pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
 #endif
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own

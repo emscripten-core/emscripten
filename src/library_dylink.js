@@ -99,6 +99,9 @@ var LibraryDylink = {
         GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
       }
       if (replace || GOT[symName].value == 0) {
+#if DYLINK_DEBUG
+        err("updateGOT: before: " + symName + ' : ' + GOT[symName].value);
+#endif
         if (typeof value === 'function') {
           GOT[symName].value = addFunction(value);
 #if DYLINK_DEBUG
@@ -112,7 +115,7 @@ var LibraryDylink = {
           err("unhandled export type for `" + symName + "`: " + (typeof value));
         }
 #if DYLINK_DEBUG
-        err("updateGOT: " + symName + ' : ' + GOT[symName].value);
+        err("updateGOT:  after: " + symName + ' : ' + GOT[symName].value);
 #endif
       }
 #if DYLINK_DEBUG
@@ -418,7 +421,7 @@ var LibraryDylink = {
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler', '$getDylinkMetadata', '$alignMemory'],
-  $loadWebAssemblyModule: function(binary, flags) {
+  $loadWebAssemblyModule: function(binary, flags, handle) {
     var metadata = getDylinkMetadata(binary);
 #if ASSERTIONS
     var originalTable = wasmTable;
@@ -528,17 +531,7 @@ var LibraryDylink = {
         assert(wasmTable === originalTable);
 #endif
         // add new entries to functionsInTableMap
-        for (var i = 0; i < metadata.tableSize; i++) {
-          var item = wasmTable.get(tableBase + i);
-#if ASSERTIONS
-          // verify that the new table region was filled in
-          assert(item !== undefined, 'table entry was not filled in');
-#endif
-          // Ignore null values.
-          if (item) {
-            functionsInTableMap.set(item, tableBase + i);
-          }
-        }
+        updateTableMap(tableBase, metadata.tableSize);
         moduleExports = relocateExports(instance.exports, memoryBase);
         if (!flags.allowUndefined) {
           reportUndefinedSymbols();
@@ -712,11 +705,11 @@ var LibraryDylink = {
       // module not preloaded - load lib data and create new module from it
       if (flags.loadAsync) {
         return loadLibData(lib).then(function(libData) {
-          return loadWebAssemblyModule(libData, flags);
+          return loadWebAssemblyModule(libData, flags, handle);
         });
       }
 
-      return loadWebAssemblyModule(loadLibData(lib), flags);
+      return loadWebAssemblyModule(loadLibData(lib), flags, handle);
     }
 
     // module for lib is loaded - update the dso & global namespace
@@ -776,11 +769,15 @@ var LibraryDylink = {
 
   // void* dlopen(const char* filename, int flags);
   $dlopenInternal__deps: ['$FS', '$ENV', '$dlSetError'],
-  $dlopenInternal: function(handle, flags, jsflags) {
+  $dlopenInternal: function(handle, jsflags) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
-    var searchpaths = [];
     var filename = UTF8ToString(handle + {{{ C_STRUCTS.dso.name }}});
+    var flags = {{{ makeGetValue('handle', C_STRUCTS.dso.flags, 'i32') }}};
+#if DYLINK_DEBUG
+    err('dlopenInternal: ' + filename);
+#endif
+    var searchpaths = [];
 
     var isValidFile = function(filename) {
       var target = FS.findObject(filename);
@@ -800,10 +797,6 @@ var LibraryDylink = {
         }
       }
     }
-
-#if DYLINK_DEBUG
-    err('dlopenInternal: ' + filename);
-#endif
 
     // We don't care about RTLD_NOW and RTLD_LAZY.
     var combinedFlags = {
@@ -830,14 +823,14 @@ var LibraryDylink = {
 
   _dlopen_js__deps: ['$dlopenInternal'],
   _dlopen_js__sig: 'iiii',
-  _dlopen_js: function(handle, flags) {
+  _dlopen_js: function(handle) {
 #if ASYNCIFY
     return Asyncify.handleSleep(function(wakeUp) {
       var jsflags = {
         loadAsync: true,
         fs: FS, // load libraries from provided filesystem
       }
-      var promise = dlopenInternal(handle, flags, jsflags);
+      var promise = dlopenInternal(handle, jsflags);
       promise.then(wakeUp).catch(function() { wakeUp(0) });
     });
 #else
@@ -845,7 +838,7 @@ var LibraryDylink = {
       loadAsync: false,
       fs: FS, // load libraries from provided filesystem
     }
-    return dlopenInternal(handle, flags, jsflags);
+    return dlopenInternal(handle, jsflags);
 #endif
   },
 
@@ -857,7 +850,7 @@ var LibraryDylink = {
 #endif
   ],
   _emscripten_dlopen_js__sig: 'viiiii',
-  _emscripten_dlopen_js: function(handle, flags, onsuccess, onerror) {
+  _emscripten_dlopen_js: function(handle, onsuccess, onerror) {
     function errorCallback(e) {
       var filename = UTF8ToString({{{ makeGetValue('handle', C_STRUCTS.dso.name, '*') }}});
       dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);
@@ -870,7 +863,7 @@ var LibraryDylink = {
     }
 
     {{{ runtimeKeepalivePush() }}}
-    var promise = dlopenInternal(handle, flags, { loadAsync: true });
+    var promise = dlopenInternal(handle, { loadAsync: true });
     if (promise) {
       promise.then(successCallback, errorCallback);
     } else {

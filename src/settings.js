@@ -304,6 +304,11 @@ var SUPPORT_BIG_ENDIAN = 0;
 // Check each write to the heap, for example, this will give a clear
 // error on what would be segfaults in a native build (like dereferencing
 // 0). See runtime_safe_heap.js for the actual checks performed.
+// Set to value 1 to test for safe behavior for both Wasm+Wasm2JS builds.
+// Set to value 2 to test for safe behavior for only Wasm builds. (notably,
+// Wasm-only builds allow unaligned memory accesses. Note, however, that
+// on some architectures unaligned accesses can be very slow, so it is still
+// a good idea to verify your code with the more strict mode 1)
 // [link]
 var SAFE_HEAP = 0;
 

@@ -55,7 +55,6 @@ LibraryManager.library = {
   // to native code.
   segfault: function() { segfault(); },
   alignfault: function() { alignfault(); },
-  ftfault: function() { ftfault(); },
 #endif
 
   // ==========================================================================

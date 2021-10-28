@@ -57,14 +57,14 @@ int main() {
   errno = 0;
   // Attempt to open a non-existent file path.
   int fd4 = open("/foo", O_RDWR);
-  assert(errno == ENOENT);
   printf("Errno: %s\n", strerror(errno));
+  assert(errno == ENOENT);
 
   errno = 0;
   // Attempt to open a file path with a file intermediary.
   int fd5 = open("/dev/stdout/foo", O_RDWR);
-  assert(errno == ENOTDIR);
   printf("Errno: %s\n", strerror(errno));
+  assert(errno == ENOTDIR);
 
   errno = 0;
   // Attempt to open and write to the root directory.
@@ -72,6 +72,11 @@ int main() {
   write(fd6, msg, strlen(msg));
   printf("Errno: %s\n", strerror(errno));
   assert(errno == EISDIR);
+
+  errno = 0;
+  // Attempt to open a blank path.
+  int fd7 = open("", O_RDONLY);
+  assert(errno == EINVAL);
 
   return 0;
 }

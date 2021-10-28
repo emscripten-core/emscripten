@@ -13,10 +13,10 @@ namespace wasmfs {
 std::vector<std::shared_ptr<OpenFileState>> FileTable::entries;
 
 static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
-                                     __wasi_size_t len,
+                                     size_t len,
                                      void (*console_write)(const char*),
                                      std::vector<char>& fd_write_buffer) {
-  for (__wasi_size_t j = 0; j < len; j++) {
+  for (size_t j = 0; j < len; j++) {
     uint8_t current = buf[j];
     if (current == '\0' || current == '\n') {
       fd_write_buffer.push_back('\0'); // for null-terminated C strings
@@ -31,18 +31,19 @@ static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
 
 class StdinFile : public DataFile {
 
-  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override {
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;
   }
 
-  __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) override {
+  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;
   };
 
 public:
+  StdinFile(mode_t mode) : DataFile(mode) {}
   static std::shared_ptr<StdinFile> getSingleton() {
     static const std::shared_ptr<StdinFile> stdinFile =
-      std::make_shared<StdinFile>();
+      std::make_shared<StdinFile>(S_IRUGO);
     return stdinFile;
   }
 };
@@ -50,18 +51,19 @@ public:
 class StdoutFile : public DataFile {
   std::vector<char> writeBuffer;
 
-  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override {
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
     return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
   }
 
-  __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) override {
+  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;
   };
 
 public:
+  StdoutFile(mode_t mode) : DataFile(mode) {}
   static std::shared_ptr<StdoutFile> getSingleton() {
     static const std::shared_ptr<StdoutFile> stdoutFile =
-      std::make_shared<StdoutFile>();
+      std::make_shared<StdoutFile>(S_IWUGO);
     return stdoutFile;
   }
 };
@@ -72,37 +74,39 @@ class StderrFile : public DataFile {
   // TODO: May not want to proxy stderr (fd == 2) to the main thread.
   // This will not show in HTML - a console.warn in a worker is sufficient.
   // This would be a change from the current FS.
-  __wasi_errno_t write(const uint8_t* buf, __wasi_size_t len) override {
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
     return writeStdBuffer(buf, len, &emscripten_console_error, writeBuffer);
   }
 
-  __wasi_errno_t read(const uint8_t* buf, __wasi_size_t len) override {
+  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;
   };
 
 public:
+  StderrFile(mode_t mode) : DataFile(mode) {}
   static std::shared_ptr<StderrFile> getSingleton() {
     static const std::shared_ptr<StderrFile> stderrFile =
-      std::make_shared<StderrFile>();
+      std::make_shared<StderrFile>(S_IWUGO);
     return stderrFile;
   }
 };
 
 FileTable::FileTable() {
   entries.push_back(
-    std::make_shared<OpenFileState>(0, StdinFile::getSingleton()));
+    std::make_shared<OpenFileState>(0, O_RDONLY, StdinFile::getSingleton()));
   entries.push_back(
-    std::make_shared<OpenFileState>(0, StdoutFile::getSingleton()));
+    std::make_shared<OpenFileState>(0, O_WRONLY, StdoutFile::getSingleton()));
   entries.push_back(
-    std::make_shared<OpenFileState>(0, StderrFile::getSingleton()));
+    std::make_shared<OpenFileState>(0, O_WRONLY, StderrFile::getSingleton()));
 }
 
 // Initialize default directories including dev/stdin, dev/stdout, dev/stderr.
 // Refers to same std streams in the open file table.
 std::shared_ptr<Directory> getRootDirectory() {
   static const std::shared_ptr<Directory> rootDirectory = [] {
-    std::shared_ptr<Directory> rootDirectory = std::make_shared<Directory>();
-    auto devDirectory = std::make_shared<Directory>();
+    std::shared_ptr<Directory> rootDirectory =
+      std::make_shared<Directory>(S_IRUGO | S_IXUGO);
+    auto devDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
     rootDirectory->locked().setEntry("dev", devDirectory);
 
     auto dir = devDirectory->locked();
@@ -161,6 +165,76 @@ FileTable::Handle::add(std::shared_ptr<OpenFileState> openFileState) {
       return i;
     }
   }
-  return -(EBADF);
+  return -EBADF;
+}
+
+std::vector<std::string> splitPath(char* pathname) {
+  std::vector<std::string> pathParts;
+  char newPathName[strlen(pathname) + 1];
+  strcpy(newPathName, pathname);
+
+  // TODO: Support relative paths. i.e. specify cwd if path is relative.
+  // TODO: Other path parsing edge cases.
+  char* current;
+  // Handle absolute path.
+  if (newPathName[0] == '/') {
+    pathParts.push_back("/");
+  }
+
+  current = strtok(newPathName, "/");
+  while (current != NULL) {
+    pathParts.push_back(current);
+    current = strtok(NULL, "/");
+  }
+
+  return pathParts;
+}
+
+std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
+                                  std::vector<std::string>::iterator end,
+                                  long& err) {
+
+  std::shared_ptr<File> curr;
+  // Check if the first path element is '/', indicating an absolute path.
+  if (*begin == "/") {
+    curr = getRootDirectory();
+    begin++;
+  }
+
+  for (auto it = begin; it != end; ++it) {
+    auto directory = curr->dynCast<Directory>();
+
+    // If file is nullptr, then the file was not a Directory.
+    // TODO: Change this to accommodate symlinks
+    if (!directory) {
+      err = -ENOTDIR;
+      return nullptr;
+    }
+
+    // Find the next entry in the current directory entry
+#ifdef WASMFS_DEBUG
+    directory->locked().printKeys();
+#endif
+    curr = directory->locked().getEntry(*it);
+
+    // Requested entry (file or directory)
+    if (!curr) {
+      err = -ENOENT;
+      return nullptr;
+    }
+
+#ifdef WASMFS_DEBUG
+    emscripten_console_log(it->c_str());
+#endif
+  }
+
+  auto currDirectory = curr->dynCast<Directory>();
+
+  if (!currDirectory) {
+    err = -ENOTDIR;
+    return nullptr;
+  }
+
+  return currDirectory;
 }
 } // namespace wasmfs
