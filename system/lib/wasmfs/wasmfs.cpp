@@ -251,15 +251,15 @@ long __syscall_fstat64(long fd, long buf) {
 
   struct stat* buffer = (struct stat*)buf;
 
-  auto lockedFile = file->locked();
-
   if (file->is<Directory>()) {
     buffer->st_size = 4096;
   } else if (file->is<DataFile>()) {
-    buffer->st_size = lockedFile.getSize();
+    buffer->st_size = file->dynCast<DataFile>()->locked().getSize();
   } else { // TODO: add size of symlinks
     buffer->st_size = 0;
   }
+
+  auto lockedFile = file->locked();
 
   // ATTN: hard-coded constant values are copied from the existing JS file
   // system. Specific values were chosen to match existing library_fs.js values.

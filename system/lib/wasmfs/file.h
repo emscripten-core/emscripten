@@ -57,8 +57,6 @@ public:
 
   public:
     Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
-    virtual size_t getSize() { return file->size; }
-    void setSize(size_t size) { file->size = size; }
     mode_t& mode() { return file->mode; }
     time_t& ctime() { return file->ctime; }
     time_t& mtime() { return file->mtime; }
@@ -71,8 +69,6 @@ protected:
   File(FileKind kind, mode_t mode) : kind(kind), mode(mode) {}
   // A mutex is needed for multiple accesses to the same file.
   std::mutex mutex;
-
-  size_t size = 0;
 
   mode_t mode = 0; // User and group mode bits for access permission.
 
@@ -88,9 +84,7 @@ class DataFile : public File {
   virtual __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) = 0;
   virtual __wasi_errno_t
   write(const uint8_t* buf, size_t len, off_t offset) = 0;
-
-protected:
-  std::vector<uint8_t> buffer;
+  virtual size_t getSize() = 0;
 
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
@@ -112,7 +106,7 @@ public:
       return getFile()->write(buf, len, offset);
     }
 
-    size_t getSize() override { return getFile()->buffer.size(); }
+    size_t getSize() { return getFile()->getSize(); }
   };
 
   Handle locked() { return Handle(shared_from_this()); }
@@ -154,10 +148,12 @@ public:
 
 // This class describes a file that lives in Wasm Memory.
 class MemoryFile : public DataFile {
-
+  std::vector<uint8_t> buffer;
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
+
+  size_t getSize() override { return buffer.size(); }
 
 public:
   MemoryFile(mode_t mode) : DataFile(mode) {}
