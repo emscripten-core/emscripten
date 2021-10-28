@@ -29,7 +29,6 @@ import os
 import re
 import shlex
 import shutil
-import stat
 import sys
 import time
 from enum import Enum, unique, auto
@@ -40,7 +39,7 @@ from urllib.parse import quote
 import emscripten
 from tools import shared, system_libs, utils, ports
 from tools import colored_logger, diagnostics, building
-from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy
+from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, copy_file
 from tools.shared import run_process, read_and_preprocess, exit_with_error, DEBUG
 from tools.shared import do_replace, strip_prefix
 from tools.response_file import substitute_response_files
@@ -616,10 +615,7 @@ def make_js_executable(script):
   with open(script, 'w') as f:
     f.write('#!%s\n' % cmd)
     f.write(src)
-  try:
-    os.chmod(script, stat.S_IMODE(os.stat(script).st_mode) | stat.S_IXUSR) # make executable
-  except OSError:
-    pass # can fail if e.g. writing the executable to /dev/null
+  shared.make_executable(script)
 
 
 def do_split_module(wasm_file):
@@ -938,15 +934,9 @@ def dedup_list(lst):
 
 
 def move_file(src, dst):
-  logging.debug('move: %s -> %s', src, dst)
-  if os.path.isdir(dst):
-    exit_with_error(f'cannot write output file `{dst}`: Is a directory')
-  src = os.path.abspath(src)
-  dst = os.path.abspath(dst)
-  if src == dst:
-    return
-  if dst == os.devnull:
-    return
+  logger.debug('move: %s -> %s', src, dst)
+  assert(src != dst)
+  assert(dst != os.devnull)
   shutil.move(src, dst)
 
 
@@ -2659,7 +2649,7 @@ def phase_source_transforms(options, target):
 
   # Apply a source code transformation, if requested
   if options.js_transform:
-    safe_copy(final_js, final_js + '.tr.js')
+    copy_file(final_js, final_js + '.tr.js')
     final_js += '.tr.js'
     posix = not shared.WINDOWS
     logger.debug('applying transform: %s', options.js_transform)
@@ -2740,6 +2730,8 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   js_target = state.js_target
 
   # The JS is now final. Move it to its final location
+  if os.path.isdir(js_target):
+    exit_with_error(f'cannot write output file `{js_target}`: Is a directory')
   move_file(final_js, js_target)
 
   if not settings.SINGLE_FILE:
@@ -3251,7 +3243,7 @@ def phase_binaryen(target, options, wasm_target):
     shared.configuration.get_temp_files().note(wasm2js)
 
     if settings.WASM == 2:
-      safe_copy(wasm2js, wasm2js_template)
+      copy_file(wasm2js, wasm2js_template)
 
     if settings.WASM != 2:
       final_js = wasm2js
@@ -3575,12 +3567,11 @@ def generate_html(target, options, js_target, target_basename,
 
 
 def generate_worker_js(target, js_target, target_basename):
-  # compiler output is embedded as base64
   if settings.SINGLE_FILE:
+    # compiler output is embedded as base64
     proxy_worker_filename = shared.JS.get_subresource_location(js_target)
-
-  # compiler output goes in .worker.js file
   else:
+    # compiler output goes in .worker.js file
     move_file(js_target, shared.replace_suffix(js_target, '.worker.js'))
     worker_target_basename = target_basename + '.worker'
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'

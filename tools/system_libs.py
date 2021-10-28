@@ -1731,7 +1731,7 @@ def copytree_exist_ok(src, dst):
     if entry.is_dir():
       copytree_exist_ok(srcname, dstname)
     else:
-      shared.safe_copy(srcname, dstname)
+      shared.copy_file(srcname, dstname)
 
 
 def install_system_headers(stamp):
