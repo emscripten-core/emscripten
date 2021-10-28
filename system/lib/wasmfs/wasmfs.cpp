@@ -406,9 +406,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   } else if (whence == SEEK_END) {
     // Only the open file state is altered in seek. Locking the underlying data
     // file here once is sufficient.
-    position =
-      lockedOpenFile.getFile()->dynCast<DataFile>()->locked().getSize() +
-      offset;
+    position = lockedOpenFile.getFile()->locked().getSize() + offset;
   } else {
     return __WASI_ERRNO_INVAL;
   }
