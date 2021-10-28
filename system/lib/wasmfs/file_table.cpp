@@ -20,7 +20,7 @@ static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
     uint8_t current = buf[j];
     if (current == '\0' || current == '\n') {
       fd_write_buffer.push_back('\0'); // for null-terminated C strings
-      console_write(&fd_write_buffer[0]);
+      console_write(fd_write_buffer.data());
       fd_write_buffer.clear();
     } else {
       fd_write_buffer.push_back(current);
@@ -38,6 +38,8 @@ class StdinFile : public DataFile {
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;
   };
+
+  size_t getSize() override { return 0; }
 
 public:
   StdinFile(mode_t mode) : DataFile(mode) {}
@@ -58,6 +60,9 @@ class StdoutFile : public DataFile {
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;
   };
+
+  // /dev/stdout reports a size of 0 in the terminal.
+  size_t getSize() override { return 0; }
 
 public:
   StdoutFile(mode_t mode) : DataFile(mode) {}
@@ -81,6 +86,9 @@ class StderrFile : public DataFile {
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;
   };
+
+  // /dev/stderr reports a size of 0 in the terminal.
+  size_t getSize() override { return 0; }
 
 public:
   StderrFile(mode_t mode) : DataFile(mode) {}
