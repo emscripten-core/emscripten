@@ -61,7 +61,9 @@ std::vector<std::string> splitPath(char* pathname) {
 
   return pathParts;
 }
-
+//
+// Path Parsing utilities
+//
 std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
                                   std::vector<std::string>::iterator end,
                                   long& err) {
