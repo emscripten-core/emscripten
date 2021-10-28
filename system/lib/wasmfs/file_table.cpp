@@ -15,12 +15,12 @@ std::vector<std::shared_ptr<OpenFileState>> FileTable::entries;
 static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
                                      size_t len,
                                      void (*console_write)(const char*),
-                                     std::vector<char>& fd_write_buffer) {
+                                     std::vector<uint8_t>& fd_write_buffer) {
   for (size_t j = 0; j < len; j++) {
     uint8_t current = buf[j];
     if (current == '\0' || current == '\n') {
       fd_write_buffer.push_back('\0'); // for null-terminated C strings
-      console_write(&fd_write_buffer[0]);
+      console_write((char*)fd_write_buffer.data());
       fd_write_buffer.clear();
     } else {
       fd_write_buffer.push_back(current);
@@ -49,10 +49,9 @@ public:
 };
 
 class StdoutFile : public DataFile {
-  std::vector<char> writeBuffer;
 
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
+    return writeStdBuffer(buf, len, &emscripten_console_log, buffer);
   }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
@@ -69,13 +68,12 @@ public:
 };
 
 class StderrFile : public DataFile {
-  std::vector<char> writeBuffer;
 
   // TODO: May not want to proxy stderr (fd == 2) to the main thread.
   // This will not show in HTML - a console.warn in a worker is sufficient.
   // This would be a change from the current FS.
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    return writeStdBuffer(buf, len, &emscripten_console_error, writeBuffer);
+    return writeStdBuffer(buf, len, &emscripten_console_error, buffer);
   }
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {

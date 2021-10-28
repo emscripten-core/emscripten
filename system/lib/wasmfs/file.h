@@ -57,7 +57,9 @@ public:
 
   public:
     Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
-    size_t& size() { return file->size; }
+    virtual size_t getSize() { return file->size; }
+    void setSize(size_t size) { file->size = size; }
+    // size_t& size() { return file->size; }
     mode_t& mode() { return file->mode; }
     time_t& ctime() { return file->ctime; }
     time_t& mtime() { return file->mtime; }
@@ -88,6 +90,9 @@ class DataFile : public File {
   virtual __wasi_errno_t
   write(const uint8_t* buf, size_t len, off_t offset) = 0;
 
+protected:
+  std::vector<uint8_t> buffer;
+
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
   DataFile(mode_t mode) : File(File::DataFileKind, mode) {}
@@ -107,6 +112,8 @@ public:
     __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
       return getFile()->write(buf, len, offset);
     }
+
+    size_t getSize() override { return getFile()->buffer.size(); }
   };
 
   Handle locked() { return Handle(shared_from_this()); }
@@ -148,7 +155,6 @@ public:
 
 // This class describes a file that lives in Wasm Memory.
 class MemoryFile : public DataFile {
-  std::vector<uint8_t> buffer;
 
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
 

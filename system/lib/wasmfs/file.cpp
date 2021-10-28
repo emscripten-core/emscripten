@@ -26,7 +26,6 @@ std::shared_ptr<File> Directory::Handle::getEntry(std::string pathName) {
 __wasi_errno_t MemoryFile::write(const uint8_t* buf, size_t len, off_t offset) {
   if (offset + len >= buffer.size()) {
     buffer.resize(offset + len);
-    size = buffer.size();
   }
   memcpy(&buffer[offset], buf, len);
 
