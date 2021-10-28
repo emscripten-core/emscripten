@@ -111,7 +111,7 @@ var LibraryManager = {
         }
         libraries.push('library_noderawfs.js');
       }
-    } else {
+    } else if (WASMFS) {
       libraries.push('library_wasmfs.js');
     } 
 

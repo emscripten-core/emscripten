@@ -168,8 +168,8 @@ public:
     void writeFromJS(int index, int fileSize) {
       getFile()->buffer.resize(fileSize);
       getFile()->size = getFile()->buffer.size();
-      EM_ASM({ HEAPU8.set(FS.fileBuffer[$1].fileData, $0); },
-             &getFile()->buffer[0],
+      EM_ASM({ HEAPU8.set(FS.preloadedFiles[$1].fileData, $0); },
+             getFile()->buffer.data(),
              index);
     }
   };

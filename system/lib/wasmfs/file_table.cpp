@@ -11,24 +11,26 @@
 namespace wasmfs {
 
 // Initialize files specified by --preload-file option.
-// Set up directories and files from directoryBuffer and fileBuffer
+// Set up directories and files from preloadedDirs and preloadedFiles
 // from JS. This function will be called before any file operation to ensure any
 // preloaded files are eagerly available for use.
 static void preloadFiles() {
   static bool init = []() {
-    int numDirs = EM_ASM_INT({return FS.directoryBuffer.length});
-    int numFiles = EM_ASM_INT({return FS.fileBuffer.length});
+    int numFiles = EM_ASM_INT({return FS.preloadedFiles.length});
 
     // If there are no preloaded files, exit early.
+    // There should be no case where numFiles == 0 but numDirs > 0.
     if (numFiles == 0) {
       return true;
     }
 
+    int numDirs = EM_ASM_INT({return FS.preloadedDirs.length});
+
     auto curr = getRootDirectory();
     for (int i = 0; i < numDirs; i++) {
-      int dirName = EM_ASM_INT(
+      void* dirName = (void*)EM_ASM_INT(
         {
-          var s = FS.directoryBuffer[$0];
+          var s = FS.preloadedDirs[$0];
           var len = lengthBytesUTF8(s) + 1;
           var buf = stackAlloc(len);
           stringToUTF8(s, buf, len);
@@ -43,9 +45,9 @@ static void preloadFiles() {
     }
 
     for (int i = 0; i < numFiles; i++) {
-      int fileName = EM_ASM_INT(
+      void* fileName = (void*)EM_ASM_INT(
         {
-          var s = FS.fileBuffer[$0].pathName;
+          var s = FS.preloadedFiles[$0].pathName;
           var len = lengthBytesUTF8(s) + 1;
           var buf = stackAlloc(len);
           stringToUTF8(s, buf, len);
@@ -53,9 +55,9 @@ static void preloadFiles() {
         },
         i);
 
-      int mode = EM_ASM_INT(
+      auto mode = (mode_t)EM_ASM_INT(
         {
-          var s = FS.fileBuffer[$0].mode;
+          var s = FS.preloadedFiles[$0].mode;
           var len = lengthBytesUTF8(s) + 1;
           var buf = stackAlloc(len);
           stringToUTF8(s, buf, len);
@@ -63,13 +65,13 @@ static void preloadFiles() {
         },
         i);
 
-      int size = EM_ASM_INT({return FS.fileBuffer[$0].fileData.length}, i);
+      int size = EM_ASM_INT({return FS.preloadedFiles[$0].fileData.length}, i);
 
       auto pathParts = splitPath((char*)fileName);
 
       auto base = pathParts[pathParts.size() - 1];
 
-      auto created = std::make_shared<MemoryFile>(mode);
+      auto created = std::make_shared<MemoryFile>((mode_t)mode);
 
       auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1);
 

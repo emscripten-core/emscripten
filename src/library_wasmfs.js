@@ -1,7 +1,7 @@
 var WasmfsLibrary = {
   $FS : {
-    fileBuffer: [],
-    directoryBuffer: [],
+    preloadedFiles: [],
+    preloadedDirs: [],
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
         Browser.init(); // XXX perhaps this method should move onto Browser?
@@ -49,11 +49,11 @@ var WasmfsLibrary = {
     createDataFile: function(parent, name, data, canRead, canWrite, canOwn) {
       // Data files must be cached until the file system itself has been initialized.
       var mode = FS.getMode(canRead, canWrite);
-      FS.fileBuffer.push({pathName: parent, fileData: data, mode: mode});
+      FS.preloadedFiles.push({pathName: parent, fileData: data, mode: mode});
     },
     createPath: function(parent, path, canRead, canWrite) {
       // Cache file path directory names.
-      FS.directoryBuffer.push(path);
+      FS.preloadedDirs.push(path);
     }
   }
 }
