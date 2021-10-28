@@ -116,6 +116,8 @@ class Directory : public File {
 protected:
   // TODO: maybe change to vector?
   std::map<std::string, std::shared_ptr<File>> entries;
+  // 4096 bytes is the size of a block in ext4.
+  // This value was also copied from the existing file system.
   size_t getSize() override { return 4096; }
 
 public:
