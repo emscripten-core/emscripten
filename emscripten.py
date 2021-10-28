@@ -819,19 +819,18 @@ def normalize_line_endings(text):
   return text
 
 
-def generate_struct_info():
+def generate_struct_info(force=False):
   # If we are running in BOOTSTRAPPING_STRUCT_INFO we don't populate STRUCT_INFO
   # otherwise that would lead to infinite recursion.
   if settings.BOOTSTRAPPING_STRUCT_INFO:
     return
 
-  generated_struct_info_name = 'generated_struct_info' + ('64' if settings.MEMORY64 else '32') + '.json'
-
   @ToolchainProfiler.profile_block('gen_struct_info')
   def generate_struct_info(out):
     gen_struct_info.main(['-q', '-o', out])
 
-  settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
+  output_name = shared.Cache.get_lib_name('struct_info.json')
+  settings.STRUCT_INFO = shared.Cache.get(output_name, generate_struct_info, force=force)
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile):
