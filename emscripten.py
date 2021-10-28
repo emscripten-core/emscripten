@@ -829,7 +829,7 @@ def generate_struct_info(force=False):
   def generate_struct_info(out):
     gen_struct_info.main(['-q', '-o', out])
 
-  output_name = shared.Cache.get_lib_name('struct_info.json')
+  output_name = shared.Cache.get_lib_name('struct_info.json', varies=False)
   settings.STRUCT_INFO = shared.Cache.get(output_name, generate_struct_info, force=force)
 
 
