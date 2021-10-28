@@ -59,7 +59,6 @@ public:
     Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
     virtual size_t getSize() { return file->size; }
     void setSize(size_t size) { file->size = size; }
-    // size_t& size() { return file->size; }
     mode_t& mode() { return file->mode; }
     time_t& ctime() { return file->ctime; }
     time_t& mtime() { return file->mtime; }
