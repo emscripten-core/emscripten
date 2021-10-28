@@ -61,7 +61,8 @@ class StdoutFile : public DataFile {
     return __WASI_ERRNO_INVAL;
   };
 
-  size_t getSize() override { return writeBuffer.size(); }
+  // /dev/stdout reports a size of 0 in the terminal.
+  size_t getSize() override { return 0; }
 
 public:
   StdoutFile(mode_t mode) : DataFile(mode) {}
@@ -86,7 +87,8 @@ class StderrFile : public DataFile {
     return __WASI_ERRNO_INVAL;
   };
 
-  size_t getSize() override { return writeBuffer.size(); }
+  // /dev/stderr reports a size of 0 in the terminal.
+  size_t getSize() override { return 0; }
 
 public:
   StderrFile(mode_t mode) : DataFile(mode) {}
