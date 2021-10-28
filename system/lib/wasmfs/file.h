@@ -158,4 +158,14 @@ public:
   MemoryFile(mode_t mode) : DataFile(mode) {}
 };
 
+// Obtains parent directory of a given pathname.
+// Will return a nullptr if the parent is not a directory.
+std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
+                                  std::vector<std::string>::iterator end,
+                                  long& err);
+
+// Return a vector of the '/'-delimited components of a path. The first element
+// will be "/" iff the path is an absolute path.
+std::vector<std::string> splitPath(char* pathname);
+
 } // namespace wasmfs

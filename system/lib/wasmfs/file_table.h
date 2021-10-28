@@ -9,6 +9,7 @@
 #pragma once
 
 #include "file.h"
+#include "streams.h"
 #include <assert.h>
 #include <mutex>
 #include <utility>
@@ -29,20 +30,8 @@ template<typename T> bool addWillOverFlow(T a, T b) {
   return false;
 }
 
-// Obtains parent directory of a given pathname.
-// Will return a nullptr if the parent is not a directory.
-std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
-                                  std::vector<std::string>::iterator end,
-                                  long& err);
-
-// Return a vector of the '/'-delimited components of a path. The first element
-// will be "/" iff the path is an absolute path.
-std::vector<std::string> splitPath(char* pathname);
-
 // Access mode, file creation and file status flags for open.
 using oflags_t = uint32_t;
-
-std::shared_ptr<Directory> getRootDirectory();
 
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   std::shared_ptr<File> file;
@@ -74,6 +63,7 @@ public:
 };
 
 class FileTable {
+  friend class WasmFS;
   static std::vector<std::shared_ptr<OpenFileState>> entries;
   std::mutex mutex;
 
@@ -132,9 +122,5 @@ public:
 
     __wasi_fd_t add(std::shared_ptr<OpenFileState> openFileState);
   };
-
-  // This get method is responsible for lazily initializing the FileTable.
-  // There is only ever one FileTable in the system.
-  static Handle get();
 };
 } // namespace wasmfs
