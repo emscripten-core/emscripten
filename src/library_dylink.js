@@ -441,25 +441,6 @@ var LibraryDylink = {
       // TODO: use only __memory_base and __table_base, need to update asm.js backend
       var tableBase = wasmTable.length;
       wasmTable.grow(metadata.tableSize);
-      // zero-initialize memory and table
-      // The static area consists of explicitly initialized data, followed by zero-initialized data.
-      // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
-      // dlopen'ing the SIDE_MODULE.  Since we don't know the size of the explicitly initialized data
-      // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
-      // from uninitialized memory.
-#if USE_PTHREADS
-      // in a pthread the module heap was already allocated and initialized in the main thread.
-      if (!ENVIRONMENT_IS_PTHREAD) {
-#endif
-        for (var i = memoryBase; i < memoryBase + metadata.memorySize; i++) {
-          HEAP8[i] = 0;
-        }
-#if USE_PTHREADS
-      }
-#endif
-      for (var i = tableBase; i < tableBase + metadata.tableSize; i++) {
-        wasmTable.set(i, null);
-      }
 
       // This is the export map that we ultimately return.  We declare it here
       // so it can be used within resolveSymbol.  We resolve symbols against
