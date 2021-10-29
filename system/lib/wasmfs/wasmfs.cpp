@@ -1,7 +1,16 @@
+// Copyright 2021 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+// This file defines the global state of the new file system.
+// Current Status: Work in Progress.
+// See https://github.com/emscripten-core/emscripten/issues/15041.
+
 #include "wasmfs.h"
+#include "streams.h"
 
 namespace wasmfs {
-std::shared_ptr<Directory> WasmFS::getRootDir() {
+std::shared_ptr<Directory> WasmFS::initDirs() {
   static const std::shared_ptr<Directory> rootDirectory = [] {
     std::shared_ptr<Directory> rootDirectory =
       std::make_shared<Directory>(S_IRUGO | S_IXUGO);

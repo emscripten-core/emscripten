@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
+
 extern "C" {
 
 using namespace wasmfs;

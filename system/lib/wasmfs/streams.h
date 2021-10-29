@@ -14,22 +14,6 @@
 #include <wasi/api.h>
 
 namespace wasmfs {
-static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
-                                     size_t len,
-                                     void (*console_write)(const char*),
-                                     std::vector<char>& fd_write_buffer) {
-  for (size_t j = 0; j < len; j++) {
-    uint8_t current = buf[j];
-    if (current == '\0' || current == '\n') {
-      fd_write_buffer.push_back('\0'); // for null-terminated C strings
-      console_write(fd_write_buffer.data());
-      fd_write_buffer.clear();
-    } else {
-      fd_write_buffer.push_back(current);
-    }
-  }
-  return __WASI_ERRNO_SUCCESS;
-}
 
 class StdinFile : public DataFile {
 
@@ -55,9 +39,7 @@ public:
 class StdoutFile : public DataFile {
   std::vector<char> writeBuffer;
 
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
-  }
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;
@@ -81,9 +63,7 @@ class StderrFile : public DataFile {
   // TODO: May not want to proxy stderr (fd == 2) to the main thread.
   // This will not show in HTML - a console.warn in a worker is sufficient.
   // This would be a change from the current FS.
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    return writeStdBuffer(buf, len, &emscripten_console_error, writeBuffer);
-  }
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;

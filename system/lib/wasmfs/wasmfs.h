@@ -26,7 +26,7 @@ class WasmFS {
 
   // Since the constructor is private, the only way to access the global file
   // state is through this get method.
-  static WasmFS get() {
+  static WasmFS& get() {
     static WasmFS globalState;
     return globalState;
   }
@@ -34,7 +34,7 @@ class WasmFS {
 public:
   // Initialize default directories including dev/stdin, dev/stdout, dev/stderr.
   // Refers to same std streams in the open file table.
-  std::shared_ptr<Directory> getRootDir();
+  std::shared_ptr<Directory> initDirs();
 
   // This get method is responsible for lazily initializing the FileTable.
   // There is only ever one FileTable in the system.
@@ -48,7 +48,7 @@ public:
 
   // Returns root directory defined on WasmFS singleton.
   static std::shared_ptr<Directory> getRootDirectory() {
-    return get().getRootDir();
+    return get().initDirs();
   }
 };
 
