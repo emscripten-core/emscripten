@@ -2026,8 +2026,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   check_memory_setting('INITIAL_MEMORY')
   check_memory_setting('MAXIMUM_MEMORY')
-  if settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
-    exit_with_error('INITIAL_MEMORY must be less than 2GB due to current spec limitations')
   if settings.INITIAL_MEMORY < settings.TOTAL_STACK:
     exit_with_error(f'INITIAL_MEMORY must be larger than TOTAL_STACK, was {settings.INITIAL_MEMORY} (TOTAL_STACK={settings.TOTAL_STACK})')
   if settings.MEMORY_GROWTH_LINEAR_STEP != -1:
