@@ -7,8 +7,6 @@
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include "file.h"
-// TODO remove this in the next PR.
-#include "file_table.h"
 
 namespace wasmfs {
 //
