@@ -31,7 +31,6 @@ class WasmFS {
     return globalState;
   }
 
-public:
   // Initialize default directories including dev/stdin, dev/stdout, dev/stderr.
   // Refers to same std streams in the open file table.
   std::shared_ptr<Directory> initDirs();
@@ -43,6 +42,7 @@ public:
     return FileTable::Handle(fileTable);
   }
 
+public:
   // Returns lazily initialized file table defined on WasmFS singleton.
   static FileTable::Handle getLockedFileTable() { return get().getFileTable(); }
 
