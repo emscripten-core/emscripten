@@ -7158,11 +7158,12 @@ someweirdtext
       # the output file.
       self.assertPathsIdentical(map_referent, data['file'])
     self.assertGreater(len(data['sources']), 1)
-    self.assertPathsIdentical('src.cpp', data['sources'][0])
+    self.assertContained('src.cpp', data['sources'])
+    src_index = data['sources'].index('src.cpp')
     if hasattr(data, 'sourcesContent'):
       # the sourcesContent attribute is optional, but if it is present it
       # needs to containt valid source text.
-      self.assertTextDataIdentical(src, data['sourcesContent'][0])
+      self.assertTextDataIdentical(src, data['sourcesContent'][src_index])
     mappings = json.loads(self.run_js(
       path_from_root('tests/sourcemap2json.js'),
       args=[map_filename]))
@@ -8807,12 +8808,12 @@ wasmz = make_run('wasmz', emcc_args=['-Oz'])
 wasm64 = make_run('wasm64', emcc_args=['-O0', '-g3'],
                   settings={'MEMORY64': 2}, env=None, node_args='--experimental-wasm-bigint')
 
-wasmlto0 = make_run('wasmlto0', emcc_args=['-flto', '-O0'])
-wasmlto1 = make_run('wasmlto1', emcc_args=['-flto', '-O1'])
-wasmlto2 = make_run('wasmlto2', emcc_args=['-flto', '-O2'])
-wasmlto3 = make_run('wasmlto3', emcc_args=['-flto', '-O3'])
-wasmltos = make_run('wasmltos', emcc_args=['-flto', '-Os'])
-wasmltoz = make_run('wasmltoz', emcc_args=['-flto', '-Oz'])
+lto0 = make_run('lto0', emcc_args=['-flto', '-O0'])
+lto1 = make_run('lto1', emcc_args=['-flto', '-O1'])
+lto2 = make_run('lto2', emcc_args=['-flto', '-O2'])
+lto3 = make_run('lto3', emcc_args=['-flto', '-O3'])
+ltos = make_run('ltos', emcc_args=['-flto', '-Os'])
+ltoz = make_run('ltoz', emcc_args=['-flto', '-Oz'])
 
 wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
 wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM': 0})

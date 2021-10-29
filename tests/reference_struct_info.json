@@ -1,24 +1,5 @@
 {
     "defines": {
-        "ABDAY_1": 131072,
-        "ABDAY_2": 131073,
-        "ABDAY_3": 131074,
-        "ABDAY_4": 131075,
-        "ABDAY_5": 131076,
-        "ABDAY_6": 131077,
-        "ABDAY_7": 131078,
-        "ABMON_1": 131086,
-        "ABMON_10": 131095,
-        "ABMON_11": 131096,
-        "ABMON_12": 131097,
-        "ABMON_2": 131087,
-        "ABMON_3": 131088,
-        "ABMON_4": 131089,
-        "ABMON_5": 131090,
-        "ABMON_6": 131091,
-        "ABMON_7": 131092,
-        "ABMON_8": 131093,
-        "ABMON_9": 131094,
         "AF_INET": 2,
         "AF_INET6": 10,
         "AF_UNSPEC": 0,
@@ -29,46 +10,16 @@
         "AI_NUMERICSERV": 1024,
         "AI_PASSIVE": 1,
         "AI_V4MAPPED": 8,
-        "ALT_DIGITS": 131119,
-        "AM_STR": 131110,
         "AT_EMPTY_PATH": 4096,
         "AT_FDCWD": -100,
         "AT_REMOVEDIR": 512,
         "AT_SYMLINK_NOFOLLOW": 256,
-        "AUDIO_F32": 33056,
-        "AUDIO_F32LSB": 33056,
-        "AUDIO_F32MSB": 37152,
-        "AUDIO_F32SYS": 33056,
-        "AUDIO_S16": 32784,
         "AUDIO_S16LSB": 32784,
-        "AUDIO_S16MSB": 36880,
-        "AUDIO_S16SYS": 32784,
-        "AUDIO_S32": 32800,
-        "AUDIO_S32LSB": 32800,
-        "AUDIO_S32MSB": 36896,
-        "AUDIO_S32SYS": 32800,
-        "AUDIO_S8": 32776,
-        "AUDIO_U16": 16,
-        "AUDIO_U16LSB": 16,
-        "AUDIO_U16MSB": 4112,
-        "AUDIO_U16SYS": 16,
-        "AUDIO_U8": 8,
         "CLOCKS_PER_SEC": 1000000,
         "CLOCK_MONOTONIC": 1,
         "CLOCK_MONOTONIC_RAW": 4,
         "CLOCK_REALTIME": 0,
-        "CODESET": 14,
-        "CRNCYSTR": 262159,
-        "DAY_1": 131079,
-        "DAY_2": 131080,
-        "DAY_3": 131081,
-        "DAY_4": 131082,
-        "DAY_5": 131083,
-        "DAY_6": 131084,
-        "DAY_7": 131085,
         "DEFAULT_STACK_SIZE": 2097152,
-        "D_FMT": 131113,
-        "D_T_FMT": 131112,
         "E2BIG": 1,
         "EACCES": 2,
         "EADDRINUSE": 3,
@@ -279,7 +230,6 @@
         "ENOTTY": 59,
         "ENOTUNIQ": 126,
         "ENXIO": 60,
-        "EOF": -1,
         "EOPNOTSUPP": 138,
         "EOVERFLOW": 61,
         "EOWNERDEAD": 62,
@@ -289,11 +239,7 @@
         "EPROTO": 65,
         "EPROTONOSUPPORT": 66,
         "EPROTOTYPE": 67,
-        "ERA": 131116,
         "ERANGE": 68,
-        "ERA_D_FMT": 131118,
-        "ERA_D_T_FMT": 131120,
-        "ERA_T_FMT": 131121,
         "EREMCHG": 128,
         "EREMOTE": 121,
         "EROFS": 69,
@@ -314,10 +260,6 @@
         "EXDEV": 75,
         "EXFULL": 115,
         "FIONREAD": 21531,
-        "FP_INFINITE": 1,
-        "FP_NAN": 0,
-        "FP_NORMAL": 4,
-        "FP_ZERO": 2,
         "F_DUPFD": 0,
         "F_GETFD": 1,
         "F_GETFL": 3,
@@ -338,24 +280,10 @@
         "IPPROTO_TCP": 6,
         "IPPROTO_UDP": 17,
         "MAP_ANONYMOUS": 32,
-        "MAP_FAILED": -1,
         "MAP_FIXED": 16,
         "MAP_PRIVATE": 2,
-        "MON_1": 131098,
-        "MON_10": 131107,
-        "MON_11": 131108,
-        "MON_12": 131109,
-        "MON_2": 131099,
-        "MON_3": 131100,
-        "MON_4": 131101,
-        "MON_5": 131102,
-        "MON_6": 131103,
-        "MON_7": 131104,
-        "MON_8": 131105,
-        "MON_9": 131106,
         "NI_NAMEREQD": 8,
         "NI_NUMERICHOST": 1,
-        "NOEXPR": 327681,
         "O_ACCMODE": 2097155,
         "O_APPEND": 1024,
         "O_CLOEXEC": 524288,
@@ -370,10 +298,8 @@
         "O_PATH": 2097152,
         "O_RDONLY": 0,
         "O_RDWR": 2,
-        "O_SYNC": 1052672,
         "O_TRUNC": 512,
         "O_WRONLY": 1,
-        "PM_STR": 131111,
         "POLLERR": 8,
         "POLLHUP": 16,
         "POLLIN": 1,
@@ -383,28 +309,12 @@
         "POLLRDNORM": 64,
         "POLLWRNORM": 256,
         "PROT_WRITE": 2,
-        "PTHREAD_KEYS_MAX": 128,
-        "RADIXCHAR": 65536,
-        "RAND_MAX": 2147483647,
         "RTLD_DEFAULT": 0,
         "RTLD_GLOBAL": 256,
         "RTLD_LAZY": 1,
         "RTLD_NODELETE": 4096,
         "RTLD_NOW": 2,
         "R_OK": 4,
-        "SDL_AUDIO_ALLOW_ANY_CHANGE": 7,
-        "SDL_AUDIO_ALLOW_CHANNELS_CHANGE": 4,
-        "SDL_AUDIO_ALLOW_FORMAT_CHANGE": 2,
-        "SDL_AUDIO_ALLOW_FREQUENCY_CHANGE": 1,
-        "SDL_AUDIO_MASK_BITSIZE": 255,
-        "SDL_AUDIO_MASK_DATATYPE": 256,
-        "SDL_AUDIO_MASK_ENDIAN": 4096,
-        "SDL_AUDIO_MASK_SIGNED": 32768,
-        "SDL_COMPILEDVERSION": 1300,
-        "SDL_MAJOR_VERSION": 1,
-        "SDL_MINOR_VERSION": 3,
-        "SDL_MIX_MAXVOLUME": 128,
-        "SDL_PATCHLEVEL": 0,
         "SDL_PIXELFORMAT_RGBA8888": -2042224636,
         "SDL_TOUCH_MOUSEID": -1,
         "SEEK_CUR": 1,
@@ -440,24 +350,15 @@
         "TCSETS": 21506,
         "TCSETSF": 21508,
         "TCSETSW": 21507,
-        "THOUSEP": 65537,
         "TIME_UTC": 1,
         "TIOCGPGRP": 21519,
         "TIOCGWINSZ": 21523,
         "TIOCSPGRP": 21520,
         "TIOCSWINSZ": 21524,
-        "T_FMT": 131114,
-        "T_FMT_AMPM": 131115,
         "UUID_TYPE_DCE_RANDOM": 4,
-        "UUID_TYPE_DCE_TIME": 1,
         "UUID_VARIANT_DCE": 1,
-        "UUID_VARIANT_MICROSOFT": 2,
-        "UUID_VARIANT_NCS": 0,
-        "UUID_VARIANT_OTHER": 3,
         "W_OK": 2,
         "X_OK": 1,
-        "YESEXPR": 327680,
-        "_SC_NGROUPS_MAX": 3,
         "__ATTRP_C11_THREAD": -1,
         "__WASI_CLOCKID_MONOTONIC": 1,
         "__WASI_CLOCKID_PROCESS_CPUTIME_ID": 2,
@@ -649,20 +550,6 @@
             "deltaZ": 88,
             "mouse": 0
         },
-        "SDL_AudioCVT": {
-            "__size__": 88,
-            "buf": 16,
-            "dst_format": 6,
-            "filter_index": 80,
-            "filters": 40,
-            "len": 20,
-            "len_cvt": 24,
-            "len_mult": 28,
-            "len_ratio": 32,
-            "needed": 0,
-            "rate_incr": 8,
-            "src_format": 4
-        },
         "SDL_AudioSpec": {
             "__size__": 24,
             "callback": 16,
@@ -674,13 +561,6 @@
             "silence": 7,
             "size": 12,
             "userdata": 20
-        },
-        "SDL_Color": {
-            "__size__": 4,
-            "b": 2,
-            "g": 1,
-            "r": 0,
-            "unused": 3
         },
         "SDL_JoyAxisEvent": {
             "__size__": 12,
@@ -749,13 +629,6 @@
             "windowID": 8,
             "x": 16,
             "y": 20
-        },
-        "SDL_Palette": {
-            "__size__": 16,
-            "colors": 4,
-            "ncolors": 0,
-            "refcount": 12,
-            "version": 8
         },
         "SDL_PixelFormat": {
             "Aloss": 31,
@@ -1346,12 +1219,6 @@
             "stack_limit": 4,
             "stack_ptr": 0
         },
-        "cmsghdr": {
-            "__size__": 12,
-            "cmsg_len": 0,
-            "cmsg_level": 4,
-            "cmsg_type": 8
-        },
         "dirent": {
             "__size__": 280,
             "d_ino": 0,
@@ -1359,11 +1226,6 @@
             "d_off": 8,
             "d_reclen": 16,
             "d_type": 18
-        },
-        "div_t": {
-            "__size__": 8,
-            "quot": 0,
-            "rem": 4
         },
         "dso": {
             "__size__": 24,
@@ -1429,45 +1291,10 @@
             "h_length": 12,
             "h_name": 0
         },
-        "in6_addr": {
-            "__in6_union": {
-                "__s6_addr": 0,
-                "__s6_addr16": 0,
-                "__s6_addr32": 0,
-                "__size__": 16
-            },
-            "__size__": 16
-        },
-        "in_addr": {
-            "__size__": 4,
-            "s_addr": 0
-        },
         "iovec": {
             "__size__": 8,
             "iov_base": 0,
             "iov_len": 4
-        },
-        "itimerspec": {
-            "__size__": 16,
-            "it_interval": {
-                "__size__": 8,
-                "tv_nsec": 4,
-                "tv_sec": 0
-            },
-            "it_value": {
-                "__size__": 8,
-                "tv_nsec": 12,
-                "tv_sec": 8
-            }
-        },
-        "libc": {
-            "__size__": 64,
-            "global_locale": 40
-        },
-        "linger": {
-            "__size__": 8,
-            "l_linger": 4,
-            "l_onoff": 0
         },
         "msghdr": {
             "__size__": 28,
@@ -1478,13 +1305,6 @@
             "msg_iovlen": 12,
             "msg_name": 0,
             "msg_namelen": 4
-        },
-        "netent": {
-            "__size__": 16,
-            "n_addrtype": 8,
-            "n_aliases": 4,
-            "n_name": 0,
-            "n_net": 12
         },
         "pollfd": {
             "__size__": 8,
@@ -1508,38 +1328,6 @@
             "stack": 72,
             "stack_size": 76,
             "threadStatus": 0
-        },
-        "rlimit": {
-            "__size__": 16,
-            "rlim_cur": 0,
-            "rlim_max": 8
-        },
-        "rusage": {
-            "__size__": 136,
-            "ru_idrss": 24,
-            "ru_inblock": 44,
-            "ru_isrss": 28,
-            "ru_ixrss": 20,
-            "ru_majflt": 36,
-            "ru_maxrss": 16,
-            "ru_minflt": 32,
-            "ru_msgrcv": 56,
-            "ru_msgsnd": 52,
-            "ru_nivcsw": 68,
-            "ru_nsignals": 60,
-            "ru_nswap": 40,
-            "ru_nvcsw": 64,
-            "ru_oublock": 48,
-            "ru_stime": {
-                "__size__": 8,
-                "tv_sec": 8,
-                "tv_usec": 12
-            },
-            "ru_utime": {
-                "__size__": 8,
-                "tv_sec": 0,
-                "tv_usec": 4
-            }
         },
         "sockaddr": {
             "__size__": 16,
@@ -1616,20 +1404,6 @@
             "f_fsid": 28,
             "f_namelen": 36
         },
-        "statvfs": {
-            "__size__": 72,
-            "f_bavail": 16,
-            "f_bfree": 12,
-            "f_blocks": 8,
-            "f_bsize": 0,
-            "f_favail": 28,
-            "f_ffree": 24,
-            "f_files": 20,
-            "f_flag": 40,
-            "f_frsize": 4,
-            "f_fsid": 32,
-            "f_namemax": 44
-        },
         "thread_profiler_block": {
             "__size__": 104,
             "currentStatusStartTime": 8,
@@ -1654,11 +1428,6 @@
             "tv_sec": 0,
             "tv_usec": 4
         },
-        "timezone": {
-            "__size__": 8,
-            "tz_dsttime": 4,
-            "tz_minuteswest": 0
-        },
         "tm": {
             "__size__": 44,
             "tm_gmtoff": 36,
@@ -1673,26 +1442,10 @@
             "tm_year": 20,
             "tm_zone": 40
         },
-        "tms": {
-            "__size__": 16,
-            "tms_cstime": 12,
-            "tms_cutime": 8,
-            "tms_stime": 4,
-            "tms_utime": 0
-        },
         "utimbuf": {
             "__size__": 8,
             "actime": 0,
             "modtime": 4
-        },
-        "utsname": {
-            "__size__": 390,
-            "domainname": 325,
-            "machine": 260,
-            "nodename": 65,
-            "release": 130,
-            "sysname": 0,
-            "version": 195
         }
     }
 }

@@ -16,6 +16,7 @@ import re
 import shutil
 import subprocess
 import signal
+import stat
 import sys
 import tempfile
 
@@ -729,6 +730,12 @@ def strip_prefix(string, prefix):
   return string[len(prefix):]
 
 
+def make_writable(filename):
+  assert(os.path.isfile(filename))
+  old_mode = stat.S_IMODE(os.stat(filename).st_mode)
+  os.chmod(filename, old_mode | stat.S_IWUSR)
+
+
 def safe_copy(src, dst):
   logging.debug('copy: %s -> %s', src, dst)
   src = os.path.abspath(src)
@@ -741,6 +748,9 @@ def safe_copy(src, dst):
     return
   # Copies data and permission bits, but not other metadata such as timestamp
   shutil.copy(src, dst)
+  # We always want the target file to be writable even when copying from
+  # read-only source. (e.g. a read-only install of emscripten).
+  make_writable(dst)
 
 
 def read_and_preprocess(filename, expand_macros=False):
