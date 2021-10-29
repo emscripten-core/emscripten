@@ -6379,7 +6379,6 @@ Resolved: "/" => "/"
       else:
         self.run_process([EMCC, test_file('hello_world.c'), '-s', 'MALLOC=emmalloc'] + args)
 
-    test(['-s', 'INITIAL_MEMORY=2GB'], 'INITIAL_MEMORY must be less than 2GB due to current spec limitations')
     test(['-s', 'ALLOW_MEMORY_GROWTH'])
     test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=1GB'])
     test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB'])
@@ -10041,10 +10040,6 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
   def test_lld_report_undefined_main_module(self):
     self.run_process([EMCC, '-sLLD_REPORT_UNDEFINED', '-sMAIN_MODULE=2', test_file('hello_world.c')])
 
-  def test_4GB(self):
-    stderr = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', 'INITIAL_MEMORY=2GB'])
-    self.assertContained('INITIAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
-
   # Verifies that warning messages that Closure outputs are recorded to console
   def test_closure_warnings(self):
     proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-s', 'CLOSURE_WARNINGS=quiet'], stderr=PIPE)
@@ -11191,3 +11186,8 @@ void foo() {}
   @with_wasmfs
   def test_unistd_mkdir(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_mkdir.c')
+
+  @disabled('Running with initial >2GB heaps is not currently supported on the CI version of Node')
+  def test_hello_world_above_2gb(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sGLOBAL_BASE=2147483648', '-sINITIAL_MEMORY=3GB'])
+    self.assertContained('hello, world!', self.run_js('a.out.js'))

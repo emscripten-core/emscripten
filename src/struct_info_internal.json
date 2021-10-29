@@ -29,14 +29,6 @@
         ]
     },
     {
-        "file": "libc.h",
-        "structs": {
-            "libc": [
-              "global_locale"
-            ]
-        }
-    },
-    {
         "file": "dynlink.h",
         "structs": {
             "dso": [

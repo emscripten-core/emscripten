@@ -658,9 +658,11 @@ LibraryManager.library = {
 
   tzset_impl__proxy: 'sync',
   tzset_impl__sig: 'v',
+  tzset_impl__deps: ['_get_daylight', '_get_timezone', '_get_tzname',
 #if MINIMAL_RUNTIME
-  tzset_impl__deps: ['$allocateUTF8'],
+    '$allocateUTF8'
 #endif
+  ],
   tzset_impl: function() {
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
