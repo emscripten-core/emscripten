@@ -7,7 +7,7 @@
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include "file_table.h"
-#include "stream.h"
+#include "streams.h"
 
 namespace wasmfs {
 
@@ -63,5 +63,4 @@ FileTable::Handle::add(std::shared_ptr<OpenFileState> openFileState) {
   }
   return -EBADF;
 }
-
 } // namespace wasmfs

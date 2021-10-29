@@ -9,11 +9,7 @@
 #pragma once
 
 #include "file.h"
-#include <assert.h>
 #include <emscripten/html5.h>
-#include <map>
-#include <mutex>
-#include <sys/stat.h>
 #include <vector>
 #include <wasi/api.h>
 
