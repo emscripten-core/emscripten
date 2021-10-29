@@ -2,8 +2,8 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
-// wasmfs.cpp will implement a new file system that replaces the existing JS
-// filesystem. Current Status: Work in Progress. See
+// syscalls.cpp will implement the syscalls of the new file system replacing the
+// old JS version. Current Status: Work in Progress. See
 // https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include "file.h"
