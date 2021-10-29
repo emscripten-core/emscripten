@@ -434,12 +434,11 @@ var LibraryDylink = {
       // finalize alignments and verify them
       memAlign = Math.max(memAlign, STACK_ALIGN); // we at least need stack alignment
       // prepare memory
-      var memoryBase = alignMemory(getMemory(metadata.memorySize + memAlign), memAlign); // TODO: add to cleanups
+      var memoryBase = metadata.memorySize ? alignMemory(getMemory(metadata.memorySize + memAlign), memAlign) : 0; // TODO: add to cleanups
 #if DYLINK_DEBUG
       err("loadModule: memoryBase=" + memoryBase);
 #endif
-      // TODO: use only __memory_base and __table_base, need to update asm.js backend
-      var tableBase = wasmTable.length;
+      var tableBase = metadata.tableSize ? wasmTable.length : 0;
       wasmTable.grow(metadata.tableSize);
       // zero-initialize memory and table
       // The static area consists of explicitly initialized data, followed by zero-initialized data.
