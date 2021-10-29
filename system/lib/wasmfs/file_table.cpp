@@ -17,63 +17,83 @@ namespace wasmfs {
 static void preloadFiles() {
   static bool init = []() {
     int numFiles = EM_ASM_INT({return FS.preloadedFiles.length});
+    int numDirs = EM_ASM_INT({return FS.preloadedDirs.length});
 
     // If there are no preloaded files, exit early.
-    // There should be no case where numFiles == 0 but numDirs > 0.
-    if (numFiles == 0) {
+    if (numDirs == 0 && numFiles == 0) {
       return true;
     }
 
-    int numDirs = EM_ASM_INT({return FS.preloadedDirs.length});
-
-    auto curr = getRootDirectory();
+    // Iterate through FS.preloadedDirs to obtain parent and child pair.
+    // Ex. Module['FS_createPath']("/foo/parent", "child", true, true);
     for (int i = 0; i < numDirs; i++) {
-      void* dirName = (void*)EM_ASM_INT(
+
+      char parentPath[PATH_MAX] = {};
+      EM_ASM(
         {
-          var s = FS.preloadedDirs[$0];
+          var s = FS.preloadedDirs[$0].parentPath;
           var len = lengthBytesUTF8(s) + 1;
-          var buf = stackAlloc(len);
-          stringToUTF8(s, buf, len);
-          return buf;
+          var numBytesWritten = stringToUTF8(s, $1, len);
         },
-        i);
+        i,
+        parentPath);
+
+      auto pathParts = splitPath(parentPath);
+
+      // TODO: Improvement - cache parent path names instead of looking up the
+      // Directory every iteration.
+      long err;
+      auto parentDir = getDir(pathParts.begin(), pathParts.end(), err);
+
+      if (!parentDir) {
+        emscripten_console_log(
+          "Fatal error during directory creation in file preloading.");
+        abort();
+      }
+
+      char childName[PATH_MAX] = {};
+      EM_ASM(
+        {
+          var s = FS.preloadedDirs[$0].childName;
+          var len = lengthBytesUTF8(s) + 1;
+          var numBytesWritten = stringToUTF8(s, $1, len);
+        },
+        i,
+        childName);
 
       auto created = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
 
-      curr->locked().setEntry((char*)dirName, created);
-      curr = created;
+      parentDir->locked().setEntry(childName, created);
     }
 
     for (int i = 0; i < numFiles; i++) {
-      void* fileName = (void*)EM_ASM_INT(
+      char fileName[PATH_MAX] = {};
+      EM_ASM(
         {
           var s = FS.preloadedFiles[$0].pathName;
           var len = lengthBytesUTF8(s) + 1;
-          var buf = stackAlloc(len);
-          stringToUTF8(s, buf, len);
-          return buf;
+          stringToUTF8(s, $1, len);
         },
-        i);
+        i,
+        fileName);
 
-      auto mode = (mode_t)EM_ASM_INT(
-        {
-          var s = FS.preloadedFiles[$0].mode;
-          var len = lengthBytesUTF8(s) + 1;
-          var buf = stackAlloc(len);
-          stringToUTF8(s, buf, len);
-          return buf;
-        },
-        i);
+      auto mode = (mode_t)EM_ASM_INT({ return FS.preloadedFiles[$0].mode; }, i);
 
-      int size = EM_ASM_INT({return FS.preloadedFiles[$0].fileData.length}, i);
+      auto size = EM_ASM_INT({return FS.preloadedFiles[$0].fileData.length}, i);
 
-      auto pathParts = splitPath((char*)fileName);
+      auto pathParts = splitPath(fileName);
 
       auto base = pathParts[pathParts.size() - 1];
 
       auto created = std::make_shared<MemoryFile>((mode_t)mode);
 
-      auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1);
+      long err;
+      auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+      if (!parentDir) {
+        emscripten_console_log("Fatal error during file preloading");
+        abort();
+      }
 
       parentDir->locked().setEntry(base, created);
 
@@ -274,12 +294,6 @@ std::vector<std::string> splitPath(char* pathname) {
   }
 
   return pathParts;
-}
-
-std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
-                                  std::vector<std::string>::iterator end) {
-  long err = 0;
-  return getDir(begin, end, err);
 }
 
 std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,

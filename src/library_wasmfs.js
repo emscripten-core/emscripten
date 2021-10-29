@@ -53,7 +53,7 @@ var WasmfsLibrary = {
     },
     createPath: function(parent, path, canRead, canWrite) {
       // Cache file path directory names.
-      FS.preloadedDirs.push(path);
+      FS.preloadedDirs.push({parentPath: parent, childName: path});
     }
   }
 }
