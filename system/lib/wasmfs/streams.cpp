@@ -10,14 +10,6 @@
 
 namespace wasmfs {
 
-__wasi_errno_t StdoutFile::write(const uint8_t* buf, size_t len, off_t offset) {
-  return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
-}
-
-__wasi_errno_t StderrFile::write(const uint8_t* buf, size_t len, off_t offset) {
-  return writeStdBuffer(buf, len, &emscripten_console_error, writeBuffer);
-}
-
 static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
                                      size_t len,
                                      void (*console_write)(const char*),
@@ -34,4 +26,31 @@ static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
   }
   return __WASI_ERRNO_SUCCESS;
 }
+
+__wasi_errno_t StdoutFile::write(const uint8_t* buf, size_t len, off_t offset) {
+  return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
+}
+
+__wasi_errno_t StderrFile::write(const uint8_t* buf, size_t len, off_t offset) {
+  return writeStdBuffer(buf, len, &emscripten_console_error, writeBuffer);
+}
+
+std::shared_ptr<StdinFile> StdinFile::getSingleton() {
+  static const std::shared_ptr<StdinFile> stdinFile =
+    std::make_shared<StdinFile>(S_IRUGO);
+  return stdinFile;
+}
+
+std::shared_ptr<StdoutFile> StdoutFile::getSingleton() {
+  static const std::shared_ptr<StdoutFile> stdoutFile =
+    std::make_shared<StdoutFile>(S_IWUGO);
+  return stdoutFile;
+}
+
+std::shared_ptr<StderrFile> StderrFile::getSingleton() {
+  static const std::shared_ptr<StderrFile> stderrFile =
+    std::make_shared<StderrFile>(S_IWUGO);
+  return stderrFile;
+}
+
 } // namespace wasmfs

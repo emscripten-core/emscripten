@@ -10,21 +10,20 @@
 #include "streams.h"
 
 namespace wasmfs {
-std::shared_ptr<Directory> WasmFS::initDirs() {
-  static const std::shared_ptr<Directory> rootDirectory = [] {
-    std::shared_ptr<Directory> rootDirectory =
-      std::make_shared<Directory>(S_IRUGO | S_IXUGO);
-    auto devDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
-    rootDirectory->locked().setEntry("dev", devDirectory);
 
-    auto dir = devDirectory->locked();
+WasmFS wasmFS __attribute__((init_priority(65535)));
 
-    dir.setEntry("stdin", StdinFile::getSingleton());
-    dir.setEntry("stdout", StdoutFile::getSingleton());
-    dir.setEntry("stderr", StderrFile::getSingleton());
+std::shared_ptr<Directory> WasmFS::initRootDirectory() {
+  std::shared_ptr<Directory> rootDirectory =
+    std::make_shared<Directory>(S_IRUGO | S_IXUGO);
+  auto devDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
+  rootDirectory->locked().setEntry("dev", devDirectory);
 
-    return rootDirectory;
-  }();
+  auto dir = devDirectory->locked();
+
+  dir.setEntry("stdin", StdinFile::getSingleton());
+  dir.setEntry("stdout", StdoutFile::getSingleton());
+  dir.setEntry("stderr", StderrFile::getSingleton());
 
   return rootDirectory;
 }

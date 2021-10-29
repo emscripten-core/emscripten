@@ -49,7 +49,7 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
   std::shared_ptr<File> curr;
   // Check if the first path element is '/', indicating an absolute path.
   if (*begin == "/") {
-    curr = WasmFS::getRootDirectory();
+    curr = wasmFS.getRootDirectory();
     begin++;
   }
 

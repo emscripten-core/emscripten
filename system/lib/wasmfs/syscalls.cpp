@@ -24,7 +24,7 @@ extern "C" {
 using namespace wasmfs;
 
 long __syscall_dup2(long oldfd, long newfd) {
-  auto fileTable = WasmFS::getLockedFileTable();
+  auto fileTable = wasmFS.getLockedFileTable();
 
   auto oldOpenFile = fileTable[oldfd];
   // If oldfd is not a valid file descriptor, then the call fails,
@@ -48,7 +48,7 @@ long __syscall_dup2(long oldfd, long newfd) {
 }
 
 long __syscall_dup(long fd) {
-  auto fileTable = WasmFS::getLockedFileTable();
+  auto fileTable = wasmFS.getLockedFileTable();
 
   // Check that an open file exists corresponding to the given fd.
   auto openFile = fileTable[fd];
@@ -76,7 +76,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_INVAL;
   }
 
-  auto openFile = WasmFS::getLockedFileTable()[fd];
+  auto openFile = wasmFS.getLockedFileTable()[fd];
 
   if (!openFile) {
     return __WASI_ERRNO_BADF;
@@ -143,7 +143,7 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_INVAL;
   }
 
-  auto openFile = WasmFS::getLockedFileTable()[fd];
+  auto openFile = wasmFS.getLockedFileTable()[fd];
 
   if (!openFile) {
     return __WASI_ERRNO_BADF;
@@ -234,7 +234,7 @@ __wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
-  auto fileTable = WasmFS::getLockedFileTable();
+  auto fileTable = wasmFS.getLockedFileTable();
 
   // Remove openFileState entry from fileTable.
   fileTable[fd] = nullptr;
@@ -243,7 +243,7 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 }
 
 long __syscall_fstat64(long fd, long buf) {
-  auto openFile = WasmFS::getLockedFileTable()[fd];
+  auto openFile = wasmFS.getLockedFileTable()[fd];
 
   if (!openFile) {
     return -EBADF;
@@ -305,8 +305,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   // Root directory
   if (pathParts.size() == 1 && pathParts[0] == "/") {
     auto openFile =
-      std::make_shared<OpenFileState>(0, flags, WasmFS::getRootDirectory());
-    return WasmFS::getLockedFileTable().add(openFile);
+      std::make_shared<OpenFileState>(0, flags, wasmFS.getRootDirectory());
+    return wasmFS.getLockedFileTable().add(openFile);
   }
 
   long err;
@@ -333,7 +333,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
       lockedParentDir.setEntry(base, created);
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
-      return WasmFS::getLockedFileTable().add(openFile);
+      return wasmFS.getLockedFileTable().add(openFile);
     } else {
       return -ENOENT;
     }
@@ -351,7 +351,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 
   auto openFile = std::make_shared<OpenFileState>(0, flags, curr);
 
-  return WasmFS::getLockedFileTable().add(openFile);
+  return wasmFS.getLockedFileTable().add(openFile);
 }
 
 long __syscall_mkdir(long path, long mode) {
@@ -395,7 +395,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
                               __wasi_filedelta_t offset,
                               __wasi_whence_t whence,
                               __wasi_filesize_t* newoffset) {
-  auto openFile = WasmFS::getLockedFileTable()[fd];
+  auto openFile = wasmFS.getLockedFileTable()[fd];
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }

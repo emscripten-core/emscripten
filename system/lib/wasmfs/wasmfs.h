@@ -21,35 +21,40 @@
 namespace wasmfs {
 
 class WasmFS {
-  // Files will be preloaded in this constructor.
-  WasmFS() {}
-
-  // Since the constructor is private, the only way to access the global file
-  // state is through this get method.
-  static WasmFS& get() {
-    static WasmFS globalState;
-    return globalState;
-  }
 
   // Initialize default directories including dev/stdin, dev/stdout, dev/stderr.
   // Refers to same std streams in the open file table.
-  std::shared_ptr<Directory> initDirs();
+  // std::shared_ptr<Directory> initDirs();
 
-  // This get method is responsible for lazily initializing the FileTable.
+  // // This get method is responsible for lazily initializing the FileTable.
+  // // There is only ever one FileTable in the system.
+  // FileTable::Handle getFileTable() {
+  //   static FileTable fileTable;
+  //   return FileTable::Handle(fileTable);
+  // }
+
+  FileTable fileTable;
+  std::shared_ptr<Directory> rootDirectory;
+
+  // Private method to initialize root directory once.
+  // Initialize default directories including dev/stdin, dev/stdout, dev/stderr.
+  // Refers to the same std streams in the open file table.
+  static std::shared_ptr<Directory> initRootDirectory();
+
+public:
+  // Files will be preloaded in this constructor.
+  WasmFS() : rootDirectory(initRootDirectory()) {}
+  // This get method returns a locked
   // There is only ever one FileTable in the system.
-  FileTable::Handle getFileTable() {
-    static FileTable fileTable;
+  FileTable::Handle getLockedFileTable() {
     return FileTable::Handle(fileTable);
   }
 
-public:
-  // Returns lazily initialized file table defined on WasmFS singleton.
-  static FileTable::Handle getLockedFileTable() { return get().getFileTable(); }
-
   // Returns root directory defined on WasmFS singleton.
-  static std::shared_ptr<Directory> getRootDirectory() {
-    return get().initDirs();
-  }
+  std::shared_ptr<Directory> getRootDirectory() { return rootDirectory; };
 };
+
+// Global state instance.
+extern WasmFS wasmFS;
 
 } // namespace wasmfs

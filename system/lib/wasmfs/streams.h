@@ -29,11 +29,7 @@ class StdinFile : public DataFile {
 
 public:
   StdinFile(mode_t mode) : DataFile(mode) {}
-  static std::shared_ptr<StdinFile> getSingleton() {
-    static const std::shared_ptr<StdinFile> stdinFile =
-      std::make_shared<StdinFile>(S_IRUGO);
-    return stdinFile;
-  }
+  static std::shared_ptr<StdinFile> getSingleton();
 };
 
 class StdoutFile : public DataFile {
@@ -50,11 +46,7 @@ class StdoutFile : public DataFile {
 
 public:
   StdoutFile(mode_t mode) : DataFile(mode) {}
-  static std::shared_ptr<StdoutFile> getSingleton() {
-    static const std::shared_ptr<StdoutFile> stdoutFile =
-      std::make_shared<StdoutFile>(S_IWUGO);
-    return stdoutFile;
-  }
+  static std::shared_ptr<StdoutFile> getSingleton();
 };
 
 class StderrFile : public DataFile {
@@ -74,10 +66,6 @@ class StderrFile : public DataFile {
 
 public:
   StderrFile(mode_t mode) : DataFile(mode) {}
-  static std::shared_ptr<StderrFile> getSingleton() {
-    static const std::shared_ptr<StderrFile> stderrFile =
-      std::make_shared<StderrFile>(S_IWUGO);
-    return stderrFile;
-  }
+  static std::shared_ptr<StderrFile> getSingleton();
 };
 } // namespace wasmfs
