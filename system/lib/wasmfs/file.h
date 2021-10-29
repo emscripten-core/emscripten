@@ -57,7 +57,7 @@ public:
 
   public:
     Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
-    size_t& size() { return file->size; }
+    size_t getSize() { return file->getSize(); }
     mode_t& mode() { return file->mode; }
     time_t& ctime() { return file->ctime; }
     time_t& mtime() { return file->mtime; }
@@ -71,7 +71,7 @@ protected:
   // A mutex is needed for multiple accesses to the same file.
   std::mutex mutex;
 
-  size_t size = 0;
+  virtual size_t getSize() = 0;
 
   mode_t mode = 0; // User and group mode bits for access permission.
 
@@ -116,6 +116,9 @@ class Directory : public File {
 protected:
   // TODO: maybe change to vector?
   std::map<std::string, std::shared_ptr<File>> entries;
+  // 4096 bytes is the size of a block in ext4.
+  // This value was also copied from the existing file system.
+  size_t getSize() override { return 4096; }
 
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
@@ -149,13 +152,24 @@ public:
 // This class describes a file that lives in Wasm Memory.
 class MemoryFile : public DataFile {
   std::vector<uint8_t> buffer;
-
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
 
+  size_t getSize() override { return buffer.size(); }
+
 public:
   MemoryFile(mode_t mode) : DataFile(mode) {}
 };
+
+// Obtains parent directory of a given pathname.
+// Will return a nullptr if the parent is not a directory.
+std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
+                                  std::vector<std::string>::iterator end,
+                                  long& err);
+
+// Return a vector of the '/'-delimited components of a path. The first element
+// will be "/" iff the path is an absolute path.
+std::vector<std::string> splitPath(char* pathname);
 
 } // namespace wasmfs

@@ -168,7 +168,7 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
       lockedOpenFile.position() = currOffset;
     }
   };
-  size_t size = lockedFile.size();
+  size_t size = lockedFile.getSize();
   for (size_t i = 0; i < iovs_len; i++) {
     // Check if currOffset has exceeded size of file data.
     ssize_t dataLeft = size - currOffset;
@@ -252,14 +252,7 @@ long __syscall_fstat64(long fd, long buf) {
   struct stat* buffer = (struct stat*)buf;
 
   auto lockedFile = file->locked();
-
-  if (file->is<Directory>()) {
-    buffer->st_size = 4096;
-  } else if (file->is<DataFile>()) {
-    buffer->st_size = lockedFile.size();
-  } else { // TODO: add size of symlinks
-    buffer->st_size = 0;
-  }
+  buffer->st_size = lockedFile.getSize();
 
   // ATTN: hard-coded constant values are copied from the existing JS file
   // system. Specific values were chosen to match existing library_fs.js values.
@@ -411,9 +404,9 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   } else if (whence == SEEK_CUR) {
     position = lockedOpenFile.position() + offset;
   } else if (whence == SEEK_END) {
-    // Only the open file stat is altered in seek. Locking the underlying data
+    // Only the open file state is altered in seek. Locking the underlying data
     // file here once is sufficient.
-    position = lockedOpenFile.getFile()->locked().size() + offset;
+    position = lockedOpenFile.getFile()->locked().getSize() + offset;
   } else {
     return __WASI_ERRNO_INVAL;
   }
