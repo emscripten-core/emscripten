@@ -9,7 +9,6 @@
 #pragma once
 
 #include "file.h"
-#include "streams.h"
 #include <assert.h>
 #include <mutex>
 #include <utility>
@@ -63,7 +62,10 @@ public:
 };
 
 class FileTable {
+  // FileTable's constructor is private so WasmFS must be a friend class to
+  // allow a global FileTable singleton to be defined in the WasmFS object.
   friend class WasmFS;
+
   static std::vector<std::shared_ptr<OpenFileState>> entries;
   std::mutex mutex;
 

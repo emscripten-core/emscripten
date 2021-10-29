@@ -38,28 +38,6 @@ __wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
   std::memcpy(buf, &buffer[offset], len);
 
   return __WASI_ERRNO_SUCCESS;
-};
-
-std::vector<std::string> splitPath(char* pathname) {
-  std::vector<std::string> pathParts;
-  char newPathName[strlen(pathname) + 1];
-  strcpy(newPathName, pathname);
-
-  // TODO: Support relative paths. i.e. specify cwd if path is relative.
-  // TODO: Other path parsing edge cases.
-  char* current;
-  // Handle absolute path.
-  if (newPathName[0] == '/') {
-    pathParts.push_back("/");
-  }
-
-  current = strtok(newPathName, "/");
-  while (current != NULL) {
-    pathParts.push_back(current);
-    current = strtok(NULL, "/");
-  }
-
-  return pathParts;
 }
 //
 // Path Parsing utilities
@@ -110,5 +88,27 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
   }
 
   return currDirectory;
+}
+
+std::vector<std::string> splitPath(char* pathname) {
+  std::vector<std::string> pathParts;
+  char newPathName[strlen(pathname) + 1];
+  strcpy(newPathName, pathname);
+
+  // TODO: Support relative paths. i.e. specify cwd if path is relative.
+  // TODO: Other path parsing edge cases.
+  char* current;
+  // Handle absolute path.
+  if (newPathName[0] == '/') {
+    pathParts.push_back("/");
+  }
+
+  current = strtok(newPathName, "/");
+  while (current != NULL) {
+    pathParts.push_back(current);
+    current = strtok(NULL, "/");
+  }
+
+  return pathParts;
 }
 } // namespace wasmfs

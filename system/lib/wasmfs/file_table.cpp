@@ -7,6 +7,7 @@
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include "file_table.h"
+#include "stream.h"
 
 namespace wasmfs {
 
