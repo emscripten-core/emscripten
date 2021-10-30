@@ -1220,30 +1220,34 @@
       var statusElement = document.getElementById('status');
       var progressElement = document.getElementById('progress');
       var spinnerElement = document.getElementById('spinner');
+      var writeToConsoleElement = (function() {
+        var element = document.getElementById('output');
+        if (element) element.value = ''; // clear browser cache
+        return function(text) {
+          // These replacements are necessary if you render to raw HTML
+          //text = text.replace(/&/g, "&amp;");
+          //text = text.replace(/</g, "&lt;");
+          //text = text.replace(/>/g, "&gt;");
+          //text = text.replace('\n', '<br>', 'g');
+          if (element) {
+            element.value += text + "\n";
+            element.scrollTop = element.scrollHeight; // focus on bottom
+          }
+        };
+      })();
 
       var Module = {
         preRun: [],
         postRun: [],
-        print: (function() {
-          var element = document.getElementById('output');
-          if (element) element.value = ''; // clear browser cache
-          return function(text) {
-            if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
-            // These replacements are necessary if you render to raw HTML
-            //text = text.replace(/&/g, "&amp;");
-            //text = text.replace(/</g, "&lt;");
-            //text = text.replace(/>/g, "&gt;");
-            //text = text.replace('\n', '<br>', 'g');
-            console.log(text);
-            if (element) {
-              element.value += text + "\n";
-              element.scrollTop = element.scrollHeight; // focus on bottom
-            }
-          };
-        })(),
+        print: function(text) {
+          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+          console.log(text);
+          writeToConsoleElement(text);
+        },
         printErr: function(text) {
           if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
           console.error(text);
+          writeToConsoleElement(text);
         },
         canvas: (function() {
           var canvas = document.getElementById('canvas');
