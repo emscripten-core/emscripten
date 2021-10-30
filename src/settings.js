@@ -1763,19 +1763,19 @@ var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = 0;
 var USES_DYNAMIC_ALLOC = 1;
 
 // If set to 'emscripten' or 'wasm', compiler supports setjmp() and longjmp().
-// If set to 'none', these APIs are not available.  If you are using C++
-// exceptions, but do not need setjmp()+longjmp() API, then you can set this to
-// 'none' to save a little bit of code size and performance when catching
-// exceptions.
+// If set to 0, these APIs are not available.  If you are using C++ exceptions,
+// but do not need setjmp()+longjmp() API, then you can set this to 0 to save a
+// little bit of code size and performance when catching exceptions.
 //
 // 'emscripten': (default) Emscripten setjmp/longjmp handling using JavaScript
 // 'wasm': setjmp/longjmp handling using Wasm EH instructions (experimental)
-// 'none': No setjmp/longjmp handling
+// 0: No setjmp/longjmp handling
+// 1: Default setjmp/longjmp/handling. Currently 'emscripten'.
 //
 // [compile+link] - at compile time this enables the transformations needed for
 // longjmp support at codegen time, while at link it allows linking in the
 // library support.
-var SUPPORT_LONGJMP = 'emscripten';
+var SUPPORT_LONGJMP = 1;
 
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior.
 // When enabled, there is no "Module.canvas" object, no magic "null" default

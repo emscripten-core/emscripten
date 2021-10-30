@@ -686,7 +686,8 @@ class AsanInstrumentedLibrary(Library):
     return super().get_default_variation(is_asan=settings.USE_ASAN, **kwargs)
 
 
-class libcompiler_rt(MTLibrary, SjLjLibrary):  # ASan uses setjmp/longjmp
+# Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support
+class libcompiler_rt(MTLibrary, SjLjLibrary):
   name = 'libcompiler_rt'
   # compiler_rt files can't currently be part of LTO although we are hoping to remove this
   # restriction soon: https://reviews.llvm.org/D71738
@@ -1406,7 +1407,7 @@ class liblsan_rt(SanitizerLibrary):
                       'lsan_common_emscripten.cpp']
 
 
-class libasan_rt(SanitizerLibrary):
+class libasan_rt(SanitizerLibrary, SjLjLibrary): # ASan uses setjmp/longjmp
   name = 'libasan_rt'
 
   src_dir = 'system/lib/compiler-rt/lib/asan'

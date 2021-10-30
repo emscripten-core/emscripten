@@ -1369,10 +1369,9 @@ def phase_setup(options, state, newargs, settings_map):
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
     exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
-  # SUPPORT_LONGJMP=1 means SUPPORT_LONGJMP=emscripten (backward compatibility)
-  if settings.SUPPORT_LONGJMP == 0:
-    settings.SUPPORT_LONGJMP = 'none'
-  elif settings.SUPPORT_LONGJMP == 1:
+  # SUPPORT_LONGJMP=1 means the default SjLj handling mechanism, currently
+  # 'emscripten'
+  if settings.SUPPORT_LONGJMP == 1:
     settings.SUPPORT_LONGJMP = 'emscripten'
 
   # Wasm SjLj cannot be used with Emscripten EH
