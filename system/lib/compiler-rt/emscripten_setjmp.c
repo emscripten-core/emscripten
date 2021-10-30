@@ -8,7 +8,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <setjmp.h>
-#include <threads.h>
 
 // 0 - Nothing thrown
 // 1 - Exception thrown

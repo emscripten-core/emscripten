@@ -10380,8 +10380,8 @@ exec "$@"
                          stderr)
 
   def test_SUPPORT_LONGJMP_object(self):
-    # compile the object *with* Emscripten SjLj support, but link without
-    self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-s', 'SUPPORT_LONGJMP=1', '-o', 'a.o'])
+    # compile the object *with* support, but link without
+    self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-s', 'SUPPORT_LONGJMP', '-o', 'a.o'])
     stderr = self.run_process([EMCC, 'a.o', '-s', 'SUPPORT_LONGJMP=0'], stderr=PIPE, check=False).stderr
     self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)',
                          stderr)
