@@ -638,7 +638,7 @@ class SjLjLibrary(Library):
     # TODO Currently emscripten-based SjLj is the default mode, thus no
     # suffixes. Change the default to wasm exception later.
     if self.is_wasm:
-      name += '-wasm'
+      name += '-wasm-sjlj'
     return name
 
   @classmethod
@@ -1407,7 +1407,7 @@ class liblsan_rt(SanitizerLibrary):
                       'lsan_common_emscripten.cpp']
 
 
-class libasan_rt(SanitizerLibrary, SjLjLibrary): # ASan uses setjmp/longjmp
+class libasan_rt(SanitizerLibrary):
   name = 'libasan_rt'
 
   src_dir = 'system/lib/compiler-rt/lib/asan'
