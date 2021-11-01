@@ -109,7 +109,7 @@ public:
 
       // Return a locked Handle to access OpenFileState members.
       OpenFileState::Handle locked() {
-        assert(fd < fileTableHandle.fileTable.entries.size() && fd > 0);
+        assert(fd < fileTableHandle.fileTable.entries.size() && fd >= 0);
         return unlocked()->get();
       }
 
