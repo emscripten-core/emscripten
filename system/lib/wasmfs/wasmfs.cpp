@@ -18,9 +18,11 @@ namespace wasmfs {
 // Due to # define _LIBCPP_INIT_PRIORITY_MAX
 // __attribute__((init_priority(101))), we must use init priority 100 (reserved
 // system priority) since wasmFS is a system level component.
-# 22 "wasmfs.cpp" 3
+// TODO: consider instead adding this in libc's startup code.
+// Make sure # n + 1 "wasmfs.cpp" 3 is maintained where n = line number.
+# 24 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
-# 24 "wasmfs.cpp"
+# 26 "wasmfs.cpp"
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   std::shared_ptr<Directory> rootDirectory =
