@@ -15,6 +15,9 @@ namespace wasmfs {
 // constructor is included as a header. This ensures that the global state of
 // the file system is constructed before anything else. ATTENTION: No other
 // static global objects should be defined besides wasmFS.
+// Due to # define _LIBCPP_INIT_PRIORITY_MAX
+// __attribute__((init_priority(101))), we must use init priority 100 (reserved
+// system priority) since wasmFS is a system level component.
 # 19 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
 # 21 "wasmfs.cpp"
