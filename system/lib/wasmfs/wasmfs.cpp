@@ -19,7 +19,7 @@ namespace wasmfs {
 // __attribute__((init_priority(101))), we must use init priority 100 (reserved
 // system priority) since wasmFS is a system level component.
 // TODO: consider instead adding this in libc's startup code.
-// Make sure # n + 1 "wasmfs.cpp" 3 is maintained where n = line number.
+// WARNING: Maintain # n + 1 "wasmfs.cpp" 3 where n = line number.
 # 24 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
 # 26 "wasmfs.cpp"
