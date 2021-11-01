@@ -26,16 +26,16 @@ class WasmFS {
   std::shared_ptr<Directory> rootDirectory;
 
   // Private method to initialize root directory once.
-  // Initialize default directories including dev/stdin, dev/stdout, dev/stderr.
-  // Refers to the same std streams in the open file table.
-  static std::shared_ptr<Directory> initRootDirectory();
+  // Initializes default directories including dev/stdin, dev/stdout,
+  // dev/stderr. Refers to the same std streams in the open file table.
+  std::shared_ptr<Directory> initRootDirectory();
 
 public:
   // Files will be preloaded in this constructor.
   // This global constructor has init_priority 100. Please see wasmfs.cpp.
   WasmFS() : rootDirectory(initRootDirectory()) {}
 
-  // This get method returns a locked
+  // This get method returns a locked file table.
   // There is only ever one FileTable in the system.
   FileTable::Handle getLockedFileTable() {
     return FileTable::Handle(fileTable);
