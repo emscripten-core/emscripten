@@ -3934,7 +3934,7 @@ var LibraryGLEmulation = {
   },
 
   gluUnProject: function(winX, winY, winZ, model, proj, view, objX, objY, objZ) {
-    var result = GLImmediate.matrixLib.mat4.unproject([winX, winY, winZ],
+    var result = GLImmediate.matrixLib.vec3.unproject([winX, winY, winZ],
         {{{ makeHEAPView('F64', 'model', 'model+' + (16*8)) }}},
         {{{ makeHEAPView('F64', 'proj', 'proj+' + (16*8)) }}},
         {{{ makeHEAPView('32', 'view', 'view+' + (4*4)) }}});
