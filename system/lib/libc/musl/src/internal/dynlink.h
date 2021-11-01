@@ -16,9 +16,18 @@ struct dso {
   em_arg_callback_func onerror;
   void* user_data;
 
-  // Flags used to open the library.  We need to cache these so that
-  // (in the future) other threads can mirror the open library state.
+  // Flags used to open the library.  We need to cache these so that other
+  // threads can mirror the open library state.
   int flags;
+
+  // Location in memory/table of static data/static function addresses
+  // The first thread to load a given module alloces the memory and table
+  // address space and then sets this field to non-zero.
+  uint8_t mem_allocated;
+  void* mem_addr;
+  size_t mem_size;
+  void* table_addr;
+  size_t table_size;
 
   // Flexible array; must be final element of struct
   char name[];
