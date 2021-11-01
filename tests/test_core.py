@@ -1493,17 +1493,17 @@ int main() {
 ''', 'bugfree code')
 
   def test_exceptions_longjmp1(self):
-    self.set_setting('SUPPORT_LONGJMP', 'emscripten')
+    self.set_setting('SUPPORT_LONGJMP')
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_core_test('test_exceptions_longjmp1.cpp')
 
   def test_exceptions_longjmp2(self):
-    self.set_setting('SUPPORT_LONGJMP', 'emscripten')
+    self.set_setting('SUPPORT_LONGJMP')
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_core_test('test_exceptions_longjmp2.cpp')
 
   def test_exceptions_longjmp3(self):
-    self.set_setting('SUPPORT_LONGJMP', 'emscripten')
+    self.set_setting('SUPPORT_LONGJMP')
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_core_test('test_exceptions_longjmp3.cpp')
 
