@@ -78,24 +78,6 @@
         }
     },
     {
-        "file": "sys/statvfs.h",
-        "structs": {
-            "statvfs": [
-                "f_bsize",
-                "f_frsize",
-                "f_blocks",
-                "f_bfree",
-                "f_bavail",
-                "f_files",
-                "f_ffree",
-                "f_favail",
-                "f_fsid",
-                "f_flag",
-                "f_namemax"
-            ]
-        }
-    },
-    {
         "file": "sys/statfs.h",
         "structs": {
             "statfs": [
@@ -165,46 +147,8 @@
         }
     },
     {
-        "file": "stdlib.h",
-        "defines": [
-            "RAND_MAX"
-        ],
-        "structs": {
-            // NOTE: The hash sign at the end of this name is a hint to the processor that it mustn't prefix "struct " to the name to reference this struct.
-            // It will be stripped away when writing the compiled JSON file. You can just refer to it as C_STRUCTS.div_t when using it in the JS code.
-            // For more information see gen_inspect_code() in tools/gen_struct_info.py .
-            "div_t#": [
-                "quot",
-                "rem"
-            ]
-        }
-    },
-    {
-        "file": "limits.h",
-        "defines": [
-            "PTHREAD_KEYS_MAX"
-        ]
-    },
-    {
-        "file": "sys/utsname.h",
-        "structs": {
-            "utsname": [
-                "sysname",
-                "nodename",
-                "release",
-                "version",
-                "machine",
-                "domainname"
-            ]
-        }
-    },
-    {
         "file": "sys/time.h",
         "structs": {
-            "timezone": [
-                "tz_minuteswest",
-                "tz_dsttime"
-            ],
             "timeval": [
                 "tv_sec",
                 "tv_usec"
@@ -234,34 +178,9 @@
                 "tm_gmtoff",
                 "tm_zone"
             ],
-            "itimerspec": [
-                {
-                    "it_interval": [
-                        "tv_sec",
-                        "tv_nsec"
-                    ]
-                },
-                {
-                    "it_value": [
-                        "tv_sec",
-                        "tv_nsec"
-                    ]
-                }
-            ],
             "timespec": [
                 "tv_sec",
                 "tv_nsec"
-            ]
-        }
-    },
-    {
-        "file": "sys/times.h",
-        "structs": {
-            "tms": [
-                "tms_utime",
-                "tms_stime",
-                "tms_cutime",
-                "tms_cstime"
             ]
         }
     },
@@ -273,43 +192,6 @@
                 "millitm",
                 "timezone",
                 "dstflag"
-            ]
-        }
-    },
-    {
-        "file": "sys/resource.h",
-        "structs": {
-            "rlimit": [
-                "rlim_cur",
-                "rlim_max"
-            ],
-            "rusage": [
-                {
-                    "ru_utime": [
-                        "tv_sec",
-                        "tv_usec"
-                    ]
-                },
-                {
-                    "ru_stime": [
-                        "tv_sec",
-                        "tv_usec"
-                    ]
-                },
-                "ru_maxrss",
-                "ru_ixrss",
-                "ru_idrss",
-                "ru_isrss",
-                "ru_minflt",
-                "ru_majflt",
-                "ru_nswap",
-                "ru_inblock",
-                "ru_oublock",
-                "ru_msgsnd",
-                "ru_msgrcv",
-                "ru_nsignals",
-                "ru_nvcsw",
-                "ru_nivcsw"
             ]
         }
     },
@@ -358,13 +240,6 @@
                 "ai_canonname",
                 "ai_next"
             ],
-            "in_addr": [
-                "s_addr"
-            ],
-            "linger": [
-                "l_onoff",
-                "l_linger"
-            ],
             "protoent": [
                 "p_name",
                 "p_aliases",
@@ -383,11 +258,6 @@
             "iovec": [
                 "iov_base",
                 "iov_len"
-            ],
-            "cmsghdr": [
-                "cmsg_len",
-                "cmsg_level",
-                "cmsg_type"
             ],
             "sockaddr_in6": [
                 "sin6_family",
@@ -414,21 +284,6 @@
                 "msg_control",
                 "msg_controllen",
                 "msg_flags"
-            ],
-            "in6_addr": [
-                {
-                    "__in6_union": [
-                        "__s6_addr",
-                        "__s6_addr16",
-                        "__s6_addr32"
-                    ]
-                }
-            ],
-            "netent": [
-                "n_name",
-                "n_aliases",
-                "n_addrtype",
-                "n_net"
             ]
         }
     },
@@ -441,19 +296,9 @@
         ]
     },
     {
-        "file": "math.h",
-        "defines": [
-            "FP_ZERO",
-            "FP_NAN",
-            "FP_INFINITE",
-            "FP_NORMAL"
-        ]
-    },
-    {
         "file": "bits/fcntl.h",
         "defines": [
             "O_CREAT",
-            "O_SYNC",
             "O_DSYNC",
             "F_GETFD",
             "F_SETFL",
@@ -515,7 +360,6 @@
     {
         "file": "unistd.h",
         "defines": [
-            "_SC_NGROUPS_MAX",
             "R_OK",
             "W_OK",
             "X_OK"
@@ -648,69 +492,8 @@
         ]
     },
     {
-        "file": "langinfo.h",
-        "defines": [
-            "ABDAY_7",
-            "ABDAY_6",
-            "ABDAY_5",
-            "ABDAY_4",
-            "ABDAY_3",
-            "ABDAY_2",
-            "ABDAY_1",
-            "ABMON_1",
-            "RADIXCHAR",
-            "ABMON_3",
-            "AM_STR",
-            "ALT_DIGITS",
-            "PM_STR",
-            "ABMON_9",
-            "YESEXPR",
-            "ABMON_2",
-            "ABMON_7",
-            "ABMON_6",
-            "ABMON_5",
-            "ABMON_4",
-            "ABMON_8",
-            "ERA",
-            "MON_2",
-            "MON_3",
-            "MON_1",
-            "MON_6",
-            "MON_7",
-            "MON_4",
-            "MON_5",
-            "MON_8",
-            "MON_9",
-            "NOEXPR",
-            "T_FMT_AMPM",
-            "MON_10",
-            "MON_11",
-            "MON_12",
-            "T_FMT",
-            "THOUSEP",
-            "ERA_T_FMT",
-            "ERA_D_T_FMT",
-            "D_FMT",
-            "DAY_2",
-            "DAY_3",
-            "DAY_1",
-            "DAY_6",
-            "DAY_7",
-            "DAY_4",
-            "DAY_5",
-            "ERA_D_FMT",
-            "CODESET",
-            "D_T_FMT",
-            "CRNCYSTR",
-            "ABMON_12",
-            "ABMON_11",
-            "ABMON_10"
-        ]
-    },
-    {
         "file": "stdio.h",
         "defines": [
-            "EOF",
             "SEEK_END",
             "SEEK_CUR",
             "SEEK_SET"
@@ -730,7 +513,6 @@
         "file": "sys/mman.h",
         "defines": [
             "MAP_ANONYMOUS",
-            "MAP_FAILED",
             "MAP_FIXED",
             "MAP_PRIVATE",
             "PROT_WRITE"
@@ -784,12 +566,6 @@
         "file": "SDL/SDL_pixels.h",
         "defines": ["SDL_PIXELFORMAT_RGBA8888"],
         "structs": {
-            "SDL_Palette": [
-                "ncolors",
-                "colors",
-                "version",
-                "refcount"
-            ],
             "SDL_PixelFormat": [
                 "format",
                 "palette",
@@ -810,12 +586,6 @@
                 "Ashift",
                 "refcount",
                 "next"
-            ],
-            "SDL_Color": [
-                "r",
-                "g",
-                "b",
-                "unused"
             ]
         }
     },
@@ -936,48 +706,9 @@
     {
         "file": "SDL/SDL_audio.h",
         "defines": [
-            "SDL_AUDIO_MASK_BITSIZE",
-            "SDL_AUDIO_MASK_DATATYPE",
-            "SDL_AUDIO_MASK_ENDIAN",
-            "SDL_AUDIO_MASK_SIGNED",
-            "AUDIO_U8",
-            "AUDIO_S8",
-            "AUDIO_U16LSB",
-            "AUDIO_S16LSB",
-            "AUDIO_U16MSB",
-            "AUDIO_S16MSB",
-            "AUDIO_U16",
-            "AUDIO_S16",
-            "AUDIO_S32LSB",
-            "AUDIO_S32MSB",
-            "AUDIO_S32",
-            "AUDIO_F32LSB",
-            "AUDIO_F32MSB",
-            "AUDIO_F32",
-            "AUDIO_U16SYS",
-            "AUDIO_S16SYS",
-            "AUDIO_S32SYS",
-            "AUDIO_F32SYS",
-            "SDL_AUDIO_ALLOW_FREQUENCY_CHANGE",
-            "SDL_AUDIO_ALLOW_FORMAT_CHANGE",
-            "SDL_AUDIO_ALLOW_CHANNELS_CHANGE",
-            "SDL_AUDIO_ALLOW_ANY_CHANGE",
-            "SDL_MIX_MAXVOLUME"
+            "AUDIO_S16LSB"
         ],
         "structs": {
-            "SDL_AudioCVT": [
-                "needed",
-                "src_format",
-                "dst_format",
-                "rate_incr",
-                "buf",
-                "len",
-                "len_cvt",
-                "len_mult",
-                "len_ratio",
-                "filters",
-                "filter_index"
-            ],
             "SDL_AudioSpec": [
                 "freq",
                 "format",
@@ -993,12 +724,6 @@
     },
     {
         "file": "SDL/SDL_version.h",
-        "defines": [
-            "SDL_MAJOR_VERSION",
-            "SDL_MINOR_VERSION",
-            "SDL_PATCHLEVEL",
-            "SDL_COMPILEDVERSION"
-        ],
         "structs": {
             "SDL_version": [
                 "major",
@@ -1010,11 +735,7 @@
     {
         "file": "uuid/uuid.h",
         "defines": [
-            "UUID_VARIANT_NCS",
             "UUID_VARIANT_DCE",
-            "UUID_VARIANT_MICROSOFT",
-            "UUID_VARIANT_OTHER",
-            "UUID_TYPE_DCE_TIME",
             "UUID_TYPE_DCE_RANDOM"
         ]
     },

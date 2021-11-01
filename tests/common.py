@@ -399,6 +399,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # Increate stack trace limit to maximise usefulness of test failure reports
       '--stack-trace-limit=50',
       # Opt in to node v15 default behaviour:
+      # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+      '--unhandled-rejections=throw',
+      # Include backtrace for all uncuaght exceptions (not just Error).
+      '--trace-uncaught',
     ]
     self.v8_args = []
     self.env = {}
