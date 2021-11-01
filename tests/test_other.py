@@ -6593,7 +6593,6 @@ int main() {
       create_file('src.cpp', src)
       self.run_process([EMXX, 'src.cpp', '-O2', '-s', 'EVAL_CTORS', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
 
-  @disabled('EVAL_CTORS is currently disabled')
   def test_eval_ctors(self):
     for wasm in (1, 0):
       print('wasm', wasm)
