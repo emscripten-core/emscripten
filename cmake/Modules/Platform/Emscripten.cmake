@@ -18,6 +18,7 @@ set(CMAKE_SYSTEM_NAME Emscripten)
 set(CMAKE_SYSTEM_VERSION 1)
 
 set(CMAKE_CROSSCOMPILING TRUE)
+set(BUILD_SHARED_LIBS OFF)
 set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
 
 # Advertise Emscripten as a 32-bit platform (as opposed to
