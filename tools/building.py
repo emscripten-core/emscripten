@@ -245,9 +245,12 @@ def llvm_backend_args():
     allowed = ','.join(settings.EXCEPTION_CATCHING_ALLOWED)
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
-  if settings.SUPPORT_LONGJMP:
-    # asm.js-style setjmp/longjmp handling
+  # asm.js-style setjmp/longjmp handling
+  if settings.SUPPORT_LONGJMP == 'emscripten':
     args += ['-enable-emscripten-sjlj']
+  # setjmp/longjmp handling using Wasm EH
+  elif settings.SUPPORT_LONGJMP == 'wasm':
+    args += ['-wasm-enable-sjlj']
 
   # better (smaller, sometimes faster) codegen, see binaryen#1054
   # and https://bugs.llvm.org/show_bug.cgi?id=39488
@@ -376,10 +379,10 @@ def link_lld(args, target, external_symbols=None):
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
 
-  # Wasm exception handling. This is a CodeGen option for the LLVM backend, so
-  # wasm-ld needs to take this for the LTO mode.
   if settings.EXCEPTION_HANDLING:
-    cmd += ['-mllvm', '-exception-model=wasm', '-mllvm', '-wasm-enable-eh']
+    cmd += ['-mllvm', '-wasm-enable-eh']
+  if settings.EXCEPTION_HANDLING or settings.SUPPORT_LONGJMP == 'wasm':
+    cmd += ['-mllvm', '-exception-model=wasm']
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
