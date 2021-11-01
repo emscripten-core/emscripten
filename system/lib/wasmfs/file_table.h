@@ -66,7 +66,7 @@ class FileTable {
   // allow a global FileTable singleton to be defined in the WasmFS object.
   friend class WasmFS;
 
-  static std::vector<std::shared_ptr<OpenFileState>> entries;
+  std::vector<std::shared_ptr<OpenFileState>> entries;
   std::mutex mutex;
 
   FileTable();

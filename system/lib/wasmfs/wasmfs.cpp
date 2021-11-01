@@ -11,7 +11,13 @@
 
 namespace wasmfs {
 
-WasmFS wasmFS __attribute__((init_priority(65535)));
+// The below lines are included to make the preprocessor believe that the global
+// constructor is included as a header. This ensures that the global state of
+// the file system is constructed before anything else. ATTENTION: No other
+// static global objects should be defined besides wasmFS.
+# 19 "wasmfs.cpp" 3
+__attribute__((init_priority(100))) WasmFS wasmFS;
+# 21 "wasmfs.cpp"
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   std::shared_ptr<Directory> rootDirectory =

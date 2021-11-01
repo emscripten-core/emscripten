@@ -22,17 +22,6 @@ namespace wasmfs {
 
 class WasmFS {
 
-  // Initialize default directories including dev/stdin, dev/stdout, dev/stderr.
-  // Refers to same std streams in the open file table.
-  // std::shared_ptr<Directory> initDirs();
-
-  // // This get method is responsible for lazily initializing the FileTable.
-  // // There is only ever one FileTable in the system.
-  // FileTable::Handle getFileTable() {
-  //   static FileTable fileTable;
-  //   return FileTable::Handle(fileTable);
-  // }
-
   FileTable fileTable;
   std::shared_ptr<Directory> rootDirectory;
 
@@ -43,7 +32,9 @@ class WasmFS {
 
 public:
   // Files will be preloaded in this constructor.
+  // This global constructor has init_priority 100. Please see wasmfs.cpp.
   WasmFS() : rootDirectory(initRootDirectory()) {}
+
   // This get method returns a locked
   // There is only ever one FileTable in the system.
   FileTable::Handle getLockedFileTable() {

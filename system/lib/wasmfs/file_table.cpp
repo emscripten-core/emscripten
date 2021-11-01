@@ -11,8 +11,6 @@
 
 namespace wasmfs {
 
-std::vector<std::shared_ptr<OpenFileState>> FileTable::entries;
-
 FileTable::FileTable() {
   entries.push_back(
     std::make_shared<OpenFileState>(0, O_RDONLY, StdinFile::getSingleton()));
