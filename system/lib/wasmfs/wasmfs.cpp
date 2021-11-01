@@ -43,11 +43,13 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
 // from JS. This function will be called before any file operation to ensure any
 // preloaded files are eagerly available for use.
 void WasmFS::preloadFiles() {
+  // Add check to ensure preloadFiles() is called once in Debug builds only.
 #ifndef NDEBUG
   static std::atomic<int> timesCalled;
   timesCalled++;
   assert(timesCalled == 1);
 #endif
+
   int numFiles = EM_ASM_INT({return FS.preloadedFiles.length});
   int numDirs = EM_ASM_INT({return FS.preloadedDirs.length});
 
