@@ -5,6 +5,7 @@
 #include "syscall.h"
 #include "pthread_impl.h"
 
+#ifndef __EMSCRIPTEN__
 struct ctx {
 	int fd;
 	const char *filename;
@@ -30,9 +31,13 @@ static int checker(void *p)
 	for (i=0; i < sizeof errors/sizeof *errors - 1 && ret!=errors[i]; i++);
 	return i;
 }
+#endif
 
 int faccessat(int fd, const char *filename, int amode, int flag)
 {
+#ifdef __EMSCRIPTEN__
+	return syscall(SYS_faccessat, fd, filename, amode, flag);
+#else
 	if (!flag || (flag==AT_EACCESS && getuid()==geteuid() && getgid()==getegid()))
 		return syscall(SYS_faccessat, fd, filename, amode, flag);
 
@@ -60,4 +65,5 @@ int faccessat(int fd, const char *filename, int amode, int flag)
 	__restore_sigs(&set);
 
 	return __syscall_ret(ret);
+#endif
 }
