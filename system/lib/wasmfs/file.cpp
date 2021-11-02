@@ -7,8 +7,7 @@
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include "file.h"
-// TODO remove this in the next PR.
-#include "file_table.h"
+#include "wasmfs.h"
 
 namespace wasmfs {
 //
@@ -39,7 +38,7 @@ __wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
   std::memcpy(buf, &buffer[offset], len);
 
   return __WASI_ERRNO_SUCCESS;
-};
+}
 //
 // Path Parsing utilities
 //
@@ -50,7 +49,7 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
   std::shared_ptr<File> curr;
   // Check if the first path element is '/', indicating an absolute path.
   if (*begin == "/") {
-    curr = getRootDirectory();
+    curr = wasmFS.getRootDirectory();
     begin++;
   }
 

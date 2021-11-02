@@ -11,8 +11,6 @@
 
 namespace wasmfs {
 
-std::vector<std::shared_ptr<OpenFileState>> FileTable::entries;
-
 FileTable::FileTable() {
   entries.push_back(
     std::make_shared<OpenFileState>(0, O_RDONLY, StdinFile::getSingleton()));
@@ -20,32 +18,6 @@ FileTable::FileTable() {
     std::make_shared<OpenFileState>(0, O_WRONLY, StdoutFile::getSingleton()));
   entries.push_back(
     std::make_shared<OpenFileState>(0, O_WRONLY, StderrFile::getSingleton()));
-}
-
-// Initialize default directories including dev/stdin, dev/stdout, dev/stderr.
-// Refers to same std streams in the open file table.
-std::shared_ptr<Directory> getRootDirectory() {
-  static const std::shared_ptr<Directory> rootDirectory = [] {
-    std::shared_ptr<Directory> rootDirectory =
-      std::make_shared<Directory>(S_IRUGO | S_IXUGO);
-    auto devDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
-    rootDirectory->locked().setEntry("dev", devDirectory);
-
-    auto dir = devDirectory->locked();
-
-    dir.setEntry("stdin", StdinFile::getSingleton());
-    dir.setEntry("stdout", StdoutFile::getSingleton());
-    dir.setEntry("stderr", StderrFile::getSingleton());
-
-    return rootDirectory;
-  }();
-
-  return rootDirectory;
-}
-
-FileTable::Handle FileTable::get() {
-  static FileTable fileTable;
-  return FileTable::Handle(fileTable);
 }
 
 FileTable::Handle::Entry&
