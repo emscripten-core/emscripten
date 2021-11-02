@@ -47,22 +47,17 @@ public:
   // Returns root directory defined on WasmFS singleton.
   std::shared_ptr<Directory> getRootDirectory() { return rootDirectory; };
 
-  // Handle represents an RAII wrapper object. Access to the cwd requires
-  // acquiring a locked Handle. A Handle holds the global state's lock for the
-  // duration of its lifetime.
-  class Handle {
-    WasmFS& wasmFS;
-    std::unique_lock<std::mutex> lock;
-
-  public:
-    Handle(WasmFS& wasmFS) : wasmFS(wasmFS), lock(wasmFS.mutex) {}
-
-    std::shared_ptr<File> getCWD() { return wasmFS.cwd; };
-
-    void setCWD(std::shared_ptr<File> directory) { wasmFS.cwd = directory; };
+  // For getting and setting cwd, a lock must be required. There is a chance
+  // that two threads could be mutating the cwd simultaneously.
+  std::shared_ptr<File> getCWD() {
+    const std::lock_guard<std::mutex> lock(mutex);
+    return cwd;
   };
 
-  Handle locked() { return Handle(*this); }
+  void setCWD(std::shared_ptr<File> directory) {
+    const std::lock_guard<std::mutex> lock(mutex);
+    cwd = directory;
+  };
 };
 
 // Global state instance.

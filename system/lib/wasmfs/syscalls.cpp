@@ -441,7 +441,7 @@ long __syscall_chdir(long path) {
     return err;
   }
 
-  wasmFS.locked().setCWD(dir);
+  wasmFS.setCWD(dir);
   return 0;
 }
 
@@ -456,13 +456,14 @@ long __syscall_getcwd(long buf, long size) {
     return -EINVAL;
   }
 
-  auto curr = wasmFS.locked().getCWD();
+  auto curr = wasmFS.getCWD();
 
   std::string result = "";
 
   while (curr != wasmFS.getRootDirectory()) {
     auto parent = curr->locked().getParent();
-    // Check if the parent exists.
+    // Check if the parent exists. The parent may not exist if the CWD or one of
+    // its ancestors has been unlinked.
     if (!parent) {
       return -ENOENT;
     }

@@ -66,7 +66,7 @@ public:
     // Note: parent.lock() creates a new shared_ptr to the same Directory
     // specified by the parent weak_ptr.
     std::shared_ptr<File> getParent() { return file->parent.lock(); }
-    void setParent(std::weak_ptr<File> parent) { file->parent = parent; }
+    void setParent(std::shared_ptr<File> parent) { file->parent = parent; }
   };
 
   Handle locked() { return Handle(shared_from_this()); }
@@ -90,7 +90,7 @@ protected:
   // traverse up the directory tree. A weak_ptr ensures that the ref
   // count is not incremented. This also ensures that there are no cyclic
   // dependencies where the parent and child have shared_ptrs that reference
-  // each other. This one-way relationship is needed during unlinking as well.
+  // each other. This prevents the case in which an uncollectable cycle occurs.
   std::weak_ptr<File> parent;
 };
 
@@ -145,10 +145,13 @@ public:
     std::shared_ptr<File> getEntry(std::string pathName);
 
     void setEntry(std::string pathName, std::shared_ptr<File> inserted) {
+      // Hold the lock over both functions to cover the case in which two
+      // directories attempt to add the file.
+      auto lockedInserted = inserted->locked();
       getDir()->entries[pathName] = inserted;
-      // Simulataneously, set the parent of the inserted node to be this Dir.
+      // Simultaneously, set the parent of the inserted node to be this Dir.
       // inserted must be locked because we have to go through Handle.
-      inserted->locked().setParent(file);
+      lockedInserted.setParent(file);
     }
 
     // Used to obtain name of child File in the directory entries vector.
