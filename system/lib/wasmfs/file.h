@@ -62,7 +62,10 @@ public:
     time_t& ctime() { return file->ctime; }
     time_t& mtime() { return file->mtime; }
     time_t& atime() { return file->atime; }
-    std::weak_ptr<File> getParent() { return file->parent; }
+
+    // Note: parent.lock() creates a new shared_ptr to the same Directory
+    // specified by the parent weak_ptr.
+    std::shared_ptr<File> getParent() { return file->parent.lock(); }
     void setParent(std::weak_ptr<File> parent) { file->parent = parent; }
   };
 

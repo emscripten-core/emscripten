@@ -466,10 +466,8 @@ long __syscall_getcwd(long buf, long size) {
 
   while (curr != wasmFS.getRootDirectory()) {
     auto parent = curr->locked().getParent();
-    // Note: parent.lock() creates a new shared_ptr to the same Directory
-    // specified by the parent weak_ptr.
     // Check if the parent exists.
-    if (!parent.lock()) {
+    if (!parent) {
       return -ENOENT;
     }
 
