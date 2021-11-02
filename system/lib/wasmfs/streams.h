@@ -15,23 +15,6 @@
 
 namespace wasmfs {
 
-static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
-                                     size_t len,
-                                     void (*console_write)(const char*),
-                                     std::vector<char>& fd_write_buffer) {
-  for (size_t j = 0; j < len; j++) {
-    uint8_t current = buf[j];
-    if (current == '\0' || current == '\n') {
-      fd_write_buffer.push_back('\0'); // for null-terminated C strings
-      console_write(fd_write_buffer.data());
-      fd_write_buffer.clear();
-    } else {
-      fd_write_buffer.push_back(current);
-    }
-  }
-  return __WASI_ERRNO_SUCCESS;
-}
-
 class StdinFile : public DataFile {
 
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
@@ -46,19 +29,13 @@ class StdinFile : public DataFile {
 
 public:
   StdinFile(mode_t mode) : DataFile(mode) {}
-  static std::shared_ptr<StdinFile> getSingleton() {
-    static const std::shared_ptr<StdinFile> stdinFile =
-      std::make_shared<StdinFile>(S_IRUGO);
-    return stdinFile;
-  }
+  static std::shared_ptr<StdinFile> getSingleton();
 };
 
 class StdoutFile : public DataFile {
   std::vector<char> writeBuffer;
 
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
-  }
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;
@@ -69,11 +46,7 @@ class StdoutFile : public DataFile {
 
 public:
   StdoutFile(mode_t mode) : DataFile(mode) {}
-  static std::shared_ptr<StdoutFile> getSingleton() {
-    static const std::shared_ptr<StdoutFile> stdoutFile =
-      std::make_shared<StdoutFile>(S_IWUGO);
-    return stdoutFile;
-  }
+  static std::shared_ptr<StdoutFile> getSingleton();
 };
 
 class StderrFile : public DataFile {
@@ -82,9 +55,7 @@ class StderrFile : public DataFile {
   // TODO: May not want to proxy stderr (fd == 2) to the main thread.
   // This will not show in HTML - a console.warn in a worker is sufficient.
   // This would be a change from the current FS.
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    return writeStdBuffer(buf, len, &emscripten_console_error, writeBuffer);
-  }
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
 
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     return __WASI_ERRNO_INVAL;
@@ -95,10 +66,6 @@ class StderrFile : public DataFile {
 
 public:
   StderrFile(mode_t mode) : DataFile(mode) {}
-  static std::shared_ptr<StderrFile> getSingleton() {
-    static const std::shared_ptr<StderrFile> stderrFile =
-      std::make_shared<StderrFile>(S_IWUGO);
-    return stderrFile;
-  }
+  static std::shared_ptr<StderrFile> getSingleton();
 };
 } // namespace wasmfs

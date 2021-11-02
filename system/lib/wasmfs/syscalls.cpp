@@ -2,12 +2,13 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
-// wasmfs.cpp will implement a new file system that replaces the existing JS
-// filesystem. Current Status: Work in Progress. See
+// syscalls.cpp will implement the syscalls of the new file system replacing the
+// old JS version. Current Status: Work in Progress. See
 // https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include "file.h"
 #include "file_table.h"
+#include "wasmfs.h"
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <errno.h>
@@ -17,12 +18,13 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
+
 extern "C" {
 
 using namespace wasmfs;
 
 long __syscall_dup2(long oldfd, long newfd) {
-  auto fileTable = FileTable::get();
+  auto fileTable = wasmFS.getLockedFileTable();
 
   auto oldOpenFile = fileTable[oldfd];
   // If oldfd is not a valid file descriptor, then the call fails,
@@ -46,7 +48,7 @@ long __syscall_dup2(long oldfd, long newfd) {
 }
 
 long __syscall_dup(long fd) {
-  auto fileTable = FileTable::get();
+  auto fileTable = wasmFS.getLockedFileTable();
 
   // Check that an open file exists corresponding to the given fd.
   auto openFile = fileTable[fd];
@@ -74,7 +76,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_INVAL;
   }
 
-  auto openFile = FileTable::get()[fd];
+  auto openFile = wasmFS.getLockedFileTable()[fd];
 
   if (!openFile) {
     return __WASI_ERRNO_BADF;
@@ -141,7 +143,7 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_INVAL;
   }
 
-  auto openFile = FileTable::get()[fd];
+  auto openFile = wasmFS.getLockedFileTable()[fd];
 
   if (!openFile) {
     return __WASI_ERRNO_BADF;
@@ -232,7 +234,7 @@ __wasi_errno_t __wasi_fd_pread(__wasi_fd_t fd,
 }
 
 __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
-  auto fileTable = FileTable::get();
+  auto fileTable = wasmFS.getLockedFileTable();
 
   // Remove openFileState entry from fileTable.
   fileTable[fd] = nullptr;
@@ -241,7 +243,7 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
 }
 
 long __syscall_fstat64(long fd, long buf) {
-  auto openFile = FileTable::get()[fd];
+  auto openFile = wasmFS.getLockedFileTable()[fd];
 
   if (!openFile) {
     return -EBADF;
@@ -252,6 +254,7 @@ long __syscall_fstat64(long fd, long buf) {
   struct stat* buffer = (struct stat*)buf;
 
   auto lockedFile = file->locked();
+
   buffer->st_size = lockedFile.getSize();
 
   // ATTN: hard-coded constant values are copied from the existing JS file
@@ -302,8 +305,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
   // Root directory
   if (pathParts.size() == 1 && pathParts[0] == "/") {
     auto openFile =
-      std::make_shared<OpenFileState>(0, flags, getRootDirectory());
-    return FileTable::get().add(openFile);
+      std::make_shared<OpenFileState>(0, flags, wasmFS.getRootDirectory());
+    return wasmFS.getLockedFileTable().add(openFile);
   }
 
   long err;
@@ -330,7 +333,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
       lockedParentDir.setEntry(base, created);
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
-      return FileTable::get().add(openFile);
+      return wasmFS.getLockedFileTable().add(openFile);
     } else {
       return -ENOENT;
     }
@@ -348,7 +351,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
 
   auto openFile = std::make_shared<OpenFileState>(0, flags, curr);
 
-  return FileTable::get().add(openFile);
+  return wasmFS.getLockedFileTable().add(openFile);
 }
 
 long __syscall_mkdir(long path, long mode) {
@@ -392,7 +395,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
                               __wasi_filedelta_t offset,
                               __wasi_whence_t whence,
                               __wasi_filesize_t* newoffset) {
-  auto openFile = FileTable::get()[fd];
+  auto openFile = wasmFS.getLockedFileTable()[fd];
   if (!openFile) {
     return __WASI_ERRNO_BADF;
   }
@@ -404,7 +407,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   } else if (whence == SEEK_CUR) {
     position = lockedOpenFile.position() + offset;
   } else if (whence == SEEK_END) {
-    // Only the open file state is altered in seek. Locking the underlying data
+    // Only the open file stat is altered in seek. Locking the underlying data
     // file here once is sufficient.
     position = lockedOpenFile.getFile()->locked().getSize() + offset;
   } else {

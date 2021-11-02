@@ -227,11 +227,6 @@ long __syscall_setsockopt(long sockfd, long level, long optname, long optval, lo
   return -ENOPROTOOPT; // The option is unknown at the level indicated.
 }
 
-long __syscall_rt_sigqueueinfo(long tgid, long pid, long uinfo) {
-  REPORT(rt_sigqueueinfo);
-  return 0;
-}
-
 UNIMPLEMENTED(acct, (long filename))
 UNIMPLEMENTED(mincore, (long addr, long length, long vec))
 UNIMPLEMENTED(pipe2, (long fds, long flags))

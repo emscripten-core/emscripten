@@ -32,8 +32,6 @@ template<typename T> bool addWillOverFlow(T a, T b) {
 // Access mode, file creation and file status flags for open.
 using oflags_t = uint32_t;
 
-std::shared_ptr<Directory> getRootDirectory();
-
 class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   std::shared_ptr<File> file;
   off_t position;
@@ -64,7 +62,11 @@ public:
 };
 
 class FileTable {
-  static std::vector<std::shared_ptr<OpenFileState>> entries;
+  // FileTable's constructor is private so WasmFS must be a friend class to
+  // allow a global FileTable singleton to be defined in the WasmFS object.
+  friend class WasmFS;
+
+  std::vector<std::shared_ptr<OpenFileState>> entries;
   std::mutex mutex;
 
   FileTable();
@@ -107,7 +109,7 @@ public:
 
       // Return a locked Handle to access OpenFileState members.
       OpenFileState::Handle locked() {
-        assert(fd < fileTableHandle.fileTable.entries.size() && fd > 0);
+        assert(fd < fileTableHandle.fileTable.entries.size() && fd >= 0);
         return unlocked()->get();
       }
 
@@ -122,9 +124,5 @@ public:
 
     __wasi_fd_t add(std::shared_ptr<OpenFileState> openFileState);
   };
-
-  // This get method is responsible for lazily initializing the FileTable.
-  // There is only ever one FileTable in the system.
-  static Handle get();
 };
 } // namespace wasmfs

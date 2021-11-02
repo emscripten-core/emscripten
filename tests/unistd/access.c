@@ -63,6 +63,14 @@ int main() {
   printf("F_OK(%s): %d\n", "renamedfile", access("renamedfile", F_OK));
   printf("errno: %d\n", errno);
 
+  // Same againt with faccessat
+  errno = 0;
+  printf("F_OK(%s): %d\n", "filetorename", faccessat(AT_FDCWD, "filetorename", F_OK, 0));
+  printf("errno: %d\n", errno);
+  errno = 0;
+  printf("F_OK(%s): %d\n", "renamedfile", faccessat(AT_FDCWD, "renamedfile", F_OK, 0));
+  printf("errno: %d\n", errno);
+
 #ifndef __EMSCRIPTEN_ASMFS__
   // Restore full permissions on all created files so that python test runner rmtree
   // won't have problems on deleting the files. On Windows, calling shutil.rmtree()
