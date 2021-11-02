@@ -15,13 +15,13 @@ namespace wasmfs {
 // The below lines are included to make the preprocessor believe that the global
 // constructor is included as a header. This ensures that the global state of
 // the file system is constructed before anything else. ATTENTION: No other
-// static global objects should be defined besides wasmFS.
+// static global objects should be defined besides wasm
 // Due to # define _LIBCPP_INIT_PRIORITY_MAX
 // __attribute__((init_priority(101))), we must use init priority 100 (reserved
 // system priority) since wasmFS is a system level component.
-# 19 "wasmfs.cpp" 3
+# 19 "wasmcpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
-# 21 "wasmfs.cpp"
+# 21 "wasmcpp"
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   std::shared_ptr<Directory> rootDirectory =
@@ -39,9 +39,9 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
 }
 
 // Initialize files specified by --preload-file option.
-// Set up directories and files from preloadedDirs and preloadedFiles
-// from JS. This function will be called before any file operation to ensure any
-// preloaded files are eagerly available for use.
+// Set up directories and files from wasmFS$preloadedDirs and
+// wasmFS$preloadedFiles from JS. This function will be called before any file
+// operation to ensure any preloaded files are eagerly available for use.
 void WasmFS::preloadFiles() {
   // Add check to ensure preloadFiles() is called once in Debug builds only.
 #ifndef NDEBUG
@@ -50,22 +50,22 @@ void WasmFS::preloadFiles() {
   assert(timesCalled == 1);
 #endif
 
-  int numFiles = EM_ASM_INT({return FS.preloadedFiles.length});
-  int numDirs = EM_ASM_INT({return FS.preloadedDirs.length});
+  int numFiles = EM_ASM_INT({return wasmFS$preloadedFiles.length});
+  int numDirs = EM_ASM_INT({return wasmFS$preloadedDirs.length});
 
   // If there are no preloaded files, exit early.
   if (numDirs == 0 && numFiles == 0) {
     return;
   }
 
-  // Iterate through FS.preloadedDirs to obtain parent and child pair.
+  // Iterate through wasmFS$preloadedDirs to obtain parent and child pair.
   // Ex. Module['FS_createPath']("/foo/parent", "child", true, true);
   for (int i = 0; i < numDirs; i++) {
 
     char parentPath[PATH_MAX] = {};
     EM_ASM(
       {
-        var s = FS.preloadedDirs[$0].parentPath;
+        var s = wasmFS$preloadedDirs[$0].parentPath;
         var len = lengthBytesUTF8(s) + 1;
         var numBytesWritten = stringToUTF8(s, $1, len);
       },
@@ -88,7 +88,7 @@ void WasmFS::preloadFiles() {
     char childName[PATH_MAX] = {};
     EM_ASM(
       {
-        var s = FS.preloadedDirs[$0].childName;
+        var s = wasmFS$preloadedDirs[$0].childName;
         var len = lengthBytesUTF8(s) + 1;
         var numBytesWritten = stringToUTF8(s, $1, len);
       },
@@ -104,16 +104,18 @@ void WasmFS::preloadFiles() {
     char fileName[PATH_MAX] = {};
     EM_ASM(
       {
-        var s = FS.preloadedFiles[$0].pathName;
+        var s = wasmFS$preloadedFiles[$0].pathName;
         var len = lengthBytesUTF8(s) + 1;
         stringToUTF8(s, $1, len);
       },
       i,
       fileName);
 
-    auto mode = (mode_t)EM_ASM_INT({ return FS.preloadedFiles[$0].mode; }, i);
+    auto mode =
+      (mode_t)EM_ASM_INT({ return wasmFS$preloadedFiles[$0].mode; }, i);
 
-    auto size = EM_ASM_INT({return FS.preloadedFiles[$0].fileData.length}, i);
+    auto size =
+      EM_ASM_INT({return wasmFS$preloadedFiles[$0].fileData.length}, i);
 
     auto pathParts = splitPath(fileName);
 
@@ -131,7 +133,7 @@ void WasmFS::preloadFiles() {
 
     parentDir->locked().setEntry(base, created);
 
-    created->locked().writeFromJS(i, size);
+    created->locked().preloadFromJS(i, size);
   }
 }
 } // namespace wasmfs

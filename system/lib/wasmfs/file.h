@@ -167,12 +167,8 @@ public:
 
   public:
     Handle(std::shared_ptr<File> dataFile) : DataFile::Handle(dataFile) {}
-    void writeFromJS(int index, int fileSize) {
-      getFile()->buffer.resize(fileSize);
-      EM_ASM({ HEAPU8.set(FS.preloadedFiles[$1].fileData, $0); },
-             getFile()->buffer.data(),
-             index);
-    }
+    // Copies preloaded files from JS Memory to Wasm Memory.
+    void preloadFromJS(int index, int fileSize);
   };
 
   Handle locked() { return Handle(shared_from_this()); }
