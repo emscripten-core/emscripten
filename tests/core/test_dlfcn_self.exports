@@ -4,12 +4,8 @@ __c_dot_utf8
 __c_dot_utf8_locale
 __c_locale
 __data_end
-__dso_handle
 __env_map
 __environ
-__fsmu8
-__hwcap
-__libc
 __optpos
 __optreset
 __pio2_hi
@@ -23,7 +19,6 @@ __signgam
 __stderr_used
 __stdin_used
 __stdout_used
-__sysinfo
 __threwValue
 _environ
 _ns_flagdata
