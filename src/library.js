@@ -3721,6 +3721,10 @@ LibraryManager.library = {
   __cpp_exception: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_TYPE }}}']})",
   __cpp_exception__import: true,
 #endif
+#if SUPPORT_LONGJMP == 'wasm'
+  __c_longjmp: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_TYPE }}}']})",
+  __c_longjmp_import: true,
+#endif
 #endif
 };
 

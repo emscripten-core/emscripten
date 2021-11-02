@@ -59,6 +59,7 @@ var LibraryDylink = {
     // TODO: find a way to mark these in the binary or avoid exporting them.
     return [
       '__cpp_exception',
+      '__c_longjmp',
       '__wasm_apply_data_relocs',
       '__dso_handle',
       '__tls_size',
