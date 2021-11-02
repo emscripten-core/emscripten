@@ -9,6 +9,7 @@
 #include "wasmfs.h"
 #include "file.h"
 #include "streams.h"
+#include <emscripten/threading.h>
 
 namespace wasmfs {
 // The below lines are included to make the compiler believe that the global
@@ -21,9 +22,9 @@ namespace wasmfs {
 // system priority) since wasmFS is a system level component.
 // TODO: consider instead adding this in libc's startup code.
 // WARNING: Maintain # n + 1 "wasmfs.cpp" 3 where n = line number.
-# 25 "wasmfs.cpp" 3
+# 26 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
-# 27 "wasmfs.cpp"
+# 28 "wasmfs.cpp"
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   auto rootDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
