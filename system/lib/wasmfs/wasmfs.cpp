@@ -40,7 +40,7 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   return rootDirectory;
 }
 
-// Initialize files specified by --preload-file option.
+// Initialize files specified by the --preload-file option.
 // Set up directories and files in wasmFS$preloadedDirs and
 // wasmFS$preloadedFiles from JS. This function will be called before any file
 // operation to ensure any preloaded files are eagerly available for use.
@@ -63,10 +63,9 @@ void WasmFS::preloadFiles() {
     return;
   }
 
-  // Iterate through wasmFS$preloadedDirs to obtain parent and child pair.
+  // Iterate through wasmFS$preloadedDirs to obtain a parent and child pair.
   // Ex. Module['FS_createPath']("/foo/parent", "child", true, true);
   for (int i = 0; i < numDirs; i++) {
-
     // TODO: Convert every EM_ASM to EM_JS.
     char parentPath[PATH_MAX] = {};
     EM_ASM(
@@ -80,8 +79,8 @@ void WasmFS::preloadFiles() {
 
     auto pathParts = splitPath(parentPath);
 
-    // TODO: Improvement - cache parent path names instead of looking up the
-    // Directory every iteration.
+    // TODO: Improvement - cache parent pathnames instead of looking up the
+    // directory every iteration.
     long err;
     auto parentDir = getDir(pathParts.begin(), pathParts.end(), err);
 
