@@ -51,6 +51,9 @@ void WasmFS::preloadFiles() {
   assert(timesCalled == 1);
 #endif
 
+  // Ensure that files are preloaded from the main thread.
+  assert(emscripten_is_main_browser_thread());
+
   int numFiles = EM_ASM_INT({return wasmFS$preloadedFiles.length});
   int numDirs = EM_ASM_INT({return wasmFS$preloadedDirs.length});
 
@@ -120,7 +123,7 @@ void WasmFS::preloadFiles() {
 
     auto pathParts = splitPath(fileName);
 
-    auto base = pathParts[pathParts.size() - 1];
+    auto base = pathParts.back();
 
     auto created = std::make_shared<MemoryFile>((mode_t)mode);
 

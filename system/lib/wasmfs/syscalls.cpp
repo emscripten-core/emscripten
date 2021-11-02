@@ -300,7 +300,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     return -EINVAL;
   }
 
-  auto base = pathParts[pathParts.size() - 1];
+  auto base = pathParts.back();
 
   // Root directory
   if (pathParts.size() == 1 && pathParts[0] == "/") {
@@ -365,7 +365,7 @@ long __syscall_mkdir(long path, long mode) {
     return -EEXIST;
   }
 
-  auto base = pathParts[pathParts.size() - 1];
+  auto base = pathParts.back();
 
   long err;
   auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
