@@ -330,8 +330,6 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
       // Create an empty in-memory file.
       auto created = std::make_shared<MemoryFile>(mode);
 
-      created->locked().setParent(parentDir);
-
       lockedParentDir.setEntry(base, created);
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
@@ -387,8 +385,6 @@ long __syscall_mkdir(long path, long mode) {
   } else {
     // Create an empty in-memory directory.
     auto created = std::make_shared<Directory>(mode);
-
-    created->locked().setParent(parentDir);
 
     lockedParentDir.setEntry(base, created);
     return 0;

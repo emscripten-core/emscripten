@@ -144,6 +144,8 @@ public:
 
     void setEntry(std::string pathName, std::shared_ptr<File> inserted) {
       getDir()->entries[pathName] = inserted;
+      // Simulataneously, set the parent of the inserted node to be this Dir.
+      inserted->locked().setParent(file);
     }
 
     // Used to obtain name of child File in the directory entries vector.
