@@ -260,7 +260,7 @@ If manually bisecting:
       print('make main at', path)
       path = path.replace('\\', '\\\\').replace('"', '\\"') # Escape tricky path name for use inside a C string.
       # TODO: change this when wasmfs supports relative paths.
-      if self.settings_mods['WASMFS'] == 1:
+      if 'WASMFS' in self.settings_mods and self.settings_mods['WASMFS'] == 1:
         path = "/" + path
       create_file('main.cpp', r'''
         #include <assert.h>
@@ -316,7 +316,7 @@ If manually bisecting:
     self.btest_exit('main.cpp', args=['--preload-file', tricky_filename.replace('@', '@@')])
 
     # WASMFS doesn't support the rest of this test yet. Exit early.
-    if self.settings_mods['WASMFS'] == 1:
+    if 'WASMFS' in self.settings_mods and self.settings_mods['WASMFS'] == 1:
       return
 
     # By absolute path
