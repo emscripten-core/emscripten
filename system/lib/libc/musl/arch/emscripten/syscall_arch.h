@@ -62,7 +62,6 @@ long __syscall_mlockall(long flags);
 long __syscall_munlockall(void);
 long __syscall_mremap(long old_addr, long old_size, long new_size, long flags, long new_addr);
 long __syscall_poll(long fds, long nfds, long timeout);
-long __syscall_rt_sigqueueinfo(long tgid, long sig, long uinfo);
 long __syscall_getcwd(long buf, long size);
 long __syscall_ugetrlimit(long resource, long rlim);
 long __syscall_mmap2(long addr, long len, long prot, long flags, long fd, long off);
