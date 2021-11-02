@@ -330,6 +330,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
       // Create an empty in-memory file.
       auto created = std::make_shared<MemoryFile>(mode);
 
+      created->locked().setParent(parentDir);
+
       lockedParentDir.setEntry(base, created);
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
@@ -386,6 +388,8 @@ long __syscall_mkdir(long path, long mode) {
     // Create an empty in-memory directory.
     auto created = std::make_shared<Directory>(mode);
 
+    created->locked().setParent(parentDir);
+
     lockedParentDir.setEntry(base, created);
     return 0;
   }
@@ -425,5 +429,76 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   }
 
   return __WASI_ERRNO_SUCCESS;
+}
+
+long __syscall_chdir(long path) {
+  auto pathParts = splitPath((char*)path);
+
+  if (pathParts.empty()) {
+    return -ENOENT;
+  }
+
+  long err;
+  auto dir = getDir(pathParts.begin(), pathParts.end(), err);
+
+  if (!dir) {
+    return err;
+  }
+
+  wasmFS.locked().setCWD(dir);
+  return 0;
+}
+
+long __syscall_getcwd(long buf, long size) {
+  if (!buf && size > 0) {
+    return -EFAULT;
+  }
+
+  if (buf && size == 0) {
+    return -EINVAL;
+  }
+
+  auto curr = wasmFS.locked().getCWD();
+
+  std::string buffer = "";
+
+  while (curr != wasmFS.getRootDirectory()) {
+    auto currMaybeLocked = curr->maybeLocked();
+    // TODO: better error return value.
+    // Since we are traversing up the directory tree, this checks if another
+    // thread is trying to lock a common ancestor directory.
+    // If this is the case, getcwd will not contend for access and return.
+    if (!currMaybeLocked) {
+      return -EINVAL;
+    }
+
+    auto parentDir =
+      currMaybeLocked.value().getParent().lock()->dynCast<Directory>();
+
+    auto parentMaybeLocked = parentDir->maybeLocked();
+    if (!parentMaybeLocked) {
+      return -EINVAL;
+    }
+
+    auto name = parentMaybeLocked.value().getName(curr);
+    buffer = '/' + name + buffer;
+    curr = parentDir;
+  }
+
+  // Check if the cwd is the root directory.
+  if (buffer.empty()) {
+    buffer = "/";
+  }
+
+  // Return value is a null-terminated c string.
+  strcpy((char*)buf, buffer.c_str());
+
+  // Check if the size argument is less than the length of the absolute pathname
+  // of the working directory, including null terminator.
+  if (strlen((char*)buf) >= size - 1) {
+    return -ENAMETOOLONG;
+  }
+
+  return 0;
 }
 }

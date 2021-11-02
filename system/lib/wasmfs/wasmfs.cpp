@@ -31,10 +31,19 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   rootDirectory->locked().setEntry("dev", devDirectory);
 
   auto dir = devDirectory->locked();
+  dir.setParent(rootDirectory);
 
-  dir.setEntry("stdin", StdinFile::getSingleton());
-  dir.setEntry("stdout", StdoutFile::getSingleton());
-  dir.setEntry("stderr", StderrFile::getSingleton());
+  auto stdinFile = StdinFile::getSingleton();
+  auto stdoutFile = StdoutFile::getSingleton();
+  auto stderrFile = StderrFile::getSingleton();
+
+  dir.setEntry("stdin", stdinFile);
+  dir.setEntry("stdout", stdoutFile);
+  dir.setEntry("stderr", stderrFile);
+
+  stdinFile->locked().setParent(devDirectory);
+  stdoutFile->locked().setParent(devDirectory);
+  stderrFile->locked().setParent(devDirectory);
 
   return rootDirectory;
 }

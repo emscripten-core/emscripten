@@ -51,6 +51,8 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
   if (*begin == "/") {
     curr = wasmFS.getRootDirectory();
     begin++;
+  } else {
+    curr = wasmFS.locked().getCWD();
   }
 
   for (auto it = begin; it != end; ++it) {
