@@ -88,7 +88,9 @@ protected:
 
   // Reference to parent of current file node. This can be used to
   // traverse up the directory tree. A weak_ptr ensures that the ref
-  // count is not incremented.
+  // count is not incremented. This also ensures that there are no cyclic
+  // dependencies where the parent and child have shared_ptrs that reference
+  // each other. This one-way relationship is needed during unlinking as well.
   std::weak_ptr<File> parent;
 };
 
@@ -145,6 +147,7 @@ public:
     void setEntry(std::string pathName, std::shared_ptr<File> inserted) {
       getDir()->entries[pathName] = inserted;
       // Simulataneously, set the parent of the inserted node to be this Dir.
+      // inserted must be locked because we have to go through Handle.
       inserted->locked().setParent(file);
     }
 
