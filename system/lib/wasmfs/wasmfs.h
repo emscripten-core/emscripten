@@ -35,6 +35,7 @@ class WasmFS {
 public:
   // Files will be preloaded in this constructor.
   // This global constructor has init_priority 100. Please see wasmfs.cpp.
+  // The current working directory is initialized to the root directory.
   WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {}
 
   // This get method returns a locked file table.
@@ -46,6 +47,9 @@ public:
   // Returns root directory defined on WasmFS singleton.
   std::shared_ptr<Directory> getRootDirectory() { return rootDirectory; };
 
+  // Handle represents an RAII wrapper object. Access to the cwd requires
+  // acquiring a locked Handle. A Handle holds the global state's lock for the
+  // duration of its lifetime.
   class Handle {
     WasmFS& wasmFS;
     std::unique_lock<std::mutex> lock;

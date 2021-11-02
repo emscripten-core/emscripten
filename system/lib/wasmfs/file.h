@@ -71,6 +71,7 @@ public:
 
   Handle locked() { return Handle(shared_from_this()); }
 
+  // Tries to lock the File, and returns a Handle if it can lock the mutex.
   std::optional<Handle> maybeLocked() {
     auto handle = Handle(shared_from_this(), std::defer_lock);
     if (handle.trylock()) {
@@ -155,6 +156,7 @@ public:
       getDir()->entries[pathName] = inserted;
     }
 
+    // Used to obtain name of child File in the directory entries vector.
     std::string getName(std::shared_ptr<File> target) {
       for (const auto& [key, value] : getDir()->entries) {
         if (value == target) {
@@ -177,6 +179,7 @@ public:
 
   Handle locked() { return Handle(shared_from_this()); }
 
+  // Tries to lock the Directory, and returns a Handle if it can lock the mutex.
   std::optional<Handle> maybeLocked() {
     auto handle = Handle(shared_from_this(), std::defer_lock);
     if (handle.trylock()) {

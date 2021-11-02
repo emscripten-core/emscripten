@@ -411,7 +411,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   } else if (whence == SEEK_CUR) {
     position = lockedOpenFile.position() + offset;
   } else if (whence == SEEK_END) {
-    // Only the open file stat is altered in seek. Locking the underlying data
+    // Only the open file state is altered in seek. Locking the underlying data
     // file here once is sufficient.
     position = lockedOpenFile.getFile()->locked().getSize() + offset;
   } else {
@@ -450,10 +450,12 @@ long __syscall_chdir(long path) {
 }
 
 long __syscall_getcwd(long buf, long size) {
+  // Check if buf points to a bad address.
   if (!buf && size > 0) {
     return -EFAULT;
   }
 
+  // Check if the size argument is zero and buf is not a null pointer.
   if (buf && size == 0) {
     return -EINVAL;
   }
@@ -472,6 +474,8 @@ long __syscall_getcwd(long buf, long size) {
       return -EINVAL;
     }
 
+    // Note: getParent().lock() creates a new shared_ptr that shares ownership
+    // of the managed object. This is because parent is stored as a weak_ptr.
     auto parentDir =
       currMaybeLocked.value().getParent().lock()->dynCast<Directory>();
 
