@@ -327,6 +327,7 @@ THREAD_RETURN_T connection_thread(void *arg)
 // use case, expected to only be proxying one connection at a time - if this proxy bridge is expected to be used
 // for hundreds of connections simultaneously, this mutex should be refactored to be per-connection)
 MUTEX_T webSocketSendLock;
+MUTEX_T socketRegistryLock;
 
 int main(int argc, char *argv[])
 {
@@ -365,6 +366,7 @@ int main(int argc, char *argv[])
   printf("websocket_to_posix_proxy server is now listening for WebSocket connections to ws://localhost:%d/\n", port);
 
   CREATE_MUTEX(&webSocketSendLock);
+  CREATE_MUTEX(&socketRegistryLock);
 
   while (1)
   {
