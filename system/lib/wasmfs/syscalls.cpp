@@ -462,46 +462,38 @@ long __syscall_getcwd(long buf, long size) {
 
   auto curr = wasmFS.locked().getCWD();
 
-  std::string buffer = "";
+  std::string result = "";
 
   while (curr != wasmFS.getRootDirectory()) {
-    auto currMaybeLocked = curr->maybeLocked();
-    // TODO: better error return value.
-    // Since we are traversing up the directory tree, this checks if another
-    // thread is trying to lock a common ancestor directory.
-    // If this is the case, getcwd will not contend for access and return.
-    if (!currMaybeLocked) {
-      return -EINVAL;
+    auto parent = curr->locked().getParent();
+    // Check if the parent exists.
+    if (!parent.lock()) {
+      return -ENOENT;
     }
+    // Note: parent.lock() creates a new shared_ptr to the same Directory
+    // specified by the parent weak_ptr.
+    auto parentDir = parent->dynCast<Directory>();
 
-    // Note: getParent().lock() creates a new shared_ptr that shares ownership
-    // of the managed object. This is because parent is stored as a weak_ptr.
-    auto parentDir =
-      currMaybeLocked.value().getParent().lock()->dynCast<Directory>();
-
-    auto parentMaybeLocked = parentDir->maybeLocked();
-    if (!parentMaybeLocked) {
-      return -EINVAL;
-    }
-
-    auto name = parentMaybeLocked.value().getName(curr);
-    buffer = '/' + name + buffer;
+    auto name = parentDir->locked().getName(curr);
+    result = '/' + name + result;
     curr = parentDir;
   }
 
   // Check if the cwd is the root directory.
-  if (buffer.empty()) {
-    buffer = "/";
+  if (result.empty()) {
+    result = "/";
   }
 
-  // Return value is a null-terminated c string.
-  strcpy((char*)buf, buffer.c_str());
+  auto res = result.c_str();
 
   // Check if the size argument is less than the length of the absolute pathname
   // of the working directory, including null terminator.
-  if (strlen((char*)buf) >= size - 1) {
+  if (strlen(res) >= size - 1) {
     return -ENAMETOOLONG;
   }
+
+  // Return value is a null-terminated c string.
+  strcpy((char*)buf, res);
 
   return 0;
 }

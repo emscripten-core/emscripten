@@ -18,8 +18,8 @@
 
 namespace wasmfs {
 
-class Directory;
-class DataFile;
+// Note: The general locking strategy for all Files is to only hold 1 lock at a
+// time to prevent deadlock. This methodology can be seen in getDirs().
 
 class File : public std::enable_shared_from_this<File> {
 
@@ -50,16 +50,13 @@ public:
   }
 
   class Handle {
+    std::unique_lock<std::mutex> lock;
 
   protected:
-    std::unique_lock<std::mutex> lock;
     std::shared_ptr<File> file;
 
   public:
     Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
-    Handle(std::shared_ptr<File> file, std::defer_lock_t)
-      : file(file), lock(file->mutex, std::defer_lock) {}
-    bool trylock() { return lock.try_lock(); }
     size_t getSize() { return file->getSize(); }
     mode_t& mode() { return file->mode; }
     time_t& ctime() { return file->ctime; }
@@ -70,16 +67,6 @@ public:
   };
 
   Handle locked() { return Handle(shared_from_this()); }
-
-  // Tries to lock the File, and returns a Handle if it can lock the mutex.
-  std::optional<Handle> maybeLocked() {
-    auto handle = Handle(shared_from_this(), std::defer_lock);
-    if (handle.trylock()) {
-      return Handle(shared_from_this());
-    } else {
-      return std::nullopt;
-    }
-  }
 
 protected:
   File(FileKind kind, mode_t mode) : kind(kind), mode(mode) {}
@@ -96,8 +83,10 @@ protected:
 
   FileKind kind;
 
-  std::weak_ptr<File> parent; // Reference to parent of current file node that
-                              // has no ownership over the resource.
+  // Reference to parent of current file node. This can be used to
+  // traverse up the directory tree. A weak_ptr ensures that the ref
+  // count is not incremented.
+  std::weak_ptr<File> parent;
 };
 
 class DataFile : public File {
@@ -147,8 +136,6 @@ public:
 
   public:
     Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
-    Handle(std::shared_ptr<File> directory, std::defer_lock_t)
-      : File::Handle(directory, std::defer_lock) {}
 
     std::shared_ptr<File> getEntry(std::string pathName);
 
@@ -178,16 +165,6 @@ public:
   };
 
   Handle locked() { return Handle(shared_from_this()); }
-
-  // Tries to lock the Directory, and returns a Handle if it can lock the mutex.
-  std::optional<Handle> maybeLocked() {
-    auto handle = Handle(shared_from_this(), std::defer_lock);
-    if (handle.trylock()) {
-      return Handle(shared_from_this());
-    } else {
-      return std::nullopt;
-    }
-  }
 };
 
 // This class describes a file that lives in Wasm Memory.
