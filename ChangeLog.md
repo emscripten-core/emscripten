@@ -18,8 +18,12 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.33
+2.0.34
 ------
+
+2.0.33 - 11/01/2021
+-------------------
+- Bug fixes
 
 2.0.32 - 10/19/2021
 -------------------
