@@ -63,7 +63,7 @@ void WasmFS::preloadFiles() {
   // Ex. Module['FS_createPath']("/foo/parent", "child", true, true);
   for (int i = 0; i < numDirs; i++) {
 
-    // TODO: Convert all EM_ASM to EM_JS.
+    // TODO: Convert every EM_ASM to EM_JS.
     char parentPath[PATH_MAX] = {};
     EM_ASM(
       {
@@ -113,8 +113,7 @@ void WasmFS::preloadFiles() {
       i,
       fileName);
 
-    auto mode =
-      (mode_t)EM_ASM_INT({ return wasmFS$preloadedFiles[$0].mode; }, i);
+    auto mode = EM_ASM_INT({ return wasmFS$preloadedFiles[$0].mode; }, i);
 
     auto size =
       EM_ASM_INT({return wasmFS$preloadedFiles[$0].fileData.length}, i);
