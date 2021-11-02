@@ -42,6 +42,7 @@ __wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
 }
 
 void MemoryFile::Handle::preloadFromJS(int index, int fileSize) {
+  getFile()->buffer.resize(fileSize);
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_browser_thread());
   // TODO: Replace all EM_ASM with EM_JS.

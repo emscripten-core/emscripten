@@ -5,9 +5,6 @@ var WasmfsLibrary = {
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
-        Browser.init(); // XXX perhaps this method should move onto Browser?
-        // TODO we should allow people to just pass in a complete filename instead
-        // of parent and name being that we just join them anyways
         var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
         var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
         function processData(byteArray) {

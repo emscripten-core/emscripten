@@ -40,11 +40,11 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
 }
 
 // Initialize files specified by --preload-file option.
-// Set up directories and files from wasmFS$preloadedDirs and
+// Set up directories and files in wasmFS$preloadedDirs and
 // wasmFS$preloadedFiles from JS. This function will be called before any file
 // operation to ensure any preloaded files are eagerly available for use.
 void WasmFS::preloadFiles() {
-  // Add check to ensure preloadFiles() is called once in Debug builds only.
+  // Debug builds only: add check to ensure preloadFiles() is called once.
 #ifndef NDEBUG
   static std::atomic<int> timesCalled;
   timesCalled++;
@@ -63,12 +63,13 @@ void WasmFS::preloadFiles() {
   // Ex. Module['FS_createPath']("/foo/parent", "child", true, true);
   for (int i = 0; i < numDirs; i++) {
 
+    // TODO: Convert all EM_ASM to EM_JS.
     char parentPath[PATH_MAX] = {};
     EM_ASM(
       {
         var s = wasmFS$preloadedDirs[$0].parentPath;
         var len = lengthBytesUTF8(s) + 1;
-        var numBytesWritten = stringToUTF8(s, $1, len);
+        stringToUTF8(s, $1, len);
       },
       i,
       parentPath);
@@ -81,7 +82,7 @@ void WasmFS::preloadFiles() {
     auto parentDir = getDir(pathParts.begin(), pathParts.end(), err);
 
     if (!parentDir) {
-      emscripten_console_log(
+      emscripten_console_error(
         "Fatal error during directory creation in file preloading.");
       abort();
     }
@@ -91,7 +92,7 @@ void WasmFS::preloadFiles() {
       {
         var s = wasmFS$preloadedDirs[$0].childName;
         var len = lengthBytesUTF8(s) + 1;
-        var numBytesWritten = stringToUTF8(s, $1, len);
+        stringToUTF8(s, $1, len);
       },
       i,
       childName);
@@ -128,7 +129,7 @@ void WasmFS::preloadFiles() {
     auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
 
     if (!parentDir) {
-      emscripten_console_log("Fatal error during file preloading");
+      emscripten_console_error("Fatal error during file preloading");
       abort();
     }
 
