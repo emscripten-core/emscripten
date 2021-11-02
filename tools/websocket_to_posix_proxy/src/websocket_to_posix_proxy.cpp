@@ -92,7 +92,6 @@ void WebSocketMessageUnmaskPayload(uint8_t *payload, uint64_t payloadLength, uin
 }
 
 extern MUTEX_T webSocketSendLock;
-extern MUTEX_T socketRegistryLock;
 
 void SendWebSocketMessage(int client_fd, void *buf, uint64_t numBytes)
 {
@@ -742,9 +741,7 @@ void Socket(int client_fd, uint8_t *data, uint64_t numBytes) // int socket(int d
     // The proxy client connection created a new socket - track its lifetime and mark the new socket to be part of
     // this particular proxy connection so that it will be properly freed when the proxy connection disconnects,
     // and that no other proxy connections will be able to access this socket.
-    LOCK_MUTEX(&socketRegistryLock);
     TrackSocketUsedByConnection(client_fd, ret);
-    UNLOCK_MUTEX(&socketRegistryLock);
   }
 
   struct {
@@ -792,10 +789,8 @@ void Socketpair(int client_fd, uint8_t *data, uint64_t numBytes) // int socketpa
     // The proxy client connection created two new sockets - track their lifetime and mark the new sockets to be part of
     // this particular proxy connection so that they will be properly freed when the proxy connection disconnects,
     // and that no other proxy connections will be able to access these sockets.
-    LOCK_MUTEX(&socketRegistryLock);
     TrackSocketUsedByConnection(client_fd, socket_vector[0]);
     TrackSocketUsedByConnection(client_fd, socket_vector[1]);
-    UNLOCK_MUTEX(&socketRegistryLock);
   }
 
   struct {
@@ -854,9 +849,7 @@ void Shutdown(int client_fd, uint8_t *data, uint64_t numBytes) // int shutdown(i
     {
       // Proxy client performed bidirectional close, mark this socket as being disconnected, and disallow it
       // from accessing this socket again - this close()s the socket.
-      LOCK_MUTEX(&socketRegistryLock);
       CloseSocketByConnection(client_fd, d->socket);
-      UNLOCK_MUTEX(&socketRegistryLock);
     }
   }
   else
@@ -1022,9 +1015,7 @@ void Accept(int client_fd, uint8_t *data, uint64_t numBytes) // int accept(int s
 		if (ret > 0)
 		{
 			// New connection socket created by the proxy bridge, mark it as part of this WebSocket proxy connection.
-			LOCK_MUTEX(&socketRegistryLock);
 			TrackSocketUsedByConnection(client_fd, ret);
-			UNLOCK_MUTEX(&socketRegistryLock);
 		}
   }
   else
