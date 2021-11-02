@@ -40,7 +40,7 @@ int main() {
   getcwd(cwd, sizeof(cwd));
   printf("Current working dir: %s\n", cwd);
 
-  // Try to switch to non-existent relative path from subdirectory.
+  // Try to switch to a non-existent relative path from subdirectory.
   // Changing to working in /working/test should fail.
   chdir("working");
   printf("Errno: %s\n", strerror(errno));
@@ -56,7 +56,7 @@ int main() {
   getcwd(cwd, sizeof(cwd));
   printf("Current working dir is now: %s\n", cwd);
 
-  // Try to switch to non-existent absolute path.
+  // Try to switch to a non-existent absolute path.
   errno = 0;
   chdir("/foobar");
   printf("Errno: %s\n", strerror(errno));
@@ -64,7 +64,7 @@ int main() {
   getcwd(cwd, sizeof(cwd));
   printf("Current working dir is still: %s\n", cwd);
 
-  // Try to write switch to /dev.
+  // Try to switch to /dev.
   chdir("/dev");
   getcwd(cwd, sizeof(cwd));
   printf("Current working dir: %s\n", cwd);
