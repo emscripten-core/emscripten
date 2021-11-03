@@ -13,16 +13,13 @@ from .utils import WINDOWS
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 
 
-def create_response_file(args, directory, suffix='.rsp.utf-8'):
+def create_response_file(args, directory):
   """Routes the given cmdline param list in args into a new response file and
   returns the filename to it.
 
-  By default the returned filename has a suffix '.rsp.utf-8'. Pass a suffix parameter to override.
+  The returned filename has a suffix '.rsp'.
   """
-
-  assert suffix.startswith('.')
-
-  response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix=suffix, dir=directory, text=True)
+  response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp', dir=directory, text=True)
 
   # Backslashes and other special chars need to be escaped in the response file.
   escape_chars = ['\\', '\"']
@@ -44,12 +41,16 @@ def create_response_file(args, directory, suffix='.rsp.utf-8'):
       arg = '"%s"' % arg
     contents += arg + '\n'
 
-  # Decide the encoding of the generated file based on the requested file suffix
-  if suffix.count('.') == 2:
-    # Use the encoding specified in the suffix of the response file
-    encoding = suffix.split('.')[2]
-  else:
+  # When writing windows repsonse files force the encoding to UTF8 which we know
+  # that llvm tools understand.  Without this, we get whatever the default codepage
+  # might be.
+  # See: https://github.com/llvm/llvm-project/blob/3f3d1c901d7abcc5b91468335679b1b27d8a02dd/llvm/include/llvm/Support/Program.h#L168-L170
+  # And: https://github.com/llvm/llvm-project/blob/63d16d06f5b8f71382033b5ea4aa668f8150817a/clang/include/clang/Driver/Job.h#L58-L69
+  # TODO(sbc): Should we also force utf-8 on non-windows?
+  if WINDOWS:
     encoding = 'utf-8'
+  else:
+    encoding = None
 
   with os.fdopen(response_fd, 'w', encoding=encoding) as f:
     f.write(contents)
@@ -76,25 +77,8 @@ def read_response_file(response_filename):
   if not os.path.exists(response_filename):
     raise IOError("response file not found: %s" % response_filename)
 
-  # Guess encoding based on the file suffix
-  components = os.path.basename(response_filename).split('.')
-  encoding_suffix = components[-1].lower()
-  if len(components) > 1 and (encoding_suffix.startswith('utf') or encoding_suffix.startswith('cp') or encoding_suffix.startswith('iso') or encoding_suffix in ['ascii', 'latin-1']):
-    guessed_encoding = encoding_suffix
-  else:
-    guessed_encoding = 'utf-8'
-
-  try:
-    # First try with the guessed encoding
-    with open(response_filename, encoding=guessed_encoding) as f:
-      args = f.read()
-  except (ValueError, LookupError): # UnicodeDecodeError is a subclass of ValueError, and Python raises either a ValueError or a UnicodeDecodeError on decode errors. LookupError is raised if guessed encoding is not an encoding.
-    if DEBUG:
-      logging.warning('Failed to parse response file ' + response_filename + ' with guessed encoding "' + guessed_encoding + '". Trying default system encoding...')
-    # If that fails, try with the default system encoding
-    with open(response_filename) as f:
-      args = f.read()
-
+  with open(response_filename) as f:
+    args = f.read()
   args = shlex.split(args)
 
   if DEBUG:
