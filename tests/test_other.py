@@ -7090,6 +7090,23 @@ int main() {
     # adding --metrics should not affect code size
     self.assertEqual(base_size, os.path.getsize('a.out.wasm'))
 
+  def test_binaryen_passes_no_validation(self):
+    def build(args=[]):
+      return self.run_process([EMXX, test_file('hello_world.cpp'), '-O3', '-g3'] + args, stderr=PIPE).stderr
+
+    with env_modify({'BINARYEN_PASS_DEBUG': '1'}):
+      out = build()
+      self.assertContained('(validating)', out)
+      self.assertContained('(final validation)', out)
+      base_size = os.path.getsize('a.out.wasm')
+
+      out = build(['-s', 'BINARYEN_EXTRA_PASSES="--no-validation"'])
+      # (validating) and (final validation) should not appear
+      self.assertNotContained('(validating)', out)
+      self.assertNotContained('(final validation)', out)
+      # adding --no-validation should not affect code size
+      self.assertEqual(base_size, os.path.getsize('a.out.wasm'))
+
   def assertFileContents(self, filename, contents):
     contents = contents.replace('\r', '')
 
