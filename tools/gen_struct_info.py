@@ -89,6 +89,7 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared
 from tools import system_libs
+from tools import utils
 from tools.settings import settings
 
 QUIET = (__name__ != '__main__')
@@ -141,6 +142,8 @@ def parse_c_output(lines):
 
   for line in lines:
     arg = line[1:].strip()
+    if '::' in arg:
+      arg = arg.split('::', 1)[1]
     if line[0] == 'K':
       # This is a key
       key = arg
@@ -251,19 +254,25 @@ def inspect_headers(headers, cflags):
   # Compile the program.
   show('Compiling generated code...')
 
+  if any('libcxxabi' in f for f in cflags):
+    compiler = shared.EMXX
+  else:
+    compiler = shared.EMCC
+
   # -Oz optimizes enough to avoid warnings on code size/num locals
-  cmd = [shared.EMCC] + cflags + ['-o', js_file[1], src_file[1],
-                                  '-O0',
-                                  '-Werror',
-                                  '-Wno-format',
-                                  '-nostdlib',
-                                  compiler_rt,
-                                  '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
-                                  '-s', 'LLD_REPORT_UNDEFINED=1',
-                                  '-s', 'STRICT',
-                                  # Use SINGLE_FILE=1 so there is only a single
-                                  # file to cleanup.
-                                  '-s', 'SINGLE_FILE']
+  cmd = [compiler] + cflags + ['-o', js_file[1], src_file[1],
+                               '-O0',
+                               '-Werror',
+                               '-Wno-format',
+                               '-nostdlib',
+                               compiler_rt,
+                               '-s', 'MEMORY64=' + str(settings.MEMORY64),
+                               '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
+                               '-s', 'LLD_REPORT_UNDEFINED=1',
+                               '-s', 'STRICT',
+                               # Use SINGLE_FILE=1 so there is only a single
+                               # file to cleanup.
+                               '-s', 'SINGLE_FILE']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
@@ -284,7 +293,10 @@ def inspect_headers(headers, cflags):
 
   # Run the compiled program.
   show('Calling generated program... ' + js_file[1])
-  info = shared.run_js_tool(js_file[1], stdout=shared.PIPE).splitlines()
+  args = []
+  if settings.MEMORY64:
+    args += ['--experimental-wasm-bigint']
+  info = shared.run_js_tool(js_file[1], node_args=args, stdout=shared.PIPE).splitlines()
 
   if not DEBUG:
     # Remove all temporary files.
@@ -372,8 +384,9 @@ def main(args):
   global QUIET
 
   default_json_files = [
-      shared.path_from_root('src', 'struct_info.json'),
-      shared.path_from_root('src', 'struct_info_internal.json')
+      utils.path_from_root('src/struct_info.json'),
+      utils.path_from_root('src/struct_info_internal.json'),
+      utils.path_from_root('src/struct_info_cxx.json'),
   ]
   parser = argparse.ArgumentParser(description='Generate JSON infos for structs.')
   parser.add_argument('json', nargs='*',
@@ -389,12 +402,17 @@ def main(args):
                       help='Pass a define to the preprocessor')
   parser.add_argument('-U', dest='undefines', metavar='undefine', action='append', default=[],
                       help='Pass an undefine to the preprocessor')
+  parser.add_argument('--wasm64', action='store_true',
+                      help='use wasm64 architecture')
   args = parser.parse_args(args)
 
   QUIET = args.quiet
 
   # Avoid parsing problems due to gcc specifc syntax.
   cflags = ['-D_GNU_SOURCE']
+
+  if args.wasm64:
+    settings.MEMORY64 = 2
 
   # Add the user options to the list as well.
   for path in args.includes:
@@ -407,7 +425,12 @@ def main(args):
     cflags.append('-U' + arg)
 
   internal_cflags = [
-    '-I' + shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'),
+    '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
+  ]
+
+  cxxflags = [
+    '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
+    '-D__USING_EMSCRIPTEN_EXCEPTIONS__',
   ]
 
   # Look for structs in all passed headers.
@@ -419,6 +442,8 @@ def main(args):
     # Inspect all collected structs.
     if 'internal' in f:
       use_cflags = cflags + internal_cflags
+    elif 'cxx' in f:
+      use_cflags = cflags + cxxflags
     else:
       use_cflags = cflags
     info_fragment = inspect_code(header_files, use_cflags)

@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
 
@@ -14,9 +15,6 @@ const char* EMSCRIPTEN_KEEPALIVE note(int n) {
   EM_ASM({ out([$0, $1]) }, n, noted);
   noted = noted | n;
   EM_ASM({ out(['noted is now', $0]) }, noted);
-  if (noted == 3) {
-    MAYBE_REPORT_RESULT(noted);
-  }
   return "silly-string";
 }
 
@@ -24,6 +22,7 @@ const char* EMSCRIPTEN_KEEPALIVE note(int n) {
 
 int main() {
   EM_ASM( myJSCallback() ); // calls a global JS func
+  assert(noted == 3);
   return 0;
 }
 

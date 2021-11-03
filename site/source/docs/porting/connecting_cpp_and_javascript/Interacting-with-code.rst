@@ -196,7 +196,7 @@ Require the library and call its procedures from node:
 
 .. code:: javascript
 
-    var factory = require('./a.out.js');
+    var factory = require('./api_example.js');
 
     factory().then((instance) => {
       instance._sayHi(); // direct calling works
@@ -230,21 +230,21 @@ function, but with a leading ``_``.
 .. note:: If you use :js:func:`ccall` or :js:func:`cwrap`, you do not need
    to prefix function calls with ``_`` -- just use the C name.
 
-The types of the parameters you pass to functions need to make sense.
-Integers and floating point values can be passed as is. Pointers are
-simply integers in the generated code.
 
-Strings in JavaScript must be converted to pointers for compiled
-code -- the relevant function is :js:func:`UTF8ToString`, which
-given a pointer returns a JavaScript string. Converting a JavaScript
-string ``someString`` to a pointer can be accomplished using ``ptr = ``
-allocate(intArrayFromString(someString), ALLOC_NORMAL) <allocate>``.
+The parameters you pass to and receive from functions need to be primitive values:
 
-.. note:: The conversion to a pointer allocates memory, which needs to be
-   freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side)
+  - Integer and floating point numbers can be passed as-is.
+  - Pointers can be passed as-is also, as they are simply integers in the generated code.
+  - JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = allocate(intArrayFromString(someString), ALLOC_NORMAL) <allocate>``.
 
-There are other convenience functions for converting strings and encodings
-in :ref:`preamble-js`.
+    .. note:: The conversion to a pointer allocates memory, which needs to be
+      freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side) -
+  - ``char *`` received from C/C++ can be converted to a JavaScript string using :js:func:`UTF8ToString`.
+
+    There are other convenience functions for converting strings and encodings
+    in :ref:`preamble-js`.
+  - Other values can be passed via :cpp:class:`emscripten::val`. Check out examples
+    on :ref:`as_handle and take_ownership methods <val_as_handle>`.
 
 .. _interacting-with-code-call-javascript-from-native:
 
@@ -674,32 +674,46 @@ Here ``my_function`` is a C function that receives a single integer parameter
 integer. This could be something like ``int my_function(char *buf)``.
 
 The converse case of exporting allocated memory into JavaScript can be
-tricky when wasm-based memory is allowed to grow (by compiling with
-``-s ALLOW_MEMORY_GROWTH=1``). Increasing the size of memory changes
+tricky when wasm-based memory is allowed to **grow**, by compiling with
+``-s ALLOW_MEMORY_GROWTH``. Increasing the size of memory changes
 to a new buffer and existing array views essentially become invalid,
 so you cannot simply do this:
 
 .. code-block:: javascript
 
    function func() {
-     var ptr = callSomething(len);               // if memory grows ...
-     return HEAPU8.subarray(ptr, ptr+len); // ... this will fail
+     let someView = HEAPU8.subarray(x, y);
+     compute(someView);
+
+     // This may grow memory, which would invalidate all views.
+     maybeGrow();
+
+     // If we grew, this use of an invalidated view will fail. Failure in this
+     // case will return undefined, the same as reading out of bounds from a
+     // typed array. If the operation were someView.subarray(), however, then it
+     // would throw an error.
+     return someView[z];
    }
 
-Here, if `callSomething` calls `malloc` and returns the allocated
-pointer, and if that `malloc` grew memory, you will not be able to
-read the returned data unless you renew the view:
+Emscripten will refresh the canonical views like ``HEAPU8`` for you, which you
+can use to refresh your own views:
 
 .. code-block:: javascript
 
    function func() {
-     var ptr = callSomething(len);
-     return new Uint8Array(HEAPU8.subarray(ptr, ptr+len)); // create a new view
+     let someView = HEAPU8.subarray(x, y);
+     compute(someView);
+
+     // This may grow memory, which would invalidate all views.
+     maybeGrow();
+
+     // Create a new, fresh view after the possible growth.
+     someView = HEAPU8.subarray(x, y);
+     return someView[z];
    }
 
-Note that a second instance of memory growth will possibly invalidate
-the current view, requiring another update of the view (you can, of
-course, avoid this problem by copying the data.)
+Another option to avoid such problems is to copy the data, when that makes
+sense.
 
 .. _interacting-with-code-execution-behaviour:
 
@@ -737,6 +751,15 @@ For example, to set an environment variable ``MY_FILE_ROOT`` to be
 .. code:: javascript
 
     Module.preRun.push(function() {ENV.MY_FILE_ROOT = "/usr/lib/test"})
+
+Note that Emscripten will set default values for some environment variables
+(e.g. LANG) after you have configured ``ENV``, if you have not set your own
+values. If you want such variables to remain unset, you can explicitly set
+their value to `undefined`. For example:
+
+.. code:: javascript
+
+    Module.preRun.push(function() {ENV.LANG = undefined})
 
 .. _interacting-with-code-binding-cpp:
 

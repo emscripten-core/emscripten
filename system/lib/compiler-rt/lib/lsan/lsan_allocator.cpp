@@ -28,7 +28,7 @@ extern "C" void *memset(void *ptr, int value, uptr num);
 namespace __lsan {
 #if defined(__i386__) || defined(__arm__) || defined(__wasm32__)
 static const uptr kMaxAllowedMallocSize = 1UL << 30;
-#elif defined(__mips64) || defined(__aarch64__)
+#elif defined(__mips64) || defined(__aarch64__) || defined(__wasm64__)
 static const uptr kMaxAllowedMallocSize = 4UL << 30;
 #else
 static const uptr kMaxAllowedMallocSize = 8UL << 30;
@@ -309,6 +309,16 @@ IgnoreObjectResult IgnoreObjectLocked(const void *p) {
     return kIgnoreObjectInvalid;
   }
 }
+
+void GetAdditionalThreadContextPtrs(ThreadContextBase *tctx, void *ptrs) {
+  // This function can be used to treat memory reachable from `tctx` as live.
+  // This is useful for threads that have been created but not yet started.
+
+  // This is currently a no-op because the LSan `pthread_create()` interceptor
+  // blocks until the child thread starts which keeps the thread's `arg` pointer
+  // live.
+}
+
 } // namespace __lsan
 
 using namespace __lsan;

@@ -646,7 +646,7 @@ var LibraryGLFW = {
 
           if (gamepad) {
             if (!GLFW.joys[joy]) {
-              console.log('glfw joystick connected:',joy);
+              out('glfw joystick connected:',joy);
               GLFW.joys[joy] = {
                 id: allocate(intArrayFromString(gamepad.id), ALLOC_NORMAL),
                 buttonsCount: gamepad.buttons.length,
@@ -671,7 +671,7 @@ var LibraryGLFW = {
             }
           } else {
             if (GLFW.joys[joy]) {
-              console.log('glfw joystick disconnected',joy);
+              out('glfw joystick disconnected',joy);
 
               if (GLFW.joystickFunc) {
                 {{{ makeDynCall('vii', 'GLFW.joystickFunc') }}}(joy, 0x00040002); // GLFW_DISCONNECTED
@@ -758,7 +758,7 @@ var LibraryGLFW = {
         reader.onloadend = function(e) {
           if (reader.readyState != 2) { // not DONE
             ++written;
-            console.log('failed to read dropped file: '+file.name+': '+reader.error);
+            out('failed to read dropped file: '+file.name+': '+reader.error);
             return;
           }
 
@@ -850,7 +850,7 @@ var LibraryGLFW = {
               break;
             }
             case 0x00034002: { // GLFW_CURSOR_HIDDEN
-              console.log("glfwSetInputMode called with GLFW_CURSOR_HIDDEN value not implemented.");
+              out("glfwSetInputMode called with GLFW_CURSOR_HIDDEN value not implemented.");
               break;
             }
             case 0x00034003: { // GLFW_CURSOR_DISABLED
@@ -860,22 +860,22 @@ var LibraryGLFW = {
               break;
             }
             default: {
-              console.log("glfwSetInputMode called with unknown value parameter value: " + value + ".");
+              out("glfwSetInputMode called with unknown value parameter value: " + value + ".");
               break;
             }
           }
           break;
         }
         case 0x00033002: { // GLFW_STICKY_KEYS
-          console.log("glfwSetInputMode called with GLFW_STICKY_KEYS mode not implemented.");
+          out("glfwSetInputMode called with GLFW_STICKY_KEYS mode not implemented.");
           break;
         }
         case 0x00033003: { // GLFW_STICKY_MOUSE_BUTTONS
-          console.log("glfwSetInputMode called with GLFW_STICKY_MOUSE_BUTTONS mode not implemented.");
+          out("glfwSetInputMode called with GLFW_STICKY_MOUSE_BUTTONS mode not implemented.");
           break;
         }
         default: {
-          console.log("glfwSetInputMode called with unknown mode parameter value: " + mode + ".");
+          out("glfwSetInputMode called with unknown mode parameter value: " + mode + ".");
           break;
         }
       }

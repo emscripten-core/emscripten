@@ -24,7 +24,7 @@ mergeInto(LibraryManager.library, {
       return exportedFunc.ptr;
     }
 #if ASSERTIONS
-    console.error('No exported function found by name "' + exportedFunc + '"');
+    err('No exported function found by name "' + exportedFunc + '"');
 #endif
     // implicit return 0;
   }

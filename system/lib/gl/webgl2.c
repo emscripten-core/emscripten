@@ -6,6 +6,8 @@
 #include <webgl/webgl1.h>
 #include <webgl/webgl2.h>
 
+#include "webgl_internal.h"
+
 #if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glReadBuffer, GLenum);

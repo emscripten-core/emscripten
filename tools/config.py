@@ -6,9 +6,11 @@
 import os
 import sys
 import logging
+
+from . import utils
 from .utils import path_from_root, exit_with_error, __rootpath__, which
 
-logger = logging.getLogger('shared')
+logger = logging.getLogger('config')
 
 # The following class can be overridden by the config file and/or
 # environment variables.  Specifically any variable whose name
@@ -36,9 +38,9 @@ COMPILER_WRAPPER = None
 
 
 def listify(x):
-  if type(x) is not list:
-    return [x]
-  return x
+  if x is None or type(x) is list:
+    return x
+  return [x]
 
 
 def fix_js_engine(old, new):
@@ -54,7 +56,7 @@ def root_is_writable():
 
 
 def normalize_config_settings():
-  global CACHE, PORTS, JAVA, LLVM_ADD_VERSION, CLANG_ADD_VERSION
+  global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
   global NODE_JS, V8_ENGINE, JS_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
 
   # EM_CONFIG stuff
@@ -74,6 +76,7 @@ def normalize_config_settings():
   JS_ENGINE = fix_js_engine(JS_ENGINE, listify(JS_ENGINE))
   JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
   WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
+  CLOSURE_COMPILER = listify(CLOSURE_COMPILER)
   if not CACHE:
     if FROZEN_CACHE or root_is_writable():
       CACHE = path_from_root('cache')
@@ -87,10 +90,6 @@ def normalize_config_settings():
       CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
-
-  if JAVA is None:
-    logger.debug('JAVA not defined in ' + EM_CONFIG + ', using "java"')
-    JAVA = 'java'
 
   # Tools/paths
   if LLVM_ADD_VERSION is None:
@@ -106,7 +105,7 @@ def parse_config_file():
   Also check EM_<KEY> environment variables to override specific config keys.
   """
   config = {}
-  config_text = open(EM_CONFIG, 'r').read()
+  config_text = utils.read_file(EM_CONFIG)
   try:
     exec(config_text, config)
   except Exception as e:
@@ -142,8 +141,9 @@ def parse_config_file():
     elif key in config:
       globals()[key] = config[key]
 
-  # Handle legacy environment variables that were previously honored by the
-  # default config file.
+  # In the past the default-generated .emscripten config file would read certain environment
+  # variables. We used generate a warning here but that could generates false positives
+  # See https://github.com/emscripten-core/emsdk/issues/862
   LEGACY_ENV_VARS = {
     'LLVM': 'EM_LLVM_ROOT',
     'BINARYEN': 'EM_BINARYEN_ROOT',
@@ -152,8 +152,7 @@ def parse_config_file():
   for key, new_key in LEGACY_ENV_VARS.items():
     env_value = os.environ.get(key)
     if env_value and new_key not in os.environ:
-      logger.warning(f'warning: honoring legacy environment variable `{key}`.  Please switch to using `{new_key}` instead`')
-      globals()[new_key] = env_value
+      logger.debug(f'legacy environment variable found: `{key}`.  Please switch to using `{new_key}` instead`')
 
   # Certain keys are mandatory
   for key in ('LLVM_ROOT', 'NODE_JS', 'BINARYEN_ROOT'):
@@ -171,8 +170,9 @@ def parse_config_file():
 def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
-  config_data = open(path_from_root('tools', 'settings_template.py')).read().splitlines()
-  config_data = config_data[3:] # remove the initial comment
+
+  config_data = utils.read_file(path_from_root('tools/settings_template.py'))
+  config_data = config_data.splitlines()[3:] # remove the initial comment
   config_data = '\n'.join(config_data)
   # autodetect some default paths
   config_data = config_data.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
@@ -184,8 +184,8 @@ def generate_config(path, first_time=False):
 
   abspath = os.path.abspath(os.path.expanduser(path))
   # write
-  with open(abspath, 'w') as f:
-    f.write(config_data)
+
+  utils.write_file(abspath, config_data)
 
   if first_time:
     print('''

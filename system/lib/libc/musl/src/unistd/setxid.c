@@ -4,6 +4,12 @@
 #include "libc.h"
 #include "pthread_impl.h"
 
+#ifdef __EMSCRIPTEN__
+int __setxid_emscripten() {
+	errno = EPERM; // we don't allow dynamic syscalls, and don't need to support these anyhow
+	return -1;
+}
+#else
 struct ctx {
 	int id, eid, sid;
 	int nr, err;
@@ -13,10 +19,6 @@ static void do_setxid(void *p)
 {
 	struct ctx *c = p;
 	if (c->err>0) return;
-#ifdef __EMSCRIPTEN__
-	c->err = EPERM; // we don't allow dynamic syscalls, and don't need to support these anyhow
-	return;
-#else
 	int ret = -__syscall(c->nr, c->id, c->eid, c->sid);
 	if (ret && !c->err) {
 		/* If one thread fails to set ids after another has already
@@ -27,7 +29,6 @@ static void do_setxid(void *p)
 		__syscall(SYS_kill, __syscall(SYS_getpid), SIGKILL);
 	}
 	c->err = ret;
-#endif
 }
 
 int __setxid(int nr, int id, int eid, int sid)
@@ -42,3 +43,4 @@ int __setxid(int nr, int id, int eid, int sid)
 	}
 	return 0;
 }
+#endif

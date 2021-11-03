@@ -79,57 +79,49 @@ _mm_blendv_ps(__m128 __a, __m128 __b, __m128 __mask)
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_ceil_pd(__m128d __a)
 {
-  return (__m128d)wasm_f64x2_make(__builtin_ceil(wasm_f64x2_extract_lane(__a, 0)),
-                                  __builtin_ceil(wasm_f64x2_extract_lane(__a, 1)));
+  return (__m128d)wasm_f64x2_ceil((v128_t)__a);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_ceil_ps(__m128 __a)
 {
-  return (__m128)wasm_f32x4_make(__builtin_ceilf(wasm_f32x4_extract_lane(__a, 0)),
-                                 __builtin_ceilf(wasm_f32x4_extract_lane(__a, 1)),
-                                 __builtin_ceilf(wasm_f32x4_extract_lane(__a, 2)),
-                                 __builtin_ceilf(wasm_f32x4_extract_lane(__a, 3)));
+  return (__m128)wasm_f32x4_ceil((v128_t)__a);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_ceil_ss(__m128 __a, __m128 __b)
 {
-  return (__m128)wasm_f32x4_replace_lane(__a, 0, __builtin_ceilf(wasm_f32x4_extract_lane(__b, 0)));
+  return _mm_move_ss(__a, _mm_ceil_ps(__b));
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_ceil_sd(__m128d __a, __m128d __b)
 {
-  return (__m128d)wasm_f64x2_replace_lane(__a, 0, __builtin_ceil(wasm_f64x2_extract_lane(__b, 0)));
+  return _mm_move_sd(__a, _mm_ceil_pd(__b));
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_floor_pd(__m128d __a)
 {
-  return (__m128d)wasm_f64x2_make(__builtin_floor(wasm_f64x2_extract_lane(__a, 0)),
-                                  __builtin_floor(wasm_f64x2_extract_lane(__a, 1)));
+  return (__m128d)wasm_f64x2_floor((v128_t)__a);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_floor_ps(__m128 __a)
 {
-  return (__m128)wasm_f32x4_make(__builtin_floorf(wasm_f32x4_extract_lane(__a, 0)),
-                                 __builtin_floorf(wasm_f32x4_extract_lane(__a, 1)),
-                                 __builtin_floorf(wasm_f32x4_extract_lane(__a, 2)),
-                                 __builtin_floorf(wasm_f32x4_extract_lane(__a, 3)));
+  return (__m128)wasm_f32x4_floor((v128_t)__a);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_floor_ss(__m128 __a, __m128 __b)
 {
-  return (__m128)wasm_f32x4_replace_lane(__a, 0, __builtin_floorf(wasm_f32x4_extract_lane(__b, 0)));
+  return _mm_move_ss(__a, _mm_floor_ps(__b));
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_floor_sd(__m128d __a, __m128d __b)
 {
-  return (__m128d)wasm_f64x2_replace_lane(__a, 0, __builtin_floor(wasm_f64x2_extract_lane(__b, 0)));
+  return _mm_move_sd(__a, _mm_floor_pd(__b));
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
@@ -140,14 +132,12 @@ _mm_round_pd(__m128d __a, int __rounding)
     case _MM_FROUND_TO_NEG_INF: return _mm_floor_pd(__a);
     case _MM_FROUND_TO_POS_INF: return _mm_ceil_pd(__a);
     case _MM_FROUND_TO_ZERO:
-      return (__m128d)wasm_f64x2_make(__builtin_trunc(wasm_f64x2_extract_lane(__a, 0)),
-                                      __builtin_trunc(wasm_f64x2_extract_lane(__a, 1)));
+      return (__m128d)wasm_f64x2_trunc((v128_t)__a);
     default:
       // _MM_FROUND_TO_NEAREST_INT and _MM_FROUND_CUR_DIRECTION (which is always nearest in Wasm SIMD)
       // SSE implements "Banker's rounding", where even half-ways, e.g. 2.5 are rounded down,
       // and odd numbers e.g. 3.5 are rounded up.
-      return (__m128d)wasm_f64x2_make(rint(wasm_f64x2_extract_lane(__a, 0)),
-                                      rint(wasm_f64x2_extract_lane(__a, 1)));
+      return (__m128d)wasm_f64x2_nearest((v128_t)__a);
   }
 }
 
@@ -159,53 +149,25 @@ _mm_round_ps(__m128 __a, int __rounding)
     case _MM_FROUND_TO_NEG_INF: return _mm_floor_ps(__a);
     case _MM_FROUND_TO_POS_INF: return _mm_ceil_ps(__a);
     case _MM_FROUND_TO_ZERO:
-      return (__m128)wasm_f32x4_make(__builtin_truncf(wasm_f32x4_extract_lane(__a, 0)),
-                                     __builtin_truncf(wasm_f32x4_extract_lane(__a, 1)),
-                                     __builtin_truncf(wasm_f32x4_extract_lane(__a, 2)),
-                                     __builtin_truncf(wasm_f32x4_extract_lane(__a, 3)));
+      return (__m128)wasm_f32x4_trunc((v128_t)__a);
     default:
       // _MM_FROUND_TO_NEAREST_INT and _MM_FROUND_CUR_DIRECTION (which is always nearest in Wasm SIMD)
       // SSE implements "Banker's rounding", where even half-ways, e.g. 2.5 are rounded down,
       // and odd numbers e.g. 3.5 are rounded up.
-      return (__m128)wasm_f32x4_make(rintf(wasm_f32x4_extract_lane(__a, 0)),
-                                     rintf(wasm_f32x4_extract_lane(__a, 1)),
-                                     rintf(wasm_f32x4_extract_lane(__a, 2)),
-                                     rintf(wasm_f32x4_extract_lane(__a, 3)));
+      return (__m128)wasm_f32x4_nearest((v128_t)__a);
   }
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_round_ss(__m128 __a, __m128 __b, int __rounding)
 {
-  switch(__rounding & 7)
-  {
-    case _MM_FROUND_TO_NEG_INF: return _mm_floor_ss(__a, __b);
-    case _MM_FROUND_TO_POS_INF: return _mm_ceil_ss(__a, __b);
-    case _MM_FROUND_TO_ZERO:
-      return (__m128)wasm_f32x4_replace_lane(__a, 0, __builtin_truncf(wasm_f32x4_extract_lane(__b, 0)));
-    default:
-      // _MM_FROUND_TO_NEAREST_INT and _MM_FROUND_CUR_DIRECTION (which is always nearest in Wasm SIMD)
-      // SSE implements "Banker's rounding", where even half-ways, e.g. 2.5 are rounded down,
-      // and odd numbers e.g. 3.5 are rounded up.
-      return (__m128)wasm_f32x4_replace_lane(__a, 0, rintf(wasm_f32x4_extract_lane(__b, 0)));
-  }
+  return _mm_move_ss(__a, _mm_round_ps(__b, __rounding));
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_round_sd(__m128d __a, __m128d __b, int __rounding)
 {
-  switch(__rounding & 7)
-  {
-    case _MM_FROUND_TO_NEG_INF: return _mm_floor_sd(__a, __b);
-    case _MM_FROUND_TO_POS_INF: return _mm_ceil_sd(__a, __b);
-    case _MM_FROUND_TO_ZERO:
-      return (__m128d)wasm_f64x2_replace_lane(__a, 0, __builtin_trunc(wasm_f64x2_extract_lane(__b, 0)));
-    default:
-      // _MM_FROUND_TO_NEAREST_INT and _MM_FROUND_CUR_DIRECTION (which is always nearest in Wasm SIMD)
-      // SSE implements "Banker's rounding", where even half-ways, e.g. 2.5 are rounded down,
-      // and odd numbers e.g. 3.5 are rounded up.
-      return (__m128d)wasm_f64x2_replace_lane(__a, 0, rint(wasm_f64x2_extract_lane(__b, 0)));
-  }
+  return _mm_move_sd(__a, _mm_round_pd(__b, __rounding));
 }
 
 static __inline__  __m128i __attribute__((__always_inline__, __nodebug__))
@@ -217,9 +179,9 @@ _mm_mullo_epi32(__m128i __a, __m128i __b)
 static __inline__  __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_mul_epi32(__m128i __a, __m128i __b)
 {
-  return (__m128i)wasm_i64x2_make(
-      wasm_i32x4_extract_lane(__a, 0) * (long long)wasm_i32x4_extract_lane(__b, 0),
-      wasm_i32x4_extract_lane(__a, 2) * (long long)wasm_i32x4_extract_lane(__b, 2));
+  return (__m128i)wasm_i64x2_extmul_low_i32x4(
+      (v128_t)_mm_shuffle_epi32(__a, _MM_SHUFFLE(2, 0, 2, 0)),
+      (v128_t)_mm_shuffle_epi32(__b, _MM_SHUFFLE(2, 0, 2, 0)));
 }
 
 #define _mm_dp_ps(__a, __b, __imm8) __extension__ ({ \
@@ -300,8 +262,8 @@ _mm_max_epu32(__m128i __a, __m128i __b)
                                         (((__imm8) & 4) ? 6 : 2), \
                                         (((__imm8) & 8) ? 7 : 3)); })
 
-#define _mm_extract_ps(__a, __imm8) __extension__ ({       \
-                                       wasm_i32x4_extract_lane((__a), (__imm8) & 3); })
+#define _mm_extract_ps(__a, __imm8)                                                                \
+  __extension__({ wasm_i32x4_extract_lane((v128_t)(__a), (__imm8)&3); })
 
 #define _MM_EXTRACT_FLOAT(D, X, N) (__extension__ ({ __f32x4 __a = (__f32x4)(X); \
                                                     (D) = __a[N]; }))
@@ -329,14 +291,14 @@ _mm_max_epu32(__m128i __a, __m128i __b)
 #define _mm_extract_epi64(__a, __imm8) __extension__ ({       \
                                        wasm_i64x2_extract_lane((__a), (__imm8) & 1); })
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_testz_si128(__m128i __a, __m128i __b)
 {
   v128_t __m = wasm_v128_and(__a, __b);
   return (wasm_i64x2_extract_lane(__m, 0) | wasm_i64x2_extract_lane(__m, 1)) == 0;
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_testc_si128(__m128i __a, __m128i __b)
 {
   v128_t __m = wasm_v128_andnot(__b, __a);
@@ -352,20 +314,20 @@ _mm_testnzc_si128(__m128i __a, __m128i __b)
       && (wasm_i64x2_extract_lane(__m2, 0) | wasm_i64x2_extract_lane(__m2, 1));
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_test_all_ones(__m128i __a)
 {
   return (wasm_i64x2_extract_lane(__a, 0) & wasm_i64x2_extract_lane(__a, 1)) == 0xFFFFFFFFFFFFFFFFull;
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_test_all_zeros(__m128i __a, __m128i __mask)
 {
   v128_t __m = wasm_v128_and(__a, __mask);
   return (wasm_i64x2_extract_lane(__m, 0) | wasm_i64x2_extract_lane(__m, 1)) == 0;
 }
 
-static __inline__ int __attribute__((__always_inline__, __nodebug__))
+static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_test_mix_ones_zeros(__m128i __a, __m128i __mask)
 {
   v128_t __m = wasm_v128_and(__a, __mask);

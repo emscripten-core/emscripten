@@ -193,7 +193,7 @@ var MAXIMUM_MEMORY = 2147483648;
 
 // If false, we abort with an error if we try to allocate more memory than
 // we can (INITIAL_MEMORY). If true, we will grow the memory arrays at
-// runtime, seamlessly and dynamically. 
+// runtime, seamlessly and dynamically.
 // See https://code.google.com/p/v8/issues/detail?id=3907 regarding
 // memory growth performance in chrome.
 // Note that growing memory means we replace the JS typed array views, as
@@ -237,6 +237,7 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // the full end-to-end wasm64 mode, and 2 is wasm64 for clang/lld but lowered to
 // wasm32 in Binaryen (such that it can run on wasm32 engines, while internally
 // using i64 pointers).
+// Assumes WASM_BIGINT.
 // [compile+link]
 var MEMORY64 = 0;
 
@@ -303,6 +304,11 @@ var SUPPORT_BIG_ENDIAN = 0;
 // Check each write to the heap, for example, this will give a clear
 // error on what would be segfaults in a native build (like dereferencing
 // 0). See runtime_safe_heap.js for the actual checks performed.
+// Set to value 1 to test for safe behavior for both Wasm+Wasm2JS builds.
+// Set to value 2 to test for safe behavior for only Wasm builds. (notably,
+// Wasm-only builds allow unaligned memory accesses. Note, however, that
+// on some architectures unaligned accesses can be very slow, so it is still
+// a good idea to verify your code with the more strict mode 1)
 // [link]
 var SAFE_HEAP = 0;
 
@@ -353,6 +359,10 @@ var SOCKET_DEBUG = 0;
 // Log dynamic linker information
 // [link]
 var DYLINK_DEBUG = 0;
+
+// Register file system callbacks using trackingDelegate in library_fs.js
+// [link]
+var FS_DEBUG = 0;
 
 // Select socket backend, either webrtc or websockets. XXX webrtc is not
 // currently tested, may be broken
@@ -598,22 +608,24 @@ var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 //  * Work around old Chromium WebGL 1 bug (-s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
 //  * Disable WebAssembly. (Must be paired with -s WASM=0)
 //  * Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
+//  * Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
 // You can also configure the above options individually.
 // [link]
 var LEGACY_VM_SUPPORT = 0;
 
-// By default, emscripten output will run on the web, in a web worker,
-// in node.js, or in a JS shell like d8, js, or jsc. You can set this option to
-// specify that the output should only run in one particular environment, which
-// must be one of
+// Specify which runtime environments the JS output will be capable of running
+// in.  For maximum portability this can configured to support all envionements
+// or it can be limited to reduce overall code size.  The supported environments
+// are:
 //    'web'     - the normal web environment.
 //    'webview' - just like web, but in a webview like Cordova;
 //                considered to be same as "web" in almost every place
 //    'worker'  - a web worker environment.
 //    'node'    - Node.js.
 //    'shell'   - a JS shell like d8, js, or jsc.
-// Or it can be a comma-separated list of them, e.g., "web,worker". If this is
-// the empty string, then all runtime environments are supported.
+// This settings can be a comma-separated list of these environments, e.g.,
+// "web,worker". If this is the empty string, then all environments are
+// supported.
 //
 // Note that the set of environments recognized here is not identical to the
 // ones we identify at runtime using ENVIRONMENT_IS_*. Specifically:
@@ -622,8 +634,11 @@ var LEGACY_VM_SUPPORT = 0;
 //  * The webview target is basically a subset of web. It must be specified
 //    alongside web (e.g. "web,webview") and we only use it for code generation
 //    at compile time, there is no runtime behavior change.
+//
+// Note that by default we do not include the 'shell' environment since direct
+// usage of d8, js, jsc is extremely rare.
 // [link]
-var ENVIRONMENT = '';
+var ENVIRONMENT = 'web,webview,worker,node';
 
 // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
 // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
@@ -831,7 +846,7 @@ var INCOMING_MODULE_JS_API = [
   'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
   'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
   'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
-  'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
+  'loadSplitModule', 'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
   'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
@@ -1027,6 +1042,7 @@ var LINKABLE = 0;
 //   * AUTO_NATIVE_LIBRARIES is disabled.
 //   * AUTO_ARCHIVE_INDEXES is disabled.
 //   * DEFAULT_TO_CXX is disabled.
+//   * ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
 // [compile+link]
 var STRICT = 0;
 
@@ -1310,12 +1326,6 @@ var WASM_BIGINT = 0;
 // [link]
 var EMIT_PRODUCERS_SECTION = 0;
 
-// If set then generated WASM files will contain a custom
-// "emscripten_metadata" section that contains information necessary
-// to execute the file without the accompanying JS file.
-// [link]
-var EMIT_EMSCRIPTEN_METADATA = 0;
-
 // Emits emscripten license info in the JS output.
 // [link]
 var EMIT_EMSCRIPTEN_LICENSE = 0;
@@ -1332,6 +1342,8 @@ var LEGALIZE_JS_FFI = 1;
 // Specify the SDL version that is being linked against.
 // 1, the default, is 1.3, which is implemented in JS
 // 2 is a port of the SDL C code on emscripten-ports
+// When AUTO_JS_LIBRARIES is set to 0 this defaults to 0 and SDL
+// is not linked in.
 // [link]
 var USE_SDL = 1;
 
@@ -1623,6 +1635,12 @@ var FETCH = 0;
 // [link]
 var ASMFS = 0;
 
+// ATTENTION [WIP]: Experimental feature. Please use at your own risk.
+// This will eventually replace the current JS file system implementation.
+// If set to 1, uses new filesystem implementation.
+// [link]
+var WASMFS = 0;
+
 // If set to 1, embeds all subresources in the emitted file as base64 string
 // literals. Embedded subresources may include (but aren't limited to) wasm,
 // asm.js, and static memory initialization code.
@@ -1744,10 +1762,16 @@ var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = 0;
 // [link]
 var USES_DYNAMIC_ALLOC = 1;
 
-// If true, compiler supports setjmp() and longjmp(). If false, these APIs are
-// not available.  If you are using C++ exceptions, but do not need
-// setjmp()+longjmp() API, then you can set this to 0 to save a little bit of
-// code size and performance when catching exceptions.
+// If set to 'emscripten' or 'wasm', compiler supports setjmp() and longjmp().
+// If set to 0, these APIs are not available.  If you are using C++ exceptions,
+// but do not need setjmp()+longjmp() API, then you can set this to 0 to save a
+// little bit of code size and performance when catching exceptions.
+//
+// 'emscripten': (default) Emscripten setjmp/longjmp handling using JavaScript
+// 'wasm': setjmp/longjmp handling using Wasm EH instructions (experimental)
+// 0: No setjmp/longjmp handling
+// 1: Default setjmp/longjmp/handling. Currently 'emscripten'.
+//
 // [compile+link] - at compile time this enables the transformations needed for
 // longjmp support at codegen time, while at link it allows linking in the
 // library support.
@@ -1934,6 +1958,21 @@ var SPLIT_MODULE = 0;
 // [link]
 var REVERSE_DEPS = 'auto';
 
+// For MAIN_MODULE builds, automatically load any dynamic library dependencies
+// on startup, before loading the main module.
+var AUTOLOAD_DYLIBS = 1;
+
+// Include unimplemented JS syscalls to be included in the final output.  This
+// allows programs that depend on these syscalls at runtime to be compiled, even
+// though these syscalls will fail (or do nothing) at runtime.
+var ALLOW_UNIMPLEMENTED_SYSCALLS = 1;
+
+// Allow calls to Worker(...) and importScripts(...) to be Trusted Types compatible.
+// Trusted Types is a Web Platform feature designed to mitigate DOM XSS by restricting
+// the usage of DOM sink APIs. See https://w3c.github.io/webappsec-trusted-types/.
+// [link]
+var TRUSTED_TYPES = 0;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
@@ -2014,4 +2053,5 @@ var LEGACY_SETTINGS = [
   ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older'],
   ['RUNTIME_FUNCS_TO_IMPORT', [[]], 'No longer needed'],
   ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
+  ['EMIT_EMSCRIPTEN_METADATA', [0], 'No longer supported'],
 ];

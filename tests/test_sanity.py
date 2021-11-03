@@ -12,16 +12,17 @@ import tempfile
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
-from runner import RunnerCore, path_from_root, env_modify, test_file
-from runner import create_file, ensure_dir, make_executable, with_env_modify
-from runner import parameterized
+from common import RunnerCore, path_from_root, env_modify, test_file
+from common import create_file, ensure_dir, make_executable, with_env_modify
+from common import parameterized, EMBUILDER
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
 from tools.shared import CANONICAL_TEMP_DIR
 from tools.shared import try_delete, config
 from tools.shared import EXPECTED_LLVM_VERSION, Cache
-from tools import shared, system_libs, utils
+from tools import shared, utils
 from tools import response_file
+from tools import ports
 
 SANITY_FILE = shared.Cache.get_path('sanity.txt')
 commands = [[EMCC], [path_from_root('tests/runner'), 'blahblah']]
@@ -94,8 +95,6 @@ def make_fake_llc(filename, targets):
 
 
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
-
-EMBUILDER = path_from_root('embuilder.py')
 
 # arguments to build a minimal hello world program, without even libc
 # (-O1 avoids -O0's default assertions which bring in checking code;
@@ -566,7 +565,7 @@ fi
     RETRIEVING_MESSAGE = 'retrieving port'
     BUILDING_MESSAGE = 'generating port'
 
-    PORTS_DIR = system_libs.Ports.get_dir()
+    PORTS_DIR = ports.Ports.get_dir()
 
     for i in [0, 1]:
       self.do([EMCC, '--clear-cache'])

@@ -285,6 +285,7 @@ int main() {
 #if !__has_feature(address_sanitizer) // the following is invalid, and asan complains rightfully
     assert(map[textsize] != 'b');
 #endif
+    munmap(map, textsize);
 
     close(fd);
   }

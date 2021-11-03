@@ -28,9 +28,6 @@ int main(void) {
   assert(errno == ENOSYS);
   assert(system("true") == -1);
   assert(errno == ENOSYS);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
 #endif
   return 0;
 }

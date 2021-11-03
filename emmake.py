@@ -52,9 +52,6 @@ variables so that emcc etc. are used. Typical usage:
       if mingw32_make:
         args[0] = mingw32_make
 
-    if 'mingw32-make' in args[0]:
-      env = building.remove_sh_exe_from_path(env)
-
   # On Windows, run the execution through shell to get PATH expansion and
   # executable extension lookup, e.g. 'sdl2-config' will match with
   # 'sdl2-config.bat' in PATH.

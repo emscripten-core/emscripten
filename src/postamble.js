@@ -167,7 +167,7 @@ function callMain(args) {
 
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
-    abortWrapperDepth += 2; 
+    abortWrapperDepth += 2;
 #endif
 
 #if STANDALONE_WASM
@@ -190,40 +190,19 @@ function callMain(args) {
     assert(ret == 0, '_emscripten_proxy_main failed to start proxy thread: ' + ret);
 #endif
 #else
-#if ASYNCIFY
-    // if we are saving the stack, then do not call exit, we are not
-    // really exiting now, just unwinding the JS stack
-    if (!keepRuntimeAlive()) {
-#endif // ASYNCIFY
-      // if we're not running an evented main loop, it's time to exit
-      exit(ret, /* implicit = */ true);
-#if ASYNCIFY
-    }
-#endif // ASYNCIFY
+    // if we're not running an evented main loop, it's time to exit
+    exit(ret, /* implicit = */ true);
+    return ret;
   }
-  catch(e) {
-    if (e instanceof ExitStatus) {
-      // exit() throws this once it's done to make sure execution
-      // has been stopped completely
-      return;
-    } else if (e == 'unwind') {
-      // running an evented main loop, don't immediately exit
-      return;
-    } else {
-      var toLog = e;
-      if (e && typeof e === 'object' && e.stack) {
-        toLog = [e, e.stack];
-      }
-      err('exception thrown: ' + toLog);
-      quit_(1, e);
-    }
+  catch (e) {
+    return handleException(e);
 #endif // !PROXY_TO_PTHREAD
   } finally {
     calledMain = true;
 
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
-    abortWrapperDepth -= 2; 
+    abortWrapperDepth -= 2;
 #endif
   }
 }
@@ -236,7 +215,7 @@ function stackCheckInit() {
   // here.
   // TODO(sbc): Move writeStackCookie to native to to avoid this.
 #if RELOCATABLE
-  _emscripten_stack_set_limits({{{ STACK_BASE }}}, {{{ STACK_MAX }}});
+  _emscripten_stack_set_limits({{{ to64(STACK_BASE) }}}, {{{ to64(STACK_MAX) }}});
 #else
   _emscripten_stack_init();
 #endif
@@ -425,28 +404,20 @@ function exit(status, implicit) {
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
-  // if this is just main exit-ing implicitly, and the status is 0, then we
-  // don't need to do anything here and can just leave. if the status is
-  // non-zero, though, then we need to report it.
-  // (we may have warned about this earlier, if a situation justifies doing so)
-  if (implicit && keepRuntimeAlive() && status === 0) {
-    return;
-  }
-
 #if USE_PTHREADS
   if (!implicit) {
     if (ENVIRONMENT_IS_PTHREAD) {
-#if ASSERTIONS
-      err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitProcess.');
+#if PTHREADS_DEBUG
+      err('Pthread 0x' + _pthread_self().toString(16) + ' called exit(), posting exitOnMainThread.');
 #endif
       // When running in a pthread we propagate the exit back to the main thread
       // where it can decide if the whole process should be shut down or not.
       // The pthread may have decided not to exit its own runtime, for example
       // because it runs a main loop, but that doesn't affect the main thread.
-      postMessage({ 'cmd': 'exitProcess', 'returnCode': status });
-      throw new ExitStatus(status);
+      exitOnMainThread(status);
+      throw 'unwind';
     } else {
-#if ASSERTIONS
+#if PTHREADS_DEBUG
       err('main thread called exit: keepRuntimeAlive=' + keepRuntimeAlive() + ' (counter=' + runtimeKeepaliveCounter + ')');
 #endif
     }
@@ -469,20 +440,24 @@ function exit(status, implicit) {
     }
 #endif // ASSERTIONS
   } else {
+    exitRuntime();
+  }
+
+  procExit(status);
+}
+
+function procExit(code) {
+  EXITSTATUS = code;
+  if (!keepRuntimeAlive()) {
 #if USE_PTHREADS
     PThread.terminateAllThreads();
 #endif
-
-    exitRuntime();
-
 #if expectToReceiveOnModule('onExit')
-    if (Module['onExit']) Module['onExit'](status);
+    if (Module['onExit']) Module['onExit'](code);
 #endif
-
     ABORT = true;
   }
-
-  quit_(status, new ExitStatus(status));
+  quit_(code, new ExitStatus(code));
 }
 
 #if expectToReceiveOnModule('preInit')

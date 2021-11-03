@@ -7,6 +7,7 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared
 from tools import line_endings
+from tools import utils
 from tools.settings import settings
 
 logger = logging.getLogger('minimal_runtime_shell')
@@ -157,7 +158,7 @@ def generate_minimal_runtime_load_statement(target_basename):
 
 def generate_minimal_runtime_html(target, options, js_target, target_basename):
   logger.debug('generating HTML for minimal runtime')
-  shell = open(options.shell_path, 'r').read()
+  shell = utils.read_file(options.shell_path)
   if settings.SINGLE_FILE:
     # No extra files needed to download in a SINGLE_FILE build.
     shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', '')
@@ -166,7 +167,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
 
   temp_files = shared.configuration.get_temp_files()
   with temp_files.get_file(suffix='.js') as shell_temp:
-    open(shell_temp, 'w').write(shell)
+    utils.write_file(shell_temp, shell)
     shell = shared.read_and_preprocess(shell_temp)
 
   if re.search(r'{{{\s*SCRIPT\s*}}}', shell):
@@ -178,7 +179,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
 
   # In SINGLE_FILE build, embed the main .js file into the .html output
   if settings.SINGLE_FILE:
-    js_contents = open(js_target).read()
+    js_contents = utils.read_file(js_target)
     shared.try_delete(js_target)
   else:
     js_contents = ''

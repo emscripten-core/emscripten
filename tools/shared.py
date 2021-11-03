@@ -15,7 +15,8 @@ import os
 import re
 import shutil
 import subprocess
-import time
+import signal
+import stat
 import sys
 import tempfile
 
@@ -24,28 +25,33 @@ if sys.version_info < (3, 6):
   print('error: emscripten requires python 3.6 or above', file=sys.stderr)
   sys.exit(1)
 
-from .tempfiles import try_delete
-from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
-from . import cache, tempfiles, colored_logger
-from . import diagnostics
-from . import config
-from . import filelock
-from .settings import settings
+from . import colored_logger
 
-
+# Configure logging before importing any other local modules so even
+# log message during import are shown as expected.
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
-DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
-EXPECTED_NODE_VERSION = (4, 1, 1)
-EXPECTED_LLVM_VERSION = "13.0"
-PYTHON = sys.executable
-
-# Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
-multiprocessing_pool = None
-
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
                     level=logging.DEBUG if DEBUG else logging.INFO)
 colored_logger.enable()
+
+from .tempfiles import try_delete
+from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
+from . import cache, tempfiles
+from . import diagnostics
+from . import config
+from . import filelock
+from . import utils
+from .settings import settings
+
+
+DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
+EXPECTED_NODE_VERSION = (4, 1, 1)
+EXPECTED_LLVM_VERSION = "14.0"
+PYTHON = sys.executable
+
+# Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
+multiprocessing_pool = None
 logger = logging.getLogger('shared')
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
@@ -60,9 +66,10 @@ diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 diagnostics.add_warning('linkflags')
 diagnostics.add_warning('emcc')
 diagnostics.add_warning('undefined', error=True)
-diagnostics.add_warning('deprecated')
+diagnostics.add_warning('deprecated', shared=True)
 diagnostics.add_warning('version-check')
 diagnostics.add_warning('export-main')
+diagnostics.add_warning('map-unrecognized-libraries')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 diagnostics.add_warning('pthreads-mem-growth')
 
@@ -115,6 +122,15 @@ def mp_run_process(command_tuple):
   if pipe_stdout:
     ret = out.decode('UTF-8')
   return ret
+
+
+def returncode_to_str(code):
+  assert code != 0
+  if code < 0:
+    signal_name = signal.Signals(-code).name
+    return f'received {signal_name} ({code})'
+
+  return f'returned {code}'
 
 
 # Runs multiple subprocess commands.
@@ -188,7 +204,8 @@ def run_multiple_processes(commands, env=os.environ.copy(), route_stdout_to_temp
             logger.info(out)
           if err:
             logger.error(err)
-          raise Exception('Subprocess %d/%d failed with return code %d! (cmdline: %s)' % (idx + 1, len(commands), finished_process.returncode, shlex_join(commands[idx])))
+
+          raise Exception('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
         num_completed += 1
 
   # If processes finished out of order, sort the results to the order of the input.
@@ -202,47 +219,28 @@ def check_call(cmd, *args, **kw):
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed (%d)", shlex_join(cmd), e.returncode)
+    exit_with_error("'%s' failed (%s)", shlex_join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
 
-def run_js_tool(filename, jsargs=[], *args, **kw):
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are written
   implemented in javascript.
   """
-  command = config.NODE_JS + [filename] + jsargs
-  return check_call(command, *args, **kw).stdout
-
-
-# Only used by tests and by ctor_evaller.py.   Once fastcomp is removed
-# this can most likely be moved into the tests/jsrun.py.
-def timeout_run(proc, timeout=None, full_output=False, check=True):
-  start = time.time()
-  if timeout is not None:
-    while time.time() - start < timeout and proc.poll() is None:
-      time.sleep(0.1)
-    if proc.poll() is None:
-      proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
-      raise Exception("Timed out")
-  stdout, stderr = proc.communicate()
-  out = ['' if o is None else o for o in (stdout, stderr)]
-  if check and proc.returncode != 0:
-    raise subprocess.CalledProcessError(proc.returncode, '', stdout, stderr)
-  if TRACK_PROCESS_SPAWNS:
-    logging.info('Process ' + str(proc.pid) + ' finished after ' + str(time.time() - start) + ' seconds. Exit code: ' + str(proc.returncode))
-  return '\n'.join(out) if full_output else out[0]
+  command = config.NODE_JS + node_args + [filename] + jsargs
+  return check_call(command, **kw).stdout
 
 
 def get_npm_cmd(name):
   if WINDOWS:
-    cmd = [path_from_root('node_modules', '.bin', name + '.cmd')]
+    cmd = [path_from_root('node_modules/.bin', name + '.cmd')]
   else:
-    cmd = config.NODE_JS + [path_from_root('node_modules', '.bin', name)]
+    cmd = config.NODE_JS + [path_from_root('node_modules/.bin', name)]
   if not os.path.exists(cmd[-1]):
-    exit_with_error('%s was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies' % name)
+    exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
   return cmd
 
 
@@ -311,7 +309,8 @@ def check_node_version():
     return False
 
   if version < EXPECTED_NODE_VERSION:
-    diagnostics.warning('version-check', 'node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
+    expected = '.'.join(str(v) for v in EXPECTED_NODE_VERSION)
+    diagnostics.warning('version-check', f'node version appears too old (seeing "{actual}", expected "v{expected}")')
     return False
 
   return True
@@ -320,15 +319,14 @@ def check_node_version():
 def set_version_globals():
   global EMSCRIPTEN_VERSION, EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY
   filename = path_from_root('emscripten-version.txt')
-  with open(filename) as f:
-    EMSCRIPTEN_VERSION = f.read().strip().strip('"')
-  parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
+  EMSCRIPTEN_VERSION = utils.read_file(filename).strip().strip('"')
+  parts = [int(x) for x in EMSCRIPTEN_VERSION.split('-')[0].split('.')]
   EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 
 
 def generate_sanity():
-  sanity_file_content = EMSCRIPTEN_VERSION + '|' + config.LLVM_ROOT + '|' + get_clang_version()
-  config_data = open(config.EM_CONFIG).read()
+  sanity_file_content = f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}|{get_clang_version()}'
+  config_data = utils.read_file(config.EM_CONFIG)
   checksum = binascii.crc32(config_data.encode())
   sanity_file_content += '|%#x\n' % checksum
   return sanity_file_content
@@ -396,7 +394,7 @@ def check_sanity(force=False):
   sanity_file = Cache.get_path('sanity.txt')
   with Cache.lock():
     if os.path.exists(sanity_file):
-      sanity_data = open(sanity_file).read()
+      sanity_data = utils.read_file(sanity_file)
       if sanity_data != expected:
         logger.debug('old sanity: %s' % sanity_data)
         logger.debug('new sanity: %s' % expected)
@@ -418,8 +416,7 @@ def check_sanity(force=False):
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
-      with open(sanity_file, 'w') as f:
-        f.write(expected)
+      utils.write_file(sanity_file, expected)
 
 
 # Some distributions ship with multiple llvm versions so they add
@@ -490,7 +487,7 @@ class Configuration:
 
     self.TEMP_DIR = os.environ.get("EMCC_TEMP_DIR", tempfile.gettempdir())
     if not os.path.isdir(self.TEMP_DIR):
-      exit_with_error("The temporary directory `" + self.TEMP_DIR + "` does not exist! Please make sure that the path is correct.")
+      exit_with_error(f'The temporary directory `{self.TEMP_DIR}` does not exist! Please make sure that the path is correct.')
 
     self.CANONICAL_TEMP_DIR = get_canonical_temp_dir(self.TEMP_DIR)
 
@@ -499,7 +496,7 @@ class Configuration:
       try:
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
-        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + config.EM_CONFIG)
+        exit_with_error(str(e) + f'Could not create canonical temp dir. Check definition of TEMP_DIR in {config.EM_CONFIG}')
 
       # Since the canonical temp directory is, by definition, the same
       # between all processes that run in DEBUG mode we need to use a multi
@@ -535,7 +532,7 @@ def apply_configuration():
 
 
 def target_environment_may_be(environment):
-  return settings.ENVIRONMENT == '' or environment in settings.ENVIRONMENT.split(',')
+  return not settings.ENVIRONMENT or environment in settings.ENVIRONMENT.split(',')
 
 
 def print_compiler_stage(cmd):
@@ -606,15 +603,13 @@ class JS:
   @staticmethod
   def handle_license(js_target):
     # ensure we emit the license if and only if we need to, and exactly once
-    with open(js_target) as f:
-      js = f.read()
+    js = utils.read_file(js_target)
     # first, remove the license as there may be more than once
     processed_js = re.sub(JS.emscripten_license_regex, '', js)
     if settings.EMIT_EMSCRIPTEN_LICENSE:
       processed_js = JS.emscripten_license + processed_js
     if processed_js != js:
-      with open(js_target, 'w') as f:
-        f.write(processed_js)
+      utils.write_file(js_target, processed_js)
 
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent
@@ -635,8 +630,7 @@ class JS:
       # if the path does not exist, then there is no data to encode
       if not os.path.exists(path):
         return ''
-      with open(path, 'rb') as f:
-        data = base64.b64encode(f.read())
+      data = base64.b64encode(utils.read_binary(path))
       return 'data:application/octet-stream;base64,' + data.decode('ascii')
     else:
       return os.path.basename(path)
@@ -668,6 +662,11 @@ class JS:
     return sig == JS.legalize_sig(sig)
 
   @staticmethod
+  def isidentifier(name):
+    # https://stackoverflow.com/questions/43244604/check-that-a-string-is-a-valid-javascript-identifier-name-using-python-3
+    return name.replace('$', '_').isidentifier()
+
+  @staticmethod
   def make_dynCall(sig, args):
     # wasm2c and asyncify are not yet compatible with direct wasm table calls
     if settings.DYNCALLS or not JS.is_legal_sig(sig):
@@ -679,7 +678,7 @@ class JS:
       else:
         return 'Module["dynCall_%s"](%s)' % (sig, args)
     else:
-      return 'wasmTable.get(%s)(%s)' % (args[0], ','.join(args[1:]))
+      return 'getWasmTableEntry(%s)(%s)' % (args[0], ','.join(args[1:]))
 
   @staticmethod
   def make_invoke(sig, named=True):
@@ -726,6 +725,17 @@ def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
 
 
+def strip_prefix(string, prefix):
+  assert string.startswith(prefix)
+  return string[len(prefix):]
+
+
+def make_writable(filename):
+  assert(os.path.isfile(filename))
+  old_mode = stat.S_IMODE(os.stat(filename).st_mode)
+  os.chmod(filename, old_mode | stat.S_IWUSR)
+
+
 def safe_copy(src, dst):
   logging.debug('copy: %s -> %s', src, dst)
   src = os.path.abspath(src)
@@ -738,6 +748,9 @@ def safe_copy(src, dst):
     return
   # Copies data and permission bits, but not other metadata such as timestamp
   shutil.copy(src, dst)
+  # We always want the target file to be writable even when copying from
+  # read-only source. (e.g. a read-only install of emscripten).
+  make_writable(dst)
 
 
 def read_and_preprocess(filename, expand_macros=False):
@@ -751,8 +764,7 @@ def read_and_preprocess(filename, expand_macros=False):
     settings_str += f'var {key} = {jsoned};\n'
 
   settings_file = os.path.join(temp_dir, 'settings.js')
-  with open(settings_file, 'w') as f:
-    f.write(settings_str)
+  utils.write_file(settings_file, settings_str)
 
   # Run the JS preprocessor
   # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs
@@ -766,8 +778,8 @@ def read_and_preprocess(filename, expand_macros=False):
   if expand_macros:
     args += ['--expandMacros']
 
-  run_js_tool(path_from_root('tools/preprocessor.js'), args, True, stdout=open(stdout, 'w'), cwd=dirname)
-  out = open(stdout, 'r').read()
+  run_js_tool(path_from_root('tools/preprocessor.js'), args, stdout=open(stdout, 'w'), cwd=dirname)
+  out = utils.read_file(stdout)
 
   return out
 
@@ -800,6 +812,7 @@ CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CXX = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
 LLVM_LINK = build_llvm_tool_path(exe_suffix('llvm-link'))
 LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
+LLVM_DWP = build_llvm_tool_path(exe_suffix('llvm-dwp'))
 LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
 LLVM_OPT = os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
 LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
@@ -815,7 +828,8 @@ EMAR = bat_suffix(path_from_root('emar'))
 EMRANLIB = bat_suffix(path_from_root('emranlib'))
 EMCMAKE = bat_suffix(path_from_root('emcmake'))
 EMCONFIGURE = bat_suffix(path_from_root('emconfigure'))
-FILE_PACKAGER = bat_suffix(path_from_root('tools', 'file_packager'))
+EM_NM = bat_suffix(path_from_root('emnm'))
+FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 
 apply_configuration()
 

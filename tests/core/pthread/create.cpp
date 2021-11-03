@@ -27,7 +27,7 @@ void *ThreadMain(void *arg) {
 
 pthread_t thread[NUM_THREADS];
 
-void CreateThread(int i)
+void CreateThread(long i)
 {
   int rc = pthread_create(&thread[i], nullptr, ThreadMain, (void*)i);
   assert(rc == 0);
@@ -48,7 +48,7 @@ void mainn() {
 
 int main() {
   // Create initial threads.
-  for(int i = 0; i < NUM_THREADS; ++i) {
+  for(long i = 0; i < NUM_THREADS; ++i) {
     CreateThread(i);
   }
 

@@ -60,7 +60,7 @@ Emscripten tools and dependencies
     `Binaryen <https://github.com/WebAssembly/binaryen/>`_ is a WebAssembly compiler toolkit, which Emscripten uses to modify and optimize wasm.
 
   node.js
-    **Node.js** is a cross-platform runtime environment for server-side and networking applications written in JavaScript. Essentially it allows you to run JavaScript applications outside of a browser context.
+    `Node.js <https://nodejs.org/en/>`_ is a cross-platform runtime environment for server-side and networking applications written in JavaScript. Essentially it allows you to run JavaScript applications outside of a browser context.
 
   Python
     Python is a scripting language used to write many of Emscripten's tools. The required version is listed in the :ref:`toolchain requirements <central-list-of-emscripten-tools-and-dependencies>`.

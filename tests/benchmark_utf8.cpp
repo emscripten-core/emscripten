@@ -26,7 +26,6 @@ long utf8_corpus_length = 0;
 
 char *randomString(int len) {
   if (!utf8_corpus) {
-//    FILE *handle = fopen("ascii_corpus.txt", "rb");
     FILE *handle = fopen("utf8_corpus.txt", "rb");
     fseek(handle, 0, SEEK_END);
     utf8_corpus_length = ftell(handle);
@@ -46,8 +45,8 @@ char *randomString(int len) {
   char *s = new char[len+1];
   memcpy(s, utf8_corpus + startIdx, len);
   s[len] = '\0';
-  while(((unsigned char)s[len-1] & 0xC0) == 0x80) { s[--len] = '\0'; }
-  while(((unsigned char)s[len-1] & 0xC0) == 0xC0) { s[--len] = '\0'; }
+  while(len > 0 && ((unsigned char)s[len-1] & 0xC0) == 0x80) { s[--len] = '\0'; }
+  while(len > 0 && ((unsigned char)s[len-1] & 0xC0) == 0xC0) { s[--len] = '\0'; }
   assert(len >= 0);
   return s;
 }
@@ -57,8 +56,10 @@ int main() {
   double t = 0;
   double t2 = emscripten_get_now();
   for(int i = 0; i < 100000; ++i) {
-    // FF Nightly: Already on small strings of 64 bytes in length, TextDecoder trumps in performance.
-    char *str = randomString(8);
+    // Create strings of lengths 1-32, because the internals of text decoding
+    // have a cutoff of 16 for when to use TextDecoder, and we wish to test both
+    // (see UTF8ArrayToString).
+    char *str = randomString((i % 32) + 1);
     t += test(str);
     delete [] str;
   }

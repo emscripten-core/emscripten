@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import multiprocessing
-import os
 import sys
 import unittest
 import tempfile
@@ -12,6 +11,8 @@ import time
 import queue
 
 from tools.tempfiles import try_delete
+
+NUM_CORES = None
 
 
 def g_testing_thread(work_queue, result_queue, temp_dir):
@@ -40,6 +41,12 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     self.max_cores = max_cores
 
   def run(self, result):
+    # The 'spawn' method is used on windows and it can be useful to set this on
+    # all platforms when debugging multiprocessing issues.  Without this we
+    # default to 'fork' on unix which is better because global state is
+    # inherited by the child process, but can lead to hard-to-debug windows-only
+    # issues.
+    # multiprocessing.set_start_method('spawn')
     test_queue = self.create_test_queue()
     self.init_processes(test_queue)
     results = self.collect_results()
@@ -137,6 +144,16 @@ class BufferedParallelTestResult():
       print(test, '... ok (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
 
+  def addExpectedFailure(self, test, err):
+    if hasattr(time, 'perf_counter'):
+      print(test, '... expected failure (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
+    self.buffered_result = BufferedTestExpectedFailure(test, err)
+
+  def addUnexpectedSuccess(self, test):
+    if hasattr(time, 'perf_counter'):
+      print(test, '... unexpected success (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
+    self.buffered_result = BufferedTestUnexpectedSuccess(test)
+
   def addSkip(self, test, reason):
     print(test, "... skipped '%s'" % reason, file=sys.stderr)
     self.buffered_result = BufferedTestSkip(test, reason)
@@ -181,9 +198,19 @@ class BufferedTestFailure(BufferedTestBase):
     result.addFailure(self.test, self.error)
 
 
+class BufferedTestExpectedFailure(BufferedTestBase):
+  def updateResult(self, result):
+    result.addExpectedFailure(self.test, self.error)
+
+
 class BufferedTestError(BufferedTestBase):
   def updateResult(self, result):
     result.addError(self.test, self.error)
+
+
+class BufferedTestUnexpectedSuccess(BufferedTestBase):
+  def updateResult(self, result):
+    result.addUnexpectedSuccess(self.test)
 
 
 class FakeTraceback():
@@ -218,9 +245,8 @@ class FakeCode():
 
 
 def num_cores():
-  emcc_cores = os.environ.get('PARALLEL_SUITE_EMCC_CORES') or os.environ.get('EMCC_CORES')
-  if emcc_cores:
-    return int(emcc_cores)
+  if NUM_CORES:
+    return int(NUM_CORES)
   return multiprocessing.cpu_count()
 
 

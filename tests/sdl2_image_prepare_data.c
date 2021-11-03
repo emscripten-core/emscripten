@@ -36,7 +36,7 @@ int testImage(const char* fileName) {
 }
 
 void ready(void *arg, const char *fileName) {
-  printf("ready! %s (%d)\n", fileName, (int)arg);
+  printf("ready! %s (%ld)\n", fileName, (long)arg);
 
   static int first = 1;
   static const char *seenName;

@@ -22,33 +22,13 @@
 
 #include "em_asm.h"
 #include "em_macros.h"
+#include "em_types.h"
 #include "em_js.h"
+#include "wget.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* Typedefs */
-
-typedef short __attribute__((aligned(1))) emscripten_align1_short;
-
-typedef long long __attribute__((aligned(4))) emscripten_align4_int64;
-typedef long long __attribute__((aligned(2))) emscripten_align2_int64;
-typedef long long __attribute__((aligned(1))) emscripten_align1_int64;
-
-typedef int __attribute__((aligned(2))) emscripten_align2_int;
-typedef int __attribute__((aligned(1))) emscripten_align1_int;
-
-typedef float __attribute__((aligned(2))) emscripten_align2_float;
-typedef float __attribute__((aligned(1))) emscripten_align1_float;
-
-typedef double __attribute__((aligned(4))) emscripten_align4_double;
-typedef double __attribute__((aligned(2))) emscripten_align2_double;
-typedef double __attribute__((aligned(1))) emscripten_align1_double;
-
-typedef void (*em_callback_func)(void);
-typedef void (*em_arg_callback_func)(void*);
-typedef void (*em_str_callback_func)(const char *);
 
 void emscripten_run_script(const char *script);
 int emscripten_run_script_int(const char *script);
@@ -90,8 +70,8 @@ void emscripten_set_main_loop_expected_blockers(int num);
 
 void emscripten_async_call(em_arg_callback_func func, void *arg, int millis);
 
-void emscripten_exit_with_live_runtime(void);
-void emscripten_force_exit(int status);
+void emscripten_exit_with_live_runtime(void) __attribute__((noreturn));
+void emscripten_force_exit(int status) __attribute__((noreturn));
 
 double emscripten_get_device_pixel_ratio(void);
 
@@ -105,34 +85,10 @@ void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen) __at
 double emscripten_get_now(void);
 float emscripten_random(void);
 
-// wget
-
-void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror);
-
-typedef void (*em_async_wget_onload_func)(void*, void*, int);
-void emscripten_async_wget_data(const char* url, void *arg, em_async_wget_onload_func onload, em_arg_callback_func onerror);
-
-typedef void (*em_async_wget2_onload_func)(unsigned, void*, const char*);
-typedef void (*em_async_wget2_onstatus_func)(unsigned, void*, int);
-
-int emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, em_async_wget2_onload_func onload, em_async_wget2_onstatus_func onerror, em_async_wget2_onstatus_func onprogress);
-
-typedef void (*em_async_wget2_data_onload_func)(unsigned, void*, void*, unsigned);
-typedef void (*em_async_wget2_data_onerror_func)(unsigned, void*, int, const char*);
-typedef void (*em_async_wget2_data_onprogress_func)(unsigned, void*, int, int);
-
-int emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, void *arg, int free, em_async_wget2_data_onload_func onload, em_async_wget2_data_onerror_func onerror, em_async_wget2_data_onprogress_func onprogress);
-
-void emscripten_async_wget2_abort(int handle);
-
-// wget "sync"
-
-void emscripten_wget(const char* url, const char* file);
-void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
-
 // IDB
 
-void emscripten_idb_async_load(const char *db_name, const char *file_id, void* arg, em_async_wget_onload_func onload, em_arg_callback_func onerror);
+typedef void (*em_idb_onload_func)(void*, void*, int);
+void emscripten_idb_async_load(const char *db_name, const char *file_id, void* arg, em_idb_onload_func onload, em_arg_callback_func onerror);
 void emscripten_idb_async_store(const char *db_name, const char *file_id, void* ptr, int num, void* arg, em_arg_callback_func onstore, em_arg_callback_func onerror);
 void emscripten_idb_async_delete(const char *db_name, const char *file_id, void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror);
 typedef void (*em_idb_exists_func)(void*, int);
@@ -212,20 +168,19 @@ typedef void (*em_scan_func)(void*, void*);
 void emscripten_scan_registers(em_scan_func func);
 void emscripten_scan_stack(em_scan_func func);
 
-// Old coroutines API
-// Deprecated and not available in upstream backend; use Fibers instead
+// Asynchronous version of dlopen.  Since WebAssembly module loading in general
+// is asynchronous the normal dlopen function can't be used in all situations.
+typedef void (*em_dlopen_callback)(void* handle, void* user_data);
+void emscripten_dlopen(const char *filename, int flags, void* user_data, em_dlopen_callback onsuccess, em_arg_callback_func onerror);
 
-typedef void * emscripten_coroutine;
-emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size);
-int emscripten_coroutine_next(emscripten_coroutine);
-void emscripten_yield(void);
+void emscripten_throw_number(double number);
+void emscripten_throw_string(const char *utf8String);
 
 /* ===================================== */
 /* Internal APIs. Be careful with these. */
 /* ===================================== */
 
 void emscripten_sleep(unsigned int ms);
-void emscripten_sleep_with_yield(unsigned int ms);
 
 #ifdef __cplusplus
 }

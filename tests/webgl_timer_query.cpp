@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 #include <cassert>
+#include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <emscripten.h>
@@ -52,9 +53,7 @@ void getQueryResult()
   GL_CALL(glDeleteQueriesEXT(1, &timerQuery));
 #endif
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  exit(result);
 }
 
 int main()
@@ -82,9 +81,6 @@ int main()
   if (!context)
   {
     printf("Skipped: WebGL 2 is not supported.\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(result);
-#endif
     return 0;
   }
   #endif
@@ -92,14 +88,9 @@ int main()
 
   /* Check if the extension is actually supported. Firefox reports
      EXT_disjoint_timer_query on WebGL 2 as well. */
-  bool timerQuerySupported = true;
   if (!std::strstr(reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS)), "EXT_disjoint_timer_query"))
   {
-    timerQuerySupported = false;
     printf("EXT_disjoint_timer_query[_webgl2] not supported\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(result);
-#endif
     return 0;
   }
 

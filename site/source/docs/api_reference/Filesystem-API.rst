@@ -44,7 +44,7 @@ However, due to JavaScript's event-driven nature, most *persistent* storage opti
 File systems
 ============
 
-.. note:: Only the :ref:`MEMFS <filesystem-api-memfs>` filesystem is included by default. All others must be enabled explicitly, using ``-lnodefs.js`` (:ref:`NODEFS <filesystem-api-nodefs>`), ``-lidbfs.js`` (:ref:`IDBFS <filesystem-api-idbfs>`), ``-lworkerfs.js`` (:ref:`WORKERFS <filesystem-api-workerfs>`), or ``-lproxyfs.js`` (PROXYFS).
+.. note:: Only the :ref:`MEMFS <filesystem-api-memfs>` filesystem is included by default. All others must be enabled explicitly, using ``-lnodefs.js`` (:ref:`NODEFS <filesystem-api-nodefs>`), ``-lidbfs.js`` (:ref:`IDBFS <filesystem-api-idbfs>`), ``-lworkerfs.js`` (:ref:`WORKERFS <filesystem-api-workerfs>`), or ``-lproxyfs.js`` (:ref:`PROXYFS <filesystem-api-proxyfs>`).
 
 .. _filesystem-api-memfs:
 
@@ -83,6 +83,23 @@ WORKERFS
 .. note:: This file system is only for use when running code inside a worker.
 
 This file system provides read-only access to ``File`` and ``Blob`` objects inside a worker without copying the entire data into memory and can potentially be used for huge files.
+
+.. _filesystem-api-proxyfs:
+
+PROXYFS
+--------
+
+This allows a module to mount another module's file system. This is useful when separate modules need to share a file system without manually syncing file contents. For example:
+
+.. code-block:: js
+
+  // Module 2 can use the path "/fs1" to access and modify Module 1's filesystem
+  module2.FS.mkdir("/fs1");
+  module2.FS.mount(module2.PROXYFS, {
+      root: "/",
+      fs: module1.FS
+  }, "/fs1");
+
 
 Devices
 =======
@@ -147,7 +164,7 @@ File system API
   :param type: The :ref:`file system type <filesystem-api-filesystems>`: ``MEMFS``, ``NODEFS``, ``IDBFS`` or ``WORKERFS``.
   :param object opts: A generic settings object used by the underlying file system.
 
-    ``NODFES`` uses the `root` parameter to map the Emscripten directory to the physical directory. For example, to mount the current folder as a NODEFS instance:
+    ``NODEFS`` uses the `root` parameter to map the Emscripten directory to the physical directory. For example, to mount the current folder as a NODEFS instance:
 
     .. code-block:: javascript
 
@@ -657,6 +674,105 @@ File system API
 
 
 
+.. js:data:: FS.trackingDelegate[callback name]
+
+  Users can specify callbacks to receive different filesystem events. This is useful for tracking changes in the filesystem.
+
+  .. _fs-callback-names:
+
+  - ``willMovePath`` — Indicates path is about to be moved.
+  - ``onMovePath`` — Indicates path is moved.
+  - ``willDeletePath`` — Indicates path is about to be deleted.
+  - ``onDeletePath`` — Indicates path deleted.
+  - ``onOpenFile`` — Indicates file is opened.
+  - ``onWriteToFile`` — Indicates file is being written to and number of bytes written.
+  - ``onReadFile`` — Indicates file is being read and number of bytes read.
+  - ``onSeekFile`` — Indicates seeking within a file, position, and whence.
+  - ``onCloseFile`` — Indicates a file being closed.
+
+  :callback name: The name of the callback that indicates the filesystem event
+
+  Example Code
+
+  .. code-block:: javascript
+
+    EM_ASM(
+      FS.trackingDelegate['willMovePath'] = function(oldpath, newpath) {
+        out('About to move "' + oldpath + '" to "' + newpath + '"');
+      };
+      FS.trackingDelegate['onMovePath'] = function(oldpath, newpath) {
+        out('Moved "' + oldpath + '" to "' + newpath + '"');
+      };
+      FS.trackingDelegate['willDeletePath'] = function(path) {
+        out('About to delete "' + path + '"');
+      };
+      FS.trackingDelegate['onDeletePath'] = function(path) {
+        out('Deleted "' + path + '"');
+      };
+      FS.trackingDelegate['onOpenFile'] = function(path, flags) {
+        out('Opened "' + path + '" with flags ' + flags);
+      };
+      FS.trackingDelegate['onReadFile'] = function(path, bytesRead) {
+        out('Read ' + bytesRead + ' bytes from "' + path + '"');
+      };
+      FS.trackingDelegate['onWriteToFile'] = function(path, bytesWritten) {
+        out('Wrote to file "' + path + '" with ' + bytesWritten + ' bytes written');
+      };
+      FS.trackingDelegate['onSeekFile'] = function(path, position, whence) {
+        out('Seek on "' + path + '" with position ' + position + ' and whence ' + whence);
+      };
+      FS.trackingDelegate['onCloseFile'] = function(path) {
+        out('Closed ' + path);
+      };
+      FS.trackingDelegate['onMakeDirectory'] = function(path, mode) {
+        out('Created directory ' + path + ' with mode ' + mode);
+      };
+      FS.trackingDelegate['onMakeSymlink'] = function(oldpath, newpath) {
+        out('Created symlink from ' + oldpath + ' to ' + newpath);
+      };
+    );
+
+    FILE *file;
+    file = fopen("/test.txt", "w");
+    fputs("hello world", file);
+    fclose(file);
+    rename("/test.txt", "/renamed.txt");
+    file = fopen("/renamed.txt", "r");
+    char str[256] = {};
+    fgets(str, 255, file);
+    printf("File read returned '%s'\n", str);
+    fclose(file);
+    remove("/renamed.txt");
+    mkdir("/home/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    symlink("/renamed.txt", "/file.txt");
+
+
+  Example Output
+
+  .. code-block:: text
+
+    Opened "/test.txt" with flags O_CREAT O_TRUNC O_WRONLY and file size 0
+    Wrote to file "/test.txt" with 11 bytes written
+    Wrote to file "/test.txt" with 0 bytes written
+    Closed /test.txt
+    About to move "/test.txt" to "/renamed.txt"
+    Moved "/test.txt" to "/renamed.txt"
+    Opened "/renamed.txt" with flags O_RDONLY and file size 11
+    Read 0 bytes from "/renamed.txt"
+    Read 11 bytes from "/renamed.txt"
+    Read 0 bytes from "/renamed.txt"
+    Read 0 bytes from "/renamed.txt"
+    Wrote to file "/dev/tty" with 31 bytes written
+    File read returned 'hello world'
+    Wrote to file "/dev/tty" with 2 bytes written
+    Closed /renamed.txt
+    About to delete "/renamed.txt"
+    Deleted "/renamed.txt"
+    Created directory "/home/test" with mode 16893
+    Created symlink from "/renamed.txt" to "/file.txt"
+
+
+
 File types
 ==========
 
@@ -766,12 +882,12 @@ Paths
 .. js:function:: FS.analyzePath(path, dontResolveLastLink)
 
   Looks up the incoming path and returns an object containing information about
-  file stats and nodes. Built on top of ``FS.lookupPath`` and provides more 
-  information about given path and its parent. If any error occurs it won't 
+  file stats and nodes. Built on top of ``FS.lookupPath`` and provides more
+  information about given path and its parent. If any error occurs it won't
   throw but returns an ``error`` property.
 
   :param string path: The incoming path.
-  :param boolean dontResolveLastLink: If true, don't follow the last component 
+  :param boolean dontResolveLastLink: If true, don't follow the last component
     if it is a symlink.
 
   :returns: an object with the format:
@@ -780,13 +896,13 @@ Paths
 
       {
         isRoot: boolean,
-        exists: boolean, 
-        error: Error, 
-        name: string, 
-        path: resolved_path, 
+        exists: boolean,
+        error: Error,
+        name: string,
+        path: resolved_path,
         object: resolved_node,
-        parentExists: boolean, 
-        parentPath: resolved_parent_path, 
+        parentExists: boolean,
+        parentPath: resolved_parent_path,
         parentObject: resolved_parent_node
       }
 

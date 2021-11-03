@@ -7,6 +7,7 @@ void test(const char* name) {
     printf("newlocale '%s' succeeded\n", name);
   else
     printf("newlocale '%s' failed\n", name);
+  freelocale(loc);
 }
 
 int main(int argc, char* argv[]) {

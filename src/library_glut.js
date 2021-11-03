@@ -294,7 +294,7 @@ var LibraryGLUT = {
                                                   // Just call it once here.
       /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
       if (GLUT.reshapeFunc) {
-        // console.log("GLUT.reshapeFunc (from FS): " + width + ", " + height);
+        // out("GLUT.reshapeFunc (from FS): " + width + ", " + height);
         {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
       }
       _glutPostRedisplay();
@@ -418,24 +418,26 @@ var LibraryGLUT = {
   },
 
   glutIdleFunc__proxy: 'sync',
+  glutIdleFunc__deps: ['$safeSetTimeout'],
   glutIdleFunc__sig: 'vi',
   glutIdleFunc: function(func) {
     function callback() {
       if (GLUT.idleFunc) {
         {{{ makeDynCall('v', 'GLUT.idleFunc') }}}();
-        Browser.safeSetTimeout(callback, 4); // HTML spec specifies a 4ms minimum delay on the main thread; workers might get more, but we standardize here
+        safeSetTimeout(callback, 4); // HTML spec specifies a 4ms minimum delay on the main thread; workers might get more, but we standardize here
       }
     }
     if (!GLUT.idleFunc) {
-      Browser.safeSetTimeout(callback, 0);
+      safeSetTimeout(callback, 0);
     }
     GLUT.idleFunc = func;
   },
 
   glutTimerFunc__proxy: 'sync',
+  glutTimerFunc__deps: ['$safeSetTimeout'],
   glutTimerFunc__sig: 'viii',
   glutTimerFunc: function(msec, func, value) {
-    Browser.safeSetTimeout(function() { {{{ makeDynCall('vi', 'func') }}}(value); }, msec);
+    safeSetTimeout(function() { {{{ makeDynCall('vi', 'func') }}}(value); }, msec);
   },
 
   glutDisplayFunc__proxy: 'sync',

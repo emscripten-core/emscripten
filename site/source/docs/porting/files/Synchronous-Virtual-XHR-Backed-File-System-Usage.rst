@@ -64,7 +64,7 @@ Instructions
   .. include:: ../../../../../tests/test_browser.py
     :literal:
     :start-after: html_file.write(r"""
-    :end-before: html_file.close()
+    :end-before: """ % self.port)
     :code: html
 
 

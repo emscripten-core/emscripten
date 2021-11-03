@@ -7,12 +7,24 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 void *emscripten_return_address(int level);
+const char *emscripten_pc_get_function(void* pc);
 
-void func() {
-  assert(emscripten_return_address(0) != 0);
+__attribute__((noinline)) void func() {
+  void* rtn_addr = emscripten_return_address(0);
+  void* rtn_addr2 = __builtin_return_address(0);
+  const char* caller_name = emscripten_pc_get_function(rtn_addr);
+  printf("emscripten_return_address: %p\n", rtn_addr);
+  printf("emscripten_pc_get_function: %s\n", caller_name);
+  assert(rtn_addr != 0);
+  assert(rtn_addr2 != 0);
+  assert(rtn_addr == rtn_addr2);
+#ifdef DEBUG
+  assert(strcmp(caller_name, "main") == 0);
   assert(emscripten_return_address(50) == 0);
+#endif
 }
 
 // We need to take these two arguments or clang can potentially generate

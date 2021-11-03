@@ -37,7 +37,5 @@ int main()
   assert(data2[7] == 0);
 
   printf("Test passed!\n");
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

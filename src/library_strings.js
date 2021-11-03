@@ -6,6 +6,14 @@
 
 #if MINIMAL_RUNTIME
 
+// runtime_strings_extra.js defines a wrapper around TextDecoder, which is added
+// in the generated code. The minimal runtime logic here actually runs the
+// library code at compile time (as a way to create a library*.js file around
+// non-library JS), and so we must define it here as well.
+var TextDecoderWrapper = TextDecoder;
+
+// TODO: stop including this in such a manner, and instead make it a normal
+// library file in all modes.
 #include "runtime_strings_extra.js"
 #include "arrayUtils.js"
 

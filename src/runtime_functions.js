@@ -114,19 +114,28 @@ function getEmptyTableSlot() {
   return wasmTable.length - 1;
 }
 
-// Add a wasm function to the table.
-function addFunctionWasm(func, sig) {
+function updateTableMap(offset, count) {
+  for (var i = offset; i < offset + count; i++) {
+    var item = getWasmTableEntry(i);
+    // Ignore null values.
+    if (item) {
+      functionsInTableMap.set(item, i);
+    }
+  }
+}
+
+// Add a function to the table.
+// 'sig' parameter is required if the function being added is a JS function.
+function addFunction(func, sig) {
+#if ASSERTIONS
+  assert(typeof func !== 'undefined');
+#endif // ASSERTIONS
+
   // Check if the function is already in the table, to ensure each function
   // gets a unique index. First, create the map if this is the first use.
   if (!functionsInTableMap) {
     functionsInTableMap = new WeakMap();
-    for (var i = 0; i < wasmTable.length; i++) {
-      var item = wasmTable.get(i);
-      // Ignore null values.
-      if (item) {
-        functionsInTableMap.set(item, i);
-      }
-    }
+    updateTableMap(0, wasmTable.length);
   }
   if (functionsInTableMap.has(func)) {
     return functionsInTableMap.get(func);
@@ -139,7 +148,7 @@ function addFunctionWasm(func, sig) {
   // function is not actually in the wasm Table despite not being tracked in
   // functionsInTableMap.
   for (var i = 0; i < wasmTable.length; i++) {
-    assert(wasmTable.get(i) != func, 'function in Table but not functionsInTableMap');
+    assert(getWasmTableEntry(i) != func, 'function in Table but not functionsInTableMap');
   }
 #endif
 
@@ -148,7 +157,7 @@ function addFunctionWasm(func, sig) {
   // Set the new value.
   try {
     // Attempting to call this with JS function will cause of table.set() to fail
-    wasmTable.set(ret, func);
+    setWasmTableEntry(ret, func);
   } catch (err) {
     if (!(err instanceof TypeError)) {
       throw err;
@@ -157,7 +166,7 @@ function addFunctionWasm(func, sig) {
     assert(typeof sig !== 'undefined', 'Missing signature argument to addFunction: ' + func);
 #endif
     var wrapped = convertJsFunctionToWasm(func, sig);
-    wasmTable.set(ret, wrapped);
+    setWasmTableEntry(ret, wrapped);
   }
 
   functionsInTableMap.set(func, ret);
@@ -166,21 +175,8 @@ function addFunctionWasm(func, sig) {
 }
 
 function removeFunction(index) {
-  functionsInTableMap.delete(wasmTable.get(index));
+  functionsInTableMap.delete(getWasmTableEntry(index));
   freeTableIndexes.push(index);
 }
 
-// 'sig' parameter is required for the llvm backend but only when func is not
-// already a WebAssembly function.
-function addFunction(func, sig) {
-#if ASSERTIONS
-  assert(typeof func !== 'undefined');
-#if ASSERTIONS == 2
-  if (typeof sig === 'undefined') {
-    err('warning: addFunction(): You should provide a wasm function signature string as a second argument. This is not necessary for asm.js and asm2wasm, but can be required for the LLVM wasm backend, so it is recommended for full portability.');
-  }
-#endif // ASSERTIONS == 2
-#endif // ASSERTIONS
 
-  return addFunctionWasm(func, sig);
-}

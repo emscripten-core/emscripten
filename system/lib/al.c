@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <emscripten.h>
+#include <emscripten/console.h>
 
 #include <AL/alc.h>
 #include <AL/al.h>
@@ -61,9 +62,7 @@ void* alcGetProcAddress(ALCdevice *device, const ALCchar *name) {
   else if (!strcmp(name, "alcGetStringiSOFT")) { return emscripten_alcGetStringiSOFT; }
   else if (!strcmp(name, "alcResetDeviceSOFT")) { return emscripten_alcResetDeviceSOFT; }
 
-  EM_ASM({
-    err("bad name in alcGetProcAddress: " + UTF8ToString($0));
-  }, name);
+  emscripten_console_errorf("bad name in alcGetProcAddress: %s", name);
   return 0;
 }
 
@@ -160,8 +159,6 @@ void* alGetProcAddress(const ALchar *name) {
 
   // Extensions
 
-  EM_ASM({
-    err("bad name in alGetProcAddress: " + UTF8ToString($0));
-  }, name);
+  emscripten_console_errorf("bad name in alGetProcAddress: %s", name);
   return 0;
 }

@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
     int* map = (int*)mmap(0, 5000, PROT_READ | PROT_WRITE,
                           MAP_SHARED | MAP_ANON, -1, 0);
     assert(map != MAP_FAILED);
-    assert(((int)map) % 65536 == 0); // aligned
+    assert(((long)map) % 65536 == 0); // aligned
     assert(munmap(map, 5000) == 0);
   }
 

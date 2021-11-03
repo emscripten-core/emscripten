@@ -27,12 +27,11 @@ mergeInto(LibraryManager.library, {
         "{{{ cDefine('O_TRUNC') }}}": flags["O_TRUNC"],
         "{{{ cDefine('O_WRONLY') }}}": flags["O_WRONLY"]
       };
-    },
-    bufferFrom: function (arrayBuffer) {
-      // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
-      // Buffer.from before 4.5 was just a method inherited from Uint8Array
-      // Buffer.alloc has been added with Buffer.from together, so check it instead
-      return Buffer["alloc"] ? Buffer.from(arrayBuffer) : new Buffer(arrayBuffer);
+#if ASSERTIONS
+      // The 0 define must match on both sides, as otherwise we would not
+      // know to add it.
+      assert(NODEFS.flagsForNodeMap["0"] === 0);
+#endif
     },
     convertNodeCode: function(e) {
       var code = e.code;
@@ -84,10 +83,11 @@ mergeInto(LibraryManager.library, {
     // This maps the integer permission modes from http://linux.die.net/man/3/open
     // to node.js-specific file open permission strings at http://nodejs.org/api/fs.html#fs_fs_open_path_flags_mode_callback
     flagsForNode: function(flags) {
-      flags &= ~0x200000 /*O_PATH*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      flags &= ~0x800 /*O_NONBLOCK*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      flags &= ~0x8000 /*O_LARGEFILE*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      flags &= ~0x80000 /*O_CLOEXEC*/; // Some applications may pass it; it makes no sense for a single process.
+      flags &= ~{{{ cDefine('O_PATH') }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~{{{ cDefine('O_NONBLOCK') }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~{{{ cDefine('O_LARGEFILE') }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~{{{ cDefine('O_CLOEXEC') }}}; // Some applications may pass it; it makes no sense for a single process.
+      flags &= ~{{{ cDefine('O_DIRECTORY') }}}; // Node.js doesn't need this passed in, it errors.
       var newFlags = 0;
       for (var k in NODEFS.flagsForNodeMap) {
         if (flags & k) {
@@ -95,7 +95,6 @@ mergeInto(LibraryManager.library, {
           flags ^= k;
         }
       }
-
       if (!flags) {
         return newFlags;
       } else {
@@ -262,14 +261,14 @@ mergeInto(LibraryManager.library, {
         // Node.js < 6 compatibility: node errors on 0 length reads
         if (length === 0) return 0;
         try {
-          return fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
+          return fs.readSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       write: function (stream, buffer, offset, length, position) {
         try {
-          return fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
+          return fs.writeSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }

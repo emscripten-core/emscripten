@@ -6,10 +6,7 @@ Building to WebAssembly
 
 WebAssembly is a binary format for executing code on the web, allowing fast start times (smaller download and much faster parsing in browsers when compared to JS or asm.js). Emscripten compiles to WebAssembly by default, but you can also compile to JS for older browsers.
 
-For some historical background, see
-
-- `these slides <https://kripken.github.io/talks/wasm.html>`_ and
-- `this blogpost <https://hacks.mozilla.org/2015/12/compiling-to-webassembly-its-happening/>`_.
+For some historical background, see `these slides <https://kripken.github.io/talks/wasm.html>`_ and `this blogpost <https://hacks.mozilla.org/2015/12/compiling-to-webassembly-its-happening/>`_.
 
 Setup
 =====
@@ -125,7 +122,7 @@ Another noticeable effect is that WebAssembly is compiled asynchronously by defa
 Web server setup
 ================
 
-To serve wasm in the most efficient way over the network, make sure your web server has the proper MIME time for ``.wasm`` files, which is application/wasm. That will allow streaming compilation, where the browser can start to compile code as it downloads.
+To serve wasm in the most efficient way over the network, make sure your web server has the proper MIME type for ``.wasm`` files, which is application/wasm. That will allow streaming compilation, where the browser can start to compile code as it downloads.
 
 In Apache, you can do this with
 

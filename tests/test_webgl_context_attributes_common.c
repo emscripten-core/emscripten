@@ -260,7 +260,6 @@ static bool depthActivated = false;
 static bool stencilActivated = false;
 static bool alphaActivated = false;
 
-static bool result = 0;
 static bool resultAA = 0;
 static bool resultDepth = 0;
 static bool resultStencil = 0;
@@ -278,8 +277,6 @@ static void draw() {
   
   if (!resultAlpha) resultAlpha = testAlpha(alphaActivated);
   assert(resultAlpha);
-  
-  result = resultAA && resultDepth && resultStencil && resultAlpha;
 }
 
 extern int webglAntialiasSupported(void);

@@ -71,9 +71,5 @@ int main(void)
     printf("subbed3=%llx\n", c.load(std::memory_order_relaxed));
     assert(c.load(std::memory_order_relaxed) == 0x0E0D0C0B0A090807ULL);
 
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
-
     return 0;
 }

@@ -12,7 +12,6 @@ struct Randomized {
 };
 
 int main(int argc, const char *argv[]) {
-  new Randomized(55);
-
+  Randomized(55);
   return 0;
 }

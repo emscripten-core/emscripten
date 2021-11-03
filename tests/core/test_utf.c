@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <emscripten.h>
+#include <stdlib.h>
 
 int main() {
   char *c = "μ†ℱ ╋ℯ╳╋ 😇";
@@ -18,5 +19,7 @@ int main() {
       "out([UTF8ToString(cheez), Module.getValue(cheez, "
       "'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, "
       "Module.getValue(cheez+2, 'i8')&0xff, Module.getValue(cheez+3, "
-      "'i8')&0xff].join(','));");
+      "'i8')&0xff].join(','));"
+      "_free(cheez);"
+      );
 }

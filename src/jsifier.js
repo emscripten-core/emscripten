@@ -74,16 +74,13 @@ function JSify(functionsOnly) {
 
     LibraryManager.load();
 
-    var libFuncsToInclude;
+    var libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     if (INCLUDE_FULL_LIBRARY) {
-      libFuncsToInclude = MAIN_MODULE ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
       for (var key in LibraryManager.library) {
         if (!isJsLibraryConfigIdentifier(key)) {
           libFuncsToInclude.push(key);
         }
       }
-    } else {
-      libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     }
     libFuncsToInclude.forEach((ident) => {
       functionStubs.push({
@@ -97,18 +94,22 @@ function JSify(functionsOnly) {
     // It is possible that when printing the function as a string on Windows, the js interpreter we are in returns the string with Windows
     // line endings \r\n. This is undesirable, since line endings are managed in the form \n in the output for binary file writes, so
     // make sure the endings are uniform.
-    snippet = snippet.toString().replace(/\r\n/gm,"\n");
+    snippet = snippet.toString().replace(/\r\n/gm,'\n');
 
     // name the function; overwrite if it's already named
     snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + finalName + '(');
 
     // apply LIBRARY_DEBUG if relevant
-    if (LIBRARY_DEBUG) {
+    if (LIBRARY_DEBUG && !isJsOnlyIdentifier(ident)) {
       snippet = modifyFunction(snippet, (name, args, body) => {
-        return 'function ' + name + '(' + args + ') {\n' +
-               'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
-                body +
-                '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
+        return `\
+function ${name}(${args}) {
+  var ret = (function() { if (runtimeDebug) err("[library call:${finalName}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  ${body}
+  }).apply(this, arguments);
+  if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret));
+  return ret;
+}`
       });
     }
     return snippet;
@@ -129,6 +130,8 @@ function JSify(functionsOnly) {
       // Continue, with the code below emitting the proper JavaScript based on
       // what we just added to the library.
     }
+
+    const TOP_LEVEL = 'top-level compiled C/C++ code';
 
     function addFromLibrary(item, dependent) {
       // dependencies can be JS functions, which we just run
@@ -158,10 +161,10 @@ function JSify(functionsOnly) {
         }
         if (!isDefined(ident)) {
           var msg = 'undefined symbol: ' + ident;
-          if (dependent) msg += ' (referenced by ' + dependent + ')';
+          if (dependent) msg += ` (referenced by ${dependent})`;
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
-            if (!LLD_REPORT_UNDEFINED) {
+            if (dependent == TOP_LEVEL && !LLD_REPORT_UNDEFINED) {
               warnOnce('Link with `-s LLD_REPORT_UNDEFINED` to get more information on undefined symbols');
             }
             warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
@@ -175,20 +178,20 @@ function JSify(functionsOnly) {
         }
         if (!RELOCATABLE) {
           // emit a stub that will fail at runtime
-          LibraryManager.library[ident] = new Function("err('missing function: " + ident + "'); abort(-1);");
+          LibraryManager.library[ident] = new Function(`err('missing function: ${ident}'); abort(-1);`);
           // We have already warned/errored about this function, so for the purposes of Closure use, mute all type checks
           // regarding this function, marking ot a variadic function that can take in anything and return anything.
           // (not useful to warn/error multiple times)
           LibraryManager.library[ident + '__docs'] = '/** @type {function(...*):?} */';
         } else {
-          var target = "Module['" + finalName + "']";
+          var target = `Module['${finalName}']`;
           var assertion = '';
           if (ASSERTIONS) {
             var what = 'function';
-            assertion += 'if (!' + target + ') abort("external symbol \'' + ident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
+            assertion += `if (!${target}) abort("external symbol '${ident}' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n`;
 
           }
-          var functionBody = assertion + "return " + target + ".apply(null, arguments);";
+          var functionBody = assertion + `return ${target}.apply(null, arguments);`;
           LibraryManager.library[ident] = new Function(functionBody);
           noExport = true;
         }
@@ -199,11 +202,17 @@ function JSify(functionsOnly) {
       var redirectedIdent = null;
       var deps = LibraryManager.library[ident + '__deps'] || [];
       if (!Array.isArray(deps)) {
-        error('JS library directive ' + ident + '__deps=' + deps.toString() + ' is of type ' + typeof deps + ', but it should be an array!');
+        error(`JS library directive ${ident}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
         return;
       }
+      var isUserSymbol = LibraryManager.library[ident + '__user'];
       deps.forEach((dep) => {
-        if (typeof snippet === 'string' && !(dep in LibraryManager.library)) warn('missing library dependency ' + dep + ', make sure you are compiling with the right options (see #if in src/library*.js)');
+        if (typeof snippet === 'string' && !(dep in LibraryManager.library)) {
+          warn(`missing library dependency ${dep}, make sure you are compiling with the right options (see #if in src/library*.js)`);
+        }
+        if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
+          warn(`user library symbol '${ident}' depends on internal symbol '${dep}'`)
+        }
       });
       var isFunction = false;
 
@@ -228,9 +237,7 @@ function JSify(functionsOnly) {
       } else if (typeof snippet === 'function') {
         isFunction = true;
         snippet = processLibraryFunction(snippet, ident, finalName);
-        if (!isJsOnlyIdentifier(ident[0])) {
-          libraryFunctions.push(finalName);
-        }
+        libraryFunctions.push(finalName);
       }
 
       // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be exported
@@ -262,31 +269,44 @@ function JSify(functionsOnly) {
         deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
       }
       if (VERBOSE) {
-        printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
+        printErr(`adding ${finalName} and deps ${deps} : ` + (snippet + '').substr(0, 40));
       }
       var identDependents = ident + "__deps: ['" + deps.join("','")+"']";
       function addDependency(dep) {
         if (typeof dep !== 'function') {
           dep = {identOrig: dep, identMangled: mangleCSymbolName(dep)};
         }
-        return addFromLibrary(dep, identDependents + ', referenced by ' + dependent);
+        return addFromLibrary(dep, `${identDependents}, referenced by ${dependent}`);
       }
-      var depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
       var contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
         var proxyingMode = LibraryManager.library[ident + '__proxy'];
         if (USE_PTHREADS && proxyingMode) {
           if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
-            throw 'Invalid proxyingMode ' + ident + '__proxy: \'' + proxyingMode + '\' specified!';
+            throw `Invalid proxyingMode ${ident}__proxy: '${proxyingMode}' specified!`;
           }
           var sync = proxyingMode === 'sync';
           assert(typeof original === 'function');
           contentText = modifyFunction(snippet, (name, args, body) => {
-            return 'function ' + name + '(' + args + ') {\n' +
-                   'if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + (args ? ', ' : '') + args + ');\n' + body + '}\n';
+            return `
+function ${name}(${args}) {
+  if (ENVIRONMENT_IS_PTHREAD)
+    return _emscripten_proxy_to_main_thread_js(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
+  ${body}
+}\n`;
           });
           proxiedFunctionTable.push(finalName);
+        } else if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[ident + '__noleakcheck']) {
+          contentText = modifyFunction(snippet, (name, args, body) => {
+            return `
+function ${name}(${args}) {
+  return withBuiltinMalloc(function() {
+    ${body}
+  });
+}\n`;
+          });
+          deps.push('$withBuiltinMalloc');
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }
@@ -303,16 +323,16 @@ function JSify(functionsOnly) {
         //  emits
         //   'var foo = [value];'
         if (typeof snippet === 'string' && snippet[0] == '=') snippet = snippet.substr(1);
-        contentText = 'var ' + finalName + '=' + snippet + ';';
+        contentText = `var ${finalName} = ${snippet};`;
       }
       var sig = LibraryManager.library[ident + '__sig'];
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
       if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
-        contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
+        contentText += `\nModule["${finalName}"] = ${finalName};`;
       }
       if (MAIN_MODULE && sig) {
-        contentText += '\n' + finalName + '.sig = \'' + sig + '\';';
+        contentText += `\n${finalName}.sig = '${sig}';`;
       }
 
       var commentText = '';
@@ -320,11 +340,12 @@ function JSify(functionsOnly) {
         commentText = LibraryManager.library[ident + '__docs'] + '\n';
       }
 
+      var depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
       return depsText + commentText + contentText;
     }
 
     itemsDict.functionStub.push(item);
-    item.JS = addFromLibrary(item, 'top-level compiled C/C++ code');
+    item.JS = addFromLibrary(item, TOP_LEVEL);
   }
 
   // Final combiner
@@ -394,7 +415,7 @@ function JSify(functionsOnly) {
       print(preprocess(read('arrayUtils.js')));
     }
 
-    if (SUPPORT_BASE64_EMBEDDING && !MINIMAL_RUNTIME) {
+    if ((SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM) && !MINIMAL_RUNTIME) {
       print(preprocess(read('base64Utils.js')));
     }
 

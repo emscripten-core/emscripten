@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2016 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -17,7 +17,7 @@ import sys
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools import shared
+from tools import utils
 
 
 js_file = sys.argv[1]
@@ -68,16 +68,11 @@ def eval_ctors(js, wasm_file, num):
   if debug_info:
     cmd += ['-g']
   logger.debug('wasm ctor cmd: ' + str(cmd))
-  proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
   try:
-    err = shared.timeout_run(proc, timeout=10, full_output=True, check=False)
-  except Exception as e:
-    if 'Timed out' not in str(e):
-      raise
+    err = subprocess.run(cmd, stderr=subprocess.PIPE, timeout=10).stdout
+  except subprocess.TimeoutExpired:
     logger.debug('ctors timed out\n')
     return 0, js
-  if proc.returncode != 0:
-    shared.exit_with_error('unexpected error while trying to eval ctors:\n' + err)
   num_successful = err.count('success on')
   logger.debug(err)
   if len(ctors) == num_successful:
@@ -93,7 +88,7 @@ def eval_ctors(js, wasm_file, num):
 
 # main
 def main():
-  js = open(js_file).read()
+  js = utils.read_file(js_file)
   ctors_start, ctors_end = find_ctors(js)
   if ctors_start < 0:
     logger.debug('ctor_evaller: no ctors')
@@ -114,7 +109,7 @@ def main():
     logger.debug('ctor_evaller: not successful')
     sys.exit(0)
   logger.debug('ctor_evaller: we managed to remove %d ctors' % num_successful)
-  open(js_file, 'w').write(new_js)
+  utils.write_file(js_file, new_js)
 
 
 if __name__ == '__main__':

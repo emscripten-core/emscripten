@@ -13,6 +13,6 @@ struct Class {
 };
 
 int main() {
-  printf("*%s,%s*\n", Class::name1(), (new Class())->name2());
+  printf("*%s,%s*\n", Class::name1(), Class().name2());
   return 0;
 }

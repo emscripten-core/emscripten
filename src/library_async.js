@@ -20,12 +20,17 @@ mergeInto(LibraryManager.library, {
   },
 
 #if ASYNCIFY
-  $Asyncify__deps: ['$runAndAbortIfError'],
+  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepalivePush', '$runtimeKeepalivePop'
+#endif
+  ],
   $Asyncify: {
     State: {
       Normal: 0,
       Unwinding: 1,
-      Rewinding: 2
+      Rewinding: 2,
+      Disabled: 3,
     },
     state: 0,
     StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
@@ -42,8 +47,7 @@ mergeInto(LibraryManager.library, {
     callStackNameToId: {},
     callStackIdToName: {},
     callStackId: 0,
-    afterUnwind: null,
-    asyncFinalizers: [], // functions to run when *all* asynchronicity is done
+    asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
 
     getCallStackId: function(funcName) {
@@ -70,24 +74,37 @@ mergeInto(LibraryManager.library, {
               try {
                 return original.apply(null, arguments);
               } finally {
-                // Only functions in the list of known relevant imports are allowed to change the state.
-                // Note that invoke_* functions are allowed to change the state if we do not ignore
-                // indirect calls.
+                // Only asyncify-declared imports are allowed to change the
+                // state.
+                var isAsyncifyImport = ASYNCIFY_IMPORTS.indexOf(x) >= 0 ||
+                                       x.startsWith('__asyncjs__');
+                // Changing the state from normal to disabled is allowed (in any
+                // function) as that is what shutdown does (and we don't have an
+                // explicit list of shutdown imports).
+                var changedToDisabled =
+                      originalAsyncifyState === Asyncify.State.Normal &&
+                      Asyncify.state        === Asyncify.State.Disabled;
+                // invoke_* functions are allowed to change the state if we do
+                // not ignore indirect calls.
+                var ignoredInvoke = x.startsWith('invoke_') &&
+                                    {{{ !ASYNCIFY_IGNORE_INDIRECT }}};
                 if (Asyncify.state !== originalAsyncifyState &&
-                    ASYNCIFY_IMPORTS.indexOf(x) < 0 &&
-                    !(x.startsWith('invoke_') && {{{ !ASYNCIFY_IGNORE_INDIRECT }}})) {
-                  throw 'import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state';
+                    !isAsyncifyImport &&
+                    !changedToDisabled &&
+                    !ignoredInvoke) {
+                  throw new Error('import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state');
                 }
               }
             }
+#if MAIN_MODULE
+            // The dynamic library loader needs to be able to read .sig
+            // properties, so that it knows function signatures when it adds
+            // them to the table.
+            imports[x].sig = original.sig;
+#endif
           }
         })(x);
       }
-    },
-
-    checkStateAfterExitRuntime: function() {
-      assert(Asyncify.state === Asyncify.State.None,
-            'Asyncify cannot be done during or after the runtime exits');
     },
 #endif
 
@@ -105,13 +122,14 @@ mergeInto(LibraryManager.library, {
               try {
                 return original.apply(null, arguments);
               } finally {
-                if (ABORT) return;
-                var y = Asyncify.exportCallStack.pop();
-                assert(y === x);
+                if (!ABORT) {
+                  var y = Asyncify.exportCallStack.pop();
+                  assert(y === x);
 #if ASYNCIFY_DEBUG >= 2
-                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + x);
+                  err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' finally ' + x);
 #endif
-                Asyncify.maybeStopUnwind();
+                  Asyncify.maybeStopUnwind();
+                }
               }
             };
           } else {
@@ -133,16 +151,27 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
         err('ASYNCIFY: stop unwind');
 #endif
+        {{{ runtimeKeepalivePush(); }}}
         Asyncify.state = Asyncify.State.Normal;
+        // Keep the runtime alive so that a re-wind can be done later.
         runAndAbortIfError(Module['_asyncify_stop_unwind']);
         if (typeof Fibers !== 'undefined') {
           Fibers.trampoline();
         }
-        if (Asyncify.afterUnwind) {
-          Asyncify.afterUnwind();
-          Asyncify.afterUnwind = null;
-        }
       }
+    },
+
+    whenDone: function() {
+#if ASSERTIONS
+      assert(Asyncify.currData, 'Tried to wait for an async operation when none is in progress.');
+      assert(!Asyncify.asyncPromiseHandlers, 'Cannot have multiple async operations in flight at once');
+#endif
+      return new Promise(function(resolve, reject) {
+        Asyncify.asyncPromiseHandlers = {
+          resolve: resolve,
+          reject: reject
+        };
+      });
     },
 
     allocateData: function() {
@@ -181,11 +210,22 @@ mergeInto(LibraryManager.library, {
       return func;
     },
 
-    handleSleep: function(startAsync) {
-      if (ABORT) return;
-#if !MINIMAL_RUNTIME
-      noExitRuntime = true;
+    doRewind: function(ptr) {
+      var start = Asyncify.getDataRewindFunc(ptr);
+#if ASYNCIFY_DEBUG
+      err('ASYNCIFY: start:', start);
 #endif
+      // Once we have rewound and the stack we no longer need to artificially keep
+      // the runtime alive.
+      {{{ runtimeKeepalivePop(); }}}
+      return start();
+    },
+
+    handleSleep: function(startAsync) {
+#if ASSERTIONS
+      assert(Asyncify.state !== Asyncify.State.Disabled, 'Asyncify cannot be done during or after the runtime exits');
+#endif
+      if (ABORT) return;
 #if ASYNCIFY_DEBUG
       err('ASYNCIFY: handleSleep ' + Asyncify.state);
 #endif
@@ -223,11 +263,15 @@ mergeInto(LibraryManager.library, {
           if (typeof Browser !== 'undefined' && Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
-          var start = Asyncify.getDataRewindFunc(Asyncify.currData);
-#if ASYNCIFY_DEBUG
-          err('ASYNCIFY: start:', start);
-#endif
-          var asyncWasmReturnValue = start();
+          var asyncWasmReturnValue, isError = false;
+          try {
+            asyncWasmReturnValue = Asyncify.doRewind(Asyncify.currData);
+          } catch (err) {
+            asyncWasmReturnValue = err;
+            isError = true;
+          }
+          // Track whether the return value was handled by any promise handlers.
+          var handled = false;
           if (!Asyncify.currData) {
             // All asynchronous execution has finished.
             // `asyncWasmReturnValue` now contains the final
@@ -241,11 +285,18 @@ mergeInto(LibraryManager.library, {
             // contains the return value of the exported WASM function
             // that may have called C functions that
             // call `Asyncify.handleSleep()`.
-            var asyncFinalizers = Asyncify.asyncFinalizers;
-            Asyncify.asyncFinalizers = [];
-            asyncFinalizers.forEach(function(func) {
-              func(asyncWasmReturnValue);
-            });
+            var asyncPromiseHandlers = Asyncify.asyncPromiseHandlers;
+            if (asyncPromiseHandlers) {
+              Asyncify.asyncPromiseHandlers = null;
+              (isError ? asyncPromiseHandlers.reject : asyncPromiseHandlers.resolve)(asyncWasmReturnValue);
+              handled = true;
+            }
+          }
+          if (isError && !handled) {
+            // If there was an error and it was not handled by now, we have no choice but to
+            // rethrow that error into the global scope where it can be caught only by
+            // `onerror` or `onunhandledpromiserejection`.
+            throw asyncWasmReturnValue;
           }
         });
         reachedAfterCallback = true;
@@ -273,7 +324,7 @@ mergeInto(LibraryManager.library, {
         Asyncify.currData = null;
         // Call all sleep callbacks now that the sleep-resume is all done.
         Asyncify.sleepCallbacks.forEach(function(func) {
-          func();
+          callUserCallback(func);
         });
       } else {
         abort('invalid state: ' + Asyncify.state);
@@ -294,10 +345,10 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  emscripten_sleep__deps: ['$Browser'],
+  emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep: function(ms) {
     Asyncify.handleSleep(function(wakeUp) {
-      Browser.safeSetTimeout(wakeUp, ms);
+      safeSetTimeout(wakeUp, ms);
     });
   },
 
@@ -324,10 +375,10 @@ mergeInto(LibraryManager.library, {
     });
   },
 
-  emscripten_wget_data__deps: ['$Browser'],
+  emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     Asyncify.handleSleep(function(wakeUp) {
-      Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
+      asyncLoad(UTF8ToString(url), function(byteArray) {
         // can only allocate the buffer after the wakeUp, not during an asyncing
         var buffer = _malloc(byteArray.length); // must be freed by caller!
         HEAPU8.set(byteArray, buffer);
@@ -342,16 +393,19 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers: function(func) {
     Asyncify.handleSleep(function(wakeUp) {
-      // We must first unwind, so things are spilled to the stack. We
-      // can resume right after unwinding, no need for a timeout.
-      Asyncify.afterUnwind = function() {
+      // We must first unwind, so things are spilled to the stack. Then while
+      // we are pausing we do the actual scan. After that we can resume. Note
+      // how using a timeout here avoids unbounded call stack growth, which
+      // could happen if we tried to scan the stack immediately after unwinding.
+      safeSetTimeout(function() {
         var stackBegin = Asyncify.currData + {{{ C_STRUCTS.asyncify_data_s.__size__ }}};
         var stackEnd = HEAP32[Asyncify.currData >> 2];
         {{{ makeDynCall('vii', 'func') }}}(stackBegin, stackEnd);
         wakeUp();
-      };
+      }, 0);
     });
   },
 
@@ -421,11 +475,7 @@ mergeInto(LibraryManager.library, {
 #endif
         Asyncify.state = Asyncify.State.Rewinding;
         Module['_asyncify_start_rewind'](asyncifyData);
-        var start = Asyncify.getDataRewindFunc(asyncifyData);
-#if ASYNCIFY_DEBUG
-        err('ASYNCIFY/FIBER: start: ' + start);
-#endif
-        start();
+        Asyncify.doRewind(asyncifyData);
       }
     },
   },
@@ -460,9 +510,6 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(oldFiber, newFiber) {
     if (ABORT) return;
-#if !MINIMAL_RUNTIME
-    noExitRuntime = true;
-#endif
 #if ASYNCIFY_DEBUG
     err('ASYNCIFY/FIBER: swap', oldFiber, '->', newFiber, 'state:', Asyncify.state);
 #endif

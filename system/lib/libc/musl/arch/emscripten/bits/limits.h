@@ -4,5 +4,9 @@
 #define LONG_BIT 32
 #endif
 
+#if __LP64__
+#define LONG_MAX  0x7fffffffffffffffL
+#else
 #define LONG_MAX  0x7fffffffL
+#endif
 #define LLONG_MAX  0x7fffffffffffffffLL

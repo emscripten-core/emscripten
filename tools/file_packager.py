@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2012 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -21,7 +21,7 @@ data downloads.
 
 Usage:
 
-  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -49,12 +49,15 @@ Usage:
   --use-preload-plugins Tells the file packager to run preload plugins on the files as they are loaded. This performs tasks like decoding images
                         and audio using the browser's codecs.
 
+  --no-node Whether to support Node.js. By default we do, which emits some extra code.
+
 Notes:
 
   * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
     subdir\file, in JS it will be subdir/file. For simplicity we treat the web platform as a *NIX.
 """
 
+import base64
 import os
 import sys
 import shutil
@@ -65,7 +68,7 @@ import ctypes
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import posixpath
-from tools import shared
+from tools import shared, utils
 from subprocess import PIPE
 import fnmatch
 import json
@@ -91,6 +94,11 @@ AV_WORKAROUND = 0
 
 excluded_patterns = []
 new_data_files = []
+
+
+def base64_encode(b):
+  b64 = base64.b64encode(b)
+  return b64.decode('ascii')
 
 
 def has_hidden_attribute(filepath):
@@ -174,6 +182,7 @@ def main():
   separate_metadata = False
   lz4 = False
   use_preload_plugins = False
+  support_node = True
 
   for arg in sys.argv[2:]:
     if arg == '--preload':
@@ -203,6 +212,9 @@ def main():
       leading = ''
     elif arg == '--use-preload-plugins':
       use_preload_plugins = True
+      leading = ''
+    elif arg == '--no-node':
+      support_node = False
       leading = ''
     elif arg.startswith('--js-output'):
       jsoutput = arg.split('=', 1)[1] if '=' in arg else None
@@ -447,7 +459,7 @@ def main():
         ''' % (create_preloaded if use_preload_plugins else create_data, '''
               var files = metadata['files'];
               for (var i = 0; i < files.length; ++i) {
-                new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio']).open('GET', files[i]['filename']);
+                new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
               }
       ''')
 
@@ -458,29 +470,24 @@ def main():
     basename = os.path.basename(filename)
     if file_['mode'] == 'embed':
       # Embed
-      data = list(bytearray(open(file_['srcpath'], 'rb').read()))
-      code += '''var fileData%d = [];\n''' % counter
-      if data:
-        parts = []
-        chunk_size = 10240
-        start = 0
-        while start < len(data):
-          parts.append('''fileData%d.push.apply(fileData%d, %s);\n'''
-                       % (counter, counter, str(data[start:start + chunk_size])))
-          start += chunk_size
-        code += ''.join(parts)
-      code += ('''Module['FS_createDataFile']('%s', '%s', fileData%d, true, true, false);\n'''
+      data = base64_encode(utils.read_binary(file_['srcpath']))
+      code += '''var fileData%d = '%s';\n''' % (counter, data)
+      code += ('''Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, false);\n'''
                % (dirname, basename, counter))
       counter += 1
     elif file_['mode'] == 'preload':
       # Preload
       counter += 1
-      metadata['files'].append({
+
+      metadata_el = {
         'filename': file_['dstpath'],
         'start': file_['data_start'],
         'end': file_['data_end'],
-        'audio': 1 if filename[-4:] in AUDIO_SUFFIXES else 0,
-      })
+      }
+      if filename[-4:] in AUDIO_SUFFIXES:
+        metadata_el['audio'] = 1
+
+      metadata['files'].append(metadata_el)
     else:
       assert 0
 
@@ -504,8 +511,8 @@ def main():
       # LZ4FS usage
       temp = data_target + '.orig'
       shutil.move(data_target, temp)
-      meta = shared.run_js_tool(shared.path_from_root('tools', 'lz4-compress.js'),
-                                [shared.path_from_root('third_party', 'mini-lz4.js'),
+      meta = shared.run_js_tool(utils.path_from_root('tools/lz4-compress.js'),
+                                [utils.path_from_root('third_party/mini-lz4.js'),
                                 temp, data_target], stdout=PIPE)
       os.unlink(temp)
       use_data = '''
@@ -521,14 +528,12 @@ def main():
     remote_package_size = os.path.getsize(package_name)
     remote_package_name = os.path.basename(package_name)
     ret += r'''
-      var PACKAGE_PATH;
+      var PACKAGE_PATH = '';
       if (typeof window === 'object') {
         PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
-      } else if (typeof location !== 'undefined') {
-        // worker
+      } else if (typeof process === 'undefined' && typeof location !== 'undefined') {
+        // web worker
         PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf('/')) + '/');
-      } else {
-        throw 'using preloaded data can only be done on a web page or in a web worker';
       }
       var PACKAGE_NAME = '%s';
       var REMOTE_PACKAGE_BASE = '%s';
@@ -710,8 +715,24 @@ def main():
         }
       '''
 
+    # add Node.js support code, if necessary
+    node_support_code = ''
+    if support_node:
+      node_support_code = r'''
+        if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
+          require('fs').readFile(packageName, function(err, contents) {
+            if (err) {
+              errback(err);
+            } else {
+              callback(contents.buffer);
+            }
+          });
+          return;
+        }
+      '''
     ret += r'''
       function fetchRemotePackage(packageName, packageSize, callback, errback) {
+        %(node_support_code)s
         var xhr = new XMLHttpRequest();
         xhr.open('GET', packageName, true);
         xhr.responseType = 'arraybuffer';
@@ -762,7 +783,7 @@ def main():
       function handleError(error) {
         console.error('package error:', error);
       };
-    '''
+    ''' % {'node_support_code': node_support_code}
 
     code += r'''
       function processPackageData(arrayBuffer) {

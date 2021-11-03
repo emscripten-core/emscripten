@@ -8,7 +8,7 @@ EM_BOOL func1(double time, void *userData);
 
 EM_BOOL func2(double time, void *userData)
 {
-	assert((int)userData == 2);
+	assert((long)userData == 2);
 	assert(time > 0);
 	++func2Executed;
 
@@ -32,7 +32,7 @@ EM_BOOL func2(double time, void *userData)
 
 EM_BOOL func1(double time, void *userData)
 {
-	assert((int)userData == 1);
+	assert((long)userData == 1);
 	assert(time > 0);
 	++func1Executed;
 

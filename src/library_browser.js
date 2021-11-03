@@ -9,6 +9,7 @@ var LibraryBrowser = {
   $Browser__deps: [
     '$setMainLoop',
     '$callUserCallback',
+    '$safeSetTimeout',
     'emscripten_set_main_loop_timing',
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush',
@@ -105,12 +106,12 @@ var LibraryBrowser = {
         Browser.hasBlobConstructor = true;
       } catch(e) {
         Browser.hasBlobConstructor = false;
-        console.log("warning: no blob constructor, cannot create blobs with mimetypes");
+        out("warning: no blob constructor, cannot create blobs with mimetypes");
       }
-      Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : (!Browser.hasBlobConstructor ? console.log("warning: no BlobBuilder") : null));
+      Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : (!Browser.hasBlobConstructor ? out("warning: no BlobBuilder") : null));
       Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : undefined;
       if (!Module.noImageDecoding && typeof Browser.URLObject === 'undefined') {
-        console.log("warning: Browser does not support creating object URLs. Built-in browser image decoding will not be available.");
+        out("warning: Browser does not support creating object URLs. Built-in browser image decoding will not be available.");
         Module.noImageDecoding = true;
       }
 
@@ -161,7 +162,7 @@ var LibraryBrowser = {
           if (onload) onload(byteArray);
         };
         img.onerror = function img_onerror(event) {
-          console.log('Image ' + url + ' could not be decoded');
+          out('Image ' + url + ' could not be decoded');
           if (onerror) onerror();
         };
         img.src = url;
@@ -200,7 +201,7 @@ var LibraryBrowser = {
           audio.addEventListener('canplaythrough', function() { finish(audio) }, false); // use addEventListener due to chromium bug 124926
           audio.onerror = function audio_onerror(event) {
             if (done) return;
-            console.log('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
+            out('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
             function encode64(data) {
               var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
               var PAD = '=';
@@ -230,7 +231,7 @@ var LibraryBrowser = {
           };
           audio.src = url;
           // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
-          Browser.safeSetTimeout(function() {
+          safeSetTimeout(function() {
             finish(audio); // try to use it even though it is not necessarily ready to play
           }, 10000);
         } else {
@@ -488,19 +489,17 @@ var LibraryBrowser = {
 
     // abort and pause-aware versions TODO: build main loop on top of this?
 
+    safeSetTimeout: function(func) {
+      // Legacy function, this is used by the SDL2 port so we need to keep it
+      // around at least until that is updated.
+      return safeSetTimeout(func);
+    },
     safeRequestAnimationFrame: function(func) {
       {{{ runtimeKeepalivePush() }}}
       return Browser.requestAnimationFrame(function() {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(func);
       });
-    },
-    safeSetTimeout: function(func, timeout) {
-      {{{ runtimeKeepalivePush() }}}
-      return setTimeout(function() {
-        {{{ runtimeKeepalivePop() }}}
-        callUserCallback(func);
-      }, timeout);
     },
 
     getMimetype: function(name) {
@@ -673,22 +672,6 @@ var LibraryBrowser = {
       }
     },
 
-    asyncLoad: function(url, onload, onerror, noRunDep) {
-      var dep = !noRunDep ? getUniqueRunDependency('al ' + url) : '';
-      readAsync(url, function(arrayBuffer) {
-        assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
-        onload(new Uint8Array(arrayBuffer));
-        if (dep) removeRunDependency(dep);
-      }, function(event) {
-        if (onerror) {
-          onerror();
-        } else {
-          throw 'Loading data file "' + url + '" failed.';
-        }
-      });
-      if (dep) addRunDependency(dep);
-    },
-
     resizeListeners: [],
 
     updateResizeListeners: function() {
@@ -773,60 +756,6 @@ var LibraryBrowser = {
         }
       }
     },
-
-    wgetRequests: {},
-    nextWgetRequestHandle: 0,
-
-    getNextWgetRequestHandle: function() {
-      var handle = Browser.nextWgetRequestHandle;
-      Browser.nextWgetRequestHandle++;
-      return handle;
-    }
-  },
-
-  emscripten_async_wget__deps: ['$PATH_FS',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
-  emscripten_async_wget__proxy: 'sync',
-  emscripten_async_wget__sig: 'viiii',
-  emscripten_async_wget: function(url, file, onload, onerror) {
-    {{{ runtimeKeepalivePush() }}}
-
-    var _url = UTF8ToString(url);
-    var _file = UTF8ToString(file);
-    _file = PATH_FS.resolve(_file);
-    function doCallback(callback) {
-      if (callback) {
-        {{{ runtimeKeepalivePop() }}}
-        var stack = stackSave();
-        {{{ makeDynCall('vi', 'callback') }}}(allocate(intArrayFromString(_file), ALLOC_STACK));
-        stackRestore(stack);
-      }
-    }
-    var destinationDirectory = PATH.dirname(_file);
-    FS.createPreloadedFile(
-      destinationDirectory,
-      PATH.basename(_file),
-      _url, true, true,
-      function() {
-        doCallback(onload);
-      },
-      function() {
-        doCallback(onerror);
-      },
-      false, // dontCreateFile
-      false, // canOwn
-      function() { // preFinish
-        // if a file exists there, we overwrite it
-        try {
-          FS.unlink(_file);
-        } catch (e) {}
-        // if the destination directory does not yet exist, create it
-        FS.mkdirTree(destinationDirectory);
-      }
-    );
   },
 
   $funcWrappers: {},
@@ -857,169 +786,6 @@ var LibraryBrowser = {
       }
     }
     return sigCache[func];
-  },
-
-  emscripten_async_wget_data__proxy: 'sync',
-  emscripten_async_wget_data__sig: 'viiii',
-  emscripten_async_wget_data: function(url, arg, onload, onerror) {
-    Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
-      var buffer = _malloc(byteArray.length);
-      HEAPU8.set(byteArray, buffer);
-      {{{ makeDynCall('viii', 'onload') }}}(arg, buffer, byteArray.length);
-      _free(buffer);
-    }, function() {
-      if (onerror) {{{ makeDynCall('vi', 'onerror') }}}(arg);
-    }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
-  },
-
-  emscripten_async_wget2__deps: ['$PATH_FS',
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
-  ],
-  emscripten_async_wget2__proxy: 'sync',
-  emscripten_async_wget2__sig: 'iiiiiiiii',
-  emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
-    {{{ runtimeKeepalivePush() }}}
-
-    var _url = UTF8ToString(url);
-    var _file = UTF8ToString(file);
-    _file = PATH_FS.resolve(_file);
-    var _request = UTF8ToString(request);
-    var _param = UTF8ToString(param);
-    var index = _file.lastIndexOf('/');
-
-    var http = new XMLHttpRequest();
-    http.open(_request, _url, true);
-    http.responseType = 'arraybuffer';
-
-    var handle = Browser.getNextWgetRequestHandle();
-
-    var destinationDirectory = PATH.dirname(_file);
-
-    // LOAD
-    http.onload = function http_onload(e) {
-      {{{ runtimeKeepalivePop() }}}
-      if (http.status >= 200 && http.status < 300) {
-        // if a file exists there, we overwrite it
-        try {
-          FS.unlink(_file);
-        } catch (e) {}
-        // if the destination directory does not yet exist, create it
-        FS.mkdirTree(destinationDirectory);
-
-        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(/** @type{ArrayBuffer}*/(http.response)), true, true, false);
-        if (onload) {
-          var stack = stackSave();
-          {{{ makeDynCall('viii', 'onload') }}}(handle, arg, allocate(intArrayFromString(_file), ALLOC_STACK));
-          stackRestore(stack);
-        }
-      } else {
-        if (onerror) {{{ makeDynCall('viii', 'onerror') }}}(handle, arg, http.status);
-      }
-
-      delete Browser.wgetRequests[handle];
-    };
-
-    // ERROR
-    http.onerror = function http_onerror(e) {
-      {{{ runtimeKeepalivePop() }}}
-      if (onerror) {{{ makeDynCall('viii', 'onerror') }}}(handle, arg, http.status);
-      delete Browser.wgetRequests[handle];
-    };
-
-    // PROGRESS
-    http.onprogress = function http_onprogress(e) {
-      if (e.lengthComputable || (e.lengthComputable === undefined && e.total != 0)) {
-        var percentComplete = (e.loaded / e.total)*100;
-        if (onprogress) {{{ makeDynCall('viii', 'onprogress') }}}(handle, arg, percentComplete);
-      }
-    };
-
-    // ABORT
-    http.onabort = function http_onabort(e) {
-      {{{ runtimeKeepalivePop() }}}
-      delete Browser.wgetRequests[handle];
-    };
-
-    if (_request == "POST") {
-      //Send the proper header information along with the request
-      http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-      http.send(_param);
-    } else {
-      http.send(null);
-    }
-
-    Browser.wgetRequests[handle] = http;
-
-    return handle;
-  },
-
-  emscripten_async_wget2_data__proxy: 'sync',
-  emscripten_async_wget2_data__sig: 'iiiiiiiii',
-  emscripten_async_wget2_data: function(url, request, param, arg, free, onload, onerror, onprogress) {
-    var _url = UTF8ToString(url);
-    var _request = UTF8ToString(request);
-    var _param = UTF8ToString(param);
-
-    var http = new XMLHttpRequest();
-    http.open(_request, _url, true);
-    http.responseType = 'arraybuffer';
-
-    var handle = Browser.getNextWgetRequestHandle();
-
-    // LOAD
-    http.onload = function http_onload(e) {
-      if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.substr(0,4).toLowerCase() != "http")) {
-        var byteArray = new Uint8Array(/** @type{ArrayBuffer} */(http.response));
-        var buffer = _malloc(byteArray.length);
-        HEAPU8.set(byteArray, buffer);
-        if (onload) {{{ makeDynCall('viiii', 'onload') }}}(handle, arg, buffer, byteArray.length);
-        if (free) _free(buffer);
-      } else {
-        if (onerror) {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, http.statusText);
-      }
-      delete Browser.wgetRequests[handle];
-    };
-
-    // ERROR
-    http.onerror = function http_onerror(e) {
-      if (onerror) {
-        {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, http.statusText);
-      }
-      delete Browser.wgetRequests[handle];
-    };
-
-    // PROGRESS
-    http.onprogress = function http_onprogress(e) {
-      if (onprogress) {{{ makeDynCall('viiii', 'onprogress') }}}(handle, arg, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0);
-    };
-
-    // ABORT
-    http.onabort = function http_onabort(e) {
-      delete Browser.wgetRequests[handle];
-    };
-
-    if (_request == "POST") {
-      //Send the proper header information along with the request
-      http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-      http.send(_param);
-    } else {
-      http.send(null);
-    }
-
-    Browser.wgetRequests[handle] = http;
-
-    return handle;
-  },
-
-  emscripten_async_wget2_abort__proxy: 'sync',
-  emscripten_async_wget2_abort__sig: 'vi',
-  emscripten_async_wget2_abort: function(handle) {
-    var http = Browser.wgetRequests[handle];
-    if (http) {
-      http.abort();
-    }
   },
 
   emscripten_run_preload_plugins__deps: ['$PATH',
@@ -1084,10 +850,10 @@ var LibraryBrowser = {
   },
 
   // Callable from pthread, executes in pthread context.
-  emscripten_async_run_script__deps: ['emscripten_run_script'],
+  emscripten_async_run_script__deps: ['emscripten_run_script', '$safeSetTimeout'],
   emscripten_async_run_script: function(script, millis) {
     // TODO: cache these to avoid generating garbage
-    Browser.safeSetTimeout(function() {
+    safeSetTimeout(function() {
       _emscripten_run_script(script);
     }, millis);
   },
@@ -1099,7 +865,7 @@ var LibraryBrowser = {
 
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
-      console.error('emscripten_async_load_script("' + UTF8ToString(url) + '") failed, emscripten_async_load_script is currently not available in pthreads!');
+      err('emscripten_async_load_script("' + UTF8ToString(url) + '") failed, emscripten_async_load_script is currently not available in pthreads!');
       return onerror ? onerror() : undefined;
     }
 #endif
@@ -1140,7 +906,7 @@ var LibraryBrowser = {
 
     if (!Browser.mainLoop.func) {
 #if ASSERTIONS
-      console.error('emscripten_set_main_loop_timing: Cannot set timing mode for main loop since a main loop does not exist! Call emscripten_set_main_loop first to set one up.');
+      err('emscripten_set_main_loop_timing: Cannot set timing mode for main loop since a main loop does not exist! Call emscripten_set_main_loop first to set one up.');
 #endif
       return 1; // Return non-zero on failure, can't set timing mode when there is no main loop.
     }
@@ -1192,6 +958,7 @@ var LibraryBrowser = {
   },
 
   emscripten_set_main_loop__deps: ['$setMainLoop'],
+  emscripten_set_main_loop__sig: 'viii',
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
     var browserIterationFunc = {{{ makeDynCall('v', 'func') }}};
     setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop);
@@ -1265,7 +1032,7 @@ var LibraryBrowser = {
             Browser.mainLoop.remainingBlockers = (8*remaining + next)/9;
           }
         }
-        console.log('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms'); //, left: ' + Browser.mainLoop.remainingBlockers);
+        out('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms'); //, left: ' + Browser.mainLoop.remainingBlockers);
         Browser.mainLoop.updateStatus();
 
         // catches pause/resume main loop from blocker execution
@@ -1400,13 +1167,19 @@ var LibraryBrowser = {
 
   // Runs natively in pthread, no __proxy needed.
   emscripten_async_call__sig: 'viii',
+  emscripten_async_call__deps: ['$safeSetTimeout'],
   emscripten_async_call: function(func, arg, millis) {
     function wrapper() {
       {{{ makeDynCall('vi', 'func') }}}(arg);
     }
 
-    if (millis >= 0) {
-      Browser.safeSetTimeout(wrapper, millis);
+    if (millis >= 0
+#if ENVIRONMENT_MAY_BE_NODE
+      // node does not support requestAnimationFrame
+      || ENVIRONMENT_IS_NODE
+#endif
+    ) {
+      safeSetTimeout(wrapper, millis);
     } else {
       Browser.safeRequestAnimationFrame(wrapper);
     }

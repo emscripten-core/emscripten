@@ -2,5 +2,5 @@
 
 int main()
 {
-	return (int)malloc(4);
+	return (int)(long)malloc(4);
 }

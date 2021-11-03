@@ -18,8 +18,9 @@ if __name__ == '__main__':
 
 import clang_native
 import jsrun
-import runner
-from runner import TEST_ROOT, test_file, read_file, read_binary
+import common
+from tools.shared import CLANG_CC, CLANG_CXX
+from common import TEST_ROOT, test_file, read_file, read_binary
 from tools.shared import run_process, PIPE, try_delete, EMCC, config
 from tools import building
 
@@ -49,6 +50,8 @@ OPTIMIZATIONS = '-O3'
 PROFILING = 0
 
 LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
+
+FORCE64 = 0
 
 
 class Benchmarker():
@@ -138,8 +141,7 @@ class NativeBenchmarker(Benchmarker):
       native_args = native_args + lib_builder(self.name, native=True, env_init=env)
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
-      cmd = [
-        compiler,
+      cmd = compiler + [
         '-fno-math-errno',
         filename,
         '-o', filename + '.native'
@@ -205,11 +207,14 @@ class EmscriptenBenchmarker(Benchmarker):
       OPTIMIZATIONS,
       '-s', 'INITIAL_MEMORY=256MB',
       '-s', 'FILESYSTEM=0',
-      '--closure=1',
-      '-s', 'MINIMAL_RUNTIME',
+      '-s', 'ENVIRONMENT=node,shell',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + emcc_args + LLVM_FEATURE_FLAGS + self.extra_args
+    if FORCE64:
+      cmd += ['--profiling']
+    else:
+      cmd += ['--closure=1', '-sMINIMAL_RUNTIME']
     if 'FORCE_FILESYSTEM' in cmd:
       cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
     if PROFILING:
@@ -352,10 +357,13 @@ class CheerpBenchmarker(Benchmarker):
 
 # Benchmarkers
 
-benchmarkers = [
-  # NativeBenchmarker('clang', shared.CLANG_CC, shared.CLANG_CXX),
-  # NativeBenchmarker('gcc',   'gcc',    'g++')
-]
+benchmarkers = []
+
+if not FORCE64:
+  benchmarkers += [
+    NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
+    # NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie'])
+  ]
 
 if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
   # avoid the baseline compiler running, because it adds a lot of noise
@@ -363,11 +371,16 @@ if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
   # mattering as much as the actual benchmark)
   aot_v8 = config.V8_ENGINE + ['--no-liftoff']
   default_v8_name = os.environ.get('EMBENCH_NAME') or 'v8'
-  benchmarkers += [
-    EmscriptenBenchmarker(default_v8_name, aot_v8),
-    EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
-    # EmscriptenWasm2CBenchmarker('wasm2c')
-  ]
+  if FORCE64:
+    benchmarkers += [
+      EmscriptenBenchmarker(default_v8_name, aot_v8, ['-sMEMORY64=2']),
+    ]
+  else:
+    benchmarkers += [
+      EmscriptenBenchmarker(default_v8_name, aot_v8),
+      EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
+      # EmscriptenWasm2CBenchmarker('wasm2c')
+    ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
       # CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
@@ -384,12 +397,17 @@ if config.SPIDERMONKEY_ENGINE and config.SPIDERMONKEY_ENGINE in config.JS_ENGINE
     ]
 
 if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
-  benchmarkers += [
-    # EmscriptenBenchmarker('Node.js', shared.NODE_JS),
-  ]
+  if FORCE64:
+    benchmarkers += [
+      EmscriptenBenchmarker('Node.js', config.NODE_JS, ['-sMEMORY64=2']),
+    ]
+  else:
+    benchmarkers += [
+      # EmscriptenBenchmarker('Node.js', config.NODE_JS),
+    ]
 
 
-class benchmark(runner.RunnerCore):
+class benchmark(common.RunnerCore):
   save_dir = True
 
   @classmethod
@@ -405,7 +423,7 @@ class benchmark(runner.RunnerCore):
     except Exception:
       pass
     try:
-      with runner.chdir(os.path.expanduser('~/Dev/mozilla-central')):
+      with common.chdir(os.path.expanduser('~/Dev/mozilla-central')):
         fingerprint.append('sm: ' + [line for line in run_process(['hg', 'tip'], stdout=PIPE).stdout.splitlines() if 'changeset' in line][0])
     except Exception:
       pass

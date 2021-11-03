@@ -17,7 +17,7 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdarg.h>
-#include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -26,44 +26,23 @@
 #include <sys/statvfs.h>
 #include <sys/time.h>
 #include <termios.h>
+#include <threads.h>
 #include <unistd.h>
 #include <utime.h>
 
 #include <emscripten.h>
 #include <emscripten/threading.h>
-#include <emscripten/stack.h>
-
-// With LLVM 3.6, C11 is the default compilation mode.
-// gets() is deprecated under that standard, but emcc
-// still provides it, so always include it in the build.
-#if __STDC_VERSION__ >= 201112L
-char* gets(char*);
-#endif
-
-// Extra pthread_attr_t field:
-#define _a_transferredcanvases __u.__s[9]
 
 void __pthread_testcancel();
 
 int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t* a, const char** str) {
-  *str = (const char*)a->_a_transferredcanvases;
+  *str = a->_a_transferredcanvases;
   return 0;
 }
 
 int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t* a, const char* str) {
-  a->_a_transferredcanvases = (int)str;
+  a->_a_transferredcanvases = str;
   return 0;
-}
-
-int _pthread_getcanceltype() { return pthread_self()->cancelasync; }
-
-static void inline __pthread_mutex_locked(pthread_mutex_t* mutex) {
-  // The lock is now ours, mark this thread as the owner of this lock.
-  assert(mutex);
-  assert(mutex->_m_lock == 0);
-  mutex->_m_lock = pthread_self()->tid;
-  if (_pthread_getcanceltype() == PTHREAD_CANCEL_ASYNCHRONOUS)
-    __pthread_testcancel();
 }
 
 int sched_get_priority_max(int policy) {
@@ -97,37 +76,6 @@ int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr, int prioceiling)
 {
   // Not supported either in Emscripten or musl, return an error.
   return EPERM;
-}
-
-int pthread_setcancelstate(int new, int* old) {
-  if (new > 1U)
-    return EINVAL;
-  struct pthread* self = pthread_self();
-  if (old)
-    *old = self->canceldisable;
-  self->canceldisable = new;
-  return 0;
-}
-
-int _pthread_isduecanceled(struct pthread* pthread_ptr) {
-  return pthread_ptr->threadStatus == 2 /*canceled*/;
-}
-
-void __pthread_testcancel() {
-  struct pthread* self = pthread_self();
-  if (self->canceldisable)
-    return;
-  if (_pthread_isduecanceled(self)) {
-    EM_ASM(throw 'Canceled!');
-  }
-}
-
-int pthread_getattr_np(pthread_t t, pthread_attr_t* a) {
-  *a = (pthread_attr_t){0};
-  a->_a_detach = !!t->detached;
-  a->_a_stackaddr = (uintptr_t)t->stack;
-  a->_a_stacksize = t->stack_size - DEFAULT_STACK_SIZE;
-  return 0;
 }
 
 static uint32_t dummyZeroAddress = 0;
@@ -193,37 +141,15 @@ void emscripten_async_waitable_close(em_queued_call* call) {
 
 extern double emscripten_receive_on_main_thread_js(int functionIndex, int numCallArgs, double* args);
 extern int _emscripten_notify_thread_queue(pthread_t targetThreadId, pthread_t mainThreadId);
-
-#if defined(__has_feature)
-#if __has_feature(address_sanitizer)
-#define HAS_ASAN
-void __lsan_disable_in_this_thread(void);
-void __lsan_enable_in_this_thread(void);
-int emscripten_builtin_pthread_create(void *thread, void *attr,
-                                      void *(*callback)(void *), void *arg);
-#endif
-#endif
+extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 
 static void _do_call(em_queued_call* q) {
   // C function pointer
   assert(EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum) <= EM_QUEUED_CALL_MAX_ARGS);
   switch (q->functionEnum) {
     case EM_PROXIED_PTHREAD_CREATE:
-#ifdef HAS_ASAN
-      // ASan wraps the emscripten_builtin_pthread_create call in __lsan::ScopedInterceptorDisabler.
-      // Unfortunately, that only disables it on the thread that made the call.
-      // This is sufficient on the main thread.
-      // On non-main threads, pthread_create gets proxied to the main thread, where LSan is not
-      // disabled. This makes it necessary for us to disable LSan here, so that it does not detect
-      // pthread's internal allocations as leaks.
-      __lsan_disable_in_this_thread();
       q->returnValue.i =
-        emscripten_builtin_pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
-      __lsan_enable_in_this_thread();
-#else
-      q->returnValue.i =
-        pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
-#endif
+        __pthread_create_js(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
       break;
     case EM_PROXIED_CREATE_CONTEXT:
       q->returnValue.i = emscripten_webgl_create_context(q->args[0].cp, q->args[1].vp);
@@ -234,7 +160,7 @@ static void _do_call(em_queued_call* q) {
       break;
     case EM_PROXIED_JS_FUNCTION:
       q->returnValue.d =
-        emscripten_receive_on_main_thread_js((int)q->functionPtr, q->args[0].i, &q->args[1].d);
+        emscripten_receive_on_main_thread_js((int)(size_t)q->functionPtr, q->args[0].i, &q->args[1].d);
       break;
     case EM_FUNC_SIG_V:
       ((em_func_v)q->functionPtr)();
@@ -443,15 +369,10 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_i(
   return res;
 }
 
-static pthread_t main_browser_thread_id_ = 0;
-
-void emscripten_register_main_browser_thread_id(
-  pthread_t main_browser_thread_id) {
-  main_browser_thread_id_ = main_browser_thread_id;
-}
+static struct pthread __main_pthread;
 
 pthread_t emscripten_main_browser_thread_id() {
-  return main_browser_thread_id_;
+  return &__main_pthread;
 }
 
 int _emscripten_do_dispatch_to_thread(pthread_t target_thread, em_queued_call* call) {
@@ -565,29 +486,6 @@ void* emscripten_sync_run_in_main_thread_2(
   return q.returnValue.vp;
 }
 
-void* emscripten_sync_run_in_main_thread_xprintf_varargs(
-  int function, int param0, const char* format, ...) {
-  va_list args;
-  va_start(args, format);
-  const int CAP = 128;
-  char str[CAP];
-  char* s = str;
-  int len = vsnprintf(s, CAP, format, args);
-  if (len >= CAP) {
-    s = (char*)malloc(len + 1);
-    va_start(args, format);
-    len = vsnprintf(s, len + 1, format, args);
-  }
-  em_queued_call q = {function};
-  q.args[0].vp = (void*)param0;
-  q.args[1].vp = s;
-  q.returnValue.vp = 0;
-  emscripten_sync_run_in_main_thread(&q);
-  if (s != str)
-    free(s);
-  return q.returnValue.vp;
-}
-
 void* emscripten_sync_run_in_main_thread_3(
   int function, void* arg1, void* arg2, void* arg3) {
   em_queued_call q = {function};
@@ -655,33 +553,27 @@ void* emscripten_sync_run_in_main_thread_7(int function, void* arg1,
 
 void emscripten_current_thread_process_queued_calls() {
   // #if PTHREADS_DEBUG == 2
-  //	EM_ASM(console.error('thread ' + _pthread_self() + ':
+  //  EM_ASM(console.error('thread ' + _pthread_self() + ':
   //emscripten_current_thread_process_queued_calls(), ' + new Error().stack));
   // #endif
 
-  // TODO: Under certain conditions we may want to have a nesting guard also for pthreads (and it
-  // will certainly be cleaner that way), but we don't yet have TLS variables outside
-  // pthread_set/getspecific, so convert this to TLS after TLS is implemented.
-  static int bool_main_thread_inside_nested_process_queued_calls = 0;
+  static thread_local bool thread_is_processing_queued_calls = false;
 
-  if (emscripten_is_main_browser_thread()) {
-    // It is possible that when processing a queued call, the call flow leads back to calling this
-    // function in a nested fashion! Therefore this scenario must explicitly be detected, and
-    // processing the queue must be avoided if we are nesting, or otherwise the same queued calls
-    // would be processed again and again.
-    if (bool_main_thread_inside_nested_process_queued_calls)
-      return;
-    // This must be before pthread_mutex_lock(), since pthread_mutex_lock() can call back to this
-    // function.
-    bool_main_thread_inside_nested_process_queued_calls = 1;
-  }
+  // It is possible that when processing a queued call, the control flow leads back to calling this
+  // function in a nested fashion! Therefore this scenario must explicitly be detected, and
+  // processing the queue must be avoided if we are nesting, or otherwise the same queued calls
+  // would be processed again and again.
+  if (thread_is_processing_queued_calls)
+    return;
+  // This must be before pthread_mutex_lock(), since pthread_mutex_lock() can call back to this
+  // function.
+  thread_is_processing_queued_calls = true;
 
   pthread_mutex_lock(&call_queue_lock);
   CallQueue* q = GetQueue(pthread_self());
   if (!q) {
     pthread_mutex_unlock(&call_queue_lock);
-    if (emscripten_is_main_browser_thread())
-      bool_main_thread_inside_nested_process_queued_calls = 0;
+    thread_is_processing_queued_calls = false;
     return;
   }
 
@@ -703,8 +595,7 @@ void emscripten_current_thread_process_queued_calls() {
   // If the queue was full and we had waiters pending to get to put data to queue, wake them up.
   emscripten_futex_wake((void*)&q->call_queue_head, 0x7FFFFFFF);
 
-  if (emscripten_is_main_browser_thread())
-    bool_main_thread_inside_nested_process_queued_calls = 0;
+  thread_is_processing_queued_calls = false;
 }
 
 // At times when we disallow the main thread to process queued calls, this will
@@ -712,8 +603,8 @@ void emscripten_current_thread_process_queued_calls() {
 int _emscripten_allow_main_runtime_queued_calls = 1;
 
 void emscripten_main_thread_process_queued_calls() {
-  if (!emscripten_is_main_runtime_thread() ||
-      !_emscripten_allow_main_runtime_queued_calls)
+  assert(emscripten_is_main_runtime_thread());
+  if (!_emscripten_allow_main_runtime_queued_calls)
     return;
 
   emscripten_current_thread_process_queued_calls();
@@ -760,7 +651,8 @@ double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t
   }
   c->calleeDelete = 1-sync;
   c->functionEnum = EM_PROXIED_JS_FUNCTION;
-  c->functionPtr = (void*)index;
+  // Index not needed to ever be more than 32-bit.
+  c->functionPtr = (void*)(size_t)index;
   assert(num_args+1 <= EM_QUEUED_JS_CALL_MAX_ARGS);
   // The types are only known at runtime in these calls, so we store values that
   // must be able to contain any valid JS value, including a 64-bit BigInt if
@@ -858,9 +750,20 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
   return q;
 }
 
-int _emscripten_call_on_thread(
-  int forceAsync,
-  pthread_t targetThread, EM_FUNC_SIGNATURE sig, void* func_ptr, void* satellite, ...) {
+typedef struct DispatchToThreadArgs {
+  pthread_t target_thread;
+  em_queued_call* q;
+} DispatchToThreadArgs;
+
+static void dispatch_to_thread_helper(void* user_data) {
+  DispatchToThreadArgs* args = (DispatchToThreadArgs*)user_data;
+  _emscripten_do_dispatch_to_thread(args->target_thread, args->q);
+  free(user_data);
+}
+
+int _emscripten_call_on_thread(int forceAsync, pthread_t targetThread, EM_FUNC_SIGNATURE sig,
+    void* func_ptr, void* satellite, ...) {
+
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call* q = em_queued_call_malloc();
   assert(q);
@@ -906,11 +809,10 @@ int _emscripten_call_on_thread(
   // The called function will not be async if we are on the same thread; force
   // async if the user asked for that.
   if (forceAsync) {
-    EM_ASM({
-      setTimeout(function() {
-        __emscripten_do_dispatch_to_thread($0, $1);
-      }, 0);
-    }, targetThread, q);
+    DispatchToThreadArgs* args = malloc(sizeof(DispatchToThreadArgs));
+    args->target_thread = targetThread;
+    args->q = q;
+    emscripten_set_timeout(dispatch_to_thread_helper, 0, args);
     return 0;
   } else {
     return _emscripten_do_dispatch_to_thread(targetThread, q);
@@ -921,33 +823,19 @@ int _emscripten_call_on_thread(
 // the main thread is waiting, we wake it up before waking up any workers.
 EMSCRIPTEN_KEEPALIVE void* _emscripten_main_thread_futex;
 
-static int _main_argc;
-static char** _main_argv;
+void __emscripten_init_main_thread_js(void* tb);
 
-extern int __call_main(int argc, char** argv);
-
-static void* _main_thread(void* param) {
-  // This is the main runtime thread for the application.
-  emscripten_set_thread_name(pthread_self(), "Application main thread");
-  return (void*)__call_main(_main_argc, _main_argv);
+// See system/lib/README.md for static constructor ordering.
+__attribute__((constructor(48)))
+void __emscripten_init_main_thread(void) {
+  __emscripten_init_main_thread_js(&__main_pthread);
+  // The pthread struct has a field that points to itself - this is used as
+  // a magic ID to detect whether the pthread_t structure is 'alive'.
+  __main_pthread.self = &__main_pthread;
+  // pthread struct robust_list head should point to itself.
+  __main_pthread.robust_list.head = &__main_pthread.robust_list.head;
+  // Main thread ID is always 1.  It can't be 0 because musl assumes
+  // tid is always non-zero.
+  __main_pthread.tid = getpid();
+  __main_pthread.locale = &libc.global_locale;
 }
-
-int emscripten_proxy_main(int argc, char** argv) {
-  pthread_attr_t attr;
-  pthread_attr_init(&attr);
-  // Use the size of the current stack, which is the normal size of the stack
-  // that main() would have without PROXY_TO_PTHREAD.
-  pthread_attr_setstacksize(&attr, emscripten_stack_get_base() - emscripten_stack_get_end());
-  // Pass special ID -1 to the list of transferred canvases to denote that the thread creation
-  // should instead take a list of canvases that are specified from the command line with
-  // -s OFFSCREENCANVASES_TO_PTHREAD linker flag.
-  emscripten_pthread_attr_settransferredcanvases(&attr, (const char*)-1);
-  _main_argc = argc;
-  _main_argv = argv;
-  pthread_t thread;
-  int rc = pthread_create(&thread, &attr, _main_thread, NULL);
-  pthread_attr_destroy(&attr);
-  return rc;
-}
-
-weak_alias(__pthread_testcancel, pthread_testcancel);

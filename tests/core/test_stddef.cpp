@@ -6,9 +6,11 @@
  */
 
 #ifdef __cplusplus
+#include <cassert>
 #include <cstddef>
 using namespace std;
 #else
+#include <assert.h>
 #include <stddef.h>
 #endif
 
@@ -25,9 +27,8 @@ void abort(void);
 #endif
 
 int main() {
-  // max_align_t on wasm backend is 16 due to sizeof(long double) being 16.
-  if (_Alignof(max_align_t) != 16)
-    abort();
+  // max_align_t on wasm backend is 8.
+  assert(_Alignof(max_align_t) == 8);
   puts("success");
   return 0;
 }

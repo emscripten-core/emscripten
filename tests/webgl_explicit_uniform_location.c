@@ -168,7 +168,5 @@ int main(int argc, char *argv[])
   assert(glGetUniformLocation(program2, "view") == 1);
 
   printf("Test passed!\n");
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1);
-#endif
+  return 0;
 }

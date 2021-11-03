@@ -10,10 +10,9 @@
 #include <assert.h>
 #include <unistd.h>
 #include <errno.h>
-#include <emscripten.h>
-#include <emscripten/threading.h>
+#include <emscripten/em_asm.h>
 
-int fib(int n)
+long fib(long n)
 {
   if (n <= 0) return 0;
   if (n == 1) return 1;
@@ -22,9 +21,9 @@ int fib(int n)
 
 static void *thread_start(void *arg)
 {
-  int n = (int)arg;
+  long n = (long)arg;
   EM_ASM(out('Thread: Computing fib('+$0+')...'), n);
-  int fibn = fib(n);
+  long fibn = fib(n);
   EM_ASM(out('Thread: Computation done. fib('+$0+') = '+$1+'.'), n, fibn);
   pthread_exit((void*)fibn);
 }
@@ -34,15 +33,6 @@ int main()
   // Test existence of nanosleep(), https://github.com/emscripten-core/emscripten/issues/4578
   struct timespec ts = { 1, 0 };
   nanosleep(&ts, 0);
-
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(6765);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
 
   pthread_t thr;
 
@@ -66,8 +56,7 @@ int main()
   assert(EM_ASM_INT(return PThread.runningWorkers.length) == 0);
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 8);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  assert(result == 6765);
+  return 0;
 }
 

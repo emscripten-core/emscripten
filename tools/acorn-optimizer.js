@@ -943,7 +943,7 @@ function applyDCEGraphRemovals(ast) {
 
 // Need a parser to pass to acorn.Node constructor.
 // Create it once and reuse it.
-var stubParser = new acorn.Parser();
+var stubParser = new acorn.Parser({ecmaVersion: 2020})
 
 function createNode(props) {
   var node = new acorn.Node(stubParser);
@@ -1812,6 +1812,14 @@ if (closureFriendly > -1) {
   closureFriendly = false;
 }
 
+var exportES6 = arguments.indexOf('--exportES6');
+if (exportES6 > -1) {
+  arguments.splice(exportES6, 1);
+  exportES6 = true;
+} else {
+  exportES6 = false;
+}
+
 var infile = arguments[0];
 var passes = arguments.slice(1);
 
@@ -1830,7 +1838,8 @@ try {
     // Keep in sync with --language_in that we pass to closure in building.py
     ecmaVersion: 2020,
     preserveParens: closureFriendly,
-    onComment: closureFriendly ? sourceComments : undefined
+    onComment: closureFriendly ? sourceComments : undefined,
+    sourceType: exportES6 ? "module" : "script",
   });
 } catch (err) {
   err.message += (function() {

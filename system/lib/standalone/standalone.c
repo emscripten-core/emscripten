@@ -25,11 +25,6 @@
 
 // libc
 
-void _Exit(int status) {
-  __wasi_proc_exit(status);
-  __builtin_unreachable();
-}
-
 void abort() {
   _Exit(1);
 }
@@ -63,12 +58,11 @@ long __map_file(int x, int y) {
   return -ENOSYS;
 }
 
-long __syscall91(int x, int y) { // munmap
+long __syscall_munmap(int x, int y) {
   return -ENOSYS;
 }
 
-// mmap2()
-long __syscall192(long addr, long len, long prot, long flags, long fd, long off) {
+long __syscall_mmap2(long addr, long len, long prot, long flags, long fd, long off) {
   return -ENOSYS;
 }
 
@@ -76,46 +70,29 @@ long __syscall192(long addr, long len, long prot, long flags, long fd, long off)
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it
 // open()
-long __syscall5(const char* path, long flags, ...) {
+long __syscall_open(const char* path, long flags, ...) {
   if (!strcmp(path, "/dev/stdin")) return STDIN_FILENO;
   if (!strcmp(path, "/dev/stdout")) return STDOUT_FILENO;
   if (!strcmp(path, "/dev/stderr")) return STDERR_FILENO;
   return -EPERM;
 }
 
-// ioctl()
-int __syscall54(int fd, int op, ...) {
+int __syscall_ioctl(int fd, int op, ...) {
   return -ENOSYS;
 }
 
-// fcntl64()
-long __syscall221(long fd, long cmd, ...) {
+long __syscall_fcntl64(long fd, long cmd, ...) {
   return -ENOSYS;
 }
 
 // Emscripten additions
 
-void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
-  // This normally calls out into JS which can do a single fast operation,
-  // but with wasi we can't do that. As this is called when n >= 512, we
-  // can just split into smaller calls.
-  // TODO optimize, maybe build our memcpy with a wasi variant, maybe have
-  //      a SIMD variant, etc.
-  const int CHUNK = 508;
-  unsigned char* d = (unsigned char*)dest;
-  unsigned char* s = (unsigned char*)src;
-  while (n > 0) {
-    size_t curr_n = n;
-    if (curr_n > CHUNK) curr_n = CHUNK;
-    memcpy(d, s, curr_n);
-    d += CHUNK;
-    s += CHUNK;
-    n -= curr_n;
-  }
-  return dest;
-}
-
 extern void emscripten_notify_memory_growth(size_t memory_index);
+
+// Should never be called in standalone mode
+void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
+  __builtin_unreachable();
+}
 
 size_t emscripten_get_heap_max() {
   // In standalone mode we don't have any wasm instructions to access the max
@@ -125,7 +102,7 @@ size_t emscripten_get_heap_max() {
 }
 
 int emscripten_resize_heap(size_t size) {
-#ifdef __EMSCRIPTEN_MEMORY_GROWTH__
+#ifdef EMSCRIPTEN_MEMORY_GROWTH
   size_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
   assert(old_size < size);
   ssize_t diff = (size - old_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;

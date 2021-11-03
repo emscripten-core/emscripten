@@ -7,6 +7,10 @@ int pthread_getattr_np(pthread_t t, pthread_attr_t *a)
 {
 	*a = (pthread_attr_t){0};
 	a->_a_detach = !!t->detached;
+#ifdef __EMSCRIPTEN__
+	a->_a_stackaddr = (uintptr_t)t->stack;
+	a->_a_stacksize = t->stack_size - DEFAULT_STACK_SIZE;
+#else
 	if (t->stack) {
 		a->_a_stackaddr = (uintptr_t)t->stack;
 		a->_a_stacksize = t->stack_size - DEFAULT_STACK_SIZE;
@@ -19,5 +23,6 @@ int pthread_getattr_np(pthread_t t, pthread_attr_t *a)
 			l += PAGE_SIZE;
 		a->_a_stacksize = l - DEFAULT_STACK_SIZE;
 	}
+#endif
 	return 0;
 }
