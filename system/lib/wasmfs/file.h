@@ -151,6 +151,10 @@ public:
       getDir()->entries[pathName] = inserted;
       // Simultaneously, set the parent of the inserted node to be this Dir.
       // inserted must be locked because we have to go through Handle.
+      // TODO: When rename is implemented, ensure that the source directory has
+      // been removed as a parent.
+      // https://github.com/emscripten-core/emscripten/pull/15410#discussion_r742171264
+      assert(!lockedInserted.getParent());
       lockedInserted.setParent(file);
     }
 

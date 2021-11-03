@@ -330,6 +330,9 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
       // Create an empty in-memory file.
       auto created = std::make_shared<MemoryFile>(mode);
 
+      // TODO: When rename is implemented make sure that one can atomically
+      // remove the file from the source directory and then set its parent to
+      // the dest directory.
       lockedParentDir.setEntry(base, created);
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
