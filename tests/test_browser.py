@@ -73,7 +73,7 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
     httpd.handle_request()
 
 
-def with_wasmfs(f):
+def also_with_wasmfs(f):
   def metafunc(self, wasmfs):
     if wasmfs:
       self.set_setting('WASMFS')
@@ -248,7 +248,7 @@ If manually bisecting:
     self.btest_exit(test_file('emscripten_log/emscripten_log.cpp'),
                     args=['--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_preload_file(self, wasmfs=False):
     create_file('somefile.txt', 'load me right before running the code please')
     create_file('.somefile.txt', 'load me right before running the code please')
@@ -315,7 +315,7 @@ If manually bisecting:
     # As an Emscripten-specific feature, the character '@' must be escaped in the form '@@' to not confuse with the 'src@dst' notation.
     self.btest_exit('main.cpp', args=['--preload-file', tricky_filename.replace('@', '@@')])
 
-    # WASMFS doesn't support the rest of this test yet. Exit early.
+    # TODO: WASMFS doesn't support the rest of this test yet. Exit early.
     if wasmfs:
       return
 
