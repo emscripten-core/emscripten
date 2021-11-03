@@ -160,6 +160,18 @@ class MemoryFile : public DataFile {
 
 public:
   MemoryFile(mode_t mode) : DataFile(mode) {}
+
+  class Handle : public DataFile::Handle {
+
+    std::shared_ptr<MemoryFile> getFile() { return file->cast<MemoryFile>(); }
+
+  public:
+    Handle(std::shared_ptr<File> dataFile) : DataFile::Handle(dataFile) {}
+    // This function copies preloaded files from JS Memory to Wasm Memory.
+    void preloadFromJS(int index);
+  };
+
+  Handle locked() { return Handle(shared_from_this()); }
 };
 
 // Obtains parent directory of a given pathname.

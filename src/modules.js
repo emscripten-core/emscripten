@@ -111,8 +111,9 @@ var LibraryManager = {
         }
         libraries.push('library_noderawfs.js');
       }
+    } else if (WASMFS) {
+      libraries.push('library_wasmfs.js');
     } 
-    // TODO: populate with libraries.push('library_wasmfs.js') later
 
     // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
     if (AUTO_JS_LIBRARIES) {

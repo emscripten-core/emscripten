@@ -73,6 +73,21 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
     httpd.handle_request()
 
 
+def also_with_wasmfs(f):
+  def metafunc(self, wasmfs):
+    if wasmfs:
+      self.set_setting('WASMFS')
+      self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
+      f(self, wasmfs)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasmfs': (True,)}
+
+  return metafunc
+
+
 def shell_with_script(shell_file, output_file, replacement):
   shell = read_file(path_from_root('src', shell_file))
   create_file(output_file, shell.replace('{{{ SCRIPT }}}', replacement))
@@ -233,7 +248,8 @@ If manually bisecting:
     self.btest_exit(test_file('emscripten_log/emscripten_log.cpp'),
                     args=['--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
 
-  def test_preload_file(self):
+  @also_with_wasmfs
+  def test_preload_file(self, wasmfs=False):
     create_file('somefile.txt', 'load me right before running the code please')
     create_file('.somefile.txt', 'load me right before running the code please')
     create_file('some@file.txt', 'load me right before running the code please')
@@ -243,6 +259,9 @@ If manually bisecting:
     def make_main(path):
       print('make main at', path)
       path = path.replace('\\', '\\\\').replace('"', '\\"') # Escape tricky path name for use inside a C string.
+      # TODO: change this when wasmfs supports relative paths.
+      if wasmfs:
+        path = "/" + path
       create_file('main.cpp', r'''
         #include <assert.h>
         #include <stdio.h>
@@ -295,6 +314,10 @@ If manually bisecting:
     make_main(tricky_filename)
     # As an Emscripten-specific feature, the character '@' must be escaped in the form '@@' to not confuse with the 'src@dst' notation.
     self.btest_exit('main.cpp', args=['--preload-file', tricky_filename.replace('@', '@@')])
+
+    # TODO: WASMFS doesn't support the rest of this test yet. Exit early.
+    if wasmfs:
+      return
 
     # By absolute path
 
