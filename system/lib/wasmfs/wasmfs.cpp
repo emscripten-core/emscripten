@@ -118,9 +118,6 @@ void WasmFS::preloadFiles() {
 
     auto mode = EM_ASM_INT({ return wasmFS$preloadedFiles[$0].mode; }, i);
 
-    auto size =
-      EM_ASM_INT({return wasmFS$preloadedFiles[$0].fileData.length}, i);
-
     auto pathParts = splitPath(fileName);
 
     auto base = pathParts.back();
@@ -137,7 +134,7 @@ void WasmFS::preloadFiles() {
 
     parentDir->locked().setEntry(base, created);
 
-    created->locked().preloadFromJS(i, size);
+    created->locked().preloadFromJS(i);
   }
 }
 } // namespace wasmfs

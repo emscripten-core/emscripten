@@ -78,7 +78,7 @@ def with_wasmfs(f):
     if wasmfs:
       self.set_setting('WASMFS')
       self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
-      f(self)
+      f(self, wasmfs)
     else:
       f(self)
 
@@ -249,7 +249,7 @@ If manually bisecting:
                     args=['--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
 
   @with_wasmfs
-  def test_preload_file(self):
+  def test_preload_file(self, wasmfs=False):
     create_file('somefile.txt', 'load me right before running the code please')
     create_file('.somefile.txt', 'load me right before running the code please')
     create_file('some@file.txt', 'load me right before running the code please')
@@ -260,7 +260,7 @@ If manually bisecting:
       print('make main at', path)
       path = path.replace('\\', '\\\\').replace('"', '\\"') # Escape tricky path name for use inside a C string.
       # TODO: change this when wasmfs supports relative paths.
-      if 'WASMFS' in self.settings_mods and self.settings_mods['WASMFS'] == 1:
+      if wasmfs:
         path = "/" + path
       create_file('main.cpp', r'''
         #include <assert.h>
@@ -316,7 +316,7 @@ If manually bisecting:
     self.btest_exit('main.cpp', args=['--preload-file', tricky_filename.replace('@', '@@')])
 
     # WASMFS doesn't support the rest of this test yet. Exit early.
-    if 'WASMFS' in self.settings_mods and self.settings_mods['WASMFS'] == 1:
+    if wasmfs:
       return
 
     # By absolute path
