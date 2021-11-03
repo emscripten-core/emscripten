@@ -418,11 +418,6 @@ var SyscallsLibrary = {
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
-  __syscall_dup2: function(oldfd, suggestFD) {
-    var old = SYSCALLS.getStreamFromFD(oldfd);
-    if (old.fd === suggestFD) return suggestFD;
-    return SYSCALLS.doDup(old.path, old.flags, suggestFD);
-  },
   __syscall_symlink: function(target, linkpath) {
     target = SYSCALLS.getStr(target);
     linkpath = SYSCALLS.getStr(linkpath);
@@ -1120,9 +1115,6 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_dup3: function(fd, suggestFD, flags) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall: dup3');
-#endif
     var old = SYSCALLS.getStreamFromFD(fd);
 #if ASSERTIONS
     assert(!flags);

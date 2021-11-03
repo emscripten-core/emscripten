@@ -18,7 +18,6 @@
 #define SYS_ioctl		 __syscall_ioctl
 #define SYS_setpgid		 __syscall_setpgid
 #define SYS_umask		 __syscall_umask
-#define SYS_dup2		 __syscall_dup2
 #define SYS_getppid		 __syscall_getppid
 #define SYS_setsid		 __syscall_setsid
 #define SYS_setrlimit		 __syscall_setrlimit
