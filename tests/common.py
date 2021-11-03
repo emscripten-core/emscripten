@@ -743,6 +743,22 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     text2 = text2.replace('\r\n', '\n')
     return self.assertContained(text1, text2)
 
+  def assertFileContents(self, filename, contents):
+    contents = contents.replace('\r', '')
+
+    if EMTEST_REBASELINE:
+      with open(filename, 'w') as f:
+        f.write(contents)
+      return
+
+    if not os.path.exists(filename):
+      self.fail('Test expectation file not found: ' + filename + '.\n' +
+                'Run with EMTEST_REBASELINE to generate.')
+    expected_content = read_file(filename)
+    message = "Run with EMTEST_REBASELINE=1 to automatically update expectations"
+    self.assertTextDataIdentical(expected_content, contents, message,
+                                 filename, filename + '.new')
+
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]:
       values = [values]
