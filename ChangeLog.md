@@ -21,7 +21,7 @@ See docs/process.md for more on how version tagging works.
 2.0.34
 ------
 - Symbols marked as visibility hidden are no longer exported from C/C++
-  code when building with SIDE_MOUDLE, MAIN_MODULE or LINKABLE.  If you
+  code when building with `SIDE_MODULE`, `MAIN_MODULE` or `LINKABLE`.  If you
   need to export a hidden symbol you can still do so by adding it to
   EXPORTED_FUNCTIONS.
 
