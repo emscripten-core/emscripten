@@ -65,12 +65,14 @@ def create_response_file(args, directory, suffix='.rsp.utf-8'):
   return response_filename
 
 
-# The encoding that the response filename should be read with can be specified as a suffix to the file, e.g.
-# "foo.rsp.utf-8" or "foo.rsp.cp1252". If not specified, first UTF-8 and then Python locale.getpreferredencoding() are
-# attempted.
 def read_response_file(response_filename):
   """Reads a response file, and returns the list of cmdline params found in the
   file.
+
+  The encoding that the response filename should be read with can be specified
+  as a suffix to the file, e.g. "foo.rsp.utf-8" or "foo.rsp.cp1252". If not
+  specified, first UTF-8 and then Python locale.getpreferredencoding() are
+  attempted.
 
   The parameter response_filename may start with '@'."""
   if response_filename.startswith('@'):
