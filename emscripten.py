@@ -821,7 +821,12 @@ def normalize_line_endings(text):
   return text
 
 
-def generate_struct_info(force=False):
+def clear_struct_info():
+  output_name = shared.Cache.get_lib_name('struct_info.json', varies=False)
+  shared.Cache.erase_file(output_name)
+
+
+def generate_struct_info():
   # If we are running in BOOTSTRAPPING_STRUCT_INFO we don't populate STRUCT_INFO
   # otherwise that would lead to infinite recursion.
   if settings.BOOTSTRAPPING_STRUCT_INFO:
@@ -832,7 +837,7 @@ def generate_struct_info(force=False):
     gen_struct_info.main(['-q', '-o', out])
 
   output_name = shared.Cache.get_lib_name('struct_info.json', varies=False)
-  settings.STRUCT_INFO = shared.Cache.get(output_name, generate_struct_info, force=force)
+  settings.STRUCT_INFO = shared.Cache.get(output_name, generate_struct_info)
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile):
