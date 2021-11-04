@@ -90,7 +90,7 @@ def read_response_file(response_filename):
       args = f.read()
   except (ValueError, LookupError): # UnicodeDecodeError is a subclass of ValueError, and Python raises either a ValueError or a UnicodeDecodeError on decode errors. LookupError is raised if guessed encoding is not an encoding.
     if DEBUG:
-      logging.warning('Failed to parse response file ' + response_filename + ' with guessed encoding "' + guessed_encoding + '". Trying default system encoding...')
+      logging.warning(f'Failed to parse response file {response_filename} with guessed encoding "{guessed_encoding}". Trying default system encoding...')
     # If that fails, try with the default system encoding
     with open(response_filename) as f:
       args = f.read()

@@ -10738,10 +10738,11 @@ exec "$@"
     open('a.rsp.cp437', 'w', encoding='cp437').write('äö.c') # Write a response file with Windows CP-437 encoding ...
     self.run_process([EMCC, '@a.rsp.cp437']) # ... and test that with the explicit suffix present, it is properly decoded
 
-    if WINDOWS:
-      # This test assumes that the default system encoding is CP-1252.
-      open('a.rsp', 'w', encoding='cp1252').write('äö.c') # Write a response file with Windows CP-1252 encoding ...
-      self.run_process([EMCC, '@a.rsp']) # ... and test that it is properly autodetected.
+    import locale
+    preferred_encoding = locale.getpreferredencoding(do_setlocale=False)
+    print('Python locale preferredencoding: ' + preferred_encoding)
+    open('a.rsp', 'w', encoding=preferred_encoding).write('äö.c') # Write a response file using Python preferred encoding
+    self.run_process([EMCC, '@a.rsp']) # ... and test that it is properly autodetected.
 
   def test_output_name_collision(self):
     # Ensure that the seconday filenames never collide with the primary output filename
