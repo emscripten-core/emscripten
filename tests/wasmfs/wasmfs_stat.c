@@ -134,21 +134,29 @@ int main() {
 
   // Test opening a file and calling lstat.
   struct stat lstatFile;
-  stat("/dev/stdout/", &lstatFile);
-  assert(fd >= 0);
+  errno = 0;
+  lstat("/dev/stdout", &lstatFile);
+  printf("Errno: %s\n", strerror(errno));
+  printf("size %lli\n", lstatFile.st_size);
 
-  assert(lstatFile.st_size == 0);
   assert(lstatFile.st_dev);
   assert(lstatFile.st_nlink);
   assert(lstatFile.st_uid == 0);
   assert(lstatFile.st_gid == 0);
-  assert(lstatFile.st_rdev);
-  assert(lstatFile.st_blocks == 0);
   assert(lstatFile.st_blksize == 4096);
 #ifdef WASMFS
   assert(lstatFile.st_atim.tv_sec == 0);
   assert(lstatFile.st_mtim.tv_sec == 0);
   assert(lstatFile.st_ctim.tv_sec == 0);
+  assert(lstatFile.st_size == 0);
+  assert(lstatFile.st_blocks == 0);
+  assert(lstatFile.st_rdev);
+#else
+  // dev/stdout is a symlink to dev/tty.
+  // TODO: When symlinks are added, one should return stat info on the symlink.
+  assert(lstatFile.st_size == 8);
+  assert(lstatFile.st_blocks == 1);
+  assert(!lstatFile.st_rdev);
 #endif
 
   // Test opening a directory and calling lstat.
