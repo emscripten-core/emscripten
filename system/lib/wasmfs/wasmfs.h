@@ -52,7 +52,7 @@ public:
   // Returns root directory defined on WasmFS singleton.
   std::shared_ptr<Directory> getRootDirectory() { return rootDirectory; };
 
-  // For getting and setting cwd, a lock must be required. There is a chance
+  // For getting and setting cwd, a lock must be acquired. There is a chance
   // that two threads could be mutating the cwd simultaneously.
   std::shared_ptr<File> getCWD() {
     const std::lock_guard<std::mutex> lock(mutex);
