@@ -642,6 +642,11 @@ var LibraryEmbind = {
             return value;
         },
         'toWireType': function(destructors, value) {
+#if ASSERTIONS
+            if (typeof value !== "number" && typeof value !== "boolean") {
+                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+            }
+#endif
             // The VM will perform JS to Wasm value conversion, according to the spec:
             // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
             return value;
