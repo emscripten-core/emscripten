@@ -77,7 +77,8 @@ See docs/process.md for more on how version tagging works.
    wasm would be correct but potentially slow).
 - Added support for specifying the text encoding to be used in response filenames
   by passing the encoding as a file suffix (e.g. "a.rsp.utf-8" or "a.rsp.cp1252").
-  If not specified, the encoding is autodetected. (#15406, #15292, #15426)
+  If not specified, the encoding is autodetected as either UTF-8 or Python
+  default "locale.getpreferredencoding()". (#15406, #15292, #15426)
 
 2.0.31 - 10/01/2021
 -------------------
