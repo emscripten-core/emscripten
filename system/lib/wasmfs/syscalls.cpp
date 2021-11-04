@@ -495,21 +495,22 @@ long __syscall_getcwd(long buf, long size) {
   strcpy((char*)buf, res);
 
   return 0;
-  __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t * stat) {
-    // TODO: This is only partial implementation of __wasi_fd_fdstat_get. Enough
-    // to get __wasi_fd_is_valid working.
-    // There are other fields in the stat structure that we should really
-    // be filling in here.
-    auto openFile = wasmFS.getLockedFileTable()[fd];
-    if (!openFile) {
-      return __WASI_ERRNO_BADF;
-    }
-
-    if (openFile.locked().getFile()->is<Directory>()) {
-      stat->fs_filetype = __WASI_FILETYPE_DIRECTORY;
-    } else {
-      stat->fs_filetype = __WASI_FILETYPE_REGULAR_FILE;
-    }
-    return __WASI_ERRNO_SUCCESS;
+}
+__wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
+  // TODO: This is only partial implementation of __wasi_fd_fdstat_get. Enough
+  // to get __wasi_fd_is_valid working.
+  // There are other fields in the stat structure that we should really
+  // be filling in here.
+  auto openFile = wasmFS.getLockedFileTable()[fd];
+  if (!openFile) {
+    return __WASI_ERRNO_BADF;
   }
+
+  if (openFile.locked().getFile()->is<Directory>()) {
+    stat->fs_filetype = __WASI_FILETYPE_DIRECTORY;
+  } else {
+    stat->fs_filetype = __WASI_FILETYPE_REGULAR_FILE;
+  }
+  return __WASI_ERRNO_SUCCESS;
+}
 }
