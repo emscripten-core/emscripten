@@ -251,8 +251,6 @@ static long __stat64(std::shared_ptr<File> file, long buf) {
 
   buffer->st_size = lockedFile.getSize();
 
-  EM_ASM({out("size " + $0)}, lockedFile.getSize());
-
   // ATTN: hard-coded constant values are copied from the existing JS file
   // system. Specific values were chosen to match existing library_fs.js values.
   buffer->st_dev =
@@ -266,7 +264,7 @@ static long __stat64(std::shared_ptr<File> file, long buf) {
     buffer->st_mode |= S_IFREG;
   }
   buffer->st_ino = fd;
-  // TODO: Currently inode is represented as the raw file ptr.
+  // TODO: Currently the inode number is set to the raw file pointer.
   buffer->st_ino = (ino_t)file.get();
   // The number of hard links is 1 since they are unsupported.
   buffer->st_nlink = 1;
@@ -305,6 +303,8 @@ long __syscall_stat64(long path, long buf) {
 
   auto lockedParentDir = parentDir->locked();
 
+  // TODO: In future PR, edit function to just return the requested file instead
+  // of having to first obtain the parent dir.
   auto curr = lockedParentDir.getEntry(base);
   if (curr) {
     return __stat64(curr, buf);
