@@ -72,4 +72,17 @@ int main() {
   fd = open("/dev", O_RDONLY | O_DIRECTORY);
   printf("------------- Reading from /dev Directory -------------\n");
   print(d, fd);
+
+  // Try to advance the offset of the directory.
+  // Expect that '.' will be skipped.
+  fd = open("/working", O_RDONLY | O_DIRECTORY);
+  printf("/working file position is: %lli\n", lseek(fd, 1, SEEK_SET));
+  printf("------------- Reading from /working Directory -------------\n");
+  print(d, fd);
+
+  // Try to add a file to the /working directory.
+  assert(open("/working/foobar", O_CREAT, S_IRGRP) != -1);
+  printf("/working file position is: %lli\n", lseek(fd, 0, SEEK_SET));
+  printf("------------- Reading from /working Directory -------------\n");
+  print(d, fd);
 }

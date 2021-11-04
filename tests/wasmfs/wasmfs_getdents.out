@@ -64,3 +64,37 @@ d.d_name = stdout
 d.d_off = 280
 d.d_reclen = 280
 d.d_type = 8
+
+/working file position is: 1
+------------- Reading from /working Directory -------------
+d.d_name = ..
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 4
+
+d.d_name = test
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 4
+
+/working file position is: 0
+------------- Reading from /working Directory -------------
+d.d_name = .
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 4
+
+d.d_name = ..
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 4
+
+d.d_name = foobar
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 8
+
+d.d_name = test
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 4
