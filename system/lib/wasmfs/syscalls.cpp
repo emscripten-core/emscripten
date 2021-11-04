@@ -244,20 +244,14 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-long __syscall_fstat64(long fd, long buf) {
-  auto openFile = wasmFS.getLockedFileTable()[fd];
-
-  if (!openFile) {
-    return -EBADF;
-  }
-
-  auto file = openFile.locked().getFile();
-
+static long __stat64(std::shared_ptr<File> file, long buf) {
   struct stat* buffer = (struct stat*)buf;
 
   auto lockedFile = file->locked();
 
   buffer->st_size = lockedFile.getSize();
+
+  EM_ASM({out("size " + $0)}, lockedFile.getSize());
 
   // ATTN: hard-coded constant values are copied from the existing JS file
   // system. Specific values were chosen to match existing library_fs.js values.
@@ -272,6 +266,8 @@ long __syscall_fstat64(long fd, long buf) {
     buffer->st_mode |= S_IFREG;
   }
   buffer->st_ino = fd;
+  // TODO: Currently inode is represented as the raw file ptr.
+  buffer->st_ino = (ino_t)file.get();
   // The number of hard links is 1 since they are unsupported.
   buffer->st_nlink = 1;
   buffer->st_uid = 0;
@@ -288,6 +284,72 @@ long __syscall_fstat64(long fd, long buf) {
   buffer->st_ctim.tv_sec = lockedFile.ctime();
 
   return __WASI_ERRNO_SUCCESS;
+}
+
+long __syscall_stat64(long path, long buf) {
+  auto pathParts = splitPath((char*)path);
+
+  if (pathParts.empty()) {
+    return -EINVAL;
+  }
+
+  auto base = pathParts.back();
+
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  // Parent node doesn't exist.
+  if (!parentDir) {
+    return err;
+  }
+
+  auto lockedParentDir = parentDir->locked();
+
+  auto curr = lockedParentDir.getEntry(base);
+  if (curr) {
+    return __stat64(curr, buf);
+  } else {
+    return -ENOENT;
+  }
+}
+
+long __syscall_lstat64(long path, long buf) {
+  // TODO: When symlinks are introduced, lstat will return information about the
+  // link itself rather than the file it refers to.
+  auto pathParts = splitPath((char*)path);
+
+  if (pathParts.empty()) {
+    return -EINVAL;
+  }
+
+  auto base = pathParts.back();
+
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  // Parent node doesn't exist.
+  if (!parentDir) {
+    return err;
+  }
+
+  auto lockedParentDir = parentDir->locked();
+
+  auto curr = lockedParentDir.getEntry(base);
+  if (curr) {
+    return __stat64(curr, buf);
+  } else {
+    return -ENOENT;
+  }
+}
+
+long __syscall_fstat64(long fd, long buf) {
+  auto openFile = wasmFS.getLockedFileTable()[fd];
+
+  if (!openFile) {
+    return -EBADF;
+  }
+
+  return __stat64(openFile.locked().getFile(), buf);
 }
 
 __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
