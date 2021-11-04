@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import glob
 import hashlib
 import json
 import logging
@@ -6365,32 +6364,6 @@ void* operator new(size_t size) {
         do_test_openjpeg()
     else:
       do_test_openjpeg()
-
-  @no_asan('call stack exceeded on some versions of node')
-  @is_slow_test
-  def test_fuzz(self):
-    self.emcc_args += ['-I' + test_file('fuzz/include'), '-w']
-
-    def run_all(x):
-      print(x)
-      for name in sorted(glob.glob(test_file('fuzz/*.c')) + glob.glob(test_file('fuzz/*.cpp'))):
-        if 'newfail' in name:
-          continue
-        if os.path.basename(name).startswith('temp_fuzzcode'):
-          continue
-        print(name)
-        if name.endswith('.cpp'):
-          self.emcc_args.append('-std=c++03')
-        self.do_runf(test_file('fuzz', name),
-                     read_file(test_file('fuzz', name + '.txt')))
-        if name.endswith('.cpp'):
-          self.emcc_args.remove('-std=c++03')
-
-    run_all('normal')
-
-    self.emcc_args += ['-flto']
-
-    run_all('lto')
 
   @also_with_standalone_wasm(wasm2c=True, impure=True)
   @no_asan('autodebug logging interferes with asan')
