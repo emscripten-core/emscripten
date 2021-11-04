@@ -1034,7 +1034,7 @@ const MAX_MEMORY53 = 2 ** 53; // == 9007199254740992
 // Converts a pointer (either a BigInt or a signed int32 JS Number) in-place to an index on the heap (a BigInt or an unsigned JS Number).
 // N.B. in ASSERTIONS mode may generate two statements (in form "a;b;").
 function convertPtrToIdx(ptr, accessWidth) {
-  let assertPointerAlignment = ASSERTIONS ? `${isPtrAligned(ptr, accessWidth)};` : '';
+  const assertPointerAlignment = ASSERTIONS ? `${isPtrAligned(ptr, accessWidth)};` : '';
 
   let conversion;
   if (MEMORY64) {
