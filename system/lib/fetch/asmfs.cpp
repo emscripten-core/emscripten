@@ -1827,17 +1827,6 @@ static long writev(int fd, const iovec *iov, int iovcnt) // syscall146
   return total_write_amount;
 }
 
-long __syscall_write(long fd, long buf, long count)
-{
-#ifdef ASMFS_DEBUG
-  EM_ASM(
-    err('write(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')'), fd, buf, count);
-#endif
-
-  iovec io = {(void*)buf, (size_t)count};
-  return writev(fd, &io, 1);
-}
-
 // WASI support: provide a shim between the wasi fd_write syscall and the
 // syscall146 that is implemented here in ASMFS.
 // TODO: Refactor ASMFS's syscall146 into a direct handler for fd_write.

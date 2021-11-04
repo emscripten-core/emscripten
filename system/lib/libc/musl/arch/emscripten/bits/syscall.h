@@ -1,6 +1,3 @@
-#define SYS_exit		  __syscall_exit
-#define SYS_read		  __syscall_read
-#define SYS_write		  __syscall_write
 #define SYS_open		  __syscall_open
 #define SYS_link		  __syscall_link
 #define SYS_unlink		 __syscall_unlink
@@ -21,7 +18,6 @@
 #define SYS_ioctl		 __syscall_ioctl
 #define SYS_setpgid		 __syscall_setpgid
 #define SYS_umask		 __syscall_umask
-#define SYS_dup2		 __syscall_dup2
 #define SYS_getppid		 __syscall_getppid
 #define SYS_setsid		 __syscall_setsid
 #define SYS_setrlimit		 __syscall_setrlimit
@@ -50,9 +46,6 @@
 #define SYS_munlockall		__syscall_munlockall
 #define SYS_mremap		__syscall_mremap
 #define SYS_poll		__syscall_poll
-#define SYS_rt_sigqueueinfo	__syscall_rt_sigqueueinfo
-#define SYS_pread64		__syscall_pread64
-#define SYS_pwrite64		__syscall_pwrite64
 #define SYS_getcwd		__syscall_getcwd
 #define SYS_ugetrlimit		__syscall_ugetrlimit
 #define SYS_mmap2		__syscall_mmap2
@@ -73,10 +66,8 @@
 #define SYS_chown32		__syscall_chown32
 #define SYS_mincore		__syscall_mincore
 #define SYS_madvise		__syscall_madvise
-#define SYS_madvise1		__syscall_madvise1
 #define SYS_getdents64		__syscall_getdents64
 #define SYS_fcntl64		__syscall_fcntl64
-#define SYS_exit_group		__syscall_exit_group
 #define SYS_statfs64		__syscall_statfs64
 #define SYS_fstatfs64		__syscall_fstatfs64
 #define SYS_fadvise64_64	__syscall_fadvise64_64
@@ -97,8 +88,6 @@
 #define SYS_fallocate		__syscall_fallocate
 #define SYS_dup3		__syscall_dup3
 #define SYS_pipe2		__syscall_pipe2
-#define SYS_preadv		__syscall_preadv
-#define SYS_pwritev		__syscall_pwritev
 #define SYS_recvmmsg		__syscall_recvmmsg
 #define SYS_prlimit64		__syscall_prlimit64
 #define SYS_sendmmsg		__syscall_sendmmsg

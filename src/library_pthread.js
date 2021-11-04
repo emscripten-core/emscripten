@@ -878,6 +878,16 @@ var LibraryPThread = {
       err('pthread_join attempted on a null thread pointer!');
       return {{{ cDefine('ESRCH') }}};
     }
+    var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
+    if (self !== thread) {
+      err('pthread_join attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
+      return {{{ cDefine('ESRCH') }}};
+    }
+    var detached = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
+    if (detached) {
+      err('Attempted to join thread ' + thread + ', which was already detached!');
+      return {{{ cDefine('EINVAL') }}}; // The thread is already detached, can no longer join it!
+    }
     if (ENVIRONMENT_IS_PTHREAD && _pthread_self() == thread) {
       err('PThread ' + thread + ' is attempting to join to itself!');
       return {{{ cDefine('EDEADLK') }}};
@@ -885,17 +895,6 @@ var LibraryPThread = {
     else if (!ENVIRONMENT_IS_PTHREAD && _emscripten_main_browser_thread_id() == thread) {
       err('Main thread ' + thread + ' is attempting to join to itself!');
       return {{{ cDefine('EDEADLK') }}};
-    }
-    var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
-    if (self !== thread) {
-      err('pthread_join attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-
-    var detached = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
-    if (detached) {
-      err('Attempted to join thread ' + thread + ', which was already detached!');
-      return {{{ cDefine('EINVAL') }}}; // The thread is already detached, can no longer join it!
     }
 
 #if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD

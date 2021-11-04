@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import glob
 import hashlib
 import json
 import logging
@@ -1749,17 +1748,16 @@ int main() {
 
     self.do_core_test('test_set_align.c')
 
+  @no_asan('EXPORT_ALL is not compatible with Asan')
   def test_emscripten_api(self):
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
     self.do_core_test('test_emscripten_api.cpp')
 
-    if '-fsanitize=address' not in self.emcc_args:
-      # test EXPORT_ALL (this is not compatible with asan, which doesn't
-      # support dynamic linking at all or the LINKING flag)
-      self.set_setting('EXPORTED_FUNCTIONS', [])
-      self.set_setting('EXPORT_ALL')
-      self.set_setting('LINKABLE')
-      self.do_core_test('test_emscripten_api.cpp')
+    # test EXPORT_ALL
+    self.set_setting('EXPORTED_FUNCTIONS', [])
+    self.set_setting('EXPORT_ALL')
+    self.set_setting('LINKABLE')
+    self.do_core_test('test_emscripten_api.cpp')
 
   def test_emscripten_run_script_string_int(self):
     src = r'''
@@ -3073,18 +3071,18 @@ Var: 42
     self.set_setting('MAIN_MODULE')
     self.set_setting('EXPORT_ALL')
 
-    def get_data_export_count(wasm):
+    def get_data_exports(wasm):
       wat = self.get_wasm_text(wasm)
       lines = wat.splitlines()
       exports = [l for l in lines if l.strip().startswith('(export ')]
       data_exports = [l for l in exports if '(global ' in l]
-      return len(data_exports)
+      data_exports = [d.split()[1].strip('"') for d in data_exports]
+      return data_exports
 
     self.do_core_test('test_dlfcn_self.c')
-    export_count = get_data_export_count('test_dlfcn_self.wasm')
-    # ensure there aren't too many globals; we don't want unnamed_addr
-    self.assertGreater(export_count, 20)
-    self.assertLess(export_count, 56)
+    data_exports = get_data_exports('test_dlfcn_self.wasm')
+    data_exports = '\n'.join(sorted(data_exports)) + '\n'
+    self.assertFileContents(test_file('core/test_dlfcn_self.exports'), data_exports)
 
   @needs_dylink
   def test_dlfcn_unique_sig(self):
@@ -6366,32 +6364,6 @@ void* operator new(size_t size) {
         do_test_openjpeg()
     else:
       do_test_openjpeg()
-
-  @no_asan('call stack exceeded on some versions of node')
-  @is_slow_test
-  def test_fuzz(self):
-    self.emcc_args += ['-I' + test_file('fuzz/include'), '-w']
-
-    def run_all(x):
-      print(x)
-      for name in sorted(glob.glob(test_file('fuzz/*.c')) + glob.glob(test_file('fuzz/*.cpp'))):
-        if 'newfail' in name:
-          continue
-        if os.path.basename(name).startswith('temp_fuzzcode'):
-          continue
-        print(name)
-        if name.endswith('.cpp'):
-          self.emcc_args.append('-std=c++03')
-        self.do_runf(test_file('fuzz', name),
-                     read_file(test_file('fuzz', name + '.txt')))
-        if name.endswith('.cpp'):
-          self.emcc_args.remove('-std=c++03')
-
-    run_all('normal')
-
-    self.emcc_args += ['-flto']
-
-    run_all('lto')
 
   @also_with_standalone_wasm(wasm2c=True, impure=True)
   @no_asan('autodebug logging interferes with asan')
