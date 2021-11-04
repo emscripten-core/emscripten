@@ -536,6 +536,7 @@ long __syscall_getdents64(long fd, long dirp, long count) {
     return -ENOTDIR;
   }
 
+  // Hold the locked directory for the duration of this operation.
   auto lockedDir = directory->locked();
 
   off_t bytesRead = 0;
