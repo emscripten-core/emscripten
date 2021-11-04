@@ -1,0 +1,66 @@
+------------- Reading from /working Directory -------------
+d.d_name = .
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 4
+
+d.d_name = ..
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 4
+
+d.d_name = test
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 4
+
+Errno: Bad file descriptor
+Errno: Invalid argument
+Errno: Not a directory
+
+------------- Reading from root Directory -------------
+d.d_name = .
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 4
+
+d.d_name = ..
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 8
+
+d.d_name = dev
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 4
+
+d.d_name = working
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 4
+
+------------- Reading from /dev Directory -------------
+d.d_name = .
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 4
+
+d.d_name = ..
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 4
+
+d.d_name = stderr
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 8
+
+d.d_name = stdin
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 8
+
+d.d_name = stdout
+d.d_off = 280
+d.d_reclen = 280
+d.d_type = 8

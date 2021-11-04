@@ -169,11 +169,16 @@ public:
       return "";
     }
 
+    // Return a vector of the key-value pairs in entries.
+    auto getEntries() {
+      return std::vector<std::pair<std::string, std::shared_ptr<File>>>(
+        getDir()->entries.begin(), getDir()->entries.end());
+    }
+
 #ifdef WASMFS_DEBUG
     void printKeys() {
       for (auto keyPair : getDir()->entries) {
-        std::vector<char> temp(keyPair.first.begin(), keyPair.first.end());
-        emscripten_console_log(&temp[0]);
+        emscripten_console_log(keyPair.first.c_str());
       }
     }
 #endif
