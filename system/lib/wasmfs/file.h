@@ -136,6 +136,12 @@ public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
   Directory(mode_t mode) : File(File::DirectoryKind, mode) {}
 
+  // Define directory entry.
+  struct entry {
+    std::string name;
+    std::shared_ptr<File> file;
+  };
+
   class Handle : public File::Handle {
     std::shared_ptr<Directory> getDir() { return file->cast<Directory>(); }
 
@@ -171,8 +177,11 @@ public:
 
     // Return a vector of the key-value pairs in entries.
     auto getEntries() {
-      return std::vector<std::pair<std::string, std::shared_ptr<File>>>(
-        getDir()->entries.begin(), getDir()->entries.end());
+      std::vector<Directory::entry> entries;
+      for (const auto& [key, value] : getDir()->entries) {
+        entries.push_back({key, value});
+      }
+      return entries;
     }
 
 #ifdef WASMFS_DEBUG

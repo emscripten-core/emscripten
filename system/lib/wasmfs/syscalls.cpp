@@ -540,40 +540,40 @@ long __syscall_getdents64(long fd, long dirp, long count) {
   auto lockedDir = directory->locked();
 
   off_t bytesRead = 0;
-  int index = openFile.locked().position() / sizeof(dirent);
+  // A directory's position corresponds to the index in its entries vector.
+  int index = openFile.locked().position();
 
   // In the root directory, ".." refers to itself.
   auto dotdot =
     file == wasmFS.getRootDirectory() ? nullptr : lockedDir.getParent();
 
   // There are always two hardcoded directories "." and ".."
-  std::vector<std::pair<std::string, std::shared_ptr<File>>> entries = {
-    {".", file}, {"..", dotdot}};
+
+  std::vector<Directory::entry> entries = {{".", file}, {"..", dotdot}};
   auto dirEntries = lockedDir.getEntries();
   entries.insert(entries.end(), dirEntries.begin(), dirEntries.end());
 
 #ifdef WASMFS_DEBUG
   for (auto pair : entries) {
-    emscripten_console_log(pair.first.c_str());
+    emscripten_console_log(pair.name.c_str());
   }
 #endif
 
   for (; index < entries.size() && bytesRead + sizeof(dirent) <= count;
        index++) {
-    result->d_ino =
-      (ino_t)entries[index].second.get(); // Set inode number to file pointer.
+    auto curr = entries[index];
+    result->d_ino = (ino_t)curr.file.get(); // Set inode number to file pointer.
     result->d_off = bytesRead + sizeof(dirent);
     result->d_reclen = sizeof(dirent);
-    result->d_type = entries[index].second->is<Directory>()
-                       ? DT_DIR
-                       : DT_REG; // TODO: add symlinks.
-    strcpy(result->d_name, entries[index].first.c_str());
+    result->d_type =
+      curr.file->is<Directory>() ? DT_DIR : DT_REG; // TODO: add symlinks.
+    strcpy(result->d_name, curr.name.c_str());
     ++result;
     bytesRead += sizeof(dirent);
   }
 
   // Set the directory's offset position:
-  openFile.locked().position() = index * sizeof(dirent);
+  openFile.locked().position() = index;
 
   return bytesRead;
 }
