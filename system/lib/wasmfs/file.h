@@ -49,6 +49,14 @@ public:
     return std::static_pointer_cast<T>(shared_from_this());
   }
 
+  ino_t getIno() {
+    // Set inode number to the file pointer. This gives a unique inode number.
+    // TODO: For security it would be better to use an indirect mapping.
+    // Ensure that the pointer will not overflow an ino_t.
+    static_assert(sizeof(this) <= sizeof(ino_t));
+    return (ino_t)this;
+  }
+
   class Handle {
     std::unique_lock<std::mutex> lock;
 
@@ -136,6 +144,11 @@ public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
   Directory(mode_t mode) : File(File::DirectoryKind, mode) {}
 
+  struct Entry {
+    std::string name;
+    std::shared_ptr<File> file;
+  };
+
   class Handle : public File::Handle {
     std::shared_ptr<Directory> getDir() { return file->cast<Directory>(); }
 
@@ -169,11 +182,19 @@ public:
       return "";
     }
 
+    // Return a vector of the key-value pairs in entries.
+    std::vector<Directory::Entry> getEntries() {
+      std::vector<Directory::Entry> entries;
+      for (const auto& [key, value] : getDir()->entries) {
+        entries.push_back({key, value});
+      }
+      return entries;
+    }
+
 #ifdef WASMFS_DEBUG
     void printKeys() {
       for (auto keyPair : getDir()->entries) {
-        std::vector<char> temp(keyPair.first.begin(), keyPair.first.end());
-        emscripten_console_log(&temp[0]);
+        emscripten_console_log(keyPair.first.c_str());
       }
     }
 #endif
