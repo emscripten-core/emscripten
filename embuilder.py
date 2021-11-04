@@ -79,7 +79,6 @@ PORTS = sorted(list(ports.ports_by_name.keys()) + list(PORT_VARIANTS.keys()))
 
 temp_files = shared.configuration.get_temp_files()
 logger = logging.getLogger('embuilder')
-force = False
 legacy_prefixes = {
   'libgl': 'libGL',
 }
@@ -91,10 +90,14 @@ def get_help():
   return '''
 Available targets:
 
-  build %s
+  build / clear %s
 
-Issuing 'embuilder.py build ALL' causes each task to be built.
+Issuing 'embuilder build ALL' causes each task to be built.
 ''' % '\n        '.join(all_tasks)
+
+
+def clear_port(port_name):
+  ports.clear_port(port_name, settings)
 
 
 def build_port(port_name):
@@ -106,17 +109,12 @@ def build_port(port_name):
   else:
     old_settings = None
 
-  if force:
-    ports.clear_port(port_name, settings)
-
   ports.build_port(port_name, settings)
   if old_settings:
     settings.dict().update(old_settings)
 
 
 def main():
-  global force
-
   all_build_start_time = time.time()
 
   parser = argparse.ArgumentParser(description=__doc__,
@@ -129,11 +127,11 @@ def main():
                       help='force rebuild of target (by removing it first)')
   parser.add_argument('--wasm64', action='store_true',
                       help='use wasm64 architecture')
-  parser.add_argument('operation', help='currently only "build" is supported')
+  parser.add_argument('operation', help='currently only "build" and "clear" are supported')
   parser.add_argument('targets', nargs='+', help='see below')
   args = parser.parse_args()
 
-  if args.operation != 'build':
+  if args.operation not in ('build', 'clear'):
     shared.exit_with_error('unfamiliar operation: ' + args.operation)
 
   # process flags
@@ -152,8 +150,10 @@ def main():
   if args.wasm64:
     settings.MEMORY64 = 2
 
+  do_build = args.operation == 'build'
+  do_clear = args.operation == 'clear'
   if args.force:
-    force = True
+    do_clear = True
 
   # process tasks
   auto_tasks = False
@@ -180,21 +180,32 @@ def main():
     for old, new in legacy_prefixes.items():
       if what.startswith(old):
         what = what.replace(old, new)
-    logger.info('building and verifying ' + what)
+    if do_build:
+      logger.info('building ' + what)
+    else:
+      logger.info('clearing ' + what)
     start_time = time.time()
     if what in SYSTEM_LIBRARIES:
       library = SYSTEM_LIBRARIES[what]
-      if force:
+      if do_clear:
         library.erase()
-      library.get_path()
+      if do_build:
+        library.get_path()
     elif what == 'sysroot':
-      if force:
+      if do_clear:
         shared.Cache.erase_file('sysroot_install.stamp')
-      system_libs.ensure_sysroot()
+      if do_build:
+        system_libs.ensure_sysroot()
     elif what == 'struct_info':
-      emscripten.generate_struct_info(force=force)
+      if do_clear:
+        emscripten.clear_struct_info()
+      if do_build:
+        emscripten.generate_struct_info()
     elif what in PORTS:
-      build_port(what)
+      if do_clear:
+        clear_port(what)
+      if do_build:
+        build_port(what)
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1
