@@ -1029,7 +1029,7 @@ function isPtrAligned(ptr, alignment) {
   return `${ptr} % ${alignment} == 0`;
 }
 
-let MAX_MEMORY53 = 2**53; // == 9007199254740992
+const MAX_MEMORY53 = 2**53; // == 9007199254740992
 
 // Converts a pointer (either a BigInt or a signed int32 JS Number) in-place to an index on the heap (a BigInt or an unsigned JS Number).
 // N.B. in ASSERTIONS mode may generate two statements (in form "a;b;").
