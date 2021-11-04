@@ -27,10 +27,6 @@ __attribute__((init_priority(100))) WasmFS wasmFS;
 # 28 "wasmfs.cpp"
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
-  // Give rwx permissions to user, group and other.
-  // Sticky bit is also set:
-  // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
-  // This is a placeholder for now which matches the JS filesystem.
   auto rootDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
   auto devDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
   rootDirectory->locked().setEntry("dev", devDirectory);
