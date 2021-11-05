@@ -264,6 +264,12 @@ long __syscall_fstat64(long fd, long buf) {
     1; // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
   buffer->st_mode = lockedFile.mode();
+  // TODO: Add mode for symlinks.
+  if (file->is<Directory>()) {
+    buffer->st_mode |= S_IFDIR;
+  } else if (file->is<DataFile>()) {
+    buffer->st_mode |= S_IFREG;
+  }
   buffer->st_ino = fd;
   // The number of hard links is 1 since they are unsupported.
   buffer->st_nlink = 1;
@@ -330,7 +336,6 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
     if (flags & O_CREAT) {
       mode &= S_IALLUGO;
-      mode |= S_IFREG;
       // Create an empty in-memory file.
       auto created = std::make_shared<MemoryFile>(mode);
 
@@ -391,7 +396,6 @@ long __syscall_mkdir(long path, long mode) {
     return -EEXIST;
   } else {
     mode &= S_IRWXUGO | S_ISVTX;
-    mode |= S_IFDIR;
     // Create an empty in-memory directory.
     auto created = std::make_shared<Directory>(mode);
 
