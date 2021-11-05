@@ -34,6 +34,8 @@ int main() {
   fstat(fd2, &file);
 
   assert((file.st_mode & S_IFMT) == S_IFREG);
+  file.st_mode &= S_IFMT;
+  assert((file.st_mode & S_IALLUGO) == 0);
 
   // Close open file
   close(fd2);
@@ -52,6 +54,10 @@ int main() {
   fstat(fd3, &dir);
 
   assert((dir.st_mode & S_IFMT) == S_IFDIR);
+  dir.st_mode &= S_IFMT;
+  assert((dir.st_mode & S_ISVTX) == 0);
+  dir.st_mode &= S_ISVTX;
+  assert((dir.st_mode & S_IRWXUGO) == 0);
 
   const char* msg = "Test\n";
 

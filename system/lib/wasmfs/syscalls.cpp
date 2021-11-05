@@ -335,9 +335,12 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     // If O_DIRECTORY is also specified, still create a regular file:
     // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
     if (flags & O_CREAT) {
+      // Give all permissions to user, group and other.
+      // This is a placeholder for now which matches the JS filesystem.
       mode &= S_IALLUGO;
+
       // Create an empty in-memory file.
-      auto created = std::make_shared<MemoryFile>(mode);
+      auto created = std::make_shared<MemoryFile>(S_IALLUGO);
 
       // TODO: When rename is implemented make sure that one can atomically
       // remove the file from the source directory and then set its parent to
@@ -395,6 +398,10 @@ long __syscall_mkdir(long path, long mode) {
   if (curr) {
     return -EEXIST;
   } else {
+    // Give rwx permissions to user, group and other.
+    // Sticky bit is also set:
+    // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
+    // This is a placeholder for now which matches the JS filesystem.
     mode &= S_IRWXUGO | S_ISVTX;
     // Create an empty in-memory directory.
     auto created = std::make_shared<Directory>(mode);

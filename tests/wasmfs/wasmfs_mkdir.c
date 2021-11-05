@@ -30,6 +30,9 @@ int main() {
   fstat(fdStat, &directory);
 
   assert((directory.st_mode & S_IFMT) == S_IFDIR);
+  assert((directory.st_mode & S_ISVTX) == 0);
+  directory.st_mode &= S_ISVTX;
+  assert((directory.st_mode & S_IRWXUGO) == 0);
 
   close(fdStat);
 
