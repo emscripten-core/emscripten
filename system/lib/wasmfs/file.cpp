@@ -42,7 +42,8 @@ __wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
 }
 
 void MemoryFile::Handle::preloadFromJS(int index) {
-  getFile()->buffer.resize(EM_ASM_INT({return wasmFS$preloadedFiles[$0].fileData.length}, index));
+  getFile()->buffer.resize(
+    EM_ASM_INT({return wasmFS$preloadedFiles[$0].fileData.length}, index));
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_browser_thread());
   // TODO: Replace every EM_ASM with EM_JS.
@@ -62,6 +63,8 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
   if (*begin == "/") {
     curr = wasmFS.getRootDirectory();
     begin++;
+  } else {
+    curr = wasmFS.getCWD();
   }
 
   for (auto it = begin; it != end; ++it) {

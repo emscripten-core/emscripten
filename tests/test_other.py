@@ -116,7 +116,7 @@ def parse_wasm(filename):
   return imports, exports, funcs
 
 
-def with_wasmfs(f):
+def also_with_wasmfs(f):
   def metafunc(self, wasmfs):
     if wasmfs:
       self.set_setting('WASMFS')
@@ -11143,33 +11143,37 @@ void foo() {}
 
   # WASMFS tests
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_dup(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_dup.c')
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_open(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_open.c')
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_fstat(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_fstat.c')
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_create(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_create.c')
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_seek(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_seek.c')
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_mkdir(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_mkdir.c')
+
+  @also_with_wasmfs
+  def test_unistd_cwd(self):
+    self.do_run_in_out_file_test('wasmfs/wasmfs_chdir.c')
 
   @disabled('Running with initial >2GB heaps is not currently supported on the CI version of Node')
   def test_hello_world_above_2gb(self):

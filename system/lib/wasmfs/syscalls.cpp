@@ -330,6 +330,9 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
       // Create an empty in-memory file.
       auto created = std::make_shared<MemoryFile>(mode);
 
+      // TODO: When rename is implemented make sure that one can atomically
+      // remove the file from the source directory and then set its parent to
+      // the dest directory.
       lockedParentDir.setEntry(base, created);
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
@@ -407,7 +410,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   } else if (whence == SEEK_CUR) {
     position = lockedOpenFile.position() + offset;
   } else if (whence == SEEK_END) {
-    // Only the open file stat is altered in seek. Locking the underlying data
+    // Only the open file state is altered in seek. Locking the underlying data
     // file here once is sufficient.
     position = lockedOpenFile.getFile()->locked().getSize() + offset;
   } else {
@@ -427,8 +430,74 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   return __WASI_ERRNO_SUCCESS;
 }
 
+long __syscall_chdir(long path) {
+  auto pathParts = splitPath((char*)path);
+
+  if (pathParts.empty()) {
+    return -ENOENT;
+  }
+
+  long err;
+  auto dir = getDir(pathParts.begin(), pathParts.end(), err);
+
+  if (!dir) {
+    return err;
+  }
+
+  wasmFS.setCWD(dir);
+  return 0;
+}
+
+long __syscall_getcwd(long buf, long size) {
+  // Check if buf points to a bad address.
+  if (!buf && size > 0) {
+    return -EFAULT;
+  }
+
+  // Check if the size argument is zero and buf is not a null pointer.
+  if (buf && size == 0) {
+    return -EINVAL;
+  }
+
+  auto curr = wasmFS.getCWD();
+
+  std::string result = "";
+
+  while (curr != wasmFS.getRootDirectory()) {
+    auto parent = curr->locked().getParent();
+    // Check if the parent exists. The parent may not exist if the CWD or one of
+    // its ancestors has been unlinked.
+    if (!parent) {
+      return -ENOENT;
+    }
+
+    auto parentDir = parent->dynCast<Directory>();
+
+    auto name = parentDir->locked().getName(curr);
+    result = '/' + name + result;
+    curr = parentDir;
+  }
+
+  // Check if the cwd is the root directory.
+  if (result.empty()) {
+    result = "/";
+  }
+
+  auto res = result.c_str();
+
+  // Check if the size argument is less than the length of the absolute pathname
+  // of the working directory, including null terminator.
+  if (strlen(res) >= size - 1) {
+    return -ENAMETOOLONG;
+  }
+
+  // Return value is a null-terminated c string.
+  strcpy((char*)buf, res);
+
+  return 0;
+}
 __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
-  // TODO: This is only partial implementation of __wasi_fd_fdstat_get.  Enough
+  // TODO: This is only partial implementation of __wasi_fd_fdstat_get. Enough
   // to get __wasi_fd_is_valid working.
   // There are other fields in the stat structure that we should really
   // be filling in here.

@@ -18,8 +18,8 @@
 
 namespace wasmfs {
 
-class Directory;
-class DataFile;
+// Note: The general locking strategy for all Files is to only hold 1 lock at a
+// time to prevent deadlock. This methodology can be seen in getDirs().
 
 class File : public std::enable_shared_from_this<File> {
 
@@ -62,6 +62,11 @@ public:
     time_t& ctime() { return file->ctime; }
     time_t& mtime() { return file->mtime; }
     time_t& atime() { return file->atime; }
+
+    // Note: parent.lock() creates a new shared_ptr to the same Directory
+    // specified by the parent weak_ptr.
+    std::shared_ptr<File> getParent() { return file->parent.lock(); }
+    void setParent(std::shared_ptr<File> parent) { file->parent = parent; }
   };
 
   Handle locked() { return Handle(shared_from_this()); }
@@ -80,6 +85,13 @@ protected:
   time_t atime = 0; // Time when the content was last accessed.
 
   FileKind kind;
+
+  // Reference to parent of current file node. This can be used to
+  // traverse up the directory tree. A weak_ptr ensures that the ref
+  // count is not incremented. This also ensures that there are no cyclic
+  // dependencies where the parent and child have shared_ptrs that reference
+  // each other. This prevents the case in which an uncollectable cycle occurs.
+  std::weak_ptr<File> parent;
 };
 
 class DataFile : public File {
@@ -133,7 +145,28 @@ public:
     std::shared_ptr<File> getEntry(std::string pathName);
 
     void setEntry(std::string pathName, std::shared_ptr<File> inserted) {
+      // Hold the lock over both functions to cover the case in which two
+      // directories attempt to add the file.
+      auto lockedInserted = inserted->locked();
       getDir()->entries[pathName] = inserted;
+      // Simultaneously, set the parent of the inserted node to be this Dir.
+      // inserted must be locked because we have to go through Handle.
+      // TODO: When rename is implemented, ensure that the source directory has
+      // been removed as a parent.
+      // https://github.com/emscripten-core/emscripten/pull/15410#discussion_r742171264
+      assert(!lockedInserted.getParent());
+      lockedInserted.setParent(file);
+    }
+
+    // Used to obtain name of child File in the directory entries vector.
+    std::string getName(std::shared_ptr<File> target) {
+      for (const auto& [key, value] : getDir()->entries) {
+        if (value == target) {
+          return key;
+        }
+      }
+
+      return "";
     }
 
 #ifdef WASMFS_DEBUG

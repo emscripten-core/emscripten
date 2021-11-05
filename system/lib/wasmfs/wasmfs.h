@@ -24,6 +24,8 @@ class WasmFS {
 
   FileTable fileTable;
   std::shared_ptr<Directory> rootDirectory;
+  std::shared_ptr<File> cwd;
+  std::mutex mutex;
 
   // Private method to initialize root directory once.
   // Initializes default directories including dev/stdin, dev/stdout,
@@ -36,7 +38,10 @@ class WasmFS {
 public:
   // Files will be preloaded in this constructor.
   // This global constructor has init_priority 100. Please see wasmfs.cpp.
-  WasmFS() : rootDirectory(initRootDirectory()) { preloadFiles(); };
+  // The current working directory is initialized to the root directory.
+  WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
+    preloadFiles();
+  }
 
   // This get method returns a locked file table.
   // There is only ever one FileTable in the system.
@@ -46,6 +51,18 @@ public:
 
   // Returns root directory defined on WasmFS singleton.
   std::shared_ptr<Directory> getRootDirectory() { return rootDirectory; };
+
+  // For getting and setting cwd, a lock must be acquired. There is a chance
+  // that two threads could be mutating the cwd simultaneously.
+  std::shared_ptr<File> getCWD() {
+    const std::lock_guard<std::mutex> lock(mutex);
+    return cwd;
+  };
+
+  void setCWD(std::shared_ptr<File> directory) {
+    const std::lock_guard<std::mutex> lock(mutex);
+    cwd = directory;
+  };
 };
 
 // Global state instance.
