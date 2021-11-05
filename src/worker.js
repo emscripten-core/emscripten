@@ -136,7 +136,7 @@ self.onmessage = function(e) {
       {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
 #endif
 
-#if MODULARIZE && EXPORT_ES6
+#if MODULARIZE && EXPORT_ES6 && USE_ES6_IMPORT_META
       (e.data.urlOrBlob ? import(e.data.urlOrBlob) : import('./{{{ TARGET_JS_NAME }}}')).then(function(exports) {
         return exports.default(Module);
       }).then(function(instance) {
