@@ -329,6 +329,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     // If O_DIRECTORY is also specified, still create a regular file:
     // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
     if (flags & O_CREAT) {
+      mode &= S_IALLUGO;
+      mode |= S_IFREG;
       // Create an empty in-memory file.
       auto created = std::make_shared<MemoryFile>(mode);
 
@@ -388,6 +390,8 @@ long __syscall_mkdir(long path, long mode) {
   if (curr) {
     return -EEXIST;
   } else {
+    mode &= S_IRWXUGO | S_ISVTX;
+    mode |= S_IFDIR;
     // Create an empty in-memory directory.
     auto created = std::make_shared<Directory>(mode);
 

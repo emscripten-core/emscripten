@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 // FIXME: Merge with other existing close and open tests.
@@ -28,6 +29,12 @@ int main() {
 
   dprintf(fd2, "WORKING WITHOUT TRAILING BACKSLASH\n");
 
+  // Check that the file type is correct on mode.
+  struct stat file;
+  fstat(fd2, &file);
+
+  assert((file.st_mode & S_IFMT) == S_IFREG);
+
   // Close open file
   close(fd2);
 
@@ -38,7 +45,13 @@ int main() {
   printf("Errno: %s\n", strerror(errno));
 
   // Attempt to open and then read/write to a directory.
-  int fd3 = open("/dev", O_RDONLY);
+  int fd3 = open("/dev", O_RDONLY | O_DIRECTORY);
+
+  // Check that the file type is correct on mode.
+  struct stat dir;
+  fstat(fd3, &dir);
+
+  assert((dir.st_mode & S_IFMT) == S_IFDIR);
 
   const char* msg = "Test\n";
 

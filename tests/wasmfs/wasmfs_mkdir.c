@@ -24,6 +24,15 @@ int main() {
   printf("Errno: %s\n", strerror(errno));
   assert(errno == 0);
 
+  // Check that the file type is correct on mode.
+  int fdStat = open("/working", O_RDONLY | O_DIRECTORY);
+  struct stat directory;
+  fstat(fdStat, &directory);
+
+  assert((directory.st_mode & S_IFMT) == S_IFDIR);
+
+  close(fdStat);
+
   // Try to create a file in the same directory.
   int fd = open("/working/test", O_RDWR | O_CREAT, 0777);
   printf("Errno: %s\n", strerror(errno));
