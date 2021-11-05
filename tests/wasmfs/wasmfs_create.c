@@ -25,8 +25,6 @@ int main() {
   fstat(fd, &file);
 
   assert((file.st_mode & S_IFMT) == S_IFREG);
-  file.st_mode &= S_IFMT;
-  assert((file.st_mode & S_IALLUGO) == 0);
 
   assert(errno == 0);
   const char* msg = "Test\n";
