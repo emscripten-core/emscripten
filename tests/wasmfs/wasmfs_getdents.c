@@ -85,4 +85,18 @@ int main() {
   printf("/working file position is: %lli\n", lseek(fd, 0, SEEK_SET));
   printf("------------- Reading from /working Directory -------------\n");
   print(d, fd);
+
+  // The musl implementation of readdir relies on getdents.
+  DIR* pDir;
+  struct dirent* pDirent;
+  pDir = opendir("/dev");
+  assert(pDir != NULL);
+
+  while ((pDirent = readdir(pDir)) != NULL) {
+    printf("pDirent->d_name: %s\n", pDirent->d_name);
+    printf("pDirent->d_off: %lld\n", pDirent->d_off);
+    printf("pDirent->d_reclen: %hu\n", pDirent->d_reclen);
+    printf("pDirent->d_type: %hhu\n\n", pDirent->d_type);
+  }
+  closedir(pDir);
 }
