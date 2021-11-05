@@ -18,13 +18,15 @@
 int main() {
   // Test creating a new file and writing and reading from it.
   errno = 0;
-  int fd = open("/test", O_RDWR | O_CREAT);
+  int fd = open("/test", O_RDWR | O_CREAT, 0777);
 
   // Check that the file type is correct on mode.
   struct stat file;
   fstat(fd, &file);
 
   assert((file.st_mode & S_IFMT) == S_IFREG);
+  printf("mode %i\n", file.st_mode);
+  assert(file.st_mode == (S_IRWXUGO | S_IFREG));
 
   assert(errno == 0);
   const char* msg = "Test\n";

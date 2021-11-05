@@ -31,8 +31,8 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   // Sticky bit is also set:
   // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
   // This is a placeholder for now which matches the JS filesystem.
-  auto rootDirectory = std::make_shared<Directory>(S_IRWXUGO | S_ISVTX);
-  auto devDirectory = std::make_shared<Directory>(S_IRWXUGO | S_ISVTX);
+  auto rootDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
+  auto devDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
   rootDirectory->locked().setEntry("dev", devDirectory);
 
   auto dir = devDirectory->locked();

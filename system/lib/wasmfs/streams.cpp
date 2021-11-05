@@ -31,7 +31,7 @@ std::shared_ptr<StdinFile> StdinFile::getSingleton() {
   // Give all permissions to user, group and other in stdin, stdout and stderr.
   // This is a placeholder for now which matches the JS filesystem.
   static const std::shared_ptr<StdinFile> stdinFile =
-    std::make_shared<StdinFile>(S_IALLUGO);
+    std::make_shared<StdinFile>(S_IRUGO);
   return stdinFile;
 }
 
@@ -41,7 +41,7 @@ __wasi_errno_t StdoutFile::write(const uint8_t* buf, size_t len, off_t offset) {
 
 std::shared_ptr<StdoutFile> StdoutFile::getSingleton() {
   static const std::shared_ptr<StdoutFile> stdoutFile =
-    std::make_shared<StdoutFile>(S_IALLUGO);
+    std::make_shared<StdoutFile>(S_IWUGO);
   return stdoutFile;
 }
 
@@ -51,7 +51,7 @@ __wasi_errno_t StderrFile::write(const uint8_t* buf, size_t len, off_t offset) {
 
 std::shared_ptr<StderrFile> StderrFile::getSingleton() {
   static const std::shared_ptr<StderrFile> stderrFile =
-    std::make_shared<StderrFile>(S_IALLUGO);
+    std::make_shared<StderrFile>(S_IWUGO);
   return stderrFile;
 }
 
