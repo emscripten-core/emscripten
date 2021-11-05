@@ -28,6 +28,8 @@ static __wasi_errno_t writeStdBuffer(const uint8_t* buf,
 }
 
 std::shared_ptr<StdinFile> StdinFile::getSingleton() {
+  // Give all permissions to user, group and other in stdin, stdout and stderr.
+  // This is a placeholder for now which matches the JS filesystem.
   static const std::shared_ptr<StdinFile> stdinFile =
     std::make_shared<StdinFile>(S_IRUGO);
   return stdinFile;

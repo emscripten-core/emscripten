@@ -13,6 +13,7 @@
 #include <emscripten/html5.h>
 #include <errno.h>
 #include <mutex>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <utility>
@@ -263,6 +264,12 @@ long __syscall_fstat64(long fd, long buf) {
     1; // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
   buffer->st_mode = lockedFile.mode();
+  // TODO: Add mode for symlinks.
+  if (file->is<Directory>()) {
+    buffer->st_mode |= S_IFDIR;
+  } else if (file->is<DataFile>()) {
+    buffer->st_mode |= S_IFREG;
+  }
   buffer->st_ino = fd;
   // The number of hard links is 1 since they are unsupported.
   buffer->st_nlink = 1;
@@ -282,7 +289,7 @@ long __syscall_fstat64(long fd, long buf) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-__wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
+__wasi_fd_t __syscall_open(long pathname, long flags, ...) {
   int accessMode = (flags & O_ACCMODE);
   bool canWrite = false;
 
@@ -327,6 +334,16 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     // If O_DIRECTORY is also specified, still create a regular file:
     // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
     if (flags & O_CREAT) {
+      // Since mode is optional, mode is specified using varargs.
+      mode_t mode = 0;
+      va_list vl;
+      va_start(vl, flags);
+      mode = va_arg(vl, int);
+      va_end(vl);
+      // Mask all permissions sent via mode.
+      // This is a placeholder for now which matches the JS filesystem.
+      mode &= S_IALLUGO;
+
       // Create an empty in-memory file.
       auto created = std::make_shared<MemoryFile>(mode);
 
@@ -386,6 +403,11 @@ long __syscall_mkdir(long path, long mode) {
   if (curr) {
     return -EEXIST;
   } else {
+    // Mask rwx permissions for user, group and others, and the sticky bit.
+    // This prevents users from entering S_IFREG for example.
+    // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
+    // This is a placeholder for now which matches the JS filesystem.
+    mode &= S_IRWXUGO | S_ISVTX;
     // Create an empty in-memory directory.
     auto created = std::make_shared<Directory>(mode);
 
