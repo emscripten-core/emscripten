@@ -173,7 +173,7 @@ def parse_c_output(lines):
 
 def gen_inspect_code(path, struct, code):
   if path[0][-1] == '#':
-    path[0] = path[0][:-1]
+    path[0] = path[0].rstrip('#')
     prefix = ''
   else:
     prefix = 'struct '

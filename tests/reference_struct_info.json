@@ -1334,6 +1334,10 @@
             "stack_size": 76,
             "threadStatus": 0
         },
+        "pthread_attr_t": {
+            "__size__": 44,
+            "_a_transferredcanvases": 40
+        },
         "sockaddr": {
             "__size__": 16,
             "sa_data": 2,

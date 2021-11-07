@@ -15,6 +15,9 @@
               "result",
               "attr"
             ],
+            "pthread_attr_t#": [
+              "_a_transferredcanvases"
+            ],
             "thread_profiler_block": [
                 "threadStatus",
                 "currentStatusStartTime",
