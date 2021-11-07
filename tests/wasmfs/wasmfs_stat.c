@@ -33,6 +33,11 @@ int main() {
   off_t fileInode = file.st_ino;
 
   assert(file.st_size == 0);
+#ifdef WASMFS
+  assert((file.st_mode & S_IFMT) == S_IFREG);
+#else
+  assert((file.st_mode & S_IFMT) == S_IFCHR);
+#endif
   assert(file.st_dev);
   assert(file.st_nlink);
   assert(file.st_uid == 0);
@@ -65,6 +70,7 @@ int main() {
   off_t dirInode = directory.st_ino;
 
   assert(directory.st_size == 4096);
+  assert((directory.st_mode & S_IFMT) == S_IFDIR);
   assert(directory.st_dev);
   assert(directory.st_nlink);
   assert(directory.st_uid == 0);
@@ -97,6 +103,11 @@ int main() {
   stat("/dev/stdout/", &statFile);
 
   assert(statFile.st_size == 0);
+#ifdef WASMFS
+  assert((statFile.st_mode & S_IFMT) == S_IFREG);
+#else
+  assert((statFile.st_mode & S_IFMT) == S_IFCHR);
+#endif
   assert(statFile.st_dev);
   assert(statFile.st_nlink);
   assert(statFile.st_uid == 0);
@@ -115,6 +126,7 @@ int main() {
   stat("/dev", &statDirectory);
 
   assert(statDirectory.st_size == 4096);
+  assert((statDirectory.st_mode & S_IFMT) == S_IFDIR);
   assert(statDirectory.st_dev);
   assert(statDirectory.st_nlink);
   assert(statDirectory.st_uid == 0);
@@ -140,6 +152,11 @@ int main() {
   printf("size %lli\n", lstatFile.st_size);
 
   assert(lstatFile.st_dev);
+#ifdef WASMFS
+  assert((lstatFile.st_mode & S_IFMT) == S_IFREG);
+#else
+  assert((lstatFile.st_mode & S_IFMT) == S_IFLNK);
+#endif
   assert(lstatFile.st_nlink);
   assert(lstatFile.st_uid == 0);
   assert(lstatFile.st_gid == 0);
@@ -164,6 +181,7 @@ int main() {
   lstat("/dev", &lstatDirectory);
 
   assert(lstatDirectory.st_size == 4096);
+  assert((lstatDirectory.st_mode & S_IFMT) == S_IFDIR);
   assert(lstatDirectory.st_dev);
   assert(lstatDirectory.st_nlink);
   assert(lstatDirectory.st_uid == 0);
