@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
+#include <unistd.h>
 
 extern "C" {
 
@@ -27,36 +28,40 @@ using namespace wasmfs;
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
-int emscripten_wasmfs_read_file(char* path) {
-  auto pathParts = splitPath(path);
-
-  if (pathParts.empty()) {
-    emscripten_console_error("Fatal error in FS.readFile: pathname is empty.");
-    abort();
-  }
-
-  auto base = pathParts.back();
-
-  long err;
-  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
-
-  // Parent node doesn't exist.
-  if (!parentDir) {
+void* emscripten_wasmfs_read_file(char* path) {
+  struct stat file;
+  int err = 0;
+  err = stat(path, &file);
+  if (err < 0) {
     emscripten_console_error(
-      "Fatal error in FS.readFile: pathname does not exist.");
+      "Fatal error in FS.readFile");
     abort();
   }
-
-  auto lockedParentDir = parentDir->locked();
-  auto curr = lockedParentDir.getEntry(base);
   
-  if (!curr) {
+  size_t size = file.st_size;
+  uint8_t* result = (uint8_t*)malloc((size + sizeof(size)));
+  *(size_t*)result = size;
+  
+  int fd = open(path, O_RDONLY);
+  if (fd < 0) {
     emscripten_console_error(
-      "Fatal error in FS.readFile: pathname does not exist.");
+      "Fatal error in FS.readFile");
     abort();
   }
-
-  return curr->dynCast<MemoryFile>()->locked().copyToJS();
+  err = pread(fd, result + sizeof(size), size, 0);
+  if (err < 0) {
+    emscripten_console_error(
+      "Fatal error in FS.readFile");
+    abort();
+  }
+  err = close(fd);
+  if (err < 0) {
+    emscripten_console_error(
+      "Fatal error in FS.readFile");
+    abort();
+  }
+  
+  return result;
 }
 
 long __syscall_dup3(long oldfd, long newfd, long flags) {

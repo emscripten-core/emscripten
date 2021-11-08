@@ -223,9 +223,6 @@ public:
     Handle(std::shared_ptr<File> dataFile) : DataFile::Handle(dataFile) {}
     // This function copies preloaded files from JS Memory to Wasm Memory.
     void preloadFromJS(int index);
-    
-    // Copy data vector a JS buffer and return the pointer.
-    int copyToJS(); 
   };
 
   Handle locked() { return Handle(shared_from_this()); }

@@ -51,16 +51,6 @@ void MemoryFile::Handle::preloadFromJS(int index) {
          getFile()->buffer.data(),
          index);
 }
-
-// Copy file contents into heap and return the pointer.
-int MemoryFile::Handle::copyToJS() {
-  size_t size = getFile()->buffer.size();
-  // Allocate an extra 4 bytes to return the length of the buffer.
-  uint8_t* result = (uint8_t*)malloc((size + 4));
-  *(size_t*)result = size;
-  memcpy(&result[4], getFile()->buffer.data(), size);
-  return (int)result;
-}
 //
 // Path Parsing utilities
 //
