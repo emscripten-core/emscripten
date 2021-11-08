@@ -27,13 +27,14 @@ using namespace wasmfs;
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
-int emscripten_wasmfs_readFiles(char *path) {
+int emscripten_wasmfs_readFiles(char* path) {
   auto pathParts = splitPath(path);
 
   if (pathParts.empty()) {
+    emscripten_console_error("Fatal error in FS.readFile: path name is empty.");
     abort();
   }
-  
+
   auto base = pathParts.back();
 
   long err;
@@ -41,7 +42,9 @@ int emscripten_wasmfs_readFiles(char *path) {
 
   // Parent node doesn't exist.
   if (!parentDir) {
-    return err;
+    emscripten_console_error(
+      "Fatal error in FS.readFile: path name does not exist.");
+    abort();
   }
 
   auto lockedParentDir = parentDir->locked();
@@ -51,14 +54,14 @@ int emscripten_wasmfs_readFiles(char *path) {
 }
 
 // Return the size of specified file path.
-// Abort if the path cannot be resolved.
-int emscripten_wasmfs_file_size(char *path) {
+int emscripten_wasmfs_file_size(char* path) {
   auto pathParts = splitPath(path);
 
   if (pathParts.empty()) {
+    emscripten_console_error("Fatal error in FS.readFile: path name is empty.");
     abort();
   }
-  
+
   auto base = pathParts.back();
 
   long err;
@@ -66,12 +69,14 @@ int emscripten_wasmfs_file_size(char *path) {
 
   // Parent node doesn't exist.
   if (!parentDir) {
-    return err;
+    emscripten_console_error(
+      "Fatal error in FS.readFile: path name does not exist.");
+    abort();
   }
 
   auto lockedParentDir = parentDir->locked();
   auto curr = lockedParentDir.getEntry(base);
-  
+
   return curr->locked().getSize();
 }
 

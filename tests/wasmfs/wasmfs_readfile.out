@@ -1,1 +1,5 @@
-Test
+Success
+
+Aborted(native code called abort())
+Fatal error in FS.readFile: path name is empty.
+Aborted(native code called abort())

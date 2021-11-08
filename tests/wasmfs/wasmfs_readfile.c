@@ -15,12 +15,26 @@
 
 int main() {
   int fd = open("/test", O_CREAT, S_IRGRP);
-  const char* msg = "Test\n";
+  const char* msg = "Success\n";
 
   errno = 0;
   write(fd, msg, strlen(msg));
   EM_ASM({
     var output = FS.readFile("/test", {encoding : 'utf8'});
-    out((output));
+    out(output);
+  });
+
+  EM_ASM({
+    try {
+      var output = FS.readFile("/no-exist", {encoding : 'utf8'});
+    } catch (err) {
+    }
+  });
+
+  EM_ASM({
+    try {
+      var output = FS.readFile("", {encoding : 'utf8'});
+    } catch (err) {
+    }
   });
 }

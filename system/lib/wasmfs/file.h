@@ -224,7 +224,7 @@ public:
     // This function copies preloaded files from JS Memory to Wasm Memory.
     void preloadFromJS(int index);
     
-    // Copy data vector into specified JS buffer.
+    // Copy data vector a JS buffer and return the pointer.
     int copyToJS(); 
   };
 
