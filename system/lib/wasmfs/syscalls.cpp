@@ -13,6 +13,7 @@
 #include <emscripten/html5.h>
 #include <errno.h>
 #include <mutex>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <utility>
@@ -258,7 +259,8 @@ long __syscall_fstat64(long fd, long buf) {
   buffer->st_size = lockedFile.getSize();
 
   // ATTN: hard-coded constant values are copied from the existing JS file
-  // system. Specific values were chosen to match existing library_fs.js values.
+  // system. Specific values were chosen to match existing library_fs.js
+  // values.
   buffer->st_dev =
     1; // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
@@ -282,7 +284,7 @@ long __syscall_fstat64(long fd, long buf) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-__wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
+__wasi_fd_t __syscall_open(long pathname, long flags, ...) {
   int accessMode = (flags & O_ACCMODE);
   bool canWrite = false;
 
@@ -327,6 +329,11 @@ __wasi_fd_t __syscall_open(long pathname, long flags, long mode) {
     // If O_DIRECTORY is also specified, still create a regular file:
     // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
     if (flags & O_CREAT) {
+      mode_t mode = 0;
+      va_list vl;
+      va_start(vl, flags);
+      mode = va_arg(vl, int);
+      va_end(vl);
       // Create an empty in-memory file.
       auto created = std::make_shared<MemoryFile>(mode);
 
@@ -410,8 +417,8 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   } else if (whence == SEEK_CUR) {
     position = lockedOpenFile.position() + offset;
   } else if (whence == SEEK_END) {
-    // Only the open file state is altered in seek. Locking the underlying data
-    // file here once is sufficient.
+    // Only the open file state is altered in seek. Locking the underlying
+    // data file here once is sufficient.
     position = lockedOpenFile.getFile()->locked().getSize() + offset;
   } else {
     return __WASI_ERRNO_INVAL;
@@ -465,8 +472,8 @@ long __syscall_getcwd(long buf, long size) {
 
   while (curr != wasmFS.getRootDirectory()) {
     auto parent = curr->locked().getParent();
-    // Check if the parent exists. The parent may not exist if the CWD or one of
-    // its ancestors has been unlinked.
+    // Check if the parent exists. The parent may not exist if the CWD or one
+    // of its ancestors has been unlinked.
     if (!parent) {
       return -ENOENT;
     }
@@ -485,8 +492,8 @@ long __syscall_getcwd(long buf, long size) {
 
   auto res = result.c_str();
 
-  // Check if the size argument is less than the length of the absolute pathname
-  // of the working directory, including null terminator.
+  // Check if the size argument is less than the length of the absolute
+  // pathname of the working directory, including null terminator.
   if (strlen(res) >= size - 1) {
     return -ENAMETOOLONG;
   }
@@ -512,5 +519,86 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
     stat->fs_filetype = __WASI_FILETYPE_REGULAR_FILE;
   }
   return __WASI_ERRNO_SUCCESS;
+}
+
+// This enum specifies whether rmdir or unlink is being performed.
+enum class UnlinkMode { Rmdir, Unlink };
+
+static long __unlink(char* path, UnlinkMode unlinkMode) {
+  auto pathParts = splitPath(path);
+
+  // Root (/) directory cannot be removed.
+  if (pathParts.size() == 1 && pathParts[0] == "/") {
+    return -EBUSY;
+  }
+
+  if (pathParts.empty() || pathParts.back() == ".") {
+    return -EINVAL;
+  }
+
+  auto base = pathParts.back();
+
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  // Parent node doesn't exist.
+  if (!parentDir) {
+    return err;
+  }
+
+  // Hold the locked parent for the duration of the operation.
+  auto lockedParentDir = parentDir->locked();
+
+  auto curr = lockedParentDir.getEntry(base);
+
+  if (!curr) {
+    return -ENOENT;
+  }
+
+  // rmdir checks if the target is a directory and if the directory is empty.
+  auto targetDir = curr->dynCast<Directory>();
+  if (unlinkMode == UnlinkMode::Rmdir) {
+
+    if (!targetDir) {
+      return -ENOTDIR;
+    }
+
+    // The root directory or current work directory cannot be removed.
+    if (targetDir == wasmFS.getCWD()) {
+      return -EBUSY;
+    }
+
+    // A directory can only be removed if it has zero entries.
+    if (targetDir->locked().getNumEntries() > 0) {
+      return -ENOTEMPTY;
+    }
+  } else {
+    if (targetDir) {
+      return -EISDIR;
+    }
+  }
+
+  // Cannot unlink if the parent dir doesn't have write permissions.
+  if (!(lockedParentDir.mode() & 0222)) {
+    return -EACCES;
+  }
+
+  // Cannot unlink a directory or file that doesn't have write permissions.
+  if (!(curr->locked().mode() & 0222)) {
+    return -EPERM;
+  }
+
+  // Erase targetDir from lockedParentDir and also set targetDir's parent
+  // pointer to nullptr.
+  lockedParentDir.unlinkEntry(base);
+  return 0;
+}
+
+long __syscall_rmdir(long path) {
+  return __unlink((char*)path, UnlinkMode::Rmdir);
+}
+
+long __syscall_unlink(long path) {
+  return __unlink((char*)path, UnlinkMode::Unlink);
 }
 }

@@ -158,6 +158,13 @@ public:
       lockedInserted.setParent(file);
     }
 
+    void unlinkEntry(std::string pathName) {
+      // TODO: Unlinking the parent pointer after erasing from entries.
+      auto unlinked = getDir()->entries[pathName];
+      unlinked->locked().setParent(std::shared_ptr<File>());
+      getDir()->entries.erase(pathName);
+    }
+
     // Used to obtain name of child File in the directory entries vector.
     std::string getName(std::shared_ptr<File> target) {
       for (const auto& [key, value] : getDir()->entries) {
@@ -168,6 +175,8 @@ public:
 
       return "";
     }
+
+    int getNumEntries() { return getDir()->entries.size(); }
 
 #ifdef WASMFS_DEBUG
     void printKeys() {

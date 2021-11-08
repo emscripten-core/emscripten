@@ -12,18 +12,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
-static void create_file(const char *path, const char *buffer, int mode) {
+static void create_file(const char* path, const char* buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
   assert(fd >= 0);
 
   int err = write(fd, buffer, sizeof(char) * strlen(buffer));
-  assert(err ==  (sizeof(char) * strlen(buffer)));
+  assert(err == (sizeof(char) * strlen(buffer)));
 
   close(fd);
 }
@@ -37,7 +37,7 @@ void setup() {
 #else
   EM_ASM(
 #if NODEFS
-    FS.mount(NODEFS, { root: '.' }, 'working');
+    FS.mount(NODEFS, {root : '.'}, 'working');
 #endif
   );
 #endif
@@ -52,10 +52,14 @@ void setup() {
 #ifndef NO_SYMLINK
   symlink("dir-empty", "dir-empty-link");
 #endif
+#ifndef WASMFS
   mkdir("dir-readonly", 0777);
+  chmod("dir-readonly", 0555);
+#else
+  mkdir("dir-readonly", 0555);
+#endif
   create_file("dir-readonly/anotherfile", "test", 0777);
   mkdir("dir-readonly/anotherdir", 0777);
-  chmod("dir-readonly", 0555);
   mkdir("dir-full", 0777);
   create_file("dir-full/anotherfile", "test", 0777);
 }
@@ -70,7 +74,9 @@ void cleanup() {
 #ifndef NO_SYMLINK
   unlink("dir-empty-link");
 #endif
+#ifndef WASMFS
   chmod("dir-readonly", 0777);
+#endif
   unlink("dir-readonly/anotherfile");
   rmdir("dir-readonly/anotherdir");
   rmdir("dir-readonly");
@@ -92,10 +98,11 @@ void test() {
   err = unlink("dir-readonly");
   assert(err == -1);
 
-  // emscripten uses 'musl' what is an implementation of the standard library for Linux-based systems
+// emscripten uses 'musl' what is an implementation of the standard library
+// for Linux-based systems
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
-  // Here errno is supposed to be EISDIR, but it is EPERM for NODERAWFS on macOS.
-  // See issue #6121.
+  // Here errno is supposed to be EISDIR, but it is EPERM for NODERAWFS on
+  // macOS. See issue #6121.
   assert(errno == EISDIR || errno == EPERM);
 #else
   assert(errno == EPERM);
@@ -113,8 +120,10 @@ void test() {
   err = unlink("file1-link");
   assert(!err);
 #endif
+#ifndef WASMFS
   err = access("file1", F_OK);
   assert(!err);
+#endif
 #ifndef NO_SYMLINK
   err = access("file1-link", F_OK);
   assert(err == -1);
@@ -122,8 +131,10 @@ void test() {
 
   err = unlink("file");
   assert(!err);
+#ifndef WASMFS
   err = access("file", F_OK);
   assert(err == -1);
+#endif
 
   //
   // test rmdir
@@ -175,8 +186,14 @@ void test() {
 
   err = rmdir("dir-empty");
   assert(!err);
+#ifndef WASMFS
   err = access("dir-empty", F_OK);
   assert(err == -1);
+#endif
+
+  err = rmdir("/.");
+  assert(err == -1);
+  assert(errno == EINVAL);
 
   puts("success");
 }
