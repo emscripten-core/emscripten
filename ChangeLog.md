@@ -36,6 +36,10 @@ See docs/process.md for more on how version tagging works.
 2.0.33 - 11/01/2021
 -------------------
 - Bug fixes
+- Added support for specifying the text encoding to be used in response filenames
+  by passing the encoding as a file suffix (e.g. "a.rsp.utf-8" or "a.rsp.cp1252").
+  If not specified, the encoding is autodetected as either UTF-8 or Python
+  default "locale.getpreferredencoding()". (#15406, #15292, #15426)
 
 2.0.32 - 10/19/2021
 -------------------
@@ -75,10 +79,6 @@ See docs/process.md for more on how version tagging works.
 - Added SAFE_HEAP=2 option which tests safe heap behavior for wasm-only builds
   (allowing unaligned memory accesses, which would not work in Wasm2JS but in
    wasm would be correct but potentially slow).
-- Added support for specifying the text encoding to be used in response filenames
-  by passing the encoding as a file suffix (e.g. "a.rsp.utf-8" or "a.rsp.cp1252").
-  If not specified, the encoding is autodetected as either UTF-8 or Python
-  default "locale.getpreferredencoding()". (#15406, #15292, #15426)
 
 2.0.31 - 10/01/2021
 -------------------
