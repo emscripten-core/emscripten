@@ -11177,7 +11177,7 @@ void foo() {}
 
   def test_unistd_unlink(self):
     self.set_setting('WASMFS')
-    self.emcc_args = self.emcc_args.copy() + ['-DWASMFS','-DNO_SYMLINK=1']
+    self.emcc_args = self.emcc_args.copy() + ['-DWASMFS', '-DNO_SYMLINK=1']
     self.do_runf(test_file('unistd/unlink.c'), 'success')
 
   @disabled('Running with initial >2GB heaps is not currently supported on the CI version of Node')
