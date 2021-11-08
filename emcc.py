@@ -1831,7 +1831,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.FILESYSTEM = 0
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
-    settings.EXPORTED_FUNCTIONS += ['_emscripten_wasmfs_readFiles', '_emscripten_wasmfs_file_size']
+    settings.EXPORTED_FUNCTIONS += ['_emscripten_wasmfs_read_file']
 
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
   if not settings.USES_DYNAMIC_ALLOC:

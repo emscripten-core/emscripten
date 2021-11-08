@@ -59,16 +59,17 @@ var WasmfsLibrary = {
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
         throw new Error('Invalid encoding type "' + opts.encoding + '"');
       }
-      
-      // Obtain file size.
-      var pathName = allocate(intArrayFromString(path), ALLOC_NORMAL);
-      var length = _emscripten_wasmfs_file_size(pathName);
+
+      var pathName = allocateUTF8(path);
       
       // Copy the file into a JS buffer on the heap.
-      var buf = _emscripten_wasmfs_readFiles(pathName);
+      var buf = _emscripten_wasmfs_read_file(pathName);
+      // The integer length is returned in the first part of the buffer.
+      var length = HEAPU32[buf >> 2];
       
       // Default return type is binary.
-      var ret = HEAPU8.subarray(buf, buf + length);
+      // The buffer contents exist 4 bytes after the returned pointer.
+      var ret = HEAPU8.subarray(buf + 4, buf + 4 + length);
       if (opts.encoding === 'utf8') {
         ret = UTF8ArrayToString(ret, 0);
       }
