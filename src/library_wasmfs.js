@@ -52,6 +52,30 @@ var WasmfsLibrary = {
     createPath: function(parent, path, canRead, canWrite) {
       // Cache file path directory names.
       wasmFS$preloadedDirs.push({parentPath: parent, childName: path});
+    },
+    readFile: function(path, opts) {
+      opts = opts || {};
+      opts.encoding = opts.encoding || 'binary';
+      if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
+        throw new Error('Invalid encoding type "' + opts.encoding + '"');
+      }
+      
+      // Obtain file size.
+      var pathName = allocate(intArrayFromString(path), ALLOC_NORMAL);
+      var length = _emscripten_wasmfs_file_size(pathName);
+      
+      // Copy the file into a JS buffer on the heap.
+      var buf = _emscripten_wasmfs_readFiles(pathName);
+      
+      // Default return type is binary.
+      var ret = HEAPU8.subarray(buf, buf + length);
+      if (opts.encoding === 'utf8') {
+        ret = UTF8ArrayToString(ret, 0);
+      }
+      
+      _free(pathName);
+      _free(buf);
+      return ret;
     }
   }
 }

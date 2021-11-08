@@ -25,6 +25,56 @@ extern "C" {
 
 using namespace wasmfs;
 
+// Copy the file specified by the pathname into JS.
+// Return a pointer to the JS buffer in HEAPU8.
+int emscripten_wasmfs_readFiles(char *path) {
+  auto pathParts = splitPath(path);
+
+  if (pathParts.empty()) {
+    abort();
+  }
+  
+  auto base = pathParts.back();
+
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  // Parent node doesn't exist.
+  if (!parentDir) {
+    return err;
+  }
+
+  auto lockedParentDir = parentDir->locked();
+  auto curr = lockedParentDir.getEntry(base)->dynCast<MemoryFile>();
+
+  return curr->locked().copyToJS();
+}
+
+// Return the size of specified file path.
+// Abort if the path cannot be resolved.
+int emscripten_wasmfs_file_size(char *path) {
+  auto pathParts = splitPath(path);
+
+  if (pathParts.empty()) {
+    abort();
+  }
+  
+  auto base = pathParts.back();
+
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  // Parent node doesn't exist.
+  if (!parentDir) {
+    return err;
+  }
+
+  auto lockedParentDir = parentDir->locked();
+  auto curr = lockedParentDir.getEntry(base);
+  
+  return curr->locked().getSize();
+}
+
 long __syscall_dup3(long oldfd, long newfd, long flags) {
   auto fileTable = wasmFS.getLockedFileTable();
 
