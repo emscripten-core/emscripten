@@ -27,8 +27,8 @@ int main() {
   // Test opening a file and calling fstat.
   struct stat file;
   int fd = open("/dev/stdout/", O_RDONLY);
-  fstat(fd, &file);
   assert(fd >= 0);
+  fstat(fd, &file);
 
   off_t fileInode = file.st_ino;
 
