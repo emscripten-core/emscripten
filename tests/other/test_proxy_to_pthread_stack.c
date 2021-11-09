@@ -3,7 +3,9 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <pthread.h>
+#include <emscripten.h>
 
 int main(void) {
   pthread_attr_t attr;
@@ -12,13 +14,17 @@ int main(void) {
   pthread_attr_getstacksize(&attr, &stacksize);
   printf("stack size %zd\n", stacksize);
 
-  // Run with TOTAL_STACK=128k.
+  // This test is run with TOTAL_STACK=128k so we always expect that to be
+  // the ammount of stack we have in main()
   assert(stacksize == 128*1024);
 
-  // Run with DEFAULT_PTHREAD_STACK_SIZE=64k.
-  // This would fail if we were actually running with only the default pthread stack size.
-  int32_t data[64*1024];
+  // This test is run with DEFAULT_PTHREAD_STACK_SIZE=64k.  This would fail if
+  // this thread were run with only 64k of stack.
+  int8_t data[65*1024];
+  memset(data, 0xa0, sizeof(data));
+  EM_ASM(checkStackCookie());
   printf("data address %p\n", data);
+
   printf("success\n");
-  exit(0);
+  return 0;
 }
