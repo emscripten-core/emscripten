@@ -524,15 +524,12 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
 // This enum specifies whether rmdir or unlink is being performed.
 enum class UnlinkMode { Rmdir, Unlink };
 
-static long __unlink(char* path, UnlinkMode unlinkMode) {
+static long doUnlink(char* path, UnlinkMode unlinkMode) {
   auto pathParts = splitPath(path);
 
-  // Root (/) directory cannot be removed.
-  if (pathParts.size() == 1 && pathParts[0] == "/") {
-    return -EBUSY;
-  }
+  // TODO: Ensure that . and .. are invalid when path parsing is updated.
 
-  if (pathParts.empty() || pathParts.back() == ".") {
+  if (pathParts.empty()) {
     return -EINVAL;
   }
 
@@ -563,11 +560,6 @@ static long __unlink(char* path, UnlinkMode unlinkMode) {
       return -ENOTDIR;
     }
 
-    // The root directory or current work directory cannot be removed.
-    if (targetDir == wasmFS.getCWD()) {
-      return -EBUSY;
-    }
-
     // A directory can only be removed if it has zero entries.
     if (targetDir->locked().getNumEntries() > 0) {
       return -ENOTEMPTY;
@@ -579,12 +571,12 @@ static long __unlink(char* path, UnlinkMode unlinkMode) {
   }
 
   // Cannot unlink if the parent dir doesn't have write permissions.
-  if (!(lockedParentDir.mode() & 0222)) {
+  if (!(lockedParentDir.mode() & WASMFS_PERM_WRITE)) {
     return -EACCES;
   }
 
   // Cannot unlink a directory or file that doesn't have write permissions.
-  if (!(curr->locked().mode() & 0222)) {
+  if (!(curr->locked().mode() & WASMFS_PERM_WRITE)) {
     return -EPERM;
   }
 

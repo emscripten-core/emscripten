@@ -159,9 +159,9 @@ public:
     }
 
     void unlinkEntry(std::string pathName) {
-      // TODO: Unlinking the parent pointer after erasing from entries.
-      auto unlinked = getDir()->entries[pathName];
-      unlinked->locked().setParent(std::shared_ptr<File>());
+      // Hold lock on target file for duration of the operation.
+      auto unlinked = getDir()->entries[pathName]->locked();
+      unlinked.setParent(std::shared_ptr<File>());
       getDir()->entries.erase(pathName);
     }
 
