@@ -104,7 +104,11 @@ extern struct ps_strings *__ps_strings;
 #endif
 
 #if SANITIZER_EMSCRIPTEN
+#define weak __attribute__(__weak__)
+#define hidden __attribute__((__visibility__("hidden")))
 #include <syscall.h>
+#undef weak
+#undef hidden
 #include <emscripten/threading.h>
 #include <math.h>
 #include <wasi/api.h>

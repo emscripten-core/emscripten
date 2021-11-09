@@ -1,6 +1,5 @@
 #include <sys/mman.h>
 #include "syscall.h"
-#include "libc.h"
 
 static void dummy(void) { }
 weak_alias(dummy, __vm_wait);

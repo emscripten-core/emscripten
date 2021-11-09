@@ -89,7 +89,7 @@ struct ifreq {
 		struct ifmap ifru_map;
 		char ifru_slave[IFNAMSIZ];
 		char ifru_newname[IFNAMSIZ];
-		void *ifru_data;
+		char *ifru_data;
 	} ifr_ifru;
 };
 
@@ -116,7 +116,7 @@ struct ifreq {
 struct ifconf {
 	int ifc_len;		
 	union {
-		void *ifcu_buf;
+		char *ifcu_buf;
 		struct ifreq *ifcu_req;
 	} ifc_ifcu;
 };
@@ -124,6 +124,13 @@ struct ifconf {
 #define ifc_buf		ifc_ifcu.ifcu_buf
 #define ifc_req		ifc_ifcu.ifcu_req
 #define _IOT_ifconf _IOT(_IOTS(struct ifconf),1,0,0,0,0)
+
+#define __UAPI_DEF_IF_IFCONF                                    0
+#define __UAPI_DEF_IF_IFMAP                                     0
+#define __UAPI_DEF_IF_IFNAMSIZ                                  0
+#define __UAPI_DEF_IF_IFREQ                                     0
+#define __UAPI_DEF_IF_NET_DEVICE_FLAGS                          0
+#define __UAPI_DEF_IF_NET_DEVICE_FLAGS_LOWER_UP_DORMANT_ECHO    0
 
 #endif
 

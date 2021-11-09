@@ -6,14 +6,19 @@
         "file": "pthread_impl.h",
         "structs": {
             "pthread": [
-              "threadStatus",
               "profilerBlock",
               "self",
-              "detached",
+              "tsd",
+              "detach_state",
               "stack",
               "stack_size",
               "result",
-              "attr"
+              "robust_list",
+              "tid",
+              "cancel",
+              "canceldisable",
+              "cancelasync",
+              "locale"
             ],
             "pthread_attr_t#": [
               "_a_transferredcanvases"
@@ -26,9 +31,12 @@
             ]
         },
         "defines": [
-          "DEFAULT_STACK_SIZE",
           "__ATTRP_C11_THREAD",
-          "EM_THREAD_NAME_MAX"
+          "EM_THREAD_NAME_MAX",
+          "DT_EXITED",
+          "DT_EXITING",
+          "DT_JOINABLE",
+          "DT_DETACHED"
         ]
     },
     {

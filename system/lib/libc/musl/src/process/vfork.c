@@ -2,9 +2,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include "syscall.h"
-#include "libc.h"
 
-pid_t __vfork(void)
+pid_t vfork(void)
 {
 	/* vfork syscall cannot be made from C code */
 #ifdef SYS_fork
@@ -13,5 +12,3 @@ pid_t __vfork(void)
 	return syscall(SYS_clone, SIGCHLD, 0);
 #endif
 }
-
-weak_alias(__vfork, vfork);

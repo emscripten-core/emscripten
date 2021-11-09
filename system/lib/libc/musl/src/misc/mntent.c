@@ -3,6 +3,11 @@
 #include <mntent.h>
 #include <errno.h>
 
+static char *internal_buf;
+static size_t internal_bufsize;
+
+#define SENTINEL (char *)&internal_buf
+
 FILE *setmntent(const char *name, const char *mode)
 {
 	return fopen(name, mode);
@@ -16,13 +21,18 @@ int endmntent(FILE *f)
 
 struct mntent *getmntent_r(FILE *f, struct mntent *mnt, char *linebuf, int buflen)
 {
-	int cnt, n[8];
+	int cnt, n[8], use_internal = (linebuf == SENTINEL);
 
 	mnt->mnt_freq = 0;
 	mnt->mnt_passno = 0;
 
 	do {
-		fgets(linebuf, buflen, f);
+		if (use_internal) {
+			getline(&internal_buf, &internal_bufsize, f);
+			linebuf = internal_buf;
+		} else {
+			fgets(linebuf, buflen, f);
+		}
 		if (feof(f) || ferror(f)) return 0;
 		if (!strchr(linebuf, '\n')) {
 			fscanf(f, "%*[^\n]%*[\n]");
@@ -49,9 +59,8 @@ struct mntent *getmntent_r(FILE *f, struct mntent *mnt, char *linebuf, int bufle
 
 struct mntent *getmntent(FILE *f)
 {
-	static char linebuf[256];
 	static struct mntent mnt;
-	return getmntent_r(f, &mnt, linebuf, sizeof linebuf);
+	return getmntent_r(f, &mnt, SENTINEL, 0);
 }
 
 int addmntent(FILE *f, const struct mntent *mnt)

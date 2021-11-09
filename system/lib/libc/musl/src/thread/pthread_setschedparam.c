@@ -1,4 +1,5 @@
 #include "pthread_impl.h"
+#include "lock.h"
 
 int pthread_setschedparam(pthread_t t, int policy, const struct sched_param *param)
 {
@@ -7,9 +8,12 @@ int pthread_setschedparam(pthread_t t, int policy, const struct sched_param *par
 	return 0;
 #else
 	int r;
-	__lock(t->killlock);
-	r = t->dead ? ESRCH : -__syscall(SYS_sched_setscheduler, t->tid, policy, param);
-	__unlock(t->killlock);
+	sigset_t set;
+	__block_app_sigs(&set);
+	LOCK(t->killlock);
+	r = !t->tid ? ESRCH : -__syscall(SYS_sched_setscheduler, t->tid, policy, param);
+	UNLOCK(t->killlock);
+	__restore_sigs(&set);
 	return r;
 #endif
 }
