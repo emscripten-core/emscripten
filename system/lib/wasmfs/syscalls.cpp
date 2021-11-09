@@ -567,11 +567,6 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
     if (!targetDir) {
       return -ENOTDIR;
     }
-    
-    // The current work directory cannot be removed.
-    if (targetDir == wasmFS.getCWD()) {
-      return -EBUSY;
-    }
 
     // A directory can only be removed if it has zero entries.
     if (targetDir->locked().getNumEntries() > 0) {
