@@ -244,7 +244,7 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-static long getStat64(std::shared_ptr<File> file, long buf) {
+static long doStat(std::shared_ptr<File> file, long buf) {
   struct stat* buffer = (struct stat*)buf;
 
   auto lockedFile = file->locked();
@@ -305,7 +305,7 @@ long __syscall_stat64(long path, long buf) {
   // of having to first obtain the parent dir.
   auto curr = lockedParentDir.getEntry(base);
   if (curr) {
-    return __stat64(curr, buf);
+    return doStat(curr, buf);
   } else {
     return -ENOENT;
   }
@@ -314,30 +314,7 @@ long __syscall_stat64(long path, long buf) {
 long __syscall_lstat64(long path, long buf) {
   // TODO: When symlinks are introduced, lstat will return information about the
   // link itself rather than the file it refers to.
-  auto pathParts = splitPath((char*)path);
-
-  if (pathParts.empty()) {
-    return -EINVAL;
-  }
-
-  auto base = pathParts.back();
-
-  long err;
-  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
-
-  // Parent node doesn't exist.
-  if (!parentDir) {
-    return err;
-  }
-
-  auto lockedParentDir = parentDir->locked();
-
-  auto curr = lockedParentDir.getEntry(base);
-  if (curr) {
-    return __stat64(curr, buf);
-  } else {
-    return -ENOENT;
-  }
+  return __syscall_stat64(path, buf);
 }
 
 long __syscall_fstat64(long fd, long buf) {
@@ -347,7 +324,7 @@ long __syscall_fstat64(long fd, long buf) {
     return -EBADF;
   }
 
-  return __stat64(openFile.locked().getFile(), buf);
+  return doStat(openFile.locked().getFile(), buf);
 }
 
 __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
