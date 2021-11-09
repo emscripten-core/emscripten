@@ -17,10 +17,10 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
-#include <unistd.h>
 
 extern "C" {
 
@@ -28,39 +28,37 @@ using namespace wasmfs;
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
+// Caller must free the returned pointer.
 void* emscripten_wasmfs_read_file(char* path) {
   struct stat file;
   int err = 0;
   err = stat(path, &file);
   if (err < 0) {
-    emscripten_console_error(
-      "Fatal error in FS.readFile");
+    emscripten_console_error("Fatal error in FS.readFile");
     abort();
   }
-  
-  size_t size = file.st_size;
+
+  // file.st_size could exceed uint32_t in wasm64.
+  assert(file.st_size < std::numeric_limits<uint32_t>::max());
+  uint32_t size = file.st_size;
   uint8_t* result = (uint8_t*)malloc((size + sizeof(size)));
-  *(size_t*)result = size;
-  
+  *(uint32_t*)result = size;
+
   int fd = open(path, O_RDONLY);
   if (fd < 0) {
-    emscripten_console_error(
-      "Fatal error in FS.readFile");
+    emscripten_console_error("Fatal error in FS.readFile");
     abort();
   }
-  err = pread(fd, result + sizeof(size), size, 0);
-  if (err < 0) {
-    emscripten_console_error(
-      "Fatal error in FS.readFile");
-    abort();
-  }
+  int numRead = pread(fd, result + sizeof(size), size, 0);
+  // TODO: Generalize this so that it is thread-proof.
+  // Must guarantee that the file size has not changed by the time it is read.
+  assert(numRead == size);
   err = close(fd);
   if (err < 0) {
-    emscripten_console_error(
-      "Fatal error in FS.readFile");
+    emscripten_console_error("Fatal error in FS.readFile");
     abort();
   }
-  
+
   return result;
 }
 
