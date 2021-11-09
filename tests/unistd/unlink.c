@@ -12,18 +12,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
-static void create_file(const char* path, const char* buffer, int mode) {
+static void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
   assert(fd >= 0);
 
   int err = write(fd, buffer, sizeof(char) * strlen(buffer));
-  assert(err == (sizeof(char) * strlen(buffer)));
+  assert(err ==  (sizeof(char) * strlen(buffer)));
 
   close(fd);
 }
@@ -37,7 +37,7 @@ void setup() {
 #else
   EM_ASM(
 #if NODEFS
-    FS.mount(NODEFS, {root : '.'}, 'working');
+    FS.mount(NODEFS, { root: '.' }, 'working');
 #endif
   );
 #endif
@@ -101,11 +101,10 @@ void test() {
   err = unlink("dir-readonly");
   assert(err == -1);
 
-// emscripten uses 'musl' what is an implementation of the standard library for
-// Linux-based systems
+// emscripten uses 'musl' what is an implementation of the standard library for Linux-based systems
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
-  // Here errno is supposed to be EISDIR, but it is EPERM for NODERAWFS on
-  // macOS. See issue #6121.
+  // Here errno is supposed to be EISDIR, but it is EPERM for NODERAWFS on macOS.
+  // See issue #6121.
   assert(errno == EISDIR || errno == EPERM);
 #else
   assert(errno == EPERM);

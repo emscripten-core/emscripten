@@ -20,6 +20,8 @@
 #include <vector>
 #include <wasi/api.h>
 
+// File permission macros for wasmfs.
+// Used to improve readability compared to those in stat.h
 #define WASMFS_PERM_WRITE 0222
 
 extern "C" {
