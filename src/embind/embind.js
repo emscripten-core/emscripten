@@ -17,7 +17,7 @@
 /*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, _embind_repr, registeredInstances, registeredTypes, getShiftFromSize*/
 /*global ensureOverloadTable, embind__requireFunction, awaitingDependencies, makeLegalFunctionName, embind_charCodes:true, registerType, createNamedFunction, RegisteredPointer, throwInternalError*/
 /*global simpleReadValueFromPointer, floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
-/*global finalizationRegistry, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
+/*global finalizationGroup, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
 /*global ClassHandle, makeClassHandle, structRegistrations, whenDependentTypesAreResolved, BindingError, deletionQueue, delayFunction:true, upcastPointer*/
 /*global exposePublicSymbol, heap32VectorToArray, new_, RegisteredPointer_getPointee, RegisteredPointer_destructor, RegisteredPointer_deleteObject, char_0, char_9*/
 /*global getInheritedInstanceCount, getLiveInheritedInstances, setDelayFunction, InternalError, runDestructors*/
@@ -642,11 +642,13 @@ var LibraryEmbind = {
             return value;
         },
         'toWireType': function(destructors, value) {
-            // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
-            // avoid the following if() and assume value is of proper type.
+#if ASSERTIONS
             if (typeof value !== "number" && typeof value !== "boolean") {
                 throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
+#endif
+            // The VM will perform JS to Wasm value conversion, according to the spec:
+            // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
             return value;
         },
         'argPackAdvance': 8,
@@ -1722,50 +1724,38 @@ var LibraryEmbind = {
     }
   },
 
-  $finalizationRegistry: false,
+  $finalizationGroup: false,
 
-  $detachFinalizer_deps: ['$finalizationRegistry'],
+  $detachFinalizer_deps: ['$finalizationGroup'],
   $detachFinalizer: function(handle) {},
 
-  $attachFinalizer__deps: ['$finalizationRegistry', '$detachFinalizer',
+  $attachFinalizer__deps: ['$finalizationGroup', '$detachFinalizer',
                            '$releaseClassHandle'],
   $attachFinalizer: function(handle) {
-    if ('undefined' === typeof FinalizationRegistry) {
+    if ('undefined' === typeof FinalizationGroup) {
         attachFinalizer = function (handle) { return handle; };
         return handle;
     }
-    // If the running environment has a FinalizationRegistry (see
+    // If the running environment has a FinalizationGroup (see
     // https://github.com/tc39/proposal-weakrefs), then attach finalizers
-    // for class handles.  We check for the presence of FinalizationRegistry
+    // for class handles.  We check for the presence of FinalizationGroup
     // at run-time, not build-time.
-    finalizationRegistry = new FinalizationRegistry(function (info) {
-#if ASSERTIONS
-      console.warn(info.leakWarning.stack.replace(/^Error: /, ''));
-#endif
-      releaseClassHandle(info.$$);
+    finalizationGroup = new FinalizationGroup(function (iter) {
+        for (var result = iter.next(); !result.done; result = iter.next()) {
+            var $$ = result.value;
+            if (!$$.ptr) {
+                console.warn('object already deleted: ' + $$.ptr);
+            } else {
+                releaseClassHandle($$);
+            }
+        }
     });
     attachFinalizer = function(handle) {
-      var $$ = handle.$$;
-      var info = { $$: $$ };
-#if ASSERTIONS
-      // Create a warning as an Error instance in advance so that we can store
-      // the current stacktrace and point to it when / if a leak is detected.
-      // This is more useful than the empty stacktrace of `FinalizationRegistry`
-      // callback.
-      var cls = $$.ptrType.registeredClass;
-      info.leakWarning = new Error("Embind found a leaked C++ instance " + cls.name + " <0x" + $$.ptr.toString(16) + ">.\n" +
-      "We'll free it automatically in this case, but this functionality is not reliable across various environments.\n" +
-      "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
-      "Originally allocated"); // `.stack` will add "at ..." after this sentence
-      if ('captureStackTrace' in Error) {
-        Error.captureStackTrace(info.leakWarning, cls.constructor);
-      }
-#endif
-      finalizationRegistry.register(handle, info, handle);
-      return handle;
+        finalizationGroup.register(handle, handle.$$, handle.$$);
+        return handle;
     };
     detachFinalizer = function(handle) {
-        finalizationRegistry.unregister(handle);
+        finalizationGroup.unregister(handle.$$);
     };
     return attachFinalizer(handle);
   },
