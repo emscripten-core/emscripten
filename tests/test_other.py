@@ -9026,7 +9026,6 @@ int main () {
         print('Oops, overall generated code size regressed by ' + str(total_output_size - total_expected_size) + ' bytes!')
       if total_output_size < total_expected_size:
         print('Hey amazing, overall generated code size was improved by ' + str(total_expected_size - total_output_size) + ' bytes! Rerun test with other.test_minimal_runtime_code_size with EMTEST_REBASELINE=1 to update the expected sizes!')
-        print(open('a.html').read())
       self.assertEqual(total_output_size, total_expected_size)
 
   # Tests the library_c_preprocessor.js functionality.
