@@ -263,10 +263,7 @@ static long getStat64(std::shared_ptr<File> file, long buf) {
   } else if (file->is<DataFile>()) {
     buffer->st_mode |= S_IFREG;
   }
-  // Set inode number to the file pointer. This gives a unique inode number for
-  // each file in the simplest possible way.
-  // TODO: For security it would probably be better to use an indirect mapping.
-  buffer->st_ino = (ino_t)file.get();
+  buffer->st_ino = file->getIno();
   // The number of hard links is 1 since they are unsupported.
   buffer->st_nlink = 1;
   buffer->st_uid = 0;
