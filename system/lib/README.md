@@ -16,6 +16,7 @@ document.
 These current set of static constructors in system libraries and their priorities
 (lowest run first) are:
 
+- 1: `emscripten_stack_init` (stack_limits.S)
 - 47: `initialize_emmalloc_heap` (emmalloc.c)
 - 48: `__emscripten_init_main_thread` (pthread/library_pthread.c)
 - 50: asan init (??)

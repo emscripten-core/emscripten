@@ -9335,7 +9335,10 @@ int main(void) {
     # DEFAULT_PTHREAD_STACK_SIZE.
     self.do_smart_test(test_file('other/test_proxy_to_pthread_stack.c'),
                        ['success'],
-                       emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'DEFAULT_PTHREAD_STACK_SIZE=64kb', '-s', 'TOTAL_STACK=128kb', '-s', 'EXIT_RUNTIME'])
+                       emcc_args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD',
+                                  '-sDEFAULT_PTHREAD_STACK_SIZE=64kb',
+                                  '-sTOTAL_STACK=128kb', '-sEXIT_RUNTIME',
+                                  '--profiling-funcs'])
 
   @parameterized({
     'async': ['-s', 'WASM_ASYNC_COMPILATION'],
