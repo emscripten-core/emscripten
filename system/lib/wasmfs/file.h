@@ -159,9 +159,11 @@ public:
     }
 
     void unlinkEntry(std::string pathName) {
-      // Hold lock on target file for duration of the operation.
+      // The file lock must be held for both operations. Removing the child file
+      // from the parent's entries and removing the parent pointer from the
+      // child should be atomic. The state should not be mutated in between.
       auto unlinked = getDir()->entries[pathName]->locked();
-      unlinked.setParent(std::shared_ptr<File>());
+      unlinked.setParent({});
       getDir()->entries.erase(pathName);
     }
 

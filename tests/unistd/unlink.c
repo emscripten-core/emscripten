@@ -55,12 +55,14 @@ void setup() {
 // TODO: delete this when chmod is implemented.
 #ifndef WASMFS
   mkdir("dir-readonly", 0777);
-  chmod("dir-readonly", 0555);
 #else
   mkdir("dir-readonly", 0555);
 #endif
   create_file("dir-readonly/anotherfile", "test", 0777);
   mkdir("dir-readonly/anotherdir", 0777);
+#ifndef WASMFS
+  chmod("dir-readonly", 0555);
+#endif
   mkdir("dir-full", 0777);
   create_file("dir-full/anotherfile", "test", 0777);
 }
@@ -190,10 +192,6 @@ void test() {
   err = access("dir-empty", F_OK);
   assert(err == -1);
 #endif
-
-  err = rmdir("/.");
-  assert(err == -1);
-  assert(errno == EINVAL);
 
   puts("success");
 }

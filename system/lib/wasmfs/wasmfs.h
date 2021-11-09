@@ -18,8 +18,6 @@
 #include <vector>
 #include <wasi/api.h>
 
-#define WASMFS_PERM_WRITE 0222
-
 namespace wasmfs {
 
 class WasmFS {

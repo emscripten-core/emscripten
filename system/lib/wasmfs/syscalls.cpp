@@ -20,6 +20,8 @@
 #include <vector>
 #include <wasi/api.h>
 
+#define WASMFS_PERM_WRITE 0222
+
 extern "C" {
 
 using namespace wasmfs;
@@ -528,6 +530,12 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
   auto pathParts = splitPath(path);
 
   // TODO: Ensure that . and .. are invalid when path parsing is updated.
+  // TODO: Change to check root directory pointer instead of path.
+  // This can be done when path parsing is refactored.
+  // Current state just matches JS file system behaviour.
+  if (pathParts.size() == 1 && pathParts[0] == "/") {
+    return -EBUSY;
+  }
 
   if (pathParts.empty()) {
     return -EINVAL;
@@ -559,6 +567,11 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
     if (!targetDir) {
       return -ENOTDIR;
     }
+    
+    // The current work directory cannot be removed.
+    if (targetDir == wasmFS.getCWD()) {
+      return -EBUSY;
+    }
 
     // A directory can only be removed if it has zero entries.
     if (targetDir->locked().getNumEntries() > 0) {
@@ -587,10 +600,10 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
 }
 
 long __syscall_rmdir(long path) {
-  return __unlink((char*)path, UnlinkMode::Rmdir);
+  return doUnlink((char*)path, UnlinkMode::Rmdir);
 }
 
 long __syscall_unlink(long path) {
-  return __unlink((char*)path, UnlinkMode::Unlink);
+  return doUnlink((char*)path, UnlinkMode::Unlink);
 }
 }
