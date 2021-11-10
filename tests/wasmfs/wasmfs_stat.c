@@ -28,7 +28,7 @@ int main() {
   struct stat file;
   int fd = open("/dev/stdout/", O_RDONLY);
   assert(fd >= 0);
-  fstat(fd, &file);
+  assert(fstat(fd, &file) != -1);
 
   off_t fileInode = file.st_ino;
 
@@ -52,7 +52,8 @@ int main() {
   // Check to see if the previous inode number matches.
   int newfd = open("/dev/stdout/", O_RDONLY);
   struct stat newFile;
-  fstat(newfd, &newFile);
+  assert(newfd >= 0);
+  assert(fstat(newfd, &newFile) != -1);
 
   assert(fileInode == newFile.st_ino);
   close(newfd);
@@ -60,8 +61,8 @@ int main() {
   // Test opening a directory and calling fstat.
   struct stat directory;
   int fd2 = open("/dev", O_RDONLY | O_DIRECTORY);
-  fstat(fd2, &directory);
   assert(fd2 >= 0);
+  assert(fstat(fd2, &directory) != -1);
 
   off_t dirInode = directory.st_ino;
 
@@ -88,14 +89,15 @@ int main() {
   // Check to see if the previous inode number matches.
   int newfd2 = open("/dev", O_RDONLY | O_DIRECTORY);
   struct stat newFile2;
-  fstat(newfd, &newFile2);
+  assert(newfd >= 0);
+  assert(fstat(newfd, &newFile2) != -1);
 
   assert(dirInode == newFile2.st_ino);
   close(newfd2);
 
   // Test calling stat without opening a file.
   struct stat statFile;
-  stat("/dev/stdout/", &statFile);
+  assert(stat("/dev/stdout/", &statFile) != -1);
 
   assert(statFile.st_size == 0);
 #ifdef WASMFS
@@ -113,7 +115,7 @@ int main() {
 
   // Test calling stat without opening a directory.
   struct stat statDirectory;
-  stat("/dev", &statDirectory);
+  assert(stat("/dev", &statDirectory) != -1);
 
   assert(statDirectory.st_size == 4096);
   assert((statDirectory.st_mode & S_IFMT) == S_IFDIR);
@@ -134,7 +136,7 @@ int main() {
   // Test calling lstat without opening a file.
   struct stat lstatFile;
   errno = 0;
-  lstat("/dev/stdout", &lstatFile);
+  assert(lstat("/dev/stdout", &lstatFile) != -1);
 
   assert(lstatFile.st_dev);
 #ifdef WASMFS
@@ -160,7 +162,7 @@ int main() {
 
   // Test calling lstat without opening a directory.
   struct stat lstatDirectory;
-  lstat("/dev", &lstatDirectory);
+  assert(lstat("/dev", &lstatDirectory) != -1);
 
   assert(lstatDirectory.st_size == 4096);
   assert((lstatDirectory.st_mode & S_IFMT) == S_IFDIR);
