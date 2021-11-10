@@ -6239,6 +6239,7 @@ int main(int argc, char **argv) {
     self.run_process([EMCC, 'src.c', '-s', 'SAFE_HEAP', '--embed-file', 'boot'])
     self.assertContained('Resolved: /boot/README.txt', self.run_js('a.out.js'))
 
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/15468')
   def test_realpath_nodefs(self):
     create_file('src.c', r'''
 #include <stdlib.h>
@@ -11157,9 +11158,8 @@ void foo() {}
     self.do_run_in_out_file_test('wasmfs/wasmfs_open.c')
 
   @also_with_wasmfs
-  def test_unistd_fstat(self):
-    self.set_setting('WASMFS')
-    self.do_run_in_out_file_test('wasmfs/wasmfs_fstat.c')
+  def test_unistd_stat(self):
+    self.do_runf(test_file('wasmfs/wasmfs_stat.c'))
 
   @also_with_wasmfs
   def test_unistd_create(self):

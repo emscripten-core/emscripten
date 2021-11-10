@@ -430,7 +430,7 @@ jobs:
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - run-tests:
-          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file wasm2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler"
+          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file wasm2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs"
   test-mac:
     executor: mac
     environment:

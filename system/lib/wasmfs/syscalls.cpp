@@ -244,17 +244,7 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-long __syscall_fstat64(long fd, long buf) {
-  auto openFile = wasmFS.getLockedFileTable()[fd];
-
-  if (!openFile) {
-    return -EBADF;
-  }
-
-  auto file = openFile.locked().getFile();
-
-  struct stat* buffer = (struct stat*)buf;
-
+static long doStat(std::shared_ptr<File> file, struct stat* buffer) {
   auto lockedFile = file->locked();
 
   buffer->st_size = lockedFile.getSize();
@@ -271,7 +261,7 @@ long __syscall_fstat64(long fd, long buf) {
   } else if (file->is<DataFile>()) {
     buffer->st_mode |= S_IFREG;
   }
-  buffer->st_ino = fd;
+  buffer->st_ino = file->getIno();
   // The number of hard links is 1 since they are unsupported.
   buffer->st_nlink = 1;
   buffer->st_uid = 0;
@@ -288,6 +278,52 @@ long __syscall_fstat64(long fd, long buf) {
   buffer->st_ctim.tv_sec = lockedFile.ctime();
 
   return __WASI_ERRNO_SUCCESS;
+}
+
+long __syscall_stat64(long path, long buf) {
+  auto pathParts = splitPath((char*)path);
+
+  if (pathParts.empty()) {
+    return -EINVAL;
+  }
+
+  auto base = pathParts.back();
+
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  // Parent node doesn't exist.
+  if (!parentDir) {
+    return err;
+  }
+
+  auto lockedParentDir = parentDir->locked();
+
+  // TODO: In future PR, edit function to just return the requested file instead
+  // of having to first obtain the parent dir.
+  auto curr = lockedParentDir.getEntry(base);
+  if (curr) {
+    struct stat* buffer = (struct stat*)buf;
+    return doStat(curr, buffer);
+  } else {
+    return -ENOENT;
+  }
+}
+
+long __syscall_lstat64(long path, long buf) {
+  // TODO: When symlinks are introduced, lstat will return information about the
+  // link itself rather than the file it refers to.
+  return __syscall_stat64(path, buf);
+}
+
+long __syscall_fstat64(long fd, long buf) {
+  auto openFile = wasmFS.getLockedFileTable()[fd];
+
+  if (!openFile) {
+    return -EBADF;
+  }
+  struct stat* buffer = (struct stat*)buf;
+  return doStat(openFile.locked().getFile(), buffer);
 }
 
 __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
