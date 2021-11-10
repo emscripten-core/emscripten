@@ -9,6 +9,7 @@
 #include "file.h"
 #include "file_table.h"
 #include "wasmfs.h"
+#include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <errno.h>
@@ -269,6 +270,12 @@ long __syscall_fstat64(long fd, long buf) {
     1; // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
   buffer->st_mode = lockedFile.mode();
+  // TODO: Add mode for symlinks.
+  if (file->is<Directory>()) {
+    buffer->st_mode |= S_IFDIR;
+  } else if (file->is<DataFile>()) {
+    buffer->st_mode |= S_IFREG;
+  }
   buffer->st_ino = fd;
   // The number of hard links is 1 since they are unsupported.
   buffer->st_nlink = 1;
@@ -297,8 +304,9 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
   }
 
   // TODO: remove assert when all functionality is complete.
-  assert(((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
-                      O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE)) == 0);
+  assert(
+    ((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND | O_RDWR |
+                 O_WRONLY | O_RDONLY | O_LARGEFILE | O_CLOEXEC)) == 0);
 
   auto pathParts = splitPath((char*)pathname);
 
@@ -333,11 +341,14 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
     // If O_DIRECTORY is also specified, still create a regular file:
     // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
     if (flags & O_CREAT) {
+      // Since mode is optional, mode is specified using varargs.
       mode_t mode = 0;
       va_list vl;
       va_start(vl, flags);
       mode = va_arg(vl, int);
       va_end(vl);
+      // Mask all permissions sent via mode.
+      mode &= S_IALLUGO;
       // Create an empty in-memory file.
       auto created = std::make_shared<MemoryFile>(mode);
 
@@ -397,6 +408,10 @@ long __syscall_mkdir(long path, long mode) {
   if (curr) {
     return -EEXIST;
   } else {
+    // Mask rwx permissions for user, group and others, and the sticky bit.
+    // This prevents users from entering S_IFREG for example.
+    // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
+    mode &= S_IRWXUGO | S_ISVTX;
     // Create an empty in-memory directory.
     auto created = std::make_shared<Directory>(mode);
 
@@ -602,5 +617,74 @@ long __syscall_rmdir(long path) {
 
 long __syscall_unlink(long path) {
   return doUnlink((char*)path, UnlinkMode::Unlink);
+}
+long __syscall_getdents64(long fd, long dirp, long count) {
+  auto openFile = wasmFS.getLockedFileTable()[fd];
+
+  if (!openFile) {
+    return -EBADF;
+  }
+  dirent* result = (dirent*)dirp;
+
+  // Check if the result buffer is too small.
+  if (count / sizeof(dirent) == 0) {
+    return -EINVAL;
+  }
+
+  auto file = openFile.locked().getFile();
+
+  auto directory = file->dynCast<Directory>();
+
+  if (!directory) {
+    return -ENOTDIR;
+  }
+
+  // Hold the locked directory to prevent the state from being changed during
+  // the operation.
+  auto lockedDir = directory->locked();
+
+  off_t bytesRead = 0;
+  // A directory's position corresponds to the index in its entries vector.
+  int index = openFile.locked().position();
+
+  // In the root directory, ".." refers to itself.
+  auto dotdot =
+    file == wasmFS.getRootDirectory() ? file : lockedDir.getParent();
+
+  // If the directory is unlinked then the parent pointer should be null.
+  if (!dotdot) {
+    return -ENOENT;
+  }
+
+  // There are always two hardcoded directories "." and ".."
+  std::vector<Directory::Entry> entries = {{".", file}, {"..", dotdot}};
+  auto dirEntries = lockedDir.getEntries();
+  entries.insert(entries.end(), dirEntries.begin(), dirEntries.end());
+
+#ifdef WASMFS_DEBUG
+  for (auto pair : entries) {
+    emscripten_console_log(pair.name.c_str());
+  }
+#endif
+
+  for (; index < entries.size() && bytesRead + sizeof(dirent) <= count;
+       index++) {
+    auto curr = entries[index];
+    result->d_ino = curr.file->getIno();
+    result->d_off = bytesRead + sizeof(dirent);
+    result->d_reclen = sizeof(dirent);
+    result->d_type =
+      curr.file->is<Directory>() ? DT_DIR : DT_REG; // TODO: add symlinks.
+    // TODO: Enforce that the name can fit in the d_name field.
+    assert(curr.name.size() + 1 <= sizeof(result->d_name));
+    strcpy(result->d_name, curr.name.c_str());
+    ++result;
+    bytesRead += sizeof(dirent);
+  }
+
+  // Set the directory's offset position:
+  openFile.locked().position() = index;
+
+  return bytesRead;
 }
 }

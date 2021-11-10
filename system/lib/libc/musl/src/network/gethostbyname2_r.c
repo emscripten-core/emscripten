@@ -34,8 +34,6 @@ int gethostbyname2_r(const char *name, int af,
 	case EAI_SYSTEM:
 		*err = NO_RECOVERY;
 		return errno;
-	case 0:
-		break;
 	}
 
 	h->h_addrtype = af;

@@ -3,16 +3,18 @@ $__ashlti3
 $__emscripten_stdout_close
 $__emscripten_stdout_seek
 $__errno_location
-$__fflush_unlocked
 $__fwritex
+$__get_tp
 $__lock
 $__lockfile
+$__lseek
 $__lshrti3
 $__memcpy
 $__ofl_lock
 $__ofl_unlock
 $__original_main
-$__pthread_self
+$__stdio_close
+$__stdio_seek
 $__stdio_write
 $__syscall_getpid
 $__towrite
@@ -22,6 +24,7 @@ $__unlockfile
 $__vfprintf_internal
 $__wasi_syscall_ret
 $__wasm_call_ctors
+$dummy
 $dynCall_jiji
 $emscripten_stack_get_end
 $emscripten_stack_get_free
@@ -36,6 +39,7 @@ $getint
 $getpid
 $init_pthread_self
 $isdigit
+$legalfunc$__wasi_fd_seek
 $legalstub$dynCall_jiji
 $main
 $memchr
@@ -49,6 +53,7 @@ $printf_core
 $stackAlloc
 $stackRestore
 $stackSave
+$strnlen
 $vfprintf
 $wcrtomb
 $wctomb

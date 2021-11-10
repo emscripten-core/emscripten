@@ -2,14 +2,11 @@
 #include "shgetc.h"
 #include "floatscan.h"
 #include "stdio_impl.h"
-#include "libc.h"
 
 static long double strtox(const char *s, char **p, int prec)
 {
-	FILE f = {
-		.buf = (void *)s, .rpos = (void *)s,
-		.rend = (void *)-1, .lock = -1
-	};
+	FILE f;
+	sh_fromstring(&f, s);
 	shlim(&f, 0);
 	long double y = __floatscan(&f, prec, 1);
 	off_t cnt = shcnt(&f);

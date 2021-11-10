@@ -27,9 +27,11 @@ struct passwd {
 	char *pw_shell;
 };
 
+#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
 void setpwent (void);
 void endpwent (void);
 struct passwd *getpwent (void);
+#endif
 
 struct passwd *getpwuid (uid_t);
 struct passwd *getpwnam (const char *);

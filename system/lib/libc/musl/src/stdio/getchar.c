@@ -1,6 +1,7 @@
 #include <stdio.h>
+#include "getc.h"
 
 int getchar(void)
 {
-	return fgetc(stdin);
+	return do_getc(stdin);
 }

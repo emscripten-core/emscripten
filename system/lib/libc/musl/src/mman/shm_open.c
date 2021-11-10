@@ -6,8 +6,6 @@
 #include <limits.h>
 #include <pthread.h>
 
-char *__strchrnul(const char *, int);
-
 char *__shm_mapname(const char *name, char *buf)
 {
 	char *p;

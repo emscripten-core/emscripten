@@ -22,7 +22,7 @@ int sem_timedwait(sem_t *restrict sem, const struct timespec *restrict at)
 		pthread_cleanup_push(cleanup, (void *)(sem->__val+1));
 		r = __timedwait_cp(sem->__val, -1, CLOCK_REALTIME, at, sem->__val[2]);
 		pthread_cleanup_pop(1);
-		if (r && r != EINTR) {
+		if (r) {
 #ifdef __EMSCRIPTEN__
 			if (r == ECANCELED) r = EINTR;
 #endif

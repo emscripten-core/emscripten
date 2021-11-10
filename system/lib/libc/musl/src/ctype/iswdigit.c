@@ -1,5 +1,4 @@
 #include <wctype.h>
-#include "libc.h"
 
 #undef iswdigit
 

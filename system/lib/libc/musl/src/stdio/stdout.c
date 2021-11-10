@@ -14,8 +14,10 @@ static int __emscripten_stdout_close(FILE *f)
 }
 #endif
 
+#undef stdout
+
 static unsigned char buf[BUFSIZ+UNGET];
-static FILE f = {
+hidden FILE __stdout_FILE = {
 	.buf = buf+UNGET,
 	.buf_size = sizeof buf-UNGET,
 	.fd = 1,
@@ -33,5 +35,5 @@ static FILE f = {
 #endif
 	.lock = -1,
 };
-FILE *const stdout = &f;
-FILE *volatile __stdout_used = &f;
+FILE *const stdout = &__stdout_FILE;
+FILE *volatile __stdout_used = &__stdout_FILE;

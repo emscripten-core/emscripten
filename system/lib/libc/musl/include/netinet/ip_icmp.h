@@ -23,6 +23,7 @@ struct icmphdr {
 			uint16_t __unused;
 			uint16_t mtu;
 		} frag;
+		uint8_t reserved[4];
 	} un;
 };
 

@@ -21,8 +21,24 @@ int main() {
   // Try to make a directory under the root directory.
   errno = 0;
   mkdir("/working", 0777);
+  mkdir("/foobar", 01777);
   printf("Errno: %s\n", strerror(errno));
   assert(errno == 0);
+
+  // Check that the file type is correct on mode (0777 = S_IRWXUGO)
+  int fdStat = open("/working", O_RDONLY | O_DIRECTORY);
+  struct stat directory;
+  fstat(fdStat, &directory);
+  assert((directory.st_mode & S_IFMT) == S_IFDIR);
+  assert(directory.st_mode == (S_IRWXUGO | S_IFDIR));
+  close(fdStat);
+
+  // Check that the file type is correct on mode (01777 = S_ISVTX | S_IRWXUGO)
+  int fdStat2 = open("/foobar", O_RDONLY | O_DIRECTORY);
+  struct stat directory2;
+  fstat(fdStat2, &directory2);
+  assert(directory2.st_mode == (S_IRWXUGO | S_ISVTX | S_IFDIR));
+  close(fdStat2);
 
   // Try to create a file in the same directory.
   int fd = open("/working/test", O_RDWR | O_CREAT, 0777);

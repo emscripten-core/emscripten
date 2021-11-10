@@ -21,12 +21,16 @@ struct sched_param;
 #define POSIX_SPAWN_SETSIGMASK 8
 #define POSIX_SPAWN_SETSCHEDPARAM 16
 #define POSIX_SPAWN_SETSCHEDULER 32
+#define POSIX_SPAWN_USEVFORK 64
+#define POSIX_SPAWN_SETSID 128
 
 typedef struct {
 	int __flags;
 	pid_t __pgrp;
 	sigset_t __def, __mask;
-	int __prio, __pol, __pad[16];
+	int __prio, __pol;
+	void *__fn;
+	char __pad[64-sizeof(void *)];
 } posix_spawnattr_t;
 
 typedef struct {
@@ -66,6 +70,11 @@ int posix_spawn_file_actions_destroy(posix_spawn_file_actions_t *);
 int posix_spawn_file_actions_addopen(posix_spawn_file_actions_t *__restrict, int, const char *__restrict, int, mode_t);
 int posix_spawn_file_actions_addclose(posix_spawn_file_actions_t *, int);
 int posix_spawn_file_actions_adddup2(posix_spawn_file_actions_t *, int, int);
+
+#if defined(_BSD_SOURCE) || defined(_GNU_SOURCE)
+int posix_spawn_file_actions_addchdir_np(posix_spawn_file_actions_t *__restrict, const char *__restrict);
+int posix_spawn_file_actions_addfchdir_np(posix_spawn_file_actions_t *, int);
+#endif
 
 #ifdef __cplusplus
 }
