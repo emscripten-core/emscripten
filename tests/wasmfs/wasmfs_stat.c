@@ -89,7 +89,7 @@ int main() {
   // Check to see if the previous inode number matches.
   int newfd2 = open("/dev", O_RDONLY | O_DIRECTORY);
   struct stat newFile2;
-  assert(newfd >= 0);
+  assert(newfd2 >= 0);
   assert(fstat(newfd, &newFile2) != -1);
 
   assert(dirInode == newFile2.st_ino);
