@@ -146,6 +146,8 @@ int fstatat(int fd, const char *restrict path, struct stat *restrict st, int fla
 		ret = __syscall(SYS_fstat, fd, st);
 	else if ((fd == AT_FDCWD || *path=='/') && !flag)
 		ret = __syscall(SYS_stat, path, st);
+	else if ((fd == AT_FDCWD || *path=='/') && flag==AT_SYMLINK_NOFOLLOW)
+		ret = __syscall(SYS_lstat, path, st);
 	else
 		ret = __syscall(SYS_fstatat, fd, path, st, flag);
 #else
