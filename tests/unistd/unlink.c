@@ -122,6 +122,7 @@ void test() {
   err = unlink("file1-link");
   assert(!err);
 #endif
+// TODO: Remove this when access is implemented.
 #ifndef WASMFS
   err = access("file1", F_OK);
   assert(!err);
