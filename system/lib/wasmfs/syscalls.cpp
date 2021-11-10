@@ -244,9 +244,7 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   return __WASI_ERRNO_SUCCESS;
 }
 
-static long doStat(std::shared_ptr<File> file, long buf) {
-  struct stat* buffer = (struct stat*)buf;
-
+static long doStat(std::shared_ptr<File> file, struct stat* buffer) {
   auto lockedFile = file->locked();
 
   buffer->st_size = lockedFile.getSize();
@@ -305,7 +303,8 @@ long __syscall_stat64(long path, long buf) {
   // of having to first obtain the parent dir.
   auto curr = lockedParentDir.getEntry(base);
   if (curr) {
-    return doStat(curr, buf);
+    struct stat* buffer = (struct stat*)buf;
+    return doStat(curr, buffer);
   } else {
     return -ENOENT;
   }
@@ -323,8 +322,8 @@ long __syscall_fstat64(long fd, long buf) {
   if (!openFile) {
     return -EBADF;
   }
-
-  return doStat(openFile.locked().getFile(), buf);
+  struct stat* buffer = (struct stat*)buf;
+  return doStat(openFile.locked().getFile(), buffer);
 }
 
 __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
