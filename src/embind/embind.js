@@ -569,21 +569,34 @@ var LibraryEmbind = {
     }
 
     var isUnsignedType = (name.includes('unsigned'));
-
+    var checkAssertions = function(value) {
+#if ASSERTIONS
+        if (typeof value !== "number" && typeof value !== "boolean") {
+            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+        }
+        if (value < minRange || value > maxRange) {
+            throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+        }
+#endif
+    }
+    var toWireType;
+    if (isUnsignedType) {
+        toWireType = function(destructors, value) {
+            checkAssertions(value);
+            return (value >>> 0);
+        }
+    } else {
+        toWireType = function(destructors, value) {
+            checkAssertions(value);
+            // The VM will perform JS to Wasm value conversion, according to the spec:
+            // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
+            return value;
+        }
+    }
     registerType(primitiveType, {
         name: name,
         'fromWireType': fromWireType,
-        'toWireType': function(destructors, value) {
-            // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
-            // avoid the following two if()s and assume value is of proper type.
-            if (typeof value !== "number" && typeof value !== "boolean") {
-                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
-            }
-            if (value < minRange || value > maxRange) {
-                throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
-            }
-            return isUnsignedType ? (value >>> 0) : (value | 0);
-        },
+        'toWireType': toWireType,
         'argPackAdvance': 8,
         'readValueFromPointer': integerReadValueFromPointer(name, shift, minRange !== 0),
         destructorFunction: null, // This type does not need a destructor
@@ -599,26 +612,31 @@ var LibraryEmbind = {
     var shift = getShiftFromSize(size);
 
     var isUnsignedType = (name.indexOf('u') != -1);
+    var checkAssertions = function(value) {
+#if ASSERTIONS
+        if (typeof value !== "bigint") {
+            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+        }
+        if (value < minRange || value > maxRange) {
+            throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+        }
+#endif
+    }
 
     // maxRange comes through as -1 for uint64_t (see issue 13902). Work around that temporarily
     if (isUnsignedType) {
-      // Use string because acorn does recognize bigint literals
-      maxRange = (BigInt(1) << BigInt(64)) - BigInt(1);
+        // Use string because acorn does recognize bigint literals
+        maxRange = (BigInt(1) << BigInt(64)) - BigInt(1);
     }
 
     registerType(primitiveType, {
         name: name,
         'fromWireType': function (value) {
-          return value;
+            return value;
         },
         'toWireType': function (destructors, value) {
-          if (typeof value !== "bigint") {
-            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
-          }
-          if (value < minRange || value > maxRange) {
-            throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
-          }
-          return value;
+            checkAssertions(value);
+            return value;
         },
         'argPackAdvance': 8,
         'readValueFromPointer': integerReadValueFromPointer(name, shift, !isUnsignedType),
@@ -639,7 +657,7 @@ var LibraryEmbind = {
     registerType(rawType, {
         name: name,
         'fromWireType': function(value) {
-            return value;
+             return value;
         },
         'toWireType': function(destructors, value) {
             // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
