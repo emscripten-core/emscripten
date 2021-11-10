@@ -12,8 +12,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
@@ -102,18 +102,25 @@ void test() {
   assert(!err);
   err = rename("dir/file1", "dir/file2");
   assert(!err);
+  // TODO: Remove when WASMFS implements the access syscall.
+#ifndef WASMFS
   err = access("dir/file2", F_OK);
+#endif
   assert(!err);
   err = rename("dir/subdir", "dir/subdir1");
   assert(!err);
   err = rename("dir/subdir1", "dir/subdir2");
   assert(!err);
+#ifndef WASMFS
   err = access("dir/subdir2", F_OK);
+#endif
   assert(!err);
 
   err = rename("dir/subdir2", "dir/subdir3/subdir3_1/subdir1 renamed");
   assert(!err);
+#ifndef WASMFS
   err = access("dir/subdir3/subdir3_1/subdir1 renamed", F_OK);
+#endif
   assert(!err);
 
   // test that non-existant parent during rename generates the correct error code
@@ -123,6 +130,37 @@ void test() {
   
   err = rename("dir/subdir4/", "dir/subdir5/");
   assert(!err);
+
+  // Test renaming the same directory
+  // In Linux this does nothing, but in the JS file system it reports ENOENT.
+  err = rename("dir/file", "dir/file");
+#ifdef WASMFS
+  assert(!err);
+#else
+  assert(err == -1);
+  assert(errno == ENOENT);
+#endif
+
+  // In Linux, renaming the root directory should return EBUSY.
+  // In the JS file system it reports EINVAL.
+  err = rename("/", "dir/file");
+  assert(err == -1);
+#ifdef WASMFS
+  assert(errno == EBUSY);
+#else
+  assert(errno == EINVAL);
+#endif
+
+  // Test renaming the current working directory while still root.
+  char buffer[100];
+  getcwd(buffer, sizeof(buffer));
+  err = rename(buffer, "dir/file");
+  assert(err == -1);
+#ifdef WASMFS
+  assert(errno == EBUSY);
+#else
+  assert(errno == EINVAL);
+#endif
 
   puts("success");
 }

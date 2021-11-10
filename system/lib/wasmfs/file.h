@@ -58,13 +58,16 @@ public:
   }
 
   class Handle {
-    std::unique_lock<std::mutex> lock;
 
   protected:
+    std::unique_lock<std::recursive_mutex> lock;
     std::shared_ptr<File> file;
 
   public:
     Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
+    Handle(std::shared_ptr<File> file, std::defer_lock_t)
+      : file(file), lock(file->mutex, std::defer_lock) {}
+    bool trylock() { return lock.try_lock(); }
     size_t getSize() { return file->getSize(); }
     mode_t& mode() { return file->mode; }
     time_t& ctime() { return file->ctime; }
@@ -79,10 +82,19 @@ public:
 
   Handle locked() { return Handle(shared_from_this()); }
 
+  std::optional<Handle> maybeLocked() {
+    auto handle = Handle(shared_from_this(), std::defer_lock);
+    if (handle.trylock()) {
+      return Handle(shared_from_this());
+    } else {
+      return std::nullopt;
+    }
+  }
+
 protected:
   File(FileKind kind, mode_t mode) : kind(kind), mode(mode) {}
   // A mutex is needed for multiple accesses to the same file.
-  std::mutex mutex;
+  std::recursive_mutex mutex;
 
   virtual size_t getSize() = 0;
 
@@ -154,6 +166,8 @@ public:
 
   public:
     Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
+    Handle(std::shared_ptr<File> directory, std::defer_lock_t)
+      : File::Handle(directory, std::defer_lock) {}
 
     std::shared_ptr<File> getEntry(std::string pathName);
 
@@ -212,6 +226,15 @@ public:
   };
 
   Handle locked() { return Handle(shared_from_this()); }
+
+  std::optional<Handle> maybeLocked() {
+    auto handle = Handle(shared_from_this(), std::defer_lock);
+    if (handle.trylock()) {
+      return Handle(shared_from_this());
+    } else {
+      return std::nullopt;
+    }
+  }
 };
 
 // This class describes a file that lives in Wasm Memory.
@@ -243,7 +266,8 @@ public:
 // Will return a nullptr if the parent is not a directory.
 std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
                                   std::vector<std::string>::iterator end,
-                                  long& err);
+                                  long& err,
+                                  std::shared_ptr<File> ancestor = nullptr);
 
 // Return a vector of the '/'-delimited components of a path. The first element
 // will be "/" iff the path is an absolute path.

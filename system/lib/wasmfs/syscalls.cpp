@@ -719,4 +719,152 @@ long __syscall_getdents64(long fd, long dirp, long count) {
 
   return bytesRead;
 }
+
+long __syscall_rename(long old_path, long new_path) {
+  // This syscall must acquire locks on the old_path parent and new_parent for atomicity.
+  // 1. Obtain the old path parent first and lock it.
+  // 2. Obtain the old path child.
+  // 3. Try lock the new path parent. Operation should return EBUSY if it is
+  // locked. In the case where the old path parent and new path parent are the
+  // same, a recursive lock should allow it to be locked again from the same
+  // thread.
+  // Renaming a file:
+  // 4. a) If the old path child is a file, ensure the new path child is not a
+  // directory.
+  // 4. b) If the new path child does not exist, add the old path child to the
+  // new path parent.
+  // 4. c) If the new path child does exist, unlink the new path child and add
+  // the old path child. Renaming a directory:
+  // 5. a) If the old path child is a directory, ensure the new path child is
+  // not a file.
+  // 5. b) If the new path child does not exist, do the same as 4b.
+  // 5. c) If the new path child does exist, ensure the newpath child is empty
+  // and then do 4c.
+
+  // If old_path and new_path are the same, do nothing.
+  if (strcmp((char*)old_path, (char*)new_path) == 0) {
+    return 0;
+  }
+
+  auto oldPathParts = splitPath((char*)old_path);
+
+  if (oldPathParts.empty()) {
+    return -EINVAL;
+  }
+
+  // On Linux, renaming the root directory returns EBUSY.
+  // TODO: Fix this when path parsing is refactored.
+  if (oldPathParts.size() == 1 && oldPathParts[0] == "/") {
+    return -EBUSY;
+  }
+
+  auto oldBase = oldPathParts.back();
+
+  long err;
+  auto oldParentDir = getDir(oldPathParts.begin(), oldPathParts.end() - 1, err);
+
+  if (!oldParentDir) {
+    return err;
+  }
+
+  // For this operation to be atomic we must lock the source parent directory.
+  auto lockedOldParentDir = oldParentDir->locked();
+
+  auto oldPath = lockedOldParentDir.getEntry(oldBase);
+
+  // Check if the old_path exists.
+  if (!oldPath) {
+    return -ENOENT;
+  }
+
+  // Obtain the new directory to see if it exists
+  auto newPathParts = splitPath((char*)new_path);
+
+  if (newPathParts.empty()) {
+    return -EINVAL;
+  }
+
+  auto newBase = newPathParts.back();
+
+  auto newParentDir =
+    getDir(newPathParts.begin(), newPathParts.end() - 1, err, oldPath);
+
+  // If the destination parent directory doesn't exist, the source file cannot
+  // be moved.
+  if (!newParentDir) {
+    return err;
+  }
+
+  // Edge case: a/b -> a/c share the same parent. Trylocking the same parent
+  // with a recursive mutex should work.
+  auto maybeLockedNewParentDir = newParentDir->maybeLocked();
+  if (!maybeLockedNewParentDir) {
+    return -EBUSY;
+  }
+
+  auto lockedNewParentDir = std::move(maybeLockedNewParentDir.value());
+
+  // Cannot move to a destination parent directory wihout write permissions.
+  if (!(lockedNewParentDir.mode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
+  auto oldFile = oldPath->dynCast<DataFile>();
+  if (oldFile) {
+    // Unlink the oldpath, but still hold the shared_ptr to oldFile.
+    lockedOldParentDir.unlinkEntry(oldBase);
+
+    auto newPath = lockedNewParentDir.getEntry(newBase);
+
+    // Check if the new path child already exists.
+    if (newPath) {
+      // Cannot overwrite a file with a directory
+      if (newPath->is<Directory>()) {
+        // Reset the old entry
+        lockedNewParentDir.setEntry(oldBase, oldFile);
+        return -EISDIR;
+      }
+      lockedNewParentDir.unlinkEntry(newBase);
+    }
+
+    lockedNewParentDir.setEntry(newBase, oldFile);
+  }
+
+  auto oldDirectory = oldPath->dynCast<Directory>();
+  if (oldDirectory) {
+
+    // Unlink the oldpath, but still hold the shared_ptr to oldFile.
+    lockedOldParentDir.unlinkEntry(oldBase);
+
+    auto newPath = lockedNewParentDir.getEntry(newBase);
+
+    // Check if the new path child already exists.
+    if (newPath) {
+      auto newPathDirectory = newPath->dynCast<Directory>();
+      
+      // Cannot overwrite a directory with a file.
+      if (!newPathDirectory) {
+        // Reset the old entry
+        lockedOldParentDir.setEntry(oldBase, oldDirectory);
+        return -ENOTDIR;
+      }
+
+      // This should also cover the case in which
+      // destination is ancestor of source.
+      // err = rename("dir/subdir", "dir");
+      auto lockedNewPathDirectory = newPathDirectory->locked();
+      if (lockedNewPathDirectory.getNumEntries() > 0) {
+        // Reset the old entry
+        lockedOldParentDir.setEntry(oldBase, oldDirectory);
+        return -ENOTEMPTY;
+      }
+
+      lockedNewParentDir.unlinkEntry(newBase);
+    }
+
+    lockedNewParentDir.setEntry(newBase, oldDirectory);
+  }
+
+  return 0;
+}
 }

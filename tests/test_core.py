@@ -180,6 +180,7 @@ def also_with_wasmfs(func):
     if self.get_setting('STANDALONE_WASM'):
       self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
     self.set_setting('WASMFS')
+    self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
     func(self)
   return decorated
 
@@ -1606,6 +1607,7 @@ int main() {
   def test_alloca(self):
     self.do_core_test('test_alloca.c')
 
+  @also_with_wasmfs
   def test_rename(self):
     self.do_run_in_out_file_test('stdio/test_rename.c')
 
