@@ -5,7 +5,7 @@ var WasmfsLibrary = {
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
-      Browser.init(); 
+        Browser.init(); 
         var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
         var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
         function processData(byteArray) {
