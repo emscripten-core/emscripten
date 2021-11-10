@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <limits.h>
-#include "libc.h"
-#include "atomic.h"
 
 static char *current_domain;
 

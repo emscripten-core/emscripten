@@ -1,4 +1,4 @@
-#include "libm.h"
+#include "complex_impl.h"
 
 // FIXME
 
@@ -12,5 +12,6 @@ double complex casin(double complex z)
 	x = creal(z);
 	y = cimag(z);
 	w = CMPLX(1.0 - (x - y)*(x + y), -2.0*x*y);
-	return clog(CMPLX(-y, x) + csqrt(w));
+	double complex r = clog(CMPLX(-y, x) + csqrt(w));
+	return CMPLX(cimag(r), -creal(r));
 }

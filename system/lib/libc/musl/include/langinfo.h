@@ -77,6 +77,12 @@ extern "C" {
 #define YESEXPR 0x50000
 #define NOEXPR 0x50001
 
+#define _NL_LOCALE_NAME(cat) (((cat)<<16) | 0xffff)
+
+#if defined(_GNU_SOURCE)
+#define NL_LOCALE_NAME(cat) _NL_LOCALE_NAME(cat)
+#endif
+
 #if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
 #define YESSTR 0x50002
 #define NOSTR 0x50003

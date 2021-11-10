@@ -1,6 +1,5 @@
 #include <threads.h>
-
-int __pthread_key_delete(tss_t k);
+#include <pthread.h>
 
 void tss_delete(tss_t key)
 {

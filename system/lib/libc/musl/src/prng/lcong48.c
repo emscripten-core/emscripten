@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
-
-extern unsigned short __seed48[7];
+#include "rand48.h"
 
 void lcong48(unsigned short p[7])
 {

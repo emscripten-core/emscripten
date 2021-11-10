@@ -16,5 +16,5 @@ int main() {
 
   is >> one >> two >> three;
 
-  printf("%i %i %i", one, two, three);
+  printf("%i %i %i\n", one, two, three);
 }

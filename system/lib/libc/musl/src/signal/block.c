@@ -30,15 +30,21 @@ static const unsigned long app_mask[] = {
 
 void __block_all_sigs(void *set)
 {
+#ifndef __EMSCRIPTEN__
 	__syscall(SYS_rt_sigprocmask, SIG_BLOCK, &all_mask, set, _NSIG/8);
+#endif
 }
 
 void __block_app_sigs(void *set)
 {
+#ifndef __EMSCRIPTEN__
 	__syscall(SYS_rt_sigprocmask, SIG_BLOCK, &app_mask, set, _NSIG/8);
+#endif
 }
 
 void __restore_sigs(void *set)
 {
+#ifndef __EMSCRIPTEN__
 	__syscall(SYS_rt_sigprocmask, SIG_SETMASK, set, 0, _NSIG/8);
+#endif
 }

@@ -10,9 +10,6 @@ extern "C" {
 
 int gettimeofday (struct timeval *__restrict, void *__restrict);
 
-#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
- || defined(_BSD_SOURCE)
-
 #define ITIMER_REAL    0
 #define ITIMER_VIRTUAL 1
 #define ITIMER_PROF    2
@@ -25,8 +22,6 @@ struct itimerval {
 int getitimer (int, struct itimerval *);
 int setitimer (int, const struct itimerval *__restrict, struct itimerval *__restrict);
 int utimes (const char *, const struct timeval [2]);
-
-#endif
 
 #if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
 struct timezone {
@@ -59,6 +54,20 @@ int adjtime (const struct timeval *, struct timeval *);
 	(tv)->tv_sec = (ts)->tv_sec, \
 	(tv)->tv_usec = (ts)->tv_nsec / 1000, \
 	(void)0 )
+#endif
+
+#if _REDIR_TIME64
+__REDIR(gettimeofday, __gettimeofday_time64);
+__REDIR(getitimer, __getitimer_time64);
+__REDIR(setitimer, __setitimer_time64);
+__REDIR(utimes, __utimes_time64);
+#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+__REDIR(futimes, __futimes_time64);
+__REDIR(futimesat, __futimesat_time64);
+__REDIR(lutimes, __lutimes_time64);
+__REDIR(settimeofday, __settimeofday_time64);
+__REDIR(adjtime, __adjtime64);
+#endif
 #endif
 
 #ifdef __cplusplus

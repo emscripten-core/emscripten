@@ -594,9 +594,9 @@ LibraryManager.library = {
   __localtime_r: 'localtime_r',
 
   // musl-internal function used to implement both `asctime` and `asctime_r`
-  __asctime__deps: ['mktime'],
-  __asctime__sig: 'iii',
-  __asctime: function(tmPtr, buf) {
+  __asctime_r__deps: ['mktime'],
+  __asctime_r__sig: 'iii',
+  __asctime_r: function(tmPtr, buf) {
     var date = {
       tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
       tm_min: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
@@ -632,11 +632,11 @@ LibraryManager.library = {
     return ret;
   },
 
-  ctime_r__deps: ['localtime_r', '__asctime', '$withStackSave'],
+  ctime_r__deps: ['localtime_r', '__asctime_r', '$withStackSave'],
   ctime_r__sig: 'iii',
   ctime_r: function(time, buf) {
     return withStackSave(function() {
-      return ___asctime(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
+      return ___asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
     });
   },
 

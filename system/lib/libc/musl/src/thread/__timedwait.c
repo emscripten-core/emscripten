@@ -12,8 +12,31 @@
 #include "syscall.h"
 #include "pthread_impl.h"
 
-int __pthread_setcancelstate(int, int *);
-int __clock_gettime(clockid_t, struct timespec *);
+#ifndef __EMSCRIPTEN__
+#define IS32BIT(x) !((x)+0x80000000ULL>>32)
+#define CLAMP(x) (int)(IS32BIT(x) ? (x) : 0x7fffffffU+((0ULL+(x))>>63))
+
+static int __futex4_cp(volatile void *addr, int op, int val, const struct timespec *to)
+{
+	int r;
+#ifdef SYS_futex_time64
+	time_t s = to ? to->tv_sec : 0;
+	long ns = to ? to->tv_nsec : 0;
+	r = -ENOSYS;
+	if (SYS_futex == SYS_futex_time64 || !IS32BIT(s))
+		r = __syscall_cp(SYS_futex_time64, addr, op, val,
+			to ? ((long long[]){s, ns}) : 0);
+	if (SYS_futex == SYS_futex_time64 || r!=-ENOSYS) return r;
+	to = to ? (void *)(long[]){CLAMP(s), ns} : 0;
+#endif
+	r = __syscall_cp(SYS_futex, addr, op, val, to);
+	if (r != -ENOSYS) return r;
+	return __syscall_cp(SYS_futex, addr, op & ~FUTEX_PRIVATE, val, to);
+}
+#endif
+
+static volatile int dummy = 0;
+weak_alias(dummy, __eintr_valid_flag);
 
 #ifdef __EMSCRIPTEN__
 int _pthread_isduecanceled(struct pthread *pthread_ptr);
@@ -25,7 +48,7 @@ int __timedwait_cp(volatile int *addr, int val,
 	int r;
 	struct timespec to, *top=0;
 
-	if (priv) priv = 128;
+	if (priv) priv = FUTEX_PRIVATE;
 
 	if (at) {
 		if (at->tv_nsec >= 1000000000UL) return EINVAL;
@@ -73,10 +96,14 @@ int __timedwait_cp(volatile int *addr, int val,
 		r = -emscripten_futex_wait((void*)addr, val, msecsToSleep);
 	}
 #else
-	r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT|priv, val, top);
-	if (r == ENOSYS) r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT, val, top);
+	r = -__futex4_cp(addr, FUTEX_WAIT|priv, val, top);
 #endif
 	if (r != EINTR && r != ETIMEDOUT && r != ECANCELED) r = 0;
+	/* Mitigate bug in old kernels wrongly reporting EINTR for non-
+	 * interrupting (SA_RESTART) signal handlers. This is only practical
+	 * when NO interrupting signal handlers have been installed, and
+	 * works by sigaction tracking whether that's the case. */
+	if (r == EINTR && !__eintr_valid_flag) r = 0;
 
 	return r;
 }
