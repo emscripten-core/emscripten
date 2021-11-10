@@ -39,17 +39,10 @@ void* emscripten_wasmfs_read_file(char* path) {
     abort();
   }
 
-  // file.st_size could exceed uint32_t in wasm64.
-  if (file.st_size > std::numeric_limits<uint32_t>::max()) {
-    emscripten_console_error(
-      "Fatal error in FS.readFile: file size has exceeded uint32_t");
-    abort();
-  }
-
-  // Result will return the a pointer to a buffer with the file length in the
-  // first 4 bytes. The remaining bytes will contain the buffer contents. This
-  // allows the caller to use HEAPU8.subarray(buf + 4, buf + 4 + length).
-  uint32_t size = file.st_size;
+  // The function will return a pointer to a buffer with the file length in the
+  // first 8 bytes. The remaining bytes will contain the buffer contents. This
+  // allows the caller to use HEAPU8.subarray(buf + 8, buf + 8 + length).
+  off_t size = file.st_size;
   uint8_t* result = (uint8_t*)malloc((size + sizeof(size)));
   *(uint32_t*)result = size;
 
