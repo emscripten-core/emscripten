@@ -116,7 +116,7 @@ def parse_wasm(filename):
   return imports, exports, funcs
 
 
-def with_wasmfs(f):
+def also_with_wasmfs(f):
   def metafunc(self, wasmfs):
     if wasmfs:
       self.set_setting('WASMFS')
@@ -4868,10 +4868,10 @@ int main() {
 #include <stdio.h>
 #include <wctype.h>
 
-int main(const int argc, const char * const * const argv) {
-  const char * const locale = (argc > 1 ? argv[1] : "C");
-  const char * const actual = setlocale(LC_ALL, locale);
-  if(actual == NULL) {
+int main(int argc, char **argv) {
+  const char *locale = (argc > 1 ? argv[1] : "C");
+  const char *actual = setlocale(LC_ALL, locale);
+  if (actual == NULL) {
     printf("%s locale not supported\n", locale);
     return 0;
   }
@@ -4880,9 +4880,9 @@ int main(const int argc, const char * const * const argv) {
 ''')
     self.run_process([EMXX, 'src.cpp'])
 
-    self.assertContained('locale set to C: C;C;C;C;C;C',
+    self.assertContained('locale set to C: C',
                          self.run_js('a.out.js', args=['C']))
-    self.assertContained('locale set to waka: waka;waka;waka;waka;waka;waka',
+    self.assertContained('locale set to waka: waka',
                          self.run_js('a.out.js', args=['waka']))
 
   def test_browser_language_detection(self):
@@ -9209,7 +9209,7 @@ int main () {
     print(f'int:{i} float:{f} double:{lf}: both{both}')
 
     # iprintf is much smaller than printf with float support
-    self.assertGreater(i, f - 3400)
+    self.assertGreater(i, f - 3500)
     self.assertLess(i, f - 3000)
     # __small_printf is somewhat smaller than printf with long double support
     self.assertGreater(f, lf - 900)
@@ -9335,7 +9335,10 @@ int main(void) {
     # DEFAULT_PTHREAD_STACK_SIZE.
     self.do_smart_test(test_file('other/test_proxy_to_pthread_stack.c'),
                        ['success'],
-                       emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'DEFAULT_PTHREAD_STACK_SIZE=64kb', '-s', 'TOTAL_STACK=128kb', '-s', 'EXIT_RUNTIME'])
+                       emcc_args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD',
+                                  '-sDEFAULT_PTHREAD_STACK_SIZE=64kb',
+                                  '-sTOTAL_STACK=128kb', '-sEXIT_RUNTIME',
+                                  '--profiling-funcs'])
 
   @parameterized({
     'async': ['-s', 'WASM_ASYNC_COMPILATION'],
@@ -10737,21 +10740,6 @@ exec "$@"
     self.run_process(building.get_command_with_possible_response_file([EMCC, 'main.c'] + files))
     self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
 
-  # Tests that the filename suffix of the response files can be used to detect which encoding the file is.
-  def test_response_file_encoding(self):
-    open('äö.c', 'w').write('int main(){}')
-
-    open('a.rsp', 'w', encoding='utf-8').write('äö.c') # Write a response file with unicode contents ...
-    self.run_process([EMCC, '@a.rsp']) # ... and test that in the absence of a file suffix, it is autodetected to utf-8.
-
-    open('a.rsp.cp437', 'w', encoding='cp437').write('äö.c') # Write a response file with Windows CP-437 encoding ...
-    self.run_process([EMCC, '@a.rsp.cp437']) # ... and test that with the explicit suffix present, it is properly decoded
-
-    if WINDOWS:
-      # This test assumes that the default system encoding is CP-1252.
-      open('a.rsp', 'w', encoding='cp1252').write('äö.c') # Write a response file with Windows CP-1252 encoding ...
-      self.run_process([EMCC, '@a.rsp']) # ... and test that it is properly autodetected.
-
   def test_output_name_collision(self):
     # Ensure that the seconday filenames never collide with the primary output filename
     # In this case we explcitly ask for JS to be ceated in a file with the `.wasm` suffix.
@@ -11158,33 +11146,43 @@ void foo() {}
 
   # WASMFS tests
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_dup(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_dup.c')
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_open(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_open.c')
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_fstat(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_fstat.c')
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_create(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_create.c')
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_seek(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_seek.c')
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_mkdir(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_mkdir.c')
+
+  @also_with_wasmfs
+  def test_unistd_cwd(self):
+    self.do_run_in_out_file_test('wasmfs/wasmfs_chdir.c')
+
+  def test_wasmfs_getdents(self):
+    # TODO: update this test when /dev has been filled out.
+    # Run only in WASMFS for now.
+    self.set_setting('WASMFS')
+    self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
 
   @disabled('Running with initial >2GB heaps is not currently supported on the CI version of Node')
   def test_hello_world_above_2gb(self):

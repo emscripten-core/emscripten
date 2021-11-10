@@ -18,8 +18,8 @@
 
 namespace wasmfs {
 
-class Directory;
-class DataFile;
+// Note: The general locking strategy for all Files is to only hold 1 lock at a
+// time to prevent deadlock. This methodology can be seen in getDirs().
 
 class File : public std::enable_shared_from_this<File> {
 
@@ -49,6 +49,14 @@ public:
     return std::static_pointer_cast<T>(shared_from_this());
   }
 
+  ino_t getIno() {
+    // Set inode number to the file pointer. This gives a unique inode number.
+    // TODO: For security it would be better to use an indirect mapping.
+    // Ensure that the pointer will not overflow an ino_t.
+    static_assert(sizeof(this) <= sizeof(ino_t));
+    return (ino_t)this;
+  }
+
   class Handle {
     std::unique_lock<std::mutex> lock;
 
@@ -62,6 +70,11 @@ public:
     time_t& ctime() { return file->ctime; }
     time_t& mtime() { return file->mtime; }
     time_t& atime() { return file->atime; }
+
+    // Note: parent.lock() creates a new shared_ptr to the same Directory
+    // specified by the parent weak_ptr.
+    std::shared_ptr<File> getParent() { return file->parent.lock(); }
+    void setParent(std::shared_ptr<File> parent) { file->parent = parent; }
   };
 
   Handle locked() { return Handle(shared_from_this()); }
@@ -80,6 +93,13 @@ protected:
   time_t atime = 0; // Time when the content was last accessed.
 
   FileKind kind;
+
+  // Reference to parent of current file node. This can be used to
+  // traverse up the directory tree. A weak_ptr ensures that the ref
+  // count is not incremented. This also ensures that there are no cyclic
+  // dependencies where the parent and child have shared_ptrs that reference
+  // each other. This prevents the case in which an uncollectable cycle occurs.
+  std::weak_ptr<File> parent;
 };
 
 class DataFile : public File {
@@ -124,6 +144,11 @@ public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
   Directory(mode_t mode) : File(File::DirectoryKind, mode) {}
 
+  struct Entry {
+    std::string name;
+    std::shared_ptr<File> file;
+  };
+
   class Handle : public File::Handle {
     std::shared_ptr<Directory> getDir() { return file->cast<Directory>(); }
 
@@ -133,14 +158,43 @@ public:
     std::shared_ptr<File> getEntry(std::string pathName);
 
     void setEntry(std::string pathName, std::shared_ptr<File> inserted) {
+      // Hold the lock over both functions to cover the case in which two
+      // directories attempt to add the file.
+      auto lockedInserted = inserted->locked();
       getDir()->entries[pathName] = inserted;
+      // Simultaneously, set the parent of the inserted node to be this Dir.
+      // inserted must be locked because we have to go through Handle.
+      // TODO: When rename is implemented, ensure that the source directory has
+      // been removed as a parent.
+      // https://github.com/emscripten-core/emscripten/pull/15410#discussion_r742171264
+      assert(!lockedInserted.getParent());
+      lockedInserted.setParent(file);
+    }
+
+    // Used to obtain name of child File in the directory entries vector.
+    std::string getName(std::shared_ptr<File> target) {
+      for (const auto& [key, value] : getDir()->entries) {
+        if (value == target) {
+          return key;
+        }
+      }
+
+      return "";
+    }
+
+    // Return a vector of the key-value pairs in entries.
+    std::vector<Directory::Entry> getEntries() {
+      std::vector<Directory::Entry> entries;
+      for (const auto& [key, value] : getDir()->entries) {
+        entries.push_back({key, value});
+      }
+      return entries;
     }
 
 #ifdef WASMFS_DEBUG
     void printKeys() {
       for (auto keyPair : getDir()->entries) {
-        std::vector<char> temp(keyPair.first.begin(), keyPair.first.end());
-        emscripten_console_log(&temp[0]);
+        emscripten_console_log(keyPair.first.c_str());
       }
     }
 #endif
@@ -160,6 +214,18 @@ class MemoryFile : public DataFile {
 
 public:
   MemoryFile(mode_t mode) : DataFile(mode) {}
+
+  class Handle : public DataFile::Handle {
+
+    std::shared_ptr<MemoryFile> getFile() { return file->cast<MemoryFile>(); }
+
+  public:
+    Handle(std::shared_ptr<File> dataFile) : DataFile::Handle(dataFile) {}
+    // This function copies preloaded files from JS Memory to Wasm Memory.
+    void preloadFromJS(int index);
+  };
+
+  Handle locked() { return Handle(shared_from_this()); }
 };
 
 // Obtains parent directory of a given pathname.

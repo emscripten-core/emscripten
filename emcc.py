@@ -851,8 +851,14 @@ def get_cflags(user_args):
   if settings.INLINING_LIMIT:
     cflags.append('-fno-inline-functions')
 
-  if settings.RELOCATABLE:
+  if settings.RELOCATABLE and '-fPIC' not in user_args:
     cflags.append('-fPIC')
+
+  # We use default visiibilty=default in emscripten even though the upstream
+  # backend defaults visibility=hidden.  This matched the expectations of C/C++
+  # code in the wild which expects undecorated symbols to be exported to other
+  # DSO's by default.
+  if not any(a.startswith('-fvisibility') for a in user_args):
     cflags.append('-fvisibility=default')
 
   if settings.LTO:
@@ -1824,7 +1830,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     state.forced_stdlibs.append('libwasmfs')
     settings.FILESYSTEM = 0
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
-    # settings.JS_LIBRARIES.append((0, 'library_wasmfs.js')) TODO: populate with library_wasmfs.js later
+    settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
 
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
   if not settings.USES_DYNAMIC_ALLOC:
@@ -1862,9 +1868,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.SIDE_MODULE:
     default_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
     default_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
-  else:
-    settings.EXPORT_IF_DEFINED.append('__start_em_asm')
-    settings.EXPORT_IF_DEFINED.append('__stop_em_asm')
+
+  settings.EXPORT_IF_DEFINED.append('__start_em_asm')
+  settings.EXPORT_IF_DEFINED.append('__stop_em_asm')
 
   if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
     if settings.NODERAWFS:

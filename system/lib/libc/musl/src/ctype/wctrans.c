@@ -1,6 +1,5 @@
 #include <wctype.h>
 #include <string.h>
-#include "libc.h"
 
 wctrans_t wctrans(const char *class)
 {

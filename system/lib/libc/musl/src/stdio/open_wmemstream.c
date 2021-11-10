@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <limits.h>
 #include <string.h>
+#include <stdlib.h>
+#include "libc.h"
 
 struct cookie {
 	wchar_t **bufp;
@@ -12,6 +14,12 @@ struct cookie {
 	size_t len;
 	size_t space;
 	mbstate_t mbs;
+};
+
+struct wms_FILE {
+	FILE f;
+	struct cookie c;
+	unsigned char buf[1];
 };
 
 static off_t wms_seek(FILE *f, off_t off, int whence)
@@ -59,34 +67,36 @@ static int wms_close(FILE *f)
 
 FILE *open_wmemstream(wchar_t **bufp, size_t *sizep)
 {
-	FILE *f;
-	struct cookie *c;
+	struct wms_FILE *f;
 	wchar_t *buf;
 
-	if (!(f=malloc(sizeof *f + sizeof *c))) return 0;
+	if (!(f=malloc(sizeof *f))) return 0;
 	if (!(buf=malloc(sizeof *buf))) {
 		free(f);
 		return 0;
 	}
-	memset(f, 0, sizeof *f + sizeof *c);
-	f->cookie = c = (void *)(f+1);
+	memset(&f->f, 0, sizeof f->f);
+	memset(&f->c, 0, sizeof f->c);
+	f->f.cookie = &f->c;
 
-	c->bufp = bufp;
-	c->sizep = sizep;
-	c->pos = c->len = c->space = *sizep = 0;
-	c->buf = *bufp = buf;
+	f->c.bufp = bufp;
+	f->c.sizep = sizep;
+	f->c.pos = f->c.len = f->c.space = *sizep = 0;
+	f->c.buf = *bufp = buf;
 	*buf = 0;
 
-	f->flags = F_NORD;
-	f->fd = -1;
-	f->buf = (void *)(c+1);
-	f->buf_size = 0;
-	f->lbf = EOF;
-	f->write = wms_write;
-	f->seek = wms_seek;
-	f->close = wms_close;
+	f->f.flags = F_NORD;
+	f->f.fd = -1;
+	f->f.buf = f->buf;
+	f->f.buf_size = 0;
+	f->f.lbf = EOF;
+	f->f.write = wms_write;
+	f->f.seek = wms_seek;
+	f->f.close = wms_close;
 
-	if (!libc.threaded) f->lock = -1;
+	if (!libc.threaded) f->f.lock = -1;
 
-	return __ofl_add(f);
+	fwide(&f->f, 1);
+
+	return __ofl_add(&f->f);
 }

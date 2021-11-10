@@ -27,7 +27,7 @@ extern "C" {
 #define MATH_ERREXCEPT 2
 #define math_errhandling 2
 
-#define FP_ILOGBNAN (-1-(int)(((unsigned)-1)>>1))
+#define FP_ILOGBNAN (-1-0x7fffffff)
 #define FP_ILOGB0 FP_ILOGBNAN
 
 #define FP_NAN       0
@@ -35,6 +35,18 @@ extern "C" {
 #define FP_ZERO      2
 #define FP_SUBNORMAL 3
 #define FP_NORMAL    4
+
+#ifdef __FP_FAST_FMA
+#define FP_FAST_FMA 1
+#endif
+
+#ifdef __FP_FAST_FMAF
+#define FP_FAST_FMAF 1
+#endif
+
+#ifdef __FP_FAST_FMAL
+#define FP_FAST_FMAL 1
+#endif
 
 int __fpclassify(double);
 int __fpclassifyf(float);

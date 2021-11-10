@@ -1,8 +1,6 @@
 #include <time.h>
 #include <stdint.h>
 
-int __clock_gettime(clockid_t, struct timespec *);
-
 /* This assumes that a check for the
    template size has already been made */
 char *__randname(char *template)

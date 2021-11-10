@@ -24,8 +24,8 @@ struct ifaddrs {
 #define ifa_broadaddr ifa_ifu.ifu_broadaddr
 #define ifa_dstaddr ifa_ifu.ifu_dstaddr
 
-void freeifaddrs(struct ifaddrs *ifp);
-int getifaddrs(struct ifaddrs **ifap);
+void freeifaddrs(struct ifaddrs *);
+int getifaddrs(struct ifaddrs **);
 
 #ifdef __cplusplus
 }

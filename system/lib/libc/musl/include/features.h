@@ -24,6 +24,8 @@
 
 #if __STDC_VERSION__ >= 199901L || defined(__cplusplus)
 #define __inline inline
+#elif !defined(__GNUC__)
+#define __inline
 #endif
 
 #if __STDC_VERSION__ >= 201112L
@@ -32,5 +34,7 @@
 #else
 #define _Noreturn
 #endif
+
+#define __REDIR(x,y) __typeof__(x) x __asm__(#y)
 
 #endif

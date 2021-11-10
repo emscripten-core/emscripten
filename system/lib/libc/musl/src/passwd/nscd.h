@@ -39,6 +39,6 @@
 #define INITGRNGRPS 2
 #define INITGR_LEN 3
 
-FILE *__nscd_query(int32_t req, const char *key, int32_t *buf, size_t len, int *swap);
+hidden FILE *__nscd_query(int32_t req, const char *key, int32_t *buf, size_t len, int *swap);
 
 #endif

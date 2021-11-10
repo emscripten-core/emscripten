@@ -3,7 +3,6 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include "syscall.h"
-#include "libc.h"
 
 int __futimesat(int dirfd, const char *pathname, const struct timeval times[2])
 {

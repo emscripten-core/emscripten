@@ -73,6 +73,21 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
     httpd.handle_request()
 
 
+def also_with_wasmfs(f):
+  def metafunc(self, wasmfs):
+    if wasmfs:
+      self.set_setting('WASMFS')
+      self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
+      f(self, wasmfs)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasmfs': (True,)}
+
+  return metafunc
+
+
 def shell_with_script(shell_file, output_file, replacement):
   shell = read_file(path_from_root('src', shell_file))
   create_file(output_file, shell.replace('{{{ SCRIPT }}}', replacement))
@@ -160,9 +175,10 @@ class browser(BrowserCore):
   def setUpClass(cls):
     super().setUpClass()
     cls.browser_timeout = 60
-    print()
-    print('Running the browser tests. Make sure the browser allows popups from localhost.')
-    print()
+    if EMTEST_BROWSER != 'node':
+      print()
+      print('Running the browser tests. Make sure the browser allows popups from localhost.')
+      print()
 
   def setUp(self):
     super().setUp()
@@ -233,7 +249,8 @@ If manually bisecting:
     self.btest_exit(test_file('emscripten_log/emscripten_log.cpp'),
                     args=['--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
 
-  def test_preload_file(self):
+  @also_with_wasmfs
+  def test_preload_file(self, wasmfs=False):
     create_file('somefile.txt', 'load me right before running the code please')
     create_file('.somefile.txt', 'load me right before running the code please')
     create_file('some@file.txt', 'load me right before running the code please')
@@ -243,6 +260,9 @@ If manually bisecting:
     def make_main(path):
       print('make main at', path)
       path = path.replace('\\', '\\\\').replace('"', '\\"') # Escape tricky path name for use inside a C string.
+      # TODO: change this when wasmfs supports relative paths.
+      if wasmfs:
+        path = "/" + path
       create_file('main.cpp', r'''
         #include <assert.h>
         #include <stdio.h>
@@ -295,6 +315,10 @@ If manually bisecting:
     make_main(tricky_filename)
     # As an Emscripten-specific feature, the character '@' must be escaped in the form '@@' to not confuse with the 'src@dst' notation.
     self.btest_exit('main.cpp', args=['--preload-file', tricky_filename.replace('@', '@@')])
+
+    # TODO: WASMFS doesn't support the rest of this test yet. Exit early.
+    if wasmfs:
+      return
 
     # By absolute path
 
@@ -3759,7 +3783,6 @@ window.close = function() {
       self.btest_exit(test_file('pthread/main_thread_%s.cpp' % name), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE', '-s', 'PROXY_TO_PTHREAD', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
-  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_atomic_fetch_and_op(self):
     for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os']]:
@@ -3769,25 +3792,21 @@ window.close = function() {
         self.btest_exit(test_file('pthread/test_pthread_gcc_atomic_fetch_and_op.cpp'), args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
-  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
     self.btest_exit(test_file('pthread/test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
-  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_atomic_op_and_fetch(self):
     self.btest_exit(test_file('pthread/test_pthread_gcc_atomic_op_and_fetch.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
 
   # 64 bit version of the above test.
-  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
     self.btest_exit(test_file('pthread/test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
-  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_gcc_atomics(self):
     self.btest_exit(test_file('pthread/test_pthread_gcc_atomics.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
@@ -3799,7 +3818,6 @@ window.close = function() {
       self.btest_exit(test_file('pthread/test_pthread_gcc_spinlock.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, also_asmjs=True)
 
   # Test that basic thread creation works.
-  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_create(self):
     def test(args):
@@ -3902,7 +3920,6 @@ window.close = function() {
     self.btest_exit(test_file('pthread/test_pthread_once.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
-  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1666568')
   @requires_threads
   def test_pthread_spawns(self):
     self.btest_exit(test_file('pthread/test_pthread_spawns.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8', '--closure=1', '-s', 'ENVIRONMENT=web,worker'])
@@ -4310,7 +4327,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 5629), 100)
+    self.assertLess(abs(size - 5787), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.

@@ -59,6 +59,7 @@ struct arphdr {
 #define ARPHRD_LAPB	516
 #define ARPHRD_DDCMP	517
 #define	ARPHRD_RAWHDLC	518
+#define ARPHRD_RAWIP	519
 
 #define ARPHRD_TUNNEL	768
 #define ARPHRD_TUNNEL6	769
@@ -91,6 +92,8 @@ struct arphdr {
 #define ARPHRD_CAIF 822
 #define ARPHRD_IP6GRE 823
 #define ARPHRD_NETLINK 824
+#define ARPHRD_6LOWPAN 825
+#define ARPHRD_VSOCKMON 826
 
 #define ARPHRD_VOID	  0xFFFF
 #define ARPHRD_NONE	  0xFFFE

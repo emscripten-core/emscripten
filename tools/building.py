@@ -302,20 +302,20 @@ def lld_flags_for_executable(external_symbols):
     cmd.append('--strip-debug')
 
   if settings.LINKABLE:
-    cmd.append('--export-all')
+    cmd.append('--export-dynamic')
     cmd.append('--no-gc-sections')
-  else:
-    c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
-    # Strip the leading underscores
-    c_exports = [demangle_c_symbol_name(e) for e in c_exports]
-    if external_symbols:
-      # Filter out symbols external/JS symbols
-      c_exports = [e for e in c_exports if e not in external_symbols]
-    for export in c_exports:
-      cmd.append('--export-if-defined=' + export)
 
-    for export in settings.EXPORT_IF_DEFINED:
-      cmd.append('--export-if-defined=' + export)
+  c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
+  # Strip the leading underscores
+  c_exports = [demangle_c_symbol_name(e) for e in c_exports]
+  if external_symbols:
+    # Filter out symbols external/JS symbols
+    c_exports = [e for e in c_exports if e not in external_symbols]
+  for export in c_exports:
+    cmd.append('--export-if-defined=' + export)
+
+  for export in settings.EXPORT_IF_DEFINED:
+    cmd.append('--export-if-defined=' + export)
 
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')

@@ -1,5 +1,4 @@
 $__errno_location
-$__fflush_unlocked
 $__lock
 $__lockfile
 $__ofl_lock
