@@ -33,6 +33,7 @@ int main() {
   off_t fileInode = file.st_ino;
 
   assert(file.st_size == 0);
+  // TODO: In a follow up PR change /dev/stdout to have type S_IFCHR
 #ifdef WASMFS
   assert((file.st_mode & S_IFMT) == S_IFREG);
 #else
@@ -45,11 +46,6 @@ int main() {
   assert(file.st_rdev);
   assert(file.st_blocks == 0);
   assert(file.st_blksize == 4096);
-#ifdef WASMFS
-  assert(file.st_atim.tv_sec == 0);
-  assert(file.st_mtim.tv_sec == 0);
-  assert(file.st_ctim.tv_sec == 0);
-#endif
 
   close(fd);
 
@@ -79,11 +75,10 @@ int main() {
   assert(directory.st_rdev);
   // blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
   assert(directory.st_blocks == 8);
-  assert(directory.st_atim.tv_sec == 0);
-  assert(directory.st_mtim.tv_sec == 0);
-  assert(directory.st_ctim.tv_sec == 0);
 #else
   assert(!directory.st_rdev);
+  // The JS file system calculates st_blocks using Math.ceil(attr.size /
+  // attr.blksize);
   assert(directory.st_blocks == 1);
 #endif
   assert(directory.st_blksize == 4096);
@@ -98,7 +93,7 @@ int main() {
   assert(dirInode == newFile2.st_ino);
   close(newfd2);
 
-  // Test opening a file and calling stat.
+  // Test calling stat without opening a file.
   struct stat statFile;
   stat("/dev/stdout/", &statFile);
 
@@ -115,13 +110,8 @@ int main() {
   assert(statFile.st_rdev);
   assert(statFile.st_blocks == 0);
   assert(statFile.st_blksize == 4096);
-#ifdef WASMFS
-  assert(statFile.st_atim.tv_sec == 0);
-  assert(statFile.st_mtim.tv_sec == 0);
-  assert(statFile.st_ctim.tv_sec == 0);
-#endif
 
-  // Test opening a directory and calling stat.
+  // Test calling stat without opening a directory.
   struct stat statDirectory;
   stat("/dev", &statDirectory);
 
@@ -135,21 +125,16 @@ int main() {
   assert(statDirectory.st_rdev);
   // blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
   assert(statDirectory.st_blocks == 8);
-  assert(statDirectory.st_atim.tv_sec == 0);
-  assert(statDirectory.st_mtim.tv_sec == 0);
-  assert(statDirectory.st_ctim.tv_sec == 0);
 #else
   assert(!statDirectory.st_rdev);
   assert(statDirectory.st_blocks == 1);
 #endif
   assert(statDirectory.st_blksize == 4096);
 
-  // Test opening a file and calling lstat.
+  // Test calling lstat without opening a file.
   struct stat lstatFile;
   errno = 0;
   lstat("/dev/stdout", &lstatFile);
-  printf("Errno: %s\n", strerror(errno));
-  printf("size %lli\n", lstatFile.st_size);
 
   assert(lstatFile.st_dev);
 #ifdef WASMFS
@@ -162,9 +147,6 @@ int main() {
   assert(lstatFile.st_gid == 0);
   assert(lstatFile.st_blksize == 4096);
 #ifdef WASMFS
-  assert(lstatFile.st_atim.tv_sec == 0);
-  assert(lstatFile.st_mtim.tv_sec == 0);
-  assert(lstatFile.st_ctim.tv_sec == 0);
   assert(lstatFile.st_size == 0);
   assert(lstatFile.st_blocks == 0);
   assert(lstatFile.st_rdev);
@@ -176,7 +158,7 @@ int main() {
   assert(!lstatFile.st_rdev);
 #endif
 
-  // Test opening a directory and calling lstat.
+  // Test calling lstat without opening a directory.
   struct stat lstatDirectory;
   lstat("/dev", &lstatDirectory);
 
@@ -190,9 +172,6 @@ int main() {
   assert(lstatDirectory.st_rdev);
   // blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
   assert(lstatDirectory.st_blocks == 8);
-  assert(lstatDirectory.st_atim.tv_sec == 0);
-  assert(lstatDirectory.st_mtim.tv_sec == 0);
-  assert(lstatDirectory.st_ctim.tv_sec == 0);
 #else
   assert(!lstatDirectory.st_rdev);
   assert(lstatDirectory.st_blocks == 1);
