@@ -65,7 +65,7 @@ var WasmfsLibrary = {
       // Copy the file into a JS buffer on the heap.
       var buf = _emscripten_wasmfs_read_file(pathName);
       // The integer length is returned in the first 8 bytes of the buffer.
-      var length = HEAP32[buf >> 2];
+      var length = getValue(buf, 'i64');
       
       // Default return type is binary.
       // The buffer contents exist 8 bytes after the returned pointer.
