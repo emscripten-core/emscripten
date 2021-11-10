@@ -104,8 +104,8 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
   return currDirectory;
 }
 
-// TODO: Check for trailing backslash, i.e. /foo/bar.txt/
-// Currently any trailing backslash is ignored.
+// TODO: Check for trailing slash, i.e. /foo/bar.txt/
+// Currently any trailing slash is ignored.
 std::vector<std::string> splitPath(char* pathname) {
   std::vector<std::string> pathParts;
   char newPathName[strlen(pathname) + 1];
