@@ -45,6 +45,7 @@ void setup() {
   chdir("working");
   create_file("file", "test", 0777);
   create_file("file1", "test", 0777);
+  create_file("file-readonly", "test", 0555);
 #ifndef NO_SYMLINK
   symlink("file1", "file1-link");
 #endif
@@ -138,6 +139,10 @@ void test() {
   err = access("file", F_OK);
   assert(err == -1);
 #endif
+
+  // Should be able to delete a read-only file.
+  err = unlink("file-readonly");
+  assert(!err);
 
   //
   // test rmdir

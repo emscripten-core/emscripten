@@ -602,11 +602,6 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
     return -EACCES;
   }
 
-  // Cannot rmdir a directory or unlink a file that doesn't have write permissions.
-  if (!(curr->locked().mode() & WASMFS_PERM_WRITE)) {
-    return -EPERM;
-  }
-
   // Erase targetDir from lockedParentDir and also set targetDir's parent
   // pointer to nullptr.
   lockedParentDir.unlinkEntry(base);
