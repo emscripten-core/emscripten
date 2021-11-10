@@ -719,7 +719,8 @@ If manually bisecting:
         ])
         self.run_browser('page.html', '', '/report_result?600')
 
-  def test_sdl_image_jpeg(self):
+  @also_with_wasmfs
+  def test_sdl_image_jpeg(self, wasmfs=False):
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpeg')
     src = test_file('sdl_image.c')
     self.compile_btest([
