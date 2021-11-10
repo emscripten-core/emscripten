@@ -6239,6 +6239,7 @@ int main(int argc, char **argv) {
     self.run_process([EMCC, 'src.c', '-s', 'SAFE_HEAP', '--embed-file', 'boot'])
     self.assertContained('Resolved: /boot/README.txt', self.run_js('a.out.js'))
 
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/15468')
   def test_realpath_nodefs(self):
     create_file('src.c', r'''
 #include <stdlib.h>
