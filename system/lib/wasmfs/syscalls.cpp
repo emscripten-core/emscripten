@@ -568,7 +568,8 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
     return err;
   }
 
-  // Hold the locked parent for the duration of the operation.
+  // Hold the locked directory to prevent the state from being changed during
+  // the operation.
   auto lockedParentDir = parentDir->locked();
 
   auto curr = lockedParentDir.getEntry(base);
@@ -590,17 +591,18 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
       return -ENOTEMPTY;
     }
   } else {
+    // unlink cannot remove a directory.
     if (targetDir) {
       return -EISDIR;
     }
   }
 
-  // Cannot unlink if the parent dir doesn't have write permissions.
+  // Cannot unlink/rmdir if the parent dir doesn't have write permissions.
   if (!(lockedParentDir.mode() & WASMFS_PERM_WRITE)) {
     return -EACCES;
   }
 
-  // Cannot unlink a directory or file that doesn't have write permissions.
+  // Cannot rmdir a directory or unlink a file that doesn't have write permissions.
   if (!(curr->locked().mode() & WASMFS_PERM_WRITE)) {
     return -EPERM;
   }
