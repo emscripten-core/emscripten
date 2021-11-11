@@ -1359,15 +1359,15 @@ class CompilerRTLibrary(Library):
   force_object_files = True
 
 
-class libc_rt_wasm(OptimizedAggressivelyForSizeLibrary, AsanInstrumentedLibrary, CompilerRTLibrary, MuslInternalLibrary, MTLibrary):
-  name = 'libc_rt_wasm'
+class libc_rt(OptimizedAggressivelyForSizeLibrary, AsanInstrumentedLibrary, CompilerRTLibrary, MuslInternalLibrary, MTLibrary):
+  name = 'libc_rt'
 
   def get_files(self):
     return get_wasm_libc_rt_files()
 
 
-class libubsan_minimal_rt_wasm(CompilerRTLibrary, MTLibrary):
-  name = 'libubsan_minimal_rt_wasm'
+class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):
+  name = 'libubsan_minimal_rt'
   never_force = True
 
   includes = ['system/lib/compiler-rt/lib']
@@ -1672,7 +1672,7 @@ def calculate(input_files, forced):
     add_library(forced)
 
   if only_forced:
-    add_library('libc_rt_wasm')
+    add_library('libc_rt')
     add_library('libcompiler_rt')
   else:
     if settings.AUTO_NATIVE_LIBRARIES:
@@ -1705,7 +1705,7 @@ def calculate(input_files, forced):
       add_library('libmalloc')
     if settings.STANDALONE_WASM:
       add_library('libstandalonewasm')
-    add_library('libc_rt_wasm')
+    add_library('libc_rt')
 
     if settings.USE_LSAN:
       force_include.add('liblsan_rt')
@@ -1717,7 +1717,7 @@ def calculate(input_files, forced):
       add_library('libasan_js')
 
     if settings.UBSAN_RUNTIME == 1:
-      add_library('libubsan_minimal_rt_wasm')
+      add_library('libubsan_minimal_rt')
     elif settings.UBSAN_RUNTIME == 2:
       add_library('libubsan_rt')
 
