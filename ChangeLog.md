@@ -25,6 +25,10 @@ See docs/process.md for more on how version tagging works.
   in upstream musl code but we don't expect anything major.  Since this is a
   fairly substantial change (at least internally) we are bumping the major
   version of Emscripten to 3. (#13006)
+- Unoptimzed (`-O0`) builds now include the WebAssembly name section by default.
+  This means that binaries will be larger but it means backtraces from engines
+  should include names for all functions.  This is the equivalent of enabling
+  `--profiling-funcs` by default in unoptimized builds.
 
 2.0.34 - 11/04/2021
 -------------------
