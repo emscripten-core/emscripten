@@ -793,7 +793,6 @@ void *emmalloc_memalign(size_t alignment, size_t size)
   return ptr;
 }
 extern __typeof(emmalloc_memalign) emscripten_builtin_memalign __attribute__((alias("emmalloc_memalign")));
-extern __typeof(emmalloc_memalign) __libc_memalign __attribute__((alias("emmalloc_memalign")));
 
 void * EMMALLOC_EXPORT memalign(size_t alignment, size_t size)
 {
