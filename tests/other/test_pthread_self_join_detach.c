@@ -4,14 +4,20 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __EMSCRIPTEN__
 #include <emscripten/threading.h>
+#endif
 
 int main() {
   /*
    * When running in PROXY_TO_PTHREAD mode the main thread
    * is already detached
    */
+#ifdef __EMSCRIPTEN__
   int is_detached = !emscripten_is_main_browser_thread();
+#else
+  int is_detached = 0;
+#endif
   pthread_t self = pthread_self();
 
   /*
@@ -20,6 +26,7 @@ int main() {
    * detached
    */
   int ret = pthread_join(self, NULL);
+  printf("pthread_join -> %s\n", strerror(ret));
   if (is_detached) {
     assert(ret == EINVAL);
   } else {
@@ -37,6 +44,10 @@ int main() {
   } else {
     assert(ret == 0);
   }
+
+  ret = pthread_join(self, NULL);
+  printf("pthread_join -> %s\n", strerror(ret));
+  assert(ret == EINVAL);
 
   puts("passed");
 
