@@ -3639,26 +3639,6 @@ int main()
         for e in expected:
           self.assertContained(e, output)
 
-  @disabled('upstream llvm produces invalid wasm for sillyfuncast2_noasm.ll')
-  def test_incorrect_static_call(self):
-    for wasm in [0, 1]:
-      for opts in [0, 1]:
-        for asserts in [0, 1]:
-          extra = []
-          if opts != 1 - asserts:
-            extra = ['-s', 'ASSERTIONS=' + str(asserts)]
-          cmd = [EMCC, test_file('sillyfuncast2_noasm.ll'), '-O' + str(opts), '-s', 'WASM=' + str(wasm)] + extra
-          print(opts, asserts, wasm, cmd)
-          # Should not need to pipe stdout here but binaryen writes to stdout
-          # when it really should write to stderr.
-          stderr = self.run_process(cmd, stdout=PIPE, stderr=PIPE, check=False).stderr
-          if asserts:
-            self.assertContained('unexpected', stderr)
-            self.assertContained("to 'doit'", stderr)
-          else:
-            self.assertNotContained('unexpected', stderr)
-            self.assertNotContained("to 'doit'", stderr)
-
   @requires_native_clang
   def test_bad_triple(self):
     # compile a minimal program, with as few dependencies as possible, as
