@@ -1,4 +1,4 @@
-Maintanance Scripts for Emscripten Developers
+Maintenance Scripts for Emscripten Developers
 =============================================
 
 This directory contains maintantance scripts used by emscripten developers.  For
