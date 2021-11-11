@@ -4337,6 +4337,14 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-c', '-emit-llvm'])
     self.assertTrue(building.is_bitcode('hello_world.bc'))
 
+  def test_compile_ll_file(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-S', '-emit-llvm'])
+    err = self.run_process([EMCC, '-v', '-c', 'hello_world.ll', '-o', 'hello_world.o'], stderr=PIPE).stderr
+    # Verify that `-mllvm` flags are passed when compiling `.ll` files.
+    self.assertContained('-mllvm -enable-emscripten-sjlj', err)
+    self.run_process([EMCC, 'hello_world.o'])
+    self.assertContained('hello, world!', self.run_js('a.out.js'))
+
   def test_dashE(self):
     create_file('src.cpp', r'''#include <emscripten.h>
 __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
