@@ -469,6 +469,11 @@ var LibraryPThread = {
     pthread.worker.pthread = undefined;
   },
 
+  __emscripten_thread_cleanup: function(thread) {
+    if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread);
+    else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
+  },
+
   $cleanupThread: function(pthread_ptr) {
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! cleanupThread() can only ever be called from main application thread!');
@@ -857,55 +862,6 @@ var LibraryPThread = {
 #endif
 
 #endif
-  },
-
-  __pthread_join_js__deps: ['$cleanupThread', 'pthread_testcancel', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'pthread_self', 'emscripten_main_browser_thread_id',
-#if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
-  'emscripten_check_blocking_allowed'
-#endif
-  ],
-  __pthread_join_js: function(thread, status, tryjoin) {
-#if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
-    if (!tryjoin) {
-      _emscripten_check_blocking_allowed();
-    }
-#endif
-
-    for (;;) {
-      // The thread we are joining with must be either DT_JOINABLE or
-      // DT_EXITING.  If its DT_EXITING then we move it to DT_EXITED and
-      // we are done.   If its DT_JOINABLE we keep waiting.
-      var old_state = Atomics.compareExchange(HEAP32,
-        (thread + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2,
-        {{{ cDefine('DT_EXITING') }}},
-        {{{ cDefine('DT_EXITED') }}}
-      );
-      if (old_state == {{{ cDefine('DT_EXITING') }}}) {
-#if PTHREADS_DEBUG
-        err('thread 0x' + thread.toString(16) + ' successfully joined');
-#endif
-        // We successfully marked the tread as DT_EXITED
-        if (status) {
-          var result = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.result }}} ) >> 2);
-          {{{ makeSetValue('status', 0, 'result', 'i32') }}};
-        }
-        if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread);
-        else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
-        return 0;
-      }
-#if ASSERTIONS
-      assert(old_state === {{{ cDefine('DT_JOINABLE') }}}, 'pthread_join attempted on thread 0x' + thread.toString(16) + ', which is in an invalid state:' + old_state);
-#else
-      if (old_state !== {{{ cDefine('DT_JOINABLE') }}}) return {{{ cDefine('EINVAL') }}};
-#endif
-
-      _pthread_testcancel();
-      // In main runtime thread (the thread that initialized the Emscripten C
-      // runtime and launched main()), assist pthreads in performing operations
-      // that they need to access the Emscripten main runtime for.
-      if (!ENVIRONMENT_IS_PTHREAD) _emscripten_main_thread_process_queued_calls();
-      _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.detach_state }}}, old_state, ENVIRONMENT_IS_PTHREAD ? 100 : 1);
-    }
   },
 
   pthread_kill__deps: ['$killThread', 'emscripten_main_browser_thread_id'],
