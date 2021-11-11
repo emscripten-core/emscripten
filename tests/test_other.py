@@ -11171,7 +11171,7 @@ void foo() {}
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
 
-  def test_readfile(self):
+  def test_wasmfs_readfile(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
 
