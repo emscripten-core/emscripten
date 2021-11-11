@@ -19,6 +19,7 @@
 #endif
 
 static void create_file(const char *path, const char *buffer, int mode) {
+  printf("creating: %s\n", path);
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
   assert(fd >= 0);
 
@@ -45,7 +46,14 @@ void setup() {
   chdir("working");
   create_file("file", "test", 0777);
   create_file("file1", "test", 0777);
+#ifdef WASMFS
   create_file("file-readonly", "test", 0555);
+#else
+  // Prefer to create the file as readable and then
+  // use chmod.  See:
+  // https://github.com/emscripten-core/emscripten/pull/15455
+  create_file("file-readonly", "test", 0777);
+#endif
 #ifndef NO_SYMLINK
   symlink("file1", "file1-link");
 #endif
@@ -63,6 +71,7 @@ void setup() {
   mkdir("dir-readonly/anotherdir", 0777);
 #ifndef WASMFS
   chmod("dir-readonly", 0555);
+  chmod("file-readonly", 0555);
 #endif
   mkdir("dir-full", 0777);
   create_file("dir-full/anotherfile", "test", 0777);
@@ -80,6 +89,7 @@ void cleanup() {
 #endif
 #ifndef WASMFS
   chmod("dir-readonly", 0777);
+  chmod("file-readonly", 0777);
 #endif
   unlink("dir-readonly/anotherfile");
   rmdir("dir-readonly/anotherdir");
