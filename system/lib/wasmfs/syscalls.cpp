@@ -602,8 +602,7 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
     return -EACCES;
   }
 
-  // Erase targetDir from lockedParentDir and also set targetDir's parent
-  // pointer to nullptr.
+  // Input is valid, perform the unlink.
   lockedParentDir.unlinkEntry(base);
   return 0;
 }
