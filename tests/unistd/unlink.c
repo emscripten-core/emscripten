@@ -45,6 +45,7 @@ void setup() {
   chdir("working");
   create_file("file", "test", 0777);
   create_file("file1", "test", 0777);
+  create_file("file-readonly", "test", 0555);
 #ifndef NO_SYMLINK
   symlink("file1", "file1-link");
 #endif
@@ -52,10 +53,17 @@ void setup() {
 #ifndef NO_SYMLINK
   symlink("dir-empty", "dir-empty-link");
 #endif
+// TODO: delete this when chmod is implemented.
+#ifndef WASMFS
   mkdir("dir-readonly", 0777);
+#else
+  mkdir("dir-readonly", 0555);
+#endif
   create_file("dir-readonly/anotherfile", "test", 0777);
   mkdir("dir-readonly/anotherdir", 0777);
+#ifndef WASMFS
   chmod("dir-readonly", 0555);
+#endif
   mkdir("dir-full", 0777);
   create_file("dir-full/anotherfile", "test", 0777);
 }
@@ -70,7 +78,9 @@ void cleanup() {
 #ifndef NO_SYMLINK
   unlink("dir-empty-link");
 #endif
+#ifndef WASMFS
   chmod("dir-readonly", 0777);
+#endif
   unlink("dir-readonly/anotherfile");
   rmdir("dir-readonly/anotherdir");
   rmdir("dir-readonly");
@@ -113,8 +123,11 @@ void test() {
   err = unlink("file1-link");
   assert(!err);
 #endif
+// TODO: Remove this when access is implemented.
+#ifndef WASMFS
   err = access("file1", F_OK);
   assert(!err);
+#endif
 #ifndef NO_SYMLINK
   err = access("file1-link", F_OK);
   assert(err == -1);
@@ -122,8 +135,14 @@ void test() {
 
   err = unlink("file");
   assert(!err);
+#ifndef WASMFS
   err = access("file", F_OK);
   assert(err == -1);
+#endif
+
+  // Should be able to delete a read-only file.
+  err = unlink("file-readonly");
+  assert(!err);
 
   //
   // test rmdir
@@ -148,11 +167,13 @@ void test() {
 
   // test removing the cwd / root. The result isn't specified by
   // POSIX, but Linux seems to set EBUSY in both cases.
+  // Update: Removing cwd on Linux does not return EBUSY.
+  // WASMFS behaviour will match the native FS.
 #ifndef __APPLE__
   getcwd(buffer, sizeof(buffer));
   err = rmdir(buffer);
   assert(err == -1);
-#ifdef NODERAWFS
+#if defined(NODERAWFS) || defined(WASMFS)
   assert(errno == ENOTEMPTY);
 #else
   assert(errno == EBUSY);
@@ -175,8 +196,10 @@ void test() {
 
   err = rmdir("dir-empty");
   assert(!err);
+#ifndef WASMFS
   err = access("dir-empty", F_OK);
   assert(err == -1);
+#endif
 
   puts("success");
 }

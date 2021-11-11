@@ -130,6 +130,7 @@ flaky = {
   'test_pthread_barrier_wait_2_1': 'flaky: https://github.com/emscripten-core/emscripten/issues/14508',
   'test_pthread_rwlock_unlock_3_1': 'Test fail: writer did not get write lock, when main release the lock',
   'test_pthread_mutex_init_1_2': 'flaky: https://github.com/emscripten-core/posixtestsuite/pull/9',
+  'test_pthread_mutex_init_3_2': 'flaky: https://github.com/emscripten-core/posixtestsuite/pull/9',
 }
 
 # Mark certain tests as disabled.  These are tests that are either flaky or never return.

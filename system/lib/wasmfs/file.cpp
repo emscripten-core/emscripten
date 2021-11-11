@@ -104,12 +104,13 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
   return currDirectory;
 }
 
+// TODO: Check for trailing slash, i.e. /foo/bar.txt/
+// Currently any trailing slash is ignored.
 std::vector<std::string> splitPath(char* pathname) {
   std::vector<std::string> pathParts;
   char newPathName[strlen(pathname) + 1];
   strcpy(newPathName, pathname);
 
-  // TODO: Support relative paths. i.e. specify cwd if path is relative.
   // TODO: Other path parsing edge cases.
   char* current;
   // Handle absolute path.
