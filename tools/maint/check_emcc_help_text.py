@@ -11,12 +11,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+script_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(os.path.dirname(script_dir))
 
 
 def main():
-  build_output = os.path.join(root, 'site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt')
-  docs_file = os.path.join(root, 'docs', 'emcc.txt')
+  build_output = os.path.join(root_dir, 'site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt')
+  docs_file = os.path.join(root_dir, 'docs', 'emcc.txt')
 
   if not os.path.exists(build_output):
     print('doc build output not found: %s' % build_output)
