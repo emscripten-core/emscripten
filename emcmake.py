@@ -41,9 +41,7 @@ variables so that emcc etc. are used. Typical usage:
   # On Windows specify MinGW Makefiles or ninja if we have them and no other
   # toolchain was specified, to keep CMake from pulling in a native Visual
   # Studio, or Unix Makefiles.
-  # Reduce cases of the concatented args e.g. "-GNinja" or "-GMingW Makefiles" by splitting them, fallback to default if none toolchain was specified.
-  args = [replaced for item in args for replaced in ([item[0:2], item[2:]] if (item[0:2] == "-G" and len(item) != 2) else [item])]
-  if utils.WINDOWS and '-G' not in args:
+  if utils.WINDOWS and not any(arg.startswith('-G') for arg in args):
     if utils.which('mingw32-make'):
       args += ['-G', 'MinGW Makefiles']
     elif utils.which('ninja'):
