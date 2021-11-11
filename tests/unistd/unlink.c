@@ -91,6 +91,7 @@ void cleanup() {
   chmod("dir-readonly", 0777);
   chmod("file-readonly", 0777);
 #endif
+  unlink("file-readonly");
   unlink("dir-readonly/anotherfile");
   rmdir("dir-readonly/anotherdir");
   rmdir("dir-readonly");
