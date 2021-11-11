@@ -36,7 +36,7 @@ mergeInto(LibraryManager.library, {
     convertNodeCode: function(e) {
       var code = e.code;
 #if ASSERTIONS
-      assert(code in ERRNO_CODES);
+      assert(code in ERRNO_CODES, 'unexpected node error code: ' + code + ' (' + e + ')');
 #endif
       return ERRNO_CODES[code];
     },
@@ -231,6 +231,9 @@ mergeInto(LibraryManager.library, {
           return path;
         } catch (e) {
           if (!e.code) throw e;
+          // node under windows can return code 'UNKNOWN' here:
+          // https://github.com/emscripten-core/emscripten/issues/15468
+          if (e.code === 'UNKNOWN') throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },

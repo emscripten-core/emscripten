@@ -125,26 +125,6 @@ var LibraryPThread = {
     },
 #endif
 
-#if PTHREADS_DEBUG
-    detachStateToString: function(state) {
-      if (state === {{{ cDefine('DT_EXITED') }}}) return 'DT_EXITED';
-      if (state === {{{ cDefine('DT_EXITING') }}}) return 'DT_EXITING';
-      if (state === {{{ cDefine('DT_JOINABLE') }}}) return 'DT_JOINABLE';
-      if (state === {{{ cDefine('DT_DETACHED') }}}) return 'DT_DETACHED';
-      assert(false);
-    },
-#endif
-
-    setDetachState: function(thread, newstate) {
-#if PTHREADS_DEBUG
-      var oldstate = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2);
-      var oldname = PThread.detachStateToString(oldstate);
-      var newname = PThread.detachStateToString(newstate);
-      console.log('thread 0x' + thread.toString(16) + ' state change: ' + oldname + ' -> ' + newname);
-#endif
-      Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2, newstate);
-    },
-
     terminateAllThreads: function() {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! terminateAllThreads() can only ever be called from main application thread!');
@@ -598,7 +578,7 @@ var LibraryPThread = {
     var tis = pthread.threadInfoStruct >> 2;
     // spawnThread is always called with a zero-initialized thread struct so
     // no need to set any valudes to zero here.
-    PThread.setDetachState(pthread.threadInfoStruct, threadParams.initialState);
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.detach_state }}} >> 2), threadParams.initialState);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack_size }}} >> 2), threadParams.stackSize);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack }}} >> 2), stackHigh);
 
@@ -879,79 +859,53 @@ var LibraryPThread = {
 #endif
   },
 
-  _emscripten_do_pthread_join__deps: ['$cleanupThread', 'pthread_testcancel', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'pthread_self', 'emscripten_main_browser_thread_id',
+  __pthread_join_js__deps: ['$cleanupThread', 'pthread_testcancel', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'pthread_self', 'emscripten_main_browser_thread_id',
 #if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
   'emscripten_check_blocking_allowed'
 #endif
   ],
-  _emscripten_do_pthread_join: function(thread, status, block) {
-    if (!thread) {
-      err('pthread_join attempted on a null thread pointer!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-    var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
-    if (self !== thread) {
-      err('pthread_join attempted on thread 0x' + thread.toString(16) + ', which does not point to a valid thread, or does not exist anymore!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-    var detach_state = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2);
-    if (detach_state == {{{ cDefine('DT_DETACHED') }}}) {
-      err('Attempted to join thread 0x' + thread.toString(16) + ', which was already detached!');
-      return {{{ cDefine('EINVAL') }}}; // The thread is already detached, can no longer join it!
-    }
-
-    if (detach_state == {{{ cDefine('DT_EXITED') }}}) {
-      err('Attempted to join thread 0x' + thread.toString(16) + ', which was already joined!');
-      return {{{ cDefine('EINVAL') }}};
-    }
-    if (ENVIRONMENT_IS_PTHREAD && _pthread_self() == thread) {
-      err('PThread ' + thread + ' is attempting to join to itself!');
-      return {{{ cDefine('EDEADLK') }}};
-    }
-    else if (!ENVIRONMENT_IS_PTHREAD && _emscripten_main_browser_thread_id() == thread) {
-      err('Main thread ' + thread + ' is attempting to join to itself!');
-      return {{{ cDefine('EDEADLK') }}};
-    }
-
+  __pthread_join_js: function(thread, status, tryjoin) {
 #if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
-    if (block) {
+    if (!tryjoin) {
       _emscripten_check_blocking_allowed();
     }
 #endif
 
     for (;;) {
-      var detach_state = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detach_state }}} ) >> 2);
-      if (detach_state == {{{ cDefine('DT_EXITING') }}}) { // Exiting?
+      // The thread we are joining with must be either DT_JOINABLE or
+      // DT_EXITING.  If its DT_EXITING then we move it to DT_EXITED and
+      // we are done.   If its DT_JOINABLE we keep waiting.
+      var old_state = Atomics.compareExchange(HEAP32,
+        (thread + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2,
+        {{{ cDefine('DT_EXITING') }}},
+        {{{ cDefine('DT_EXITED') }}}
+      );
+      if (old_state == {{{ cDefine('DT_EXITING') }}}) {
+#if PTHREADS_DEBUG
+        err('thread 0x' + thread.toString(16) + ' successfully joined');
+#endif
+        // We successfully marked the tread as DT_EXITED
         if (status) {
           var result = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.result }}} ) >> 2);
           {{{ makeSetValue('status', 0, 'result', 'i32') }}};
         }
-        // Mark the thread as exited.
-        PThread.setDetachState(thread, {{{ cDefine('DT_EXITED') }}});
         if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread);
         else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
         return 0;
       }
-      if (!block) {
-        return {{{ cDefine('EBUSY') }}};
-      }
+#if ASSERTIONS
+      assert(old_state === {{{ cDefine('DT_JOINABLE') }}}, 'pthread_join attempted on thread 0x' + thread.toString(16) + ', which is in an invalid state:' + old_state);
+#else
+      if (old_state !== {{{ cDefine('DT_JOINABLE') }}}) return {{{ cDefine('EINVAL') }}};
+#endif
+
       _pthread_testcancel();
       // In main runtime thread (the thread that initialized the Emscripten C
       // runtime and launched main()), assist pthreads in performing operations
       // that they need to access the Emscripten main runtime for.
       if (!ENVIRONMENT_IS_PTHREAD) _emscripten_main_thread_process_queued_calls();
-      _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.detach_state }}}, detach_state, ENVIRONMENT_IS_PTHREAD ? 100 : 1);
+      _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.detach_state }}}, old_state, ENVIRONMENT_IS_PTHREAD ? 100 : 1);
     }
-  },
-
-  __pthread_join_js__deps: ['_emscripten_do_pthread_join'],
-  __pthread_join_js: function(thread, status) {
-    return __emscripten_do_pthread_join(thread, status, true);
-  },
-
-  pthread_tryjoin_np__deps: ['_emscripten_do_pthread_join'],
-  pthread_tryjoin_np: function(thread, status) {
-    return __emscripten_do_pthread_join(thread, status, false);
   },
 
   pthread_kill__deps: ['$killThread', 'emscripten_main_browser_thread_id'],

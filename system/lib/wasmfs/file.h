@@ -171,6 +171,15 @@ public:
       lockedInserted.setParent(file);
     }
 
+    void unlinkEntry(std::string pathName) {
+      // The file lock must be held for both operations. Removing the child file
+      // from the parent's entries and removing the parent pointer from the
+      // child should be atomic. The state should not be mutated in between.
+      auto unlinked = getDir()->entries[pathName]->locked();
+      unlinked.setParent({});
+      getDir()->entries.erase(pathName);
+    }
+
     // Used to obtain name of child File in the directory entries vector.
     std::string getName(std::shared_ptr<File> target) {
       for (const auto& [key, value] : getDir()->entries) {
@@ -181,6 +190,8 @@ public:
 
       return "";
     }
+
+    int getNumEntries() { return getDir()->entries.size(); }
 
     // Return a vector of the key-value pairs in entries.
     std::vector<Directory::Entry> getEntries() {

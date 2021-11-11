@@ -5,6 +5,7 @@ var WasmfsLibrary = {
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
+        Browser.init(); 
         var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
         var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
         function processData(byteArray) {
@@ -77,6 +78,11 @@ var WasmfsLibrary = {
       _free(pathName);
       _free(buf);
       return ret;
+    cwd: function() {
+      // TODO: Remove dependency on FS.cwd().
+      // User code should not be using FS.cwd().
+      // For file preloading, cwd should be '/' to begin with.
+      return '/';
     }
   }
 }
