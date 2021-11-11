@@ -297,7 +297,7 @@ def lld_flags_for_executable(external_symbols):
   # section and DWARF, so we can only use it when we don't need any of
   # those things.
   if settings.DEBUG_LEVEL < 2 and (not settings.EMIT_SYMBOL_MAP and
-                                   not settings.PROFILING_FUNCS and
+                                   not settings.EMIT_NAME_SECTION and
                                    not settings.ASYNCIFY):
     cmd.append('--strip-debug')
 
