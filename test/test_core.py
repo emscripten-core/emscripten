@@ -336,10 +336,6 @@ def is_sanitizing(args):
 
 
 class TestCoreBase(RunnerCore):
-  # A simple check whether the compiler arguments cause optimization.
-  def is_optimizing(self):
-    return '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args
-
   def should_use_closure(self):
     # Don't run closure in all test modes, just a couple, since it slows
     # the tests down quite a bit.

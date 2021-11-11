@@ -1005,6 +1005,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     create_file('onexit.js', 'Module.onExit = function() { %s }\n' % code)
     self.emcc_args += ['--pre-js', 'onexit.js']
 
+  # A simple check whether the compiler arguments cause optimization.
+  def is_optimizing(self):
+    return '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args
+
   # returns the full list of arguments to pass to emcc
   # param @main_file whether this is the main file of the test. some arguments
   #                  (like --pre-js) do not need to be passed when building
@@ -1024,6 +1028,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           args[i] = None
           args[i + 1] = None
       args = [arg for arg in args if arg is not None]
+
+    # Enable name section for non-opitmizing builds so that backtraces
+    # from test runs are symbolicated
+    # See: https://github.com/emscripten-core/emscripten/issues/15470
+    if not self.is_optimizing():
+      args.append('--profiling-funcs')
     return args
 
   def verify_es5(self, filename):
