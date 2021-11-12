@@ -12,6 +12,7 @@
               "detach_state",
               "stack",
               "stack_size",
+              "stack_owned",
               "result",
               "robust_list",
               "tid",

@@ -10,7 +10,7 @@
 #include <pthread.h>
 
 extern int __pthread_join_js(pthread_t t, void **res, int tryjoin);
-extern int __emscripten_thread_cleanup(pthread_t t);
+extern void __pthread_free_thread_data(pthread_t t);
 
 static int __pthread_join_internal(pthread_t t, void **res) {
   if (t->self != t) {
@@ -39,7 +39,7 @@ static int __pthread_join_internal(pthread_t t, void **res) {
     if (old_state == DT_EXITING) {
       // We successfully marked the tread as DT_EXITED
       if (res) *res = t->result;
-      __emscripten_thread_cleanup(t);
+      __pthread_free_thread_data(t);
       return 0;
     }
     assert(old_state == DT_JOINABLE);

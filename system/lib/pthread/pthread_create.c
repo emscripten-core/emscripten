@@ -22,7 +22,7 @@
 
 extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 extern void _emscripten_thread_init(int, int, int);
-extern void __pthread_detached_exit();
+extern void _emscripten_thread_done();
 extern void* _emscripten_tls_base();
 extern int8_t __dso_handle;
 
@@ -138,6 +138,19 @@ int __pthread_create(pthread_t* restrict res,
   return 0;
 }
 
+/*
+ * Thread data is free'd in exactly two different places:
+ * 1. When a detached thread exits (_emscripten_thread_exit)
+ * 2. When joining a non-detached thread (pthread_join)
+ */
+void __pthread_free_thread_data(pthread_t t) {
+  if (t->profilerBlock) free(t->profilerBlock);
+  if (t->stack_owned) free(t->stack);
+  // To aid is debugging set all fields to zero
+  memset(t, 0, sizeof(*t));
+  free(t);
+}
+
 static void free_tls_data() {
   void* tls_block = _emscripten_tls_base();
   if (tls_block) {
@@ -196,13 +209,18 @@ void _emscripten_thread_exit(void* result) {
   // When we publish this, the main thread is free to deallocate the thread
   // object and we are done.
   if (state == DT_DETACHED) {
-    self->detach_state = DT_EXITED;
-    __pthread_detached_exit();
+    // If the thread was detached then we can free the thread data now,
+    // otherwise is stays around in another thread calls pthread_join.
+    __pthread_free_thread_data(self);
   } else {
     self->detach_state = DT_EXITING;
     // wake any threads that might be waiting for us to exit
     emscripten_futex_wake(&self->detach_state, INT_MAX);
   }
+
+  // This will tell the main thread that we are done running on a thread
+  // on this worker and it can be returned to the worker pool.
+  _emscripten_thread_done();
 }
 
 // Mark as `no_sanitize("address"` since emscripten_pthread_exit destroys

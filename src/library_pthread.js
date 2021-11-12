@@ -8,8 +8,7 @@ var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread__deps: ['_emscripten_thread_init',
                    'emscripten_futex_wake', '$killThread',
-                   '$cancelThread', '$cleanupThread',
-                   '$freeThreadData',
+                   '$cancelThread',
                    'exit',
 #if !MINIMAL_RUNTIME
                    '$handleException',
@@ -168,8 +167,6 @@ var LibraryPThread = {
         // dynamically grow.
         PThread.unusedWorkers.push(worker);
         PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1);
-        // Not a running Worker anymore
-        freeThreadData(worker.pthread);
         // Detach the worker from the pthread object, and return it to the
         // worker pool as an unused worker.
         worker.pthread = undefined;
@@ -255,8 +252,6 @@ var LibraryPThread = {
           _emscripten_main_thread_process_queued_calls();
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
-        } else if (cmd === 'cleanupThread') {
-          cleanupThread(d['thread']);
         } else if (cmd === 'killThread') {
           killThread(d['thread']);
         } else if (cmd === 'cancelThread') {
@@ -275,11 +270,9 @@ var LibraryPThread = {
           err('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (cmd === 'alert') {
           alert('Thread ' + d['threadId'] + ': ' + d['text']);
-        } else if (cmd === 'detachedExit') {
+        } else if (cmd === 'threadDone') {
 #if ASSERTIONS
           assert(worker.pthread);
-          var detach_state = Atomics.load(HEAPU32, (worker.pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2);
-          assert(detach_state == {{{ cDefine('DT_EXITED') }}});
 #endif
           PThread.returnWorkerToPool(worker);
         } else if (cmd === 'cancelDone') {
@@ -311,7 +304,7 @@ var LibraryPThread = {
         worker.on('error', function(e) {
           worker.onerror(e);
         });
-        worker.on('detachedExit', function() {
+        worker.on('threadDone', function() {
           // TODO: update the worker queue?
           // See: https://github.com/emscripten-core/emscripten/issues/9763
         });
@@ -429,27 +422,6 @@ var LibraryPThread = {
     }
   },
 
-  $freeThreadData__noleakcheck: true,
-  $freeThreadData: function(pthread) {
-#if ASSERTIONS
-    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! freeThreadData() can only ever be called from main application thread!');
-#endif
-    if (!pthread) return;
-    if (pthread.threadInfoStruct) {
-#if PTHREADS_PROFILING
-      var profilerBlock = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.profilerBlock, 'i32') }}};
-      {{{ makeSetValue('pthread.threadInfoStruct',  C_STRUCTS.pthread.profilerBlock, 0, 'i32') }}};
-      _free(profilerBlock);
-#endif
-      _free(pthread.threadInfoStruct);
-    }
-    pthread.threadInfoStruct = 0;
-    if (pthread.allocatedOwnStack && pthread.stackBase) _free(pthread.stackBase);
-    pthread.stackBase = 0;
-    if (pthread.worker) pthread.worker.pthread = null;
-  },
-
-  $killThread__desp: ['$freeThreadData'],
   $killThread: function(pthread_ptr) {
 #if PTHREADS_DEBUG
     err('killThread 0x' + pthread_ptr.toString(16));
@@ -462,43 +434,10 @@ var LibraryPThread = {
     var pthread = PThread.pthreads[pthread_ptr];
     delete PThread.pthreads[pthread_ptr];
     pthread.worker.terminate();
-    freeThreadData(pthread);
     // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
     // but don't put it back to the pool.
     PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(pthread.worker), 1); // Not a running Worker anymore.
     pthread.worker.pthread = undefined;
-  },
-
-  __emscripten_thread_cleanup: function(thread) {
-    if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread);
-    else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
-  },
-
-  $cleanupThread: function(pthread_ptr) {
-#if ASSERTIONS
-    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! cleanupThread() can only ever be called from main application thread!');
-    assert(pthread_ptr, 'Internal Error! Null pthread_ptr in cleanupThread!');
-#endif
-    var pthread = PThread.pthreads[pthread_ptr];
-    // If pthread has been removed from this map this also means that pthread_ptr points
-    // to already freed data. Such situation may occur in following circumstances:
-    // 1. Joining cancelled thread - in such situation it may happen that pthread data will
-    //    already be removed by handling 'cancelDone' message.
-    // 2. Joining thread from non-main browser thread (this also includes thread running main()
-    //    when compiled with `PROXY_TO_PTHREAD`) - in such situation it may happen that following
-    //    code flow occur (MB - Main Browser Thread, S1, S2 - Worker Threads):
-    //    S2: thread ends, 'exit' message is sent to MB
-    //    S1: calls pthread_join(S2), this causes:
-    //        a. S2 is marked as detached,
-    //        b. 'cleanupThread' message is sent to MB.
-    //    MB: handles 'exit' message, as thread is detached, so returnWorkerToPool()
-    //        is called and all thread related structs are freed/released.
-    //    MB: handles 'cleanupThread' message which calls this function.
-    if (pthread) {
-      {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
-      var worker = pthread.worker;
-      PThread.returnWorkerToPool(worker);
-    }
   },
 
   $registerTlsInit: function(tlsInitFunc, moduleExports, metadata) {
@@ -576,7 +515,6 @@ var LibraryPThread = {
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
       initialState: {{{ cDefine('DT_JOINABLE') }}},
-      allocatedOwnStack: threadParams.allocatedOwnStack,
       // Info area for this thread in Emscripten HEAP (shared)
       threadInfoStruct: threadParams.pthread_ptr
     };
@@ -791,12 +729,13 @@ var LibraryPThread = {
       // stack size if not specified is 2 MB, so follow that convention.
       stackSize = {{{ DEFAULT_PTHREAD_STACK_SIZE }}};
     }
-    // If allocatedOwnStack == true, then the pthread impl maintains the stack allocation.
-    var allocatedOwnStack = stackBase == 0;
-    if (allocatedOwnStack) {
+    // If stackBase is zero then we allocate a new stack region and mark it as
+    // owned.
+    if (stackBase == 0) {
       // Allocate a stack if the user doesn't want to place the stack in a
       // custom memory area.
       stackBase = _memalign({{{ STACK_ALIGN }}}, stackSize);
+      Atomics.store(HEAPU32, (pthread_ptr + {{{ C_STRUCTS.pthread.stack_owned }}}) >> 2, 1);
     } else {
       // Musl stores the stack base address assuming stack grows downwards, so
       // adjust it to Emscripten convention that the
@@ -817,7 +756,6 @@ var LibraryPThread = {
     var threadParams = {
       stackBase: stackBase,
       stackSize: stackSize,
-      allocatedOwnStack: allocatedOwnStack,
       initialState: initialState,
       startRoutine: start_routine,
       pthread_ptr: pthread_ptr,
@@ -910,10 +848,12 @@ var LibraryPThread = {
     return 0;
   },
 
-  __pthread_detached_exit: function() {
-    // Called at the end of pthread_exit (which occurs also when leaving the
-    // thread main function) if an only if the thread is in a detached state.
-    postMessage({ 'cmd': 'detachedExit' });
+  _emscripten_thread_done: function() {
+    // Marks the current thread as complete and allows the worker to be
+    // returned to the pool
+    // Called at the end of _emscripten_thread_exit which is called
+    // during pthread_exit or when a thread returns from its entry point.
+    postMessage({ 'cmd': 'threadDone' });
   },
 
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
