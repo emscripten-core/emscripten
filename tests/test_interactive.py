@@ -75,18 +75,26 @@ class interactive(BrowserCore):
     # self.run_process([EMCC, '-O1', '--closure', '0', '--minify=0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
     # self.run_browser('page.html', '', '/report_result?1')
 
-  def test_sdl_audio_mix_channels(self):
+  @parameterized({
+    '': ([],),
+    'wasmfs': (['-s', 'WASMFS'],),
+  })
+  def test_sdl_audio_mix_channels(self, args):
     shutil.copyfile(test_file('sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
 
-    self.compile_btest(['-O2', '--minify=0', test_file('sdl_audio_mix_channels.c'), '--preload-file', 'sound.ogg', '-o', 'page.html'])
+    self.compile_btest(['-O2', '--minify=0', test_file('sdl_audio_mix_channels.c'), '--preload-file', 'sound.ogg', '-o', 'page.html'] + args)
     self.run_browser('page.html', '', '/report_result?1')
 
-  def test_sdl_audio_mix(self):
+  @parameterized({
+    '': ([],),
+    'wasmfs': (['-s', 'WASMFS'],),
+  })
+  def test_sdl_audio_mix(self, args):
     shutil.copyfile(test_file('sounds', 'pluck.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
     shutil.copyfile(test_file('sounds', 'the_entertainer.ogg'), os.path.join(self.get_dir(), 'music.ogg'))
     shutil.copyfile(test_file('sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'noise.ogg'))
 
-    self.compile_btest(['-O2', '--minify=0', test_file('sdl_audio_mix.c'), '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg', '-o', 'page.html'])
+    self.compile_btest(['-O2', '--minify=0', test_file('sdl_audio_mix.c'), '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg', '-o', 'page.html'] + args)
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_panning(self):

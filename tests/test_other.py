@@ -11171,6 +11171,10 @@ void foo() {}
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
 
+  def test_wasmfs_readfile(self):
+    self.set_setting('WASMFS')
+    self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
+
   @disabled('Running with initial >2GB heaps is not currently supported on the CI version of Node')
   def test_hello_world_above_2gb(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sGLOBAL_BASE=2147483648', '-sINITIAL_MEMORY=3GB'])
