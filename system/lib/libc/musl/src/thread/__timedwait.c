@@ -64,7 +64,7 @@ int __timedwait_cp(volatile int *addr, int val,
 
 #ifdef __EMSCRIPTEN__
 	double msecsToSleep = top ? (top->tv_sec * 1000 + top->tv_nsec / 1000000.0) : INFINITY;
-	int is_main_thread = emscripten_is_main_browser_thread();
+	int is_main_thread = emscripten_is_main_runtime_thread();
 	// cp suffix in the function name means "cancellation point", so this wait can be cancelled
 	// by the users unless current threads cancelability is set to PTHREAD_CANCEL_DISABLE
 	// which may be either done by the user of __timedwait() function.

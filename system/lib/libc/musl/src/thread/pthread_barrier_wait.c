@@ -88,7 +88,7 @@ int pthread_barrier_wait(pthread_barrier_t *b)
 			a_spin();
 		a_inc(&inst->finished);
 #ifdef __EMSCRIPTEN__
-		int is_main_thread = emscripten_is_main_browser_thread();
+		int is_main_thread = emscripten_is_main_runtime_thread();
 		while (inst->finished == 1) {
 			if (is_main_thread) {
 				int e;
