@@ -108,10 +108,20 @@ def get_wasm_libc_rt_files():
       'fmin.c', 'fminf.c', 'fminl.c',
       'fmax.c', 'fmaxf.c', 'fmaxl.c',
       'fmod.c', 'fmodf.c', 'fmodl.c',
-      'log2.c', 'log2f.c', 'log10.c', 'log10f.c',
-      'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c',
+      'log.c', 'log_data.c',
+      'logf.c', 'logf_data.c',
+      'log2.c', 'log2_data.c',
+      'log2f.c', 'log2f_data.c',
+      'log10.c', 'log10f.c',
+      'exp.c', 'exp_data.c',
+      'exp2.c',
+      'exp2f.c', 'exp2f_data.c',
+      'exp10.c', 'exp10f.c',
       'scalbn.c', '__fpclassifyl.c',
-      '__signbitl.c', '__signbitf.c', '__signbit.c'
+      '__signbitl.c', '__signbitf.c', '__signbit.c',
+      '__math_divzero.c', '__math_divzerof.c',
+      '__math_oflow.c', '__math_oflowf.c',
+      '__math_uflow.c', '__math_uflowf.c',
     ])
   other_files = files_in_path(
     path='system/lib/libc',
