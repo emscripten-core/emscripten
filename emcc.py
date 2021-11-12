@@ -60,16 +60,15 @@ C_ENDINGS = ('.c', '.i')
 CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii')
 OBJC_ENDINGS = ('.m', '.mi')
 OBJCXX_ENDINGS = ('.mm', '.mii')
-ASSEMBLY_CPP_ENDINGS = ('.S',)
 SPECIAL_ENDINGLESS_FILENAMES = (os.devnull,)
 
-SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES + ASSEMBLY_CPP_ENDINGS
+SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES + ('.ll', '.S')
 C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
 EXECUTABLE_ENDINGS = ('.wasm', '.html', '.js', '.mjs', '.out', '')
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
-ASSEMBLY_ENDINGS = ('.ll', '.s')
+ASSEMBLY_ENDINGS = ('.s',)
 HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
 
 # Supported LLD flags which we will pass through to the linker.
@@ -236,7 +235,6 @@ class EmccOptions:
     self.compiler_wrapper = None
     self.oformat = None
     self.requested_debug = ''
-    self.profiling_funcs = False
     self.emit_symbol_map = False
     self.use_closure_compiler = None
     self.closure_args = []
@@ -1831,6 +1829,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.FILESYSTEM = 0
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
+    settings.EXPORTED_FUNCTIONS += ['_emscripten_wasmfs_read_file']
 
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
   if not settings.USES_DYNAMIC_ALLOC:
@@ -2286,6 +2285,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
      not settings.DISABLE_EXCEPTION_CATCHING or \
      settings.ASYNCIFY or \
      settings.ASMFS or \
+     settings.WASMFS or \
      settings.DEMANGLE_SUPPORT or \
      settings.FORCE_FILESYSTEM or \
      settings.STB_IMAGE or \
@@ -2372,7 +2372,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.CAN_ADDRESS_2GB = 1
 
   settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
-  settings.PROFILING_FUNCS = options.profiling_funcs
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
   settings.LINK_AS_CXX = (run_via_emxx or settings.DEFAULT_TO_CXX) and '-nostdlib++' not in newargs
@@ -2959,7 +2958,7 @@ def parse_args(newargs):
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
     elif check_flag('-profiling-funcs') or check_flag('--profiling-funcs'):
-      options.profiling_funcs = True
+      settings.EMIT_NAME_SECTION = 1
     elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':
       if newargs[i] == '--memoryprofiler':
         options.memory_profiler = True
@@ -3141,7 +3140,7 @@ def phase_binaryen(target, options, wasm_target):
   if settings.GENERATE_SOURCE_MAP and not settings.SOURCE_MAP_BASE:
     logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
   # whether we need to emit -g (function name debug info) in the final wasm
-  debug_info = settings.DEBUG_LEVEL >= 2 or options.profiling_funcs
+  debug_info = settings.DEBUG_LEVEL >= 2 or settings.EMIT_NAME_SECTION
   # whether we need to emit -g in the intermediate binaryen invocations (but not
   # necessarily at the very end). this is necessary if we depend on debug info
   # during compilation, even if we do not emit it at the end.

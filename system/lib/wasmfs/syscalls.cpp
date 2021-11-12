@@ -17,13 +17,56 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
 
+// File permission macros for wasmfs.
+// Used to improve readability compared to those in stat.h
+#define WASMFS_PERM_WRITE 0222
+
 extern "C" {
 
 using namespace wasmfs;
+
+// Copy the file specified by the pathname into JS.
+// Return a pointer to the JS buffer in HEAPU8.
+// The buffer will also contain the file length.
+// Caller must free the returned pointer.
+void* emscripten_wasmfs_read_file(char* path) {
+  struct stat file;
+  int err = 0;
+  err = stat(path, &file);
+  if (err < 0) {
+    emscripten_console_error("Fatal error in FS.readFile");
+    abort();
+  }
+
+  // The function will return a pointer to a buffer with the file length in the
+  // first 8 bytes. The remaining bytes will contain the buffer contents. This
+  // allows the caller to use HEAPU8.subarray(buf + 8, buf + 8 + length).
+  off_t size = file.st_size;
+  uint8_t* result = (uint8_t*)malloc((size + sizeof(size)));
+  *(uint32_t*)result = size;
+
+  int fd = open(path, O_RDONLY);
+  if (fd < 0) {
+    emscripten_console_error("Fatal error in FS.readFile");
+    abort();
+  }
+  int numRead = pread(fd, result + sizeof(size), size, 0);
+  // TODO: Generalize this so that it is thread-proof.
+  // Must guarantee that the file size has not changed by the time it is read.
+  assert(numRead == size);
+  err = close(fd);
+  if (err < 0) {
+    emscripten_console_error("Fatal error in FS.readFile");
+    abort();
+  }
+
+  return result;
+}
 
 long __syscall_dup3(long oldfd, long newfd, long flags) {
   auto fileTable = wasmFS.getLockedFileTable();
@@ -250,7 +293,8 @@ static long doStat(std::shared_ptr<File> file, struct stat* buffer) {
   buffer->st_size = lockedFile.getSize();
 
   // ATTN: hard-coded constant values are copied from the existing JS file
-  // system. Specific values were chosen to match existing library_fs.js values.
+  // system. Specific values were chosen to match existing library_fs.js
+  // values.
   buffer->st_dev =
     1; // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
@@ -380,7 +424,6 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
       va_end(vl);
       // Mask all permissions sent via mode.
       mode &= S_IALLUGO;
-
       // Create an empty in-memory file.
       auto created = std::make_shared<MemoryFile>(mode);
 
@@ -468,8 +511,8 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
   } else if (whence == SEEK_CUR) {
     position = lockedOpenFile.position() + offset;
   } else if (whence == SEEK_END) {
-    // Only the open file state is altered in seek. Locking the underlying data
-    // file here once is sufficient.
+    // Only the open file state is altered in seek. Locking the underlying
+    // data file here once is sufficient.
     position = lockedOpenFile.getFile()->locked().getSize() + offset;
   } else {
     return __WASI_ERRNO_INVAL;
@@ -523,8 +566,8 @@ long __syscall_getcwd(long buf, long size) {
 
   while (curr != wasmFS.getRootDirectory()) {
     auto parent = curr->locked().getParent();
-    // Check if the parent exists. The parent may not exist if the CWD or one of
-    // its ancestors has been unlinked.
+    // Check if the parent exists. The parent may not exist if the CWD or one
+    // of its ancestors has been unlinked.
     if (!parent) {
       return -ENOENT;
     }
@@ -543,8 +586,8 @@ long __syscall_getcwd(long buf, long size) {
 
   auto res = result.c_str();
 
-  // Check if the size argument is less than the length of the absolute pathname
-  // of the working directory, including null terminator.
+  // Check if the size argument is less than the length of the absolute
+  // pathname of the working directory, including null terminator.
   if (strlen(res) >= size - 1) {
     return -ENAMETOOLONG;
   }
@@ -572,6 +615,80 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
   return __WASI_ERRNO_SUCCESS;
 }
 
+// This enum specifies whether rmdir or unlink is being performed.
+enum class UnlinkMode { Rmdir, Unlink };
+
+static long doUnlink(char* path, UnlinkMode unlinkMode) {
+  auto pathParts = splitPath(path);
+
+  // TODO: Ensure that . and .. are invalid when path parsing is updated.
+  // TODO: Change to check root directory pointer instead of path.
+  // This can be done when path parsing is refactored.
+  // Current state just matches JS file system behaviour.
+  if (pathParts.size() == 1 && pathParts[0] == "/") {
+    return -EBUSY;
+  }
+
+  if (pathParts.empty()) {
+    return -EINVAL;
+  }
+
+  auto base = pathParts.back();
+
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  // Parent node doesn't exist.
+  if (!parentDir) {
+    return err;
+  }
+
+  // Hold the locked directory to prevent the state from being changed during
+  // the operation.
+  auto lockedParentDir = parentDir->locked();
+
+  auto curr = lockedParentDir.getEntry(base);
+
+  if (!curr) {
+    return -ENOENT;
+  }
+
+  // rmdir checks if the target is a directory and if the directory is empty.
+  auto targetDir = curr->dynCast<Directory>();
+  if (unlinkMode == UnlinkMode::Rmdir) {
+
+    if (!targetDir) {
+      return -ENOTDIR;
+    }
+
+    // A directory can only be removed if it has zero entries.
+    if (targetDir->locked().getNumEntries() > 0) {
+      return -ENOTEMPTY;
+    }
+  } else {
+    // unlink cannot remove a directory.
+    if (targetDir) {
+      return -EISDIR;
+    }
+  }
+
+  // Cannot unlink/rmdir if the parent dir doesn't have write permissions.
+  if (!(lockedParentDir.mode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
+  // Input is valid, perform the unlink.
+  lockedParentDir.unlinkEntry(base);
+  return 0;
+}
+
+long __syscall_rmdir(long path) {
+  return doUnlink((char*)path, UnlinkMode::Rmdir);
+}
+
+long __syscall_unlink(long path) {
+  return doUnlink((char*)path, UnlinkMode::Unlink);
+}
 long __syscall_getdents64(long fd, long dirp, long count) {
   auto openFile = wasmFS.getLockedFileTable()[fd];
 

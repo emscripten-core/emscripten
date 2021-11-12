@@ -293,7 +293,7 @@ jobs:
       - checkout
       - run: pip3 install -r requirements-dev.txt
       - run: make -C site text
-      - run: tests/check_emcc_help_text.py
+      - run: tools/maint/check_emcc_help_text.py
       - run: make -C site html
   flake8:
     executor: bionic
