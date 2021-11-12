@@ -572,10 +572,10 @@ var LibraryEmbind = {
     }
 
     var isUnsignedType = (name.includes('unsigned'));
-    var checkAssertions = function(value) {
+    var checkAssertions = function(value, toTypeName) {
 #if ASSERTIONS
         if (typeof value !== "number" && typeof value !== "boolean") {
-            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + toTypeName);
         }
         if (value < minRange || value > maxRange) {
             throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
@@ -585,12 +585,12 @@ var LibraryEmbind = {
     var toWireType;
     if (isUnsignedType) {
         toWireType = function(destructors, value) {
-            checkAssertions(value);
+            checkAssertions(value, this.name);
             return (value >>> 0);
         }
     } else {
         toWireType = function(destructors, value) {
-            checkAssertions(value);
+            checkAssertions(value, this.name);
             // The VM will perform JS to Wasm value conversion, according to the spec:
             // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
             return value;
@@ -615,10 +615,11 @@ var LibraryEmbind = {
     var shift = getShiftFromSize(size);
 
     var isUnsignedType = (name.indexOf('u') != -1);
+    var self = this;
     var checkAssertions = function(value) {
 #if ASSERTIONS
         if (typeof value !== "bigint") {
-            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + self.name);
         }
         if (value < minRange || value > maxRange) {
             throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
