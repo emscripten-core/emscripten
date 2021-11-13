@@ -10816,7 +10816,7 @@ kill -9 $$
       self.assertContained('failed (received SIGKILL (-9))', err)
 
   def test_concepts(self):
-    self.do_runf(test_file('other', 'test_concepts.cpp'), '', emcc_args=['-std=c++20'])
+    self.do_runf(test_file('other/test_concepts.cpp'), '', emcc_args=['-std=c++20'])
 
   def test_link_only_setting_warning(self):
     err = self.run_process([EMCC, '-sALLOW_MEMORY_GROWTH', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
@@ -10995,7 +10995,7 @@ void foo() {}
     self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.build(test_file('other', 'test_pthread_js_exception.c'))
+    self.build(test_file('other/test_pthread_js_exception.c'))
     err = self.run_js('test_pthread_js_exception.js', assert_returncode=NON_ZERO)
     self.assertContained('missing is not defined', err)
 
@@ -11048,9 +11048,9 @@ void foo() {}
 
   @node_pthreads
   def test_default_pthread_stack_size(self):
-    self.do_runf(test_file('other', 'test_default_pthread_stack_size.c'))
+    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
     self.emcc_args.append('-sUSE_PTHREADS')
-    self.do_runf(test_file('other', 'test_default_pthread_stack_size.c'))
+    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
 
   def test_emscripten_set_immediate(self):
     self.do_runf(test_file('emscripten_set_immediate.c'))
