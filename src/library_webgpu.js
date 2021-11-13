@@ -1375,7 +1375,7 @@ var LibraryWebGPU = {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
-  wgpuQueueOnSubmittedWorkDone: function(queueId, callback, userdata) {
+  wgpuQueueOnSubmittedWorkDone: function(queueId, _signalValue, callback, userdata) {
     var queue = WebGPU.mgrQueue.get(queueId);
     {{{ runtimeKeepalivePush() }}}
     queue["onSubmittedWorkDone"]().then(function() {
