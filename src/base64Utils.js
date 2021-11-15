@@ -8,7 +8,7 @@
  * Decodes a base64 string.
  * @param {string} input The string to decode.
  */
-#if MIN_IE_VERSION == TARGET_NOT_SUPPORTED || MIN_IE_VERSION >= 10 // IE 10+ have atob, and so do practically all other browsers
+#if (MIN_IE_VERSION == TARGET_NOT_SUPPORTED || MIN_IE_VERSION >= 10) && !ENVIRONMENT_MAY_BE_NODE // IE 10+ have atob, and so do practically all other browsers. Older node (at least 14) does not, though.
 var decodeBase64 = atob;
 #else
 var decodeBase64 = typeof atob === 'function' ? atob : function (input) {
