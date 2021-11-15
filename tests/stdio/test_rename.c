@@ -137,7 +137,7 @@ void test() {
   err = rename("dir/file2", "dir/file2");
   assert(!err);
 
-  // In Linux, renaming the root directory should return EBUSY.
+  // In Linux and WasmFS, renaming the root directory should return EBUSY.
   // In the JS file system it reports EINVAL.
   err = rename("/", "dir/file2");
   assert(err == -1);
@@ -150,32 +150,6 @@ void test() {
   err = rename("dir/file2", "/");
   assert(err == -1);
   assert(errno == ENOTEMPTY);
-
-  // Test renaming the current working directory while still root.
-  char buffer[100];
-  getcwd(buffer, sizeof(buffer));
-  err = rename(buffer, "dir/file");
-  assert(err == -1);
-#ifdef WASMFS
-  assert(errno == EBUSY);
-#else
-  assert(errno == EINVAL);
-#endif
-
-  // Test renaming the current working directory.
-  // In Linux, it is possible to rename the current working dir.
-  // The JS file system reports EBUSY.
-  chdir("new-dir");
-  getcwd(buffer, sizeof(buffer));
-  printf("buffer: %s\n", buffer);
-  err = rename(buffer, "/dir/new-dir");
-#ifdef WASMFS
-  assert(!err);
-#else
-  assert(errno == EBUSY);
-#endif
-  // Switch back to the root directory for cleanup.
-  chdir("/");
 
   puts("success");
 }
