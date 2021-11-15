@@ -10728,6 +10728,22 @@ exec "$@"
     self.run_process(building.get_command_with_possible_response_file([EMCC, 'main.c'] + files))
     self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
 
+  # Tests that the filename suffix of the response files can be used to detect which encoding the file is.
+  def test_response_file_encoding(self):
+    open('äö.c', 'w').write('int main(){}')
+
+    open('a.rsp', 'w', encoding='utf-8').write('äö.c') # Write a response file with unicode contents ...
+    self.run_process([EMCC, '@a.rsp']) # ... and test that in the absence of a file suffix, it is autodetected to utf-8.
+
+    open('a.rsp.cp437', 'w', encoding='cp437').write('äö.c') # Write a response file with Windows CP-437 encoding ...
+    self.run_process([EMCC, '@a.rsp.cp437']) # ... and test that with the explicit suffix present, it is properly decoded
+
+    import locale
+    preferred_encoding = locale.getpreferredencoding(do_setlocale=False)
+    print('Python locale preferredencoding: ' + preferred_encoding)
+    open('a.rsp', 'w', encoding=preferred_encoding).write('äö.c') # Write a response file using Python preferred encoding
+    self.run_process([EMCC, '@a.rsp']) # ... and test that it is properly autodetected.
+
   def test_output_name_collision(self):
     # Ensure that the seconday filenames never collide with the primary output filename
     # In this case we explcitly ask for JS to be ceated in a file with the `.wasm` suffix.
