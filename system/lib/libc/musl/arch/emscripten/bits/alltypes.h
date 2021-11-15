@@ -294,7 +294,7 @@ typedef int clockid_t;
 #endif
 
 #if defined(__NEED_clock_t) && !defined(__DEFINED_clock_t)
-typedef long clock_t;
+typedef int clock_t;  /* XXX EMSCRIPTEN: ensure it's always 32-bits even in wasm64 */
 #define __DEFINED_clock_t
 #endif
 
