@@ -91,9 +91,9 @@ typedef long suseconds_t;
 #if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
 typedef struct {
     union {
-        int __i[9];
-        volatile int __vi[9];
-        unsigned __s[9];
+        int __i[10];
+        volatile int __vi[10];
+        unsigned __s[10];
     } __u;
 #ifdef __EMSCRIPTEN__
     // For canvas transfer implementation in Emscripten, use an extra control field

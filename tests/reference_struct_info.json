@@ -1343,8 +1343,8 @@
             "tsd": 64
         },
         "pthread_attr_t": {
-            "__size__": 40,
-            "_a_transferredcanvases": 36
+            "__size__": 44,
+            "_a_transferredcanvases": 40
         },
         "sockaddr": {
             "__size__": 16,
