@@ -8,9 +8,13 @@
  * Decodes a base64 string.
  * @param {string} input The string to decode.
  */
-#if (MIN_IE_VERSION == TARGET_NOT_SUPPORTED || MIN_IE_VERSION >= 10) && ENVIRONMENT == 'web' // IE 10+ have atob, and so do practically all other browsers. Older node (at least 14) does not, though, nor does d8, and support in workers requires somewhat newer versions of browsers, so gate this on env=web. https://developer.mozilla.org/en-US/docs/Web/API/atob
+#if (MIN_IE_VERSION == TARGET_NOT_SUPPORTED || MIN_IE_VERSION >= 10) && ENVIRONMENT == 'web'
 var decodeBase64 = atob;
 #else
+// IE 10+ have atob, and so do practically all other browsers. Older node (at
+// least 14) does not, though, nor does d8, and support in workers requires
+// somewhat newer versions of browsers, so gate this on env=web.
+// See https://developer.mozilla.org/en-US/docs/Web/API/atob
 var decodeBase64 = typeof atob === 'function' ? atob : function (input) {
   var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
 
