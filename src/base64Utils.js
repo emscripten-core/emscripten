@@ -41,7 +41,7 @@ var decodeBase64 = typeof atob === 'function' ? atob : function (input) {
   } while (i < input.length);
   return output;
 };
-#endif // MIN_IE_VERSION
+#endif // MIN_IE_VERSION && ENVIRONMENT=web
 
 // Converts a string of base64 into a byte array.
 // Throws error on invalid input.
