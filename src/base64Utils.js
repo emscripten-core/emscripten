@@ -8,6 +8,9 @@
  * Decodes a base64 string.
  * @param {string} input The string to decode.
  */
+#if MIN_IE_VERSION == TARGET_NOT_SUPPORTED || MIN_IE_VERSION >= 10 // IE 10+ have atob, and so do practically all other browsers
+var decodeBase64 = atob;
+#else
 var decodeBase64 = typeof atob === 'function' ? atob : function (input) {
   var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
 
@@ -38,6 +41,7 @@ var decodeBase64 = typeof atob === 'function' ? atob : function (input) {
   } while (i < input.length);
   return output;
 };
+#endif // MIN_IE_VERSION
 
 // Converts a string of base64 into a byte array.
 // Throws error on invalid input.
