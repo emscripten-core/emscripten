@@ -45,7 +45,7 @@ wctype_t  wctype(const char *);
 
 #ifndef __cplusplus
 #undef iswdigit
-#define iswdigit(a) (0 ? iswdigit(a) : ((unsigned)(a)-'0') < 10)
+#define iswdigit(a) (((unsigned)(a)-'0') < 10)
 #endif
 
 #if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
