@@ -31,11 +31,15 @@ void setup() {
   mkdir("new-dir", 0777);
   create_file("dir/file", "abcdef", 0777);
   mkdir("dir/subdir", 0777);
+  mkdir("dir/subdir/subsubdir", 0777);
   mkdir("dir-readonly", 0555);
   mkdir("dir-nonempty", 0777);
   mkdir("dir/subdir3", 0777);
   mkdir("dir/subdir3/subdir3_1", 0777);
   mkdir("dir/subdir4/", 0777);
+  mkdir("dir/a/", 0777);
+  mkdir("dir/b/", 0777);
+  mkdir("dir/b/c", 0777);
   create_file("dir-nonempty/file", "abcdef", 0777);
 }
 
@@ -46,6 +50,7 @@ void cleanup() {
   unlink("dir/file");
   unlink("dir/file1");
   unlink("dir/file2");
+  rmdir("dir/subdir/subsubdir");
   rmdir("dir/subdir");
   rmdir("dir/subdir1");
   rmdir("dir/subdir2");
@@ -54,6 +59,8 @@ void cleanup() {
   rmdir("dir/subdir3");
   rmdir("dir/subdir4/");
   rmdir("dir/subdir5/");
+  rmdir("dir/b/c");
+  rmdir("dir/b");
   rmdir("dir");
   rmdir("new-dir");
   rmdir("dir-readonly");
@@ -93,9 +100,26 @@ void test() {
   err = rename("dir", "dir/somename");
   assert(err == -1);
   assert(errno == EINVAL);
+  
+  err = rename("dir", "dir/somename/noexist");
+  assert(err == -1);
+  // In the JS file system, this returns ENOENT rather than detecting that dir is an ancestor.
+#ifdef WASMFS
+  assert(errno == EINVAL);
+#else
+  assert(errno == ENOENT);
+#endif
+
+  err = rename("dir", "dir/subdir");
+  assert(err == -1);
+  assert(errno == EINVAL);
 
   // target should not be an ancestor of source
   err = rename("dir/subdir", "dir");
+  assert(err == -1);
+  assert(errno == ENOTEMPTY);
+  
+  err = rename("dir/subdir/subsubdir", "dir");
   assert(err == -1);
   assert(errno == ENOTEMPTY);
 
@@ -133,8 +157,12 @@ void test() {
   err = rename("dir/subdir4/", "dir/subdir5/");
   assert(!err);
 
-  // Test renaming the same directory
+  // Test renaming the same directory.
   err = rename("dir/file2", "dir/file2");
+  assert(!err);
+  
+  // Test renaming a directory with a subdirectory with a common ancestor.
+  err = rename("dir/a", "dir/b/c");
   assert(!err);
 
   // In Linux and WasmFS, renaming the root directory should return EBUSY.
@@ -147,6 +175,7 @@ void test() {
   assert(errno == EINVAL);
 #endif
 
+  // Test renaming a directory with root.
   err = rename("dir/file2", "/");
   assert(err == -1);
   assert(errno == ENOTEMPTY);

@@ -722,14 +722,14 @@ long __syscall_getdents64(long fd, long dirp, long count) {
 
 long __syscall_rename(long old_path, long new_path) {
   // The rename syscall must be atomic to prevent other file system operations
-  // from changing it. If it were not atomic, then another thread could unlink
-  // the destination directory after we have moved our source child. This would
-  // leave the file system in an undefined state as the source child is now
-  // orphaned. Protecting the destination and source parent directories ensures
-  // that no resources that we depend on are altered. Trylocking on the new_path
-  // parent is needed in the case where two renames are operating on opposing
-  // sources and destinations. This could cause them to lock the directories in
-  // reverse order and cause deadlock.
+  // from changing its state. If it were not atomic, then other threads could
+  // unlink the destination directory after we have moved our source child. This
+  // would leave the file system in an undefined state as the source child is
+  // now orphaned. Protecting the destination and source parent directories
+  // ensures that no resources that we depend on are altered. Trylocking on the
+  // new_path parent is needed in the case where two renames are operating on
+  // opposing sources and destinations. This could cause them to lock the
+  // directories in reverse order and cause deadlock.
 
   // Edge case: rename("dir", "dir/somename") - in this scenario it should not
   // be possible to rename the destination if the source is an ancestor.
