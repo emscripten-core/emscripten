@@ -58,7 +58,7 @@ void MemoryFile::Handle::preloadFromJS(int index) {
 std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
                                   std::vector<std::string>::iterator end,
                                   long& err,
-                                  std::shared_ptr<File> ancestor) {
+                                  std::shared_ptr<File> forbiddenAncestor) {
 
   std::shared_ptr<File> curr;
   // Check if the first path element is '/', indicating an absolute path.
@@ -85,10 +85,12 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
 #endif
     curr = directory->locked().getEntry(*it);
 
-    // For the rename syscall one must check if the source dir is an ancestor of
-    // the destination dir.
-    if (ancestor) {
-      if (curr == ancestor) {
+    // Special case for the rename syscall.
+    // If one detects that old_path is a forbidden ancestor in the path of
+    // new_path, the rename operation is invalid. Ex.
+    // rename("dir", "dir/somename").
+    if (forbiddenAncestor) {
+      if (curr == forbiddenAncestor) {
         err = -EINVAL;
         return nullptr;
       }

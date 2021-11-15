@@ -721,30 +721,17 @@ long __syscall_getdents64(long fd, long dirp, long count) {
 }
 
 long __syscall_rename(long old_path, long new_path) {
-  // This syscall must acquire locks on the old_path parent and new_parent for atomicity.
-  // 1. Obtain the old path parent first and lock it.
-  // 2. Obtain the old path child.
-  // 3. Try lock the new path parent. Operation should return EBUSY if it is
-  // locked. In the case where the old path parent and new path parent are the
-  // same, a recursive lock should allow it to be locked again from the same
-  // thread.
-  // Renaming a file:
-  // 4. a) If the old path child is a file, ensure the new path child is not a
-  // directory.
-  // 4. b) If the new path child does not exist, add the old path child to the
-  // new path parent.
-  // 4. c) If the new path child does exist, unlink the new path child and add
-  // the old path child. Renaming a directory:
-  // 5. a) If the old path child is a directory, ensure the new path child is
-  // not a file.
-  // 5. b) If the new path child does not exist, do the same as 4b.
-  // 5. c) If the new path child does exist, ensure the newpath child is empty
-  // and then do 4c.
+  // The rename syscall must be atomic to prevent other file system operations
+  // from changing it. For example, two renames could be contending for the same
+  // source and destination file. Locking both the old_path parent and new_path
+  // parent are necessary. One can attempt to trylock on the new_path parent.
+  // This should return EBUSY if new_path parent is already locked.
 
-  // If old_path and new_path are the same, do nothing.
-  if (strcmp((char*)old_path, (char*)new_path) == 0) {
-    return 0;
-  }
+  // Edge case: rename("dir", "dir/somename") - in this scenario it should not
+  // be possible to rename the destination if the source is an ancestor.
+
+  // Edge case: rename("dir/somename", "dir") - in this scenario it should not
+  // be possible to rename the destination since by definition it is non-empty.
 
   auto oldPathParts = splitPath((char*)old_path);
 
@@ -752,7 +739,7 @@ long __syscall_rename(long old_path, long new_path) {
     return -EINVAL;
   }
 
-  // On Linux, renaming the root directory returns EBUSY.
+  // In Linux, renaming the root directory returns EBUSY.
   // TODO: Fix this when path parsing is refactored.
   if (oldPathParts.size() == 1 && oldPathParts[0] == "/") {
     return -EBUSY;
@@ -772,16 +759,21 @@ long __syscall_rename(long old_path, long new_path) {
 
   auto oldPath = lockedOldParentDir.getEntry(oldBase);
 
-  // Check if the old_path exists.
   if (!oldPath) {
     return -ENOENT;
   }
 
-  // Obtain the new directory to see if it exists
+  // Obtain the destination parent directory to see if it exists.
   auto newPathParts = splitPath((char*)new_path);
 
   if (newPathParts.empty()) {
     return -EINVAL;
+  }
+
+  // In Linux, renaming a directory with the root directory returns ENOTEMPTY.
+  // TODO: Fix this when path parsing is refactored.
+  if (newPathParts.size() == 1 && newPathParts[0] == "/") {
+    return -ENOTEMPTY;
   }
 
   auto newBase = newPathParts.back();
@@ -802,7 +794,13 @@ long __syscall_rename(long old_path, long new_path) {
     return -EBUSY;
   }
 
-  auto lockedNewParentDir = std::move(maybeLockedNewParentDir.value());
+  auto lockedNewParentDir = std::move(*maybeLockedNewParentDir);
+  auto newPath = lockedNewParentDir.getEntry(newBase);
+
+  // If old_path and new_path are the same, do nothing.
+  if (newPath == oldPath) {
+    return 0;
+  }
 
   // Cannot move to a destination parent directory wihout write permissions.
   if (!(lockedNewParentDir.mode() & WASMFS_PERM_WRITE)) {
@@ -811,57 +809,43 @@ long __syscall_rename(long old_path, long new_path) {
 
   auto oldFile = oldPath->dynCast<DataFile>();
   if (oldFile) {
-    // Unlink the oldpath, but still hold the shared_ptr to oldFile.
-    lockedOldParentDir.unlinkEntry(oldBase);
-
-    auto newPath = lockedNewParentDir.getEntry(newBase);
-
     // Check if the new path child already exists.
     if (newPath) {
-      // Cannot overwrite a file with a directory
+      // Cannot overwrite a file with a directory.
       if (newPath->is<Directory>()) {
-        // Reset the old entry
-        lockedNewParentDir.setEntry(oldBase, oldFile);
         return -EISDIR;
       }
       lockedNewParentDir.unlinkEntry(newBase);
     }
 
+    // Unlink the oldpath and add the oldpath to the new parent dir.
+    lockedOldParentDir.unlinkEntry(oldBase);
     lockedNewParentDir.setEntry(newBase, oldFile);
   }
 
   auto oldDirectory = oldPath->dynCast<Directory>();
   if (oldDirectory) {
-
-    // Unlink the oldpath, but still hold the shared_ptr to oldFile.
-    lockedOldParentDir.unlinkEntry(oldBase);
-
-    auto newPath = lockedNewParentDir.getEntry(newBase);
-
     // Check if the new path child already exists.
     if (newPath) {
       auto newPathDirectory = newPath->dynCast<Directory>();
-      
+
       // Cannot overwrite a directory with a file.
       if (!newPathDirectory) {
-        // Reset the old entry
-        lockedOldParentDir.setEntry(oldBase, oldDirectory);
         return -ENOTDIR;
       }
 
-      // This should also cover the case in which
-      // destination is ancestor of source.
-      // err = rename("dir/subdir", "dir");
-      auto lockedNewPathDirectory = newPathDirectory->locked();
-      if (lockedNewPathDirectory.getNumEntries() > 0) {
-        // Reset the old entry
-        lockedOldParentDir.setEntry(oldBase, oldDirectory);
+      // This should also cover the case in where
+      // the destination is an ancestor of the source:
+      // rename("dir/subdir", "dir");
+      if (newPathDirectory->locked().getNumEntries() > 0) {
         return -ENOTEMPTY;
       }
 
       lockedNewParentDir.unlinkEntry(newBase);
     }
 
+    // Unlink the oldpath and add the oldpath to the new parent dir.
+    lockedOldParentDir.unlinkEntry(oldBase);
     lockedNewParentDir.setEntry(newBase, oldDirectory);
   }
 

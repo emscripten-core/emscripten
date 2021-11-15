@@ -28,6 +28,7 @@ void create_file(const char *path, const char *buffer, int mode) {
 void setup() {
   create_file("file", "abcdef", 0777);
   mkdir("dir", 0777);
+  mkdir("new-dir", 0777);
   create_file("dir/file", "abcdef", 0777);
   mkdir("dir/subdir", 0777);
   mkdir("dir-readonly", 0555);
@@ -54,6 +55,7 @@ void cleanup() {
   rmdir("dir/subdir4/");
   rmdir("dir/subdir5/");
   rmdir("dir");
+  rmdir("new-dir");
   rmdir("dir-readonly");
   unlink("dir-nonempty/file");
   rmdir("dir-nonempty");
@@ -132,24 +134,22 @@ void test() {
   assert(!err);
 
   // Test renaming the same directory
-  // In Linux this does nothing, but in the JS file system it reports ENOENT.
-  err = rename("dir/file", "dir/file");
-#ifdef WASMFS
+  err = rename("dir/file2", "dir/file2");
   assert(!err);
-#else
-  assert(err == -1);
-  assert(errno == ENOENT);
-#endif
 
   // In Linux, renaming the root directory should return EBUSY.
   // In the JS file system it reports EINVAL.
-  err = rename("/", "dir/file");
+  err = rename("/", "dir/file2");
   assert(err == -1);
 #ifdef WASMFS
   assert(errno == EBUSY);
 #else
   assert(errno == EINVAL);
 #endif
+
+  err = rename("dir/file2", "/");
+  assert(err == -1);
+  assert(errno == ENOTEMPTY);
 
   // Test renaming the current working directory while still root.
   char buffer[100];
@@ -161,6 +161,21 @@ void test() {
 #else
   assert(errno == EINVAL);
 #endif
+
+  // Test renaming the current working directory.
+  // In Linux, it is possible to rename the current working dir.
+  // The JS file system reports EBUSY.
+  chdir("new-dir");
+  getcwd(buffer, sizeof(buffer));
+  printf("buffer: %s\n", buffer);
+  err = rename(buffer, "/dir/new-dir");
+#ifdef WASMFS
+  assert(!err);
+#else
+  assert(errno == EBUSY);
+#endif
+  // Switch back to the root directory for cleanup.
+  chdir("/");
 
   puts("success");
 }

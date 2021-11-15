@@ -87,7 +87,7 @@ public:
     if (handle.trylock()) {
       return Handle(shared_from_this());
     } else {
-      return std::nullopt;
+      return {};
     }
   }
 
@@ -232,7 +232,7 @@ public:
     if (handle.trylock()) {
       return Handle(shared_from_this());
     } else {
-      return std::nullopt;
+      return {};
     }
   }
 };
@@ -264,10 +264,12 @@ public:
 
 // Obtains parent directory of a given pathname.
 // Will return a nullptr if the parent is not a directory.
-std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
-                                  std::vector<std::string>::iterator end,
-                                  long& err,
-                                  std::shared_ptr<File> ancestor = nullptr);
+// Will exit if the forbiddenAncestor shared_ptr is encountered while parsing.
+std::shared_ptr<Directory>
+getDir(std::vector<std::string>::iterator begin,
+       std::vector<std::string>::iterator end,
+       long& err,
+       std::shared_ptr<File> forbiddenAncestor = nullptr);
 
 // Return a vector of the '/'-delimited components of a path. The first element
 // will be "/" iff the path is an absolute path.
