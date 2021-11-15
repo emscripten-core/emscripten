@@ -825,7 +825,7 @@ module({
             assert.equal("-2147483648", cm.long_to_string(-2147483648));
 
             // passing out of range values should fail with assertions.
-            if (cm.ASSERTIONS) {
+            if (cm['ASSERTIONS']) {
                 assert.throws(TypeError, function() { cm.char_to_string(-129); });
                 assert.throws(TypeError, function() { cm.char_to_string(128); });
                 assert.throws(TypeError, function() { cm.signed_char_to_string(-129); });
@@ -864,7 +864,7 @@ module({
             assert.equal(2147483648, cm.load_unsigned_long());
         });
 
-        if (cm.ASSERTIONS) {
+        if (cm['ASSERTIONS']) {
             test("throws type error when attempting to coerce null to int", function() {
                 var e = assert.throws(TypeError, function() {
                     cm.int_to_string(null);
@@ -1045,13 +1045,13 @@ module({
 
             assert.equal(undefined, vec.get(4));
             // only test a negative index without assertions.
-            if (!cm.ASSERTIONS) {
+            if (!cm['ASSERTIONS']) {
                 assert.equal(undefined, vec.get(-1));
             }
             vec.delete();
         });
 
-        if (cm.ASSERTIONS) {
+        if (cm['ASSERTIONS']) {
             test("out of type range array index throws with assertions", function() {
                 var vec = cm.emval_test_return_vector();
 
@@ -1446,7 +1446,7 @@ module({
             c.delete();
         });
 
-        if (cm.ASSERTIONS) {
+        if (cm['ASSERTIONS']) {
             test("assigning string or object to integer raises TypeError with assertions", function() {
                 var c = new cm.CustomStruct();
                 var e = assert.throws(TypeError, function() {
