@@ -2385,10 +2385,15 @@ The current type of b is: 9
       self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_atexit.c')
 
-  def test_atexit_threads(self):
+  def test_atexit_threads_stub(self):
     # also tests thread exit (__cxa_thread_atexit)
     self.set_setting('EXIT_RUNTIME')
-    self.do_core_test('test_atexit_threads.c')
+    self.do_core_test('test_atexit_threads.cpp')
+
+  @node_pthreads
+  def test_atexit_threads(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.do_core_test('test_atexit_threads.cpp')
 
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
