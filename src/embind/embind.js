@@ -615,17 +615,6 @@ var LibraryEmbind = {
     var shift = getShiftFromSize(size);
 
     var isUnsignedType = (name.indexOf('u') != -1);
-    var self = this;
-    var checkAssertions = function(value) {
-#if ASSERTIONS
-        if (typeof value !== "bigint") {
-            throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + self.name);
-        }
-        if (value < minRange || value > maxRange) {
-            throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
-        }
-#endif
-    }
 
     // maxRange comes through as -1 for uint64_t (see issue 13902). Work around that temporarily
     if (isUnsignedType) {
@@ -639,7 +628,14 @@ var LibraryEmbind = {
             return value;
         },
         'toWireType': function (destructors, value) {
-            checkAssertions(value);
+#if ASSERTIONS
+            if (typeof value !== "bigint") {
+                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + toTypeName);
+            }
+            if (value < minRange || value > maxRange) {
+                throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
+            }
+#endif
             return value;
         },
         'argPackAdvance': 8,
