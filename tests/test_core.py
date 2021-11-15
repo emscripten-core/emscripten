@@ -8529,7 +8529,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_stdio_locking(self):
     self.set_setting('PTHREAD_POOL_SIZE', '2')
     self.set_setting('EXIT_RUNTIME')
-    self.do_run_in_out_file_test('core', 'test_stdio_locking.c')
+    self.do_run_in_out_file_test('core/test_stdio_locking.c')
 
   @needs_dylink
   @node_pthreads

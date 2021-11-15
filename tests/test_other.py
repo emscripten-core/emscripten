@@ -10728,6 +10728,22 @@ exec "$@"
     self.run_process(building.get_command_with_possible_response_file([EMCC, 'main.c'] + files))
     self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
 
+  # Tests that the filename suffix of the response files can be used to detect which encoding the file is.
+  def test_response_file_encoding(self):
+    open('äö.c', 'w').write('int main(){}')
+
+    open('a.rsp', 'w', encoding='utf-8').write('äö.c') # Write a response file with unicode contents ...
+    self.run_process([EMCC, '@a.rsp']) # ... and test that in the absence of a file suffix, it is autodetected to utf-8.
+
+    open('a.rsp.cp437', 'w', encoding='cp437').write('äö.c') # Write a response file with Windows CP-437 encoding ...
+    self.run_process([EMCC, '@a.rsp.cp437']) # ... and test that with the explicit suffix present, it is properly decoded
+
+    import locale
+    preferred_encoding = locale.getpreferredencoding(do_setlocale=False)
+    print('Python locale preferredencoding: ' + preferred_encoding)
+    open('a.rsp', 'w', encoding=preferred_encoding).write('äö.c') # Write a response file using Python preferred encoding
+    self.run_process([EMCC, '@a.rsp']) # ... and test that it is properly autodetected.
+
   def test_output_name_collision(self):
     # Ensure that the seconday filenames never collide with the primary output filename
     # In this case we explcitly ask for JS to be ceated in a file with the `.wasm` suffix.
@@ -10816,7 +10832,7 @@ kill -9 $$
       self.assertContained('failed (received SIGKILL (-9))', err)
 
   def test_concepts(self):
-    self.do_runf(test_file('other', 'test_concepts.cpp'), '', emcc_args=['-std=c++20'])
+    self.do_runf(test_file('other/test_concepts.cpp'), '', emcc_args=['-std=c++20'])
 
   def test_link_only_setting_warning(self):
     err = self.run_process([EMCC, '-sALLOW_MEMORY_GROWTH', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
@@ -10995,7 +11011,7 @@ void foo() {}
     self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.build(test_file('other', 'test_pthread_js_exception.c'))
+    self.build(test_file('other/test_pthread_js_exception.c'))
     err = self.run_js('test_pthread_js_exception.js', assert_returncode=NON_ZERO)
     self.assertContained('missing is not defined', err)
 
@@ -11048,9 +11064,9 @@ void foo() {}
 
   @node_pthreads
   def test_default_pthread_stack_size(self):
-    self.do_runf(test_file('other', 'test_default_pthread_stack_size.c'))
+    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
     self.emcc_args.append('-sUSE_PTHREADS')
-    self.do_runf(test_file('other', 'test_default_pthread_stack_size.c'))
+    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
 
   def test_emscripten_set_immediate(self):
     self.do_runf(test_file('emscripten_set_immediate.c'))
@@ -11179,3 +11195,11 @@ void foo() {}
   def test_hello_world_above_2gb(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sGLOBAL_BASE=2147483648', '-sINITIAL_MEMORY=3GB'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
+
+  def test_hello_function(self):
+    # hello_function.cpp is referenced/used in the docs.  This test ensures that it
+    # at least compiles.
+    # (It seems odd that we ship the entire tests/ directory to all our users and
+    # reference them in our docs.  Should we move this file to somewhere else such
+    # as `examples/`?)
+    self.run_process([EMCC, test_file('hello_function.cpp'), '-o', 'function.html', '-sEXPORTED_FUNCTIONS=_int_sqrt', '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap'])

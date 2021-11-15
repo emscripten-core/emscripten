@@ -1737,13 +1737,14 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_glgears_animation(self):
-    es2_suffix = ['', '_full', '_full_944']
-    for full_es2 in [0, 1, 2]:
-      print(full_es2)
-      self.compile_btest([test_file('hello_world_gles%s.c' % es2_suffix[full_es2]), '-o', 'something.html',
-                          '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING', '-lGL', '-lglut',
-                          '--shell-file', test_file('hello_world_gles_shell.html')] +
-                         (['-s', 'FULL_ES2=1'] if full_es2 else []))
+    for filename in ['hello_world_gles.c', 'hello_world_gles_full.c', 'hello_world_gles_full_944.c']:
+      print(filename)
+      cmd = [test_file(filename), '-o', 'something.html',
+             '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING', '-lGL', '-lglut',
+             '--shell-file', test_file('hello_world_gles_shell.html')]
+      if 'full' in filename:
+        cmd += ['-s', 'FULL_ES2=1']
+      self.compile_btest(cmd)
       self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
   @requires_graphics_hardware

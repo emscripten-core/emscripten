@@ -122,6 +122,8 @@ def get_wasm_libc_rt_files():
       '__math_divzero.c', '__math_divzerof.c',
       '__math_oflow.c', '__math_oflowf.c',
       '__math_uflow.c', '__math_uflowf.c',
+      '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
+
     ])
   other_files = files_in_path(
     path='system/lib/libc',
