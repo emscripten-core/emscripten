@@ -458,6 +458,77 @@ class TestCoreBase(RunnerCore):
     self.node_args += ['--experimental-wasm-bigint']
     self.do_core_test('test_i64_invoke_bigint.cpp', js_engines=[config.NODE_JS])
 
+  @require_v8
+  def test_dylink_wasm_eh(self):
+    create_file('main.cpp', r'''
+#include <stdio.h>
+#include <dlfcn.h>
+int main() {
+  puts("hello from main");
+  void *lib_handle = dlopen("./side.wasm", RTLD_NOW);
+  if (!lib_handle) {
+    puts("cannot load side module");
+    puts(dlerror());
+    return 1;
+  }
+  try {
+    typedef int (*func)();
+    func fn = (func)dlsym(lib_handle, "sidey");
+    if (!fn)
+      puts("cannot find side function");
+    else
+      throw fn();
+  }
+  catch(int i) {
+    printf("i = %d\n", i);
+  }
+  return 0;
+}
+    ''')
+    create_file('side.cpp', r'''
+#include <stdio.h>
+#include <setjmp.h>
+
+extern "C" {
+int sidey() {
+  jmp_buf env;
+
+  puts("hello from side 1");
+  int i = setjmp(env);
+  puts("hello from side 2");
+  if (i!=0) {
+    puts("hello from side 3");
+    return i;
+  }
+  puts("hello from side 4");
+  longjmp(env, 2);
+  puts("hello from side 5");
+  return -1;
+}
+}
+    ''')
+    create_file('expected.txt', r'''hello from main
+hello from side 1
+hello from side 2
+hello from side 4
+hello from side 2
+hello from side 3
+i = 2''')
+    self.set_setting('SUPPORT_LONGJMP', 'wasm')
+    self.emcc_args += ['-fwasm-exceptions']
+
+    build_side_cmd = [EMCC, 'side.cpp', '-o', 'side.wasm', '-sSIDE_MODULE=2'] + self.get_emcc_args()
+    print(build_side_cmd)
+    self.run_process(build_side_cmd, True)
+    build_main_cmd = [EMCC, 'main.cpp', '-sMAIN_MODULE=2', 'side.wasm', '-s', 'EXIT_RUNTIME=0'] + self.get_emcc_args()
+    print(build_main_cmd)
+    self.run_process(build_main_cmd, True)
+
+    out = self.run_js('a.out.js')
+    create_file('actual.txt', out)
+    expected_output = read_file('expected.txt')
+    self.assertTextDataContained(expected_output, out)
+
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('va_arg/test_va_copy.c')
 
