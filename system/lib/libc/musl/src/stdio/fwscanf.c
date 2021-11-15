@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <wchar.h>
-#include "libc.h"
 
 int fwscanf(FILE *restrict f, const wchar_t *restrict fmt, ...)
 {

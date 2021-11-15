@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 #include <math.h>
 #include <stdint.h>
-#include "libc.h"
 
 float exp10f(float x)
 {

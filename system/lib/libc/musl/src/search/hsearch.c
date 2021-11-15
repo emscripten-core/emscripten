@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <search.h>
-#include "libc.h"
 
 /*
 open addressing hash table with 2^n table size
@@ -24,9 +23,9 @@ struct __tab {
 
 static struct hsearch_data htab;
 
-int __hcreate_r(size_t, struct hsearch_data *);
-void __hdestroy_r(struct hsearch_data *);
-int __hsearch_r(ENTRY, ACTION, ENTRY **, struct hsearch_data *);
+static int __hcreate_r(size_t, struct hsearch_data *);
+static void __hdestroy_r(struct hsearch_data *);
+static int __hsearch_r(ENTRY, ACTION, ENTRY **, struct hsearch_data *);
 
 static size_t keyhash(char *k)
 {
@@ -101,7 +100,7 @@ ENTRY *hsearch(ENTRY item, ACTION action)
 	return e;
 }
 
-int __hcreate_r(size_t nel, struct hsearch_data *htab)
+static int __hcreate_r(size_t nel, struct hsearch_data *htab)
 {
 	int r;
 
@@ -117,7 +116,7 @@ int __hcreate_r(size_t nel, struct hsearch_data *htab)
 }
 weak_alias(__hcreate_r, hcreate_r);
 
-void __hdestroy_r(struct hsearch_data *htab)
+static void __hdestroy_r(struct hsearch_data *htab)
 {
 	if (htab->__tab) free(htab->__tab->entries);
 	free(htab->__tab);
@@ -125,7 +124,7 @@ void __hdestroy_r(struct hsearch_data *htab)
 }
 weak_alias(__hdestroy_r, hdestroy_r);
 
-int __hsearch_r(ENTRY item, ACTION action, ENTRY **retval, struct hsearch_data *htab)
+static int __hsearch_r(ENTRY item, ACTION action, ENTRY **retval, struct hsearch_data *htab)
 {
 	size_t hash = keyhash(item.key);
 	ENTRY *e = lookup(item.key, hash, htab);

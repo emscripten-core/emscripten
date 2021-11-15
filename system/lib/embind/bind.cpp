@@ -77,6 +77,9 @@ enum TypedArrayIndex {
   Uint32Array,
   Float32Array,
   Float64Array,
+  // Only available if WASM_BIGINT
+  Int64Array,
+  Uint64Array,
 };
 
 template <typename T> constexpr TypedArrayIndex getTypedArrayIndex() {
@@ -86,7 +89,8 @@ template <typename T> constexpr TypedArrayIndex getTypedArrayIndex() {
            : (sizeof(T) == 1
                  ? (std::is_signed<T>::value ? Int8Array : Uint8Array)
                  : (sizeof(T) == 2 ? (std::is_signed<T>::value ? Int16Array : Uint16Array)
-                                   : (std::is_signed<T>::value ? Int32Array : Uint32Array)));
+                                   : (sizeof(T) == 4 ? (std::is_signed<T>::value ? Int32Array : Uint32Array)
+                                                     : (std::is_signed<T>::value ? Int64Array : Uint64Array))));
 }
 
 template <typename T> static void register_memory_view(const char* name) {

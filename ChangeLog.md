@@ -18,8 +18,31 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.32
+3.0.0
 ------
+- The version of musl libc used by emscripten was upgraded from v1.1.15 to
+  v1.2.2.  There could be some minor size regressions (or gains) due to changes
+  in upstream musl code but we don't expect anything major.  Since this is a
+  fairly substantial change (at least internally) we are bumping the major
+  version of Emscripten to 3. (#13006)
+
+2.0.34 - 11/04/2021
+-------------------
+- Symbols marked as visibility hidden are no longer exported from C/C++
+  code when building with `SIDE_MODULE`, `MAIN_MODULE` or `LINKABLE`.  If you
+  need to export a hidden symbol you can still do so by adding it to
+  EXPORTED_FUNCTIONS.
+
+2.0.33 - 11/01/2021
+-------------------
+- Bug fixes
+
+2.0.32 - 10/19/2021
+-------------------
+- Internal-only library functions can now be marked as `__internal: true` in JS
+  system libraries.  Such symbols should not be used by external libraries and
+  are subject to change.  As of now we generate warning when external libraries
+  depend on the these symbols.
 - Stub functions from `library_syscall.js` and `library.js` were replaced with
   native code stubs (See `system/lib/libc/emscripten_syscall_stubs.c`).  This
   should be better for wasm module portability as well as code size.  As part
@@ -36,6 +59,22 @@ See docs/process.md for more on how version tagging works.
   `__syscall22`) to name-based (e.g. `__syscall_open`).  This should not be
   a visible change except for folks trying to intercept/implement syscalls
   in native code (#15202).
+- Fixed launcher batch script issues on Windows, and added two env. vars
+  EM_WORKAROUND_PYTHON_BUG_34780 and EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG that
+  can be enabled to work around a Windows Python issue
+  https://bugs.python.org/issue34780 , and a Windows 7 exit code issue (#15146)
+- Support a new CMake propert `EMSCRIPTEN_SYSTEM_PROCESSOR` which can be used
+  to override the default value of `CMAKE_SYSTEM_PROCESSOR` set by the
+  toolchain file.
+- Remove support for the `EMIT_EMSCRIPTEN_METADATA` setting.  This setting has
+  been deprecated for some time now and we don't know of any remaining reasons to
+  keep it around.
+- Add JavaScript API `Emval.{toHandle, toValue}` as well as a C++ method
+  `val::as_handle()` to allow passing values between the `val` class and
+  `EM_JS`/ `EM_ASM` JavaScript snippets. (#15279)
+- Added SAFE_HEAP=2 option which tests safe heap behavior for wasm-only builds
+  (allowing unaligned memory accesses, which would not work in Wasm2JS but in
+   wasm would be correct but potentially slow).
 
 2.0.31 - 10/01/2021
 -------------------

@@ -16,9 +16,11 @@ document.
 These current set of static constructors in system libraries and their priorities
 (lowest run first) are:
 
+- 1: `emscripten_stack_init` (stack_limits.S)
 - 47: `initialize_emmalloc_heap` (emmalloc.c)
 - 48: `__emscripten_init_main_thread` (pthread/library_pthread.c)
 - 50: asan init (??)
+- 100: `WasmFS wasmFS` (wasmfs/wasmfs.cpp)
 
 Priorities 0 - 100 are reserved for system libraries and user-level
 constructors should all run at 101 and above (for example libc++ initializes

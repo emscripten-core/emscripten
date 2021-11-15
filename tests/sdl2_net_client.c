@@ -24,7 +24,7 @@
 #include "SDL_net.h"
 
 #ifdef __EMSCRIPTEN__
-#include <emscripten.h>
+#include <emscripten/emscripten.h>
 #endif
 
 typedef enum {

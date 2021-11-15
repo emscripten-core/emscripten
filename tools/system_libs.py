@@ -108,10 +108,22 @@ def get_wasm_libc_rt_files():
       'fmin.c', 'fminf.c', 'fminl.c',
       'fmax.c', 'fmaxf.c', 'fmaxl.c',
       'fmod.c', 'fmodf.c', 'fmodl.c',
-      'log2.c', 'log2f.c', 'log10.c', 'log10f.c',
-      'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c',
+      'log.c', 'log_data.c',
+      'logf.c', 'logf_data.c',
+      'log2.c', 'log2_data.c',
+      'log2f.c', 'log2f_data.c',
+      'log10.c', 'log10f.c',
+      'exp.c', 'exp_data.c',
+      'exp2.c',
+      'exp2f.c', 'exp2f_data.c',
+      'exp10.c', 'exp10f.c',
       'scalbn.c', '__fpclassifyl.c',
-      '__signbitl.c', '__signbitf.c', '__signbit.c'
+      '__signbitl.c', '__signbitf.c', '__signbit.c',
+      '__math_divzero.c', '__math_divzerof.c',
+      '__math_oflow.c', '__math_oflowf.c',
+      '__math_uflow.c', '__math_uflowf.c',
+      '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
+
     ])
   other_files = files_in_path(
     path='system/lib/libc',
@@ -615,10 +627,50 @@ class NoExceptLibrary(Library):
     return super().get_default_variation(eh_mode=eh_mode, **kwargs)
 
 
+class SjLjLibrary(Library):
+  def __init__(self, **kwargs):
+    # Whether we use Wasm EH instructions for SjLj support
+    self.is_wasm = kwargs.pop('is_wasm')
+    super().__init__(**kwargs)
+
+  def get_cflags(self):
+    cflags = super().get_cflags()
+    if self.is_wasm:
+      # DISABLE_EXCEPTION_THROWING=0 is the default, which is for Emscripten
+      # EH/SjLj, so we should reverse it.
+      cflags += ['-s', 'SUPPORT_LONGJMP=wasm',
+                 '-s', 'DISABLE_EXCEPTION_THROWING=1',
+                 '-D__USING_WASM_SJLJ__']
+    else:
+      cflags += ['-s', 'SUPPORT_LONGJMP=emscripten']
+    return cflags
+
+  def get_base_name(self):
+    name = super().get_base_name()
+    # TODO Currently emscripten-based SjLj is the default mode, thus no
+    # suffixes. Change the default to wasm exception later.
+    if self.is_wasm:
+      name += '-wasm-sjlj'
+    return name
+
+  @classmethod
+  def vary_on(cls):
+    return super().vary_on() + ['is_wasm']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    is_wasm = settings.SUPPORT_LONGJMP == 'wasm'
+    return super().get_default_variation(is_wasm=is_wasm, **kwargs)
+
+
 class MuslInternalLibrary(Library):
-  includes = ['system/lib/libc/musl/src/internal']
+  includes = [
+    'system/lib/libc/musl/src/internal',
+    'system/lib/libc/musl/src/include',
+  ]
 
   cflags = [
+    '-std=c99',
     '-D_XOPEN_SOURCE=700',
     '-Wno-unused-result',  # system call results are often ignored in musl, and in wasi that warns
   ]
@@ -650,7 +702,8 @@ class AsanInstrumentedLibrary(Library):
     return super().get_default_variation(is_asan=settings.USE_ASAN, **kwargs)
 
 
-class libcompiler_rt(MTLibrary):
+# Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support
+class libcompiler_rt(MTLibrary, SjLjLibrary):
   name = 'libcompiler_rt'
   # compiler_rt files can't currently be part of LTO although we are hoping to remove this
   # restriction soon: https://reviews.llvm.org/D71738
@@ -695,7 +748,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
         'aio', 'exit', 'legacy', 'mq', 'setjmp', 'env',
-        'ldso'
+        'ldso', 'malloc'
     ]
 
     # individual files
@@ -706,9 +759,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
         'alarm.c', 'syscall.c', 'popen.c', 'pclose.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
-        'faccessat.c',
+        'getentropy.c',
         # 'process' exclusion
-        'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c'
+        'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
+        '_Fork.c',
     ]
 
     ignore += LIBC_SOCKETS
@@ -724,11 +778,9 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         # Empty files, simply ignore them.
         'syscall_cp.c', 'tls.c',
         # TODO: Comment out (or support) within upcoming musl upgrade. See #12216.
-        # 'pthread_setname_np.c',
+        'pthread_setname_np.c',
         # TODO: No longer exists in the latest musl version.
         '__futex.c',
-        # TODO: Could be supported in the upcoming musl upgrade
-        'lock_ptc.c',
         # 'pthread_setattr_default_np.c',
         # TODO: These could be moved away from JS in the upcoming musl upgrade.
         'pthread_cancel.c',
@@ -742,7 +794,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'pthread_join.c',
           'pthread_testcancel.c',
           'emscripten_proxy_main.c',
-          'emscripten_thread_state.s',
+          'emscripten_thread_state.S',
         ])
     else:
       ignore += ['thread']
@@ -775,7 +827,12 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'thrd_sleep.c',
           'thrd_yield.c',
         ])
-      libc_files += [utils.path_from_root('system/lib/pthread/library_pthread_stub.c')]
+      libc_files += files_in_path(
+        path='system/lib/pthread',
+        filenames=[
+          'library_pthread_stub.c',
+          'pthread_self_stub.c'
+        ])
 
     # These are included in wasm_libc_rt instead
     ignore += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
@@ -802,11 +859,16 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'ctime.c',
           'gmtime.c',
           'localtime.c',
-          'nanosleep.c'
+          'nanosleep.c',
+          'clock_nanosleep.c',
         ])
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
         filenames=['getpagesize.c', 'err.c'])
+
+    libc_files += files_in_path(
+        path='system/lib/libc/musl/src/linux',
+        filenames=['getdents.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/env',
@@ -825,8 +887,13 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         filenames=['dlerror.c', 'dlsym.c', 'dlclose.c'])
 
     libc_files += files_in_path(
+        path='system/lib/libc/musl/src/linux',
+        filenames=['gettid.c'])
+
+    libc_files += files_in_path(
         path='system/lib/libc/musl/src/signal',
         filenames=[
+          'block.c',
           'getitimer.c',
           'killpg.c',
           'setitimer.c',
@@ -886,7 +953,7 @@ class libprintf_long_double(libc):
 class libsockets(MuslInternalLibrary, MTLibrary):
   name = 'libsockets'
 
-  cflags = ['-Os', '-fno-builtin']
+  cflags = ['-Os', '-fno-builtin', '-Wno-shift-op-parentheses']
 
   def get_files(self):
     return files_in_path(
@@ -1278,8 +1345,12 @@ class libasmfs(MTLibrary):
 class libwasmfs(MTLibrary):
   name = 'libwasmfs'
 
+  cflags = ['-fno-exceptions', '-std=c++17']
+
   def get_files(self):
-    return [utils.path_from_root('system/lib/wasmfs/wasmfs.cpp')]
+    return files_in_path(
+        path='system/lib/wasmfs',
+        filenames=['syscalls.cpp', 'file_table.cpp', 'file.cpp', 'wasmfs.cpp', 'streams.cpp'])
 
   def can_build(self):
     return settings.WASMFS
@@ -1300,15 +1371,15 @@ class CompilerRTLibrary(Library):
   force_object_files = True
 
 
-class libc_rt_wasm(OptimizedAggressivelyForSizeLibrary, AsanInstrumentedLibrary, CompilerRTLibrary, MuslInternalLibrary, MTLibrary):
-  name = 'libc_rt_wasm'
+class libc_rt(OptimizedAggressivelyForSizeLibrary, AsanInstrumentedLibrary, CompilerRTLibrary, MuslInternalLibrary, MTLibrary):
+  name = 'libc_rt'
 
   def get_files(self):
     return get_wasm_libc_rt_files()
 
 
-class libubsan_minimal_rt_wasm(CompilerRTLibrary, MTLibrary):
-  name = 'libubsan_minimal_rt_wasm'
+class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):
+  name = 'libubsan_minimal_rt'
   never_force = True
 
   includes = ['system/lib/compiler-rt/lib']
@@ -1613,7 +1684,7 @@ def calculate(input_files, forced):
     add_library(forced)
 
   if only_forced:
-    add_library('libc_rt_wasm')
+    add_library('libc_rt')
     add_library('libcompiler_rt')
   else:
     if settings.AUTO_NATIVE_LIBRARIES:
@@ -1646,7 +1717,7 @@ def calculate(input_files, forced):
       add_library('libmalloc')
     if settings.STANDALONE_WASM:
       add_library('libstandalonewasm')
-    add_library('libc_rt_wasm')
+    add_library('libc_rt')
 
     if settings.USE_LSAN:
       force_include.add('liblsan_rt')
@@ -1658,7 +1729,7 @@ def calculate(input_files, forced):
       add_library('libasan_js')
 
     if settings.UBSAN_RUNTIME == 1:
-      add_library('libubsan_minimal_rt_wasm')
+      add_library('libubsan_minimal_rt')
     elif settings.UBSAN_RUNTIME == 2:
       add_library('libubsan_rt')
 

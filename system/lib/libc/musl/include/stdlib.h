@@ -39,7 +39,7 @@ void *malloc (size_t);
 void *calloc (size_t, size_t);
 void *realloc (void *, size_t);
 void free (void *);
-void *aligned_alloc(size_t alignment, size_t size);
+void *aligned_alloc(size_t, size_t);
 
 _Noreturn void abort (void);
 int atexit (void (*) (void));
@@ -145,6 +145,7 @@ int getloadavg(double *, int);
 int clearenv(void);
 #define WCOREDUMP(s) ((s) & 0x80)
 #define WIFCONTINUED(s) ((s) == 0xffff)
+void *reallocarray (void *, size_t, size_t);
 #endif
 
 #ifdef _GNU_SOURCE
@@ -152,6 +153,7 @@ int ptsname_r(int, char *, size_t);
 char *ecvt(double, int, int *, int *);
 char *fcvt(double, int, int *, int *);
 char *gcvt(double, int, char *);
+char *secure_getenv(const char *);
 struct __locale_struct;
 float strtof_l(const char *__restrict, char **__restrict, struct __locale_struct *);
 double strtod_l(const char *__restrict, char **__restrict, struct __locale_struct *);

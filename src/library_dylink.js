@@ -5,6 +5,7 @@
 
 var LibraryDylink = {
 #if RELOCATABLE
+  $resolveGlobalSymbol__internal: true,
   $resolveGlobalSymbol__deps: ['$asmjsMangle'],
   $resolveGlobalSymbol: function(symName, direct) {
     var sym;
@@ -39,11 +40,12 @@ var LibraryDylink = {
 
   // Create globals to each imported symbol.  These are all initialized to zero
   // and get assigned later in `updateGOT`
+  $GOTHandler__internal: true,
   $GOTHandler__deps: ['$GOT'],
   $GOTHandler: {
     'get': function(obj, symName) {
       if (!GOT[symName]) {
-        GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
+        GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': true});
 #if DYLINK_DEBUG
         err("new GOT entry: " + symName);
 #endif
@@ -52,10 +54,12 @@ var LibraryDylink = {
     }
   },
 
+  $isInternalSym__internal: true,
   $isInternalSym: function(symName) {
     // TODO: find a way to mark these in the binary or avoid exporting them.
     return [
       '__cpp_exception',
+      '__c_longjmp',
       '__wasm_apply_data_relocs',
       '__dso_handle',
       '__tls_size',
@@ -72,6 +76,7 @@ var LibraryDylink = {
     ;
   },
 
+  $updateGOT__internal: true,
   $updateGOT__deps: ['$GOT', '$isInternalSym'],
   $updateGOT: function(exports, replace) {
 #if DYLINK_DEBUG
@@ -94,18 +99,23 @@ var LibraryDylink = {
         GOT[symName] = new WebAssembly.Global({'value': 'i32', 'mutable': true});
       }
       if (replace || GOT[symName].value == 0) {
+#if DYLINK_DEBUG
+        err("updateGOT: before: " + symName + ' : ' + GOT[symName].value);
+#endif
         if (typeof value === 'function') {
-          GOT[symName].value = addFunctionWasm(value);
+          GOT[symName].value = addFunction(value);
 #if DYLINK_DEBUG
           err("updateGOT: FUNC: " + symName + ' : ' + GOT[symName].value);
 #endif
         } else if (typeof value === 'number') {
           GOT[symName].value = value;
+        } else if (typeof value === 'bigint') {
+          GOT[symName].value = Number(value);
         } else {
           err("unhandled export type for `" + symName + "`: " + (typeof value));
         }
 #if DYLINK_DEBUG
-        err("updateGOT: " + symName + ' : ' + GOT[symName].value);
+        err("updateGOT:  after: " + symName + ' : ' + GOT[symName].value);
 #endif
       }
 #if DYLINK_DEBUG
@@ -120,6 +130,7 @@ var LibraryDylink = {
   },
 
   // Applies relocations to exported things.
+  $relocateExports__internal: true,
   $relocateExports__deps: ['$updateGOT'],
   $relocateExports: function(exports, memoryBase, replace) {
     var relocated = {};
@@ -147,6 +158,7 @@ var LibraryDylink = {
     return relocated;
   },
 
+  $reportUndefinedSymbols__internal: true,
   $reportUndefinedSymbols__deps: ['$GOT', '$resolveGlobalSymbol'],
   $reportUndefinedSymbols: function() {
 #if DYLINK_DEBUG
@@ -162,7 +174,7 @@ var LibraryDylink = {
         err('assigning dynamic symbol from main module: ' + symName + ' -> ' + prettyPrint(value));
 #endif
         if (typeof value === 'function') {
-          GOT[symName].value = addFunctionWasm(value, value.sig);
+          GOT[symName].value = addFunction(value, value.sig);
 #if DYLINK_DEBUG
           err('assigning table entry for : ' + symName + ' -> ' + GOT[symName].value);
 #endif
@@ -198,21 +210,23 @@ var LibraryDylink = {
     loadedLibsByHandle: {},
   },
 
+  $dlSetError__internal: true,
   $dlSetError: ['___dl_seterr',
 #if MINIMAL_RUNTIME
    '$intArrayFromString'
 #endif
   ],
   $dlSetError: function(msg) {
-    var sp = stackSave();
-    var msg = allocate(intArrayFromString(msg), ALLOC_STACK);
-    ___dl_seterr(msg);
-    stackRestore(sp);
+    withStackSave(function() {
+      var cmsg = allocate(intArrayFromString(msg), ALLOC_STACK);
+      ___dl_seterr(cmsg);
+    });
   },
 
   // Dynamic version of shared.py:make_invoke.  This is needed for invokes
   // that originate from side modules since these are not known at JS
   // generation time.
+  $createInvokeFunction__internal: true,
   $createInvokeFunction__deps: ['$dynCall', 'setThrew'],
   $createInvokeFunction: function(sig) {
     return function() {
@@ -254,6 +268,7 @@ var LibraryDylink = {
 
   // returns the side module metadata as an object
   // { memorySize, memoryAlign, tableSize, tableAlign, neededDynlibs}
+  $getDylinkMetadata__internal: true,
   $getDylinkMetadata: function(binary) {
     var offset = 0;
     var end = 0;
@@ -405,8 +420,12 @@ var LibraryDylink = {
 
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
-  $loadWebAssemblyModule__deps: ['$loadDynamicLibrary', '$createInvokeFunction', '$getMemory', '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler', '$getDylinkMetadata', '$alignMemory'],
-  $loadWebAssemblyModule: function(binary, flags) {
+  $loadWebAssemblyModule__deps: [
+    '$loadDynamicLibrary', '$createInvokeFunction', '$getMemory',
+    '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
+    '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
+  ],
+  $loadWebAssemblyModule: function(binary, flags, handle) {
     var metadata = getDylinkMetadata(binary);
 #if ASSERTIONS
     var originalTable = wasmTable;
@@ -415,37 +434,42 @@ var LibraryDylink = {
     // loadModule loads the wasm module after all its dependencies have been loaded.
     // can be called both sync/async.
     function loadModule() {
-      // alignments are powers of 2
-      var memAlign = Math.pow(2, metadata.memoryAlign);
-      // finalize alignments and verify them
-      memAlign = Math.max(memAlign, STACK_ALIGN); // we at least need stack alignment
-      // prepare memory
-      var memoryBase = alignMemory(getMemory(metadata.memorySize + memAlign), memAlign); // TODO: add to cleanups
-#if DYLINK_DEBUG
-      err("loadModule: memoryBase=" + memoryBase);
-#endif
-      // TODO: use only __memory_base and __table_base, need to update asm.js backend
-      var tableBase = wasmTable.length;
-      wasmTable.grow(metadata.tableSize);
-      // zero-initialize memory and table
-      // The static area consists of explicitly initialized data, followed by zero-initialized data.
-      // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
-      // dlopen'ing the SIDE_MODULE.  Since we don't know the size of the explicitly initialized data
-      // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
-      // from uninitialized memory.
-#if USE_PTHREADS
-      // in a pthread the module heap was already allocated and initialized in the main thread.
-      if (!ENVIRONMENT_IS_PTHREAD) {
-#endif
-        for (var i = memoryBase; i < memoryBase + metadata.memorySize; i++) {
-          HEAP8[i] = 0;
+      // The first thread to load a given module needs to allocate the static
+      // table and memory regions.  Later threads re-use the same table region
+      // and can ignore the memory region (since memory is shared between
+      // threads already).
+      var needsAllocation = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
+      if (needsAllocation) {
+        // alignments are powers of 2
+        var memAlign = Math.pow(2, metadata.memoryAlign);
+        // finalize alignments and verify them
+        memAlign = Math.max(memAlign, STACK_ALIGN); // we at least need stack alignment
+        // prepare memory
+        var memoryBase = metadata.memorySize ? alignMemory(getMemory(metadata.memorySize + memAlign), memAlign) : 0; // TODO: add to cleanups
+        var tableBase = metadata.tableSize ? wasmTable.length : 0;
+        if (handle) {
+          {{{ makeSetValue('handle', C_STRUCTS.dso.mem_allocated, '1', 'i8') }}};
+          {{{ makeSetValue('handle', C_STRUCTS.dso.mem_addr, 'memoryBase', '*') }}};
+          {{{ makeSetValue('handle', C_STRUCTS.dso.mem_size, 'metadata.memorySize', 'i32') }}};
+          {{{ makeSetValue('handle', C_STRUCTS.dso.table_addr, 'tableBase', '*') }}};
+          {{{ makeSetValue('handle', C_STRUCTS.dso.table_size, 'metadata.tableSize', 'i32') }}};
         }
-#if USE_PTHREADS
+      } else {
+        memoryBase = {{{ makeGetValue('handle', C_STRUCTS.dso.mem_addr, '*') }}};
+        tableBase = {{{ makeGetValue('handle', C_STRUCTS.dso.table_addr, '*') }}};
       }
+
+      var tableGrowthNeeded = tableBase + metadata.tableSize - wasmTable.length;
+      if (tableGrowthNeeded > 0) {
+#if DYLINK_DEBUG
+        err("loadModule: growing table: " + tableGrowthNeeded);
 #endif
-      for (var i = tableBase; i < tableBase + metadata.tableSize; i++) {
-        wasmTable.set(i, null);
+        wasmTable.grow(tableGrowthNeeded);
       }
+#if DYLINK_DEBUG
+      err("loadModule: memory[" + memoryBase + ":" + (memoryBase + metadata.memorySize) + "]" +
+                     " table[" + tableBase + ":" + (tableBase + metadata.tableSize) + "]");
+#endif
 
       // This is the export map that we ultimately return.  We declare it here
       // so it can be used within resolveSymbol.  We resolve symbols against
@@ -516,17 +540,7 @@ var LibraryDylink = {
         assert(wasmTable === originalTable);
 #endif
         // add new entries to functionsInTableMap
-        for (var i = 0; i < metadata.tableSize; i++) {
-          var item = wasmTable.get(tableBase + i);
-#if ASSERTIONS
-          // verify that the new table region was filled in
-          assert(item !== undefined, 'table entry was not filled in');
-#endif
-          // Ignore null values.
-          if (item) {
-            functionsInTableMap.set(item, tableBase + i);
-          }
-        }
+        updateTableMap(tableBase, metadata.tableSize);
         moduleExports = relocateExports(instance.exports, memoryBase);
         if (!flags.allowUndefined) {
           reportUndefinedSymbols();
@@ -615,7 +629,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     err('loadDynamicLibrary: ' + lib + ' handle:' + handle);
 #endif
-    if (lib == '__main__' && !LDSO.loadedLibNames[lib]) {
+    if (lib == '__main__' && !LDSO.loadedLibsByName[lib]) {
       LDSO.loadedLibsByName[lib] = {
         refcount: Infinity,   // = nodelete
         name:     '__main__',
@@ -700,11 +714,11 @@ var LibraryDylink = {
       // module not preloaded - load lib data and create new module from it
       if (flags.loadAsync) {
         return loadLibData(lib).then(function(libData) {
-          return loadWebAssemblyModule(libData, flags);
+          return loadWebAssemblyModule(libData, flags, handle);
         });
       }
 
-      return loadWebAssemblyModule(loadLibData(lib), flags);
+      return loadWebAssemblyModule(loadLibData(lib), flags, handle);
     }
 
     // module for lib is loaded - update the dso & global namespace
@@ -732,6 +746,7 @@ var LibraryDylink = {
     return true;
   },
 
+  $preloadDylibs__internal: true,
   $preloadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
   $preloadDylibs: function() {
 #if DYLINK_DEBUG
@@ -763,32 +778,31 @@ var LibraryDylink = {
 
   // void* dlopen(const char* filename, int flags);
   $dlopenInternal__deps: ['$FS', '$ENV', '$dlSetError'],
-  $dlopenInternal: function(filenameAddr, flags, jsflags, handle) {
+  $dlopenInternal: function(handle, jsflags) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
+    var filename = UTF8ToString(handle + {{{ C_STRUCTS.dso.name }}});
+    var flags = {{{ makeGetValue('handle', C_STRUCTS.dso.flags, 'i32') }}};
+#if DYLINK_DEBUG
+    err('dlopenInternal: ' + filename);
+#endif
     var searchpaths = [];
-    var filename;
-    if (filenameAddr === 0) {
-      filename = '__main__';
-    } else {
-      filename = UTF8ToString(filenameAddr);
 
-      var isValidFile = function(filename) {
-        var target = FS.findObject(filename);
-        return target && !target.isFolder && !target.isDevice;
-      };
+    var isValidFile = function(filename) {
+      var target = FS.findObject(filename);
+      return target && !target.isFolder && !target.isDevice;
+    };
 
-      if (!isValidFile(filename)) {
-        if (ENV['LD_LIBRARY_PATH']) {
-          searchpaths = ENV['LD_LIBRARY_PATH'].split(':');
-        }
+    if (!isValidFile(filename)) {
+      if (ENV['LD_LIBRARY_PATH']) {
+        searchpaths = ENV['LD_LIBRARY_PATH'].split(':');
+      }
 
-        for (var ident in searchpaths) {
-          var searchfile = PATH.join2(searchpaths[ident], filename);
-          if (isValidFile(searchfile)) {
-            filename = searchfile;
-            break;
-          }
+      for (var ident in searchpaths) {
+        var searchfile = PATH.join2(searchpaths[ident], filename);
+        if (isValidFile(searchfile)) {
+          filename = searchfile;
+          break;
         }
       }
     }
@@ -818,14 +832,14 @@ var LibraryDylink = {
 
   _dlopen_js__deps: ['$dlopenInternal'],
   _dlopen_js__sig: 'iiii',
-  _dlopen_js: function(filename, flags, handle) {
+  _dlopen_js: function(handle) {
 #if ASYNCIFY
     return Asyncify.handleSleep(function(wakeUp) {
       var jsflags = {
         loadAsync: true,
         fs: FS, // load libraries from provided filesystem
       }
-      var promise = dlopenInternal(filename, flags, jsflags, handle);
+      var promise = dlopenInternal(handle, jsflags);
       promise.then(wakeUp).catch(function() { wakeUp(0) });
     });
 #else
@@ -833,7 +847,7 @@ var LibraryDylink = {
       loadAsync: false,
       fs: FS, // load libraries from provided filesystem
     }
-    return dlopenInternal(filename, flags, jsflags, handle);
+    return dlopenInternal(handle, jsflags);
 #endif
   },
 
@@ -845,9 +859,10 @@ var LibraryDylink = {
 #endif
   ],
   _emscripten_dlopen_js__sig: 'viiiii',
-  _emscripten_dlopen_js: function(filename, flags, handle, onsuccess, onerror) {
+  _emscripten_dlopen_js: function(handle, onsuccess, onerror) {
     function errorCallback(e) {
-      dlSetError('Could not load dynamic lib: ' + UTF8ToString(filename) + '\n' + e);
+      var filename = UTF8ToString({{{ makeGetValue('handle', C_STRUCTS.dso.name, '*') }}});
+      dlSetError('Could not load dynamic lib: ' + filename + '\n' + e);
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(function () { {{{ makeDynCall('vi', 'onerror') }}}(handle); });
     }
@@ -857,7 +872,7 @@ var LibraryDylink = {
     }
 
     {{{ runtimeKeepalivePush() }}}
-    var promise = dlopenInternal(filename, flags, { loadAsync: true }, handle);
+    var promise = dlopenInternal(handle, { loadAsync: true });
     if (promise) {
       promise.then(successCallback, errorCallback);
     } else {
@@ -901,7 +916,7 @@ var LibraryDylink = {
       // the second argument will not be needed.  If its a JS function we rely
       // on the `sig` attribute being set based on the `<func>__sig` specified
       // in library JS file.
-      return addFunctionWasm(result, result.sig);
+      return addFunction(result, result.sig);
     } else {
       return result;
     }

@@ -79,11 +79,14 @@ int fchmod(int, mode_t);
 int fchmodat(int, const char *, mode_t, int);
 mode_t umask(mode_t);
 int mkdir(const char *, mode_t);
-int mknod(const char *, mode_t, dev_t);
 int mkfifo(const char *, mode_t);
 int mkdirat(int, const char *, mode_t);
-int mknodat(int, const char *, mode_t, dev_t);
 int mkfifoat(int, const char *, mode_t);
+
+#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+int mknod(const char *, mode_t, dev_t);
+int mknodat(int, const char *, mode_t, dev_t);
+#endif
 
 int futimens(int, const struct timespec [2]);
 int utimensat(int, const char *, const struct timespec [2], int);
@@ -105,6 +108,15 @@ int lchmod(const char *, mode_t);
 #define fsfilcnt64_t fsfilcnt_t
 #define ino64_t ino_t
 #define off64_t off_t
+#endif
+
+#if _REDIR_TIME64
+__REDIR(stat, __stat_time64);
+__REDIR(fstat, __fstat_time64);
+__REDIR(lstat, __lstat_time64);
+__REDIR(fstatat, __fstatat_time64);
+__REDIR(futimens, __futimens_time64);
+__REDIR(utimensat, __utimensat_time64);
 #endif
 
 #ifdef __cplusplus

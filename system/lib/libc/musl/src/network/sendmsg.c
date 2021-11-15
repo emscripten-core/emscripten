@@ -3,7 +3,6 @@
 #include <string.h>
 #include <errno.h>
 #include "syscall.h"
-#include "libc.h"
 
 ssize_t sendmsg(int fd, const struct msghdr *msg, int flags)
 {

@@ -1,1 +1,1 @@
-#include <linux/vt.h>
+#include <bits/vt.h>

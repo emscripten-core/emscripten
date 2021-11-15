@@ -61,7 +61,7 @@ typedef struct __res_state {
 	} _u;
 } *res_state;
 
-#define	__RES	19991006
+#define	__RES	19960801
 
 #ifndef _PATH_RESCONF
 #define _PATH_RESCONF        "/etc/resolv.conf"

@@ -79,13 +79,13 @@ def optimize_syscalls(declares, DEBUG):
     # without filesystem support, it doesn't matter what syscalls need
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
   else:
-    syscall_prefixes = ('__sys', 'fd_')
+    syscall_prefixes = ('__syscall_', 'fd_')
     syscalls = [d for d in declares if d.startswith(syscall_prefixes)]
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
     if set(syscalls).issubset(set([
-      '__sys_ioctl',
+      '__syscall_ioctl',
       'fd_seek',
       'fd_write',
       'fd_close',
@@ -398,7 +398,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
     building.save_intermediate(infile + '.map', 'base_wasm.map')
     args += ['--output-source-map-url=' + settings.SOURCE_MAP_BASE + os.path.basename(outfile) + '.map']
     modify_wasm = True
-  if settings.DEBUG_LEVEL >= 2 or settings.ASYNCIFY_ADD or settings.ASYNCIFY_ADVISE or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.EMIT_SYMBOL_MAP or settings.PROFILING_FUNCS:
+  if settings.DEBUG_LEVEL >= 2 or settings.ASYNCIFY_ADD or settings.ASYNCIFY_ADVISE or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.EMIT_SYMBOL_MAP or settings.EMIT_NAME_SECTION:
     args.append('-g')
   if settings.WASM_BIGINT:
     args.append('--bigint')
@@ -509,6 +509,10 @@ def add_standard_wasm_imports(send_items_map):
 
   if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
+    if settings.EXCEPTION_HANDLING:
+      send_items_map['__cpp_exception'] = '___cpp_exception'
+    if settings.SUPPORT_LONGJMP == 'wasm':
+      send_items_map['__c_longjmp'] = '___c_longjmp'
 
   if settings.MAYBE_WASM2JS or settings.AUTODEBUG or settings.LINKABLE:
     # legalization of i64 support code may require these in some modes
@@ -817,19 +821,23 @@ def normalize_line_endings(text):
   return text
 
 
+def clear_struct_info():
+  output_name = shared.Cache.get_lib_name('struct_info.json', varies=False)
+  shared.Cache.erase_file(output_name)
+
+
 def generate_struct_info():
   # If we are running in BOOTSTRAPPING_STRUCT_INFO we don't populate STRUCT_INFO
   # otherwise that would lead to infinite recursion.
   if settings.BOOTSTRAPPING_STRUCT_INFO:
     return
 
-  generated_struct_info_name = 'generated_struct_info.json'
-
   @ToolchainProfiler.profile_block('gen_struct_info')
   def generate_struct_info(out):
     gen_struct_info.main(['-q', '-o', out])
 
-  settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
+  output_name = shared.Cache.get_lib_name('struct_info.json', varies=False)
+  settings.STRUCT_INFO = shared.Cache.get(output_name, generate_struct_info)
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile):

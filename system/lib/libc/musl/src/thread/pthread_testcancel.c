@@ -1,5 +1,4 @@
 #include "pthread_impl.h"
-#include "libc.h"
 
 static void dummy()
 {

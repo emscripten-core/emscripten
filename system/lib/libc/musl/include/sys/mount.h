@@ -47,6 +47,7 @@ extern "C" {
 #define MS_I_VERSION   (1<<23)
 #define MS_STRICTATIME (1<<24)
 #define MS_LAZYTIME    (1<<25)
+#define MS_NOREMOTELOCK (1<<27)
 #define MS_NOSEC       (1<<28)
 #define MS_BORN        (1<<29)
 #define MS_ACTIVE      (1<<30)

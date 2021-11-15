@@ -50,7 +50,7 @@ struct ChunkMetadata {
 };
 
 #if defined(__mips64) || defined(__aarch64__) || defined(__i386__) || \
-    defined(__arm__) || defined(__wasm32__)
+    defined(__arm__) || defined(__wasm__)
 static const uptr kRegionSizeLog = 20;
 static const uptr kNumRegions = SANITIZER_MMAP_RANGE_SIZE >> kRegionSizeLog;
 template <typename AddressSpaceView>

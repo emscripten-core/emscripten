@@ -24,8 +24,6 @@ struct addrinfo {
 	struct addrinfo *ai_next;
 };
 
-#define IPPORT_RESERVED 1024
-
 #define AI_PASSIVE      0x01
 #define AI_CANONNAME    0x02
 #define AI_NUMERICHOST  0x04
@@ -117,6 +115,9 @@ struct protoent *getprotobynumber (int);
  || (defined(_XOPEN_SOURCE) && _XOPEN_SOURCE+0 < 700)
 struct hostent *gethostbyname (const char *);
 struct hostent *gethostbyaddr (const void *, socklen_t, int);
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 int *__h_errno_location(void);
 #define h_errno (*__h_errno_location())
 #define HOST_NOT_FOUND 1

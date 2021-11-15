@@ -336,10 +336,10 @@ Smart pointers
    .. cpp:function:: static sharing_policy get_sharing_policy()
 
 
-   .. cpp:function:: static std::shared_ptr<PointeeType>* share(PointeeType* p, internal::EM_VAL v)
+   .. cpp:function:: static std::shared_ptr<PointeeType>* share(PointeeType* p, EM_VAL v)
 
       :param PointeeType* p: Note that ``PointeeType`` is a typename (templated type).
-      :param internal\:\:EM_VAL v:
+      :param EM_VAL v:
 
 
    .. cpp:function:: static PointerType* construct_null()

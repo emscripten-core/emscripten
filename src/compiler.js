@@ -8,7 +8,7 @@
 // LLVM => JavaScript compiler, main entry point
 
 var nodeFS = require('fs');
-var nodePath = require('path');
+nodePath = require('path');
 
 print = (x) => {
   process['stdout'].write(x + '\n');

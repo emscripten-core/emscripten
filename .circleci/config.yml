@@ -291,11 +291,9 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      # This version is mentioned in `site/source/docs/site/about.rst`.
-      # Please keep them in sync.
-      - run: pip3 install sphinx==2.4.4
+      - run: pip3 install -r requirements-dev.txt
       - run: make -C site text
-      - run: tests/check_emcc_help_text.py
+      - run: tools/maint/check_emcc_help_text.py
       - run: make -C site html
   flake8:
     executor: bionic
@@ -366,10 +364,12 @@ jobs:
           test_targets: "wasm0"
   test-wasm2:
     executor: bionic
+    environment:
+      EMTEST_BROWSER: "node"
     steps:
       - run-tests:
-          # also add a few asan tests
-          test_targets: "wasm2 asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread* asan.test_dyncall_specific_minimal_runtime asan.test_async_hello lsan.test_stdio_locking lsan.test_pthread_create"
+          # also add a few asan tests and a single test of EMTEST_BROWSER=node
+          test_targets: "wasm2 asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread* asan.test_dyncall_specific_minimal_runtime asan.test_async_hello lsan.test_stdio_locking lsan.test_pthread_create browser.test_pthread_join"
   test-wasm3:
     executor: bionic
     steps:
@@ -430,7 +430,7 @@ jobs:
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - run-tests:
-          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file wasm2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler"
+          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file wasm2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs"
   test-mac:
     executor: mac
     environment:

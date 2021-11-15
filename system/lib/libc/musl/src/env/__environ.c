@@ -1,4 +1,4 @@
-#include "libc.h"
+#include <unistd.h>
 
 char **__environ = 0;
 weak_alias(__environ, ___environ);

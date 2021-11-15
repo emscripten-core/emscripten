@@ -23,7 +23,11 @@ set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
 # Advertise Emscripten as a 32-bit platform (as opposed to
 # CMAKE_SYSTEM_PROCESSOR=x86_64 for 64-bit platform), since some projects (e.g.
 # OpenCV) use this to detect bitness.
-set(CMAKE_SYSTEM_PROCESSOR x86)
+# Allow users to ovewrite this on the command line with -DEMSCRIPTEN_SYSTEM_PROCESSOR=arm.
+if ("${EMSCRIPTEN_SYSTEM_PROCESSOR}" STREQUAL "")
+  set(EMSCRIPTEN_SYSTEM_PROCESSOR x86)
+endif()
+set(CMAKE_SYSTEM_PROCESSOR ${EMSCRIPTEN_SYSTEM_PROCESSOR})
 
 # Tell CMake how it should instruct the compiler to generate multiple versions
 # of an outputted .so library: e.g. "libfoo.so, libfoo.so.1, libfoo.so.1.4" etc.

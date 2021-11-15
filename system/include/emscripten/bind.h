@@ -1053,7 +1053,7 @@ struct smart_ptr_trait<std::shared_ptr<PointeeType>> {
         return sharing_policy::BY_EMVAL;
     }
 
-    static std::shared_ptr<PointeeType>* share(PointeeType* p, internal::EM_VAL v) {
+    static std::shared_ptr<PointeeType>* share(PointeeType* p, EM_VAL v) {
         return new std::shared_ptr<PointeeType>(
             p,
             val_deleter(val::take_ownership(v)));
@@ -1205,7 +1205,7 @@ val wrapped_extend(const std::string& name, const val& properties) {
     return val::take_ownership(_embind_create_inheriting_constructor(
         name.c_str(),
         TypeID<WrapperType>::get(),
-        properties.__get_handle()));
+        properties.as_handle()));
 }
 
 } // end namespace internal

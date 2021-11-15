@@ -55,7 +55,6 @@ LibraryManager.library = {
   // to native code.
   segfault: function() { segfault(); },
   alignfault: function() { alignfault(); },
-  ftfault: function() { ftfault(); },
 #endif
 
   // ==========================================================================
@@ -91,6 +90,7 @@ LibraryManager.library = {
   utime__proxy: 'sync',
   utime__sig: 'iii',
   utime: function(path, times) {
+    {{{ from64('times') }}};
     // int utime(const char *path, const struct utimbuf *times);
     // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/utime.h.html
     var time;
@@ -458,6 +458,7 @@ LibraryManager.library = {
 
   time__sig: 'ii',
   time: function(ptr) {
+    {{{ from64('ptr') }}};
     var ret = (Date.now()/1000)|0;
     if (ptr) {
       {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}};
@@ -585,7 +586,7 @@ LibraryManager.library = {
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
 
-    var zonePtr = {{{ makeGetValue('__get_tzname()', 'dst ? ' + Runtime.QUANTUM_SIZE + ' : 0', 'i32') }}};
+    var zonePtr = {{{ makeGetValue('__get_tzname()', 'dst ? ' + Runtime.POINTER_SIZE + ' : 0', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, 'zonePtr', 'i32') }}};
 
     return tmPtr;
@@ -593,9 +594,9 @@ LibraryManager.library = {
   __localtime_r: 'localtime_r',
 
   // musl-internal function used to implement both `asctime` and `asctime_r`
-  __asctime__deps: ['mktime'],
-  __asctime__sig: 'iii',
-  __asctime: function(tmPtr, buf) {
+  __asctime_r__deps: ['mktime'],
+  __asctime_r__sig: 'iii',
+  __asctime_r: function(tmPtr, buf) {
     var date = {
       tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
       tm_min: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
@@ -623,13 +624,20 @@ LibraryManager.library = {
     return buf;
   },
 
-  ctime_r__deps: ['localtime_r', '__asctime'],
+  $withStackSave__internal: true,
+  $withStackSave: function(f) {
+    var stack = stackSave();
+    var ret = f();
+    stackRestore(stack);
+    return ret;
+  },
+
+  ctime_r__deps: ['localtime_r', '__asctime_r', '$withStackSave'],
   ctime_r__sig: 'iii',
   ctime_r: function(time, buf) {
-    var stack = stackSave();
-    var rv = ___asctime(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
-    stackRestore(stack);
-    return rv;
+    return withStackSave(function() {
+      return ___asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
+    });
   },
 
   dysize: function(year) {
@@ -650,9 +658,11 @@ LibraryManager.library = {
 
   tzset_impl__proxy: 'sync',
   tzset_impl__sig: 'v',
+  tzset_impl__deps: ['_get_daylight', '_get_timezone', '_get_tzname',
 #if MINIMAL_RUNTIME
-  tzset_impl__deps: ['$allocateUTF8'],
+    '$allocateUTF8'
 #endif
+  ],
   tzset_impl: function() {
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
@@ -685,10 +695,10 @@ LibraryManager.library = {
     if (summerOffset < winterOffset) {
       // Northern hemisphere
       {{{ makeSetValue('__get_tzname()', '0', 'winterNamePtr', 'i32') }}};
-      {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', Runtime.POINTER_SIZE, 'summerNamePtr', 'i32') }}};
     } else {
       {{{ makeSetValue('__get_tzname()', '0', 'summerNamePtr', 'i32') }}};
-      {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'winterNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', Runtime.POINTER_SIZE, 'winterNamePtr', 'i32') }}};
     }
   },
 
@@ -3102,6 +3112,7 @@ LibraryManager.library = {
   $readAsmConstArgsArray: '=[]',
   $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
+    {{{ from64(['sigPtr', 'buf']) }}};
 #if ASSERTIONS
     // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
     assert(Array.isArray(readAsmConstArgsArray));
@@ -3352,7 +3363,7 @@ LibraryManager.library = {
 #endif
     return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
   },
-  $dynCall__deps: ['$dynCallLegacy'],
+  $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
 
   // Used in library code to get JS function from wasm function pointer.
   // All callers should use direct table access where possible and only fall
@@ -3386,12 +3397,13 @@ LibraryManager.library = {
     }
 #endif
 #if ASSERTIONS
-    assert(wasmTable.get(ptr), 'missing table entry in dynCall: ' + ptr);
+    assert(getWasmTableEntry(ptr), 'missing table entry in dynCall: ' + ptr);
 #endif
-    return wasmTable.get(ptr).apply(null, args)
+    return getWasmTableEntry(ptr).apply(null, args)
 #endif
   },
 
+  $callRuntimeCallbacks__internal: true,
   $callRuntimeCallbacks: function(callbacks) {
     while (callbacks.length > 0) {
       var callback = callbacks.shift();
@@ -3411,6 +3423,46 @@ LibraryManager.library = {
       }
     }
   },
+
+#if SHRINK_LEVEL == 0
+  // A mirror copy of contents of wasmTable in JS side, to avoid relatively
+  // slow wasmTable.get() call. Only used when not compiling with -Os or -Oz.
+  $wasmTableMirror__internal: true,
+  $wasmTableMirror: [],
+
+  $setWasmTableEntry__internal: true,
+  $setWasmTableEntry__deps: ['$wasmTableMirror'],
+  $setWasmTableEntry: function(idx, func) {
+    wasmTable.set(idx, func);
+    wasmTableMirror[idx] = func;
+  },
+
+  $getWasmTableEntry__internal: true,
+  $getWasmTableEntry__deps: ['$wasmTableMirror'],
+  $getWasmTableEntry: function(funcPtr) {
+    var func = wasmTableMirror[funcPtr];
+    if (!func) {
+      if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
+      wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
+    }
+#if ASSERTIONS
+    assert(wasmTable.get(funcPtr) == func, "JavaScript-side Wasm function table mirror is out of date!");
+#endif
+    return func;
+  },
+
+#else
+
+  $setWasmTableEntry: function(idx, func) {
+    wasmTable.set(idx, func);
+  },
+
+  $getWasmTableEntry: function(funcPtr) {
+    // In -Os and -Oz builds, do not implement a JS side wasm table mirror for small
+    // code size, but directly access wasmTable, which is a bit slower as uncached.
+    return wasmTable.get(funcPtr);
+  },
+#endif // SHRINK_LEVEL == 0
 
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime__sig: 'v',
@@ -3527,9 +3579,9 @@ LibraryManager.library = {
 #endif
   ],
   $callUserCallback: function(func, synchronous) {
-    if (ABORT) {
+    if (runtimeExited || ABORT) {
 #if ASSERTIONS
-      err('user callback triggered after application aborted.  Ignoring.');
+      err('user callback triggered after runtime exited or application aborted.  Ignoring.');
 #endif
       return;
     }
@@ -3646,21 +3698,33 @@ LibraryManager.library = {
   // mode are created here and imported by the module.
   // Mark with `__import` so these are usable from native code.  This is needed
   // because, by default, only functions can be be imported.
-  __stack_pointer: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, {{{ STACK_BASE }}})",
+  __stack_pointer: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': true}, {{{ to64(STACK_BASE) }}})",
   __stack_pointer__import: true,
   // tell the memory segments where to place themselves
-  __memory_base: '{{{ GLOBAL_BASE }}}',
+  __memory_base: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
   __memory_base__import: true,
   // the wasm backend reserves slot 0 for the NULL function pointer
-  __table_base: 1,
+  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': false}, {{{ to64(1) }}})",
   __table_base__import: true,
+#if MEMORY64
+  __table_base32: 1,
+#endif
   // To support such allocations during startup, track them on __heap_base and
   // then when the main module is loaded it reads that value and uses it to
   // initialize sbrk (the main module is relocatable itself, and so it does not
   // have __heap_base hardcoded into it - it receives it from JS as an extern
   // global, basically).
-  __heap_base: '{{{ HEAP_BASE }}}',
+  __heap_base: '{{{ to64(HEAP_BASE) }}}',
   __heap_base__import: true,
+#if EXCEPTION_HANDLING
+  // In dynamic linking we define tags here and feed them to each module
+  __cpp_exception: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_TYPE }}}']})",
+  __cpp_exception__import: true,
+#endif
+#if SUPPORT_LONGJMP == 'wasm'
+  __c_longjmp: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_TYPE }}}']})",
+  __c_longjmp_import: true,
+#endif
 #endif
 };
 

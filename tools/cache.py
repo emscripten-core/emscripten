@@ -100,12 +100,14 @@ class Cache:
   def get_sysroot_dir(self, *parts):
     return os.path.join(self.get_sysroot(absolute=True), *parts)
 
-  def get_lib_dir(self, absolute):
+  def get_lib_dir(self, absolute, varies=True):
     path = os.path.join(self.get_sysroot(absolute=absolute), 'lib')
     if settings.MEMORY64:
       path = os.path.join(path, 'wasm64-emscripten')
     else:
       path = os.path.join(path, 'wasm32-emscripten')
+    if not varies:
+      return path
     # if relevant, use a subdir of the cache
     subdir = []
     if settings.LTO:
@@ -119,8 +121,8 @@ class Cache:
       path = os.path.join(path, '-'.join(subdir))
     return path
 
-  def get_lib_name(self, name):
-    return os.path.join(self.get_lib_dir(absolute=False), name)
+  def get_lib_name(self, name, varies=True):
+    return os.path.join(self.get_lib_dir(absolute=False, varies=varies), name)
 
   def erase_lib(self, name):
     self.erase_file(self.get_lib_name(name))

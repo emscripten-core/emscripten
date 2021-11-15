@@ -5,9 +5,11 @@ $__errno_location
 $__pthread_mutex_lock
 $__pthread_mutex_trylock
 $__pthread_mutex_unlock
+$__pthread_rwlock_tryrdlock
 $__pthread_self_internal
 $__pthread_setcancelstate
 $__stdio_write
+$__timedwait
 $__wasi_syscall_ret
 $__wasm_call_ctors
 $__wasm_init_memory
@@ -19,6 +21,9 @@ $_emscripten_thread_init
 $_main_thread
 $_pthread_isduecanceled
 $a_cas
+$a_dec
+$a_inc.1
+$a_swap
 $add
 $dispatch_to_thread_helper
 $dispose_chunk

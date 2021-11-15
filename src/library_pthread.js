@@ -278,8 +278,8 @@ var LibraryPThread = {
         } else if (cmd === 'detachedExit') {
 #if ASSERTIONS
           assert(worker.pthread);
-          var detached = Atomics.load(HEAPU32, (worker.pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
-          assert(detached);
+          var detach_state = Atomics.load(HEAPU32, (worker.pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2);
+          assert(detach_state == {{{ cDefine('DT_EXITED') }}});
 #endif
           PThread.returnWorkerToPool(worker);
         } else if (cmd === 'cancelDone') {
@@ -498,7 +498,7 @@ var LibraryPThread = {
 
   $registerTlsInit: function(tlsInitFunc, moduleExports, metadata) {
 #if DYLINK_DEBUG
-    out("registerTlsInit: " + tlsInitFunc);
+    err("registerTlsInit: " + tlsInitFunc);
 #endif
 #if RELOCATABLE
     // In relocatable builds, we use the result of calling tlsInitFunc
@@ -570,6 +570,7 @@ var LibraryPThread = {
       worker: worker,
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
+      initialState: {{{ cDefine('DT_JOINABLE') }}},
       allocatedOwnStack: threadParams.allocatedOwnStack,
       // Info area for this thread in Emscripten HEAP (shared)
       threadInfoStruct: threadParams.pthread_ptr
@@ -577,12 +578,9 @@ var LibraryPThread = {
     var tis = pthread.threadInfoStruct >> 2;
     // spawnThread is always called with a zero-initialized thread struct so
     // no need to set any valudes to zero here.
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.detached }}} >> 2), threadParams.detached);
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.detach_state }}} >> 2), threadParams.initialState);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack_size }}} >> 2), threadParams.stackSize);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack }}} >> 2), stackHigh);
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} >> 2), threadParams.stackSize);
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} + 8 >> 2), stackHigh);
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} + 12 >> 2), threadParams.detached);
 
 #if PTHREADS_PROFILING
     PThread.createProfilerBlock(pthread.threadInfoStruct);
@@ -666,7 +664,7 @@ var LibraryPThread = {
     // Deduce which WebGL canvases (HTMLCanvasElements or OffscreenCanvases) should be passed over to the
     // Worker that hosts the spawned pthread.
     // Comma-delimited list of CSS selectors that must identify canvases by IDs: "#canvas1, #canvas2, ..."
-    var transferredCanvasNames = attr ? {{{ makeGetValue('attr', 36, 'i32') }}} : 0;
+    var transferredCanvasNames = attr ? {{{ makeGetValue('attr', C_STRUCTS.pthread_attr_t._a_transferredcanvases, POINTER_TYPE) }}} : 0;
 #if OFFSCREENCANVASES_TO_PTHREAD
     // Proxied canvases string pointer -1 is used as a special token to fetch
     // whatever canvases were passed to build in -s
@@ -677,7 +675,7 @@ var LibraryPThread = {
     if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
     if (transferredCanvasNames) transferredCanvasNames = transferredCanvasNames.split(',');
 #if GL_DEBUG
-    out('pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
+    err('pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
 #endif
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
@@ -772,23 +770,16 @@ var LibraryPThread = {
 
     var stackSize = 0;
     var stackBase = 0;
-    // Default thread attr is PTHREAD_CREATE_JOINABLE, i.e. start as not detached.
-    var detached = 0;
+    // Default thread state is DT_JOINABLE, i.e. start as not detached.
+    var initialState = {{{ cDefine('DT_JOINABLE') }}};
     // When musl creates C11 threads it passes __ATTRP_C11_THREAD (-1) which
     // treat as if it was NULL.
     if (attr && attr != {{{ cDefine('__ATTRP_C11_THREAD') }}}) {
-      stackSize = {{{ makeGetValue('attr', 0, 'i32') }}};
-      // Musl has a convention that the stack size that is stored to the pthread
-      // attribute structure is always musl's #define DEFAULT_STACK_SIZE
-      // smaller than the actual created stack size. That is, stored stack size
-      // of 0 would mean a stack of DEFAULT_STACK_SIZE in size. All musl
-      // functions hide this impl detail, and offset the size transparently, so
-      // pthread_*() API user does not see this offset when operating with
-      // the pthread API. When reading the structure directly on JS side
-      // however, we need to offset the size manually here.
-      stackSize += {{{ cDefine('DEFAULT_STACK_SIZE') }}};
-      stackBase = {{{ makeGetValue('attr', 8, 'i32') }}};
-      detached = {{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}} !== 0/*PTHREAD_CREATE_JOINABLE*/;
+      stackSize = {{{ makeGetValue('attr', 0/*_a_stacksize*/, 'i32') }}};
+      stackBase = {{{ makeGetValue('attr', 8/*_a_stackaddr*/, 'i32') }}};
+      if ({{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}}) {
+        initialState = {{{ cDefine('DT_DETACHED') }}};
+      }
     } else {
       // According to
       // http://man7.org/linux/man-pages/man3/pthread_create.3.html, default
@@ -822,7 +813,7 @@ var LibraryPThread = {
       stackBase: stackBase,
       stackSize: stackSize,
       allocatedOwnStack: allocatedOwnStack,
-      detached: detached,
+      initialState: initialState,
       startRoutine: start_routine,
       pthread_ptr: pthread_ptr,
       arg: arg,
@@ -868,75 +859,53 @@ var LibraryPThread = {
 #endif
   },
 
-  _emscripten_do_pthread_join__deps: ['$cleanupThread', 'pthread_testcancel', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'pthread_self', 'emscripten_main_browser_thread_id',
+  __pthread_join_js__deps: ['$cleanupThread', 'pthread_testcancel', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'pthread_self', 'emscripten_main_browser_thread_id',
 #if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
   'emscripten_check_blocking_allowed'
 #endif
   ],
-  _emscripten_do_pthread_join: function(thread, status, block) {
-    if (!thread) {
-      err('pthread_join attempted on a null thread pointer!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-    if (ENVIRONMENT_IS_PTHREAD && _pthread_self() == thread) {
-      err('PThread ' + thread + ' is attempting to join to itself!');
-      return {{{ cDefine('EDEADLK') }}};
-    }
-    else if (!ENVIRONMENT_IS_PTHREAD && _emscripten_main_browser_thread_id() == thread) {
-      err('Main thread ' + thread + ' is attempting to join to itself!');
-      return {{{ cDefine('EDEADLK') }}};
-    }
-    var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
-    if (self !== thread) {
-      err('pthread_join attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
-      return {{{ cDefine('ESRCH') }}};
-    }
-
-    var detached = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
-    if (detached) {
-      err('Attempted to join thread ' + thread + ', which was already detached!');
-      return {{{ cDefine('EINVAL') }}}; // The thread is already detached, can no longer join it!
-    }
-
+  __pthread_join_js: function(thread, status, tryjoin) {
 #if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
-    if (block) {
+    if (!tryjoin) {
       _emscripten_check_blocking_allowed();
     }
 #endif
 
     for (;;) {
-      var threadStatus = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
-      if (threadStatus == 1) { // Exited?
+      // The thread we are joining with must be either DT_JOINABLE or
+      // DT_EXITING.  If its DT_EXITING then we move it to DT_EXITED and
+      // we are done.   If its DT_JOINABLE we keep waiting.
+      var old_state = Atomics.compareExchange(HEAP32,
+        (thread + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2,
+        {{{ cDefine('DT_EXITING') }}},
+        {{{ cDefine('DT_EXITED') }}}
+      );
+      if (old_state == {{{ cDefine('DT_EXITING') }}}) {
+#if PTHREADS_DEBUG
+        err('thread 0x' + thread.toString(16) + ' successfully joined');
+#endif
+        // We successfully marked the tread as DT_EXITED
         if (status) {
           var result = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.result }}} ) >> 2);
           {{{ makeSetValue('status', 0, 'result', 'i32') }}};
         }
-        // Mark the thread as detached.
-        Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 1);
         if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread);
         else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
         return 0;
       }
-      if (!block) {
-        return {{{ cDefine('EBUSY') }}};
-      }
+#if ASSERTIONS
+      assert(old_state === {{{ cDefine('DT_JOINABLE') }}}, 'pthread_join attempted on thread 0x' + thread.toString(16) + ', which is in an invalid state:' + old_state);
+#else
+      if (old_state !== {{{ cDefine('DT_JOINABLE') }}}) return {{{ cDefine('EINVAL') }}};
+#endif
+
       _pthread_testcancel();
       // In main runtime thread (the thread that initialized the Emscripten C
       // runtime and launched main()), assist pthreads in performing operations
       // that they need to access the Emscripten main runtime for.
       if (!ENVIRONMENT_IS_PTHREAD) _emscripten_main_thread_process_queued_calls();
-      _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.threadStatus }}}, threadStatus, ENVIRONMENT_IS_PTHREAD ? 100 : 1);
+      _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.detach_state }}}, old_state, ENVIRONMENT_IS_PTHREAD ? 100 : 1);
     }
-  },
-
-  __pthread_join_js__deps: ['_emscripten_do_pthread_join'],
-  __pthread_join_js: function(thread, status) {
-    return __emscripten_do_pthread_join(thread, status, true);
-  },
-
-  pthread_tryjoin_np__deps: ['_emscripten_do_pthread_join'],
-  pthread_tryjoin_np: function(thread, status) {
-    return __emscripten_do_pthread_join(thread, status, false);
   },
 
   pthread_kill__deps: ['$killThread', 'emscripten_main_browser_thread_id'],
@@ -978,7 +947,8 @@ var LibraryPThread = {
       err('pthread_cancel attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
       return {{{ cDefine('ESRCH') }}};
     }
-    Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0, 2); // Signal the thread that it needs to cancel itself.
+    // Signal the thread that it needs to cancel itself.
+    Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.cancel }}}) >> 2, 1);
     if (!ENVIRONMENT_IS_PTHREAD) cancelThread(thread);
     else postMessage({ 'cmd': 'cancelThread', 'thread': thread});
     return 0;
@@ -1265,39 +1235,39 @@ var LibraryPThread = {
     // all the args here.
     // We also pass 'sync' to C separately, since C needs to look at it.
     var numCallArgs = arguments.length - 2;
+    var outerArgs = arguments;
 #if ASSERTIONS
     if (numCallArgs > {{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) throw 'emscripten_proxy_to_main_thread_js: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + ({{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) + '!';
 #endif
     // Allocate a buffer, which will be copied by the C code.
-    var stack = stackSave();
-    // First passed parameter specifies the number of arguments to the function.
-    // When BigInt support is enabled, we must handle types in a more complex
-    // way, detecting at runtime if a value is a BigInt or not (as we have no
-    // type info here). To do that, add a "prefix" before each value that
-    // indicates if it is a BigInt, which effectively doubles the number of
-    // values we serialize for proxying. TODO: pack this?
-    var serializedNumCallArgs = numCallArgs {{{ WASM_BIGINT ? "* 2" : "" }}};
-    var args = stackAlloc(serializedNumCallArgs * 8);
-    var b = args >> 3;
-    for (var i = 0; i < numCallArgs; i++) {
-      var arg = arguments[2 + i];
-#if WASM_BIGINT
-      if (typeof arg === 'bigint') {
-        // The prefix is non-zero to indicate a bigint.
-        HEAP64[b + 2*i] = BigInt(1);
-        HEAP64[b + 2*i + 1] = arg;
-      } else {
-        // The prefix is zero to indicate a JS Number.
-        HEAP64[b + 2*i] = BigInt(0);
-        HEAPF64[b + 2*i + 1] = arg;
+    return withStackSave(function() {
+      // First passed parameter specifies the number of arguments to the function.
+      // When BigInt support is enabled, we must handle types in a more complex
+      // way, detecting at runtime if a value is a BigInt or not (as we have no
+      // type info here). To do that, add a "prefix" before each value that
+      // indicates if it is a BigInt, which effectively doubles the number of
+      // values we serialize for proxying. TODO: pack this?
+      var serializedNumCallArgs = numCallArgs {{{ WASM_BIGINT ? "* 2" : "" }}};
+      var args = stackAlloc(serializedNumCallArgs * 8);
+      var b = args >> 3;
+      for (var i = 0; i < numCallArgs; i++) {
+        var arg = outerArgs[2 + i];
+  #if WASM_BIGINT
+        if (typeof arg === 'bigint') {
+          // The prefix is non-zero to indicate a bigint.
+          HEAP64[b + 2*i] = BigInt(1);
+          HEAP64[b + 2*i + 1] = arg;
+        } else {
+          // The prefix is zero to indicate a JS Number.
+          HEAP64[b + 2*i] = BigInt(0);
+          HEAPF64[b + 2*i + 1] = arg;
+        }
+  #else
+        HEAPF64[b + i] = arg;
+  #endif
       }
-#else
-      HEAPF64[b + i] = arg;
-#endif
-    }
-    var ret = _emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
-    stackRestore(stack);
-    return ret;
+      return _emscripten_run_in_main_runtime_thread_js(index, serializedNumCallArgs, args, sync);
+    });
   },
 
   emscripten_receive_on_main_thread_js_callArgs: '=[]',

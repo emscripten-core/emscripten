@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include "dynlink.h"
+#include "libc.h"
 
 #ifndef START
 #define START "_dlstart"
@@ -11,14 +12,13 @@
 
 #ifndef GETFUNCSYM
 #define GETFUNCSYM(fp, sym, got) do { \
-	__attribute__((__visibility__("hidden"))) void sym(); \
+	hidden void sym(); \
 	static void (*static_func_ptr)() = sym; \
 	__asm__ __volatile__ ( "" : "+m"(static_func_ptr) : : "memory"); \
 	*(fp) = static_func_ptr; } while(0)
 #endif
 
-__attribute__((__visibility__("hidden")))
-void _dlstart_c(size_t *sp, size_t *dynv)
+hidden void _dlstart_c(size_t *sp, size_t *dynv)
 {
 	size_t i, aux[AUX_CNT], dyn[DYN_CNT];
 	size_t *rel, rel_size, base;

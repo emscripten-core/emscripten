@@ -16,6 +16,7 @@ import re
 import shutil
 import subprocess
 import signal
+import stat
 import sys
 import tempfile
 
@@ -223,14 +224,14 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
 
-def run_js_tool(filename, jsargs=[], *args, **kw):
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are written
   implemented in javascript.
   """
-  command = config.NODE_JS + [filename] + jsargs
-  return check_call(command, *args, **kw).stdout
+  command = config.NODE_JS + node_args + [filename] + jsargs
+  return check_call(command, **kw).stdout
 
 
 def get_npm_cmd(name):
@@ -677,7 +678,7 @@ class JS:
       else:
         return 'Module["dynCall_%s"](%s)' % (sig, args)
     else:
-      return 'wasmTable.get(%s)(%s)' % (args[0], ','.join(args[1:]))
+      return 'getWasmTableEntry(%s)(%s)' % (args[0], ','.join(args[1:]))
 
   @staticmethod
   def make_invoke(sig, named=True):
@@ -729,6 +730,12 @@ def strip_prefix(string, prefix):
   return string[len(prefix):]
 
 
+def make_writable(filename):
+  assert(os.path.isfile(filename))
+  old_mode = stat.S_IMODE(os.stat(filename).st_mode)
+  os.chmod(filename, old_mode | stat.S_IWUSR)
+
+
 def safe_copy(src, dst):
   logging.debug('copy: %s -> %s', src, dst)
   src = os.path.abspath(src)
@@ -741,6 +748,9 @@ def safe_copy(src, dst):
     return
   # Copies data and permission bits, but not other metadata such as timestamp
   shutil.copy(src, dst)
+  # We always want the target file to be writable even when copying from
+  # read-only source. (e.g. a read-only install of emscripten).
+  make_writable(dst)
 
 
 def read_and_preprocess(filename, expand_macros=False):
@@ -768,7 +778,7 @@ def read_and_preprocess(filename, expand_macros=False):
   if expand_macros:
     args += ['--expandMacros']
 
-  run_js_tool(path_from_root('tools/preprocessor.js'), args, True, stdout=open(stdout, 'w'), cwd=dirname)
+  run_js_tool(path_from_root('tools/preprocessor.js'), args, stdout=open(stdout, 'w'), cwd=dirname)
   out = utils.read_file(stdout)
 
   return out

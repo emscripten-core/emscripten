@@ -1,5 +1,4 @@
 #include <ctype.h>
-#include "libc.h"
 #undef isalpha
 
 int isalpha(int c)

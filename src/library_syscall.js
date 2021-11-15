@@ -418,11 +418,6 @@ var SyscallsLibrary = {
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
-  __syscall_dup2: function(oldfd, suggestFD) {
-    var old = SYSCALLS.getStreamFromFD(oldfd);
-    if (old.fd === suggestFD) return suggestFD;
-    return SYSCALLS.doDup(old.path, old.flags, suggestFD);
-  },
   __syscall_symlink: function(target, linkpath) {
     target = SYSCALLS.getStr(target);
     linkpath = SYSCALLS.getStr(linkpath);
@@ -452,7 +447,7 @@ var SyscallsLibrary = {
     return socket;
   },
   /** @param {boolean=} allowNull */
-  $getSocketAddress__deps: ['$readSockaddr'],
+  $getSocketAddress__deps: ['$readSockaddr', '$FS', '$DNS'],
   $getSocketAddress: function(addrp, addrlen, allowNull) {
     if (allowNull && addrp === 0) return null;
     var info = readSockaddr(addrp, addrlen);
@@ -863,11 +858,16 @@ var SyscallsLibrary = {
       var id;
       var type;
       var name = stream.getdents[idx];
-      if (name[0] === '.') {
-        id = 1;
+      if (name === '.') {
+        id = stream.id;
         type = 4; // DT_DIR
-      } else {
-        var child = FS.lookupNode(stream.node, name);
+      }
+      else if (name === '..') {
+        id = FS.lookupPath(stream.path, { parent: true }).id;
+        type = 4; // DT_DIR
+      }
+      else {
+        var child = FS.lookupNode(stream, name);
         id = child.id;
         type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
                FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
@@ -1115,9 +1115,6 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_dup3: function(fd, suggestFD, flags) {
-#if SYSCALL_DEBUG
-    err('warning: untested syscall: dup3');
-#endif
     var old = SYSCALLS.getStreamFromFD(fd);
 #if ASSERTIONS
     assert(!flags);
@@ -1183,7 +1180,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     pre += 'try {\n';
     handler +=
     "} catch (e) {\n" +
-    "  if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);\n";
+    "  if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
     "  err('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
@@ -1208,6 +1205,18 @@ function wrapSyscallFunction(x, library, isWasi) {
     var bodyEnd = t.lastIndexOf('}');
     t = t.substring(0, bodyEnd) + post + t.substring(bodyEnd);
   }
+
+  if (MEMORY64 && !isWasi) {
+    t = modifyFunction(t, function(name, args, body) {
+      var argnums = args.split(",").map((a) => 'Number(' + a + ')').join();
+      return 'function ' + name + '(' + args + ') {\n' +
+             '  return BigInt((function ' + name + '_inner(' + args + ') {\n' +
+             body +
+             '  })(' + argnums + '));' +
+             '}';
+    });
+  }
+
   library[x] = eval('(' + t + ')');
   if (!library[x + '__deps']) library[x + '__deps'] = [];
   library[x + '__deps'].push('$SYSCALLS');

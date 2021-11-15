@@ -245,9 +245,12 @@ def llvm_backend_args():
     allowed = ','.join(settings.EXCEPTION_CATCHING_ALLOWED)
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
-  if settings.SUPPORT_LONGJMP:
-    # asm.js-style setjmp/longjmp handling
+  # asm.js-style setjmp/longjmp handling
+  if settings.SUPPORT_LONGJMP == 'emscripten':
     args += ['-enable-emscripten-sjlj']
+  # setjmp/longjmp handling using Wasm EH
+  elif settings.SUPPORT_LONGJMP == 'wasm':
+    args += ['-wasm-enable-sjlj']
 
   # better (smaller, sometimes faster) codegen, see binaryen#1054
   # and https://bugs.llvm.org/show_bug.cgi?id=39488
@@ -294,25 +297,25 @@ def lld_flags_for_executable(external_symbols):
   # section and DWARF, so we can only use it when we don't need any of
   # those things.
   if settings.DEBUG_LEVEL < 2 and (not settings.EMIT_SYMBOL_MAP and
-                                   not settings.PROFILING_FUNCS and
+                                   not settings.EMIT_NAME_SECTION and
                                    not settings.ASYNCIFY):
     cmd.append('--strip-debug')
 
   if settings.LINKABLE:
-    cmd.append('--export-all')
+    cmd.append('--export-dynamic')
     cmd.append('--no-gc-sections')
-  else:
-    c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
-    # Strip the leading underscores
-    c_exports = [demangle_c_symbol_name(e) for e in c_exports]
-    if external_symbols:
-      # Filter out symbols external/JS symbols
-      c_exports = [e for e in c_exports if e not in external_symbols]
-    for export in c_exports:
-      cmd.append('--export-if-defined=' + export)
 
-    for export in settings.EXPORT_IF_DEFINED:
-      cmd.append('--export-if-defined=' + export)
+  c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
+  # Strip the leading underscores
+  c_exports = [demangle_c_symbol_name(e) for e in c_exports]
+  if external_symbols:
+    # Filter out symbols external/JS symbols
+    c_exports = [e for e in c_exports if e not in external_symbols]
+  for export in c_exports:
+    cmd.append('--export-if-defined=' + export)
+
+  for export in settings.EXPORT_IF_DEFINED:
+    cmd.append('--export-if-defined=' + export)
 
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')
@@ -376,10 +379,10 @@ def link_lld(args, target, external_symbols=None):
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
 
-  # Wasm exception handling. This is a CodeGen option for the LLVM backend, so
-  # wasm-ld needs to take this for the LTO mode.
   if settings.EXCEPTION_HANDLING:
-    cmd += ['-mllvm', '-exception-model=wasm', '-mllvm', '-wasm-enable-eh']
+    cmd += ['-mllvm', '-wasm-enable-eh']
+  if settings.EXCEPTION_HANDLING or settings.SUPPORT_LONGJMP == 'wasm':
+    cmd += ['-mllvm', '-exception-model=wasm']
 
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and exectuable
@@ -630,6 +633,8 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   # will be carried over to a later Closure run.
   if settings.USE_CLOSURE_COMPILER:
     cmd += ['--closureFriendly']
+  if settings.EXPORT_ES6:
+    cmd += ['--exportES6']
   if settings.VERBOSE:
     cmd += ['verbose']
   if not return_output:
