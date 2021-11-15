@@ -722,14 +722,14 @@ long __syscall_getdents64(long fd, long dirp, long count) {
 
 long __syscall_rename(long old_path, long new_path) {
   // The rename syscall must be atomic to prevent other file system operations
-  // from changing its state. If it were not atomic, then other threads could
-  // unlink the destination directory after we have moved our source child. This
-  // would leave the file system in an undefined state as the source child is
-  // now orphaned. Protecting the destination and source parent directories
-  // ensures that no resources that we depend on are altered. Trylocking on the
-  // new_path parent is needed in the case where two renames are operating on
-  // opposing sources and destinations. This could cause them to lock the
-  // directories in reverse order and cause deadlock.
+  // from concurrently changing the directories. If it were not atomic, then
+  // other threads could unlink the destination directory after we have moved
+  // our source child. This would leave the file system in an undefined state as
+  // the source child is now orphaned. Protecting the destination and source
+  // parent directories ensures that no resources that we depend on are altered.
+  // Trylocking on the new_path parent is needed in the case where two renames
+  // are operating on opposing sources and destinations. This would cause them
+  // to lock the directories in reverse order and could cause deadlock.
 
   // Edge case: rename("dir", "dir/somename") - in this scenario it should not
   // be possible to rename the destination if the source is an ancestor.
@@ -812,33 +812,30 @@ long __syscall_rename(long old_path, long new_path) {
     return -EACCES;
   }
 
-  auto oldFile = oldPath->dynCast<DataFile>();
-  // The new path file must be deleted if it exists.
-  if (oldFile && newPath) {
-    // Cannot overwrite a file with a directory.
-    if (newPath->is<Directory>()) {
-      return -EISDIR;
+  // new path must be removed if it exists.
+  if (newPath) {
+    if (oldPath->is<DataFile>()) {
+      // Cannot overwrite a file with a directory.
+      if (newPath->is<Directory>()) {
+        return -EISDIR;
+      }
+    } else if (oldPath->is<Directory>()) {
+      auto newPathDirectory = newPath->dynCast<Directory>();
+
+      // Cannot overwrite a directory with a file.
+      if (!newPathDirectory) {
+        return -ENOTDIR;
+      }
+
+      // This should also cover the case in where
+      // the destination is an ancestor of the source:
+      // rename("dir/subdir", "dir");
+      if (newPathDirectory->locked().getNumEntries() > 0) {
+        return -ENOTEMPTY;
+      }
+    } else {
+      assert(false && "Unhandled file kind in rename");
     }
-    lockedNewParentDir.unlinkEntry(newBase);
-  }
-
-  auto oldDirectory = oldPath->dynCast<Directory>();
-  // The new path directory must be deleted if it exists.
-  if (oldDirectory && newPath) {
-    auto newPathDirectory = newPath->dynCast<Directory>();
-
-    // Cannot overwrite a directory with a file.
-    if (!newPathDirectory) {
-      return -ENOTDIR;
-    }
-
-    // This should also cover the case in where
-    // the destination is an ancestor of the source:
-    // rename("dir/subdir", "dir");
-    if (newPathDirectory->locked().getNumEntries() > 0) {
-      return -ENOTEMPTY;
-    }
-
     lockedNewParentDir.unlinkEntry(newBase);
   }
 
