@@ -2443,6 +2443,12 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
 
   @node_pthreads
+  def test_pthread_attr_getstack(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
+
+  @node_pthreads
   @no_mac('https://github.com/emscripten-core/emscripten/issues/15014')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
