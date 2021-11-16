@@ -431,7 +431,7 @@ var LibraryPThread = {
         PThread.unusedWorkers[0].postMessage(PThread.buildWorkerLoadMessage());
       }
       return PThread.unusedWorkers.pop();
-    }
+    },
 
     busySpinWait: function(msecs) {
       var t = performance.now() + msecs;
@@ -489,9 +489,7 @@ var LibraryPThread = {
             // This is sent from the worklet after the worker.js has processed the 'load' 
             // commands and needs to load the main js (which it can't do directly in 
             // AudioWorkletGlobalScope so we do it here from the main thread)
-            aw.addModule((Module['mainScriptUrlOrBlob'] || _scriptDir)).then(function() {
-              dummy.postMessage({'cmd': 'moduleloaded'}); 
-            });
+            aw.addModule((Module['mainScriptUrlOrBlob'] || _scriptDir));
           } else if (cmd === 'running') {
             // This is notified to let us know the pthread environment is ready and we can go ahead
             // and create any pending AudioWorkletNodes

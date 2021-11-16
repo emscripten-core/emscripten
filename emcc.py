@@ -1956,6 +1956,10 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '_pthread_testcancel',
       '_exit',
     ]
+    if settings.ENVIRONMENT_MAY_BE_AUDIOWORKLET:
+      settings.EXPORTED_FUNCTIONS += [
+        '_pthread_create',
+      ]
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
       '$exitOnMainThread',
     ]
