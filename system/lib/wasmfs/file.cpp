@@ -85,10 +85,6 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
 #endif
     curr = directory->locked().getEntry(*it);
 
-    // Special case for the rename syscall.
-    // If one detects that old_path is a forbidden ancestor in the path of
-    // new_path, the rename operation is invalid. Ex.
-    // rename("dir", "dir/somename").
     if (forbiddenAncestor) {
       if (curr == forbiddenAncestor) {
         err = -EINVAL;

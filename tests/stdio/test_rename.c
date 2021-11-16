@@ -33,6 +33,16 @@ void setup() {
   mkdir("dir/subdir", 0777);
   mkdir("dir/subdir/subsubdir", 0777);
   mkdir("dir-readonly", 0555);
+  // TODO: Remove when chmod is implemented in WasmFS.
+#ifdef WASMFS
+  mkdir("dir-readonly2", 0555);
+#else
+  mkdir("dir-readonly2", 0777);
+#endif
+  mkdir("dir-readonly2/somename", 0777);
+#ifndef WASMFS
+  chmod("dir-readonly2", 0555);
+#endif
   mkdir("dir-nonempty", 0777);
   mkdir("dir/subdir3", 0777);
   mkdir("dir/subdir3/subdir3_1", 0777);
@@ -62,6 +72,11 @@ void cleanup() {
   rmdir("dir/b/c");
   rmdir("dir/b");
   rmdir("dir");
+#ifndef WASMFS
+  chmod("dir-readonly2", 0777);
+#endif
+  rmdir("dir-readonly2/somename");
+  rmdir("dir-readonly2");
   rmdir("new-dir");
   rmdir("dir-readonly");
   unlink("dir-nonempty/file");
@@ -93,6 +108,11 @@ void test() {
 
   // can't create anything in a read-only directory
   err = rename("dir", "dir-readonly/dir");
+  assert(err == -1);
+  assert(errno == EACCES);
+  
+  // Can't move from a read-only directory.
+  err = rename("dir-readonly2/somename", "dir");
   assert(err == -1);
   assert(errno == EACCES);
 

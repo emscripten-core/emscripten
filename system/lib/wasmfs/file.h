@@ -60,6 +60,10 @@ public:
   class Handle {
 
   protected:
+    // This mutex is needed when one needs to access access a previously locked
+    // file in the same thread. For example, rename will need to traverse
+    // 2 paths and access the same locked directory twice.
+    // TODO: During benchmarking, test recursive vs normal mutex performance.
     std::unique_lock<std::recursive_mutex> lock;
     std::shared_ptr<File> file;
 
@@ -264,7 +268,9 @@ public:
 
 // Obtains parent directory of a given pathname.
 // Will return a nullptr if the parent is not a directory.
-// Will exit if the forbiddenAncestor shared_ptr is encountered while parsing.
+// Will error if the forbiddenAncestor is encountered while processing.
+// If the forbiddenAncestor is encountered, err will be set to EINVAL and
+// nullptr will be returned.
 std::shared_ptr<Directory>
 getDir(std::vector<std::string>::iterator begin,
        std::vector<std::string>::iterator end,

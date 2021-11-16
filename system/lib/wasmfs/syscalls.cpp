@@ -722,11 +722,17 @@ long __syscall_getdents64(long fd, long dirp, long count) {
 
 long __syscall_rename(long old_path, long new_path) {
   // The rename syscall must be atomic to prevent other file system operations
-  // from concurrently changing the directories. If it were not atomic, then
-  // other threads could unlink the destination directory after we have moved
-  // our source child. This would leave the file system in an undefined state as
-  // the source child is now orphaned. Protecting the destination and source
-  // parent directories ensures that no resources that we depend on are altered.
+  // from concurrently changing the directories. If it were not atomic, then the
+  // file system could be left in an inconsistent state. For example, two
+  // renames could be racing to set dir1 -> file and dir2 -> file.
+  // First thread:  Second thread:  Result:
+  // dir1 -> file   dir2 -> file    dir1 -> file
+  // file -> dir1   file -> dir2    dir2 -> file
+  //                                file -> dir2
+  // In this scenario, file is referenced by 2 parents. As an atomic operation,
+  // rename can avoid this by unlinking the existing dir1 parent before setting
+  // the new dir2 parent.
+
   // Trylocking on the new_path parent is needed in the case where two renames
   // are operating on opposing sources and destinations. This would cause them
   // to lock the directories in reverse order and could cause deadlock.
@@ -745,7 +751,8 @@ long __syscall_rename(long old_path, long new_path) {
 
   // In Linux, renaming the root directory returns EBUSY.
   // TODO: Fix this when path parsing is refactored.
-  if (oldPathParts.size() == 1 && oldPathParts[0] == "/") {
+  std::vector<std::string> root = {"/"};
+  if (oldPathParts == root) {
     return -EBUSY;
   }
 
@@ -761,7 +768,8 @@ long __syscall_rename(long old_path, long new_path) {
   // For this operation to be atomic we must lock the source parent directory.
   auto lockedOldParentDir = oldParentDir->locked();
 
-  auto oldPath = lockedOldParentDir.getEntry(oldBase);
+  auto oldPath = lockedOldParentDir.getEntry(oldBase),
+       forbiddenAncestor = oldPath;
 
   if (!oldPath) {
     return -ENOENT;
@@ -774,16 +782,16 @@ long __syscall_rename(long old_path, long new_path) {
     return -EINVAL;
   }
 
-  // In Linux, renaming a directory with the root directory returns ENOTEMPTY.
+  // In Linux, renaming a directory to the root directory returns ENOTEMPTY.
   // TODO: Fix this when path parsing is refactored.
-  if (newPathParts.size() == 1 && newPathParts[0] == "/") {
+  if (newPathParts == root) {
     return -ENOTEMPTY;
   }
 
   auto newBase = newPathParts.back();
 
-  auto newParentDir =
-    getDir(newPathParts.begin(), newPathParts.end() - 1, err, oldPath);
+  auto newParentDir = getDir(
+    newPathParts.begin(), newPathParts.end() - 1, err, forbiddenAncestor);
 
   // If the destination parent directory doesn't exist, the source file cannot
   // be moved.
@@ -807,7 +815,12 @@ long __syscall_rename(long old_path, long new_path) {
     return 0;
   }
 
-  // Cannot move to a destination parent directory wihout write permissions.
+  // Cannot move from source directory without write permissions.
+  if (!(lockedOldParentDir.mode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
+  // Cannot move to a destination parent directory without write permissions.
   if (!(lockedNewParentDir.mode() & WASMFS_PERM_WRITE)) {
     return -EACCES;
   }
