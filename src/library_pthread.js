@@ -597,8 +597,6 @@ var LibraryPThread = {
         'start_routine': threadParams.startRoutine,
         'arg': threadParams.arg,
         'threadInfoStruct': threadParams.pthread_ptr,
-        'stackBase': threadParams.stackBase,
-        'stackSize': threadParams.stackSize
     };
 #if OFFSCREENCANVAS_SUPPORT
     // Note that we do not need to quote these names because they are only used
@@ -1260,7 +1258,17 @@ var LibraryPThread = {
     return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
   },
 
-  $establishStackSpace: function(stackTop, stackMax) {
+  $establishStackSpace__internal: true,
+  $establishStackSpace: function() {
+    var pthread_ptr = _pthread_self();
+    var stackTop = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack, 'i32') }}};
+    var stackSize = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack_size, 'i32') }}};
+    var stackMax = stackTop - stackSize;
+#if ASSERTIONS
+    assert(stackTop != 0);
+    assert(stackMax != 0);
+    assert(stackTop > stackMax);
+#endif
     // Set stack limits used by `emscripten/stack.h` function.  These limits are
     // cached in wasm-side globals to make checks as fast as possible.
     _emscripten_stack_set_limits(stackTop, stackMax);
