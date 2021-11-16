@@ -7,10 +7,11 @@
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include "wasmfs.h"
+#include "file.h"
 #include "streams.h"
+#include <emscripten/threading.h>
 
 namespace wasmfs {
-
 // The below lines are included to make the compiler believe that the global
 // constructor is part of a system header, which is necessary to work around a
 // compilation error about using a reserved init priority less than 101. This
@@ -21,9 +22,9 @@ namespace wasmfs {
 // system priority) since wasmFS is a system level component.
 // TODO: consider instead adding this in libc's startup code.
 // WARNING: Maintain # n + 1 "wasmfs.cpp" 3 where n = line number.
-# 25 "wasmfs.cpp" 3
+# 26 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
-# 27 "wasmfs.cpp"
+# 28 "wasmfs.cpp"
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   auto rootDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
@@ -37,5 +38,103 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   dir.setEntry("stderr", StderrFile::getSingleton());
 
   return rootDirectory;
+}
+
+// Initialize files specified by the --preload-file option.
+// Set up directories and files in wasmFS$preloadedDirs and
+// wasmFS$preloadedFiles from JS. This function will be called before any file
+// operation to ensure any preloaded files are eagerly available for use.
+void WasmFS::preloadFiles() {
+  // Debug builds only: add check to ensure preloadFiles() is called once.
+#ifndef NDEBUG
+  static std::atomic<int> timesCalled;
+  timesCalled++;
+  assert(timesCalled == 1);
+#endif
+
+  // Ensure that files are preloaded from the main thread.
+  assert(emscripten_is_main_browser_thread());
+
+  int numFiles = EM_ASM_INT({return wasmFS$preloadedFiles.length});
+  int numDirs = EM_ASM_INT({return wasmFS$preloadedDirs.length});
+
+  // If there are no preloaded files, exit early.
+  if (numDirs == 0 && numFiles == 0) {
+    return;
+  }
+
+  // Iterate through wasmFS$preloadedDirs to obtain a parent and child pair.
+  // Ex. Module['FS_createPath']("/foo/parent", "child", true, true);
+  for (int i = 0; i < numDirs; i++) {
+    // TODO: Convert every EM_ASM to EM_JS.
+    char parentPath[PATH_MAX] = {};
+    EM_ASM(
+      {
+        var s = wasmFS$preloadedDirs[$0].parentPath;
+        var len = lengthBytesUTF8(s) + 1;
+        stringToUTF8(s, $1, len);
+      },
+      i,
+      parentPath);
+
+    auto pathParts = splitPath(parentPath);
+
+    // TODO: Improvement - cache parent pathnames instead of looking up the
+    // directory every iteration.
+    long err;
+    auto parentDir = getDir(pathParts.begin(), pathParts.end(), err);
+
+    if (!parentDir) {
+      emscripten_console_error(
+        "Fatal error during directory creation in file preloading.");
+      abort();
+    }
+
+    char childName[PATH_MAX] = {};
+    EM_ASM(
+      {
+        var s = wasmFS$preloadedDirs[$0].childName;
+        var len = lengthBytesUTF8(s) + 1;
+        stringToUTF8(s, $1, len);
+      },
+      i,
+      childName);
+
+    auto created = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
+
+    parentDir->locked().setEntry(childName, created);
+  }
+
+  for (int i = 0; i < numFiles; i++) {
+    char fileName[PATH_MAX] = {};
+    EM_ASM(
+      {
+        var s = wasmFS$preloadedFiles[$0].pathName;
+        var len = lengthBytesUTF8(s) + 1;
+        stringToUTF8(s, $1, len);
+      },
+      i,
+      fileName);
+
+    auto mode = EM_ASM_INT({ return wasmFS$preloadedFiles[$0].mode; }, i);
+
+    auto pathParts = splitPath(fileName);
+
+    auto base = pathParts.back();
+
+    auto created = std::make_shared<MemoryFile>((mode_t)mode);
+
+    long err;
+    auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+    if (!parentDir) {
+      emscripten_console_error("Fatal error during file preloading");
+      abort();
+    }
+
+    parentDir->locked().setEntry(base, created);
+
+    created->locked().preloadFromJS(i);
+  }
 }
 } // namespace wasmfs

@@ -101,20 +101,19 @@ var EMSCRIPTEN_VERSION = '';
 // Will be set to 0 if -fno-rtti is used on the command line.
 var USE_RTTI = 1;
 
-// This will contain the optimization level (-Ox). You should not modify this.
+// This will contain the optimization level (-Ox).
 var OPT_LEVEL = 0;
 
-// This will contain the debug level (-gx). You should not modify this.
+// This will contain the debug level (-gx).
 var DEBUG_LEVEL = 0;
 
 // This will contain the shrink level (1 or 2 for -Os or -Oz, or just 0).
-// You should not modify this.
 var SHRINK_LEVEL = 0;
 
-// Whether we are profiling functions. You should not modify this.
-var PROFILING_FUNCS = 0;
+// Whether or not to emit the name section in the final wasm binaryen.
+var EMIT_NAME_SECTION = 0;
 
-// Whether we are emitting a symbol map. You should not modify this.
+// Whether we are emitting a symbol map.
 var EMIT_SYMBOL_MAP = 0;
 
 // List of function explicitly exported by user on the command line.

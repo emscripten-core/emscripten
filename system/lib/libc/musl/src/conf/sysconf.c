@@ -23,6 +23,7 @@
 #define JT_PHYS_PAGES JT(8)
 #define JT_AVPHYS_PAGES JT(9)
 #define JT_ZERO JT(10)
+#define JT_DELAYTIMER_MAX JT(11)
 
 #define RLIM(x) (-32768|(RLIMIT_ ## x))
 
@@ -158,8 +159,8 @@ long sysconf(int name)
 		[_SC_IPV6] = VER,
 		[_SC_RAW_SOCKETS] = VER,
 		[_SC_V7_ILP32_OFF32] = -1,
-		[_SC_V7_ILP32_OFFBIG] = sizeof(long)==4 ? 1 : JT_ZERO,
-		[_SC_V7_LP64_OFF64] = sizeof(long)==8 ? 1 : JT_ZERO,
+		[_SC_V7_ILP32_OFFBIG] = sizeof(long)==4 ? 1 : -1,
+		[_SC_V7_LP64_OFF64] = sizeof(long)==8 ? 1 : -1,
 		[_SC_V7_LPBIG_OFFBIG] = -1,
 		[_SC_SS_REPL_MAX] = -1,
 		[_SC_TRACE_EVENT_NAME_MAX] = -1,
@@ -179,6 +180,8 @@ long sysconf(int name)
 	} else if (values[name] < -256) {
 		struct rlimit lim;
 		getrlimit(values[name]&16383, &lim);
+		if (lim.rlim_cur == RLIM_INFINITY)
+			return -1;
 		return lim.rlim_cur > LONG_MAX ? LONG_MAX : lim.rlim_cur;
 	}
 
@@ -193,6 +196,8 @@ long sysconf(int name)
 		return PAGE_SIZE;
 	case JT_SEM_VALUE_MAX & 255:
 		return SEM_VALUE_MAX;
+	case JT_DELAYTIMER_MAX & 255:
+		return DELAYTIMER_MAX;
 	case JT_NPROCESSORS_CONF & 255:
 	case JT_NPROCESSORS_ONLN & 255: ;
 #ifdef __EMSCRIPTEN__
@@ -211,7 +216,6 @@ long sysconf(int name)
 		return emscripten_get_heap_max() / PAGE_SIZE;
 #else
 		unsigned long long mem;
-		int __lsysinfo(struct sysinfo *);
 		struct sysinfo si;
 		__lsysinfo(&si);
 		if (!si.mem_unit) si.mem_unit = 1;

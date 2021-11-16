@@ -21,6 +21,9 @@
 
 /* Minor changes by Rich Felker for integration in musl, 2011-04-27. */
 
+/* Smoothsort, an adaptive variant of Heapsort.  Memory usage: O(1).
+   Run time: Worst case O(n log n), close to O(n) in the mostly-sorted case. */
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

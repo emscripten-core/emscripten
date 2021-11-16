@@ -116,7 +116,7 @@ def parse_wasm(filename):
   return imports, exports, funcs
 
 
-def with_wasmfs(f):
+def also_with_wasmfs(f):
   def metafunc(self, wasmfs):
     if wasmfs:
       self.set_setting('WASMFS')
@@ -3639,26 +3639,6 @@ int main()
         for e in expected:
           self.assertContained(e, output)
 
-  @disabled('upstream llvm produces invalid wasm for sillyfuncast2_noasm.ll')
-  def test_incorrect_static_call(self):
-    for wasm in [0, 1]:
-      for opts in [0, 1]:
-        for asserts in [0, 1]:
-          extra = []
-          if opts != 1 - asserts:
-            extra = ['-s', 'ASSERTIONS=' + str(asserts)]
-          cmd = [EMCC, test_file('sillyfuncast2_noasm.ll'), '-O' + str(opts), '-s', 'WASM=' + str(wasm)] + extra
-          print(opts, asserts, wasm, cmd)
-          # Should not need to pipe stdout here but binaryen writes to stdout
-          # when it really should write to stderr.
-          stderr = self.run_process(cmd, stdout=PIPE, stderr=PIPE, check=False).stderr
-          if asserts:
-            self.assertContained('unexpected', stderr)
-            self.assertContained("to 'doit'", stderr)
-          else:
-            self.assertNotContained('unexpected', stderr)
-            self.assertNotContained("to 'doit'", stderr)
-
   @requires_native_clang
   def test_bad_triple(self):
     # compile a minimal program, with as few dependencies as possible, as
@@ -4357,6 +4337,14 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-c', '-emit-llvm'])
     self.assertTrue(building.is_bitcode('hello_world.bc'))
 
+  def test_compile_ll_file(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-S', '-emit-llvm'])
+    err = self.run_process([EMCC, '-v', '-c', 'hello_world.ll', '-o', 'hello_world.o'], stderr=PIPE).stderr
+    # Verify that `-mllvm` flags are passed when compiling `.ll` files.
+    self.assertContained('-mllvm -enable-emscripten-sjlj', err)
+    self.run_process([EMCC, 'hello_world.o'])
+    self.assertContained('hello, world!', self.run_js('a.out.js'))
+
   def test_dashE(self):
     create_file('src.cpp', r'''#include <emscripten.h>
 __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
@@ -4868,10 +4856,10 @@ int main() {
 #include <stdio.h>
 #include <wctype.h>
 
-int main(const int argc, const char * const * const argv) {
-  const char * const locale = (argc > 1 ? argv[1] : "C");
-  const char * const actual = setlocale(LC_ALL, locale);
-  if(actual == NULL) {
+int main(int argc, char **argv) {
+  const char *locale = (argc > 1 ? argv[1] : "C");
+  const char *actual = setlocale(LC_ALL, locale);
+  if (actual == NULL) {
     printf("%s locale not supported\n", locale);
     return 0;
   }
@@ -4880,9 +4868,9 @@ int main(const int argc, const char * const * const argv) {
 ''')
     self.run_process([EMXX, 'src.cpp'])
 
-    self.assertContained('locale set to C: C;C;C;C;C;C',
+    self.assertContained('locale set to C: C',
                          self.run_js('a.out.js', args=['C']))
-    self.assertContained('locale set to waka: waka;waka;waka;waka;waka;waka',
+    self.assertContained('locale set to waka: waka',
                          self.run_js('a.out.js', args=['waka']))
 
   def test_browser_language_detection(self):
@@ -7089,22 +7077,6 @@ int main() {
     # adding --metrics should not affect code size
     self.assertEqual(base_size, os.path.getsize('a.out.wasm'))
 
-  def assertFileContents(self, filename, contents):
-    contents = contents.replace('\r', '')
-
-    if common.EMTEST_REBASELINE:
-      with open(filename, 'w') as f:
-        f.write(contents)
-      return
-
-    if not os.path.exists(filename):
-      self.fail('Test expectation file not found: ' + filename + '.\n' +
-                'Run with EMTEST_REBASELINE to generate.')
-    expected_content = read_file(filename)
-    message = "Run with EMTEST_REBASELINE=1 to automatically update expectations"
-    self.assertTextDataIdentical(expected_content, contents, message,
-                                 filename, filename + '.new')
-
   def run_metadce_test(self, filename, args, expected_exists, expected_not_exists, check_size=True,
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
     size_slack = 0.05
@@ -9224,7 +9196,7 @@ int main () {
     print(f'int:{i} float:{f} double:{lf}: both{both}')
 
     # iprintf is much smaller than printf with float support
-    self.assertGreater(i, f - 3400)
+    self.assertGreater(i, f - 3500)
     self.assertLess(i, f - 3000)
     # __small_printf is somewhat smaller than printf with long double support
     self.assertGreater(f, lf - 900)
@@ -9350,7 +9322,10 @@ int main(void) {
     # DEFAULT_PTHREAD_STACK_SIZE.
     self.do_smart_test(test_file('other/test_proxy_to_pthread_stack.c'),
                        ['success'],
-                       emcc_args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'DEFAULT_PTHREAD_STACK_SIZE=64kb', '-s', 'TOTAL_STACK=128kb', '-s', 'EXIT_RUNTIME'])
+                       emcc_args=['-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD',
+                                  '-sDEFAULT_PTHREAD_STACK_SIZE=64kb',
+                                  '-sTOTAL_STACK=128kb', '-sEXIT_RUNTIME',
+                                  '--profiling-funcs'])
 
   @parameterized({
     'async': ['-s', 'WASM_ASYNC_COMPILATION'],
@@ -10065,7 +10040,7 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     self.assertContained('undefined symbol:', self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
 
     # Build again but with explit system libraries
-    libs = ['-lc', '-lcompiler_rt', '-lc_rt_wasm']
+    libs = ['-lc', '-lcompiler_rt', '-lc_rt']
     self.run_process([EMCC, test_file('unistd/close.c'), '-nostdlib'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nodefaultlibs'] + libs)
 
@@ -10752,6 +10727,22 @@ exec "$@"
     self.run_process(building.get_command_with_possible_response_file([EMCC, 'main.c'] + files))
     self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
 
+  # Tests that the filename suffix of the response files can be used to detect which encoding the file is.
+  def test_response_file_encoding(self):
+    open('äö.c', 'w').write('int main(){}')
+
+    open('a.rsp', 'w', encoding='utf-8').write('äö.c') # Write a response file with unicode contents ...
+    self.run_process([EMCC, '@a.rsp']) # ... and test that in the absence of a file suffix, it is autodetected to utf-8.
+
+    open('a.rsp.cp437', 'w', encoding='cp437').write('äö.c') # Write a response file with Windows CP-437 encoding ...
+    self.run_process([EMCC, '@a.rsp.cp437']) # ... and test that with the explicit suffix present, it is properly decoded
+
+    import locale
+    preferred_encoding = locale.getpreferredencoding(do_setlocale=False)
+    print('Python locale preferredencoding: ' + preferred_encoding)
+    open('a.rsp', 'w', encoding=preferred_encoding).write('äö.c') # Write a response file using Python preferred encoding
+    self.run_process([EMCC, '@a.rsp']) # ... and test that it is properly autodetected.
+
   def test_output_name_collision(self):
     # Ensure that the seconday filenames never collide with the primary output filename
     # In this case we explcitly ask for JS to be ceated in a file with the `.wasm` suffix.
@@ -10840,7 +10831,7 @@ kill -9 $$
       self.assertContained('failed (received SIGKILL (-9))', err)
 
   def test_concepts(self):
-    self.do_runf(test_file('other', 'test_concepts.cpp'), '', emcc_args=['-std=c++20'])
+    self.do_runf(test_file('other/test_concepts.cpp'), '', emcc_args=['-std=c++20'])
 
   def test_link_only_setting_warning(self):
     err = self.run_process([EMCC, '-sALLOW_MEMORY_GROWTH', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
@@ -10876,7 +10867,7 @@ kill -9 $$
     # Test the `-l` flags on the command line get mapped the correct libraries variant
     self.run_process([EMBUILDER, 'build', 'libc-mt', 'libcompiler_rt-mt', 'libdlmalloc-mt'])
 
-    libs = ['-lc', '-lc_rt_wasm', '-lcompiler_rt', '-lmalloc']
+    libs = ['-lc', '-lc_rt', '-lcompiler_rt', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nostdlib', '-v'] + libs, stderr=PIPE).stderr
 
     # Check the the linker was run with `-mt` variants because `-pthread` was passed.
@@ -11019,7 +11010,7 @@ void foo() {}
     self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.build(test_file('other', 'test_pthread_js_exception.c'))
+    self.build(test_file('other/test_pthread_js_exception.c'))
     err = self.run_js('test_pthread_js_exception.js', assert_returncode=NON_ZERO)
     self.assertContained('missing is not defined', err)
 
@@ -11072,9 +11063,9 @@ void foo() {}
 
   @node_pthreads
   def test_default_pthread_stack_size(self):
-    self.do_runf(test_file('other', 'test_default_pthread_stack_size.c'))
+    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
     self.emcc_args.append('-sUSE_PTHREADS')
-    self.do_runf(test_file('other', 'test_default_pthread_stack_size.c'))
+    self.do_runf(test_file('other/test_default_pthread_stack_size.c'))
 
   def test_emscripten_set_immediate(self):
     self.do_runf(test_file('emscripten_set_immediate.c'))
@@ -11158,35 +11149,56 @@ void foo() {}
 
   # WASMFS tests
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_dup(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_dup.c')
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_open(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_open.c')
 
-  @with_wasmfs
-  def test_unistd_fstat(self):
-    self.set_setting('WASMFS')
-    self.do_run_in_out_file_test('wasmfs/wasmfs_fstat.c')
+  @also_with_wasmfs
+  def test_unistd_stat(self):
+    self.do_runf(test_file('wasmfs/wasmfs_stat.c'))
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_create(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_create.c')
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_seek(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_seek.c')
 
-  @with_wasmfs
+  @also_with_wasmfs
   def test_unistd_mkdir(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_mkdir.c')
+
+  @also_with_wasmfs
+  def test_unistd_cwd(self):
+    self.do_run_in_out_file_test('wasmfs/wasmfs_chdir.c')
+
+  def test_wasmfs_getdents(self):
+    # TODO: update this test when /dev has been filled out.
+    # Run only in WASMFS for now.
+    self.set_setting('WASMFS')
+    self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
+
+  def test_wasmfs_readfile(self):
+    self.set_setting('WASMFS')
+    self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
 
   @disabled('Running with initial >2GB heaps is not currently supported on the CI version of Node')
   def test_hello_world_above_2gb(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sGLOBAL_BASE=2147483648', '-sINITIAL_MEMORY=3GB'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
+
+  def test_hello_function(self):
+    # hello_function.cpp is referenced/used in the docs.  This test ensures that it
+    # at least compiles.
+    # (It seems odd that we ship the entire tests/ directory to all our users and
+    # reference them in our docs.  Should we move this file to somewhere else such
+    # as `examples/`?)
+    self.run_process([EMCC, test_file('hello_function.cpp'), '-o', 'function.html', '-sEXPORTED_FUNCTIONS=_int_sqrt', '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap'])

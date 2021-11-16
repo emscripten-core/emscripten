@@ -3,29 +3,17 @@
 #include <string.h>
 #include "locale_impl.h"
 #include "libc.h"
-#include "atomic.h"
+#include "lock.h"
 
 static char buf[LC_ALL*(LOCALE_NAME_MAX+1)];
 
-static char *setlocale_one_unlocked(int cat, const char *name)
+char *setlocale(int cat, const char *name)
 {
 	const struct __locale_map *lm;
 
-	if (name) libc.global_locale.cat[cat] = lm = __get_locale(cat, name);
-	else lm = libc.global_locale.cat[cat];
-
-	return lm ? (char *)lm->name : "C";
-}
-
-char *__strchrnul(const char *, int);
-
-char *setlocale(int cat, const char *name)
-{
-	static volatile int lock[2];
-
 	if ((unsigned)cat > LC_ALL) return 0;
 
-	LOCK(lock);
+	LOCK(__locale_lock);
 
 	/* For LC_ALL, setlocale is required to return a string which
 	 * encodes the current setting for all categories. The format of
@@ -35,6 +23,7 @@ char *setlocale(int cat, const char *name)
 	if (cat == LC_ALL) {
 		int i;
 		if (name) {
+			struct __locale_struct tmp_locale;
 			char part[LOCALE_NAME_MAX+1] = "C.UTF-8";
 			const char *p = name;
 			for (i=0; i<LC_ALL; i++) {
@@ -44,27 +33,46 @@ char *setlocale(int cat, const char *name)
 					part[z-p] = 0;
 					if (*z) p = z+1;
 				}
-				setlocale_one_unlocked(i, part);
+				lm = __get_locale(i, part);
+				if (lm == LOC_MAP_FAILED) {
+					UNLOCK(__locale_lock);
+					return 0;
+				}
+				tmp_locale.cat[i] = lm;
 			}
+			libc.global_locale = tmp_locale;
 		}
 		char *s = buf;
+		const char *part;
+		int same = 0;
 		for (i=0; i<LC_ALL; i++) {
 			const struct __locale_map *lm =
 				libc.global_locale.cat[i];
-			const char *part = lm ? lm->name : "C";
+			if (lm == libc.global_locale.cat[0]) same++;
+			part = lm ? lm->name : "C";
 			size_t l = strlen(part);
 			memcpy(s, part, l);
 			s[l] = ';';
 			s += l+1;
 		}
 		*--s = 0;
-		UNLOCK(lock);
-		return buf;
+		UNLOCK(__locale_lock);
+		return same==LC_ALL ? (char *)part : buf;
 	}
 
-	char *ret = setlocale_one_unlocked(cat, name);
+	if (name) {
+		lm = __get_locale(cat, name);
+		if (lm == LOC_MAP_FAILED) {
+			UNLOCK(__locale_lock);
+			return 0;
+		}
+		libc.global_locale.cat[cat] = lm;
+	} else {
+		lm = libc.global_locale.cat[cat];
+	}
+	char *ret = lm ? (char *)lm->name : "C";
 
-	UNLOCK(lock);
+	UNLOCK(__locale_lock);
 
 	return ret;
 }

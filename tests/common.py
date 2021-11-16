@@ -39,8 +39,14 @@ logger = logging.getLogger('common')
 
 # User can specify an environment variable EMTEST_BROWSER to force the browser
 # test suite to run using another browser command line than the default system
-# browser.  Setting '0' as the browser disables running a browser (but we still
-# see tests compile)
+# browser.
+# There are two special value that can be used here if running in an actual
+# browser is not desired:
+#  EMTEST_BROWSER=0 : This will disable the actual running of the test and simply
+#                     verify that it compiles and links.
+#  EMTEST_BROWSER=node : This will attempt to run the browser test under node.
+#                        For most browser tests this does not work, but it can
+#                        be useful for running pthread tests under node.
 EMTEST_BROWSER = None
 EMTEST_DETECT_TEMPFILE_LEAKS = None
 EMTEST_SAVE_DIR = None
@@ -743,6 +749,22 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     text2 = text2.replace('\r\n', '\n')
     return self.assertContained(text1, text2)
 
+  def assertFileContents(self, filename, contents):
+    contents = contents.replace('\r', '')
+
+    if EMTEST_REBASELINE:
+      with open(filename, 'w') as f:
+        f.write(contents)
+      return
+
+    if not os.path.exists(filename):
+      self.fail('Test expectation file not found: ' + filename + '.\n' +
+                'Run with EMTEST_REBASELINE to generate.')
+    expected_content = read_file(filename)
+    message = "Run with EMTEST_REBASELINE=1 to automatically update expectations"
+    self.assertTextDataIdentical(expected_content, contents, message,
+                                 filename, filename + '.new')
+
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]:
       values = [values]
@@ -1310,7 +1332,7 @@ class BrowserCore(RunnerCore):
     super().setUpClass()
     cls.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
     cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
-    if not has_browser():
+    if not has_browser() or EMTEST_BROWSER == 'node':
       return
     cls.browser_timeout = 60
     cls.harness_in_queue = multiprocessing.Queue()
@@ -1323,7 +1345,7 @@ class BrowserCore(RunnerCore):
   @classmethod
   def tearDownClass(cls):
     super().tearDownClass()
-    if not has_browser():
+    if not has_browser() or EMTEST_BROWSER == 'node':
       return
     cls.harness_server.terminate()
     print('[Browser harness server terminated]')
@@ -1522,6 +1544,8 @@ class BrowserCore(RunnerCore):
         args += ['-I' + TEST_ROOT,
                  '-include', test_file('report_result.h'),
                  test_file('report_result.cpp')]
+    if EMTEST_BROWSER == 'node':
+      args.append('-DEMTEST_NODE')
     self.run_process([EMCC] + self.get_emcc_args() + args)
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
@@ -1565,7 +1589,13 @@ class BrowserCore(RunnerCore):
       post_build()
     if not isinstance(expected, list):
       expected = [expected]
-    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
+    if EMTEST_BROWSER == 'node':
+      self.js_engines = [config.NODE_JS]
+      self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+      output = self.run_js('test.js')
+      self.assertContained('RESULT: ' + expected[0], output)
+    else:
+      self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
     # Tests can opt into being run under asmjs as well
     if 'WASM=0' not in original_args and (also_asmjs or self.also_asmjs):

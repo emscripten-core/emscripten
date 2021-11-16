@@ -1,4 +1,5 @@
 #include <string.h>
+#include "lookup.h"
 
 int __dns_parse(const unsigned char *r, int rlen, int (*callback)(void *, int, const void *, int, const void *), void *ctx)
 {

@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 #include <string.h>
 #include <dirent.h>
-#include "libc.h"
 
 int versionsort(const struct dirent **a, const struct dirent **b)
 {
@@ -9,4 +8,4 @@ int versionsort(const struct dirent **a, const struct dirent **b)
 }
 
 #undef versionsort64
-LFS64(versionsort);
+weak_alias(versionsort, versionsort64);

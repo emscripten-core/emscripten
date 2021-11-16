@@ -78,7 +78,7 @@ var LibraryWebGL2 = {
     var ret = GLctx['getInternalformatParameter'](target, internalformat, pname);
     if (ret === null) return;
     for (var i = 0; i < ret.length && i < bufSize; ++i) {
-      {{{ makeSetValue('params', 'i', 'ret[i]', 'i32') }}};
+      {{{ makeSetValue('params', 'i*4', 'ret[i]', 'i32') }}};
     }
   },
 

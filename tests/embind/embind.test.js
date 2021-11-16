@@ -638,6 +638,24 @@ module({
             assert.equal(2, cm.const_ref_adder(true, true));
         });
 
+        assert.throws(TypeError, function() { cm.const_ref_adder(Symbol('0'), 1); });
+        assert.throws(TypeError, function() { cm.const_ref_adder(BigInt(0), 1); });
+
+        if (cm['ASSERTIONS']) {
+            test("can pass only number and boolean with assertions assertions", function() {
+                assert.throws(TypeError, function() { cm.const_ref_adder(1, undefined); });
+                assert.throws(TypeError, function() { cm.const_ref_adder(1, null); });
+                assert.throws(TypeError, function() { cm.const_ref_adder(1, '2'); });
+            });
+        } else {
+            test("can pass other types as floats without assertions", function() {
+                assert.equal(3, cm.const_ref_adder(1, '2'));
+                assert.equal(1, cm.const_ref_adder(1, null));  // null => 0
+                assert.true(isNaN(cm.const_ref_adder(1, 'cannot parse')));
+                assert.true(isNaN(cm.const_ref_adder(1, undefined)));  // undefined => NaN
+            });
+        }
+
         test("convert double to unsigned", function() {
             var rv = cm.emval_test_as_unsigned(1.5);
             assert.equal('number', typeof rv);

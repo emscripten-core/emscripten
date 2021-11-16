@@ -30,7 +30,7 @@ While it is possible to edit **settings.js** manually, this is *highly discourag
 
 The small number of options that developers may have cause to change should be modified when the *emcc* tool is invoked. For example, ``EXPORTED_FUNCTIONS``: ::
 
-  ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS="['_int_sqrt']"
+  ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS=_int_sqrt
 
 
 preamble.js

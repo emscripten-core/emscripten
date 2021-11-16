@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <errno.h>
+#include <resolv.h>
 #include "lookup.h"
 #include "stdio_impl.h"
 #include "syscall.h"
@@ -49,7 +50,7 @@ static int name_from_hosts(struct address buf[static MAXADDRS], char canon[stati
 {
 	char line[512];
 	size_t l = strlen(name);
-	int cnt = 0, badfam = 0;
+	int cnt = 0, badfam = 0, have_canon = 0;
 	unsigned char _buf[1032];
 	FILE _f, *f = __fopen_rb_ca("/etc/hosts", &_f, _buf, sizeof _buf);
 	if (!f) switch (errno) {
@@ -79,14 +80,19 @@ static int name_from_hosts(struct address buf[static MAXADDRS], char canon[stati
 			continue;
 		default:
 			badfam = EAI_NONAME;
-			continue;
+			break;
 		}
+
+		if (have_canon) continue;
 
 		/* Extract first name as canonical name */
 		for (; *p && isspace(*p); p++);
 		for (z=p; *z && !isspace(*z); z++);
 		*z = 0;
-		if (is_valid_hostname(p)) memcpy(canon, p, z-p+1);
+		if (is_valid_hostname(p)) {
+			have_canon = 1;
+			memcpy(canon, p, z-p+1);
+		}
 	}
 	__fclose_ca(f);
 	return cnt ? cnt : badfam;
@@ -98,11 +104,6 @@ struct dpc_ctx {
 	int cnt;
 };
 
-int __dns_parse(const unsigned char *, int, int (*)(void *, int, const void *, int, const void *), void *);
-int __dn_expand(const unsigned char *, const unsigned char *, const unsigned char *, char *, int);
-int __res_mkquery(int, const char *, int, int, const unsigned char *, int, const unsigned char*, unsigned char *, int);
-int __res_msend_rc(int, const unsigned char *const *, const int *, unsigned char *const *, int *, int, const struct resolvconf *);
-
 #define RR_A 1
 #define RR_CNAME 5
 #define RR_AAAA 28
@@ -111,6 +112,7 @@ static int dns_parse_callback(void *c, int rr, const void *data, int len, const 
 {
 	char tmp[256];
 	struct dpc_ctx *ctx = c;
+	if (ctx->cnt >= MAXADDRS) return -1;
 	switch (rr) {
 	case RR_A:
 		if (len != 4) return -1;
@@ -152,6 +154,7 @@ static int name_from_dns(struct address buf[static MAXADDRS], char canon[static 
 				0, 0, 0, qbuf[nq], sizeof *qbuf);
 			if (qlens[nq] == -1)
 				return EAI_NONAME;
+			qbuf[nq][3] = 0; /* don't need AD flag */
 			nq++;
 		}
 	}
@@ -159,14 +162,17 @@ static int name_from_dns(struct address buf[static MAXADDRS], char canon[static 
 	if (__res_msend_rc(nq, qp, qlens, ap, alens, sizeof *abuf, conf) < 0)
 		return EAI_SYSTEM;
 
+	for (i=0; i<nq; i++) {
+		if (alens[i] < 4 || (abuf[i][3] & 15) == 2) return EAI_AGAIN;
+		if ((abuf[i][3] & 15) == 3) return 0;
+		if ((abuf[i][3] & 15) != 0) return EAI_FAIL;
+	}
+
 	for (i=0; i<nq; i++)
 		__dns_parse(abuf[i], alens[i], dns_parse_callback, &ctx);
 
 	if (ctx.cnt) return ctx.cnt;
-	if (alens[0] < 4 || (abuf[0][3] & 15) == 2) return EAI_AGAIN;
-	if ((abuf[0][3] & 15) == 0) return EAI_NONAME;
-	if ((abuf[0][3] & 15) == 3) return 0;
-	return EAI_FAIL;
+	return EAI_NONAME;
 }
 
 static int name_from_dns_search(struct address buf[static MAXADDRS], char canon[static 256], const char *name, int family)
@@ -182,6 +188,10 @@ static int name_from_dns_search(struct address buf[static MAXADDRS], char canon[
 	 * a dot, which is an explicit request for global scope. */
 	for (dots=l=0; name[l]; l++) if (name[l]=='.') dots++;
 	if (dots >= conf.ndots || name[l-1]=='.') *search = 0;
+
+	/* Strip final dot for canon, fail if multiple trailing dots. */
+	if (name[l-1]=='.') l--;
+	if (!l || name[l-1]=='.') return EAI_NONAME;
 
 	/* This can never happen; the caller already checked length. */
 	if (l >= 256) return EAI_NONAME;
@@ -338,8 +348,8 @@ int __lookup_name(struct address buf[static MAXADDRS], char canon[static 256], c
 	/* No further processing is needed if there are fewer than 2
 	 * results or if there are only IPv4 results. */
 	if (cnt<2 || family==AF_INET) return cnt;
-	for (i=0; buf[i].family == AF_INET; i++)
-		if (i==cnt) return cnt;
+	for (i=0; i<cnt; i++) if (buf[i].family != AF_INET) break;
+	if (i==cnt) return cnt;
 
 	int cs;
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
@@ -350,36 +360,53 @@ int __lookup_name(struct address buf[static MAXADDRS], char canon[static 256], c
 	 * excessive runtime and code size cost and dubious benefit.
 	 * So far the label/precedence table cannot be customized. */
 	for (i=0; i<cnt; i++) {
+		int family = buf[i].family;
 		int key = 0;
-		struct sockaddr_in6 sa, da = {
+		struct sockaddr_in6 sa6 = { 0 }, da6 = {
 			.sin6_family = AF_INET6,
 			.sin6_scope_id = buf[i].scopeid,
 			.sin6_port = 65535
 		};
-		if (buf[i].family == AF_INET6) {
-			memcpy(da.sin6_addr.s6_addr, buf[i].addr, 16);
+		struct sockaddr_in sa4 = { 0 }, da4 = {
+			.sin_family = AF_INET,
+			.sin_port = 65535
+		};
+		void *sa, *da;
+		socklen_t salen, dalen;
+		if (family == AF_INET6) {
+			memcpy(da6.sin6_addr.s6_addr, buf[i].addr, 16);
+			da = &da6; dalen = sizeof da6;
+			sa = &sa6; salen = sizeof sa6;
 		} else {
-			memcpy(da.sin6_addr.s6_addr,
+			memcpy(sa6.sin6_addr.s6_addr,
 				"\0\0\0\0\0\0\0\0\0\0\xff\xff", 12);
-			memcpy(da.sin6_addr.s6_addr+12, buf[i].addr, 4);
+			memcpy(da6.sin6_addr.s6_addr+12, buf[i].addr, 4);
+			memcpy(da6.sin6_addr.s6_addr,
+				"\0\0\0\0\0\0\0\0\0\0\xff\xff", 12);
+			memcpy(da6.sin6_addr.s6_addr+12, buf[i].addr, 4);
+			memcpy(&da4.sin_addr, buf[i].addr, 4);
+			da = &da4; dalen = sizeof da4;
+			sa = &sa4; salen = sizeof sa4;
 		}
-		const struct policy *dpolicy = policyof(&da.sin6_addr);
-		int dscope = scopeof(&da.sin6_addr);
+		const struct policy *dpolicy = policyof(&da6.sin6_addr);
+		int dscope = scopeof(&da6.sin6_addr);
 		int dlabel = dpolicy->label;
 		int dprec = dpolicy->prec;
 		int prefixlen = 0;
-		int fd = socket(AF_INET6, SOCK_DGRAM|SOCK_CLOEXEC, IPPROTO_UDP);
+		int fd = socket(family, SOCK_DGRAM|SOCK_CLOEXEC, IPPROTO_UDP);
 		if (fd >= 0) {
-			if (!connect(fd, (void *)&da, sizeof da)) {
+			if (!connect(fd, da, dalen)) {
 				key |= DAS_USABLE;
-				if (!getsockname(fd, (void *)&sa,
-				    &(socklen_t){sizeof sa})) {
-					if (dscope == scopeof(&sa.sin6_addr))
+				if (!getsockname(fd, sa, &salen)) {
+					if (family == AF_INET) memcpy(
+						sa6.sin6_addr.s6_addr+12,
+						&sa4.sin_addr, 4);
+					if (dscope == scopeof(&sa6.sin6_addr))
 						key |= DAS_MATCHINGSCOPE;
-					if (dlabel == labelof(&sa.sin6_addr))
+					if (dlabel == labelof(&sa6.sin6_addr))
 						key |= DAS_MATCHINGLABEL;
-					prefixlen = prefixmatch(&sa.sin6_addr,
-						&da.sin6_addr);
+					prefixlen = prefixmatch(&sa6.sin6_addr,
+						&da6.sin6_addr);
 				}
 			}
 			close(fd);

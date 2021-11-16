@@ -1,7 +1,7 @@
 #include <stdint.h>
+#include <features.h>
 
-__attribute__((__visibility__("hidden")))
-void *__fdpic_fixup(void *map, uintptr_t *a, uintptr_t *z)
+hidden void *__fdpic_fixup(void *map, uintptr_t *a, uintptr_t *z)
 {
 	/* If map is a null pointer, the program was loaded by a
 	 * non-FDPIC-aware ELF loader, and fixups are not needed,

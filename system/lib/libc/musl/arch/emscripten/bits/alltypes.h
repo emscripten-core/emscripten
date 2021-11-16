@@ -1,3 +1,9 @@
+#define __LITTLE_ENDIAN 1234
+#define __BIG_ENDIAN 4321
+#define __USE_TIME_BITS64 1
+
+#define __BYTE_ORDER __LITTLE_ENDIAN
+
 #define _Addr __PTRDIFF_TYPE__
 #define _Int64 __INT64_TYPE__
 #define _Reg __PTRDIFF_TYPE__
@@ -99,12 +105,12 @@ typedef struct {
 #endif
 
 #if defined(__NEED_pthread_mutex_t) && !defined(__DEFINED_pthread_mutex_t)
-typedef struct { union { int __i[7]; volatile int __vi[7]; volatile void *__p[7]; } __u; } pthread_mutex_t;
+typedef struct { union { int __i[6]; volatile int __vi[6]; volatile void *__p[6]; } __u; } pthread_mutex_t;
 #define __DEFINED_pthread_mutex_t
 #endif
 
 #if defined(__NEED_mtx_t) && !defined(__DEFINED_mtx_t)
-typedef struct { union { int __i[7]; volatile int __vi[7]; volatile void *__p[7]; } __u; } mtx_t;
+typedef struct { union { int __i[6]; volatile int __vi[6]; volatile void *__p[6]; } __u; } mtx_t;
 #define __DEFINED_mtx_t
 #endif
 
@@ -288,7 +294,7 @@ typedef int clockid_t;
 #endif
 
 #if defined(__NEED_clock_t) && !defined(__DEFINED_clock_t)
-typedef long clock_t;
+typedef int clock_t;  /* XXX EMSCRIPTEN: ensure it's always 32-bits even in wasm64 */
 #define __DEFINED_clock_t
 #endif
 
@@ -415,6 +421,12 @@ typedef struct __sigset_t { unsigned long __bits[128/sizeof(long)]; } sigset_t;
 #if defined(__NEED_struct_iovec) && !defined(__DEFINED_struct_iovec)
 struct iovec { void *iov_base; size_t iov_len; };
 #define __DEFINED_struct_iovec
+#endif
+
+
+#if defined(__NEED_struct_winsize) && !defined(__DEFINED_struct_winsize)
+struct winsize { unsigned short ws_row, ws_col, ws_xpixel, ws_ypixel; };
+#define __DEFINED_struct_winsize
 #endif
 
 

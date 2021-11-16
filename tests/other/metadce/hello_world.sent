@@ -1,3 +1,5 @@
 emscripten_memcpy_big
+fd_close
+fd_seek
 fd_write
 setTempRet0

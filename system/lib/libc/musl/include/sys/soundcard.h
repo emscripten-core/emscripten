@@ -1,1 +1,1 @@
-#include <linux/soundcard.h>
+#include <bits/soundcard.h>

@@ -398,7 +398,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
     building.save_intermediate(infile + '.map', 'base_wasm.map')
     args += ['--output-source-map-url=' + settings.SOURCE_MAP_BASE + os.path.basename(outfile) + '.map']
     modify_wasm = True
-  if settings.DEBUG_LEVEL >= 2 or settings.ASYNCIFY_ADD or settings.ASYNCIFY_ADVISE or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.EMIT_SYMBOL_MAP or settings.PROFILING_FUNCS:
+  if settings.DEBUG_LEVEL >= 2 or settings.ASYNCIFY_ADD or settings.ASYNCIFY_ADVISE or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.EMIT_SYMBOL_MAP or settings.EMIT_NAME_SECTION:
     args.append('-g')
   if settings.WASM_BIGINT:
     args.append('--bigint')
@@ -821,7 +821,12 @@ def normalize_line_endings(text):
   return text
 
 
-def generate_struct_info(force=False):
+def clear_struct_info():
+  output_name = shared.Cache.get_lib_name('struct_info.json', varies=False)
+  shared.Cache.erase_file(output_name)
+
+
+def generate_struct_info():
   # If we are running in BOOTSTRAPPING_STRUCT_INFO we don't populate STRUCT_INFO
   # otherwise that would lead to infinite recursion.
   if settings.BOOTSTRAPPING_STRUCT_INFO:
@@ -832,7 +837,7 @@ def generate_struct_info(force=False):
     gen_struct_info.main(['-q', '-o', out])
 
   output_name = shared.Cache.get_lib_name('struct_info.json', varies=False)
-  settings.STRUCT_INFO = shared.Cache.get(output_name, generate_struct_info, force=force)
+  settings.STRUCT_INFO = shared.Cache.get(output_name, generate_struct_info)
 
 
 def run(in_wasm, out_wasm, outfile_js, memfile):

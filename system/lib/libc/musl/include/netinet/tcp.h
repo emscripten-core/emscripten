@@ -30,6 +30,17 @@
 #define TCP_CC_INFO      26
 #define TCP_SAVE_SYN     27
 #define TCP_SAVED_SYN    28
+#define TCP_REPAIR_WINDOW 29
+#define TCP_FASTOPEN_CONNECT 30
+#define TCP_ULP          31
+#define TCP_MD5SIG_EXT   32
+#define TCP_FASTOPEN_KEY 33
+#define TCP_FASTOPEN_NO_COOKIE 34
+#define TCP_ZEROCOPY_RECEIVE   35
+#define TCP_INQ          36
+#define TCP_TX_DELAY     37
+
+#define TCP_CM_INQ TCP_INQ
 
 #define TCP_ESTABLISHED  1
 #define TCP_SYN_SENT     2
@@ -42,6 +53,34 @@
 #define TCP_LAST_ACK     9
 #define TCP_LISTEN       10
 #define TCP_CLOSING      11
+
+enum {
+	TCP_NLA_PAD,
+	TCP_NLA_BUSY,
+	TCP_NLA_RWND_LIMITED,
+	TCP_NLA_SNDBUF_LIMITED,
+	TCP_NLA_DATA_SEGS_OUT,
+	TCP_NLA_TOTAL_RETRANS,
+	TCP_NLA_PACING_RATE,
+	TCP_NLA_DELIVERY_RATE,
+	TCP_NLA_SND_CWND,
+	TCP_NLA_REORDERING,
+	TCP_NLA_MIN_RTT,
+	TCP_NLA_RECUR_RETRANS,
+	TCP_NLA_DELIVERY_RATE_APP_LMT,
+	TCP_NLA_SNDQ_SIZE,
+	TCP_NLA_CA_STATE,
+	TCP_NLA_SND_SSTHRESH,
+	TCP_NLA_DELIVERED,
+	TCP_NLA_DELIVERED_CE,
+	TCP_NLA_BYTES_SENT,
+	TCP_NLA_BYTES_RETRANS,
+	TCP_NLA_DSACK_DUPS,
+	TCP_NLA_REORD_SEEN,
+	TCP_NLA_SRTT,
+	TCP_NLA_TIMEOUT_REHASH,
+	TCP_NLA_BYTES_NOTSENT,
+};
 
 #if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
 #define TCPOPT_EOL              0
@@ -61,7 +100,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdint.h>
-#include <endian.h>
 
 typedef uint32_t tcp_seq;
 
@@ -145,6 +183,13 @@ struct tcphdr {
 #define TCP_CA_Recovery		3
 #define TCP_CA_Loss		4
 
+enum tcp_fastopen_client_fail {
+	TFO_STATUS_UNSPEC,
+	TFO_COOKIE_UNAVAILABLE,
+	TFO_DATA_NOT_ACKED,
+	TFO_SYN_RETRANSMITTED,
+};
+
 struct tcp_info {
 	uint8_t tcpi_state;
 	uint8_t tcpi_ca_state;
@@ -153,6 +198,7 @@ struct tcp_info {
 	uint8_t tcpi_backoff;
 	uint8_t tcpi_options;
 	uint8_t tcpi_snd_wscale : 4, tcpi_rcv_wscale : 4;
+	uint8_t tcpi_delivery_rate_app_limited : 1, tcpi_fastopen_client_fail : 2;
 	uint32_t tcpi_rto;
 	uint32_t tcpi_ato;
 	uint32_t tcpi_snd_mss;
@@ -187,16 +233,60 @@ struct tcp_info {
 	uint32_t tcpi_min_rtt;
 	uint32_t tcpi_data_segs_in;
 	uint32_t tcpi_data_segs_out;
+	uint64_t tcpi_delivery_rate;
+	uint64_t tcpi_busy_time;
+	uint64_t tcpi_rwnd_limited;
+	uint64_t tcpi_sndbuf_limited;
+	uint32_t tcpi_delivered;
+	uint32_t tcpi_delivered_ce;
+	uint64_t tcpi_bytes_sent;
+	uint64_t tcpi_bytes_retrans;
+	uint32_t tcpi_dsack_dups;
+	uint32_t tcpi_reord_seen;
+	uint32_t tcpi_rcv_ooopack;
+	uint32_t tcpi_snd_wnd;
 };
 
 #define TCP_MD5SIG_MAXKEYLEN    80
 
+#define TCP_MD5SIG_FLAG_PREFIX  0x1
+#define TCP_MD5SIG_FLAG_IFINDEX 0x2
+
 struct tcp_md5sig {
 	struct sockaddr_storage tcpm_addr;
-	uint16_t __tcpm_pad1;
+	uint8_t tcpm_flags;
+	uint8_t tcpm_prefixlen;
 	uint16_t tcpm_keylen;
-	uint32_t __tcpm_pad2;
+	int tcpm_ifindex;
 	uint8_t tcpm_key[TCP_MD5SIG_MAXKEYLEN];
+};
+
+struct tcp_diag_md5sig {
+	uint8_t tcpm_family;
+	uint8_t tcpm_prefixlen;
+	uint16_t tcpm_keylen;
+	uint32_t tcpm_addr[4];
+	uint8_t tcpm_key[TCP_MD5SIG_MAXKEYLEN];
+};
+
+#define TCP_REPAIR_ON		1
+#define TCP_REPAIR_OFF		0
+#define TCP_REPAIR_OFF_NO_WP	-1
+
+struct tcp_repair_window {
+	uint32_t snd_wl1;
+	uint32_t snd_wnd;
+	uint32_t max_window;
+	uint32_t rcv_wnd;
+	uint32_t rcv_wup;
+};
+
+struct tcp_zerocopy_receive {
+	uint64_t address;
+	uint32_t length;
+	uint32_t recv_skip_hint;
+	uint32_t inq;
+	int32_t err;
 };
 
 #endif

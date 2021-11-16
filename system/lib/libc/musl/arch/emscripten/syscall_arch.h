@@ -31,7 +31,6 @@ long __syscall_acct(long filename);
 long __syscall_ioctl(long fd, long request, ...);
 long __syscall_setpgid(long pid, long gpid);
 long __syscall_umask(long mask);
-long __syscall_dup2(long oldfd, long newfd);
 long __syscall_getppid(void);
 long __syscall_getpgrp(void);
 long __syscall_setsid(void);

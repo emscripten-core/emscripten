@@ -867,6 +867,10 @@ extern "C" {
 #ifndef USE_DL_PREFIX
 // XXX Emscripten XXX
 #if defined(__EMSCRIPTEN__)
+void* __libc_malloc(size_t) __attribute__((weak, alias("dlmalloc")));
+void  __libc_free(void*) __attribute__((weak, alias("dlfree")));
+void* __libc_calloc(size_t) __attribute__((weak, alias("dlcalloc")));
+void* __libc_realloc(void*, size_t) __attribute__((weak, alias("dlrealloc")));
 void* malloc(size_t) __attribute__((weak, alias("dlmalloc")));
 void  free(void*) __attribute__((weak, alias("dlfree")));
 void* calloc(size_t, size_t) __attribute__((weak, alias("dlcalloc")));

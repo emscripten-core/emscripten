@@ -80,7 +80,11 @@ int __res_msend_rc(int nqueries, const unsigned char *const *queries,
 		fd = socket(AF_INET, SOCK_DGRAM|SOCK_CLOEXEC|SOCK_NONBLOCK, 0);
 		family = AF_INET;
 	}
-	if (fd < 0 || bind(fd, (void *)&sa, sl) < 0) return -1;
+	if (fd < 0 || bind(fd, (void *)&sa, sl) < 0) {
+		if (fd >= 0) close(fd);
+		pthread_setcancelstate(cs, 0);
+		return -1;
+	}
 
 	/* Past this point, there are no errors. Each individual query will
 	 * yield either no reply (indicated by zero length) or an answer

@@ -173,7 +173,7 @@ def parse_c_output(lines):
 
 def gen_inspect_code(path, struct, code):
   if path[0][-1] == '#':
-    path[0] = path[0][:-1]
+    path[0] = path[0].rstrip('#')
     prefix = ''
   else:
     prefix = 'struct '
@@ -426,6 +426,7 @@ def main(args):
 
   internal_cflags = [
     '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
+    '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
   ]
 
   cxxflags = [

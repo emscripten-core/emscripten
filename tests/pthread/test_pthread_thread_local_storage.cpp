@@ -116,5 +116,6 @@ int main()
 	for(int i = 0; i < NUM_KEYS; ++i)
 		pthread_key_delete(keys[i]);
 
+	printf("done\n");
 	return 0;
 }
