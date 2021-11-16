@@ -6757,16 +6757,16 @@ void* operator new(size_t size) {
     def get_code_size():
       if self.is_wasm():
         # Use number of functions as a for code size
-        return self.count_wasm_contents('hello_libcxx.wasm', 'funcs')
+        return self.count_wasm_contents('src.wasm', 'funcs')
       else:
-        return os.path.getsize('hello_libcxx.js')
+        return os.path.getsize('src.js')
 
     def get_mem_size():
       if self.is_wasm():
         # Use number of functions as a for code size
-        return self.count_wasm_contents('hello_libcxx.wasm', 'memory-data')
+        return self.count_wasm_contents('src.wasm', 'memory-data')
       if self.uses_memory_init_file():
-        return os.path.getsize('hello_libcxx.js.mem')
+        return os.path.getsize('src.js.mem')
 
       # otherwise we ignore memory size
       return 0

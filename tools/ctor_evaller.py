@@ -37,78 +37,47 @@ logger = logging.getLogger('ctor_evaller')
 
 # helpers
 
+CTOR_NAME = '__wasm_call_ctors'
 
-def find_ctors(js):
-  ctors_start = js.find('__ATINIT__.push(')
-  if ctors_start < 0:
-    return (-1, -1)
-  ctors_end = js.find(');', ctors_start)
-  assert ctors_end > 0
-  ctors_end += 3
-  return (ctors_start, ctors_end)
+CTOR_ADD_PATTERN = '''addOnInit(Module['asm']['%s']);''' % CTOR_NAME
+
+def has_ctor(js):
+  return CTOR_ADD_PATTERN in js
 
 
-def find_ctors_data(js, num):
-  ctors_start, ctors_end = find_ctors(js)
-  assert ctors_start > 0
-  ctors_text = js[ctors_start:ctors_end]
-  all_ctors = [ctor for ctor in ctors_text.split(' ') if ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor]
-  all_ctors = [ctor.replace('()', '') for ctor in all_ctors]
-  assert all(ctor.startswith('_') for ctor in all_ctors)
-  all_ctors = [ctor[1:] for ctor in all_ctors]
-  assert len(all_ctors)
-  ctors = all_ctors[:num]
-  return ctors_start, ctors_end, all_ctors, ctors
-
-
-def eval_ctors(js, wasm_file, num):
-  ctors_start, ctors_end, all_ctors, ctors = find_ctors_data(js, num)
-  cmd = [os.path.join(binaryen_bin, 'wasm-ctor-eval'), wasm_file, '-o', wasm_file, '--ctors=' + ','.join(ctors)]
+def eval_ctors(js, wasm_file):
+  cmd = [os.path.join(binaryen_bin, 'wasm-ctor-eval'), wasm_file, '-o', wasm_file, '--ctors=' + CTOR_NAME]
   cmd += extra_args
   if debug_info:
     cmd += ['-g']
-  logger.debug('wasm ctor cmd: ' + str(cmd))
+  logger.warning('wasm ctor cmd: ' + str(cmd))
   try:
-    err = subprocess.run(cmd, stderr=subprocess.PIPE, timeout=10).stdout
+    err = subprocess.run(cmd, stderr=subprocess.PIPE, timeout=10, text=True).stderr
   except subprocess.TimeoutExpired:
-    logger.debug('ctors timed out\n')
+    logger.warning('ctors timed out\n')
     return 0, js
+  logger.warning(err)
   num_successful = err.count('success on')
-  logger.debug(err)
-  if len(ctors) == num_successful:
-    new_ctors = ''
-  else:
-    elements = []
-    for ctor in all_ctors[num_successful:]:
-      elements.append('{ func: function() { %s() } }' % ctor)
-    new_ctors = '__ATINIT__.push(' + ', '.join(elements) + ');'
-  js = js[:ctors_start] + new_ctors + js[ctors_end:]
+  if num_successful:
+    js = js.replace(CTOR_ADD_PATTERN, '')
   return num_successful, js
 
 
 # main
 def main():
+  logger.warning('ctor_evaller: waka')
   js = utils.read_file(js_file)
-  ctors_start, ctors_end = find_ctors(js)
-  if ctors_start < 0:
-    logger.debug('ctor_evaller: no ctors')
+  if not has_ctor(js):
+    logger.warning('ctor_evaller: no ctors')
     sys.exit(0)
-
-  ctors_text = js[ctors_start:ctors_end]
-  if ctors_text.count('(') == 1:
-    logger.debug('ctor_evaller: push, but no ctors')
-    sys.exit(0)
-
-  num_ctors = ctors_text.count('function()')
-  logger.debug('ctor_evaller: %d ctors, from |%s|' % (num_ctors, ctors_text))
 
   wasm_file = binary_file
-  logger.debug('ctor_evaller (wasm): trying to eval %d global constructors' % num_ctors)
-  num_successful, new_js = eval_ctors(js, wasm_file, num_ctors)
+  logger.warning('ctor_evaller (wasm): trying to eval global ctor')
+  num_successful, new_js = eval_ctors(js, wasm_file)
   if num_successful == 0:
-    logger.debug('ctor_evaller: not successful')
+    logger.warning('ctor_evaller: not successful')
     sys.exit(0)
-  logger.debug('ctor_evaller: we managed to remove %d ctors' % num_successful)
+  logger.warning('ctor_evaller: we managed to remove the ctors')
   utils.write_file(js_file, new_js)
 
 
