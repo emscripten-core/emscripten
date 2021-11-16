@@ -32,6 +32,7 @@
 
 #include <emscripten.h>
 #include <emscripten/threading.h>
+#include <emscripten/stack.h>
 
 void __pthread_testcancel();
 
@@ -836,6 +837,8 @@ void __emscripten_init_main_thread(void) {
   // The pthread struct has a field that points to itself - this is used as
   // a magic ID to detect whether the pthread_t structure is 'alive'.
   __main_pthread.self = &__main_pthread;
+  __main_pthread.stack = (void*)emscripten_stack_get_base();
+  __main_pthread.stack_size = emscripten_stack_get_base() - emscripten_stack_get_end();
   __main_pthread.detach_state = DT_JOINABLE;
   // pthread struct robust_list head should point to itself.
   __main_pthread.robust_list.head = &__main_pthread.robust_list.head;
