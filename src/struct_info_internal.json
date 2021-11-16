@@ -31,7 +31,6 @@
             ]
         },
         "defines": [
-          "__ATTRP_C11_THREAD",
           "EM_THREAD_NAME_MAX"
         ]
     },
