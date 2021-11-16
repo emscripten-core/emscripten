@@ -487,8 +487,8 @@ var LibraryHTML5 = {
     }
 #endif
     var rect = getBoundingClientRect(target);
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetX / 4 }}}] = (e.clientX - rect.left) * (target.width / rect.width);
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = (e.clientY - rect.top) * (target.height / rect.height);
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetX / 4 }}}] = (e.clientX - rect.left) * (Module['canvas'].width / rect.width);
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = (e.clientY - rect.top) * (Module['canvas'].height / rect.height);
 
 #if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
 #if MIN_CHROME_VERSION <= 76
