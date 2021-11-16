@@ -53,7 +53,7 @@ void WasmFS::preloadFiles() {
 #endif
 
   // Ensure that files are preloaded from the main thread.
-  assert(emscripten_is_main_browser_thread());
+  assert(emscripten_is_main_runtime_thread());
 
   int numFiles = EM_ASM_INT({return wasmFS$preloadedFiles.length});
   int numDirs = EM_ASM_INT({return wasmFS$preloadedDirs.length});

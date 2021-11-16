@@ -30,7 +30,7 @@ static int __pthread_join_internal(pthread_t t, void **res) {
     // thread is attempting to join to itself.
     return EDEADLK;
   }
-  int is_main_thread = emscripten_is_main_runtime_thread();
+  int is_runtime_thread = emscripten_is_main_runtime_thread();
   while (1) {
     // The thread we are joining with must be either DT_JOINABLE or
     // DT_EXITING.  If its DT_EXITING then we move it to DT_EXITED and
@@ -49,8 +49,8 @@ static int __pthread_join_internal(pthread_t t, void **res) {
     // In main runtime thread (the thread that initialized the Emscripten C
     // runtime and launched main()), assist pthreads in performing operations
     // that they need to access the Emscripten main runtime for.
-    if (is_main_thread) emscripten_main_thread_process_queued_calls();
-    emscripten_futex_wait(&t->detach_state, old_state, is_main_thread ? 100 : 1);
+    if (is_runtime_thread) emscripten_main_thread_process_queued_calls();
+    emscripten_futex_wait(&t->detach_state, old_state, is_runtime_thread ? 100 : 1);
   }
 }
 
