@@ -768,8 +768,7 @@ long __syscall_rename(long old_path, long new_path) {
   // For this operation to be atomic we must lock the source parent directory.
   auto lockedOldParentDir = oldParentDir->locked();
 
-  auto oldPath = lockedOldParentDir.getEntry(oldBase),
-       forbiddenAncestor = oldPath;
+  auto oldPath = lockedOldParentDir.getEntry(oldBase);
 
   if (!oldPath) {
     return -ENOENT;
@@ -790,8 +789,9 @@ long __syscall_rename(long old_path, long new_path) {
 
   auto newBase = newPathParts.back();
 
-  auto newParentDir = getDir(
-    newPathParts.begin(), newPathParts.end() - 1, err, forbiddenAncestor);
+  // oldPath is the forbidden ancestor.
+  auto newParentDir =
+    getDir(newPathParts.begin(), newPathParts.end() - 1, err, oldPath);
 
   // If the destination parent directory doesn't exist, the source file cannot
   // be moved.
