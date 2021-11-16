@@ -190,10 +190,6 @@ self.onmessage = function(e) {
         Module = instance;
       });
 #else
-#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
-      // When running as an AudioWorklet all the scripts are imported from the main thread (via .addModule)      
-      if(!{{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_AUDIOWORKLET') }}}) { 
-#endif
       if (typeof e.data.urlOrBlob === 'string') {
 #if TRUSTED_TYPES
         if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
@@ -213,9 +209,6 @@ self.onmessage = function(e) {
         importScripts(objectUrl);
         URL.revokeObjectURL(objectUrl);
       }
-#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
-      }
-#endif
 #if MODULARIZE
 #if MINIMAL_RUNTIME
       {{{ EXPORT_NAME }}}(imports).then(function (instance) {
@@ -228,6 +221,20 @@ self.onmessage = function(e) {
 #endif
 #endif
 #endif // MODULARIZE && EXPORT_ES6
+#if ENVIRONMENT_MAY_BE_AUDIOWORKLET
+    } else if (e.data.cmd === 'moduleloaded') {
+      #if MODULARIZE
+      #if MINIMAL_RUNTIME
+            {{{ EXPORT_NAME }}}(imports).then(function (instance) {
+              Module = instance;
+            });
+      #else
+            {{{ EXPORT_NAME }}}(Module).then(function (instance) {
+              Module = instance;
+            });
+      #endif
+      #endif
+#endif // ENVIRONMENT_MAY_BE_AUDIOWORKLET
     } else if (e.data.cmd === 'run') {
       // This worker was idle, and now should start executing its pthread entry
       // point.
