@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+"""Find entries in struct_info.json that are not needd by
+any JS library code and can be removed."""
+
 import json
 import os
 import sys
@@ -14,7 +17,7 @@ import emscripten
 from tools.settings import settings
 
 
-def check_structs():
+def check_structs(info):
   for struct in info['structs'].keys():
     key = 'C_STRUCTS.' + struct + '.'
     # grep --quiet ruturns 0 when there is a match
@@ -22,7 +25,7 @@ def check_structs():
       print(struct)
 
 
-def check_defines():
+def check_defines(info):
   for define in info['defines'].keys():
     key = 'cDefine(.' + define + '.)'
     # grep --quiet ruturns 0 when there is a match
@@ -30,7 +33,13 @@ def check_defines():
       print(define)
 
 
-emscripten.generate_struct_info()
-info = json.loads(open(settings.STRUCT_INFO).read())
-check_structs()
-check_defines()
+def main():
+  emscripten.generate_struct_info()
+  info = json.loads(open(settings.STRUCT_INFO).read())
+  check_structs(info)
+  check_defines(info)
+  return 0
+
+
+if __name__ == '__main__':
+  sys.exit(main())
