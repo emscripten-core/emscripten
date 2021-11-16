@@ -1,0 +1,24 @@
+// Copyright 2021 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+// This file defines the modular backend abstract class.
+// Other file system backends can use this to interface with the new file
+// system. Current Status: Work in Progress. See
+// https://github.com/emscripten-core/emscripten/issues/15041.
+#include "file.h"
+#include <memory>
+#include <stdlib.h>
+#include <utility>
+#include <wasi/api.h>
+
+#pragma once
+
+namespace wasmfs {
+class Backend {
+public:
+  virtual std::shared_ptr<DataFile> createFile(mode_t mode) = 0;
+  virtual std::shared_ptr<Directory> createDirectory(mode_t mode) = 0;
+  virtual ~Backend() = default;
+};
+} // namespace wasmfs

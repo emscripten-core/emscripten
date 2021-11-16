@@ -8,6 +8,7 @@
 
 #include "file.h"
 #include "file_table.h"
+#include "memory_file_backend.h"
 #include "wasmfs.h"
 #include <dirent.h>
 #include <emscripten/emscripten.h>
@@ -425,7 +426,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
       // Mask all permissions sent via mode.
       mode &= S_IALLUGO;
       // Create an empty in-memory file.
-      auto created = std::make_shared<MemoryFile>(mode);
+      auto created = wasmFS.backendTable[0]->createFile(mode);
 
       // TODO: When rename is implemented make sure that one can atomically
       // remove the file from the source directory and then set its parent to
@@ -488,7 +489,7 @@ long __syscall_mkdir(long path, long mode) {
     // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
     mode &= S_IRWXUGO | S_ISVTX;
     // Create an empty in-memory directory.
-    auto created = std::make_shared<Directory>(mode);
+    auto created = wasmFS.backendTable[0]->createDirectory(mode);
 
     lockedParentDir.setEntry(base, created);
     return 0;

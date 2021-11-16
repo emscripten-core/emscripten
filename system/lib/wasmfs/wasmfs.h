@@ -10,6 +10,7 @@
 
 #include "file.h"
 #include "file_table.h"
+#include "memory_file_backend.h"
 #include <assert.h>
 #include <emscripten/html5.h>
 #include <map>
@@ -32,14 +33,20 @@ class WasmFS {
   // dev/stderr. Refers to the same std streams in the open file table.
   std::shared_ptr<Directory> initRootDirectory();
 
+  void initBackendTable() {
+    backendTable.push_back(std::make_unique<MemoryFileBackend>());
+  }
+
   // Initialize files specified by --preload-file option.
   void preloadFiles();
 
 public:
+  std::vector<std::unique_ptr<Backend>> backendTable;
   // Files will be preloaded in this constructor.
   // This global constructor has init_priority 100. Please see wasmfs.cpp.
   // The current working directory is initialized to the root directory.
   WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
+    initBackendTable();
     preloadFiles();
   }
 
