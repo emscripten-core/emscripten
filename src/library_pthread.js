@@ -278,8 +278,6 @@ var LibraryPThread = {
         } else if (cmd === 'detachedExit') {
 #if ASSERTIONS
           assert(worker.pthread);
-          var detach_state = Atomics.load(HEAPU32, (worker.pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detach_state }}}) >> 2);
-          assert(detach_state == {{{ cDefine('DT_EXITED') }}});
 #endif
           PThread.returnWorkerToPool(worker);
         } else if (cmd === 'cancelDone') {
@@ -575,7 +573,6 @@ var LibraryPThread = {
       worker: worker,
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
-      initialState: {{{ cDefine('DT_JOINABLE') }}},
       allocatedOwnStack: threadParams.allocatedOwnStack,
       // Info area for this thread in Emscripten HEAP (shared)
       threadInfoStruct: threadParams.pthread_ptr
@@ -583,7 +580,6 @@ var LibraryPThread = {
     var tis = pthread.threadInfoStruct >> 2;
     // spawnThread is always called with a zero-initialized thread struct so
     // no need to set any valudes to zero here.
-    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.detach_state }}} >> 2), threadParams.initialState);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack_size }}} >> 2), threadParams.stackSize);
     Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack }}} >> 2), stackHigh);
 
@@ -773,16 +769,11 @@ var LibraryPThread = {
 
     var stackSize = 0;
     var stackBase = 0;
-    // Default thread state is DT_JOINABLE, i.e. start as not detached.
-    var initialState = {{{ cDefine('DT_JOINABLE') }}};
     // When musl creates C11 threads it passes __ATTRP_C11_THREAD (-1) which
     // treat as if it was NULL.
     if (attr && attr != {{{ cDefine('__ATTRP_C11_THREAD') }}}) {
       stackSize = {{{ makeGetValue('attr', 0/*_a_stacksize*/, 'i32') }}};
       stackBase = {{{ makeGetValue('attr', 8/*_a_stackaddr*/, 'i32') }}};
-      if ({{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}}) {
-        initialState = {{{ cDefine('DT_DETACHED') }}};
-      }
     } else {
       // According to
       // http://man7.org/linux/man-pages/man3/pthread_create.3.html, default
@@ -816,7 +807,6 @@ var LibraryPThread = {
       stackBase: stackBase,
       stackSize: stackSize,
       allocatedOwnStack: allocatedOwnStack,
-      initialState: initialState,
       startRoutine: start_routine,
       pthread_ptr: pthread_ptr,
       arg: arg,
