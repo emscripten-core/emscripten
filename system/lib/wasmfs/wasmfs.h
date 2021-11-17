@@ -33,10 +33,6 @@ class WasmFS {
   // dev/stderr. Refers to the same std streams in the open file table.
   std::shared_ptr<Directory> initRootDirectory();
 
-  void initBackendTable() {
-    backendTable.push_back(createMemoryFileBackend(0));
-  }
-
   // Initialize files specified by --preload-file option.
   void preloadFiles();
 
@@ -46,7 +42,7 @@ public:
   // This global constructor has init_priority 100. Please see wasmfs.cpp.
   // The current working directory is initialized to the root directory.
   WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
-    initBackendTable();
+    backendTable.push_back(createMemoryFileBackend(0));
     preloadFiles();
   }
 
