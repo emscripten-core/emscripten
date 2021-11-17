@@ -18,17 +18,15 @@ namespace wasmfs {
 class MemoryFileBackend : public Backend {
 
 public:
-  MemoryFileBackend(backend_t backendID) : Backend(backendID) {}
-
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     return std::make_shared<MemoryFile>(mode);
   }
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    return std::make_shared<Directory>(mode, backendID);
+    return std::make_shared<Directory>(mode, shared_from_this());
   }
 };
 
-std::unique_ptr<Backend> createMemoryFileBackend(backend_t backendID) {
-  return std::make_unique<MemoryFileBackend>(backendID);
+std::shared_ptr<Backend> createMemoryFileBackend() {
+  return std::make_shared<MemoryFileBackend>();
 }
 } // namespace wasmfs

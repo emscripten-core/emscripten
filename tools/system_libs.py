@@ -86,7 +86,7 @@ def create_lib(libname, inputs):
     building.emar('cr', libname, inputs)
 
 
-def get_wasm_libc_rt_files():
+def get_libc_rt_files(is_optz=False, superset=False):
   # Combining static linking with LTO is tricky under LLVM.  The codegen that
   # happens during LTO can generate references to new symbols that didn't exist
   # in the linker inputs themselves.
@@ -102,29 +102,38 @@ def get_wasm_libc_rt_files():
   # Note that this also includes things that may be depended on by those
   # functions - fmin uses signbit, for example, so signbit must be here (so if
   # fmin is added by codegen, it will have all it needs).
-  math_files = files_in_path(
-    path='system/lib/libc/musl/src/math',
-    filenames=[
-      'fmin.c', 'fminf.c', 'fminl.c',
-      'fmax.c', 'fmaxf.c', 'fmaxl.c',
-      'fmod.c', 'fmodf.c', 'fmodl.c',
-      'log.c', 'log_data.c',
-      'logf.c', 'logf_data.c',
-      'log2.c', 'log2_data.c',
-      'log2f.c', 'log2f_data.c',
-      'log10.c', 'log10f.c',
-      'exp.c', 'exp_data.c',
-      'exp2.c',
-      'exp2f.c', 'exp2f_data.c',
-      'exp10.c', 'exp10f.c',
-      'scalbn.c', '__fpclassifyl.c',
-      '__signbitl.c', '__signbitf.c', '__signbit.c',
-      '__math_divzero.c', '__math_divzerof.c',
-      '__math_oflow.c', '__math_oflowf.c',
-      '__math_uflow.c', '__math_uflowf.c',
-      '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
+  #
+  # This function is called from two different places:
+  # 1. From libc-rt to decide which files to include.  We pass is_optz if we
+  #    are building the size-optimized version of the library.
+  # 2. From the libc library to decide which files to ignore.  Here is pass
+  #    `superset=True` since we want ignore the superset all files that might
+  #    be part of libc-rt (size-optimized or otherwise).
+  math_files = [
+    'fmin.c', 'fminf.c', 'fminl.c',
+    'fmax.c', 'fmaxf.c', 'fmaxl.c',
+    'fmod.c', 'fmodf.c', 'fmodl.c',
+    'logf.c', 'logf_data.c',
+    'log2f.c', 'log2f_data.c',
+    'log10.c', 'log10f.c',
+    'exp.c', 'exp_data.c',
+    'exp2.c',
+    'exp2f.c', 'exp2f_data.c',
+    'exp10.c', 'exp10f.c',
+    'scalbn.c', '__fpclassifyl.c',
+    '__signbitl.c', '__signbitf.c', '__signbit.c',
+    '__math_divzero.c', '__math_divzerof.c',
+    '__math_oflow.c', '__math_oflowf.c',
+    '__math_uflow.c', '__math_uflowf.c',
+    '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
+  ]
+  if superset or is_optz:
+    math_files += ['pow_small.c', 'log_small.c', 'log2_small.c']
+  if superset or not is_optz:
+    math_files += ['pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c']
 
-    ])
+  math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
+
   other_files = files_in_path(
     path='system/lib/libc',
     filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
@@ -835,7 +844,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         ])
 
     # These are included in wasm_libc_rt instead
-    ignore += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
+    ignore += [os.path.basename(f) for f in get_libc_rt_files(superset=True)]
 
     ignore = set(ignore)
     # TODO: consider using more math code from musl, doing so makes box2d faster
@@ -1375,7 +1384,7 @@ class libc_rt(OptimizedAggressivelyForSizeLibrary, AsanInstrumentedLibrary, Comp
   name = 'libc_rt'
 
   def get_files(self):
-    return get_wasm_libc_rt_files()
+    return get_libc_rt_files(is_optz=self.is_optz)
 
 
 class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):

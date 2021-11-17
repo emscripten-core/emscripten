@@ -3899,7 +3899,7 @@ window.close = function() {
 
   @requires_threads
   def test_pthread_attr_getstack(self):
-    self.btest_exit(test_file('pthread/test_pthread_attr_getstack.cpp'), args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'])
+    self.btest_exit(test_file('pthread/test_pthread_attr_getstack.c'), args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'])
 
   # Test that memory allocation is thread-safe.
   @requires_threads
