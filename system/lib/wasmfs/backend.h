@@ -16,7 +16,16 @@
 #pragma once
 
 namespace wasmfs {
+// A backend (or modular backend) provides a base for the new file system to
+// extend its storage capabilities. Files and directories will be represented in
+// the file system structure, but their underlying backing could exist in
+// persistent storage, another thread, etc.
 class Backend {
+
+protected:
+  int backendID;
+  Backend(int backendID) : backendID(backendID) {}
+
 public:
   virtual std::shared_ptr<DataFile> createFile(mode_t mode) = 0;
   virtual std::shared_ptr<Directory> createDirectory(mode_t mode) = 0;
