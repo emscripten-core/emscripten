@@ -64,14 +64,15 @@ void ensure_js_throws(string js_code, string error_type)
   ensure(EM_ASM_INT({
     var js_code = UTF8ToString($0);
     var error_type = UTF8ToString($1);
+    var assertions = Module['ASSERTIONS'];
     try {
       eval(js_code);
     }
     catch(error_thrown)
     {
-      return error_thrown.name === error_type;
+      return (error_thrown.name === error_type) && assertions;
     }
-    return false;
+    return !assertions;
   }, js_code_pointer, error_type_pointer));
 }
 
