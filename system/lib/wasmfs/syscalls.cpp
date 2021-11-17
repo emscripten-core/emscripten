@@ -723,15 +723,17 @@ long __syscall_getdents64(long fd, long dirp, long count) {
 long __syscall_rename(long old_path, long new_path) {
   // The rename syscall must be atomic to prevent other file system operations
   // from concurrently changing the directories. If it were not atomic, then the
-  // file system could be left in an inconsistent state. For example, two
-  // renames could be racing to set dir1 -> file and dir2 -> file.
-  // First thread:  Second thread:  Result:
-  // dir1 -> file   dir2 -> file    dir1 -> file
-  // file -> dir1   file -> dir2    dir2 -> file
-  //                                file -> dir2
-  // In this scenario, file is referenced by 2 parents. As an atomic operation,
-  // rename can avoid this by unlinking the existing dir1 parent before setting
-  // the new dir2 parent.
+  // file system could be left in an inconsistent state. For example, a
+  // rename("src/a","dest/b") and an rmdir("/dest") could conflict. Assume that
+  // the src/a file is unlinked first before moving it to the empty /dest
+  // directory. In the meantime, another thread could remove the empty /dest
+  // directory. src/a can still attach itself to the /dest directory since we
+  // have its shared_ptr, and the syscall would succeed. However, this may be
+  // unexpected for the user, who might have expected the subsequent
+  // rmdir("/dest") to fail since /dest is no longer empty. Both syscalls
+  // succeeding would result in a data loss, which would have been prevented if
+  // either of them was blocked by the other. Thus rename should guarantee that
+  // the order of operations is consistent.
 
   // Trylocking on the new_path parent is needed in the case where two renames
   // are operating on opposing sources and destinations. This would cause them
@@ -741,7 +743,8 @@ long __syscall_rename(long old_path, long new_path) {
   // be possible to rename the destination if the source is an ancestor.
 
   // Edge case: rename("dir/somename", "dir") - in this scenario it should not
-  // be possible to rename the destination since by definition it is non-empty.
+  // be possible to rename the destination since by definition it is
+  // non-empty.
 
   auto oldPathParts = splitPath((char*)old_path);
 
