@@ -9,7 +9,6 @@
               "profilerBlock",
               "self",
               "tsd",
-              "detach_state",
               "stack",
               "stack_size",
               "result",
@@ -32,11 +31,7 @@
         },
         "defines": [
           "__ATTRP_C11_THREAD",
-          "EM_THREAD_NAME_MAX",
-          "DT_EXITED",
-          "DT_EXITING",
-          "DT_JOINABLE",
-          "DT_DETACHED"
+          "EM_THREAD_NAME_MAX"
         ]
     },
     {

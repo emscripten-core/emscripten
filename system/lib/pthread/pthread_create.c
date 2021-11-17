@@ -116,6 +116,12 @@ int __pthread_create(pthread_t* restrict res,
   new->tsd = malloc(PTHREAD_KEYS_MAX * sizeof(void*));
   memset(new->tsd, 0, PTHREAD_KEYS_MAX * sizeof(void*));
 
+  if (attrp && attrp != __ATTRP_C11_THREAD && attrp->_a_detach) {
+    new->detach_state = DT_DETACHED;
+  } else {
+    new->detach_state = DT_JOINABLE;
+  }
+
   //printf("start __pthread_create: %p\n", self);
   int rtn = __pthread_create_js(new, attrp, entry, arg);
   if (rtn != 0)

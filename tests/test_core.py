@@ -2152,8 +2152,6 @@ int main(int argc, char **argv) {
   def test_biggerswitch(self):
     if not self.is_optimizing():
       self.skipTest('nodejs takes >6GB to compile this if the wasm is not optimized, which OOMs, see https://github.com/emscripten-core/emscripten/issues/7928#issuecomment-458308453')
-    if '-Os' in self.emcc_args:
-      self.skipTest('hangs in recent upstream clang, see https://bugs.llvm.org/show_bug.cgi?id=43468')
     num_cases = 20000
     switch_case = self.run_process([PYTHON, test_file('gen_large_switchcase.py'), str(num_cases)], stdout=PIPE, stderr=PIPE).stdout
     self.do_run(switch_case, '''58996: 589965899658996
@@ -2441,6 +2439,12 @@ The current type of b is: 9
     self.do_runf(test_file('pthread/test_pthread_setspecific_mainthread.c'), 'done!', emcc_args=['-DEXIT'])
     print('.. pthread_exit')
     self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
+
+  @node_pthreads
+  def test_pthread_attr_getstack(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
 
   @node_pthreads
   @no_mac('https://github.com/emscripten-core/emscripten/issues/15014')

@@ -13,7 +13,6 @@ Some changes have been made to the version that was taken from upstream, includi
  * Simplify stdout stream handling: do not support seeking, terminal handling, etc., as it just increases code size and Emscripten doesn't have those features anyhow.
  * Setting `_POSIX_REALTIME_SIGNALS` and `_POSIX_SPAWN` macros to -1, to exclude unsupported functions.
 
-Backported src/stdio/vswprintf.c from 1.1.23 to fix #9305.
-Backported src/string/{memccpy,memchr,memmove,stpcpy,stpncpy,strchrnul,strlcpy,strlen}.c from 1.2.0 to fix #7279.
-Backported src/internal/floatscan.c to latest, see #11445.
-Backported src/linux/gettid.c
+Copy log.c and log2.c from ealier version of musl which result in smaller
+binary size since they do not rely data tables in log_data.c and log2_data.c.
+See https://github.com/emscripten-core/emscripten/issues/15483.
