@@ -23,8 +23,8 @@ namespace wasmfs {
 class Backend {
 
 protected:
-  int backendID;
-  Backend(int backendID) : backendID(backendID) {}
+  backend_t backendID;
+  Backend(backend_t backendID) : backendID(backendID) {}
 
 public:
   virtual std::shared_ptr<DataFile> createFile(mode_t mode) = 0;
@@ -36,5 +36,5 @@ public:
 // Note: Backends will be defined in cpp files, but functions to acquire them
 // will be defined in this header. This is so that any unused backends are not
 // linked in if they are not called.
-std::unique_ptr<Backend> createMemoryFileBackend(int backendID);
+std::unique_ptr<Backend> createMemoryFileBackend(backend_t backendID);
 } // namespace wasmfs

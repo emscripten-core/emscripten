@@ -18,6 +18,9 @@
 
 namespace wasmfs {
 
+// This refers to the index of a directory's backend in the backendTable.
+using backend_t = uint32_t;
+
 // Note: The general locking strategy for all Files is to only hold 1 lock at a
 // time to prevent deadlock. This methodology can be seen in getDirs().
 
@@ -140,8 +143,9 @@ protected:
   // This value was also copied from the existing file system.
   size_t getSize() override { return 4096; }
 
-  // File backend associated with this directory.
-  int backendID;
+  // File backend associated with this directory. This is indicates which
+  // backend the directory belongs to in the backendTable.
+  backend_t backendID;
 
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
