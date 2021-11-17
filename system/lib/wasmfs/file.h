@@ -18,11 +18,12 @@
 
 namespace wasmfs {
 
-// This refers to the index of a directory's backend in the backendTable.
-using backend_t = uint32_t;
-
 // Note: The general locking strategy for all Files is to only hold 1 lock at a
 // time to prevent deadlock. This methodology can be seen in getDirs().
+
+class Backend;
+// This specifies a reference to a directory's associated backend.
+using backend_t = std::shared_ptr<Backend>;
 
 class File : public std::enable_shared_from_this<File> {
 
@@ -143,14 +144,15 @@ protected:
   // This value was also copied from the existing file system.
   size_t getSize() override { return 4096; }
 
-  // File backend associated with this directory. This is indicates which
-  // backend the directory belongs to in the backendTable.
-  backend_t backendID;
+  // This specifies which backend a directory is associated with. By default,
+  // files and sub-directories added to this directory's entries will be created
+  // through this same backend.
+  backend_t backend;
 
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
-  Directory(mode_t mode, int backendID)
-    : File(File::DirectoryKind, mode), backendID(backendID) {}
+  Directory(mode_t mode, backend_t backend)
+    : File(File::DirectoryKind, mode), backend(backend) {}
 
   struct Entry {
     std::string name;
@@ -210,7 +212,7 @@ public:
       return entries;
     }
 
-    int getBackendID() { return getDir()->backendID; }
+    backend_t getBackend() { return getDir()->backend; }
 
 #ifdef WASMFS_DEBUG
     void printKeys() {

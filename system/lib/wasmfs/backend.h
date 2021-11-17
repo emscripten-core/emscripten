@@ -7,24 +7,20 @@
 // system. Current Status: Work in Progress. See
 // https://github.com/emscripten-core/emscripten/issues/15041.
 
+#pragma once
+
 #include "file.h"
 #include <memory>
 #include <stdlib.h>
 #include <utility>
 #include <wasi/api.h>
 
-#pragma once
-
 namespace wasmfs {
 // A backend (or modular backend) provides a base for the new file system to
 // extend its storage capabilities. Files and directories will be represented in
 // the file system structure, but their underlying backing could exist in
 // persistent storage, another thread, etc.
-class Backend {
-
-protected:
-  backend_t backendID;
-  Backend(backend_t backendID) : backendID(backendID) {}
+class Backend : public std::enable_shared_from_this<Backend> {
 
 public:
   virtual std::shared_ptr<DataFile> createFile(mode_t mode) = 0;
@@ -36,5 +32,5 @@ public:
 // Note: Backends will be defined in cpp files, but functions to acquire them
 // will be defined in this header. This is so that any unused backends are not
 // linked in if they are not called.
-std::unique_ptr<Backend> createMemoryFileBackend(backend_t backendID);
+std::shared_ptr<Backend> createMemoryFileBackend();
 } // namespace wasmfs

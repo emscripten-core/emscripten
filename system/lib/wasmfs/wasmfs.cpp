@@ -27,8 +27,12 @@ __attribute__((init_priority(100))) WasmFS wasmFS;
 # 28 "wasmfs.cpp"
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
-  auto rootDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO, 0);
-  auto devDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO, 0);
+  auto rootBackend = createMemoryFileBackend();
+  backendTable.push_back(rootBackend);
+  auto rootDirectory =
+    std::make_shared<Directory>(S_IRUGO | S_IXUGO, rootBackend);
+  auto devDirectory =
+    std::make_shared<Directory>(S_IRUGO | S_IXUGO, rootBackend);
   rootDirectory->locked().setEntry("dev", devDirectory);
 
   auto dir = devDirectory->locked();
@@ -62,6 +66,8 @@ void WasmFS::preloadFiles() {
   if (numDirs == 0 && numFiles == 0) {
     return;
   }
+
+  auto rootBackend = wasmFS.getRootDirectory()->locked().getBackend();
 
   // Iterate through wasmFS$preloadedDirs to obtain a parent and child pair.
   // Ex. Module['FS_createPath']("/foo/parent", "child", true, true);
@@ -100,7 +106,7 @@ void WasmFS::preloadFiles() {
       i,
       childName);
 
-    auto created = std::make_shared<Directory>(S_IRUGO | S_IXUGO, 0);
+    auto created = std::make_shared<Directory>(S_IRUGO | S_IXUGO, rootBackend);
 
     parentDir->locked().setEntry(childName, created);
   }
