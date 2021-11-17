@@ -37,4 +37,6 @@ public:
 // will be defined in this header. This is so that any unused backends are not
 // linked in if they are not called.
 std::unique_ptr<Backend> createMemoryFileBackend(backend_t backendID);
+
+std::unique_ptr<Backend> createJSFileBackend(backend_t backendID);
 } // namespace wasmfs
