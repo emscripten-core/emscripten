@@ -144,6 +144,22 @@ int __pthread_create(pthread_t* restrict res,
   return 0;
 }
 
+/*
+ * Called from JS main thread to free data accociated a thread
+ * that is no longer running.
+ */
+void _emscripten_thread_free_data(pthread_t t) {
+  if (t->profilerBlock) {
+    emscripten_builtin_free(t->profilerBlock);
+  }
+  if (t->stack_owned) {
+    emscripten_builtin_free(((char*)t->stack) - t->stack_size);
+  }
+  // To aid in debugging set all fields to zero
+  memset(t, 0, sizeof(*t));
+  emscripten_builtin_free(t);
+}
+
 static void free_tls_data() {
   void* tls_block = _emscripten_tls_base();
   if (tls_block) {

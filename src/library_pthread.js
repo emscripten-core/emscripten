@@ -9,7 +9,7 @@ var LibraryPThread = {
   $PThread__deps: ['_emscripten_thread_init',
                    'emscripten_futex_wake', '$killThread',
                    '$cancelThread', '$cleanupThread',
-                   '$freeThreadData',
+                   '_emscripten_thread_free_data',
                    'exit',
 #if !MINIMAL_RUNTIME
                    '$handleException',
@@ -169,7 +169,7 @@ var LibraryPThread = {
         PThread.unusedWorkers.push(worker);
         PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1);
         // Not a running Worker anymore
-        freeThreadData(worker.pthread);
+        __emscripten_thread_free_data(worker.pthread.threadInfoStruct);
         // Detach the worker from the pthread object, and return it to the
         // worker pool as an unused worker.
         worker.pthread = undefined;
@@ -427,27 +427,7 @@ var LibraryPThread = {
     }
   },
 
-  $freeThreadData__noleakcheck: true,
-  $freeThreadData: function(pthread) {
-#if ASSERTIONS
-    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! freeThreadData() can only ever be called from main application thread!');
-#endif
-    if (!pthread) return;
-    if (pthread.threadInfoStruct) {
-#if PTHREADS_PROFILING
-      var profilerBlock = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.profilerBlock, 'i32') }}};
-      {{{ makeSetValue('pthread.threadInfoStruct',  C_STRUCTS.pthread.profilerBlock, 0, 'i32') }}};
-      _free(profilerBlock);
-#endif
-      _free(pthread.threadInfoStruct);
-    }
-    pthread.threadInfoStruct = 0;
-    if (pthread.allocatedOwnStack && pthread.stackBase) _free(pthread.stackBase);
-    pthread.stackBase = 0;
-    if (pthread.worker) pthread.worker.pthread = null;
-  },
-
-  $killThread__desp: ['$freeThreadData'],
+  $killThread__deps: ['_emscripten_thread_free_data'],
   $killThread: function(pthread_ptr) {
 #if PTHREADS_DEBUG
     err('killThread 0x' + pthread_ptr.toString(16));
@@ -460,7 +440,7 @@ var LibraryPThread = {
     var pthread = PThread.pthreads[pthread_ptr];
     delete PThread.pthreads[pthread_ptr];
     pthread.worker.terminate();
-    freeThreadData(pthread);
+    __emscripten_thread_free_data(pthread_ptr);
     // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
     // but don't put it back to the pool.
     PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(pthread.worker), 1); // Not a running Worker anymore.
@@ -573,7 +553,6 @@ var LibraryPThread = {
       worker: worker,
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
-      allocatedOwnStack: threadParams.allocatedOwnStack,
       // Info area for this thread in Emscripten HEAP (shared)
       threadInfoStruct: threadParams.pthread_ptr
     };
@@ -780,12 +759,13 @@ var LibraryPThread = {
       // stack size if not specified is 2 MB, so follow that convention.
       stackSize = {{{ DEFAULT_PTHREAD_STACK_SIZE }}};
     }
-    // If allocatedOwnStack == true, then the pthread impl maintains the stack allocation.
-    var allocatedOwnStack = stackBase == 0;
-    if (allocatedOwnStack) {
+    // If stackBase is zero then we allocate a new stack region and mark it as
+    // owned.
+    if (stackBase == 0) {
       // Allocate a stack if the user doesn't want to place the stack in a
       // custom memory area.
       stackBase = _memalign({{{ STACK_ALIGN }}}, stackSize);
+      Atomics.store(HEAPU32, (pthread_ptr + {{{ C_STRUCTS.pthread.stack_owned }}}) >> 2, 1);
     } else {
       // Musl stores the stack base address assuming stack grows downwards, so
       // adjust it to Emscripten convention that the
@@ -806,7 +786,6 @@ var LibraryPThread = {
     var threadParams = {
       stackBase: stackBase,
       stackSize: stackSize,
-      allocatedOwnStack: allocatedOwnStack,
       startRoutine: start_routine,
       pthread_ptr: pthread_ptr,
       arg: arg,

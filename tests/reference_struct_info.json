@@ -1323,7 +1323,7 @@
             "p_proto": 8
         },
         "pthread": {
-            "__size__": 108,
+            "__size__": 112,
             "cancel": 28,
             "cancelasync": 33,
             "canceldisable": 32,
@@ -1333,6 +1333,7 @@
             "robust_list": 68,
             "self": 0,
             "stack": 44,
+            "stack_owned": 108,
             "stack_size": 48,
             "tid": 16,
             "tsd": 64
