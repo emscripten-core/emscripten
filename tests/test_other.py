@@ -11155,7 +11155,7 @@ void foo() {}
 
   # TODO: This test will only work with the new file system.
   # Addresses this issue: https://github.com/emscripten-core/emscripten/issues/4017
-  # Also there are cases where an incorrect error is reported.
+  # The new file system also correctly identifies errors that the JS file system missed.
   def test_wasmfs_dup(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_dup.c')
