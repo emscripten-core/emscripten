@@ -586,7 +586,7 @@ var LibraryEmbind = {
     if (isUnsignedType) {
         toWireType = function(destructors, value) {
             checkAssertions(value, this.name);
-            return (value >>> 0);
+            return value >>> 0;
         }
     } else {
         toWireType = function(destructors, value) {
@@ -630,7 +630,7 @@ var LibraryEmbind = {
         'toWireType': function (destructors, value) {
 #if ASSERTIONS
             if (typeof value !== "bigint") {
-                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + toTypeName);
+                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
             if (value < minRange || value > maxRange) {
                 throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
