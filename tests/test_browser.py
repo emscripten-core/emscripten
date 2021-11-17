@@ -5015,7 +5015,7 @@ window.close = function() {
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
-    self.btest(test_file('emscripten_console_log.c'), '0', args=['--pre-js', test_file('emscripten_console_log_pre.js')])
+    self.btest_exit(test_file('emscripten_console_log.c'), args=['--pre-js', test_file('emscripten_console_log_pre.js')])
 
   def test_emscripten_throw_number(self):
     self.btest(test_file('emscripten_throw_number.c'), '0', args=['--pre-js', test_file('emscripten_throw_number_pre.js')])
