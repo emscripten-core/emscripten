@@ -643,7 +643,7 @@ module({
             assert.throws(TypeError, function() { cm.const_ref_adder(BigInt(0), 1); });
         });
 
-        if (cm.ASSERTIONS) {
+        if (cm['ASSERTIONS']) {
             test("can pass only number and boolean as floats with assertions", function() {
                 assert.throws(TypeError, function() { cm.const_ref_adder(1, undefined); });
                 assert.throws(TypeError, function() { cm.const_ref_adder(1, null); });
