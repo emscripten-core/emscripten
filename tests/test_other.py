@@ -8845,6 +8845,7 @@ int main () {
     'hello_webgl_wasm2js': ('hello_webgl', True),
     'hello_webgl2_wasm': ('hello_webgl2', False),
     'hello_webgl2_wasm2js': ('hello_webgl2', True),
+    'math': ('math', False),
   })
   def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
@@ -8873,6 +8874,7 @@ int main () {
 
     wasm2js = ['-s', 'WASM=0', '--memory-init-file', '1']
 
+    math_sources = [test_file('code_size/math.c')]
     hello_world_sources = [test_file('small_hello_world.c'),
                            '-s', 'USES_DYNAMIC_ALLOC=0']
     random_printf_sources = [test_file('hello_random_printf.c'),
@@ -8889,6 +8891,7 @@ int main () {
       'hello_world': hello_world_sources,
       'random_printf': random_printf_sources,
       'hello_webgl': hello_webgl_sources,
+      'math': math_sources,
       'hello_webgl2': hello_webgl2_sources}[test_name]
 
     def print_percent(actual, expected):
