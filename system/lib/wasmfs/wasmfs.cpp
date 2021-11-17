@@ -7,7 +7,7 @@
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include "wasmfs.h"
-#include "file.h"
+#include "memory_file.h"
 #include "streams.h"
 #include <emscripten/threading.h>
 
@@ -27,8 +27,8 @@ __attribute__((init_priority(100))) WasmFS wasmFS;
 # 28 "wasmfs.cpp"
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
-  auto rootDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
-  auto devDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
+  auto rootDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO, 0);
+  auto devDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO, 0);
   rootDirectory->locked().setEntry("dev", devDirectory);
 
   auto dir = devDirectory->locked();
@@ -100,7 +100,7 @@ void WasmFS::preloadFiles() {
       i,
       childName);
 
-    auto created = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
+    auto created = std::make_shared<Directory>(S_IRUGO | S_IXUGO, 0);
 
     parentDir->locked().setEntry(childName, created);
   }

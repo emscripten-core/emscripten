@@ -8,9 +8,9 @@
 
 #pragma once
 
+#include "backend.h"
 #include "file.h"
 #include "file_table.h"
-#include "memory_file_backend.h"
 #include <assert.h>
 #include <emscripten/html5.h>
 #include <map>
@@ -34,7 +34,7 @@ class WasmFS {
   std::shared_ptr<Directory> initRootDirectory();
 
   void initBackendTable() {
-    backendTable.push_back(std::make_unique<MemoryFileBackend>());
+    backendTable.push_back(createMemoryFileBackend(0));
   }
 
   // Initialize files specified by --preload-file option.

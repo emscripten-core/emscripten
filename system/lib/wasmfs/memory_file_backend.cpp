@@ -7,18 +7,29 @@
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include "backend.h"
-#include "file.h"
+#include "memory_file.h"
+#include <assert.h>
+#include <emscripten/html5.h>
+#include <emscripten/threading.h>
 #include <utility>
+#include <wasi/api.h>
 
-#pragma once
 namespace wasmfs {
 class MemoryFileBackend : public Backend {
+  int backendID;
+
 public:
+  MemoryFileBackend(int backendID) : backendID(backendID) {}
+
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     return std::make_shared<MemoryFile>(mode);
   }
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    return std::make_shared<Directory>(mode);
+    return std::make_shared<Directory>(mode, backendID);
   }
 };
+
+std::unique_ptr<Backend> createMemoryFileBackend(int backendID) {
+  return std::make_unique<MemoryFileBackend>(backendID);
+}
 } // namespace wasmfs

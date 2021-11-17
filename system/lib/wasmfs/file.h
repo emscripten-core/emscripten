@@ -140,9 +140,13 @@ protected:
   // This value was also copied from the existing file system.
   size_t getSize() override { return 4096; }
 
+  // File backend associated with this directory.
+  int backendID;
+
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
-  Directory(mode_t mode) : File(File::DirectoryKind, mode) {}
+  Directory(mode_t mode, int backendID)
+    : File(File::DirectoryKind, mode), backendID(backendID) {}
 
   struct Entry {
     std::string name;
@@ -202,6 +206,8 @@ public:
       return entries;
     }
 
+    int getBackendID() { return getDir()->backendID; }
+
 #ifdef WASMFS_DEBUG
     void printKeys() {
       for (auto keyPair : getDir()->entries) {
@@ -209,31 +215,6 @@ public:
       }
     }
 #endif
-  };
-
-  Handle locked() { return Handle(shared_from_this()); }
-};
-
-// This class describes a file that lives in Wasm Memory.
-class MemoryFile : public DataFile {
-  std::vector<uint8_t> buffer;
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
-
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
-
-  size_t getSize() override { return buffer.size(); }
-
-public:
-  MemoryFile(mode_t mode) : DataFile(mode) {}
-
-  class Handle : public DataFile::Handle {
-
-    std::shared_ptr<MemoryFile> getFile() { return file->cast<MemoryFile>(); }
-
-  public:
-    Handle(std::shared_ptr<File> dataFile) : DataFile::Handle(dataFile) {}
-    // This function copies preloaded files from JS Memory to Wasm Memory.
-    void preloadFromJS(int index);
   };
 
   Handle locked() { return Handle(shared_from_this()); }
