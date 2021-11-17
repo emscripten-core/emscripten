@@ -11156,8 +11156,7 @@ void foo() {}
   # TODO: This test will only work with the new file system.
   # Addresses this issue: https://github.com/emscripten-core/emscripten/issues/4017
   # Also there are cases where an incorrect error is reported.
-  @also_with_wasmfs
-  def test_unistd_dup(self):
+  def test_wasmfs_dup(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_dup.c')
 

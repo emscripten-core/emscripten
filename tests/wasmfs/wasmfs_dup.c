@@ -57,18 +57,15 @@ int main() {
   errno = 0;
   f5 = dup2(f4, -1);
   assert(f5 == -1);
-// These errors are not reported in the JS file system.
-#ifdef WASMFS
+  // This error is not reported in the JS filesystem.
   assert(errno == EBADF);
-#endif
 
   // Try calling dup2 with an invalid oldfd
   errno = 0;
   int f6 = dup2(-1, f5);
   assert(f6 == -1);
-#ifdef WASMFS
+  // This error is not reported in the JS filesystem.
   assert(errno == EBADF);
-#endif
 
   // Try assigning a large fd
   int f7 = 4069;
@@ -78,10 +75,9 @@ int main() {
 
   errno = 0;
   int f9 = dup(-1);
-#ifdef WASMFS
+  // This error is not reported in the JS filesystem.
   assert(f9 == -1);
   assert(errno == EBADF);
-#endif
 
   off_t offset;
 
