@@ -11,6 +11,7 @@
               "tsd",
               "stack",
               "stack_size",
+              "stack_owned",
               "result",
               "robust_list",
               "tid",
