@@ -23,7 +23,7 @@ namespace wasmfs {
 
 class Backend;
 // This specifies a reference to a directory's associated backend.
-using backend_t = std::shared_ptr<Backend>;
+using backend_t = Backend*;
 
 class File : public std::enable_shared_from_this<File> {
 

@@ -15,21 +15,9 @@ namespace wasmfs {
 // This class describes a file that lives in Wasm Memory.
 class MemoryFile : public DataFile {
   std::vector<uint8_t> buffer;
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    if (offset + len >= buffer.size()) {
-      buffer.resize(offset + len);
-    }
-    memcpy(&buffer[offset], buf, len);
+  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
 
-    return __WASI_ERRNO_SUCCESS;
-  }
-
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
-    assert(offset + len - 1 < buffer.size());
-    std::memcpy(buf, &buffer[offset], len);
-
-    return __WASI_ERRNO_SUCCESS;
-  }
+  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
 
   size_t getSize() override { return buffer.size(); }
 
@@ -43,16 +31,7 @@ public:
   public:
     Handle(std::shared_ptr<File> dataFile) : DataFile::Handle(dataFile) {}
     // This function copies preloaded files from JS Memory to Wasm Memory.
-    void preloadFromJS(int index) {
-      getFile()->buffer.resize(
-        EM_ASM_INT({return wasmFS$preloadedFiles[$0].fileData.length}, index));
-      // Ensure that files are preloaded from the main thread.
-      assert(emscripten_is_main_browser_thread());
-      // TODO: Replace every EM_ASM with EM_JS.
-      EM_ASM({ HEAPU8.set(wasmFS$preloadedFiles[$1].fileData, $0); },
-             getFile()->buffer.data(),
-             index);
-    }
+    void preloadFromJS(int index);
   };
 
   Handle locked() { return Handle(shared_from_this()); }
