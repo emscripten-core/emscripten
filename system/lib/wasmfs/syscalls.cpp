@@ -371,7 +371,8 @@ long __syscall_fstat64(long fd, long buf) {
   return doStat(openFile.locked().getFile(), buffer);
 }
 
-__wasi_fd_t __syscall_open(long pathname, long flags, ...) {
+__wasi_fd_t
+doOpen(char* pathname, long flags, mode_t mode, backend_t backend = nullptr) {
   int accessMode = (flags & O_ACCMODE);
   bool canWrite = false;
 
@@ -384,7 +385,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
     ((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND | O_RDWR |
                  O_WRONLY | O_RDONLY | O_LARGEFILE | O_CLOEXEC)) == 0);
 
-  auto pathParts = splitPath((char*)pathname);
+  auto pathParts = splitPath(pathname);
 
   if (pathParts.empty()) {
     return -EINVAL;
@@ -417,12 +418,6 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
     // If O_DIRECTORY is also specified, still create a regular file:
     // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
     if (flags & O_CREAT) {
-      // Since mode is optional, mode is specified using varargs.
-      mode_t mode = 0;
-      va_list vl;
-      va_start(vl, flags);
-      mode = va_arg(vl, int);
-      va_end(vl);
       // Mask all permissions sent via mode.
       mode &= S_IALLUGO;
       // Create an empty in-memory file.
@@ -454,6 +449,23 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
   auto openFile = std::make_shared<OpenFileState>(0, flags, curr);
 
   return wasmFS.getLockedFileTable().add(openFile);
+}
+
+// This function allows users to create files associated with a specific
+// backend.
+__wasi_fd_t wasmfs_create(long pathname, mode_t mode, backend_t backend) {
+  return doOpen((char*)pathname, O_CREAT, mode, backend);
+}
+
+__wasi_fd_t __syscall_open(long pathname, long flags, ...) {
+  // Since mode is optional, mode is specified using varargs.
+  mode_t mode = 0;
+  va_list vl;
+  va_start(vl, flags);
+  mode = va_arg(vl, int);
+  va_end(vl);
+
+  return doOpen((char*)pathname, flags, mode);
 }
 
 long __syscall_mkdir(long path, long mode) {

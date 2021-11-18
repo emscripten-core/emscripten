@@ -1,4 +1,5 @@
 var WasmfsLibrary = {
+  $wasmFS$JSMemoryFiles : [],
   $wasmFS$preloadedFiles: [],
   $wasmFS$preloadedDirs: [],
   $FS__deps: ['$wasmFS$preloadedFiles', '$wasmFS$preloadedDirs'],

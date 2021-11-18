@@ -20,7 +20,16 @@ class JSFile : public DataFile {
   // JSFiles will write from a Wasm Memory buffer into a JS array defined in
   // $wasmFS$JSMemoryFiles.
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    EM_ASM({ $wasmFS$JSMemoryFiles[$0].set(HEAPU8.subarray($1, $2), $3); },
+    EM_ASM(
+      {
+        var size = $wasmFS$JSMemoryFiles[$0].byteLength;
+        if ($2 >= size) {
+          // Resize the current arraybuffer.
+          $wasmFS$JSMemoryFiles[$0] =
+            new Uint8Array(size).set($wasmFS$JSMemoryFiles[$0]);
+        }
+        $wasmFS$JSMemoryFiles[$0].set(HEAPU8.subarray($1, $2), $3);
+      },
            index,
            (int)buf,
            (int)(buf + len),
@@ -31,6 +40,7 @@ class JSFile : public DataFile {
 
   // JSFiles will read from JS Memory into a Wasm Memory buffer.
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
+    assert(offset + len - 1 < getSize());
     EM_ASM({ HEAPU8.set($wasmFS$JSMemoryFiles[$0].subarray($1, $2), $3); },
            index,
            (int)offset,
@@ -48,7 +58,15 @@ class JSFile : public DataFile {
   }
 
 public:
-  JSFile(mode_t mode) : DataFile(mode) {}
+  JSFile(mode_t mode) : DataFile(mode) {
+    // Add the new JS File to the $wasmFS$JSMemoryFiles array and assign the
+    // array index.
+    index = (jsIndex_t)EM_ASM_INT({
+      var typedBuffer = new Uint8Array();
+      $wasmFS$JSMemoryFiles.push(typedBuffer);
+      return $wasmFS$JSMemoryFiles.length - 1;
+    });
+  }
 
   class Handle : public DataFile::Handle {
 
@@ -64,18 +82,16 @@ public:
 class JSFileBackend : public Backend {
 
 public:
-  JSFileBackend(backend_t backendID) : Backend(backendID) {}
-
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     return std::make_shared<JSFile>(mode);
   }
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    return std::make_shared<Directory>(mode, backendID);
+    return std::make_shared<Directory>(mode, shared_from_this());
   }
 };
 
-std::unique_ptr<Backend> createJSFileBackend(backend_t backendID) {
-  return std::make_unique<JSFileBackend>(backendID);
+std::shared_ptr<Backend> createJSFileBackend() {
+  return std::make_unique<JSFileBackend>();
 }
 
 } // namespace wasmfs
