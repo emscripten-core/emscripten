@@ -22,11 +22,11 @@ public:
     return std::make_shared<MemoryFile>(mode);
   }
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    return std::make_shared<Directory>(mode, shared_from_this());
+    return std::make_shared<Directory>(mode, this);
   }
 };
 
-std::shared_ptr<Backend> createMemoryFileBackend() {
-  return std::make_shared<MemoryFileBackend>();
+std::unique_ptr<Backend> createMemoryFileBackend() {
+  return std::make_unique<MemoryFileBackend>();
 }
 } // namespace wasmfs

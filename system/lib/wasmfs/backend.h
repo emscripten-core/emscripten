@@ -20,7 +20,7 @@ namespace wasmfs {
 // extend its storage capabilities. Files and directories will be represented in
 // the file system structure, but their underlying backing could exist in
 // persistent storage, another thread, etc.
-class Backend : public std::enable_shared_from_this<Backend> {
+class Backend {
 
 public:
   virtual std::shared_ptr<DataFile> createFile(mode_t mode) = 0;
@@ -32,5 +32,5 @@ public:
 // Note: Backends will be defined in cpp files, but functions to acquire them
 // will be defined in this header. This is so that any unused backends are not
 // linked in if they are not called.
-std::shared_ptr<Backend> createMemoryFileBackend();
+std::unique_ptr<Backend> createMemoryFileBackend();
 } // namespace wasmfs
