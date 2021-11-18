@@ -1,10 +1,7 @@
 #include <assert.h>
-
-#include <string>
-
 #include <emscripten.h>
 #include <emscripten/val.h>
-
+#include <string>
 #include <thread>
 
 using namespace emscripten;
