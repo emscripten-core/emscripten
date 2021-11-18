@@ -720,6 +720,7 @@ long __syscall_getdents64(long fd, long dirp, long count) {
   return bytesRead;
 }
 
+// TODO: Revisit this syscall after refactoring file system locking strategy.
 long __syscall_rename(long old_path, long new_path) {
   // The rename syscall must be atomic to prevent other file system operations
   // from concurrently changing the directories. If it were not atomic, then the
