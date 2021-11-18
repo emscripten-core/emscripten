@@ -5011,8 +5011,8 @@ window.close = function() {
     self.btest('embind_with_pthreads.cpp', '1', args=['--bind', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   @requires_threads
-  def test_embind_function_registration_with_pthreads(self):
-    self.btest_exit(test_file('embind_function_registration_with_pthreads.cpp'), args=['--bind', '-pthread', '-s', 'PTHREAD_POOL_SIZE=2'])
+  def test_embind_function_calling_with_pthreads(self):
+    self.btest_exit(test_file('embind_function_calling_with_pthreads.cpp'), args=['--bind', '-pthread', '-s', 'PTHREAD_POOL_SIZE=2'])
 
   def test_embind_with_asyncify(self):
     self.btest('embind_with_asyncify.cpp', '1', args=['--bind', '-s', 'ASYNCIFY'])
