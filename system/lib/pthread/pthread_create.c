@@ -18,10 +18,13 @@
 // TODO(sbc): Should these be in their own header to avoid emmalloc here?
 #include <emscripten/emmalloc.h>
 
+#define STACK_ALIGN 16
+
 // See musl's pthread_create.c
 
 extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 extern void _emscripten_thread_init(int, int, int);
+extern int _emscripten_default_pthread_stack_size();
 extern void __pthread_detached_exit();
 extern void* _emscripten_tls_base();
 extern int8_t __dso_handle;
@@ -116,10 +119,24 @@ int __pthread_create(pthread_t* restrict res,
   new->tsd = malloc(PTHREAD_KEYS_MAX * sizeof(void*));
   memset(new->tsd, 0, PTHREAD_KEYS_MAX * sizeof(void*));
 
-  if (attrp && attrp != __ATTRP_C11_THREAD && attrp->_a_detach) {
-    new->detach_state = DT_DETACHED;
+  new->detach_state = DT_JOINABLE;
+
+  if (attrp && attrp != __ATTRP_C11_THREAD) {
+    if (attrp->_a_detach) {
+      new->detach_state = DT_DETACHED;
+    }
+    new->stack_size = attrp->_a_stacksize;
+    new->stack = (void*)attrp->_a_stackaddr;
   } else {
-    new->detach_state = DT_JOINABLE;
+    new->stack_size = _emscripten_default_pthread_stack_size();
+  }
+
+  if (!new->stack) {
+    char* stackBase = memalign(STACK_ALIGN, new->stack_size);
+    // musl stores top of the stack in pthread_t->stack (i.e. the high
+    // end from which it grows down).
+    new->stack = stackBase + new->stack_size;
+    new->stack_owned = 1;
   }
 
   //printf("start __pthread_create: %p\n", self);
