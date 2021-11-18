@@ -54,9 +54,11 @@ void MemoryFile::Handle::preloadFromJS(int index) {
 //
 // Path Parsing utilities
 //
+
 std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
                                   std::vector<std::string>::iterator end,
-                                  long& err) {
+                                  long& err,
+                                  std::shared_ptr<File> forbiddenAncestor) {
 
   std::shared_ptr<File> curr;
   // Check if the first path element is '/', indicating an absolute path.
@@ -82,6 +84,13 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
     directory->locked().printKeys();
 #endif
     curr = directory->locked().getEntry(*it);
+
+    if (forbiddenAncestor) {
+      if (curr == forbiddenAncestor) {
+        err = -EINVAL;
+        return nullptr;
+      }
+    }
 
     // Requested entry (file or directory)
     if (!curr) {

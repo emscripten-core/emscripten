@@ -758,4 +758,147 @@ long __syscall_getdents64(long fd, long dirp, long count) {
 
   return bytesRead;
 }
+
+// TODO: Revisit this syscall after refactoring file system locking strategy.
+long __syscall_rename(long old_path, long new_path) {
+  // The rename syscall must be atomic to prevent other file system operations
+  // from concurrently changing the directories. If it were not atomic, then the
+  // file system could be left in an inconsistent state. For example, a
+  // rename("src/a","dest/b") and an rmdir("/dest") could conflict. Assume that
+  // the src/a file is unlinked first before moving it to the empty /dest
+  // directory. In the meantime, another thread could remove the empty /dest
+  // directory. src/a can still attach itself to the /dest directory since we
+  // have its shared_ptr, and the syscall would succeed. However, this may be
+  // unexpected for the user, who might have expected the subsequent
+  // rmdir("/dest") to fail since /dest is no longer empty. Both syscalls
+  // succeeding would result in a data loss, which would have been prevented if
+  // either of them was blocked by the other. Thus rename should guarantee that
+  // the order of operations is consistent.
+
+  // Trylocking on the new_path parent is needed in the case where two renames
+  // are operating on opposing sources and destinations. This would cause them
+  // to lock the directories in reverse order and could cause deadlock.
+
+  // Edge case: rename("dir", "dir/somename") - in this scenario it should not
+  // be possible to rename the destination if the source is an ancestor.
+
+  // Edge case: rename("dir/somename", "dir") - in this scenario it should not
+  // be possible to rename the destination since by definition it is
+  // non-empty.
+
+  auto oldPathParts = splitPath((char*)old_path);
+
+  if (oldPathParts.empty()) {
+    return -EINVAL;
+  }
+
+  // In Linux, renaming the root directory returns EBUSY.
+  // TODO: Fix this when path parsing is refactored.
+  std::vector<std::string> root = {"/"};
+  if (oldPathParts == root) {
+    return -EBUSY;
+  }
+
+  auto oldBase = oldPathParts.back();
+
+  long err;
+  auto oldParentDir = getDir(oldPathParts.begin(), oldPathParts.end() - 1, err);
+
+  if (!oldParentDir) {
+    return err;
+  }
+
+  // For this operation to be atomic we must lock the source parent directory.
+  auto lockedOldParentDir = oldParentDir->locked();
+
+  auto oldPath = lockedOldParentDir.getEntry(oldBase);
+
+  if (!oldPath) {
+    return -ENOENT;
+  }
+
+  // Obtain the destination parent directory to see if it exists.
+  auto newPathParts = splitPath((char*)new_path);
+
+  if (newPathParts.empty()) {
+    return -EINVAL;
+  }
+
+  // In Linux, renaming a directory to the root directory returns ENOTEMPTY.
+  // TODO: Fix this when path parsing is refactored.
+  if (newPathParts == root) {
+    return -ENOTEMPTY;
+  }
+
+  auto newBase = newPathParts.back();
+
+  // oldPath is the forbidden ancestor.
+  auto newParentDir =
+    getDir(newPathParts.begin(), newPathParts.end() - 1, err, oldPath);
+
+  // If the destination parent directory doesn't exist, the source file cannot
+  // be moved.
+  if (!newParentDir) {
+    return err;
+  }
+
+  // Edge case: a/b -> a/c share the same parent. Trylocking the same parent
+  // with a recursive mutex should work, so we don't need to treat that case
+  // specially here.
+  auto maybeLockedNewParentDir = newParentDir->maybeLocked();
+  if (!maybeLockedNewParentDir) {
+    return -EBUSY;
+  }
+
+  auto lockedNewParentDir = std::move(*maybeLockedNewParentDir);
+  auto newPath = lockedNewParentDir.getEntry(newBase);
+
+  // If old_path and new_path are the same, do nothing.
+  if (newPath == oldPath) {
+    return 0;
+  }
+
+  // Cannot move from source directory without write permissions.
+  if (!(lockedOldParentDir.mode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
+  // Cannot move to a destination parent directory without write permissions.
+  if (!(lockedNewParentDir.mode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
+  // new path must be removed if it exists.
+  if (newPath) {
+    if (oldPath->is<DataFile>()) {
+      // Cannot overwrite a file with a directory.
+      if (newPath->is<Directory>()) {
+        return -EISDIR;
+      }
+    } else if (oldPath->is<Directory>()) {
+      auto newPathDirectory = newPath->dynCast<Directory>();
+
+      // Cannot overwrite a directory with a file.
+      if (!newPathDirectory) {
+        return -ENOTDIR;
+      }
+
+      // This should also cover the case in where
+      // the destination is an ancestor of the source:
+      // rename("dir/subdir", "dir");
+      if (newPathDirectory->locked().getNumEntries() > 0) {
+        return -ENOTEMPTY;
+      }
+    } else {
+      assert(false && "Unhandled file kind in rename");
+    }
+    lockedNewParentDir.unlinkEntry(newBase);
+  }
+
+  // Unlink the oldpath and add the oldpath to the new parent dir.
+  lockedOldParentDir.unlinkEntry(oldBase);
+  lockedNewParentDir.setEntry(newBase, oldPath);
+
+  return 0;
+}
 }

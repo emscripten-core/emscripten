@@ -27,7 +27,7 @@ __attribute__((init_priority(100))) WasmFS wasmFS;
 # 28 "wasmfs.cpp"
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
-  auto rootDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
+  auto rootDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO | S_IWUGO);
   auto devDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO);
   rootDirectory->locked().setEntry("dev", devDirectory);
 
