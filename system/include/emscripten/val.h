@@ -126,7 +126,7 @@ namespace emscripten {
             */
 
             static EM_METHOD_CALLER get_method_caller() {
-                static EM_METHOD_CALLER mc = init_method_caller();
+                thread_local EM_METHOD_CALLER mc = init_method_caller();
                 return mc;
             }
 
