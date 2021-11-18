@@ -314,7 +314,7 @@ def parse_args(args):
   parser.add_argument('--failfast', dest='failfast', action='store_const',
                       const=True, default=False)
   parser.add_argument('--force64', dest='force64', action='store_const',
-                      const=True, default=False)
+                      const=True, default=None)
   return parser.parse_args()
 
 
@@ -327,8 +327,7 @@ def configure():
   common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
   common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
   common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
-  global FORCE64
-  FORCE64 = int(os.getenv('EMTEST_FORCE64', '0'))
+  common.EMTEST_FORCE64 = int(os.getenv('EMTEST_FORCE64', '0'))
   if common.EMTEST_VERBOSE:
     logging.root.setLevel(logging.DEBUG)
 
