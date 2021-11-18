@@ -91,7 +91,7 @@ public:
   }
 };
 
-extern "C" backend_t createJSFileBackend() {
+extern "C" backend_t create_js_file_backend() {
   wasmFS.backendTable.push_back(std::make_unique<JSFileBackend>());
   return wasmFS.backendTable.back().get();
 }

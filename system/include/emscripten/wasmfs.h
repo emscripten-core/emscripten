@@ -17,7 +17,7 @@ extern "C" {
 typedef struct Backend* backend_t;
 
 // Creates a JSFile Backend in the new file system.
-backend_t createJSFileBackend();
+backend_t create_js_file_backend();
 
 // Creates a new file in the new file system under a specific backend.
 uint32_t wasmfs_create(char* pathname, mode_t mode, backend_t backend);

@@ -19,7 +19,7 @@
 
 int main() {
 
-  backend_t JSBackend = createJSFileBackend();
+  backend_t JSBackend = create_js_file_backend();
 
   // Create a new JS file under root.
   int fd = wasmfs_create("/testfile", 0777, JSBackend);
