@@ -204,7 +204,6 @@ class EmscriptenBenchmarker(Benchmarker):
       EMCC, filename,
       OPTIMIZATIONS,
       '-s', 'INITIAL_MEMORY=256MB',
-      '-s', 'FILESYSTEM=0',
       '-s', 'ENVIRONMENT=node,shell',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
@@ -213,13 +212,13 @@ class EmscriptenBenchmarker(Benchmarker):
       cmd += ['--profiling']
     else:
       cmd += ['--closure=1', '-sMINIMAL_RUNTIME']
-    if 'FORCE_FILESYSTEM' in cmd:
-      cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
-    if PROFILING:
-      cmd += ['--profiling-funcs']
     # add additional emcc args at the end, which may override other things
     # above, such as minimal runtime
     cmd += emcc_args + self.extra_args
+    if 'FORCE_FILESYSTEM' not in cmd:
+      cmd = ['-s', 'FILESYSTEM=0']
+    if PROFILING:
+      cmd += ['--profiling-funcs']
     self.cmd = cmd
     run_process(cmd, env=self.env)
     if self.binaryen_opts:
