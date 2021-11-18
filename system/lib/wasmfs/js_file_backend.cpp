@@ -69,6 +69,11 @@ public:
     });
   }
 
+  // Remove typedarray file contents in $wasmFS$JSMemoryFiles array.
+  ~JSFile() {
+    EM_ASM({ wasmFS$JSMemoryFiles[$0] = null; }, index);
+  }
+
   class Handle : public DataFile::Handle {
 
     std::shared_ptr<JSFile> getFile() { return file->cast<JSFile>(); }

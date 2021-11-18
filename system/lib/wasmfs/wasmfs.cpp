@@ -28,8 +28,8 @@ __attribute__((init_priority(100))) WasmFS wasmFS;
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   backendTable.push_back(createMemoryFileBackend());
-  auto rootDirectory =
-    std::make_shared<Directory>(S_IRUGO | S_IXUGO, backendTable[0].get());
+  auto rootDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO | S_IWUGO,
+                                                   backendTable[0].get());
   auto devDirectory =
     std::make_shared<Directory>(S_IRUGO | S_IXUGO, backendTable[0].get());
   rootDirectory->locked().setEntry("dev", devDirectory);

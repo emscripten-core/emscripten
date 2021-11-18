@@ -16,6 +16,9 @@ extern "C" {
 
 typedef struct Backend* backend_t;
 
+// Obtains backend_t of a specified path.
+backend_t wasmfs_get_backend(char* path);
+
 // Creates a JSFile Backend in the new file system.
 backend_t create_js_file_backend();
 

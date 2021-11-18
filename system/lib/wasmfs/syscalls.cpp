@@ -288,6 +288,43 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   return __WASI_ERRNO_SUCCESS;
 }
 
+backend_t wasmfs_get_backend(char* path) {
+  auto pathParts = splitPath(path);
+
+  if (pathParts.empty()) {
+    return nullptr;
+  }
+
+  // TODO: Remove this when path parsing has been re-factored.
+  if (pathParts.size() == 1 && pathParts[0] == "/") {
+    return wasmFS.getRootDirectory()->locked().getBackend();
+  }
+
+  auto base = pathParts.back();
+
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  // Parent node doesn't exist.
+  if (!parentDir) {
+    return nullptr;
+  }
+
+  auto lockedParentDir = parentDir->locked();
+
+  // TODO: In a future PR, edit function to just return the requested file
+  // instead of having to first obtain the parent dir.
+  auto curr = lockedParentDir.getEntry(base);
+
+  if (curr) {
+    auto dir = curr->dynCast<Directory>();
+
+    return dir ? dir->locked().getBackend() : nullptr;
+  }
+
+  return nullptr;
+}
+
 static long doStat(std::shared_ptr<File> file, struct stat* buffer) {
   auto lockedFile = file->locked();
 

@@ -42,6 +42,11 @@ int main() {
 
   close(fd);
 
+  assert(unlink("/testfile") != -1);
+
+  //   Check that the file has been cleaned up in the JS array.
+  EM_ASM({out("Expect null: " + wasmFS$JSMemoryFiles[0])});
+
   //   Try creating a new JS directory under root.
   int result = wasmfs_mkdir("/test-dir", 0777, JSBackend);
 
@@ -60,6 +65,30 @@ int main() {
   lseek(fd2, 0, SEEK_SET);
   assert(errno == 0);
   read(fd2, buf, sizeof(buf));
+  assert(errno == 0);
+  printf("%s\n", buf);
+
+  // Try creating an in-memory file under a JS directory.
+  backend_t id = wasmfs_get_backend("/");
+  printf("id: %i\n", (int)id);
+
+  int fd3 = wasmfs_create("/test-dir/inmemoryfile", 0777, id);
+
+  // Ensure that the JS array size has not changed.
+  int size = EM_ASM_INT({ return wasmFS$JSMemoryFiles.length; });
+  assert(size == 2);
+
+  // Try writing to and reading from the file.
+  errno = 0;
+  const char* msg3 =
+    "Test with an in-memory file created under a JS directory\n";
+  write(fd3, msg3, strlen(msg3));
+  assert(errno == 0);
+
+  errno = 0;
+  lseek(fd3, 0, SEEK_SET);
+  assert(errno == 0);
+  read(fd3, buf, sizeof(buf));
   assert(errno == 0);
   printf("%s\n", buf);
 
