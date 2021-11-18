@@ -851,7 +851,7 @@ function getBinaryPromise() {
       && !isFileURI(wasmBinaryFile)
 #endif
     ) {
-      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
+      return fetch(wasmBinaryFile, Module['fetchSettings'] || { credentials: 'same-origin' }).then(function(response) {
         if (!response['ok']) {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
         }
@@ -1201,7 +1201,7 @@ function createWasm() {
         !isFileURI(wasmBinaryFile) &&
 #endif
         typeof fetch === 'function') {
-      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
+      return fetch(wasmBinaryFile, Module['fetchSettings'] || { credentials: 'same-origin' }).then(function (response) {
         var result = WebAssembly.instantiateStreaming(response, info);
 
 #if USE_OFFSET_CONVERTER
