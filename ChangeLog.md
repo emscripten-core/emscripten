@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.0.0
 ------
+- The example `shell.html` and `shell_minimal.html` templaces no longer override
+  `printErr` on the module object.  This means error message from emscripten and
+  stderr from the application will go to the default location of `console.warn`
+  rather than `console.error`.  This only effects application that use the
+  example shell html files.
 - The version of musl libc used by emscripten was upgraded from v1.1.15 to
   v1.2.2.  There could be some minor size regressions (or gains) due to changes
   in upstream musl code but we don't expect anything major.  Since this is a
