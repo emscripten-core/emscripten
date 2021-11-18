@@ -17,5 +17,4 @@ Uint8Array(49) [
 ]
 Test with a JS file created under a JS directory
 
-id: 5251400
 Test with an in-memory file created under a JS directory

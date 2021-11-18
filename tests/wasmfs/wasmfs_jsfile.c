@@ -70,7 +70,6 @@ int main() {
 
   // Try creating an in-memory file under a JS directory.
   backend_t id = wasmfs_get_backend("/");
-  printf("id: %i\n", (int)id);
 
   int fd3 = wasmfs_create("/test-dir/inmemoryfile", 0777, id);
 
