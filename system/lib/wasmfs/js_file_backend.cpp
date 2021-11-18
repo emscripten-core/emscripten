@@ -7,33 +7,35 @@
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
 #include "backend.h"
+#include "wasmfs.h"
 
 namespace wasmfs {
 
-using jsIndex_t = uint32_t;
+using js_index_t = uint32_t;
 
 // This class describes a file that lives in JS Memory
 class JSFile : public DataFile {
   // This index indicates the location of the JS File in $wasmFS$JSMemoryFiles.
-  jsIndex_t index;
+  js_index_t index;
 
   // JSFiles will write from a Wasm Memory buffer into a JS array defined in
   // $wasmFS$JSMemoryFiles.
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
     EM_ASM(
       {
-        var size = $wasmFS$JSMemoryFiles[$0].byteLength;
+        var size = wasmFS$JSMemoryFiles[$0].length;
         if ($2 >= size) {
           // Resize the current arraybuffer.
-          $wasmFS$JSMemoryFiles[$0] =
-            new Uint8Array(size).set($wasmFS$JSMemoryFiles[$0]);
+          var oldContents = wasmFS$JSMemoryFiles[$0];
+          wasmFS$JSMemoryFiles[$0] = new Uint8Array($2);
+          wasmFS$JSMemoryFiles[$0].set(oldContents.subarray(0, $2));
         }
-        $wasmFS$JSMemoryFiles[$0].set(HEAPU8.subarray($1, $2), $3);
+        wasmFS$JSMemoryFiles[$0].set(HEAPU8.subarray($1, $1 + $2), $3);
       },
-           index,
-           (int)buf,
-           (int)(buf + len),
-           (int)offset);
+      index,
+      buf,
+      len,
+      (size_t)offset);
 
     return __WASI_ERRNO_SUCCESS;
   }
@@ -41,10 +43,10 @@ class JSFile : public DataFile {
   // JSFiles will read from JS Memory into a Wasm Memory buffer.
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     assert(offset + len - 1 < getSize());
-    EM_ASM({ HEAPU8.set($wasmFS$JSMemoryFiles[$0].subarray($1, $2), $3); },
+    EM_ASM({ HEAPU8.set(wasmFS$JSMemoryFiles[$0].subarray($1, $2), $3); },
            index,
-           (int)offset,
-           (int)offset + len,
+           (size_t)offset,
+           (size_t)offset + len,
            buf);
 
     return __WASI_ERRNO_SUCCESS;
@@ -53,7 +55,7 @@ class JSFile : public DataFile {
   // The size of the JS File is defined as the length of the JS array in
   // $wasmFS$JSMemoryFiles.
   size_t getSize() override {
-    return (size_t)EM_ASM_INT({ return $wasmFS$JSMemoryFiles[$0].length; },
+    return (size_t)EM_ASM_INT({ return wasmFS$JSMemoryFiles[$0].length; },
                               index);
   }
 
@@ -61,10 +63,9 @@ public:
   JSFile(mode_t mode) : DataFile(mode) {
     // Add the new JS File to the $wasmFS$JSMemoryFiles array and assign the
     // array index.
-    index = (jsIndex_t)EM_ASM_INT({
-      var typedBuffer = new Uint8Array();
-      $wasmFS$JSMemoryFiles.push(typedBuffer);
-      return $wasmFS$JSMemoryFiles.length - 1;
+    index = (js_index_t)EM_ASM_INT({
+      wasmFS$JSMemoryFiles.push(new Uint8Array(0));
+      return wasmFS$JSMemoryFiles.length - 1;
     });
   }
 
@@ -86,12 +87,13 @@ public:
     return std::make_shared<JSFile>(mode);
   }
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    return std::make_shared<Directory>(mode, shared_from_this());
+    return std::make_shared<Directory>(mode, this);
   }
 };
 
-std::shared_ptr<Backend> createJSFileBackend() {
-  return std::make_unique<JSFileBackend>();
+extern "C" backend_t createJSFileBackend() {
+  wasmFS.backendTable.push_back(std::make_unique<JSFileBackend>());
+  return wasmFS.backendTable.back().get();
 }
 
 } // namespace wasmfs

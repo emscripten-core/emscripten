@@ -371,7 +371,7 @@ long __syscall_fstat64(long fd, long buf) {
   return doStat(openFile.locked().getFile(), buffer);
 }
 
-__wasi_fd_t
+static __wasi_fd_t
 doOpen(char* pathname, long flags, mode_t mode, backend_t backend = nullptr) {
   int accessMode = (flags & O_ACCMODE);
   bool canWrite = false;
@@ -421,7 +421,13 @@ doOpen(char* pathname, long flags, mode_t mode, backend_t backend = nullptr) {
       // Mask all permissions sent via mode.
       mode &= S_IALLUGO;
       // Create an empty in-memory file.
-      auto backend = lockedParentDir.getBackend();
+
+      // By default, the backend that the file is created in is the same as the
+      // parent directory. However, if a backend is passed as a parameter, then
+      // that backend is used.
+      if (!backend) {
+        backend = lockedParentDir.getBackend();
+      }
       auto created = backend->createFile(mode);
 
       // TODO: When rename is implemented make sure that one can atomically
@@ -451,10 +457,10 @@ doOpen(char* pathname, long flags, mode_t mode, backend_t backend = nullptr) {
   return wasmFS.getLockedFileTable().add(openFile);
 }
 
-// This function allows users to create files associated with a specific
-// backend.
-__wasi_fd_t wasmfs_create(long pathname, mode_t mode, backend_t backend) {
-  return doOpen((char*)pathname, O_CREAT, mode, backend);
+// This function is exposed to users and allows them to specify a particular
+// backend that a file should be created within.
+__wasi_fd_t wasmfs_create(char* pathname, mode_t mode, backend_t backend) {
+  return doOpen(pathname, O_CREAT, mode, backend);
 }
 
 __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
@@ -468,8 +474,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
   return doOpen((char*)pathname, flags, mode);
 }
 
-long __syscall_mkdir(long path, long mode) {
-  auto pathParts = splitPath((char*)path);
+static long doMkdir(char* path, long mode, backend_t backend = nullptr) {
+  auto pathParts = splitPath(path);
 
   if (pathParts.empty()) {
     return -EINVAL;
@@ -502,12 +508,28 @@ long __syscall_mkdir(long path, long mode) {
     // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
     mode &= S_IRWXUGO | S_ISVTX;
     // Create an empty in-memory directory.
-    auto backend = lockedParentDir.getBackend();
+
+    // By default, the backend that the directory is created in is the same as
+    // the parent directory. However, if a backend is passed as a parameter,
+    // then that backend is used.
+    if (!backend) {
+      backend = lockedParentDir.getBackend();
+    }
     auto created = backend->createDirectory(mode);
 
     lockedParentDir.setEntry(base, created);
     return 0;
   }
+}
+
+// This function is exposed to users and allows users to specify a particular
+// backend that a directory should be created within.
+long wasmfs_mkdir(char* path, long mode, backend_t backend) {
+  return doMkdir(path, mode, backend);
+}
+
+long __syscall_mkdir(long path, long mode) {
+  return doMkdir((char*)path, mode);
 }
 
 __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,

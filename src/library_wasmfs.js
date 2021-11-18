@@ -2,7 +2,7 @@ var WasmfsLibrary = {
   $wasmFS$JSMemoryFiles : [],
   $wasmFS$preloadedFiles: [],
   $wasmFS$preloadedDirs: [],
-  $FS__deps: ['$wasmFS$preloadedFiles', '$wasmFS$preloadedDirs'],
+  $FS__deps: ['$wasmFS$preloadedFiles', '$wasmFS$preloadedDirs', '$wasmFS$JSMemoryFiles'],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
