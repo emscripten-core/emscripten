@@ -216,7 +216,7 @@ class EmscriptenBenchmarker(Benchmarker):
     # above, such as minimal runtime
     cmd += emcc_args + self.extra_args
     if 'FORCE_FILESYSTEM' not in cmd:
-      cmd = ['-s', 'FILESYSTEM=0']
+      cmd += ['-s', 'FILESYSTEM=0']
     if PROFILING:
       cmd += ['--profiling-funcs']
     self.cmd = cmd
