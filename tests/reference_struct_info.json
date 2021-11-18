@@ -358,7 +358,6 @@
         "UUID_VARIANT_DCE": 1,
         "W_OK": 2,
         "X_OK": 1,
-        "__ATTRP_C11_THREAD": -1,
         "__WASI_CLOCKID_MONOTONIC": 1,
         "__WASI_CLOCKID_PROCESS_CPUTIME_ID": 2,
         "__WASI_CLOCKID_REALTIME": 0,
@@ -1323,7 +1322,7 @@
             "p_proto": 8
         },
         "pthread": {
-            "__size__": 108,
+            "__size__": 112,
             "cancel": 28,
             "cancelasync": 33,
             "canceldisable": 32,
@@ -1333,6 +1332,7 @@
             "robust_list": 68,
             "self": 0,
             "stack": 44,
+            "stack_owned": 108,
             "stack_size": 48,
             "tid": 16,
             "tsd": 64

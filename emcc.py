@@ -1937,6 +1937,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '__emscripten_main_thread_futex',
       '__emscripten_thread_init',
       '__emscripten_thread_exit',
+      '__emscripten_thread_free_data',
       '_emscripten_current_thread_process_queued_calls',
       '__emscripten_allow_main_runtime_queued_calls',
       '_emscripten_futex_wake',

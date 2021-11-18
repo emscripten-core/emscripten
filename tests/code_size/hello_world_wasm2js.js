@@ -9,20 +9,21 @@ f = new function(a) {
     maximum: 256
 });
 
-var g = f.buffer;
+var h = f.buffer;
 
-d = new Uint8Array(g);
+d = new Uint8Array(h);
 
-var h = {
+var k = {
     a: function(a) {
+        var g = console, m = g.log;
         if (a) {
-            for (var l = a + void 0, e = a; !(e >= l) && d[e]; ) ++e;
+            for (var n = a + void 0, e = a; !(e >= n) && d[e]; ) ++e;
             a = c.decode(d.subarray(a, e));
         } else a = "";
-        console.log(a);
+        m.call(g, a);
     },
     memory: f
-}, k, m = (new function() {
+}, l, p = (new function() {
     this.exports = function instantiate(v) {
         function c(d) {
             d.set = function(a, b) {
@@ -63,13 +64,13 @@ var h = {
             };
         }
         return t(v);
-    }(h);
+    }(k);
 }).exports;
 
-k = m.c;
+l = p.c;
 
 d.set(new Uint8Array(b.mem), 1024);
 
-m.b();
+p.b();
 
-k();
+l();
