@@ -22,7 +22,8 @@ namespace wasmfs {
 // time to prevent deadlock. This methodology can be seen in getDirs().
 
 class Backend;
-// This specifies a reference to a directory's associated backend.
+// This represents an opaque pointer to a Backend. A user may use this to
+// specify a backend in file operations.
 using backend_t = Backend*;
 
 class File : public std::enable_shared_from_this<File> {
@@ -146,7 +147,7 @@ protected:
 
   // This specifies which backend a directory is associated with. By default,
   // files and sub-directories added to this directory's entries will be created
-  // through this same backend.
+  // through this same backend unless an alternative is specified.
   backend_t backend;
 
 public:

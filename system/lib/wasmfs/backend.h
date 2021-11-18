@@ -29,8 +29,10 @@ public:
 };
 
 // This will return an instance of a MemoryFileBackend.
-// Note: Backends will be defined in cpp files, but functions to acquire them
-// will be defined in this header. This is so that any unused backends are not
-// linked in if they are not called.
+// Note: Backends will be defined in cpp files, but functions to instantiate
+// them will be defined in a header file. This is so that any unused backends
+// are not linked in if they are not called.
+// TODO: In the next PR, a user-visible header is introduced. Update this
+// comment then.
 std::unique_ptr<Backend> createMemoryFileBackend();
 } // namespace wasmfs

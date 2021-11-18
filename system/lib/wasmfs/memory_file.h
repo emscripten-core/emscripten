@@ -6,10 +6,11 @@
 // This should be the only backend file type defined in a header since it is the
 // default type. Current Status: Work in Progress. See
 // https://github.com/emscripten-core/emscripten/issues/15041.
-#include "file.h"
-#include <emscripten/threading.h>
 
 #pragma once
+
+#include "file.h"
+#include <emscripten/threading.h>
 
 namespace wasmfs {
 // This class describes a file that lives in Wasm Memory.
