@@ -2,7 +2,7 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
-// This file defines the JS file backend of the new file system.
+// This file defines the JS file backend and JS file of the new file system.
 // Current Status: Work in Progress.
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
@@ -23,9 +23,10 @@ class JSFile : public DataFile {
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
     EM_ASM(
       {
+        // Resize the typed array if the length of the write buffer exceeds its
+        // capacity.
         var size = wasmFS$JSMemoryFiles[$0].length;
         if ($2 >= size) {
-          // Resize the current arraybuffer.
           var oldContents = wasmFS$JSMemoryFiles[$0];
           wasmFS$JSMemoryFiles[$0] = new Uint8Array($2);
           wasmFS$JSMemoryFiles[$0].set(oldContents.subarray(0, $2));
@@ -52,7 +53,7 @@ class JSFile : public DataFile {
     return __WASI_ERRNO_SUCCESS;
   }
 
-  // The size of the JS File is defined as the length of the JS array in
+  // The size of the JSFile is defined as the length of the JS array in
   // $wasmFS$JSMemoryFiles.
   size_t getSize() override {
     return (size_t)EM_ASM_INT({ return wasmFS$JSMemoryFiles[$0].length; },
@@ -61,7 +62,7 @@ class JSFile : public DataFile {
 
 public:
   JSFile(mode_t mode) : DataFile(mode) {
-    // Add the new JS File to the $wasmFS$JSMemoryFiles array and assign the
+    // Add the new JSFile to the $wasmFS$JSMemoryFiles array and assign the
     // array index.
     index = (js_index_t)EM_ASM_INT({
       wasmFS$JSMemoryFiles.push(new Uint8Array(0));
@@ -69,7 +70,7 @@ public:
     });
   }
 
-  // Remove typedarray file contents in $wasmFS$JSMemoryFiles array.
+  // Remove the typed array file contents in $wasmFS$JSMemoryFiles array.
   ~JSFile() {
     EM_ASM({ wasmFS$JSMemoryFiles[$0] = null; }, index);
   }
@@ -96,6 +97,7 @@ public:
   }
 };
 
+// This function is exposed to users to instantiate a new JSBackend.
 extern "C" backend_t create_js_file_backend() {
   wasmFS.backendTable.push_back(std::make_unique<JSFileBackend>());
   return wasmFS.backendTable.back().get();

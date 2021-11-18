@@ -40,6 +40,10 @@ int main() {
   assert(errno == 0);
   printf("%s\n", buf);
 
+  // Verify that the size of the JS File is the same as the written buffer.
+  struct stat file;
+  assert(fstat(fd, &file) != -1);
+  assert(file.st_size == strlen(msg));
   close(fd);
 
   assert(unlink("/testfile") != -1);
@@ -48,7 +52,7 @@ int main() {
   EM_ASM({out("Expect null: " + wasmFS$JSMemoryFiles[0])});
 
   //   Try creating a new JS directory under root.
-  int result = wasmfs_mkdir("/test-dir", 0777, JSBackend);
+  assert(wasmfs_mkdir("/test-dir", 0777, JSBackend) != -1);
 
   //   Try to create a new JS file under this new directory.
   int fd2 = open("/test-dir/jsfile", O_RDWR | O_CREAT, 0777);

@@ -288,6 +288,8 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   return __WASI_ERRNO_SUCCESS;
 }
 
+// This function is exposed to users to allow them to obtain a backend_t for a
+// specified path.
 backend_t wasmfs_get_backend(char* path) {
   auto pathParts = splitPath(path);
 
