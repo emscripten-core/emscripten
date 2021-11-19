@@ -67,14 +67,10 @@ public:
   };
 
   // Utility functions that can get and set a backend in the backendTable.
-  void addBackend(std::unique_ptr<Backend> backend) {
+  backend_t addBackend(std::unique_ptr<Backend> backend) {
     const std::lock_guard<std::mutex> lock(mutex);
     backendTable.push_back(std::move(backend));
-  }
-
-  backend_t getBackend(int index) {
-    const std::lock_guard<std::mutex> lock(mutex);
-    return backendTable[index].get();
+    return backendTable.back().get();
   }
 };
 

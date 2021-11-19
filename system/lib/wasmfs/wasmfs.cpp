@@ -27,11 +27,11 @@ __attribute__((init_priority(100))) WasmFS wasmFS;
 # 28 "wasmfs.cpp"
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
-  addBackend(createMemoryFileBackend());
+  auto rootBackend = createMemoryFileBackend();
   auto rootDirectory =
-    std::make_shared<Directory>(S_IRUGO | S_IXUGO | S_IWUGO, getBackend(0));
+    std::make_shared<Directory>(S_IRUGO | S_IXUGO | S_IWUGO, rootBackend);
   auto devDirectory =
-    std::make_shared<Directory>(S_IRUGO | S_IXUGO, getBackend(0));
+    std::make_shared<Directory>(S_IRUGO | S_IXUGO, rootBackend);
   rootDirectory->locked().setEntry("dev", devDirectory);
 
   auto dir = devDirectory->locked();
@@ -128,7 +128,8 @@ void WasmFS::preloadFiles() {
 
     auto base = pathParts.back();
 
-    auto created = rootBackend->createFile((mode_t)mode);
+    // TODO: Generalize so that MemoryFile is not hard-coded.
+    auto created = std::make_shared<MemoryFile>((mode_t)mode);
 
     long err;
     auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
@@ -140,9 +141,8 @@ void WasmFS::preloadFiles() {
 
     parentDir->locked().setEntry(base, created);
 
-    // Need to cast to a MemoryFile currently since preloadFromJS is defined
-    // there and rootBackend->createFile returns a DataFile.
-    created->dynCast<MemoryFile>()->locked().preloadFromJS(i);
+    // TODO: Generalize preloadFromJS to use generic file operations.
+    created->locked().preloadFromJS(i);
   }
 }
 } // namespace wasmfs

@@ -8,6 +8,7 @@
 
 #include "backend.h"
 #include "memory_file.h"
+#include "wasmfs.h"
 
 namespace wasmfs {
 class MemoryFileBackend : public Backend {
@@ -21,7 +22,7 @@ public:
   }
 };
 
-std::unique_ptr<Backend> createMemoryFileBackend() {
-  return std::make_unique<MemoryFileBackend>();
+backend_t createMemoryFileBackend() {
+  return wasmFS.addBackend(std::make_unique<MemoryFileBackend>());
 }
 } // namespace wasmfs

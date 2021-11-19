@@ -31,5 +31,5 @@ public:
 // are not linked in if they are not called.
 // TODO: In the next PR, a user-visible header is introduced. Update this
 // comment then.
-std::unique_ptr<Backend> createMemoryFileBackend();
+backend_t createMemoryFileBackend();
 } // namespace wasmfs
