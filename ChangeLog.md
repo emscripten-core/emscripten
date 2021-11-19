@@ -40,6 +40,10 @@ See docs/process.md for more on how version tagging works.
   in upstream musl code but we don't expect anything major.  Since this is a
   fairly substantial change (at least internally) we are bumping the major
   version of Emscripten to 3. (#13006)
+- Added support for specifying the text encoding to be used in response filenames
+  by passing the encoding as a file suffix (e.g. "a.rsp.utf-8" or "a.rsp.cp1252").
+  If not specified, the encoding is autodetected as either UTF-8 or Python
+  default "locale.getpreferredencoding()". (#15406, #15292, #15426)
 
 2.0.34 - 11/04/2021
 -------------------
@@ -51,10 +55,6 @@ See docs/process.md for more on how version tagging works.
 2.0.33 - 11/01/2021
 -------------------
 - Bug fixes
-- Added support for specifying the text encoding to be used in response filenames
-  by passing the encoding as a file suffix (e.g. "a.rsp.utf-8" or "a.rsp.cp1252").
-  If not specified, the encoding is autodetected as either UTF-8 or Python
-  default "locale.getpreferredencoding()". (#15406, #15292, #15426)
 
 2.0.32 - 10/19/2021
 -------------------
