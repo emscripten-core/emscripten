@@ -23,6 +23,7 @@ namespace wasmfs {
 
 class WasmFS {
 
+  std::vector<std::unique_ptr<Backend>> backendTable;
   FileTable fileTable;
   std::shared_ptr<Directory> rootDirectory;
   std::shared_ptr<File> cwd;
@@ -36,14 +37,11 @@ class WasmFS {
   // Initialize files specified by --preload-file option.
   void preloadFiles();
 
-  std::vector<std::unique_ptr<Backend>> backendTable;
-
 public:
   // Files will be preloaded in this constructor.
   // This global constructor has init_priority 100. Please see wasmfs.cpp.
   // The current working directory is initialized to the root directory.
-  WasmFS()
-    : backendTable(), rootDirectory(initRootDirectory()), cwd(rootDirectory) {
+  WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
     preloadFiles();
   }
 

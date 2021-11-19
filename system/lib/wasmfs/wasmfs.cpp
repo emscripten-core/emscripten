@@ -28,10 +28,10 @@ __attribute__((init_priority(100))) WasmFS wasmFS;
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   addBackend(createMemoryFileBackend());
-  auto rootDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO | S_IWUGO,
-                                                   wasmFS.getBackend(0));
+  auto rootDirectory =
+    std::make_shared<Directory>(S_IRUGO | S_IXUGO | S_IWUGO, getBackend(0));
   auto devDirectory =
-    std::make_shared<Directory>(S_IRUGO | S_IXUGO, wasmFS.getBackend(0));
+    std::make_shared<Directory>(S_IRUGO | S_IXUGO, getBackend(0));
   rootDirectory->locked().setEntry("dev", devDirectory);
 
   auto dir = devDirectory->locked();
@@ -56,7 +56,7 @@ void WasmFS::preloadFiles() {
 #endif
 
   // Obtain the backend of the root directory.
-  auto rootBackend = wasmFS.getRootDirectory()->locked().getBackend();
+  auto rootBackend = getRootDirectory()->locked().getBackend();
 
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_runtime_thread());
