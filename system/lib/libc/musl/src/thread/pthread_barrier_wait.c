@@ -1,7 +1,3 @@
-#ifdef __EMSCRIPTEN__
-#include <math.h>
-#endif
-
 #include "pthread_impl.h"
 
 static int pshared_barrier_wait(pthread_barrier_t *b)

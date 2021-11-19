@@ -15,9 +15,9 @@
               "_a_transferredcanvases"
             ],
             "thread_profiler_block": [
-                "threadStatus",
-                "timeSpentInStatus",
-                "name"
+              "threadStatus",
+              "timeSpentInStatus",
+              "name"
             ]
         },
         "defines": [

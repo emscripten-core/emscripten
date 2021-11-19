@@ -5,27 +5,15 @@
  * found in the LICENSE file.
  */
 
-#define _GNU_SOURCE
-#include "../internal/libc.h"
-#include "../internal/pthread_impl.h"
+#include "libc.h"
+#include "pthread_impl.h"
 #include <assert.h>
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <poll.h>
+#include <math.h>
 #include <pthread.h>
 #include <stdarg.h>
-#include <stdlib.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/statvfs.h>
-#include <sys/time.h>
-#include <termios.h>
+#include <stdbool.h>
 #include <threads.h>
 #include <unistd.h>
-#include <utime.h>
 
 #include <emscripten.h>
 #include <emscripten/proxying.h>
@@ -142,16 +130,17 @@ void _emscripten_init_main_thread(void) {
   // a magic ID to detect whether the pthread_t structure is 'alive'.
   __main_pthread.self = &__main_pthread;
   __main_pthread.detach_state = DT_JOINABLE;
-  // pthread struct robust_list head should point to itself.
-  __main_pthread.robust_list.head = &__main_pthread.robust_list.head;
   // Main thread ID is always 1.  It can't be 0 because musl assumes
   // tid is always non-zero.
   __main_pthread.tid = getpid();
   __main_pthread.locale = &libc.global_locale;
+  // Initialize thread-specific data area.
+  __main_pthread.tsd = (void **)__pthread_tsd_main;
+  // pthread struct robust_list head should point to itself.
+  __main_pthread.robust_list.head = &__main_pthread.robust_list.head;
   // pthread struct prev and next should initially point to itself (see __init_tp),
   // this is used by pthread_key_delete for deleting thread-specific data.
   __main_pthread.next = __main_pthread.prev = &__main_pthread;
-  __main_pthread.tsd = (void **)__pthread_tsd_main;
 
   _emscripten_init_main_thread_js(&__main_pthread);
 

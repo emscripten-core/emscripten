@@ -2,12 +2,11 @@
 #include <time.h>
 #include <errno.h>
 #ifdef __EMSCRIPTEN__
-#include <math.h>
 #include <emscripten/emscripten.h>  // for emscripten_get_now()
 #else
 #include "futex.h"
-#endif
 #include "syscall.h"
+#endif
 #include "pthread_impl.h"
 
 #ifndef __EMSCRIPTEN__
@@ -42,7 +41,9 @@ int __timedwait_cp(volatile int *addr, int val,
 	int r;
 	struct timespec to, *top=0;
 
+#ifndef __EMSCRIPTEN__
 	if (priv) priv = FUTEX_PRIVATE;
+#endif
 
 	if (at) {
 		if (at->tv_nsec >= 1000000000UL) return EINVAL;
