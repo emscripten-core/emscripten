@@ -387,13 +387,13 @@ var LibraryEmVal = {
   _emval_get_method_caller__sig: 'iii',
   _emval_get_method_caller__deps: ['_emval_addMethodCaller', '_emval_lookupTypes', '$new_', '$makeLegalFunctionName', '$emval_registeredMethods'],
   _emval_get_method_caller: function(argCount, argTypes) {
-    var signatureName = HEAPU32.subarray(argTypes >> 2, (argTypes >> 2) + argCount).join('$');
+    var types = __emval_lookupTypes(argCount, argTypes);
+    var retType = types[0];
+    var signatureName = retType.name + "_$" + types.slice(1).map(function (t) { return t.name; }).join("_") + "$";
     var returnId = emval_registeredMethods[signatureName];
     if (returnId !== undefined) {
       return returnId;
     }
-    var types = __emval_lookupTypes(argCount, argTypes);
-    var retType = types[0];
 
 #if DYNAMIC_EXECUTION == 0
     var argN = new Array(argCount - 1);
