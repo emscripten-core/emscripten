@@ -1557,6 +1557,8 @@ class BrowserCore(RunnerCore):
     REPORT_RESULT macro to the C code.
     """
     self.set_setting('EXIT_RUNTIME')
+    assert('reporting' not in kwargs)
+    assert('expected' not in kwargs)
     kwargs['reporting'] = Reporting.JS_ONLY
     kwargs['expected'] = 'exit:%d' % assert_returncode
     return self.btest(filename, *args, **kwargs)

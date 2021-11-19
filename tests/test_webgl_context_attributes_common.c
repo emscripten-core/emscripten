@@ -17,15 +17,15 @@
 
 static const int WINDOWS_SIZE = 500;
 
-static GLfloat vertices[] = { 0.0f,  250.f, 0.0f, 
+static GLfloat vertices[] = { 0.0f,  250.f, 0.0f,
                              -250.f, -250.f, 0.0f,
                               250.f, -250.f, 0.0f };
 
-static GLfloat vertices2[] = { 0.0f,  250.f, -1.0f, 
+static GLfloat vertices2[] = { 0.0f,  250.f, -1.0f,
                               -250.f, -250.f, -1.0f,
                                250.f, -250.f, -1.0f };
 
-static GLuint shaderProgram = 0;		       
+static GLuint shaderProgram = 0;
 static GLuint verticesVBO = 0;
 static GLuint verticesVBO2 = 0;
 
@@ -39,9 +39,9 @@ static char vertexShaderSrc[] =
 
     "uniform mat4 u_mvpMatrix;"
     "uniform vec4 u_color;"
-    
+
     "attribute vec3 a_position;"
-    
+
     "varying vec4 v_color;"
 
     "void main() {"
@@ -95,12 +95,12 @@ static void initGlObjects() {
     glBindBuffer(GL_ARRAY_BUFFER, verticesVBO);
     glBufferData(GL_ARRAY_BUFFER, 9*sizeof(float), vertices, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-    
+
     glGenBuffers(1, &verticesVBO2);
     glBindBuffer(GL_ARRAY_BUFFER, verticesVBO2);
     glBufferData(GL_ARRAY_BUFFER, 9*sizeof(float), vertices2, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-    
+
     shaderProgram = createShaderProgram(vertexShaderSrc, fragmentShaderSrc);
 }
 
@@ -109,19 +109,19 @@ static void drawTriangle(GLuint verticesVBO, unsigned char r, unsigned char g, u
     GLuint posLoc = glGetAttribLocation(shaderProgram, "a_position");
     GLuint mvpLoc = glGetUniformLocation(shaderProgram, "u_mvpMatrix");
     GLuint colorLoc = glGetUniformLocation(shaderProgram, "u_color");
-    
+
     GLfloat mvpMat[16];
     ortho(-WINDOWS_SIZE/2, WINDOWS_SIZE/2, -WINDOWS_SIZE/2, WINDOWS_SIZE/2, -100, 100, mvpMat);
-    
+
     glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, mvpMat);
     glUniform4f(colorLoc, r/255.f, g/255.f, b/255.f, a/255.f);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, verticesVBO);  
+
+    glBindBuffer(GL_ARRAY_BUFFER, verticesVBO);
     glEnableVertexAttribArray(posLoc);
     glVertexAttribPointer(posLoc, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), BUFFER_OFFSET(0));
-    
+
     glDrawArrays(GL_TRIANGLES, 0, 3);
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);
 }
@@ -133,11 +133,11 @@ static bool testAntiAliasing(bool activated) {
     glViewport(0, 0, WINDOWS_SIZE, WINDOWS_SIZE);
     glClearColor(backgroundColor[0]/255.f, backgroundColor[1]/255.f, backgroundColor[2]/255.f, backgroundColor[3]/255.f);
     glClear(GL_COLOR_BUFFER_BIT);
-    
+
     drawTriangle(verticesVBO, triangleColor[0], triangleColor[1], triangleColor[2], triangleColor[3]);
-    
+
     bool antialiased = false;
-    
+
     unsigned char buffer[(WINDOWS_SIZE*WINDOWS_SIZE)*4];
     glReadPixels(0, 0, WINDOWS_SIZE, WINDOWS_SIZE, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]);
     glFinish();
@@ -147,7 +147,7 @@ static bool testAntiAliasing(bool activated) {
         unsigned char g = buffer[4*(i*WINDOWS_SIZE+j)+1];
         unsigned char b = buffer[4*(i*WINDOWS_SIZE+j)+2];
         unsigned char a = buffer[4*(i*WINDOWS_SIZE+j)+3];
-        if ((r == backgroundColor[0] && g == backgroundColor[1] && b == backgroundColor[2] && a == backgroundColor[3]) || 
+        if ((r == backgroundColor[0] && g == backgroundColor[1] && b == backgroundColor[2] && a == backgroundColor[3]) ||
             (r == triangleColor[0] && g == triangleColor[1] && b == triangleColor[2] && a == triangleColor[3])) {
           continue;
         } else {
@@ -156,7 +156,7 @@ static bool testAntiAliasing(bool activated) {
         }
       }
     }
-    
+
     return (activated && antialiased) || (!activated && !antialiased);
 }
 
@@ -167,29 +167,29 @@ static bool testDepth(bool activated) {
     glViewport(0, 0, WINDOWS_SIZE, WINDOWS_SIZE);
     glClearColor(backgroundColor[0]/255.f, backgroundColor[1]/255.f, backgroundColor[2]/255.f, backgroundColor[3]/255.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
+
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
-    
+
     drawTriangle(verticesVBO, triangleColor[0], triangleColor[1], triangleColor[2], triangleColor[3]);
     drawTriangle(verticesVBO2, triangleColor2[0], triangleColor2[1], triangleColor2[2], triangleColor2[3]);
-    
+
     glDisable(GL_DEPTH_TEST);
-    
+
     // read the pixel at the center of the resulting image.
     unsigned char buffer[4];
     glReadPixels(WINDOWS_SIZE/2, WINDOWS_SIZE/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]);
-    
+
     bool frontTriangleColor = (buffer[0] == triangleColor[0] && buffer[1] == triangleColor[1] &&
                                buffer[2] == triangleColor[2] && buffer[3] == triangleColor[3]);
-    
+
     bool backTriangleColor = (buffer[0] == triangleColor2[0] && buffer[1] == triangleColor2[1] &&
                               buffer[2] == triangleColor2[2] && buffer[3] == triangleColor2[3]);
-    
+
     return (activated && frontTriangleColor) || (!activated && backTriangleColor);
 }
 
-// The stencil function is set to GL_LEQUAL so fragments will be written to the 
+// The stencil function is set to GL_LEQUAL so fragments will be written to the
 // back buffer only if the ref value is less or equal than the one in the stencil buffer.
 // The content of the stencil buffer is initialized to 0xFF.
 // First draw a red triangle whose stencil ref value is 0x1.
@@ -202,26 +202,26 @@ static bool testStencil(bool activated) {
     glClearStencil(0xFF);
     glStencilOp(GL_KEEP,GL_KEEP,GL_REPLACE);
     glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    
+
     glEnable(GL_STENCIL_TEST);
-    
+
     glStencilFunc(GL_LEQUAL, 0x1, 0xFF);
     drawTriangle(verticesVBO, triangleColor[0], triangleColor[1], triangleColor[2], triangleColor[3]);
-    
+
     glStencilFunc(GL_LEQUAL, 0xFF, 0xFF);
     drawTriangle(verticesVBO, triangleColor2[0], triangleColor2[1], triangleColor2[2], triangleColor2[3]);
-    
+
     glDisable(GL_STENCIL_TEST);
-    
+
     unsigned char buffer[4];
     glReadPixels(WINDOWS_SIZE/2, WINDOWS_SIZE/2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]);
-    
+
     bool firstTriangleColor = (buffer[0] == triangleColor[0] && buffer[1] == triangleColor[1] &&
                                buffer[2] == triangleColor[2] && buffer[3] == triangleColor[3]);
-    
+
     bool secondTriangleColor = (buffer[0] == triangleColor2[0] && buffer[1] == triangleColor2[1] &&
                                 buffer[2] == triangleColor2[2] && buffer[3] == triangleColor2[3]);
-    
+
     return (activated && firstTriangleColor) || (!activated && secondTriangleColor);
 }
 
@@ -231,9 +231,9 @@ static bool testAlpha(bool activated) {
     glViewport(0, 0, WINDOWS_SIZE, WINDOWS_SIZE);
     glClearColor(backgroundColor[0]/255.f, backgroundColor[1]/255.f, backgroundColor[2]/255.f, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
-    
+
     bool hasAlpha = true;
-    
+
     unsigned char buffer[(WINDOWS_SIZE*WINDOWS_SIZE)*4];
     glReadPixels(0, 0, WINDOWS_SIZE, WINDOWS_SIZE, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]);
     glFinish();
@@ -251,7 +251,7 @@ static bool testAlpha(bool activated) {
         }
       }
     }
-    
+
     return (activated && hasAlpha) || (!activated && !hasAlpha);
 }
 
@@ -268,13 +268,13 @@ static bool resultAlpha = 0;
 static void draw() {
   if (!resultAA) resultAA = testAntiAliasing(antiAliasingActivated);
   assert(resultAA);
-   
+
   if (!resultDepth) resultDepth = testDepth(depthActivated);
   assert(resultDepth);
-  
+
   if (!resultStencil) resultStencil = testStencil(stencilActivated);
   assert(resultStencil);
-  
+
   if (!resultAlpha) resultAlpha = testAlpha(alphaActivated);
   assert(resultAlpha);
 }
@@ -304,5 +304,3 @@ static void checkContextAttributesSupport() {
     EM_ASM(out('warning: no alpha\n'));
   }
 }
-
-

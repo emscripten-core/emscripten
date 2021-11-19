@@ -3,14 +3,11 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <GL/gl.h>
 #include <GL/glut.h>
-
-#ifndef REPORT_RESULT
-#define REPORT_RESULT(x) printf("%d\n", result)
-#endif
 
 int main(int argc, char* argv[]) {
   bool stencilActivated = false;
@@ -46,16 +43,14 @@ int main(int argc, char* argv[]) {
   printf("depth:     %d\n", glutGet(GLUT_WINDOW_DEPTH_SIZE));
   printf("alpha:     %d\n", glutGet(GLUT_WINDOW_ALPHA_SIZE));
   printf("antialias: %d\n", glutGet(GLUT_WINDOW_NUM_SAMPLES));
-  int result = (
-    (!stencilActivated      || glutGet(GLUT_WINDOW_STENCIL_SIZE) > 0) &&
-    (!depthActivated        || glutGet(GLUT_WINDOW_DEPTH_SIZE)   > 0) &&
-    (!alphaActivated        || glutGet(GLUT_WINDOW_ALPHA_SIZE)   > 0) &&
-    (!antiAliasingActivated || glutGet(GLUT_WINDOW_NUM_SAMPLES)  > 0)
-    );
+  assert(!stencilActivated      || glutGet(GLUT_WINDOW_STENCIL_SIZE) > 0);
+  assert(!depthActivated        || glutGet(GLUT_WINDOW_DEPTH_SIZE)   > 0);
+  assert(!alphaActivated        || glutGet(GLUT_WINDOW_ALPHA_SIZE)   > 0);
+  assert(!antiAliasingActivated || glutGet(GLUT_WINDOW_NUM_SAMPLES)  > 0);
 
   // fix-up "ReferenceError: GL is not defined,createContext" due to
   // overzealous JS stripping
   glClear(0);
 
-  REPORT_RESULT(result);
+  return 0;
 }

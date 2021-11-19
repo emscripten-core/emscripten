@@ -15,9 +15,6 @@ int main()
   if (!emscripten_supports_offscreencanvas())
   {
     printf("Current browser does not support OffscreenCanvas. Skipping this test.\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
     return 0;
   }
   EmscriptenWebGLContextAttributes attr;
@@ -45,7 +42,5 @@ int main()
   emscripten_webgl_make_context_current(0);
   emscripten_webgl_destroy_context(ctx);
   printf("Thread quit\n");
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1);
-#endif
+  return 0;
 }
