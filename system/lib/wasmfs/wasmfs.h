@@ -36,8 +36,9 @@ class WasmFS {
   // Initialize files specified by --preload-file option.
   void preloadFiles();
 
-public:
   std::vector<std::unique_ptr<Backend>> backendTable;
+
+public:
   // Files will be preloaded in this constructor.
   // This global constructor has init_priority 100. Please see wasmfs.cpp.
   // The current working directory is initialized to the root directory.
@@ -66,6 +67,17 @@ public:
     const std::lock_guard<std::mutex> lock(mutex);
     cwd = directory;
   };
+
+  // Utility functions that can get and set a backend in the backendTable.
+  void addBackend(std::unique_ptr<Backend> backend) {
+    const std::lock_guard<std::mutex> lock(mutex);
+    backendTable.push_back(std::move(backend));
+  }
+
+  backend_t getBackend(int index) {
+    const std::lock_guard<std::mutex> lock(mutex);
+    return backendTable[index].get();
+  }
 };
 
 // Global state instance.

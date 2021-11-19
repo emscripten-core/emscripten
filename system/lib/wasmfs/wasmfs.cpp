@@ -27,11 +27,11 @@ __attribute__((init_priority(100))) WasmFS wasmFS;
 # 28 "wasmfs.cpp"
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
-  backendTable.push_back(createMemoryFileBackend());
+  addBackend(createMemoryFileBackend());
   auto rootDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO | S_IWUGO,
-                                                   backendTable[0].get());
+                                                   wasmFS.getBackend(0));
   auto devDirectory =
-    std::make_shared<Directory>(S_IRUGO | S_IXUGO, backendTable[0].get());
+    std::make_shared<Directory>(S_IRUGO | S_IXUGO, wasmFS.getBackend(0));
   rootDirectory->locked().setEntry("dev", devDirectory);
 
   auto dir = devDirectory->locked();
@@ -55,6 +55,9 @@ void WasmFS::preloadFiles() {
   assert(timesCalled == 1);
 #endif
 
+  // Obtain the backend of the root directory.
+  auto rootBackend = wasmFS.getRootDirectory()->locked().getBackend();
+
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_runtime_thread());
 
@@ -65,8 +68,6 @@ void WasmFS::preloadFiles() {
   if (numDirs == 0 && numFiles == 0) {
     return;
   }
-
-  auto rootBackend = wasmFS.getRootDirectory()->locked().getBackend();
 
   // Iterate through wasmFS$preloadedDirs to obtain a parent and child pair.
   // Ex. Module['FS_createPath']("/foo/parent", "child", true, true);
@@ -105,7 +106,7 @@ void WasmFS::preloadFiles() {
       i,
       childName);
 
-    auto created = std::make_shared<Directory>(S_IRUGO | S_IXUGO, rootBackend);
+    auto created = rootBackend->createDirectory(S_IRUGO | S_IXUGO);
 
     parentDir->locked().setEntry(childName, created);
   }
@@ -127,7 +128,7 @@ void WasmFS::preloadFiles() {
 
     auto base = pathParts.back();
 
-    auto created = std::make_shared<MemoryFile>((mode_t)mode);
+    auto created = rootBackend->createFile((mode_t)mode);
 
     long err;
     auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
@@ -139,7 +140,9 @@ void WasmFS::preloadFiles() {
 
     parentDir->locked().setEntry(base, created);
 
-    created->locked().preloadFromJS(i);
+    // Need to cast to a MemoryFile currently since preloadFromJS is defined
+    // there and rootBackend->createFile returns a DataFile.
+    created->dynCast<MemoryFile>()->locked().preloadFromJS(i);
   }
 }
 } // namespace wasmfs

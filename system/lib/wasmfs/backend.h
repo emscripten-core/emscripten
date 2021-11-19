@@ -2,6 +2,7 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
+
 // This file defines the modular backend abstract class.
 // Other file system backends can use this to interface with the new file
 // system. Current Status: Work in Progress. See
@@ -10,10 +11,6 @@
 #pragma once
 
 #include "file.h"
-#include <memory>
-#include <stdlib.h>
-#include <utility>
-#include <wasi/api.h>
 
 namespace wasmfs {
 // A backend (or modular backend) provides a base for the new file system to

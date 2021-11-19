@@ -8,11 +8,6 @@
 
 #include "backend.h"
 #include "memory_file.h"
-#include <assert.h>
-#include <emscripten/html5.h>
-#include <emscripten/threading.h>
-#include <utility>
-#include <wasi/api.h>
 
 namespace wasmfs {
 class MemoryFileBackend : public Backend {
