@@ -434,8 +434,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           print('Not clearing existing test directory')
         else:
           print('Clearing existing test directory')
-          # Even when EMTEST_SAVE_DIR we still try to start with an empty directoy as many tests
-          # expect this.  EMTEST_SAVE_DIR=2 can be used to keep the old contents for the new test
+          # Even when --save-dir is used we still try to start with an empty directory as many tests
+          # expect this.  --no-clean can be used to keep the old contents for the new test
           # run. This can be useful when iterating on a given test with extra files you want to keep
           # around in the output directory.
           delete_contents(self.working_dir)
@@ -740,7 +740,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       print("Expected to have '%s' == '%s'" % (limit_size(values[0]), limit_size(y)))
     fail_message = 'Unexpected difference:\n' + limit_size(diff)
     if not EMTEST_VERBOSE:
-      fail_message += '\nFor full output run with EMTEST_VERBOSE=1.'
+      fail_message += '\nFor full output run with --verbose.'
     if msg:
       fail_message += '\n' + msg
     self.fail(fail_message)
@@ -760,9 +760,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     if not os.path.exists(filename):
       self.fail('Test expectation file not found: ' + filename + '.\n' +
-                'Run with EMTEST_REBASELINE to generate.')
+                'Run with --rebaseline to generate.')
     expected_content = read_file(filename)
-    message = "Run with EMTEST_REBASELINE=1 to automatically update expectations"
+    message = "Run with --rebaseline to automatically update expectations"
     self.assertTextDataIdentical(expected_content, contents, message,
                                  filename, filename + '.new')
 

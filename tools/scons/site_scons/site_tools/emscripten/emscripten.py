@@ -20,7 +20,7 @@ def generate(env, emscripten_path=None, **kw):
   # environment variabls from the parent calling process,
   # so manually route all environment variables referenced
   # by Emscripten to the child.
-  for var in ['EM_CACHE', 'EMCC_DEBUG', 'EMTEST_BROWSER',
+  for var in ['EM_CACHE', 'EMCC_DEBUG',
               'EMMAKEN_JUST_CONFIGURE', 'EMCC_CFLAGS', 'EMCC_TEMP_DIR',
               'EMCC_AUTODEBUG', 'EM_COMPILER_WRAPPER',
               'EMMAKEN_COMPILER', 'EMMAKEN_CFLAGS',
@@ -29,8 +29,7 @@ def generate(env, emscripten_path=None, **kw):
               'EMCC_JSOPT_MAX_CHUNK_SIZE', 'EMCC_SAVE_OPT_TEMP', 'EMCC_CORES', 'EMCC_NO_OPT_SORT',
               'EMCC_BUILD_DIR', 'EMCC_DEBUG_SAVE', 'EMCC_SKIP_SANITY_CHECK',
               'EMMAKEN_NO_SDK', 'EM_PKG_CONFIG_PATH', 'EMCC_CLOSURE_ARGS', 'JAVA_HEAP_SIZE',
-              'EMCC_FORCE_STDLIBS', 'EMCC_ONLY_FORCED_STDLIBS', 'EM_PORTS', 'IDL_CHECKS', 'IDL_VERBOSE',
-              'EMTEST_SAVE_DIR']:
+              'EMCC_FORCE_STDLIBS', 'EMCC_ONLY_FORCED_STDLIBS', 'EM_PORTS', 'IDL_CHECKS', 'IDL_VERBOSE']:
     if os.environ.get(var):
       env['ENV'][var] = os.environ.get(var)
   try:

@@ -242,7 +242,7 @@ class browser(BrowserCore):
 If manually bisecting:
   Check that you see src.cpp among the page sources.
   Even better, add a breakpoint, e.g. on the printf, then reload, then step
-  through and see the print (best to run with EMTEST_SAVE_DIR=1 for the reload).
+  through and see the print (best to run with --save-dir for the reload).
 ''')
 
   def test_emscripten_log(self):
