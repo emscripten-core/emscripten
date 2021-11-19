@@ -91,7 +91,7 @@ void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedS
 #endif
 
 int __pthread_kill_js(pthread_t t, int sig);
-int __pthread_create_js(struct __pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
+int __pthread_create_js(pthread_t thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 int _emscripten_default_pthread_stack_size();
 void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
 

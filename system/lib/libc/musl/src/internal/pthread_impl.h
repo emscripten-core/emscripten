@@ -13,9 +13,11 @@
 #include "em_task_queue.h"
 #include "thread_mailbox.h"
 #include "threading_internal.h"
+#include <math.h>
 #include <emscripten/threading.h>
-#endif
+#else
 #include "futex.h"
+#endif
 
 #include "pthread_arch.h"
 
@@ -220,11 +222,12 @@ hidden int __timedwait_cp(volatile int *, int, clockid_t, const struct timespec 
 hidden void __wait(volatile int *, volatile int *, int, int);
 static inline void __wake(volatile void *addr, int cnt, int priv)
 {
+#ifdef __EMSCRIPTEN__
+	(void)priv;
+	emscripten_futex_wake(addr, cnt < 0 ? INT_MAX : cnt);
+#else
 	if (priv) priv = FUTEX_PRIVATE;
 	if (cnt<0) cnt = INT_MAX;
-#ifdef __EMSCRIPTEN__
-	emscripten_futex_wake(addr, cnt);
-#else
 	__syscall(SYS_futex, addr, FUTEX_WAKE|priv, cnt) != -ENOSYS ||
 	__syscall(SYS_futex, addr, FUTEX_WAKE, cnt);
 #endif

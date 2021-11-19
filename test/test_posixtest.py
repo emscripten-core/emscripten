@@ -7,6 +7,15 @@
    ./test/third_party/posixtestsuite
 See
    https://github.com/emscripten-core/posixtestsuite
+
+Verify that it runs properly in musl:
+   cd tests/third_party/posixtestsuite
+   docker run -v $(pwd):/app -w /app -it alpine:latest sh -c "\
+      apk add build-base && \
+      POSIX_TARGET=conformance/interfaces/[INTERFACE_DIR] make LDFLAGS='-pthread' CFLAGS='-D__EMSCRIPTEN__'"
+   cat logfile
+
+Where [INTERFACE_DIR] is for e.g.: pthread_detach
 """
 
 import glob
@@ -163,6 +172,15 @@ def make_test(name, testfile, browser):
     if name in disabled:
       self.skipTest(disabled[name])
     args = ['-I' + os.path.join(testsuite_root, 'include'),
+            # TODO(kleisauke): Run with ASan. Note that this requires matching signatures, i.e:
+            # void *thread_func() -> void *thread_func(void *unused)
+            # void *a_thread_func() -> void *a_thread_func(void *unused)
+            # void *a_thread_function() -> void *a_thread_function(void *unused)
+            # void a_cleanup_func() -> void a_cleanup_func(void *unused)
+            # etc, etc.
+            # '-O0',
+            # '-g3',
+            # '-fsanitize=address',
             '-Werror',
             '-Wno-format-security',
             '-Wno-int-conversion',
