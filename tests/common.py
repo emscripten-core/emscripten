@@ -74,6 +74,8 @@ EMMAKE = shared.bat_suffix(path_from_root('emmake'))
 def delete_contents(pathname):
   for entry in os.listdir(pathname):
     try_delete(os.path.join(pathname, entry))
+    # TODO(sbc): Should we make try_delete have a stronger guarantee?
+    assert not os.path.exists(os.path.join(pathname, entry))
 
 
 def test_file(*path_components):
