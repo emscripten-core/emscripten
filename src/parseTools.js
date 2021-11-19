@@ -185,18 +185,6 @@ function needsQuoting(ident) {
   return true;
 }
 
-function isStructPointerType(type) {
-  // This test is necessary for clang - in llvm-gcc, we
-  // could check for %struct. The downside is that %1 can
-  // be either a variable or a structure, and we guess it is
-  // a struct, which can lead to |call i32 %5()| having
-  // |%5()| as a function call (like |i32 (i8*)| etc.). So
-  // we must check later on, in call(), where we have more
-  // context, to differentiate such cases.
-  // A similar thing happens in isStructType()
-  return !Compiletime.isNumberType(type) && type[0] == '%';
-}
-
 const POINTER_SIZE = MEMORY64 ? 8 : 4;
 const POINTER_BITS = POINTER_SIZE * 8;
 const POINTER_TYPE = 'i' + POINTER_BITS;
@@ -219,8 +207,7 @@ function isStructType(type) {
   if (isPointerType(type)) return false;
   if (isArrayType(type)) return true;
   if (/<?\{ ?[^}]* ?\}>?/.test(type)) return true; // { i32, i8 } etc. - anonymous struct types
-  // See comment in isStructPointerType()
-  return type[0] == '%';
+  return false;
 }
 
 function isVectorType(type) {
