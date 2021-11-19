@@ -21,6 +21,11 @@ namespace wasmfs {
 // Note: The general locking strategy for all Files is to only hold 1 lock at a
 // time to prevent deadlock. This methodology can be seen in getDirs().
 
+class Backend;
+// This represents an opaque pointer to a Backend. A user may use this to
+// specify a backend in file operations.
+using backend_t = Backend*;
+
 class File : public std::enable_shared_from_this<File> {
 
 public:
@@ -156,9 +161,15 @@ protected:
   // This value was also copied from the existing file system.
   size_t getSize() override { return 4096; }
 
+  // This specifies which backend a directory is associated with. By default,
+  // files and sub-directories added to this directory's entries will be created
+  // through this same backend unless an alternative is specified.
+  backend_t backend;
+
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
-  Directory(mode_t mode) : File(File::DirectoryKind, mode) {}
+  Directory(mode_t mode, backend_t backend)
+    : File(File::DirectoryKind, mode), backend(backend) {}
 
   struct Entry {
     std::string name;
@@ -220,6 +231,8 @@ public:
       return entries;
     }
 
+    backend_t getBackend() { return getDir()->backend; }
+
 #ifdef WASMFS_DEBUG
     void printKeys() {
       for (auto keyPair : getDir()->entries) {
@@ -239,31 +252,6 @@ public:
       return {};
     }
   }
-};
-
-// This class describes a file that lives in Wasm Memory.
-class MemoryFile : public DataFile {
-  std::vector<uint8_t> buffer;
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
-
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
-
-  size_t getSize() override { return buffer.size(); }
-
-public:
-  MemoryFile(mode_t mode) : DataFile(mode) {}
-
-  class Handle : public DataFile::Handle {
-
-    std::shared_ptr<MemoryFile> getFile() { return file->cast<MemoryFile>(); }
-
-  public:
-    Handle(std::shared_ptr<File> dataFile) : DataFile::Handle(dataFile) {}
-    // This function copies preloaded files from JS Memory to Wasm Memory.
-    void preloadFromJS(int index);
-  };
-
-  Handle locked() { return Handle(shared_from_this()); }
 };
 
 // Obtains parent directory of a given pathname.

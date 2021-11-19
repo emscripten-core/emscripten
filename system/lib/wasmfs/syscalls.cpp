@@ -6,6 +6,7 @@
 // old JS version. Current Status: Work in Progress. See
 // https://github.com/emscripten-core/emscripten/issues/15041.
 
+#include "backend.h"
 #include "file.h"
 #include "file_table.h"
 #include "wasmfs.h"
@@ -425,7 +426,8 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
       // Mask all permissions sent via mode.
       mode &= S_IALLUGO;
       // Create an empty in-memory file.
-      auto created = std::make_shared<MemoryFile>(mode);
+      auto backend = lockedParentDir.getBackend();
+      auto created = backend->createFile(mode);
 
       // TODO: When rename is implemented make sure that one can atomically
       // remove the file from the source directory and then set its parent to
@@ -488,7 +490,8 @@ long __syscall_mkdir(long path, long mode) {
     // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
     mode &= S_IRWXUGO | S_ISVTX;
     // Create an empty in-memory directory.
-    auto created = std::make_shared<Directory>(mode);
+    auto backend = lockedParentDir.getBackend();
+    auto created = backend->createDirectory(mode);
 
     lockedParentDir.setEntry(base, created);
     return 0;
