@@ -24,14 +24,7 @@ from tools.settings import settings
 import emscripten
 
 
-SYSTEM_LIBRARIES = system_libs.Library.get_all_variations()
-SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
-
-# This is needed to build the generated_struct_info.json file.
-# It is not a system library, but it needs to be built before running with FROZEN_CACHE.
-SYSTEM_TASKS += ['struct_info']
-
-# Minimal subset of SYSTEM_TASKS used by CI systems to build enough to useful
+# Minimal subset of targets used by CI systems to build enough to useful
 MINIMAL_TASKS = [
     'libcompiler_rt',
     'libc',
@@ -85,7 +78,7 @@ legacy_prefixes = {
 
 
 def get_help():
-  all_tasks = SYSTEM_TASKS + PORTS
+  all_tasks = get_system_tasks()[1] + PORTS
   all_tasks.sort()
   return '''
 Available targets:
@@ -112,6 +105,17 @@ def build_port(port_name):
   ports.build_port(port_name, settings)
   if old_settings:
     settings.dict().update(old_settings)
+
+
+def get_system_tasks():
+  system_libraries = system_libs.Library.get_all_variations()
+  system_tasks = list(system_libraries.keys())
+  # This is needed to build the generated_struct_info.json file.
+  # It is not a system library, but it needs to be built before
+  # running with FROZEN_CACHE.
+  system_tasks += ['struct_info']
+
+  return system_libraries, system_tasks
 
 
 def main():
@@ -149,6 +153,7 @@ def main():
 
   if args.wasm64:
     settings.MEMORY64 = 2
+    MINIMAL_TASKS[:] = [t for t in MINIMAL_TASKS if 'emmalloc' not in t]
 
   do_build = args.operation == 'build'
   do_clear = args.operation == 'clear'
@@ -158,8 +163,9 @@ def main():
   # process tasks
   auto_tasks = False
   tasks = args.targets
+  system_libraries, system_tasks = get_system_tasks()
   if 'SYSTEM' in tasks:
-    tasks = SYSTEM_TASKS
+    tasks = system_tasks
     auto_tasks = True
   elif 'USER' in tasks:
     tasks = PORTS
@@ -168,7 +174,7 @@ def main():
     tasks = MINIMAL_TASKS
     auto_tasks = True
   elif 'ALL' in tasks:
-    tasks = SYSTEM_TASKS + PORTS
+    tasks = system_tasks + PORTS
     auto_tasks = True
   if auto_tasks:
     # cocos2d: must be ported, errors on
@@ -185,8 +191,8 @@ def main():
     else:
       logger.info('clearing ' + what)
     start_time = time.time()
-    if what in SYSTEM_LIBRARIES:
-      library = SYSTEM_LIBRARIES[what]
+    if what in system_libraries:
+      library = system_libraries[what]
       if do_clear:
         library.erase()
       if do_build:
