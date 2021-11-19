@@ -5183,6 +5183,7 @@ main( int argv, char ** argc ) {
   def test_readdir(self):
     self.do_run_in_out_file_test('dirent/test_readdir.c')
 
+  @also_with_wasm_bigint
   def test_readdir_empty(self):
     self.do_run_in_out_file_test('dirent/test_readdir_empty.c')
 

@@ -119,9 +119,8 @@ var SyscallsLibrary = {
         // need a valid mode
         return -{{{ cDefine('EINVAL') }}};
       }
-      var node;
       var lookup = FS.lookupPath(path, { follow: true });
-      node = lookup.node;
+      var node = lookup.node;
       if (!node) {
         return -{{{ cDefine('ENOENT') }}};
       }
@@ -863,7 +862,8 @@ var SyscallsLibrary = {
         type = 4; // DT_DIR
       }
       else if (name === '..') {
-        id = FS.lookupPath(stream.path, { parent: true }).id;
+        var lookup = FS.lookupPath(stream.path, { parent: true });
+        id = lookup.node.id;
         type = 4; // DT_DIR
       }
       else {
