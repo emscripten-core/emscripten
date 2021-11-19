@@ -7,14 +7,6 @@
 //"use strict";
 
 var Compiletime = {
-  isPointerType: isPointerType,
-  isStructType: isStructType,
-
-  isNumberType: function(type) {
-    return type in Compiletime.INT_TYPES || type in Compiletime.FLOAT_TYPES;
-  },
-
-  INT_TYPES: set('i1', 'i8', 'i16', 'i32', 'i64'),
   FLOAT_TYPES: set('float', 'double'),
 };
 

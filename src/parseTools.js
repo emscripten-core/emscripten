@@ -152,27 +152,6 @@ no matching #endif found (${showStack.length$}' unmatched preprocessing directiv
   }
 }
 
-function removePointing(type, num) {
-  if (num === 0) return type;
-  assert(type.substr(type.length - (num ? num : 1)).replace(/\*/g, '') === '');
-  // , 'Error in removePointing with ' + [type, num, type.substr(type.length-(num ? num : 1))]);
-  return type.substr(0, type.length - (num ? num : 1));
-}
-
-function pointingLevels(type) {
-  if (!type) return 0;
-  let ret = 0;
-  const len1 = type.length - 1;
-  while (type[len1 - ret] && type[len1 - ret] === '*') {
-    ret++;
-  }
-  return ret;
-}
-
-function removeAllPointing(type) {
-  return removePointing(type, pointingLevels(type));
-}
-
 // Returns true if ident is a niceIdent (see toNiceIdent). Also allow () and spaces.
 function isNiceIdent(ident, loose) {
   return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
@@ -183,18 +162,6 @@ function needsQuoting(ident) {
   if (/^[-+]?[$_]?[\w$_\d]*$/.test(ident)) return false; // number or variable
   if (ident[0] === '(' && ident[ident.length - 1] === ')' && ident.indexOf('(', 1) < 0) return false; // already fully quoted
   return true;
-}
-
-function isStructPointerType(type) {
-  // This test is necessary for clang - in llvm-gcc, we
-  // could check for %struct. The downside is that %1 can
-  // be either a variable or a structure, and we guess it is
-  // a struct, which can lead to |call i32 %5()| having
-  // |%5()| as a function call (like |i32 (i8*)| etc.). So
-  // we must check later on, in call(), where we have more
-  // context, to differentiate such cases.
-  // A similar thing happens in isStructType()
-  return !Compiletime.isNumberType(type) && type[0] == '%';
 }
 
 const POINTER_SIZE = MEMORY64 ? 8 : 4;
@@ -211,34 +178,6 @@ function pointerT(x) {
   return MEMORY64 ? `BigInt(${x})` : x;
 }
 
-function isArrayType(type) {
-  return /^\[\d+\ x\ (.*)\]/.test(type);
-}
-
-function isStructType(type) {
-  if (isPointerType(type)) return false;
-  if (isArrayType(type)) return true;
-  if (/<?\{ ?[^}]* ?\}>?/.test(type)) return true; // { i32, i8 } etc. - anonymous struct types
-  // See comment in isStructPointerType()
-  return type[0] == '%';
-}
-
-function isVectorType(type) {
-  return type[type.length - 1] === '>';
-}
-
-function isStructuralType(type) {
-  return /^\{ ?[^}]* ?\}$/.test(type); // { i32, i8 } etc. - anonymous struct types
-}
-
-function getStructuralTypeParts(type) { // split { i32, i8 } etc. into parts
-  return type.replace(/[ {}]/g, '').split(',');
-}
-
-function getStructuralTypePartBits(part) {
-  return Math.ceil((getBits(part) || 32) / 32) * 32; // simple 32-bit alignment. || 32 is for pointers
-}
-
 function isIntImplemented(type) {
   return type[0] == 'i' || isPointerType(type);
 }
@@ -252,161 +191,7 @@ function getBits(type, allowPointers) {
     if (!isNumber(left)) return 0;
     return parseInt(left);
   }
-  if (isStructuralType(type)) {
-    return sum(getStructuralTypeParts(type).map(getStructuralTypePartBits));
-  }
-  if (isStructType(type)) {
-    const typeData = Types.types[type];
-    if (typeData === undefined) return 0;
-    return typeData.flatSize * 8;
-  }
   return 0;
-}
-
-function isVoidType(type) {
-  return type == 'void';
-}
-
-// Detects a function definition, ([...|type,[type,...]])
-function isFunctionDef(token, out) {
-  const text = token.text;
-  const nonPointing = removeAllPointing(text);
-  if (nonPointing[0] != '(' || nonPointing.substr(-1) != ')') {
-    return false;
-  }
-  if (nonPointing === '()') return true;
-  if (!token.tokens) return false;
-  let fail = false;
-  const segments = splitTokenList(token.tokens);
-  segments.forEach((segment) => {
-    const subtext = segment[0].text;
-    fail = fail || segment.length > 1 || !(isType(subtext) || subtext == '...');
-  });
-  if (out) {
-    out.segments = segments;
-    out.numArgs = segments.length;
-  }
-  return !fail;
-}
-
-function isPossiblyFunctionType(type) {
-  // A quick but unreliable way to see if something is a function type. Yes is just 'maybe', no is definite.
-  const len = type.length;
-  return type[len - 2] == ')' && type[len - 1] == '*';
-}
-
-function isFunctionType(type, out) {
-  if (!isPossiblyFunctionType(type)) return false;
-  type = type.substr(0, type.length - 1); // remove final '*'
-  const firstOpen = type.indexOf('(');
-  if (firstOpen <= 0) return false;
-  type = type.replace(/"[^"]+"/g, '".."');
-  const lastOpen = type.lastIndexOf('(');
-  let returnType;
-  if (firstOpen == lastOpen) {
-    returnType = getReturnType(type);
-    if (!isType(returnType)) return false;
-  } else {
-    returnType = 'i8*'; // some pointer type, no point in analyzing further
-  }
-  if (out) out.returnType = returnType;
-  // find ( that starts the arguments
-  let depth = 0;
-  let i = type.length - 1;
-  let argText = null;
-  while (i >= 0) {
-    const curr = type[i];
-    if (curr == ')') depth++;
-    else if (curr == '(') {
-      depth--;
-      if (depth == 0) {
-        argText = type.substr(i);
-        break;
-      }
-    }
-    i--;
-  }
-  assert(argText);
-  return isFunctionDef({text: argText, tokens: tokenize(argText.substr(1, argText.length - 2))}, out);
-}
-
-function getReturnType(type) {
-  // the type of a call can be either the return value, or the entire function. ** or more means it is a return value
-  if (pointingLevels(type) > 1) return '*';
-  const lastOpen = type.lastIndexOf('(');
-  if (lastOpen > 0) {
-    // handle things like   void (i32)* (i32, void (i32)*)*
-    const closeStar = type.indexOf(')*');
-    if (closeStar > 0 && closeStar < type.length - 2) lastOpen = closeStar + 3;
-    return type.substr(0, lastOpen - 1);
-  }
-  return type;
-}
-
-const isTypeCache = {}; // quite hot, optimize as much as possible
-
-function isType(type) {
-  if (type in isTypeCache) return isTypeCache[type];
-  const ret = isPointerType(type) || isVoidType(type) || Compiletime.isNumberType(type) || isStructType(type) || isFunctionType(type);
-  isTypeCache[type] = ret;
-  return ret;
-}
-
-const SPLIT_TOKEN_LIST_SPLITTERS = set(',', 'to'); // 'to' can separate parameters as well...
-
-// Splits a list of tokens separated by commas. For example, a list of arguments in a function call
-function splitTokenList(tokens) {
-  if (tokens.length == 0) return [];
-  if (!tokens.slice) tokens = tokens.tokens;
-  const ret = [];
-  const seg = [];
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i];
-    if (token.text in SPLIT_TOKEN_LIST_SPLITTERS) {
-      ret.push(seg);
-      seg = [];
-    } else if (token.text == ';') {
-      ret.push(seg);
-      return ret;
-    } else {
-      seg.push(token);
-    }
-  }
-  if (seg.length) ret.push(seg);
-  return ret;
-}
-
-function _IntToHex(x) {
-  assert(x >= 0 && x <= 15);
-  if (x <= 9) {
-    return String.fromCharCode('0'.charCodeAt(0) + x);
-  }
-  return String.fromCharCode('A'.charCodeAt(0) + x - 10);
-}
-
-function IEEEUnHex(stringy) {
-  stringy = stringy.substr(2); // leading '0x';
-  if (stringy.replace(/0/g, '') === '') return 0;
-  while (stringy.length < 16) stringy = '0' + stringy;
-  assert(stringy.length === 16, 'Can only unhex 16-digit double numbers, nothing platform-specific'); // |long double| might cause this
-  const top = eval('0x' + stringy[0]);
-  const neg = !!(top & 8); // sign
-  if (neg) {
-    stringy = _IntToHex(top & ~8) + stringy.substr(1);
-  }
-  let a = eval('0x' + stringy.substr(0, 8)); // top half
-  const b = eval('0x' + stringy.substr(8)); // bottom half
-  let e = a >> ((52 - 32) & 0x7ff); // exponent
-  a = a & 0xfffff;
-  if (e === 0x7ff) {
-    if (a == 0 && b == 0) {
-      return neg ? '-Infinity' : 'Infinity';
-    }
-    return 'NaN';
-  }
-  e -= 1023; // offset
-  const absolute = ((((a | 0x100000) * 1.0) / Math.pow(2, 52 - 32)) * Math.pow(2, e)) + (((b * 1.0) / Math.pow(2, 52)) * Math.pow(2, e));
-  return (absolute * (neg ? -1 : 1)).toString();
 }
 
 // Given an expression like (VALUE=VALUE*2,VALUE<10?VALUE:t+1) , this will
@@ -582,14 +367,6 @@ function makeSetTempDouble(i, type, value) {
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe, forceAsm) {
   assert(!forceAsm, 'forceAsm is no longer supported');
-  if (isStructType(type)) {
-    const typeData = Types.types[type];
-    const ret = [];
-    for (let i = 0; i < typeData.fields.length; i++) {
-      ret.push('f' + i + ': ' + makeGetValue(ptr, pos + typeData.flatIndexes[i], typeData.fields[i], noNeedFirst, unsigned, 0, 0, noSafe));
-    }
-    return '{ ' + ret.join(', ') + ' }';
-  }
 
   if (type == 'double' && (align < 8)) {
     const setdouble1 = makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align, noSafe));
@@ -666,19 +443,6 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
 function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
   assert(!forcedAlign, 'forcedAlign is no longer supported');
   sep = sep || ';';
-  if (isStructType(type)) {
-    const typeData = Types.types[type];
-    const ret = [];
-    // We can receive either an object - an object literal that was in the .ll - or a string,
-    // which is the ident of an aggregate struct
-    if (typeof value === 'string') {
-      value = range(typeData.fields.length).map((i) => value + '.f' + i);
-    }
-    for (let i = 0; i < typeData.fields.length; i++) {
-      ret.push(makeSetValue(ptr, getFastValue(pos, '+', typeData.flatIndexes[i]), value[i], typeData.fields[i], noNeedFirst, 0, 0, noSafe));
-    }
-    return ret.join('; ');
-  }
 
   if (type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
