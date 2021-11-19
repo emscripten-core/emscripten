@@ -1,5 +1,5 @@
 #ifdef __EMSCRIPTEN__
-#include <math.h>
+#include <math.h> // for INFINITY
 #endif
 
 #include "pthread_impl.h"
