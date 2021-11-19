@@ -68,15 +68,23 @@ def needs_non_trapping_float_to_int(f):
 
 
 def also_with_wasm_bigint(f):
-  def decorated(self):
-    self.set_setting('WASM_BIGINT', 0)
-    f(self)
-    if self.is_wasm():
+  assert callable(f)
+
+  def metafunc(self, with_bigint):
+    assert self.get_setting('WASM_BIGINT') is None
+    if with_bigint:
+      if not self.is_wasm():
+        self.skipTest('wasm2js does not support WASM_BIGINT')
       self.set_setting('WASM_BIGINT')
       self.require_node()
       self.node_args.append('--experimental-wasm-bigint')
       f(self)
-  return decorated
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'bigint': (True,)}
+  return metafunc
 
 
 # without EMTEST_ALL_ENGINES set we only run tests in a single VM by
