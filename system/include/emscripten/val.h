@@ -126,14 +126,9 @@ namespace emscripten {
             */
 
             static EM_METHOD_CALLER get_method_caller() {
-                static EM_METHOD_CALLER mc = init_method_caller();
+                constexpr WithPolicies<>::ArgTypeList<ReturnType, Args...> args;
+                thread_local EM_METHOD_CALLER mc = _emval_get_method_caller(args.getCount(), args.getTypes());
                 return mc;
-            }
-
-        private:
-            static EM_METHOD_CALLER init_method_caller() {
-                WithPolicies<>::ArgTypeList<ReturnType, Args...> args;
-                return _emval_get_method_caller(args.getCount(), args.getTypes());
             }
         };
 
