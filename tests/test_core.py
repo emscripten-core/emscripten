@@ -162,15 +162,18 @@ def no_wasm2js(note=''):
 
 
 def also_with_noderawfs(func):
-  def decorated(self):
-    orig_args = self.emcc_args.copy()
+  assert callable(func)
+
+  def metafunc(self, rawfs):
+    if rawfs:
+      self.emcc_args += ['-DNODERAWFS']
+      self.set_setting('NODERAWFS')
+      self.js_engines = [config.NODE_JS]
     func(self)
-    print('noderawfs')
-    self.emcc_args = orig_args + ['-DNODERAWFS']
-    self.set_setting('NODERAWFS')
-    self.js_engines = [config.NODE_JS]
-    func(self)
-  return decorated
+
+  metafunc._parameterize = {'': (False,),
+                            'rawfs': (True,)}
+  return metafunc
 
 
 def can_do_standalone(self):
