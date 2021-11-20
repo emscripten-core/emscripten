@@ -358,7 +358,6 @@
         "UUID_VARIANT_DCE": 1,
         "W_OK": 2,
         "X_OK": 1,
-        "__ATTRP_C11_THREAD": -1,
         "__WASI_CLOCKID_MONOTONIC": 1,
         "__WASI_CLOCKID_PROCESS_CPUTIME_ID": 2,
         "__WASI_CLOCKID_REALTIME": 0,

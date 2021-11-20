@@ -21,6 +21,11 @@ namespace wasmfs {
 // Note: The general locking strategy for all Files is to only hold 1 lock at a
 // time to prevent deadlock. This methodology can be seen in getDirs().
 
+class Backend;
+// This represents an opaque pointer to a Backend. A user may use this to
+// specify a backend in file operations.
+using backend_t = Backend*;
+
 class File : public std::enable_shared_from_this<File> {
 
 public:
@@ -58,13 +63,20 @@ public:
   }
 
   class Handle {
-    std::unique_lock<std::mutex> lock;
 
   protected:
+    // This mutex is needed when one needs to access access a previously locked
+    // file in the same thread. For example, rename will need to traverse
+    // 2 paths and access the same locked directory twice.
+    // TODO: During benchmarking, test recursive vs normal mutex performance.
+    std::unique_lock<std::recursive_mutex> lock;
     std::shared_ptr<File> file;
 
   public:
     Handle(std::shared_ptr<File> file) : file(file), lock(file->mutex) {}
+    Handle(std::shared_ptr<File> file, std::defer_lock_t)
+      : file(file), lock(file->mutex, std::defer_lock) {}
+    bool trylock() { return lock.try_lock(); }
     size_t getSize() { return file->getSize(); }
     mode_t& mode() { return file->mode; }
     time_t& ctime() { return file->ctime; }
@@ -79,10 +91,19 @@ public:
 
   Handle locked() { return Handle(shared_from_this()); }
 
+  std::optional<Handle> maybeLocked() {
+    auto handle = Handle(shared_from_this(), std::defer_lock);
+    if (handle.trylock()) {
+      return Handle(shared_from_this());
+    } else {
+      return {};
+    }
+  }
+
 protected:
   File(FileKind kind, mode_t mode) : kind(kind), mode(mode) {}
   // A mutex is needed for multiple accesses to the same file.
-  std::mutex mutex;
+  std::recursive_mutex mutex;
 
   virtual size_t getSize() = 0;
 
@@ -140,9 +161,15 @@ protected:
   // This value was also copied from the existing file system.
   size_t getSize() override { return 4096; }
 
+  // This specifies which backend a directory is associated with. By default,
+  // files and sub-directories added to this directory's entries will be created
+  // through this same backend unless an alternative is specified.
+  backend_t backend;
+
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
-  Directory(mode_t mode) : File(File::DirectoryKind, mode) {}
+  Directory(mode_t mode, backend_t backend)
+    : File(File::DirectoryKind, mode), backend(backend) {}
 
   struct Entry {
     std::string name;
@@ -154,6 +181,8 @@ public:
 
   public:
     Handle(std::shared_ptr<File> directory) : File::Handle(directory) {}
+    Handle(std::shared_ptr<File> directory, std::defer_lock_t)
+      : File::Handle(directory, std::defer_lock) {}
 
     std::shared_ptr<File> getEntry(std::string pathName);
 
@@ -202,6 +231,8 @@ public:
       return entries;
     }
 
+    backend_t getBackend() { return getDir()->backend; }
+
 #ifdef WASMFS_DEBUG
     void printKeys() {
       for (auto keyPair : getDir()->entries) {
@@ -212,38 +243,27 @@ public:
   };
 
   Handle locked() { return Handle(shared_from_this()); }
-};
 
-// This class describes a file that lives in Wasm Memory.
-class MemoryFile : public DataFile {
-  std::vector<uint8_t> buffer;
-  __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override;
-
-  __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override;
-
-  size_t getSize() override { return buffer.size(); }
-
-public:
-  MemoryFile(mode_t mode) : DataFile(mode) {}
-
-  class Handle : public DataFile::Handle {
-
-    std::shared_ptr<MemoryFile> getFile() { return file->cast<MemoryFile>(); }
-
-  public:
-    Handle(std::shared_ptr<File> dataFile) : DataFile::Handle(dataFile) {}
-    // This function copies preloaded files from JS Memory to Wasm Memory.
-    void preloadFromJS(int index);
-  };
-
-  Handle locked() { return Handle(shared_from_this()); }
+  std::optional<Handle> maybeLocked() {
+    auto handle = Handle(shared_from_this(), std::defer_lock);
+    if (handle.trylock()) {
+      return Handle(shared_from_this());
+    } else {
+      return {};
+    }
+  }
 };
 
 // Obtains parent directory of a given pathname.
 // Will return a nullptr if the parent is not a directory.
-std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
-                                  std::vector<std::string>::iterator end,
-                                  long& err);
+// Will error if the forbiddenAncestor is encountered while processing.
+// If the forbiddenAncestor is encountered, err will be set to EINVAL and
+// nullptr will be returned.
+std::shared_ptr<Directory>
+getDir(std::vector<std::string>::iterator begin,
+       std::vector<std::string>::iterator end,
+       long& err,
+       std::shared_ptr<File> forbiddenAncestor = nullptr);
 
 // Return a vector of the '/'-delimited components of a path. The first element
 // will be "/" iff the path is an absolute path.

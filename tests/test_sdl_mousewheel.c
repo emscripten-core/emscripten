@@ -5,6 +5,8 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <emscripten.h>
 #include <string.h>
@@ -17,9 +19,7 @@ void report_result(int result)
   } else {
     printf("Test failed!\n");
   }
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  emscripten_force_exit(result);
 }
 
 #define TEST_RESULT(x) if (ret != EMSCRIPTEN_RESULT_SUCCESS) printf("%s returned %s.\n", #x, emscripten_result_to_string(ret));

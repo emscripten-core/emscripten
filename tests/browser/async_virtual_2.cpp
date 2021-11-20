@@ -45,6 +45,6 @@ int main(void) {
     Devices[0] = &con;
     DOS_Device dev;
     dev.Read(0,0);
-    REPORT_RESULT(1);
+    return 0;
 }
 

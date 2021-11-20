@@ -27,13 +27,14 @@ def try_delete(pathname):
   if not os.path.exists(pathname):
     return
 
-  write_bits = stat.S_IWRITE | stat.S_IWGRP | stat.S_IWOTH
+  # Ensure all files are readable and writable by the current user.
+  permission_bits = stat.S_IWRITE | stat.S_IREAD
 
   def is_writable(path):
-    return (os.stat(path).st_mode & write_bits) == write_bits
+    return (os.stat(path).st_mode & permission_bits) != permission_bits
 
   def make_writable(path):
-    os.chmod(path, os.stat(path).st_mode | write_bits)
+    os.chmod(path, os.stat(path).st_mode | permission_bits)
 
   # Some tests make files and subdirectories read-only, so rmtree/unlink will not delete
   # them. Force-make everything writable in the subdirectory to make it

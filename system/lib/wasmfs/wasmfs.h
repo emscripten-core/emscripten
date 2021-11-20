@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "backend.h"
 #include "file.h"
 #include "file_table.h"
 #include <assert.h>
@@ -22,6 +23,7 @@ namespace wasmfs {
 
 class WasmFS {
 
+  std::vector<std::unique_ptr<Backend>> backendTable;
   FileTable fileTable;
   std::shared_ptr<Directory> rootDirectory;
   std::shared_ptr<File> cwd;
@@ -63,6 +65,13 @@ public:
     const std::lock_guard<std::mutex> lock(mutex);
     cwd = directory;
   };
+
+  // Utility functions that can get and set a backend in the backendTable.
+  backend_t addBackend(std::unique_ptr<Backend> backend) {
+    const std::lock_guard<std::mutex> lock(mutex);
+    backendTable.push_back(std::move(backend));
+    return backendTable.back().get();
+  }
 };
 
 // Global state instance.

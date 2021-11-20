@@ -14,9 +14,9 @@ int main() {
     printf("frame: %d\n", ++counter);
     emscripten_sleep(100);
     if (counter == 10) {
-      REPORT_RESULT(1);
-      break;
+      return 0;
     }
   }
+  __builtin_trap();
 }
 
