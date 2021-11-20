@@ -16,9 +16,11 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#define CHECK(cond) if (!(cond)) { printf("errno: %s\n", strerror(errno)); assert(cond); }
+
 static void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
-  assert(fd >= 0);
+  CHECK(fd >= 0);
 
   int err = write(fd, buffer, sizeof(char) * strlen(buffer));
   assert(err ==  (sizeof(char) * strlen(buffer)));
@@ -29,12 +31,12 @@ static void create_file(const char *path, const char *buffer, int mode) {
 void setup() {
   int err;
   err = mkdir("testtmp", 0777);  // can't call it tmp, that already exists
-  assert(!err);
+  CHECK(!err);
   chdir("testtmp");
   err = mkdir("nocanread", 0111);
-  assert(!err);
+  CHECK(!err);
   err = mkdir("foobar", 0777);
-  assert(!err);
+  CHECK(!err);
   create_file("foobar/file.txt", "ride into the danger zone", 0666);
 }
 
