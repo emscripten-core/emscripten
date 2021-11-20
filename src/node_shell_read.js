@@ -22,7 +22,9 @@ readBinary = function readBinary(filename) {
   if (!ret.buffer) {
     ret = new Uint8Array(ret);
   }
+#if ASSERTIONS
   assert(ret.buffer);
+#endif
   return ret;
 };
 

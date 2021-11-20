@@ -181,7 +181,7 @@ var LibraryDylink = {
         } else if (typeof value === 'number') {
           GOT[symName].value = value;
         } else {
-          assert(false, 'bad export type for `' + symName + '`: ' + (typeof value));
+          throw new Error('bad export type for `' + symName + '`: ' + (typeof value));
         }
       }
     }
@@ -295,6 +295,10 @@ var LibraryDylink = {
       return UTF8ArrayToString(binary, offset - len, len);
     }
 
+    function failIf(condition, message) {
+      if (condition) throw new Error(message);
+    }
+
     var name = 'dylink.0';
     if (binary instanceof WebAssembly.Module) {
       var dylinkSection = WebAssembly.Module.customSections(binary, name);
@@ -302,14 +306,14 @@ var LibraryDylink = {
         name = 'dylink'
         dylinkSection = WebAssembly.Module.customSections(binary, name);
       }
-      assert(dylinkSection.length != 0, 'need dylink section');
+      failIf(dylinkSection.length === 0, 'need dylink section');
       binary = new Uint8Array(dylinkSection[0]);
       end = binary.length
     } else {
       var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
-      assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
+      failIf(int32View[0] != 0x6d736100, 'need to see wasm magic number'); // \0asm
       // we should see the dylink custom section right after the magic number and wasm version
-      assert(binary[8] === 0, 'need the dylink section to be first')
+      failIf(binary[8] !== 0, 'need the dylink section to be first')
       offset = 9;
       var section_size = getLEB(); //section size
       end = offset + section_size;
@@ -331,7 +335,7 @@ var LibraryDylink = {
         customSection.neededDynlibs.push(name);
       }
     } else {
-      assert(name === 'dylink.0');
+      failIf(name !== 'dylink.0');
       var WASM_DYLINK_MEM_INFO = 0x1;
       var WASM_DYLINK_NEEDED = 0x2;
       var WASM_DYLINK_EXPORT_INFO = 0x3;
@@ -372,13 +376,13 @@ var LibraryDylink = {
 #if ASSERTIONS
     var tableAlign = Math.pow(2, customSection.tableAlign);
     assert(tableAlign === 1, 'invalid tableAlign ' + tableAlign);
+    assert(offset == end);
 #endif
 
 #if DYLINK_DEBUG
     err('dylink needed:' + customSection.neededDynlibs);
 #endif
 
-    assert(offset == end);
     return customSection;
   },
 
