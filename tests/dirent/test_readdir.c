@@ -121,32 +121,36 @@ void test() {
   // test rewinddir
   rewinddir(dir);
   ent = readdir(dir);
+  assert(ent && ent->d_ino);
   assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
 
   // test seek / tell
   rewinddir(dir);
   ent = readdir(dir);
+  assert(ent && ent->d_ino);
   assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   loc = telldir(dir);
   assert(loc >= 0);
   //printf("loc=%d\n", loc);
   loc2 = ent->d_off;
   ent = readdir(dir);
+  assert(ent && ent->d_ino);
   char name_at_loc[1024];
   strcpy(name_at_loc, ent->d_name);
   //printf("name_at_loc: %s\n", name_at_loc);
   assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   ent = readdir(dir);
+  assert(ent && ent->d_ino);
   assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   seekdir(dir, loc);
   ent = readdir(dir);
-  assert(ent);
+  assert(ent && ent->d_ino);
   //printf("check: %s / %s\n", ent->d_name, name_at_loc);
   assert(!strcmp(ent->d_name, name_at_loc));
 
   seekdir(dir, loc2);
   ent = readdir(dir);
-  assert(ent);
+  assert(ent && ent->d_ino);
   //printf("check: %s / %s\n", ent->d_name, name_at_loc);
   assert(!strcmp(ent->d_name, name_at_loc));
 
