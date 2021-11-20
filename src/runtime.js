@@ -6,10 +6,6 @@
 
 //"use strict";
 
-var Compiletime = {
-  FLOAT_TYPES: set('float', 'double'),
-};
-
 // code used both at compile time and runtime is defined here, then put on
 // the Runtime object for compile time and support.js for the generated code
 

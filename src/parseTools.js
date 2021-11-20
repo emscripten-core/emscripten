@@ -8,6 +8,7 @@
 // specific to Emscripten (and hence not in utility.js).
 
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
+const FLOAT_TYPES = set('float', 'double');
 
 let currentlyParsedFilename = '';
 
@@ -306,7 +307,7 @@ function asmEnsureFloat(value, type) {
     value = ensureDot(value);
     return 'Math.fround(' + value + ')';
   }
-  if (type in Compiletime.FLOAT_TYPES) {
+  if (type in FLOAT_TYPES) {
     return ensureDot(value);
   }
   return value;
@@ -315,7 +316,7 @@ function asmEnsureFloat(value, type) {
 function asmCoercion(value, type, signedness) {
   if (type == 'void') {
     return value;
-  } else if (type in Compiletime.FLOAT_TYPES) {
+  } else if (type in FLOAT_TYPES) {
     if (isNumber(value)) {
       return asmEnsureFloat(value, type);
     } else {
@@ -407,7 +408,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
     if (!ignore) {
-      return asmCoercion('SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned + 0) + ')', type, unsigned ? 'u' : undefined);
+      return asmCoercion('SAFE_HEAP_LOAD' + ((type in FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned + 0) + ')', type, unsigned ? 'u' : undefined);
     }
   }
 
@@ -485,7 +486,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
     if (!ignore) {
-      return 'SAFE_HEAP_STORE' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ')';
+      return 'SAFE_HEAP_STORE' + ((type in FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ')';
     }
   }
 
@@ -603,7 +604,7 @@ function getFastValue(a, op, b, type) {
   if (op === '*') {
     // We can't eliminate where a or b are 0 as that would break things for creating
     // a negative 0.
-    if ((aNumber === 0 || bNumber === 0) && !(type in Compiletime.FLOAT_TYPES)) {
+    if ((aNumber === 0 || bNumber === 0) && !(type in FLOAT_TYPES)) {
       return '0';
     } else if (aNumber === 1) {
       return b;
@@ -615,7 +616,7 @@ function getFastValue(a, op, b, type) {
         return `(${a}<<${shifts})`;
       }
     }
-    if (!(type in Compiletime.FLOAT_TYPES)) {
+    if (!(type in FLOAT_TYPES)) {
       // if guaranteed small enough to not overflow into a double, do a normal multiply
       // default is 32-bit multiply for things like getelementptr indexes
       const bits = getBits(type) || 32;
@@ -629,7 +630,7 @@ function getFastValue(a, op, b, type) {
     }
   } else if (op === '/') {
     // careful on floats, since 0*NaN is not 0
-    if (a === '0' && !(type in Compiletime.FLOAT_TYPES)) {
+    if (a === '0' && !(type in FLOAT_TYPES)) {
       return '0';
     } else if (b === 1) {
       return a;
