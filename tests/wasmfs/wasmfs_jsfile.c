@@ -17,83 +17,85 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-int main() {
-
-  backend_t JSBackend = create_js_file_backend();
-
-  // Create a new JS file under root.
-  int fd = wasmfs_create("/testfile", 0777, JSBackend);
-
-  // Try writing to and reading from the file.
+void write_and_read(const char* msg, int fd) {
+  char buf[200] = {};
   errno = 0;
-  const char* msg = "Test with a new JS file\n";
   write(fd, msg, strlen(msg));
   assert(errno == 0);
-
-  EM_ASM({out(wasmFS$JSMemoryFiles[0])});
-
   errno = 0;
   lseek(fd, 0, SEEK_SET);
   assert(errno == 0);
-  char buf[200] = {};
   read(fd, buf, sizeof(buf));
   assert(errno == 0);
   printf("%s\n", buf);
+}
+
+int main() {
+
+  backend_t JSBackend = wasmfs_create_js_file_backend();
+
+  // Create a new JS file under root.
+  int fd = wasmfs_create_file("/testfile", 0777, JSBackend);
+
+  // Try writing to and reading from the file.
+  const char* msg = "Test with a new JS file\n";
+  write_and_read(msg, fd);
+  EM_ASM({out(wasmFS$JSMemoryFiles[0])});
 
   // Verify that the size of the JS File is the same as the written buffer.
   struct stat file;
   assert(fstat(fd, &file) != -1);
   assert(file.st_size == strlen(msg));
+
+  // Try appending to the end of the JS File.
+  write_and_read(msg, fd);
+
+  // Verify that the size of the JS File has increased.
+  assert(fstat(fd, &file) != -1);
+  assert(file.st_size == strlen(msg) * 2);
+
   close(fd);
 
   assert(unlink("/testfile") != -1);
 
-  //   Check that the file has been cleaned up in the JS array.
+  // Check that the file has been cleaned up in the JS array.
   EM_ASM({out("Expect null: " + wasmFS$JSMemoryFiles[0])});
 
-  //   Try creating a new JS directory under root.
-  assert(wasmfs_mkdir("/test-dir", 0777, JSBackend) != -1);
+  // Try creating a new JS directory under root.
+  assert(wasmfs_create_directory("/test-dir", 0777, JSBackend) != -1);
 
-  //   Try to create a new JS file under this new directory.
+  // Try to create a new JS file under this new directory.
   int fd2 = open("/test-dir/jsfile", O_RDWR | O_CREAT, 0777);
 
   // Try writing to and reading from the file.
-  errno = 0;
   const char* msg2 = "Test with a JS file created under a JS directory\n";
-  write(fd2, msg2, strlen(msg2));
-  assert(errno == 0);
 
-  EM_ASM({out(wasmFS$JSMemoryFiles[1])});
+  write_and_read(msg2, fd2);
+  // Under first-fit policy, wasmFS$JSMemoryFiles[0] should be populated again.
+  EM_ASM({out(wasmFS$JSMemoryFiles[0])});
 
-  errno = 0;
-  lseek(fd2, 0, SEEK_SET);
-  assert(errno == 0);
-  read(fd2, buf, sizeof(buf));
-  assert(errno == 0);
-  printf("%s\n", buf);
+  // Check that the JS file has the correct backend type.
+  assert(wasmfs_get_backend_by_fd(fd2) == JSBackend);
 
   // Try creating an in-memory file under a JS directory.
-  backend_t id = wasmfs_get_backend("/");
+  backend_t memoryBackend = wasmfs_get_backend_by_path("/");
 
-  int fd3 = wasmfs_create("/test-dir/inmemoryfile", 0777, id);
+  int fd3 = wasmfs_create_file("/test-dir/inmemoryfile", 0777, memoryBackend);
 
   // Ensure that the JS array size has not changed.
   int size = EM_ASM_INT({ return wasmFS$JSMemoryFiles.length; });
-  assert(size == 2);
+  assert(size == 1);
 
-  // Try writing to and reading from the file.
-  errno = 0;
   const char* msg3 =
     "Test with an in-memory file created under a JS directory\n";
-  write(fd3, msg3, strlen(msg3));
-  assert(errno == 0);
+  write_and_read(msg3, fd3);
 
-  errno = 0;
-  lseek(fd3, 0, SEEK_SET);
-  assert(errno == 0);
-  read(fd3, buf, sizeof(buf));
-  assert(errno == 0);
-  printf("%s\n", buf);
+  // Create a new JS file under root.
+  int fd4 = wasmfs_create_file("/testfile2", 0777, JSBackend);
+
+  const char* msg4 = "Test with a JS file created under root\n";
+  write_and_read(msg4, fd4);
+  EM_ASM({out(wasmFS$JSMemoryFiles[1])});
 
   return 0;
 }

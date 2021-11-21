@@ -69,8 +69,6 @@ void WasmFS::preloadFiles() {
     return;
   }
 
-  auto rootBackend = wasmFS.getRootDirectory()->locked().getBackend();
-
   // Iterate through wasmFS$preloadedDirs to obtain a parent and child pair.
   // Ex. Module['FS_createPath']("/foo/parent", "child", true, true);
   for (int i = 0; i < numDirs; i++) {
@@ -131,7 +129,7 @@ void WasmFS::preloadFiles() {
     auto base = pathParts.back();
 
     // TODO: Generalize so that MemoryFile is not hard-coded.
-    auto created = std::make_shared<MemoryFile>((mode_t)mode);
+    auto created = std::make_shared<MemoryFile>((mode_t)mode, rootBackend);
 
     long err;
     auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);

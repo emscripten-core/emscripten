@@ -2,6 +2,7 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
+
 // This file defines the JS file backend and JS file of the new file system.
 // Current Status: Work in Progress.
 // See https://github.com/emscripten-core/emscripten/issues/15041.
@@ -9,88 +10,64 @@
 #include "backend.h"
 #include "wasmfs.h"
 
-namespace wasmfs {
-
 using js_index_t = uint32_t;
+
+extern "C" {
+void _emscripten_write_js_file(js_index_t index,
+                               const uint8_t* buffer,
+                               size_t length,
+                               off_t offset);
+void _emscripten_read_js_file(js_index_t index,
+                              const uint8_t* buffer,
+                              size_t length,
+                              off_t offset);
+int _emscripten_get_js_file_size(js_index_t index);
+int _emscripten_create_js_file();
+void _emscripten_remove_js_file(js_index_t index);
+}
+
+namespace wasmfs {
 
 // This class describes a file that lives in JS Memory
 class JSFile : public DataFile {
-  // This index indicates the location of the JS File in $wasmFS$JSMemoryFiles.
+  // This index indicates the location of the JS File in the backing JS array.
   js_index_t index;
 
-  // JSFiles will write from a Wasm Memory buffer into a JS array defined in
-  // $wasmFS$JSMemoryFiles.
+  // JSFiles will write from a Wasm Memory buffer into the backing JS array.
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    EM_ASM(
-      {
-        // Resize the typed array if the length of the write buffer exceeds its
-        // capacity.
-        var size = wasmFS$JSMemoryFiles[$0].length;
-        if ($2 >= size) {
-          var oldContents = wasmFS$JSMemoryFiles[$0];
-          wasmFS$JSMemoryFiles[$0] = new Uint8Array($2);
-          wasmFS$JSMemoryFiles[$0].set(oldContents.subarray(0, $2));
-        }
-        wasmFS$JSMemoryFiles[$0].set(HEAPU8.subarray($1, $1 + $2), $3);
-      },
-      index,
-      buf,
-      len,
-      (size_t)offset);
+
+    _emscripten_write_js_file(index, buf, len, offset);
 
     return __WASI_ERRNO_SUCCESS;
   }
 
-  // JSFiles will read from JS Memory into a Wasm Memory buffer.
+  // JSFiles will read from the backing JS array into a Wasm Memory buffer.
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     assert(offset + len - 1 < getSize());
-    EM_ASM({ HEAPU8.set(wasmFS$JSMemoryFiles[$0].subarray($1, $2), $3); },
-           index,
-           (size_t)offset,
-           (size_t)offset + len,
-           buf);
+
+    _emscripten_read_js_file(index, buf, len, offset);
 
     return __WASI_ERRNO_SUCCESS;
   }
 
-  // The size of the JSFile is defined as the length of the JS array in
-  // $wasmFS$JSMemoryFiles.
-  size_t getSize() override {
-    return (size_t)EM_ASM_INT({ return wasmFS$JSMemoryFiles[$0].length; },
-                              index);
-  }
+  // The size of the JSFile is defined as the length of the backing JS array.
+  size_t getSize() override { return _emscripten_get_js_file_size(index); }
 
 public:
-  JSFile(mode_t mode) : DataFile(mode) {
-    // Add the new JSFile to the $wasmFS$JSMemoryFiles array and assign the
-    // array index.
-    index = (js_index_t)EM_ASM_INT({
-      wasmFS$JSMemoryFiles.push(new Uint8Array(0));
-      return wasmFS$JSMemoryFiles.length - 1;
-    });
+  JSFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {
+    // Create a new file in the backing JS array and store its index.
+    index = _emscripten_create_js_file();
   }
 
-  // Remove the typed array file contents in $wasmFS$JSMemoryFiles array.
-  ~JSFile() {
-    EM_ASM({ wasmFS$JSMemoryFiles[$0] = null; }, index);
-  }
-
-  class Handle : public DataFile::Handle {
-
-    std::shared_ptr<JSFile> getFile() { return file->cast<JSFile>(); }
-
-  public:
-    Handle(std::shared_ptr<File> dataFile) : DataFile::Handle(dataFile) {}
-  };
-
-  Handle locked() { return Handle(shared_from_this()); }
+  // Remove the typed array file contents in the backing JS array.
+  ~JSFile() { _emscripten_remove_js_file(index); }
 };
 
 class JSFileBackend : public Backend {
 
 public:
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    return std::make_shared<JSFile>(mode);
+    return std::make_shared<JSFile>(mode, this);
   }
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
     return std::make_shared<Directory>(mode, this);
@@ -98,9 +75,8 @@ public:
 };
 
 // This function is exposed to users to instantiate a new JSBackend.
-extern "C" backend_t create_js_file_backend() {
-  wasmFS.backendTable.push_back(std::make_unique<JSFileBackend>());
-  return wasmFS.backendTable.back().get();
+extern "C" backend_t wasmfs_create_js_file_backend() {
+  return wasmFS.addBackend(std::make_unique<JSFileBackend>());
 }
 
 } // namespace wasmfs

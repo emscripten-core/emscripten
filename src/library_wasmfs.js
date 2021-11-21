@@ -86,6 +86,37 @@ var WasmfsLibrary = {
       // For file preloading, cwd should be '/' to begin with.
       return '/';
     }
+  },
+  _emscripten_write_js_file: function(index, buffer, length, offset) {
+    var size = wasmFS$JSMemoryFiles[index].length;
+    // Resize the typed array if the length of the write buffer exceeds its capacity.
+    if (offset + length >= size) {
+      var oldContents =wasmFS$JSMemoryFiles[index];
+      wasmFS$JSMemoryFiles[index] = new Uint8Array(offset + length);
+      wasmFS$JSMemoryFiles[index].set(oldContents.subarray(0, size));
+    }
+
+    wasmFS$JSMemoryFiles[index].set(HEAPU8.subarray(buffer, buffer + length), offset);
+  },
+  _emscripten_read_js_file: function(index, buffer, length, offset) {
+    HEAPU8.set(wasmFS$JSMemoryFiles[index].subarray(offset, offset + length), buffer);
+  },
+  _emscripten_get_js_file_size: function(index) {
+    return wasmFS$JSMemoryFiles[index].length;
+  },
+  _emscripten_create_js_file: function() {
+    // Traverse wasmFS$JSMemoryFiles until an empty index is found.
+    for (var index = 0; index < wasmFS$JSMemoryFiles.length; index++) {
+      if (wasmFS$JSMemoryFiles[index] === null) {
+        wasmFS$JSMemoryFiles[index] = new Uint8Array(0);
+        return index;
+      }
+    }
+    wasmFS$JSMemoryFiles.push(new Uint8Array(0));
+    return wasmFS$JSMemoryFiles.length - 1;
+  },
+  _emscripten_remove_js_file: function(index) {
+    wasmFS$JSMemoryFiles[index] = null;
   }
 }
 

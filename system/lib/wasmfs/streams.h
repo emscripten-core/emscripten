@@ -28,7 +28,7 @@ class StdinFile : public DataFile {
   size_t getSize() override { return 0; }
 
 public:
-  StdinFile(mode_t mode) : DataFile(mode) {}
+  StdinFile(mode_t mode) : DataFile(mode, NullBackend) {}
   static std::shared_ptr<StdinFile> getSingleton();
 };
 
@@ -45,7 +45,7 @@ class StdoutFile : public DataFile {
   size_t getSize() override { return 0; }
 
 public:
-  StdoutFile(mode_t mode) : DataFile(mode) {}
+  StdoutFile(mode_t mode) : DataFile(mode, NullBackend) {}
   static std::shared_ptr<StdoutFile> getSingleton();
 };
 
@@ -65,7 +65,7 @@ class StderrFile : public DataFile {
   size_t getSize() override { return 0; }
 
 public:
-  StderrFile(mode_t mode) : DataFile(mode) {}
+  StderrFile(mode_t mode) : DataFile(mode, NullBackend) {}
   static std::shared_ptr<StderrFile> getSingleton();
 };
 } // namespace wasmfs

@@ -24,7 +24,7 @@ class MemoryFile : public DataFile {
   size_t getSize() override { return buffer.size(); }
 
 public:
-  MemoryFile(mode_t mode) : DataFile(mode) {}
+  MemoryFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {}
 
   class Handle : public DataFile::Handle {
 
