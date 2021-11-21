@@ -7,17 +7,18 @@
 
 // Test RAF is actually used (and not setTimeout etc.)
 
+#include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
 
 EMSCRIPTEN_KEEPALIVE extern "C" void good() {
   printf("good!\n");
-  REPORT_RESULT(0);
+  emscripten_force_exit(0);
 }
 
 void bad() {
   printf("bad!\n");
-  REPORT_RESULT(1);
+  assert(false);
 }
 
 int main() {
@@ -27,6 +28,6 @@ int main() {
     };
   });
   emscripten_set_main_loop(bad, 0, 1);
-  return 0;
+  return 99;
 }
 

@@ -314,7 +314,7 @@ def parse_args(args):
   parser.add_argument('--failfast', dest='failfast', action='store_const',
                       const=True, default=False)
   parser.add_argument('--force64', dest='force64', action='store_const',
-                      const=True, default=False)
+                      const=True, default=None)
   return parser.parse_args()
 
 
@@ -327,13 +327,21 @@ def configure():
   common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
   common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
   common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
-  global FORCE64
-  FORCE64 = int(os.getenv('EMTEST_FORCE64', '0'))
+  common.EMTEST_FORCE64 = int(os.getenv('EMTEST_FORCE64', '0'))
   if common.EMTEST_VERBOSE:
     logging.root.setLevel(logging.DEBUG)
 
   assert 'PARALLEL_SUITE_EMCC_CORES' not in os.environ, 'use EMTEST_CORES rather than PARALLEL_SUITE_EMCC_CORES'
   parallel_testsuite.NUM_CORES = os.environ.get('EMTEST_CORES') or os.environ.get('EMCC_CORES')
+
+  # Some options make sense being set in the environment, others not-so-much.
+  # TODO(sbc): eventually just make these command-line only.
+  if os.getenv('EMTEST_SAVE_DIR'):
+    print('Prefer --save-dir over setting $EMTEST_SAVE_DIR')
+  if os.getenv('EMTEST_REBASELINE'):
+    print('Prefer --rebaseline over setting $EMTEST_REBASELINE')
+  if os.getenv('EMTEST_VERBOSE'):
+    print('Prefer --verbose over setting $EMTEST_VERBOSE')
 
 
 def main(args):

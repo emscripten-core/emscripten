@@ -5,6 +5,8 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <GLFW/glfw3.h>
 #ifdef __EMSCRIPTEN__
@@ -43,7 +45,6 @@ void render() {
 }
 
 #ifdef __EMSCRIPTEN__
-int result = 0;
 EM_BOOL on_focuspocus(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData) {
     switch(eventType) {
         case EMSCRIPTEN_EVENT_BLUR:
@@ -53,24 +54,17 @@ EM_BOOL on_focuspocus(int eventType, const EmscriptenFocusEvent *focusEvent, voi
             }
             if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
                 printf("FAIL: glfwGetKey() is stuck after blur\n");
-#ifdef REPORT_RESULT
-                REPORT_RESULT(result);
-#endif
+                assert(false);
             }
             break;
         case EMSCRIPTEN_EVENT_FOCUS:
             printf("focus\n");
             if (step == 3) {
-                int result;
                 if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
                     printf("FAIL: glfwGetKey() is stuck after blur and focus\n");
-                } else {
-                    printf("Pass\n");
-                    result = 1;
+                    assert(false);
                 }
-#ifdef REPORT_RESULT
-                REPORT_RESULT(result);
-#endif
+                printf("Pass\n");
                 glfwTerminate();
             }
             break;
@@ -91,13 +85,13 @@ EM_BOOL on_focuspocus(int eventType, const EmscriptenFocusEvent *focusEvent, voi
 
 int main() {
     if (!glfwInit()) {
-        return -1;
+        return 1;
     }
 
     window = glfwCreateWindow(640, 480, "test_glfw_get_key_stuck", NULL, NULL);
     if (!window) {
         glfwTerminate();
-        return -1;
+        return 1;
     }
 
     glfwMakeContextCurrent(window);
@@ -110,6 +104,7 @@ int main() {
     emscripten_set_focusout_callback(NULL, NULL, EM_TRUE, on_focuspocus);
 
     emscripten_set_main_loop(render, 0, 1);
+    __builtin_trap();
 #else
     while (!glfwWindowShouldClose(window)) {
         render();

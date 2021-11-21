@@ -8845,6 +8845,7 @@ int main () {
     'hello_webgl_wasm2js': ('hello_webgl', True),
     'hello_webgl2_wasm': ('hello_webgl2', False),
     'hello_webgl2_wasm2js': ('hello_webgl2', True),
+    'math': ('math', False),
   })
   def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
@@ -8873,6 +8874,7 @@ int main () {
 
     wasm2js = ['-s', 'WASM=0', '--memory-init-file', '1']
 
+    math_sources = [test_file('code_size/math.c')]
     hello_world_sources = [test_file('small_hello_world.c'),
                            '-s', 'USES_DYNAMIC_ALLOC=0']
     random_printf_sources = [test_file('hello_random_printf.c'),
@@ -8889,6 +8891,7 @@ int main () {
       'hello_world': hello_world_sources,
       'random_printf': random_printf_sources,
       'hello_webgl': hello_webgl_sources,
+      'math': math_sources,
       'hello_webgl2': hello_webgl2_sources}[test_name]
 
     def print_percent(actual, expected):
@@ -8938,7 +8941,7 @@ int main () {
     # to rebaseline this test.  However:
     # a) such changes deserve extra scrutiny
     # b) such changes should be few and far between
-    # c) rebaselining is trivial (just run with EMTEST_REBASELINE=1)
+    # c) rebaselining is trivial (just run with --rebaseline)
     # Note that we do not compare the full wasm output since that is
     # even more fragile and can change with LLVM updates.
     if compare_js_output:
@@ -9011,9 +9014,11 @@ int main () {
       open(results_file, 'w').write(json.dumps(obtained_results, indent=2) + '\n')
     else:
       if total_output_size > total_expected_size:
-        print('Oops, overall generated code size regressed by ' + str(total_output_size - total_expected_size) + ' bytes!')
+        print('Oops, overall generated code size regressed by {total_output_size - total_expected_size} bytes!')
+        print('If this is expected, rerun the test with --rebaseline to update the expected sizes')
       if total_output_size < total_expected_size:
-        print('Hey amazing, overall generated code size was improved by ' + str(total_expected_size - total_output_size) + ' bytes! Rerun test with other.test_minimal_runtime_code_size with EMTEST_REBASELINE=1 to update the expected sizes!')
+        print(f'Hey amazing, overall generated code size was improved by {total_expected_size - total_output_size} bytes!')
+        print('If this is expected, rerun the test with --rebaseline to update the expected sizes')
       self.assertEqual(total_output_size, total_expected_size)
 
   # Tests the library_c_preprocessor.js functionality.
@@ -10566,7 +10571,7 @@ exec "$@"
   def test_gen_struct_info(self):
     # This tests is fragile and will need updating any time any of the refereced
     # structs or defines change.   However its easy to rebaseline with
-    # EMTEST_REBASELINE and it prevents regressions or unintended changes
+    # --rebaseline and it prevents regressions or unintended changes
     # to the output json.
     self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
     self.assertFileContents(test_file('reference_struct_info.json'), read_file('out.json'))
@@ -11092,7 +11097,7 @@ void foo() {}
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
-    self.do_runf(test_file('emscripten_console_log.c'), emcc_args=['--pre-js', test_file('emscripten_console_log_pre.js')])
+    self.do_run_in_out_file_test(test_file('emscripten_console_log.c'), emcc_args=['--pre-js', test_file('emscripten_console_log_pre.js')])
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):
@@ -11150,8 +11155,10 @@ void foo() {}
 
   # WASMFS tests
 
-  @also_with_wasmfs
-  def test_unistd_dup(self):
+  # TODO: This test will only work with the new file system.
+  # Addresses this issue: https://github.com/emscripten-core/emscripten/issues/4017
+  # The new file system also correctly identifies errors that the JS file system missed.
+  def test_wasmfs_dup(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_dup.c')
 

@@ -190,18 +190,11 @@ self.onmessage = function(e) {
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
       Module['__emscripten_thread_init'](e.data.threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
 
-      // Establish the stack frame for this thread in global scope
-      // The stack grows downwards
-      var max = e.data.stackBase;
-      var top = e.data.stackBase + e.data.stackSize;
 #if ASSERTIONS
       assert(e.data.threadInfoStruct);
-      assert(top != 0);
-      assert(max != 0);
-      assert(top > max);
 #endif
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
-      Module['establishStackSpace'](top, max);
+      Module['establishStackSpace']();
       Module['PThread'].receiveObjectTransfer(e.data);
       Module['PThread'].threadInit();
 

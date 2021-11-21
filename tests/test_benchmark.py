@@ -51,8 +51,6 @@ PROFILING = 0
 
 LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 
-FORCE64 = 0
-
 
 class Benchmarker():
   # called when we init the object, which is during startup, even if we are
@@ -206,17 +204,19 @@ class EmscriptenBenchmarker(Benchmarker):
       EMCC, filename,
       OPTIMIZATIONS,
       '-s', 'INITIAL_MEMORY=256MB',
-      '-s', 'FILESYSTEM=0',
       '-s', 'ENVIRONMENT=node,shell',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
-    ] + shared_args + emcc_args + LLVM_FEATURE_FLAGS + self.extra_args
-    if FORCE64:
+    ] + shared_args + LLVM_FEATURE_FLAGS
+    if common.EMTEST_FORCE64:
       cmd += ['--profiling']
     else:
       cmd += ['--closure=1', '-sMINIMAL_RUNTIME']
-    if 'FORCE_FILESYSTEM' in cmd:
-      cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
+    # add additional emcc args at the end, which may override other things
+    # above, such as minimal runtime
+    cmd += emcc_args + self.extra_args
+    if 'FORCE_FILESYSTEM' not in cmd:
+      cmd += ['-s', 'FILESYSTEM=0']
     if PROFILING:
       cmd += ['--profiling-funcs']
     self.cmd = cmd
@@ -359,7 +359,7 @@ class CheerpBenchmarker(Benchmarker):
 
 benchmarkers = []
 
-if not FORCE64:
+if not common.EMTEST_FORCE64:
   benchmarkers += [
     NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
     # NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie'])
@@ -371,7 +371,7 @@ if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
   # mattering as much as the actual benchmark)
   aot_v8 = config.V8_ENGINE + ['--no-liftoff']
   default_v8_name = os.environ.get('EMBENCH_NAME') or 'v8'
-  if FORCE64:
+  if common.EMTEST_FORCE64:
     benchmarkers += [
       EmscriptenBenchmarker(default_v8_name, aot_v8, ['-sMEMORY64=2']),
     ]
@@ -397,7 +397,7 @@ if config.SPIDERMONKEY_ENGINE and config.SPIDERMONKEY_ENGINE in config.JS_ENGINE
     ]
 
 if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
-  if FORCE64:
+  if common.EMTEST_FORCE64:
     benchmarkers += [
       EmscriptenBenchmarker('Node.js', config.NODE_JS, ['-sMEMORY64=2']),
     ]
