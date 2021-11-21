@@ -1189,6 +1189,11 @@ class libmalloc(MTLibrary):
   def can_use(self):
     return super().can_use() and settings.MALLOC != 'none'
 
+  def can_build(self):
+    # emmalloc is not currently compatible with 64-bit pointers.  See
+    # the comment at the top of emmalloc.c.
+    return not self.malloc.startswith('emmalloc') or not settings.MEMORY64
+
   @classmethod
   def vary_on(cls):
     return super().vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'memvalidate', 'verbose']

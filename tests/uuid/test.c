@@ -65,10 +65,6 @@ int main() {
 
     assert(uuid_is_null(uuid) == 1);
 
-    // The following lets the browser test exit cleanly.
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
-    exit(0);
+    return 0;
 }
 

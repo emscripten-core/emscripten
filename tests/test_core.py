@@ -68,15 +68,23 @@ def needs_non_trapping_float_to_int(f):
 
 
 def also_with_wasm_bigint(f):
-  def decorated(self):
-    self.set_setting('WASM_BIGINT', 0)
-    f(self)
-    if self.is_wasm():
+  assert callable(f)
+
+  def metafunc(self, with_bigint):
+    assert self.get_setting('WASM_BIGINT') is None
+    if with_bigint:
+      if not self.is_wasm():
+        self.skipTest('wasm2js does not support WASM_BIGINT')
       self.set_setting('WASM_BIGINT')
       self.require_node()
       self.node_args.append('--experimental-wasm-bigint')
       f(self)
-  return decorated
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'bigint': (True,)}
+  return metafunc
 
 
 # without EMTEST_ALL_ENGINES set we only run tests in a single VM by
@@ -154,15 +162,18 @@ def no_wasm2js(note=''):
 
 
 def also_with_noderawfs(func):
-  def decorated(self):
-    orig_args = self.emcc_args.copy()
+  assert callable(func)
+
+  def metafunc(self, rawfs):
+    if rawfs:
+      self.emcc_args += ['-DNODERAWFS']
+      self.set_setting('NODERAWFS')
+      self.js_engines = [config.NODE_JS]
     func(self)
-    print('noderawfs')
-    self.emcc_args = orig_args + ['-DNODERAWFS']
-    self.set_setting('NODERAWFS')
-    self.js_engines = [config.NODE_JS]
-    func(self)
-  return decorated
+
+  metafunc._parameterize = {'': (False,),
+                            'rawfs': (True,)}
+  return metafunc
 
 
 def can_do_standalone(self):
@@ -180,6 +191,7 @@ def also_with_wasmfs(func):
     if self.get_setting('STANDALONE_WASM'):
       self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
     self.set_setting('WASMFS')
+    self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
     func(self)
   return decorated
 
@@ -1606,6 +1618,7 @@ int main() {
   def test_alloca(self):
     self.do_core_test('test_alloca.c')
 
+  @also_with_wasmfs
   def test_rename(self):
     self.do_run_in_out_file_test('stdio/test_rename.c')
 
@@ -5173,6 +5186,7 @@ main( int argv, char ** argc ) {
   def test_readdir(self):
     self.do_run_in_out_file_test('dirent/test_readdir.c')
 
+  @also_with_wasm_bigint
   def test_readdir_empty(self):
     self.do_run_in_out_file_test('dirent/test_readdir_empty.c')
 

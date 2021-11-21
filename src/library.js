@@ -2465,7 +2465,7 @@ LibraryManager.library = {
       _getentropy.randomDevice = getRandomDevice();
     }
     for (var i = 0; i < size; i++) {
-      {{{ makeSetValue('buffer', 'i', '_getentropy.randomDevice()', 'i8') }}}
+      {{{ makeSetValue('buffer', 'i', '_getentropy.randomDevice()', 'i8') }}};
     }
     return 0;
   },
@@ -3499,7 +3499,7 @@ LibraryManager.library = {
 #if ASSERTIONS
     assert(typeof str === 'number');
 #endif
-    out(UTF8ToString(str));
+    console.log(UTF8ToString(str));
   },
 
   emscripten_console_warn__sig: 'vi',
@@ -3515,7 +3515,7 @@ LibraryManager.library = {
 #if ASSERTIONS
     assert(typeof str === 'number');
 #endif
-    err(UTF8ToString(str));
+    console.error(UTF8ToString(str));
   },
 
   emscripten_throw_number: function(number) {

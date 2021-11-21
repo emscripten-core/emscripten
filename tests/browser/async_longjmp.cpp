@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <emscripten.h>
 #include <stdio.h>
 #include <setjmp.h>
@@ -42,6 +43,6 @@ int main() {
     printf("result: %d %d\n", x, jmpval);  // prints
   }
   emscripten_sleep(1);
-  REPORT_RESULT(x);
-  return x;
+  assert(x == 2);
+  return 0;
 }

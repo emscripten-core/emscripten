@@ -100,28 +100,22 @@ void main_2(void *arg) {
 
   // End test.
   printf("Test passed!\n");
-  REPORT_RESULT(2);
+  emscripten_force_exit(0);
 }
 
 int main() {
   if (!glfwInit())
   {
     printf("Could not create window. Test failed.\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
-    return -1;
+    return 1;
   }
   glfwWindowHint(GLFW_RESIZABLE , 1);
   g_window = glfwCreateWindow(600, 450, "GLFW joystick test", NULL, NULL);
   if (!g_window)
   {
     printf("Could not create window. Test failed.\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
     glfwTerminate();
-    return -1;
+    return 1;
   }
   glfwMakeContextCurrent(g_window);
   glfwSetJoystickCallback(joystick_callback);
@@ -135,6 +129,5 @@ int main() {
 #endif
 
   glfwTerminate();
-
-  return 0;
+  return 99;
 }

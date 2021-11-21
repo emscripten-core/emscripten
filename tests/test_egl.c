@@ -5,13 +5,11 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <EGL/egl.h>
 
 #include <GLES2/gl2.h>
-
-int result = 1; // Success
-#define assert(x) do { if (!(x)) {result = 0; printf("Assertion failure: %s in %s:%d!\n", #x, __FILE__, __LINE__); } } while(0)
 
 int main(int argc, char *argv[])
 {
@@ -140,7 +138,5 @@ int main(int argc, char *argv[])
     assert(eglGetProcAddress("glClear") != 0);
     assert(eglGetProcAddress("glWakaWaka") == 0);
 
-#ifdef REPORT_RESULT
-    REPORT_RESULT(result);
-#endif
+    return 0;
 }

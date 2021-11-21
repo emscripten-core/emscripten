@@ -6,13 +6,9 @@
 // Current Status: Work in Progress.
 // See https://github.com/emscripten-core/emscripten/issues/15041.
 
-#include "memory_file.h"
 #include "backend.h"
-#include <assert.h>
-#include <emscripten/html5.h>
-#include <emscripten/threading.h>
-#include <utility>
-#include <wasi/api.h>
+#include "memory_file.h"
+#include "wasmfs.h"
 
 namespace wasmfs {
 class MemoryFileBackend : public Backend {
@@ -26,7 +22,7 @@ public:
   }
 };
 
-std::unique_ptr<Backend> createMemoryFileBackend() {
-  return std::make_unique<MemoryFileBackend>();
+backend_t createMemoryFileBackend() {
+  return wasmFS.addBackend(std::make_unique<MemoryFileBackend>());
 }
 } // namespace wasmfs

@@ -20,11 +20,30 @@ See docs/process.md for more on how version tagging works.
 
 3.0.0
 ------
+- A set of internally-unused functions were removed from `parseTools.js`.  While
+  emscripten no longer needs any of these functions, there is slim chance that
+  some external JS library is depending on them.  Please file issues if any such
+  library code is found.  The removed/unused functions are:
+   `removePointing`, `pointingLevels`, `removeAllPointing`, `isVoidType`,
+   `isStructPointerType`, `isArrayType`, `isStructType`, `isVectorType`,
+   `isStructuralType` `getStructuralTypeParts`, `getStructuralTypePartBits`,
+   `isFunctionDef`, `isPossiblyFunctionType`, `isFunctionType`, `getReturnType`,
+   `splitTokenList`, `_IntToHex`, `IEEEUnHex`, `Compiletime.isPointerType`,
+   `Compiletime.isStructType`, `Compiletime.INT_TYPES`, `isType`.
+- The example `shell.html` and `shell_minimal.html` templaces no longer override
+  `printErr` on the module object.  This means error message from emscripten and
+  stderr from the application will go to the default location of `console.warn`
+  rather than `console.error`.  This only effects application that use the
+  example shell html files.
 - The version of musl libc used by emscripten was upgraded from v1.1.15 to
   v1.2.2.  There could be some minor size regressions (or gains) due to changes
   in upstream musl code but we don't expect anything major.  Since this is a
   fairly substantial change (at least internally) we are bumping the major
   version of Emscripten to 3. (#13006)
+- Added support for specifying the text encoding to be used in response filenames
+  by passing the encoding as a file suffix (e.g. "a.rsp.utf-8" or "a.rsp.cp1252").
+  If not specified, the encoding is autodetected as either UTF-8 or Python
+  default "locale.getpreferredencoding()". (#15406, #15292, #15426)
 
 2.0.34 - 11/04/2021
 -------------------
@@ -36,10 +55,6 @@ See docs/process.md for more on how version tagging works.
 2.0.33 - 11/01/2021
 -------------------
 - Bug fixes
-- Added support for specifying the text encoding to be used in response filenames
-  by passing the encoding as a file suffix (e.g. "a.rsp.utf-8" or "a.rsp.cp1252").
-  If not specified, the encoding is autodetected as either UTF-8 or Python
-  default "locale.getpreferredencoding()". (#15406, #15292, #15426)
 
 2.0.32 - 10/19/2021
 -------------------

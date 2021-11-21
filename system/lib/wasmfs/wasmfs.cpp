@@ -27,11 +27,11 @@ __attribute__((init_priority(100))) WasmFS wasmFS;
 # 28 "wasmfs.cpp"
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
-  backendTable.push_back(createMemoryFileBackend());
-  auto rootDirectory = std::make_shared<Directory>(S_IRUGO | S_IXUGO | S_IWUGO,
-                                                   backendTable[0].get());
+  auto rootBackend = createMemoryFileBackend();
+  auto rootDirectory =
+    std::make_shared<Directory>(S_IRUGO | S_IXUGO | S_IWUGO, rootBackend);
   auto devDirectory =
-    std::make_shared<Directory>(S_IRUGO | S_IXUGO, backendTable[0].get());
+    std::make_shared<Directory>(S_IRUGO | S_IXUGO, rootBackend);
   rootDirectory->locked().setEntry("dev", devDirectory);
 
   auto dir = devDirectory->locked();
@@ -54,6 +54,9 @@ void WasmFS::preloadFiles() {
   timesCalled++;
   assert(timesCalled == 1);
 #endif
+
+  // Obtain the backend of the root directory.
+  auto rootBackend = getRootDirectory()->locked().getBackend();
 
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_runtime_thread());
@@ -105,7 +108,7 @@ void WasmFS::preloadFiles() {
       i,
       childName);
 
-    auto created = std::make_shared<Directory>(S_IRUGO | S_IXUGO, rootBackend);
+    auto created = rootBackend->createDirectory(S_IRUGO | S_IXUGO);
 
     parentDir->locked().setEntry(childName, created);
   }
@@ -127,6 +130,7 @@ void WasmFS::preloadFiles() {
 
     auto base = pathParts.back();
 
+    // TODO: Generalize so that MemoryFile is not hard-coded.
     auto created = std::make_shared<MemoryFile>((mode_t)mode);
 
     long err;
@@ -139,6 +143,7 @@ void WasmFS::preloadFiles() {
 
     parentDir->locked().setEntry(base, created);
 
+    // TODO: Generalize preloadFromJS to use generic file operations.
     created->locked().preloadFromJS(i);
   }
 }

@@ -80,8 +80,9 @@ var LibraryGLFW = {
     },
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
+    '$callUserCallback',
 #if FILESYSTEM
-    , '$FS'
+    '$FS',
 #endif
   ],
   $GLFW: {
@@ -591,13 +592,15 @@ var LibraryGLFW = {
 
       if (!GLFW.active.windowSizeFunc) return;
 
+      callUserCallback(function() {
 #if USE_GLFW == 2
-      {{{ makeDynCall('vii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.width, GLFW.active.height);
+        {{{ makeDynCall('vii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.width, GLFW.active.height);
 #endif
 
 #if USE_GLFW == 3
-      {{{ makeDynCall('viii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+        {{{ makeDynCall('viii', 'GLFW.active.windowSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif
+      });
     },
 
     onFramebufferSizeChanged: function() {
@@ -605,9 +608,11 @@ var LibraryGLFW = {
 
       if (!GLFW.active.framebufferSizeFunc) return;
 
+      callUserCallback(function() {
 #if USE_GLFW == 3
-      {{{ makeDynCall('viii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+        {{{ makeDynCall('viii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif
+      });
     },
 
     getTime: function() {

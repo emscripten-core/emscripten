@@ -14,7 +14,7 @@
 
 #define DB "THE_DB"
 
-void test() {
+int main() {
   void *buffer;
   int num, error, exists;
   int sum = 0;
@@ -93,18 +93,7 @@ void test() {
 
   // finish up
 
-  REPORT_RESULT(sum);
-}
-
-void never() {
-  EM_ASM({ alert('this should never be reached! runtime must not be shut down!') });
-  assert(0);
-  while (1) {}
-}
-
-int main() {
-  atexit(never);
-  test();
+  assert(sum == 6);
+  REPORT_RESULT(0);
   return 0;
 }
-
