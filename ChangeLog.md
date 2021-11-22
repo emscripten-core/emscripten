@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.0.0
-------
+3.0.1
+-----
+
+3.0.0 - 11/22/2021
+------------------
 - A set of internally-unused functions were removed from `parseTools.js`.  While
   emscripten no longer needs any of these functions, there is slim chance that
   some external JS library is depending on them.  Please file issues if any such
