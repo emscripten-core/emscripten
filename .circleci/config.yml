@@ -385,6 +385,11 @@ jobs:
     steps:
       - run-tests:
           test_targets: "wasm2js1"
+  test-wasm64:
+    executor: bionic
+    steps:
+      - run-tests:
+          test_targets: "wasm64.test_hello_world"
   test-other:
     executor: bionic
     steps:
@@ -474,6 +479,9 @@ workflows:
           requires:
             - build-linux
       - test-wasm3:
+          requires:
+            - build-linux
+      - test-wasm64:
           requires:
             - build-linux
       - test-wasm2js1:
