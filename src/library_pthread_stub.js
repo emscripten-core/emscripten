@@ -16,9 +16,6 @@ var LibraryPThreadStub = {
     return !ENVIRONMENT_IS_WORKER;
 #endif
   },
-
-  __cxa_thread_atexit: 'atexit',
-  __cxa_thread_atexit_impl: 'atexit',
 };
 
 mergeInto(LibraryManager.library, LibraryPThreadStub);

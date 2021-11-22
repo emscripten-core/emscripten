@@ -96,11 +96,16 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: If no value is specifed it will default to ``1``.
 
-  .. note:: Lists can be specified without or without quotes around each element and with or without brackets around the list.  For example all the following are equivelent:
+  .. note:: Lists can be specified as comma separated strings:
 
     ::
 
       -s EXPORTED_FUNCTIONS=foo,bar
+
+  .. note:: We also support older list formats that involve more quoting.  Lists can be specified with or without quotes around each element and with or without brackets around the list.  For example, all the following are equivalent:
+
+    ::
+
       -s EXPORTED_FUNCTIONS="foo","bar"
       -s EXPORTED_FUNCTIONS=["foo","bar"]
       -s EXPORTED_FUNCTIONS=[foo,bar]

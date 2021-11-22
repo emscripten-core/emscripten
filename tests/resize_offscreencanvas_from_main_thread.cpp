@@ -18,12 +18,8 @@ void thread_local_main_loop()
 {
   int w = 0, h = 0;
   emscripten_get_canvas_element_size("#canvas", &w, &h);
-  if (w == 699 && h == 299)
-  {
+  if (w == 699 && h == 299) {
     printf("Observed OffscreenCanvas resize to 699x299 from main thread! Test passed!\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
 
 #ifndef TEST_SYNC_BLOCKING_LOOP
     emscripten_cancel_main_loop();
@@ -87,12 +83,8 @@ void get_canvas_size()
 int main()
 {
   get_canvas_size();
-  if (!emscripten_supports_offscreencanvas())
-  {
+  if (!emscripten_supports_offscreencanvas()) {
     printf("Current browser does not support OffscreenCanvas. Skipping the rest of the tests.\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
     return 0;
   }
 
@@ -106,6 +98,8 @@ int main()
   pthread_detach(thread);
 
   // Wait for a while, then change the canvas size on the main thread.
-  printf("Waiting for 5 seconds for good measure.\n");
-  emscripten_async_call(resize_canvas, 0, 5000);
+  printf("Waiting for 2 seconds for good measure.\n");
+  emscripten_async_call(resize_canvas, 0, 2000);
+  emscripten_exit_with_live_runtime();
+  __builtin_trap();
 }

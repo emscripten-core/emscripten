@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <EGL/egl.h>
 
@@ -36,12 +37,6 @@ int main(int argc, char *argv[])
 
     printf("(%d, %d)\n", width, height);
 
-#ifdef REPORT_RESULT
-    int result = 0;
-    if(width == 300 && height == 150)
-    {
-        result = 1;
-    }
-    REPORT_RESULT(result);
-#endif
+    assert(width == 300 && height == 150);
+    return 0;
 }

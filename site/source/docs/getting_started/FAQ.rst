@@ -415,46 +415,31 @@ with
 Why do I get a ``NameError`` or ``a problem occurred in evaluating content after a "-s"`` when I use a ``-s`` option?
 =====================================================================================================================
 
-That may occur when running something like
+That may occur when using the old list syntax for ``-s`` settings:
 
 ::
 
   # this fails on most Linuxes
-  emcc a.c -s EXPORTED_RUNTIME_METHODS=['addOnPostRun']
+  emcc a.c -s EXPORTED_RUNTIME_METHODS=['foo']
 
   # this fails on macOS
-  emcc a.c -s EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
+  emcc a.c -s EXPORTED_RUNTIME_METHODS="['foo']"
 
-You may need to quote things like this:
-
-::
-
-  # this works in the shell on most Linuxes and on macOS
-  emcc a.c -s "EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
-
-  # or you may need something like this in a Makefile
-  emcc a.c -s EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
-
-The proper syntax depends on the OS and shell you are in, and if you are writing
-in a Makefile, etc. Things like spaces may also matter in some shells, for
-example you may need to avoid empty spaces between list items:
+A new, simpler way to specify these lists is to simply use
+comma separated lists:
 
 ::
 
-  # this works in the shell on most Linuxes and on macOS
-  emcc a.c -s "EXPORTED_RUNTIME_METHODS=['foo','bar']"
+  emcc a.c -s EXPORTED_RUNTIME_METHODS=foo,bar
 
-(note there is no space after the ``,``).
-
-For simplicity, you may want to use a **response file**, that is,
+It is also possible to use a **response file**, that is,
 
 ::
 
-  # this works in the shell on most Linuxes and on macOS
-  emcc a.c -s "EXPORTED_RUNTIME_METHODS=@extra.txt"
+  emcc a.c -s EXPORTED_RUNTIME_METHODS=@extra.txt
 
-and then ``extra.txt`` can be a plain file that contains ``['foo','bar']``. This
-avoids any issues with the shell environment parsing the string.
+with ``extra.txt`` being a plain text file that contains ``foo`` and ``bar`` on
+seperate lines.
 
 How do I specify ``-s`` options in a CMake project?
 ===================================================
@@ -475,7 +460,7 @@ notation, that is, without a space:
   # same as before but no space after -s
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_SDL=2")
   # example of target_link_options with a list of names
-  target_link_options(example PRIVATE "-sEXPORTED_FUNCTIONS=[_main]")
+  target_link_options(example PRIVATE "-sEXPORTED_FUNCTIONS=_main")
 
 Note also that ``_main`` does not need to be quoted, even though it's a string
 name (``emcc`` knows that the argument to ``EXPORTED_FUNCTIONS`` is a list of

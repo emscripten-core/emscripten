@@ -164,10 +164,6 @@ int main(int argc, char *argv[])
 
     SDL_GL_SwapBuffers();
     
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
-
     SDL_Quit();
     return 0;
 }

@@ -5,10 +5,7 @@
  */
 
 var STACK_ALIGN = {{{ STACK_ALIGN }}};
-
-function getPointerSize() {
-  return {{{ MEMORY64 ? 8 : 4 }}};
-}
+var POINTER_SIZE = {{{ MEMORY64 ? 8 : 4 }}};
 
 {{{ getNativeTypeSize }}}
 

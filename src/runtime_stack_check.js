@@ -12,8 +12,8 @@ function writeStackCookie() {
   assert((max & 3) == 0);
 #endif
   // The stack grows downwards
-  {{{ makeSetValue('max + 4', 0, '0x2135467', 'i32' ) }}}
-  {{{ makeSetValue('max + 8', 0, '0x89BACDFE', 'i32' ) }}}
+  {{{ makeSetValue('max + 4', 0, '0x2135467', 'i32' ) }}};
+  {{{ makeSetValue('max + 8', 0, '0x89BACDFE', 'i32' ) }}};
 #if !USE_ASAN && !SAFE_HEAP // ASan and SAFE_HEAP check address 0 themselves
   // Also test the global address 0 for integrity.
   HEAP32[0] = 0x63736d65; /* 'emsc' */

@@ -112,9 +112,5 @@ int main() {
 
   // This part of the test has moved to wasmfs/wasmfs_seek.c
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
-
   return 0;
 }

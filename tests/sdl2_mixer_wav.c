@@ -16,9 +16,7 @@ void sound_loop_then_quit() {
 
     emscripten_cancel_main_loop();
     printf("Shutting down\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
+    exit(0);
 }
 
 int main(int argc, char* argv[]){
@@ -30,9 +28,7 @@ int main(int argc, char* argv[]){
 
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
         puts("Failed to init audio");
-#ifdef REPORT_RESULT
-        REPORT_RESULT(100);
-#endif
+        return 100;
     }
     int const frequency = EM_ASM_INT_V({
         var context;
@@ -45,22 +41,16 @@ int main(int argc, char* argv[]){
     });
     if(Mix_OpenAudio(frequency, MIX_DEFAULT_FORMAT, 2, 1024) == -1) {
         puts("Failed to open audio");
-#ifdef REPORT_RESULT
-        REPORT_RESULT(101);
-#endif
+        return 101;
     }
     wave = Mix_LoadWAV(WAV_PATH);
     if (wave == NULL) {
         puts("Failed to load audio");
-#ifdef REPORT_RESULT
-        REPORT_RESULT(102);
-#endif
+        return 102;
     }
     if (Mix_PlayChannel(-1, wave, 0) == -1) {
         puts("Failed to play audio");
-#ifdef REPORT_RESULT
-        REPORT_RESULT(103);
-#endif
+        return 103;
     }
     printf("Starting sound play loop\n");
     emscripten_set_main_loop(sound_loop_then_quit, 0, 1);

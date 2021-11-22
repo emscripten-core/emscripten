@@ -21,10 +21,6 @@
 #include <string.h>
 #include <time.h>
 
-#ifndef REPORT_RESULT
-#define REPORT_RESULT(x)
-#endif
-
 #ifndef __EMSCRIPTEN__
 int fullscreen;
 #endif
@@ -209,7 +205,6 @@ int main(int argc, char* argv[])
   if (err != GLEW_OK) {
     printf("error: %s\n", glewGetErrorString(err));
     glutDestroyWindow(win);
-    REPORT_RESULT(0);
     return EXIT_FAILURE;
   }
 #endif
@@ -238,7 +233,6 @@ int main(int argc, char* argv[])
         printf("%s", log);
         free(log);
         glutDestroyWindow(win);
-        REPORT_RESULT(0);
         return EXIT_FAILURE;
       }
     }
@@ -268,7 +262,6 @@ int main(int argc, char* argv[])
         printf("%s", log);
         free(log);
         glutDestroyWindow(win);
-        REPORT_RESULT(0);
         return EXIT_FAILURE;
       }
     }
@@ -289,7 +282,6 @@ int main(int argc, char* argv[])
       printf("%s", log);
       free(log);
       glutDestroyWindow(win);
-      REPORT_RESULT(0);
       return EXIT_FAILURE;
     }
   }

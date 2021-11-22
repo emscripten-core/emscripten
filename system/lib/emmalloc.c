@@ -639,7 +639,7 @@ static size_t validate_alloc_size(size_t size)
   assert(size + REGION_HEADER_SIZE > size);
 
   // Allocation sizes must be a multiple of pointer sizes, and at least 2*sizeof(pointer).
-  size_t validatedSize = size > 2*sizeof(Region*) ? (size_t)ALIGN_UP(size, sizeof(Region*)) : 2*sizeof(Region*);
+  size_t validatedSize = size > SMALLEST_ALLOCATION_SIZE ? (size_t)ALIGN_UP(size, sizeof(Region*)) : SMALLEST_ALLOCATION_SIZE;
   assert(validatedSize >= size); // 32-bit wraparound should not occur, too large sizes should be stopped before
 
   return validatedSize;
