@@ -666,6 +666,17 @@ f.close()
     emscripten_features = '\n'.join([x for x in emscripten_features.split('\n') if '***' in x])
     self.assertTextDataIdentical(native_features, emscripten_features)
 
+  # Test that the user's explicitly specified generator is always honored
+  # Internally we override the generator on windows, unles the user specifies one
+  # Test require Ninja to be installed
+  def test_cmake_explicit_generator(self):
+    if not utils.which('ninja'):
+      self.skipTest('Skipped concat generator argument test since ninja not found')
+    # use -Wno-dev to suppress an irrelevant warning about the test files only.
+    cmd = [EMCMAKE, 'cmake', '-GNinja', '-Wno-dev', test_file('cmake/cpp_lib')]
+    self.run_process(cmd)
+    self.assertExists(self.get_dir() + '/build.ninja')
+
   # Tests that it's possible to pass C++11 or GNU++11 build modes to CMake by building code that
   # needs C++11 (embind)
   def test_cmake_with_embind_cpp11_mode(self):
