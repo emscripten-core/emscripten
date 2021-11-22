@@ -3511,6 +3511,8 @@ LibraryManager.library = {
   },
 
   emscripten_console_log__sig: 'vi',
+  // TODO: Do not merge.
+  emscripten_console_log__proxy: 'sync',
   emscripten_console_log: function(str) {
 #if ASSERTIONS
     assert(typeof str === 'number');

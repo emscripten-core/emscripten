@@ -25,7 +25,10 @@ backend_t wasmfs_get_backend_by_fd(int fd);
 // Creates a JSFile Backend in the new file system.
 backend_t wasmfs_create_js_file_backend();
 
-// Creates a file in a specific backend and returns an fd to an open file.
+// Creates a Proxied Backend in the new file system.
+backend_t wasmfs_create_proxied_file_backend(backend_t backend);
+
+// Creates a new file in the new file system under a specific backend.
 uint32_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
 
 // Creates a new directory in the new file system under a specific backend.
