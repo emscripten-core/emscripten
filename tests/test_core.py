@@ -5445,6 +5445,22 @@ Module['onRuntimeInitialized'] = function() {
   def test_fs_64bit(self):
     self.do_runf(test_file('fs/test_64bit.c'), 'success')
 
+  def test_fs_delete_empty(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args += ['-std=c++17']
+    src = r'''
+        #include <iostream>
+        #include <filesystem>
+        int main()
+        {
+          std::string path("");
+          std::filesystem::remove(path);
+          std::cout << "hello" << std::endl;
+          return 0;
+        }
+      '''
+    self.do_run(src, 'hello\n')
+
   def test_sigalrm(self):
     self.do_runf(test_file('test_sigalrm.c'), 'Received alarm!')
     self.set_setting('EXIT_RUNTIME')
