@@ -25,7 +25,7 @@
 extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 extern void _emscripten_thread_init(int, int, int);
 extern int _emscripten_default_pthread_stack_size();
-extern void __pthread_detached_exit();
+extern void __emscripten_thread_cleanup(pthread_t thread);
 extern void* _emscripten_tls_base();
 extern int8_t __dso_handle;
 
@@ -236,7 +236,7 @@ void _emscripten_thread_exit(void* result) {
   // object and we are done.
   if (state == DT_DETACHED) {
     self->detach_state = DT_EXITED;
-    __pthread_detached_exit();
+    __emscripten_thread_cleanup(self);
   } else {
     self->detach_state = DT_EXITING;
     // wake any threads that might be waiting for us to exit
