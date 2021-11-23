@@ -258,20 +258,26 @@ The simplest solution is usually to build the project twice: once natively, and 
 In some cases it makes sense to modify the build scripts so that they build the generated executable natively. For example, this can be done by specifying two compilers in the build scripts, *emcc* and *gcc*, and using *gcc* just for generated executables. However, this can be more complicated than the previous solution because you need to modify the project build scripts, and you may have to work around cases where code is compiled and used both for the final result and for a generated executable.
 
 
-Dynamic linking
----------------
+Faux Dynamic Linking
+--------------------
 
-Emscripten's goal is to generate the fastest and smallest possible code, and for that reason it focuses on generating a single JavaScript file for an entire project. For that reason, dynamic linking should be avoided when possible.
+Emscripten's goal is to generate the fastest and smallest possible code, and for
+that reason it focuses on generating a single JavaScript file for an entire
+project. For that reason, dynamic linking should be avoided when possible.
 
-By default, Emscripten ``.so`` files are the same as regular ``.o`` object files.
-Dynamic libraries that you specify in the final build stage (when generating
-JavaScript or HTML) are linked in as static libraries. *Emcc* ignores commands
-to dynamically link libraries during the compile stage (i.e., not in the
-final build stage). This is to ensure that the same dynamic library is not
-linked multiple times in intermediate build stages, which would result in
-duplicate symbol errors.
+For this reason, by default, when the `-shared` flag use used to build a shared
+library, Emscripten will produce an ``.so`` library that is actually just a
+regular ``.o`` object file (Under the hood it uses `ld -r` to combine objects
+into a single larger object).  When these faux "shared libraries" are linked
+into your application they are effectively linked as static libraries.  When
+building these shared libraries *Emcc* will ignore other shared libraries on the
+command line.  This is to ensure that the same dynamic library is not linked
+multiple times in intermediate build stages, which would result in duplicate
+symbol errors.
 
-There is :ref:`experimental support <Dynamic-Linking>` for true dynamic libraries, loaded as runtime, either via dlopen or as a shared library. See that link for the details and limitations.
+See :ref:`experimental support <Dynamic-Linking>` for how to build true dynamic
+libraries, which can be linked together either at load time, or at runtime (via
+dlopen).
 
 
 Configure may run checks that appear to fail
