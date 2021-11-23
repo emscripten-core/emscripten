@@ -823,7 +823,6 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
         # TODO: Support this. See #12216.
         'pthread_setname_np.c',
         # TODO: These could be moved away from JS in the upcoming musl upgrade.
-        'pthread_cancel.c',
         'pthread_join.c', 'pthread_testcancel.c',
       ]
       libc_files += files_in_path(
