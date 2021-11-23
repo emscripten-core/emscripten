@@ -1013,11 +1013,11 @@ var LibraryEmbind = {
       invokerFuncArgs.length = isClassMethodFunc ? 2 : 1;
       invokerFuncArgs[0] = cppTargetFunc;
       if (isClassMethodFunc) {
-        thisWired = argTypes[1].toWireType(destructors, this);
+        thisWired = argTypes[1]['toWireType'](destructors, this);
         invokerFuncArgs[1] = thisWired;
       }
       for (var i = 0; i < expectedArgCount; ++i) {
-        argsWired[i] = argTypes[i + 2].toWireType(destructors, arguments[i]);
+        argsWired[i] = argTypes[i + 2]['toWireType'](destructors, arguments[i]);
         invokerFuncArgs.push(argsWired[i]);
       }
 
@@ -1040,7 +1040,7 @@ var LibraryEmbind = {
   #endif
 
         if (returns) {
-          return argTypes[0].fromWireType(rv);
+          return argTypes[0]['fromWireType'](rv);
         }
       }
 

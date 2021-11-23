@@ -2338,6 +2338,23 @@ int f() {
     self.run_process([EMXX, 'main.cpp', '--bind', '-s', 'ASYNCIFY', '--post-js', 'post.js'])
     self.assertContained('done', self.run_js('a.out.js'))
 
+  def test_embind_closure_no_dynamic_execution(self):
+    create_file('post.js', '''
+      Module['onRuntimeInitialized'] = function() {
+        out(Module['foo'](10));
+      };
+    ''')
+    create_file('main.cpp', r'''
+      #include <emscripten/bind.h>
+      int foo(int x) { return x; }
+      EMSCRIPTEN_BINDINGS(baz) {
+        emscripten::function("foo", &foo);
+      }
+    ''')
+    self.run_process([EMXX, 'main.cpp', '--bind', '-O2', '--closure', '1',
+                      '-sNO_DYNAMIC_EXECUTION', '--post-js', 'post.js'])
+    self.assertContained('10\n', self.run_js('a.out.js'))
+
   @is_slow_test
   def test_embind(self):
     environ = os.environ.copy()
