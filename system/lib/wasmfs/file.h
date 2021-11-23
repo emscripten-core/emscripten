@@ -64,6 +64,8 @@ public:
     return (ino_t)this;
   }
 
+  backend_t getBackend() { return backend; }
+
   class Handle {
 
   protected:
@@ -89,8 +91,6 @@ public:
     // specified by the parent weak_ptr.
     std::shared_ptr<File> getParent() { return file->parent.lock(); }
     void setParent(std::shared_ptr<File> parent) { file->parent = parent; }
-
-    backend_t getBackend() { return file->backend; }
   };
 
   Handle locked() { return Handle(shared_from_this()); }

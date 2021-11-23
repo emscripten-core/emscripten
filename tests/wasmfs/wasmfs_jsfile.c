@@ -37,13 +37,17 @@ int main() {
   // Create a new JS file under root.
   int fd = wasmfs_create_file("/testfile", 0777, JSBackend);
 
+  // Ensure that the size of the JS file is zero.
+  struct stat file;
+  assert(fstat(fd, &file) != -1);
+  assert(file.st_size == 0);
+
   // Try writing to and reading from the file.
   const char* msg = "Test with a new JS file\n";
   write_and_read(msg, fd);
   EM_ASM({out(wasmFS$JSMemoryFiles[0])});
 
   // Verify that the size of the JS File is the same as the written buffer.
-  struct stat file;
   assert(fstat(fd, &file) != -1);
   assert(file.st_size == strlen(msg));
 

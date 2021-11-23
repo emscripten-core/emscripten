@@ -36,6 +36,7 @@ class JSFile : public DataFile {
   // JSFiles will write from a Wasm Memory buffer into the backing JS array.
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
 
+    // TODO: Add error handling to address failures in the JS code.
     _emscripten_write_js_file(index, buf, len, offset);
 
     return __WASI_ERRNO_SUCCESS;
@@ -43,6 +44,8 @@ class JSFile : public DataFile {
 
   // JSFiles will read from the backing JS array into a Wasm Memory buffer.
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
+    // The caller should have already checked that the offset + len does
+    // not exceed the file's size.
     assert(offset + len - 1 < getSize());
 
     _emscripten_read_js_file(index, buf, len, offset);

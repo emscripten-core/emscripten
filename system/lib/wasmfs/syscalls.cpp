@@ -298,7 +298,7 @@ backend_t wasmfs_get_backend_by_fd(int fd) {
   }
 
   auto lockedOpenFile = openFile.locked();
-  return lockedOpenFile.getFile()->locked().getBackend();
+  return lockedOpenFile.getFile()->getBackend();
 }
 
 // This function is exposed to users to allow them to obtain a backend_t for a
@@ -312,7 +312,7 @@ backend_t wasmfs_get_backend_by_path(char* path) {
 
   // TODO: Remove this when path parsing has been re-factored.
   if (pathParts.size() == 1 && pathParts[0] == "/") {
-    return wasmFS.getRootDirectory()->locked().getBackend();
+    return wasmFS.getRootDirectory()->getBackend();
   }
 
   auto base = pathParts.back();
@@ -334,7 +334,7 @@ backend_t wasmfs_get_backend_by_path(char* path) {
   if (curr) {
     auto dir = curr->dynCast<Directory>();
 
-    return dir ? dir->locked().getBackend() : NullBackend;
+    return dir ? dir->getBackend() : NullBackend;
   }
 
   return NullBackend;
@@ -480,7 +480,7 @@ static __wasi_fd_t doOpen(char* pathname,
       // parent directory. However, if a backend is passed as a parameter, then
       // that backend is used.
       if (!backend) {
-        backend = lockedParentDir.getBackend();
+        backend = parentDir->getBackend();
       }
       auto created = backend->createFile(mode);
 
@@ -567,7 +567,7 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
     // the parent directory. However, if a backend is passed as a parameter,
     // then that backend is used.
     if (!backend) {
-      backend = lockedParentDir.getBackend();
+      backend = parentDir->getBackend();
     }
     auto created = backend->createDirectory(mode);
 

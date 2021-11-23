@@ -41,8 +41,7 @@ public:
   // Files will be preloaded in this constructor.
   // This global constructor has init_priority 100. Please see wasmfs.cpp.
   // The current working directory is initialized to the root directory.
-  WasmFS()
-    : backendTable(), rootDirectory(initRootDirectory()), cwd(rootDirectory) {
+  WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
     preloadFiles();
   }
 

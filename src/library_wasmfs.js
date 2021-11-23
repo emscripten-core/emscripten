@@ -1,8 +1,9 @@
 var WasmfsLibrary = {
   $wasmFS$JSMemoryFiles : [],
+  $wasmFS$JSMemoryFreeList: [],
   $wasmFS$preloadedFiles: [],
   $wasmFS$preloadedDirs: [],
-  $FS__deps: ['$wasmFS$preloadedFiles', '$wasmFS$preloadedDirs', '$wasmFS$JSMemoryFiles'],
+  $FS__deps: ['$wasmFS$preloadedFiles', '$wasmFS$preloadedDirs', '$wasmFS$JSMemoryFiles', '$wasmFS$JSMemoryFreeList'],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
@@ -88,12 +89,14 @@ var WasmfsLibrary = {
     }
   },
   _emscripten_write_js_file: function(index, buffer, length, offset) {
+    // TODO: Return an appropriate error to the C++ side if an error occurs.
     var size = wasmFS$JSMemoryFiles[index].length;
     // Resize the typed array if the length of the write buffer exceeds its capacity.
     if (offset + length >= size) {
-      var oldContents =wasmFS$JSMemoryFiles[index];
-      wasmFS$JSMemoryFiles[index] = new Uint8Array(offset + length);
-      wasmFS$JSMemoryFiles[index].set(oldContents.subarray(0, size));
+      var oldContents = wasmFS$JSMemoryFiles[index];
+      var newContents = new Uint8Array(offset + length);
+      newContents.set(oldContents);
+      wasmFS$JSMemoryFiles[index] = newContents;
     }
 
     wasmFS$JSMemoryFiles[index].set(HEAPU8.subarray(buffer, buffer + length), offset);
@@ -105,18 +108,21 @@ var WasmfsLibrary = {
     return wasmFS$JSMemoryFiles[index].length;
   },
   _emscripten_create_js_file: function() {
-    // Traverse wasmFS$JSMemoryFiles until an empty index is found.
-    for (var index = 0; index < wasmFS$JSMemoryFiles.length; index++) {
-      if (wasmFS$JSMemoryFiles[index] === null) {
-        wasmFS$JSMemoryFiles[index] = new Uint8Array(0);
-        return index;
-      }
+    // Find a free entry in the $wasmFS$JSMemoryFreeList or append a new entry to
+    // wasmFS$JSMemoryFiles.
+    if (wasmFS$JSMemoryFreeList.length) {
+      // Pop off the top of the free list.
+      var index = wasmFS$JSMemoryFreeList.pop();
+      wasmFS$JSMemoryFiles[index] = new Uint8Array(0);
+      return index;
     }
     wasmFS$JSMemoryFiles.push(new Uint8Array(0));
     return wasmFS$JSMemoryFiles.length - 1;
   },
   _emscripten_remove_js_file: function(index) {
     wasmFS$JSMemoryFiles[index] = null;
+    // Add the index to the free list.
+    wasmFS$JSMemoryFreeList.push(index);
   }
 }
 

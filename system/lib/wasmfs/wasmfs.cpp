@@ -56,7 +56,7 @@ void WasmFS::preloadFiles() {
 #endif
 
   // Obtain the backend of the root directory.
-  auto rootBackend = getRootDirectory()->locked().getBackend();
+  auto rootBackend = getRootDirectory()->getBackend();
 
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_runtime_thread());
