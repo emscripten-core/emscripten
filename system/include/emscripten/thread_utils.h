@@ -149,10 +149,10 @@ void sync_to_async::invoke(std::function<void(Callback)> newWork) {
     finishedWork = false;
     readyToWork = true;
   }
-  condition.notify_one();
 
-  // Wait for it to be complete.
+  // Notify the thread and wait for it to complete.
   std::unique_lock<std::mutex> lock(mutex);
+  condition.notify_one();
   condition.wait(lock, [&]() {
     return finishedWork;
   });
