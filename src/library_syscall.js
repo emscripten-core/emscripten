@@ -306,8 +306,8 @@ var SyscallsLibrary = {
     return stream.fd;
   },
   __syscall_unlink: function(path) {
+    path = SYSCALLS.getStr(path);
     if (path.length) {
-      path = SYSCALLS.getStr(path);
       FS.unlink(path);
     }
     return 0;
