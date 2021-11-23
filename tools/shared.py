@@ -46,7 +46,7 @@ from .settings import settings
 
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
-EXPECTED_NODE_VERSION = (4, 1, 1)
+MINIMUM_NODE_VERSION = (4, 1, 1)
 EXPECTED_LLVM_VERSION = "14.0"
 PYTHON = sys.executable
 
@@ -303,13 +303,14 @@ def env_with_node_in_path():
 def check_node_version():
   try:
     actual = run_process(config.NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
-    version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
+    version = actual.replace('v', '').replace('-pre', '').split('.')
+    version = tuple(int(v) for v in version)
   except Exception as e:
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
     return False
 
-  if version < EXPECTED_NODE_VERSION:
-    expected = '.'.join(str(v) for v in EXPECTED_NODE_VERSION)
+  if version < MINIMUM_NODE_VERSION:
+    expected = '.'.join(str(v) for v in MINIMUM_NODE_VERSION)
     diagnostics.warning('version-check', f'node version appears too old (seeing "{actual}", expected "v{expected}")')
     return False
 
