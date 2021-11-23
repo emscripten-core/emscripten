@@ -87,35 +87,29 @@ void emscripten_thread_sleep(double msecs) {
   double now = emscripten_get_now();
   double target = now + msecs;
 
-  __pthread_testcancel(); // pthreads spec: sleep is a cancellation point, so must test if this
-                          // thread is cancelled during the sleep.
-  emscripten_current_thread_process_queued_calls();
-
   // If we have less than this many msecs left to wait, busy spin that instead.
-  double min_ms_slice_to_sleep = 0.1;
+  const double min_ms_slice_to_sleep = 0.1;
 
-  // runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
-  double max_ms_slice_to_sleep = emscripten_is_main_runtime_thread() ? 1 : 100;
+  // Runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
+  const double max_ms_slice_to_sleep = emscripten_is_main_runtime_thread() ? 1 : 100;
 
   emscripten_conditional_set_current_thread_status(
     EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_SLEEPING);
-  now = emscripten_get_now();
-  while (now < target) {
+
+  double ms_to_sleep;
+  do {
     // Keep processing the main loop of the calling thread.
     __pthread_testcancel(); // pthreads spec: sleep is a cancellation point, so must test if this
                             // thread is cancelled during the sleep.
     emscripten_current_thread_process_queued_calls();
 
-    now = emscripten_get_now();
-    double ms_to_sleep = target - now;
-    if (ms_to_sleep > max_ms_slice_to_sleep) {
-      ms_to_sleep = max_ms_slice_to_sleep;
-    }
-    if (ms_to_sleep >= min_ms_slice_to_sleep) {
-      emscripten_futex_wait(&dummyZeroAddress, 0, ms_to_sleep);
-    }
-    now = emscripten_get_now();
-  };
+    ms_to_sleep = target - emscripten_get_now();
+    if (ms_to_sleep < min_ms_slice_to_sleep)
+      continue;
+
+    emscripten_futex_wait(&dummyZeroAddress, 0,
+      ms_to_sleep > max_ms_slice_to_sleep ? max_ms_slice_to_sleep : ms_to_sleep);
+  } while (ms_to_sleep > 0);
 
   emscripten_conditional_set_current_thread_status(
     EM_THREAD_STATUS_SLEEPING, EM_THREAD_STATUS_RUNNING);
@@ -390,24 +384,22 @@ static CallQueue* GetOrAllocateQueue(void* target) {
 }
 
 EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeoutMSecs) {
-  int r;
-
   int done = atomic_load(&call->operationDone);
-  if (!done) {
-    double now = emscripten_get_now();
-    double waitEndTime = now + timeoutMSecs;
-    emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
-    while (!done && now < waitEndTime) {
-      r = emscripten_futex_wait(&call->operationDone, 0, waitEndTime - now);
-      done = atomic_load(&call->operationDone);
-      now = emscripten_get_now();
-    }
-    emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
-  }
-  if (done)
-    return EMSCRIPTEN_RESULT_SUCCESS;
-  else
-    return EMSCRIPTEN_RESULT_TIMED_OUT;
+  if (done) return EMSCRIPTEN_RESULT_SUCCESS;
+
+  emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
+
+  double timeoutUntilTime = emscripten_get_now() + timeoutMSecs;
+  do {
+    emscripten_futex_wait(&call->operationDone, 0, timeoutMSecs);
+    done = atomic_load(&call->operationDone);
+
+    timeoutMSecs = timeoutUntilTime - emscripten_get_now();
+  } while (!done && timeoutMSecs > 0);
+
+  emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
+
+  return done ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_TIMED_OUT;
 }
 
 EMSCRIPTEN_RESULT emscripten_wait_for_call_i(
