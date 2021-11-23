@@ -34,16 +34,6 @@ static void dummy_0()
 }
 weak_alias(dummy_0, __pthread_tsd_run_dtors);
 
-static void __run_cleanup_handlers() {
-  pthread_t self = __pthread_self();
-  while (self->cancelbuf) {
-    void (*f)(void *) = self->cancelbuf->__f;
-    void *x = self->cancelbuf->__x;
-    self->cancelbuf = self->cancelbuf->__next;
-    f(x);
-  }
-}
-
 void __do_cleanup_push(struct __ptcb *cb) {
   struct pthread *self = __pthread_self();
   cb->__next = self->cancelbuf;
@@ -202,7 +192,12 @@ void _emscripten_thread_exit(void* result) {
   self->result = result;
 
   // Run any handlers registered with pthread_cleanup_push
-  __run_cleanup_handlers();
+  while (self->cancelbuf) {
+    void (*f)(void *) = self->cancelbuf->__f;
+    void *x = self->cancelbuf->__x;
+    self->cancelbuf = self->cancelbuf->__next;
+    f(x);
+  }
 
   // Call into the musl function that runs destructors of all thread-specific data.
   __pthread_tsd_run_dtors();
