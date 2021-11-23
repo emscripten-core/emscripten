@@ -143,7 +143,6 @@ void SyncToAsync::invoke(std::function<void(Callback)> newWork) {
   std::lock_guard<std::mutex> invokeLock(invokeMutex);
 
   // Send the work over.
-//  std::lock_guard<std::mutex> lock(mutex);
   std::unique_lock<std::mutex> lock(mutex);
   work = newWork;
   finishedWork = false;
