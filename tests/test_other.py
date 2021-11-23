@@ -712,7 +712,7 @@ f.close()
 
   # Tests that cmake functions which require evaluation via the node runtime run properly with pthreads
   def test_cmake_pthreads(self):
-    self.run_process([EMCMAKE, 'cmake', '-DCMAKE_C_FLAGS_INIT=-pthread', test_file('cmake/target_js')])
+    self.run_process([EMCMAKE, 'cmake', '-DCMAKE_C_FLAGS=-pthread', test_file('cmake/target_js')])
 
   # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
   def test_cmake_emscripten_version(self):
