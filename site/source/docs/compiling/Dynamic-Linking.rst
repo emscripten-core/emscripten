@@ -4,7 +4,7 @@
 Dynamic Linking
 ===============
 
-.. note:: Dynamic linking in emscripten is still somewhat experimental and subject to change.  This documentation is also curently somewhat outdated the in the process of being refreshed.
+.. note:: This documentation is somewhat outdated and is in the process of being refreshed.
 
 Emscripten supports linking object files (and ar archives that contain
 object files) statically.  This lets most build systems work with Emscripten
@@ -12,8 +12,8 @@ with little or no changes (see :ref:`Building-Projects`).
 
 In addition, Emscripten also has support for a form of **dynamic** linking of
 WebAssembly modules.  This can add overhead, so for best performance static
-linking should still be prefered.  However, this overhead can can be reduced
-with the use of certain command line flags, see below for details.
+linking should still be preferred.  However, this overhead can can be reduced
+with the use of certain command line flags. See below for details.
 
 Background
 ==========
@@ -63,9 +63,9 @@ Overview of Dynamic Linking
 ===========================
 
 Emscripten’s dynamic linking is fairly simple: you build several
-separate code “modules” containing JavaScript, and can link them at
-runtime. The linking basically connects up the unresolved symbols in
-each module with the implemented symbols in the others, in the simplest
+separate code “modules” from your source code, and can link them at
+runtime. The linking basically connects up the undefined symbols in
+each module with the defined symbols in the others, in the simplest
 of ways. It does not currently support some corner cases.
 
 System libraries do utilize some more advanced linking features that
@@ -77,19 +77,17 @@ the problem as follows: There are two types of shared modules:
 
 A project should contain **exactly one** main module. It can then be
 linked at runtime to multiple side modules. This model also makes other
-things simpler, like only the singleton main module has the general
-JavaScript environment setup code to connect to the web page and so
-forth; side modules contain just the pure compiled WebAssembly and
-nothing more.
+things simpler, like only the singleton main module includes the
+JavaScript environment and side modules are pure WebAssembly modules.
 
-The one tricky aspect to this design is that a side module might need a
-system library that the main doesn’t know about. See the section on
+The one tricky aspect to this design is that a side module might depend on a
+system library that the main module did not depend on. See the section on
 system libraries, below, for how to handle that.
 
 Note that the “main module” doesn’t need to contain the ``main()``
 function. It could just as easily be in a side module. What makes the
-main module the “main” module is just that there is only one main
-module, and only it has system libs linked in.
+main module the “main” module is that there is only one main module, and
+only it has system libraries linked in.
 
 (Note that system libraries are linked in to the main module
 *statically*. We still have some optimizations from doing it that way,
@@ -99,50 +97,53 @@ Practical Details
 =================
 
 If you want to jump to see running code, you can look in the test suite.
-There are ``test_dylink_*`` tests that test general dynamic linking, and
+There are ``test_dylink_*`` tests that test dynamic linking in general, and
 ``test_dlfcn_*`` tests that test ``dlopen()`` specifically. Otherwise,
 we describe the procedure now.
 
-General Dynamic Linking
------------------------
+Load-time Dynamic Linking
+-------------------------
 
--  Build one part of your code as the main module, using
-   ``-s MAIN_MODULE=1``.
--  Build other parts of your code as side modules, using
-   ``-s SIDE_MODULE=1``.
+Load-time dynamic linking refers to case when the side module are loaded
+along with the main module, during startup and they are linked together
+before your application starts to run.
 
-Important: since 1.38.16 you need to set ``-s EXPORT_ALL=1`` (for
-SIDE_MODULEs, as well as the MAIN_MODULE if it exposes functions to the
-modules). Alternatively, use ``-s EXPORTED_FUNCTIONS`` to declare the
-exported functions. Without either of them, modules are useless.
+-  Build one part of your code as the main module, linking it using
+   ``-s MAIN_MODULE``.
+-  Build other parts of your code as side modules, linking it using
+   ``-s SIDE_MODULE``.
 
-Note that both should have suffix ``.js`` or ``.wasm`` (``emcc`` uses
-suffixes to know what to emit). If you want, you can then rename the
-side modules to ``.so`` or such (but it is just a superficial change.)
+For the main module the output suffix should be ``.js`` (the WebAssembly
+file will be generated alongside it just like normal).  For the side
+module the output will be just a WebAssembly module we recommend the
+output suffix ``.wasm`` or ``.so`` (which is the shared libraries suffix used by
+UNIX systems).
 
-You then need to tell the main module to load the sides. You can do that
-using the ``Module`` object, with something like
+In order to have the side modules loaded at startup you need to tell the
+main module about their existence.  You can do this by specifying them on
+the command line when you link the main module. e.g.
 
 ::
 
-     Module.dynamicLibraries = ['libsomething.js'];
+     emcc -s MAIN_MODULE main.c libsomething.wasm
 
-At runtime, when you run the main module, if it sees
-``dynamicLibraries`` on ``Module``, then it loads them one by one and
-links them. The running application then can access code from any of the
+At runtime, the JavaScript loading code will load ``libsomthing.wasm`` (along
+with any other side modules) along with the main module before the application
+starts to run.  The running application then can access code from any of the
 modules linked together.
 
-``dlopen()`` Dynamic Linking
-----------------------------
+Runtime Dynamic Linking with ``dlopen()``
+-----------------------------------------
 
-``dlopen()`` is slightly simpler than general dynamic linking. The
-procedure begins in the same way, with the same flags used to build the
-main and side modules. The difference is that you do not use
-``Module.dynamicLibraries``; instead, you must load the side module into
-the filesystem, so that ``dlopen`` (or ``fopen``, etc.) can access it
-(except for ``dlopen(NULL)`` which means to open the current executable,
-which just works without filesystem integration). That’s basically it -
-you can then use ``dlopen(), dlsym()``, etc. normally.
+Runtime dynamic linking can be performed by the calling the ``dlopen()``
+function to load side modules after the program is already running. The
+procedure begins in the same way, with the same flags used to build the main and
+side modules.  The difference is that you do not specify the side modules on the
+command line when linking the main module; instead, you must load the side
+module into the filesystem, so that ``dlopen`` (or ``fopen``, etc.) can access
+it (except for ``dlopen(NULL)`` which means to open the current executable,
+which just works without filesystem integration). That’s basically it - you can
+then use ``dlopen(), dlsym()``, etc. normally.
 
 System Libraries
 ================
@@ -150,7 +151,7 @@ System Libraries
 As mentioned earlier, system libraries are handled in a special way by
 the Emscripten linker, and in dynamic linking, only the main module is
 linked against system libraries. A possible issue is if a side module
-needs a system library that the main does not. If so, you’ll get a
+depends on a system library that the main does not. If so, you’ll get a
 runtime error. This section explains what to do to fix that.
 
 To get around this, you can build the main module with
@@ -173,10 +174,16 @@ also possible to use normal dead code elimination, by building with
 ``-s MAIN_MODULE=2`` (instead of 1). In that mode, the main module is
 built normally, with no special behavior for keeping code alive. It is
 then your responsibility to make sure that code that side modules need
-is kept alive. You can do this in the usual ways, like adding to
-``EXPORTED_FUNCTIONS``. See ``other.test_minimal_dynamic`` for an
-example of this in action. There is also the corresponding
-``-s SIDE_MODULE=2`` for side modules.
+is kept alive. You can do this either by adding to ``EXPORTED_FUNCTIONS`` or
+tagging the symbol ``EMSCRIPTEN_KEEPALIVE`` in the source code.
+See ``other.test_minimal_dynamic`` for an example of this in action.
+
+If you are doing load time dynamic linking then any symbols needed by
+the side modules specified on the command line will be kept alive
+automatically. For this reason we strongly recommend using ``MAIN_MODULE=2``
+when doing load time dynamic linking.
+
+There is also the corresponding ``-s SIDE_MODULE=2`` for side modules.
 
 Miscellaneous Notes
 ===================
@@ -191,7 +198,7 @@ symbols remain unresolved, and code can start to run even if there are.
 It will run successfully if they are not called in practice. If they
 are, you will get a runtime error. What went wrong should be clear from
 the stack trace (in an unminified build); building with
-``-s ASSERTIONS=1`` can help some more.
+``-s ASSERTIONS`` can help some more.
 
 Limitations
 -----------
@@ -202,11 +209,14 @@ Limitations
    startup
    `[doc] <https://emscripten.org/docs/porting/files/packaging_files.html#preloading-files>`__
    `[discuss] <https://groups.google.com/forum/#!topic/emscripten-discuss/cE3hUV3fDSw>`__.
--  See also `webAssembly standalone <https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone>`_` for more on side modules in this context.
 
 Pthreads support
 ----------------
 
-Dynamic linking + pthreads is not supported. It would require new wasm
-spec features (a way to share the Table), or some serious workarounds in
-the toolchain.
+Dynamic linking + pthreads is is still experimental.  While you can link with
+``MAIN_MODULE`` and ``-pthread`` emscripten will produce a warning by default
+when you do this.
+
+While load-time dynamic linking should largely work and does not have any major
+known issues, runtime dynamic linking (with ``dlopen()``) has limited support
+when used with pthreads.
