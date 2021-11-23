@@ -34,5 +34,9 @@ int main() {
   printf("c2: %d\n", dynamic_cast<CDerived *>(pc) != NULL);
   printf("c3: %d\n", dynamic_cast<CBase *>(pc) != NULL);
 
+  delete pa;
+  delete pb;
+  delete pc;
+
   return 0;
 }

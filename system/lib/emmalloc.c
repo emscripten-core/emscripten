@@ -639,7 +639,7 @@ static size_t validate_alloc_size(size_t size)
   assert(size + REGION_HEADER_SIZE > size);
 
   // Allocation sizes must be a multiple of pointer sizes, and at least 2*sizeof(pointer).
-  size_t validatedSize = size > 2*sizeof(Region*) ? (size_t)ALIGN_UP(size, sizeof(Region*)) : 2*sizeof(Region*);
+  size_t validatedSize = size > SMALLEST_ALLOCATION_SIZE ? (size_t)ALIGN_UP(size, sizeof(Region*)) : SMALLEST_ALLOCATION_SIZE;
   assert(validatedSize >= size); // 32-bit wraparound should not occur, too large sizes should be stopped before
 
   return validatedSize;
@@ -811,6 +811,7 @@ void *emmalloc_malloc(size_t size)
   return emmalloc_memalign(MALLOC_ALIGNMENT, size);
 }
 extern __typeof(emmalloc_malloc) emscripten_builtin_malloc __attribute__((alias("emmalloc_malloc")));
+extern __typeof(emmalloc_malloc) __libc_malloc __attribute__((alias("emmalloc_malloc")));
 
 void * EMMALLOC_EXPORT malloc(size_t size)
 {
@@ -912,6 +913,7 @@ void emmalloc_free(void *ptr)
 #endif
 }
 extern __typeof(emmalloc_free) emscripten_builtin_free __attribute__((alias("emmalloc_free")));
+extern __typeof(emmalloc_free) __libc_free __attribute__((alias("emmalloc_free")));
 
 void EMMALLOC_EXPORT free(void *ptr)
 {
@@ -1132,6 +1134,7 @@ void *emmalloc_realloc(void *ptr, size_t size)
 {
   return emmalloc_aligned_realloc(ptr, MALLOC_ALIGNMENT, size);
 }
+extern __typeof(emmalloc_realloc) __libc_realloc __attribute__((alias("emmalloc_realloc")));
 
 void * EMMALLOC_EXPORT realloc(void *ptr, size_t size)
 {
@@ -1167,6 +1170,7 @@ void *emmalloc_calloc(size_t num, size_t size)
     memset(ptr, 0, bytes);
   return ptr;
 }
+extern __typeof(emmalloc_calloc) __libc_calloc __attribute__((alias("emmalloc_calloc")));
 
 void * EMMALLOC_EXPORT calloc(size_t num, size_t size)
 {

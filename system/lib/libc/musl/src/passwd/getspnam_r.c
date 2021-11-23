@@ -67,19 +67,21 @@ int getspnam_r(const char *name, struct spwd *sp, char *buf, size_t size, struct
 	size_t k, l = strlen(name);
 	int skip = 0;
 	int cs;
+	int orig_errno = errno;
 
 	*res = 0;
 
 	/* Disallow potentially-malicious user names */
 	if (*name=='.' || strchr(name, '/') || !l)
-		return EINVAL;
+		return errno = EINVAL;
 
 	/* Buffer size must at least be able to hold name, plus some.. */
-	if (size < l+100) return ERANGE;
+	if (size < l+100)
+		return errno = ERANGE;
 
 	/* Protect against truncation */
 	if (snprintf(path, sizeof path, "/etc/tcb/%s/shadow", name) >= sizeof path)
-		return EINVAL;
+		return errno = EINVAL;
 
 	fd = open(path, O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
 	if (fd >= 0) {
@@ -92,8 +94,14 @@ int getspnam_r(const char *name, struct spwd *sp, char *buf, size_t size, struct
 			return errno;
 		}
 	} else {
+		if (errno != ENOENT && errno != ENOTDIR)
+			return errno;
 		f = fopen("/etc/shadow", "rbe");
-		if (!f) return errno;
+		if (!f) {
+			if (errno != ENOENT && errno != ENOTDIR)
+				return errno;
+			return 0;
+		}
 	}
 
 	pthread_cleanup_push(cleanup, f);
@@ -112,5 +120,6 @@ int getspnam_r(const char *name, struct spwd *sp, char *buf, size_t size, struct
 		break;
 	}
 	pthread_cleanup_pop(1);
+	errno = rv ? rv : orig_errno;
 	return rv;
 }

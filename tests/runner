@@ -16,11 +16,11 @@ if [ -z "$PYTHON" ]; then
 fi
 
 if [ -z "$PYTHON" ]; then
-  PYTHON=$(which python3 2> /dev/null)
+  PYTHON=$(command -v python3 2> /dev/null)
 fi
 
 if [ -z "$PYTHON" ]; then
-  PYTHON=$(which python 2> /dev/null)
+  PYTHON=$(command -v python 2> /dev/null)
 fi
 
 if [ -z "$PYTHON" ]; then

@@ -1,5 +1,4 @@
 #include "stdio_impl.h"
-#include "libc.h"
 #include <wchar.h>
 
 static size_t wstring_read(FILE *f, unsigned char *buf, size_t len)

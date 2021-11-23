@@ -197,10 +197,6 @@ function ${name}(${args}) {
         }
       }
 
-      if (!ALLOW_UNIMPLEMENTED_SYSCALLS && LibraryManager.library[ident + '__unimplemented']) {
-        error(`attempt to link unsupport syscall: ${ident} (use -s ALLOW_UNIMPLEMENTED_SYSCALLS (the default) to allow linking with a stub version`);
-      }
-
       var original = LibraryManager.library[ident];
       var snippet = original;
       var redirectedIdent = null;
@@ -209,9 +205,13 @@ function ${name}(${args}) {
         error(`JS library directive ${ident}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
         return;
       }
+      var isUserSymbol = LibraryManager.library[ident + '__user'];
       deps.forEach((dep) => {
         if (typeof snippet === 'string' && !(dep in LibraryManager.library)) {
           warn(`missing library dependency ${dep}, make sure you are compiling with the right options (see #if in src/library*.js)`);
+        }
+        if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
+          warn(`user library symbol '${ident}' depends on internal symbol '${dep}'`)
         }
       });
       var isFunction = false;
@@ -278,7 +278,6 @@ function ${name}(${args}) {
         }
         return addFromLibrary(dep, `${identDependents}, referenced by ${dependent}`);
       }
-      var depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
       var contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
@@ -298,6 +297,16 @@ function ${name}(${args}) {
 }\n`;
           });
           proxiedFunctionTable.push(finalName);
+        } else if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[ident + '__noleakcheck']) {
+          contentText = modifyFunction(snippet, (name, args, body) => {
+            return `
+function ${name}(${args}) {
+  return withBuiltinMalloc(function() {
+    ${body}
+  });
+}\n`;
+          });
+          deps.push('$withBuiltinMalloc');
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }
@@ -331,6 +340,7 @@ function ${name}(${args}) {
         commentText = LibraryManager.library[ident + '__docs'] + '\n';
       }
 
+      var depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
       return depsText + commentText + contentText;
     }
 

@@ -74,7 +74,7 @@ int main() {
   memset(buf4, 0, 100);
 
 
-  int numItems = sscanf("level=4:ref=3", "%255[^:=]=%255[^:]:%255[^=]=%c",
+  int numItems = sscanf("level=4:ref=3", "%99[^:=]=%99[^:]:%99[^=]=%c",
                         buf1, buf2, buf3, buf4);
   printf("%d, %s, %s, %s, %s\n", numItems, buf1, buf2, buf3, buf4);
 

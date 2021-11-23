@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 #include <sys/resource.h>
 #include "syscall.h"
-#include "libc.h"
 
 #define FIX(x) do{ if ((x)>=SYSCALL_RLIM_INFINITY) (x)=RLIM_INFINITY; }while(0)
 
@@ -24,4 +23,4 @@ int prlimit(pid_t pid, int resource, const struct rlimit *new_limit, struct rlim
 }
 
 #undef prlimit64
-LFS64(prlimit);
+weak_alias(prlimit, prlimit64);

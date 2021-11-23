@@ -127,7 +127,25 @@ void test_sigwaitinfo() {
   assert(!recieved1);
 }
 
+void test_sigaction() {
+  // Use sigaction to find the existing handlers
+  struct sigaction action;
+  sigaction(SIGUSR1, NULL, &action);
+  assert(action.sa_handler == SIG_DFL);
+  assert((void (*)(int))action.sa_sigaction == SIG_DFL);
+
+  // Now install a new handler
+  action.sa_handler = handler1;
+  sigaction(SIGUSR1, &action, NULL);
+
+  // Verify that the new handler is returned
+  struct sigaction action2;
+  sigaction(SIGUSR1, NULL, &action2);
+  assert(action2.sa_handler == handler1);
+}
+
 int main() {
+  test_sigaction();
   test_bad_signal();
   test_raise_sigusr1();
   test_sigpenging();

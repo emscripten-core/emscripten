@@ -15,8 +15,8 @@ import os
 import re
 import shutil
 import subprocess
-import time
 import signal
+import stat
 import sys
 import tempfile
 
@@ -224,33 +224,14 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
 
-def run_js_tool(filename, jsargs=[], *args, **kw):
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are written
   implemented in javascript.
   """
-  command = config.NODE_JS + [filename] + jsargs
-  return check_call(command, *args, **kw).stdout
-
-
-# Only used by tests and by ctor_evaller.py.   Once fastcomp is removed
-# this can most likely be moved into the tests/jsrun.py.
-def timeout_run(proc, timeout=None, full_output=False, check=True):
-  start = time.time()
-  if timeout is not None:
-    while time.time() - start < timeout and proc.poll() is None:
-      time.sleep(0.1)
-    if proc.poll() is None:
-      proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
-      raise Exception("Timed out")
-  stdout, stderr = proc.communicate()
-  out = ['' if o is None else o for o in (stdout, stderr)]
-  if check and proc.returncode != 0:
-    raise subprocess.CalledProcessError(proc.returncode, '', stdout, stderr)
-  if TRACK_PROCESS_SPAWNS:
-    logging.info(f'Process {proc.pid} finished after {time.time() - start} seconds. Exit code: {proc.returncode}')
-  return '\n'.join(out) if full_output else out[0]
+  command = config.NODE_JS + node_args + [filename] + jsargs
+  return check_call(command, **kw).stdout
 
 
 def get_npm_cmd(name):
@@ -339,7 +320,7 @@ def set_version_globals():
   global EMSCRIPTEN_VERSION, EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY
   filename = path_from_root('emscripten-version.txt')
   EMSCRIPTEN_VERSION = utils.read_file(filename).strip().strip('"')
-  parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
+  parts = [int(x) for x in EMSCRIPTEN_VERSION.split('-')[0].split('.')]
   EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 
 
@@ -697,7 +678,7 @@ class JS:
       else:
         return 'Module["dynCall_%s"](%s)' % (sig, args)
     else:
-      return 'wasmTable.get(%s)(%s)' % (args[0], ','.join(args[1:]))
+      return 'getWasmTableEntry(%s)(%s)' % (args[0], ','.join(args[1:]))
 
   @staticmethod
   def make_invoke(sig, named=True):
@@ -749,6 +730,12 @@ def strip_prefix(string, prefix):
   return string[len(prefix):]
 
 
+def make_writable(filename):
+  assert(os.path.isfile(filename))
+  old_mode = stat.S_IMODE(os.stat(filename).st_mode)
+  os.chmod(filename, old_mode | stat.S_IWUSR)
+
+
 def safe_copy(src, dst):
   logging.debug('copy: %s -> %s', src, dst)
   src = os.path.abspath(src)
@@ -761,6 +748,9 @@ def safe_copy(src, dst):
     return
   # Copies data and permission bits, but not other metadata such as timestamp
   shutil.copy(src, dst)
+  # We always want the target file to be writable even when copying from
+  # read-only source. (e.g. a read-only install of emscripten).
+  make_writable(dst)
 
 
 def read_and_preprocess(filename, expand_macros=False):
@@ -788,7 +778,7 @@ def read_and_preprocess(filename, expand_macros=False):
   if expand_macros:
     args += ['--expandMacros']
 
-  run_js_tool(path_from_root('tools/preprocessor.js'), args, True, stdout=open(stdout, 'w'), cwd=dirname)
+  run_js_tool(path_from_root('tools/preprocessor.js'), args, stdout=open(stdout, 'w'), cwd=dirname)
   out = utils.read_file(stdout)
 
   return out

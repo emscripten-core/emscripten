@@ -6,10 +6,7 @@ Building to WebAssembly
 
 WebAssembly is a binary format for executing code on the web, allowing fast start times (smaller download and much faster parsing in browsers when compared to JS or asm.js). Emscripten compiles to WebAssembly by default, but you can also compile to JS for older browsers.
 
-For some historical background, see
-
-- `these slides <https://kripken.github.io/talks/wasm.html>`_ and
-- `this blogpost <https://hacks.mozilla.org/2015/12/compiling-to-webassembly-its-happening/>`_.
+For some historical background, see `these slides <https://kripken.github.io/talks/wasm.html>`_ and `this blogpost <https://hacks.mozilla.org/2015/12/compiling-to-webassembly-its-happening/>`_.
 
 Setup
 =====

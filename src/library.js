@@ -55,7 +55,6 @@ LibraryManager.library = {
   // to native code.
   segfault: function() { segfault(); },
   alignfault: function() { alignfault(); },
-  ftfault: function() { ftfault(); },
 #endif
 
   // ==========================================================================
@@ -91,6 +90,7 @@ LibraryManager.library = {
   utime__proxy: 'sync',
   utime__sig: 'iii',
   utime: function(path, times) {
+    {{{ from64('times') }}};
     // int utime(const char *path, const struct utimbuf *times);
     // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/utime.h.html
     var time;
@@ -121,40 +121,6 @@ LibraryManager.library = {
     return setFileTime(path, time);
   },
 
-  // ==========================================================================
-  // sys/file.h
-  // ==========================================================================
-
-  flock__unimplemented: true,
-  flock: function(fd, operation) {
-    // int flock(int fd, int operation);
-    // Pretend to succeed
-    return 0;
-  },
-
-  chroot__deps: ['$setErrNo'],
-  chroot__proxy: 'sync',
-  chroot__sig: 'ii',
-  chroot__unimplemented: true,
-  chroot: function(path) {
-    // int chroot(const char *path);
-    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chroot.html
-    setErrNo({{{ cDefine('EACCES') }}});
-    return -1;
-  },
-
-  execve__deps: ['$setErrNo'],
-  execve__sig: 'iiii',
-  execve__unimplemented: true,
-  execve: function(path, argv, envp) {
-    // int execve(const char *pathname, char *const argv[],
-    //            char *const envp[]);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
-    // We don't support executing external code.
-    setErrNo({{{ cDefine('ENOEXEC') }}});
-    return -1;
-  },
-
   exit__sig: 'vi',
 #if MINIMAL_RUNTIME
   // minimal runtime doesn't do any exit cleanup handling so just
@@ -168,35 +134,6 @@ LibraryManager.library = {
     exit(status);
   },
 #endif
-
-  // fork, spawn, etc. all return an error as we don't support multiple
-  // processes.
-  fork__deps: ['$setErrNo'],
-  fork__sig: 'i',
-  fork__unimplemented: true,
-  fork: function() {
-    // pid_t fork(void);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/fork.html
-    // We don't support multiple processes.
-    setErrNo({{{ cDefine('ENOSYS') }}});
-    return -1;
-  },
-  vfork: 'fork',
-  posix_spawn: 'fork',
-
-  setgroups__deps: ['$setErrNo', 'sysconf'],
-  setgroups__unimplemented: true,
-  setgroups: function(ngroups, gidset) {
-    // int setgroups(int ngroups, const gid_t *gidset);
-    // https://developer.apple.com/library/mac/#documentation/Darwin/Reference/ManPages/man2/setgroups.2.html
-    if (ngroups < 1 || ngroups > _sysconf({{{ cDefine('_SC_NGROUPS_MAX') }}})) {
-      setErrNo({{{ cDefine('EINVAL') }}});
-      return -1;
-    }
-    // We have just one process/user/group, so it makes no sense to set groups.
-    setErrNo({{{ cDefine('EPERM') }}});
-    return -1;
-  },
 
   emscripten_get_heap_max: function() {
 #if ALLOW_MEMORY_GROWTH
@@ -292,7 +229,7 @@ LibraryManager.library = {
 
     // Memory resize rules:
     // 1. Always increase heap size to at least the requested size, rounded up to next page multiple.
-    // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to 
+    // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to
     //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
     //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
     // 2b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
@@ -439,19 +376,23 @@ LibraryManager.library = {
 #endif
   },
   __cxa_atexit: 'atexit',
-
 #endif
 
-  // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
-  // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
+  // TODO: There are currently two abort() functions that get imported to asm
+  // module scope: the built-in runtime function abort(), and this library
+  // function _abort(). Remove one of these, importing two functions for the
+  // same purpose is wasteful.
   abort__sig: 'v',
   abort: function() {
-    abort();
+#if ASSERTIONS
+    abort('native code called abort()');
+#else
+    abort('');
+#endif
   },
 
   // This object can be modified by the user during startup, which affects
-  // the initial values of the environment accessible by getenv. (This works
-  // in both fastcomp and upstream).
+  // the initial values of the environment accessible by getenv.
   $ENV: {},
 
   getloadavg: function(loadavg, nelem) {
@@ -517,6 +458,7 @@ LibraryManager.library = {
 
   time__sig: 'ii',
   time: function(ptr) {
+    {{{ from64('ptr') }}};
     var ret = (Date.now()/1000)|0;
     if (ptr) {
       {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}};
@@ -644,7 +586,7 @@ LibraryManager.library = {
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
 
-    var zonePtr = {{{ makeGetValue('__get_tzname()', 'dst ? ' + Runtime.QUANTUM_SIZE + ' : 0', 'i32') }}};
+    var zonePtr = {{{ makeGetValue('__get_tzname()', 'dst ? ' + Runtime.POINTER_SIZE + ' : 0', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, 'zonePtr', 'i32') }}};
 
     return tmPtr;
@@ -652,9 +594,9 @@ LibraryManager.library = {
   __localtime_r: 'localtime_r',
 
   // musl-internal function used to implement both `asctime` and `asctime_r`
-  __asctime__deps: ['mktime'],
-  __asctime__sig: 'iii',
-  __asctime: function(tmPtr, buf) {
+  __asctime_r__deps: ['mktime'],
+  __asctime_r__sig: 'iii',
+  __asctime_r: function(tmPtr, buf) {
     var date = {
       tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
       tm_min: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
@@ -682,13 +624,20 @@ LibraryManager.library = {
     return buf;
   },
 
-  ctime_r__deps: ['localtime_r', '__asctime'],
+  $withStackSave__internal: true,
+  $withStackSave: function(f) {
+    var stack = stackSave();
+    var ret = f();
+    stackRestore(stack);
+    return ret;
+  },
+
+  ctime_r__deps: ['localtime_r', '__asctime_r', '$withStackSave'],
   ctime_r__sig: 'iii',
   ctime_r: function(time, buf) {
-    var stack = stackSave();
-    var rv = ___asctime(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
-    stackRestore(stack);
-    return rv;
+    return withStackSave(function() {
+      return ___asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
+    });
   },
 
   dysize: function(year) {
@@ -709,9 +658,11 @@ LibraryManager.library = {
 
   tzset_impl__proxy: 'sync',
   tzset_impl__sig: 'v',
+  tzset_impl__deps: ['_get_daylight', '_get_timezone', '_get_tzname',
 #if MINIMAL_RUNTIME
-  tzset_impl__deps: ['$allocateUTF8'],
+    '$allocateUTF8'
 #endif
+  ],
   tzset_impl: function() {
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
@@ -720,7 +671,7 @@ LibraryManager.library = {
     var summerOffset = summer.getTimezoneOffset();
 
     // Local standard timezone offset. Local standard time is not adjusted for daylight savings.
-    // This code uses the fact that getTimezoneOffset returns a greater value during Standard Time versus Daylight Saving Time (DST). 
+    // This code uses the fact that getTimezoneOffset returns a greater value during Standard Time versus Daylight Saving Time (DST).
     // Thus it determines the expected output during Standard Time, and it compares whether the output of the given date the same (Standard) or less (DST).
     var stdTimezoneOffset = Math.max(winterOffset, summerOffset);
 
@@ -744,18 +695,11 @@ LibraryManager.library = {
     if (summerOffset < winterOffset) {
       // Northern hemisphere
       {{{ makeSetValue('__get_tzname()', '0', 'winterNamePtr', 'i32') }}};
-      {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', Runtime.POINTER_SIZE, 'summerNamePtr', 'i32') }}};
     } else {
       {{{ makeSetValue('__get_tzname()', '0', 'summerNamePtr', 'i32') }}};
-      {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'winterNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', Runtime.POINTER_SIZE, 'winterNamePtr', 'i32') }}};
     }
-  },
-
-  stime__deps: ['$setErrNo'],
-  stime__unimplemented: true,
-  stime: function(when) {
-    setErrNo({{{ cDefine('EPERM') }}});
-    return -1;
   },
 
   __map_file__deps: ['$setErrNo'],
@@ -1387,14 +1331,6 @@ LibraryManager.library = {
     return _strptime(buf, format, tm); // no locale support yet
   },
 
-  getdate__unimplemented: true,
-  getdate: function(string) {
-    // struct tm *getdate(const char *string);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/getdate.html
-    // TODO: Implement.
-    return 0;
-  },
-
   timespec_get__deps: ['clock_gettime', '$setErrNo'],
   timespec_get: function(ts, base) {
     //int timespec_get(struct timespec *ts, int base);
@@ -1446,12 +1382,6 @@ LibraryManager.library = {
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
     return 0;
   },
-  clock_getcpuclockid: function(pid, clk_id) {
-    if (pid < 0) return {{{ cDefine('ESRCH') }}};
-    if (pid !== 0 && pid !== {{{ PROCINFO.pid }}}) return {{{ cDefine('ENOSYS') }}};
-    if (clk_id) {{{ makeSetValue('clk_id', 0, 2/*CLOCK_PROCESS_CPUTIME_ID*/, 'i32') }}};
-    return 0;
-  },
   gettimeofday__sig: 'iii',
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
@@ -1471,22 +1401,6 @@ LibraryManager.library = {
     {{{ makeSetValue('p', C_STRUCTS.timeb.millitm, 'millis % 1000', 'i16') }}};
     {{{ makeSetValue('p', C_STRUCTS.timeb.timezone, '0', 'i16') }}}; // Obsolete field
     {{{ makeSetValue('p', C_STRUCTS.timeb.dstflag, '0', 'i16') }}}; // Obsolete field
-    return 0;
-  },
-
-  // ==========================================================================
-  // sys/times.h
-  // ==========================================================================
-
-  times__deps: ['$zeroMemory'],
-  times__unimplemented: true,
-  times: function(buffer) {
-    // clock_t times(struct tms *buffer);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
-    // NOTE: This is fake, since we can't calculate real CPU time usage in JS.
-    if (buffer !== 0) {
-      zeroMemory(buffer, {{{ C_STRUCTS.tms.__size__ }}});
-    }
     return 0;
   },
 
@@ -1516,35 +1430,13 @@ LibraryManager.library = {
   },
 #endif
   // will never be emitted, as the dep errors at compile time
-  longjmp__unimplemented: true,
   longjmp: function(env, value) {
     abort('longjmp not supported');
   },
-  setjmp__unimplemented: true,
   setjmp: function(env, value) {
     abort('setjmp not supported');
   },
 #endif
-
-  // ==========================================================================
-  // sys/wait.h
-  // ==========================================================================
-
-  wait__deps: ['$setErrNo'],
-  wait__sig: 'ii',
-  wait__unimplemented: true,
-  wait: function(stat_loc) {
-    // pid_t wait(int *stat_loc);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/wait.html
-    // Makes no sense in a single-process environment.
-    setErrNo({{{ cDefine('ECHILD') }}});
-    return -1;
-  },
-  // NOTE: These aren't really the same, but we use the same stub for them all.
-  waitid: 'wait',
-  waitpid: 'wait',
-  wait3: 'wait',
-  wait4: 'wait',
 
   // ==========================================================================
   // errno.h
@@ -2537,40 +2429,6 @@ LibraryManager.library = {
 
 #endif // PROXY_POSIX_SOCKETS == 0
 
-  // pwd.h
-
-  getpwnam__unimplemented: true,
-  getpwnam: function() { throw 'getpwnam: TODO' },
-  getpwnam_r__unimplemented: true,
-  getpwnam_r: function() { throw 'getpwnam_r: TODO' },
-  getpwuid__unimplemented: true,
-  getpwuid: function() { throw 'getpwuid: TODO' },
-  getpwuid_r__unimplemented: true,
-  getpwuid_r: function() { throw 'getpwuid_r: TODO' },
-  setpwent__unimplemented: true,
-  setpwent: function() { throw 'setpwent: TODO' },
-  getpwent__unimplemented: true,
-  getpwent: function() { throw 'getpwent: TODO' },
-  endpwent__unimplemented: true,
-  endpwent: function() { throw 'endpwent: TODO' },
-
-  // grp.h
-
-  getgrgid__unimplemented: true,
-  getgrgid: function() { throw 'getgrgid: TODO' },
-  getgrgid_r__unimplemented: true,
-  getgrgid_r: function() { throw 'getgrgid_r: TODO' },
-  getgrnam__unimplemented: true,
-  getgrnam: function() { throw 'getgrnam: TODO' },
-  getgrnam_r__unimplemented: true,
-  getgrnam_r: function() { throw 'getgrnam_r: TODO' },
-  getgrent__unimplemented: true,
-  getgrent: function() { throw 'getgrent: TODO' },
-  endgrent__unimplemented: true,
-  endgrent: function() { throw 'endgrent: TODO' },
-  setgrent__unimplemented: true,
-  setgrent: function() { throw 'setgrent: TODO' },
-
   // random.h
 
   // TODO: consider allowing the API to get a parameter for the number of
@@ -2607,7 +2465,7 @@ LibraryManager.library = {
       _getentropy.randomDevice = getRandomDevice();
     }
     for (var i = 0; i < size; i++) {
-      {{{ makeSetValue('buffer', 'i', '_getentropy.randomDevice()', 'i8') }}}
+      {{{ makeSetValue('buffer', 'i', '_getentropy.randomDevice()', 'i8') }}};
     }
     return 0;
   },
@@ -2643,6 +2501,9 @@ LibraryManager.library = {
     {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
   },
 
+  // We use builtin_malloc and builtin_free here because otherwise lsan will
+  // report the last returned string as a leak.
+  emscripten_run_script_string__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free'],
   emscripten_run_script_string__sig: 'ii',
   emscripten_run_script_string: function(ptr) {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
@@ -2653,9 +2514,9 @@ LibraryManager.library = {
     var me = _emscripten_run_script_string;
     var len = lengthBytesUTF8(s);
     if (!me.bufferSize || me.bufferSize < len+1) {
-      if (me.bufferSize) _free(me.buffer);
+      if (me.bufferSize) _emscripten_builtin_free(me.buffer);
       me.bufferSize = len+1;
-      me.buffer = _malloc(me.bufferSize);
+      me.buffer = _emscripten_builtin_malloc(me.bufferSize);
     }
     stringToUTF8(s, me.buffer, me.bufferSize);
     return me.buffer;
@@ -2928,6 +2789,9 @@ LibraryManager.library = {
     _emscripten_log_js(flags, str);
   },
 
+  // We never free the return values of this function so we need to allocate
+  // using builtin_malloc to avoid LSan reporting these as leaks.
+  emscripten_get_compiler_setting__deps: ['emscripten_builtin_malloc'],
   emscripten_get_compiler_setting: function(name) {
 #if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
@@ -2937,10 +2801,11 @@ LibraryManager.library = {
 
     if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
     var cache = _emscripten_get_compiler_setting.cache;
-    var fullname = name + '__str';
-    var fullret = cache[fullname];
+    var fullret = cache[name];
     if (fullret) return fullret;
-    return cache[fullname] = allocate(intArrayFromString(ret + ''), ALLOC_NORMAL);
+    cache[name] = _emscripten_builtin_malloc(ret.length + 1);
+    stringToUTF8(ret + '', cache[name], ret.length + 1);
+    return cache[name];
 #else
     throw 'You must build with -s RETAIN_COMPILER_SETTINGS=1 for getCompilerSetting or emscripten_get_compiler_setting to work';
 #endif
@@ -2981,9 +2846,9 @@ LibraryManager.library = {
       // we pack index and offset into a "return address"
       return wasmOffsetConverter.convert(+match[1], +match[2]);
     } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
-      // if we are in js, we can use the js line number as the "return address"
-      // this should work for wasm2js and fastcomp
-      // we tag the high bit to distinguish this from wasm addresses
+      // If we are in js, we can use the js line number as the "return address".
+      // This should work for wasm2js.  We tag the high bit to distinguish this
+      // from wasm addresses.
       return 0x80000000 | +match[1];
     } else {
       // return 0 if we can't find any
@@ -3091,15 +2956,17 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: [
 #if USE_OFFSET_CONVERTER
+  emscripten_pc_get_function__deps: [
     '$UNWIND_CACHE',
-    '$withBuiltinMalloc',
+    'free',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
 #endif
-#endif
   ],
+  // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
+  emscripten_pc_get_function__noleakcheck: true,
+#endif
   emscripten_pc_get_function: function (pc) {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
@@ -3121,10 +2988,8 @@ LibraryManager.library = {
     } else {
       name = wasmOffsetConverter.getName(pc);
     }
-    withBuiltinMalloc(function () {
-      if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
-      _emscripten_pc_get_function.ret = allocateUTF8(name);
-    });
+    if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
+    _emscripten_pc_get_function.ret = allocateUTF8(name);
     return _emscripten_pc_get_function.ret;
 #endif
   },
@@ -3161,19 +3026,19 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', '$withBuiltinMalloc',
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'free',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
 #endif
   ],
+  // Don't treat allocation of _emscripten_pc_get_file.ret as a leak
+  emscripten_pc_get_file__noleakcheck: true,
   emscripten_pc_get_file: function (pc) {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;
 
-    withBuiltinMalloc(function () {
-      if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
-      _emscripten_pc_get_file.ret = allocateUTF8(result.file);
-    });
+    if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
+    _emscripten_pc_get_file.ret = allocateUTF8(result.file);
     return _emscripten_pc_get_file.ret;
   },
 
@@ -3230,28 +3095,24 @@ LibraryManager.library = {
 #endif
     }
   },
-#else
-  // Without lsan or asan withBuiltinMalloc is just a no-op.
-  $withBuiltinMalloc: function (func) { return func(); },
 #endif
 
-  emscripten_builtin_mmap2__deps: ['$withBuiltinMalloc', '$syscallMmap2'],
+  emscripten_builtin_mmap2__deps: ['$syscallMmap2'],
+  emscripten_builtin_mmap2__noleakcheck: true,
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
-    return withBuiltinMalloc(function () {
-      return syscallMmap2(addr, len, prot, flags, fd, off);
-    });
+    return syscallMmap2(addr, len, prot, flags, fd, off);
   },
 
-  emscripten_builtin_munmap__deps: ['$withBuiltinMalloc', '$syscallMunmap'],
+  emscripten_builtin_munmap__deps: ['$syscallMunmap'],
+  emscripten_builtin_munmap__noleakcheck: true,
   emscripten_builtin_munmap: function (addr, len) {
-    return withBuiltinMalloc(function () {
-      return syscallMunmap(addr, len);
-    });
+    return syscallMunmap(addr, len);
   },
 
   $readAsmConstArgsArray: '=[]',
   $readAsmConstArgs__deps: ['$readAsmConstArgsArray'],
   $readAsmConstArgs: function(sigPtr, buf) {
+    {{{ from64(['sigPtr', 'buf']) }}};
 #if ASSERTIONS
     // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
     assert(Array.isArray(readAsmConstArgsArray));
@@ -3269,9 +3130,9 @@ LibraryManager.library = {
 #endif
       // A double takes two 32-bit slots, and must also be aligned - the backend
       // will emit padding to avoid that.
-      var double = ch < 105;
-      if (double && (buf & 1)) buf++;
-      readAsmConstArgsArray.push(double ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
+      var readAsmConstArgsDouble = ch < 105;
+      if (readAsmConstArgsDouble && (buf & 1)) buf++;
+      readAsmConstArgsArray.push(readAsmConstArgsDouble ? HEAPF64[buf++ >> 1] : HEAP32[buf]);
       ++buf;
     }
     return readAsmConstArgsArray;
@@ -3502,7 +3363,7 @@ LibraryManager.library = {
 #endif
     return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
   },
-  $dynCall__deps: ['$dynCallLegacy'],
+  $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
 
   // Used in library code to get JS function from wasm function pointer.
   // All callers should use direct table access where possible and only fall
@@ -3536,12 +3397,13 @@ LibraryManager.library = {
     }
 #endif
 #if ASSERTIONS
-    assert(wasmTable.get(ptr), 'missing table entry in dynCall: ' + ptr);
+    assert(getWasmTableEntry(ptr), 'missing table entry in dynCall: ' + ptr);
 #endif
-    return wasmTable.get(ptr).apply(null, args)
+    return getWasmTableEntry(ptr).apply(null, args)
 #endif
   },
 
+  $callRuntimeCallbacks__internal: true,
   $callRuntimeCallbacks: function(callbacks) {
     while (callbacks.length > 0) {
       var callback = callbacks.shift();
@@ -3561,6 +3423,46 @@ LibraryManager.library = {
       }
     }
   },
+
+#if SHRINK_LEVEL == 0
+  // A mirror copy of contents of wasmTable in JS side, to avoid relatively
+  // slow wasmTable.get() call. Only used when not compiling with -Os or -Oz.
+  $wasmTableMirror__internal: true,
+  $wasmTableMirror: [],
+
+  $setWasmTableEntry__internal: true,
+  $setWasmTableEntry__deps: ['$wasmTableMirror'],
+  $setWasmTableEntry: function(idx, func) {
+    wasmTable.set(idx, func);
+    wasmTableMirror[idx] = func;
+  },
+
+  $getWasmTableEntry__internal: true,
+  $getWasmTableEntry__deps: ['$wasmTableMirror'],
+  $getWasmTableEntry: function(funcPtr) {
+    var func = wasmTableMirror[funcPtr];
+    if (!func) {
+      if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
+      wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
+    }
+#if ASSERTIONS
+    assert(wasmTable.get(funcPtr) == func, "JavaScript-side Wasm function table mirror is out of date!");
+#endif
+    return func;
+  },
+
+#else
+
+  $setWasmTableEntry: function(idx, func) {
+    wasmTable.set(idx, func);
+  },
+
+  $getWasmTableEntry: function(funcPtr) {
+    // In -Os and -Oz builds, do not implement a JS side wasm table mirror for small
+    // code size, but directly access wasmTable, which is a bit slower as uncached.
+    return wasmTable.get(funcPtr);
+  },
+#endif // SHRINK_LEVEL == 0
 
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime__sig: 'v',
@@ -3592,6 +3494,41 @@ LibraryManager.library = {
 #endif
   },
 
+  emscripten_console_log__sig: 'vi',
+  emscripten_console_log: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    console.log(UTF8ToString(str));
+  },
+
+  emscripten_console_warn__sig: 'vi',
+  emscripten_console_warn: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    console.warn(UTF8ToString(str));
+  },
+
+  emscripten_console_error__sig: 'vi',
+  emscripten_console_error: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    console.error(UTF8ToString(str));
+  },
+
+  emscripten_throw_number: function(number) {
+    throw number;
+  },
+
+  emscripten_throw_string: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    throw UTF8ToString(str);
+  },
+
 #if !MINIMAL_RUNTIME
   $handleException: function(e) {
     // Certain exception types we do not treat as errors since they are used for
@@ -3602,14 +3539,6 @@ LibraryManager.library = {
     if (e instanceof ExitStatus || e == 'unwind') {
       return EXITSTATUS;
     }
-    // Anything else is an unexpected exception and we treat it as hard error.
-    var toLog = e;
-#if ASSERTIONS
-    if (e && typeof e === 'object' && e.stack) {
-      toLog = [e, e.stack];
-    }
-#endif
-    err('exception thrown: ' + toLog);
 #if MINIMAL_RUNTIME
     throw e;
 #else
@@ -3650,9 +3579,9 @@ LibraryManager.library = {
 #endif
   ],
   $callUserCallback: function(func, synchronous) {
-    if (ABORT) {
+    if (runtimeExited || ABORT) {
 #if ASSERTIONS
-      err('user callback triggered after application aborted.  Ignoring.');
+      err('user callback triggered after runtime exited or application aborted.  Ignoring.');
 #endif
       return;
     }
@@ -3769,21 +3698,33 @@ LibraryManager.library = {
   // mode are created here and imported by the module.
   // Mark with `__import` so these are usable from native code.  This is needed
   // because, by default, only functions can be be imported.
-  __stack_pointer: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, {{{ STACK_BASE }}})",
+  __stack_pointer: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': true}, {{{ to64(STACK_BASE) }}})",
   __stack_pointer__import: true,
   // tell the memory segments where to place themselves
-  __memory_base: '{{{ GLOBAL_BASE }}}',
+  __memory_base: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
   __memory_base__import: true,
   // the wasm backend reserves slot 0 for the NULL function pointer
-  __table_base: 1,
+  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_TYPE }}}', 'mutable': false}, {{{ to64(1) }}})",
   __table_base__import: true,
+#if MEMORY64
+  __table_base32: 1,
+#endif
   // To support such allocations during startup, track them on __heap_base and
   // then when the main module is loaded it reads that value and uses it to
   // initialize sbrk (the main module is relocatable itself, and so it does not
   // have __heap_base hardcoded into it - it receives it from JS as an extern
   // global, basically).
-  __heap_base: '{{{ HEAP_BASE }}}',
+  __heap_base: '{{{ to64(HEAP_BASE) }}}',
   __heap_base__import: true,
+#if EXCEPTION_HANDLING
+  // In dynamic linking we define tags here and feed them to each module
+  __cpp_exception: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_TYPE }}}']})",
+  __cpp_exception__import: true,
+#endif
+#if SUPPORT_LONGJMP == 'wasm'
+  __c_longjmp: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_TYPE }}}']})",
+  __c_longjmp_import: true,
+#endif
 #endif
 };
 

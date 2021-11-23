@@ -6,17 +6,19 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <emscripten.h>
 #define GLFW_INCLUDE_ES2
 #include <GLFW/glfw3.h>
 
-int result = 1;
-
 GLFWwindow* g_window;
 
 void render();
-void error_callback(int error, const char* description);
+void error_callback(int error, const char* description) {
+  fprintf(stderr, "Error %d: %s\n", error, description);
+  exit(1);
+}
 
 void render() {
   glClearColor(1.0f, 1.0f, 0.0f, 1.0f);
@@ -30,8 +32,7 @@ void OnMouseClick(GLFWwindow *window, int button, int action, int mods) {
   printf("mouse actions: %d / 4\n", actions);
   if (actions >= 4) {
     printf("done.\n");
-    REPORT_RESULT(result);
-    emscripten_cancel_main_loop();
+    emscripten_force_exit(0);
   }
 }
 
@@ -41,21 +42,16 @@ int main() {
   if (!glfwInit())
   {
     printf("Could not create window. Test failed.\n");      
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
-    return -1;
+
+    return 1;
   }
   glfwWindowHint(GLFW_RESIZABLE , 1);
   g_window = glfwCreateWindow(600, 450, "GLFW pointerlock test", NULL, NULL);
   if (!g_window)
   {
     printf("Could not create window. Test failed.\n");      
-#ifdef REPORT_RESULT
-    REPORT_RESULT(result);
-#endif
     glfwTerminate();
-    return -1;
+    return 1;
   }
   glfwMakeContextCurrent(g_window);
 
@@ -70,6 +66,7 @@ int main() {
   printf("Click the canvas to enter pointer lock mode. The browser should offer to hide the mouse pointer. Make sure to accept it.\n");
   printf("If you exit pointer lock (such as pressing ESC on keyboard), clicking the canvas should lock the pointer again.\n");
   emscripten_set_main_loop(render, 0, 1);
+  __builtin_trap();
 
   glfwTerminate();
 

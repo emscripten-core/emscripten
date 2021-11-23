@@ -9,9 +9,8 @@
 /*global _malloc, _free, _memcpy*/
 /*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64*/
 /*global readLatin1String*/
-/*global __emval_register, emval_handle_array, __emval_decref*/
+/*global Emval, emval_handle_array, __emval_decref*/
 /*global ___getTypeName*/
-/*global requireHandle*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to specifically tell it about the symbols we define
@@ -55,6 +54,9 @@ var LibraryEmbind = {
     // Without dynamic execution, dynamically created functions will have no
     // names. This lets the test suite know that.
     Module['DYNAMIC_EXECUTION'] = true;
+#endif
+#if ASSERTIONS
+    Module['ASSERTIONS'] = true;
 #endif
 #if EMBIND_STD_STRING_IS_UTF8
     Module['EMBIND_STD_STRING_IS_UTF8'] = true;
@@ -405,6 +407,7 @@ var LibraryEmbind = {
   },
 
   $heap32VectorToArray: function(count, firstElement) {
+    {{{ from64('firstElement') }}}
     var array = [];
     for (var i = 0; i < count; i++) {
         array.push(HEAP32[(firstElement >> 2) + i]);
@@ -476,6 +479,7 @@ var LibraryEmbind = {
 
   $getShiftFromSize__deps: [],
   $getShiftFromSize: function(size) {
+    {{{ from64('size') }}}
     switch (size) {
         case 1: return 0;
         case 2: return 1;
@@ -641,11 +645,13 @@ var LibraryEmbind = {
             return value;
         },
         'toWireType': function(destructors, value) {
-            // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
-            // avoid the following if() and assume value is of proper type.
+#if ASSERTIONS
             if (typeof value !== "number" && typeof value !== "boolean") {
                 throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
+#endif
+            // The VM will perform JS to Wasm value conversion, according to the spec:
+            // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
             return value;
         },
         'argPackAdvance': 8,
@@ -840,19 +846,19 @@ var LibraryEmbind = {
   },
 
   _embind_register_emval__deps: [
-    '_emval_decref', '$emval_handle_array', '_emval_register',
+    '_emval_decref', '$Emval',
     '$readLatin1String', '$registerType', '$simpleReadValueFromPointer'],
   _embind_register_emval: function(rawType, name) {
     name = readLatin1String(name);
     registerType(rawType, {
         name: name,
         'fromWireType': function(handle) {
-            var rv = emval_handle_array[handle].value;
+            var rv = Emval.toValue(handle);
             __emval_decref(handle);
             return rv;
         },
         'toWireType': function(destructors, value) {
-            return __emval_register(value);
+            return Emval.toHandle(value);
         },
         'argPackAdvance': 8,
         'readValueFromPointer': simpleReadValueFromPointer,
@@ -874,6 +880,10 @@ var LibraryEmbind = {
         Uint32Array,
         Float32Array,
         Float64Array,
+#if WASM_BIGINT
+        BigInt64Array,
+        BigUint64Array,
+#endif
     ];
 
     var TA = typeMapping[dataTypeIndex];
@@ -1153,7 +1163,7 @@ var LibraryEmbind = {
         return getDynCaller(signature, rawFunction);
       }
 #endif
-      return wasmTable.get(rawFunction);
+      return getWasmTableEntry(rawFunction);
 #endif
     }
 
@@ -1467,7 +1477,7 @@ var LibraryEmbind = {
                     var clonedHandle = handle['clone']();
                     ptr = this.rawShare(
                         ptr,
-                        __emval_register(function() {
+                        Emval.toHandle(function() {
                             clonedHandle['delete']();
                         })
                     );
@@ -2405,15 +2415,15 @@ var LibraryEmbind = {
   },
 
   _embind_create_inheriting_constructor__deps: [
-    '$createNamedFunction', '_emval_register',
+    '$createNamedFunction', '$Emval',
     '$PureVirtualError', '$readLatin1String',
-    '$registerInheritedInstance', '$requireHandle',
+    '$registerInheritedInstance',
     '$requireRegisteredType', '$throwBindingError',
     '$unregisterInheritedInstance', '$detachFinalizer', '$attachFinalizer'],
   _embind_create_inheriting_constructor: function(constructorName, wrapperType, properties) {
     constructorName = readLatin1String(constructorName);
     wrapperType = requireRegisteredType(wrapperType, 'wrapper');
-    properties = requireHandle(properties);
+    properties = Emval.toValue(properties);
 
     var arraySlice = [].slice;
 
@@ -2469,7 +2479,7 @@ var LibraryEmbind = {
     for (var p in properties) {
         ctor.prototype[p] = properties[p];
     }
-    return __emval_register(ctor);
+    return Emval.toHandle(ctor);
   },
 
   $char_0: '0'.charCodeAt(0),

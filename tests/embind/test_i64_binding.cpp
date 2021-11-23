@@ -89,7 +89,8 @@ int main()
   printf("start\n");
 
   test("vector<int64_t>");
-  val::global().set("v64", val(vector<int64_t>{1, 2, 3, -4}));
+  val myval(std::vector<int64_t>{1, 2, 3, -4});
+  val::global().set("v64", myval);
   ensure_js("v64.get(0) === 1n");
   ensure_js("v64.get(1) === 2n");
   ensure_js("v64.get(2) === 3n");
@@ -106,7 +107,8 @@ int main()
   ensure_js_throws("v64.push_back(12345678901234567890123456n)", "TypeError");
 
   test("vector<uint64_t>");
-  val::global().set("vU64", val(vector<uint64_t>{1, 2, 3, 4}));
+  val myval2(vector<uint64_t>{1, 2, 3, 4});
+  val::global().set("vU64", myval2);
   ensure_js("vU64.get(0) === 1n");
   ensure_js("vU64.get(1) === 2n");
   ensure_js("vU64.get(2) === 3n");
@@ -125,6 +127,9 @@ int main()
   test("vector<uint64_t> Cannot convert bigint that is negative");
   ensure_js_throws("vU64.push_back(-1n)", "TypeError");
 
+  myval.call<void>("delete");
+  myval2.call<void>("delete");
   printf("end\n");
+
   return 0;
 }

@@ -6,20 +6,10 @@
 
 //"use strict";
 
-var Compiletime = {
-  isPointerType: isPointerType,
-  isStructType: isStructType,
-
-  isNumberType: function(type) {
-    return type in Compiletime.INT_TYPES || type in Compiletime.FLOAT_TYPES;
-  },
-
-  INT_TYPES: set('i1', 'i8', 'i16', 'i32', 'i64'),
-  FLOAT_TYPES: set('float', 'double'),
-};
-
 // code used both at compile time and runtime is defined here, then put on
 // the Runtime object for compile time and support.js for the generated code
+
+const POINTER_SIZE = MEMORY64 ? 8 : 4;
 
 function getNativeTypeSize(type) {
   switch (type) {
@@ -31,7 +21,7 @@ function getNativeTypeSize(type) {
     case 'double': return 8;
     default: {
       if (type[type.length-1] === '*') {
-        return 4; // A pointer
+        return POINTER_SIZE;
       } else if (type[0] === 'i') {
         var bits = Number(type.substr(1));
         assert(bits % 8 === 0, 'getNativeTypeSize invalid bits ' + bits + ', type ' + type);
@@ -46,24 +36,13 @@ function getNativeTypeSize(type) {
 var Runtime = {
   getNativeTypeSize: getNativeTypeSize,
 
-  //! Returns the size of a structure field, as C/C++ would have it (in 32-bit,
-  //! for now).
-  //! @param type The type, by name.
+  //! TODO(sbc): This function is unused by emscripten but we can't be
+  //! sure there are not external users.
+  //! See: https://github.com/emscripten-core/emscripten/issues/15242
   getNativeFieldSize: function(type) {
     return Math.max(getNativeTypeSize(type), Runtime.QUANTUM_SIZE);
   },
 
-  POINTER_SIZE: 4,
-  QUANTUM_SIZE: 4,
-};
-
-// Additional runtime elements, that need preprocessing
-
-// "Process info" for syscalls is static and cannot change, so define it using
-// some fixed values
-var PROCINFO = {
-  ppid: 1,
-  pid: 42,
-  sid: 42,
-  pgid: 42
+  POINTER_SIZE: POINTER_SIZE,
+  QUANTUM_SIZE: POINTER_SIZE,
 };

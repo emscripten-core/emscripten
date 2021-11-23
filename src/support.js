@@ -5,6 +5,7 @@
  */
 
 var STACK_ALIGN = {{{ STACK_ALIGN }}};
+var POINTER_SIZE = {{{ MEMORY64 ? 8 : 4 }}};
 
 {{{ getNativeTypeSize }}}
 

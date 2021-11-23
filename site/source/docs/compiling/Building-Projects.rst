@@ -253,7 +253,7 @@ Build system self-execution
 
 Some large projects generate executables and run them in order to generate input for later parts of the build process (for example, a parser may be built and then run on a grammar, which then generates C/C++ code that implements that grammar). This sort of build process causes problems when using Emscripten because you cannot directly run the code you are generating.
 
-The simplest solution is usually to build the project twice: once natively, and once to JavaScript. When the JavaScript build procedure fails because a generated executable is not present, you can then copy that executable from the native build, and continue to build normally. This approach was successfully used for compiling Python (see `tests/python/readme.md <https://github.com/emscripten-core/emscripten/blob/main/tests/python/readme.md>`_ for more details).
+The simplest solution is usually to build the project twice: once natively, and once to JavaScript. When the JavaScript build procedure fails because a generated executable is not present, you can then copy that executable from the native build, and continue to build normally. For example, this approach has been successfully used for compiling Python (which needs to run its `pgen` executable during the build).
 
 In some cases it makes sense to modify the build scripts so that they build the generated executable natively. For example, this can be done by specifying two compilers in the build scripts, *emcc* and *gcc*, and using *gcc* just for generated executables. However, this can be more complicated than the previous solution because you need to modify the project build scripts, and you may have to work around cases where code is compiled and used both for the final result and for a generated executable.
 
@@ -271,7 +271,7 @@ final build stage). This is to ensure that the same dynamic library is not
 linked multiple times in intermediate build stages, which would result in
 duplicate symbol errors.
 
-There is `experimental support <https://github.com/emscripten-core/emscripten/wiki/Linking>`_ for true dynamic libraries, loaded as runtime, either via dlopen or as a shared library. See that link for the details and limitations.
+There is :ref:`experimental support <Dynamic-Linking>` for true dynamic libraries, loaded as runtime, either via dlopen or as a shared library. See that link for the details and limitations.
 
 
 Configure may run checks that appear to fail
@@ -386,4 +386,4 @@ Troubleshooting
 
   .. note:: You can use ``llvm-nm`` to see which symbols are defined in each object file.
 
-  One solution is to use the _`dynamic-linking` approach described above. This ensures that libraries are linked only once, in the final build stage.
+  One solution is to use :ref:`dynamic-linking <Dynamic-Linking>`. This ensures that libraries are linked only once, in the final build stage.

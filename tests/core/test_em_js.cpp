@@ -5,6 +5,7 @@
 
 #include <emscripten.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 EM_JS(void, noarg, (void), { out("no args works"); });
 EM_JS(int, noarg_int, (void), {
@@ -54,7 +55,7 @@ EM_JS(int, user_comma, (void), {
   return x[y][1];
 });
 
-EM_JS(const char*, return_utf8_str, (void), {
+EM_JS(char*, return_utf8_str, (void), {
     var jsString = 'こんにちは';
     var lengthBytes = lengthBytesUTF8(jsString)+1;
     var stringOnWasmHeap = _malloc(lengthBytes);
@@ -62,7 +63,7 @@ EM_JS(const char*, return_utf8_str, (void), {
     return stringOnWasmHeap;
 });
 
-EM_JS(const char*, return_str, (void), {
+EM_JS(char*, return_str, (void), {
   var jsString = 'hello from js';
   var lengthBytes = jsString.length+1;
   var stringOnWasmHeap = _malloc(lengthBytes);
@@ -91,8 +92,12 @@ int main() {
   printf("    user_separator returned: %d\n", user_separator());
   printf("    user_comma returned: %d\n", user_comma());
 
-  printf("    return_str returned: %s\n", return_str());
-  printf("    return_utf8_str returned: %s\n", return_utf8_str());
+  char* s1 = return_str();
+  printf("    return_str returned: %s\n", s1);
+  free(s1);
+  char* s2 = return_utf8_str();
+  printf("    return_utf8_str returned: %s\n", s2);
+  free(s2);
 
   printf("    _prefixed: %d\n", _prefixed());
 

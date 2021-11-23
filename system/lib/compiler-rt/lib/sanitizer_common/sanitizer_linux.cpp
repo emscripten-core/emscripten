@@ -104,7 +104,11 @@ extern struct ps_strings *__ps_strings;
 #endif
 
 #if SANITIZER_EMSCRIPTEN
+#define weak __attribute__(__weak__)
+#define hidden __attribute__((__visibility__("hidden")))
 #include <syscall.h>
+#undef weak
+#undef hidden
 #include <emscripten/threading.h>
 #include <math.h>
 #include <wasi/api.h>
@@ -261,8 +265,11 @@ uptr internal_write(fd_t fd, const void *buf, uptr count) {
 uptr internal_ftruncate(fd_t fd, uptr size) {
   sptr res;
 #if SANITIZER_EMSCRIPTEN
+  // The __SYSCALL_LL_O macros that musl uses to split 64-bit arguments
+  // doesn't work in C++ code so we have to do it manually.
+  union { long long ll; long l[2]; } split{ .ll = size };
   HANDLE_EINTR(res, (sptr)internal_syscall(SYSCALL(ftruncate), fd,
-               0, size, 0));
+               split.l[0], split.l[1]));
 #else
   HANDLE_EINTR(res, (sptr)internal_syscall(SYSCALL(ftruncate), fd,
                (OFF_T)size));
@@ -419,7 +426,7 @@ uptr internal_dup(int oldfd) {
 }
 
 uptr internal_dup2(int oldfd, int newfd) {
-#if SANITIZER_USES_CANONICAL_LINUX_SYSCALLS
+#if SANITIZER_USES_CANONICAL_LINUX_SYSCALLS || SANITIZER_EMSCRIPTEN
   return internal_syscall(SYSCALL(dup3), oldfd, newfd, 0);
 #else
   return internal_syscall(SYSCALL(dup2), oldfd, newfd);

@@ -3,11 +3,10 @@
 #include <string.h>
 #include <errno.h>
 #include "syscall.h"
-#include "libc.h"
 
 ssize_t sendmsg(int fd, const struct msghdr *msg, int flags)
 {
-#if LONG_MAX > INT_MAX
+#if LONG_MAX > INT_MAX && !defined(__EMSCRIPTEN__)
 	struct msghdr h;
 	struct cmsghdr chbuf[1024/sizeof(struct cmsghdr)+1], *c;
 	if (msg) {

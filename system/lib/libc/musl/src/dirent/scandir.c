@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <errno.h>
 #include <stddef.h>
-#include "libc.h"
 
 int scandir(const char *path, struct dirent ***res,
 	int (*sel)(const struct dirent *),
@@ -45,4 +44,4 @@ int scandir(const char *path, struct dirent ***res,
 	return cnt;
 }
 
-LFS64(scandir);
+weak_alias(scandir, scandir64);

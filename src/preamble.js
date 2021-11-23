@@ -130,10 +130,14 @@ function ccall(ident, returnType, argTypes, args, opts) {
   }
   var ret = func.apply(null, cArgs);
   function onDone(ret) {
+#if ASYNCIFY
+    runtimeKeepalivePop();
+#endif
     if (stack !== 0) stackRestore(stack);
     return convertReturnValue(ret);
   }
 #if ASYNCIFY
+  runtimeKeepalivePush();
   var asyncMode = opts && opts.async;
   // Check if we started an async operation just now.
   if (Asyncify.currData) {
@@ -259,8 +263,10 @@ var HEAP_DATA_VIEW;
 #endif
 
 #if WASM_BIGINT
-var HEAP64;
-var HEAPU64;
+/** @type {BigInt64Array} */
+var HEAP64,
+/** @type {BigUint64Array} */
+    HEAPU64;
 #endif
 
 #if USE_PTHREADS
@@ -401,6 +407,9 @@ function preMain() {
 #endif
 
 function exitRuntime() {
+#if RUNTIME_DEBUG
+  err('exitRuntime');
+#endif
 #if ASYNCIFY && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
   Asyncify.state = Asyncify.State.Disabled;
@@ -414,6 +423,9 @@ function exitRuntime() {
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
+#endif
+#if USE_PTHREADS
+  PThread.terminateAllThreads();
 #endif
   runtimeExited = true;
 }
@@ -586,17 +598,16 @@ function abort(what) {
   }
 #endif
 
-  what += '';
+  what = 'Aborted(' + what + ')';
+  // TODO(sbc): Should we remove printing and leave it up to whoever
+  // catches the exception?
   err(what);
 
   ABORT = true;
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
-  what = 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
-#else
-  var output = 'abort(' + what + ') at ' + stackTrace();
-  what = output;
+  what += '. Build with -s ASSERTIONS=1 for more info.';
 #endif // ASSERTIONS
 
   // Use a wasm runtime error, because a JS error might be seen as a foreign
@@ -617,7 +628,7 @@ function abort(what) {
 
 #include "memoryprofiler.js"
 
-#if ASSERTIONS && !('$FS' in addedLibraryItems) && !ASMFS
+#if ASSERTIONS && !('$FS' in addedLibraryItems) && !ASMFS && !WASMFS
 // show errors on likely calls to FS when it was not included
 var FS = {
   error: function() {
@@ -686,7 +697,7 @@ function makeAbortWrapper(original) {
       if (
         ABORT // rethrow exception if abort() was called in the original function call above
         || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
-#if SUPPORT_LONGJMP
+#if SUPPORT_LONGJMP == 'emscripten'
         || e === 'longjmp' // rethrow longjmp if enabled
 #endif
       ) {
@@ -727,6 +738,7 @@ function instrumentWasmTableWithAbort() {
   var realGet = wasmTable.get;
   var wrapperCache = {};
   wasmTable.get = function(i) {
+    {{{ from64('i') }}}
     var func = realGet.call(wasmTable, i);
     var cached = wrapperCache[i];
     if (!cached || cached.func !== func) {
@@ -739,6 +751,52 @@ function instrumentWasmTableWithAbort() {
   };
 }
 #endif
+
+#if MEMORY64
+// In memory64 mode wasm pointers are 64-bit. To support that in JS we must use
+// BigInts. For now we keep JS as much the same as it always was, that is,
+// stackAlloc() receives and returns a Number from the JS point of view -
+// we translate BigInts automatically for that.
+// TODO: support minified export names, so we can turn MINIFY_WASM_IMPORTS_AND_EXPORTS
+// back on for MEMORY64.
+function instrumentWasmExportsForMemory64(exports) {
+  var instExports = {};
+  for (var name in exports) {
+    (function(name) {
+      var original = exports[name];
+      var replacement = original;
+      if (name === 'stackAlloc' || name === 'malloc') {
+        // get one i64, return an i64
+        replacement = function(x) {
+          var r = Number(original(BigInt(x)));
+          return r;
+        };
+      } else if (name === 'free') {
+        // get one i64
+        replacement = function(x) {
+          original(BigInt(x));
+        };
+      } else if (name === 'emscripten_stack_get_end' ||
+                 name === 'emscripten_stack_get_base' ||
+                 name === 'emscripten_stack_get_current') {
+        // return an i64
+        replacement = function() {
+          var r = Number(original());
+          return r;
+        };
+      } else if (name === 'main') {
+        // get a i64 as second arg
+        replacement = function(x, y) {
+          var r = original(x, BigInt(y));
+          return r;
+        };
+      }
+      instExports[name] = replacement;
+    })(name);
+  }
+  return instExports;
+}
+#endif MEMORY64
 
 var wasmBinaryFile;
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE
@@ -959,6 +1017,10 @@ function createWasm() {
     exports = relocateExports(exports, {{{ GLOBAL_BASE }}});
 #endif
 
+#if MEMORY64
+    exports = instrumentWasmExportsForMemory64(exports);
+#endif
+
 #if ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
@@ -970,13 +1032,21 @@ function createWasm() {
     Module['asm'] = exports;
 
 #if MAIN_MODULE
-#if AUTOLOAD_DYLIBS
     var metadata = getDylinkMetadata(module);
+#if AUTOLOAD_DYLIBS
     if (metadata.neededDynlibs) {
       dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
     }
 #endif
     mergeLibSymbols(exports, 'main')
+#endif
+
+#if USE_PTHREADS
+#if MAIN_MODULE
+    registerTlsInit(Module['asm']['emscripten_tls_init'], instance.exports, metadata);
+#else
+    registerTlsInit(Module['asm']['emscripten_tls_init']);
+#endif
 #endif
 
 #if !IMPORTED_MEMORY
@@ -1015,7 +1085,6 @@ function createWasm() {
     exportAsmFunctions(exports);
 #endif
 #if USE_PTHREADS
-    PThread.tlsInitFunctions.push(Module['asm']['emscripten_tls_init']);
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
     // Instantiation is synchronous in pthreads and we assert on run dependencies.

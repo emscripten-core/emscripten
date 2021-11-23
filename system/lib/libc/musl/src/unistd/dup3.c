@@ -3,7 +3,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include "syscall.h"
-#include "libc.h"
 
 int __dup3(int old, int new, int flags)
 {

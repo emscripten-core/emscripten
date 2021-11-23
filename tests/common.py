@@ -39,8 +39,14 @@ logger = logging.getLogger('common')
 
 # User can specify an environment variable EMTEST_BROWSER to force the browser
 # test suite to run using another browser command line than the default system
-# browser.  Setting '0' as the browser disables running a browser (but we still
-# see tests compile)
+# browser.
+# There are two special value that can be used here if running in an actual
+# browser is not desired:
+#  EMTEST_BROWSER=0 : This will disable the actual running of the test and simply
+#                     verify that it compiles and links.
+#  EMTEST_BROWSER=node : This will attempt to run the browser test under node.
+#                        For most browser tests this does not work, but it can
+#                        be useful for running pthread tests under node.
 EMTEST_BROWSER = None
 EMTEST_DETECT_TEMPFILE_LEAKS = None
 EMTEST_SAVE_DIR = None
@@ -51,6 +57,7 @@ EMTEST_SKIP_SLOW = None
 EMTEST_LACKS_NATIVE_CLANG = None
 EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
+EMTEST_FORCE64 = None
 
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
@@ -67,6 +74,8 @@ EMMAKE = shared.bat_suffix(path_from_root('emmake'))
 def delete_contents(pathname):
   for entry in os.listdir(pathname):
     try_delete(os.path.join(pathname, entry))
+    # TODO(sbc): Should we make try_delete have a stronger guarantee?
+    assert not os.path.exists(os.path.join(pathname, entry))
 
 
 def test_file(*path_components):
@@ -427,8 +436,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           print('Not clearing existing test directory')
         else:
           print('Clearing existing test directory')
-          # Even when EMTEST_SAVE_DIR we still try to start with an empty directoy as many tests
-          # expect this.  EMTEST_SAVE_DIR=2 can be used to keep the old contents for the new test
+          # Even when --save-dir is used we still try to start with an empty directory as many tests
+          # expect this.  --no-clean can be used to keep the old contents for the new test
           # run. This can be useful when iterating on a given test with extra files you want to keep
           # around in the output directory.
           delete_contents(self.working_dir)
@@ -541,9 +550,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     es_check_env = os.environ.copy()
     es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
     try:
-      shared.run_process(es_check + ['es5', os.path.abspath(filename), '--quiet'], stderr=PIPE, env=es_check_env)
+      # es-check prints the details of the errors to stdout, but it also prints
+      # stuff in the case there are no errors:
+      #  ES-Check: there were no ES version matching errors!
+      # pipe stdout and stderr so that we can choose if/when to print this
+      # output and avoid spamming stdout when tests are successful.
+      shared.run_process(es_check + ['es5', os.path.abspath(filename)], stdout=PIPE, stderr=STDOUT, env=es_check_env)
     except subprocess.CalledProcessError as e:
-      print(e.stderr)
+      print(e.stdout)
       self.fail('es-check failed to verify ES5 output compliance')
 
   # Build JavaScript code from source code
@@ -552,9 +566,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     compiler = [compiler_for(filename, force_c)]
     if compiler[0] == EMCC:
       # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
-      # We link with C++ stdlibs, even when linking with emcc for historical reasons.  We can remove
-      # this if this issues is fixed.
-      compiler.append('-nostdlib++')
+      # For historical reasons emcc compiles and links as C++ by default.
+      # However we want to run our tests in a more strict manner.  We can
+      # remove this if the issue above is ever fixed.
+      compiler.append('-sNO_DEFAULT_TO_CXX')
 
     if force_c:
       compiler.append('-xc')
@@ -642,6 +657,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       stderr_file = self.in_dir('stderr')
       stderr = open(stderr_file, 'w')
     error = None
+    timeout_error = None
     if not engine:
       engine = self.js_engines[0]
     if engine == config.NODE_JS:
@@ -653,6 +669,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                    stdout=open(stdout_file, 'w'),
                    stderr=stderr,
                    assert_returncode=assert_returncode)
+    except subprocess.TimeoutExpired as e:
+      timeout_error = e
     except subprocess.CalledProcessError as e:
       error = e
 
@@ -665,7 +683,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       ret += read_file(stderr_file)
     if output_nicerizer:
       ret = output_nicerizer(ret)
-    if error or EMTEST_VERBOSE:
+    if error or timeout_error or EMTEST_VERBOSE:
       ret = limit_size(ret)
       print('-- begin program output --')
       print(read_file(stdout_file), end='')
@@ -674,11 +692,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         print('-- begin program stderr --')
         print(read_file(stderr_file), end='')
         print('-- end program stderr --')
-      if error:
-        if assert_returncode == NON_ZERO:
-          self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
-        else:
-          self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
+    if timeout_error:
+      raise timeout_error
+    if error:
+      if assert_returncode == NON_ZERO:
+        self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
+      else:
+        self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
 
     #  We should pass all strict mode checks
     self.assertNotContained('strict warning:', ret)
@@ -722,7 +742,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       print("Expected to have '%s' == '%s'" % (limit_size(values[0]), limit_size(y)))
     fail_message = 'Unexpected difference:\n' + limit_size(diff)
     if not EMTEST_VERBOSE:
-      fail_message += '\nFor full output run with EMTEST_VERBOSE=1.'
+      fail_message += '\nFor full output run with --verbose.'
     if msg:
       fail_message += '\n' + msg
     self.fail(fail_message)
@@ -731,6 +751,22 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     text1 = text1.replace('\r\n', '\n')
     text2 = text2.replace('\r\n', '\n')
     return self.assertContained(text1, text2)
+
+  def assertFileContents(self, filename, contents):
+    contents = contents.replace('\r', '')
+
+    if EMTEST_REBASELINE:
+      with open(filename, 'w') as f:
+        f.write(contents)
+      return
+
+    if not os.path.exists(filename):
+      self.fail('Test expectation file not found: ' + filename + '.\n' +
+                'Run with --rebaseline to generate.')
+    expected_content = read_file(filename)
+    message = "Run with --rebaseline to automatically update expectations"
+    self.assertTextDataIdentical(expected_content, contents, message,
+                                 filename, filename + '.new')
 
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]:
@@ -752,10 +788,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if callable(string):
       string = string()
     if value in string:
-      self.fail("Expected to NOT find '%s' in '%s', diff:\n\n%s" % (
-        limit_size(value), limit_size(string),
-        limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(value.split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
-      ))
+      self.fail("Expected to NOT find '%s' in '%s'" % (limit_size(value), limit_size(string)))
 
   def assertContainedIf(self, value, string, condition):
     if condition:
@@ -1004,7 +1037,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self._build_and_run(filename, expected_output, **kwargs)
 
   def do_runf(self, filename, expected_output=None, **kwargs):
-    self._build_and_run(filename, expected_output, **kwargs)
+    return self._build_and_run(filename, expected_output, **kwargs)
 
   ## Just like `do_run` but with filename of expected output
   def do_run_from_file(self, filename, expected_output_filename, **kwargs):
@@ -1048,8 +1081,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       engines += self.wasm_engines
       if self.get_setting('WASM2C') and not EMTEST_LACKS_NATIVE_CLANG:
         # compile the c file to a native executable.
-        c = shared.unsuffixed(js_file) + '.wasm.c'
-        executable = shared.unsuffixed(js_file) + '.exe'
+        c = shared.replace_suffix(js_file, '.wasm.c')
+        executable = shared.replace_suffix(js_file, '.exe')
         cmd = [shared.CLANG_CC, c, '-o', executable] + clang_native.get_clang_native_args()
         self.run_process(cmd, env=clang_native.get_clang_native_env())
         # we can now run the executable directly, without an engine, which
@@ -1077,6 +1110,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         except Exception:
           print('(test did not pass in JS engine: %s)' % engine)
           raise
+    return js_output
 
   def get_freetype_library(self):
     if '-Werror' in self.emcc_args:
@@ -1301,7 +1335,7 @@ class BrowserCore(RunnerCore):
     super().setUpClass()
     cls.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
     cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
-    if not has_browser():
+    if not has_browser() or EMTEST_BROWSER == 'node':
       return
     cls.browser_timeout = 60
     cls.harness_in_queue = multiprocessing.Queue()
@@ -1314,7 +1348,7 @@ class BrowserCore(RunnerCore):
   @classmethod
   def tearDownClass(cls):
     super().tearDownClass()
-    if not has_browser():
+    if not has_browser() or EMTEST_BROWSER == 'node':
       return
     cls.harness_server.terminate()
     print('[Browser harness server terminated]')
@@ -1513,6 +1547,8 @@ class BrowserCore(RunnerCore):
         args += ['-I' + TEST_ROOT,
                  '-include', test_file('report_result.h'),
                  test_file('report_result.cpp')]
+    if EMTEST_BROWSER == 'node':
+      args.append('-DEMTEST_NODE')
     self.run_process([EMCC] + self.get_emcc_args() + args)
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
@@ -1523,6 +1559,8 @@ class BrowserCore(RunnerCore):
     REPORT_RESULT macro to the C code.
     """
     self.set_setting('EXIT_RUNTIME')
+    assert('reporting' not in kwargs)
+    assert('expected' not in kwargs)
     kwargs['reporting'] = Reporting.JS_ONLY
     kwargs['expected'] = 'exit:%d' % assert_returncode
     return self.btest(filename, *args, **kwargs)
@@ -1556,7 +1594,13 @@ class BrowserCore(RunnerCore):
       post_build()
     if not isinstance(expected, list):
       expected = [expected]
-    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
+    if EMTEST_BROWSER == 'node':
+      self.js_engines = [config.NODE_JS]
+      self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+      output = self.run_js('test.js')
+      self.assertContained('RESULT: ' + expected[0], output)
+    else:
+      self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
     # Tests can opt into being run under asmjs as well
     if 'WASM=0' not in original_args and (also_asmjs or self.also_asmjs):

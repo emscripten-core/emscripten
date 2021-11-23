@@ -6,20 +6,22 @@
         "file": "pthread_impl.h",
         "structs": {
             "pthread": [
-              "threadStatus",
               "profilerBlock",
               "self",
               "tsd",
-              "detached",
               "stack",
               "stack_size",
+              "stack_owned",
               "result",
-              "attr",
               "robust_list",
               "tid",
+              "cancel",
               "canceldisable",
               "cancelasync",
               "locale"
+            ],
+            "pthread_attr_t#": [
+              "_a_transferredcanvases"
             ],
             "thread_profiler_block": [
                 "threadStatus",
@@ -29,15 +31,20 @@
             ]
         },
         "defines": [
-          "__ATTRP_C11_THREAD",
           "EM_THREAD_NAME_MAX"
         ]
     },
     {
-        "file": "libc.h",
+        "file": "dynlink.h",
         "structs": {
-            "libc": [
-              "global_locale"
+            "dso": [
+              "flags",
+              "mem_allocated",
+              "mem_addr",
+              "mem_size",
+              "table_addr",
+              "table_size",
+              "name"
             ]
         }
     }

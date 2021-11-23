@@ -68,6 +68,7 @@ unsupported_noreturn = {
 }
 
 unsupported = {
+  'test_pthread_attr_setinheritsched_2_2': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setinheritsched_2_4': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setschedparam_1_3': 'scheduling policy/parameters are not supported',
@@ -88,8 +89,10 @@ unsupported = {
   'test_pthread_cond_wait_2_2': 'lacking necessary mmap() support',
   'test_pthread_create_8_1': 'signals are not supported',
   'test_pthread_create_8_2': 'signals are not supported',
-  'test_pthread_create_10_1': 'signals are not supported',
+  'test_pthread_create_11_1': '_POSIX_THREAD_CPUTIME not supported',
+  'test_pthread_getcpuclockid_1_1': 'pthread_getcpuclockid not supported',
   'test_pthread_getschedparam_1_3': 'scheduling policy/parameters are not supported',
+  'test_pthread_getschedparam_1_2': 'scheduling policy/parameters are not supported',
   'test_pthread_kill_1_2': 'signals are not supported',
   'test_pthread_mutexattr_getprioceiling_1_2': 'pthread_mutexattr_setprioceiling is not supported',
   'test_pthread_mutexattr_getprotocol_1_2': 'pthread_mutexattr_setprotocol is not supported',
@@ -111,6 +114,10 @@ unsupported = {
   'test_pthread_rwlock_timedwrlock_6_1': 'signals are not supported',
   'test_pthread_rwlock_timedwrlock_6_2': 'signals are not supported',
   'test_pthread_rwlock_wrlock_2_1': 'signals are not supported',
+  'test_pthread_setschedparam_1_1': 'scheduling policy/parameters are not supported',
+  'test_pthread_setschedparam_1_2': 'scheduling policy/parameters are not supported',
+  'test_pthread_setschedparam_4_1': 'scheduling policy/parameters are not supported',
+  'test_pthread_setschedprio_1_1': 'scheduling policy/parameters are not supported',
   'test_pthread_spin_init_2_1': 'shm_open and shm_unlink are not supported',
   'test_pthread_spin_init_2_2': 'shm_open and shm_unlink are not supported',
 }
@@ -121,6 +128,8 @@ flaky = {
   'test_pthread_cond_signal_1_1': 'flaky: https://github.com/emscripten-core/emscripten/issues/13283',
   'test_pthread_barrier_wait_2_1': 'flaky: https://github.com/emscripten-core/emscripten/issues/14508',
   'test_pthread_rwlock_unlock_3_1': 'Test fail: writer did not get write lock, when main release the lock',
+  'test_pthread_mutex_init_1_2': 'flaky: https://github.com/emscripten-core/posixtestsuite/pull/9',
+  'test_pthread_mutex_init_3_2': 'flaky: https://github.com/emscripten-core/posixtestsuite/pull/9',
 }
 
 # Mark certain tests as disabled.  These are tests that are either flaky or never return.

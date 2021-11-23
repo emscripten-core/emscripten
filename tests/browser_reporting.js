@@ -9,13 +9,20 @@ function reportResultToServer(result, sync, port) {
     reportErrorToServer("excessive reported results, sending " + result + ", test will fail");
   }
   reportResultToServer.reported = true;
-  var xhr = new XMLHttpRequest();
-  if (hasModule && Module['pageThrewException']) {
-    result = 'pageThrewException';
+  if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
+    out('RESULT: ' + result);
+  } else {
+    var xhr = new XMLHttpRequest();
+    if (hasModule && Module['pageThrewException']) {
+      result = 'pageThrewException';
+    }
+    xhr.open('GET', 'http://localhost:' + port + '/report_result?' + result, !sync);
+    xhr.send();
+    if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
+      /* for easy debugging, don't close window on failure */
+      setTimeout(function() { window.close() }, 1000);
+    }
   }
-  xhr.open('GET', 'http://localhost:' + port + '/report_result?' + result, !sync);
-  xhr.send();
-  if (typeof window === 'object' && window && hasModule && !Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
 }
 
 /** @param {boolean=} sync
@@ -27,8 +34,12 @@ function maybeReportResultToServer(result, sync, port) {
 
 function reportErrorToServer(message) {
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', encodeURI('http://localhost:8888?stderr=' + message));
-  xhr.send();
+  if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
+    err(message);
+  } else {
+    xhr.open('GET', encodeURI('http://localhost:8888?stderr=' + message));
+    xhr.send();
+  }
 }
 
 if (typeof window === 'object' && window) {
@@ -55,11 +66,15 @@ if (typeof window === 'object' && window) {
 }
 
 if (hasModule) {
-  Module['onExit'] = function(status) {
-    maybeReportResultToServer('exit:' + status);
+  if (!Module['onExit']) {
+    Module['onExit'] = function(status) {
+      maybeReportResultToServer('exit:' + status);
+    }
   }
 
-  Module['onAbort'] = function(reason) {
-    maybeReportResultToServer('abort:' + reason);
+  if (!Module['onAbort']) {
+    Module['onAbort'] = function(reason) {
+      maybeReportResultToServer('abort:' + reason);
+    }
   }
 }

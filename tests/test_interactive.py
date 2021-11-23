@@ -26,7 +26,7 @@ class interactive(BrowserCore):
     print()
 
   def test_html5_fullscreen(self):
-    self.btest(test_file('test_html5_fullscreen.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-s', 'EXPORTED_FUNCTIONS=["_requestFullscreen","_enterSoftFullscreen","_main"]', '--shell-file', test_file('test_html5_fullscreen.html')])
+    self.btest(test_file('test_html5_fullscreen.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-s', 'EXPORTED_FUNCTIONS=_requestFullscreen,_enterSoftFullscreen,_main', '--shell-file', test_file('test_html5_fullscreen.html')])
 
   def test_html5_emscripten_exit_with_escape(self):
     self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1', args=['-DEXIT_WITH_F'])
@@ -41,7 +41,7 @@ class interactive(BrowserCore):
     self.btest(test_file('test_html5_pointerlockerror.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
 
   def test_sdl_mousewheel(self):
-    self.btest(test_file('test_sdl_mousewheel.c'), expected='0')
+    self.btest_exit(test_file('test_sdl_mousewheel.c'))
 
   def test_sdl_touch(self):
     self.btest(test_file('sdl_touch.c'), args=['-O2', '-g1', '--closure=1'], expected='0')
@@ -50,7 +50,7 @@ class interactive(BrowserCore):
     self.btest('sdl_wm_togglefullscreen.c', expected='1')
 
   def test_sdl_fullscreen_samecanvassize(self):
-    self.btest('sdl_fullscreen_samecanvassize.c', expected='1')
+    self.btest_exit('sdl_fullscreen_samecanvassize.c')
 
   def test_sdl2_togglefullscreen(self):
     self.btest('sdl_togglefullscreen.c', expected='1', args=['-s', 'USE_SDL=2'])
@@ -63,7 +63,7 @@ class interactive(BrowserCore):
     open(os.path.join(self.get_dir(), 'bad.ogg'), 'w').write('I claim to be audio, but am lying')
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest(['-O2', '--closure=1', '--minify=0', test_file('sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]'])
+    self.compile_btest(['-O2', '--closure=1', '--minify=0', test_file('sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=_main,_play,_play2'])
     self.run_browser('page.html', '', '/report_result?1')
 
     # print('SDL2')
@@ -72,28 +72,36 @@ class interactive(BrowserCore):
     #        depended on fragile SDL1/SDL2 mixing, which stopped working with
     #        7a5744d754e00bec4422405a1a94f60b8e53c8fc (which just uncovered
     #        the existing problem)
-    # self.run_process([EMCC, '-O1', '--closure', '0', '--minify=0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
+    # self.run_process([EMCC, '-O1', '--closure', '0', '--minify=0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=[_main,_play,_play2', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
     # self.run_browser('page.html', '', '/report_result?1')
 
-  def test_sdl_audio_mix_channels(self):
+  @parameterized({
+    '': ([],),
+    'wasmfs': (['-s', 'WASMFS'],),
+  })
+  def test_sdl_audio_mix_channels(self, args):
     shutil.copyfile(test_file('sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
 
-    self.compile_btest(['-O2', '--minify=0', test_file('sdl_audio_mix_channels.c'), '--preload-file', 'sound.ogg', '-o', 'page.html'])
+    self.compile_btest(['-O2', '--minify=0', test_file('sdl_audio_mix_channels.c'), '--preload-file', 'sound.ogg', '-o', 'page.html'] + args)
     self.run_browser('page.html', '', '/report_result?1')
 
-  def test_sdl_audio_mix(self):
+  @parameterized({
+    '': ([],),
+    'wasmfs': (['-s', 'WASMFS'],),
+  })
+  def test_sdl_audio_mix(self, args):
     shutil.copyfile(test_file('sounds', 'pluck.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
     shutil.copyfile(test_file('sounds', 'the_entertainer.ogg'), os.path.join(self.get_dir(), 'music.ogg'))
     shutil.copyfile(test_file('sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'noise.ogg'))
 
-    self.compile_btest(['-O2', '--minify=0', test_file('sdl_audio_mix.c'), '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg', '-o', 'page.html'])
+    self.compile_btest(['-O2', '--minify=0', test_file('sdl_audio_mix.c'), '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg', '-o', 'page.html'] + args)
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_panning(self):
     shutil.copyfile(test_file('sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'the_entertainer.wav'))
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.compile_btest(['-O2', '--closure=1', '--minify=0', test_file('sdl_audio_panning.c'), '--preload-file', 'the_entertainer.wav', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play"]'])
+    self.compile_btest(['-O2', '--closure=1', '--minify=0', test_file('sdl_audio_panning.c'), '--preload-file', 'the_entertainer.wav', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=_main,_play'])
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_beeps(self):
@@ -102,8 +110,8 @@ class interactive(BrowserCore):
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl2_mixer_wav(self):
-    shutil.copyfile(test_file('sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'sound.wav'))
-    self.btest('sdl2_mixer_wav.c', expected='1', args=[
+    shutil.copyfile(test_file('sounds', 'the_entertainer.wav'), 'sound.wav')
+    self.btest_exit('sdl2_mixer_wav.c', args=[
       '-O2',
       '-s', 'USE_SDL=2',
       '-s', 'USE_SDL_MIXER=2',
@@ -195,26 +203,26 @@ class interactive(BrowserCore):
     self.run_browser('page.html', 'You should hear "Hello World!"')
 
   def test_glfw_cursor_disabled(self):
-    self.btest('test_glfw_cursor_disabled.c', expected='1', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
+    self.btest_exit('test_glfw_cursor_disabled.c', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
 
   def test_glfw_dropfile(self):
-    self.btest('test_glfw_dropfile.c', expected='1', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
+    self.btest_exit('test_glfw_dropfile.c', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
 
   def test_glfw_fullscreen(self):
-    self.btest('test_glfw_fullscreen.c', expected='1', args=['-s', 'USE_GLFW=3'])
+    self.btest_exit('test_glfw_fullscreen.c', args=['-s', 'USE_GLFW=3'])
 
   def test_glfw_get_key_stuck(self):
-    self.btest('test_glfw_get_key_stuck.c', expected='1', args=['-s', 'USE_GLFW=3'])
+    self.btest_exit('test_glfw_get_key_stuck.c', args=['-s', 'USE_GLFW=3'])
 
   def test_glfw_joystick(self):
-    self.btest('glfw_joystick.c', expected='1', args=['-s', 'USE_GLFW=3'])
+    self.btest_exit('glfw_joystick.c', args=['-s', 'USE_GLFW=3'])
 
   def test_glfw_pointerlock(self):
-    self.btest('test_glfw_pointerlock.c', expected='1', args=['-s', 'USE_GLFW=3'])
+    self.btest_exit('test_glfw_pointerlock.c', args=['-s', 'USE_GLFW=3'])
 
   def test_glut_fullscreen(self):
     self.skipTest('looks broken')
-    self.btest('glut_fullscreen.c', expected='1', args=['-lglut', '-lGL'])
+    self.btest_exit('glut_fullscreen.c', args=['-lglut', '-lGL'])
 
   def test_cpuprofiler_memoryprofiler(self):
     self.btest('hello_world_gles.c', expected='0', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '-O2', '--cpuprofiler', '--memoryprofiler'])

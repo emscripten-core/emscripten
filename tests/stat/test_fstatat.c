@@ -135,6 +135,22 @@ void test() {
 #endif
 
   close(fd);
+  
+  // lstat a link - with AT_FDCWD and AT_SYMLINK_NOFOLLOW.
+  memset(&s, 0, sizeof(s));
+  err = fstatat(AT_FDCWD, "folder/file-link", &s, AT_SYMLINK_NOFOLLOW);
+  assert(!err);
+  assert(s.st_dev);
+  assert(s.st_ino);
+  assert(S_ISLNK(s.st_mode));
+  assert(s.st_nlink);
+  assert(s.st_rdev == 0);
+  assert(s.st_size == 4);
+  assert(s.st_ctime);
+#ifdef __EMSCRIPTEN__
+  assert(s.st_blksize == 4096);
+  assert(s.st_blocks == 1);
+#endif
 
   puts("success");
 }

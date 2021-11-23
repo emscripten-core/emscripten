@@ -15,7 +15,7 @@
 
 int main(int argc, char *argv[]);
 
-__attribute__((weak))
+__attribute__((__weak__))
 int __main_argc_argv(int argc, char *argv[]) {
   return main(argc, argv);
 }

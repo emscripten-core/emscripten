@@ -45,6 +45,7 @@ int main() {
   int x = 40;
   int result = calc(x);
   printf("calc(%d) = %d\n", x, result);
-  REPORT_RESULT(result);
+  assert(result == 40);
+  return 0;
 }
 

@@ -13,10 +13,18 @@ int __fpclassifyl(long double x)
 	int msb = u.i.m>>63;
 	if (!e && !msb)
 		return u.i.m ? FP_SUBNORMAL : FP_ZERO;
+	if (e == 0x7fff) {
+		/* The x86 variant of 80-bit extended precision only admits
+		 * one representation of each infinity, with the mantissa msb
+		 * necessarily set. The version with it clear is invalid/nan.
+		 * The m68k variant, however, allows either, and tooling uses
+		 * the version with it clear. */
+		if (__BYTE_ORDER == __LITTLE_ENDIAN && !msb)
+			return FP_NAN;
+		return u.i.m << 1 ? FP_NAN : FP_INFINITE;
+	}
 	if (!msb)
 		return FP_NAN;
-	if (e == 0x7fff)
-		return u.i.m << 1 ? FP_NAN : FP_INFINITE;
 	return FP_NORMAL;
 }
 #elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384

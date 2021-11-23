@@ -203,6 +203,7 @@ function module(ignore, func) {
     }
 
     var formatTestValue = function(v) {
+        if (v === undefined) return 'undefined';
         return v.toString();
         /*
         var s = IMVU.repr(v, TEST_MAX_OUTPUT_SIZE + 1);

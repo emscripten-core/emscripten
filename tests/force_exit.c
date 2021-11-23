@@ -15,14 +15,12 @@ int result = 0;
 void EMSCRIPTEN_KEEPALIVE success() {
   printf("success? %d\n", result);
   assert(result == 10);
-  result += 7;
-  REPORT_RESULT(result);
 }
 
 void EMSCRIPTEN_KEEPALIVE later() {
   printf("later, now force an exit\n");
   result += 10;
-  emscripten_force_exit(0);
+  emscripten_force_exit(result);
 }
 
 int main() {
@@ -36,10 +34,7 @@ int main() {
 
   printf("exit, but still alive\n");
   emscripten_exit_with_live_runtime();
-
-  printf("HORRIBLE\n");
-  result += 100; // should never happen
-
+  __builtin_trap();
   return 0;
 }
 

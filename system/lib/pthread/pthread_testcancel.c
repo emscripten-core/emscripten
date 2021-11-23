@@ -9,7 +9,7 @@
 #include <pthread.h>
 
 int _pthread_isduecanceled(struct pthread* pthread_ptr) {
-  return pthread_ptr->threadStatus == 2 /*canceled*/;
+  return pthread_ptr->cancel != 0;
 }
 
 void __pthread_testcancel() {

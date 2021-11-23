@@ -144,9 +144,21 @@ self.onmessage = function(e) {
       });
 #else
       if (typeof e.data.urlOrBlob === 'string') {
+#if TRUSTED_TYPES
+        if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
+          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return e.data.urlOrBlob } });
+          importScripts(p.createScriptURL('ignored'));
+        } else
+#endif
         importScripts(e.data.urlOrBlob);
       } else {
         var objectUrl = URL.createObjectURL(e.data.urlOrBlob);
+#if TRUSTED_TYPES
+        if (typeof self.trustedTypes !== 'undefined' && self.trustedTypes.createPolicy) {
+          var p = self.trustedTypes.createPolicy('emscripten#workerPolicy3', { createScriptURL: function(ignored) { return objectUrl } });
+          importScripts(p.createScriptURL('ignored'));
+        } else
+#endif
         importScripts(objectUrl);
         URL.revokeObjectURL(objectUrl);
       }
@@ -178,18 +190,11 @@ self.onmessage = function(e) {
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
       Module['__emscripten_thread_init'](e.data.threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
 
-      // Establish the stack frame for this thread in global scope
-      // The stack grows downwards
-      var max = e.data.stackBase;
-      var top = e.data.stackBase + e.data.stackSize;
 #if ASSERTIONS
       assert(e.data.threadInfoStruct);
-      assert(top != 0);
-      assert(max != 0);
-      assert(top > max);
 #endif
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
-      Module['establishStackSpace'](top, max);
+      Module['establishStackSpace']();
       Module['PThread'].receiveObjectTransfer(e.data);
       Module['PThread'].threadInit();
 
@@ -259,7 +264,9 @@ self.onmessage = function(e) {
           else
 #endif // !MINIMAL_RUNTIME
           {
-            Module['__emscripten_thread_exit'](-2);
+            // The pthread "crashed".  Do not call `_emscripten_thread_exit` (which
+            // would make this thread joinable.  Instead, re-throw the exception
+            // and let the top level handler propagate it back to the main thread.
             throw ex;
           }
 #if ASSERTIONS

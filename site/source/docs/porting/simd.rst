@@ -1108,6 +1108,9 @@ Similarly to above, the following legend is used:
 For detailed information on each intrinsic function, refer to `NEON Intrinsics Reference
 <https://developer.arm.com/architectures/instruction-sets/simd-isas/neon/intrinsics>`_.
 
+For the latest NEON intrinsics implementation status, refer to the `SIMDe implementation
+status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.md>`_.
+
 .. list-table:: NEON Intrinsics
    :widths: 20 30
    :header-rows: 1
@@ -1123,47 +1126,47 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vabdl
      - ⚫ Not implemented, will trigger compiler error
    * - vabs
-     - native
+     - ✅ native
    * - vadd
-     - native
+     - ✅ native
    * - vaddl
      - ⚫ Not implemented, will trigger compiler error
    * - vaddlv
      - ⚫ Not implemented, will trigger compiler error
    * - vaddv
      - ⚫ Not implemented, will trigger compiler error
-   * - vaddw 
+   * - vaddw
      - ❌ Will be emulated with slow instructions, or scalarized
-   * - vand 
-     - native
+   * - vand
+     - ✅ native
    * - vbic
      - ⚫ Not implemented, will trigger compiler error
    * - vbsl
-     - native
+     - ✅ native
    * - vcagt
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vceq
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vceqz
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcge
-     - native
+     - ✅ native
    * - vcgez
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcgt
-     - native
+     - ✅ native
    * - vcgtz
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcle
-     - native
+     - ✅ native
    * - vclez
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcls
      - ⚫ Not implemented, will trigger compiler error
    * - vclt
-     - native
+     - ✅ native
    * - vcltz 
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vcnt
      - ⚫ Not implemented, will trigger compiler error
    * - vclz
@@ -1179,19 +1182,19 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vdup
      - ⚫ Not implemented, will trigger compiler error
    * - vdup_n
-     - native
+     - ✅ native
    * - veor
-     - native
+     - ✅ native
    * - vext
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vget_lane
-     - native
+     - ✅ native
    * - vhadd
      - ⚫ Not implemented, will trigger compiler error
    * - vhsub
      - ⚫ Not implemented, will trigger compiler error
    * - vld1
-     - native
+     - ✅ native
    * - vld2
      - ⚫ Not implemented, will trigger compiler error
    * - vld3
@@ -1199,15 +1202,15 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vld4
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vmax
-     - native
+     - ✅ native
    * - vmaxv
      - ⚫ Not implemented, will trigger compiler error
    * - vmin
-     - native
+     - ✅ native
    * - vminv
      - ⚫ Not implemented, will trigger compiler error
    * - vmla 
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmlal
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vmls
@@ -1215,25 +1218,25 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vmlsl
      - ⚫ Not implemented, will trigger compiler error
    * - vmovl
-     - native
+     - ✅ native
    * - vmul
-     - native
+     - ✅ native
    * - vmul_n 
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmull 
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmull_n
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmull_high
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vmvn
-     - native
+     - ✅ native
    * - vneg
-     - native
+     - ✅ native
    * - vorn
      - ⚫ Not implemented, will trigger compiler error
    * - vorr
-     - native
+     - ✅ native
    * - vpadal
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vpadd
@@ -1275,13 +1278,13 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vqsubb
      - ⚫ Not implemented, will trigger compiler error
    * - vqtbl1
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vqtbl2
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vqtbl3
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vqtbl4
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vqtbx1
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vqtbx2
@@ -1291,17 +1294,17 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vqtbx4
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vrbit
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vreinterpret
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vrev16
-     - native
+     - ✅ native
    * - vrev32
-     - native
+     - ✅ native
    * - vrev64
-     - native
+     - ✅ native
    * - vrhadd
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vrshl
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vrshr_n
@@ -1309,17 +1312,17 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vrsra_n
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vset_lane
-     - native
+     - ✅ native
    * - vshl
      - scalaried
    * - vshl_n
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vshr_n
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vsra_n
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vst1
-     - native
+     - ✅ native
    * - vst1_lane
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vst2
@@ -1329,9 +1332,9 @@ For detailed information on each intrinsic function, refer to `NEON Intrinsics R
    * - vst4
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vsub
-     - native
+     - ✅ native
    * - vsubl
-     - ⚠ Does not have direct implementation, but is emulated using fast NEON instructions
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vsubw
      - ⚫ Not implemented, will trigger compiler error
    * - vtbl1

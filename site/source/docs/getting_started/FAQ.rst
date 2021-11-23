@@ -342,7 +342,7 @@ If your function is used in other functions, LLVM may inline it and it will not 
 
 Another possible cause of missing code is improper linking of ``.a`` files. The ``.a`` files link only the internal object files needed by previous files on the command line, so the order of files matters, and this can be surprising. If you are linking ``.a`` files, make sure they are at the end of the list of files, and in the right order amongst themselves. Alternatively, just use ``.so`` files instead in your project.
 
-.. tip:: It can be useful to compile with ``EMCC_DEBUG=1`` set for the environment (``EMCC_DEBUG=1 emcc ...`` on Linux, ``set EMMCC_DEBUG=1`` on Windows). This splits up the compilation steps and saves them in ``/tmp/emscripten_temp``. You can then see at what stage the code vanishes (you will need to do ``llvm-dis`` on the bitcode  stages to read them, or ``llvm-nm``, etc.).
+.. tip:: It can be useful to compile with ``EMCC_DEBUG=1`` set for the environment (``EMCC_DEBUG=1 emcc ...`` on Linux, ``set EMCC_DEBUG=1`` on Windows). This splits up the compilation steps and saves them in ``/tmp/emscripten_temp``. You can then see at what stage the code vanishes (you will need to do ``llvm-dis`` on the bitcode  stages to read them, or ``llvm-nm``, etc.).
 
 
 Why is the File System API is not available when I build with closure?
@@ -415,46 +415,31 @@ with
 Why do I get a ``NameError`` or ``a problem occurred in evaluating content after a "-s"`` when I use a ``-s`` option?
 =====================================================================================================================
 
-That may occur when running something like
+That may occur when using the old list syntax for ``-s`` settings:
 
 ::
 
   # this fails on most Linuxes
-  emcc a.c -s EXPORTED_RUNTIME_METHODS=['addOnPostRun']
+  emcc a.c -s EXPORTED_RUNTIME_METHODS=['foo']
 
   # this fails on macOS
-  emcc a.c -s EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
+  emcc a.c -s EXPORTED_RUNTIME_METHODS="['foo']"
 
-You may need to quote things like this:
-
-::
-
-  # this works in the shell on most Linuxes and on macOS
-  emcc a.c -s "EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
-
-  # or you may need something like this in a Makefile
-  emcc a.c -s EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
-
-The proper syntax depends on the OS and shell you are in, and if you are writing
-in a Makefile, etc. Things like spaces may also matter in some shells, for
-example you may need to avoid empty spaces between list items:
+A new, simpler way to specify these lists is to simply use
+comma separated lists:
 
 ::
 
-  # this works in the shell on most Linuxes and on macOS
-  emcc a.c -s "EXPORTED_RUNTIME_METHODS=['foo','bar']"
+  emcc a.c -s EXPORTED_RUNTIME_METHODS=foo,bar
 
-(note there is no space after the ``,``).
-
-For simplicity, you may want to use a **response file**, that is,
+It is also possible to use a **response file**, that is,
 
 ::
 
-  # this works in the shell on most Linuxes and on macOS
-  emcc a.c -s "EXPORTED_RUNTIME_METHODS=@extra.txt"
+  emcc a.c -s EXPORTED_RUNTIME_METHODS=@extra.txt
 
-and then ``extra.txt`` can be a plain file that contains ``['foo','bar']``. This
-avoids any issues with the shell environment parsing the string.
+with ``extra.txt`` being a plain text file that contains ``foo`` and ``bar`` on
+seperate lines.
 
 How do I specify ``-s`` options in a CMake project?
 ===================================================
@@ -475,7 +460,7 @@ notation, that is, without a space:
   # same as before but no space after -s
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_SDL=2")
   # example of target_link_options with a list of names
-  target_link_options(example PRIVATE "-sEXPORTED_FUNCTIONS=[_main]")
+  target_link_options(example PRIVATE "-sEXPORTED_FUNCTIONS=_main")
 
 Note also that ``_main`` does not need to be quoted, even though it's a string
 name (``emcc`` knows that the argument to ``EXPORTED_FUNCTIONS`` is a list of
@@ -537,9 +522,9 @@ Emscripten output by default is just some code. When put in a script tag, that m
 
 But by putting each module in a function scope, that problem is avoided. Emscripten even has a compile flag for this, ``MODULARIZE``, useful in conjunction with ``EXPORT_NAME`` (details in settings.js).
 
-However, there are still some issues if the same Module object (that defines the canvas, text output area, etc.) is used among separate modules. By default Emscripten output even looks for Module in the global scope, but when using MODULARIZE, you get a function you must call with the Module as a param, so that problem is avoided. But note that each module will probably want its own canvas, text output area, etc.; just passing in the same Module object (e.g. from the default HTML shell) may not work.
+However, there are still some issues if the same Module object (that defines the canvas, text output area, etc.) is used among separate modules. By default Emscripten output even looks for Module in the global scope, but when using ``MODULARIZE``, you get a function you must call with the Module as a param, so that problem is avoided. But note that each module will probably want its own canvas, text output area, etc.; just passing in the same Module object (e.g. from the default HTML shell) may not work.
 
-So by using MODULARIZE and creating a proper Module object for each module, and passing those in, multiple modules can work fine.
+So by using ``MODULARIZE`` and creating a proper Module object for each module, and passing those in, multiple modules can work fine.
 
 Another option is to use an iframe, in which case the default HTML shell will just work, as each will have its own canvas, etc. But this is overkill for small programs, which can run modularly as described above.
 

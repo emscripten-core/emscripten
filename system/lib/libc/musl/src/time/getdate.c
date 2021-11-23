@@ -37,7 +37,8 @@ struct tm *getdate(const char *s)
 		}
 	}
 
-	getdate_err = 7;
+	if (ferror(f)) getdate_err = 5;
+	else getdate_err = 7;
 out:
 	if (f) fclose(f);
 	pthread_setcancelstate(cs, 0);

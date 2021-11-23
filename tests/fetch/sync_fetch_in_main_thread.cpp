@@ -32,8 +32,5 @@ int main()
   printf("Data checksum: %02X\n", checksum);
   assert(checksum == 0x08);
   emscripten_fetch_close(fetch);
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

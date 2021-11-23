@@ -1,6 +1,7 @@
 #include <emscripten/html5.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 
 int func1Executed = 0;
 int func2Executed = 0;
@@ -8,6 +9,7 @@ int func2Executed = 0;
 void func1(void *userData);
 
 void func2(void *userData) {
+  printf("func2: %p\n", userData);
   assert((long)userData == 2);
   ++func2Executed;
 
@@ -25,6 +27,7 @@ void func2(void *userData) {
 }
 
 void func1(void *userData) {
+  printf("func1: %p\n", userData);
   assert((long)userData == 1);
   ++func1Executed;
   assert(func1Executed == 1);

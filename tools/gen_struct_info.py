@@ -173,7 +173,7 @@ def parse_c_output(lines):
 
 def gen_inspect_code(path, struct, code):
   if path[0][-1] == '#':
-    path[0] = path[0][:-1]
+    path[0] = path[0].rstrip('#')
     prefix = ''
   else:
     prefix = 'struct '
@@ -266,6 +266,7 @@ def inspect_headers(headers, cflags):
                                '-Wno-format',
                                '-nostdlib',
                                compiler_rt,
+                               '-s', 'MEMORY64=' + str(settings.MEMORY64),
                                '-s', 'BOOTSTRAPPING_STRUCT_INFO=1',
                                '-s', 'LLD_REPORT_UNDEFINED=1',
                                '-s', 'STRICT',
@@ -292,7 +293,10 @@ def inspect_headers(headers, cflags):
 
   # Run the compiled program.
   show('Calling generated program... ' + js_file[1])
-  info = shared.run_js_tool(js_file[1], stdout=shared.PIPE).splitlines()
+  args = []
+  if settings.MEMORY64:
+    args += ['--experimental-wasm-bigint']
+  info = shared.run_js_tool(js_file[1], node_args=args, stdout=shared.PIPE).splitlines()
 
   if not DEBUG:
     # Remove all temporary files.
@@ -398,12 +402,17 @@ def main(args):
                       help='Pass a define to the preprocessor')
   parser.add_argument('-U', dest='undefines', metavar='undefine', action='append', default=[],
                       help='Pass an undefine to the preprocessor')
+  parser.add_argument('--wasm64', action='store_true',
+                      help='use wasm64 architecture')
   args = parser.parse_args(args)
 
   QUIET = args.quiet
 
   # Avoid parsing problems due to gcc specifc syntax.
   cflags = ['-D_GNU_SOURCE']
+
+  if args.wasm64:
+    settings.MEMORY64 = 2
 
   # Add the user options to the list as well.
   for path in args.includes:
@@ -417,6 +426,7 @@ def main(args):
 
   internal_cflags = [
     '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
+    '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
   ]
 
   cxxflags = [

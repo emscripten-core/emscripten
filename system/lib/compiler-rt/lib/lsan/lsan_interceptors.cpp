@@ -532,7 +532,8 @@ namespace __lsan {
 
 void InitializeInterceptors() {
   // Fuchsia doesn't use interceptors that require any setup.
-#if !SANITIZER_FUCHSIA && !SANITIZER_EMSCRIPTEN
+#if !SANITIZER_FUCHSIA
+#if !SANITIZER_EMSCRIPTEN
   InitializeSignalInterceptors();
 
   INTERCEPT_FUNCTION(malloc);
@@ -562,6 +563,7 @@ void InitializeInterceptors() {
   LSAN_MAYBE_INTERCEPT_PTHREAD_ATFORK;
 
   LSAN_MAYBE_INTERCEPT_STRERROR;
+#endif  // !SANITIZER_EMSCRIPTEN
 
 #if !SANITIZER_NETBSD && !SANITIZER_FREEBSD
   if (pthread_key_create(&g_thread_finalize_key, &thread_finalize)) {
