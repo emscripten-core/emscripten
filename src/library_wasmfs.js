@@ -89,20 +89,29 @@ var WasmfsLibrary = {
     }
   },
   _emscripten_write_js_file: function(index, buffer, length, offset) {
-    // TODO: Return an appropriate error to the C++ side if an error occurs.
-    var size = wasmFS$JSMemoryFiles[index].length;
-    // Resize the typed array if the length of the write buffer exceeds its capacity.
-    if (offset + length >= size) {
-      var oldContents = wasmFS$JSMemoryFiles[index];
-      var newContents = new Uint8Array(offset + length);
-      newContents.set(oldContents);
-      wasmFS$JSMemoryFiles[index] = newContents;
-    }
+    try {
+      var size = wasmFS$JSMemoryFiles[index].length;
+      // Resize the typed array if the length of the write buffer exceeds its capacity.
+      if (offset + length >= size) {
+        var oldContents = wasmFS$JSMemoryFiles[index];
+        var newContents = new Uint8Array(offset + length);
+        newContents.set(oldContents);
+        wasmFS$JSMemoryFiles[index] = newContents;
+      }
 
-    wasmFS$JSMemoryFiles[index].set(HEAPU8.subarray(buffer, buffer + length), offset);
+      wasmFS$JSMemoryFiles[index].set(HEAPU8.subarray(buffer, buffer + length), offset);
+      return 0;
+    } catch (err) {
+      return {{{ cDefine('EIO') }}};
+    }
   },
   _emscripten_read_js_file: function(index, buffer, length, offset) {
-    HEAPU8.set(wasmFS$JSMemoryFiles[index].subarray(offset, offset + length), buffer);
+    try {
+      HEAPU8.set(wasmFS$JSMemoryFiles[index].subarray(offset, offset + length), buffer);
+      return 0;
+    } catch (err) {
+      return {{{ cDefine('EIO') }}};
+    }
   },
   _emscripten_get_js_file_size: function(index) {
     return wasmFS$JSMemoryFiles[index].length;
