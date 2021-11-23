@@ -306,8 +306,10 @@ var SyscallsLibrary = {
     return stream.fd;
   },
   __syscall_unlink: function(path) {
-    path = SYSCALLS.getStr(path);
-    FS.unlink(path);
+    if (path.length) {
+      path = SYSCALLS.getStr(path);
+      FS.unlink(path);
+    }
     return 0;
   },
   __syscall_chdir: function(path) {
@@ -591,7 +593,7 @@ var SyscallsLibrary = {
     for (var i = 0; i < num; i++) {
       var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, 'i8*') }}};
       var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
-      for (var j = 0; j < iovlen; j++) {  
+      for (var j = 0; j < iovlen; j++) {
         view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
       }
     }
@@ -672,7 +674,7 @@ var SyscallsLibrary = {
 #endif
 
     var total = 0;
-    
+
     var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
         srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
     var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
@@ -739,7 +741,7 @@ var SyscallsLibrary = {
       {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
       {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
     }
-    
+
     return total;
   },
   __syscall_msync: function(addr, len, flags) {
