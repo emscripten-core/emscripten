@@ -280,8 +280,6 @@ var LibraryPThread = {
           assert(worker.pthread);
 #endif
           PThread.returnWorkerToPool(worker);
-        } else if (cmd === 'cancelDone') {
-          PThread.returnWorkerToPool(worker);
         } else if (d.target === 'setimmediate') {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
@@ -459,19 +457,17 @@ var LibraryPThread = {
 #endif
     var pthread = PThread.pthreads[pthread_ptr];
     // If pthread has been removed from this map this also means that pthread_ptr points
-    // to already freed data. Such situation may occur in following circumstances:
-    // 1. Joining cancelled thread - in such situation it may happen that pthread data will
-    //    already be removed by handling 'cancelDone' message.
-    // 2. Joining thread from non-main browser thread (this also includes thread running main()
-    //    when compiled with `PROXY_TO_PTHREAD`) - in such situation it may happen that following
-    //    code flow occur (MB - Main Browser Thread, S1, S2 - Worker Threads):
-    //    S2: thread ends, 'exit' message is sent to MB
-    //    S1: calls pthread_join(S2), this causes:
-    //        a. S2 is marked as detached,
-    //        b. 'cleanupThread' message is sent to MB.
-    //    MB: handles 'exit' message, as thread is detached, so returnWorkerToPool()
-    //        is called and all thread related structs are freed/released.
-    //    MB: handles 'cleanupThread' message which calls this function.
+    // to already freed data. Such situation may occur in following circumstance:
+    // Joining thread from non-main browser thread (this also includes thread running main()
+    // when compiled with `PROXY_TO_PTHREAD`) - in such situation it may happen that following
+    // code flow occur (MB - Main Browser Thread, S1, S2 - Worker Threads):
+    // S2: thread ends, 'exit' message is sent to MB
+    // S1: calls pthread_join(S2), this causes:
+    //     a. S2 is marked as detached,
+    //     b. 'cleanupThread' message is sent to MB.
+    // MB: handles 'exit' message, as thread is detached, so returnWorkerToPool()
+    //     is called and all thread related structs are freed/released.
+    // MB: handles 'cleanupThread' message which calls this function.
     if (pthread) {
       {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
       var worker = pthread.worker;
