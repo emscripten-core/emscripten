@@ -29,7 +29,7 @@ namespace emscripten {
 // a thread, or when using PROXY_TO_PTHREAD), but you have code that is hard to
 // refactor to be async, but that requires some async operation (like waiting
 // for a JS event).
-class sync_to_async {
+class SyncToAsync {
 
 // Public API
 //==============================================================================
