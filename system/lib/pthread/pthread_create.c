@@ -237,16 +237,14 @@ void _emscripten_thread_exit(void* result) {
    * call; the loser is responsible for freeing thread resources. */
   int state = a_cas(&self->detach_state, DT_JOINABLE, DT_EXITING);
 
-  // Mark the thread as no longer running.
-  // When we publish this, the main thread is free to deallocate the thread
-  // object and we are done.
   if (state == DT_DETACHED) {
-    self->detach_state = DT_EXITED;
     __emscripten_thread_cleanup(self);
   } else {
-    self->detach_state = DT_EXITING;
-    // wake any threads that might be waiting for us to exit
-    emscripten_futex_wake(&self->detach_state, INT_MAX);
+    // Mark the thread as no longer running, so it can be joined.
+    // Once we publish this, any threads that are waiting to join with us can
+    // proceed and this worker can be recycled and used on another thread.
+    a_store(&self->detach_state, DT_EXITED);
+    __wake(&self->detach_state, 1, 1); // Wake any joiner.
   }
 }
 
