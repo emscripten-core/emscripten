@@ -271,7 +271,7 @@ final build stage). This is to ensure that the same dynamic library is not
 linked multiple times in intermediate build stages, which would result in
 duplicate symbol errors.
 
-There is `experimental support <https://github.com/emscripten-core/emscripten/wiki/Linking>`_ for true dynamic libraries, loaded as runtime, either via dlopen or as a shared library. See that link for the details and limitations.
+There is :ref:`experimental support <Dynamic-Linking>` for true dynamic libraries, loaded as runtime, either via dlopen or as a shared library. See that link for the details and limitations.
 
 
 Configure may run checks that appear to fail
@@ -386,4 +386,4 @@ Troubleshooting
 
   .. note:: You can use ``llvm-nm`` to see which symbols are defined in each object file.
 
-  One solution is to use the _`dynamic-linking` approach described above. This ensures that libraries are linked only once, in the final build stage.
+  One solution is to use :ref:`dynamic-linking <Dynamic-Linking>`. This ensures that libraries are linked only once, in the final build stage.
