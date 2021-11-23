@@ -5,7 +5,6 @@
 #include <math.h>
 #include <emscripten/threading.h>
 #include <emscripten/emscripten.h>
-#include "pthread_impl.h"
 #else
 #include "futex.h"
 #endif
@@ -33,13 +32,9 @@ static int __futex4_cp(volatile void *addr, int op, int val, const struct timesp
 	if (r != -ENOSYS) return r;
 	return __syscall_cp(SYS_futex, addr, op & ~FUTEX_PRIVATE, val, to);
 }
-#endif
 
 static volatile int dummy = 0;
 weak_alias(dummy, __eintr_valid_flag);
-
-#ifdef __EMSCRIPTEN__
-int _pthread_isduecanceled(struct pthread *pthread_ptr);
 #endif
 
 int __timedwait_cp(volatile int *addr, int val,
@@ -48,7 +43,9 @@ int __timedwait_cp(volatile int *addr, int val,
 	int r;
 	struct timespec to, *top=0;
 
+#ifndef __EMSCRIPTEN__
 	if (priv) priv = FUTEX_PRIVATE;
+#endif
 
 	if (at) {
 		if (at->tv_nsec >= 1000000000UL) return EINVAL;
@@ -61,19 +58,21 @@ int __timedwait_cp(volatile int *addr, int val,
 		if (to.tv_sec < 0) return ETIMEDOUT;
 		top = &to;
 	}
-
 #ifdef __EMSCRIPTEN__
+	pthread_t self = __pthread_self();
 	double msecsToSleep = top ? (top->tv_sec * 1000 + top->tv_nsec / 1000000.0) : INFINITY;
 	int is_runtime_thread = emscripten_is_main_runtime_thread();
+
+	// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
+	const double maxMsecsSliceToSleep = is_runtime_thread ? 1 : 100;
+
 	// cp suffix in the function name means "cancellation point", so this wait can be cancelled
-	// by the users unless current threads cancelability is set to PTHREAD_CANCEL_DISABLE
+	// by the users unless current threads cancellability is set to PTHREAD_CANCEL_DISABLE
 	// which may be either done by the user of __timedwait() function.
-	if (is_runtime_thread ||
-	    pthread_self()->canceldisable != PTHREAD_CANCEL_DISABLE ||
-	    pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
+	if (is_runtime_thread || self->canceldisable != PTHREAD_CANCEL_DISABLE || self->cancelasync) {
 		double sleepUntilTime = emscripten_get_now() + msecsToSleep;
 		do {
-			if (_pthread_isduecanceled(pthread_self())) {
+			if (self->cancel) {
 				// Emscripten-specific return value: The wait was canceled by user calling
 				// pthread_cancel() for this thread, and the caller needs to cooperatively
 				// cancel execution.
@@ -87,8 +86,8 @@ int __timedwait_cp(volatile int *addr, int val,
 				r = ETIMEDOUT;
 				break;
 			}
-			if (waitMsecs > 100) waitMsecs = 100; // non-main threads can sleep in longer slices.
-			if (is_runtime_thread && waitMsecs > 1) waitMsecs = 1; // the runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
+			if (waitMsecs > maxMsecsSliceToSleep)
+				waitMsecs = maxMsecsSliceToSleep;
 			r = -emscripten_futex_wait((void*)addr, val, waitMsecs);
 		} while(r == ETIMEDOUT);
 	} else {
@@ -99,11 +98,13 @@ int __timedwait_cp(volatile int *addr, int val,
 	r = -__futex4_cp(addr, FUTEX_WAIT|priv, val, top);
 #endif
 	if (r != EINTR && r != ETIMEDOUT && r != ECANCELED) r = 0;
+#ifndef __EMSCRIPTEN__ // XXX Emscripten revert musl commit a63c0104e496f7ba78b64be3cd299b41e8cd427f
 	/* Mitigate bug in old kernels wrongly reporting EINTR for non-
 	 * interrupting (SA_RESTART) signal handlers. This is only practical
 	 * when NO interrupting signal handlers have been installed, and
 	 * works by sigaction tracking whether that's the case. */
 	if (r == EINTR && !__eintr_valid_flag) r = 0;
+#endif
 
 	return r;
 }
