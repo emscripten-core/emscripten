@@ -49,7 +49,7 @@ public:
   // Note that you need to call the callback even if you are not async, as the
   // code here does not know if you are async or not. For example,
   //
-  //  instance.invoke([](emscripten::sync_to_async::Callback resume) {
+  //  instance.invoke([](emscripten::SyncToAsync::Callback resume) {
   //    std::cout << "Hello from sync C++ on the pthread\n";
   //    (*resume)();
   //  });
@@ -86,7 +86,7 @@ private:
   }
 
   static void threadIter(void* arg) {
-    auto* parent = (sync_to_async*)arg;
+    auto* parent = (SyncToAsync*)arg;
     if (parent->quit) {
       pthread_exit(0);
     }
@@ -116,7 +116,7 @@ private:
   }
 
 public:
-  sync_to_async() : childLock(mutex) {
+  SyncToAsync() : childLock(mutex) {
     // The child lock is associated with the mutex, which takes the lock as we
     // connect them, and so we must free it here so that the child can use it.
     // Only the child will lock/unlock it from now on.
@@ -126,7 +126,7 @@ public:
     thread = std::make_unique<std::thread>(threadMain, this);
   }
 
-  ~sync_to_async() {
+  ~SyncToAsync() {
     // Wake up the child to tell it to quit.
     invoke([&](Callback func){
       quit = true;
@@ -137,7 +137,7 @@ public:
   }
 };
 
-void sync_to_async::invoke(std::function<void(Callback)> newWork) {
+void SyncToAsync::invoke(std::function<void(Callback)> newWork) {
   // Use the invokeMutex to prevent more than one invoke being in flight at a
   // time, so that this is usable from multiple threads safely.
   std::lock_guard<std::mutex> invokeLock(invokeMutex);

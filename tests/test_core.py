@@ -8542,6 +8542,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_sync_to_async(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
+    # This tests the SyncToAsync helper in the WasmFS internals. Add an include
+    # path to find it, so we can add a separable unit test of it here.
+    self.emcc_args += ['-I' + path_from_root('system/lib')]
     self.do_run_in_out_file_test('core/pthread/sync_to_async.cpp')
 
   def test_emscripten_atomics_stub(self):
