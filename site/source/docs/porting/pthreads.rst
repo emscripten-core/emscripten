@@ -154,7 +154,6 @@ C++ helpers
 High-level C++ helper code is available by including
 ``emscripten/thread_utils.h``. See example code in the relevant tests:
 
-* `Async proxying to the main thread <https://github.com/emscripten-core/emscripten/tree/main/tests/core/pthread/invoke_on_main_thread.cpp>`_.
 * `Blocking while running async code on a pthread <https://github.com/emscripten-core/emscripten/tree/main/tests/core/pthread/sync_to_async.cpp>`_.
 
 

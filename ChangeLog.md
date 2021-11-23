@@ -18,13 +18,10 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-2.0.30
-------
-- Add `emscripten/thread_utils.h` helper header, which includes C++ utilities
-  for proxying code to other threads.
-2.0.29
 3.0.1
 -----
+- Add `emscripten/thread_utils.h` helper header, which includes C++ utilities
+  for proxying code to other threads.
 
 3.0.0 - 11/22/2021
 ------------------
