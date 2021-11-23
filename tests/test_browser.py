@@ -74,17 +74,33 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
 
 
 def also_with_wasmfs(f):
-  def metafunc(self, wasmfs):
+  def metafunc(self, wasmfs, *args, **kwargs):
     if wasmfs:
       self.set_setting('WASMFS')
       self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
+      f(self, *args, **kwargs)
+    else:
+      f(self, *args, **kwargs)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasmfs': (True,)}
+
+  return metafunc
+
+
+def also_with_wasm2js(f):
+  assert callable(f)
+
+  def metafunc(self, with_wasm2js):
+    assert self.get_setting('WASM') is None
+    if with_wasm2js:
+      self.set_setting('WASM', 0)
       f(self)
     else:
       f(self)
 
   metafunc._parameterize = {'': (False,),
-                            'wasmfs': (True,)}
-
+                            'wasm2js': (True,)}
   return metafunc
 
 
@@ -116,10 +132,10 @@ def no_firefox(note='firefox is not supported'):
 def no_swiftshader(f):
   assert callable(f)
 
-  def decorated(self):
+  def decorated(self, *args, **kwargs):
     if is_chrome() and '--use-gl=swiftshader' in EMTEST_BROWSER:
       self.skipTest('not compatible with swiftshader')
-    return f(self)
+    return f(self, *args, **kwargs)
 
   return decorated
 
@@ -147,12 +163,12 @@ def requires_asmfs(f):
 
 
 def also_with_threads(f):
-  def decorated(self):
+  def decorated(self, *args, **kwargs):
     f(self)
     if not os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       print('(threads)')
       self.emcc_args += ['-pthread']
-      f(self)
+      f(self, *args, **kwargs)
   return decorated
 
 
@@ -3793,30 +3809,35 @@ window.close = function() {
         self.btest_exit(test_file('pthread/test_pthread_gcc_atomic_fetch_and_op.cpp'), args=args + ['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
+  @also_with_wasm2js
   @requires_threads
   def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
-    self.btest_exit(test_file('pthread/test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
+    self.btest_exit(test_file('pthread/test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
+  @also_with_wasm2js
   @requires_threads
   def test_pthread_gcc_atomic_op_and_fetch(self):
-    self.btest_exit(test_file('pthread/test_pthread_gcc_atomic_op_and_fetch.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
+    self.btest_exit(test_file('pthread/test_pthread_gcc_atomic_op_and_fetch.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
+  @also_with_wasm2js
   @requires_threads
   def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
-    self.btest_exit(test_file('pthread/test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
+    self.btest_exit(test_file('pthread/test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
+  @also_with_wasm2js
   @requires_threads
   def test_pthread_gcc_atomics(self):
     self.btest_exit(test_file('pthread/test_pthread_gcc_atomics.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
+  @also_with_wasm2js
   @requires_threads
   def test_pthread_gcc_spinlock(self):
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
-      self.btest_exit(test_file('pthread/test_pthread_gcc_spinlock.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, also_asmjs=True)
+      self.btest_exit(test_file('pthread/test_pthread_gcc_spinlock.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
 
   # Test that basic thread creation works.
   @requires_threads
@@ -3961,9 +3982,10 @@ window.close = function() {
     self.btest_exit(test_file('unistd/io.c'), args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'WASM_BIGINT'])
 
   # Test that the main thread is able to use pthread_set/getspecific.
+  @also_with_wasm2js
   @requires_threads
   def test_pthread_setspecific_mainthread(self):
-    self.btest_exit(test_file('pthread/test_pthread_setspecific_mainthread.c'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS'], also_asmjs=True)
+    self.btest_exit(test_file('pthread/test_pthread_setspecific_mainthread.c'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS'])
 
   # Test that pthreads have access to filesystem.
   @requires_threads
@@ -4098,9 +4120,10 @@ window.close = function() {
     self.btest_exit(test_file('pthread/test_pthread_utf8_funcs.cpp'), args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE'])
 
   # Test the emscripten_futex_wake(addr, INT_MAX); functionality to wake all waiters
+  @also_with_wasm2js
   @requires_threads
   def test_pthread_wake_all(self):
-    self.btest_exit(test_file('pthread/test_futex_wake_all.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'INITIAL_MEMORY=64MB'], also_asmjs=True)
+    self.btest_exit(test_file('pthread/test_futex_wake_all.cpp'), args=['-O3', '-s', 'USE_PTHREADS', '-s', 'INITIAL_MEMORY=64MB'])
 
   # Test that stack base and max correctly bound the stack on pthreads.
   @requires_threads
@@ -4516,18 +4539,17 @@ window.close = function() {
     self.btest_exit('test_preallocated_heap.cpp', args=['-s', 'WASM=0', '-s', 'INITIAL_MEMORY=16MB', '-s', 'ABORTING_MALLOC=0', '--shell-file', test_file('test_preallocated_heap_shell.html')])
 
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
+  @also_with_wasm2js
   def test_fetch_to_memory(self):
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
     self.btest_exit('fetch/to_memory.cpp',
-                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-DFILE_DOES_NOT_EXIST'],
-                    also_asmjs=True)
+                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-DFILE_DOES_NOT_EXIST'])
 
     # Test the positive case when the file URL exists. (http 200)
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     for arg in [[], ['-s', 'FETCH_SUPPORT_INDEXEDDB=0']]:
       self.btest_exit('fetch/to_memory.cpp',
-                      args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'] + arg,
-                      also_asmjs=True)
+                      args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'] + arg)
 
   @parameterized({
     '': ([],),
@@ -4538,28 +4560,30 @@ window.close = function() {
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/from_thread.cpp',
                     args=args + ['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'FETCH_DEBUG', '-s', 'FETCH', '-DFILE_DOES_NOT_EXIST'],
-                    also_asmjs=True)
+                    also_wasm2js=True)
 
+  @also_with_wasm2js
   def test_fetch_to_indexdb(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/to_indexeddb.cpp',
-                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'],
-                    also_asmjs=True)
+                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'])
 
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
+  @also_with_wasm2js
   def test_fetch_cached_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/cached_xhr.cpp',
-                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'],
-                    also_asmjs=True)
+                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH'])
 
   # Tests that response headers get set on emscripten_fetch_t values.
+  @also_with_wasm2js
   @requires_threads
   def test_fetch_response_headers(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/response_headers.cpp', args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'], also_asmjs=True)
+    self.btest_exit('fetch/response_headers.cpp', args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
+  @also_with_wasm2js
   def test_fetch_stream_file(self):
     self.skipTest('moz-chunked-arraybuffer was firefox-only and has been removed')
     # Strategy: create a large 128MB file, and compile with a small 16MB Emscripten heap, so that the tested file
@@ -4571,8 +4595,7 @@ window.close = function() {
       for i in range(1024):
         f.write(s)
     self.btest_exit('fetch/stream_file.cpp',
-                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'INITIAL_MEMORY=536870912'],
-                    also_asmjs=True)
+                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '-s', 'INITIAL_MEMORY=536870912'])
 
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -s PROXY_TO_PTHREAD=1 option.
@@ -4595,12 +4618,12 @@ window.close = function() {
     self.btest_exit('fetch/example_synchronous_fetch.cpp', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
+  @also_with_wasm2js
   @requires_threads
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/sync_xhr.cpp',
-                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '--proxy-to-worker'],
-                    also_asmjs=True)
+                    args=['-s', 'FETCH_DEBUG', '-s', 'FETCH', '--proxy-to-worker'])
 
   # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
   @no_wasm_backend("emscripten_fetch_wait uses an asm.js based web worker")
@@ -4749,7 +4772,7 @@ window.close = function() {
     self.emcc_args.remove('-Werror')
 
     def run(emcc_args=[]):
-      self.btest_exit(test_file('pthread/test_pthread_memory_growth_mainthread.c'), args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB'] + emcc_args, also_asmjs=False)
+      self.btest_exit(test_file('pthread/test_pthread_memory_growth_mainthread.c'), args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB'] + emcc_args, also_wasm2js=False)
 
     run()
     run(['-s', 'PROXY_TO_PTHREAD'])
@@ -4760,7 +4783,7 @@ window.close = function() {
     self.emcc_args.remove('-Werror')
 
     def run(emcc_args=[]):
-      self.btest_exit(test_file('pthread/test_pthread_memory_growth.c'), args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB', '-g'] + emcc_args, also_asmjs=False)
+      self.btest_exit(test_file('pthread/test_pthread_memory_growth.c'), args=['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'INITIAL_MEMORY=32MB', '-s', 'MAXIMUM_MEMORY=256MB', '-g'] + emcc_args, also_wasm2js=False)
 
     run()
     run(['-s', 'ASSERTIONS'])
