@@ -170,7 +170,7 @@ public:
       (*func)();
     });
 
-    thread->detach();
+    thread->join();
   }
 };
 
@@ -180,17 +180,16 @@ void sync_to_async::invoke(std::function<void(Callback)> newWork) {
   std::lock_guard<std::mutex> invokeLock(invokeMutex);
 
   // Send the work over.
-  {
-    std::lock_guard<std::mutex> lock(mutex);
-    work = newWork;
-    finishedWork = false;
-    readyToWork = true;
-  }
-  condition.notify_one();
-
-  // Wait for it to be complete.
   std::unique_lock<std::mutex> lock(mutex);
-  condition.wait(lock, [&]() { return finishedWork; });
+  work = newWork;
+  finishedWork = false;
+  readyToWork = true;
+
+  // Notify the thread and wait for it to complete.
+  condition.notify_one();
+  condition.wait(lock, [&]() {
+    return finishedWork;
+  });
 }
 
 } // namespace wasmfs
