@@ -592,7 +592,7 @@ f.close()
     # would take 10 minutes+ to finish (CMake feature detection is slow), so
     # combine multiple features into one to try to cover as much as possible
     # while still keeping this test in sensible time limit.
-    'js':          ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug', '-DCMAKE_C_FLAGS_INIT=-pthread']),
+    'js':          ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug']),
     'html':        ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release']),
     'library':     ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel']),
     'static_cpp':  ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
@@ -709,6 +709,11 @@ f.close()
       self.assertTrue(building.is_ar('myprefix_static_lib.somecustomsuffix'))
     else:
       self.assertTrue(building.is_ar('libstatic_lib.a'))
+
+  # Tests that cmake functions which require evaluation via the node runtime run properly with pthreads
+  def test_cmake_pthreads(self):
+    self.run_process([EMCMAKE, 'cmake', '-DCMAKE_C_FLAGS_INIT=-pthread', test_file('cmake/target_js')])
+    self.run_process(['cmake', '--build', '.'])
 
   # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
   def test_cmake_emscripten_version(self):
