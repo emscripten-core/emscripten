@@ -10,7 +10,7 @@
 #define UNSIGNED_MORECORE 1
 /* we can only grow the heap up anyhow, so don't try to trim */
 #define MORECORE_CANNOT_TRIM 1
-#ifndef DLMALLOC_DEBUG
+#ifndef DEBUG
 /* dlmalloc has many checks, calls to abort() increase code size,
    leave them only in debug builds */
 #define ABORT __builtin_unreachable()
