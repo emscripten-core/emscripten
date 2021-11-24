@@ -34,7 +34,7 @@ int main() {
 
   // Create proxied proxied backend using composition.
   backend_t JSBackend = wasmfs_create_js_file_backend();
-  backend_t proxiedBackend = wasmfs_create_proxied_file_backend(JSBackend);
+  backend_t proxiedBackend = wasmfs_create_proxied_backend(JSBackend);
 
   // Create a new proxied file under root.
   int fd = wasmfs_create_file("/testfile", 0777, proxiedBackend);

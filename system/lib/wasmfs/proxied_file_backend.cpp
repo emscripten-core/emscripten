@@ -19,14 +19,14 @@ namespace wasmfs {
 class ProxiedFile : public DataFile {
 
   emscripten::SyncToAsync& proxy;
-  std::shared_ptr<DataFile> backendFile;
+  std::shared_ptr<DataFile> baseFile;
 
   // Read and write operations are forwarded to the file residing on the
   // dedicated thread.
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
     __wasi_errno_t result;
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      result = backendFile->locked().write(buf, len, offset);
+      result = baseFile->locked().write(buf, len, offset);
       (*resume)();
     });
     return result;
@@ -35,7 +35,7 @@ class ProxiedFile : public DataFile {
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     __wasi_errno_t result;
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      result = backendFile->locked().read(buf, len, offset);
+      result = baseFile->locked().read(buf, len, offset);
       (*resume)();
     });
     return result;
@@ -46,7 +46,7 @@ class ProxiedFile : public DataFile {
   size_t getSize() override {
     size_t result;
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      result = backendFile->locked().getSize();
+      result = baseFile->locked().getSize();
       (*resume)();
     });
     return result;
@@ -56,21 +56,16 @@ public:
   // A file with the chosen destination backend is created on the Proxied File's
   // dedicated thread.
   ProxiedFile(mode_t mode,
-              backend_t srcBackend,
-              backend_t destBackend,
+              backend_t backend,
+              std::shared_ptr<DataFile> file,
               emscripten::SyncToAsync& proxy)
-    : DataFile(mode, srcBackend), proxy(proxy) {
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      backendFile = destBackend->createFile(mode);
-      (*resume)();
-    });
-  }
+    : DataFile(mode, backend), proxy(proxy), baseFile(file) {}
 
   // The destructor must proxy to the pthread and release the file stored on
   // that pthread.
   ~ProxiedFile() {
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      backendFile = nullptr;
+      baseFile = nullptr;
       (*resume)();
     });
   }
@@ -85,7 +80,12 @@ public:
   ProxiedBackend(backend_t backend) : backend(backend) {}
 
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    return std::make_shared<ProxiedFile>(mode, this, backend, proxy);
+    std::shared_ptr<DataFile> file;
+    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
+      file = backend->createFile(mode);
+      (*resume)();
+    });
+    return std::make_shared<ProxiedFile>(mode, this, file, proxy);
   }
 
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
@@ -94,7 +94,7 @@ public:
 };
 
 // Create a proxied backend by supplying another backend.
-extern "C" backend_t wasmfs_create_proxied_file_backend(backend_t backend) {
+extern "C" backend_t wasmfs_create_proxied_backend(backend_t backend) {
   return wasmFS.addBackend(std::make_unique<ProxiedBackend>(backend));
 }
 
