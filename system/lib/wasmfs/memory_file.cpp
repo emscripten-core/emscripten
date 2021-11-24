@@ -11,16 +11,18 @@
 
 namespace wasmfs {
 __wasi_errno_t MemoryFile::write(const uint8_t* buf, size_t len, off_t offset) {
-  if (offset + len >= buffer.size()) {
+  if (offset + len > buffer.size()) {
     buffer.resize(offset + len);
   }
-  memcpy(&buffer[offset], buf, len);
+  std::memcpy(&buffer[offset], buf, len);
 
   return __WASI_ERRNO_SUCCESS;
 }
 
 __wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
-  assert(offset + len - 1 < buffer.size());
+  // The caller should have already checked that the offset + len does
+  // not exceed the file's size.
+  assert(offset + len <= buffer.size());
   std::memcpy(buf, &buffer[offset], len);
 
   return __WASI_ERRNO_SUCCESS;
