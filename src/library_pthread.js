@@ -343,6 +343,7 @@ var LibraryPThread = {
         'wasmMemory': wasmMemory,
 #endif // WASM2JS
         'wasmModule': wasmModule,
+        'fsDataBinary': Module['fsDataBinary'],
 #if LOAD_SOURCE_MAP
         'wasmSourceMap': wasmSourceMap,
 #endif
