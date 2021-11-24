@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.0.1
 -----
+- The return value of `emscripten_is_main_browser_thread` was fixed such that
+  it no longer returns true when the application is started outside of the
+  main browser thread (.e.g. in a worker, or under node). (#15630)
 
 3.0.0 - 11/22/2021
 ------------------
