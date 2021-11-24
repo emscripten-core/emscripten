@@ -10,6 +10,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <emscripten.h>
+#include <dirent.h>
 
 #ifdef NODERAWFS
 #define CWD ""
@@ -29,6 +30,16 @@ int main(void)
 #endif
     );
     assert(open(CWD "test.txt", O_RDONLY | O_CLOEXEC) != -1);
+
+    DIR *dir = opendir("/working");
+    if (dir) {
+        struct dirent *entry;
+        int n = 0;
+        while (entry == readdir(dir)) {
+            ++n;
+        }
+    }
+    closedir(dir);
     printf("success\n");
     return 0;
 }
