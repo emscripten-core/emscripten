@@ -849,6 +849,9 @@ FS.staticInit();` +
     unlink: function(path) {
       var lookup = FS.lookupPath(path, { parent: true });
       var parent = lookup.node;
+      if (!parent) {
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
+      }
       var name = PATH.basename(path);
       var node = FS.lookupNode(parent, name);
       var errCode = FS.mayDelete(parent, name, false);

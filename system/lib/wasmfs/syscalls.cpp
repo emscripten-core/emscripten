@@ -633,7 +633,7 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
   }
 
   if (pathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   auto base = pathParts.back();
