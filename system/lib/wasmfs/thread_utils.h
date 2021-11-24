@@ -70,29 +70,23 @@ private:
   std::thread thread;
 
   // Condition variable used for bidirectional communication between the worker
-  // thread and invoking threads. To avoid losing messages, the worker thread
-  // should always either hold `mutex`, preventing invokers from sending it new
-  // work, or be waiting on `condition` for invokers send it work and wake it.
-  // Similarly, invokers should either hold `mutex` or be waiting for their work
-  // to be done.
+  // thread and invoking threads.
   std::condition_variable condition;
   std::mutex mutex;
-  std::unique_lock<std::mutex> workerLock;
 
   // The current state of the worker thread. New work can only be submitted when
   // in the `Waiting` state.
   enum State {
-    Uninitialized,
     Waiting,
     WorkAvailable,
     ShouldExit,
-  } state = Uninitialized;
+  } state = Waiting;
 
   // Increment the count every time work is finished. This will allow invokers
   // to detect that their particular work has been completed even if some other
   // invoker wins the race and submits new work before the original invoker can
   // check for completion.
-  uint64_t workCount = 0;
+  std::atomic<uint32_t> workCount{0};
 
   // The work that the dedicated worker thread should perform and the callback
   // that needs to be called when the work is finished.
@@ -100,19 +94,6 @@ private:
   std::function<void()> resume;
 
   static void* threadMain(void* arg) {
-    auto* parent = (SyncToAsync*)arg;
-
-    // The original thread should be waiting for us to start up. Acquire the
-    // lock to ensure the original thread has started waiting and to prevent it
-    // or any other thread from sending us work until we're ready.
-    parent->workerLock.lock();
-
-    // Now that we are safe from receiving work before we're ready, notify the
-    // original thread that it can continue. The original thread should be the
-    // only possible waiter because the SyncToAsync constructor has not returned
-    // yet.
-    parent->condition.notify_one();
-
     // Schedule ourselves to start processing incoming work requests.
     emscripten_async_call(threadIter, arg, 0);
     return 0;
@@ -122,31 +103,38 @@ private:
   // available, executes the work, then schedules itself again.
   static void threadIter(void* arg) {
     auto* parent = (SyncToAsync*)arg;
-    assert(parent->workerLock.owns_lock());
 
-    // Wait until we get something to do.
-    parent->state = Waiting;
-    parent->condition.wait(parent->workerLock, [&]() {
-      return parent->state == WorkAvailable || parent->state == ShouldExit;
-    });
+    std::function<void(Callback)> currentWork;
+    {
+      // Wait until we get something to do.
+      std::unique_lock<std::mutex> lock(parent->mutex);
+      parent->condition.wait(lock, [&]() {
+          return parent->state == WorkAvailable || parent->state == ShouldExit;
+        });
 
-    if (parent->state == ShouldExit) {
-      pthread_exit(0);
+      if (parent->state == ShouldExit) {
+        pthread_exit(0);
+      }
+
+      assert(parent->state == WorkAvailable);
+      currentWork = parent->work;
+
+      // Now that we have a local copy of the work, it is ok for new invokers to
+      // queue up more work for us to do, so go back to `Waiting` and release
+      // the lock.
+      parent->state = Waiting;
     }
-
-    assert(parent->state == WorkAvailable);
-    auto work = parent->work;
 
     // Allocate a resume function that will wake the invoker and schedule us to
     // wait for more work.
     parent->resume = [parent, arg]() {
-      assert(parent->workerLock.owns_lock());
       // We are called, so the work was finished. Notify the invoker so it will
       // wake up and continue once we resume waiting. There might be other
       // invokers waiting to give us work, so `notify_all` to make sure our
-      // invoker wakes up.
+      // invoker wakes up. Don't worry about overflow because it's a reasonable
+      // assumption that no invoker will continue losing wake up races for a
+      // full cycle.
       parent->workCount++;
-      assert(parent->workCount && "workCount overflowed!");
       parent->condition.notify_all();
 
       // Look for more work. Doing this asynchronously ensures that we continue
@@ -159,20 +147,13 @@ private:
 
     // Run the work function the user gave us. Give it a pointer to the resume
     // function, which it will be responsible for calling when it's done.
-    work(&parent->resume);
+    currentWork(&parent->resume);
   }
 
 public:
-  SyncToAsync() : workerLock(mutex, std::defer_lock) {
-    // Acquire the lock before spawning the worker thread so that we can wait
-    // for it to notify us that it has succefully started up. If we didn't lock
-    // before spawning it, we could miss that notification. If we didn't wait
-    // for it to start up at all, we could accidentally send it work before it
-    // is ready.
-    std::unique_lock<std::mutex> lock(mutex);
-    thread = std::thread(threadMain, this);
-    condition.wait(lock, [&]() { return state == Waiting; });
-  }
+  // Spawn the worker thread. It starts in the `Waiting` state, so it is ready
+  // to accept work requests from invokers even before it starts up.
+  SyncToAsync() : thread(threadMain, this) {}
 
   ~SyncToAsync() {
     std::unique_lock<std::mutex> lock(mutex);
@@ -195,19 +176,15 @@ public:
 };
 
 void SyncToAsync::invoke(std::function<void(Callback)> newWork) {
+  // The worker might not be waiting for work if some other invoker has already
+  // sent work. Wait for the worker to be done with that work and ready for new
+  // work.
   std::unique_lock<std::mutex> lock(mutex);
-
-  // The worker might not be waiting for work if some other invoker just sent
-  // work and we won the race against the newly woken worker thread to acquire
-  // the lock. In that case, wait for the worker to be done with that work and
-  // ready for new work.
-  if (state != Waiting) {
-    condition.wait(lock, [&]() { return state == Waiting; });
-  }
+  condition.wait(lock, [&]() { return state == Waiting; });
 
   // Now the worker is definitely waiting for our work. Send it over.
   assert(state == Waiting);
-  uint64_t workID = workCount;
+  uint32_t workID = workCount;
   work = newWork;
   state = WorkAvailable;
 
@@ -217,7 +194,7 @@ void SyncToAsync::invoke(std::function<void(Callback)> newWork) {
   // return to `Waiting` to make sure we wake up even if some other invoker wins
   // the race and submits more work before we acquire the lock.
   condition.notify_all();
-  condition.wait(lock, [&]() { return workCount > workID; });
+  condition.wait(lock, [&]() { return workCount != workID; });
 }
 
 } // namespace emscripten
