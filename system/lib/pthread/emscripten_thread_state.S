@@ -47,7 +47,7 @@ emscripten_is_main_runtime_thread:
   global.get is_runtime_thread
   end_function
 
-# Semantically the same as testing "!ENVIRONMENT_IS_WORKER" in JS
+# Semantically the same as testing "ENVIRONMENT_IS_WEB" in JS
 .globl emscripten_is_main_browser_thread
 emscripten_is_main_browser_thread:
   .functype emscripten_is_main_browser_thread () -> (i32)

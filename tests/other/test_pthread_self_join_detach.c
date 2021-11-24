@@ -9,12 +9,14 @@
 #endif
 
 int main() {
+#ifdef __EMSCRIPTEN__
   /*
    * When running in PROXY_TO_PTHREAD mode the main thread
-   * is already detached
+   * is already detached.  We detect PROXY_TO_PTHREAD mode
+   * by noticing that the main() function is not running
+   * in the main runtime thread.
    */
-#ifdef __EMSCRIPTEN__
-  int is_detached = !emscripten_is_main_browser_thread();
+  int is_detached = !emscripten_is_main_runtime_thread();
 #else
   int is_detached = 0;
 #endif

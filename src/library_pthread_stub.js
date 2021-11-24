@@ -13,7 +13,7 @@ var LibraryPThreadStub = {
 #if MINIMAL_RUNTIME
     return typeof importScripts === 'undefined';
 #else
-    return !ENVIRONMENT_IS_WORKER;
+    return ENVIRONMENT_IS_WEB;
 #endif
   },
 };

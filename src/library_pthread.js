@@ -598,7 +598,7 @@ var LibraryPThread = {
     // Pass the thread address to the native code where they stored in wasm
     // globals which act as a form of TLS. Global constructors trying
     // to access this value will read the wrong value, but that is UB anyway.
-    __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+    __emscripten_thread_init(tb, /*isMainBrowserThread=*/ENVIRONMENT_IS_WEB, /*isMainRuntimeThread=*/1);
 #if ASSERTIONS
     PThread.mainRuntimeThread = true;
 #endif
