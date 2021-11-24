@@ -41,16 +41,16 @@ void emscripten_console_warnf(const char* fmt, ...) {
   va_end(ap);
 }
 
-void emscripten_outf(const char* fmt, ...) {
+void _emscripten_outf(const char* fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
-  vlogf(fmt, ap, &emscripten_out);
+  vlogf(fmt, ap, &_emscripten_out);
   va_end(ap);
 }
 
-void emscripten_errf(const char* fmt, ...) {
+void _emscripten_errf(const char* fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
-  vlogf(fmt, ap, &emscripten_err);
+  vlogf(fmt, ap, &_emscripten_err);
   va_end(ap);
 }
