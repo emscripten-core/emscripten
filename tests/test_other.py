@@ -11246,7 +11246,6 @@ void foo() {}
     self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('INITIAL_MEMORY', '32MB')
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_proxiedfile.c')
 

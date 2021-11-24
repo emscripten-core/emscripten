@@ -328,19 +328,11 @@ backend_t wasmfs_get_backend_by_path(char* path) {
     return NullBackend;
   }
 
-  auto lockedParentDir = parentDir->locked();
-
   // TODO: In a future PR, edit function to just return the requested file
   // instead of having to first obtain the parent dir.
-  auto curr = lockedParentDir.getEntry(base);
+  auto curr = parentDir->locked().getEntry(base);
 
-  if (curr) {
-    auto dir = curr->dynCast<Directory>();
-
-    return dir ? dir->getBackend() : NullBackend;
-  }
-
-  return NullBackend;
+  return curr ? curr->getBackend() : NullBackend;
 }
 
 static long doStat(std::shared_ptr<File> file, struct stat* buffer) {
