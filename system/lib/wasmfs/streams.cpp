@@ -34,7 +34,7 @@ std::shared_ptr<StdinFile> StdinFile::getSingleton() {
 }
 
 __wasi_errno_t StdoutFile::write(const uint8_t* buf, size_t len, off_t offset) {
-  return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
+  return writeStdBuffer(buf, len, &emscripten_out, writeBuffer);
 }
 
 std::shared_ptr<StdoutFile> StdoutFile::getSingleton() {
@@ -44,7 +44,7 @@ std::shared_ptr<StdoutFile> StdoutFile::getSingleton() {
 }
 
 __wasi_errno_t StderrFile::write(const uint8_t* buf, size_t len, off_t offset) {
-  return writeStdBuffer(buf, len, &emscripten_console_error, writeBuffer);
+  return writeStdBuffer(buf, len, &emscripten_err, writeBuffer);
 }
 
 std::shared_ptr<StderrFile> StderrFile::getSingleton() {

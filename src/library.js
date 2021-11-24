@@ -3494,6 +3494,22 @@ LibraryManager.library = {
 #endif
   },
 
+  emscripten_out__sig: 'vi',
+  emscripten_out: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    out(UTF8ToString(str));
+  },
+
+  emscripten_err__sig: 'vi',
+  emscripten_err: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    err(UTF8ToString(str));
+  },
+
   emscripten_console_log__sig: 'vi',
   emscripten_console_log: function(str) {
 #if ASSERTIONS
