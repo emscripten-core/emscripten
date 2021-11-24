@@ -10131,6 +10131,8 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     libs = ['-lc', '-lcompiler_rt', '-lc_rt']
     self.run_process([EMCC, test_file('unistd/close.c'), '-nostdlib'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nodefaultlibs'] + libs)
+    self.run_process([EMCC, test_file('unistd/close.c'), '-nolibc', '-lc'])
+    self.run_process([EMCC, test_file('unistd/close.c'), '-nostartfiles'])
 
   def test_argument_match(self):
     # Verify that emcc arguments match precisely.  We had a bug where only the prefix
