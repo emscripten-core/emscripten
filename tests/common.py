@@ -1333,7 +1333,7 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    cls.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
+    cls.also_wasm2js = int(os.getenv('EMTEST_BROWSER_ALSO_WASM2JS', '0')) == 1
     cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
@@ -1568,7 +1568,7 @@ class BrowserCore(RunnerCore):
   def btest(self, filename, expected=None, reference=None,
             reference_slack=0, manual_reference=False, post_build=None,
             args=None, message='.', also_proxied=False,
-            url_suffix='', timeout=None, also_asmjs=False,
+            url_suffix='', timeout=None, also_wasm2js=False,
             manually_trigger_reftest=False, extra_tries=1,
             reporting=Reporting.FULL):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
@@ -1603,7 +1603,7 @@ class BrowserCore(RunnerCore):
       self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
     # Tests can opt into being run under asmjs as well
-    if 'WASM=0' not in original_args and (also_asmjs or self.also_asmjs):
+    if 'WASM=0' not in original_args and (also_wasm2js or self.also_wasm2js):
       print('WASM=0')
       self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
                  original_args + ['-s', 'WASM=0'], message, also_proxied=False, timeout=timeout)
