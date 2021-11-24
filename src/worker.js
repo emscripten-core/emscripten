@@ -280,7 +280,6 @@ self.onmessage = function(e) {
       if (Module['_pthread_self']()) {
         Module['__emscripten_thread_exit'](-1/*PTHREAD_CANCELED*/);
       }
-      postMessage({ 'cmd': 'cancelDone' });
     } else if (e.data.target === 'setimmediate') {
       // no-op
     } else if (e.data.cmd === 'processThreadQueue') {
