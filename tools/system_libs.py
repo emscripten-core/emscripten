@@ -1750,14 +1750,6 @@ def calculate(input_files, forced):
     if sanitize:
       add_library('libsanitizer_common_rt')
 
-    # the sanitizer runtimes may call mmap, which will need a few things. sadly
-    # the usual deps_info mechanism does not work since we scan only user files
-    # for things, and not libraries (to be able to scan libraries, we'd need to
-    # somehow figure out which of their object files will actually be linked in -
-    # but only lld knows that). so just directly handle that here.
-    if sanitize:
-      settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name('memset'))
-
     if settings.PROXY_POSIX_SOCKETS:
       add_library('libsockets_proxy')
     else:
