@@ -34,7 +34,10 @@ std::shared_ptr<StdinFile> StdinFile::getSingleton() {
 }
 
 __wasi_errno_t StdoutFile::write(const uint8_t* buf, size_t len, off_t offset) {
-  return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
+  // Due to this issue with node and worker threads:
+  // https://github.com/emscripten-core/emscripten/issues/14804. This function
+  // will write to out(), which will write directly to stdout in node.
+  return writeStdBuffer(buf, len, &_emscripten_out, writeBuffer);
 }
 
 std::shared_ptr<StdoutFile> StdoutFile::getSingleton() {
@@ -44,7 +47,8 @@ std::shared_ptr<StdoutFile> StdoutFile::getSingleton() {
 }
 
 __wasi_errno_t StderrFile::write(const uint8_t* buf, size_t len, off_t offset) {
-  return writeStdBuffer(buf, len, &emscripten_console_error, writeBuffer);
+  // Similar issue with node and worker threads as emscripten_out.
+  return writeStdBuffer(buf, len, &_emscripten_err, writeBuffer);
 }
 
 std::shared_ptr<StderrFile> StderrFile::getSingleton() {
