@@ -56,7 +56,7 @@ void WasmFS::preloadFiles() {
 #endif
 
   // Obtain the backend of the root directory.
-  auto rootBackend = getRootDirectory()->locked().getBackend();
+  auto rootBackend = getRootDirectory()->getBackend();
 
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_runtime_thread());
@@ -129,7 +129,7 @@ void WasmFS::preloadFiles() {
     auto base = pathParts.back();
 
     // TODO: Generalize so that MemoryFile is not hard-coded.
-    auto created = std::make_shared<MemoryFile>((mode_t)mode);
+    auto created = std::make_shared<MemoryFile>((mode_t)mode, rootBackend);
 
     long err;
     auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);

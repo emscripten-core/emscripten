@@ -288,6 +288,58 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   return __WASI_ERRNO_SUCCESS;
 }
 
+backend_t wasmfs_get_backend_by_fd(int fd) {
+  auto fileTable = wasmFS.getLockedFileTable();
+
+  // Check that an open file exists corresponding to the given fd.
+  auto openFile = fileTable[fd];
+  if (!openFile) {
+    return NullBackend;
+  }
+
+  auto lockedOpenFile = openFile.locked();
+  return lockedOpenFile.getFile()->getBackend();
+}
+
+// This function is exposed to users to allow them to obtain a backend_t for a
+// specified path.
+backend_t wasmfs_get_backend_by_path(char* path) {
+  auto pathParts = splitPath(path);
+
+  if (pathParts.empty()) {
+    return NullBackend;
+  }
+
+  // TODO: Remove this when path parsing has been re-factored.
+  if (pathParts.size() == 1 && pathParts[0] == "/") {
+    return wasmFS.getRootDirectory()->getBackend();
+  }
+
+  auto base = pathParts.back();
+
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  // Parent node doesn't exist.
+  if (!parentDir) {
+    return NullBackend;
+  }
+
+  auto lockedParentDir = parentDir->locked();
+
+  // TODO: In a future PR, edit function to just return the requested file
+  // instead of having to first obtain the parent dir.
+  auto curr = lockedParentDir.getEntry(base);
+
+  if (curr) {
+    auto dir = curr->dynCast<Directory>();
+
+    return dir ? dir->getBackend() : NullBackend;
+  }
+
+  return NullBackend;
+}
+
 static long doStat(std::shared_ptr<File> file, struct stat* buffer) {
   auto lockedFile = file->locked();
 
@@ -371,7 +423,10 @@ long __syscall_fstat64(long fd, long buf) {
   return doStat(openFile.locked().getFile(), buffer);
 }
 
-__wasi_fd_t __syscall_open(long pathname, long flags, ...) {
+static __wasi_fd_t doOpen(char* pathname,
+                          long flags,
+                          mode_t mode,
+                          backend_t backend = NullBackend) {
   int accessMode = (flags & O_ACCMODE);
   bool canWrite = false;
 
@@ -384,7 +439,7 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
     ((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND | O_RDWR |
                  O_WRONLY | O_RDONLY | O_LARGEFILE | O_CLOEXEC)) == 0);
 
-  auto pathParts = splitPath((char*)pathname);
+  auto pathParts = splitPath(pathname);
 
   if (pathParts.empty()) {
     return -EINVAL;
@@ -417,16 +472,16 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
     // If O_DIRECTORY is also specified, still create a regular file:
     // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
     if (flags & O_CREAT) {
-      // Since mode is optional, mode is specified using varargs.
-      mode_t mode = 0;
-      va_list vl;
-      va_start(vl, flags);
-      mode = va_arg(vl, int);
-      va_end(vl);
       // Mask all permissions sent via mode.
       mode &= S_IALLUGO;
       // Create an empty in-memory file.
-      auto backend = lockedParentDir.getBackend();
+
+      // By default, the backend that the file is created in is the same as the
+      // parent directory. However, if a backend is passed as a parameter, then
+      // that backend is used.
+      if (!backend) {
+        backend = parentDir->getBackend();
+      }
       auto created = backend->createFile(mode);
 
       // TODO: When rename is implemented make sure that one can atomically
@@ -456,8 +511,25 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
   return wasmFS.getLockedFileTable().add(openFile);
 }
 
-long __syscall_mkdir(long path, long mode) {
-  auto pathParts = splitPath((char*)path);
+// This function is exposed to users and allows users to create a file in a
+// specific backend. An fd to an open file is returned.
+__wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
+  return doOpen(pathname, O_CREAT, mode, backend);
+}
+
+__wasi_fd_t __syscall_open(long pathname, long flags, ...) {
+  // Since mode is optional, mode is specified using varargs.
+  mode_t mode = 0;
+  va_list vl;
+  va_start(vl, flags);
+  mode = va_arg(vl, int);
+  va_end(vl);
+
+  return doOpen((char*)pathname, flags, mode);
+}
+
+static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
+  auto pathParts = splitPath(path);
 
   if (pathParts.empty()) {
     return -EINVAL;
@@ -490,12 +562,28 @@ long __syscall_mkdir(long path, long mode) {
     // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
     mode &= S_IRWXUGO | S_ISVTX;
     // Create an empty in-memory directory.
-    auto backend = lockedParentDir.getBackend();
+
+    // By default, the backend that the directory is created in is the same as
+    // the parent directory. However, if a backend is passed as a parameter,
+    // then that backend is used.
+    if (!backend) {
+      backend = parentDir->getBackend();
+    }
     auto created = backend->createDirectory(mode);
 
     lockedParentDir.setEntry(base, created);
     return 0;
   }
+}
+
+// This function is exposed to users and allows users to specify a particular
+// backend that a directory should be created within.
+long wasmfs_create_directory(char* path, long mode, backend_t backend) {
+  return doMkdir(path, mode, backend);
+}
+
+long __syscall_mkdir(long path, long mode) {
+  return doMkdir((char*)path, mode);
 }
 
 __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,

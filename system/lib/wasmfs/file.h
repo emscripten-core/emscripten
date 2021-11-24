@@ -2,6 +2,7 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
+
 // This file defines the file object of the new file system.
 // Current Status: Work in Progress.
 // See https://github.com/emscripten-core/emscripten/issues/15041.
@@ -25,6 +26,7 @@ class Backend;
 // This represents an opaque pointer to a Backend. A user may use this to
 // specify a backend in file operations.
 using backend_t = Backend*;
+const backend_t NullBackend = nullptr;
 
 class File : public std::enable_shared_from_this<File> {
 
@@ -61,6 +63,8 @@ public:
     static_assert(sizeof(this) <= sizeof(ino_t));
     return (ino_t)this;
   }
+
+  backend_t getBackend() { return backend; }
 
   class Handle {
 
@@ -101,7 +105,8 @@ public:
   }
 
 protected:
-  File(FileKind kind, mode_t mode) : kind(kind), mode(mode) {}
+  File(FileKind kind, mode_t mode, backend_t backend)
+    : kind(kind), mode(mode), backend(backend) {}
   // A mutex is needed for multiple accesses to the same file.
   std::recursive_mutex mutex;
 
@@ -121,6 +126,9 @@ protected:
   // dependencies where the parent and child have shared_ptrs that reference
   // each other. This prevents the case in which an uncollectable cycle occurs.
   std::weak_ptr<File> parent;
+
+  // This specifies which backend a file is associated with.
+  backend_t backend;
 };
 
 class DataFile : public File {
@@ -131,7 +139,8 @@ class DataFile : public File {
 
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
-  DataFile(mode_t mode) : File(File::DataFileKind, mode) {}
+  DataFile(mode_t mode, backend_t backend)
+    : File(File::DataFileKind, mode, backend) {}
   virtual ~DataFile() = default;
 
   class Handle : public File::Handle {
@@ -161,15 +170,10 @@ protected:
   // This value was also copied from the existing file system.
   size_t getSize() override { return 4096; }
 
-  // This specifies which backend a directory is associated with. By default,
-  // files and sub-directories added to this directory's entries will be created
-  // through this same backend unless an alternative is specified.
-  backend_t backend;
-
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
   Directory(mode_t mode, backend_t backend)
-    : File(File::DirectoryKind, mode), backend(backend) {}
+    : File(File::DirectoryKind, mode, backend) {}
 
   struct Entry {
     std::string name;
@@ -231,8 +235,6 @@ public:
       return entries;
     }
 
-    backend_t getBackend() { return getDir()->backend; }
-
 #ifdef WASMFS_DEBUG
     void printKeys() {
       for (auto keyPair : getDir()->entries) {
@@ -253,7 +255,6 @@ public:
     }
   }
 };
-
 // Obtains parent directory of a given pathname.
 // Will return a nullptr if the parent is not a directory.
 // Will error if the forbiddenAncestor is encountered while processing.
@@ -265,8 +266,8 @@ getDir(std::vector<std::string>::iterator begin,
        long& err,
        std::shared_ptr<File> forbiddenAncestor = nullptr);
 
-// Return a vector of the '/'-delimited components of a path. The first element
-// will be "/" iff the path is an absolute path.
+// Return a vector of the '/'-delimited components of a path. The first
+// element will be "/" iff the path is an absolute path.
 std::vector<std::string> splitPath(char* pathname);
 
 } // namespace wasmfs

@@ -2,6 +2,7 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
+
 // This file defines the memory file class of the new file system.
 // This should be the only backend file type defined in a header since it is the
 // default type. Current Status: Work in Progress. See
@@ -23,7 +24,7 @@ class MemoryFile : public DataFile {
   size_t getSize() override { return buffer.size(); }
 
 public:
-  MemoryFile(mode_t mode) : DataFile(mode) {}
+  MemoryFile(mode_t mode, backend_t backend) : DataFile(mode, backend) {}
 
   class Handle : public DataFile::Handle {
 
