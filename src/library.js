@@ -3494,16 +3494,16 @@ LibraryManager.library = {
 #endif
   },
 
-  emscripten_out__sig: 'vi',
-  emscripten_out: function(str) {
+  _emscripten_out__sig: 'vi',
+  _emscripten_out: function(str) {
 #if ASSERTIONS
     assert(typeof str === 'number');
 #endif
     out(UTF8ToString(str));
   },
 
-  emscripten_err__sig: 'vi',
-  emscripten_err: function(str) {
+  _emscripten_err__sig: 'vi',
+  _emscripten_err: function(str) {
 #if ASSERTIONS
     assert(typeof str === 'number');
 #endif
