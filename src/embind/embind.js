@@ -58,9 +58,9 @@ var LibraryEmbind = {
 #if EMBIND_STD_STRING_IS_UTF8
     Module['EMBIND_STD_STRING_IS_UTF8'] = true;
 #endif
-#endif
 #if ASSERTIONS
     Module['ASSERTIONS'] = true;
+#endif
 #endif
   },
 

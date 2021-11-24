@@ -64,7 +64,27 @@ void ensure_js_throws(string js_code, string error_type)
   ensure(EM_ASM_INT({
     var js_code = UTF8ToString($0);
     var error_type = UTF8ToString($1);
-    var assertions = Module['ASSERTIONS'];
+    try {
+      eval(js_code);
+    }
+    catch(error_thrown)
+    {
+      return error_thrown.name === error_type;
+    }
+    return false;
+  }, js_code_pointer, error_type_pointer));
+}
+
+// Test code guarded by 'ASSERTIONS'
+void ensure_js_throws_with_assertions(string js_code, string error_type)
+{
+  js_code.append(";");
+  const char* js_code_pointer = js_code.c_str();
+  const char* error_type_pointer = error_type.c_str();
+  ensure(EM_ASM_INT({
+    var js_code = UTF8ToString($0);
+    var error_type = UTF8ToString($1);
+    var assertions = !!Module['ASSERTIONS'];
     try {
       eval(js_code);
     }
@@ -102,10 +122,12 @@ int main()
   ensure_js("v64.get(4) === 1234n");
 
   test("vector<int64_t> Cannot convert number to int64_t");
+  // Numbers can't be converted to i64 even without assertions.
   ensure_js_throws("v64.push_back(1234)", "TypeError");
 
   test("vector<int64_t> Cannot convert bigint that is too big");
-  ensure_js_throws("v64.push_back(12345678901234567890123456n)", "TypeError");
+  ensure_js_throws_with_assertions(
+      "v64.push_back(12345678901234567890123456n)", "TypeError");
 
   test("vector<uint64_t>");
   val myval2(vector<uint64_t>{1, 2, 3, 4});
@@ -120,13 +142,15 @@ int main()
   ensure_js("vU64.get(4) === 1234n");
 
   test("vector<uint64_t> Cannot convert number to uint64_t");
+  // Numbers can't be converted to i64 even without assertions.
   ensure_js_throws("vU64.push_back(1234)", "TypeError");
 
   test("vector<uint64_t> Cannot convert bigint that is too big");
-  ensure_js_throws("vU64.push_back(12345678901234567890123456n)", "TypeError");
+  ensure_js_throws_with_assertions(
+      "vU64.push_back(12345678901234567890123456n)", "TypeError");
 
   test("vector<uint64_t> Cannot convert bigint that is negative");
-  ensure_js_throws("vU64.push_back(-1n)", "TypeError");
+  ensure_js_throws_with_assertions("vU64.push_back(-1n)", "TypeError");
 
   myval.call<void>("delete");
   myval2.call<void>("delete");
