@@ -90,9 +90,13 @@ var WasmfsLibrary = {
   },
   _emscripten_write_js_file: function(index, buffer, length, offset) {
     try {
-      var size = wasmFS$JSMemoryFiles[index].length;
-      // Resize the typed array if the length of the write buffer exceeds its capacity.
-      if (offset + length >= size) {
+      if (!wasmFS$JSMemoryFiles[index]) {
+        // Initialize typed array on first write operation.
+        wasmFS$JSMemoryFiles[index] = new Uint8Array(offset + length);
+      }
+      
+      if (offset + length > wasmFS$JSMemoryFiles[index].length) {
+        // Resize the typed array if the length of the write buffer exceeds its capacity.
         var oldContents = wasmFS$JSMemoryFiles[index];
         var newContents = new Uint8Array(offset + length);
         newContents.set(oldContents);
@@ -114,7 +118,7 @@ var WasmfsLibrary = {
     }
   },
   _emscripten_get_js_file_size: function(index) {
-    return wasmFS$JSMemoryFiles[index].length;
+    return wasmFS$JSMemoryFiles[index] ? wasmFS$JSMemoryFiles[index].length : 0;
   },
   _emscripten_create_js_file: function() {
     // Find a free entry in the $wasmFS$JSMemoryFreeList or append a new entry to
@@ -122,10 +126,9 @@ var WasmfsLibrary = {
     if (wasmFS$JSMemoryFreeList.length) {
       // Pop off the top of the free list.
       var index = wasmFS$JSMemoryFreeList.pop();
-      wasmFS$JSMemoryFiles[index] = new Uint8Array(0);
       return index;
     }
-    wasmFS$JSMemoryFiles.push(new Uint8Array(0));
+    wasmFS$JSMemoryFiles.push(null);
     return wasmFS$JSMemoryFiles.length - 1;
   },
   _emscripten_remove_js_file: function(index) {

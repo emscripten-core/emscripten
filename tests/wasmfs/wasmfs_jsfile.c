@@ -51,6 +51,11 @@ int main() {
   assert(fstat(fd, &file) != -1);
   assert(file.st_size == strlen(msg));
 
+  // Try seeking to the beginning of the file and overwriting its contents.
+  assert(lseek(fd, 0, SEEK_SET) != -1);
+  write_and_read(msg, fd);
+  EM_ASM({out(wasmFS$JSMemoryFiles[0])});
+
   // Try appending to the end of the JS File.
   write_and_read(msg, fd);
 
@@ -98,7 +103,28 @@ int main() {
   int fd4 = wasmfs_create_file("/testfile2", 0777, JSBackend);
 
   const char* msg4 = "Test with a JS file created under root\n";
-  write_and_read(msg4, fd4);
+
+  // Try setting the file offset to an arbitrary value.
+  assert(lseek(fd4, 10, SEEK_SET) != -1);
+
+  char buf[200] = {};
+  errno = 0;
+  write(fd4, msg4, strlen(msg4));
+  assert(errno == 0);
+  errno = 0;
+  lseek(fd4, 0, SEEK_SET);
+  assert(errno == 0);
+  int bytesRead = read(fd4, buf, sizeof(buf));
+
+  for (ssize_t i = 0; i < bytesRead; i++) {
+    if (buf[i] == 0) {
+      printf("\\0");
+    } else {
+      printf("%c", buf[i]);
+    }
+  }
+  printf("\n");
+
   EM_ASM({out(wasmFS$JSMemoryFiles[1])});
 
   return 0;

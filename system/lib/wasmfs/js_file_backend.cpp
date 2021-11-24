@@ -42,7 +42,7 @@ class JSFile : public DataFile {
   __wasi_errno_t read(uint8_t* buf, size_t len, off_t offset) override {
     // The caller should have already checked that the offset + len does
     // not exceed the file's size.
-    assert(offset + len - 1 < getSize());
+    assert(offset + len <= getSize());
     return _emscripten_read_js_file(index, buf, len, offset);
   }
 
