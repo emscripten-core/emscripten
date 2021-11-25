@@ -123,14 +123,6 @@ self.onmessage = function(e) {
 
       {{{ makeAsmImportsAccessInPthread('wasmMemory') }}} = e.data.wasmMemory;
 
-      if (e.data.fsDataBinary) {
-        {{{ makeAsmImportsAccessInPthread('getPreloadedPackage') }}} = (remotePackageName, remotePackageSize) => {
-            if (remotePackageName.endsWith('.data')) {
-              return e.data.fsDataBinary;
-            }
-        };
-      }
-
 #if LOAD_SOURCE_MAP
       Module['wasmSourceMapData'] = e.data.wasmSourceMap;
 #endif

@@ -843,7 +843,6 @@ def main():
       ret += r'''
         var fetchedCallback = null;
         var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
-        Module['fsDataBinary'] = fetched;
 
         if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, function(data) {
           if (fetchedCallback) {
