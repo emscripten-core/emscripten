@@ -13,7 +13,7 @@ from subprocess import PIPE, CalledProcessError
 from tools import shared, utils
 
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
-DEFAULT_TIMEOUT = 5 * 60
+DEFAULT_TIMEOUT = 5
 
 
 def make_command(filename, engine, args=[]):

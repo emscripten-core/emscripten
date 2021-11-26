@@ -558,45 +558,34 @@ void emscripten_current_thread_process_queued_calls() {
   //emscripten_current_thread_process_queued_calls(), ' + new Error().stack));
   // #endif
 
-  static thread_local bool thread_is_processing_queued_calls = false;
-
-  // It is possible that when processing a queued call, the control flow leads back to calling this
-  // function in a nested fashion! Therefore this scenario must explicitly be detected, and
-  // processing the queue must be avoided if we are nesting, or otherwise the same queued calls
-  // would be processed again and again.
-  if (thread_is_processing_queued_calls)
-    return;
-  // This must be before pthread_mutex_lock(), since pthread_mutex_lock() can call back to this
-  // function.
-  thread_is_processing_queued_calls = true;
-
   pthread_mutex_lock(&call_queue_lock);
   CallQueue* q = GetQueue(pthread_self());
   if (!q) {
     pthread_mutex_unlock(&call_queue_lock);
-    thread_is_processing_queued_calls = false;
     return;
   }
 
-  int head = q->call_queue_head;
-  int tail = q->call_queue_tail;
-  while (head != tail) {
+  while (1) {
+    int head = q->call_queue_head;
+    int tail = q->call_queue_tail;
+    if (head == tail) {
+      break;
+    }
+
+    // Remove the item from the queue before running it.
+    em_queued_call* to_run = q->call_queue[head];
+    q->call_queue_head = (head + 1) % CALL_QUEUE_SIZE;
+
     // Assume that the call is heavy, so unlock access to the call queue while it is being
     // performed.
     pthread_mutex_unlock(&call_queue_lock);
-    _do_call(q->call_queue[head]);
+    _do_call(to_run);
     pthread_mutex_lock(&call_queue_lock);
-
-    head = (head + 1) % CALL_QUEUE_SIZE;
-    q->call_queue_head = head;
-    tail = q->call_queue_tail;
   }
   pthread_mutex_unlock(&call_queue_lock);
 
   // If the queue was full and we had waiters pending to get to put data to queue, wake them up.
   emscripten_futex_wake((void*)&q->call_queue_head, 0x7FFFFFFF);
-
-  thread_is_processing_queued_calls = false;
 }
 
 // At times when we disallow the main thread to process queued calls, this will
