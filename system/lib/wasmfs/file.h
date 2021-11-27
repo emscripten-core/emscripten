@@ -91,6 +91,8 @@ public:
     // specified by the parent weak_ptr.
     std::shared_ptr<File> getParent() { return file->parent.lock(); }
     void setParent(std::shared_ptr<File> parent) { file->parent = parent; }
+
+    std::shared_ptr<File> unlocked() { return file; }
   };
 
   Handle locked() { return Handle(shared_from_this()); }
@@ -261,6 +263,19 @@ public:
     }
   }
 };
+
+struct ParsedPath {
+  std::optional<Directory::Handle> parent;
+  std::shared_ptr<File> child;
+};
+
+// TODO: Should this return a locked parent handle or a pointer to the parent?
+// Given a pathname, this function will return a locked parent directory and a
+// pointer to the specified file.
+ParsedPath getParsedPath(std::vector<std::string> pathParts,
+                         long& err,
+                         std::shared_ptr<File> forbiddenAncestor = nullptr);
+
 // Obtains parent directory of a given pathname.
 // Will return a nullptr if the parent is not a directory.
 // Will error if the forbiddenAncestor is encountered while processing.

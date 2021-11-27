@@ -26,7 +26,7 @@ class WasmFS {
   std::vector<std::unique_ptr<Backend>> backendTable;
   FileTable fileTable;
   std::shared_ptr<Directory> rootDirectory;
-  std::shared_ptr<File> cwd;
+  std::shared_ptr<Directory> cwd;
   std::mutex mutex;
 
   // Private method to initialize root directory once.
@@ -56,12 +56,12 @@ public:
 
   // For getting and setting cwd, a lock must be acquired. There is a chance
   // that two threads could be mutating the cwd simultaneously.
-  std::shared_ptr<File> getCWD() {
+  std::shared_ptr<Directory> getCWD() {
     const std::lock_guard<std::mutex> lock(mutex);
     return cwd;
   };
 
-  void setCWD(std::shared_ptr<File> directory) {
+  void setCWD(std::shared_ptr<Directory> directory) {
     const std::lock_guard<std::mutex> lock(mutex);
     cwd = directory;
   };
