@@ -99,10 +99,10 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
 #endif
   }
 
-  // auto parent = curr->dynCast<Directory>();
-
-  auto child = curr->locked().getEntry(*(pathParts.end() - 1));
-  return ParsedPath{curr->locked(), child};
+  // Lock the parent once.
+  auto lockedCurr = curr->locked();
+  auto child = lockedCurr.getEntry(*(pathParts.end() - 1));
+  return ParsedPath{std::move(lockedCurr), child};
 }
 
 std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
