@@ -189,7 +189,7 @@ Using libraries
 Built-in support is available for a number of standard libraries: *libc*, *libc++* and *SDL*. These will automatically be linked when you compile code that uses them (you do not even need to add ``-lSDL``, but see below for more SDL-specific details).
 
 If your project uses other libraries, for example
-`zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/zlib>`_
+`zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/third_party/zlib>`_
 or *glib*, you will need to build and link them. The normal approach is to build
 the libraries (to object files, or ``.a`` archives of them) and then link those
 with your main program to emit JavaScript+WebAssembly.
