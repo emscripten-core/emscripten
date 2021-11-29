@@ -119,12 +119,11 @@ void test() {
   // Can't rename a file with a new path name that is equal to WASMFS_NAME_MAX.
 #ifdef WASMFS
   errno = 0;
-  rename(
-    "dir",
-    "0Hh03R0h7k4lsJrgY4oVbflkHMwaqUJIKv2KJmbSwXKyY83pBaKDnq5yExUOPDA2stpqSg"
-    "DhY4UsIZsHP0ORYuxrhXwjnCMJYwkMxRc3RUjSfZU3qvPRfqwjQQCetY4rnAtJPn9D282a"
-    "bfPHi87PisnLj6dU47ZX3r4yvA7ZlsvfoZrRiopvocXOhAvVzz1QyLbIbN1cEXkk1Z5uLA"
-    "zHnD0zL276mzcC1Ir21WDLZFPJeHwOti6dpq9magNfRH8I");
+  rename("dir",
+         "000000000100000000020000000003000000000400000000050000000006000000000"
+         "700000000080000000009000000000000000000010000000002000000000300000000"
+         "040000000005000000000600000000070000000008000000000900000000000000000"
+         "0010000000002000000000300000000040000000005123456");
 
   assert(errno == ENAMETOOLONG);
 #endif
@@ -136,7 +135,8 @@ void test() {
   
   err = rename("dir", "dir/somename/noexist");
   assert(err == -1);
-  // In the JS file system, this returns ENOENT rather than detecting that dir is an ancestor.
+  // In the JS file system, this returns ENOENT rather than detecting that dir
+  // is an ancestor.
 #ifdef WASMFS
   assert(errno == EINVAL);
 #else

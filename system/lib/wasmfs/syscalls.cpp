@@ -27,7 +27,7 @@
 // Used to improve readability compared to those in stat.h
 #define WASMFS_PERM_WRITE 0222
 
-#define WASMFS_NAME_MAX 256
+#define WASMFS_NAME_MAX 255
 
 extern "C" {
 
@@ -448,7 +448,7 @@ static __wasi_fd_t doOpen(char* pathname,
   }
 
   auto base = pathParts.back();
-  if (base.size() >= WASMFS_NAME_MAX) {
+  if (base.size() > WASMFS_NAME_MAX) {
     return -ENAMETOOLONG;
   }
 
@@ -545,7 +545,7 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
   }
 
   auto base = pathParts.back();
-  if (base.size() >= WASMFS_NAME_MAX) {
+  if (base.size() > WASMFS_NAME_MAX) {
     return -ENAMETOOLONG;
   }
 
@@ -845,7 +845,7 @@ long __syscall_getdents64(long fd, long dirp, long count) {
     result->d_reclen = sizeof(dirent);
     result->d_type =
       curr.file->is<Directory>() ? DT_DIR : DT_REG; // TODO: add symlinks.
-    assert(curr.name.size() < sizeof(result->d_name));
+    assert(curr.name.size() + 1 <= sizeof(result->d_name));
     strcpy(result->d_name, curr.name.c_str());
     ++result;
     bytesRead += sizeof(dirent);
@@ -929,7 +929,7 @@ long __syscall_rename(long old_path, long new_path) {
   }
 
   auto newBase = newPathParts.back();
-  if (newBase.size() >= WASMFS_NAME_MAX) {
+  if (newBase.size() > WASMFS_NAME_MAX) {
     return -ENAMETOOLONG;
   }
 
