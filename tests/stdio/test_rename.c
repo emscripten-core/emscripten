@@ -116,6 +116,16 @@ void test() {
   assert(err == -1);
   assert(errno == EACCES);
 
+  // Can't use an empty path for oldpath.
+  err = rename("", "test");
+  assert(err == -1);
+  assert(errno == ENOENT);
+
+  // Can't use an empty path for newpath.
+  err = rename("dir", "");
+  assert(err == -1);
+  assert(errno == ENOENT);
+
   // source should not be ancestor of target
   err = rename("dir", "dir/somename");
   assert(err == -1);
