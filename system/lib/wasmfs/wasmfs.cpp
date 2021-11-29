@@ -11,16 +11,6 @@
 #include "streams.h"
 #include <emscripten/threading.h>
 
-// These helper functions will be linked in from library_wasmfs.js.
-extern "C" {
-int _emscripten_get_num_preloaded_files();
-int _emscripten_get_num_preloaded_dirs();
-int _emscripten_get_preloaded_file_mode(int index);
-void _emscripten_get_preloaded_parent_path(int index, char* parentPath);
-void _emscripten_get_preloaded_path_name(int index, char* fileName);
-void _emscripten_get_preloaded_child_path(int index, char* childName);
-}
-
 namespace wasmfs {
 // The below lines are included to make the compiler believe that the global
 // constructor is part of a system header, which is necessary to work around a
@@ -32,9 +22,19 @@ namespace wasmfs {
 // system priority) since wasmFS is a system level component.
 // TODO: consider instead adding this in libc's startup code.
 // WARNING: Maintain # n + 1 "wasmfs.cpp" 3 where n = line number.
-# 36 "wasmfs.cpp" 3
+# 26 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
-# 38 "wasmfs.cpp"
+# 28 "wasmfs.cpp"
+
+// These helper functions will be linked in from library_wasmfs.js.
+extern "C" {
+int _emscripten_get_num_preloaded_files();
+int _emscripten_get_num_preloaded_dirs();
+int _emscripten_get_preloaded_file_mode(int index);
+void _emscripten_get_preloaded_parent_path(int index, char* parentPath);
+void _emscripten_get_preloaded_path_name(int index, char* fileName);
+void _emscripten_get_preloaded_child_path(int index, char* childName);
+}
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   auto rootBackend = createMemoryFileBackend();
