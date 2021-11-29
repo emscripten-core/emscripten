@@ -1363,7 +1363,7 @@ class libwasmfs(MTLibrary):
         path='system/lib/wasmfs',
         filenames=['syscalls.cpp', 'file_table.cpp', 'file.cpp', 'wasmfs.cpp', 'streams.cpp', 'memory_file.cpp', 'memory_file_backend.cpp', 'js_file_backend.cpp'])
 
-  def can_build(self):
+  def can_use(self):
     return settings.WASMFS
 
 
