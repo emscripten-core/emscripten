@@ -269,9 +269,9 @@ struct ParsedPath {
   std::shared_ptr<File> child;
 };
 
-// TODO: Should this return a locked parent handle or a pointer to the parent?
-// Given a pathname, this function will return a locked parent directory and a
-// pointer to the specified file.
+// TODO: When locking the directory structure is refactored, parent should be
+// returned as a pointer, similar to child. Given a pathname, this function will
+// return a locked parent directory and a pointer to the specified file.
 ParsedPath getParsedPath(std::vector<std::string> pathParts,
                          long& err,
                          std::shared_ptr<File> forbiddenAncestor = nullptr);

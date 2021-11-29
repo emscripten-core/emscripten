@@ -68,7 +68,7 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
   for (auto pathPart = begin; pathPart != pathParts.end() - 1; ++pathPart) {
     // Find the next entry in the current directory entry
 #ifdef WASMFS_DEBUG
-    directory->locked().printKeys();
+    curr->locked().printKeys();
 #endif
     auto entry = curr->locked().getEntry(*pathPart);
 
@@ -79,7 +79,7 @@ ParsedPath getParsedPath(std::vector<std::string> pathParts,
       }
     }
 
-    // Requested entry (file or directory)
+    // An entry is defined in the current directory's entries vector.
     if (!entry) {
       err = -ENOENT;
       return ParsedPath{{}, nullptr};

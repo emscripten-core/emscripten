@@ -426,14 +426,14 @@ static __wasi_fd_t doOpen(char* pathname,
       // parent directory. However, if a backend is passed as a parameter, then
       // that backend is used.
       if (!backend) {
-        backend = (*parsedPath.parent).unlocked()->getBackend();
+        backend = parsedPath.parent->unlocked()->getBackend();
       }
       auto created = backend->createFile(mode);
 
       // TODO: When rename is implemented make sure that one can atomically
       // remove the file from the source directory and then set its parent to
       // the dest directory.
-      (*parsedPath.parent).setEntry(pathParts.back(), created);
+      parsedPath.parent->setEntry(pathParts.back(), created);
       auto openFile = std::make_shared<OpenFileState>(0, flags, created);
 
       return wasmFS.getLockedFileTable().add(openFile);
@@ -498,12 +498,12 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
     // the parent directory. However, if a backend is passed as a parameter,
     // then that backend is used.
     if (!backend) {
-      backend = (*parsedPath.parent).unlocked()->getBackend();
+      backend = parsedPath.parent->unlocked()->getBackend();
     }
     // Create an empty in-memory directory.
     auto created = backend->createDirectory(mode);
 
-    (*parsedPath.parent).setEntry(pathParts.back(), created);
+    parsedPath.parent->setEntry(pathParts.back(), created);
     return 0;
   }
 }
@@ -690,12 +690,12 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
   }
 
   // Cannot unlink/rmdir if the parent dir doesn't have write permissions.
-  if (!((*parsedPath.parent).mode() & WASMFS_PERM_WRITE)) {
+  if (!(parsedPath.parent->mode() & WASMFS_PERM_WRITE)) {
     return -EACCES;
   }
 
   // Input is valid, perform the unlink.
-  (*parsedPath.parent).unlinkEntry(pathParts.back());
+  parsedPath.parent->unlinkEntry(pathParts.back());
   return 0;
 }
 
@@ -817,7 +817,8 @@ long __syscall_rename(long old_path, long new_path) {
     return -ENOENT;
   }
 
-  // This matches JS file system behavior.
+  // In Linux and WasmFS, renaming the root directory should return EBUSY.
+  // In the JS file system it reports EINVAL.
   if (oldParsedPath.child == wasmFS.getRootDirectory()) {
     return -EBUSY;
   }
@@ -870,7 +871,7 @@ long __syscall_rename(long old_path, long new_path) {
   }
 
   // Cannot move from source directory without write permissions.
-  if (!((*oldParsedPath.parent).mode() & WASMFS_PERM_WRITE)) {
+  if (!(oldParsedPath.parent->mode() & WASMFS_PERM_WRITE)) {
     return -EACCES;
   }
 
@@ -907,7 +908,7 @@ long __syscall_rename(long old_path, long new_path) {
   }
 
   // Unlink the oldpath and add the oldpath to the new parent dir.
-  (*oldParsedPath.parent).unlinkEntry(oldPathParts.back());
+  oldParsedPath.parent->unlinkEntry(oldPathParts.back());
   lockedNewParentDir.setEntry(newBase, oldParsedPath.child);
 
   return 0;
