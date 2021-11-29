@@ -375,7 +375,7 @@ long __syscall_stat64(long path, long buf) {
   auto pathParts = splitPath((char*)path);
 
   if (pathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   auto base = pathParts.back();
@@ -526,10 +526,10 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
   auto pathParts = splitPath(path);
 
   if (pathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
   // Root (/) directory.
-  if (pathParts.empty() || pathParts.size() == 1 && pathParts[0] == "/") {
+  if (pathParts.size() == 1 && pathParts[0] == "/") {
     return -EEXIST;
   }
 
@@ -874,7 +874,7 @@ long __syscall_rename(long old_path, long new_path) {
   auto oldPathParts = splitPath((char*)old_path);
 
   if (oldPathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   // In Linux, renaming the root directory returns EBUSY.
@@ -906,7 +906,7 @@ long __syscall_rename(long old_path, long new_path) {
   auto newPathParts = splitPath((char*)new_path);
 
   if (newPathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   // In Linux, renaming a directory to the root directory returns ENOTEMPTY.

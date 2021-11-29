@@ -124,6 +124,10 @@ int main() {
 #endif
   assert(statDirectory.st_blksize == 4096);
 
+  // Test calling stat with an empty pathname.
+  assert(stat("", &statFile) == -1);
+  assert(errno == ENOENT);
+
   // Test calling lstat without opening a file.
   struct stat lstatFile;
   errno = 0;
