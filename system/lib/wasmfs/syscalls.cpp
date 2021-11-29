@@ -352,12 +352,6 @@ static long doStat(std::shared_ptr<File> file, struct stat* buffer) {
     1; // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
   buffer->st_mode = lockedFile.mode();
-  // TODO: Add mode for symlinks.
-  if (file->is<Directory>()) {
-    buffer->st_mode |= S_IFDIR;
-  } else if (file->is<DataFile>()) {
-    buffer->st_mode |= S_IFREG;
-  }
   buffer->st_ino = file->getIno();
   // The number of hard links is 1 since they are unsupported.
   buffer->st_nlink = 1;
@@ -442,7 +436,7 @@ static __wasi_fd_t doOpen(char* pathname,
   auto pathParts = splitPath(pathname);
 
   if (pathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   auto base = pathParts.back();

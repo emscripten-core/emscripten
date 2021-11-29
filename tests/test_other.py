@@ -11196,7 +11196,6 @@ void foo() {}
 
   @also_with_wasmfs
   def test_unistd_open(self):
-    self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_open.c')
 
   @also_with_wasmfs
