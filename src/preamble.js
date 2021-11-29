@@ -354,8 +354,8 @@ function keepRuntimeAlive() {
 }
 
 function preRun() {
-#if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#if ASSERTIONS && USE_PTHREADS
+  assert(!ENVIRONMENT_IS_PTHREAD); // PThreads reuse the runtime from the main thread.
 #endif
 
 #if expectToReceiveOnModule('preRun')
