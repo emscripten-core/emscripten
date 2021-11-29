@@ -159,6 +159,7 @@ public:
     }
 
     // This function loads preloaded files from JS Memory into this DataFile.
+    // TODO: Make this virtual so specific backends can specialize it for better performance.
     void preloadFromJS(int index);
   };
 
