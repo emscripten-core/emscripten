@@ -11159,6 +11159,14 @@ void foo() {}
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_pthread_out_err.c')
 
+  @node_pthreads
+  def test_pthread_icu(self):
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('USE_ICU')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_other_test('test_pthread_icu.cpp')
+
   # unistd tests
 
   def test_unistd_confstr(self):

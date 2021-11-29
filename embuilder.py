@@ -55,13 +55,14 @@ MINIMAL_TASKS = [
     'libunwind-except'
 ]
 
-# Variant builds that we want to support for cetain ports
+# Variant builds that we want to support for certain ports
 # TODO: It would be nice if the ports themselves could specify the variants that they
 # support.
 PORT_VARIANTS = {
     'regal-mt': ('regal', {'USE_PTHREADS': 1}),
     'harfbuzz-mt': ('harfbuzz', {'USE_PTHREADS': 1}),
     'sdl2-mt': ('sdl2', {'USE_PTHREADS': 1}),
+    'icu-mt': ('icu', {'USE_PTHREADS': 1}),
     'sdl2_mixer_mp3': ('sdl2_mixer', {'SDL2_MIXER_FORMATS': ["mp3"]}),
     'sdl2_mixer_none': ('sdl2_mixer', {'SDL2_MIXER_FORMATS': []}),
     'sdl2_image_png': ('sdl2_image', {'SDL2_IMAGE_FORMATS': ["png"]}),
