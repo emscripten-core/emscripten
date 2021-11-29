@@ -105,5 +105,19 @@ int main() {
   printf("Errno: %s\n", strerror(errno));
   assert(errno == 0);
 
+  // Try to make a directory with a name that is longer than WASMFS_NAME_MAX.
+  // In Linux, creating a directory with a name that is longer than 255
+  // characters returns ENAMETOOLONG.
+  errno = 0;
+  mkdir("/working/"
+        "0000000001000000000200000000030000000004000000000500000000060000000007"
+        "0000000008000000000900000000000000000001000000000200000000030000000004"
+        "0000000005000000000600000000070000000008000000000900000000000000000001"
+        "0000000002000000000300000000040000000005123456",
+        0777);
+#ifdef WASMFS
+  assert(errno == ENAMETOOLONG);
+#endif
+
   return 0;
 }

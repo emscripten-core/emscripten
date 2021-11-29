@@ -27,6 +27,9 @@
 // Used to improve readability compared to those in stat.h
 #define WASMFS_PERM_WRITE 0222
 
+// In Linux, the maximum length for a filename is 255 bytes.
+#define WASMFS_NAME_MAX 255
+
 extern "C" {
 
 using namespace wasmfs;
@@ -440,6 +443,9 @@ static __wasi_fd_t doOpen(char* pathname,
   }
 
   auto base = pathParts.back();
+  if (base.size() > WASMFS_NAME_MAX) {
+    return -ENAMETOOLONG;
+  }
 
   // Root directory
   if (pathParts.size() == 1 && pathParts[0] == "/") {
@@ -534,6 +540,9 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
   }
 
   auto base = pathParts.back();
+  if (base.size() > WASMFS_NAME_MAX) {
+    return -ENAMETOOLONG;
+  }
 
   long err;
   auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
@@ -831,7 +840,6 @@ long __syscall_getdents64(long fd, long dirp, long count) {
     result->d_reclen = sizeof(dirent);
     result->d_type =
       curr.file->is<Directory>() ? DT_DIR : DT_REG; // TODO: add symlinks.
-    // TODO: Enforce that the name can fit in the d_name field.
     assert(curr.name.size() + 1 <= sizeof(result->d_name));
     strcpy(result->d_name, curr.name.c_str());
     ++result;
@@ -916,6 +924,9 @@ long __syscall_rename(long old_path, long new_path) {
   }
 
   auto newBase = newPathParts.back();
+  if (newBase.size() > WASMFS_NAME_MAX) {
+    return -ENAMETOOLONG;
+  }
 
   // oldPath is the forbidden ancestor.
   auto newParentDir =
