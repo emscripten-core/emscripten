@@ -412,6 +412,10 @@ static __wasi_fd_t doOpen(char* pathname,
     return err;
   }
 
+  if (pathParts.back().size() > WASMFS_NAME_MAX) {
+    return -ENAMETOOLONG;
+  }
+
   // The requested node was not found.
   if (!parsedPath.child) {
     // If curr is the last element and the create flag is specified
@@ -483,6 +487,10 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
   // Parent node doesn't exist.
   if (!parsedPath.parent) {
     return err;
+  }
+
+  if (pathParts.back().size() > WASMFS_NAME_MAX) {
+    return -ENAMETOOLONG;
   }
 
   // Check if the requested directory already exists.
@@ -811,6 +819,10 @@ long __syscall_rename(long old_path, long new_path) {
 
   if (!oldParsedPath.parent) {
     return err;
+  }
+
+  if (oldPathParts.back().size() > WASMFS_NAME_MAX) {
+    return -ENAMETOOLONG;
   }
 
   if (!oldParsedPath.child) {
