@@ -285,7 +285,33 @@ if (isMemoryGrowthAllowed) {
   }
 }
 
-//
+// Part issue 14745
+
+function createSmallObject() {
+	let smObject = new TheModule.JSSmallObject();
+	smObject.getID = ( number ) => number;
+	return smObject;
+  }
+  
+  function createProviderObject() {
+  
+	var provider = new TheModule.JSObjectProvider();
+	provider.getObject = function() {
+	  let tempSmallObject = createSmallObject();
+	  return tempSmallObject.ptr;
+	}
+	return provider;
+  }
+  
+  var factory = new TheModule.ObjectFactory();
+  var objectProvider = factory.getProvider( createProviderObject() );
+  var smallObject = objectProvider.getObject();
+  
+  // this will print 123 if you can instantiate an object, which means that integers
+  // are correctly typecast to ObjectProvider pointer and SmallObject pointer
+  console.log(smallObject.getID(123));
+  
+  // end of issue 14745
 
 console.log('\ndone.')
 })();
