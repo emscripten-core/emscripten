@@ -12,6 +12,23 @@
 
 namespace wasmfs {
 //
+// DataFile
+//
+void DataFile::Handle::preloadFromJS(int index) {
+  // Create a buffer with the required file size.
+  std::vector<uint8_t> buffer(
+    EM_ASM_INT({return wasmFS$preloadedFiles[$0].fileData.length}, index));
+  // Ensure that files are preloaded from the main thread.
+  assert(emscripten_is_main_runtime_thread());
+  // TODO: Replace every EM_ASM with EM_JS.
+  // Load data into the in-memory buffer.
+  EM_ASM({ HEAPU8.set(wasmFS$preloadedFiles[$1].fileData, $0); },
+         buffer.data(),
+         index);
+
+  write((const uint8_t*)buffer.data(), buffer.size(), 0);
+}
+//
 // Directory
 //
 std::shared_ptr<File> Directory::Handle::getEntry(std::string pathName) {

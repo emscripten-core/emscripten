@@ -159,6 +159,10 @@ public:
     __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
       return getFile()->write(buf, len, offset);
     }
+
+    // This function loads preloaded files from JS Memory into this DataFile.
+    // TODO: Make this virtual so specific backends can specialize it for better performance.
+    void preloadFromJS(int index);
   };
 
   Handle locked() { return Handle(shared_from_this()); }
