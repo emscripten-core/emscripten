@@ -116,6 +116,19 @@ void test() {
   assert(err == -1);
   assert(errno == EACCES);
 
+  // Can't rename a file with a new path name that is equal to WASMFS_NAME_MAX.
+#ifdef WASMFS
+  errno = 0;
+  rename(
+    "dir",
+    "0Hh03R0h7k4lsJrgY4oVbflkHMwaqUJIKv2KJmbSwXKyY83pBaKDnq5yExUOPDA2stpqSg"
+    "DhY4UsIZsHP0ORYuxrhXwjnCMJYwkMxRc3RUjSfZU3qvPRfqwjQQCetY4rnAtJPn9D282a"
+    "bfPHi87PisnLj6dU47ZX3r4yvA7ZlsvfoZrRiopvocXOhAvVzz1QyLbIbN1cEXkk1Z5uLA"
+    "zHnD0zL276mzcC1Ir21WDLZFPJeHwOti6dpq9magNfRH8I");
+
+  assert(errno == ENAMETOOLONG);
+#endif
+
   // source should not be ancestor of target
   err = rename("dir", "dir/somename");
   assert(err == -1);

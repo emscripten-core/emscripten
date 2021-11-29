@@ -87,6 +87,17 @@ int main() {
   printf("File contents: %s", buf3);
   assert(errno == 0);
 
+  // Try to make a file with a name that is equal to WASMFS_NAME_MAX.
+  errno = 0;
+  open("0Hh03R0h7k4lsJrgY4oVbflkHMwaqUJIKv2KJmbSwXKyY83pBaKDnq5yExUOPDA2stpqSg"
+       "DhY4UsIZsHP0ORYuxrhXwjnCMJYwkMxRc3RUjSfZU3qvPRfqwjQQCetY4rnAtJPn9D282a"
+       "bfPHi87PisnLj6dU47ZX3r4yvA7ZlsvfoZrRiopvocXOhAvVzz1QyLbIbN1cEXkk1Z5uLA"
+       "zHnD0zL276mzcC1Ir21WDLZFPJeHwOti6dpq9magNfRH8I",
+       O_RDWR);
+#ifdef WASMFS
+  assert(errno == ENAMETOOLONG);
+#endif
+
   // TODO: use seek to test out of bounds read.
 
   return 0;

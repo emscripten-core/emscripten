@@ -102,5 +102,19 @@ int main() {
   printf("Errno: %s\n", strerror(errno));
   assert(errno == 0);
 
+  // Try to make a directory with a name that is equal to WASMFS_NAME_MAX.
+  // In Linux, creating a directory with a name that is longer than 255
+  // characters returns ENAMETOOLONG.
+  errno = 0;
+  mkdir("/working/"
+        "0Hh03R0h7k4lsJrgY4oVbflkHMwaqUJIKv2KJmbSwXKyY83pBaKDnq5yExUOPDA2stpqSg"
+        "DhY4UsIZsHP0ORYuxrhXwjnCMJYwkMxRc3RUjSfZU3qvPRfqwjQQCetY4rnAtJPn9D282a"
+        "bfPHi87PisnLj6dU47ZX3r4yvA7ZlsvfoZrRiopvocXOhAvVzz1QyLbIbN1cEXkk1Z5uLA"
+        "zHnD0zL276mzcC1Ir21WDLZFPJeHwOti6dpq9magNfRH8I",
+        0777);
+#ifdef WASMFS
+  assert(errno == ENAMETOOLONG);
+#endif
+
   return 0;
 }
