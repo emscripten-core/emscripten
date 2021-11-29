@@ -11,6 +11,16 @@
 #include "streams.h"
 #include <emscripten/threading.h>
 
+// These helper functions will be linked in from library_wasmfs.js.
+extern "C" {
+int _emscripten_get_num_preloaded_files();
+int _emscripten_get_num_preloaded_dirs();
+int _emscripten_get_preloaded_file_mode(int index);
+void _emscripten_get_preloaded_parent_path(int index, char* parentPath);
+void _emscripten_get_preloaded_path_name(int index, char* fileName);
+void _emscripten_get_preloaded_child_path(int index, char* childName);
+}
+
 namespace wasmfs {
 // The below lines are included to make the compiler believe that the global
 // constructor is part of a system header, which is necessary to work around a
@@ -22,9 +32,9 @@ namespace wasmfs {
 // system priority) since wasmFS is a system level component.
 // TODO: consider instead adding this in libc's startup code.
 // WARNING: Maintain # n + 1 "wasmfs.cpp" 3 where n = line number.
-# 26 "wasmfs.cpp" 3
+# 36 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
-# 28 "wasmfs.cpp"
+# 38 "wasmfs.cpp"
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   auto rootBackend = createMemoryFileBackend();
@@ -61,8 +71,8 @@ void WasmFS::preloadFiles() {
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_runtime_thread());
 
-  int numFiles = EM_ASM_INT({return wasmFS$preloadedFiles.length});
-  int numDirs = EM_ASM_INT({return wasmFS$preloadedDirs.length});
+  auto numFiles = _emscripten_get_num_preloaded_files();
+  auto numDirs = _emscripten_get_num_preloaded_dirs();
 
   // If there are no preloaded files, exit early.
   if (numDirs == 0 && numFiles == 0) {
@@ -72,16 +82,8 @@ void WasmFS::preloadFiles() {
   // Iterate through wasmFS$preloadedDirs to obtain a parent and child pair.
   // Ex. Module['FS_createPath']("/foo/parent", "child", true, true);
   for (int i = 0; i < numDirs; i++) {
-    // TODO: Convert every EM_ASM to EM_JS.
     char parentPath[PATH_MAX] = {};
-    EM_ASM(
-      {
-        var s = wasmFS$preloadedDirs[$0].parentPath;
-        var len = lengthBytesUTF8(s) + 1;
-        stringToUTF8(s, $1, len);
-      },
-      i,
-      parentPath);
+    _emscripten_get_preloaded_parent_path(i, parentPath);
 
     auto pathParts = splitPath(parentPath);
 
@@ -97,14 +99,7 @@ void WasmFS::preloadFiles() {
     }
 
     char childName[PATH_MAX] = {};
-    EM_ASM(
-      {
-        var s = wasmFS$preloadedDirs[$0].childName;
-        var len = lengthBytesUTF8(s) + 1;
-        stringToUTF8(s, $1, len);
-      },
-      i,
-      childName);
+    _emscripten_get_preloaded_child_path(i, childName);
 
     auto created = rootBackend->createDirectory(S_IRUGO | S_IXUGO);
 
@@ -113,16 +108,9 @@ void WasmFS::preloadFiles() {
 
   for (int i = 0; i < numFiles; i++) {
     char fileName[PATH_MAX] = {};
-    EM_ASM(
-      {
-        var s = wasmFS$preloadedFiles[$0].pathName;
-        var len = lengthBytesUTF8(s) + 1;
-        stringToUTF8(s, $1, len);
-      },
-      i,
-      fileName);
+    _emscripten_get_preloaded_path_name(i, fileName);
 
-    auto mode = EM_ASM_INT({ return wasmFS$preloadedFiles[$0].mode; }, i);
+    auto mode = _emscripten_get_preloaded_file_mode(i);
 
     auto pathParts = splitPath(fileName);
 
