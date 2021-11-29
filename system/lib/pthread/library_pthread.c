@@ -144,7 +144,8 @@ extern double emscripten_receive_on_main_thread_js(int functionIndex, int numCal
 extern int _emscripten_notify_thread_queue(pthread_t targetThreadId, pthread_t mainThreadId);
 extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 
-static void _do_call(em_queued_call* q) {
+static void _do_call(void* arg) {
+  em_queued_call* q = (em_queued_call*)arg;
   // C function pointer
   assert(EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum) <= EM_QUEUED_CALL_MAX_ARGS);
   switch (q->functionEnum) {
@@ -295,9 +296,14 @@ static void _do_call(em_queued_call* q) {
 #define CALL_QUEUE_SIZE 128
 
 // Shared data synchronized by call_queue_lock.
+typedef struct CallQueueEntry {
+  void (*func)(void*);
+  void* arg;
+} CallQueueEntry;
+
 typedef struct CallQueue {
   void* target_thread;
-  em_queued_call** call_queue;
+  CallQueueEntry* call_queue;
   int call_queue_head;
   int call_queue_tail;
   struct CallQueue* next;
@@ -385,8 +391,8 @@ int _emscripten_do_dispatch_to_thread(pthread_t target_thread, em_queued_call* c
   //+ $2 + '\n' + new Error().stack)}, call->functionEnum, call->functionPtr, target_thread);
   // #endif
 
-  // Can't be a null pointer here, but can't be EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD
-  // either.
+  // Can't be a null pointer here, and can't be
+  // EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD either.
   assert(target_thread);
   if (target_thread == EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD)
     target_thread = emscripten_main_browser_thread_id();
@@ -401,9 +407,10 @@ int _emscripten_do_dispatch_to_thread(pthread_t target_thread, em_queued_call* c
   // Add the operation to the call queue of the main runtime thread.
   pthread_mutex_lock(&call_queue_lock);
   CallQueue* q = GetOrAllocateQueue(target_thread);
-  if (!q->call_queue)
-    q->call_queue = malloc(
-      sizeof(em_queued_call*) * CALL_QUEUE_SIZE); // Shared data synchronized by call_queue_lock.
+  if (!q->call_queue) {
+    // Shared data synchronized by call_queue_lock.
+    q->call_queue = malloc(sizeof(CallQueueEntry) * CALL_QUEUE_SIZE);
+  }
 
   int head = q->call_queue_head;
   int tail = q->call_queue_tail;
@@ -431,7 +438,8 @@ int _emscripten_do_dispatch_to_thread(pthread_t target_thread, em_queued_call* c
     }
   }
 
-  q->call_queue[tail] = call;
+  q->call_queue[tail].func = _do_call;
+  q->call_queue[tail].arg = call;
 
   // If the call queue was empty, the main runtime thread is likely idle in the browser event loop,
   // so send a message to it to ensure that it wakes up to start processing the command we have
@@ -584,7 +592,7 @@ void emscripten_current_thread_process_queued_calls() {
     // Assume that the call is heavy, so unlock access to the call queue while it is being
     // performed.
     pthread_mutex_unlock(&call_queue_lock);
-    _do_call(q->call_queue[head]);
+    q->call_queue[head].func(q->call_queue[head].arg);
     pthread_mutex_lock(&call_queue_lock);
 
     head = (head + 1) % CALL_QUEUE_SIZE;
