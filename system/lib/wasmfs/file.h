@@ -269,18 +269,25 @@ struct ParsedPath {
   std::shared_ptr<File> child;
 };
 
+// Call getParsedPath if one needs a locked handle to a parent dir and a
+// shared_ptr to its child file, given a file path.
 // TODO: When locking the directory structure is refactored, parent should be
 // returned as a pointer, similar to child. Given a pathname, this function will
 // return a locked parent directory and a pointer to the specified file.
-ParsedPath getParsedPath(std::vector<std::string> pathParts,
-                         long& err,
-                         std::shared_ptr<File> forbiddenAncestor = nullptr);
-
-// Obtains parent directory of a given pathname.
 // Will return a nullptr if the parent is not a directory.
 // Will error if the forbiddenAncestor is encountered while processing.
 // If the forbiddenAncestor is encountered, err will be set to EINVAL and
 // nullptr will be returned.
+ParsedPath getParsedPath(std::vector<std::string> pathParts,
+                         long& err,
+                         std::shared_ptr<File> forbiddenAncestor = nullptr);
+
+// Call getDir if one needs a parent directory of a file path.
+// TODO: Remove this when directory structure locking is refactored and use
+// getParsedPath instead. Obtains parent directory of a given pathname.
+// Will return a nullptr if the parent is not a directory. Will error if the
+// forbiddenAncestor is encountered while processing. If the forbiddenAncestor
+// is encountered, err will be set to EINVAL and nullptr will be returned.
 std::shared_ptr<Directory>
 getDir(std::vector<std::string>::iterator begin,
        std::vector<std::string>::iterator end,
