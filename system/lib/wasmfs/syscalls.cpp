@@ -436,7 +436,7 @@ static __wasi_fd_t doOpen(char* pathname,
   auto pathParts = splitPath(pathname);
 
   if (pathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   auto base = pathParts.back();
