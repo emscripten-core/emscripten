@@ -116,7 +116,7 @@ void test() {
   assert(err == -1);
   assert(errno == EACCES);
 
-  // Can't rename a file with a new path name that is equal to WASMFS_NAME_MAX.
+  // Can't rename a file with a new path name that is longer than WASMFS_NAME_MAX.
 #ifdef WASMFS
   errno = 0;
   rename("dir",

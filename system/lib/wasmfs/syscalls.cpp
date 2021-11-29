@@ -27,6 +27,7 @@
 // Used to improve readability compared to those in stat.h
 #define WASMFS_PERM_WRITE 0222
 
+// In Linux, the maximum length for a filename is 255 bytes.
 #define WASMFS_NAME_MAX 255
 
 extern "C" {

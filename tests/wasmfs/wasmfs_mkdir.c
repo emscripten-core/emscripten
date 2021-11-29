@@ -102,7 +102,7 @@ int main() {
   printf("Errno: %s\n", strerror(errno));
   assert(errno == 0);
 
-  // Try to make a directory with a name that is equal to WASMFS_NAME_MAX.
+  // Try to make a directory with a name that is longer than WASMFS_NAME_MAX.
   // In Linux, creating a directory with a name that is longer than 255
   // characters returns ENAMETOOLONG.
   errno = 0;
