@@ -58,11 +58,14 @@ int main() {
   printf("%s", buf);
   close(fd);
 
-  // Try to make a directory with an empty pathname.
+  // In Linux and WasmFS, an empty pathname returns ENOENT.
   errno = 0;
   mkdir("", 0777);
-  printf("Errno: %s\n", strerror(errno));
+#ifdef WASMFS
+  assert(errno == ENOENT);
+#else
   assert(errno == EINVAL);
+#endif
 
   // Try to make the root directory.
   errno = 0;

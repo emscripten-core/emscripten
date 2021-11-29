@@ -355,12 +355,6 @@ static long doStat(std::shared_ptr<File> file, struct stat* buffer) {
     1; // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
   buffer->st_mode = lockedFile.mode();
-  // TODO: Add mode for symlinks.
-  if (file->is<Directory>()) {
-    buffer->st_mode |= S_IFDIR;
-  } else if (file->is<DataFile>()) {
-    buffer->st_mode |= S_IFREG;
-  }
   buffer->st_ino = file->getIno();
   // The number of hard links is 1 since they are unsupported.
   buffer->st_nlink = 1;
@@ -384,7 +378,7 @@ long __syscall_stat64(long path, long buf) {
   auto pathParts = splitPath((char*)path);
 
   if (pathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   auto base = pathParts.back();
@@ -445,7 +439,7 @@ static __wasi_fd_t doOpen(char* pathname,
   auto pathParts = splitPath(pathname);
 
   if (pathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   auto base = pathParts.back();
@@ -538,10 +532,10 @@ static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
   auto pathParts = splitPath(path);
 
   if (pathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
   // Root (/) directory.
-  if (pathParts.empty() || pathParts.size() == 1 && pathParts[0] == "/") {
+  if (pathParts.size() == 1 && pathParts[0] == "/") {
     return -EEXIST;
   }
 
@@ -888,7 +882,7 @@ long __syscall_rename(long old_path, long new_path) {
   auto oldPathParts = splitPath((char*)old_path);
 
   if (oldPathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   // In Linux, renaming the root directory returns EBUSY.
@@ -920,7 +914,7 @@ long __syscall_rename(long old_path, long new_path) {
   auto newPathParts = splitPath((char*)new_path);
 
   if (newPathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   // In Linux, renaming a directory to the root directory returns ENOTEMPTY.

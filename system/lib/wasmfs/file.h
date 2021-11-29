@@ -140,7 +140,9 @@ class DataFile : public File {
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
   DataFile(mode_t mode, backend_t backend)
-    : File(File::DataFileKind, mode, backend) {}
+    : File(File::DataFileKind, mode | S_IFREG, backend) {}
+  DataFile(mode_t mode, backend_t backend, mode_t fileType)
+    : File(File::DataFileKind, mode | fileType, backend) {}
   virtual ~DataFile() = default;
 
   class Handle : public File::Handle {
@@ -173,7 +175,7 @@ protected:
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
   Directory(mode_t mode, backend_t backend)
-    : File(File::DirectoryKind, mode, backend) {}
+    : File(File::DirectoryKind, mode | S_IFDIR, backend) {}
 
   struct Entry {
     std::string name;

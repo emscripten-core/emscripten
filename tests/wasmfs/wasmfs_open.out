@@ -2,7 +2,4 @@ WORKING WITH TRAILING BACKSLASH
 WORKING WITHOUT TRAILING BACKSLASH
 Errno: Bad file descriptor
 Errno: Is a directory
-Errno: Is a directory
 Errno: No such file or directory
-Errno: Not a directory
-Errno: Is a directory
