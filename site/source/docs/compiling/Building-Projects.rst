@@ -262,7 +262,7 @@ Faux Dynamic Linking
 --------------------
 
 Emscripten's goal is to generate the fastest and smallest possible code. For
-that reason it focuses on compiling an entire project into the single file,
+that reason it focuses on compiling an entire project into a single Wasm file,
 avoiding dynamic linking when possible.
 
 By default, when the `-shared` flag is used to build a shared library,
