@@ -261,19 +261,19 @@ In some cases it makes sense to modify the build scripts so that they build the 
 Faux Dynamic Linking
 --------------------
 
-Emscripten's goal is to generate the fastest and smallest possible code, and for
-that reason it focuses on generating a single JavaScript file for an entire
-project. For that reason, dynamic linking should be avoided when possible.
+Emscripten's goal is to generate the fastest and smallest possible code. For
+that reason it focuses on compiling an entire project into the single file,
+avoiding dynamic linking when possible.
 
-For this reason, by default, when the `-shared` flag use used to build a shared
-library, Emscripten will produce an ``.so`` library that is actually just a
-regular ``.o`` object file (Under the hood it uses `ld -r` to combine objects
-into a single larger object).  When these faux "shared libraries" are linked
-into your application they are effectively linked as static libraries.  When
-building these shared libraries *Emcc* will ignore other shared libraries on the
-command line.  This is to ensure that the same dynamic library is not linked
-multiple times in intermediate build stages, which would result in duplicate
-symbol errors.
+By default, when the `-shared` flag is used to build a shared library,
+Emscripten will produce an ``.so`` library that is actually just a regular
+``.o`` object file (Under the hood it uses `ld -r` to combine objects into a
+single larger object).  When these faux "shared libraries" are linked into your
+application they are effectively linked as static libraries.  When building
+these shared libraries *Emcc* will ignore other shared libraries on the command
+line.  This is to ensure that the same dynamic library is not linked multiple
+times in intermediate build stages, which would result in duplicate symbol
+errors.
 
 See :ref:`experimental support <Dynamic-Linking>` for how to build true dynamic
 libraries, which can be linked together either at load time, or at runtime (via
