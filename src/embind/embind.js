@@ -628,14 +628,12 @@ var LibraryEmbind = {
             return value;
         },
         'toWireType': function (destructors, value) {
-#if ASSERTIONS
             if (typeof value !== "bigint") {
                 throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
             if (value < minRange || value > maxRange) {
                 throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
             }
-#endif
             return value;
         },
         'argPackAdvance': 8,
