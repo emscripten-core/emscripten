@@ -291,7 +291,7 @@ def main():
   (function() {
    // When running as a pthread, FS operations are proxied to the main thread, so we don't need to
    // fetch the .data bundle on the worker
-   if (Module['ENVIRONMENT_IS_PTHREAD']) { return; }
+   if (Module['ENVIRONMENT_IS_PTHREAD']) return;
    var loadPackage = function(metadata) {
   '''
 
