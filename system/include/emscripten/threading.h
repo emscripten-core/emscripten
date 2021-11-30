@@ -76,6 +76,7 @@ typedef struct em_queued_call
   int calleeDelete;
 } em_queued_call;
 
+void emscripten_async_run_in_main_thread(em_queued_call *call);
 void emscripten_sync_run_in_main_thread(em_queued_call *call);
 void *emscripten_sync_run_in_main_thread_0(int function);
 void *emscripten_sync_run_in_main_thread_1(int function, void *arg1);
