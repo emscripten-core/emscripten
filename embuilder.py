@@ -28,6 +28,7 @@ import emscripten
 MINIMAL_TASKS = [
     'libcompiler_rt',
     'libc',
+    'libc-debug',
     'libc++abi',
     'libc++abi-except',
     'libc++abi-noexcept',

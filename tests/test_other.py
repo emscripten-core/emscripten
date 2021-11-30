@@ -10911,13 +10911,13 @@ kill -9 $$
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
-    self.run_process([EMBUILDER, 'build', 'libc-mt', 'libcompiler_rt-mt', 'libdlmalloc-mt'])
+    self.run_process([EMBUILDER, 'build', 'libc-mt-debug', 'libcompiler_rt-mt', 'libdlmalloc-mt'])
 
     libs = ['-lc', '-lc_rt', '-lcompiler_rt', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nostdlib', '-v'] + libs, stderr=PIPE).stderr
 
     # Check the the linker was run with `-mt` variants because `-pthread` was passed.
-    self.assertContained(' -lc-mt ', err)
+    self.assertContained(' -lc-mt-debug ', err)
     self.assertContained(' -ldlmalloc-mt ', err)
     self.assertContained(' -lcompiler_rt-mt ', err)
 
