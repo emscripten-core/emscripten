@@ -139,6 +139,8 @@ def with_both_sjlj_handling(f):
       if not self.is_wasm():
         self.skipTest('wasm2js does not support Wasm SjLj')
       self.require_v8()
+      if '-flto' in self.emcc_args:
+        self.skipTest('https://github.com/emscripten-core/emscripten/issues/15665')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       # These are for Emscripten EH/SjLj
       self.set_setting('DISABLE_EXCEPTION_THROWING')
