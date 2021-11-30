@@ -9439,7 +9439,7 @@ int main(void) {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 5001), 150)
+    self.assertLess(abs(changed - 5150), 150)
 
   def test_llvm_includes(self):
     create_file('atomics.c', '#include <stdatomic.h>')
