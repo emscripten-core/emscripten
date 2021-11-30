@@ -3,11 +3,7 @@
 #include "pthread_impl.h"
 #include "syscall.h"
 
-#ifdef __EMSCRIPTEN__
-hidden long __cancel();
-#else
 hidden long __cancel(), __syscall_cp_asm(), __syscall_cp_c();
-#endif
 
 long __cancel()
 {
