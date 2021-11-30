@@ -10527,6 +10527,14 @@ exec "$@"
     # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
     self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-s', 'USE_PTHREADS', '--closure=1', '--threadprofiler'])
 
+  @node_pthreads
+  def test_threadprofiler(self):
+    self.run_process([EMCC, test_file('test_threadprofiler.cpp'), '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '--threadprofiler'])
+    output = self.run_js('a.out.js')
+    self.assertRegex(output, r'Thread "Browser main thread" \(0x.*\) now: running.')
+    self.assertRegex(output, r'Thread "Application main thread" \(0x.*\) now: waiting for a futex.')
+    self.assertRegex(output, r'Thread "test worker" \(0x.*\) now: sleeping.')
+
   def test_syslog(self):
     self.do_other_test('test_syslog.c')
 
