@@ -36,7 +36,7 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, read_file, read_binary, EMBUILDER, require_v8, require_node
-from tools import shared, building, utils, deps_info
+from tools import shared, building, utils, deps_info, response_file
 import common
 import jsrun
 import clang_native
@@ -7770,7 +7770,8 @@ end
     create_file("file'2", ' ')
     create_file("hyvää päivää", ' ')
     create_file("snowman freezes covid ☃ 🦠", ' ')
-    building.emar('cr', 'libfoo.a', ("file'1", "file'2", "hyvää päivää", "snowman freezes covid ☃ 🦠"))
+    rsp = response_file.create_response_file(("file'1", "file'2", "hyvää päivää", "snowman freezes covid ☃ 🦠"), shared.TEMP_DIR)
+    building.emar('cr', 'libfoo.a', ['@' + rsp])
 
   def test_archive_empty(self):
     # This test added because we had an issue with the AUTO_ARCHIVE_INDEXES failing on empty
