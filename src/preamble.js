@@ -76,7 +76,9 @@ function assert(condition, text) {
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
   var func = Module['_' + ident]; // closure exported function
+#if ASSERTIONS
   assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
+#endif
   return func;
 }
 
