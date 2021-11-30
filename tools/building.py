@@ -684,12 +684,12 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
     if isinstance(e, subprocess.CalledProcessError):
       sys.stderr.write(e.stdout)
     sys.stderr.write(str(e) + '\n')
-    exit_with_error('closure compiler (%s) did not execute properly!' % str(cmd))
+    exit_with_error('closure compiler (%s) did not execute properly!' % shared.shlex_join(cmd))
 
   if 'Version:' not in output:
     if allowed_to_fail:
       return False
-    exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(cmd), output))
+    exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (shared.shlex_join(cmd), output))
 
   return True
 
