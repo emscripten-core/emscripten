@@ -1418,6 +1418,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.MEMORYPROFILER = 1
 
   if settings.PTHREADS_PROFILING:
+    if not settings.ASSERTIONS:
+      exit_with_error('PTHREADS_PROFILING only works with ASSERTIONS enabled')
     options.post_js.append(utils.path_from_root('src/threadprofiler.js'))
 
   options.pre_js = read_js_files(options.pre_js)
