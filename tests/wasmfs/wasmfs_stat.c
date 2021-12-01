@@ -124,8 +124,14 @@ int main() {
 #endif
   assert(statDirectory.st_blksize == 4096);
 
-  // Test calling stat with an empty pathname.
-  assert(stat("", &statFile) == -1);
+  // Test calling stat with an empty path.
+  errno = 0;
+  assert(stat("", &invalid));
+  assert(errno == ENOENT);
+
+  // Test calling stat with a non-existent path.
+  errno = 0;
+  assert(stat("/non-existent", &invalid));
   assert(errno == ENOENT);
 
   // Test calling lstat without opening a file.
