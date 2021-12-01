@@ -630,21 +630,11 @@ double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t
 }
 
 void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* func_ptr, ...) {
-  em_queued_call* q = em_queued_call_malloc();
-  if (!q)
-    return;
-  q->functionEnum = sig;
-  q->functionPtr = func_ptr;
-
   va_list args;
   va_start(args, func_ptr);
-  init_em_queued_call_args(q, sig, args);
+  emscripten_dispatch_to_thread_args(
+    emscripten_main_browser_thread_id(), sig, func_ptr, NULL, args);
   va_end(args);
-  // 'async' runs are fire and forget, where the caller detaches itself from the call object after
-  // returning here, and it is the callee's responsibility to free up the memory after the call has
-  // been performed.
-  q->calleeDelete = 1;
-  emscripten_async_run_in_main_thread(q);
 }
 
 em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
