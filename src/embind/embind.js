@@ -50,6 +50,9 @@ var LibraryEmbind = {
     Module['flushPendingDeletes'] = flushPendingDeletes;
     Module['setDelayFunction'] = setDelayFunction;
 #if IN_TEST_HARNESS
+#if ASSERTIONS
+    Module['ASSERTIONS'] = true;
+#endif
 #if DYNAMIC_EXECUTION
     // Without dynamic execution, dynamically created functions will have no
     // names. This lets the test suite know that.
@@ -57,9 +60,6 @@ var LibraryEmbind = {
 #endif
 #if EMBIND_STD_STRING_IS_UTF8
     Module['EMBIND_STD_STRING_IS_UTF8'] = true;
-#endif
-#if ASSERTIONS
-    Module['ASSERTIONS'] = true;
 #endif
 #endif
   },
