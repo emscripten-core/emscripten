@@ -135,6 +135,30 @@ static void em_queued_call_free(em_queued_call* call) {
   free(call);
 }
 
+static void init_em_queued_call_args(em_queued_call* q,
+                                     EM_FUNC_SIGNATURE sig,
+                                     va_list args) {
+  EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
+  int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
+  for (int i = 0; i < numArguments; ++i) {
+    switch ((argumentsType & EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK)) {
+      case EM_FUNC_SIG_PARAM_I:
+        q->args[i].i = va_arg(args, int);
+        break;
+      case EM_FUNC_SIG_PARAM_I64:
+        q->args[i].i64 = va_arg(args, int64_t);
+        break;
+      case EM_FUNC_SIG_PARAM_F:
+        q->args[i].f = (float)va_arg(args, double);
+        break;
+      case EM_FUNC_SIG_PARAM_D:
+        q->args[i].d = va_arg(args, double);
+        break;
+    }
+    argumentsType >>= EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_SHIFT;
+  }
+}
+
 void emscripten_async_waitable_close(em_queued_call* call) {
   assert(call->operationDone);
   em_queued_call_free(call);
@@ -620,29 +644,11 @@ void emscripten_main_thread_process_queued_calls() {
 }
 
 int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* func_ptr, ...) {
-  int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call q = {sig, func_ptr};
 
-  EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
   va_list args;
   va_start(args, func_ptr);
-  for (int i = 0; i < numArguments; ++i) {
-    switch ((argumentsType & EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK)) {
-      case EM_FUNC_SIG_PARAM_I:
-        q.args[i].i = va_arg(args, int);
-        break;
-      case EM_FUNC_SIG_PARAM_I64:
-        q.args[i].i64 = va_arg(args, int64_t);
-        break;
-      case EM_FUNC_SIG_PARAM_F:
-        q.args[i].f = (float)va_arg(args, double);
-        break;
-      case EM_FUNC_SIG_PARAM_D:
-        q.args[i].d = va_arg(args, double);
-        break;
-    }
-    argumentsType >>= EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_SHIFT;
-  }
+  init_em_queued_call_args(&q, sig, args);
   va_end(args);
   emscripten_sync_run_in_main_thread(&q);
   return q.returnValue.i;
@@ -686,33 +692,15 @@ double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t
 }
 
 void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* func_ptr, ...) {
-  int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call* q = em_queued_call_malloc();
   if (!q)
     return;
   q->functionEnum = sig;
   q->functionPtr = func_ptr;
 
-  EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
   va_list args;
   va_start(args, func_ptr);
-  for (int i = 0; i < numArguments; ++i) {
-    switch ((argumentsType & EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK)) {
-      case EM_FUNC_SIG_PARAM_I:
-        q->args[i].i = va_arg(args, int);
-        break;
-      case EM_FUNC_SIG_PARAM_I64:
-        q->args[i].i64 = va_arg(args, int64_t);
-        break;
-      case EM_FUNC_SIG_PARAM_F:
-        q->args[i].f = (float)va_arg(args, double);
-        break;
-      case EM_FUNC_SIG_PARAM_D:
-        q->args[i].d = va_arg(args, double);
-        break;
-    }
-    argumentsType >>= EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_SHIFT;
-  }
+  init_em_queued_call_args(q, sig, args);
   va_end(args);
   // 'async' runs are fire and forget, where the caller detaches itself from the call object after
   // returning here, and it is the callee's responsibility to free up the memory after the call has
@@ -723,33 +711,15 @@ void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* f
 
 em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
   EM_FUNC_SIGNATURE sig, void* func_ptr, ...) {
-  int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call* q = em_queued_call_malloc();
   if (!q)
     return NULL;
   q->functionEnum = sig;
   q->functionPtr = func_ptr;
 
-  EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
   va_list args;
   va_start(args, func_ptr);
-  for (int i = 0; i < numArguments; ++i) {
-    switch ((argumentsType & EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK)) {
-      case EM_FUNC_SIG_PARAM_I:
-        q->args[i].i = va_arg(args, int);
-        break;
-      case EM_FUNC_SIG_PARAM_I64:
-        q->args[i].i64 = va_arg(args, int64_t);
-        break;
-      case EM_FUNC_SIG_PARAM_F:
-        q->args[i].f = (float)va_arg(args, double);
-        break;
-      case EM_FUNC_SIG_PARAM_D:
-        q->args[i].d = va_arg(args, double);
-        break;
-    }
-    argumentsType >>= EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_SHIFT;
-  }
+  init_em_queued_call_args(q, sig, args);
   va_end(args);
   // 'async waitable' runs are waited on by the caller, so the call object needs to remain alive for
   // the caller to access it after the operation is done. The caller is responsible in cleaning up
@@ -772,8 +742,6 @@ static void dispatch_to_thread_helper(void* user_data) {
 
 int _emscripten_call_on_thread(int forceAsync, pthread_t targetThread, EM_FUNC_SIGNATURE sig,
     void* func_ptr, void* satellite, ...) {
-
-  int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call* q = em_queued_call_malloc();
   assert(q);
   // TODO: handle errors in a better way, this pattern appears in several places
@@ -787,26 +755,9 @@ int _emscripten_call_on_thread(int forceAsync, pthread_t targetThread, EM_FUNC_S
   q->functionPtr = func_ptr;
   q->satelliteData = satellite;
 
-  EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
   va_list args;
   va_start(args, satellite);
-  for (int i = 0; i < numArguments; ++i) {
-    switch ((argumentsType & EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK)) {
-      case EM_FUNC_SIG_PARAM_I:
-        q->args[i].i = va_arg(args, int);
-        break;
-      case EM_FUNC_SIG_PARAM_I64:
-        q->args[i].i64 = va_arg(args, int64_t);
-        break;
-      case EM_FUNC_SIG_PARAM_F:
-        q->args[i].f = (float)va_arg(args, double);
-        break;
-      case EM_FUNC_SIG_PARAM_D:
-        q->args[i].d = va_arg(args, double);
-        break;
-    }
-    argumentsType >>= EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_SHIFT;
-  }
+  init_em_queued_call_args(q, sig, args);
   va_end(args);
 
   // 'async' runs are fire and forget, where the caller detaches itself from the call object after
