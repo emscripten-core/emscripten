@@ -28,7 +28,7 @@ void looper() {
   if (doneEntry) {
     puts("looper() : running Shutdown on thread");
     int rc = emscripten_dispatch_to_thread(mythread, EM_FUNC_SIG_V, Shutdown, NULL);
-    assert(rc == 0);
+    assert(rc == 1);
     doneEntry = 0;
   }
   if (doneShutdown) {
