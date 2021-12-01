@@ -744,7 +744,11 @@ int emscripten_dispatch_to_thread_args(pthread_t target_thread,
 
   // `q` will not be used after it is called, so let the call clean it up.
   q->calleeDelete = 1;
-  return emscripten_dispatch_to_thread_ptr(target_thread, _do_call, q);
+  if (!emscripten_dispatch_to_thread_ptr(target_thread, _do_call, q)) {
+    em_queued_call_free(q);
+    return 0;
+  }
+  return 1;
 }
 
 int emscripten_dispatch_to_thread_(pthread_t target_thread,
