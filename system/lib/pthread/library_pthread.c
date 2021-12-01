@@ -125,14 +125,61 @@ static em_queued_call* em_queued_call_malloc() {
     call->operationDone = 0;
     call->functionPtr = 0;
     call->satelliteData = 0;
+    call->heapAllocated = 1;
   }
   return call;
 }
 
+// Collect a list of varargs into the `call` structure according to the `sig`.
+// Assume arguments before `start` have already been initialized and are not
+// included in `args`.
+static void init_em_queued_call_args(em_queued_call* call,
+                                     EM_FUNC_SIGNATURE sig,
+                                     int start,
+                                     va_list args) {
+  int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
+  EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
+  for (int i = 0; i < numArguments; ++i) {
+    if (i >= start) {
+      switch ((argumentsType & EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK)) {
+        case EM_FUNC_SIG_PARAM_I:
+          call->args[i].i = va_arg(args, int);
+          break;
+        case EM_FUNC_SIG_PARAM_I64:
+          call->args[i].i64 = va_arg(args, int64_t);
+          break;
+        case EM_FUNC_SIG_PARAM_F:
+          call->args[i].f = (float)va_arg(args, double);
+          break;
+        case EM_FUNC_SIG_PARAM_D:
+          call->args[i].d = va_arg(args, double);
+          break;
+      }
+    }
+    argumentsType >>= EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_SHIFT;
+  }
+}
+
+static em_queued_call* create_em_queued_call(
+  EM_FUNC_SIGNATURE sig, void* func, void* satellite, int start, va_list args) {
+  em_queued_call* q = em_queued_call_malloc();
+  if (!q) {
+    return NULL;
+  }
+  q->functionEnum = sig;
+  q->functionPtr = func;
+  q->satelliteData = satellite;
+  init_em_queued_call_args(q, sig, start, args);
+  return q;
+}
+
 static void em_queued_call_free(em_queued_call* call) {
-  if (call)
+  if (call) {
     free(call->satelliteData);
-  free(call);
+    if (call->heapAllocated) {
+      free(call);
+    }
+  }
 }
 
 void emscripten_async_waitable_close(em_queued_call* call) {
@@ -280,17 +327,12 @@ static void _do_call(void* arg) {
     default:
       assert(0 && "Invalid Emscripten pthread _do_call opcode!");
   }
+}
 
-  // If the caller is detached from this operation, it is the main thread's responsibility to free
-  // up the call object.
-  if (q->calleeDelete) {
-    em_queued_call_free(q);
-    // No need to wake a listener, nothing is listening to this since the call object is detached.
-  } else {
-    // The caller owns this call object, it is listening to it and will free it up.
-    q->operationDone = 1;
-    emscripten_futex_wake(&q->operationDone, INT_MAX);
-  }
+static void do_call_and_free_queued_call(void* arg) {
+  em_queued_call* q = (em_queued_call*)arg;
+  _do_call(q);
+  em_queued_call_free(q);
 }
 
 #define CALL_QUEUE_SIZE 128
@@ -348,8 +390,10 @@ static CallQueue* GetOrAllocateQueue(void* target) {
 }
 
 EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeoutMSecs) {
+  // TODO: deprecate this and prefer using
+  // `emscripten_dispatch_to_thread_async_as_sync` or adding a new `waitable`
+  // variant of `emscripten_dispatch_to_thread`.
   int r;
-
   int done = atomic_load(&call->operationDone);
   if (!done) {
     double now = emscripten_get_now();
@@ -378,96 +422,16 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_i(
 
 static struct pthread __main_pthread;
 
-pthread_t emscripten_main_browser_thread_id() {
-  return &__main_pthread;
-}
-
-int _emscripten_do_dispatch_to_thread(pthread_t target_thread, em_queued_call* call) {
-  assert(call);
-
-  // #if PTHREADS_DEBUG // TODO: Create a debug version of pthreads library
-  //	EM_ASM_INT({dump('thread ' + _pthread_self() + ' (ENVIRONMENT_IS_WORKER: ' +
-  //ENVIRONMENT_IS_WORKER + '), queueing call of function enum=' + $0 + '/ptr=' + $1 + ' on thread '
-  //+ $2 + '\n' + new Error().stack)}, call->functionEnum, call->functionPtr, target_thread);
-  // #endif
-
-  // Can't be a null pointer here, and can't be
-  // EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD either.
-  assert(target_thread);
-  if (target_thread == EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD)
-    target_thread = emscripten_main_browser_thread_id();
-
-  // If we are the target recipient of this message, we can just call the operation directly.
-  if (target_thread == EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD ||
-      target_thread == pthread_self()) {
-    _do_call(call);
-    return 1;
-  }
-
-  // Add the operation to the call queue of the main runtime thread.
-  pthread_mutex_lock(&call_queue_lock);
-  CallQueue* q = GetOrAllocateQueue(target_thread);
-  if (!q->call_queue) {
-    // Shared data synchronized by call_queue_lock.
-    q->call_queue = malloc(sizeof(CallQueueEntry) * CALL_QUEUE_SIZE);
-  }
-
-  int head = q->call_queue_head;
-  int tail = q->call_queue_tail;
-  int new_tail = (tail + 1) % CALL_QUEUE_SIZE;
-
-  while (new_tail == head) { // Queue is full?
-    pthread_mutex_unlock(&call_queue_lock);
-
-    // If queue of the main browser thread is full, then we wait. (never drop messages for the main
-    // browser thread)
-    if (target_thread == emscripten_main_browser_thread_id()) {
-      emscripten_futex_wait((void*)&q->call_queue_head, head, INFINITY);
-      pthread_mutex_lock(&call_queue_lock);
-      head = q->call_queue_head;
-      tail = q->call_queue_tail;
-      new_tail = (tail + 1) % CALL_QUEUE_SIZE;
-    } else {
-      // For the queues of other threads, just drop the message.
-      // #if DEBUG TODO: a debug build of pthreads library?
-      //			EM_ASM(console.error('Pthread queue overflowed, dropping queued
-      //message to thread. ' + new Error().stack));
-      // #endif
-      em_queued_call_free(call);
-      return 0;
-    }
-  }
-
-  q->call_queue[tail].func = _do_call;
-  q->call_queue[tail].arg = call;
-
-  // If the call queue was empty, the main runtime thread is likely idle in the browser event loop,
-  // so send a message to it to ensure that it wakes up to start processing the command we have
-  // posted.
-  if (head == tail) {
-    int success = _emscripten_notify_thread_queue(target_thread, emscripten_main_browser_thread_id());
-    // Failed to dispatch the thread, delete the crafted message.
-    if (!success) {
-      em_queued_call_free(call);
-      pthread_mutex_unlock(&call_queue_lock);
-      return 0;
-    }
-  }
-
-  q->call_queue_tail = new_tail;
-  pthread_mutex_unlock(&call_queue_lock);
-  return 0;
-}
+pthread_t emscripten_main_browser_thread_id(void) { return &__main_pthread; }
 
 void emscripten_async_run_in_main_thread(em_queued_call* call) {
-  _emscripten_do_dispatch_to_thread(emscripten_main_browser_thread_id(), call);
+  emscripten_dispatch_to_thread_ptr(
+    emscripten_main_browser_thread_id(), do_call_and_free_queued_call, call);
 }
 
 void emscripten_sync_run_in_main_thread(em_queued_call* call) {
-  emscripten_async_run_in_main_thread(call);
-
-  // Enter to wait for the operation to complete.
-  emscripten_wait_for_call_v(call, INFINITY);
+  emscripten_dispatch_to_thread_sync_ptr(
+    emscripten_main_browser_thread_id(), do_call_and_free_queued_call, call);
 }
 
 void* emscripten_sync_run_in_main_thread_0(int function) {
@@ -620,36 +584,17 @@ void emscripten_main_thread_process_queued_calls() {
 }
 
 int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* func_ptr, ...) {
-  int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call q = {sig, func_ptr};
-
-  EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
   va_list args;
   va_start(args, func_ptr);
-  for (int i = 0; i < numArguments; ++i) {
-    switch ((argumentsType & EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK)) {
-      case EM_FUNC_SIG_PARAM_I:
-        q.args[i].i = va_arg(args, int);
-        break;
-      case EM_FUNC_SIG_PARAM_I64:
-        q.args[i].i64 = va_arg(args, int64_t);
-        break;
-      case EM_FUNC_SIG_PARAM_F:
-        q.args[i].f = (float)va_arg(args, double);
-        break;
-      case EM_FUNC_SIG_PARAM_D:
-        q.args[i].d = va_arg(args, double);
-        break;
-    }
-    argumentsType >>= EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_SHIFT;
-  }
+  init_em_queued_call_args(&q, sig, 0, args);
   va_end(args);
   emscripten_sync_run_in_main_thread(&q);
   return q.returnValue.i;
 }
 
 double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t* buffer, int sync) {
-  em_queued_call q;
+  em_queued_call q = {};
   em_queued_call *c;
   if (sync) {
     q.operationDone = 0;
@@ -658,7 +603,6 @@ double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t
   } else {
     c = em_queued_call_malloc();
   }
-  c->calleeDelete = 1-sync;
   c->functionEnum = EM_PROXIED_JS_FUNCTION;
   // Index not needed to ever be more than 32-bit.
   c->functionPtr = (void*)(size_t)index;
@@ -686,39 +630,11 @@ double emscripten_run_in_main_runtime_thread_js(int index, int num_args, int64_t
 }
 
 void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* func_ptr, ...) {
-  int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
-  em_queued_call* q = em_queued_call_malloc();
-  if (!q)
-    return;
-  q->functionEnum = sig;
-  q->functionPtr = func_ptr;
-
-  EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
   va_list args;
   va_start(args, func_ptr);
-  for (int i = 0; i < numArguments; ++i) {
-    switch ((argumentsType & EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK)) {
-      case EM_FUNC_SIG_PARAM_I:
-        q->args[i].i = va_arg(args, int);
-        break;
-      case EM_FUNC_SIG_PARAM_I64:
-        q->args[i].i64 = va_arg(args, int64_t);
-        break;
-      case EM_FUNC_SIG_PARAM_F:
-        q->args[i].f = (float)va_arg(args, double);
-        break;
-      case EM_FUNC_SIG_PARAM_D:
-        q->args[i].d = va_arg(args, double);
-        break;
-    }
-    argumentsType >>= EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_SHIFT;
-  }
+  emscripten_dispatch_to_thread_args(
+    emscripten_main_browser_thread_id(), sig, func_ptr, NULL, args);
   va_end(args);
-  // 'async' runs are fire and forget, where the caller detaches itself from the call object after
-  // returning here, and it is the callee's responsibility to free up the memory after the call has
-  // been performed.
-  q->calleeDelete = 1;
-  emscripten_async_run_in_main_thread(q);
 }
 
 em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
@@ -729,103 +645,331 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
     return NULL;
   q->functionEnum = sig;
   q->functionPtr = func_ptr;
-
-  EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
   va_list args;
   va_start(args, func_ptr);
-  for (int i = 0; i < numArguments; ++i) {
-    switch ((argumentsType & EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK)) {
-      case EM_FUNC_SIG_PARAM_I:
-        q->args[i].i = va_arg(args, int);
-        break;
-      case EM_FUNC_SIG_PARAM_I64:
-        q->args[i].i64 = va_arg(args, int64_t);
-        break;
-      case EM_FUNC_SIG_PARAM_F:
-        q->args[i].f = (float)va_arg(args, double);
-        break;
-      case EM_FUNC_SIG_PARAM_D:
-        q->args[i].d = va_arg(args, double);
-        break;
-    }
-    argumentsType >>= EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_SHIFT;
-  }
+  init_em_queued_call_args(q, sig, 0, args);
   va_end(args);
-  // 'async waitable' runs are waited on by the caller, so the call object needs to remain alive for
-  // the caller to access it after the operation is done. The caller is responsible in cleaning up
-  // the object after done.
-  q->calleeDelete = 0;
-  emscripten_async_run_in_main_thread(q);
+  // 'async waitable' runs are waited on by the caller, so the call object needs
+  // to remain alive for the caller to access it after the operation is done.
+  if (!emscripten_dispatch_to_thread_ptr(
+        emscripten_main_browser_thread_id(), _do_call, q)) {
+    em_queued_call_free(q);
+    return NULL;
+  }
   return q;
 }
 
-typedef struct DispatchToThreadArgs {
-  pthread_t target_thread;
-  em_queued_call* q;
-} DispatchToThreadArgs;
+// Return 1 if the call was successfully dispatched (or executed if already on
+// the target thread) and 0 otherwise.
+int emscripten_dispatch_to_thread_ptr(pthread_t target_thread,
+                                      void (*func)(void*),
+                                      void* arg) {
+  // Can't be a null pointer here, and can't be
+  // EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD either.
+  assert(target_thread);
+  if (target_thread == EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD) {
+    target_thread = emscripten_main_browser_thread_id();
+  }
 
-static void dispatch_to_thread_helper(void* user_data) {
-  DispatchToThreadArgs* args = (DispatchToThreadArgs*)user_data;
-  _emscripten_do_dispatch_to_thread(args->target_thread, args->q);
-  free(user_data);
+  // If we are the target recipient of this message, we can just call the
+  // operation directly.
+  if (target_thread == EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD ||
+      target_thread == pthread_self()) {
+    func(arg);
+    return 1;
+  }
+
+  // Add the operation to the call queue of the target thread.
+  pthread_mutex_lock(&call_queue_lock);
+  CallQueue* q = GetOrAllocateQueue(target_thread);
+  if (!q->call_queue) {
+    // Shared data synchronized by call_queue_lock.
+    q->call_queue = malloc(sizeof(CallQueueEntry) * CALL_QUEUE_SIZE);
+  }
+
+  int head = q->call_queue_head;
+  int tail = q->call_queue_tail;
+  int new_tail = (tail + 1) % CALL_QUEUE_SIZE;
+
+  // Check whether the queue is full.
+  if (new_tail == head) {
+    if (target_thread == emscripten_main_browser_thread_id()) {
+      // If queue of the main browser thread is full, then we wait. Never drop
+      // messages for the main browser thread.
+      while (new_tail == head) {
+        pthread_mutex_unlock(&call_queue_lock);
+        emscripten_futex_wait((void*)&q->call_queue_head, head, INFINITY);
+        pthread_mutex_lock(&call_queue_lock);
+        head = q->call_queue_head;
+        tail = q->call_queue_tail;
+        new_tail = (tail + 1) % CALL_QUEUE_SIZE;
+      }
+    } else {
+      // We're not targeting the main thread, so we're ok dropping the message.
+      return 0;
+    }
+  }
+
+  // Push the new data onto the queue.
+  q->call_queue[tail].func = func;
+  q->call_queue[tail].arg = arg;
+  q->call_queue_tail = new_tail;
+
+  pthread_mutex_unlock(&call_queue_lock);
+
+  // If the call queue was empty, notify the thread to start processing queued
+  // commands in case it was idle in its event loop. Otherwise, the thread must
+  // already have been notified by whoever previously inserted the first
+  // element.
+  if (head == tail) {
+    return _emscripten_notify_thread_queue(target_thread,
+                                           emscripten_main_browser_thread_id());
+  } else {
+    return 1;
+  }
 }
 
-int _emscripten_call_on_thread(int forceAsync, pthread_t targetThread, EM_FUNC_SIGNATURE sig,
-    void* func_ptr, void* satellite, ...) {
+int emscripten_dispatch_to_thread_args(pthread_t target_thread,
+                                       EM_FUNC_SIGNATURE sig,
+                                       void* func,
+                                       void* satellite,
+                                       va_list args) {
+  em_queued_call* q;
+  if ((q = create_em_queued_call(sig, func, satellite, 0, args))) {
+    return emscripten_dispatch_to_thread_ptr(
+      target_thread, do_call_and_free_queued_call, q);
+  }
+  return 0;
+}
 
-  int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
-  em_queued_call* q = em_queued_call_malloc();
-  assert(q);
-  // TODO: handle errors in a better way, this pattern appears in several places
-  //       in this file. The current behavior makes the calling thread hang as
-  //       it waits (for synchronous calls).
-  // If we failed to allocate, return 0 which means we did not execute anything
-  // (we also never will in that case).
-  if (!q)
-    return 0;
-  q->functionEnum = sig;
-  q->functionPtr = func_ptr;
-  q->satelliteData = satellite;
-
-  EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
+int emscripten_dispatch_to_thread_(pthread_t target_thread,
+                                   EM_FUNC_SIGNATURE sig,
+                                   void* func,
+                                   void* satellite,
+                                   ...) {
   va_list args;
   va_start(args, satellite);
-  for (int i = 0; i < numArguments; ++i) {
-    switch ((argumentsType & EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK)) {
-      case EM_FUNC_SIG_PARAM_I:
-        q->args[i].i = va_arg(args, int);
-        break;
-      case EM_FUNC_SIG_PARAM_I64:
-        q->args[i].i64 = va_arg(args, int64_t);
-        break;
-      case EM_FUNC_SIG_PARAM_F:
-        q->args[i].f = (float)va_arg(args, double);
-        break;
-      case EM_FUNC_SIG_PARAM_D:
-        q->args[i].d = va_arg(args, double);
-        break;
-    }
-    argumentsType >>= EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_SHIFT;
-  }
+  int ret = emscripten_dispatch_to_thread_args(
+    target_thread, sig, func, satellite, args);
   va_end(args);
+  return ret;
+}
 
-  // 'async' runs are fire and forget, where the caller detaches itself from the call object after
-  // returning here, and it is the callee's responsibility to free up the memory after the call has
-  // been performed.
-  // Note that the call here might not be async if on the same thread, but for
-  // consistency use the same convention of calleeDelete.
-  q->calleeDelete = 1;
-  // The called function will not be async if we are on the same thread; force
-  // async if the user asked for that.
-  if (forceAsync) {
-    DispatchToThreadArgs* args = malloc(sizeof(DispatchToThreadArgs));
-    args->target_thread = targetThread;
-    args->q = q;
-    emscripten_set_timeout(dispatch_to_thread_helper, 0, args);
-    return 0;
+int emscripten_dispatch_to_thread_async_ptr(pthread_t target_thread,
+                                            void (*func)(void*),
+                                            void* arg) {
+  // If already on the target thread, schedule an asynchronous execution.
+  // Otherwise dispatch as normal.
+  if (pthread_equal(target_thread, pthread_self())) {
+    emscripten_async_call(func, arg, 0);
+    return 1;
   } else {
-    return _emscripten_do_dispatch_to_thread(targetThread, q);
+    return emscripten_dispatch_to_thread_ptr(target_thread, func, arg);
   }
+}
+
+int emscripten_dispatch_to_thread_async_args(pthread_t target_thread,
+                                             EM_FUNC_SIGNATURE sig,
+                                             void* func,
+                                             void* satellite,
+                                             va_list args) {
+  em_queued_call* q;
+  if ((q = create_em_queued_call(sig, func, satellite, 0, args))) {
+    return emscripten_dispatch_to_thread_async_ptr(
+      target_thread, do_call_and_free_queued_call, q);
+  }
+  return 0;
+}
+
+int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
+                                         EM_FUNC_SIGNATURE sig,
+                                         void* func,
+                                         void* satellite,
+                                         ...) {
+  va_list args;
+  va_start(args, satellite);
+  int ret = emscripten_dispatch_to_thread_async_args(
+    target_thread, sig, func, satellite, args);
+  va_end(args);
+  return ret;
+}
+
+typedef struct em_sync_ctx {
+  void (*func)(void*);
+  void* arg;
+} em_sync_ctx;
+
+// Helper for performing the user-provided function then synchronously calling
+// `emscripten_async_as_sync_ptr_finish`. This lets us reuse the waiting logic
+// from `emscripten_dispatch_to_thread_async_as_sync` without unnecessarily
+// exposing the `em_async_as_sync_ctx` to the user code.
+static void do_sync_call(em_async_as_sync_ctx* ctx, void* arg) {
+  em_sync_ctx* sync = (em_sync_ctx*)arg;
+  sync->func(sync->arg);
+  emscripten_async_as_sync_ptr_finish(ctx);
+}
+
+// Dispatch `func` to `target_thread` and wait until it has finished executing.
+// Return 1 if the work was completed or 0 if it was not successfully
+// dispatched.
+int emscripten_dispatch_to_thread_sync_ptr(pthread_t target_thread,
+                                           void (*func)(void*),
+                                           void* arg) {
+  em_sync_ctx ctx = {func, arg};
+  return emscripten_dispatch_to_thread_async_as_sync_ptr(
+    target_thread, do_sync_call, &ctx);
+}
+
+int emscripten_dispatch_to_thread_sync_args(pthread_t target_thread,
+                                            EM_FUNC_SIGNATURE sig,
+                                            void* func,
+                                            void* satellite,
+                                            va_list args) {
+  em_queued_call* q;
+  if ((q = create_em_queued_call(sig, func, satellite, 0, args))) {
+    return emscripten_dispatch_to_thread_sync_ptr(
+      target_thread, do_call_and_free_queued_call, q);
+  }
+  return 0;
+}
+
+int emscripten_dispatch_to_thread_sync_(pthread_t target_thread,
+                                        EM_FUNC_SIGNATURE sig,
+                                        void* func,
+                                        void* satellite,
+                                        ...) {
+  va_list args;
+  va_start(args, satellite);
+  int ret = emscripten_dispatch_to_thread_sync_args(
+    target_thread, sig, func, satellite, args);
+  va_end(args);
+  return ret;
+}
+
+struct em_async_as_sync_ctx {
+  // The function being dispatched and its argument.
+  void (*func)(struct em_async_as_sync_ctx*, void*);
+  void* arg;
+  // Allow the dispatching thread to wait for the work to be finished.
+  pthread_mutex_t mutex;
+  pthread_cond_t cond;
+  // Set to 1 when the work is finished.
+  int done;
+};
+
+// Helper for exposing the `em_async_as_sync_ctx` to the user-provided async
+// work function.
+static void do_async_as_sync_call(void* arg) {
+  em_async_as_sync_ctx* ctx = (em_async_as_sync_ctx*)arg;
+  ctx->func(ctx, ctx->arg);
+}
+
+// Dispatch `func` to `target_thread` and wait until
+// `emscripten_async_as_sync_ptr_finish` is called on the
+// `em_async_as_sync_ctx*` passed to `func`, possibly at some point after `func`
+// returns. Return 1 if the work was completed or 0 if it was not successfully
+// dispatched.
+int emscripten_dispatch_to_thread_async_as_sync_ptr(
+  pthread_t target_thread,
+  void (*func)(em_async_as_sync_ctx*, void*),
+  void* arg) {
+  // Initialize the context that will be used to wait for the result of the work
+  // on the original thread.
+  em_async_as_sync_ctx ctx;
+  ctx.func = func;
+  ctx.arg = arg;
+  pthread_mutex_init(&ctx.mutex, NULL);
+  pthread_cond_init(&ctx.cond, NULL);
+  ctx.done = 0;
+
+  // Schedule `func` to run on the target thread.
+  int dispatched = emscripten_dispatch_to_thread_ptr(
+    target_thread, do_async_as_sync_call, &ctx);
+
+  if (!dispatched) {
+    pthread_mutex_destroy(&ctx.mutex);
+    pthread_cond_destroy(&ctx.cond);
+    return 0;
+  }
+
+  // Wait for the work to be marked done by
+  // `emscripten_async_as_sync_ptr_finish`.
+  pthread_mutex_lock(&ctx.mutex);
+  while (!ctx.done) {
+    // A thread cannot both perform asynchronous work and synchronously wait for
+    // that work to be finished. If we were proxying to the current thread, the
+    // work must have been synchronous and should already be done.
+    assert(!pthread_equal(target_thread, pthread_self()));
+    pthread_cond_wait(&ctx.cond, &ctx.mutex);
+  }
+  pthread_mutex_unlock(&ctx.mutex);
+
+  // The work has been finished. Clean up and return.
+  pthread_mutex_destroy(&ctx.mutex);
+  pthread_cond_destroy(&ctx.cond);
+  return 1;
+}
+
+// Helper for injecting a `em_async_as_sync_ctx` argument into an
+// `em_queued_call` and calling it.
+static void do_set_ctx_and_call(em_async_as_sync_ctx* ctx, void* arg) {
+  em_queued_call* q = (em_queued_call*)arg;
+  // Set the first argument to be the `ctx` pointer.
+#ifdef __wasm32__
+  q->args[0].i = (int)ctx;
+#else
+#ifdef __wasm64__
+  q->args[0].i64 = (int64_t)ctx;
+#else
+#error "expected either __wasm32__ or __wasm64__"
+#endif
+#endif
+
+  // `q` is only used to kick off the async work, but its satellite data might
+  // need to live for the entirety of the async work, so we need to defer
+  // freeing `q` until after the async work has been completed.
+  _do_call(q);
+}
+
+int emscripten_dispatch_to_thread_async_as_sync_args(pthread_t target_thread,
+                                                     EM_FUNC_SIGNATURE sig,
+                                                     void* func,
+                                                     void* satellite,
+                                                     va_list args) {
+  // Leave argument 0 uninitialized; it will later be filled in with the pointer
+  // to the `em_async_as_sync_ctx`.
+  em_queued_call* q;
+  if ((q = create_em_queued_call(sig, func, satellite, 1, args))) {
+    return emscripten_dispatch_to_thread_async_as_sync_ptr(
+      target_thread, do_set_ctx_and_call, q);
+  }
+  return 0;
+}
+
+int emscripten_dispatch_to_thread_async_as_sync_(pthread_t target_thread,
+                                                 EM_FUNC_SIGNATURE sig,
+                                                 void* func,
+                                                 void* satellite,
+                                                 ...) {
+  va_list args;
+  va_start(args, satellite);
+  int ret = emscripten_dispatch_to_thread_async_as_sync_args(
+    target_thread, sig, func, satellite, args);
+  va_end(args);
+  return ret;
+}
+
+void emscripten_async_as_sync_ptr_finish(em_async_as_sync_ctx* ctx) {
+  // Mark this work as done and wake up the invoking thread.
+  pthread_mutex_lock(&ctx->mutex);
+  ctx->done = 1;
+  pthread_mutex_unlock(&ctx->mutex);
+  pthread_cond_signal(&ctx->cond);
+}
+
+void emscripten_async_as_sync_finish(em_async_as_sync_ctx* ctx) {
+  em_queued_call_free((em_queued_call*)ctx->arg);
+  emscripten_async_as_sync_ptr_finish(ctx);
 }
 
 // Stores the memory address that the main thread is waiting on, if any. If
