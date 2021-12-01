@@ -1933,7 +1933,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
     settings.EXPORTED_FUNCTIONS += [
       '___emscripten_init_main_thread',
-      '__emscripten_call_on_thread',
+      '_emscripten_dispatch_to_thread_',
       '__emscripten_main_thread_futex',
       '__emscripten_thread_init',
       '__emscripten_thread_exit',
