@@ -87,6 +87,17 @@ int main() {
   printf("File contents: %s", buf3);
   assert(errno == 0);
 
+  // Try to make a file with a name that is greater than WASMFS_NAME_MAX.
+  errno = 0;
+  open("00000000010000000002000000000300000000040000000005000000000600000000070"
+       "00000000800000000090000000000000000000100000000020000000003000000000400"
+       "00000005000000000600000000070000000008000000000900000000000000000001000"
+       "0000002000000000300000000040000000005123456",
+       O_RDWR);
+#ifdef WASMFS
+  assert(errno == ENAMETOOLONG);
+#endif
+
   // TODO: use seek to test out of bounds read.
 
   return 0;

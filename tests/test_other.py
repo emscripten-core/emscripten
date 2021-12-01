@@ -36,7 +36,7 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, read_file, read_binary, EMBUILDER, require_v8, require_node
-from tools import shared, building, utils, deps_info
+from tools import shared, building, utils, deps_info, response_file
 import common
 import jsrun
 import clang_native
@@ -7790,7 +7790,8 @@ end
     create_file("file'2", ' ')
     create_file("hyvää päivää", ' ')
     create_file("snowman freezes covid ☃ 🦠", ' ')
-    building.emar('cr', 'libfoo.a', ("file'1", "file'2", "hyvää päivää", "snowman freezes covid ☃ 🦠"))
+    rsp = response_file.create_response_file(("file'1", "file'2", "hyvää päivää", "snowman freezes covid ☃ 🦠"), shared.TEMP_DIR)
+    building.emar('cr', 'libfoo.a', ['@' + rsp])
 
   def test_archive_empty(self):
     # This test added because we had an issue with the AUTO_ARCHIVE_INDEXES failing on empty
@@ -9459,7 +9460,7 @@ int main(void) {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 5001), 150)
+    self.assertLess(abs(changed - 5150), 150)
 
   def test_llvm_includes(self):
     create_file('atomics.c', '#include <stdatomic.h>')
@@ -10547,6 +10548,14 @@ exec "$@"
     # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
     self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-s', 'USE_PTHREADS', '--closure=1', '--threadprofiler'])
 
+  @node_pthreads
+  def test_threadprofiler(self):
+    self.run_process([EMCC, test_file('test_threadprofiler.cpp'), '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '--threadprofiler'])
+    output = self.run_js('a.out.js')
+    self.assertRegex(output, r'Thread "Browser main thread" \(0x.*\) now: running.')
+    self.assertRegex(output, r'Thread "Application main thread" \(0x.*\) now: waiting for a futex.')
+    self.assertRegex(output, r'Thread "test worker" \(0x.*\) now: sleeping.')
+
   def test_syslog(self):
     self.do_other_test('test_syslog.c')
 
@@ -10923,13 +10932,13 @@ kill -9 $$
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
-    self.run_process([EMBUILDER, 'build', 'libc-mt', 'libcompiler_rt-mt', 'libdlmalloc-mt'])
+    self.run_process([EMBUILDER, 'build', 'libc-mt-debug', 'libcompiler_rt-mt', 'libdlmalloc-mt'])
 
     libs = ['-lc', '-lc_rt', '-lcompiler_rt', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nostdlib', '-v'] + libs, stderr=PIPE).stderr
 
     # Check the the linker was run with `-mt` variants because `-pthread` was passed.
-    self.assertContained(' -lc-mt ', err)
+    self.assertContained(' -lc-mt-debug ', err)
     self.assertContained(' -ldlmalloc-mt ', err)
     self.assertContained(' -lcompiler_rt-mt ', err)
 
@@ -11179,6 +11188,14 @@ void foo() {}
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_pthread_out_err.c')
 
+  @node_pthreads
+  def test_pthread_icu(self):
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('USE_ICU')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_other_test('test_pthread_icu.cpp')
+
   # unistd tests
 
   def test_unistd_confstr(self):
@@ -11216,7 +11233,6 @@ void foo() {}
 
   @also_with_wasmfs
   def test_unistd_open(self):
-    self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_open.c')
 
   @also_with_wasmfs

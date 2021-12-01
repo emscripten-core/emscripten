@@ -3802,6 +3802,7 @@ window.close = function() {
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @requires_threads
   def test_pthread_gcc_atomic_fetch_and_op(self):
+    self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed']
     for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os']]:
       for debug in [[], ['-g']]:
         args = opt + debug
@@ -3812,19 +3813,26 @@ window.close = function() {
   @also_with_wasm2js
   @requires_threads
   def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
+    if not self.is_wasm():
+      self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
+    self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed']
     self.btest_exit(test_file('pthread/test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
   @also_with_wasm2js
   @requires_threads
   def test_pthread_gcc_atomic_op_and_fetch(self):
+    self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed']
     self.btest_exit(test_file('pthread/test_pthread_gcc_atomic_op_and_fetch.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
   @also_with_wasm2js
   @requires_threads
   def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
-    self.btest_exit(test_file('pthread/test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
+    if not self.is_wasm():
+      self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
+    self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed', '--profiling-funcs']
+    self.btest_exit(test_file('pthread/test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS', '-O2', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
   @also_with_wasm2js

@@ -8,7 +8,7 @@ var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread__deps: ['_emscripten_thread_init',
                    'emscripten_futex_wake', '$killThread',
-                   '$cancelThread', '$cleanupThread',
+                   '$cancelThread', '$cleanupThread', '$zeroMemory',
                    '_emscripten_thread_free_data',
                    'exit',
 #if !MINIMAL_RUNTIME
@@ -59,8 +59,8 @@ var LibraryPThread = {
       Atomics.store(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, profilerBlock);
 
       // Zero fill contents at startup.
-      for (var i = 0; i < {{{ C_STRUCTS.thread_profiler_block.__size__ }}}; i += 4) Atomics.store(HEAPU32, (profilerBlock + i) >> 2, 0);
-      Atomics.store(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 2, performance.now());
+      zeroMemory(profilerBlock, {{{ C_STRUCTS.thread_profiler_block.__size__ }}});
+      HEAPF64[(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 3] = performance.now();
     },
 
     // Sets the current thread status, but only if it was in the given expected state before. This is used
@@ -280,8 +280,6 @@ var LibraryPThread = {
           assert(worker.pthread);
 #endif
           PThread.returnWorkerToPool(worker);
-        } else if (cmd === 'cancelDone') {
-          PThread.returnWorkerToPool(worker);
         } else if (d.target === 'setimmediate') {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
@@ -459,19 +457,17 @@ var LibraryPThread = {
 #endif
     var pthread = PThread.pthreads[pthread_ptr];
     // If pthread has been removed from this map this also means that pthread_ptr points
-    // to already freed data. Such situation may occur in following circumstances:
-    // 1. Joining cancelled thread - in such situation it may happen that pthread data will
-    //    already be removed by handling 'cancelDone' message.
-    // 2. Joining thread from non-main browser thread (this also includes thread running main()
-    //    when compiled with `PROXY_TO_PTHREAD`) - in such situation it may happen that following
-    //    code flow occur (MB - Main Browser Thread, S1, S2 - Worker Threads):
-    //    S2: thread ends, 'exit' message is sent to MB
-    //    S1: calls pthread_join(S2), this causes:
-    //        a. S2 is marked as detached,
-    //        b. 'cleanupThread' message is sent to MB.
-    //    MB: handles 'exit' message, as thread is detached, so returnWorkerToPool()
-    //        is called and all thread related structs are freed/released.
-    //    MB: handles 'cleanupThread' message which calls this function.
+    // to already freed data. Such situation may occur in following circumstance:
+    // Joining thread from non-main browser thread (this also includes thread running main()
+    // when compiled with `PROXY_TO_PTHREAD`) - in such situation it may happen that following
+    // code flow occur (MB - Main Browser Thread, S1, S2 - Worker Threads):
+    // S2: thread ends, 'exit' message is sent to MB
+    // S1: calls pthread_join(S2), this causes:
+    //     a. S2 is marked as detached,
+    //     b. 'cleanupThread' message is sent to MB.
+    // MB: handles 'exit' message, as thread is detached, so returnWorkerToPool()
+    //     is called and all thread related structs are freed/released.
+    // MB: handles 'cleanupThread' message which calls this function.
     if (pthread) {
       {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
       var worker = pthread.worker;
@@ -1040,50 +1036,28 @@ var LibraryPThread = {
 #endif
   },
 
-  emscripten_conditional_set_current_thread_status_js: function(expectedStatus, newStatus) {
+#if ASSERTIONS
+  emscripten_conditional_set_current_thread_status__sig: 'vii',
+  emscripten_conditional_set_current_thread_status: function(expectedStatus, newStatus) {
 #if PTHREADS_PROFILING
     PThread.setThreadStatusConditional(_pthread_self(), expectedStatus, newStatus);
 #endif
   },
 
-  emscripten_set_current_thread_status_js: function(newStatus) {
+  emscripten_set_current_thread_status__sig: 'vi',
+  emscripten_set_current_thread_status: function(newStatus) {
 #if PTHREADS_PROFILING
     PThread.setThreadStatus(_pthread_self(), newStatus);
 #endif
   },
 
-  // The profiler setters are defined twice, here in asm.js so that they can be #if'ed out
-  // without having to pay the impact of a FFI transition for a no-op in non-profiling builds.
-  emscripten_conditional_set_current_thread_status__asm: true,
-  emscripten_conditional_set_current_thread_status__sig: 'vii',
-  emscripten_conditional_set_current_thread_status__deps: ['emscripten_conditional_set_current_thread_status_js'],
-  emscripten_conditional_set_current_thread_status: function(expectedStatus, newStatus) {
-#if PTHREADS_PROFILING
-    expectedStatus = expectedStatus|0;
-    newStatus = newStatus|0;
-    _emscripten_conditional_set_current_thread_status_js(expectedStatus|0, newStatus|0);
-#endif
-  },
-
-  emscripten_set_current_thread_status__asm: true,
-  emscripten_set_current_thread_status__sig: 'vi',
-  emscripten_set_current_thread_status__deps: ['emscripten_set_current_thread_status_js'],
-  emscripten_set_current_thread_status: function(newStatus) {
-#if PTHREADS_PROFILING
-    newStatus = newStatus|0;
-    _emscripten_set_current_thread_status_js(newStatus|0);
-#endif
-  },
-
-  emscripten_set_thread_name__asm: true,
   emscripten_set_thread_name__sig: 'vii',
   emscripten_set_thread_name: function(threadId, name) {
 #if PTHREADS_PROFILING
-    threadId = threadId|0;
-    name = name|0;
     PThread.setThreadName(threadId, UTF8ToString(name));
 #endif
   },
+#endif
 
   // This function is call by a pthread to signal that exit() was called and
   // that the entire process should exit.

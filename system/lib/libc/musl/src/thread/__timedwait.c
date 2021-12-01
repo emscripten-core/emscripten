@@ -38,10 +38,6 @@ static int __futex4_cp(volatile void *addr, int op, int val, const struct timesp
 static volatile int dummy = 0;
 weak_alias(dummy, __eintr_valid_flag);
 
-#ifdef __EMSCRIPTEN__
-int _pthread_isduecanceled(struct pthread *pthread_ptr);
-#endif
-
 int __timedwait_cp(volatile int *addr, int val,
 	clockid_t clk, const struct timespec *at, int priv)
 {
@@ -73,7 +69,7 @@ int __timedwait_cp(volatile int *addr, int val,
 	    pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
 		double sleepUntilTime = emscripten_get_now() + msecsToSleep;
 		do {
-			if (_pthread_isduecanceled(pthread_self())) {
+			if (pthread_self()->cancel) {
 				// Emscripten-specific return value: The wait was canceled by user calling
 				// pthread_cancel() for this thread, and the caller needs to cooperatively
 				// cancel execution.
