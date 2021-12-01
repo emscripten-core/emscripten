@@ -256,12 +256,12 @@ Options that are modified or new in *emcc* are listed below:
 "--closure-args=<args>"
    [link] Pass arguments to the *Closure compiler*. This is an
    alternative to "EMCC_CLOSURE_ARGS".
-   
+
    For example, one might want to pass an externs file to avoid
    minifying JS functions defined in "--pre-js" or "--post-js" files.
    To pass to Closure the "externs.js" file containing those public
-   APIs that should not be minified, one would add the flag:
-   "--closure-args=--externs=path/to/externs.js"
+   APIs that should not be minified, one would add the flag: "--
+   closure-args=--externs=path/to/externs.js"
 
 "--pre-js <file>"
    [link] Specify a file whose contents are added before the emitted
