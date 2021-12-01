@@ -2192,8 +2192,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
     if not settings.UBSAN_RUNTIME:
       settings.UBSAN_RUNTIME = 2
 
-    settings.EXPORTED_FUNCTIONS.append('_emscripten_builtin_memset')
-
     # helper functions for JS to call into C to do memory operations. these
     # let us sanitize memory access from the JS side, by calling into C where
     # it has been instrumented.

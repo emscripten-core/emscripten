@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.0.0
-------
+3.0.1
+-----
+
+3.0.0 - 11/22/2021
+------------------
 - A set of internally-unused functions were removed from `parseTools.js`.  While
   emscripten no longer needs any of these functions, there is slim chance that
   some external JS library is depending on them.  Please file issues if any such
@@ -401,6 +404,9 @@ See docs/process.md for more on how version tagging works.
 - Several pthreads exit-related fixes (#12985) (#10524).
 - Fix IDBFS syncing with existing directories (#13574).
 - Add libmodplug port and allow mod files to be played in SDL2 (#13478).
+- `emscripten_GetProcAddress` is now part of `libGL`. Normally the change is not
+  noticeable, unless you build in `STRICT` mode and do not already have `-lGL`
+  to link in that library. If not, add `-lGL`. (#13524)
 
 2.0.14: 02/14/2021
 ------------------

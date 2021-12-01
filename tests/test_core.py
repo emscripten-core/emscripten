@@ -139,6 +139,8 @@ def with_both_sjlj_handling(f):
       if not self.is_wasm():
         self.skipTest('wasm2js does not support Wasm SjLj')
       self.require_v8()
+      if '-flto' in self.emcc_args:
+        self.skipTest('https://github.com/emscripten-core/emscripten/issues/15665')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       # These are for Emscripten EH/SjLj
       self.set_setting('DISABLE_EXCEPTION_THROWING')
@@ -181,6 +183,7 @@ def can_do_standalone(self):
       self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
       not self.get_setting('SAFE_HEAP') and \
+      not self.get_setting('MEMORY64') and \
       '-fsanitize=address' not in self.emcc_args
 
 
@@ -190,6 +193,8 @@ def also_with_wasmfs(func):
     print('wasmfs')
     if self.get_setting('STANDALONE_WASM'):
       self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
+    if self.get_setting('MEMORY64'):
+      self.skipTest("test currently cannot run both with WASMFS and WASMFS")
     self.set_setting('WASMFS')
     self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
     func(self)
@@ -204,24 +209,25 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
       if not standalone:
         func(self)
       else:
-        if can_do_standalone(self):
-          self.set_setting('STANDALONE_WASM')
-          # we will not legalize the JS ffi interface, so we must use BigInt
-          # support in order for JS to have a chance to run this without trapping
-          # when it sees an i64 on the ffi.
-          self.set_setting('WASM_BIGINT')
-          self.emcc_args.append('-Wno-unused-command-line-argument')
-          # if we are impure, disallow all wasm engines
-          if impure:
-            self.wasm_engines = []
-          self.js_engines = [config.NODE_JS]
-          self.node_args.append('--experimental-wasm-bigint')
+        if not can_do_standalone(self):
+          self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
+        self.set_setting('STANDALONE_WASM')
+        # we will not legalize the JS ffi interface, so we must use BigInt
+        # support in order for JS to have a chance to run this without trapping
+        # when it sees an i64 on the ffi.
+        self.set_setting('WASM_BIGINT')
+        self.emcc_args.append('-Wno-unused-command-line-argument')
+        # if we are impure, disallow all wasm engines
+        if impure:
+          self.wasm_engines = []
+        self.js_engines = [config.NODE_JS]
+        self.node_args.append('--experimental-wasm-bigint')
+        func(self)
+        if wasm2c:
+          print('wasm2c')
+          self.set_setting('WASM2C')
+          self.wasm_engines = []
           func(self)
-          if wasm2c:
-            print('wasm2c')
-            self.set_setting('WASM2C')
-            self.wasm_engines = []
-            func(self)
 
     metafunc._parameterize = {'': (False,),
                               'standalone': (True,)}
@@ -6280,6 +6286,9 @@ void* operator new(size_t size) {
   @needs_make('make')
   @is_slow_test
   def test_openjpeg(self):
+    if '-flto' in self.emcc_args:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/15679')
+
     def do_test_openjpeg():
       def line_splitter(data):
         out = ''
@@ -7126,6 +7135,8 @@ someweirdtext
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=_malloc,_free', '--post-js=glue.js', '--extern-post-js=extern-post.js']
+    if mode == 'ALL':
+      self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
       self.set_setting('ALLOW_MEMORY_GROWTH')
 

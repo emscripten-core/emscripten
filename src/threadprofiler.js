@@ -23,6 +23,34 @@ var emscriptenThreadProfiler = {
     setInterval(function() { emscriptenThreadProfiler.updateUi() }, this.uiUpdateIntervalMsecs);
   },
 
+  initializeNode: function initializeNode() {
+    addOnInit(() => {
+      emscriptenThreadProfiler.dumpState();
+      setInterval(function() { emscriptenThreadProfiler.dumpState() }, this.uiUpdateIntervalMsecs);
+    });
+  },
+
+  dumpState: function dumpState() {
+    var mainThread = _emscripten_main_browser_thread_id();
+
+    var threads = [mainThread];
+    for (var i in PThread.pthreads) {
+      threads.push(PThread.pthreads[i].threadInfoStruct);
+    }
+    for (var i = 0; i < threads.length; ++i) {
+      var threadPtr = threads[i];
+      var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
+      var threadName = PThread.getThreadName(threadPtr);
+      if (threadName) {
+        threadName = '"' + threadName + '" (0x' + threadPtr.toString(16) + ')';
+      } else {
+        threadName = '(0x' + threadPtr.toString(16) + ')';
+      }
+
+      console.log('Thread ' + threadName + ' now: ' + PThread.threadStatusAsString(threadPtr) + '. ');
+    }
+  },
+
   updateUi: function updateUi() {
     if (typeof PThread === 'undefined') {
       // Likely running threadprofiler on a singlethreaded build, or not
@@ -69,4 +97,10 @@ var emscriptenThreadProfiler = {
   }
 };
 
-if (typeof Module !== 'undefined' && typeof document !== 'undefined') emscriptenThreadProfiler.initialize();
+if (typeof Module !== 'undefined') {
+  if (typeof document !== 'undefined') {
+    emscriptenThreadProfiler.initialize();
+  } else if (!ENVIRONMENT_IS_PTHREAD && typeof process !== 'undefined') {
+    emscriptenThreadProfiler.initializeNode();
+  }
+}

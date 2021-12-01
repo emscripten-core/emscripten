@@ -1,7 +1,9 @@
 var WasmfsLibrary = {
+  $wasmFS$JSMemoryFiles : [],
+  $wasmFS$JSMemoryFreeList: [],
   $wasmFS$preloadedFiles: [],
   $wasmFS$preloadedDirs: [],
-  $FS__deps: ['$wasmFS$preloadedFiles', '$wasmFS$preloadedDirs'],
+  $FS__deps: ['$wasmFS$preloadedFiles', '$wasmFS$preloadedDirs', '$wasmFS$JSMemoryFiles', '$wasmFS$JSMemoryFreeList'],
   $FS : {
     // TODO: Clean up the following functions - currently copied from library_fs.js directly.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
@@ -85,6 +87,80 @@ var WasmfsLibrary = {
       // For file preloading, cwd should be '/' to begin with.
       return '/';
     }
+  },
+  _emscripten_get_num_preloaded_files__deps: ['$wasmFS$preloadedFiles'],
+  _emscripten_get_num_preloaded_files: function() {
+    return wasmFS$preloadedFiles.length;
+  },
+  _emscripten_get_num_preloaded_dirs__deps: ['$wasmFS$preloadedDirs'],
+  _emscripten_get_num_preloaded_dirs: function() {
+    return wasmFS$preloadedDirs.length;
+  },
+  _emscripten_get_preloaded_file_mode: function(index) {
+    return wasmFS$preloadedFiles[index].mode;
+  },
+  _emscripten_get_preloaded_parent_path: function(index, parentPathBuffer) {
+    var s = wasmFS$preloadedDirs[index].parentPath;
+    var len = lengthBytesUTF8(s) + 1;
+    stringToUTF8(s, parentPathBuffer, len);
+  },
+  _emscripten_get_preloaded_child_path: function(index, childNameBuffer) {
+    var s = wasmFS$preloadedDirs[index].childName;
+    var len = lengthBytesUTF8(s) + 1;
+    stringToUTF8(s, childNameBuffer, len);
+  },
+  _emscripten_get_preloaded_path_name: function(index, fileNameBuffer) {
+    var s = wasmFS$preloadedFiles[index].pathName;
+    var len = lengthBytesUTF8(s) + 1;
+    stringToUTF8(s, fileNameBuffer, len);
+  },
+  _emscripten_write_js_file: function(index, buffer, length, offset) {
+    try {
+      if (!wasmFS$JSMemoryFiles[index]) {
+        // Initialize typed array on first write operation.
+        wasmFS$JSMemoryFiles[index] = new Uint8Array(offset + length);
+      }
+      
+      if (offset + length > wasmFS$JSMemoryFiles[index].length) {
+        // Resize the typed array if the length of the write buffer exceeds its capacity.
+        var oldContents = wasmFS$JSMemoryFiles[index];
+        var newContents = new Uint8Array(offset + length);
+        newContents.set(oldContents);
+        wasmFS$JSMemoryFiles[index] = newContents;
+      }
+
+      wasmFS$JSMemoryFiles[index].set(HEAPU8.subarray(buffer, buffer + length), offset);
+      return 0;
+    } catch (err) {
+      return {{{ cDefine('EIO') }}};
+    }
+  },
+  _emscripten_read_js_file: function(index, buffer, length, offset) {
+    try {
+      HEAPU8.set(wasmFS$JSMemoryFiles[index].subarray(offset, offset + length), buffer);
+      return 0;
+    } catch (err) {
+      return {{{ cDefine('EIO') }}};
+    }
+  },
+  _emscripten_get_js_file_size: function(index) {
+    return wasmFS$JSMemoryFiles[index] ? wasmFS$JSMemoryFiles[index].length : 0;
+  },
+  _emscripten_create_js_file: function() {
+    // Find a free entry in the $wasmFS$JSMemoryFreeList or append a new entry to
+    // wasmFS$JSMemoryFiles.
+    if (wasmFS$JSMemoryFreeList.length) {
+      // Pop off the top of the free list.
+      var index = wasmFS$JSMemoryFreeList.pop();
+      return index;
+    }
+    wasmFS$JSMemoryFiles.push(null);
+    return wasmFS$JSMemoryFiles.length - 1;
+  },
+  _emscripten_remove_js_file: function(index) {
+    wasmFS$JSMemoryFiles[index] = null;
+    // Add the index to the free list.
+    wasmFS$JSMemoryFreeList.push(index);
   }
 }
 

@@ -27,6 +27,9 @@
 // Used to improve readability compared to those in stat.h
 #define WASMFS_PERM_WRITE 0222
 
+// In Linux, the maximum length for a filename is 255 bytes.
+#define WASMFS_NAME_MAX 255
+
 extern "C" {
 
 using namespace wasmfs;
@@ -288,6 +291,58 @@ __wasi_errno_t __wasi_fd_close(__wasi_fd_t fd) {
   return __WASI_ERRNO_SUCCESS;
 }
 
+backend_t wasmfs_get_backend_by_fd(int fd) {
+  auto fileTable = wasmFS.getLockedFileTable();
+
+  // Check that an open file exists corresponding to the given fd.
+  auto openFile = fileTable[fd];
+  if (!openFile) {
+    return NullBackend;
+  }
+
+  auto lockedOpenFile = openFile.locked();
+  return lockedOpenFile.getFile()->getBackend();
+}
+
+// This function is exposed to users to allow them to obtain a backend_t for a
+// specified path.
+backend_t wasmfs_get_backend_by_path(char* path) {
+  auto pathParts = splitPath(path);
+
+  if (pathParts.empty()) {
+    return NullBackend;
+  }
+
+  // TODO: Remove this when path parsing has been re-factored.
+  if (pathParts.size() == 1 && pathParts[0] == "/") {
+    return wasmFS.getRootDirectory()->getBackend();
+  }
+
+  auto base = pathParts.back();
+
+  long err;
+  auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
+
+  // Parent node doesn't exist.
+  if (!parentDir) {
+    return NullBackend;
+  }
+
+  auto lockedParentDir = parentDir->locked();
+
+  // TODO: In a future PR, edit function to just return the requested file
+  // instead of having to first obtain the parent dir.
+  auto curr = lockedParentDir.getEntry(base);
+
+  if (curr) {
+    auto dir = curr->dynCast<Directory>();
+
+    return dir ? dir->getBackend() : NullBackend;
+  }
+
+  return NullBackend;
+}
+
 static long doStat(std::shared_ptr<File> file, struct stat* buffer) {
   auto lockedFile = file->locked();
 
@@ -300,12 +355,6 @@ static long doStat(std::shared_ptr<File> file, struct stat* buffer) {
     1; // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
   buffer->st_mode = lockedFile.mode();
-  // TODO: Add mode for symlinks.
-  if (file->is<Directory>()) {
-    buffer->st_mode |= S_IFDIR;
-  } else if (file->is<DataFile>()) {
-    buffer->st_mode |= S_IFREG;
-  }
   buffer->st_ino = file->getIno();
   // The number of hard links is 1 since they are unsupported.
   buffer->st_nlink = 1;
@@ -329,7 +378,7 @@ long __syscall_stat64(long path, long buf) {
   auto pathParts = splitPath((char*)path);
 
   if (pathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   auto base = pathParts.back();
@@ -371,7 +420,10 @@ long __syscall_fstat64(long fd, long buf) {
   return doStat(openFile.locked().getFile(), buffer);
 }
 
-__wasi_fd_t __syscall_open(long pathname, long flags, ...) {
+static __wasi_fd_t doOpen(char* pathname,
+                          long flags,
+                          mode_t mode,
+                          backend_t backend = NullBackend) {
   int accessMode = (flags & O_ACCMODE);
   bool canWrite = false;
 
@@ -384,13 +436,16 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
     ((flags) & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND | O_RDWR |
                  O_WRONLY | O_RDONLY | O_LARGEFILE | O_CLOEXEC)) == 0);
 
-  auto pathParts = splitPath((char*)pathname);
+  auto pathParts = splitPath(pathname);
 
   if (pathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   auto base = pathParts.back();
+  if (base.size() > WASMFS_NAME_MAX) {
+    return -ENAMETOOLONG;
+  }
 
   // Root directory
   if (pathParts.size() == 1 && pathParts[0] == "/") {
@@ -417,16 +472,16 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
     // If O_DIRECTORY is also specified, still create a regular file:
     // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
     if (flags & O_CREAT) {
-      // Since mode is optional, mode is specified using varargs.
-      mode_t mode = 0;
-      va_list vl;
-      va_start(vl, flags);
-      mode = va_arg(vl, int);
-      va_end(vl);
       // Mask all permissions sent via mode.
       mode &= S_IALLUGO;
       // Create an empty in-memory file.
-      auto backend = lockedParentDir.getBackend();
+
+      // By default, the backend that the file is created in is the same as the
+      // parent directory. However, if a backend is passed as a parameter, then
+      // that backend is used.
+      if (!backend) {
+        backend = parentDir->getBackend();
+      }
       auto created = backend->createFile(mode);
 
       // TODO: When rename is implemented make sure that one can atomically
@@ -456,18 +511,38 @@ __wasi_fd_t __syscall_open(long pathname, long flags, ...) {
   return wasmFS.getLockedFileTable().add(openFile);
 }
 
-long __syscall_mkdir(long path, long mode) {
-  auto pathParts = splitPath((char*)path);
+// This function is exposed to users and allows users to create a file in a
+// specific backend. An fd to an open file is returned.
+__wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
+  return doOpen(pathname, O_CREAT, mode, backend);
+}
+
+__wasi_fd_t __syscall_open(long pathname, long flags, ...) {
+  // Since mode is optional, mode is specified using varargs.
+  mode_t mode = 0;
+  va_list vl;
+  va_start(vl, flags);
+  mode = va_arg(vl, int);
+  va_end(vl);
+
+  return doOpen((char*)pathname, flags, mode);
+}
+
+static long doMkdir(char* path, long mode, backend_t backend = NullBackend) {
+  auto pathParts = splitPath(path);
 
   if (pathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
   // Root (/) directory.
-  if (pathParts.empty() || pathParts.size() == 1 && pathParts[0] == "/") {
+  if (pathParts.size() == 1 && pathParts[0] == "/") {
     return -EEXIST;
   }
 
   auto base = pathParts.back();
+  if (base.size() > WASMFS_NAME_MAX) {
+    return -ENAMETOOLONG;
+  }
 
   long err;
   auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
@@ -490,12 +565,28 @@ long __syscall_mkdir(long path, long mode) {
     // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
     mode &= S_IRWXUGO | S_ISVTX;
     // Create an empty in-memory directory.
-    auto backend = lockedParentDir.getBackend();
+
+    // By default, the backend that the directory is created in is the same as
+    // the parent directory. However, if a backend is passed as a parameter,
+    // then that backend is used.
+    if (!backend) {
+      backend = parentDir->getBackend();
+    }
     auto created = backend->createDirectory(mode);
 
     lockedParentDir.setEntry(base, created);
     return 0;
   }
+}
+
+// This function is exposed to users and allows users to specify a particular
+// backend that a directory should be created within.
+long wasmfs_create_directory(char* path, long mode, backend_t backend) {
+  return doMkdir(path, mode, backend);
+}
+
+long __syscall_mkdir(long path, long mode) {
+  return doMkdir((char*)path, mode);
 }
 
 __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
@@ -633,7 +724,7 @@ static long doUnlink(char* path, UnlinkMode unlinkMode) {
   }
 
   if (pathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   auto base = pathParts.back();
@@ -749,7 +840,6 @@ long __syscall_getdents64(long fd, long dirp, long count) {
     result->d_reclen = sizeof(dirent);
     result->d_type =
       curr.file->is<Directory>() ? DT_DIR : DT_REG; // TODO: add symlinks.
-    // TODO: Enforce that the name can fit in the d_name field.
     assert(curr.name.size() + 1 <= sizeof(result->d_name));
     strcpy(result->d_name, curr.name.c_str());
     ++result;
@@ -792,7 +882,7 @@ long __syscall_rename(long old_path, long new_path) {
   auto oldPathParts = splitPath((char*)old_path);
 
   if (oldPathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   // In Linux, renaming the root directory returns EBUSY.
@@ -824,7 +914,7 @@ long __syscall_rename(long old_path, long new_path) {
   auto newPathParts = splitPath((char*)new_path);
 
   if (newPathParts.empty()) {
-    return -EINVAL;
+    return -ENOENT;
   }
 
   // In Linux, renaming a directory to the root directory returns ENOTEMPTY.
@@ -834,6 +924,9 @@ long __syscall_rename(long old_path, long new_path) {
   }
 
   auto newBase = newPathParts.back();
+  if (newBase.size() > WASMFS_NAME_MAX) {
+    return -ENAMETOOLONG;
+  }
 
   // oldPath is the forbidden ancestor.
   auto newParentDir =

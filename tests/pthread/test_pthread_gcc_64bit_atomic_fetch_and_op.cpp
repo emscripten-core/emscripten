@@ -16,23 +16,6 @@
 
 #define T uint64_t
 
-#if 0
-// TEMP to make this test pass:
-// Our Clang backend doesn't define this builtin function, so implement it ourselves.
-// The current Atomics spec doesn't have the nand atomic op either, so must use a cas loop.
-// TODO: Move this to Clang backend?
-T __sync_fetch_and_nand(T *ptr, T x)
-{
-	for(;;)
-	{
-		T old = emscripten_atomic_load_u32(ptr);
-		T newVal = ~(old & x);
-		T old2 = emscripten_atomic_cas_u32(ptr, old, newVal);
-		if (old2 == old) return old;
-	}
-}
-#endif
-
 void *thread_fetch_and_add(void *arg)
 {
 	for(int i = 0; i < 10000; ++i)
@@ -69,10 +52,7 @@ void *thread_fetch_and_xor(void *arg)
 		__sync_fetch_and_xor((T*)&fetch_and_xor_data, *(T*)arg);
 	pthread_exit(0);
 }
-#if 0
 
-// XXX NAND support does not exist in Atomics API.
-#if 0
 volatile long fetch_and_nand_data = 0;
 void *thread_fetch_and_nand(void *arg)
 {
@@ -80,8 +60,7 @@ void *thread_fetch_and_nand(void *arg)
 		__sync_fetch_and_nand((long*)&fetch_and_nand_data, (long)arg);
 	pthread_exit(0);
 }
-#endif
-#endif
+
 T threadArg[NUM_THREADS];
 pthread_t thread[NUM_THREADS];
 
@@ -178,8 +157,6 @@ int main()
 			}
 		}
 	}
-// XXX NAND support does not exist in Atomics API.
-#if 0
 	{
 		T x = 5;
 		T y = __sync_fetch_and_nand(&x, 9);
@@ -194,7 +171,6 @@ int main()
 			assert(fetch_and_nand_data == -1);
 		}
 	}
-#endif
 
 	return 0;
 }
