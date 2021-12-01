@@ -831,8 +831,6 @@ int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
   return ret;
 }
 
-void __emscripten_init_main_thread_js(void* tb);
-
 static void *dummy_tsd[1] = { 0 };
 weak_alias(dummy_tsd, __pthread_tsd_main);
 
