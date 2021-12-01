@@ -6286,6 +6286,9 @@ void* operator new(size_t size) {
   @needs_make('make')
   @is_slow_test
   def test_openjpeg(self):
+    if '-flto' in self.emcc_args:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/15679')
+
     def do_test_openjpeg():
       def line_splitter(data):
         out = ''
