@@ -1483,8 +1483,12 @@ int f() {
     result = self.run_js('a.out.js', engine=config.NODE_JS)
     self.assertContained('|hello from a file wi|', result)
 
+  @parameterized({
+    'default': ([],),
+    'proxy-main': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
   @node_pthreads
-  def test_preload_with_pthread(self):
+  def test_preload_with_pthread(self, args):
     create_file('somefile.txt', 'hello from a file with lots of data and stuff in it thank you very much')
     create_file('main.cpp', r'''
       #include <stdio.h>
@@ -1498,8 +1502,7 @@ int f() {
         return 0;
       }
     ''')
-    self.run_process([EMXX, 'main.cpp', '--preload-file', 'somefile.txt', '-pthread'])
-    # run in node.js to ensure we verify that file preloading works there
+    self.run_process([EMXX, 'main.cpp', '--preload-file', 'somefile.txt', '-pthread'] + args)
     result = self.run_js('a.out.js', engine=config.NODE_JS)
     self.assertContained('|hello from a file wi|', result)
 
