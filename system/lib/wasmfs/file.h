@@ -163,7 +163,8 @@ public:
     }
 
     // This function loads preloaded files from JS Memory into this DataFile.
-    // TODO: Make this virtual so specific backends can specialize it for better performance.
+    // TODO: Make this virtual so specific backends can specialize it for better
+    // performance.
     void preloadFromJS(int index);
   };
 
@@ -272,12 +273,11 @@ struct ParsedPath {
 // Call getParsedPath if one needs a locked handle to a parent dir and a
 // shared_ptr to its child file, given a file path.
 // TODO: When locking the directory structure is refactored, parent should be
-// returned as a pointer, similar to child. Given a pathname, this function will
-// return a locked parent directory and a pointer to the specified file.
-// Will return a nullptr if the parent is not a directory.
+// returned as a pointer, similar to child.
+// Will return an empty handle if the parent is not a directory.
 // Will error if the forbiddenAncestor is encountered while processing.
 // If the forbiddenAncestor is encountered, err will be set to EINVAL and
-// nullptr will be returned.
+// an empty parent handle will be returned.
 ParsedPath getParsedPath(std::vector<std::string> pathParts,
                          long& err,
                          std::shared_ptr<File> forbiddenAncestor = nullptr);
