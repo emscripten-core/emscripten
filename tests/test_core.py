@@ -6394,7 +6394,7 @@ void* operator new(size_t size) {
       # In ASan mode we need a large initial memory (or else wasm-ld fails).
       # The OpenJPEG CMake will build several executables (which we need parts
       # of in our testing, see above), so we must enable the flag for them all.
-      with env_modify({'EMMAKEN_CFLAGS': '-sINITIAL_MEMORY=300MB'}):
+      with env_modify({'EMCC_CFLAGS': '-sINITIAL_MEMORY=300MB'}):
         do_test_openjpeg()
     else:
       do_test_openjpeg()
