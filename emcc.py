@@ -758,9 +758,6 @@ def parse_s_args(args):
 
 
 def emsdk_ldflags(user_args):
-  if os.environ.get('EMMAKEN_NO_SDK'):
-    return []
-
   library_paths = [
      shared.Cache.get_lib_dir(absolute=True)
   ]
@@ -899,7 +896,7 @@ def get_cflags(user_args):
 
   ports.add_cflags(cflags, settings)
 
-  if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
+  if '-nostdinc' in user_args:
     return cflags
 
   cflags += emsdk_cflags(user_args)
@@ -1043,9 +1040,6 @@ def run(args):
   EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
   if EMCC_CFLAGS:
     args += shlex.split(EMCC_CFLAGS)
-  EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
-  if EMMAKEN_CFLAGS:
-    args += shlex.split(EMMAKEN_CFLAGS)
 
   if DEBUG:
     logger.warning(f'invocation: {shared.shlex_join(args)} (in {os.getcwd()})')
@@ -1123,10 +1117,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   options, newargs, settings_map = phase_parse_arguments(state)
 
   if 'EMMAKEN_NO_SDK' in os.environ:
-    diagnostics.warning('deprecated', 'We hope to deprecated EMMAKEN_NO_SDK.  See https://github.com/emscripten-core/emscripten/issues/14050 if use use this feature.')
+    exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
+
+  if 'EMMAKEN_COMPILER' in os.environ:
+    exit_with_error('`EMMAKEN_COMPILER` is no longer supported.\n' +
+                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instread')
 
   if 'EMMAKEN_CFLAGS' in os.environ:
-    diagnostics.warning('deprecated', '`EMMAKEN_CFLAGS` is deprecated, please use `EMCC_CFLAGS` instead.  See https://github.com/emscripten-core/emscripten/issues/15684')
+    exit_with_error('`EMMAKEN_CFLAGS` is no longer supported, please use `EMCC_CFLAGS` instead')
 
   # For internal consistency, ensure we don't attempt or read or write any link time
   # settings until we reach the linking phase.
@@ -2544,13 +2542,6 @@ def phase_compile_inputs(options, state, newargs, input_files):
     logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
     CXX.insert(0, config.COMPILER_WRAPPER)
     CC.insert(0, config.COMPILER_WRAPPER)
-
-  if 'EMMAKEN_COMPILER' in os.environ:
-    diagnostics.warning('deprecated', '`EMMAKEN_COMPILER` is deprecated.\n'
-                        'To use an alteranative LLVM build set `LLVM_ROOT` in the config file (or `EM_LLVM_ROOT` env var).\n'
-                        'To wrap invocations of clang use the `COMPILER_WRAPPER` setting (or `EM_COMPILER_WRAPPER` env var.\n')
-    CXX = [os.environ['EMMAKEN_COMPILER']]
-    CC = [cxx_to_c_compiler(os.environ['EMMAKEN_COMPILER'])]
 
   compile_args = [a for a in newargs if a and not is_link_flag(a)]
   system_libs.ensure_sysroot()

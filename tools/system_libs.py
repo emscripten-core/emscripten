@@ -55,12 +55,12 @@ def get_base_cflags(force_object_files=False):
 
 def clean_env():
   # building system libraries and ports should be hermetic in that it is not
-  # affected by things like EMMAKEN_CFLAGS which the user may have set.
+  # affected by things like EMCC_CFLAGS which the user may have set.
   # At least one port also uses autoconf (harfbuzz) so we also need to clear
   # CFLAGS/LDFLAGS which we don't want to effect the inner call to configure.
   safe_env = os.environ.copy()
   for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS',
-              'EMCC_CFLAGS', 'EMMAKEN_CFLAGS', 'EMMAKEN_JUST_CONFIGURE',
+              'EMCC_CFLAGS',
               'EMCC_FORCE_STDLIBS',
               'EMCC_ONLY_FORCED_STDLIBS']:
     if opt in safe_env:
