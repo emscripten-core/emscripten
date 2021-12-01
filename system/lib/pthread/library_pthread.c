@@ -769,14 +769,8 @@ int emscripten_dispatch_to_thread_args(pthread_t target_thread,
   if (!q)
     return 0;
 
-  // 'async' runs are fire and forget, where the caller detaches itself from the call object after
-  // returning here, and it is the callee's responsibility to free up the memory after the call has
-  // been performed.
-  // Note that the call here might not be async if on the same thread, but for
-  // consistency use the same convention of calleeDelete.
+  // `q` will not be used after it is called, so let the call clean it up.
   q->calleeDelete = 1;
-  // The called function will not be async if we are on the same thread; force
-  // async if the user asked for that.
   return _emscripten_do_dispatch_to_thread(target_thread, q);
 }
 

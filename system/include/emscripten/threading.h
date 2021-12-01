@@ -9,6 +9,7 @@
 
 #include <inttypes.h>
 #include <pthread.h>
+#include <stdarg.h>
 
 #include <emscripten/html5.h>
 #include <emscripten/atomic.h>
