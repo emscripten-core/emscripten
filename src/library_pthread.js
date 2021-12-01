@@ -1036,8 +1036,7 @@ var LibraryPThread = {
 #endif
   },
 
-  // The profiler setters are defined twice, here in asm.js so that they can be #if'ed out
-  // without having to pay the impact of a FFI transition for a no-op in non-profiling builds.
+#if ASSERTIONS
   emscripten_conditional_set_current_thread_status__sig: 'vii',
   emscripten_conditional_set_current_thread_status: function(expectedStatus, newStatus) {
 #if PTHREADS_PROFILING
@@ -1058,6 +1057,7 @@ var LibraryPThread = {
     PThread.setThreadName(threadId, UTF8ToString(name));
 #endif
   },
+#endif
 
   // This function is call by a pthread to signal that exit() was called and
   // that the entire process should exit.
