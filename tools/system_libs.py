@@ -549,6 +549,32 @@ class MTLibrary(Library):
     return super().get_default_variation(is_mt=settings.USE_PTHREADS, **kwargs)
 
 
+class DebugLibrary(Library):
+  def __init__(self, **kwargs):
+    self.is_debug = kwargs.pop('is_debug')
+    super().__init__(**kwargs)
+
+  def get_cflags(self):
+    cflags = super().get_cflags()
+    if not self.is_debug:
+      cflags += ['-DNDEBUG']
+    return cflags
+
+  def get_base_name(self):
+    name = super().get_base_name()
+    if self.is_debug:
+      name += '-debug'
+    return name
+
+  @classmethod
+  def vary_on(cls):
+    return super().vary_on() + ['is_debug']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(is_debug=settings.ASSERTIONS, **kwargs)
+
+
 class OptimizedAggressivelyForSizeLibrary(Library):
   def __init__(self, **kwargs):
     self.is_optz = kwargs.pop('is_optz')
@@ -732,7 +758,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
       ])
 
 
-class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
+class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   name = 'libc'
 
   # Without -fno-builtin, LLVM can optimize away or convert calls to library
@@ -743,6 +769,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
   # Disable certain warnings for code patterns that are contained in upstream musl
   cflags += ['-Wno-ignored-attributes',
+             # tre.h defines NDEBUG internally itself
+             '-Wno-macro-redefined',
              '-Wno-shift-op-parentheses',
              '-Wno-string-plus-int',
              '-Wno-pointer-sign']
@@ -1541,37 +1569,11 @@ class libjsmath(Library):
     return super(libjsmath, self).can_use() and settings.JS_MATH
 
 
-class libstubs(Library):
+class libstubs(DebugLibrary):
   name = 'libstubs'
   cflags = ['-O2']
   src_dir = 'system/lib/libc'
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
-
-  def __init__(self, **kwargs):
-    self.is_debug = kwargs.pop('is_debug')
-    super().__init__(**kwargs)
-
-  def get_base_name(self):
-    name = super().get_base_name()
-    if self.is_debug:
-      name += '-debug'
-    return name
-
-  def get_cflags(self):
-    cflags = super().get_cflags()
-    if self.is_debug:
-      cflags += ['-UNDEBUG']
-    else:
-      cflags += ['-DNDEBUG']
-    return cflags
-
-  @classmethod
-  def vary_on(cls):
-    return super().vary_on() + ['is_debug']
-
-  @classmethod
-  def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_debug=settings.ASSERTIONS, **kwargs)
 
 
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be

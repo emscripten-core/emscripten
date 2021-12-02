@@ -477,7 +477,7 @@ fi
       tasks = []
       num_times_libc_was_built = 0
       for i in range(3):
-        p = self.run_process([EMCC, 'test.c', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
+        p = self.run_process([EMCC, 'test.c', '-O2', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
         tasks += [p]
       for p in tasks:
         print('stdout:\n', p.stdout)

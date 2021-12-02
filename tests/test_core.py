@@ -6286,6 +6286,9 @@ void* operator new(size_t size) {
   @needs_make('make')
   @is_slow_test
   def test_openjpeg(self):
+    if '-flto' in self.emcc_args:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/15679')
+
     def do_test_openjpeg():
       def line_splitter(data):
         out = ''
@@ -7132,6 +7135,8 @@ someweirdtext
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=_malloc,_free', '--post-js=glue.js', '--extern-post-js=extern-post.js']
+    if mode == 'ALL':
+      self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
       self.set_setting('ALLOW_MEMORY_GROWTH')
 

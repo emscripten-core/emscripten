@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 #  Building
 binaryen_checked = False
 
-EXPECTED_BINARYEN_VERSION = 101
+EXPECTED_BINARYEN_VERSION = 103
 # cache results of nm - it can be slow to run
 nm_cache = {}
 # Stores the object files contained in different archive files passed as input
@@ -586,12 +586,9 @@ def parse_llvm_nm_symbols(output):
 
 def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
   try_delete(output_filename)
-  response_filename = response_file.create_response_file(filenames, TEMP_DIR)
-  cmd = [EMAR, action, output_filename] + ['@' + response_filename]
-  try:
-    run_process(cmd, stdout=stdout, stderr=stderr, env=env)
-  finally:
-    try_delete(response_filename)
+  cmd = [EMAR, action, output_filename] + filenames
+  cmd = get_command_with_possible_response_file(cmd)
+  run_process(cmd, stdout=stdout, stderr=stderr, env=env)
 
   if 'c' in action:
     assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
@@ -684,12 +681,12 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
     if isinstance(e, subprocess.CalledProcessError):
       sys.stderr.write(e.stdout)
     sys.stderr.write(str(e) + '\n')
-    exit_with_error('closure compiler (%s) did not execute properly!' % str(cmd))
+    exit_with_error('closure compiler (%s) did not execute properly!' % shared.shlex_join(cmd))
 
   if 'Version:' not in output:
     if allowed_to_fail:
       return False
-    exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(cmd), output))
+    exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (shared.shlex_join(cmd), output))
 
   return True
 

@@ -42,6 +42,68 @@ std::shared_ptr<File> Directory::Handle::getEntry(std::string pathName) {
 //
 // Path Parsing utilities
 //
+ParsedPath getParsedPath(std::vector<std::string> pathParts,
+                         long& err,
+                         std::shared_ptr<File> forbiddenAncestor) {
+  std::shared_ptr<Directory> curr;
+  auto begin = pathParts.begin();
+
+  if (pathParts.empty()) {
+    err = -ENOENT;
+    return ParsedPath{{}, nullptr};
+  }
+
+  // Check if the first path element is '/', indicating an absolute path.
+  if (pathParts[0] == "/") {
+    curr = wasmFS.getRootDirectory();
+    begin++;
+    // If the pathname is the root directory, return the root as the child.
+    if (pathParts.size() == 1) {
+      return ParsedPath{curr->locked(), curr};
+    }
+  } else {
+    curr = wasmFS.getCWD();
+  }
+
+  for (auto pathPart = begin; pathPart != pathParts.end() - 1; ++pathPart) {
+    // Find the next entry in the current directory entry
+#ifdef WASMFS_DEBUG
+    curr->locked().printKeys();
+#endif
+    auto entry = curr->locked().getEntry(*pathPart);
+
+    if (forbiddenAncestor) {
+      if (entry == forbiddenAncestor) {
+        err = -EINVAL;
+        return ParsedPath{{}, nullptr};
+      }
+    }
+
+    // An entry is defined in the current directory's entries vector.
+    if (!entry) {
+      err = -ENOENT;
+      return ParsedPath{{}, nullptr};
+    }
+
+    curr = entry->dynCast<Directory>();
+
+    // If file is nullptr, then the file was not a Directory.
+    // TODO: Change this to accommodate symlinks
+    if (!curr) {
+      err = -ENOTDIR;
+      return ParsedPath{{}, nullptr};
+    }
+
+#ifdef WASMFS_DEBUG
+    emscripten_console_log(*pathPart->c_str());
+#endif
+  }
+
+  // Lock the parent once.
+  auto lockedCurr = curr->locked();
+  auto child = lockedCurr.getEntry(*(pathParts.end() - 1));
+  return ParsedPath{std::move(lockedCurr), child};
+}
 
 std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
                                   std::vector<std::string>::iterator end,

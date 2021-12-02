@@ -91,6 +91,8 @@ public:
     // specified by the parent weak_ptr.
     std::shared_ptr<File> getParent() { return file->parent.lock(); }
     void setParent(std::shared_ptr<File> parent) { file->parent = parent; }
+
+    std::shared_ptr<File> unlocked() { return file; }
   };
 
   Handle locked() { return Handle(shared_from_this()); }
@@ -161,7 +163,8 @@ public:
     }
 
     // This function loads preloaded files from JS Memory into this DataFile.
-    // TODO: Make this virtual so specific backends can specialize it for better performance.
+    // TODO: Make this virtual so specific backends can specialize it for better
+    // performance.
     void preloadFromJS(int index);
   };
 
@@ -261,11 +264,30 @@ public:
     }
   }
 };
-// Obtains parent directory of a given pathname.
-// Will return a nullptr if the parent is not a directory.
+
+struct ParsedPath {
+  std::optional<Directory::Handle> parent;
+  std::shared_ptr<File> child;
+};
+
+// Call getParsedPath if one needs a locked handle to a parent dir and a
+// shared_ptr to its child file, given a file path.
+// TODO: When locking the directory structure is refactored, parent should be
+// returned as a pointer, similar to child.
+// Will return an empty handle if the parent is not a directory.
 // Will error if the forbiddenAncestor is encountered while processing.
 // If the forbiddenAncestor is encountered, err will be set to EINVAL and
-// nullptr will be returned.
+// an empty parent handle will be returned.
+ParsedPath getParsedPath(std::vector<std::string> pathParts,
+                         long& err,
+                         std::shared_ptr<File> forbiddenAncestor = nullptr);
+
+// Call getDir if one needs a parent directory of a file path.
+// TODO: Remove this when directory structure locking is refactored and use
+// getParsedPath instead. Obtains parent directory of a given pathname.
+// Will return a nullptr if the parent is not a directory. Will error if the
+// forbiddenAncestor is encountered while processing. If the forbiddenAncestor
+// is encountered, err will be set to EINVAL and nullptr will be returned.
 std::shared_ptr<Directory>
 getDir(std::vector<std::string>::iterator begin,
        std::vector<std::string>::iterator end,

@@ -8,7 +8,7 @@ var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread__deps: ['_emscripten_thread_init',
                    'emscripten_futex_wake', '$killThread',
-                   '$cancelThread', '$cleanupThread',
+                   '$cancelThread', '$cleanupThread', '$zeroMemory',
                    '_emscripten_thread_free_data',
                    'exit',
 #if !MINIMAL_RUNTIME
@@ -59,8 +59,8 @@ var LibraryPThread = {
       Atomics.store(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, profilerBlock);
 
       // Zero fill contents at startup.
-      for (var i = 0; i < {{{ C_STRUCTS.thread_profiler_block.__size__ }}}; i += 4) Atomics.store(HEAPU32, (profilerBlock + i) >> 2, 0);
-      Atomics.store(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 2, performance.now());
+      zeroMemory(profilerBlock, {{{ C_STRUCTS.thread_profiler_block.__size__ }}});
+      HEAPF64[(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 3] = performance.now();
     },
 
     // Sets the current thread status, but only if it was in the given expected state before. This is used
@@ -1036,8 +1036,7 @@ var LibraryPThread = {
 #endif
   },
 
-  // The profiler setters are defined twice, here in asm.js so that they can be #if'ed out
-  // without having to pay the impact of a FFI transition for a no-op in non-profiling builds.
+#if ASSERTIONS
   emscripten_conditional_set_current_thread_status__sig: 'vii',
   emscripten_conditional_set_current_thread_status: function(expectedStatus, newStatus) {
 #if PTHREADS_PROFILING
@@ -1058,6 +1057,7 @@ var LibraryPThread = {
     PThread.setThreadName(threadId, UTF8ToString(name));
 #endif
   },
+#endif
 
   // This function is call by a pthread to signal that exit() was called and
   // that the entire process should exit.
