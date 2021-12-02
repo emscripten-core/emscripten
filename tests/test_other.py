@@ -11252,7 +11252,6 @@ void foo() {}
   })
   def test_wasmfs_jsfile(self, proxying, args):
     for setting in args:
-      print(setting)
       self.set_setting(setting)
     if proxying:
       self.emcc_args = self.emcc_args.copy() + ['-DPROXYING']

@@ -16,6 +16,9 @@
 #include <thread>
 #include <utility>
 
+// TODO: This will be updated with:
+// https://github.com/emscripten-core/emscripten/pull/15681
+
 namespace emscripten {
 
 // Helper class for generic sync-to-async conversion. Creating an instance of
@@ -31,10 +34,9 @@ namespace emscripten {
 // for a JS event).
 class SyncToAsync {
 
-// Public API
-//==============================================================================
+  // Public API
+  //==============================================================================
 public:
-
   // Pass around the callback as a pointer to a std::function. Using a pointer
   // means that it can be sent easily to JS, as a void* parameter to a C API,
   // etc., and also means we do not need to worry about the lifetime of the
@@ -62,8 +64,8 @@ public:
   //
   void invoke(std::function<void(Callback)> newWork);
 
-//==============================================================================
-// End Public API
+  //==============================================================================
+  // End Public API
 
 private:
   // The dedicated worker thread.
@@ -109,8 +111,8 @@ private:
       // Wait until we get something to do.
       std::unique_lock<std::mutex> lock(parent->mutex);
       parent->condition.wait(lock, [&]() {
-          return parent->state == WorkAvailable || parent->state == ShouldExit;
-        });
+        return parent->state == WorkAvailable || parent->state == ShouldExit;
+      });
 
       if (parent->state == ShouldExit) {
         pthread_exit(0);
