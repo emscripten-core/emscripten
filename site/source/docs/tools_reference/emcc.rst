@@ -238,7 +238,7 @@ Options that are modified or new in *emcc* are listed below:
 
    For example, one might want to pass an externs file to avoid minifying JS functions defined in ``--pre-js`` or ``--post-js`` files.
    To pass to Closure the ``externs.js`` file containing those public APIs that should not be minified, one would add the flag:
-   ``--closure-args=--externs=path/to/externs.js``
+   ``--closure-args=--externs=/abs/path/to/externs.js``
 
 .. _emcc-pre-js:
 
