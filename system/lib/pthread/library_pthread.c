@@ -815,10 +815,10 @@ int emscripten_dispatch_to_thread_async_args(pthread_t target_thread,
 }
 
 int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
-                                        EM_FUNC_SIGNATURE sig,
-                                        void* func_ptr,
-                                        void* satellite,
-                                        ...) {
+                                         EM_FUNC_SIGNATURE sig,
+                                         void* func_ptr,
+                                         void* satellite,
+                                         ...) {
   va_list args;
   va_start(args, satellite);
   int ret = emscripten_dispatch_to_thread_async_args(
