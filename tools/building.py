@@ -816,7 +816,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   # Specify input file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
   args += ['--js', move_to_safe_7bit_ascii_filename(filename)]
   cmd = closure_cmd + args + user_args
-  logger.debug(f'closure compiler: {shared.shlex_join(cmd)}')
+  logger.debug(f'closure compiler: {shared.shlex_join(cmd)} in directory {tempfiles.tmpdir}')
 
   # Closure compiler does not work if any of the input files contain characters outside the
   # 7-bit ASCII range. Therefore make sure the command line we pass does not contain any such
