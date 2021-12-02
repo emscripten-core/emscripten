@@ -35,11 +35,6 @@ int64_t Random::get64() {
   return temp | uint64_t(get32());
 }
 
-uint8_t Random::getNonZero() {
-  auto ret = uint8_t(get());
-  return ret > 0 ? ret : ret + 1;
-}
-
 uint32_t Random::upTo(uint32_t x) {
   if (x == 0) {
     return 0;
@@ -66,13 +61,13 @@ std::string Random::getString(int8_t size) {
   std::string ret;
   ret.reserve(size);
   for (int i = 0; i < size; ++i) {
-    ret += alphanum[get() % (sizeof(alphanum) - 1)];
+    ret += alphanum[upTo(sizeof(alphanum) - 1)];
   }
   return ret;
 }
 
 // Returns a random length string of the same character.
-std::string Random::getSingleSymbolString(uint8_t length) {
+std::string Random::getSingleSymbolString(uint32_t length) {
   return std::string(length, getString(1)[0]);
 }
 

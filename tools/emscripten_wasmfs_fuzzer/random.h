@@ -37,13 +37,11 @@ public:
   int32_t get32();
   int64_t get64();
 
-  // Returns a number from 1...x
-  uint8_t getNonZero();
-
+  // Returns number in the range of [0,x).
   uint32_t upTo(uint32_t x);
 
   std::string getString(int8_t size);
-  std::string getSingleSymbolString(uint8_t length);
+  std::string getSingleSymbolString(uint32_t length);
 };
 
 } // namespace wasmfs

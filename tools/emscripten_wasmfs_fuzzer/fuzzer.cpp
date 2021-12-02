@@ -20,6 +20,8 @@
 #include <string>
 #include <unistd.h>
 
+#define NUM_RAND_BYTES 4096
+
 namespace wasmfs {
 using RandEngine = std::mt19937_64;
 
@@ -34,7 +36,7 @@ struct Fuzzer {
     RandEngine getRand(seed);
     printf("Running with seed: %llu\n", seed);
 
-    std::vector<char> bytes(4096);
+    std::vector<char> bytes(NUM_RAND_BYTES);
     for (size_t i = 0; i < bytes.size(); i += sizeof(uint64_t)) {
       *(uint64_t*)(bytes.data() + i) = getRand();
     }
@@ -44,12 +46,7 @@ struct Fuzzer {
     // Create a workload with the Random seed.
     auto workload = ReadWrite(rand);
 
-    workload.generate();
-
     workload.execute();
-
-    // Slow down to produce readable content.
-    sleep(1);
   }
 };
 } // namespace wasmfs
@@ -78,9 +75,8 @@ int main(int argc, const char* argv[]) {
     size_t i = 0;
     RandEngine nextSeed(getSeed());
     while (true) {
-      std::cout << "Iteration " << ++i << "\n";
-      printf("Iteration %zu \n\n", ++i);
-      printf("Seed %llu \n\n", getSeed());
+      printf("Iteration %zu \n", ++i);
+      printf("Seed %llu \n", getSeed());
       fuzzer.run(nextSeed());
     }
   }
