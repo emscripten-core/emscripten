@@ -8544,6 +8544,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.emcc_args += ['-DDEBUG']
     self.do_runf(test_file('core/test_return_address.c'), 'passed')
 
+  @node_pthreads
+  @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
+  def test_pthread_sync_to_async(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    # This tests the SyncToAsync helper in the WasmFS internals. Add an include
+    # path to find it, so we can add a separable unit test of it here.
+    self.emcc_args += ['-I' + path_from_root('system/lib')]
+    self.do_run_in_out_file_test('core/pthread/sync_to_async.cpp')
+
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('core/pthread/emscripten_atomics.c')
 
