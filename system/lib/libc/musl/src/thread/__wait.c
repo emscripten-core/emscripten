@@ -5,10 +5,6 @@
 
 #include "pthread_impl.h"
 
-#ifdef __EMSCRIPTEN__
-int _pthread_isduecanceled(struct pthread *pthread_ptr);
-#endif
-
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 {
 	int spins=100;
@@ -25,7 +21,7 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 			// Must wait in slices in case this thread is cancelled in between.
 			int e;
 			do {
-				if (_pthread_isduecanceled(pthread_self())) {
+				if (pthread_self()->cancel) {
 					if (waiters) a_dec(waiters);
 					return;
 				}

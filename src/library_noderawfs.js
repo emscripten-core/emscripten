@@ -19,7 +19,7 @@ mergeInto(LibraryManager.library, {
     lookupPath: function(path, opts) {
       opts = opts || {};
       if (opts.parent) {
-        path = NODEJS_PATH.dirname(path);
+        path = nodePath.dirname(path);
       }
       var st = fs.lstatSync(path);
       var mode = NODEFS.getMode(path);

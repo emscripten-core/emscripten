@@ -20,9 +20,6 @@ See docs/process.md for more on how version tagging works.
 
 3.0.1
 -----
-- The return value of `emscripten_is_main_browser_thread` was fixed such that
-  it no longer returns true when the application is started outside of the
-  main browser thread (.e.g. in a worker, or under node). (#15630)
 
 3.0.0 - 11/22/2021
 ------------------
@@ -407,6 +404,9 @@ See docs/process.md for more on how version tagging works.
 - Several pthreads exit-related fixes (#12985) (#10524).
 - Fix IDBFS syncing with existing directories (#13574).
 - Add libmodplug port and allow mod files to be played in SDL2 (#13478).
+- `emscripten_GetProcAddress` is now part of `libGL`. Normally the change is not
+  noticeable, unless you build in `STRICT` mode and do not already have `-lGL`
+  to link in that library. If not, add `-lGL`. (#13524)
 
 2.0.14: 02/14/2021
 ------------------

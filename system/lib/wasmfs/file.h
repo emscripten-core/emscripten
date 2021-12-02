@@ -91,6 +91,8 @@ public:
     // specified by the parent weak_ptr.
     std::shared_ptr<File> getParent() { return file->parent.lock(); }
     void setParent(std::shared_ptr<File> parent) { file->parent = parent; }
+
+    std::shared_ptr<File> unlocked() { return file; }
   };
 
   Handle locked() { return Handle(shared_from_this()); }
@@ -140,7 +142,9 @@ class DataFile : public File {
 public:
   static constexpr FileKind expectedKind = File::DataFileKind;
   DataFile(mode_t mode, backend_t backend)
-    : File(File::DataFileKind, mode, backend) {}
+    : File(File::DataFileKind, mode | S_IFREG, backend) {}
+  DataFile(mode_t mode, backend_t backend, mode_t fileType)
+    : File(File::DataFileKind, mode | fileType, backend) {}
   virtual ~DataFile() = default;
 
   class Handle : public File::Handle {
@@ -157,6 +161,11 @@ public:
     __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) {
       return getFile()->write(buf, len, offset);
     }
+
+    // This function loads preloaded files from JS Memory into this DataFile.
+    // TODO: Make this virtual so specific backends can specialize it for better
+    // performance.
+    void preloadFromJS(int index);
   };
 
   Handle locked() { return Handle(shared_from_this()); }
@@ -173,7 +182,7 @@ protected:
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
   Directory(mode_t mode, backend_t backend)
-    : File(File::DirectoryKind, mode, backend) {}
+    : File(File::DirectoryKind, mode | S_IFDIR, backend) {}
 
   struct Entry {
     std::string name;
@@ -255,11 +264,30 @@ public:
     }
   }
 };
-// Obtains parent directory of a given pathname.
-// Will return a nullptr if the parent is not a directory.
+
+struct ParsedPath {
+  std::optional<Directory::Handle> parent;
+  std::shared_ptr<File> child;
+};
+
+// Call getParsedPath if one needs a locked handle to a parent dir and a
+// shared_ptr to its child file, given a file path.
+// TODO: When locking the directory structure is refactored, parent should be
+// returned as a pointer, similar to child.
+// Will return an empty handle if the parent is not a directory.
 // Will error if the forbiddenAncestor is encountered while processing.
 // If the forbiddenAncestor is encountered, err will be set to EINVAL and
-// nullptr will be returned.
+// an empty parent handle will be returned.
+ParsedPath getParsedPath(std::vector<std::string> pathParts,
+                         long& err,
+                         std::shared_ptr<File> forbiddenAncestor = nullptr);
+
+// Call getDir if one needs a parent directory of a file path.
+// TODO: Remove this when directory structure locking is refactored and use
+// getParsedPath instead. Obtains parent directory of a given pathname.
+// Will return a nullptr if the parent is not a directory. Will error if the
+// forbiddenAncestor is encountered while processing. If the forbiddenAncestor
+// is encountered, err will be set to EINVAL and nullptr will be returned.
 std::shared_ptr<Directory>
 getDir(std::vector<std::string>::iterator begin,
        std::vector<std::string>::iterator end,

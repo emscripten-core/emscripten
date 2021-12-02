@@ -20,7 +20,6 @@ $_emscripten_thread_exit
 $_emscripten_thread_free_data
 $_emscripten_thread_init
 $_main_thread
-$_pthread_isduecanceled
 $a_cas
 $a_dec
 $a_inc.1

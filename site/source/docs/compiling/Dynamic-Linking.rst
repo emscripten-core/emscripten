@@ -77,7 +77,7 @@ the problem as follows: There are two types of shared modules:
 
 A project should contain **exactly one** main module. It can then be
 linked at runtime to multiple side modules. This model also makes other
-things simpler, like only the singleton main module includes the
+things simpler.  For example, only the singleton main module includes the
 JavaScript environment and side modules are pure WebAssembly modules.
 
 The one tricky aspect to this design is that a side module might depend on a
@@ -104,7 +104,7 @@ we describe the procedure now.
 Load-time Dynamic Linking
 -------------------------
 
-Load-time dynamic linking refers to case when the side module are loaded
+Load-time dynamic linking refers to the case when the side modules are loaded
 along with the main module, during startup and they are linked together
 before your application starts to run.
 
