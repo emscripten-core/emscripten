@@ -1007,6 +1007,7 @@
             "EM_THREAD_STATUS_WAITFUTEX",
             "EM_THREAD_STATUS_WAITPROXY",
             "EM_THREAD_STATUS_FINISHED",
+            "EM_FUNC_SIG_VVP",
             "EM_FUNC_SIG_V",
             "EM_FUNC_SIG_VI",
             "EM_FUNC_SIG_VII",

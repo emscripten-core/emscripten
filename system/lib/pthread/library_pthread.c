@@ -163,6 +163,9 @@ static void _do_call(em_queued_call* q) {
       q->returnValue.d =
         emscripten_receive_on_main_thread_js((int)(size_t)q->functionPtr, q->args[0].i, &q->args[1].d);
       break;
+    case EM_FUNC_SIG_VVP:
+      ((em_func_vvp)q->functionPtr)(q->args[0].vp);
+      break;
     case EM_FUNC_SIG_V:
       ((em_func_v)q->functionPtr)();
       break;
@@ -620,6 +623,9 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* fun
   va_start(args, func_ptr);
   for (int i = 0; i < numArguments; ++i) {
     switch ((argumentsType & EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK)) {
+      case EM_FUNC_SIG_PARAM_OPAQUE:
+        q.args[i].vp = va_arg(args, void *);
+        break;
       case EM_FUNC_SIG_PARAM_I:
         q.args[i].i = va_arg(args, int);
         break;

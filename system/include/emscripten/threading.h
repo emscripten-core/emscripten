@@ -76,6 +76,7 @@ typedef struct em_queued_call
   int calleeDelete;
 } em_queued_call;
 
+void emscripten_async_run_in_main_thread(em_queued_call *call);
 void emscripten_sync_run_in_main_thread(em_queued_call *call);
 void *emscripten_sync_run_in_main_thread_0(int function);
 void *emscripten_sync_run_in_main_thread_1(int function, void *arg1);
@@ -84,6 +85,7 @@ void *emscripten_sync_run_in_main_thread_3(int function, void *arg1, void *arg2,
 void *emscripten_sync_run_in_main_thread_7(int function, void *arg1, void *arg2, void *arg3, void *arg4, void *arg5, void *arg6, void *arg7);
 
 typedef void (*em_func_v)(void);
+typedef void (*em_func_vvp)(void *);
 typedef void (*em_func_vi)(int);
 typedef void (*em_func_vf)(float);
 typedef void (*em_func_vii)(int, int);
@@ -154,7 +156,8 @@ typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 // Extra types used in WebGL glGet*() calls (not used in proxying)
 #define EM_FUNC_SIG_PARAM_B   0x4U
 #define EM_FUNC_SIG_PARAM_F2I 0x5U
-
+#define EM_FUNC_SIG_PARAM_OPAQUE 0x6U
+    
 // In total, the above encoding scheme gives the following 32-bit structure for
 // the proxied function signatures (highest -> lowest bit order):
 // RRRiiiiSbbaa99887766554433221100
@@ -163,7 +166,7 @@ typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 // S denotes a special function (internal proxying mechanism for functions
 // related to built-in threading APIs, like thread creation itself)
 // 00-bb encode the type of up to 12 function parameters
-
+#define EM_FUNC_SIG_VVP   (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(1) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_OPAQUE))
 #define EM_FUNC_SIG_V     (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(0))
 #define EM_FUNC_SIG_D     (EM_FUNC_SIG_RETURN_VALUE_D | EM_FUNC_SIG_WITH_N_PARAMETERS(0))
 #define EM_FUNC_SIG_VI    (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(1) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I))
