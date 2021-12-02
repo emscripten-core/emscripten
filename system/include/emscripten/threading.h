@@ -312,6 +312,11 @@ void emscripten_thread_sleep(double msecs);
 #define EM_THREAD_STATUS_FINISHED   6
 #define EM_THREAD_STATUS_NUMFIELDS  7
 
+#ifdef NDEBUG
+#define emscripten_set_current_thread_status(newStatus)
+#define emscripten_conditional_set_current_thread_status(expectedStatus, newStatus)
+#define emscripten_set_thread_name(threadId, name)
+#else
 // Sets the profiler status of the calling thread. This is a no-op if thread
 // profiling is not active.
 // This is an internal function and generally not intended for user code.
@@ -332,6 +337,7 @@ void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedS
 // When thread profiler is not enabled (not building with --threadprofiler),
 // this is a no-op.
 void emscripten_set_thread_name(pthread_t threadId, const char *name);
+#endif
 
 // Gets the stored pointer to a string representing the canvases to transfer to
 // the created thread.

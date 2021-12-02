@@ -88,6 +88,32 @@ var WasmfsLibrary = {
       return '/';
     }
   },
+  _emscripten_get_num_preloaded_files__deps: ['$wasmFS$preloadedFiles'],
+  _emscripten_get_num_preloaded_files: function() {
+    return wasmFS$preloadedFiles.length;
+  },
+  _emscripten_get_num_preloaded_dirs__deps: ['$wasmFS$preloadedDirs'],
+  _emscripten_get_num_preloaded_dirs: function() {
+    return wasmFS$preloadedDirs.length;
+  },
+  _emscripten_get_preloaded_file_mode: function(index) {
+    return wasmFS$preloadedFiles[index].mode;
+  },
+  _emscripten_get_preloaded_parent_path: function(index, parentPathBuffer) {
+    var s = wasmFS$preloadedDirs[index].parentPath;
+    var len = lengthBytesUTF8(s) + 1;
+    stringToUTF8(s, parentPathBuffer, len);
+  },
+  _emscripten_get_preloaded_child_path: function(index, childNameBuffer) {
+    var s = wasmFS$preloadedDirs[index].childName;
+    var len = lengthBytesUTF8(s) + 1;
+    stringToUTF8(s, childNameBuffer, len);
+  },
+  _emscripten_get_preloaded_path_name: function(index, fileNameBuffer) {
+    var s = wasmFS$preloadedFiles[index].pathName;
+    var len = lengthBytesUTF8(s) + 1;
+    stringToUTF8(s, fileNameBuffer, len);
+  },
   _emscripten_write_js_file: function(index, buffer, length, offset) {
     try {
       if (!wasmFS$JSMemoryFiles[index]) {

@@ -39,7 +39,7 @@ function dump(item) {
 
 function assert(a, msg) {
   if (!a) {
-    msg = 'Assertion failed: ' + msg;
+    msg = 'Assertion failed' + (msg ? ': ' + msg : '');
     print(msg);
     printErr('Stack: ' + new Error().stack);
     throw msg;
