@@ -21,6 +21,9 @@ See docs/process.md for more on how version tagging works.
 3.0.1
 -----
 
+- Updated SDL 2 port to upstream version 2.0.18 (from a patched 2.0.10). This
+  includes all downstream patches and many upstream changes.
+
 3.0.0 - 11/22/2021
 ------------------
 - A set of internally-unused functions were removed from `parseTools.js`.  While
