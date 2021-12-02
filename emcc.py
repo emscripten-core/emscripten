@@ -1935,7 +1935,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
     settings.EXPORTED_FUNCTIONS += [
       '___emscripten_init_main_thread',
-      '__emscripten_call_on_thread',
+      '_emscripten_dispatch_to_thread_',
       '__emscripten_main_thread_futex',
       '__emscripten_thread_init',
       '__emscripten_thread_exit',
@@ -1964,6 +1964,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # kept alive through DCE.
     # TODO: Find a less hacky way to do this, perhaps by also scanning worker.js
     # for roots.
+    building.user_requested_exports.add('__emscripten_thread_exit')
     building.user_requested_exports.add('_emscripten_tls_init')
     building.user_requested_exports.add('_emscripten_current_thread_process_queued_calls')
 

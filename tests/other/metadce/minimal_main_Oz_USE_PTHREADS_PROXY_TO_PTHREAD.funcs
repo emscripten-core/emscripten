@@ -14,7 +14,6 @@ $__wasi_syscall_ret
 $__wasm_call_ctors
 $__wasm_init_memory
 $_do_call
-$_emscripten_call_on_thread
 $_emscripten_do_dispatch_to_thread
 $_emscripten_thread_exit
 $_emscripten_thread_free_data
@@ -25,7 +24,6 @@ $a_dec
 $a_inc.1
 $a_swap
 $add
-$dispatch_to_thread_helper
 $dispose_chunk
 $dlfree
 $dlmalloc
@@ -34,6 +32,7 @@ $em_queued_call_free
 $em_queued_call_malloc
 $emscripten_async_run_in_main_thread
 $emscripten_current_thread_process_queued_calls
+$emscripten_dispatch_to_thread_
 $emscripten_main_thread_process_queued_calls
 $emscripten_proxy_main
 $emscripten_run_in_main_runtime_thread_js
