@@ -120,7 +120,7 @@ def also_with_wasmfs(f):
   def metafunc(self, wasmfs):
     if wasmfs:
       self.set_setting('WASMFS')
-      self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
+      self.emcc_args.append('-DWASMFS')
       f(self)
     else:
       f(self)
@@ -11252,7 +11252,7 @@ void foo() {}
 
   @node_pthreads
   def test_wasmfs_jsfile_proxying_backend(self):
-    self.emcc_args = self.emcc_args.copy() + ['-DPROXYING']
+    self.emcc_args.append('-DPROXYING')
     self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
