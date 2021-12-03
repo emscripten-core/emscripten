@@ -1,0 +1,20 @@
+running widget 1 on pthread
+running widget 2 on pthread
+running widget 3 on main
+running widget 4 on main
+Testing async dispatch
+running widget 7 on main
+running widget 8 on main
+Testing sync dispatch
+running widget 9 on pthread
+running widget 10 on pthread
+running widget 11 on main
+running widget 12 on main
+Testing async_as_sync dispatch
+running widget 13 on pthread
+running widget 14 on pthread
+running widget 15 on main
+running widget 16 on main
+done
+running widget 5 on pthread
+running widget 6 on pthread

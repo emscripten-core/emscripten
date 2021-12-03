@@ -2418,6 +2418,13 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_equal.cpp')
 
   @node_pthreads
+  @no_asan('Test depends on EXIT_RUNTIME=0, which is incompatible with ASan')
+  @no_lsan('Some allocations deliberately outlive main')
+  def test_pthread_dispatch_to_thread(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.do_run_in_out_file_test('pthread/test_pthread_dispatch_to_thread.c')
+
+  @node_pthreads
   def test_pthread_dispatch_after_exit(self):
     self.do_run_in_out_file_test('pthread/test_pthread_dispatch_after_exit.c', interleaved_output=False)
 

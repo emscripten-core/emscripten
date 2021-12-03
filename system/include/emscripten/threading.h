@@ -278,9 +278,9 @@ int emscripten_dispatch_to_thread_(pthread_t target_thread,
   emscripten_dispatch_to_thread_(                                              \
     (target_thread), (sig), (void*)(func), (satellite), ##__VA_ARGS__)
 
-// Similar to emscripten_dispatch_to_thread, but always runs the
-// function asynchronously, even if on the same thread. This is less efficient
-// but may be simpler to reason about in some cases.
+// Similar to emscripten_dispatch_to_thread, but always runs the function
+// asynchronously, even if on the same thread. This is less efficient but may be
+// simpler to reason about in some cases.
 int emscripten_dispatch_to_thread_async_ptr(pthread_t target_thread,
                                             void (*func)(void*),
                                             void* arg);
@@ -298,6 +298,54 @@ int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
   target_thread, sig, func, satellite, ...)                                    \
   emscripten_dispatch_to_thread_async_(                                        \
     (target_thread), (sig), (void*)(func), (satellite), ##__VA_ARGS__)
+
+// Similar to emscripten_dispatch_to_thread, but waits on the dispatching thread
+// until `func` has returned on the target thread.
+int emscripten_dispatch_to_thread_sync_ptr(pthread_t target_thread,
+                                           void (*func)(void*),
+                                           void* arg);
+int emscripten_dispatch_to_thread_sync_args(pthread_t target_thread,
+                                            EM_FUNC_SIGNATURE sig,
+                                            void* func,
+                                            void* satellite,
+                                            va_list args);
+int emscripten_dispatch_to_thread_sync_(pthread_t target_thread,
+                                        EM_FUNC_SIGNATURE sig,
+                                        void* func,
+                                        void* satellite,
+                                        ...);
+#define emscripten_dispatch_to_thread_sync(                                    \
+  target_thread, sig, func, satellite, ...)                                    \
+  emscripten_dispatch_to_thread_sync_(                                         \
+    (target_thread), (sig), (void*)(func), (satellite), ##__VA_ARGS__)
+
+// Similar to emscripten_dispatch_to_thread, but waits on the dispatching thread
+// until `emscripten_async_as_sync_finish` is called on the
+// `em_async_as_sync_ctx` context pointer supplied to `func`. The first argument
+// type in `sig` must match the provided context pointer.
+// `emscripten_async_as_sync_finish` may be called before or after `func`
+// returns unless `target_thread` is the current thread, in which case it must
+// be called before `func` returns to avoid waiting forever.
+typedef struct em_async_as_sync_ctx em_async_as_sync_ctx;
+int emscripten_dispatch_to_thread_async_as_sync_ptr(
+  pthread_t target_thread,
+  void (*func)(struct em_async_as_sync_ctx*, void*),
+  void* arg);
+int emscripten_dispatch_to_thread_async_as_sync_args(pthread_t target_thread,
+                                                     EM_FUNC_SIGNATURE sig,
+                                                     void* func,
+                                                     void* satellite,
+                                                     va_list args);
+int emscripten_dispatch_to_thread_async_as_sync_(pthread_t target_thread,
+                                                 EM_FUNC_SIGNATURE sig,
+                                                 void* func,
+                                                 void* satellite,
+                                                 ...);
+#define emscripten_dispatch_to_thread_async_as_sync(                           \
+  target_thread, sig, func, satellite, ...)                                    \
+  emscripten_dispatch_to_thread_async_as_sync_(                                \
+    (target_thread), (sig), (void*)(func), (satellite), ##__VA_ARGS__)
+void emscripten_async_as_sync_finish(struct em_async_as_sync_ctx* ctx);
 
 // Returns 1 if the current thread is the thread that hosts the Emscripten runtime.
 int emscripten_is_main_runtime_thread(void);

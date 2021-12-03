@@ -137,38 +137,39 @@ static void em_queued_call_free(em_queued_call* call) {
 
 static void init_em_queued_call_args(em_queued_call* q,
                                      EM_FUNC_SIGNATURE sig,
+                                     int start,
                                      va_list args) {
   EM_FUNC_SIGNATURE argumentsType = sig & EM_FUNC_SIG_ARGUMENTS_TYPE_MASK;
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   for (int i = 0; i < numArguments; ++i) {
-    switch ((argumentsType & EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK)) {
-      case EM_FUNC_SIG_PARAM_I:
-        q->args[i].i = va_arg(args, int);
-        break;
-      case EM_FUNC_SIG_PARAM_I64:
-        q->args[i].i64 = va_arg(args, int64_t);
-        break;
-      case EM_FUNC_SIG_PARAM_F:
-        q->args[i].f = (float)va_arg(args, double);
-        break;
-      case EM_FUNC_SIG_PARAM_D:
-        q->args[i].d = va_arg(args, double);
-        break;
+    if (i >= start) {
+      switch ((argumentsType & EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK)) {
+        case EM_FUNC_SIG_PARAM_I:
+          q->args[i].i = va_arg(args, int);
+          break;
+        case EM_FUNC_SIG_PARAM_I64:
+          q->args[i].i64 = va_arg(args, int64_t);
+          break;
+        case EM_FUNC_SIG_PARAM_F:
+          q->args[i].f = (float)va_arg(args, double);
+          break;
+        case EM_FUNC_SIG_PARAM_D:
+          q->args[i].d = va_arg(args, double);
+          break;
+      }
     }
     argumentsType >>= EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_SHIFT;
   }
 }
 
-static em_queued_call* em_queued_call_create(EM_FUNC_SIGNATURE sig,
-                                             void* func,
-                                             void* satellite,
-                                             va_list args) {
+static em_queued_call* em_queued_call_create(
+  EM_FUNC_SIGNATURE sig, void* func, void* satellite, int start, va_list args) {
   em_queued_call* call = em_queued_call_malloc();
   if (call) {
     call->functionEnum = sig;
     call->functionPtr = func;
     call->satelliteData = satellite;
-    init_em_queued_call_args(call, sig, args);
+    init_em_queued_call_args(call, sig, start, args);
   }
   return call;
 }
@@ -586,7 +587,7 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void* fun
 
   va_list args;
   va_start(args, func_ptr);
-  init_em_queued_call_args(&q, sig, args);
+  init_em_queued_call_args(&q, sig, 0, args);
   va_end(args);
   emscripten_sync_run_in_main_thread(&q);
   return q.returnValue.i;
@@ -647,7 +648,7 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
 
   va_list args;
   va_start(args, func_ptr);
-  init_em_queued_call_args(q, sig, args);
+  init_em_queued_call_args(q, sig, 0, args);
   va_end(args);
   // 'async waitable' runs are waited on by the caller, so the call object needs to remain alive for
   // the caller to access it after the operation is done. The caller is responsible in cleaning up
@@ -728,13 +729,19 @@ int emscripten_dispatch_to_thread_args(pthread_t target_thread,
                                        void* func_ptr,
                                        void* satellite,
                                        va_list args) {
-  em_queued_call* q = em_queued_call_create(sig, func_ptr, satellite, args);
-  if (!q)
+  em_queued_call* q = em_queued_call_create(sig, func_ptr, satellite, 0, args);
+  if (!q) {
     return 0;
+  }
 
   // `q` will not be used after it is called, so let the call clean it up.
   q->calleeDelete = 1;
-  return emscripten_dispatch_to_thread_ptr(target_thread, _do_call, q);
+  if (emscripten_dispatch_to_thread_ptr(target_thread, _do_call, q)) {
+    return 1;
+  } else {
+    em_queued_call_free(q);
+    return 0;
+  }
 }
 
 int emscripten_dispatch_to_thread_(pthread_t target_thread,
@@ -770,16 +777,18 @@ int emscripten_dispatch_to_thread_async_args(pthread_t target_thread,
                                              void* satellite,
                                              va_list args) {
   // Setup is the same as in emscripten_dispatch_to_thread_args.
-  em_queued_call* q = em_queued_call_create(sig, func, satellite, args);
-  if (!q)
+  em_queued_call* q = em_queued_call_create(sig, func, satellite, 0, args);
+  if (!q) {
     return 0;
+  }
 
   q->calleeDelete = 1;
-  if (!emscripten_dispatch_to_thread_async_ptr(target_thread, _do_call, q)) {
+  if (emscripten_dispatch_to_thread_async_ptr(target_thread, _do_call, q)) {
+    return 1;
+  } else {
     em_queued_call_free(q);
     return 0;
   }
-  return 1;
 }
 
 int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
@@ -793,6 +802,201 @@ int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
     target_thread, sig, func, satellite, args);
   va_end(args);
   return ret;
+}
+
+typedef struct em_sync_ctx {
+  void (*func)(void*);
+  void* arg;
+} em_sync_ctx;
+
+// Helper for performing the user-provided function then synchronously calling
+// `emscripten_async_as_sync_finish`. This lets us reuse the waiting logic from
+// `emscripten_dispatch_to_thread_async_as_sync` without unnecessarily exposing
+// the `em_async_as_sync_ctx` to the user code.
+static void do_sync_call(em_async_as_sync_ctx* ctx, void* arg) {
+  em_sync_ctx* sync = (em_sync_ctx*)arg;
+  sync->func(sync->arg);
+  emscripten_async_as_sync_finish(ctx);
+}
+
+// Dispatch `func` to `target_thread` and wait until it has finished executing.
+// Return 1 if the work was completed or 0 if it was not successfully
+// dispatched.
+int emscripten_dispatch_to_thread_sync_ptr(pthread_t target_thread,
+                                           void (*func)(void*),
+                                           void* arg) {
+  em_sync_ctx ctx = {func, arg};
+  return emscripten_dispatch_to_thread_async_as_sync_ptr(
+    target_thread, do_sync_call, &ctx);
+}
+
+int emscripten_dispatch_to_thread_sync_args(pthread_t target_thread,
+                                            EM_FUNC_SIGNATURE sig,
+                                            void* func,
+                                            void* satellite,
+                                            va_list args) {
+  // TODO: Stack allocate `q` but make sure its satellite data is still freed.
+  em_queued_call* q = em_queued_call_create(sig, func, satellite, 0, args);
+  if (!q) {
+    return 0;
+  }
+
+  q->calleeDelete = 1;
+  if (emscripten_dispatch_to_thread_sync_ptr(target_thread, _do_call, q)) {
+    return 1;
+  } else {
+    em_queued_call_free(q);
+    return 0;
+  }
+}
+
+int emscripten_dispatch_to_thread_sync_(pthread_t target_thread,
+                                        EM_FUNC_SIGNATURE sig,
+                                        void* func,
+                                        void* satellite,
+                                        ...) {
+  va_list args;
+  va_start(args, satellite);
+  int ret = emscripten_dispatch_to_thread_sync_args(
+    target_thread, sig, func, satellite, args);
+  va_end(args);
+  return ret;
+}
+
+struct em_async_as_sync_ctx {
+  // The function being dispatched and its argument.
+  void (*func)(struct em_async_as_sync_ctx*, void*);
+  void* arg;
+  // Allow the dispatching thread to wait for the work to be finished.
+  pthread_mutex_t mutex;
+  pthread_cond_t cond;
+  // Set to 1 when the work is finished.
+  int done;
+};
+
+static void init_em_async_as_sync_ctx(em_async_as_sync_ctx* ctx,
+                                      void (*func)(struct em_async_as_sync_ctx*,
+                                                   void*),
+                                      void* arg) {
+  ctx->func = func;
+  ctx->arg = arg;
+  pthread_mutex_init(&ctx->mutex, NULL);
+  pthread_cond_init(&ctx->cond, NULL);
+  ctx->done = 0;
+}
+
+static void destroy_em_async_as_sync_ctx(em_async_as_sync_ctx* ctx) {
+  pthread_mutex_destroy(&ctx->mutex);
+  pthread_cond_destroy(&ctx->cond);
+}
+
+// Helper for exposing the `em_async_as_sync_ctx` to the user-provided async
+// work function.
+static void do_async_as_sync_call(void* arg) {
+  em_async_as_sync_ctx* ctx = (em_async_as_sync_ctx*)arg;
+  ctx->func(ctx, ctx->arg);
+}
+
+// Dispatch `func` to `target_thread` and wait until
+// `emscripten_async_as_sync_finish` is called on the
+// `em_async_as_sync_ctx*` passed to `func`, possibly at some point after `func`
+// returns. Return 1 if the work was completed or 0 if it was not successfully
+// dispatched.
+int emscripten_dispatch_to_thread_async_as_sync_ptr(
+  pthread_t target_thread,
+  void (*func)(em_async_as_sync_ctx*, void*),
+  void* arg) {
+  // Initialize the context that will be used to wait for the result of the work
+  // on the original thread.
+  em_async_as_sync_ctx ctx;
+  init_em_async_as_sync_ctx(&ctx, func, arg);
+
+  // Schedule `func` to run on the target thread.
+  if (!emscripten_dispatch_to_thread_ptr(
+        target_thread, do_async_as_sync_call, &ctx)) {
+    destroy_em_async_as_sync_ctx(&ctx);
+    return 0;
+  }
+
+  // Wait for the work to be marked done by `emscripten_async_as_sync_finish`.
+  pthread_mutex_lock(&ctx.mutex);
+  while (!ctx.done) {
+    // A thread cannot both perform asynchronous work and synchronously wait for
+    // that work to be finished. If we were proxying to the current thread, the
+    // work must have been synchronous and should already be done.
+    assert(!pthread_equal(target_thread, pthread_self()));
+    pthread_cond_wait(&ctx.cond, &ctx.mutex);
+  }
+  pthread_mutex_unlock(&ctx.mutex);
+
+  // The work has been finished. Clean up and return.
+  destroy_em_async_as_sync_ctx(&ctx);
+  return 1;
+}
+
+// Helper for injecting a `em_async_as_sync_ctx` argument into an
+// `em_queued_call` and calling it.
+static void do_set_ctx_and_call(em_async_as_sync_ctx* ctx, void* arg) {
+  em_queued_call* q = (em_queued_call*)arg;
+  // Set the first argument to be the `ctx` pointer.
+#ifdef __wasm32__
+  q->args[0].i = (int)ctx;
+#else
+#ifdef __wasm64__
+  q->args[0].i64 = (int64_t)ctx;
+#else
+#error "expected either __wasm32__ or __wasm64__"
+#endif
+#endif
+
+  // `q` is only used to kick off the async work, but its satellite data might
+  // need to live for the entirety of the async work, so we need to defer
+  // freeing `q` until after the async work has been completed.
+  _do_call(q);
+}
+
+int emscripten_dispatch_to_thread_async_as_sync_args(pthread_t target_thread,
+                                                     EM_FUNC_SIGNATURE sig,
+                                                     void* func,
+                                                     void* satellite,
+                                                     va_list args) {
+  // Leave argument 0 uninitialized; it will later be filled in with the pointer
+  // to the `em_async_as_sync_ctx`.
+  // TODO: Stack allocate `q` but make sure its satellite data is still freed.
+  em_queued_call* q = em_queued_call_create(sig, func, satellite, 1, args);
+  if (!q) {
+    return 0;
+  }
+
+  // `q` is only used to kick off the async work, but its satellite data might
+  // need to live for the entirety of the async work, so we need to defer
+  // freeing `q` until after the async work has been completed.
+  q->calleeDelete = 0;
+  int success = emscripten_dispatch_to_thread_async_as_sync_ptr(
+    target_thread, do_set_ctx_and_call, q);
+  em_queued_call_free(q);
+  return success;
+}
+
+int emscripten_dispatch_to_thread_async_as_sync_(pthread_t target_thread,
+                                                 EM_FUNC_SIGNATURE sig,
+                                                 void* func,
+                                                 void* satellite,
+                                                 ...) {
+  va_list args;
+  va_start(args, satellite);
+  int ret = emscripten_dispatch_to_thread_async_as_sync_args(
+    target_thread, sig, func, satellite, args);
+  va_end(args);
+  return ret;
+}
+
+void emscripten_async_as_sync_finish(em_async_as_sync_ctx* ctx) {
+  // Mark this work as done and wake up the invoking thread.
+  pthread_mutex_lock(&ctx->mutex);
+  ctx->done = 1;
+  pthread_mutex_unlock(&ctx->mutex);
+  pthread_cond_signal(&ctx->cond);
 }
 
 // Stores the memory address that the main thread is waiting on, if any. If
