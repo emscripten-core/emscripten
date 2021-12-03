@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.0.1
 -----
+- Deprecate `EMMAKEN_CFLAGS` is favor of `EMCC_CFLAGS`.
 
 3.0.0 - 11/22/2021
 ------------------

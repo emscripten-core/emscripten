@@ -10348,6 +10348,11 @@ int main () {
     stderr = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c')], stderr=PIPE).stderr
     self.assertContained('warning: `EMMAKEN_COMPILER` is deprecated', stderr)
 
+  @with_env_modify({'EMMAKEN_CFLAGS': '-O2'})
+  def test_emmaken_cflags(self):
+    stderr = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c')], stderr=PIPE).stderr
+    self.assertContained('warning: `EMMAKEN_CFLAGS` is deprecated', stderr)
+
   @no_windows('relies on a shell script')
   def test_compiler_wrapper(self):
     create_file('wrapper.sh', '''\
@@ -10624,10 +10629,10 @@ exec "$@"
     self.assertFileContents(test_file('reference_struct_info.json'), read_file('out.json'))
 
   def test_gen_struct_info_env(self):
-    # gen_struct_info.py builds C code in a very particlar way.  We don't want EMMAKEN_CFLAGS to
+    # gen_struct_info.py builds C code in a very particlar way.  We don't want EMCC_CFLAGS to
     # be injected which could cause it to fail.
     # For example -O2 causes printf -> iprintf which will fail with undefined symbol iprintf.
-    with env_modify({'EMMAKEN_CFLAGS': '-O2 BAD_ARG'}):
+    with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG'}):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
 
   def test_relocatable_limited_exports(self):

@@ -964,13 +964,14 @@ def run(args):
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
   EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
-  if DEBUG:
-    cmd = shared.shlex_join(args)
-    if EMCC_CFLAGS:
-      cmd += ' + ' + EMCC_CFLAGS
-    logger.warning(f'invocation: {cmd} (in {os.getcwd()})')
   if EMCC_CFLAGS:
     args.extend(shlex.split(EMCC_CFLAGS))
+  EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
+  if EMMAKEN_CFLAGS:
+    args += shlex.split(EMMAKEN_CFLAGS)
+
+  if DEBUG:
+    logger.warning(f'invocation: {shared.shlex_join(args)} (in {os.getcwd()})')
 
   # Strip args[0] (program name)
   args = args[1:]
@@ -1003,7 +1004,6 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
     return 0
 
   if '--version' in args:
-
     print(version_string())
     print('''\
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
@@ -1051,16 +1051,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if '-print-search-dirs' in args:
     return run_process([clang, '-print-search-dirs'], check=False).returncode
 
-  EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
-  if EMMAKEN_CFLAGS:
-    args += shlex.split(EMMAKEN_CFLAGS)
+  ## Process argument and setup the compiler
+  state = EmccState(args)
+  options, newargs, settings_map = phase_parse_arguments(state)
 
   if 'EMMAKEN_NO_SDK' in os.environ:
     diagnostics.warning('deprecated', 'We hope to deprecated EMMAKEN_NO_SDK.  See https://github.com/emscripten-core/emscripten/issues/14050 if use use this feature.')
 
-  ## Process argument and setup the compiler
-  state = EmccState(args)
-  options, newargs, settings_map = phase_parse_arguments(state)
+  if 'EMMAKEN_CFLAGS' in os.environ:
+    diagnostics.warning('deprecated', '`EMMAKEN_CFLAGS` is deprecated, please use `EMCC_CFLAGS` instead.  See https://github.com/emscripten-core/emscripten/issues/15684')
 
   # For internal consistency, ensure we don't attempt or read or write any link time
   # settings until we reach the linking phase.
