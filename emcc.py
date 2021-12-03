@@ -1418,6 +1418,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.MEMORYPROFILER = 1
 
   if settings.PTHREADS_PROFILING:
+    if not settings.ASSERTIONS:
+      exit_with_error('PTHREADS_PROFILING only works with ASSERTIONS enabled')
     options.post_js.append(utils.path_from_root('src/threadprofiler.js'))
 
   options.pre_js = read_js_files(options.pre_js)
@@ -1962,6 +1964,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # kept alive through DCE.
     # TODO: Find a less hacky way to do this, perhaps by also scanning worker.js
     # for roots.
+    building.user_requested_exports.add('__emscripten_thread_exit')
     building.user_requested_exports.add('_emscripten_tls_init')
     building.user_requested_exports.add('_emscripten_current_thread_process_queued_calls')
 
@@ -2191,8 +2194,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
     default_setting('EXIT_RUNTIME', 1)
     if not settings.UBSAN_RUNTIME:
       settings.UBSAN_RUNTIME = 2
-
-    settings.EXPORTED_FUNCTIONS.append('_emscripten_builtin_memset')
 
     # helper functions for JS to call into C to do memory operations. these
     # let us sanitize memory access from the JS side, by calling into C where

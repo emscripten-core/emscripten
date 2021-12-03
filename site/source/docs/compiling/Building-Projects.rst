@@ -189,7 +189,7 @@ Using libraries
 Built-in support is available for a number of standard libraries: *libc*, *libc++* and *SDL*. These will automatically be linked when you compile code that uses them (you do not even need to add ``-lSDL``, but see below for more SDL-specific details).
 
 If your project uses other libraries, for example
-`zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/zlib>`_
+`zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/third_party/zlib>`_
 or *glib*, you will need to build and link them. The normal approach is to build
 the libraries (to object files, or ``.a`` archives of them) and then link those
 with your main program to emit JavaScript+WebAssembly.
@@ -261,19 +261,19 @@ In some cases it makes sense to modify the build scripts so that they build the 
 Faux Dynamic Linking
 --------------------
 
-Emscripten's goal is to generate the fastest and smallest possible code, and for
-that reason it focuses on generating a single JavaScript file for an entire
-project. For that reason, dynamic linking should be avoided when possible.
+Emscripten's goal is to generate the fastest and smallest possible code. For
+that reason it focuses on compiling an entire project into a single Wasm file,
+avoiding dynamic linking when possible.
 
-For this reason, by default, when the `-shared` flag use used to build a shared
-library, Emscripten will produce an ``.so`` library that is actually just a
-regular ``.o`` object file (Under the hood it uses `ld -r` to combine objects
-into a single larger object).  When these faux "shared libraries" are linked
-into your application they are effectively linked as static libraries.  When
-building these shared libraries *Emcc* will ignore other shared libraries on the
-command line.  This is to ensure that the same dynamic library is not linked
-multiple times in intermediate build stages, which would result in duplicate
-symbol errors.
+By default, when the `-shared` flag is used to build a shared library,
+Emscripten will produce an ``.so`` library that is actually just a regular
+``.o`` object file (Under the hood it uses `ld -r` to combine objects into a
+single larger object).  When these faux "shared libraries" are linked into your
+application they are effectively linked as static libraries.  When building
+these shared libraries *Emcc* will ignore other shared libraries on the command
+line.  This is to ensure that the same dynamic library is not linked multiple
+times in intermediate build stages, which would result in duplicate symbol
+errors.
 
 See :ref:`experimental support <Dynamic-Linking>` for how to build true dynamic
 libraries, which can be linked together either at load time, or at runtime (via
@@ -368,7 +368,7 @@ set via an environment variable.  e.g::
 Examples / test code
 ====================
 
-The Emscripten test suite (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/main/tests/runner.py>`_) contains a number of good examples — large C/C++ projects that are built using their normal build systems as described above: `freetype <https://github.com/emscripten-core/emscripten/tree/main/tests/freetype>`_, `openjpeg <https://github.com/emscripten-core/emscripten/tree/main/tests/openjpeg>`_, `zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/zlib>`_, `bullet <https://github.com/emscripten-core/emscripten/tree/main/tests/bullet>`_ and `poppler <https://github.com/emscripten-core/emscripten/tree/main/tests/poppler>`_.
+The Emscripten test suite (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/main/tests/runner.py>`_) contains a number of good examples — large C/C++ projects that are built using their normal build systems as described above: `freetype <https://github.com/emscripten-core/emscripten/tree/main/tests/freetype>`_, `openjpeg <https://github.com/emscripten-core/emscripten/tree/main/tests/openjpeg>`_, `zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/third_party/zlib>`_, `bullet <https://github.com/emscripten-core/emscripten/tree/main/tests/bullet>`_ and `poppler <https://github.com/emscripten-core/emscripten/tree/main/tests/poppler>`_.
 
 It is also worth looking at the build scripts in the `ammo.js <https://github.com/kripken/ammo.js/blob/master/make.py>`_ project.
 
