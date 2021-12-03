@@ -14,15 +14,13 @@
 
 namespace wasmfs {
 
-// This class represents a file that is resident on a background pthread. All
-// file operations are proxied to this dedicated thread.
+// This class represents a file that forwards all file operations to a thread.
 class ProxiedFile : public DataFile {
 
   emscripten::SyncToAsync& proxy;
   std::shared_ptr<DataFile> baseFile;
 
-  // Read and write operations are forwarded to the file residing on the
-  // dedicated thread.
+  // Read and write operations are forwarded via the proxying mechanism.
   __wasi_errno_t write(const uint8_t* buf, size_t len, off_t offset) override {
     __wasi_errno_t result;
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
@@ -42,7 +40,7 @@ class ProxiedFile : public DataFile {
   }
 
   // Querying the size of the Proxied File returns the size of the underlying
-  // file on the dedicated thread.
+  // file given by the proxying mechanism.
   size_t getSize() override {
     size_t result;
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
@@ -53,16 +51,19 @@ class ProxiedFile : public DataFile {
   }
 
 public:
-  // A file with the chosen destination backend is created on the Proxied File's
-  // dedicated thread.
+  // A file with the chosen destination backend is created on a thread via
+  // the ProxiedFile's proxy.
   ProxiedFile(mode_t mode,
               backend_t backend,
               std::shared_ptr<DataFile> file,
               emscripten::SyncToAsync& proxy)
     : DataFile(mode, backend), proxy(proxy), baseFile(file) {}
 
-  // The destructor must proxy to the pthread and release the file stored on
-  // that pthread.
+  // The destructor must use the proxy to forward notification that the Proxied
+  // File resource has been destroyed. Proxying is necessary because the
+  // underlying thread may need to free resources on the proxied thread.
+  // Ex. A JSFile will need to proxy so that it can free its underlying JS array
+  // on that thread.
   ~ProxiedFile() {
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
       baseFile = nullptr;
@@ -72,14 +73,15 @@ public:
 };
 class ProxiedBackend : public Backend {
   backend_t backend;
-  // The proxy member manages a dedicated thread that the Proxied Backend uses
-  // to create files and directories under.
+  // ProxiedBackend uses the proxy member to create files on a thread.
   emscripten::SyncToAsync proxy;
 
 public:
   ProxiedBackend(backend_t backend) : backend(backend) {}
 
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
+    // This creates a file on a thread specified by the proxy member.
+    // The new file's constructor will be invoked on the proxied thread.
     std::shared_ptr<DataFile> file;
     proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
       file = backend->createFile(mode);

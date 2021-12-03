@@ -11246,18 +11246,17 @@ void foo() {}
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test(test_file('wasmfs/wasmfs_readfile.c'))
 
-  @parameterized({
-    '': (False, [],),
-    'proxying_backend': (True, ['USE_PTHREADS', 'PROXY_TO_PTHREAD', 'EXIT_RUNTIME'],),
-  })
-  def test_wasmfs_jsfile(self, proxying, args):
-    for setting in args:
-      self.set_setting(setting)
-    if proxying:
-      self.emcc_args = self.emcc_args.copy() + ['-DPROXYING']
-      self.node_args += ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']
+  def test_wasmfs_jsfile(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_jsfile.c')
+
+  @node_pthreads
+  def test_wasmfs_jsfile_proxying_backend(self):
+    self.emcc_args = self.emcc_args.copy() + ['-DPROXYING']
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.test_wasmfs_jsfile()
 
   @disabled('Running with initial >2GB heaps is not currently supported on the CI version of Node')
   def test_hello_world_above_2gb(self):
