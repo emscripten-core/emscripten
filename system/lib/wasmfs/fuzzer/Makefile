@@ -1,4 +1,4 @@
-EMCC = ../../emcc
+EMCC = ../../../../emcc
 SOURCES = fuzzer.cpp random.cpp workload.cpp support/command-line.cpp
 
 # Build with WasmFS enabled and pthreads.
