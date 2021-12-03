@@ -54,10 +54,15 @@ public:
   // A file with the chosen destination backend is created on a thread via
   // the ProxiedFile's proxy.
   ProxiedFile(mode_t mode,
-              backend_t backend,
-              std::shared_ptr<DataFile> file,
+              backend_t proxyBackend,
+              backend_t underlyingBackend,
               emscripten::SyncToAsync& proxy)
-    : DataFile(mode, backend), proxy(proxy), baseFile(file) {}
+    : DataFile(mode, proxyBackend), proxy(proxy) {
+    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
+      baseFile = underlyingBackend->createFile(mode);
+      (*resume)();
+    });
+  }
 
   // The destructor must use the proxy to forward notification that the Proxied
   // File resource has been destroyed. Proxying is necessary because the
@@ -81,13 +86,7 @@ public:
 
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     // This creates a file on a thread specified by the proxy member.
-    // The new file's constructor will be invoked on the proxied thread.
-    std::shared_ptr<DataFile> file;
-    proxy.invoke([&](emscripten::SyncToAsync::Callback resume) {
-      file = backend->createFile(mode);
-      (*resume)();
-    });
-    return std::make_shared<ProxiedFile>(mode, this, file, proxy);
+    return std::make_shared<ProxiedFile>(mode, this, backend, proxy);
   }
 
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
