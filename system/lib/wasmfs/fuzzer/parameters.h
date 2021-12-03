@@ -15,7 +15,7 @@ namespace wasmfs {
 constexpr uint32_t NUM_WRITERS = 1;
 
 // The number of reader threads.
-constexpr uint32_t NUM_READERS = 1;
+constexpr uint32_t NUM_READERS = 20;
 
 // The size of the character strings written to a file.
 constexpr uint32_t NUM_WORK_SIZE = 20000000;

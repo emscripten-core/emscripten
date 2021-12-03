@@ -17,15 +17,7 @@ bool ReadWrite::isSame(std::vector<char>& target) {
   for (auto it = target.begin(); it != target.end() - 1; it++) {
     seen.insert(*it);
     if (seen.size() > 1) {
-#ifdef FUZZER_DEBUG
-      for (int i = 0; i < target.size(); i++) {
-        if (target[i] == 0) {
-          printf("\\0");
-        } else {
-          printf("%c", target[i]);
-        }
-      }
-#endif
+      printf("Read the following incorrect data: %s\n", target.data());
       return false;
     }
   }
