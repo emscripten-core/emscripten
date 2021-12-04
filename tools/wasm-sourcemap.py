@@ -21,8 +21,9 @@ from subprocess import Popen, PIPE
 from pathlib import Path
 import sys
 
-sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootdir__ = os.path.dirname(__scriptdir__)
+sys.path.append(__rootdir__)
 
 logger = logging.getLogger('wasm-sourcemap')
 
