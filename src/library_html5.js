@@ -2093,7 +2093,7 @@ var LibraryHTML5 = {
       var targetRect = getBoundingClientRect(target);
       var numTouches = 0;
       for (var i in touches) {
-        var t = touches[i];
+        t = touches[i];
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.identifier / 4}}}] = t.identifier;
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenX / 4}}}] = t.screenX;
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenY / 4}}}] = t.screenY;
