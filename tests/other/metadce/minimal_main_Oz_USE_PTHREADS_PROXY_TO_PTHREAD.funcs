@@ -1,5 +1,4 @@
 $GetQueue
-$__emscripten_init_main_thread
 $__emscripten_stdout_seek
 $__errno_location
 $__pthread_mutex_lock

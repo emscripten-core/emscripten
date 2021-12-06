@@ -1933,39 +1933,37 @@ def phase_linker_setup(options, state, newargs, settings_map):
       exit_with_error('USE_PTHREADS + BUILD_AS_WORKER require separate modes that don\'t work together, see https://github.com/emscripten-core/emscripten/issues/8854')
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
     settings.EXPORTED_FUNCTIONS += [
-      '___emscripten_init_main_thread',
       '_emscripten_dispatch_to_thread_',
       '__emscripten_main_thread_futex',
-      '__emscripten_thread_init',
-      '__emscripten_thread_exit',
       '__emscripten_thread_free_data',
-      '_emscripten_current_thread_process_queued_calls',
       '__emscripten_allow_main_runtime_queued_calls',
-      '_emscripten_futex_wake',
-      '_emscripten_get_global_libc',
       '_emscripten_main_browser_thread_id',
       '_emscripten_main_thread_process_queued_calls',
       '_emscripten_run_in_main_runtime_thread_js',
       '_emscripten_stack_set_limits',
       '_emscripten_sync_run_in_main_thread_2',
       '_emscripten_sync_run_in_main_thread_4',
-      '_emscripten_tls_init',
-      '_pthread_self',
-      '_pthread_testcancel',
       '_exit',
     ]
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
       '$exitOnMainThread',
     ]
-    # Some of these symbols are using by worker.js but otherwise unreferenced.
-    # Because emitDCEGraph only considered the main js file, and not worker.js
+    # Some symbols are required by worker.js.
+    # Because emitDCEGraph only considers the main js file, and not worker.js
     # we have explicitly mark these symbols as user-exported so that they will
     # kept alive through DCE.
     # TODO: Find a less hacky way to do this, perhaps by also scanning worker.js
     # for roots.
-    building.user_requested_exports.add('__emscripten_thread_exit')
-    building.user_requested_exports.add('_emscripten_tls_init')
-    building.user_requested_exports.add('_emscripten_current_thread_process_queued_calls')
+    worker_imports = [
+      '__emscripten_thread_init',
+      '__emscripten_thread_exit',
+      '_emscripten_tls_init',
+      '_emscripten_futex_wake',
+      '_emscripten_current_thread_process_queued_calls',
+      '_pthread_self',
+    ]
+    settings.EXPORTED_FUNCTIONS += worker_imports
+    building.user_requested_exports.update(worker_imports)
 
     # set location of worker.js
     settings.PTHREAD_WORKER_FILE = unsuffixed_basename(target) + '.worker.js'
