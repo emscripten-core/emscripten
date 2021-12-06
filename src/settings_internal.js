@@ -30,7 +30,11 @@ var SIDE_MODULE_EXPORTS = [];
 var SIDE_MODULE_IMPORTS = [];
 
 // Like EXPORTED_FUNCTIONS, but will not error if symbol is missing
-var EXPORT_IF_DEFINED = [];
+var EXPORT_IF_DEFINED = ['__start_em_asm', '__stop_em_asm'];
+
+// Like EXPORTED_FUNCTIONS, but symbol is required to exist in native code.
+// This means wasm-ld will fail if these symbols are missing.
+var REQUIRED_EXPORTS = [];
 
 // stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';

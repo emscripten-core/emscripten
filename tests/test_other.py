@@ -10081,8 +10081,9 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     # First ensure all the system libs are built
     self.run_process([EMCC, test_file('unistd/close.c')])
 
-    self.assertContained('undefined symbol:', self.expect_fail([EMCC, test_file('unistd/close.c'), '-nostdlib']))
-    self.assertContained('undefined symbol:', self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
+    err = 'symbol exported via --export not found: __errno_location'
+    self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nostdlib']))
+    self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
 
     # Build again but with explit system libraries
     libs = ['-lc', '-lcompiler_rt', '-lc_rt']
@@ -10457,6 +10458,7 @@ exec "$@"
 
   def test_wasm2js_no_dylink(self):
     for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE']:
+      print(arg)
       err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM=0', arg])
       self.assertContained('WASM2JS is not compatible with relocatable output', err)
 

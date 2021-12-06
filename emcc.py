@@ -1691,13 +1691,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
         '__heap_base',
         '__stack_pointer',
     ]
-    settings.EXPORTED_FUNCTIONS += [
-        # This needs to be exported on the Module object too so it's visible
-        # to side modules too.
-        '___heap_base',
-        # Unconditional dependency in library_dylink.js
-        '_setThrew',
-    ]
+    # Unconditional dependency in library_dylink.js
+    settings.REQUIRED_EXPORTS += ['setThrew']
+
     if settings.MINIMAL_RUNTIME:
       exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
     if settings.WASM2JS:
@@ -1711,13 +1707,13 @@ def phase_linker_setup(options, state, newargs, settings_map):
      settings.EMSCRIPTEN_TRACING or \
      settings.SAFE_HEAP or \
      settings.MEMORYPROFILER:
-    settings.EXPORTED_FUNCTIONS += ['_sbrk']
+    settings.REQUIRED_EXPORTS += ['sbrk']
 
   if settings.MEMORYPROFILER:
-    settings.EXPORTED_FUNCTIONS += ['___heap_base',
-                                    '_emscripten_stack_get_base',
-                                    '_emscripten_stack_get_end',
-                                    '_emscripten_stack_get_current']
+    settings.REQUIRED_EXPORTS += ['__heap_base',
+                                  'emscripten_stack_get_base',
+                                  'emscripten_stack_get_end',
+                                  'emscripten_stack_get_current']
 
   if settings.ASYNCIFY_LAZY_LOAD_CODE:
     settings.ASYNCIFY = 1
@@ -1726,9 +1722,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # See: https://github.com/emscripten-core/emscripten/issues/12065
     # See: https://github.com/emscripten-core/emscripten/issues/12066
     settings.DYNCALLS = 1
-    settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base',
-                                    '_emscripten_stack_get_end',
-                                    '_emscripten_stack_set_limits']
+    settings.REQUIRED_EXPORTS += ['emscripten_stack_get_base',
+                                  'emscripten_stack_get_end',
+                                  'emscripten_stack_set_limits']
 
   settings.ASYNCIFY_ADD = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ADD)
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
@@ -1756,19 +1752,19 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.STACK_OVERFLOW_CHECK:
     # The basic writeStackCookie/checkStackCookie mechanism just needs to know where the end
     # of the stack is.
-    settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_end', '_emscripten_stack_get_free']
+    settings.REQUIRED_EXPORTS += ['emscripten_stack_get_end', 'emscripten_stack_get_free']
     if settings.STACK_OVERFLOW_CHECK == 2:
       # The full checking done by binaryen's `StackCheck` pass also needs to know the base of the
       # stack.
-      settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_base']
+      settings.REQUIRED_EXPORTS += ['emscripten_stack_get_base']
 
     # We call one of these two functions during startup which caches the stack limits
     # in wasm globals allowing get_base/get_free to be super fast.
     # See compiler-rt/stack_limits.S.
     if settings.RELOCATABLE:
-      settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_set_limits']
+      settings.REQUIRED_EXPORTS += ['emscripten_stack_set_limits']
     else:
-      settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_init']
+      settings.REQUIRED_EXPORTS += ['emscripten_stack_init']
 
   if settings.MODULARIZE:
     if settings.PROXY_TO_WORKER:
@@ -1830,7 +1826,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.FILESYSTEM = 0
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
-    settings.EXPORTED_FUNCTIONS += ['_emscripten_wasmfs_read_file']
+    settings.REQUIRED_EXPORTS += ['emscripten_wasmfs_read_file']
 
   # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
   if not settings.USES_DYNAMIC_ALLOC:
@@ -1843,7 +1839,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       settings.FETCH_WORKER_FILE = unsuffixed_basename(target) + '.fetch.js'
 
   if settings.DEMANGLE_SUPPORT:
-    settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
+    settings.REQUIRED_EXPORTS += ['__cxa_demangle']
 
   if settings.FULL_ES3:
     settings.FULL_ES2 = 1
@@ -1852,10 +1848,10 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.EMBIND:
     state.forced_stdlibs.append('libembind')
 
-  settings.EXPORTED_FUNCTIONS += ['_stackSave', '_stackRestore', '_stackAlloc']
+  settings.REQUIRED_EXPORTS += ['stackSave', 'stackRestore', 'stackAlloc']
   if not settings.STANDALONE_WASM:
     # in standalone mode, crt1 will call the constructors from inside the wasm
-    settings.EXPORTED_FUNCTIONS.append('___wasm_call_ctors')
+    settings.REQUIRED_EXPORTS.append('__wasm_call_ctors')
 
   if settings.RELOCATABLE and not settings.DYNAMIC_EXECUTION:
     exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
@@ -1868,9 +1864,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.SIDE_MODULE:
     default_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
     default_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
-
-  settings.EXPORT_IF_DEFINED.append('__start_em_asm')
-  settings.EXPORT_IF_DEFINED.append('__stop_em_asm')
 
   if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
     if settings.NODERAWFS:
@@ -1907,11 +1900,11 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
     if settings.SUPPORT_ERRNO:
       # so setErrNo JS library function can report errno back to C
-      settings.EXPORTED_FUNCTIONS += ['___errno_location']
+      settings.REQUIRED_EXPORTS += ['__errno_location']
 
   if settings.SAFE_HEAP:
     # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr() from wasm
-    settings.EXPORTED_FUNCTIONS += ['_emscripten_get_sbrk_ptr', '_emscripten_stack_get_base']
+    settings.REQUIRED_EXPORTS += ['emscripten_get_sbrk_ptr', 'emscripten_stack_get_base']
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$unSign']
 
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -1932,18 +1925,18 @@ def phase_linker_setup(options, state, newargs, settings_map):
     if settings.BUILD_AS_WORKER:
       exit_with_error('USE_PTHREADS + BUILD_AS_WORKER require separate modes that don\'t work together, see https://github.com/emscripten-core/emscripten/issues/8854')
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
-    settings.EXPORTED_FUNCTIONS += [
-      '_emscripten_dispatch_to_thread_',
-      '__emscripten_main_thread_futex',
-      '__emscripten_thread_free_data',
-      '__emscripten_allow_main_runtime_queued_calls',
-      '_emscripten_main_browser_thread_id',
-      '_emscripten_main_thread_process_queued_calls',
-      '_emscripten_run_in_main_runtime_thread_js',
-      '_emscripten_stack_set_limits',
-      '_emscripten_sync_run_in_main_thread_2',
-      '_emscripten_sync_run_in_main_thread_4',
-      '_exit',
+    # Functions needs to be exported from the module since they are used in worker.js
+    settings.REQUIRED_EXPORTS += [
+      'emscripten_dispatch_to_thread_',
+      '_emscripten_main_thread_futex',
+      '_emscripten_thread_free_data',
+      '_emscripten_allow_main_runtime_queued_calls',
+      'emscripten_main_browser_thread_id',
+      'emscripten_main_thread_process_queued_calls',
+      'emscripten_run_in_main_runtime_thread_js',
+      'emscripten_stack_set_limits',
+      'emscripten_sync_run_in_main_thread_2',
+      'emscripten_sync_run_in_main_thread_4',
     ]
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
       '$exitOnMainThread',
@@ -1992,13 +1985,13 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if settings.USE_PTHREADS:
     # memalign is used to ensure allocated thread stacks are aligned.
-    settings.EXPORTED_FUNCTIONS += ['_memalign']
+    settings.REQUIRED_EXPORTS += ['memalign']
 
     if settings.MINIMAL_RUNTIME:
       building.user_requested_exports.add('exit')
 
     if settings.PROXY_TO_PTHREAD:
-      settings.EXPORTED_FUNCTIONS += ['_emscripten_proxy_main']
+      settings.REQUIRED_EXPORTS += ['emscripten_proxy_main']
 
     # pthread stack setup and other necessary utilities
     def include_and_export(name):
@@ -2161,13 +2154,13 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if sanitize:
     settings.USE_OFFSET_CONVERTER = 1
-    settings.EXPORTED_FUNCTIONS += [
-        '_memalign',
-        '_emscripten_builtin_memalign',
-        '_emscripten_builtin_malloc',
-        '_emscripten_builtin_free',
-        '___heap_base',
-        '___global_base'
+    settings.REQUIRED_EXPORTS += [
+        'memalign',
+        'emscripten_builtin_memalign',
+        'emscripten_builtin_malloc',
+        'emscripten_builtin_free',
+        '__heap_base',
+        '__global_base'
     ]
 
   if settings.USE_OFFSET_CONVERTER and settings.WASM2JS:
@@ -2206,7 +2199,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       'asan_c_store_f', 'asan_c_store_d',
     ]
 
-    settings.EXPORTED_FUNCTIONS += ['_' + x for x in ASAN_C_HELPERS]
+    settings.REQUIRED_EXPORTS += ASAN_C_HELPERS
 
     if settings.ASYNCIFY and not settings.ASYNCIFY_ONLY:
       # we do not want asyncify to instrument these helpers - they just access
@@ -2293,21 +2286,21 @@ def phase_linker_setup(options, state, newargs, settings_map):
      settings.PROXY_POSIX_SOCKETS or \
      options.memory_profiler or \
      sanitize:
-    settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
+    settings.REQUIRED_EXPORTS += ['malloc', 'free']
 
   if not settings.DISABLE_EXCEPTION_CATCHING:
-    settings.EXPORTED_FUNCTIONS += [
+    settings.REQUIRED_EXPORTS += [
       # For normal builds the entries in deps_info.py are enough to include
       # these symbols whenever __cxa_find_matching_catch_* functions are
       # found.  However, under LTO these symbols don't exist prior to linking
       # so we include then unconditionally when exceptions are enabled.
-      '___cxa_is_pointer_type',
-      '___cxa_can_catch',
+      '__cxa_is_pointer_type',
+      '__cxa_can_catch',
 
       # Emscripten exception handling can generate invoke calls, and they call
       # setThrew(). We cannot handle this using deps_info as the invokes are not
       # emitted because of library function usage, but by codegen itself.
-      '_setThrew',
+      'setThrew',
     ]
 
   if settings.ASYNCIFY:
@@ -2350,9 +2343,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if settings.EMSCRIPTEN_TRACING and settings.ALLOW_MEMORY_GROWTH:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
-    settings.EXPORTED_FUNCTIONS += ['_emscripten_stack_get_current',
-                                    '_emscripten_stack_get_base',
-                                    '_emscripten_stack_get_end']
+    settings.REQUIRED_EXPORTS += ['emscripten_stack_get_current',
+                                  'emscripten_stack_get_base',
+                                  'emscripten_stack_get_end']
 
   # Any "pointers" passed to JS will now be i64's, in both modes.
   # Also turn off minifying, which clashes with instrumented functions in preamble.js
@@ -2572,6 +2565,8 @@ def phase_link(linker_arguments, wasm_target):
   # duplication between functions added by the driver/libraries and function
   # specified by the user
   settings.EXPORTED_FUNCTIONS = dedup_list(settings.EXPORTED_FUNCTIONS)
+  settings.REQUIRED_EXPORTS = dedup_list(settings.REQUIRED_EXPORTS)
+  settings.EXPORT_IF_DEFINED = dedup_list(settings.EXPORT_IF_DEFINED)
 
   # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
   # if using the wasm backend, we might be using vanilla LLVM, which does not allow our

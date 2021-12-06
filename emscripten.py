@@ -790,12 +790,15 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   if DEBUG:
     logger.debug("Metadata parsed: " + pprint.pformat(metadata))
 
+  expected_exports = set(settings.EXPORTED_FUNCTIONS)
+  expected_exports.update(asmjs_mangle(s) for s in settings.REQUIRED_EXPORTS)
+
   # Calculate the subset of exports that were explicitly marked with llvm.used.
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
   unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
-  unexpected_exports = [e for e in unexpected_exports if e not in settings.EXPORTED_FUNCTIONS]
+  unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
   building.user_requested_exports.update(unexpected_exports)
   settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
 
