@@ -7,7 +7,6 @@
 // operations.
 
 #include "workload.h"
-#include "parameters.h"
 
 namespace wasmfs {
 
@@ -30,9 +29,9 @@ void ReadWrite::writer() {
   }
 
   while (!stop) {
-#ifdef FUZZER_DEBUG
-    std::cout << std::this_thread::get_id() << " is running.\n";
-#endif
+    if (VERBOSE) {
+      std::cout << std::this_thread::get_id() << " is running.\n";
+    }
     auto current = rand.upTo(work.size());
 
     int bytesWritten =
@@ -46,9 +45,9 @@ void ReadWrite::reader() {
   while (!go) {
     std::this_thread::yield();
   }
-#ifdef FUZZER_DEBUG
-  std::cout << std::this_thread::get_id() << " is running.\n";
-#endif
+  if (VERBOSE) {
+    std::cout << std::this_thread::get_id() << " is running.\n";
+  }
 
   int size = work.begin()->size();
   // Add room for null terminator.
@@ -58,11 +57,11 @@ void ReadWrite::reader() {
     std::fill(buf.begin(), buf.end(), 0);
 
     int bytesRead = pread(fd, buf.data(), size, 0);
-#ifdef FUZZER_DEBUG
-    printf("Read the following data: %s\n", buf.data());
-    printf("Bytes read: %i", bytesRead);
-    printf("Expected: %lu", work.begin()->size());
-#endif
+    if (VERBOSE) {
+      printf("Read the following data: %s\n", buf.data());
+      printf("Bytes read: %i", bytesRead);
+      printf("Expected: %lu", work.begin()->size());
+    }
     assert(bytesRead == work.begin()->size());
 
     assert(isSame(buf));
@@ -71,10 +70,10 @@ void ReadWrite::reader() {
 
 void ReadWrite::execute() {
   // This function should produce a string that consists of 1 character type.
-  work.resize(1 + rand.upTo(NUM_WORK));
+  work.resize(1 + rand.upTo(MAX_WORK));
 
   for (int i = 0; i < work.size(); i++) {
-    work[i] = rand.getSingleSymbolString(NUM_WORK_SIZE);
+    work[i] = rand.getSingleSymbolString(FILE_SIZE);
   }
   // Generate a test file to read and write to.
   fd = open("test", O_CREAT | O_RDWR, 0777);
@@ -101,8 +100,9 @@ void ReadWrite::execute() {
   // starting first.
   go.store(true);
 
-  std::this_thread::sleep_for(std::chrono::seconds(100));
-  // Stop file operations after 10s.
+  std::this_thread::sleep_for(std::chrono::seconds(DURATION));
+
+  // Stop file operations after pre-defined duration.
   stop.store(true);
 
   for (auto& th : writers) {
