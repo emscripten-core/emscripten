@@ -216,6 +216,6 @@ def get_deps_info():
     _deps_info['__cxa_find_matching_catch_8'] = ['__cxa_can_catch']
     _deps_info['__cxa_find_matching_catch_9'] = ['__cxa_can_catch']
   if settings.USE_PTHREADS:
-    _deps_info['emscripten_set_canvas_element_size_calling_thread'] = ['_emscripten_call_on_thread']
-    _deps_info['emscripten_set_offscreencanvas_size_on_target_thread'] = ['_emscripten_call_on_thread', 'malloc', 'free']
+    _deps_info['emscripten_set_canvas_element_size_calling_thread'] = ['emscripten_dispatch_to_thread_']
+    _deps_info['emscripten_set_offscreencanvas_size_on_target_thread'] = ['emscripten_dispatch_to_thread_', 'malloc', 'free']
   return _deps_info
