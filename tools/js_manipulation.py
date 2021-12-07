@@ -17,12 +17,10 @@ def add_files_pre_js(user_pre_js, files_pre_js):
   return files_pre_js + '''
     // All the pre-js content up to here must remain later on, we need to run
     // it.
-    var necessaryPreJSTasks = [];
-    if (!Module['ENVIRONMENT_IS_PTHREAD']) {
-      necessaryPreJSTasks = Module['preRun'].slice();
-    }
+    if (Module['ENVIRONMENT_IS_PTHREAD']) Module['preRun'] = [];
+    var necessaryPreJSTasks = Module['preRun'].slice();
   ''' + user_pre_js + '''
-    if (!Module['ENVIRONMENT_IS_PTHREAD'] && !Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
+    if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
     necessaryPreJSTasks.forEach(function(task) {
       if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
     });
