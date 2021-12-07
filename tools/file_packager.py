@@ -291,15 +291,15 @@ def main():
   }
   Module.expectedDataFileDownloads++;
   (function() {
-   // When running as a pthread, FS operations are proxied to the main thread, so we don't need to
-   // fetch the .data bundle on the worker
-   if (Module['ENVIRONMENT_IS_PTHREAD']) {
-    // This piece of code handles the case when building with assertions enabled
-    // See https://github.com/emscripten-core/emscripten/blob/4d864df0a57024d6/tools/js_manipulation.py#L20
-    if (!Module['preRun']) Module['preRun'] = [];
-    return;
-   }
-   var loadPackage = function(metadata) {
+    // When running as a pthread, FS operations are proxied to the main thread, so we don't need to
+    // fetch the .data bundle on the worker
+    if (Module['ENVIRONMENT_IS_PTHREAD']) {
+      // This piece of code handles the case when building with assertions enabled
+      // See https://github.com/emscripten-core/emscripten/blob/4d864df0a57024d6/tools/js_manipulation.py#L20
+      if (!Module['preRun']) Module['preRun'] = [];
+        return;
+      }
+    var loadPackage = function(metadata) {
   '''
 
   code = '''
