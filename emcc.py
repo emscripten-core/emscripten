@@ -1903,7 +1903,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       # (ASSERTIONS will check that streams do not need to be flushed,
       # helping people see when they should have enabled EXIT_RUNTIME)
       if settings.EXIT_RUNTIME or settings.ASSERTIONS:
-        settings.EXPORTED_FUNCTIONS += ['_fflush']
+        settings.EXPORT_IF_DEFINED += ['fflush']
 
     if settings.SUPPORT_ERRNO:
       # so setErrNo JS library function can report errno back to C
