@@ -11257,7 +11257,6 @@ void foo() {}
     # TODO: update this test when /dev has been filled out.
     # Run only in WASMFS for now.
     self.set_setting('WASMFS')
-    self.emcc_args += ['--profiling']
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
 
   def test_wasmfs_readfile(self):
