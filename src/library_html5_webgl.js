@@ -310,7 +310,6 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
   emscripten_webgl_destroy_context__sig: 'vi',
-  emscripten_webgl_destroy_context__deps: ['emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
   emscripten_webgl_destroy_context: function(contextHandle) {
     if (GL.currentContext == contextHandle) GL.currentContext = 0;
     GL.deleteContext(contextHandle);
@@ -318,6 +317,7 @@ var LibraryHtml5WebGL = {
 
   // Special function that will be invoked on the thread calling emscripten_webgl_destroy_context(), before routing
   // the call over to the target thread.
+  emscripten_webgl_destroy_context_before_on_calling_thread__deps: ['emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
   emscripten_webgl_destroy_context_before_on_calling_thread: function(contextHandle) {
     if (_emscripten_webgl_get_current_context() == contextHandle) _emscripten_webgl_make_context_current(0);
   },

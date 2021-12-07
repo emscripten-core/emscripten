@@ -10733,6 +10733,11 @@ exec "$@"
         if direct not in js and via_module not in js and assignment not in js:
           self.fail(f'use of declared dependency {dep} not found in JS output for {function}')
 
+        # Check that the dependency not a JS library function.  Dependencies on JS functions
+        # do not need entries in deps_info.py.
+        if f'function _{dep}(' in js:
+          self.fail(f'dependency {dep} in deps_info.py looks like a JS function (but should be native)')
+
   @require_v8
   def test_shell_Oz(self):
     # regression test for -Oz working on non-web, non-node environments that
