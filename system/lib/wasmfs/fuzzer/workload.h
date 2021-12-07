@@ -9,6 +9,7 @@
 #pragma once
 
 #include "random.h"
+#include "parameters.h"
 #include <assert.h>
 #include <chrono>
 #include <cstdlib>

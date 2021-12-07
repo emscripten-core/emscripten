@@ -19,11 +19,14 @@
 #include <stdlib.h>
 #include <string>
 #include <unistd.h>
+#include "parameters.h"
 
+// Used to define the size of the bytes to seed the Random object.
 #define NUM_RAND_BYTES 4096
 
 namespace wasmfs {
 using RandEngine = std::mt19937_64;
+bool VERBOSE = false;
 
 uint64_t getSeed() {
   // Return a (truly) random 64-bit value.
@@ -63,6 +66,14 @@ int main(int argc, const char* argv[]) {
               Options::Arguments::One,
               [&](Options*, const std::string& arg) {
                 seed = uint64_t(std::stoull(arg));
+              });
+
+  options.add("--verbose",
+              "-v",
+              "Run with verbose logging",
+              Options::Arguments::Zero,
+              [&](Options*, const std::string& arg) {
+                VERBOSE = true;
               });
 
   options.parse(argc, argv);
