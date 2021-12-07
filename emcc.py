@@ -964,13 +964,14 @@ def run(args):
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
   EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
-  if DEBUG:
-    cmd = shared.shlex_join(args)
-    if EMCC_CFLAGS:
-      cmd += ' + ' + EMCC_CFLAGS
-    logger.warning(f'invocation: {cmd} (in {os.getcwd()})')
   if EMCC_CFLAGS:
     args.extend(shlex.split(EMCC_CFLAGS))
+  EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
+  if EMMAKEN_CFLAGS:
+    args += shlex.split(EMMAKEN_CFLAGS)
+
+  if DEBUG:
+    logger.warning(f'invocation: {shared.shlex_join(args)} (in {os.getcwd()})')
 
   # Strip args[0] (program name)
   args = args[1:]
@@ -1003,7 +1004,6 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
     return 0
 
   if '--version' in args:
-
     print(version_string())
     print('''\
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
@@ -1051,16 +1051,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if '-print-search-dirs' in args:
     return run_process([clang, '-print-search-dirs'], check=False).returncode
 
-  EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
-  if EMMAKEN_CFLAGS:
-    args += shlex.split(EMMAKEN_CFLAGS)
+  ## Process argument and setup the compiler
+  state = EmccState(args)
+  options, newargs, settings_map = phase_parse_arguments(state)
 
   if 'EMMAKEN_NO_SDK' in os.environ:
     diagnostics.warning('deprecated', 'We hope to deprecated EMMAKEN_NO_SDK.  See https://github.com/emscripten-core/emscripten/issues/14050 if use use this feature.')
 
-  ## Process argument and setup the compiler
-  state = EmccState(args)
-  options, newargs, settings_map = phase_parse_arguments(state)
+  if 'EMMAKEN_CFLAGS' in os.environ:
+    diagnostics.warning('deprecated', '`EMMAKEN_CFLAGS` is deprecated, please use `EMCC_CFLAGS` instead.  See https://github.com/emscripten-core/emscripten/issues/15684')
 
   # For internal consistency, ensure we don't attempt or read or write any link time
   # settings until we reach the linking phase.
@@ -1904,7 +1903,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       # (ASSERTIONS will check that streams do not need to be flushed,
       # helping people see when they should have enabled EXIT_RUNTIME)
       if settings.EXIT_RUNTIME or settings.ASSERTIONS:
-        settings.EXPORTED_FUNCTIONS += ['_fflush']
+        settings.EXPORT_IF_DEFINED += ['fflush']
 
     if settings.SUPPORT_ERRNO:
       # so setErrNo JS library function can report errno back to C
@@ -1934,38 +1933,37 @@ def phase_linker_setup(options, state, newargs, settings_map):
       exit_with_error('USE_PTHREADS + BUILD_AS_WORKER require separate modes that don\'t work together, see https://github.com/emscripten-core/emscripten/issues/8854')
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))
     settings.EXPORTED_FUNCTIONS += [
-      '___emscripten_init_main_thread',
-      '__emscripten_call_on_thread',
+      '_emscripten_dispatch_to_thread_',
       '__emscripten_main_thread_futex',
-      '__emscripten_thread_init',
-      '__emscripten_thread_exit',
       '__emscripten_thread_free_data',
-      '_emscripten_current_thread_process_queued_calls',
       '__emscripten_allow_main_runtime_queued_calls',
-      '_emscripten_futex_wake',
-      '_emscripten_get_global_libc',
       '_emscripten_main_browser_thread_id',
       '_emscripten_main_thread_process_queued_calls',
       '_emscripten_run_in_main_runtime_thread_js',
       '_emscripten_stack_set_limits',
       '_emscripten_sync_run_in_main_thread_2',
       '_emscripten_sync_run_in_main_thread_4',
-      '_emscripten_tls_init',
-      '_pthread_self',
-      '_pthread_testcancel',
       '_exit',
     ]
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
       '$exitOnMainThread',
     ]
-    # Some of these symbols are using by worker.js but otherwise unreferenced.
-    # Because emitDCEGraph only considered the main js file, and not worker.js
+    # Some symbols are required by worker.js.
+    # Because emitDCEGraph only considers the main js file, and not worker.js
     # we have explicitly mark these symbols as user-exported so that they will
     # kept alive through DCE.
     # TODO: Find a less hacky way to do this, perhaps by also scanning worker.js
     # for roots.
-    building.user_requested_exports.add('_emscripten_tls_init')
-    building.user_requested_exports.add('_emscripten_current_thread_process_queued_calls')
+    worker_imports = [
+      '__emscripten_thread_init',
+      '__emscripten_thread_exit',
+      '_emscripten_tls_init',
+      '_emscripten_futex_wake',
+      '_emscripten_current_thread_process_queued_calls',
+      '_pthread_self',
+    ]
+    settings.EXPORTED_FUNCTIONS += worker_imports
+    building.user_requested_exports.update(worker_imports)
 
     # set location of worker.js
     settings.PTHREAD_WORKER_FILE = unsuffixed_basename(target) + '.worker.js'

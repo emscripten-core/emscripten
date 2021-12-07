@@ -794,7 +794,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
 
   def move_to_safe_7bit_ascii_filename(filename):
     if isascii(filename):
-      return filename
+      return os.path.abspath(filename)
     safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
     shutil.copyfile(filename, safe_filename)
     return os.path.relpath(safe_filename, tempfiles.tmpdir)

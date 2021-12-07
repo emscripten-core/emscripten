@@ -120,7 +120,7 @@ def also_with_wasmfs(f):
   def metafunc(self, wasmfs):
     if wasmfs:
       self.set_setting('WASMFS')
-      self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
+      self.emcc_args.append('-DWASMFS')
       f(self)
     else:
       f(self)
@@ -7908,7 +7908,13 @@ end
 
   # Tests --closure-args command line flag
   def test_closure_externs(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '--closure=1', '--pre-js', test_file('test_closure_externs_pre_js.js'), '--closure-args', '--externs "' + test_file('test_closure_externs.js') + '"'])
+    # Test with relocate path to the externs file to ensure that incoming relative paths
+    # are translated correctly (Since closure runs with a different CWD)
+    shutil.copyfile(test_file('test_closure_externs.js'), 'local_externs.js')
+    self.run_process([EMCC, test_file('hello_world.c'),
+                      '--closure=1',
+                      '--pre-js', test_file('test_closure_externs_pre_js.js'),
+                      '--closure-args', '--externs "local_externs.js"'])
 
   # Tests that it is possible to enable the Closure compiler via --closure=1 even if any of the input files reside in a path with unicode characters.
   def test_closure_cmdline_utf8_chars(self):
@@ -10365,6 +10371,11 @@ int main () {
     stderr = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c')], stderr=PIPE).stderr
     self.assertContained('warning: `EMMAKEN_COMPILER` is deprecated', stderr)
 
+  @with_env_modify({'EMMAKEN_CFLAGS': '-O2'})
+  def test_emmaken_cflags(self):
+    stderr = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c')], stderr=PIPE).stderr
+    self.assertContained('warning: `EMMAKEN_CFLAGS` is deprecated', stderr)
+
   @no_windows('relies on a shell script')
   def test_compiler_wrapper(self):
     create_file('wrapper.sh', '''\
@@ -10641,10 +10652,10 @@ exec "$@"
     self.assertFileContents(test_file('reference_struct_info.json'), read_file('out.json'))
 
   def test_gen_struct_info_env(self):
-    # gen_struct_info.py builds C code in a very particlar way.  We don't want EMMAKEN_CFLAGS to
+    # gen_struct_info.py builds C code in a very particlar way.  We don't want EMCC_CFLAGS to
     # be injected which could cause it to fail.
     # For example -O2 causes printf -> iprintf which will fail with undefined symbol iprintf.
-    with env_modify({'EMMAKEN_CFLAGS': '-O2 BAD_ARG'}):
+    with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG'}):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
 
   def test_relocatable_limited_exports(self):
@@ -10744,6 +10755,11 @@ exec "$@"
         print(f'  checking for: {dep}')
         if direct not in js and via_module not in js and assignment not in js:
           self.fail(f'use of declared dependency {dep} not found in JS output for {function}')
+
+        # Check that the dependency not a JS library function.  Dependencies on JS functions
+        # do not need entries in deps_info.py.
+        if f'function _{dep}(' in js:
+          self.fail(f'dependency {dep} in deps_info.py looks like a JS function (but should be native)')
 
   @require_v8
   def test_shell_Oz(self):
@@ -11272,6 +11288,14 @@ void foo() {}
   def test_wasmfs_jsfile(self):
     self.set_setting('WASMFS')
     self.do_run_in_out_file_test('wasmfs/wasmfs_jsfile.c')
+
+  @node_pthreads
+  def test_wasmfs_jsfile_proxying_backend(self):
+    self.emcc_args.append('-DPROXYING')
+    self.set_setting('USE_PTHREADS')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.test_wasmfs_jsfile()
 
   @disabled('Running with initial >2GB heaps is not currently supported on the CI version of Node')
   def test_hello_world_above_2gb(self):

@@ -159,6 +159,20 @@ static void init_em_queued_call_args(em_queued_call* q,
   }
 }
 
+static em_queued_call* em_queued_call_create(EM_FUNC_SIGNATURE sig,
+                                             void* func,
+                                             void* satellite,
+                                             va_list args) {
+  em_queued_call* call = em_queued_call_malloc();
+  if (call) {
+    call->functionEnum = sig;
+    call->functionPtr = func;
+    call->satelliteData = satellite;
+    init_em_queued_call_args(call, sig, args);
+  }
+  return call;
+}
+
 void emscripten_async_waitable_close(em_queued_call* call) {
   assert(call->operationDone);
   em_queued_call_free(call);
@@ -740,9 +754,12 @@ static void dispatch_to_thread_helper(void* user_data) {
   free(user_data);
 }
 
-int _emscripten_call_on_thread(int forceAsync, pthread_t targetThread, EM_FUNC_SIGNATURE sig,
-    void* func_ptr, void* satellite, ...) {
-  em_queued_call* q = em_queued_call_malloc();
+int emscripten_dispatch_to_thread_args(pthread_t target_thread,
+                                       EM_FUNC_SIGNATURE sig,
+                                       void* func_ptr,
+                                       void* satellite,
+                                       va_list args) {
+  em_queued_call* q = em_queued_call_create(sig, func_ptr, satellite, args);
   assert(q);
   // TODO: handle errors in a better way, this pattern appears in several places
   //       in this file. The current behavior makes the calling thread hang as
@@ -751,32 +768,63 @@ int _emscripten_call_on_thread(int forceAsync, pthread_t targetThread, EM_FUNC_S
   // (we also never will in that case).
   if (!q)
     return 0;
-  q->functionEnum = sig;
-  q->functionPtr = func_ptr;
-  q->satelliteData = satellite;
 
+  // `q` will not be used after it is called, so let the call clean it up.
+  q->calleeDelete = 1;
+  return _emscripten_do_dispatch_to_thread(target_thread, q);
+}
+
+int emscripten_dispatch_to_thread_(pthread_t target_thread,
+                                   EM_FUNC_SIGNATURE sig,
+                                   void* func_ptr,
+                                   void* satellite,
+                                   ...) {
   va_list args;
   va_start(args, satellite);
-  init_em_queued_call_args(q, sig, args);
+  int ret = emscripten_dispatch_to_thread_args(
+    target_thread, sig, func_ptr, satellite, args);
   va_end(args);
+  return ret;
+}
 
-  // 'async' runs are fire and forget, where the caller detaches itself from the call object after
-  // returning here, and it is the callee's responsibility to free up the memory after the call has
-  // been performed.
-  // Note that the call here might not be async if on the same thread, but for
-  // consistency use the same convention of calleeDelete.
-  q->calleeDelete = 1;
-  // The called function will not be async if we are on the same thread; force
-  // async if the user asked for that.
-  if (forceAsync) {
+int emscripten_dispatch_to_thread_async_args(pthread_t target_thread,
+                                             EM_FUNC_SIGNATURE sig,
+                                             void* func_ptr,
+                                             void* satellite,
+                                             va_list args) {
+  // Check if we are already on the target thread.
+  if (pthread_equal(target_thread, pthread_self())) {
+    // Setup is the same as in emscripten_dispatch_to_thread_args.
+    em_queued_call* q = em_queued_call_create(sig, func_ptr, satellite, args);
+    assert(q);
+    if (!q)
+      return 0;
+    q->calleeDelete = 1;
+
+    // Schedule the call to run later on this thread.
     DispatchToThreadArgs* args = malloc(sizeof(DispatchToThreadArgs));
-    args->target_thread = targetThread;
+    args->target_thread = target_thread;
     args->q = q;
     emscripten_set_timeout(dispatch_to_thread_helper, 0, args);
     return 0;
-  } else {
-    return _emscripten_do_dispatch_to_thread(targetThread, q);
   }
+
+  // Otherwise, dispatch as usual.
+  return emscripten_dispatch_to_thread_args(
+    target_thread, sig, func_ptr, satellite, args);
+}
+
+int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
+                                         EM_FUNC_SIGNATURE sig,
+                                         void* func_ptr,
+                                         void* satellite,
+                                         ...) {
+  va_list args;
+  va_start(args, satellite);
+  int ret = emscripten_dispatch_to_thread_async_args(
+    target_thread, sig, func_ptr, satellite, args);
+  va_end(args);
+  return ret;
 }
 
 // Stores the memory address that the main thread is waiting on, if any. If

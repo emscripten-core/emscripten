@@ -9,6 +9,7 @@
 
 #include <inttypes.h>
 #include <pthread.h>
+#include <stdarg.h>
 
 #include <emscripten/html5.h>
 #include <emscripten/atomic.h>
@@ -254,19 +255,43 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_i(em_queued_call *call, double timeou
 
 void emscripten_async_waitable_close(em_queued_call *call);
 
-int _emscripten_call_on_thread(int force_async, pthread_t target_thread, EM_FUNC_SIGNATURE sig, void *func_ptr, void *satellite, ...); // internal
-
 // Runs the given function on the specified thread. If we are currently on
 // that target thread then we just execute the call synchronously; otherwise it
 // is queued on that thread to execute asynchronously.
 // Returns 1 if it executed the code (i.e., it was on the target thread), and 0
 // otherwise.
-#define emscripten_dispatch_to_thread(target_thread, sig, func_ptr, satellite, ...) _emscripten_call_on_thread(0, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
+int emscripten_dispatch_to_thread_args(pthread_t target_thread,
+                                       EM_FUNC_SIGNATURE sig,
+                                       void* func_ptr,
+                                       void* satellite,
+                                       va_list args);
+int emscripten_dispatch_to_thread_(pthread_t target_thread,
+                                   EM_FUNC_SIGNATURE sig,
+                                   void* func_ptr,
+                                   void* satellite,
+                                   ...);
+#define emscripten_dispatch_to_thread(                                         \
+  target_thread, sig, func_ptr, satellite, ...)                                \
+  emscripten_dispatch_to_thread_(                                              \
+    (target_thread), (sig), (void*)(func_ptr), (satellite), ##__VA_ARGS__)
 
 // Similar to emscripten_dispatch_to_thread, but always runs the
 // function asynchronously, even if on the same thread. This is less efficient
 // but may be simpler to reason about in some cases.
-#define emscripten_dispatch_to_thread_async(target_thread, sig, func_ptr, satellite, ...) _emscripten_call_on_thread(1, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
+int emscripten_dispatch_to_thread_async_args(pthread_t target_thread,
+                                             EM_FUNC_SIGNATURE sig,
+                                             void* func_ptr,
+                                             void* satellite,
+                                             va_list args);
+int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
+                                         EM_FUNC_SIGNATURE sig,
+                                         void* func_ptr,
+                                         void* satellite,
+                                         ...);
+#define emscripten_dispatch_to_thread_async(                                   \
+  target_thread, sig, func_ptr, satellite, ...)                                \
+  emscripten_dispatch_to_thread_async_(                                        \
+    (target_thread), (sig), (void*)(func_ptr), (satellite), ##__VA_ARGS__)
 
 // Returns 1 if the current thread is the thread that hosts the Emscripten runtime.
 int emscripten_is_main_runtime_thread(void);

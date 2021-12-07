@@ -12,10 +12,9 @@ import tempfile
 import time
 from contextlib import ContextDecorator
 
-sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logger = logging.getLogger('profiler')
 
-from tools import response_file
+from . import response_file
 
 EMPROFILE = int(os.getenv('EMPROFILE', '0'))
 

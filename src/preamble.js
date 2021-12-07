@@ -987,12 +987,7 @@ function instantiateSync(file, info) {
 // This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
 function resetPrototype(constructor, attrs) {
   var object = Object.create(constructor.prototype);
-  for (var key in attrs) {
-    if (attrs.hasOwnProperty(key)) {
-      object[key] = attrs[key];
-    }
-  }
-  return object;
+  return objAssign(object, attrs);
 }
 #endif
 
