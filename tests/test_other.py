@@ -2346,18 +2346,24 @@ int f() {
     create_file('post.js', '''
       Module['onRuntimeInitialized'] = function() {
         out(Module['foo'](10));
+        out(Module['bar']());
       };
     ''')
     create_file('main.cpp', r'''
+      #include <string>
       #include <emscripten/bind.h>
       int foo(int x) { return x; }
+      std::string bar() {
+        return emscripten::val(123).call<std::string>("toString");
+      }
       EMSCRIPTEN_BINDINGS(baz) {
         emscripten::function("foo", &foo);
+        emscripten::function("bar", &bar);
       }
     ''')
     self.run_process([EMXX, 'main.cpp', '--bind', '-O2', '--closure', '1',
                       '-sNO_DYNAMIC_EXECUTION', '--post-js', 'post.js'])
-    self.assertContained('10\n', self.run_js('a.out.js'))
+    self.assertContained('10\n123\n', self.run_js('a.out.js'))
 
   @is_slow_test
   def test_embind(self):
@@ -11251,6 +11257,7 @@ void foo() {}
     # TODO: update this test when /dev has been filled out.
     # Run only in WASMFS for now.
     self.set_setting('WASMFS')
+    self.emcc_args += ['--profiling']
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
 
   def test_wasmfs_readfile(self):

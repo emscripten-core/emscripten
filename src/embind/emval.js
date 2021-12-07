@@ -410,7 +410,7 @@ var LibraryEmVal = {
         }
       }
       if (!retType.isVoid) {
-        return retType.toWireType(destructors, rv);
+        return retType['toWireType'](destructors, rv);
       }
     };
 #else
