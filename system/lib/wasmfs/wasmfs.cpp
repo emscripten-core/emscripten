@@ -116,8 +116,7 @@ void WasmFS::preloadFiles() {
 
     auto base = pathParts.back();
 
-    // TODO: Generalize so that MemoryFile is not hard-coded.
-    auto created = std::make_shared<MemoryFile>((mode_t)mode, rootBackend);
+    auto created = rootBackend->createFile((mode_t)mode);
 
     long err;
     auto parentDir = getDir(pathParts.begin(), pathParts.end() - 1, err);
@@ -129,7 +128,6 @@ void WasmFS::preloadFiles() {
 
     parentDir->locked().setEntry(base, created);
 
-    // TODO: Generalize preloadFromJS to use generic file operations.
     created->locked().preloadFromJS(i);
   }
 }
