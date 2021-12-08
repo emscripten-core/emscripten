@@ -224,6 +224,8 @@ public:
   }
 
 protected:
+  // A vector (instead of a map) saves on code size, but will lead to linear
+  // search time in certain operations, ex. getEntry().
   std::vector<Entry> entries;
   // 4096 bytes is the size of a block in ext4.
   // This value was also copied from the JS file system.
