@@ -398,6 +398,7 @@ def link_lld(args, target, external_symbols=None):
 
 
 def link_bitcode(args, target, force_archive_contents=False):
+  diagnostics.warning('deprecated', 'bitcode linking with llvm-link is deprecated.  Please use emar archives instead.  See https://github.com/emscripten-core/emscripten/issues/13492')
   # "Full-featured" linking: looks into archives (duplicates lld functionality)
   input_files = [a for a in args if not a.startswith('-')]
   files_to_link = []

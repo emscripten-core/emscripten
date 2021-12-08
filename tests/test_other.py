@@ -1114,10 +1114,10 @@ int f() {
 }
 ''')
 
-    self.run_process([EMCC, '-o', '1.o', '-c', '1.c'])
-    self.run_process([EMCC, '-o', '2.o', '-c', '2.c'])
+    self.run_process([EMCC, '-flto', '-o', '1.o', '-c', '1.c'])
+    self.run_process([EMCC, '-flto', '-o', '2.o', '-c', '2.c'])
     self.run_process([EMAR, 'crs', '2.a', '2.o'])
-    self.run_process([EMCC, '-r', '-o', 'out.o', '-Wl,--start-group', '2.a', '1.o', '-Wl,--end-group'])
+    self.run_process([EMCC, '-r', '-flto', '-o', 'out.o', '-Wl,--start-group', '2.a', '1.o', '-Wl,--end-group'])
     self.run_process([EMCC, 'out.o'])
     self.assertContained('Hello', self.run_js('a.out.js'))
 
@@ -3848,9 +3848,10 @@ EM_ASM({ _middle() });
     # e.g. they assume our 'executable' extension is bc, and compile an .o to a .bc
     # (the user would then need to build bc to js of course, but we need to actually
     # emit the bc)
-    self.run_process([EMCC, '-c', test_file('hello_world.c')])
+    self.run_process([EMCC, '-flto', '-c', test_file('hello_world.c')])
     self.assertExists('hello_world.o')
-    self.run_process([EMCC, '-r', 'hello_world.o', '-o', 'hello_world.bc'])
+    err = self.run_process([EMCC, '-flto', '-r', 'hello_world.o', '-o', 'hello_world.bc'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: bitcode linking with llvm-link is deprecated', err)
     self.assertExists('hello_world.o')
     self.assertExists('hello_world.bc')
 
