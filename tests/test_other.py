@@ -2351,10 +2351,12 @@ int f() {
     ''')
     create_file('main.cpp', r'''
       #include <string>
+      #include <emscripten/console.h>
       #include <emscripten/bind.h>
       int foo(int x) { return x; }
-      std::string bar() {
-        return emscripten::val(123).call<std::string>("toString");
+      void bar() {
+        emscripten::val(123).call<std::string>("toString");
+        emscripten_console_log("ok");
       }
       EMSCRIPTEN_BINDINGS(baz) {
         emscripten::function("foo", &foo);
@@ -2363,7 +2365,7 @@ int f() {
     ''')
     self.run_process([EMXX, 'main.cpp', '--bind', '-O2', '--closure', '1',
                       '-sNO_DYNAMIC_EXECUTION', '--post-js', 'post.js'])
-    self.assertContained('10\n123\n', self.run_js('a.out.js'))
+    self.assertContained('10\nok\n', self.run_js('a.out.js'))
 
   @is_slow_test
   def test_embind(self):
