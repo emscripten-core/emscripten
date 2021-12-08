@@ -15,6 +15,7 @@ namespace wasmfs {
 // DataFile
 //
 void DataFile::Handle::preloadFromJS(int index) {
+  // TODO: Each Datafile type could have its own impl of file preloading.
   // Create a buffer with the required file size.
   std::vector<uint8_t> buffer(
     EM_ASM_INT({return wasmFS$preloadedFiles[$0].fileData.length}, index));

@@ -15,7 +15,7 @@ from glob import iglob
 from . import shared, building, utils
 from . import deps_info, tempfiles
 from . import diagnostics
-from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
+from tools.shared import demangle_c_symbol_name
 from tools.settings import settings
 
 logger = logging.getLogger('system_libs')
@@ -1379,7 +1379,7 @@ class libasmfs(MTLibrary):
     return True
 
 
-class libwasmfs(MTLibrary):
+class libwasmfs(MTLibrary, DebugLibrary):
   name = 'libwasmfs'
 
   cflags = ['-fno-exceptions', '-std=c++17']
@@ -1387,7 +1387,7 @@ class libwasmfs(MTLibrary):
   def get_files(self):
     return files_in_path(
         path='system/lib/wasmfs',
-        filenames=['syscalls.cpp', 'file_table.cpp', 'file.cpp', 'wasmfs.cpp', 'streams.cpp', 'memory_file.cpp', 'memory_file_backend.cpp', 'js_file_backend.cpp'])
+        filenames=['syscalls.cpp', 'file_table.cpp', 'file.cpp', 'wasmfs.cpp', 'streams.cpp', 'memory_file.cpp', 'memory_file_backend.cpp', 'js_file_backend.cpp', 'proxied_file_backend.cpp'])
 
   def can_use(self):
     return settings.WASMFS
@@ -1597,7 +1597,7 @@ def handle_reverse_deps(input_files):
     # than scanning the input files
     for symbols in deps_info.get_deps_info().values():
       for symbol in symbols:
-        settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(symbol))
+        settings.REQUIRED_EXPORTS.append(symbol)
     return
 
   if settings.REVERSE_DEPS != 'auto':
@@ -1614,7 +1614,7 @@ def handle_reverse_deps(input_files):
         for dep in deps:
           need['undefs'].add(dep)
           logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
-          settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
+          settings.REQUIRED_EXPORTS.append(dep)
     if more:
       add_reverse_deps(need) # recurse to get deps of deps
 

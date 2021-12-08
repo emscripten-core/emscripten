@@ -194,7 +194,7 @@ var LibraryHTML5 = {
         {{{ makeSetValue('varargs', 0, 'eventTypeId', 'i32') }}};
         {{{ makeSetValue('varargs', 4, 'eventData', 'i32') }}};
         {{{ makeSetValue('varargs', 8, 'userData', 'i32') }}};
-        __emscripten_call_on_thread(0, targetThread, {{{ cDefine('EM_FUNC_SIG_IIII') }}}, eventHandlerFunc, eventData, varargs);
+        _emscripten_dispatch_to_thread_(targetThread, {{{ cDefine('EM_FUNC_SIG_IIII') }}}, eventHandlerFunc, eventData, varargs);
       });
     },
 #endif
@@ -2093,7 +2093,7 @@ var LibraryHTML5 = {
       var targetRect = getBoundingClientRect(target);
       var numTouches = 0;
       for (var i in touches) {
-        var t = touches[i];
+        t = touches[i];
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.identifier / 4}}}] = t.identifier;
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenX / 4}}}] = t.screenX;
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenY / 4}}}] = t.screenY;
@@ -2459,7 +2459,7 @@ var LibraryHTML5 = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8', '_emscripten_call_on_thread', '$withStackSave'],
+  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8', 'emscripten_dispatch_to_thread_', '$withStackSave'],
   emscripten_set_offscreencanvas_size_on_target_thread_js: function(targetThread, targetCanvas, width, height) {
     withStackSave(function() {
       var varargs = stackAlloc(12);
@@ -2474,7 +2474,7 @@ var LibraryHTML5 = {
       // these two threads will deadlock. At the moment, we'd like to consider that this kind of deadlock would be an Emscripten runtime bug, although if
       // emscripten_set_canvas_element_size() was documented to require running an event in the queue of thread that owns the OffscreenCanvas, then that might be ok.
       // (safer this way however)
-      __emscripten_call_on_thread(0, targetThread, {{{ cDefine('EM_PROXIED_RESIZE_OFFSCREENCANVAS') }}}, 0, targetCanvasPtr /* satellite data */, varargs);
+      _emscripten_dispatch_to_thread_(targetThread, {{{ cDefine('EM_PROXIED_RESIZE_OFFSCREENCANVAS') }}}, 0, targetCanvasPtr /* satellite data */, varargs);
     });
   },
 

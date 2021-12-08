@@ -9,7 +9,11 @@
 
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootdir__ = os.path.dirname(__scriptdir__)
+sys.path.append(__rootdir__)
+
 from tools import shared
 
 cmd = [shared.LLVM_DWP] + sys.argv[1:]

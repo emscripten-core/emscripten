@@ -70,7 +70,7 @@ to prevent C++ name mangling.
 To compile this code run the following command in the Emscripten
 home directory::
 
-    emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]'
+    emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS=_int_sqrt -s EXPORTED_RUNTIME_METHODS=ccall,cwrap
 
 ``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the
 compiled code (everything else might be removed if it is not used), and
@@ -131,7 +131,7 @@ parameters to pass to the function:
      from JavaScript:
 
      - Exporting is done at compile time. For example:
-       ``-s EXPORTED_FUNCTIONS='["_main","_other_function"]'`` exports
+       ``-s EXPORTED_FUNCTIONS=_main,_other_function`` exports
        ``main()`` and ``other_function()``.
      - Note that you need ``_`` at the
        beginning of the function names in the ``EXPORTED_FUNCTIONS`` list.

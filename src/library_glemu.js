@@ -1240,7 +1240,7 @@ var LibraryGLEmulation = {
         }
         this.computeKey1 = function() {
           var k = this.traverseKey;
-          key = k[this.colorOp[0]] * 4096;
+          var key = k[this.colorOp[0]] * 4096;
           key += k[this.colorOp[1]] * 1024;
           key += k[this.colorOp[2]] * 256;
           key += k[this.alphaOp[0]] * 16;

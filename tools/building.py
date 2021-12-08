@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 #  Building
 binaryen_checked = False
 
-EXPECTED_BINARYEN_VERSION = 101
+EXPECTED_BINARYEN_VERSION = 103
 # cache results of nm - it can be slow to run
 nm_cache = {}
 # Stores the object files contained in different archive files passed as input
@@ -308,14 +308,18 @@ def lld_flags_for_executable(external_symbols):
   c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
   # Strip the leading underscores
   c_exports = [demangle_c_symbol_name(e) for e in c_exports]
+  c_exports += settings.EXPORT_IF_DEFINED
   if external_symbols:
     # Filter out symbols external/JS symbols
     c_exports = [e for e in c_exports if e not in external_symbols]
   for export in c_exports:
     cmd.append('--export-if-defined=' + export)
 
-  for export in settings.EXPORT_IF_DEFINED:
-    cmd.append('--export-if-defined=' + export)
+  for export in settings.REQUIRED_EXPORTS:
+    if settings.ERROR_ON_UNDEFINED_SYMBOLS:
+      cmd.append('--export=' + export)
+    else:
+      cmd.append('--export-if-defined=' + export)
 
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')
@@ -794,7 +798,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
 
   def move_to_safe_7bit_ascii_filename(filename):
     if isascii(filename):
-      return filename
+      return os.path.abspath(filename)
     safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
     shutil.copyfile(filename, safe_filename)
     return os.path.relpath(safe_filename, tempfiles.tmpdir)

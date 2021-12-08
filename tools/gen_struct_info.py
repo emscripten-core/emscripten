@@ -85,7 +85,9 @@ import argparse
 import tempfile
 import subprocess
 
-sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootdir__ = os.path.dirname(__scriptdir__)
+sys.path.append(__rootdir__)
 
 from tools import shared
 from tools import system_libs
