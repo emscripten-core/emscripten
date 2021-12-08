@@ -421,6 +421,20 @@ If manually bisecting:
     shutil.copyfile(test_file('manual_download_data.html'), 'manual_download_data.html')
     self.run_browser('manual_download_data.html', 'Hello!', '/report_result?1')
 
+  # Tests that user .html shell files can manually download .data files created with --preload-file cmdline when using pthreads
+  def test_preload_file_with_manual_data_download_pthread(self):
+    src = test_file('manual_download_data_pthread.cpp')
+
+    create_file('file.txt', '''Hello!''')
+
+    self.compile_btest([src, '-o', 'manual_download_data.js', '--preload-file', 'file.txt@/file.txt', '-pthread', '-sPROXY_TO_PTHREAD'])
+    shutil.copyfile(test_file('manual_download_data_pthread.html'), 'index.html')
+    # Move .data file out of server root
+    os.mkdir('test')
+    shutil.move('manual_download_data.data', 'test/manual_download_data.data')
+    shutil.copyfile(test_file('manual_download_data_pthread.html'), 'index.html')
+    self.run_browser('index.html', 'Hello!', '/report_result?0')
+
   # Tests that if the output files have single or double quotes in them, that it will be handled by
   # correctly escaping the names.
   def test_output_file_escaping(self):
