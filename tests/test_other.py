@@ -1483,29 +1483,6 @@ int f() {
     result = self.run_js('a.out.js', engine=config.NODE_JS)
     self.assertContained('|hello from a file wi|', result)
 
-  @parameterized({
-    'default': ([],),
-    'proxy-main': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
-  })
-  @node_pthreads
-  def test_preload_with_pthread(self, args):
-    create_file('somefile.txt', 'hello from a file with lots of data and stuff in it thank you very much')
-    create_file('main.cpp', r'''
-      #include <stdio.h>
-      int main() {
-        FILE *f = fopen("somefile.txt", "r");
-        char buf[100];
-        fread(buf, 1, 20, f);
-        buf[20] = 0;
-        fclose(f);
-        printf("|%s|\n", buf);
-        return 0;
-      }
-    ''')
-    self.run_process([EMXX, 'main.cpp', '--preload-file', 'somefile.txt', '-pthread'] + args)
-    result = self.run_js('a.out.js', engine=config.NODE_JS)
-    self.assertContained('|hello from a file wi|', result)
-
   def test_embed_file_dup(self):
     ensure_dir(self.in_dir('tst', 'test1'))
     ensure_dir(self.in_dir('tst', 'test2'))
