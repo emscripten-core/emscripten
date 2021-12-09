@@ -413,8 +413,8 @@ If manually bisecting:
 
   # Tests that user .html shell files can manually download .data files created with --preload-file cmdline.
   @parameterized({
-    'default': (),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD']),
+    'default': ([],),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_preload_file_with_manual_data_download(self, args):
     src = test_file('manual_download_data.cpp')
