@@ -11038,10 +11038,10 @@ void foo() {}
 
     # When WebGL is implicitly linked in, the implicit linking should happen before any user
     # --js-libraries, so that they can adjust the behavior afterwards.
-    self.do_run_in_out_file_test(test_file('test_override_system_js_lib_symbol.c'), emcc_args=['--js-library', test_file('test_override_system_js_lib_symbol.js')])
+    self.do_run_in_out_file_test(test_file('test_override_system_js_lib_symbol.c'), emcc_args=['--js-library', test_file('test_override_system_js_lib_symbol.js'), '-sMAX_WEBGL_VERSION=2'])
 
     # When WebGL is explicitly linked to in strict mode, the linking order on command line should enable overriding.
-    self.emcc_args += ['-sAUTO_JS_LIBRARIES=0', '-lwebgl.js', '--js-library', test_file('test_override_system_js_lib_symbol.js')]
+    self.emcc_args += ['-sAUTO_JS_LIBRARIES=0', '-sMAX_WEBGL_VERSION=2', '-lwebgl.js', '--js-library', test_file('test_override_system_js_lib_symbol.js')]
     self.do_run_in_out_file_test(test_file('test_override_system_js_lib_symbol.c'))
 
   @node_pthreads
