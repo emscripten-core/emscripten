@@ -17,7 +17,7 @@ int main()
 	assert(!strcmp(str, "Hello!"));
 	printf("OK\n");
 #ifdef REPORT_RESULT
-	int result = EM_ASM_INT({return Module.manuallyDownloadedData;});
+	int result = EM_ASM_INT({return (strcmp(str, "Hello!") == 0);});
 	REPORT_RESULT(result);
 #endif
 }
