@@ -32,11 +32,15 @@ void DataFile::Handle::preloadFromJS(int index) {
 // Directory
 //
 std::shared_ptr<File> Directory::Handle::getEntry(std::string pathName) {
-  for (const auto& entry : getDir()->entries) {
-    if (entry.name == pathName) {
-      return entry.file;
-    }
+  auto found =
+    std::find_if(getDir()->entries.begin(),
+                 getDir()->entries.end(),
+                 [&](const auto& entry) { return entry.name == pathName; });
+
+  if (found != getDir()->entries.end()) {
+    return found->file;
   }
+
   return nullptr;
 }
 
@@ -67,20 +71,21 @@ void Directory::Handle::unlinkEntry(std::string pathName) {
   auto unlinked = getEntry(pathName)->locked();
   unlinked.setParent({});
 
-  for (auto it = getDir()->entries.begin(); it != getDir()->entries.end();
-       it++) {
-    if (it->name == pathName) {
-      getDir()->entries.erase(it);
-      return;
-    }
-  }
+  getDir()->entries.erase(
+    std::remove_if(getDir()->entries.begin(),
+                   getDir()->entries.end(),
+                   [&](const auto& entry) { return entry.name == pathName; }),
+    getDir()->entries.end());
 }
 
 std::string Directory::Handle::getName(std::shared_ptr<File> target) {
-  for (const auto& entry : getDir()->entries) {
-    if (entry.file == target) {
-      return entry.name;
-    }
+  auto found =
+    std::find_if(getDir()->entries.begin(),
+                 getDir()->entries.end(),
+                 [&](const auto& entry) { return entry.file == target; });
+
+  if (found != getDir()->entries.end()) {
+    return found->name;
   }
 
   return "";
