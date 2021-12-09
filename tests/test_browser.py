@@ -424,7 +424,7 @@ If manually bisecting:
 
     self.compile_btest([src, '-o', 'manual_download_data.js', '--preload-file', 'file.txt@/file.txt'] + args)
     shutil.copyfile(test_file('manual_download_data.html'), 'manual_download_data.html')
-    
+
     # Move .data file out of server root to ensure that getPreloadedPackage is actually used
     os.mkdir('test')
     shutil.move('manual_download_data.data', 'test/manual_download_data.data')
