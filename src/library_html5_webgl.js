@@ -315,12 +315,14 @@ var LibraryHtml5WebGL = {
     GL.deleteContext(contextHandle);
   },
 
+#if USE_PTHREADS
   // Special function that will be invoked on the thread calling emscripten_webgl_destroy_context(), before routing
   // the call over to the target thread.
   emscripten_webgl_destroy_context_before_on_calling_thread__deps: ['emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
   emscripten_webgl_destroy_context_before_on_calling_thread: function(contextHandle) {
     if (_emscripten_webgl_get_current_context() == contextHandle) _emscripten_webgl_make_context_current(0);
   },
+#endif
 
   emscripten_webgl_enable_extension__deps: [
 #if GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
@@ -554,13 +556,13 @@ var LibraryHtml5WebGL = {
   },
 };
 
+#if USE_PTHREADS
 // Process 'sync_on_webgl_context_handle_thread' and 'sync_on_current_webgl_context_thread' pseudo-proxying modes
 // to appropriate proxying mechanism, either proxying on-demand, unconditionally, or never, depending on build modes.
 // 'sync_on_webgl_context_handle_thread' is used for function signatures that take a HTML5 WebGL context handle
 // object as the first argument. 'sync_on_current_webgl_context_thread' is used for functions that operate on the
 // implicit "current WebGL context" as activated via emscripten_webgl_make_current() function.
 function handleWebGLProxying(funcs) {
-  if (!USE_PTHREADS) return; // No proxying needed in singlethreaded builds
 
   function listOfNFunctionArgs(func) {
     var args = [];
@@ -627,5 +629,6 @@ function handleWebGLProxying(funcs) {
 }
 
 handleWebGLProxying(LibraryHtml5WebGL);
+#endif
 
 mergeInto(LibraryManager.library, LibraryHtml5WebGL);

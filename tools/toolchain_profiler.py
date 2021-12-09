@@ -26,10 +26,13 @@ class Logger(ContextDecorator):
   def __enter__(self):
     self.start = time.time()
 
-  def __exit__(self, type, value, traceback):
+  def __exit__(self, exc_type, value, traceback):
     # When a block ends debug log the total duration.
     now = time.time()
-    logger.debug('block "%s" took %.2f seconds', self.name, now - self.start)
+    if exc_type:
+      logger.debug('block "%s" raised an exception after %.2f seconds', self.name, now - self.start)
+    else:
+      logger.debug('block "%s" took %.2f seconds', self.name, now - self.start)
 
 
 if EMPROFILE:

@@ -308,14 +308,18 @@ def lld_flags_for_executable(external_symbols):
   c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
   # Strip the leading underscores
   c_exports = [demangle_c_symbol_name(e) for e in c_exports]
+  c_exports += settings.EXPORT_IF_DEFINED
   if external_symbols:
     # Filter out symbols external/JS symbols
     c_exports = [e for e in c_exports if e not in external_symbols]
   for export in c_exports:
     cmd.append('--export-if-defined=' + export)
 
-  for export in settings.EXPORT_IF_DEFINED:
-    cmd.append('--export-if-defined=' + export)
+  for export in settings.REQUIRED_EXPORTS:
+    if settings.ERROR_ON_UNDEFINED_SYMBOLS:
+      cmd.append('--export=' + export)
+    else:
+      cmd.append('--export-if-defined=' + export)
 
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')
@@ -394,6 +398,7 @@ def link_lld(args, target, external_symbols=None):
 
 
 def link_bitcode(args, target, force_archive_contents=False):
+  diagnostics.warning('deprecated', 'bitcode linking with llvm-link is deprecated.  Please use emar archives instead.  See https://github.com/emscripten-core/emscripten/issues/13492')
   # "Full-featured" linking: looks into archives (duplicates lld functionality)
   input_files = [a for a in args if not a.startswith('-')]
   files_to_link = []
