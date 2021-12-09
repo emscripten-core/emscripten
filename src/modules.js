@@ -143,14 +143,14 @@ var LibraryManager = {
       }
     }
 
-    // Add any explicitly specified system JS libraries to link to, add those to link.
-    libraries = libraries.concat(JS_LIBRARIES)
-
     if (LZ4) {
       libraries.push('library_lz4.js');
     }
 
     if (MAX_WEBGL_VERSION >= 2) {
+      // library_webgl2.js must be included only after library_webgl.js, so if we are
+      // about to include library_webgl2.js, first squeeze in library_webgl.js.
+      libraries.push('library_webgl.js');
       libraries.push('library_webgl2.js');
     }
 
@@ -178,6 +178,12 @@ var LibraryManager = {
     if (SUPPORT_BIG_ENDIAN) {
       libraries.push('library_little_endian_heap.js');
     }
+
+    // Add all user specified --js-library files to the link.
+    // These must be added last after all Emscripten-provided system libraries
+    // above, so that users can override built-in JS library symbols in their
+    // own code.
+    libraries = libraries.concat(JS_LIBRARIES);
 
     // Deduplicate libraries to avoid processing any library file multiple times
     libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
