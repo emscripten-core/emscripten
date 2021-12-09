@@ -416,6 +416,7 @@ If manually bisecting:
     'default': ([],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
+  @requires_threads
   def test_preload_file_with_manual_data_download(self, args):
     src = test_file('manual_download_data.cpp')
 
