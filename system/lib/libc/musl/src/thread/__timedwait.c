@@ -58,7 +58,6 @@ int __timedwait_cp(volatile int *addr, int val,
 	}
 
 #ifdef __EMSCRIPTEN__
-	pthread_t self = __pthread_self();
 	double msecsToSleep = top ? (top->tv_sec * 1000 + top->tv_nsec / 1000000.0) : INFINITY;
 	const int is_runtime_thread = emscripten_is_main_runtime_thread();
 
@@ -68,10 +67,12 @@ int __timedwait_cp(volatile int *addr, int val,
 	// cp suffix in the function name means "cancellation point", so this wait can be cancelled
 	// by the users unless current threads cancellability is set to PTHREAD_CANCEL_DISABLE
 	// which may be either done by the user of __timedwait() function.
-	if (is_runtime_thread || self->canceldisable != PTHREAD_CANCEL_DISABLE || self->cancelasync) {
+	if (is_runtime_thread ||
+	    pthread_self()->canceldisable != PTHREAD_CANCEL_DISABLE ||
+	    pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
 		double sleepUntilTime = emscripten_get_now() + msecsToSleep;
 		do {
-			if (self->cancel) {
+			if (pthread_self()->cancel) {
 				// Emscripten-specific return value: The wait was canceled by user calling
 				// pthread_cancel() for this thread, and the caller needs to cooperatively
 				// cancel execution.
