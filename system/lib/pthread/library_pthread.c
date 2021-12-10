@@ -640,7 +640,7 @@ void emscripten_current_thread_process_queued_calls() {
   pthread_mutex_unlock(&call_queue_lock);
 
   // If the queue was full and we had waiters pending to get to put data to queue, wake them up.
-  emscripten_futex_wake((void*)&q->call_queue_head, 0x7FFFFFFF);
+  emscripten_futex_wake((void*)&q->call_queue_head, INT_MAX);
 
   thread_is_processing_queued_calls = false;
 }

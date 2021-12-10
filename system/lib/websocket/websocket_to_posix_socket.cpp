@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -201,7 +202,7 @@ static EM_BOOL bridge_socket_on_message(int eventType, const EmscriptenWebSocket
   }
 
   b->operationCompleted = 1;
-  emscripten_futex_wake(&b->operationCompleted, 0x7FFFFFFF);
+  emscripten_futex_wake(&b->operationCompleted, INT_MAX);
 
   return EM_TRUE;
 }

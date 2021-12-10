@@ -55,7 +55,7 @@ static inline void unlock_requeue(volatile int *l, volatile int *r, int w)
 	// primitive is strictly not needed, since it is more like an optimization to avoid spuriously waking
 	// all waiters, just to make them wait on another location immediately afterwards. Here we do exactly
 	// that: wake every waiter.
-	emscripten_futex_wake(l, 0x7FFFFFFF);
+	emscripten_futex_wake(l, INT_MAX);
 #else
 	if (w) __wake(l, 1, 1);
 	else __syscall(SYS_futex, l, FUTEX_REQUEUE|FUTEX_PRIVATE, 0, 1, r) != -ENOSYS
