@@ -15,10 +15,10 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 	}
 	if (waiters) a_inc(waiters);
 #ifdef __EMSCRIPTEN__
-	const int is_runtime_thread = emscripten_is_main_runtime_thread();
+	int is_runtime_thread = emscripten_is_main_runtime_thread();
 
 	// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
-	const double maxMsecsToSleep = is_runtime_thread ? 1 : 100;
+	double maxMsecsToSleep = is_runtime_thread ? 1 : 100;
 
 	while (*addr==val) {
 		if (is_runtime_thread || pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
