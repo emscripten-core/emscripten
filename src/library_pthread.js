@@ -601,6 +601,8 @@ var LibraryPThread = {
     __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
 #if ASSERTIONS
     PThread.mainRuntimeThread = true;
+    // Verify that this native symbol used by futex_wait/wake is exported correctly.
+    assert(__emscripten_main_thread_futex > 0);
 #endif
     PThread.threadInit();
   },
@@ -882,9 +884,6 @@ var LibraryPThread = {
       // ourselves before calling the potentially-recursive call. See below for
       // how we handle the case of our futex being notified during the time in
       // between when we are not set as the value of __emscripten_main_thread_futex.
-#if ASSERTIONS
-      assert(__emscripten_main_thread_futex > 0);
-#endif
       var lastAddr = Atomics.exchange(HEAP32, __emscripten_main_thread_futex >> 2, addr);
 #if ASSERTIONS
       // We must not have already been waiting.
@@ -986,9 +985,6 @@ var LibraryPThread = {
     // See if main thread is waiting on this address? If so, wake it up by resetting its wake location to zero.
     // Note that this is not a fair procedure, since we always wake main thread first before any workers, so
     // this scheme does not adhere to real queue-based waiting.
-#if ASSERTIONS
-    assert(__emscripten_main_thread_futex > 0);
-#endif
     var mainThreadWaitAddress = Atomics.load(HEAP32, __emscripten_main_thread_futex >> 2);
     var mainThreadWoken = 0;
     if (mainThreadWaitAddress == addr) {
