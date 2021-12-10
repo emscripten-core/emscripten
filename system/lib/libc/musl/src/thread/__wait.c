@@ -18,7 +18,7 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 	int is_runtime_thread = emscripten_is_main_runtime_thread();
 
 	// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
-	double maxMsecsToSleep = is_runtime_thread ? 1 : 100;
+	double max_ms_to_sleep = is_runtime_thread ? 1 : 100;
 
 	while (*addr==val) {
 		if (is_runtime_thread || pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
@@ -29,7 +29,7 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 					return;
 				}
 				// Must wait in slices in case this thread is cancelled in between.
-				e = emscripten_futex_wait((void*)addr, val, maxMsecsToSleep);
+				e = emscripten_futex_wait((void*)addr, val, max_ms_to_sleep);
 				// Assist other threads by executing proxied operations that are effectively singlethreaded.
 				if (is_runtime_thread) emscripten_main_thread_process_queued_calls();
 			} while (e == -ETIMEDOUT);
