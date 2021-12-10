@@ -8,9 +8,7 @@
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 {
 	int spins=100;
-#ifndef __EMSCRIPTEN__
 	if (priv) priv = FUTEX_PRIVATE;
-#endif
 	while (spins-- && (!waiters || !*waiters)) {
 		if (*addr==val) a_spin();
 		else return;
