@@ -822,6 +822,7 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
         path='system/lib/pthread',
         filenames=[
           'library_pthread.c',
+          'proxying.c',
           'pthread_create.c',
           'pthread_join.c',
           'pthread_testcancel.c',
