@@ -67,7 +67,7 @@ class FileTable {
   friend class WasmFS;
 
   std::vector<std::shared_ptr<OpenFileState>> entries;
-  std::mutex mutex;
+  std::recursive_mutex mutex;
 
   FileTable();
 
@@ -78,9 +78,11 @@ public:
   // have atomic operations where the lock must be held across multiple methods.
   // By providing access through the handle, callers of file table methods do
   // not need to remember to take a lock for every access.
+  class Entry;
   class Handle {
+  protected:
     FileTable& fileTable;
-    std::unique_lock<std::mutex> lock;
+    std::unique_lock<std::recursive_mutex> lock;
 
   public:
     Handle(FileTable& fileTable)
@@ -93,7 +95,6 @@ public:
     // return a reference, and can be used to check for the lack of an item
     // there without allocation (similar to how table[x] works on a JS object),
     // which keeps syntax concise.
-    class Entry;
 
     Entry operator[](__wasi_fd_t fd);
 
@@ -101,7 +102,7 @@ public:
   };
 };
 
-class FileTable::Handle::Entry : public FileTable::Handle {
+class FileTable::Entry : public FileTable::Handle {
   friend FileTable::Handle;
 
 public:
@@ -116,7 +117,7 @@ public:
   // Return a locked Handle to access OpenFileState members.
   OpenFileState::Handle locked() {
     assert(fd < fileTable.entries.size() && fd >= 0);
-    return unlocked()->get();
+    return OpenFileState::Handle(unlocked());
   }
 
   // Return an OpenFileState without member access.

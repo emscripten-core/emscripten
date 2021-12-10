@@ -20,8 +20,8 @@ FileTable::FileTable() {
     std::make_shared<OpenFileState>(0, O_WRONLY, StderrFile::getSingleton()));
 }
 
-FileTable::Handle::Entry&
-FileTable::Handle::Entry::operator=(std::shared_ptr<OpenFileState> ptr) {
+FileTable::Entry&
+FileTable::Entry::operator=(std::shared_ptr<OpenFileState> ptr) {
   assert(fd >= 0);
 
   if (fd >= fileTable.entries.size()) {
@@ -32,7 +32,7 @@ FileTable::Handle::Entry::operator=(std::shared_ptr<OpenFileState> ptr) {
   return *this;
 }
 
-std::shared_ptr<OpenFileState> FileTable::Handle::Entry::unlocked() {
+std::shared_ptr<OpenFileState> FileTable::Entry::unlocked() {
   if (fd >= fileTable.entries.size() || fd < 0) {
     return nullptr;
   }
@@ -40,7 +40,7 @@ std::shared_ptr<OpenFileState> FileTable::Handle::Entry::unlocked() {
   return fileTable.entries[fd];
 }
 
-FileTable::Handle::Entry::operator bool() const {
+FileTable::Entry::operator bool() const {
   if (fd >= fileTable.entries.size() || fd < 0) {
     return false;
   }
@@ -48,7 +48,7 @@ FileTable::Handle::Entry::operator bool() const {
   return fileTable.entries[fd] != nullptr;
 }
 
-FileTable::Handle::Entry FileTable::Handle::operator[](__wasi_fd_t fd) {
+FileTable::Entry FileTable::Handle::operator[](__wasi_fd_t fd) {
   return Entry(fileTable, fd);
 }
 
