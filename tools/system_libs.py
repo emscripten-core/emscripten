@@ -1379,7 +1379,7 @@ class libasmfs(MTLibrary):
     return True
 
 
-class libwasmfs(MTLibrary, DebugLibrary):
+class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
   name = 'libwasmfs'
 
   cflags = ['-fno-exceptions', '-std=c++17']
