@@ -32,6 +32,7 @@ $em_queued_call_malloc
 $emscripten_async_run_in_main_thread
 $emscripten_current_thread_process_queued_calls
 $emscripten_dispatch_to_thread_
+$emscripten_futex_wait
 $emscripten_main_thread_process_queued_calls
 $emscripten_proxy_main
 $emscripten_run_in_main_runtime_thread_js
