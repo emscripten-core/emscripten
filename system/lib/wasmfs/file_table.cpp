@@ -24,28 +24,32 @@ FileTable::Handle::Entry&
 FileTable::Handle::Entry::operator=(std::shared_ptr<OpenFileState> ptr) {
   assert(fd >= 0);
 
-  if (fd >= fileTableHandle.fileTable.entries.size()) {
-    fileTableHandle.fileTable.entries.resize(fd + 1);
+  if (fd >= fileTable.entries.size()) {
+    fileTable.entries.resize(fd + 1);
   }
-  fileTableHandle.fileTable.entries[fd] = ptr;
+  fileTable.entries[fd] = ptr;
 
   return *this;
 }
 
 std::shared_ptr<OpenFileState> FileTable::Handle::Entry::unlocked() {
-  if (fd >= fileTableHandle.fileTable.entries.size() || fd < 0) {
+  if (fd >= fileTable.entries.size() || fd < 0) {
     return nullptr;
   }
 
-  return fileTableHandle.fileTable.entries[fd];
+  return fileTable.entries[fd];
 }
 
 FileTable::Handle::Entry::operator bool() const {
-  if (fd >= fileTableHandle.fileTable.entries.size() || fd < 0) {
+  if (fd >= fileTable.entries.size() || fd < 0) {
     return false;
   }
 
-  return fileTableHandle.fileTable.entries[fd] != nullptr;
+  return fileTable.entries[fd] != nullptr;
+}
+
+FileTable::Handle::Entry FileTable::Handle::operator[](__wasi_fd_t fd) {
+  return Entry(fileTable, fd);
 }
 
 __wasi_fd_t

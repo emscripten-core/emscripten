@@ -39,7 +39,7 @@ class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   // An OpenFileState needs a mutex if there are concurrent accesses on one open
   // file descriptor. This could occur if there are multiple seeks on the same
   // open file descriptor.
-  std::mutex mutex;
+  std::recursive_mutex mutex;
 
 public:
   OpenFileState(size_t position, oflags_t flags, std::shared_ptr<File> file)
@@ -47,7 +47,7 @@ public:
 
   class Handle {
     std::shared_ptr<OpenFileState> openFileState;
-    std::unique_lock<std::mutex> lock;
+    std::unique_lock<std::recursive_mutex> lock;
 
   public:
     Handle(std::shared_ptr<OpenFileState> openFileState)
@@ -93,36 +93,44 @@ public:
     // return a reference, and can be used to check for the lack of an item
     // there without allocation (similar to how table[x] works on a JS object),
     // which keeps syntax concise.
-    struct Entry {
-      // Need to store a reference to the single global filetable, which is a
-      // local static variable.
-      Handle& fileTableHandle;
-      __wasi_fd_t fd;
+    class Entry;
 
-      operator std::shared_ptr<OpenFileState>() const;
-
-      Entry& operator=(std::shared_ptr<OpenFileState> ptr);
-
-      Entry& operator=(Entry& entry) {
-        return *this = std::shared_ptr<OpenFileState>(entry);
-      }
-
-      // Return a locked Handle to access OpenFileState members.
-      OpenFileState::Handle locked() {
-        assert(fd < fileTableHandle.fileTable.entries.size() && fd >= 0);
-        return unlocked()->get();
-      }
-
-      // Return an OpenFileState without member access.
-      std::shared_ptr<OpenFileState> unlocked();
-
-      // Check whether the entry exists (i.e. contains an OpenFileState).
-      operator bool() const;
-    };
-
-    Entry operator[](__wasi_fd_t fd) { return Entry{*this, fd}; };
+    Entry operator[](__wasi_fd_t fd);
 
     __wasi_fd_t add(std::shared_ptr<OpenFileState> openFileState);
   };
+};
+
+class FileTable::Handle::Entry : public FileTable::Handle {
+  friend FileTable::Handle;
+
+public:
+  operator std::shared_ptr<OpenFileState>() const;
+
+  Entry& operator=(std::shared_ptr<OpenFileState> ptr);
+
+  Entry& operator=(Entry& entry) {
+    return *this = std::shared_ptr<OpenFileState>(entry);
+  }
+
+  // Return a locked Handle to access OpenFileState members.
+  OpenFileState::Handle locked() {
+    assert(fd < fileTable.entries.size() && fd >= 0);
+    return unlocked()->get();
+  }
+
+  // Return an OpenFileState without member access.
+  std::shared_ptr<OpenFileState> unlocked();
+
+  // Check whether the entry exists (i.e. contains an OpenFileState).
+  operator bool() const;
+
+private:
+  // Need to store a reference to the single global filetable, which is a
+  // local static variable.
+  __wasi_fd_t fd;
+
+  Entry(FileTable& fileTable, __wasi_fd_t fd)
+    : FileTable::Handle(fileTable), fd(fd) {}
 };
 } // namespace wasmfs
