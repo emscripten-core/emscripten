@@ -79,8 +79,15 @@ int __timedwait_cp(volatile int *addr, int val,
 				return ECANCELED;
 			}
 			// Must wait in slices in case this thread is cancelled in between.
+#ifdef __EMSCRIPTEN_ATOMIC_BUILTINS__
+			r = __builtin_wasm_memory_atomic_wait32((int*)addr, val,
+				(msecsToSleep > maxMsecsToSleep ? maxMsecsToSleep : msecsToSleep) * /*NSEC_PER_MSEC*/1000000);
+			if (r == 2) r = ETIMEDOUT;
+			if (r == 1) r = EWOULDBLOCK;
+#else // !defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
 			r = -emscripten_futex_wait((void*)addr, val,
 				msecsToSleep > maxMsecsToSleep ? maxMsecsToSleep : msecsToSleep);
+#endif // defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
 			// Assist other threads by executing proxied operations that are effectively singlethreaded.
 			if (is_runtime_thread) emscripten_main_thread_process_queued_calls();
 
@@ -88,7 +95,13 @@ int __timedwait_cp(volatile int *addr, int val,
 		} while (r == ETIMEDOUT && msecsToSleep > 0);
 	} else {
 		// Can wait in one go.
+#ifdef __EMSCRIPTEN_ATOMIC_BUILTINS__
+		r = __builtin_wasm_memory_atomic_wait32((int*)addr, val, top ? (msecsToSleep * /*NSEC_PER_MSEC*/1000000) : -1);
+		if (r == 2) r = ETIMEDOUT;
+		if (r == 1) r = EWOULDBLOCK;
+#else // !defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
 		r = -emscripten_futex_wait((void*)addr, val, msecsToSleep);
+#endif // defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
 	}
 #else
 	r = -__futex4_cp(addr, FUTEX_WAIT|priv, val, top);

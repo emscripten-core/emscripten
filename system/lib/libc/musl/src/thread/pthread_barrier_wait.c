@@ -96,11 +96,20 @@ int pthread_barrier_wait(pthread_barrier_t *b)
 					// Assist other threads by executing proxied operations that are effectively singlethreaded.
 					emscripten_main_thread_process_queued_calls();
 					// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
+#ifdef __EMSCRIPTEN_ATOMIC_BUILTINS__
+					e = __builtin_wasm_memory_atomic_wait32((int*)&inst->finished, 1, 1);
+					if (e == 2) e = -ETIMEDOUT;
+#else // !defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
 					e = emscripten_futex_wait(&inst->finished, 1, 1);
+#endif // defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
 				} while (e == -ETIMEDOUT);
 			} else {
 				// Can wait in one go.
+#ifdef __EMSCRIPTEN_ATOMIC_BUILTINS__
+				__builtin_wasm_memory_atomic_wait32((int*)&inst->finished, 1, -1);
+#else // !defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
 				emscripten_futex_wait(&inst->finished, 1, INFINITY);
+#endif // defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
 			}
 		}
 #else

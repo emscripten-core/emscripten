@@ -163,7 +163,7 @@ def make_test(name, testfile, browser):
     if browser:
       self.btest_exit(testfile, args=args)
     else:
-      self.do_runf(testfile, emcc_args=args, output_basename=name)
+      self.do_runf(testfile, emcc_args=args + ['-sENVIRONMENT=node,worker'], output_basename=name)
 
   if name in expect_fail:
     f = unittest.expectedFailure(f)

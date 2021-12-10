@@ -526,27 +526,34 @@ class Library:
 class MTLibrary(Library):
   def __init__(self, **kwargs):
     self.is_mt = kwargs.pop('is_mt')
+    self.not_web = kwargs.pop('not_web')
     super().__init__(**kwargs)
 
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_mt:
       cflags += ['-s', 'USE_PTHREADS']
+      if self.not_web:
+        cflags += ['-D__EMSCRIPTEN_ATOMIC_BUILTINS__']
     return cflags
 
   def get_base_name(self):
     name = super().get_base_name()
     if self.is_mt:
       name += '-mt'
+      if self.not_web:
+        name += '-not-web'
     return name
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_mt']
+    return super().vary_on() + ['is_mt', 'not_web']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_mt=settings.USE_PTHREADS, **kwargs)
+    return super().get_default_variation(is_mt=settings.USE_PTHREADS,
+                                         not_web=not settings.ENVIRONMENT_MAY_BE_WEB,
+                                         **kwargs)
 
 
 class DebugLibrary(Library):

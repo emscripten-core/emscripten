@@ -105,8 +105,13 @@ void emscripten_thread_sleep(double msecs) {
     if (msecsToSleep < minTimeSliceToSleep)
       continue;
 
+#ifdef __EMSCRIPTEN_ATOMIC_BUILTINS__
+    __builtin_wasm_memory_atomic_wait32((int*)&dummyZeroAddress, 0,
+      (msecsToSleep > maxMsecsSliceToSleep ? maxMsecsSliceToSleep : msecsToSleep) * /*NSEC_PER_MSEC*/1000000);
+#else // !defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
     emscripten_futex_wait(&dummyZeroAddress, 0,
       msecsToSleep > maxMsecsSliceToSleep ? maxMsecsSliceToSleep : msecsToSleep);
+#endif // defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
   } while (msecsToSleep > 0);
 
   emscripten_conditional_set_current_thread_status(
@@ -323,7 +328,11 @@ static void _do_call(void* arg) {
   } else {
     // The caller owns this call object, it is listening to it and will free it up.
     q->operationDone = 1;
+#ifdef __EMSCRIPTEN_ATOMIC_BUILTINS__
+    __builtin_wasm_memory_atomic_notify((int*)&q->operationDone, -1);
+#else // !defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
     emscripten_futex_wake(&q->operationDone, INT_MAX);
+#endif // defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
   }
 }
 
@@ -385,11 +394,20 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeou
   int done = atomic_load(&call->operationDone);
   if (done) return EMSCRIPTEN_RESULT_SUCCESS;
 
+#ifdef __EMSCRIPTEN_ATOMIC_BUILTINS__
+  int waitIndefinitely = isinf(timeoutMSecs);
+#endif
+
   emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
 
   double timeoutUntilTime = emscripten_get_now() + timeoutMSecs;
   do {
+#ifdef __EMSCRIPTEN_ATOMIC_BUILTINS__
+    __builtin_wasm_memory_atomic_wait32((int*)&call->operationDone, 0,
+      waitIndefinitely ? -1 : (timeoutMSecs * /*NSEC_PER_MSEC*/1000000));
+#else // !defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
     emscripten_futex_wait(&call->operationDone, 0, timeoutMSecs);
+#endif // defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
     done = atomic_load(&call->operationDone);
 
     timeoutMSecs = timeoutUntilTime - emscripten_get_now();
@@ -454,7 +472,11 @@ int _emscripten_do_dispatch_to_thread(pthread_t target_thread, em_queued_call* c
     // If queue of the main browser thread is full, then we wait. (never drop messages for the main
     // browser thread)
     if (target_thread == emscripten_main_browser_thread_id()) {
+#ifdef __EMSCRIPTEN_ATOMIC_BUILTINS__
+      __builtin_wasm_memory_atomic_wait32((int*)&q->call_queue_head, head, -1);
+#else // !defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
       emscripten_futex_wait((void*)&q->call_queue_head, head, INFINITY);
+#endif // defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
       pthread_mutex_lock(&call_queue_lock);
       head = q->call_queue_head;
       tail = q->call_queue_tail;
@@ -634,7 +656,11 @@ void emscripten_current_thread_process_queued_calls() {
   pthread_mutex_unlock(&call_queue_lock);
 
   // If the queue was full and we had waiters pending to get to put data to queue, wake them up.
+#ifdef __EMSCRIPTEN_ATOMIC_BUILTINS__
+  __builtin_wasm_memory_atomic_notify((int*)&q->call_queue_head, -1);
+#else // !defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
   emscripten_futex_wake((void*)&q->call_queue_head, INT_MAX);
+#endif // defined(__EMSCRIPTEN_ATOMIC_BUILTINS__)
 
   thread_is_processing_queued_calls = false;
 }
