@@ -84,8 +84,7 @@ int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr, int prioceiling)
 static uint32_t dummyZeroAddress = 0;
 
 void emscripten_thread_sleep(double msecs) {
-  double now = emscripten_get_now();
-  double target = now + msecs;
+  double target = emscripten_get_now() + msecs;
 
   // If we have less than this many msecs left to wait, busy spin that instead.
   double min_ms_slice_to_sleep = 0.1;
