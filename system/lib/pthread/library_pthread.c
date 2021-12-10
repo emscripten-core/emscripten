@@ -384,22 +384,24 @@ static CallQueue* GetOrAllocateQueue(void* target) {
 }
 
 EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeoutMSecs) {
+  int r;
+
   int done = atomic_load(&call->operationDone);
-  if (done) return EMSCRIPTEN_RESULT_SUCCESS;
-
-  emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
-
-  double timeoutUntilTime = emscripten_get_now() + timeoutMSecs;
-  do {
-    emscripten_futex_wait(&call->operationDone, 0, timeoutMSecs);
-    done = atomic_load(&call->operationDone);
-
-    timeoutMSecs = timeoutUntilTime - emscripten_get_now();
-  } while (!done && timeoutMSecs > 0);
-
-  emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
-
-  return done ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_TIMED_OUT;
+  if (!done) {
+    double now = emscripten_get_now();
+    double waitEndTime = now + timeoutMSecs;
+    emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
+    while (!done && now < waitEndTime) {
+      r = emscripten_futex_wait(&call->operationDone, 0, waitEndTime - now);
+      done = atomic_load(&call->operationDone);
+      now = emscripten_get_now();
+    }
+    emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
+  }
+  if (done)
+    return EMSCRIPTEN_RESULT_SUCCESS;
+  else
+    return EMSCRIPTEN_RESULT_TIMED_OUT;
 }
 
 EMSCRIPTEN_RESULT emscripten_wait_for_call_i(
