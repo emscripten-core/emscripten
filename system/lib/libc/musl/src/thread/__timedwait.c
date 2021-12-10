@@ -65,7 +65,7 @@ int __timedwait_cp(volatile int *addr, int val,
 	const double maxMsecsToSleep = is_runtime_thread ? 1 : 100;
 
 	// cp suffix in the function name means "cancellation point", so this wait can be cancelled
-	// by the users unless current threads cancellability is set to PTHREAD_CANCEL_DISABLE
+	// by the users unless current threads cancelability is set to PTHREAD_CANCEL_DISABLE
 	// which may be either done by the user of __timedwait() function.
 	if (is_runtime_thread ||
 	    pthread_self()->canceldisable != PTHREAD_CANCEL_DISABLE ||
