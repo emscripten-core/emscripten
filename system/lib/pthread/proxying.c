@@ -103,8 +103,11 @@ struct em_proxying_queue {
   int capacity;
 };
 
-static em_proxying_queue system_proxying_queue = {
-  PTHREAD_MUTEX_INITIALIZER, NULL, 0, 0};
+static em_proxying_queue system_proxying_queue = {.mutex =
+                                                    PTHREAD_MUTEX_INITIALIZER,
+                                                  .task_queues = NULL,
+                                                  .size = 0,
+                                                  .capacity = 0};
 
 em_proxying_queue* emscripten_proxy_get_system_queue(void) {
   return &system_proxying_queue;
@@ -115,7 +118,10 @@ em_proxying_queue* em_proxying_queue_create(void) {
   if (q == NULL) {
     return NULL;
   }
-  *q = (em_proxying_queue){PTHREAD_MUTEX_INITIALIZER, NULL, 0, 0};
+  *q = (em_proxying_queue){.mutex = PTHREAD_MUTEX_INITIALIZER,
+                           .task_queues = NULL,
+                           .size = 0,
+                           .capacity = 0};
   return q;
 }
 
@@ -247,11 +253,11 @@ struct em_proxying_ctx {
 static void em_proxying_ctx_init(em_proxying_ctx* ctx,
                                  void (*func)(em_proxying_ctx*, void*),
                                  void* arg) {
-  ctx->func = func;
-  ctx->arg = arg;
-  ctx->done = 0;
-  pthread_mutex_init(&ctx->mutex, NULL);
-  pthread_cond_init(&ctx->cond, NULL);
+  *ctx = (em_proxying_ctx){.func = func,
+                           .arg = arg,
+                           .done = 0,
+                           .mutex = PTHREAD_MUTEX_INITIALIZER,
+                           .cond = PTHREAD_COND_INITIALIZER};
 }
 
 static void em_proxying_ctx_deinit(em_proxying_ctx* ctx) {
