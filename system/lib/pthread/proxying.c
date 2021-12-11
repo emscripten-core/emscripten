@@ -39,15 +39,17 @@ typedef struct task_queue {
   int tail;
 } task_queue;
 
+// Not thread safe.
 static int task_queue_empty(task_queue* tasks) {
   return tasks->head == tasks->tail;
 }
 
+// Not thread safe.
 static int task_queue_full(task_queue* tasks) {
   return tasks->head == (tasks->tail + 1) % tasks->capacity;
 }
 
-// Returns 1 on success and 0 on failure.
+// // Not thread safe. Returns 1 on success and 0 on failure.
 static int task_queue_grow(task_queue* tasks) {
   // Allocate a larger task queue.
   int new_capacity = tasks->capacity * 2;
@@ -80,7 +82,7 @@ static int task_queue_grow(task_queue* tasks) {
   return 1;
 }
 
-// Returns 1 on success and 0 on failure.
+// Not thread safe. Returns 1 on success and 0 on failure.
 static int task_queue_enqueue(task_queue* tasks, task t) {
   if (task_queue_full(tasks) && !task_queue_grow(tasks)) {
     return 0;
@@ -90,6 +92,7 @@ static int task_queue_enqueue(task_queue* tasks, task t) {
   return 1;
 }
 
+// Not thread safe.
 static task task_queue_dequeue(task_queue* tasks) {
   task t = tasks->tasks[tasks->head];
   tasks->head = (tasks->head + 1) % tasks->capacity;
