@@ -48,41 +48,43 @@ static int task_queue_full(task_queue* tasks) {
 }
 
 // Returns 1 on success and 0 on failure.
-static int task_queue_enqueue(task_queue* tasks, task t) {
-  if (task_queue_full(tasks)) {
-    // Allocate a larger task queue.
-    int new_capacity = tasks->capacity * 2;
-    task* new_tasks = malloc(sizeof(task) * new_capacity);
-    if (new_tasks == NULL) {
-      return 0;
-    }
-    // Copy the tasks such that the head of the queue is at the beginning of the
-    // buffer. There are two cases to handle: either the queue wraps around the
-    // end of the old buffer or it does not.
-    int queued_tasks;
-    if (tasks->head <= tasks->tail) {
-      // No wrap. Copy the tasks in one chunk.
-      queued_tasks = tasks->tail - tasks->head;
-      memcpy(
-        new_tasks, &tasks->tasks[tasks->head], sizeof(task) * queued_tasks);
-    } else {
-      // Wrap. Copy `first_queued` tasks up to the end of the old buffer and
-      // `last_queued` tasks at the beginning of the old buffer.
-      int first_queued = tasks->capacity - tasks->head;
-      int last_queued = tasks->tail;
-      queued_tasks = first_queued + last_queued;
-      memcpy(
-        new_tasks, &tasks->tasks[tasks->head], sizeof(task) * first_queued);
-      memcpy(
-        new_tasks + first_queued, tasks->tasks, sizeof(task) * last_queued);
-    }
-    free(tasks->tasks);
-    tasks->tasks = new_tasks;
-    tasks->capacity = new_capacity;
-    tasks->head = 0;
-    tasks->tail = queued_tasks;
+static int task_queue_grow(task_queue* tasks) {
+  // Allocate a larger task queue.
+  int new_capacity = tasks->capacity * 2;
+  task* new_tasks = malloc(sizeof(task) * new_capacity);
+  if (new_tasks == NULL) {
+    return 0;
   }
-  // Enqueue the task.
+  // Copy the tasks such that the head of the queue is at the beginning of the
+  // buffer. There are two cases to handle: either the queue wraps around the
+  // end of the old buffer or it does not.
+  int queued_tasks;
+  if (tasks->head <= tasks->tail) {
+    // No wrap. Copy the tasks in one chunk.
+    queued_tasks = tasks->tail - tasks->head;
+    memcpy(new_tasks, &tasks->tasks[tasks->head], sizeof(task) * queued_tasks);
+  } else {
+    // Wrap. Copy `first_queued` tasks up to the end of the old buffer and
+    // `last_queued` tasks at the beginning of the old buffer.
+    int first_queued = tasks->capacity - tasks->head;
+    int last_queued = tasks->tail;
+    queued_tasks = first_queued + last_queued;
+    memcpy(new_tasks, &tasks->tasks[tasks->head], sizeof(task) * first_queued);
+    memcpy(new_tasks + first_queued, tasks->tasks, sizeof(task) * last_queued);
+  }
+  free(tasks->tasks);
+  tasks->tasks = new_tasks;
+  tasks->capacity = new_capacity;
+  tasks->head = 0;
+  tasks->tail = queued_tasks;
+  return 1;
+}
+
+// Returns 1 on success and 0 on failure.
+static int task_queue_enqueue(task_queue* tasks, task t) {
+  if (task_queue_full(tasks) && !task_queue_grow(tasks)) {
+    return 0;
+  }
   tasks->tasks[tasks->tail] = t;
   tasks->tail = (tasks->tail + 1) % tasks->capacity;
   return 1;
