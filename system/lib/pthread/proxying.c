@@ -6,7 +6,6 @@
  */
 
 #include <assert.h>
-#include <emscripten/html5.h>
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
 #include <pthread.h>
@@ -209,16 +208,6 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   pthread_mutex_unlock(&q->mutex);
 }
 
-static pthread_t normalize_thread(pthread_t thread) {
-  if (pthread_equal(thread, EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD)) {
-    return emscripten_main_browser_thread_id();
-  }
-  if (pthread_equal(thread, EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)) {
-    return pthread_self();
-  }
-  return thread;
-}
-
 int emscripten_proxy_async(em_proxying_queue* q,
                            pthread_t target_thread,
                            void (*func)(void*),
@@ -226,7 +215,6 @@ int emscripten_proxy_async(em_proxying_queue* q,
   if (q == NULL) {
     return 0;
   }
-  target_thread = normalize_thread(target_thread);
   pthread_mutex_lock(&q->mutex);
   task_queue* tasks = get_or_add_tasks_for_thread(q, target_thread);
   if (tasks == NULL) {
@@ -294,7 +282,7 @@ int emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
                                    pthread_t target_thread,
                                    void (*func)(em_proxying_ctx*, void*),
                                    void* arg) {
-  assert(!pthread_equal(normalize_thread(target_thread), pthread_self()) &&
+  assert(!pthread_equal(target_thread, pthread_self()) &&
          "Cannot synchronously wait for work proxied to the current thread");
   em_proxying_ctx ctx;
   em_proxying_ctx_init(&ctx, func, arg);
