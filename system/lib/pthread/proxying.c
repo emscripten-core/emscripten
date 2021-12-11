@@ -123,9 +123,7 @@ em_proxying_queue* em_proxying_queue_create(void) {
 }
 
 void em_proxying_queue_destroy(em_proxying_queue* q) {
-  if (q == NULL) {
-    return;
-  }
+  assert(q != NULL);
   assert(q != &system_proxying_queue && "cannot destroy system proxying queue");
   // No need to acquire the lock; no one should be racing with the destruction
   // of the queue.
@@ -185,9 +183,7 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
 }
 
 void emscripten_proxy_execute_queue(em_proxying_queue* q) {
-  if (q == NULL) {
-    return;
-  }
+  assert(q != NULL);
   pthread_mutex_lock(&q->mutex);
   task_queue* tasks = get_tasks_for_thread(q, pthread_self());
   if (tasks == NULL || tasks->processing) {
@@ -213,9 +209,7 @@ int emscripten_proxy_async(em_proxying_queue* q,
                            pthread_t target_thread,
                            void (*func)(void*),
                            void* arg) {
-  if (q == NULL) {
-    return 0;
-  }
+  assert(q != NULL);
   pthread_mutex_lock(&q->mutex);
   task_queue* tasks = get_or_add_tasks_for_thread(q, target_thread);
   if (tasks == NULL) {
