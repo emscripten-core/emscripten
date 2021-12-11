@@ -210,13 +210,11 @@ int emscripten_proxy_async(em_proxying_queue* q,
   pthread_mutex_lock(&q->mutex);
   task_queue* tasks = get_or_add_tasks_for_thread(q, target_thread);
   if (tasks == NULL) {
-    pthread_mutex_unlock(&q->mutex);
-    return 0;
+    goto failed;
   }
   int empty = task_queue_empty(tasks);
   if (!task_queue_enqueue(tasks, (task){func, arg})) {
-    pthread_mutex_unlock(&q->mutex);
-    return 0;
+    goto failed;
   }
   pthread_mutex_unlock(&q->mutex);
   // If the queue was previously empty, notify the target thread to process it.
@@ -229,6 +227,10 @@ int emscripten_proxy_async(em_proxying_queue* q,
                                     emscripten_main_browser_thread_id());
   }
   return 1;
+
+failed:
+  pthread_mutex_unlock(&q->mutex);
+  return 0;
 }
 
 struct em_proxying_ctx {
