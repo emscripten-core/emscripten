@@ -6,11 +6,12 @@
  */
 
 #include <assert.h>
-#include <emscripten/proxying.h>
 #include <emscripten/threading.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "proxying.h"
 
 #define TASK_QUEUE_INITIAL_CAPACITY 128
 
