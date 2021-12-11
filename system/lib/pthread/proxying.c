@@ -39,6 +39,22 @@ typedef struct task_queue {
   int tail;
 } task_queue;
 
+static int task_queue_init(task_queue* tasks, pthread_t thread) {
+  task* task_buffer = malloc(sizeof(task) * TASK_QUEUE_INITIAL_CAPACITY);
+  if (task_buffer == NULL) {
+    return 0;
+  }
+  *tasks = (task_queue){.thread = thread,
+                        .processing = 0,
+                        .tasks = task_buffer,
+                        .capacity = TASK_QUEUE_INITIAL_CAPACITY,
+                        .head = 0,
+                        .tail = 0};
+  return 1;
+}
+
+static void task_queue_deinit(task_queue* tasks) { free(tasks->tasks); }
+
 // Not thread safe.
 static int task_queue_empty(task_queue* tasks) {
   return tasks->head == tasks->tail;
@@ -137,7 +153,7 @@ void em_proxying_queue_destroy(em_proxying_queue* q) {
   // of the queue.
   pthread_mutex_destroy(&q->mutex);
   for (int i = 0; i < q->size; i++) {
-    free(q->task_queues[i].tasks);
+    task_queue_deinit(&q->task_queues[i]);
   }
   free(q->task_queues);
   free(q);
@@ -178,14 +194,9 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
   }
   // Initialize the next available task queue.
   tasks = &q->task_queues[q->size];
-  tasks->thread = thread;
-  tasks->processing = 0;
-  tasks->tasks = malloc(sizeof(task) * TASK_QUEUE_INITIAL_CAPACITY);
-  if (tasks->tasks == NULL) {
+  if (!task_queue_init(tasks, thread)) {
     return NULL;
   }
-  tasks->head = 0;
-  tasks->tail = 0;
   q->size++;
   return tasks;
 }
