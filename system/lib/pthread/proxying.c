@@ -115,10 +115,7 @@ em_proxying_queue* em_proxying_queue_create(void) {
   if (q == NULL) {
     return NULL;
   }
-  pthread_mutex_init(&q->mutex, NULL);
-  q->task_queues = NULL;
-  q->size = 0;
-  q->capacity = 0;
+  *q = (em_proxying_queue){PTHREAD_MUTEX_INITIALIZER, NULL, 0, 0};
   return q;
 }
 
