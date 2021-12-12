@@ -827,6 +827,7 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
           'pthread_testcancel.c',
           'emscripten_proxy_main.c',
           'emscripten_thread_state.S',
+          'emscripten_futex_wait.c',
         ])
     else:
       ignore += ['thread']
