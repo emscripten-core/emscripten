@@ -29,9 +29,8 @@ def get(ports, settings, shared):
 
     # build
     srcs = [
-      'blocksort.c', 'compress.c', 'decompress.c',
-      'huffman.c', 'randtable.c', 'unzcrash.c', 'bzlib.c',
-      'crctable.c',
+      'blocksort.c', 'compress.c', 'decompress.c', 'huffman.c',
+      'randtable.c', 'bzlib.c', 'crctable.c',
     ]
     commands = []
     o_s = []
