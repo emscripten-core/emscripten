@@ -1382,7 +1382,7 @@ class libasmfs(MTLibrary):
 class libwasmfs(MTLibrary, DebugLibrary):
   name = 'libwasmfs'
 
-  cflags = ['-fno-exceptions', '-std=c++17']
+  cflags = ['-O2', '-fno-exceptions', '-std=c++17']
 
   def get_files(self):
     return files_in_path(
