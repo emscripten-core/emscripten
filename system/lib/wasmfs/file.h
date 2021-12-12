@@ -11,8 +11,8 @@
 
 #include <assert.h>
 #include <emscripten/html5.h>
-#include <map>
 #include <mutex>
+#include <optional>
 #include <sys/stat.h>
 #include <vector>
 #include <wasi/api.h>
@@ -172,13 +172,6 @@ public:
 };
 
 class Directory : public File {
-protected:
-  // TODO: maybe change to vector?
-  std::map<std::string, std::shared_ptr<File>> entries;
-  // 4096 bytes is the size of a block in ext4.
-  // This value was also copied from the existing file system.
-  size_t getSize() override { return 4096; }
-
 public:
   static constexpr FileKind expectedKind = File::DirectoryKind;
   Directory(mode_t mode, backend_t backend)
@@ -199,55 +192,21 @@ public:
 
     std::shared_ptr<File> getEntry(std::string pathName);
 
-    void setEntry(std::string pathName, std::shared_ptr<File> inserted) {
-      // Hold the lock over both functions to cover the case in which two
-      // directories attempt to add the file.
-      auto lockedInserted = inserted->locked();
-      getDir()->entries[pathName] = inserted;
-      // Simultaneously, set the parent of the inserted node to be this Dir.
-      // inserted must be locked because we have to go through Handle.
-      // TODO: When rename is implemented, ensure that the source directory has
-      // been removed as a parent.
-      // https://github.com/emscripten-core/emscripten/pull/15410#discussion_r742171264
-      assert(!lockedInserted.getParent());
-      lockedInserted.setParent(file);
-    }
+    void setEntry(std::string pathName, std::shared_ptr<File> inserted);
 
-    void unlinkEntry(std::string pathName) {
-      // The file lock must be held for both operations. Removing the child file
-      // from the parent's entries and removing the parent pointer from the
-      // child should be atomic. The state should not be mutated in between.
-      auto unlinked = getDir()->entries[pathName]->locked();
-      unlinked.setParent({});
-      getDir()->entries.erase(pathName);
-    }
+    void unlinkEntry(std::string pathName);
 
-    // Used to obtain name of child File in the directory entries vector.
-    std::string getName(std::shared_ptr<File> target) {
-      for (const auto& [key, value] : getDir()->entries) {
-        if (value == target) {
-          return key;
-        }
-      }
-
-      return "";
-    }
+    // Used to obtain the name of a child File in the directory entries vector.
+    std::string getName(std::shared_ptr<File> target);
 
     int getNumEntries() { return getDir()->entries.size(); }
 
-    // Return a vector of the key-value pairs in entries.
-    std::vector<Directory::Entry> getEntries() {
-      std::vector<Directory::Entry> entries;
-      for (const auto& [key, value] : getDir()->entries) {
-        entries.push_back({key, value});
-      }
-      return entries;
-    }
+    std::vector<Directory::Entry> getEntries() { return getDir()->entries; };
 
 #ifdef WASMFS_DEBUG
     void printKeys() {
-      for (auto keyPair : getDir()->entries) {
-        emscripten_console_log(keyPair.first.c_str());
+      for (const auto& entry : getDir()->entries) {
+        emscripten_console_log(entry.name.c_str());
       }
     }
 #endif
@@ -263,6 +222,14 @@ public:
       return {};
     }
   }
+
+protected:
+  // A vector (instead of a map) saves on code size, but will lead to linear
+  // search time in certain operations, ex. getEntry().
+  std::vector<Entry> entries;
+  // 4096 bytes is the size of a block in ext4.
+  // This value was also copied from the JS file system.
+  size_t getSize() override { return 4096; }
 };
 
 struct ParsedPath {
