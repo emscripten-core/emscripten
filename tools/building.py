@@ -732,6 +732,16 @@ def get_closure_compiler_and_env(user_args):
   return closure_cmd, env
 
 
+@ToolchainProfiler.profile_block('closure_transpile')
+def closure_transpile(filename, pretty):
+  user_args = []
+  closure_cmd, env = get_closure_compiler_and_env(user_args)
+  closure_cmd += ['--language_out', 'ES5']
+  closure_cmd += ['--compilation_level', 'WHITESPACE_ONLY']
+  closure_cmd += ['--formatting', 'PRETTY_PRINT']
+  return run_closure_cmd(closure_cmd, filename, env, pretty)
+
+
 @ToolchainProfiler.profile_block('closure_compiler')
 def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   user_args = []
@@ -794,7 +804,10 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   # Tell closure not to do any transpiling or inject any polyfills.
   # At some point we may want to look into using this as way to convert to ES5 but
   # babel is perhaps a better tool for that.
-  args += ['--language_out', 'NO_TRANSPILE']
+  if settings.TRANSPILE_TO_ES5:
+    args += ['--language_out', 'ES5']
+  else:
+    args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
   args += ['--emit_use_strict=false']
 
