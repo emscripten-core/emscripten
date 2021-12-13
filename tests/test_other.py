@@ -11371,6 +11371,7 @@ void foo() {}
         self.assertContained('const ', js)
         self.assertContained('let ', js)
       else:
+        self.verify_es5(filename)
         self.assertNotContained('() => 2', js)
         self.assertNotContained('()=>2', js)
         self.assertNotContained('const ', js)

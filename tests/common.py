@@ -587,8 +587,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
-    if js_outfile and not self.uses_es6:
-      self.verify_es5(output)
 
     if js_outfile and self.uses_memory_init_file():
       src = read_file(output)
