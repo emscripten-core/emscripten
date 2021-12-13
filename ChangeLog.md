@@ -20,6 +20,14 @@ See docs/process.md for more on how version tagging works.
 
 3.0.2
 -----
+- Emscripten in starting to use ES6 features in its core libraries (at last!).
+  For most users targeting the default set of browsers this is a code size win.
+  For projects targeting older browsers (e.g. `-sMIN_CHROME_VERSION=10`),
+  emscripten will now run closure compiler in `WHITESPACE_ONLY` mode in order to
+  traspile any ES6 down to ES5.  When this automatic transpilation is performed
+  we generate a warning which can disabled (using `-Wno-transpile`) or by
+  explicitly opting in-to or out-of closure using `--closure=1` or
+  `--closure=0`. (#15763).
 
 3.0.1 - 12/17/2021
 ------------------

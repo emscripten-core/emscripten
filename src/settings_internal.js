@@ -219,3 +219,8 @@ var HAS_MAIN = 0;
 
 // Set to true if we are linking as C++ and including C++ stdlibs
 var LINK_AS_CXX = 0;
+
+// Set when some minimum browser version triggers doesn't support the
+// minimum set of ES6 featurs.  This triggers transpilation to ES5
+// using closure compiler.
+var TRANSPILE_TO_ES5 = 0;
