@@ -303,9 +303,7 @@ var LibraryEmbind = {
     '$typeDependencies', '$throwBindingError',
     '$whenDependentTypesAreResolved'],
   $registerType__docs: '/** @param {Object=} options */',
-  $registerType: function(rawType, registeredInstance, options) {
-    options = options || {};
-
+  $registerType: function(rawType, registeredInstance, options = {}) {
     if (!('argPackAdvance' in registeredInstance)) {
         throw new TypeError('registerType registeredInstance requires argPackAdvance');
     }
@@ -560,19 +558,15 @@ var LibraryEmbind = {
 
     var shift = getShiftFromSize(size);
 
-    var fromWireType = function(value) {
-        return value;
-    };
+    var fromWireType = (value) => value;
 
     if (minRange === 0) {
         var bitshift = 32 - 8*size;
-        fromWireType = function(value) {
-            return (value << bitshift) >>> bitshift;
-        };
+        fromWireType = (value) => (value << bitshift) >>> bitshift;
     }
 
     var isUnsignedType = (name.includes('unsigned'));
-    var checkAssertions = function(value, toTypeName) {
+    var checkAssertions = (value, toTypeName) => {
 #if ASSERTIONS
         if (typeof value !== "number" && typeof value !== "boolean") {
             throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + toTypeName);
@@ -738,9 +732,9 @@ var LibraryEmbind = {
                 throwBindingError('Cannot pass non-string to std::string');
             }
             if (stdStringIsUTF8 && valueIsOfTypeString) {
-                getLength = function() {return lengthBytesUTF8(value);};
+                getLength = () => lengthBytesUTF8(value);
             } else {
-                getLength = function() {return value.length;};
+                getLength = () => value.length;
             }
 
             // assumes 4-byte alignment
@@ -794,13 +788,13 @@ var LibraryEmbind = {
         decodeString = UTF16ToString;
         encodeString = stringToUTF16;
         lengthBytesUTF = lengthBytesUTF16;
-        getHeap = function() { return HEAPU16; };
+        getHeap = () => HEAPU16;
         shift = 1;
     } else if (charSize === 4) {
         decodeString = UTF32ToString;
         encodeString = stringToUTF32;
         lengthBytesUTF = lengthBytesUTF32;
-        getHeap = function() { return HEAPU32; };
+        getHeap = () => HEAPU32;
         shift = 2;
     }
     registerType(rawType, {
@@ -1273,10 +1267,10 @@ var LibraryEmbind = {
             var setterArgumentType = elementTypes[i + elementsLength];
             var setter = elt.setter;
             var setterContext = elt.setterContext;
-            elt.read = function(ptr) {
+            elt.read = (ptr) => {
                 return getterReturnType['fromWireType'](getter(getterContext, ptr));
             };
-            elt.write = function(ptr, o) {
+            elt.write = (ptr, o) => {
                 var destructors = [];
                 setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));
                 runDestructors(destructors);
@@ -1749,7 +1743,7 @@ var LibraryEmbind = {
                            '$releaseClassHandle'],
   $attachFinalizer: function(handle) {
     if ('undefined' === typeof FinalizationGroup) {
-        attachFinalizer = function (handle) { return handle; };
+        attachFinalizer = (handle) => handle;
         return handle;
     }
     // If the running environment has a FinalizationGroup (see
@@ -1766,11 +1760,11 @@ var LibraryEmbind = {
             }
         }
     });
-    attachFinalizer = function(handle) {
+    attachFinalizer = (handle) => {
         finalizationGroup.register(handle, handle.$$, handle.$$);
         return handle;
     };
-    detachFinalizer = function(handle) {
+    detachFinalizer = (handle) => {
         finalizationGroup.unregister(handle.$$);
     };
     return attachFinalizer(handle);
@@ -2106,7 +2100,7 @@ var LibraryEmbind = {
         if (undefined !== classType.registeredClass.constructor_body[argCount - 1]) {
             throw new BindingError("Cannot register multiple constructors with identical number of parameters (" + (argCount-1) + ") for class '" + classType.name + "'! Overload resolution is currently only performed using the parameter count, not actual type info!");
         }
-        classType.registeredClass.constructor_body[argCount - 1] = function unboundTypeHandler() {
+        classType.registeredClass.constructor_body[argCount - 1] = () => {
             throwUnboundTypeError('Cannot construct ' + classType.name + ' due to unbound types', rawArgTypes);
         };
 
@@ -2263,11 +2257,11 @@ var LibraryEmbind = {
             configurable: true
         };
         if (setter) {
-            desc.set = function() {
+            desc.set = () => {
                 throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [getterReturnType, setterArgumentType]);
             };
         } else {
-            desc.set = function(v) {
+            desc.set = (v) => {
                 throwBindingError(humanName + ' is a read-only property');
             };
         }
@@ -2390,11 +2384,11 @@ var LibraryEmbind = {
             configurable: true
         };
         if (setter) {
-            desc.set = function() {
+            desc.set = () => {
                 throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [rawFieldType]);
             };
         } else {
-            desc.set = function(v) {
+            desc.set = (v) => {
                 throwBindingError(humanName + ' is a read-only property');
             };
         }
@@ -2412,7 +2406,7 @@ var LibraryEmbind = {
 
             if (setter) {
                 setter = embind__requireFunction(setterSignature, setter);
-                desc.set = function(v) {
+                desc.set = (v) => {
                     var destructors = [];
                     setter(rawFieldPtr, fieldType['toWireType'](destructors, v));
                     runDestructors(destructors);

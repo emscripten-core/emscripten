@@ -115,9 +115,8 @@ FS.staticInit();` +
     //
     // paths
     //
-    lookupPath: function(path, opts) {
+    lookupPath: function(path, opts = {}) {
       path = PATH_FS.resolve(FS.cwd(), path);
-      opts = opts || {};
 
       if (!path) return { path: '', node: null };
 
@@ -393,9 +392,7 @@ FS.staticInit();` +
     // streams
     //
     MAX_OPEN_FDS: 4096,
-    nextfd: function(fd_start, fd_end) {
-      fd_start = fd_start || 0;
-      fd_end = fd_end || FS.MAX_OPEN_FDS;
+    nextfd: function(fd_start = 0, fd_end = FS.MAX_OPEN_FDS) {
       for (var fd = fd_start; fd <= fd_end; fd++) {
         if (!FS.streams[fd]) {
           return fd;
@@ -1281,8 +1278,7 @@ FS.staticInit();` +
       }
       return stream.stream_ops.ioctl(stream, cmd, arg);
     },
-    readFile: function(path, opts) {
-      opts = opts || {};
+    readFile: function(path, opts = {}) {
       opts.flags = opts.flags || {{{ cDefine('O_RDONLY') }}};
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
@@ -1302,8 +1298,7 @@ FS.staticInit();` +
       FS.close(stream);
       return ret;
     },
-    writeFile: function(path, data, opts) {
-      opts = opts || {};
+    writeFile: function(path, data, opts = {}) {
       opts.flags = opts.flags || {{{ cDefine('O_TRUNC') | cDefine('O_CREAT') | cDefine('O_WRONLY') }}};
       var stream = FS.open(path, opts.flags, opts.mode);
       if (typeof data === 'string') {
