@@ -7124,9 +7124,19 @@ int main() {
     # adding --metrics should not affect code size
     self.assertEqual(base_size, os.path.getsize('a.out.wasm'))
 
+  def check_expected_size_in_file(self, desc, filename, size):
+    if common.EMTEST_REBASELINE:
+      with open(filename, 'w') as f:
+        f.write(f'{size}\n')
+    size_slack = 0.05
+    expected_size = int(read_file(filename).strip())
+    delta = size - expected_size
+    ratio = abs(delta) / float(expected_size)
+    print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
+    self.assertLess(ratio, size_slack)
+
   def run_metadce_test(self, filename, args, expected_exists, expected_not_exists, check_size=True,
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
-    size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
     print('Running metadce test: %s:' % filename, args, expected_exists,
@@ -7172,19 +7182,14 @@ int main() {
       self.assertNotIn(not_exists, sent)
 
     if check_size:
-      size_file = expected_basename + '.size'
       # measure the wasm size without the name section
       self.run_process([wasm_opt, 'a.out.wasm', '--strip-debug', '--all-features', '-o', 'a.out.nodebug.wasm'])
       wasm_size = os.path.getsize('a.out.nodebug.wasm')
-      if common.EMTEST_REBASELINE:
-        with open(size_file, 'w') as f:
-          f.write(f'{wasm_size}\n')
-
-      expected_size = int(read_file(size_file).strip())
-      delta = wasm_size - expected_size
-      ratio = abs(delta) / float(expected_size)
-      print('  seen wasm size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (wasm_size, expected_size, delta, ratio))
-      self.assertLess(ratio, size_slack)
+      size_file = expected_basename + '.size'
+      js_size = os.path.getsize('a.out.js')
+      js_size_file = expected_basename + '.jssize'
+      self.check_expected_size_in_file('wasm', size_file, wasm_size)
+      self.check_expected_size_in_file('js', js_size_file, js_size)
 
     imports, exports, funcs = parse_wasm('a.out.wasm')
     imports.sort()
