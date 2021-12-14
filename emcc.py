@@ -1951,7 +1951,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
       '__emscripten_thread_init',
       '__emscripten_thread_exit',
       '_emscripten_tls_init',
-      '_emscripten_futex_wake',
       '_emscripten_current_thread_process_queued_calls',
       '_pthread_self',
     ]

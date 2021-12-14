@@ -7,7 +7,7 @@
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread__deps: ['_emscripten_thread_init',
-                   'emscripten_futex_wake', '$killThread',
+                   '$killThread',
                    '$cancelThread', '$cleanupThread', '$zeroMemory',
                    '_emscripten_thread_free_data',
                    'exit',
