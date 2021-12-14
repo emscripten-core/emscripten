@@ -1447,7 +1447,7 @@ class SanitizerLibrary(CompilerRTLibrary, MTLibrary):
 class libubsan_rt(SanitizerLibrary):
   name = 'libubsan_rt'
 
-  cflags = ['-DUBSAN_CAN_USE_CXXABI']
+  cflags = ['-O2', '-DUBSAN_CAN_USE_CXXABI']
   src_dir = 'system/lib/compiler-rt/lib/ubsan'
 
 
@@ -1476,7 +1476,7 @@ class libasan_js(Library):
   name = 'libasan_js'
   never_force = True
 
-  cflags = ['-fsanitize=address']
+  cflags = ['-O2', '-fsanitize=address']
 
   src_dir = 'system/lib'
   src_files = ['asan_js.c']
