@@ -196,12 +196,19 @@ void test_proxy_sync_with_ctx(void) {
 }
 
 typedef struct increment_to_arg {
+  em_proxying_queue* queue;
   int* ip;
   int i;
 } increment_to_arg;
 
 void increment_to(void* arg_p) {
   increment_to_arg* arg = (increment_to_arg*)arg_p;
+
+  // Try executing the queue; since the queue is already being executed, this
+  // shouldn't do anything and *arg->ip should still be one less than arg->i
+  // afterward.
+  emscripten_proxy_execute_queue(arg->queue);
+
   assert(*arg->ip == arg->i - 1);
   *arg->ip = arg->i;
   free(arg);
@@ -219,7 +226,7 @@ void test_queue_growth(void) {
   // index 0 by inserting more than 256 items.
   for (int i = 1; i <= 300; i++) {
     increment_to_arg* arg = malloc(sizeof(increment_to_arg));
-    *arg = (increment_to_arg){&incremented, i};
+    *arg = (increment_to_arg){queue, &incremented, i};
     int res = emscripten_proxy_async(queue, pthread_self(), increment_to, arg);
     assert(res == 1);
   }
@@ -232,7 +239,7 @@ void test_queue_growth(void) {
   // Double the queue size twice more by inserting more than 1024 items.
   for (int i = 301; i <= 1500; i++) {
     increment_to_arg* arg = malloc(sizeof(increment_to_arg));
-    *arg = (increment_to_arg){&incremented, i};
+    *arg = (increment_to_arg){queue, &incremented, i};
     int res = emscripten_proxy_async(queue, pthread_self(), increment_to, arg);
     assert(res == 1);
   }
@@ -243,8 +250,6 @@ void test_queue_growth(void) {
 
   em_proxying_queue_destroy(queue);
 }
-
-void force_exit(void* arg) { emscripten_force_exit(0); }
 
 int main(int argc, char* argv[]) {
   main_thread = pthread_self();
