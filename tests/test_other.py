@@ -6556,6 +6556,11 @@ high = 1234
     err = self.expect_fail([EMXX, test_file('hello_world.cpp'), '-sEXPORTED_FUNCTIONS=foo'])
     self.assertContained('error: undefined exported symbol: "foo"', err)
 
+  def test_dash_s_hex(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
+    # Ensure that 0x0 is parsed as a zero and not as the string '0x0'.
+    self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0x0'])
+
   def test_zeroinit(self):
     create_file('src.c', r'''
 #include <stdio.h>

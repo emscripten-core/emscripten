@@ -3812,7 +3812,11 @@ def parse_value(text, expect_list):
       return parse_string_list(text)
 
   try:
-    return int(text)
+    if text.startswith('0x'):
+      base = 16
+    else:
+      base = 10
+    return int(text, base)
   except ValueError:
     return parse_string_value(text)
 
