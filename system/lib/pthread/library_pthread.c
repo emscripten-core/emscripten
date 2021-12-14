@@ -34,6 +34,8 @@
 #include <emscripten/threading.h>
 #include <emscripten/stack.h>
 
+#include "threading_internal.h"
+
 void __pthread_testcancel();
 
 int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t* a, const char** str) {
@@ -90,10 +92,10 @@ void emscripten_thread_sleep(double msecs) {
   emscripten_current_thread_process_queued_calls();
 
   // If we have less than this many msecs left to wait, busy spin that instead.
-  const double minimumTimeSliceToSleep = 0.1;
+  double min_ms_slice_to_sleep = 0.1;
 
   // runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
-  const double maxMsecsSliceToSleep = emscripten_is_main_runtime_thread() ? 1 : 100;
+  double max_ms_slice_to_sleep = emscripten_is_main_runtime_thread() ? 1 : 100;
 
   emscripten_conditional_set_current_thread_status(
     EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_SLEEPING);
@@ -105,11 +107,13 @@ void emscripten_thread_sleep(double msecs) {
     emscripten_current_thread_process_queued_calls();
 
     now = emscripten_get_now();
-    double msecsToSleep = target - now;
-    if (msecsToSleep > maxMsecsSliceToSleep)
-      msecsToSleep = maxMsecsSliceToSleep;
-    if (msecsToSleep >= minimumTimeSliceToSleep)
-      emscripten_futex_wait(&dummyZeroAddress, 0, msecsToSleep);
+    double ms_to_sleep = target - now;
+    if (ms_to_sleep > max_ms_slice_to_sleep) {
+      ms_to_sleep = max_ms_slice_to_sleep;
+    }
+    if (ms_to_sleep >= min_ms_slice_to_sleep) {
+      emscripten_futex_wait(&dummyZeroAddress, 0, ms_to_sleep);
+    }
     now = emscripten_get_now();
   };
 
@@ -640,7 +644,7 @@ void emscripten_current_thread_process_queued_calls() {
   pthread_mutex_unlock(&call_queue_lock);
 
   // If the queue was full and we had waiters pending to get to put data to queue, wake them up.
-  emscripten_futex_wake((void*)&q->call_queue_head, 0x7FFFFFFF);
+  emscripten_futex_wake((void*)&q->call_queue_head, INT_MAX);
 
   thread_is_processing_queued_calls = false;
 }

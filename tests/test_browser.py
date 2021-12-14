@@ -412,13 +412,23 @@ If manually bisecting:
     self.btest_exit('main.cpp', args=['--pre-js', 'pre.js', '--use-preload-plugins'])
 
   # Tests that user .html shell files can manually download .data files created with --preload-file cmdline.
-  def test_preload_file_with_manual_data_download(self):
+  @parameterized({
+    'default': ([],),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  @requires_threads
+  def test_preload_file_with_manual_data_download(self, args):
     src = test_file('manual_download_data.cpp')
 
     create_file('file.txt', '''Hello!''')
 
-    self.compile_btest([src, '-o', 'manual_download_data.js', '--preload-file', 'file.txt@/file.txt'])
+    self.compile_btest([src, '-o', 'manual_download_data.js', '--preload-file', 'file.txt@/file.txt'] + args)
     shutil.copyfile(test_file('manual_download_data.html'), 'manual_download_data.html')
+
+    # Move .data file out of server root to ensure that getPreloadedPackage is actually used
+    os.mkdir('test')
+    shutil.move('manual_download_data.data', 'test/manual_download_data.data')
+
     self.run_browser('manual_download_data.html', 'Hello!', '/report_result?1')
 
   # Tests that if the output files have single or double quotes in them, that it will be handled by

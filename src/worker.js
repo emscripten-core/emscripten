@@ -188,7 +188,7 @@ self.onmessage = function(e) {
       Module['__performance_now_clock_drift'] = performance.now() - e.data.time;
 
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      Module['__emscripten_thread_init'](e.data.threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
+      Module['__emscripten_thread_init'](e.data.threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0, /*canBlock=*/1);
 
 #if ASSERTIONS
       assert(e.data.threadInfoStruct);

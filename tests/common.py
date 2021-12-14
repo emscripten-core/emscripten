@@ -753,6 +753,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self.assertContained(text1, text2)
 
   def assertFileContents(self, filename, contents):
+    if EMTEST_VERBOSE:
+      print(f'Comparing results contents of file: {filename}')
+
     contents = contents.replace('\r', '')
 
     if EMTEST_REBASELINE:

@@ -21,6 +21,10 @@ See docs/process.md for more on how version tagging works.
 3.0.1
 -----
 - Deprecate `EMMAKEN_CFLAGS` is favor of `EMCC_CFLAGS`.
+- Fixed an issue where user provided --js-library directives would not be
+  processed as the last item after all system provided JS libraries have been
+  added to the build. This fix enables overriding WebGL 2 symbols from user JS
+  libraries.
 
 3.0.0 - 11/22/2021
 ------------------

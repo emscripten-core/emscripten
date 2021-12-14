@@ -23,7 +23,7 @@
 // See musl's pthread_create.c
 
 extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
-extern void _emscripten_thread_init(int, int, int);
+extern void _emscripten_thread_init(int, int, int, int);
 extern int _emscripten_default_pthread_stack_size();
 extern void __pthread_detached_exit();
 extern void* _emscripten_tls_base();
@@ -225,7 +225,7 @@ void _emscripten_thread_exit(void* result) {
   self->tsd = NULL;
 
   // Not hosting a pthread anymore in this worker set __pthread_self to NULL
-  _emscripten_thread_init(0, 0, 0);
+  _emscripten_thread_init(0, 0, 0, 1);
 
   /* This atomic potentially competes with a concurrent pthread_detach
    * call; the loser is responsible for freeing thread resources. */
