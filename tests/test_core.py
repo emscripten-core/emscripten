@@ -8184,6 +8184,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @parameterized({
     'fsanitize_undefined': (['-fsanitize=undefined'],),
     'fsanitize_null': (['-fsanitize=null'],),
+    'dylink': (['-fsanitize=null', '-sMAIN_MODULE=2'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_null_ref(self, args):
