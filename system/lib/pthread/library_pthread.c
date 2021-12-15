@@ -831,10 +831,6 @@ int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
   return ret;
 }
 
-// Stores the memory address that the main thread is waiting on, if any. If
-// the main thread is waiting, we wake it up before waking up any workers.
-EMSCRIPTEN_KEEPALIVE void* _emscripten_main_thread_futex;
-
 void __emscripten_init_main_thread_js(void* tb);
 
 static void *dummy_tsd[1] = { 0 };

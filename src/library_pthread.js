@@ -951,42 +951,6 @@ var LibraryPThread = {
     return 0;
   },
 
-  // Returns the number of threads (>= 0) woken up, or the value -EINVAL on error.
-  // Pass count == INT_MAX to wake up all threads.
-  emscripten_futex_wake: function(addr, count) {
-    if (addr <= 0 || addr > HEAP8.length || addr&3 != 0 || count < 0) return -{{{ cDefine('EINVAL') }}};
-    if (count == 0) return 0;
-    // Waking (at least) INT_MAX waiters is defined to mean wake all callers.
-    // For Atomics.notify() API Infinity is to be passed in that case.
-    if (count >= {{{ cDefine('INT_MAX') }}}) count = Infinity;
-
-    // See if main thread is waiting on this address? If so, wake it up by resetting its wake location to zero.
-    // Note that this is not a fair procedure, since we always wake main thread first before any workers, so
-    // this scheme does not adhere to real queue-based waiting.
-    var mainThreadWaitAddress = Atomics.load(HEAP32, __emscripten_main_thread_futex >> 2);
-    var mainThreadWoken = 0;
-    if (mainThreadWaitAddress == addr) {
-#if ASSERTIONS
-      // We only use __emscripten_main_thread_futex on the main browser thread, where we
-      // cannot block while we wait. Therefore we should only see it set from
-      // other threads, and not on the main thread itself. In other words, the
-      // main thread must never try to wake itself up!
-      assert(!ENVIRONMENT_IS_WEB);
-#endif
-      var loadedAddr = Atomics.compareExchange(HEAP32, __emscripten_main_thread_futex >> 2, mainThreadWaitAddress, 0);
-      if (loadedAddr == mainThreadWaitAddress) {
-        --count;
-        mainThreadWoken = 1;
-        if (count <= 0) return 1;
-      }
-    }
-
-    // Wake any workers waiting on this address.
-    var ret = Atomics.notify(HEAP32, addr >> 2, count);
-    if (ret >= 0) return ret + mainThreadWoken;
-    throw 'Atomics.notify returned an unexpected value ' + ret;
-  },
-
   __atomic_is_lock_free: function(size, ptr) {
     return size <= 4 && (size & (size-1)) == 0 && (ptr&(size-1)) == 0;
   },
