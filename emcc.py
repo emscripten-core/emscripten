@@ -2177,8 +2177,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
         'emscripten_builtin_memalign',
         'emscripten_builtin_malloc',
         'emscripten_builtin_free',
-        '__heap_base',
-        '__global_base'
     ]
 
   if settings.USE_OFFSET_CONVERTER and settings.WASM2JS:
