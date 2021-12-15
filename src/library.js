@@ -2828,9 +2828,10 @@ LibraryManager.library = {
   // Generates a representation of the program counter from a line of stack trace.
   // The exact return value depends in whether we are running WASM or JS, and whether
   // the engine supports offsets into WASM. See the function body for details.
-  emscripten_generate_pc: function(frame) {
+  $convertFrameToPC__internal: true,
+  $convertFrameToPC: function(frame) {
 #if !USE_OFFSET_CONVERTER
-    abort('Cannot use emscripten_generate_pc (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
+    abort('Cannot use convertFrameToPC (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
 #else
 #if ASSERTIONS
     assert(wasmOffsetConverter);
@@ -2860,14 +2861,14 @@ LibraryManager.library = {
   // Returns a representation of a call site of the caller of this function, in a manner
   // similar to __builtin_return_address. If level is 0, we return the call site of the
   // caller of this function.
-  emscripten_return_address__deps: ['emscripten_generate_pc'],
+  emscripten_return_address__deps: ['$convertFrameToPC'],
   emscripten_return_address: function(level) {
     var callstack = new Error().stack.split('\n');
     if (callstack[0] == 'Error') {
       callstack.shift();
     }
     // skip this function and the caller to get caller's return address
-    return _emscripten_generate_pc(callstack[level + 2]);
+    return convertFrameToPC(callstack[level + 2]);
   },
 
   $UNWIND_CACHE: {},
@@ -2904,24 +2905,25 @@ LibraryManager.library = {
   // JavaScript frames, so we have to rely on PC values. Therefore, we must be able to unwind from
   // a PC value that may no longer be on the execution stack, and so we are forced to cache the
   // entire call stack.
-  emscripten_stack_snapshot__deps: ['emscripten_generate_pc', '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
+  emscripten_stack_snapshot__deps: ['$convertFrameToPC', '$UNWIND_CACHE', '$saveInUnwindCache'],
   emscripten_stack_snapshot: function () {
     var callstack = new Error().stack.split('\n');
     if (callstack[0] == 'Error') {
       callstack.shift();
     }
-    __emscripten_save_in_unwind_cache(callstack);
+    saveInUnwindCache(callstack);
 
     // Caches the stack snapshot so that emscripten_stack_unwind_buffer() can unwind from this spot.
-    UNWIND_CACHE.last_addr = _emscripten_generate_pc(callstack[2]);
+    UNWIND_CACHE.last_addr = convertFrameToPC(callstack[2]);
     UNWIND_CACHE.last_stack = callstack;
     return UNWIND_CACHE.last_addr;
   },
 
-  _emscripten_save_in_unwind_cache__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
-  _emscripten_save_in_unwind_cache: function (callstack) {
+  $saveInUnwindCache__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
+  $saveInUnwindCache__internal: true,
+  $saveInUnwindCache: function (callstack) {
     callstack.forEach(function (frame) {
-      var pc = _emscripten_generate_pc(frame);
+      var pc = convertFrameToPC(frame);
       if (pc) {
         UNWIND_CACHE[pc] = frame;
       }
@@ -2931,7 +2933,7 @@ LibraryManager.library = {
   // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for how this is used.
   // addr must be the return address of the last call to emscripten_stack_snapshot, or this
   // function will instead use the current call stack.
-  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '_emscripten_save_in_unwind_cache', 'emscripten_generate_pc'],
+  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '$saveInUnwindCache', '$convertFrameToPC'],
   emscripten_stack_unwind_buffer: function (addr, buffer, count) {
     var stack;
     if (UNWIND_CACHE.last_addr == addr) {
@@ -2941,16 +2943,16 @@ LibraryManager.library = {
       if (stack[0] == 'Error') {
         stack.shift();
       }
-      __emscripten_save_in_unwind_cache(stack);
+      saveInUnwindCache(stack);
     }
 
     var offset = 2;
-    while (stack[offset] && _emscripten_generate_pc(stack[offset]) != addr) {
+    while (stack[offset] && convertFrameToPC(stack[offset]) != addr) {
       ++offset;
     }
 
     for (var i = 0; i < count && stack[i+offset]; ++i) {
-      {{{ makeSetValue('buffer', 'i*4', '_emscripten_generate_pc(stack[i + offset])', 'i32', 0, true) }}};
+      {{{ makeSetValue('buffer', 'i*4', 'convertFrameToPC(stack[i + offset])', 'i32', 0, true) }}};
     }
     return i;
   },
@@ -2994,8 +2996,8 @@ LibraryManager.library = {
 #endif
   },
 
-  emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
-  emscripten_pc_get_source_js: function (pc) {
+  $convertPCtoSourceLocation__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
+  $convertPCtoSourceLocation: function(pc) {
     if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 
     var match;
@@ -3026,7 +3028,7 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'free',
+  emscripten_pc_get_file__deps: ['$convertPCtoSourceLocation', 'free',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
 #endif
@@ -3034,7 +3036,7 @@ LibraryManager.library = {
   // Don't treat allocation of _emscripten_pc_get_file.ret as a leak
   emscripten_pc_get_file__noleakcheck: true,
   emscripten_pc_get_file: function (pc) {
-    var result = _emscripten_pc_get_source_js(pc);
+    var result = convertPCtoSourceLocation(pc);
     if (!result) return 0;
 
     if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
@@ -3043,16 +3045,16 @@ LibraryManager.library = {
   },
 
   // Look up the line number from our stack frame cache with our PC representation.
-  emscripten_pc_get_line__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_line__deps: ['$convertPCtoSourceLocation'],
   emscripten_pc_get_line: function (pc) {
-    var result = _emscripten_pc_get_source_js(pc);
+    var result = convertPCtoSourceLocation(pc);
     return result ? result.line : 0;
   },
 
   // Look up the column number from our stack frame cache with our PC representation.
-  emscripten_pc_get_column__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_column__deps: ['$convertPCtoSourceLocation'],
   emscripten_pc_get_column: function (pc) {
-    var result = _emscripten_pc_get_source_js(pc);
+    var result = convertPCtoSourceLocation(pc);
     return result ? result.column || 0 : 0;
   },
 
