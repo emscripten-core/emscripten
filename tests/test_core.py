@@ -5361,6 +5361,13 @@ main( int argv, char ** argc ) {
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
 
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/15786')
+  @no_mac('https://github.com/emscripten-core/emscripten/issues/15786')
+  def test_fs_noderawfs_nofollow(self):
+    self.set_setting('NODERAWFS')
+    self.emcc_args += ['-lnodefs.js']
+    self.do_runf(test_file('fs/test_noderawfs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
+
   def test_fs_trackingdelegate(self):
     self.set_setting('FS_DEBUG')
     self.do_run_in_out_file_test('fs/test_trackingdelegate.c')
