@@ -22,7 +22,6 @@ namespace __sanitizer {
 
 extern "C" {
   uptr emscripten_stack_snapshot();
-  uptr emscripten_return_address(int level);
   u32 emscripten_stack_unwind_buffer(uptr pc, uptr *buffer, u32 depth);
 }
 
