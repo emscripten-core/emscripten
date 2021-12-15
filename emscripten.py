@@ -22,6 +22,7 @@ from collections import OrderedDict
 
 from tools import building
 from tools import diagnostics
+from tools import js_manipulation
 from tools import shared
 from tools import utils
 from tools import gen_struct_info
@@ -107,6 +108,10 @@ def align_memory(addr):
   return (addr + 15) & -16
 
 
+def to_nice_ident(ident): # limited version of the JS function toNiceIdent
+  return ident.replace('%', '$').replace('@', '_').replace('.', '_')
+
+
 def update_settings_glue(metadata, DEBUG):
   optimize_syscalls(metadata['declares'], DEBUG)
 
@@ -115,7 +120,7 @@ def update_settings_glue(metadata, DEBUG):
     # we don't need any JS library contents in side modules
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
   else:
-    syms = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
+    syms = settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [to_nice_ident(d) for d in metadata['declares']]
     syms = set(syms).difference(metadata['exports'])
     syms.update(metadata['globalImports'])
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(syms)
@@ -290,7 +295,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
     settings.WASM_BINARY_FILE = '<<< WASM_BINARY_FILE >>>'
   else:
     # set file locations, so that JS glue can find what it needs
-    settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(out_wasm))
+    settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
 
   metadata = finalize_wasm(in_wasm, out_wasm, memfile, DEBUG)
 
@@ -810,7 +815,7 @@ def create_invoke_wrappers(invoke_funcs):
   invoke_wrappers = ''
   for invoke in invoke_funcs:
     sig = strip_prefix(invoke, 'invoke_')
-    invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
+    invoke_wrappers += '\n' + js_manipulation.make_invoke(sig) + '\n'
   return invoke_wrappers
 
 
