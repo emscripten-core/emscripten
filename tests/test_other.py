@@ -173,6 +173,10 @@ class other(RunnerCore):
       os.close(master)
       os.close(slave)
 
+  # Test that running `emcc -v` always works even in the presence of `EMCC_CFLAGS`.
+  # This needs to work because many tools run `emcc -v` internally and it should
+  # always work even if the user has `EMCC_CFLAGS` set.
+  @with_env_modify({'EMCC_CFLAGS': '-should -be -ignored'})
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
       # -v, without input files

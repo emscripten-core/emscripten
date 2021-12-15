@@ -975,11 +975,26 @@ run_via_emxx = False
 # Main run() function
 #
 def run(args):
+  if run_via_emxx:
+    clang = shared.CLANG_CXX
+  else:
+    clang = shared.CLANG_CC
+
+  # Special case the handling of `-v` because it has a special/different meaning
+  # when used with no other arguments.  In particular, we must handle this early
+  # on, before we inject EMCC_CFLAGS.  This is because tools like cmake and
+  # autoconf will run `emcc -v` to determine the compiler version and we don't
+  # want that to break for users of EMCC_CFLAGS.
+  if len(args) == 2 and args[1] == '-v':
+    # autoconf likes to see 'GNU' in the output to enable shared object support
+    print(version_string(), file=sys.stderr)
+    return shared.check_call([clang, '-v'] + get_clang_flags(), check=False).returncode
+
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
   EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
   if EMCC_CFLAGS:
-    args.extend(shlex.split(EMCC_CFLAGS))
+    args += shlex.split(EMCC_CFLAGS)
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:
     args += shlex.split(EMMAKEN_CFLAGS)
@@ -1025,16 +1040,6 @@ This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ''')
     return 0
-
-  if run_via_emxx:
-    clang = shared.CLANG_CXX
-  else:
-    clang = shared.CLANG_CC
-
-  if len(args) == 1 and args[0] == '-v': # -v with no inputs
-    # autoconf likes to see 'GNU' in the output to enable shared object support
-    print(version_string(), file=sys.stderr)
-    return shared.check_call([clang, '-v'] + get_clang_flags(), check=False).returncode
 
   if '-dumpmachine' in args:
     print(get_llvm_target())
