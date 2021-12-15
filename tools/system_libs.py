@@ -36,7 +36,7 @@ def files_in_path(path, filenames):
 def glob_in_path(path, glob_pattern, excludes=()):
   srcdir = utils.path_from_root(path)
   files = iglob(os.path.join(srcdir, glob_pattern), recursive=True)
-  return [f for f in files if os.path.basename(f) not in excludes]
+  return sorted(f for f in files if os.path.basename(f) not in excludes)
 
 
 def get_base_cflags(force_object_files=False):
@@ -75,6 +75,7 @@ def run_build_commands(commands):
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
   suffix = shared.suffix(libname)
+  inputs = sorted(inputs, key=lambda x: os.path.basename(x))
   if suffix in ('.bc', '.o'):
     if len(inputs) == 1:
       if inputs[0] != libname:
