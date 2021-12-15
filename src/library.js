@@ -1323,8 +1323,11 @@ LibraryManager.library = {
   // setjmp.h
   // ==========================================================================
 
+#if SUPPORT_LONGJMP == 'emscripten'
   _emscripten_throw_longjmp__sig: 'v',
-  _emscripten_throw_longjmp: function() { throw 'longjmp'; },
+  _emscripten_throw_longjmp: function() { throw Infinity; },
+#endif
+
 #if !SUPPORT_LONGJMP
 #if !INCLUDE_FULL_LIBRARY
   // These are in order to print helpful error messages when either longjmp of
@@ -1340,6 +1343,7 @@ LibraryManager.library = {
   // built with SUPPORT_LONGJMP=1, the object file contains references of not
   // longjmp but _emscripten_throw_longjmp, which is called from
   // emscripten_longjmp.
+  _emscripten_throw_longjmp: function() { error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)'); },
   get _emscripten_throw_longjmp__deps() {
     return this.longjmp__deps;
   },
