@@ -1377,6 +1377,10 @@ var LibraryWebGPU = {
   ],
   wgpuQueueOnSubmittedWorkDone: function(queueId, {{{ defineI64Param('signalValue') }}}, callback, userdata) {
     var queue = WebGPU.mgrQueue.get(queueId);
+#if ASSERTIONS
+    assert(signalValue_low === 0 && signalValue_hight === 0, 'signalValue not supported, must be 0');
+#endif
+
     {{{ runtimeKeepalivePush() }}}
     queue["onSubmittedWorkDone"]().then(function() {
       {{{ runtimeKeepalivePop() }}}
