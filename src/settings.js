@@ -1367,6 +1367,10 @@ var USE_SDL_NET = 1;
 // [link]
 var USE_ICU = 0;
 
+// 1 = use lua from PUC ftp
+// [link]
+var USE_LUA = 0;
+
 // 1 = use zlib from emscripten-ports
 // [link]
 var USE_ZLIB = 0;

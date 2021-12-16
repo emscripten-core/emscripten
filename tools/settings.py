@@ -31,6 +31,7 @@ PORTS_SETTINGS = (
     'USE_VORBIS',
     'USE_COCOS2D',
     'USE_ICU',
+    'USE_LUA',
     'USE_MODPLUG',
     'USE_SDL_MIXER',
     'USE_SDL_IMAGE',
