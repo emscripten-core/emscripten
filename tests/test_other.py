@@ -10484,6 +10484,12 @@ exec "$@"
       ''')
     self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$__foo'])
 
+  def test_asan_no_dylink(self):
+    for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE', '-sMAIN_MODULE=2', '-sSIDE_MODULE=2']:
+      print(arg)
+      err = self.expect_fail([EMCC, test_file('hello_world.c'), '-fsanitize=address', arg])
+      self.assertContained('ASan does not support dynamic linking', err)
+
   def test_wasm2js_no_dylink(self):
     for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE']:
       print(arg)
