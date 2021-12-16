@@ -110,6 +110,17 @@ void test() {
   assert(err == -1);
   assert(errno == ENOENT);
 
+  // Test non-existent parent
+  err = unlink("noexist/foo");
+  assert(err == -1);
+  assert(errno == ENOENT);
+
+  // Test empty pathname
+  err = unlink("");
+  assert(err == -1);
+  printf("%s\n", strerror(errno));
+  assert(errno == ENOENT);
+
   err = unlink("dir-readonly");
   assert(err == -1);
 

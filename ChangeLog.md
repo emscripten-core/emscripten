@@ -18,13 +18,40 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.0.0
-------
+3.0.1
+-----
+- Deprecate `EMMAKEN_CFLAGS` is favor of `EMCC_CFLAGS`.
+- Fixed an issue where user provided --js-library directives would not be
+  processed as the last item after all system provided JS libraries have been
+  added to the build. This fix enables overriding WebGL 2 symbols from user JS
+  libraries.
+
+3.0.0 - 11/22/2021
+------------------
+- A set of internally-unused functions were removed from `parseTools.js`.  While
+  emscripten no longer needs any of these functions, there is slim chance that
+  some external JS library is depending on them.  Please file issues if any such
+  library code is found.  The removed/unused functions are:
+   `removePointing`, `pointingLevels`, `removeAllPointing`, `isVoidType`,
+   `isStructPointerType`, `isArrayType`, `isStructType`, `isVectorType`,
+   `isStructuralType` `getStructuralTypeParts`, `getStructuralTypePartBits`,
+   `isFunctionDef`, `isPossiblyFunctionType`, `isFunctionType`, `getReturnType`,
+   `splitTokenList`, `_IntToHex`, `IEEEUnHex`, `Compiletime.isPointerType`,
+   `Compiletime.isStructType`, `Compiletime.INT_TYPES`, `isType`.
+- The example `shell.html` and `shell_minimal.html` templaces no longer override
+  `printErr` on the module object.  This means error message from emscripten and
+  stderr from the application will go to the default location of `console.warn`
+  rather than `console.error`.  This only effects application that use the
+  example shell html files.
 - The version of musl libc used by emscripten was upgraded from v1.1.15 to
   v1.2.2.  There could be some minor size regressions (or gains) due to changes
   in upstream musl code but we don't expect anything major.  Since this is a
   fairly substantial change (at least internally) we are bumping the major
   version of Emscripten to 3. (#13006)
+- Added support for specifying the text encoding to be used in response filenames
+  by passing the encoding as a file suffix (e.g. "a.rsp.utf-8" or "a.rsp.cp1252").
+  If not specified, the encoding is autodetected as either UTF-8 or Python
+  default "locale.getpreferredencoding()". (#15406, #15292, #15426)
 
 2.0.34 - 11/04/2021
 -------------------
@@ -382,6 +409,9 @@ See docs/process.md for more on how version tagging works.
 - Several pthreads exit-related fixes (#12985) (#10524).
 - Fix IDBFS syncing with existing directories (#13574).
 - Add libmodplug port and allow mod files to be played in SDL2 (#13478).
+- `emscripten_GetProcAddress` is now part of `libGL`. Normally the change is not
+  noticeable, unless you build in `STRICT` mode and do not already have `-lGL`
+  to link in that library. If not, add `-lGL`. (#13524)
 
 2.0.14: 02/14/2021
 ------------------

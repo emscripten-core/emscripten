@@ -14,12 +14,16 @@ mergeInto(LibraryManager.library, {
     'else { throw new Error("NODERAWFS is currently only supported on Node.js environment.") }',
   $NODERAWFS: {
     lookup: function(parent, name) {
-      return FS.lookupPath(parent.path + '/' + name);
+      return FS.lookupPath(parent.path + '/' + name).node;
     },
-    lookupPath: function(path) {
+    lookupPath: function(path, opts) {
+      opts = opts || {};
+      if (opts.parent) {
+        path = nodePath.dirname(path);
+      }
       var st = fs.lstatSync(path);
       var mode = NODEFS.getMode(path);
-      return { path: path, id: st.ino, mode: mode, node: { mode: mode } };
+      return { path: path, node: { id: st.ino, mode: mode }};
     },
     createStandardStreams: function() {
       FS.streams[0] = { fd: 0, nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false };

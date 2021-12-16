@@ -9,6 +9,7 @@
 
 #include <inttypes.h>
 #include <pthread.h>
+#include <stdarg.h>
 
 #include <emscripten/html5.h>
 #include <emscripten/atomic.h>
@@ -41,40 +42,11 @@ int emscripten_futex_wait(volatile void/*uint32_t*/ *addr, uint32_t val, double 
 // INT_MAX to wake all waiters on that location.
 int emscripten_futex_wake(volatile void/*uint32_t*/ *addr, int count);
 
-typedef union em_variant_val
-{
-  int i;
-  int64_t i64;
-  float f;
-  double d;
-  void *vp;
-  char *cp;
-} em_variant_val;
-
-// Proxied C/C++ functions support at most this many arguments. Dispatch is
-// static/strongly typed by signature.
-#define EM_QUEUED_CALL_MAX_ARGS 11
 // Proxied JS function can support a few more arguments than proxied C/C++
 // functions, because the dispatch is variadic and signature independent.
 #define EM_QUEUED_JS_CALL_MAX_ARGS 20
-typedef struct em_queued_call
-{
-  int functionEnum;
-  void *functionPtr;
-  _Atomic uint32_t operationDone;
-  em_variant_val args[EM_QUEUED_JS_CALL_MAX_ARGS];
-  em_variant_val returnValue;
 
-  // An optional pointer to a secondary data block that should be free()d when
-  // this queued call is freed.
-  void *satelliteData;
-
-  // If true, the caller has "detached" itself from this call object and the
-  // Emscripten main runtime thread should free up this em_queued_call object
-  // after it has been executed. If false, the caller is in control of the
-  // memory.
-  int calleeDelete;
-} em_queued_call;
+typedef struct em_queued_call em_queued_call;
 
 void emscripten_sync_run_in_main_thread(em_queued_call *call);
 void *emscripten_sync_run_in_main_thread_0(int function);
@@ -82,39 +54,6 @@ void *emscripten_sync_run_in_main_thread_1(int function, void *arg1);
 void *emscripten_sync_run_in_main_thread_2(int function, void *arg1, void *arg2);
 void *emscripten_sync_run_in_main_thread_3(int function, void *arg1, void *arg2, void *arg3);
 void *emscripten_sync_run_in_main_thread_7(int function, void *arg1, void *arg2, void *arg3, void *arg4, void *arg5, void *arg6, void *arg7);
-
-typedef void (*em_func_v)(void);
-typedef void (*em_func_vi)(int);
-typedef void (*em_func_vf)(float);
-typedef void (*em_func_vii)(int, int);
-typedef void (*em_func_vif)(int, float);
-typedef void (*em_func_vff)(float, float);
-typedef void (*em_func_viii)(int, int, int);
-typedef void (*em_func_viif)(int, int, float);
-typedef void (*em_func_viff)(int, float, float);
-typedef void (*em_func_vfff)(float, float, float);
-typedef void (*em_func_viiii)(int, int, int, int);
-typedef void (*em_func_viifi)(int, int, float, int);
-typedef void (*em_func_vifff)(int, float, float, float);
-typedef void (*em_func_vffff)(float, float, float, float);
-typedef void (*em_func_viiiii)(int, int, int, int, int);
-typedef void (*em_func_viffff)(int, float, float, float, float);
-typedef void (*em_func_viiiiii)(int, int, int, int, int, int);
-typedef void (*em_func_viiiiiii)(int, int, int, int, int, int, int);
-typedef void (*em_func_viiiiiiii)(int, int, int, int, int, int, int, int);
-typedef void (*em_func_viiiiiiiii)(int, int, int, int, int, int, int, int, int);
-typedef void (*em_func_viiiiiiiiii)(int, int, int, int, int, int, int, int, int, int);
-typedef void (*em_func_viiiiiiiiiii)(int, int, int, int, int, int, int, int, int, int, int);
-typedef int (*em_func_i)(void);
-typedef int (*em_func_ii)(int);
-typedef int (*em_func_iii)(int, int);
-typedef int (*em_func_iiii)(int, int, int);
-typedef int (*em_func_iiiii)(int, int, int, int);
-typedef int (*em_func_iiiiii)(int, int, int, int, int);
-typedef int (*em_func_iiiiiii)(int, int, int, int, int, int);
-typedef int (*em_func_iiiiiiii)(int, int, int, int, int, int, int);
-typedef int (*em_func_iiiiiiiii)(int, int, int, int, int, int, int, int);
-typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 
 // Encode function signatures into a single uint32_t integer.
 // N.B. This encoding scheme is internal to the implementation, and can change
@@ -254,19 +193,43 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_i(em_queued_call *call, double timeou
 
 void emscripten_async_waitable_close(em_queued_call *call);
 
-int _emscripten_call_on_thread(int force_async, pthread_t target_thread, EM_FUNC_SIGNATURE sig, void *func_ptr, void *satellite, ...); // internal
-
 // Runs the given function on the specified thread. If we are currently on
 // that target thread then we just execute the call synchronously; otherwise it
 // is queued on that thread to execute asynchronously.
 // Returns 1 if it executed the code (i.e., it was on the target thread), and 0
 // otherwise.
-#define emscripten_dispatch_to_thread(target_thread, sig, func_ptr, satellite, ...) _emscripten_call_on_thread(0, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
+int emscripten_dispatch_to_thread_args(pthread_t target_thread,
+                                       EM_FUNC_SIGNATURE sig,
+                                       void* func_ptr,
+                                       void* satellite,
+                                       va_list args);
+int emscripten_dispatch_to_thread_(pthread_t target_thread,
+                                   EM_FUNC_SIGNATURE sig,
+                                   void* func_ptr,
+                                   void* satellite,
+                                   ...);
+#define emscripten_dispatch_to_thread(                                         \
+  target_thread, sig, func_ptr, satellite, ...)                                \
+  emscripten_dispatch_to_thread_(                                              \
+    (target_thread), (sig), (void*)(func_ptr), (satellite), ##__VA_ARGS__)
 
 // Similar to emscripten_dispatch_to_thread, but always runs the
 // function asynchronously, even if on the same thread. This is less efficient
 // but may be simpler to reason about in some cases.
-#define emscripten_dispatch_to_thread_async(target_thread, sig, func_ptr, satellite, ...) _emscripten_call_on_thread(1, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
+int emscripten_dispatch_to_thread_async_args(pthread_t target_thread,
+                                             EM_FUNC_SIGNATURE sig,
+                                             void* func_ptr,
+                                             void* satellite,
+                                             va_list args);
+int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
+                                         EM_FUNC_SIGNATURE sig,
+                                         void* func_ptr,
+                                         void* satellite,
+                                         ...);
+#define emscripten_dispatch_to_thread_async(                                   \
+  target_thread, sig, func_ptr, satellite, ...)                                \
+  emscripten_dispatch_to_thread_async_(                                        \
+    (target_thread), (sig), (void*)(func_ptr), (satellite), ##__VA_ARGS__)
 
 // Returns 1 if the current thread is the thread that hosts the Emscripten runtime.
 int emscripten_is_main_runtime_thread(void);
@@ -312,6 +275,11 @@ void emscripten_thread_sleep(double msecs);
 #define EM_THREAD_STATUS_FINISHED   6
 #define EM_THREAD_STATUS_NUMFIELDS  7
 
+#ifdef NDEBUG
+#define emscripten_set_current_thread_status(newStatus)
+#define emscripten_conditional_set_current_thread_status(expectedStatus, newStatus)
+#define emscripten_set_thread_name(threadId, name)
+#else
 // Sets the profiler status of the calling thread. This is a no-op if thread
 // profiling is not active.
 // This is an internal function and generally not intended for user code.
@@ -332,6 +300,7 @@ void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedS
 // When thread profiler is not enabled (not building with --threadprofiler),
 // this is a no-op.
 void emscripten_set_thread_name(pthread_t threadId, const char *name);
+#endif
 
 // Gets the stored pointer to a string representing the canvases to transfer to
 // the created thread.

@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
 
@@ -30,6 +31,7 @@ int main(void) {
     printf("main loop %i\n", ++cnt);
     result += bf->ReadLine(0);
   }
-  REPORT_RESULT(result);
+  assert(result == 5);
+  return 0;
 }
 

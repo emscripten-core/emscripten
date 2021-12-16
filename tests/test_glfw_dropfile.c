@@ -33,10 +33,7 @@ void on_file_drop(GLFWwindow *window, int count, const char **paths) {
     if (!fp) {
         printf("failed to open %s\n", paths[i]);
         perror("fopen");
-#ifdef REPORT_RESULT
-        REPORT_RESULT(0);
-#endif
-        return;
+        assert(false);
     }
     int c;
     long size = 0;
@@ -59,30 +56,22 @@ void on_file_drop(GLFWwindow *window, int count, const char **paths) {
 #endif
 
   }
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1);
-#endif
+  emscripten_force_exit(0);
 }
 
 int main() {
   if (!glfwInit())
   {
     printf("Could not create window. Test failed.\n");      
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif      
-    return -1;
+    return 1;
   }
   glfwWindowHint(GLFW_RESIZABLE , 1);
   g_window = glfwCreateWindow(600, 450, "GLFW drop file", NULL, NULL);
   if (!g_window)
   {
     printf("Could not create window. Test failed.\n");      
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif           
     glfwTerminate();
-    return -1;
+    return 2;
   }
   glfwMakeContextCurrent(g_window);
 

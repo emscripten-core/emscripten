@@ -15,9 +15,13 @@ class Class {
   void Aborter(double x, char y, int *z) {
     volatile int w = 1;
     if (w) {
-      EM_ASM({
+      if (EM_ASM_INT({
         out(stackTrace());
-      });
+      }) == 999999) {
+        // Add a fake call (that never happens in practice) to avoid the
+        // binaryen optimizer from inlining this method.
+        Aborter(x, y, z);
+      }
       abort();
     }
   }

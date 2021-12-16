@@ -50,7 +50,7 @@
     },
 
     makeU64ToNumberWithSentinelAsUndefined: function(lowName, highName) {
-      var ret = `((${highName} === 0xFFFFFFFF && ${lowName} === 0xFFFFFFFF) ? undefined : \
+      var ret = `((${highName} === -1 && ${lowName} === -1) ? undefined : \
           ${this.makeU64ToNumber(lowName, highName)})`;
       return ret;
     },

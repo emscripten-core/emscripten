@@ -119,8 +119,8 @@ var LibraryHtml5WebGL = {
 #endif
         // We will be proxying - if OffscreenCanvas is supported, we can proxy a bit more efficiently by avoiding having to create an Offscreen FBO.
         if (typeof OffscreenCanvas === 'undefined') {
-          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, '1', 'i32') }}}
-          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, '1', 'i32') }}}
+          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, '1', 'i32') }}};
+          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, '1', 'i32') }}};
         }
         return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_CREATE_CONTEXT') }}}, target, attributes);
       }
@@ -310,17 +310,19 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
   emscripten_webgl_destroy_context__sig: 'vi',
-  emscripten_webgl_destroy_context__deps: ['emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
   emscripten_webgl_destroy_context: function(contextHandle) {
     if (GL.currentContext == contextHandle) GL.currentContext = 0;
     GL.deleteContext(contextHandle);
   },
 
+#if USE_PTHREADS
   // Special function that will be invoked on the thread calling emscripten_webgl_destroy_context(), before routing
   // the call over to the target thread.
+  emscripten_webgl_destroy_context_before_on_calling_thread__deps: ['emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
   emscripten_webgl_destroy_context_before_on_calling_thread: function(contextHandle) {
     if (_emscripten_webgl_get_current_context() == contextHandle) _emscripten_webgl_make_context_current(0);
   },
+#endif
 
   emscripten_webgl_enable_extension__deps: [
 #if GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
@@ -554,13 +556,13 @@ var LibraryHtml5WebGL = {
   },
 };
 
+#if USE_PTHREADS
 // Process 'sync_on_webgl_context_handle_thread' and 'sync_on_current_webgl_context_thread' pseudo-proxying modes
 // to appropriate proxying mechanism, either proxying on-demand, unconditionally, or never, depending on build modes.
 // 'sync_on_webgl_context_handle_thread' is used for function signatures that take a HTML5 WebGL context handle
 // object as the first argument. 'sync_on_current_webgl_context_thread' is used for functions that operate on the
 // implicit "current WebGL context" as activated via emscripten_webgl_make_current() function.
 function handleWebGLProxying(funcs) {
-  if (!USE_PTHREADS) return; // No proxying needed in singlethreaded builds
 
   function listOfNFunctionArgs(func) {
     var args = [];
@@ -627,5 +629,6 @@ function handleWebGLProxying(funcs) {
 }
 
 handleWebGLProxying(LibraryHtml5WebGL);
+#endif
 
 mergeInto(LibraryManager.library, LibraryHtml5WebGL);

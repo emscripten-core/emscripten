@@ -35,12 +35,15 @@ variables so that emcc etc. are used. Typical usage:
 
   if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
     node_js = config.NODE_JS[0]
-    args.append(f'-DCMAKE_CROSSCOMPILING_EMULATOR={node_js}')
+    # In order to allow cmake to run code built with pthreads we need to pass some extra flags to node.
+    # Note that we also need --experimental-wasm-bulk-memory which is true by default and hence not added here
+    # See https://github.com/emscripten-core/emscripten/issues/15522
+    args.append(f'-DCMAKE_CROSSCOMPILING_EMULATOR={node_js};--experimental-wasm-threads')
 
   # On Windows specify MinGW Makefiles or ninja if we have them and no other
   # toolchain was specified, to keep CMake from pulling in a native Visual
   # Studio, or Unix Makefiles.
-  if utils.WINDOWS and '-G' not in args:
+  if utils.WINDOWS and not any(arg.startswith('-G') for arg in args):
     if utils.which('mingw32-make'):
       args += ['-G', 'MinGW Makefiles']
     elif utils.which('ninja'):

@@ -18,10 +18,13 @@
 // TODO(sbc): Should these be in their own header to avoid emmalloc here?
 #include <emscripten/emmalloc.h>
 
+#define STACK_ALIGN 16
+
 // See musl's pthread_create.c
 
 extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
-extern void _emscripten_thread_init(int, int, int);
+extern void _emscripten_thread_init(int, int, int, int);
+extern int _emscripten_default_pthread_stack_size();
 extern void __pthread_detached_exit();
 extern void* _emscripten_tls_base();
 extern int8_t __dso_handle;
@@ -116,6 +119,26 @@ int __pthread_create(pthread_t* restrict res,
   new->tsd = malloc(PTHREAD_KEYS_MAX * sizeof(void*));
   memset(new->tsd, 0, PTHREAD_KEYS_MAX * sizeof(void*));
 
+  new->detach_state = DT_JOINABLE;
+
+  if (attrp && attrp != __ATTRP_C11_THREAD) {
+    if (attrp->_a_detach) {
+      new->detach_state = DT_DETACHED;
+    }
+    new->stack_size = attrp->_a_stacksize;
+    new->stack = (void*)attrp->_a_stackaddr;
+  } else {
+    new->stack_size = _emscripten_default_pthread_stack_size();
+  }
+
+  if (!new->stack) {
+    char* stackBase = memalign(STACK_ALIGN, new->stack_size);
+    // musl stores top of the stack in pthread_t->stack (i.e. the high
+    // end from which it grows down).
+    new->stack = stackBase + new->stack_size;
+    new->stack_owned = 1;
+  }
+
   //printf("start __pthread_create: %p\n", self);
   int rtn = __pthread_create_js(new, attrp, entry, arg);
   if (rtn != 0)
@@ -136,6 +159,22 @@ int __pthread_create(pthread_t* restrict res,
   *res = new;
   //printf("done __pthread_create self=%p next=%p prev=%p new=%p\n", self, self->next, self->prev, new);
   return 0;
+}
+
+/*
+ * Called from JS main thread to free data accociated a thread
+ * that is no longer running.
+ */
+void _emscripten_thread_free_data(pthread_t t) {
+  if (t->profilerBlock) {
+    emscripten_builtin_free(t->profilerBlock);
+  }
+  if (t->stack_owned) {
+    emscripten_builtin_free(((char*)t->stack) - t->stack_size);
+  }
+  // To aid in debugging set all fields to zero
+  memset(t, 0, sizeof(*t));
+  emscripten_builtin_free(t);
 }
 
 static void free_tls_data() {
@@ -186,7 +225,7 @@ void _emscripten_thread_exit(void* result) {
   self->tsd = NULL;
 
   // Not hosting a pthread anymore in this worker set __pthread_self to NULL
-  _emscripten_thread_init(0, 0, 0);
+  _emscripten_thread_init(0, 0, 0, 1);
 
   /* This atomic potentially competes with a concurrent pthread_detach
    * call; the loser is responsible for freeing thread resources. */

@@ -6,7 +6,7 @@
 
 mergeInto(LibraryManager.library, {
   $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES', '$mmapAlloc'],
-  $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); var NODEJS_PATH = require("path"); NODEFS.staticInit(); }',
+  $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { requireNodeFS(); NODEFS.staticInit(); }',
   $NODEFS: {
     isWindows: false,
     staticInit: function() {
@@ -25,7 +25,8 @@ mergeInto(LibraryManager.library, {
         "{{{ cDefine('O_RDWR') }}}": flags["O_RDWR"],
         "{{{ cDefine('O_DSYNC') }}}": flags["O_SYNC"],
         "{{{ cDefine('O_TRUNC') }}}": flags["O_TRUNC"],
-        "{{{ cDefine('O_WRONLY') }}}": flags["O_WRONLY"]
+        "{{{ cDefine('O_WRONLY') }}}": flags["O_WRONLY"],
+        "{{{ cDefine('O_NOFOLLOW') }}}": flags["O_NOFOLLOW"],
       };
 #if ASSERTIONS
       // The 0 define must match on both sides, as otherwise we would not
@@ -227,7 +228,7 @@ mergeInto(LibraryManager.library, {
         var path = NODEFS.realPath(node);
         try {
           path = fs.readlinkSync(path);
-          path = NODEJS_PATH.relative(NODEJS_PATH.resolve(node.mount.opts.root), path);
+          path = nodePath.relative(nodePath.resolve(node.mount.opts.root), path);
           return path;
         } catch (e) {
           if (!e.code) throw e;

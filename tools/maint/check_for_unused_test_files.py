@@ -57,7 +57,7 @@ def check_file(dirpath, filename):
   if grep(relpath):
     return
 
-  print('Unreferenced: ' + relpath)
+  print('Unreferenced: ' + os.path.relpath(normpath, root_dir))
 
 
 def main(args):

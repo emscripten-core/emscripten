@@ -189,7 +189,7 @@ Using libraries
 Built-in support is available for a number of standard libraries: *libc*, *libc++* and *SDL*. These will automatically be linked when you compile code that uses them (you do not even need to add ``-lSDL``, but see below for more SDL-specific details).
 
 If your project uses other libraries, for example
-`zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/zlib>`_
+`zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/third_party/zlib>`_
 or *glib*, you will need to build and link them. The normal approach is to build
 the libraries (to object files, or ``.a`` archives of them) and then link those
 with your main program to emit JavaScript+WebAssembly.
@@ -253,25 +253,31 @@ Build system self-execution
 
 Some large projects generate executables and run them in order to generate input for later parts of the build process (for example, a parser may be built and then run on a grammar, which then generates C/C++ code that implements that grammar). This sort of build process causes problems when using Emscripten because you cannot directly run the code you are generating.
 
-The simplest solution is usually to build the project twice: once natively, and once to JavaScript. When the JavaScript build procedure fails because a generated executable is not present, you can then copy that executable from the native build, and continue to build normally. This approach was successfully used for compiling Python (see `tests/python/readme.md <https://github.com/emscripten-core/emscripten/blob/main/tests/python/readme.md>`_ for more details).
+The simplest solution is usually to build the project twice: once natively, and once to JavaScript. When the JavaScript build procedure fails because a generated executable is not present, you can then copy that executable from the native build, and continue to build normally. For example, this approach has been successfully used for compiling Python (which needs to run its `pgen` executable during the build).
 
 In some cases it makes sense to modify the build scripts so that they build the generated executable natively. For example, this can be done by specifying two compilers in the build scripts, *emcc* and *gcc*, and using *gcc* just for generated executables. However, this can be more complicated than the previous solution because you need to modify the project build scripts, and you may have to work around cases where code is compiled and used both for the final result and for a generated executable.
 
 
-Dynamic linking
----------------
+Faux Dynamic Linking
+--------------------
 
-Emscripten's goal is to generate the fastest and smallest possible code, and for that reason it focuses on generating a single JavaScript file for an entire project. For that reason, dynamic linking should be avoided when possible.
+Emscripten's goal is to generate the fastest and smallest possible code. For
+that reason it focuses on compiling an entire project into a single Wasm file,
+avoiding dynamic linking when possible.
 
-By default, Emscripten ``.so`` files are the same as regular ``.o`` object files.
-Dynamic libraries that you specify in the final build stage (when generating
-JavaScript or HTML) are linked in as static libraries. *Emcc* ignores commands
-to dynamically link libraries during the compile stage (i.e., not in the
-final build stage). This is to ensure that the same dynamic library is not
-linked multiple times in intermediate build stages, which would result in
-duplicate symbol errors.
+By default, when the `-shared` flag is used to build a shared library,
+Emscripten will produce an ``.so`` library that is actually just a regular
+``.o`` object file (Under the hood it uses `ld -r` to combine objects into a
+single larger object).  When these faux "shared libraries" are linked into your
+application they are effectively linked as static libraries.  When building
+these shared libraries *Emcc* will ignore other shared libraries on the command
+line.  This is to ensure that the same dynamic library is not linked multiple
+times in intermediate build stages, which would result in duplicate symbol
+errors.
 
-There is `experimental support <https://github.com/emscripten-core/emscripten/wiki/Linking>`_ for true dynamic libraries, loaded as runtime, either via dlopen or as a shared library. See that link for the details and limitations.
+See :ref:`experimental support <Dynamic-Linking>` for how to build true dynamic
+libraries, which can be linked together either at load time, or at runtime (via
+dlopen).
 
 
 Configure may run checks that appear to fail
@@ -362,9 +368,9 @@ set via an environment variable.  e.g::
 Examples / test code
 ====================
 
-The Emscripten test suite (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/main/tests/runner.py>`_) contains a number of good examples — large C/C++ projects that are built using their normal build systems as described above: `freetype <https://github.com/emscripten-core/emscripten/tree/main/tests/freetype>`_, `openjpeg <https://github.com/emscripten-core/emscripten/tree/main/tests/openjpeg>`_, `zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/zlib>`_, `bullet <https://github.com/emscripten-core/emscripten/tree/main/tests/bullet>`_ and `poppler <https://github.com/emscripten-core/emscripten/tree/main/tests/poppler>`_.
+The Emscripten test suite (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/main/tests/runner.py>`_) contains a number of good examples — large C/C++ projects that are built using their normal build systems as described above: `freetype <https://github.com/emscripten-core/emscripten/tree/main/tests/freetype>`_, `openjpeg <https://github.com/emscripten-core/emscripten/tree/main/tests/openjpeg>`_, `zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/third_party/zlib>`_, `bullet <https://github.com/emscripten-core/emscripten/tree/main/tests/bullet>`_ and `poppler <https://github.com/emscripten-core/emscripten/tree/main/tests/poppler>`_.
 
-It is also worth looking at the build scripts in the `ammo.js <https://github.com/kripken/ammo.js/blob/master/make.py>`_ project.
+It is also worth looking at the build scripts in the `ammo.js <https://github.com/kripken/ammo.js/blob/main/CMakeLists.txt>`_ project.
 
 
 Troubleshooting
@@ -386,4 +392,4 @@ Troubleshooting
 
   .. note:: You can use ``llvm-nm`` to see which symbols are defined in each object file.
 
-  One solution is to use the _`dynamic-linking` approach described above. This ensures that libraries are linked only once, in the final build stage.
+  One solution is to use :ref:`dynamic-linking <Dynamic-Linking>`. This ensures that libraries are linked only once, in the final build stage.

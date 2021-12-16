@@ -16,9 +16,7 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
   static int i = 0;
   printf("key_callback %d\n", i);
   i++;
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1);
-#endif
+  emscripten_force_exit(0);
   return 0;
 }
 
@@ -32,5 +30,5 @@ int main()
     document.activeElement.dispatchEvent(event);
   });
   emscripten_exit_with_live_runtime();
-  return 0;
+  __builtin_trap();
 }

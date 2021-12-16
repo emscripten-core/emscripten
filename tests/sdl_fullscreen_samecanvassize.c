@@ -5,14 +5,13 @@
  * found in the LICENSE file.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_ttf.h>
 #include <assert.h>
 #include <emscripten.h>
 #include <emscripten/html5.h>
-
-int result = 1;
 
 SDL_Surface *screen = 0;
 
@@ -30,9 +29,9 @@ void render() {
 }
 
 void mainloop() {
-  render();
+  assert(!finished);
 
-  if (finished) return;
+  render();
 
   SDL_Event event;
   int isInFullscreen = EM_ASM_INT(return !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement));
@@ -43,12 +42,9 @@ void mainloop() {
 
   if (wasFullscreen && !isInFullscreen) {
     printf("Exited fullscreen. Test succeeded.\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
     wasFullscreen = isInFullscreen;
     finished = 1;
-    return;
+    emscripten_force_exit(0);
   }
 
   int haveEvent = SDL_PollEvent(&event);
@@ -58,17 +54,13 @@ void mainloop() {
         SDL_WM_ToggleFullScreen(screen);
         inFullscreen = 1 - inFullscreen;
         if (inFullscreen == 0) {
-          result = wasFullscreen;
-          if (result) {
+          if (wasFullscreen) {
             printf("Exited fullscreen. Test succeeded.\n");
           } else {
             printf("Exited fullscreen. Test failed, fullscreen transition did not happen!\n");
+            assert(false);
           }
-#ifdef REPORT_RESULT
-          REPORT_RESULT(result);
-#endif
-          finished = 1;
-          return;
+          emscripten_force_exit(0);
         } else {
           printf("Entering fullscreen...\n");
         }

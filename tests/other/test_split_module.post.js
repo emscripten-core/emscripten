@@ -5,7 +5,7 @@ function saveProfileData() {
     var offset = _malloc(len);
     var actualLen = __write_profile(offset, len);
     var profile_data = new Uint8Array(buffer, offset, len);
-    nodeFS.writeFileSync('profile.data', profile_data);
+    fs.writeFileSync('profile.data', profile_data);
     console.log('profile size is', actualLen, 'bytes (allocated', len, 'bytes)');
     console.log('wrote profile data')
     _free(offset);

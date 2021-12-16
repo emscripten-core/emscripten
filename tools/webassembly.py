@@ -72,13 +72,14 @@ class DylinkType(IntEnum):
   MEM_INFO = 1
   NEEDED = 2
   EXPORT_INFO = 3
+  IMPORT_INFO = 4
 
 
 Section = namedtuple('Section', ['type', 'size', 'offset'])
 Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
 Import = namedtuple('Import', ['kind', 'module', 'field'])
 Export = namedtuple('Export', ['name', 'kind', 'index'])
-Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info'])
+Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info'])
 
 
 class Module:
@@ -144,6 +145,7 @@ class Module:
     section_name = self.readString()
     needed = []
     export_info = {}
+    import_info = {}
 
     if section_name == 'dylink':
       mem_size = self.readULEB()
@@ -180,6 +182,15 @@ class Module:
             flags = self.readULEB()
             export_info[sym] = flags
             count -= 1
+        elif subsection_type == DylinkType.IMPORT_INFO:
+          count = self.readULEB()
+          while count:
+            module = self.readString()
+            field = self.readString()
+            flags = self.readULEB()
+            import_info.setdefault(module, {})
+            import_info[module][field] = flags
+            count -= 1
         else:
           print(f'unknown subsection: {subsection_type}')
           # ignore unknown subsections
@@ -188,7 +199,7 @@ class Module:
     else:
       utils.exit_with_error('error parsing shared library')
 
-    return Dylink(mem_size, mem_align, table_size, table_align, needed, export_info)
+    return Dylink(mem_size, mem_align, table_size, table_align, needed, export_info, import_info)
 
   def get_exports(self):
     export_section = next((s for s in self.sections() if s.type == SecType.EXPORT), None)

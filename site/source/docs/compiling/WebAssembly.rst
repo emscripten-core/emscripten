@@ -55,8 +55,9 @@ upgrade from fastcomp to upstream:
     compile and link time.
 
   * You can enable Link Time Optimization (LTO) with the usual llvm flags
-    (``-flto``, ``-flto=full``, ``-flto=thin``, at both compile and link times).
-    These flags will make the wasm backend behave more like fastcomp.
+    (``-flto``, ``-flto=full``, ``-flto=thin``, at both compile and link times;
+    note, however, that thin LTO is not heavily tested atm and so regular LTO
+    is recommended).
 
   * With fastcomp, LTO optimization passes were not be run by default; for that
     it was necessry to pass ``--llvm-lto 1``.  With the llvm backend LTO passes

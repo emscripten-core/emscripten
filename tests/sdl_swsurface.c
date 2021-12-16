@@ -19,10 +19,6 @@ int main(int argc, char** argv) {
 
   SDL_Quit();
 
-#ifdef __EMSCRIPTEN__
-  REPORT_RESULT(1);
-#endif
-
   return 0;
 }
 

@@ -1,27 +1,28 @@
-if (!LibraryManager.library.glTexImage2D) throw 'This file should be getting processed after library_webgl.js!';
+if (!LibraryManager.library.glTexImage3D) throw 'This file should be getting processed after library_webgl2.js!';
 
 mergeInto(LibraryManager.library, {
-	orig_glTexImage2D__deps: LibraryManager.library.glTexImage2D__deps,
-	orig_glTexImage2D: LibraryManager.library.glTexImage2D,
+	orig_glTexImage3D__deps: LibraryManager.library.glTexImage3D__deps,
+	orig_glTexImage3D: LibraryManager.library.glTexImage3D,
 
-	glTexImage2D__deps: ['orig_glTexImage2D'],
-	glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
-		_glTexImage2D.createdType = type;
-		// Check that the orignal fuction exists
-		assert(_orig_glTexImage2D);
-		// Also try invoking glTexImage2D to verify that it is actually the
-		// underlying functions from library_webgl.js
-		var texImage2D_called = false;
+	glTexImage3D__deps: ['orig_glTexImage3D'],
+	glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, pixels) {
+		_glTexImage3D.createdType = type;
+		// Check that the original fuction exists
+		assert(_orig_glTexImage3D);
+		// Also try invoking glTexImage3D to verify that it is actually the
+		// underlying function from library_webgl2.js
+		var texImage3D_called = false;
+		// Mock GL context to be able to call from shell.
 		GLctx = {
-			texImage2D: function() {
-				texImage2D_called = true;
+			texImage3D: function() {
+				texImage3D_called = true;
 			},
 		};
-		_orig_glTexImage2D();
-		assert(texImage2D_called);
+		_orig_glTexImage3D();
+		assert(texImage3D_called);
 	},
 
 	what_got_created: function() {
-		return _glTexImage2D.createdType;
+		return _glTexImage3D.createdType;
 	}
 });

@@ -188,20 +188,13 @@ self.onmessage = function(e) {
       Module['__performance_now_clock_drift'] = performance.now() - e.data.time;
 
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      Module['__emscripten_thread_init'](e.data.threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
+      Module['__emscripten_thread_init'](e.data.threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0, /*canBlock=*/1);
 
-      // Establish the stack frame for this thread in global scope
-      // The stack grows downwards
-      var max = e.data.stackBase;
-      var top = e.data.stackBase + e.data.stackSize;
 #if ASSERTIONS
       assert(e.data.threadInfoStruct);
-      assert(top != 0);
-      assert(max != 0);
-      assert(top > max);
 #endif
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
-      Module['establishStackSpace'](top, max);
+      Module['establishStackSpace']();
       Module['PThread'].receiveObjectTransfer(e.data);
       Module['PThread'].threadInit();
 
@@ -244,16 +237,6 @@ self.onmessage = function(e) {
 #endif
       } catch(ex) {
         if (ex != 'unwind') {
-#if ASSERTIONS
-          // FIXME(sbc): Figure out if this is still needed or useful.  Its not
-          // clear to me how this check could ever fail.  In order to get into
-          // this try/catch block at all we have already called bunch of
-          // functions on `Module`.. why is this one special?
-          if (typeof(Module['_emscripten_futex_wake']) !== 'function') {
-            err("Thread Initialisation failed.");
-            throw ex;
-          }
-#endif
           // ExitStatus not present in MINIMAL_RUNTIME
 #if !MINIMAL_RUNTIME
           if (ex instanceof Module['ExitStatus']) {
@@ -287,7 +270,6 @@ self.onmessage = function(e) {
       if (Module['_pthread_self']()) {
         Module['__emscripten_thread_exit'](-1/*PTHREAD_CANCELED*/);
       }
-      postMessage({ 'cmd': 'cancelDone' });
     } else if (e.data.target === 'setimmediate') {
       // no-op
     } else if (e.data.cmd === 'processThreadQueue') {

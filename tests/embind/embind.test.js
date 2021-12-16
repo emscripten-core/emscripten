@@ -638,6 +638,26 @@ module({
             assert.equal(2, cm.const_ref_adder(true, true));
         });
 
+        test("passing Symbol or BigInt as floats always throws", function() {
+            assert.throws(TypeError, function() { cm.const_ref_adder(Symbol('0'), 1); });
+            assert.throws(TypeError, function() { cm.const_ref_adder(BigInt(0), 1); });
+        });
+
+        if (cm['ASSERTIONS']) {
+            test("can pass only number and boolean as floats with assertions", function() {
+                assert.throws(TypeError, function() { cm.const_ref_adder(1, undefined); });
+                assert.throws(TypeError, function() { cm.const_ref_adder(1, null); });
+                assert.throws(TypeError, function() { cm.const_ref_adder(1, '2'); });
+            });
+        } else {
+            test("can pass other types as floats without assertions", function() {
+                assert.equal(3, cm.const_ref_adder(1, '2'));
+                assert.equal(1, cm.const_ref_adder(1, null));  // null => 0
+                assert.true(isNaN(cm.const_ref_adder(1, 'cannot parse')));
+                assert.true(isNaN(cm.const_ref_adder(1, undefined)));  // undefined => NaN
+            });
+        }
+
         test("convert double to unsigned", function() {
             var rv = cm.emval_test_as_unsigned(1.5);
             assert.equal('number', typeof rv);
@@ -804,25 +824,30 @@ module({
             assert.equal("-2147483648", cm.int_to_string(-2147483648));
             assert.equal("-2147483648", cm.long_to_string(-2147483648));
 
-            // passing out of range values should fail.
-            assert.throws(TypeError, function() { cm.char_to_string(-129); });
-            assert.throws(TypeError, function() { cm.char_to_string(128); });
-            assert.throws(TypeError, function() { cm.signed_char_to_string(-129); });
-            assert.throws(TypeError, function() { cm.signed_char_to_string(128); });
-            assert.throws(TypeError, function() { cm.unsigned_char_to_string(-1); });
-            assert.throws(TypeError, function() { cm.unsigned_char_to_string(256); });
-            assert.throws(TypeError, function() { cm.short_to_string(-32769); });
-            assert.throws(TypeError, function() { cm.short_to_string(32768); });
-            assert.throws(TypeError, function() { cm.unsigned_short_to_string(-1); });
-            assert.throws(TypeError, function() { cm.unsigned_short_to_string(65536); });
-            assert.throws(TypeError, function() { cm.int_to_string(-2147483649); });
-            assert.throws(TypeError, function() { cm.int_to_string(2147483648); });
-            assert.throws(TypeError, function() { cm.unsigned_int_to_string(-1); });
-            assert.throws(TypeError, function() { cm.unsigned_int_to_string(4294967296); });
-            assert.throws(TypeError, function() { cm.long_to_string(-2147483649); });
-            assert.throws(TypeError, function() { cm.long_to_string(2147483648); });
-            assert.throws(TypeError, function() { cm.unsigned_long_to_string(-1); });
-            assert.throws(TypeError, function() { cm.unsigned_long_to_string(4294967296); });
+            // passing out of range values should fail with assertions.
+            if (cm['ASSERTIONS']) {
+                assert.throws(TypeError, function() { cm.char_to_string(-129); });
+                assert.throws(TypeError, function() { cm.char_to_string(128); });
+                assert.throws(TypeError, function() { cm.signed_char_to_string(-129); });
+                assert.throws(TypeError, function() { cm.signed_char_to_string(128); });
+                assert.throws(TypeError, function() { cm.unsigned_char_to_string(-1); });
+                assert.throws(TypeError, function() { cm.unsigned_char_to_string(256); });
+                assert.throws(TypeError, function() { cm.short_to_string(-32769); });
+                assert.throws(TypeError, function() { cm.short_to_string(32768); });
+                assert.throws(TypeError, function() { cm.unsigned_short_to_string(-1); });
+                assert.throws(TypeError, function() { cm.unsigned_short_to_string(65536); });
+                assert.throws(TypeError, function() { cm.int_to_string(-2147483649); });
+                assert.throws(TypeError, function() { cm.int_to_string(2147483648); });
+                assert.throws(TypeError, function() { cm.unsigned_int_to_string(-1); });
+                assert.throws(TypeError, function() { cm.unsigned_int_to_string(4294967296); });
+                assert.throws(TypeError, function() { cm.long_to_string(-2147483649); });
+                assert.throws(TypeError, function() { cm.long_to_string(2147483648); });
+                assert.throws(TypeError, function() { cm.unsigned_long_to_string(-1); });
+                assert.throws(TypeError, function() { cm.unsigned_long_to_string(4294967296); });
+            } else {
+                // test that an out of range value doesn't throw without assertions.
+                assert.equal("-129", cm.char_to_string(-129));
+            }
         });
 
         test("unsigned values are correctly returned when stored in memory", function() {
@@ -839,12 +864,18 @@ module({
             assert.equal(2147483648, cm.load_unsigned_long());
         });
 
-        test("throws appropriate type error when attempting to coerce null to int", function() {
-            var e = assert.throws(TypeError, function() {
-                cm.int_to_string(null);
+        if (cm['ASSERTIONS']) {
+            test("throws type error when attempting to coerce null to int", function() {
+                var e = assert.throws(TypeError, function() {
+                    cm.int_to_string(null);
+                });
+                assert.equal('Cannot convert "null" to int', e.message);
             });
-            assert.equal('Cannot convert "null" to int', e.message);
-        });
+        } else {
+            test("null is converted to 0 without assertions", function() {
+                assert.equal('0', cm.int_to_string(null));
+            });
+        }
 
         test("access multiple class ctors", function() {
             var a = new cm.MultipleCtors(10);
@@ -1012,11 +1043,23 @@ module({
         test("out of bounds std::vector access returns undefined", function() {
             var vec = cm.emval_test_return_vector();
 
-            assert.throws(TypeError, function() { vec.get(-1); });
             assert.equal(undefined, vec.get(4));
-
+            // only test a negative index without assertions.
+            if (!cm['ASSERTIONS']) {
+                assert.equal(undefined, vec.get(-1));
+            }
             vec.delete();
         });
+
+        if (cm['ASSERTIONS']) {
+            test("out of type range array index throws with assertions", function() {
+                var vec = cm.emval_test_return_vector();
+
+                assert.throws(TypeError, function() { vec.get(-1); });
+
+                vec.delete();
+            });
+        }
 
         test("std::vector<std::shared_ptr<>> can be passed back", function() {
             var vec = cm.emval_test_return_shared_ptr_vector();
@@ -1403,21 +1446,33 @@ module({
             c.delete();
         });
 
-        test("assigning string to integer raises TypeError", function() {
-            var c = new cm.CustomStruct();
+        if (cm['ASSERTIONS']) {
+            test("assigning string or object to integer raises TypeError with assertions", function() {
+                var c = new cm.CustomStruct();
+                var e = assert.throws(TypeError, function() {
+                    c.field = "hi";
+                });
+                assert.equal('Cannot convert "hi" to int', e.message);
 
-            var e = assert.throws(TypeError, function() {
+                var e = assert.throws(TypeError, function() {
+                    c.field = {foo:'bar'};
+                });
+                assert.equal('Cannot convert "[object Object]" to int', e.message);
+
+                c.delete();
+            });
+        } else {
+            test("assigning string or object to integer is converted to 0", function() {
+                var c = new cm.CustomStruct();
+
                 c.field = "hi";
-            });
-            assert.equal('Cannot convert "hi" to int', e.message);
-
-            var e = assert.throws(TypeError, function() {
+                assert.equal(0, c.field);
                 c.field = {foo:'bar'};
-            });
-            assert.equal('Cannot convert "[object Object]" to int', e.message);
+                assert.equal(0, c.field);
 
-            c.delete();
-        });
+                c.delete();
+            });
+        }
 
         test("can return tuples by value", function() {
             var c = cm.emval_test_return_TupleVector();
