@@ -356,7 +356,6 @@ var LibraryWebGPU = {
       'back',
     ],
     ErrorFilter: [
-      'none',
       'validation',
       'out-of-memory',
     ],
