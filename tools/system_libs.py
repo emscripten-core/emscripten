@@ -241,7 +241,7 @@ class Library:
   # extra code size. The -fno-unroll-loops flags was added here when loop
   # unrolling landed upstream in LLVM to avoid changing behavior but was not
   # specifically evaluated.
-  cflags = ['-Werror', '-fno-unroll-loops']
+  cflags = ['-O2', '-Werror', '-fno-unroll-loops']
 
   # A list of directories to put in the include path when building.
   # This is a list of tuples of path components.
@@ -745,7 +745,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
-  cflags = ['-O2', '-fno-builtin']
+  cflags = ['-fno-builtin']
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   # gcc_personality_v0.c depends on libunwind, which don't include by default.
   src_files = glob_in_path(src_dir, '*.c', excludes=['gcc_personality_v0.c'])
@@ -1013,7 +1013,6 @@ class libsockets_proxy(MTLibrary):
 
 class crt1(MuslInternalLibrary):
   name = 'crt1'
-  cflags = ['-O2']
   src_dir = 'system/lib/libc'
   src_files = ['crt1.c']
 
@@ -1028,7 +1027,6 @@ class crt1(MuslInternalLibrary):
 
 class crt1_reactor(MuslInternalLibrary):
   name = 'crt1_reactor'
-  cflags = ['-O2']
   src_dir = 'system/lib/libc'
   src_files = ['crt1_reactor.c']
 
@@ -1043,7 +1041,7 @@ class crt1_reactor(MuslInternalLibrary):
 
 class crtbegin(Library):
   name = 'crtbegin'
-  cflags = ['-O2', '-s', 'USE_PTHREADS']
+  cflags = ['-s', 'USE_PTHREADS']
   src_dir = 'system/lib/pthread'
   src_files = ['emscripten_tls_init.c']
 
@@ -1159,7 +1157,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
 class libmalloc(MTLibrary):
   name = 'libmalloc'
 
-  cflags = ['-O2', '-fno-builtin']
+  cflags = ['-fno-builtin']
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
@@ -1315,7 +1313,7 @@ class libGL(MTLibrary):
 class libwebgpu_cpp(MTLibrary):
   name = 'libwebgpu_cpp'
 
-  cflags = ['-std=c++11', '-O2']
+  cflags = ['-std=c++11']
   src_dir = 'system/lib/webgpu'
   src_files = ['webgpu_cpp.cpp']
 
@@ -1385,7 +1383,7 @@ class libasmfs(MTLibrary):
 class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
   name = 'libwasmfs'
 
-  cflags = ['-O2', '-fno-exceptions', '-std=c++17']
+  cflags = ['-fno-exceptions', '-std=c++17']
 
   def get_files(self):
     return files_in_path(
@@ -1405,7 +1403,7 @@ class libhtml5(Library):
 
 
 class CompilerRTLibrary(Library):
-  cflags = ['-O2', '-fno-builtin']
+  cflags = ['-fno-builtin']
   # compiler_rt files can't currently be part of LTO although we are hoping to remove this
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
@@ -1449,7 +1447,7 @@ class SanitizerLibrary(CompilerRTLibrary, MTLibrary):
 class libubsan_rt(SanitizerLibrary):
   name = 'libubsan_rt'
 
-  cflags = ['-O2', '-DUBSAN_CAN_USE_CXXABI']
+  cflags = ['-DUBSAN_CAN_USE_CXXABI']
   src_dir = 'system/lib/compiler-rt/lib/ubsan'
 
 
@@ -1478,7 +1476,7 @@ class libasan_js(Library):
   name = 'libasan_js'
   never_force = True
 
-  cflags = ['-O2', '-fsanitize=address']
+  cflags = ['-fsanitize=address']
 
   src_dir = 'system/lib'
   src_files = ['asan_js.c']
@@ -1574,7 +1572,6 @@ class libjsmath(Library):
 
 class libstubs(DebugLibrary):
   name = 'libstubs'
-  cflags = ['-O2']
   src_dir = 'system/lib/libc'
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
 
