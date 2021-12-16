@@ -5361,10 +5361,11 @@ main( int argv, char ** argc ) {
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
 
-  @no_windows('https://github.com/emscripten-core/emscripten/issues/15786')
-  @no_mac('https://github.com/emscripten-core/emscripten/issues/15786')
+  @no_windows('no symlink support on windows')
   def test_fs_noderawfs_nofollow(self):
     self.set_setting('NODERAWFS')
+    create_file('filename', 'foo')
+    os.symlink('filename', 'linkname')
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_noderawfs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
 
