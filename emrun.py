@@ -1569,7 +1569,7 @@ to emrun itself and arguments to your page.
 
   parser.add_argument('--private_browsing', action='store_true',
                       help='If specified, opens browser in private/incognito mode.')
-                      
+  
   parser.add_argument('--dump_out_directory', default='dump_out', type=str,
                       help='If specified, overrides the directory for dump files using emrun_file_dump method.')
 
