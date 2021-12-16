@@ -24,7 +24,8 @@ void InitializeShadowMemory() {
   // Assert that the shadow region is large enough.  We don't want to start
   // running into the static data region which starts right after the shadow
   // region.
-  uptr max_address = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
+  uptr max_address =
+    (__builtin_wasm_memory_size(0) * uint64_t(WASM_PAGE_SIZE)) - 1;
   uptr max_shadow_address = MEM_TO_SHADOW(max_address);
   // TODO(sbc): In the growable memory case we should really be checking this
   // every time we grow.

@@ -2188,8 +2188,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # Increase the minimum memory requirements to account for extra memory
     # that the sanitizers might need (in addition to the shadow memory
     # requirements handled below).
-    # These values are designed be over-estimate the actual requirements and
-    # based on experimentation with different tests/programs under asan and
+    # These values are designed be an over-estimate of the actual requirements and
+    # are based on experimentation with different tests/programs under asan and
     # lsan.
     settings.INITIAL_MEMORY += 50 * 1024 * 1024
     if settings.USE_PTHREADS:
@@ -2251,11 +2251,18 @@ def phase_linker_setup(options, state, newargs, settings_map):
     if settings.GLOBAL_BASE != -1:
       exit_with_error("ASan does not support custom GLOBAL_BASE")
 
+    # Increase the TOTAL_MEMORY and shift GLOBAL_BASE to account for
+    # the ASan shadow region which starts at address zero.
+    # The shadow region is 1/8th the size of the total memory and is
+    # itself part of the total memory.
+    # We use the following variables in this calculation:
+    # - user_mem : memory usable/visible by the user program.
+    # - shadow_size : memory used by asan for shadow memory.
+    # - total_mem : the sum of the above. this is the size of the wasm memory (and must be aligned to WASM_PAGE_SIZE)
     user_mem = settings.INITIAL_MEMORY
     if settings.ALLOW_MEMORY_GROWTH:
       user_mem = settings.MAXIMUM_MEMORY
 
-    # The total memory is 1/8th shadow and 7/8th user/usable memory.
     # Given the know value of user memory size we can work backwards
     # to find the total memory and the shadow size based on the fact
     # that the user memory is 7/8ths of the total memory.
@@ -2270,7 +2277,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
     # We start our global data after the shadow memory.
     # We don't need to worry about alignment here.  wasm-ld will take care of that.
-    settings.GLOBAL_BASE = shadow_size + 1
+    settings.GLOBAL_BASE = shadow_size
 
     if not settings.ALLOW_MEMORY_GROWTH:
       settings.INITIAL_MEMORY = total_mem
