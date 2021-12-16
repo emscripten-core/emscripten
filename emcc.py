@@ -187,7 +187,7 @@ def base64_encode(b):
   return b64.decode('ascii')
 
 
-def align_to_wasm_page_boudary(address):
+def align_to_wasm_page_boundary(address):
   page_size = webassembly.WASM_PAGE_SIZE
   return ((address + (page_size - 1)) // page_size) * page_size
 
@@ -2270,7 +2270,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     total_mem = user_mem * 8 / 7
 
     # But we might need to re-align to wasm page size
-    total_mem = int(align_to_wasm_page_boudary(total_mem))
+    total_mem = int(align_to_wasm_page_boundary(total_mem))
 
     # The shadow size is 1/8th the resulting rounded up size
     shadow_size = total_mem // 8
@@ -2282,7 +2282,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     if not settings.ALLOW_MEMORY_GROWTH:
       settings.INITIAL_MEMORY = total_mem
     else:
-      settings.INITIAL_MEMORY += align_to_wasm_page_boudary(shadow_size)
+      settings.INITIAL_MEMORY += align_to_wasm_page_boundary(shadow_size)
 
     if settings.SAFE_HEAP:
       # SAFE_HEAP instruments ASan's shadow memory accesses.
