@@ -2192,7 +2192,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.USE_LSAN = 1
     default_setting('EXIT_RUNTIME', 1)
 
-    if settings.LINKABLE:
+    if settings.RELOCATABLE:
       exit_with_error('LSan does not support dynamic linking')
 
   if 'address' in sanitize:
@@ -2263,7 +2263,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       # by SAFE_HEAP as a null pointer dereference.
       exit_with_error('ASan does not work with SAFE_HEAP')
 
-    if settings.LINKABLE:
+    if settings.RELOCATABLE:
       exit_with_error('ASan does not support dynamic linking')
 
   if sanitize and settings.GENERATE_SOURCE_MAP:
