@@ -1375,9 +1375,12 @@ var LibraryWebGPU = {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
-  wgpuQueueOnSubmittedWorkDone: function(queueId, callback, userdata) {
+  wgpuQueueOnSubmittedWorkDone: function(queueId, {{{ defineI64Param('signalValue') }}}, callback, userdata) {
     var queue = WebGPU.mgrQueue.get(queueId);
-    return queue["onSubmittedWorkDone"]();
+#if ASSERTIONS
+    assert(signalValue_low === 0 && signalValue_high === 0, 'signalValue not supported, must be 0');
+#endif
+
     {{{ runtimeKeepalivePush() }}}
     queue["onSubmittedWorkDone"]().then(function() {
       {{{ runtimeKeepalivePop() }}}
