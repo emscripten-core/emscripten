@@ -8196,6 +8196,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_null_ref(self, args):
+    if is_sanitizing(self.emcc_args):
+      self.skipTest('test is specific to null sanitizer')
     self.emcc_args += args
     self.do_runf(test_file('core/test_ubsan_full_null_ref.cpp'),
                  assert_all=True, expected_output=[
