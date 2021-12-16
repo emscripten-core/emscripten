@@ -20,6 +20,19 @@ The automatic tests in `tests/test_core.py <https://github.com/emscripten-core/e
 
 A high level overview of the way File Systems work in Emscripten-ported code is provided in the :ref:`file-system-overview`.
 
+New File System: WasmFS
+=======================
+
+.. note:: Current Status: Work in Progress
+
+WasmFS is a high-performance, fully-multithreaded, WebAssembly-based file system layer for Emscripten that will replace the existing JavaScript version.
+
+The JavaScript-based file system was originally written before pthreads were supported and when it was more optimal to write code in JS. As a result it has overhead in pthreads builds because we must proxy to the main thread where all filesystem operations are done. WasmFS, instead, is compiled to Wasm and has full multithreading support. It also aims to be more modular and extensible.
+
+`Design Doc Link <https://docs.google.com/document/d/1-ZxybGvz0nCqygUDuWxCcCBhCebev3EbUSYoSOlc49Q/edit?usp=sharing>`_
+
+`Github Tracking Issue <https://github.com/emscripten-core/emscripten/issues/15041>`_
+
 Including File System Support
 =============================
 
