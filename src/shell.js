@@ -182,7 +182,7 @@ function logExceptionOnExit(e) {
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
-var fs;
+let fs;
 var nodePath;
 var requireNodeFS;
 
