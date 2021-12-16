@@ -32,6 +32,9 @@ void setup() {
   create_file("dir/file", "abcdef", 0777);
   mkdir("dir/subdir", 0777);
   mkdir("dir/subdir/subsubdir", 0777);
+  mkdir("dir/rename-dir", 0777);
+  mkdir("dir/rename-dir/subdir", 0777);
+  mkdir("dir/rename-dir/subdir/subsubdir", 0777);
   mkdir("dir-readonly", 0555);
   // TODO: Remove when chmod is implemented in WasmFS.
 #ifdef WASMFS
@@ -71,6 +74,9 @@ void cleanup() {
   rmdir("dir/subdir5/");
   rmdir("dir/b/c");
   rmdir("dir/b");
+  rmdir("dir/rename-dir/subdir/subsubdir");
+  rmdir("dir/rename-dir/subdir");
+  rmdir("dir/rename-dir");
   rmdir("dir");
 #ifndef WASMFS
   chmod("dir-readonly2", 0777);
@@ -142,7 +148,27 @@ void test() {
   err = rename("dir", "dir/somename");
   assert(err == -1);
   assert(errno == EINVAL);
-  
+
+  // After changing the current working directory and using a relative path to
+  // the target, we should still detect that the source is an ancestor of the
+  // target.
+  // TODO: WasmFS needs to traverse up the directory tree from the target to
+  // detect this case. To do that safely, we will need to globally lock the
+  // directory structure to prevent concurrent modifications during the
+  // traversal. In this test, providing the new path as a relative path from the
+  // cwd means the ancestor will not be encountered during traversal from root.
+  // As a result, this ancestor is unlinked and forms a cycle which is no longer
+  // reachable from root.
+  chdir("dir/rename-dir/subdir");
+  err = rename("/dir/rename-dir", "subsubdir");
+#ifdef WASMFS
+  assert(err == 0);
+#else
+  assert(err == -1);
+  assert(errno == EINVAL);
+#endif
+  chdir("/");
+
   err = rename("dir", "dir/somename/noexist");
   assert(err == -1);
   // In the JS file system, this returns ENOENT rather than detecting that dir
