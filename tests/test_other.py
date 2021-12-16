@@ -8408,6 +8408,12 @@ test_module().then((test_module_instance) => {
     ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
     self.assertContained('OK', ret)
 
+  def test_node_eval(self):
+    self.run_process([EMCC, '-sENVIRONMENT=node', test_file('hello_world.c'), '-o', 'a.js', '-O3'])
+    js = open('a.js').read()
+    ret = self.run_process(config.NODE_JS + ['-e', js], stdout=PIPE).stdout
+    self.assertContained('hello, world!', ret)
+
   def test_is_bitcode(self):
     fname = 'tmp.o'
 
