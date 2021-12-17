@@ -9312,12 +9312,13 @@ int main(void) {
     self.assertContained('undefined symbol: malloc', stderr)
 
   @parameterized({
-    'c': ['c'],
-    'cpp': ['cpp'],
+    'c': ['c', []],
+    'cpp': ['cpp', []],
+    'growth': ['cpp', ['-sALLOW_MEMORY_GROWTH']],
   })
-  def test_lsan_leaks(self, ext):
+  def test_lsan_leaks(self, ext, args):
     self.do_smart_test(test_file('other/test_lsan_leaks.' + ext),
-                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH'],
+                       emcc_args=['-fsanitize=leak'] + args,
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
       'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
@@ -9342,7 +9343,7 @@ int main(void) {
   })
   def test_lsan_stack_trace(self, ext, regexes):
     self.do_smart_test(test_file('other/test_lsan_leaks.' + ext),
-                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH', '-gsource-map'],
+                       emcc_args=['-fsanitize=leak', '-gsource-map'],
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
       'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
@@ -9355,12 +9356,12 @@ int main(void) {
   })
   def test_lsan_no_leak(self, ext):
     self.do_smart_test(test_file('other/test_lsan_no_leak.' + ext),
-                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'ASSERTIONS=0'],
+                       emcc_args=['-fsanitize=leak', '-s', 'ASSERTIONS=0'],
                        regexes=[r'^\s*$'])
 
   def test_lsan_no_stack_trace(self):
     self.do_smart_test(test_file('other/test_lsan_leaks.c'),
-                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH', '-DDISABLE_CONTEXT'],
+                       emcc_args=['-fsanitize=leak', '-DDISABLE_CONTEXT'],
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
       'SUMMARY: LeakSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
@@ -9368,26 +9369,33 @@ int main(void) {
 
   def test_asan_null_deref(self):
     self.do_smart_test(test_file('other/test_asan_null_deref.c'),
-                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1'],
+                       emcc_args=['-fsanitize=address'],
+                       assert_returncode=NON_ZERO, literals=[
+      'AddressSanitizer: null-pointer-dereference on address',
+    ])
+
+  def test_asan_memory_growth(self):
+    self.do_smart_test(test_file('other/test_asan_null_deref.c'),
+                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'],
                        assert_returncode=NON_ZERO, literals=[
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
   def test_asan_no_stack_trace(self):
     self.do_smart_test(test_file('other/test_lsan_leaks.c'),
-                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1', '-DDISABLE_CONTEXT', '-s', 'EXIT_RUNTIME'],
+                       emcc_args=['-fsanitize=address', '-DDISABLE_CONTEXT', '-s', 'EXIT_RUNTIME'],
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
       'SUMMARY: AddressSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
     ])
 
   def test_asan_pthread_stubs(self):
-    self.do_smart_test(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'])
+    self.do_smart_test(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address'])
 
   def test_asan_strncpy(self):
     # Regression test for asan false positives in strncpy:
     # https://github.com/emscripten-core/emscripten/issues/14618
-    self.do_smart_test(test_file('other/test_asan_strncpy.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'])
+    self.do_smart_test(test_file('other/test_asan_strncpy.c'), emcc_args=['-fsanitize=address'])
 
   @node_pthreads
   def test_proxy_to_pthread_stack(self):
@@ -9491,7 +9499,7 @@ int main(void) {
     self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-s', 'NO_FILESYSTEM'])
 
   def test_mmap_and_munmap_anonymous_asan(self):
-    self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH'])
+    self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address'])
 
   def test_mmap_memorygrowth(self):
     self.do_other_test('test_mmap_memorygrowth.cpp', ['-s', 'ALLOW_MEMORY_GROWTH'])
@@ -11070,7 +11078,6 @@ void foo() {}
     self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('INITIAL_MEMORY', '256MB')
     self.emcc_args += ['-gsource-map']
     self.do_run_in_out_file_test(test_file('pthread/test_pthread_lsan_no_leak.cpp'), emcc_args=['-fsanitize=leak'])
     self.do_run_in_out_file_test(test_file('pthread/test_pthread_lsan_no_leak.cpp'), emcc_args=['-fsanitize=address'])
@@ -11080,7 +11087,6 @@ void foo() {}
     self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('INITIAL_MEMORY', '256MB')
     self.add_pre_run("Module['LSAN_OPTIONS'] = 'exitcode=0'")
     self.emcc_args += ['-gsource-map']
     expected = [

@@ -8,6 +8,8 @@
 
 #if SANITIZER_EMSCRIPTEN
 #include <emscripten.h>
+#include <emscripten/heap.h>
+#include <cassert>
 #include <cstddef>
 #include <pthread.h>
 #define __ATTRP_C11_THREAD ((void*)(uptr)-1)
@@ -18,6 +20,16 @@ void InitializeShadowMemory() {
   // Poison the shadow memory of the shadow area at the start of the address
   // space. This helps catching null pointer dereference.
   FastPoisonShadow(kLowShadowBeg, kLowShadowEnd - kLowShadowBeg, 0xff);
+
+  // Assert that the shadow region is large enough.  We don't want to start
+  // running into the static data region which starts right after the shadow
+  // region.
+  uptr max_address =
+    (__builtin_wasm_memory_size(0) * uint64_t(WASM_PAGE_SIZE)) - 1;
+  uptr max_shadow_address = MEM_TO_SHADOW(max_address);
+  // TODO(sbc): In the growable memory case we should really be checking this
+  // every time we grow.
+  assert(max_shadow_address <= kLowShadowEnd && "shadow region is too small");
 }
 
 void AsanCheckDynamicRTPrereqs() {}

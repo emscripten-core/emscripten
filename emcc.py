@@ -187,6 +187,11 @@ def base64_encode(b):
   return b64.decode('ascii')
 
 
+def align_to_wasm_page_boundary(address):
+  page_size = webassembly.WASM_PAGE_SIZE
+  return ((address + (page_size - 1)) // page_size) * page_size
+
+
 @unique
 class OFormat(Enum):
   # Output a relocatable object file.  We use this
@@ -2179,6 +2184,17 @@ def phase_linker_setup(options, state, newargs, settings_map):
         'emscripten_builtin_free',
     ]
 
+  if ('leak' in sanitize or 'address' in sanitize) and not settings.ALLOW_MEMORY_GROWTH:
+    # Increase the minimum memory requirements to account for extra memory
+    # that the sanitizers might need (in addition to the shadow memory
+    # requirements handled below).
+    # These values are designed be an over-estimate of the actual requirements and
+    # are based on experimentation with different tests/programs under asan and
+    # lsan.
+    settings.INITIAL_MEMORY += 50 * 1024 * 1024
+    if settings.USE_PTHREADS:
+      settings.INITIAL_MEMORY += 50 * 1024 * 1024
+
   if settings.USE_OFFSET_CONVERTER and settings.WASM2JS:
     exit_with_error('wasm2js is not compatible with USE_OFFSET_CONVERTER (see #14630)')
 
@@ -2235,27 +2251,38 @@ def phase_linker_setup(options, state, newargs, settings_map):
     if settings.GLOBAL_BASE != -1:
       exit_with_error("ASan does not support custom GLOBAL_BASE")
 
-    max_mem = settings.INITIAL_MEMORY
+    # Increase the TOTAL_MEMORY and shift GLOBAL_BASE to account for
+    # the ASan shadow region which starts at address zero.
+    # The shadow region is 1/8th the size of the total memory and is
+    # itself part of the total memory.
+    # We use the following variables in this calculation:
+    # - user_mem : memory usable/visible by the user program.
+    # - shadow_size : memory used by asan for shadow memory.
+    # - total_mem : the sum of the above. this is the size of the wasm memory (and must be aligned to WASM_PAGE_SIZE)
+    user_mem = settings.INITIAL_MEMORY
     if settings.ALLOW_MEMORY_GROWTH:
-      max_mem = settings.MAXIMUM_MEMORY
+      user_mem = settings.MAXIMUM_MEMORY
 
-    shadow_size = max_mem // 8
+    # Given the know value of user memory size we can work backwards
+    # to find the total memory and the shadow size based on the fact
+    # that the user memory is 7/8ths of the total memory.
+    # (i.e. user_mem == total_mem * 7 / 8
+    total_mem = user_mem * 8 / 7
+
+    # But we might need to re-align to wasm page size
+    total_mem = int(align_to_wasm_page_boundary(total_mem))
+
+    # The shadow size is 1/8th the resulting rounded up size
+    shadow_size = total_mem // 8
+
+    # We start our global data after the shadow memory.
+    # We don't need to worry about alignment here.  wasm-ld will take care of that.
     settings.GLOBAL_BASE = shadow_size
 
-    sanitizer_mem = (shadow_size + webassembly.WASM_PAGE_SIZE) & ~webassembly.WASM_PAGE_SIZE
-    # sanitizers do at least 9 page allocs of a single page during startup.
-    sanitizer_mem += webassembly.WASM_PAGE_SIZE * 9
-    # we also allocate at least 11 "regions". Each region is kRegionSize (2 << 20) but
-    # MmapAlignedOrDieOnFatalError adds another 2 << 20 for alignment.
-    sanitizer_mem += (1 << 21) * 11
-    # When running in the threaded mode asan needs to allocate an array of kMaxNumberOfThreads
-    # (1 << 22) pointers.  See compiler-rt/lib/asan/asan_thread.cpp.
-    if settings.USE_PTHREADS:
-      sanitizer_mem += (1 << 22) * 4
-
-    # Increase the size of the initial memory according to how much memory
-    # we think the sanitizers will use.
-    settings.INITIAL_MEMORY += sanitizer_mem
+    if not settings.ALLOW_MEMORY_GROWTH:
+      settings.INITIAL_MEMORY = total_mem
+    else:
+      settings.INITIAL_MEMORY += align_to_wasm_page_boundary(shadow_size)
 
     if settings.SAFE_HEAP:
       # SAFE_HEAP instruments ASan's shadow memory accesses.
