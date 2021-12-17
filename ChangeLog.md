@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.0.1
+3.0.2
 -----
+
+3.0.1 - 12/17/2021
+------------------
 - Deprecate `EMMAKEN_CFLAGS` is favor of `EMCC_CFLAGS`.
 - Fixed an issue where user provided --js-library directives would not be
   processed as the last item after all system provided JS libraries have been
