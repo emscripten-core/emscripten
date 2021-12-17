@@ -1371,6 +1371,10 @@ var USE_ICU = 0;
 // [link]
 var USE_ZLIB = 0;
 
+// 1 = use zstd from upstream
+// [link]
+var USE_ZSTD = 0;
+
 // 1 = use bzip2 from emscripten-ports
 // [link]
 var USE_BZIP2 = 0;
