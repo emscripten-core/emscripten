@@ -2499,7 +2499,6 @@ void *getBindBuffer() {
   def test_emscripten_async_wget2_data(self):
     create_file('hello.txt', 'Hello Emscripten!')
     self.btest('test_emscripten_async_wget2_data.cpp', expected='0')
-    time.sleep(10)
 
   def test_emscripten_async_wget_side_module(self):
     self.run_process([EMCC, test_file('browser_module.c'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE'])
