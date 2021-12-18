@@ -46,7 +46,7 @@ var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : 
 // See https://caniuse.com/mdn-javascript_builtins_object_assign
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 90000
 function objAssign(target, source) {
-  for (key in source) {
+  for (var key in source) {
     if (source.hasOwnProperty(key)) {
       target[key] = source[key];
     }

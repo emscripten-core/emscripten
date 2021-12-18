@@ -11328,3 +11328,69 @@ void foo() {}
     # reference them in our docs.  Should we move this file to somewhere else such
     # as `examples/`?)
     self.run_process([EMCC, test_file('hello_function.cpp'), '-o', 'function.html', '-sEXPORTED_FUNCTIONS=_int_sqrt', '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap'])
+
+  @parameterized({
+    '': ([],),
+    'O2': (['-O2'],),
+  })
+  def test_es5_transpile(self, args):
+    self.emcc_args += args
+
+    # Create a library file that uses the following ES6 features
+    # - let/const
+    # - arrow funcs
+    # - for..of
+    # - object.assign
+    create_file('es6_library.js', '''\
+    mergeInto(LibraryManager.library, {
+      foo: function() {
+        // Object.assign + let
+        let obj = Object.assign({}, {prop:1});
+        err('prop: ' + obj.prop);
+
+        // arror funcs + const
+        const bar = () => 2;
+        err('bar: ' + bar());
+      }
+    });
+    ''')
+    create_file('test.c', 'extern void foo(); int main() { foo(); }')
+    self.emcc_args += ['--js-library', 'es6_library.js']
+    self.uses_es6 = True
+
+    def check_for_es6(filename, expect):
+      js = read_file(filename)
+      if expect:
+        self.assertContained(['() => 2', '()=>2'], js)
+        self.assertContained('const ', js)
+        self.assertContained('let ', js)
+      else:
+        self.assertNotContained('() => 2', js)
+        self.assertNotContained('()=>2', js)
+        self.assertNotContained('const ', js)
+        self.assertNotContained('let ', js)
+
+    # Check that under normal circumstances none of these features get
+    # removed / transpiled.
+    print('base case')
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n')
+    check_for_es6('test.js', True)
+
+    # If we select and older browser than closure will kick in by default
+    # to traspile.
+    print('with old browser')
+    self.emcc_args.remove('-Werror')
+    self.set_setting('MIN_CHROME_VERSION', '10')
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n', output_basename='test2')
+    check_for_es6('test2.js', False)
+
+    # If we add `--closure=0` that traspiler (closure) is not run at all
+    print('with old browser + --closure=0')
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=0'], output_basename='test3')
+    check_for_es6('test3.js', True)
+
+    # If we use `--closure=1` closure will run in full optimization mode
+    # and also transpile to ES5
+    print('with old browser + --closure=1')
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=1'], output_basename='test4')
+    check_for_es6('test4.js', False)

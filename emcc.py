@@ -1816,6 +1816,24 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   setup_environment_settings()
 
+  if options.use_closure_compiler != 0:
+    # Emscripten requires certain ES6 constructs by default in library code
+    # - https://caniuse.com/let              : EDGE:12 FF:44 CHROME:49 SAFARI:11
+    # - https://caniuse.com/const            : EDGE:12 FF:36 CHROME:49 SAFARI:11
+    # - https://caniuse.com/arrow-functions: : EDGE:12 FF:22 CHROME:45 SAFARI:10
+    # - https://caniuse.com/mdn-javascript_builtins_object_assign:
+    #                                          EDGE:12 FF:34 CHROME:45 SAFARI:9
+    # Taking the highest requirements gives is our minimum:
+    #                             Max Version: EDGE:12 FF:44 CHROME:49 SAFARI:11
+    settings.TRANSPILE_TO_ES5 = (settings.MIN_EDGE_VERSION < 12 or
+                                 settings.MIN_FIREFOX_VERSION < 44 or
+                                 settings.MIN_CHROME_VERSION < 49 or
+                                 settings.MIN_SAFARI_VERSION < 110000 or
+                                 settings.MIN_IE_VERSION != 0x7FFFFFFF)
+
+    if options.use_closure_compiler is None and settings.TRANSPILE_TO_ES5:
+      diagnostics.warning('transpile', 'enabling transpilation via closure due to browser version settings.  This warning can be suppressed by passing `--closure=1` or `--closure=0` to opt into our explicitly.')
+
   # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
   if not settings.WASM2JS:
     settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
@@ -3272,14 +3290,13 @@ def phase_binaryen(target, options, wasm_target):
   def preprocess_wasm2js_script():
     return read_and_preprocess(utils.path_from_root('src/wasm2js.js'), expand_macros=True)
 
-  def run_closure_compiler():
-    global final_js
-    final_js = building.closure_compiler(final_js, pretty=not minify_whitespace(),
-                                         extra_closure_args=options.closure_args)
+  if final_js and (options.use_closure_compiler or settings.TRANSPILE_TO_ES5):
+    if options.use_closure_compiler:
+      final_js = building.closure_compiler(final_js, pretty=not minify_whitespace(),
+                                           extra_closure_args=options.closure_args)
+    else:
+      final_js = building.closure_transpile(final_js, pretty=not minify_whitespace())
     save_intermediate_with_wasm('closure', wasm_target)
-
-  if final_js and options.use_closure_compiler:
-    run_closure_compiler()
 
   symbols_file = None
   if options.emit_symbol_map:
