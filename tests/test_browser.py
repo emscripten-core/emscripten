@@ -5371,6 +5371,3 @@ class emrun(RunnerCore):
     self.assertExists(self.in_dir('other dir/multiple/test.txt'))
     self.assertExists(self.in_dir('other dir/multiple/heap.txt'))
     self.assertExists(self.in_dir('other dir/multiple/nested/with space.dat'))
-
-
-
