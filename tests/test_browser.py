@@ -5334,6 +5334,9 @@ class emrun(RunnerCore):
       print(shared.shlex_join(args))
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)
+      self.assertExists(self.in_dir('dump_out/test.txt'))
+      self.assertExists(self.in_dir('dump_out/heap.txt'))
+      self.assertExists(self.in_dir('dump_out/nested/with space.dat'))
       stdout = read_file(self.in_dir('stdout.txt'))
       stderr = read_file(self.in_dir('stderr.txt'))
       self.assertContained('argc: 4', stdout)
@@ -5342,3 +5345,32 @@ class emrun(RunnerCore):
       self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
       self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
       self.assertContained('hello, error stream!', stderr)
+
+  def test_dump_directory(self):
+    self.run_process([EMCC, test_file('test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
+    os.chdir(path_from_root())
+    args = [EMRUN, '--dump_out_directory', 'other dir/multiple']
+    if EMTEST_BROWSER is not None:
+      # If EMTEST_BROWSER carried command line arguments to pass to the browser,
+      # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
+      # so strip them out.
+      browser_cmd = shlex.split(EMTEST_BROWSER)
+      browser_path = browser_cmd[0]
+      args += ['--browser', browser_path]
+      if len(browser_cmd) > 1:
+        browser_args = browser_cmd[1:]
+        if 'firefox' in browser_path and ('-profile' in browser_args or '--profile' in browser_args):
+          # emrun uses its own -profile, strip it out
+          parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
+          parser.add_argument('-profile')
+          parser.add_argument('--profile')
+          browser_args = parser.parse_known_args(browser_args)[1]
+        if browser_args:
+          args += ['--browser_args', ' ' + ' '.join(browser_args)]
+    self.run_process(args + [self.in_dir('hello_world.html')], check=False)
+    self.assertExists(self.in_dir('other dir/multiple/test.txt'))
+    self.assertExists(self.in_dir('other dir/multiple/heap.txt'))
+    self.assertExists(self.in_dir('other dir/multiple/nested/with space.dat'))
+
+
+
