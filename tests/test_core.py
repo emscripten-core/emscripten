@@ -1626,6 +1626,8 @@ int main() {
 
   @also_with_wasmfs
   def test_rename(self):
+    if is_sanitizing(self.emcc_args) and self.get_setting('WASMFS'):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/15820')
     self.do_run_in_out_file_test('stdio/test_rename.c')
 
   def test_remove(self):
