@@ -43,21 +43,12 @@ var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : 
 // modularize which creates a Promise for when the module is ready.
 #include "polyfill/promise.js"
 #endif
-#endif
 
 // See https://caniuse.com/mdn-javascript_builtins_object_assign
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 90000
-function objAssign(target, source) {
-  for (var key in source) {
-    if (source.hasOwnProperty(key)) {
-      target[key] = source[key];
-    }
-  }
-  return target;
-}
-#else
-var objAssign = Object.assign;
+#include "polyfill/objassign.js"
 #endif
+#endif // POLYFILL
 
 #if MODULARIZE
 // Set up the promise that indicates the Module is initialized
@@ -80,7 +71,7 @@ Module['ready'] = new Promise(function(resolve, reject) {
 // we collect those properties and reapply _after_ we configure
 // the current environment's defaults to avoid having to be so
 // defensive during initialization.
-var moduleOverrides = objAssign({}, Module);
+var moduleOverrides = Object.assign({}, Module);
 
 var arguments_ = [];
 var thisProgram = './this.program';
@@ -420,7 +411,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 // Merge back in the overrides
-objAssign(Module, moduleOverrides);
+Object.assign(Module, moduleOverrides);
 // Free the object hierarchy contained in the overrides, this lets the GC
 // reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
 moduleOverrides = null;
