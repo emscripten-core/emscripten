@@ -737,6 +737,7 @@ def closure_transpile(filename, pretty):
   user_args = []
   closure_cmd, env = get_closure_compiler_and_env(user_args)
   closure_cmd += ['--language_out', 'ES5']
+  closure_cmd += ['--inject_libraries']
   closure_cmd += ['--compilation_level', 'WHITESPACE_ONLY']
   return run_closure_cmd(closure_cmd, filename, env, pretty)
 

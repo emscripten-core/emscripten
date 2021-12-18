@@ -132,8 +132,7 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
       err('terminateAllThreads');
 #endif
-      for (var t in PThread.pthreads) {
-        var pthread = PThread.pthreads[t];
+      for (var pthread of Object.values(PThread.pthreads)) {
         if (pthread && pthread.worker) {
           PThread.returnWorkerToPool(pthread.worker);
         }
@@ -200,9 +199,7 @@ var LibraryPThread = {
     receiveObjectTransfer: function(data) {
 #if OFFSCREENCANVAS_SUPPORT
       if (typeof GL !== 'undefined') {
-        for (var i in data.offscreenCanvases) {
-          GL.offscreenCanvases[i] = data.offscreenCanvases[i];
-        }
+        objAssign(GL.offscreenCanvases, data.offscreenCanvases);
         if (!Module['canvas'] && data.moduleCanvasId && GL.offscreenCanvases[data.moduleCanvasId]) {
           Module['canvas'] = GL.offscreenCanvases[data.moduleCanvasId].offscreenCanvas;
           Module['canvas'].id = data.moduleCanvasId;
@@ -220,8 +217,8 @@ var LibraryPThread = {
 #endif
       // Call thread init functions (these are the emscripten_tls_init for each
       // module loaded.
-      for (var i in PThread.tlsInitFunctions) {
-        PThread.tlsInitFunctions[i]();
+      for (var f of PThread.tlsInitFunctions) {
+        f();
       }
     },
     // Loads the WebAssembly module into the given list of Workers.
@@ -647,8 +644,7 @@ var LibraryPThread = {
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
     var moduleCanvasId = Module['canvas'] ? Module['canvas'].id : '';
-    for (var i in transferredCanvasNames) {
-      var name = transferredCanvasNames[i].trim();
+    for (var name of transferredCanvasNames) {
       var offscreenCanvasInfo;
       try {
         if (name == '#canvas') {
@@ -738,9 +734,9 @@ var LibraryPThread = {
 #if OFFSCREENCANVAS_SUPPORT
     // Register for each of the transferred canvases that the new thread now
     // owns the OffscreenCanvas.
-    for (var i in offscreenCanvases) {
+    for (var canvas of offscreenCanvases) {
       // pthread ptr to the thread that owns this canvas.
-      {{{ makeSetValue('offscreenCanvases[i].canvasSharedPtr', 8, 'pthread_ptr', 'i32') }}};
+      {{{ makeSetValue('canvas.canvasSharedPtr', 8, 'pthread_ptr', 'i32') }}};
     }
 #endif
 

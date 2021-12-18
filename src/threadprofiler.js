@@ -34,11 +34,10 @@ var emscriptenThreadProfiler = {
     var mainThread = _emscripten_main_browser_thread_id();
 
     var threads = [mainThread];
-    for (var i in PThread.pthreads) {
-      threads.push(PThread.pthreads[i].threadInfoStruct);
+    for (var thread of Object.values(PThread.pthreads)) {
+      threads.push(thread.threadInfoStruct);
     }
-    for (var i = 0; i < threads.length; ++i) {
-      var threadPtr = threads[i];
+    for (var threadPtr of threads) {
       var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
       var threadName = PThread.getThreadName(threadPtr);
       if (threadName) {
@@ -61,12 +60,11 @@ var emscriptenThreadProfiler = {
     var mainThread = _emscripten_main_browser_thread_id();
 
     var threads = [mainThread];
-    for (var i in PThread.pthreads) {
-      threads.push(PThread.pthreads[i].threadInfoStruct);
+    for (var threadPtr of Object.keys(PThread.pthreads)) {
+      threads.push(threadPtr);
     }
 
-    for (var i = 0; i < threads.length; ++i) {
-      var threadPtr = threads[i];
+    for (var threadPtr of threads) {
       var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
       var threadName = PThread.getThreadName(threadPtr);
       if (threadName) {

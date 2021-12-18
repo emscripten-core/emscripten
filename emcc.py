@@ -1820,9 +1820,9 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # Emscripten requires certain ES6 constructs by default in library code
     # - https://caniuse.com/let              : EDGE:12 FF:44 CHROME:49 SAFARI:11
     # - https://caniuse.com/const            : EDGE:12 FF:36 CHROME:49 SAFARI:11
-    # - https://caniuse.com/arrow-functions: : EDGE:12 FF:22 CHROME:45 SAFARI:10
-    # - https://caniuse.com/mdn-javascript_builtins_object_assign:
-    #                                          EDGE:12 FF:34 CHROME:45 SAFARI:9
+    # - https://caniuse.com/const            : EDGE:12 FF:36 CHROME:49 SAFARI:11
+    # - https://caniuse.com/mdn-javascript_statements_for_of:
+    #                                        : EDGE:12 FF:13 CHROME:38 SAFARI:7
     # Taking the highest requirements gives is our minimum:
     #                             Max Version: EDGE:12 FF:44 CHROME:49 SAFARI:11
     settings.TRANSPILE_TO_ES5 = (settings.MIN_EDGE_VERSION < 12 or

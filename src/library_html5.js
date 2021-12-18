@@ -86,8 +86,7 @@ var LibraryHTML5 = {
         return true;
       }
       // Test if the given call was already queued, and if so, don't add it again.
-      for (var i in JSEvents.deferredCalls) {
-        var call = JSEvents.deferredCalls[i];
+      for (var call of JSEvents.deferredCalls) {
         if (call.targetFunction == targetFunction && arraysHaveEqualContent(call.argsList, argsList)) {
           return;
         }
@@ -2092,8 +2091,7 @@ var LibraryHTML5 = {
 #endif
       var targetRect = getBoundingClientRect(target);
       var numTouches = 0;
-      for (var i in touches) {
-        t = touches[i];
+      for (var t of touches) {
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.identifier / 4}}}] = t.identifier;
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenX / 4}}}] = t.screenX;
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenY / 4}}}] = t.screenY;

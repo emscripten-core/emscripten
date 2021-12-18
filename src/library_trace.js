@@ -281,8 +281,7 @@ var LibraryTracing = {
         return 0;
       }
       var totalMemory = 0;
-      for (var i in AL.currentContext.buf) {
-        var buffer = AL.currentContext.buf[i];
+      for (var buffer of AL.currentContext.buf) {
         for (var channel = 0; channel < buffer.numberOfChannels; ++channel) {
           totalMemory += buffer.getChannelData(channel).length * 4;
         }

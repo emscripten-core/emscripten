@@ -372,9 +372,10 @@ var emscriptenMemoryProfiler = {
 
     var totalMemory = 0;
 
-    for (var i in AL.currentContext.buf) {
-      var buffer = AL.currentContext.buf[i];
-      for (var channel = 0; channel < buffer.numberOfChannels; ++channel) totalMemory += buffer.getChannelData(channel).length * 4;
+    for (var buffer of AL.currentContext.buf) {
+      for (var channel = 0; channel < buffer.numberOfChannels; ++channel) {
+        totalMemory += buffer.getChannelData(channel).length * 4;
+      }
     }
     return totalMemory;
   },
@@ -513,7 +514,9 @@ var emscriptenMemoryProfiler = {
     html += "<br />Free memory: " + colorBar("#70FF70") + "DYNAMIC: " + self.formatBytes(heap_end - heap_base - self.totalMemoryAllocated) + ", " + colorBar('#FFFFFF') + 'Unallocated HEAP: ' + self.formatBytes(HEAP8.length - heap_end) + " (" + ((HEAP8.length - heap_base - self.totalMemoryAllocated) * 100 / (HEAP8.length - heap_base)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
 
     var preloadedMemoryUsed = 0;
-    for (var i in self.sizeOfPreRunAllocatedPtr) preloadedMemoryUsed += self.sizeOfPreRunAllocatedPtr[i]|0;
+    for (var size of Object.values(self.sizeOfPreRunAllocatedPtr)) {
+      preloadedMemoryUsed += size|0;
+    }
     html += '<br />' + colorBar('#FF9900') + colorBar('#FFDD33') + 'Preloaded memory used, most likely memory reserved by files in the virtual filesystem : ' + self.formatBytes(preloadedMemoryUsed);
 
     html += '<br />OpenAL audio data: ' + self.formatBytes(self.countOpenALAudioDataSize()) + ' (outside HEAP)';
@@ -546,8 +549,7 @@ var emscriptenMemoryProfiler = {
 
     if (document.getElementById('showHeapResizes').checked) {
       // Print heap resize traces.
-      for (var i in self.resizeMemorySources) {
-        var resize = self.resizeMemorySources[i];
+      for (var resize of self.resizeMemorySources) {
         self.drawContext.fillStyle = resize.color;
         self.fillRect(resize.begin, resize.end, 0.5);
       }
@@ -555,11 +557,10 @@ var emscriptenMemoryProfiler = {
       // Print sbrk() traces.
       var uniqueSources = {};
       var filterWords = document.getElementById('sbrkFilter').value.split(',');
-      for (var i in self.sbrkSources) {
-        var sbrk = self.sbrkSources[i];
+      for (var sbrk of self.sbrkSources) {
         var stack = sbrk.stack;
-        for (var j in filterWords) {
-          var s = filterWords[j].trim();
+        for (var work of filterWords) {
+          var s = work.trim();
           if (s.length > 0)
           stack = self.filterCallstackAfterFunctionName(stack, s);
         }
@@ -604,11 +605,11 @@ var emscriptenMemoryProfiler = {
     } else {
       var demangler = typeof demangleAll !== 'undefined' ? demangleAll : function(x) { return x; };
       // Print out statistics of individual allocations if they were tracked.
-      if (Object.keys(self.allocationsAtLoc).length > 0) {
+      if (Object.values(self.allocationsAtLoc).length > 0) {
         var calls = [];
-        for (var i in self.allocationsAtLoc) {
-          if (self.allocationsAtLoc[i][0] >= self.trackedCallstackMinAllocCount || self.allocationsAtLoc[i][1] >= self.trackedCallstackMinSizeBytes) {
-            calls.push(self.allocationsAtLoc[i]);
+        for (var alloc of Object.values(self.allocationsAtLoc)) {
+          if (alloc[0] >= self.trackedCallstackMinAllocCount || alloc[1] >= self.trackedCallstackMinSizeBytes) {
+            calls.push(alloc);
           }
         }
         if (calls.length > 0) {
@@ -617,9 +618,9 @@ var emscriptenMemoryProfiler = {
             calls.sort(function(a,b) { return b[sortIdx] - a[sortIdx]; });
           }
           html += '<h4>Allocation sites with more than ' + self.formatBytes(self.trackedCallstackMinSizeBytes) + ' of accumulated allocations, or more than ' + self.trackedCallstackMinAllocCount + ' simultaneously outstanding allocations:</h4>'
-          for (var i in calls) {
-            if (calls[i].length == 3) calls[i] = [calls[i][0], calls[i][1], calls[i][2], demangler(calls[i][2])];
-            html += "<b>" + self.formatBytes(calls[i][1]) + '/' + calls[i][0] + " allocs</b>: " + calls[i][3] + "<br />";
+          for (var call of calls) {
+            if (call.length == 3) call = [call[0], call[1], call[2], demangler(call[2])];
+            html += "<b>" + self.formatBytes(call[1]) + '/' + call[0] + " allocs</b>: " + call[3] + "<br />";
           }
         }
       }

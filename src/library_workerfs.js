@@ -115,14 +115,7 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       },
       readdir: function(node) {
-        var entries = ['.', '..'];
-        for (var key in node.contents) {
-          if (!node.contents.hasOwnProperty(key)) {
-            continue;
-          }
-          entries.push(key);
-        }
-        return entries;
+        return ['.', '..'].concat(Object.getOwnPropertyNames(node.contents));
       },
       symlink: function(parent, newName, oldPath) {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});

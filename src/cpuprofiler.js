@@ -456,8 +456,7 @@ var emscriptenCpuProfiler = {
       if (this.timeSpentOutsideMainloop.length > this.canvas.width) this.timeSpentOutsideMainloop.length = this.canvas.width;
       if (this.lastUiUpdateEndX >= this.canvas.width) this.lastUiUpdateEndX = 0;
       if (this.currentHistogramX >= this.canvas.width) this.currentHistogramX = 0;
-      for (var i in this.sections) {
-        var sect = this.sections[i];
+      for (var sect of this.sections) {
         if (!sect) continue;
         if (sect.frametimesInsideMainLoop.length > this.canvas.width) sect.frametimesInsideMainLoop.length = this.canvas.width;
         if (sect.frametimesOutsideMainLoop.length > this.canvas.width) sect.frametimesOutsideMainLoop.length = this.canvas.width;

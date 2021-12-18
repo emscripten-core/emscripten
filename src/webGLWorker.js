@@ -483,9 +483,15 @@ function WebGLWorker() {
     blendEquationAlpha: this.FUNC_ADD,
     enabledState: {} // Stores whether various GL state via glEnable/glDisable/glIsEnabled/getParameter are enabled.
   };
-  var stateDisabledByDefault = [this.BLEND, this.CULL_FACE, this.DEPTH_TEST, this.DITHER, this.POLYGON_OFFSET_FILL, this.SAMPLE_ALPHA_TO_COVERAGE, this.SAMPLE_COVERAGE, this.SCISSOR_TEST, this.STENCIL_TEST];
-  for (var i in stateDisabledByDefault) {
-    bindings.enabledState[stateDisabledByDefault[i]] = false; // It will be important to distinguish between false and undefined (undefined meaning the state cap enum is unknown/unsupported).
+  var stateDisabledByDefault = [
+    this.BLEND, this.CULL_FACE, this.DEPTH_TEST, this.DITHER,
+    this.POLYGON_OFFSET_FILL, this.SAMPLE_ALPHA_TO_COVERAGE,
+    this.SAMPLE_COVERAGE, this.SCISSOR_TEST, this.STENCIL_TEST
+  ];
+  for (var state of stateDisabledByDefault) {
+    // It will be important to distinguish between false and undefined
+    // (undefined meaning the state cap enum is unknown/unsupported).
+    bindings.enabledState[state] = false;
   }
 
   //==========

@@ -2617,8 +2617,7 @@ LibraryManager.library = {
     var funcname = args.callee.name;
     var str = '(';
     var first = true;
-    for (var i in args) {
-      var a = args[i];
+    for (var a of args) {
       if (!first) {
         str += ", ";
       }
@@ -2678,9 +2677,7 @@ LibraryManager.library = {
     var firefoxRe = new RegExp('\\s*(.*?)@(.*):(.*)(:(.*))?'); // Old FF without column info: extract components of form '       Object._main@http://server.com:4324'
     var chromeRe = new RegExp('\\s*at (.*?) \\\((.*):(.*):(.*)\\\)'); // Extract components of form '    at Object._main (http://server.com/file.html:4324:12)'
 
-    for (var l in lines) {
-      var line = lines[l];
-
+    for (var line of lines) {
       var symbolName = '';
       var file = '';
       var lineno = 0;
@@ -3193,12 +3190,12 @@ LibraryManager.library = {
     var global_object = this;
 #endif
 
-    for (var __exportedFunc in asm) {
-      var jsname = asmjsMangle(__exportedFunc);
+    for (var [__exportedName, __exportedFunc] of Object.entries(asm)) {
+      var jsname = asmjsMangle(__exportedName);
 #if MINIMAL_RUNTIME
-      global_object[jsname] = asm[__exportedFunc];
+      global_object[jsname] = __exportedFunc;
 #else
-      global_object[jsname] = Module[jsname] = asm[__exportedFunc];
+      global_object[jsname] = Module[jsname] = __exportedFunc;
 #endif
     }
 

@@ -11361,7 +11361,7 @@ void foo() {}
     });
     ''')
     create_file('test.c', 'extern void foo(); int main() { foo(); }')
-    self.emcc_args += ['--js-library', 'es6_library.js']
+    self.emcc_args += ['-sDECLARE_ASM_MODULE_EXPORTS=0', '--js-library', 'es6_library.js']
     self.uses_es6 = True
 
     def check_for_es6(filename, expect):
@@ -11372,10 +11372,6 @@ void foo() {}
         self.assertContained('let ', js)
       else:
         self.verify_es5(filename)
-        self.assertNotContained('() => 2', js)
-        self.assertNotContained('()=>2', js)
-        self.assertNotContained('const ', js)
-        self.assertNotContained('let ', js)
 
     # Check that under normal circumstances none of these features get
     # removed / transpiled.

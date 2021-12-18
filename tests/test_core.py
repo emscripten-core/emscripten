@@ -7884,10 +7884,9 @@ Module['onRuntimeInitialized'] = function() {
     # This test checks for the global variables required to run the memory
     # profiler.  It would fail if these variables were made no longer global
     # or if their identifiers were changed.
-    create_file('main.cpp', '''
-      extern "C" {
-        void check_memprof_requirements();
-      }
+    create_file('main.c', '''
+      void check_memprof_requirements();
+
       int main() {
         check_memprof_requirements();
         return 0;
@@ -7908,7 +7907,7 @@ Module['onRuntimeInitialized'] = function() {
       });
     ''')
     self.emcc_args += ['--memoryprofiler', '--js-library', 'lib.js']
-    self.do_runf('main.cpp', 'able to run memprof')
+    self.do_runf('main.c', 'able to run memprof')
 
   def test_fs_dict(self):
     self.set_setting('FORCE_FILESYSTEM')

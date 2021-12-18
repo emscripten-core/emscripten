@@ -94,8 +94,8 @@ var LibraryOpenAL = {
         return;
       }
 
-      for (var i in ctx.sources) {
-        AL.scheduleSourceAudio(ctx.sources[i]);
+      for (var s of ctx.sources) {
+        AL.scheduleSourceAudio(s);
       }
     },
 
@@ -432,8 +432,8 @@ var LibraryOpenAL = {
     },
 
     updateContextGlobal: function(ctx) {
-      for (var i in ctx.sources) {
-        AL.updateSourceGlobal(ctx.sources[i]);
+      for (var s of ctx.sources) {
+        AL.updateSourceGlobal(s);
       }
     },
 
@@ -500,8 +500,8 @@ var LibraryOpenAL = {
       }
 
       // Update sources that are relative to the listener
-      for (var i in ctx.sources) {
-        AL.updateSourceSpace(ctx.sources[i]);
+      for (var s of ctx.sources) {
+        AL.updateSourceSpace(s);
       }
     },
 
@@ -1317,8 +1317,8 @@ var LibraryOpenAL = {
         }
 
         if (value === 0) {
-          for (var i in src.bufQueue) {
-            src.bufQueue[i].refCount--;
+          for (var b of src.bufQueue) {
+            b.refCount--;
           }
           src.bufQueue.length = 1;
           src.bufQueue[0] = AL.buffers[0];
@@ -1335,8 +1335,8 @@ var LibraryOpenAL = {
             return;
           }
 
-          for (var i in src.bufQueue) {
-            src.bufQueue[i].refCount--;
+          for (var b of src.bufQueue) {
+            b.refCount--;
           }
           src.bufQueue.length = 0;
 
@@ -2238,8 +2238,7 @@ var LibraryOpenAL = {
 
     if (hrtf !== null) {
       // Apply hrtf attrib to all contexts for this device
-      for (var ctxId in AL.contexts) {
-        var c = AL.contexts[ctxId];
+      for (var c of AL.contexts) {
         if (c.deviceId === deviceId) {
           c.hrtf = hrtf;
           AL.updateContextGlobal(c);
@@ -2548,8 +2547,7 @@ var LibraryOpenAL = {
       }
 
       var hrtfStatus = 0 /* ALC_HRTF_DISABLED_SOFT */;
-      for (var ctxId in AL.contexts) {
-        var ctx = AL.contexts[ctxId];
+      for (var ctx of AL.contexts) {
         if (ctx.deviceId === deviceId) {
           hrtfStatus = ctx.hrtf ? 1 /* ALC_HRTF_ENABLED_SOFT */ : 0 /* ALC_HRTF_DISABLED_SOFT */;
         }
@@ -2610,8 +2608,7 @@ var LibraryOpenAL = {
     }
     AL.paused = true;
 
-    for (var ctxId in AL.contexts) {
-      var ctx = AL.contexts[ctxId];
+    for (var ctx of AL.contexts) {
       if (ctx.deviceId !== deviceId) {
         continue;
       }
@@ -2638,8 +2635,7 @@ var LibraryOpenAL = {
     }
     AL.paused = false;
 
-    for (var ctxId in AL.contexts) {
-      var ctx = AL.contexts[ctxId];
+    for (var ctx of AL.contexts) {
       if (ctx.deviceId !== deviceId) {
         continue;
       }
@@ -2732,8 +2728,7 @@ var LibraryOpenAL = {
 
     if (hrtf !== null) {
       // Apply hrtf attrib to all contexts for this device
-      for (var ctxId in AL.contexts) {
-        var ctx = AL.contexts[ctxId];
+      for (var ctx of AL.contexts) {
         if (ctx.deviceId === deviceId) {
           ctx.hrtf = hrtf;
           AL.updateContextGlobal(ctx);
