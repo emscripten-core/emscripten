@@ -2496,6 +2496,7 @@ void *getBindBuffer() {
   def test_emscripten_async_wget2(self):
     self.btest_exit('test_emscripten_async_wget2.cpp')
 
+  @disabled('https://github.com/emscripten-core/emscripten/issues/15818')
   def test_emscripten_async_wget2_data(self):
     create_file('hello.txt', 'Hello Emscripten!')
     self.btest('test_emscripten_async_wget2_data.cpp', expected='0')
