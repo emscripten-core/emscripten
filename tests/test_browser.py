@@ -5329,7 +5329,7 @@ class emrun(RunnerCore):
     for args in [
         args_base,
         args_base + ['--private_browsing', '--port', '6941'],
-        args_base + ['--dump_out_directory', 'other dir/multiple']
+        args_base + ['--dump_out_directory', 'other dir/multiple', '--port', '6942']
     ]:
       args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3']
       print(shared.shlex_join(args))
