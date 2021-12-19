@@ -5,9 +5,10 @@
  */
 
 requireNodeFS = function() {
-  // We always initialize both of these together, so we can use
-  // either one as the indicator for them not being initialized.
-  if (!fs) {
+  // Use nodePath as the indicator for these not being initialized,
+  // since in some environments a global fs may have already been
+  // created.
+  if (!nodePath) {
     fs = require('fs');
     nodePath = require('path');
   }
