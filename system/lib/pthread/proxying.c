@@ -159,26 +159,23 @@ void em_proxying_queue_destroy(em_proxying_queue* q) {
   free(q);
 }
 
-// Not thread safe.
-static task_queue* get_tasks_for_thread(em_proxying_queue* q,
-                                        pthread_t thread) {
+// Not thread safe. Returns -1 if there are no tasks for the thread.
+static int get_tasks_index_for_thread(em_proxying_queue* q, pthread_t thread) {
   assert(q != NULL);
-  task_queue* tasks = NULL;
   for (int i = 0; i < q->size; i++) {
     if (pthread_equal(q->task_queues[i].thread, thread)) {
-      tasks = &q->task_queues[i];
-      break;
+      return i;
     }
   }
-  return tasks;
+  return -1;
 }
 
 // Not thread safe.
 static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
                                                pthread_t thread) {
-  task_queue* tasks = get_tasks_for_thread(q, thread);
-  if (tasks != NULL) {
-    return tasks;
+  int tasks_index = get_tasks_index_for_thread(q, thread);
+  if (tasks_index != -1) {
+    return &q->task_queues[tasks_index];
   }
   // There were no tasks for the thread; initialize a new task_queue. If there
   // are not enough queues, allocate more.
@@ -193,7 +190,7 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
     q->capacity = new_capacity;
   }
   // Initialize the next available task queue.
-  tasks = &q->task_queues[q->size];
+  task_queue* tasks = &q->task_queues[q->size];
   if (!task_queue_init(tasks, thread)) {
     return NULL;
   }
@@ -204,7 +201,8 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
 void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   assert(q != NULL);
   pthread_mutex_lock(&q->mutex);
-  task_queue* tasks = get_tasks_for_thread(q, pthread_self());
+  int tasks_index = get_tasks_index_for_thread(q, pthread_self());
+  task_queue* tasks = tasks_index == -1 ? NULL : &q->task_queues[tasks_index];
   if (tasks == NULL || tasks->processing) {
     // No tasks for this thread or they are already being processed.
     pthread_mutex_unlock(&q->mutex);
@@ -219,6 +217,8 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
     pthread_mutex_unlock(&q->mutex);
     t.func(t.arg);
     pthread_mutex_lock(&q->mutex);
+    // The tasks might have been reallocated, so recalculate the pointer.
+    tasks = &q->task_queues[tasks_index];
   }
   tasks->processing = 0;
   pthread_mutex_unlock(&q->mutex);
