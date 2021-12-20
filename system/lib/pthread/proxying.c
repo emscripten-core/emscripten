@@ -15,9 +15,10 @@
 
 #define TASK_QUEUE_INITIAL_CAPACITY 128
 
-// TODO: Update this to take a `em_proxying_queue` argument.
-extern int _emscripten_notify_thread_queue(pthread_t target_thread,
-                                           pthread_t main_thread);
+extern int _emscripten_notify_proxying_queue(pthread_t target_thread,
+                                             pthread_t curr_thread,
+                                             pthread_t main_thread,
+                                             em_proxying_queue* queue);
 
 typedef struct task {
   void (*func)(void*);
@@ -239,18 +240,13 @@ int emscripten_proxy_async(em_proxying_queue* q,
     goto failed;
   }
   pthread_mutex_unlock(&q->mutex);
-  /* // If the queue was previously empty, notify the target thread to process
-   * it. */
-  /* // Otherwise, the target thread was already notified when the existing work
-   */
-  /* // was enqueued so we don't need to notify it again. */
-  /* if (empty) { */
-  /*   // TODO: Add `q` to this notification so the target thread knows which
-   * queue */
-  /*   // to process. */
-  /*   _emscripten_notify_thread_queue(target_thread, */
-  /*                                   emscripten_main_browser_thread_id()); */
-  /* } */
+  // If the queue was previously empty, notify the target thread to process it.
+  // Otherwise, the target thread was already notified when the existing work
+  // was enqueued so we don't need to notify it again.
+  if (empty) {
+    _emscripten_notify_proxying_queue(
+      target_thread, pthread_self(), emscripten_main_browser_thread_id(), q);
+  }
   return 1;
 
 failed:
