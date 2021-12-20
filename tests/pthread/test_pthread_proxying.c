@@ -27,7 +27,7 @@ void* looper_main(void* arg) {
   return NULL;
 }
 
-void* returner_main(void* arg) { return NULL; }
+void* returner_main(void* arg) { emscripten_exit_with_live_runtime(); }
 
 typedef struct widget {
   // `val` will be stored to `out` and the current thread will be stored to
@@ -133,12 +133,12 @@ void test_proxy_async(void) {
   assert(w2.done);
   assert(pthread_equal(w2.thread, looper));
 
-  /* // Proxy to returner. */
-  /* emscripten_proxy_async(proxy_queue, returner, do_run_widget, &w3); */
-  /* await_widget(&w3); */
-  /* assert(i == 3); */
-  /* assert(w3.done); */
-  /* assert(pthread_equal(w3.thread, returner)); */
+  // Proxy to returner.
+  emscripten_proxy_async(proxy_queue, returner, do_run_widget, &w3);
+  await_widget(&w3);
+  assert(i == 3);
+  assert(w3.done);
+  assert(pthread_equal(w3.thread, returner));
 
   destroy_widget(&w1);
   destroy_widget(&w2);
@@ -159,11 +159,11 @@ void test_proxy_sync(void) {
   assert(w4.done);
   assert(pthread_equal(w4.thread, looper));
 
-  /* // Proxy to returner. */
-  /* emscripten_proxy_sync(proxy_queue, returner, do_run_widget, &w5); */
-  /* assert(i == 5); */
-  /* assert(w5.done); */
-  /* assert(pthread_equal(w5.thread, returner)); */
+  // Proxy to returner.
+  emscripten_proxy_sync(proxy_queue, returner, do_run_widget, &w5);
+  assert(i == 5);
+  assert(w5.done);
+  assert(pthread_equal(w5.thread, returner));
 
   destroy_widget(&w4);
   destroy_widget(&w5);
@@ -184,12 +184,12 @@ void test_proxy_sync_with_ctx(void) {
   assert(w6.done);
   assert(pthread_equal(w6.thread, looper));
 
-  /* // Proxy to returner. */
-  /* emscripten_proxy_sync_with_ctx(proxy_queue, returner, start_running_widget,
-   * &w7); */
-  /* assert(i == 7); */
-  /* assert(w7.done); */
-  /* assert(pthread_equal(w7.thread, returner)); */
+  // Proxy to returner.
+  emscripten_proxy_sync_with_ctx(
+    proxy_queue, returner, start_running_widget, &w7);
+  assert(i == 7);
+  assert(w7.done);
+  assert(pthread_equal(w7.thread, returner));
 
   destroy_widget(&w6);
   destroy_widget(&w7);
@@ -266,10 +266,14 @@ int main(int argc, char* argv[]) {
 
   should_quit = 1;
   pthread_join(looper, NULL);
+
+  pthread_cancel(returner);
   pthread_join(returner, NULL);
+
   em_proxying_queue_destroy(proxy_queue);
 
   test_queue_growth();
 
   printf("done\n");
+  emscripten_force_exit(0);
 }
