@@ -150,7 +150,7 @@ var LibraryBrowser = {
         assert(typeof url == 'string', 'createObjectURL must return a url as a string');
 #endif
         var img = new Image();
-        img.onload = function img_onload() {
+        img.onload = () => {
           assert(img.complete, 'Image ' + name + ' could not be decoded');
           var canvas = document.createElement('canvas');
           canvas.width = img.width;
@@ -161,7 +161,7 @@ var LibraryBrowser = {
           Browser.URLObject.revokeObjectURL(url);
           if (onload) onload(byteArray);
         };
-        img.onerror = function img_onerror(event) {
+        img.onerror = (event) => {
           out('Image ' + url + ' could not be decoded');
           if (onerror) onerror();
         };

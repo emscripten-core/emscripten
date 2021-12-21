@@ -48,6 +48,9 @@ f = re.sub(r'var (\w);\1\|\|\(\1=Module\);', r'var \1=Module;', f)
 # var Module=function(a){
 f = re.sub(r'\s*function\s*\(Module\)\s*{\s*Module\s*=\s*Module\s*\|\|\s*{\s*}\s*;\s*var\s+(\w+)\s*=\s*Module\s*;', r'function(\1){', f)
 
+# Same as above but for arrow function
+f = re.sub(r'\s*\(Module\)\s*=>\s*{\s*Module\s*=\s*Module\s*\|\|\s*{\s*}\s*;\s*var\s+(\w+)\s*=\s*Module\s*;', r'(\1)=>{', f)
+
 f = re.sub(r'\s+', ' ', f)
 f = re.sub(r'[\n\s]+\n\s*', '\n', f)
 f = re.sub(r'([;{}=,\+\-\*/\(\)\[\]])[\n]', r'\1', f)

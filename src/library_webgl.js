@@ -675,7 +675,7 @@ var LibraryGL = {
 #endif
 
 #if GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN
-      function disableHalfFloatExtensionIfBroken(ctx) {
+      const disableHalfFloatExtensionIfBroken = (ctx) => {
         var t = ctx.createTexture();
         ctx.bindTexture(0xDE1/*GL_TEXTURE_2D*/, t);
         for (var i = 0; i < 8 && ctx.getError(); ++i) /*no-op*/;
