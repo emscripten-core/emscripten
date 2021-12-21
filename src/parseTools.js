@@ -503,9 +503,8 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
   sep = sep || ';';
   function unroll(type, num, jump) {
     jump = jump || 1;
-    return range(num).map((i) => {
-      return makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type);
-    }).join(sep);
+    const setValues = range(num).map((i) => makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type));
+    return setValues.join(sep);
   }
   // If we don't know how to handle this at compile-time, or handling it is best
   // done in a large amount of code, call memcpy

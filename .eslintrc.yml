@@ -12,5 +12,6 @@ rules:
   max-len: "off"
   require-jsdoc: "off"
   no-unused-vars: "off"
+  arrow-body-style: ["error", "as-needed"]
   space-infix-ops: "error"
   quotes: ["error", "single", {"avoidEscape": true}]
