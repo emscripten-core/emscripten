@@ -338,5 +338,5 @@ int main(int argc, char* argv[]) {
   test_proxying_queue_growth();
 
   printf("done\n");
-  return 0;
+  emscripten_force_exit(0);
 }
