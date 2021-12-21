@@ -214,8 +214,8 @@ void increment_to(void* arg_p) {
   free(arg);
 }
 
-void test_queue_growth(void) {
-  printf("Testing queue growth\n");
+void test_tasks_queue_growth(void) {
+  printf("Testing tasks queue growth\n");
 
   em_proxying_queue* queue = em_proxying_queue_create();
   assert(proxy_queue != NULL);
@@ -251,6 +251,68 @@ void test_queue_growth(void) {
   em_proxying_queue_destroy(queue);
 }
 
+typedef struct proxying_queue_growth_arg {
+  em_proxying_queue* queue;
+  pthread_t a;
+  pthread_t b;
+  _Atomic int work_count;
+} proxying_queue_growth_arg;
+
+void trivial_work(void* arg) {
+  printf("work\n");
+  (*(_Atomic int*)arg)++;
+}
+
+void grow_proxying_queue(void* arg_p) {
+  // Add task_queues for two new threads, causing a reallocation of the
+  // `em_proxying_queue`'s task_queues array the first time this is called.
+  proxying_queue_growth_arg* arg = (proxying_queue_growth_arg*)arg_p;
+  emscripten_proxy_async(arg->queue, arg->a, trivial_work, &arg->work_count);
+  emscripten_proxy_async(arg->queue, arg->b, trivial_work, &arg->work_count);
+}
+
+void test_proxying_queue_growth(void) {
+  printf("Testing proxying queue growth\n");
+
+  proxying_queue_growth_arg arg;
+  arg.queue = em_proxying_queue_create();
+  assert(arg.queue != NULL);
+
+  pthread_create(&arg.a, NULL, returner_main, NULL);
+  pthread_create(&arg.b, NULL, returner_main, NULL);
+
+  arg.work_count = 0;
+
+  // Queue a task for the current thread, allocating an array of one task_queue.
+  // Then when the task is executed, work is queued on two new threads, bumping
+  // up the array size to 4 and causing it to be reallocated elsewhere. Make
+  // sure we correctly handle this reallocation in the middle of executing the
+  // queue.
+  emscripten_proxy_async(arg.queue, pthread_self(), grow_proxying_queue, &arg);
+  emscripten_proxy_execute_queue(arg.queue);
+
+  while (arg.work_count < 2) {
+    sched_yield();
+  }
+
+  // Do it again to make sure the queue was left in a valid state. Specifically,
+  // if the reallocation is not handled correctly, the recursion guard might not
+  // have been updated correctly, so the work will not be completed.
+  emscripten_proxy_async(arg.queue, pthread_self(), grow_proxying_queue, &arg);
+  emscripten_proxy_execute_queue(arg.queue);
+
+  while (arg.work_count < 4) {
+    sched_yield();
+  }
+
+  // Clean up.
+  pthread_cancel(arg.a);
+  pthread_cancel(arg.b);
+  pthread_join(arg.a, NULL);
+  pthread_join(arg.b, NULL);
+  em_proxying_queue_destroy(arg.queue);
+}
+
 int main(int argc, char* argv[]) {
   main_thread = pthread_self();
 
@@ -272,7 +334,8 @@ int main(int argc, char* argv[]) {
 
   em_proxying_queue_destroy(proxy_queue);
 
-  test_queue_growth();
+  test_tasks_queue_growth();
+  test_proxying_queue_growth();
 
   printf("done\n");
   emscripten_force_exit(0);

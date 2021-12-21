@@ -8,5 +8,10 @@ running widget 5 on returner
 Testing sync_with_ctx proxying
 running widget 6 on looper
 running widget 7 on returner
-Testing queue growth
+Testing tasks queue growth
+Testing proxying queue growth
+work
+work
+work
+work
 done
