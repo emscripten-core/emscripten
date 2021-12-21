@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <emscripten/emscripten.h>
 #include <pthread.h>
 
 #ifdef __cplusplus
@@ -29,6 +30,8 @@ void em_proxying_queue_destroy(em_proxying_queue* q);
 em_proxying_queue* emscripten_proxy_get_system_queue();
 
 // Execute all the tasks enqueued for the current thread on the given queue.
+// Exported for use in worker.js.
+EMSCRIPTEN_KEEPALIVE
 void emscripten_proxy_execute_queue(em_proxying_queue* q);
 
 // Opaque handle to a currently-executing proxied task, used to signal the end

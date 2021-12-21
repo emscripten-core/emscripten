@@ -30,7 +30,8 @@ typedef struct task {
 typedef struct task_queue {
   // The target thread for this task_queue.
   pthread_t thread;
-  // Recursion guard.
+  // Recursion guard. TODO: We disallow recursive processing because that's what
+  // the old proxying API does. Experiment with relaxing this restriction.
   int processing;
   // Ring buffer of tasks of size `capacity`. New tasks are enqueued at
   // `tail` and dequeued at `head`.
@@ -109,7 +110,7 @@ static int task_queue_enqueue(task_queue* tasks, task t) {
   return 1;
 }
 
-// Not thread safe.
+// Not thread safe. Assumes the queue is not empty.
 static task task_queue_dequeue(task_queue* tasks) {
   task t = tasks->tasks[tasks->head];
   tasks->head = (tasks->head + 1) % tasks->capacity;
