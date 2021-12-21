@@ -776,6 +776,9 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
              '-Wno-string-plus-int',
              '-Wno-pointer-sign']
 
+  # Include internal proxying header.
+  cflags += [f'-I{utils.path_from_root("system/lib/pthread")}']
+
   def get_files(self):
     libc_files = []
     musl_srcdir = utils.path_from_root('system/lib/libc/musl/src')
