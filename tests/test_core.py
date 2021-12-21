@@ -2427,7 +2427,8 @@ The current type of b is: 9
     self.set_setting('INITIAL_MEMORY=32mb')
     self.set_setting('EXPORTED_FUNCTIONS=_emscripten_proxy_execute_queue,_main')
     args = [f'-I{path_from_root("system/lib/pthread")}']
-    self.do_run_in_out_file_test('pthread/test_pthread_proxying.c', emcc_args=args)
+    self.do_run_in_out_file_test('pthread/test_pthread_proxying.c',
+                                 emcc_args=args, interleaved_output=False)
 
   @node_pthreads
   def test_pthread_dispatch_after_exit(self):
