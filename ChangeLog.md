@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.0
+3.1.1
 -----
+
+3.1.0 - 12/22/2021
+------------------
 - Emscripten in starting to use ES6 features in its core libraries (at last!).
   For most users targeting the default set of browsers this is a code size win.
   For projects targeting older browsers (e.g. `-sMIN_CHROME_VERSION=10`),
