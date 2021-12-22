@@ -1197,7 +1197,7 @@ def phase_parse_arguments(state):
   options, settings_changes, user_js_defines, newargs = parse_args(newargs)
 
   if options.post_link or options.oformat == OFormat.BARE:
-    diagnostics.warning('experimental', '--oformat=base/--post-link are experimental and subject to change.')
+    diagnostics.warning('experimental', '--oformat=bare/--post-link are experimental and subject to change.')
 
   explicit_settings_changes, newargs = parse_s_args(newargs)
   settings_changes += explicit_settings_changes

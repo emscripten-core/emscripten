@@ -10539,9 +10539,9 @@ exec "$@"
 
   def test_post_link(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '--oformat=bare', '-o', 'bare.wasm'], stderr=PIPE).stderr
-    self.assertContained('--oformat=base/--post-link are experimental and subject to change', err)
+    self.assertContained('--oformat=bare/--post-link are experimental and subject to change', err)
     err = self.run_process([EMCC, '--post-link', 'bare.wasm'], stderr=PIPE).stderr
-    self.assertContained('--oformat=base/--post-link are experimental and subject to change', err)
+    self.assertContained('--oformat=bare/--post-link are experimental and subject to change', err)
     err = self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def compile_with_wasi_sdk(self, filename, output):
