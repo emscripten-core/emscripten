@@ -121,17 +121,6 @@ function isJsLibraryConfigIdentifier(ident) {
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }
 
-// Sets
-
-function set() {
-  var args = typeof arguments[0] === 'object' ? arguments[0] : arguments;
-  var ret = {};
-  for (var i = 0; i < args.length; i++) {
-    ret[args[i]] = 0;
-  }
-  return ret;
-}
-
 function isPowerOfTwo(x) {
   return x > 0 && ((x & (x-1)) == 0);
 }

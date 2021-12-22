@@ -50,7 +50,7 @@ function stringifyWithFunctions(obj) {
 }
 
 function isDefined(symName) {
-  if (symName in WASM_EXPORTS || symName in SIDE_MODULE_EXPORTS) {
+  if (WASM_EXPORTS.has(symName) || SIDE_MODULE_EXPORTS.has(symName)) {
     return true;
   }
   // 'invoke_' symbols are created at runtime in libary_dylink.py so can
@@ -149,7 +149,7 @@ function ${name}(${args}) {
       }
 
       // if the function was implemented in compiled code, there is no need to include the js version
-      if (ident in WASM_EXPORTS) {
+      if (WASM_EXPORTS.has(ident)) {
         return '';
       }
 
@@ -328,7 +328,7 @@ function ${name}(${args}) {
       var sig = LibraryManager.library[ident + '__sig'];
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
-      if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
+      if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(finalName)) && !noExport) {
         contentText += `\nModule["${finalName}"] = ${finalName};`;
       }
       if (MAIN_MODULE && sig) {
