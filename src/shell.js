@@ -373,16 +373,10 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   // Differentiate the Web Worker from the Node Worker case, as reading must
   // be done differently.
 #if USE_PTHREADS && ENVIRONMENT_MAY_BE_NODE
-  if (ENVIRONMENT_IS_NODE) {
-
-#include "node_shell_read.js"
-
-  } else
+  if (!ENVIRONMENT_IS_NODE)
 #endif
   {
-
 #include "web_or_worker_shell_read.js"
-
   }
 
   setWindowTitle = (title) => document.title = title;
