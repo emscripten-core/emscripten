@@ -1111,7 +1111,7 @@ function addReadyPromiseAssertions(promise) {
   //  var instance = Module();
   //  ...
   //  instance._main();
-  const properties = keys(EXPORTED_FUNCTIONS);
+  const properties = Object.keys(EXPORTED_FUNCTIONS);
   // Also warn on onRuntimeInitialized which might be a common pattern with
   // older MODULARIZE-using codebases.
   properties.push('onRuntimeInitialized');

@@ -30,14 +30,6 @@ function warnOnce(msg) {
   printErr('warning: ' + msg);
 }
 
-function set(args) {
-  const ret = {};
-  for (let i = 0; i < args.length; i++) {
-    ret[args[i]] = 0;
-  }
-  return ret;
-}
-
 // Visits and walks
 // (We don't use acorn-walk because it ignores x in 'x = y'.)
 
@@ -908,7 +900,7 @@ function emitDCEGraph(ast) {
 
 // Apply graph removals from running wasm-metadce
 function applyDCEGraphRemovals(ast) {
-  const unused = set(extraInfo.unused);
+  const unused = new Set(extraInfo.unused);
 
   fullWalk(ast, (node) => {
     if (isAsmLibraryArgAssign(node)) {
@@ -917,7 +909,7 @@ function applyDCEGraphRemovals(ast) {
         const name = item.key.value;
         const value = item.value;
         const full = 'emcc$import$' + name;
-        return !((full in unused) && !hasSideEffects(value));
+        return !(unused.has(full) && !hasSideEffects(value));
       });
     } else if (node.type === 'AssignmentExpression') {
       // when we assign to a thing we don't need, we can just remove the assign
@@ -926,7 +918,7 @@ function applyDCEGraphRemovals(ast) {
         const name = getAsmOrModuleUseName(target);
         const full = 'emcc$export$' + name;
         const value = node.right;
-        if ((full in unused) &&
+        if (unused.has(full) &&
             (isAsmUse(value) || !hasSideEffects(value))) {
           // This will be in a var init, and we just remove that value.
           convertToNothingInVarInit(node);
@@ -943,7 +935,7 @@ function applyDCEGraphRemovals(ast) {
         const name = expr.left.name;
         if (name === getAsmOrModuleUseName(expr.right)) {
           const full = 'emcc$export$' + name;
-          if (full in unused) {
+          if (unused.has(full)) {
             emptyOut(node);
           }
         }

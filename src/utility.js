@@ -82,12 +82,6 @@ function range(size) {
   return ret;
 }
 
-function keys(x) {
-  var ret = [];
-  for (var a in x) ret.push(a);
-  return ret;
-}
-
 function bind(self, func) {
   return function() {
     func.apply(self, arguments);
@@ -137,7 +131,6 @@ function set() {
   }
   return ret;
 }
-var unset = keys;
 
 function isPowerOfTwo(x) {
   return x > 0 && ((x & (x-1)) == 0);
@@ -163,7 +156,7 @@ function Benchmarker() {
     ids.pop();
   };
   this.print = function(text) {
-    var ids = keys(totals);
+    var ids = Object.keys(totals);
     if (ids.length > 0) {
       ids.sort(function(a, b) { return totals[b] - totals[a] });
       printErr(text + ' times: \n' + ids.map(function(id) { return id + ' : ' + totals[id] + ' ms' }).join('\n'));

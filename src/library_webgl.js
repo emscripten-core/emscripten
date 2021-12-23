@@ -4199,7 +4199,7 @@ function copyLibEntry(lib, a, b) {
 
 function recordGLProcAddressGet(lib) {
   // GL proc address retrieval - allow access through glX and emscripten_glX, to allow name collisions with user-implemented things having the same name (see gl.c)
-  keys(lib).forEach(function(x) {
+  Object.keys(lib).forEach(function(x) {
     if (isJsLibraryConfigIdentifier(x)) return;
     if (x.substr(0, 2) != 'gl') return;
     while (typeof lib[x] === 'string') {

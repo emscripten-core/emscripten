@@ -45,7 +45,7 @@ function stringifyWithFunctions(obj) {
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   } else {
-    return '{' + keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
+    return '{' + Object.keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
   }
 }
 
