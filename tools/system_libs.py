@@ -1650,6 +1650,7 @@ def calculate(input_files, forced):
 
   handle_reverse_deps(input_files)
 
+  force_include = []
   libs_to_link = []
   already_included = set()
   system_libs_map = Library.get_usable_variations()
@@ -1660,9 +1661,10 @@ def calculate(input_files, forced):
   # You can provide 1 to include everything, or a comma-separated list with the
   # ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
-  if force == '1':
-    force = ','.join(name for name, lib in system_libs_map.items() if not lib.never_force)
-  force_include = set((force.split(',') if force else []) + forced)
+  if force is not None:
+    force_include = [name for name, lib in system_libs_map.items() if
+                     not lib.never_force] if force == '1' else force.split(',')
+  force_include += forced
   if force_include:
     logger.debug(f'forcing stdlibs: {force_include}')
 
@@ -1731,11 +1733,11 @@ def calculate(input_files, forced):
     add_library('libc_rt')
 
     if settings.USE_LSAN:
-      force_include.add('liblsan_rt')
+      force_include.append('liblsan_rt')
       add_library('liblsan_rt')
 
     if settings.USE_ASAN:
-      force_include.add('libasan_rt')
+      force_include.append('libasan_rt')
       add_library('libasan_rt')
       add_library('libasan_js')
 
