@@ -1661,9 +1661,10 @@ def calculate(input_files, forced):
   # You can provide 1 to include everything, or a comma-separated list with the
   # ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
-  if force is not None:
-    force_include = [name for name, lib in system_libs_map.items() if
-                     not lib.never_force] if force == '1' else force.split(',')
+  if force == '1':
+    force_include = [name for name, lib in system_libs_map.items() if not lib.never_force]
+  elif force is not None:
+    force_include = force.split(',')
   force_include += forced
   if force_include:
     logger.debug(f'forcing stdlibs: {force_include}')
