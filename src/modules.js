@@ -316,8 +316,6 @@ function cDefine(key) {
   throw `Missing C define ${key}! If you just added it to struct_info.json, you need to ./emcc --clear-cache`;
 }
 
-var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS);
-
 function isFSPrefixed(name) {
   return name.length > 3 && name[0] === 'F' && name[1] === 'S' && name[2] === '_';
 }
@@ -336,13 +334,15 @@ function isExportedByForceFilesystem(name) {
 
 // export parts of the JS runtime that the user asked for
 function exportRuntime() {
+  var EXPORTED_RUNTIME_METHODS_SET = new Set(EXPORTED_RUNTIME_METHODS);
+
   // optionally export something.
   // in ASSERTIONS mode we show a useful error if it is used without
   // being exported. how we show the message depends on whether it's
   // a function (almost all of them) or a number.
   function maybeExport(name, isNumber) {
     // if requested to be exported, export it
-    if (name in EXPORTED_RUNTIME_METHODS_SET) {
+    if (EXPORTED_RUNTIME_METHODS_SET.has(name)) {
       var exported = name;
       // the exported name may differ from the internal name
       if (isFSPrefixed(exported)) {
@@ -483,7 +483,7 @@ function exportRuntime() {
     }
 
     threadExports.forEach(x => {
-      EXPORTED_RUNTIME_METHODS_SET[x] = 1;
+      EXPORTED_RUNTIME_METHODS_SET.add(x);
       runtimeElements.push(x);
     });
   }
@@ -495,7 +495,7 @@ function exportRuntime() {
   // dynCall_* methods are not hardcoded here, as they
   // depend on the file being compiled. check for them
   // and add them.
-  for (var name in EXPORTED_RUNTIME_METHODS_SET) {
+  for (var name of EXPORTED_RUNTIME_METHODS_SET) {
     if (/^dynCall_/.test(name)) {
       // a specific dynCall; add to the list
       runtimeElements.push(name);
@@ -507,7 +507,7 @@ function exportRuntime() {
   ];
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
-    for (var name in EXPORTED_RUNTIME_METHODS_SET) {
+    for (var name of EXPORTED_RUNTIME_METHODS_SET) {
       if (!runtimeElements.includes(name) && !runtimeNumbers.includes(name)) {
         printErr(`warning: invalid item (maybe a typo?) in EXPORTED_RUNTIME_METHODS: ${name}`);
       }
