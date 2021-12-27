@@ -767,7 +767,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   metadata = {
     'declares': [],
     'globalImports': [],
-    'staticBump': 0,
     'tableSize': 0,
     'exports': [],
     'namedGlobals': {},
@@ -777,7 +776,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'features': [],
     'mainReadsParams': 1,
   }
-  legacy_keys = set(['implementedFunctions', 'initializers', 'simd', 'externs'])
+  legacy_keys = set(['implementedFunctions', 'initializers', 'simd', 'externs', 'staticBump'])
 
   assert 'tableSize' in metadata_json.keys()
   for key, value in metadata_json.items():
