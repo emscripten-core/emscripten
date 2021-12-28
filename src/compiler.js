@@ -41,10 +41,6 @@ function load(f) {
 // Basic utilities
 load('utility.js');
 
-// Load settings, can be overridden by commandline
-load('./settings.js');
-load('./settings_internal.js');
-
 var arguments_ = process['argv'].slice(2);
 var settingsFile = arguments_[0];
 
@@ -62,6 +58,11 @@ if (settingsFile) {
     }
     global[key] = eval(JSON.stringify(value));
   }
+} else {
+  // No settings secified on the command line.  Just load the default
+  // settings.  Can be useful for debugging.
+  load('./settings.js');
+  load('./settings_internal.js');
 }
 
 EXPORTED_FUNCTIONS = new Set(EXPORTED_FUNCTIONS);
