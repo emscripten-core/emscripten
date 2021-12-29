@@ -11401,3 +11401,8 @@ void foo() {}
     print('with old browser + --closure=1')
     self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=1'], output_basename='test4')
     check_for_es6('test4.js', False)
+
+  def test_gmtime_noleak(self):
+    # Confirm that gmtime_r does not leak when called in isolation.
+    self.emcc_args.append('-fsanitize=leak')
+    self.do_other_test('test_gmtime_noleak.c')

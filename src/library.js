@@ -514,11 +514,8 @@ LibraryManager.library = {
   },
   timelocal: 'mktime',
 
-#if MINIMAL_RUNTIME
-  gmtime_r__deps: ['$allocateUTF8'],
-#endif
-  gmtime_r__sig: 'iii',
-  gmtime_r: function(time, tmPtr) {
+  _gmtime_js__sig: 'iii',
+  _gmtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
@@ -527,17 +524,10 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getUTCMonth()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getUTCFullYear()-1900', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '0', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    // Allocate a string "GMT" for us to point to.
-    if (!_gmtime_r.GMTString) _gmtime_r.GMTString = allocateUTF8("GMT");
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '_gmtime_r.GMTString', 'i32') }}};
-    return tmPtr;
   },
-  __gmtime_r: 'gmtime_r',
 
   timegm__deps: ['tzset'],
   timegm__sig: 'ii',
