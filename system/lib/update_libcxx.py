@@ -9,6 +9,8 @@ import sys
 import shutil
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
+emscripten_root = os.path.dirname(os.path.dirname(script_dir))
+default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project')
 local_root = os.path.join(script_dir, 'libcxx')
 local_src = os.path.join(local_root, 'src')
 local_inc = os.path.join(local_root, 'include')
@@ -38,7 +40,10 @@ def copy_tree(upstream_dir, local_dir):
 
 
 def main():
-  llvm_dir = os.path.abspath(sys.argv[1])
+  if len(sys.argv) > 1:
+    llvm_dir = os.path.abspath(sys.argv[1])
+  else:
+    llvm_dir = default_llvm_dir
   libcxx_dir = os.path.join(llvm_dir, 'libcxx')
   upstream_src = os.path.join(libcxx_dir, 'src')
   upstream_inc = os.path.join(libcxx_dir, 'include')
