@@ -1063,6 +1063,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
     ]
+  includes = ['system/lib/libcxx']
 
   def get_cflags(self):
     cflags = super().get_cflags()
