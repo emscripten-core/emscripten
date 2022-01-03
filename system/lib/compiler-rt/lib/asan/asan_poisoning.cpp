@@ -173,26 +173,22 @@ int __asan_address_is_poisoned(void const volatile *addr) {
 }
 
 uptr __asan_region_is_poisoned(uptr beg, uptr size) {
-  if (!size) return 0;
+  if (!size)
+    return 0;
   uptr end = beg + size;
-  if (SANITIZER_MYRIAD2) {
-    // On Myriad, address not in DRAM range need to be treated as
-    // unpoisoned.
-    if (!AddrIsInMem(beg) && !AddrIsInShadow(beg)) return 0;
-    if (!AddrIsInMem(end) && !AddrIsInShadow(end)) return 0;
-  } else {
 #if SANITIZER_EMSCRIPTEN
-    // XXX Emscripten hack XXX
-    // Null pointer handling, since Emscripten does not crash on null pointer,
-    // ASan must catch null pointer dereference by itself.
-    // Unfortunately, this function returns 0 to mean the region is not
-    // poisoned, so we must return 1 instead if we receive a region
-    // starting at 0.
-    if (!beg) return 1;
+  // XXX Emscripten hack XXX
+  // Null pointer handling, since Emscripten does not crash on null pointer,
+  // ASan must catch null pointer dereference by itself.
+  // Unfortunately, this function returns 0 to mean the region is not
+  // poisoned, so we must return 1 instead if we receive a region
+  // starting at 0.
+  if (!beg) return 1;
 #endif
-    if (!AddrIsInMem(beg)) return beg;
-    if (!AddrIsInMem(end)) return end;
-  }
+  if (!AddrIsInMem(beg))
+    return beg;
+  if (!AddrIsInMem(end))
+    return end;
   CHECK_LT(beg, end);
   uptr aligned_b = RoundUpTo(beg, SHADOW_GRANULARITY);
   uptr aligned_e = RoundDownTo(end, SHADOW_GRANULARITY);
@@ -201,8 +197,7 @@ uptr __asan_region_is_poisoned(uptr beg, uptr size) {
   // First check the first and the last application bytes,
   // then check the SHADOW_GRANULARITY-aligned region by calling
   // mem_is_zero on the corresponding shadow.
-  if (!__asan::AddressIsPoisoned(beg) &&
-      !__asan::AddressIsPoisoned(end - 1) &&
+  if (!__asan::AddressIsPoisoned(beg) && !__asan::AddressIsPoisoned(end - 1) &&
       (shadow_end <= shadow_beg ||
        __sanitizer::mem_is_zero((const char *)shadow_beg,
                                 shadow_end - shadow_beg)))
@@ -373,7 +368,7 @@ void __sanitizer_annotate_contiguous_container(const void *beg_p,
                                                  &stack);
   }
   CHECK_LE(end - beg,
-           FIRST_32_SECOND_64(1UL << 30, 1ULL << 34)); // Sanity check.
+           FIRST_32_SECOND_64(1UL << 30, 1ULL << 40)); // Sanity check.
 
   uptr a = RoundDownTo(Min(old_mid, new_mid), granularity);
   uptr c = RoundUpTo(Max(old_mid, new_mid), granularity);
