@@ -44,7 +44,7 @@ const uptr kMaxPathLength = 4096;
 
 const uptr kMaxThreadStackSize = 1 << 30;  // 1Gb
 
-static const uptr kErrorMessageBufferSize = 1 << 16;
+const uptr kErrorMessageBufferSize = 1 << 16;
 
 // Denotes fake PC values that come from JIT/JAVA/etc.
 // For such PC values __tsan_symbolize_external_ex() will be called.
@@ -134,6 +134,15 @@ void UnmapFromTo(uptr from, uptr to);
 // The high_mem_end may be updated if the original shadow size doesn't fit.
 uptr MapDynamicShadow(uptr shadow_size_bytes, uptr shadow_scale,
                       uptr min_shadow_base_alignment, uptr &high_mem_end);
+
+// Let S = max(shadow_size, num_aliases * alias_size, ring_buffer_size).
+// Reserves 2*S bytes of address space to the right of the returned address and
+// ring_buffer_size bytes to the left.  The returned address is aligned to 2*S.
+// Also creates num_aliases regions of accessible memory starting at offset S
+// from the returned address.  Each region has size alias_size and is backed by
+// the same physical memory.
+uptr MapDynamicShadowAndAliases(uptr shadow_size, uptr alias_size,
+                                uptr num_aliases, uptr ring_buffer_size);
 
 // Reserve memory range [beg, end]. If madvise_shadow is true then apply
 // madvise (e.g. hugepages, core dumping) requested by options.
@@ -228,10 +237,16 @@ void SetPrintfAndReportCallback(void (*callback)(const char *));
 // Lock sanitizer error reporting and protects against nested errors.
 class ScopedErrorReportLock {
  public:
-  ScopedErrorReportLock();
-  ~ScopedErrorReportLock();
+  ScopedErrorReportLock() ACQUIRE(mutex_) { Lock(); }
+  ~ScopedErrorReportLock() RELEASE(mutex_) { Unlock(); }
 
-  static void CheckLocked();
+  static void Lock() ACQUIRE(mutex_);
+  static void Unlock() RELEASE(mutex_);
+  static void CheckLocked() CHECK_LOCKED(mutex_);
+
+ private:
+  static atomic_uintptr_t reporting_thread_;
+  static StaticSpinMutex mutex_;
 };
 
 extern uptr stoptheworld_tracer_pid;
@@ -248,6 +263,7 @@ const char *StripModuleName(const char *module);
 // OS
 uptr ReadBinaryName(/*out*/char *buf, uptr buf_len);
 uptr ReadBinaryNameCached(/*out*/char *buf, uptr buf_len);
+uptr ReadBinaryDir(/*out*/ char *buf, uptr buf_len);
 uptr ReadLongProcessName(/*out*/ char *buf, uptr buf_len);
 const char *GetProcessName();
 void UpdateProcessName();
@@ -278,8 +294,8 @@ void InitTlsSize();
 uptr GetTlsSize();
 
 // Other
-void SleepForSeconds(int seconds);
-void SleepForMillis(int millis);
+void SleepForSeconds(unsigned seconds);
+void SleepForMillis(unsigned millis);
 u64 NanoTime();
 u64 MonotonicNanoTime();
 int Atexit(void (*function)(void));
@@ -294,8 +310,8 @@ void NORETURN ReportMmapFailureAndDie(uptr size, const char *mem_type,
                                       const char *mmap_type, error_t err,
                                       bool raw_report = false);
 
-// Specific tools may override behavior of "Die" and "CheckFailed" functions
-// to do tool-specific job.
+// Specific tools may override behavior of "Die" function to do tool-specific
+// job.
 typedef void (*DieCallbackType)(void);
 
 // It's possible to add several callbacks that would be run when "Die" is
@@ -307,9 +323,7 @@ bool RemoveDieCallback(DieCallbackType callback);
 
 void SetUserDieCallback(DieCallbackType callback);
 
-typedef void (*CheckFailedCallbackType)(const char *, int, const char *,
-                                       u64, u64);
-void SetCheckFailedCallback(CheckFailedCallbackType callback);
+void SetCheckUnwindCallback(void (*callback)());
 
 // Callback will be called if soft_rss_limit_mb is given and the limit is
 // exceeded (exceeded==true) or if rss went down below the limit
@@ -343,8 +357,6 @@ void ReportDeadlySignal(const SignalContext &sig, u32 tid,
 void SetAlternateSignalStack();
 void UnsetAlternateSignalStack();
 
-// We don't want a summary too long.
-const int kMaxSummaryLength = 1024;
 // Construct a one-line string:
 //   SUMMARY: SanitizerToolName: error_message
 // and pass it to __sanitizer_report_error_summary.
@@ -441,8 +453,14 @@ inline uptr Log2(uptr x) {
 
 // Don't use std::min, std::max or std::swap, to minimize dependency
 // on libstdc++.
-template<class T> T Min(T a, T b) { return a < b ? a : b; }
-template<class T> T Max(T a, T b) { return a > b ? a : b; }
+template <class T>
+constexpr T Min(T a, T b) {
+  return a < b ? a : b;
+}
+template <class T>
+constexpr T Max(T a, T b) {
+  return a > b ? a : b;
+}
 template<class T> void Swap(T& a, T& b) {
   T tmp = a;
   a = b;
@@ -591,21 +609,21 @@ class InternalMmapVector : public InternalMmapVectorNoCtor<T> {
   InternalMmapVector &operator=(InternalMmapVector &&) = delete;
 };
 
-class InternalScopedString : public InternalMmapVector<char> {
+class InternalScopedString {
  public:
-  explicit InternalScopedString(uptr max_length)
-      : InternalMmapVector<char>(max_length), length_(0) {
-    (*this)[0] = '\0';
-  }
-  uptr length() { return length_; }
+  InternalScopedString() : buffer_(1) { buffer_[0] = '\0'; }
+
+  uptr length() const { return buffer_.size() - 1; }
   void clear() {
-    (*this)[0] = '\0';
-    length_ = 0;
+    buffer_.resize(1);
+    buffer_[0] = '\0';
   }
   void append(const char *format, ...);
+  const char *data() const { return buffer_.data(); }
+  char *data() { return buffer_.data(); }
 
  private:
-  uptr length_;
+  InternalMmapVector<char> buffer_;
 };
 
 template <class T>
@@ -1044,6 +1062,13 @@ class ArrayRef {
   T *begin_ = nullptr;
   T *end_ = nullptr;
 };
+
+#define PRINTF_128(v)                                                         \
+  (*((u8 *)&v + 0)), (*((u8 *)&v + 1)), (*((u8 *)&v + 2)), (*((u8 *)&v + 3)), \
+      (*((u8 *)&v + 4)), (*((u8 *)&v + 5)), (*((u8 *)&v + 6)),                \
+      (*((u8 *)&v + 7)), (*((u8 *)&v + 8)), (*((u8 *)&v + 9)),                \
+      (*((u8 *)&v + 10)), (*((u8 *)&v + 11)), (*((u8 *)&v + 12)),             \
+      (*((u8 *)&v + 13)), (*((u8 *)&v + 14)), (*((u8 *)&v + 15))
 
 }  // namespace __sanitizer
 

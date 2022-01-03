@@ -486,7 +486,7 @@ INTERCEPTOR(int, pthread_create, void *th, void *attr,
   if (res == 0) {
     int tid = ThreadCreate(GetCurrentThread(), *(uptr *)th,
                            IsStateDetached(detached));
-    CHECK_NE(tid, 0);
+    CHECK_NE(tid, kMainTid);
 #if SANITIZER_EMSCRIPTEN
     atomic_store(&p->tid, tid, memory_order_release);
 #else

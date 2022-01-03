@@ -24,10 +24,14 @@
 //===----------------------------------------------------------------------===//
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "assembly.h"
+
+// We use __builtin_mem* here to avoid dependencies on libc-provided headers.
+#define memcpy __builtin_memcpy
+#define memcmp __builtin_memcmp
 
 // Clang objects if you redefine a builtin.  This little hack allows us to
 // define a function with the same name as an intrinsic.
@@ -52,7 +56,7 @@ static const long SPINLOCK_MASK = SPINLOCK_COUNT - 1;
 // defined.  Each platform should define the Lock type, and corresponding
 // lock() and unlock() functions.
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <errno.h>
 // clang-format off
 #include <sys/types.h>
