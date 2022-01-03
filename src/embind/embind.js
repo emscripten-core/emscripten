@@ -1758,29 +1758,33 @@ var LibraryEmbind = {
     // at run-time, not build-time.
     finalizationRegistry = new FinalizationRegistry(function (info) {
 #if ASSERTIONS
-      console.warn(info.leakWarning.stack.replace(/^Error: /, ''));
+        console.warn(info.leakWarning.stack.replace(/^Error: /, ''));
 #endif
-      releaseClassHandle(info.$$);
+        releaseClassHandle(info.$$);
     });
     attachFinalizer = function(handle) {
-      var $$ = handle.$$;
-      var info = { $$: $$ };
+        var $$ = handle.$$;
+        var hasSmartPtr = !!$$.smartPtr;
+        if (hasSmartPtr) {
+            // We should not call the destructor on raw pointers in case other code expects the pointee to live
+            var info = { $$: $$ };
 #if ASSERTIONS
-      // Create a warning as an Error instance in advance so that we can store
-      // the current stacktrace and point to it when / if a leak is detected.
-      // This is more useful than the empty stacktrace of `FinalizationRegistry`
-      // callback.
-      var cls = $$.ptrType.registeredClass;
-      info.leakWarning = new Error("Embind found a leaked C++ instance " + cls.name + " <0x" + $$.ptr.toString(16) + ">.\n" +
-      "We'll free it automatically in this case, but this functionality is not reliable across various environments.\n" +
-      "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
-      "Originally allocated"); // `.stack` will add "at ..." after this sentence
-      if ('captureStackTrace' in Error) {
-        Error.captureStackTrace(info.leakWarning, cls.constructor);
-      }
-#endif
-      finalizationRegistry.register(handle, info, handle);
-      return handle;
+            // Create a warning as an Error instance in advance so that we can store
+            // the current stacktrace and point to it when / if a leak is detected.
+            // This is more useful than the empty stacktrace of `FinalizationRegistry`
+            // callback.
+            var cls = $$.ptrType.registeredClass;
+            info.leakWarning = new Error("Embind found a leaked C++ instance " + cls.name + " <0x" + $$.ptr.toString(16) + ">.\n" +
+            "We'll free it automatically in this case, but this functionality is not reliable across various environments.\n" +
+            "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
+            "Originally allocated"); // `.stack` will add "at ..." after this sentence
+            if ('captureStackTrace' in Error) {
+                Error.captureStackTrace(info.leakWarning, cls.constructor);
+            }
+ #endif
+            finalizationRegistry.register(handle, info, handle);
+        }
+        return handle;
     };
     detachFinalizer = function(handle) {
         finalizationRegistry.unregister(handle);
