@@ -102,54 +102,33 @@ def all_engines(f):
   return decorated
 
 
-# Tests exception handling in emscripten exception handling mode, and if
-# possible, new wasm EH mode.
-def with_both_exception_handling(f):
+# Tests exception handling / setjmp/longjmp handling in Emscripten EH/SjLj mode
+# and if possible, new wasm EH/SjLj mode. This tests two combinations:
+# - Emscripten EH + Emscripten SjLj
+# - Wasm EH + Wasm SjLj
+def with_both_eh_sjlj(f):
   assert callable(f)
 
-  def metafunc(self, native_exceptions):
-    if native_exceptions:
+  def metafunc(self, is_native):
+    if is_native:
       # Wasm EH is currently supported only in wasm backend and V8
       if not self.is_wasm():
-        self.skipTest('wasm2js does not support wasm exceptions')
+        self.skipTest('wasm2js does not support wasm EH/SjLj')
       self.require_v8()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
       if '-fsanitize=address' in self.emcc_args:
         self.skipTest('Wasm EH does not work with asan yet')
       self.emcc_args.append('-fwasm-exceptions')
+      self.set_setting('SUPPORT_LONGJMP', 'wasm')
       self.v8_args.append('--experimental-wasm-eh')
       f(self)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      f(self)
-
-  metafunc._parameterize = {'': (False,),
-                            'wasm_eh': (True,)}
-  return metafunc
-
-
-# Tests setjmp/longjmp handling in Emscripten SjLJ mode, and if possible, new
-# Wasm SjLj mode
-def with_both_sjlj_handling(f):
-  assert callable(f)
-
-  def metafunc(self, native_sjlj):
-    if native_sjlj:
-      # Wasm SjLj is currently supported only in Wasm backend and V8
-      if not self.is_wasm():
-        self.skipTest('wasm2js does not support Wasm SjLj')
-      self.require_v8()
-      self.set_setting('SUPPORT_LONGJMP', 'wasm')
-      # These are for Emscripten EH/SjLj
-      self.set_setting('DISABLE_EXCEPTION_THROWING')
-      self.v8_args.append('--experimental-wasm-eh')
-      f(self)
-    else:
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
       f(self)
 
   metafunc._parameterize = {'': (False,),
-                            'wasm_sjlj': (True,)}
+                            'wasm': (True,)}
   return metafunc
 
 
@@ -1007,42 +986,46 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_regex.c')
 
   @also_with_standalone_wasm(wasm2c=True, impure=True)
+  def test_longjmp_standalone(self):
+    self.do_core_test('test_longjmp.c')
+
+  @with_both_eh_sjlj
   def test_longjmp(self):
     self.do_core_test('test_longjmp.c')
 
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_longjmp2(self):
     self.do_core_test('test_longjmp2.c')
 
   @needs_dylink
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_longjmp2_main_module(self):
     # Test for binaryen regression:
     # https://github.com/WebAssembly/binaryen/issues/2180
     self.set_setting('MAIN_MODULE')
     self.do_core_test('test_longjmp2.c')
 
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_longjmp3(self):
     self.do_core_test('test_longjmp3.c')
 
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_longjmp4(self):
     self.do_core_test('test_longjmp4.c')
 
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_longjmp_funcptr(self):
     self.do_core_test('test_longjmp_funcptr.c')
 
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_longjmp_repeat(self):
     self.do_core_test('test_longjmp_repeat.c')
 
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_longjmp_stacked(self):
     self.do_core_test('test_longjmp_stacked.c', assert_returncode=NON_ZERO)
 
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_longjmp_exc(self):
     self.do_core_test('test_longjmp_exc.c', assert_returncode=NON_ZERO)
 
@@ -1052,20 +1035,20 @@ base align: 0, 0, 0, 0'''])
       self.set_setting('DISABLE_EXCEPTION_CATCHING', disable_throw)
       self.do_core_test('test_longjmp_throw.cpp')
 
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_longjmp_unwind(self):
     self.do_core_test('test_longjmp_unwind.c', assert_returncode=NON_ZERO)
 
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_longjmp_i64(self):
     self.emcc_args += ['-g']
     self.do_core_test('test_longjmp_i64.c', assert_returncode=NON_ZERO)
 
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_siglongjmp(self):
     self.do_core_test('test_siglongjmp.c')
 
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_setjmp_many(self):
     src = r'''
       #include <stdio.h>
@@ -1082,7 +1065,7 @@ base align: 0, 0, 0, 0'''])
       print('NUM=%d' % num)
       self.do_run(src.replace('NUM', str(num)), '0\n' * num)
 
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_setjmp_many_2(self):
     src = r'''
 #include <setjmp.h>
@@ -1111,14 +1094,14 @@ int main()
 
     self.do_run(src, r'''d is at 24''')
 
-  @with_both_sjlj_handling
+  @with_both_eh_sjlj
   def test_setjmp_noleak(self):
     self.do_runf(test_file('core/test_setjmp_noleak.c'), 'ok.')
 
-  @with_both_exception_handling
   def test_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.maybe_closure()
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     for support_longjmp in [0, 1]:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
@@ -1144,7 +1127,7 @@ int main()
       self.set_setting('DISABLE_EXCEPTION_CATCHING')
       self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_uncaught.out'), assert_returncode=NON_ZERO)
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_custom(self):
     self.set_setting('EXCEPTION_DEBUG')
     # needs to flush stdio streams
@@ -1198,7 +1181,7 @@ int main()
 
     self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_2(self):
     for safe in [0, 1]:
       print(safe)
@@ -1208,7 +1191,7 @@ int main()
       self.set_setting('SAFE_HEAP', safe)
       self.do_core_test('test_exceptions_2.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_3(self):
     src = r'''
 #include <iostream>
@@ -1335,7 +1318,7 @@ int main(int argc, char **argv)
     err = self.expect_fail([EMCC, test_file('hello_world.c')] + self.get_emcc_args())
     self.assertContained('error: DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive', err)
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_uncaught(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
@@ -1373,7 +1356,7 @@ int main(int argc, char **argv)
     '''
     self.do_run(src, 'success')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_uncaught_2(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
@@ -1398,82 +1381,82 @@ int main(int argc, char **argv)
     '''
     self.do_run(src, 'OK\n')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_typed(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.clear_setting('SAFE_HEAP') # Throwing null will cause an ignorable null pointer access.
     self.do_core_test('test_exceptions_typed.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_virtual_inheritance(self):
     self.do_core_test('test_exceptions_virtual_inheritance.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_convert(self):
     self.do_core_test('test_exceptions_convert.cpp')
 
   # TODO Make setjmp-longjmp also use Wasm exception handling
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_multi(self):
     self.do_core_test('test_exceptions_multi.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_std(self):
     self.clear_setting('SAFE_HEAP')
     self.do_core_test('test_exceptions_std.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_alias(self):
     self.do_core_test('test_exceptions_alias.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_rethrow(self):
     self.do_core_test('test_exceptions_rethrow.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_uncaught_count(self):
     self.do_core_test('test_exceptions_uncaught_count.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_resume(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.do_core_test('test_exceptions_resume.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_destroy_virtual(self):
     self.do_core_test('test_exceptions_destroy_virtual.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_refcount(self):
     self.do_core_test('test_exceptions_refcount.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_primary(self):
     self.do_core_test('test_exceptions_primary.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_simplify_cfg(self):
     self.do_core_test('test_exceptions_simplify_cfg.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_libcxx(self):
     self.do_core_test('test_exceptions_libcxx.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_multiple_inherit(self):
     self.do_core_test('test_exceptions_multiple_inherit.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_multiple_inherit_rethrow(self):
     self.do_core_test('test_exceptions_multiple_inherit_rethrow.cpp')
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_exceptions_rethrow_missing(self):
     create_file('main.cpp', 'int main() { throw; }')
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   def test_bad_typeid(self):
     self.do_run(r'''
 // exception example
@@ -1514,20 +1497,21 @@ int main() {
 }
 ''', 'bugfree code')
 
+  @with_both_eh_sjlj
   def test_exceptions_longjmp1(self):
-    self.set_setting('SUPPORT_LONGJMP')
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_core_test('test_exceptions_longjmp1.cpp')
 
+  @with_both_eh_sjlj
   def test_exceptions_longjmp2(self):
-    self.set_setting('SUPPORT_LONGJMP')
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_core_test('test_exceptions_longjmp2.cpp')
 
+  @with_both_eh_sjlj
   def test_exceptions_longjmp3(self):
-    self.set_setting('SUPPORT_LONGJMP')
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_core_test('test_exceptions_longjmp3.cpp')
+
+  @with_both_eh_sjlj
+  def test_exceptions_longjmp4(self):
+    self.do_core_test('test_exceptions_longjmp4.cpp')
 
   # Marked as impure since the WASI reactor modules (modules without main)
   # are not yet suppored by the wasm engines we test against.
@@ -3443,7 +3427,7 @@ out!
 ''', force_c=True)
 
   # TODO: make this work. need to forward tempRet0 across modules
-  # TODO Enable @with_both_exception_handling (the test is not working now)
+  # TODO Enable @with_both_eh_sjlj (the test is not working now)
   @needs_dylink
   def zzztest_dlfcn_exceptions(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -4369,7 +4353,7 @@ res64 - external 64\n''', header='''
       }
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   @needs_dylink
   def test_dylink_raii_exceptions(self):
     self.dylink_test(main=r'''
@@ -4400,7 +4384,7 @@ res64 - external 64\n''', header='''
       }
     ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   @needs_dylink
   def test_dylink_exceptions_try_catch(self):
     self.dylink_test(main=r'''
@@ -4426,7 +4410,7 @@ res64 - external 64\n''', header='''
       }
       ''', expected=['main: caught 3\nside: caught 5.3\n'])
 
-  @with_both_exception_handling
+  @with_both_eh_sjlj
   @needs_dylink
   def test_dylink_exceptions_try_catch_2(self):
     self.dylink_test(main=r'''
