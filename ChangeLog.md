@@ -28,7 +28,7 @@ See docs/process.md for more on how version tagging works.
   For projects targeting older browsers (e.g. `-sMIN_CHROME_VERSION=10`),
   emscripten will now run closure compiler in `WHITESPACE_ONLY` mode in order to
   traspile any ES6 down to ES5.  When this automatic transpilation is performed
-  we generate a warning which can disabled (using `-Wno-transpile`) or by
+  we generate a warning which can be disabled (using `-Wno-transpile`) or by
   explicitly opting in-to or out-of closure using `--closure=1` or
   `--closure=0`. (#15763).
 
