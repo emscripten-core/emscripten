@@ -193,3 +193,15 @@ typedef struct LongLongTypes {
   unsigned long long* lluArray;
   long long ll;
 } LongLongTypes;
+
+class ArrayArgumentTest {
+public:
+  ArrayArgumentTest() : m_Array("I should match the member variable"){};
+  ~ArrayArgumentTest(){};
+
+  bool byteArrayTest(const char* arg) { return strcmp(arg, m_Array); }
+  bool domStringTest(const char* arg) { return strcmp(arg, m_Array); }
+
+private:
+  const char* m_Array;
+};

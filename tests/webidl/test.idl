@@ -169,3 +169,18 @@ interface LongLongTypes {
   readonly attribute unsigned long long[] lluArray;
   attribute long long ll;
 };
+
+interface ArrayArgumentTest {
+  void ArrayArgumentTest();
+
+  boolean byteArrayTest([Const] byte[] arg);
+  boolean domStringTest([Const] DOMString arg);
+};
+
+[JSImplementation = "ArrayArgumentTest"] 
+interface JSArrayArgumentTest {
+  void JSArrayArgumentTest();
+
+  boolean byteArrayTest([Const] byte[] arg);
+  boolean domStringTest([Const] DOMString arg);
+};
