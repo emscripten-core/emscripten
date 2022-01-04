@@ -31,7 +31,9 @@ typedef struct task_queue {
   // The target thread for this task_queue.
   pthread_t thread;
   // Recursion guard. TODO: We disallow recursive processing because that's what
-  // the old proxying API does. Experiment with relaxing this restriction.
+  // the old proxying API does, so it is safer to start with the same behavior.
+  // Experiment with relaxing this restriction once the old API uses these
+  // queues as well.
   int processing;
   // Ring buffer of tasks of size `capacity`. New tasks are enqueued at
   // `tail` and dequeued at `head`.
