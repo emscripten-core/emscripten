@@ -707,16 +707,8 @@ def isascii(s):
     return True
 
 
-@ToolchainProfiler.profile_block('closure_compiler')
-def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
+def get_closure_compiler_and_env(user_args):
   env = shared.env_with_node_in_path()
-  user_args = []
-  env_args = os.environ.get('EMCC_CLOSURE_ARGS')
-  if env_args:
-    user_args += shlex.split(env_args)
-  if extra_closure_args:
-    user_args += extra_closure_args
-
   closure_cmd = get_closure_compiler()
 
   native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
@@ -736,6 +728,29 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
       add_to_path(java_bin)
       java_home = os.path.dirname(java_bin)
       env.setdefault('JAVA_HOME', java_home)
+
+  return closure_cmd, env
+
+
+@ToolchainProfiler.profile_block('closure_transpile')
+def closure_transpile(filename, pretty):
+  user_args = []
+  closure_cmd, env = get_closure_compiler_and_env(user_args)
+  closure_cmd += ['--language_out', 'ES5']
+  closure_cmd += ['--compilation_level', 'WHITESPACE_ONLY']
+  return run_closure_cmd(closure_cmd, filename, env, pretty)
+
+
+@ToolchainProfiler.profile_block('closure_compiler')
+def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
+  user_args = []
+  env_args = os.environ.get('EMCC_CLOSURE_ARGS')
+  if env_args:
+    user_args += shlex.split(env_args)
+  if extra_closure_args:
+    user_args += extra_closure_args
+
+  closure_cmd, env = get_closure_compiler_and_env(user_args)
 
   # Closure externs file contains known symbols to be extern to the minification, Closure
   # should not minify these symbol names.
@@ -780,7 +795,7 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
 
   if settings.MINIMAL_RUNTIME and settings.USE_PTHREADS:
-    CLOSURE_EXTERNS += [path_from_root('src/minimal_runtime_worker_externs.js')]
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/minimal_runtime_worker_externs.js')]
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
   # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
@@ -788,14 +803,30 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   # Tell closure not to do any transpiling or inject any polyfills.
   # At some point we may want to look into using this as way to convert to ES5 but
   # babel is perhaps a better tool for that.
-  args += ['--language_out', 'NO_TRANSPILE']
+  if settings.TRANSPILE_TO_ES5:
+    args += ['--language_out', 'ES5']
+  else:
+    args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
   args += ['--emit_use_strict=false']
+
+  if settings.IGNORE_CLOSURE_COMPILER_ERRORS:
+    args.append('--jscomp_off=*')
+  # Specify input file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
+  for e in CLOSURE_EXTERNS:
+    args += ['--externs', e]
+  args += user_args
+
+  cmd = closure_cmd + args
+  return run_closure_cmd(cmd, filename, env, pretty=pretty)
+
+
+def run_closure_cmd(cmd, filename, env, pretty):
+  cmd += ['--js', filename]
 
   # Closure compiler is unable to deal with path names that are not 7-bit ASCII:
   # https://github.com/google/closure-compiler/issues/3784
   tempfiles = configuration.get_temp_files()
-  outfile = tempfiles.get('.cc.js').name  # Safe 7-bit filename
 
   def move_to_safe_7bit_ascii_filename(filename):
     if isascii(filename):
@@ -804,24 +835,18 @@ def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
     shutil.copyfile(filename, safe_filename)
     return os.path.relpath(safe_filename, tempfiles.tmpdir)
 
-  for e in CLOSURE_EXTERNS:
-    args += ['--externs', move_to_safe_7bit_ascii_filename(e)]
+  for i in range(len(cmd)):
+    if cmd[i] == '--externs' or cmd[i] == '--js':
+      cmd[i + 1] = move_to_safe_7bit_ascii_filename(cmd[i + 1])
 
-  for i in range(len(user_args)):
-    if user_args[i] == '--externs':
-      user_args[i + 1] = move_to_safe_7bit_ascii_filename(user_args[i + 1])
+  outfile = tempfiles.get('.cc.js').name  # Safe 7-bit filename
 
   # Specify output file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
-  args += ['--js_output_file', os.path.relpath(outfile, tempfiles.tmpdir)]
-
-  if settings.IGNORE_CLOSURE_COMPILER_ERRORS:
-    args.append('--jscomp_off=*')
+  cmd += ['--js_output_file', os.path.relpath(outfile, tempfiles.tmpdir)]
   if pretty:
-    args += ['--formatting', 'PRETTY_PRINT']
-  # Specify input file relative to the temp directory to avoid specifying non-7-bit-ASCII path names.
-  args += ['--js', move_to_safe_7bit_ascii_filename(filename)]
-  cmd = closure_cmd + args + user_args
-  logger.debug(f'closure compiler: {shared.shlex_join(cmd)}')
+    cmd += ['--formatting', 'PRETTY_PRINT']
+
+  shared.print_compiler_stage(cmd)
 
   # Closure compiler does not work if any of the input files contain characters outside the
   # 7-bit ASCII range. Therefore make sure the command line we pass does not contain any such

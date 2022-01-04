@@ -173,6 +173,10 @@ class other(RunnerCore):
       os.close(master)
       os.close(slave)
 
+  # Test that running `emcc -v` always works even in the presence of `EMCC_CFLAGS`.
+  # This needs to work because many tools run `emcc -v` internally and it should
+  # always work even if the user has `EMCC_CFLAGS` set.
+  @with_env_modify({'EMCC_CFLAGS': '-should -be -ignored'})
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
       # -v, without input files
@@ -470,10 +474,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('side got: hello from main, over', self.run_js('a.out.js'))
 
     # Combining object files into another object should also work, using the `-r` flag
-    self.run_process([EMCC, '-r', 'twopart_main.o', 'twopart_side.o', '-o', 'combined.o'])
+    err = self.run_process([EMCC, '-r', 'twopart_main.o', 'twopart_side.o', '-o', 'combined.o'], stderr=PIPE).stderr
+    self.assertNotContained('warning:', err)
     # Warn about legecy support for outputing object file without `-r`, `-c` or `-shared`
     err = self.run_process([EMCC, 'twopart_main.o', 'twopart_side.o', '-o', 'combined2.o'], stderr=PIPE).stderr
-    self.assertContained('warning: generating an executable with an object extension (.o)', err)
+    self.assertContained('warning: object file output extension (.o) used for non-object output', err)
 
     # Should be two symbols (and in the wasm backend, also __original_main)
     syms = building.llvm_nm('combined.o')
@@ -6555,6 +6560,11 @@ high = 1234
     err = self.expect_fail([EMXX, test_file('hello_world.cpp'), '-sEXPORTED_FUNCTIONS=foo'])
     self.assertContained('error: undefined exported symbol: "foo"', err)
 
+  def test_dash_s_hex(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
+    # Ensure that 0x0 is parsed as a zero and not as the string '0x0'.
+    self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0x0'])
+
   def test_zeroinit(self):
     create_file('src.c', r'''
 #include <stdio.h>
@@ -7123,9 +7133,19 @@ int main() {
     # adding --metrics should not affect code size
     self.assertEqual(base_size, os.path.getsize('a.out.wasm'))
 
+  def check_expected_size_in_file(self, desc, filename, size):
+    if common.EMTEST_REBASELINE:
+      with open(filename, 'w') as f:
+        f.write(f'{size}\n')
+    size_slack = 0.05
+    expected_size = int(read_file(filename).strip())
+    delta = size - expected_size
+    ratio = abs(delta) / float(expected_size)
+    print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
+    self.assertLess(ratio, size_slack)
+
   def run_metadce_test(self, filename, args, expected_exists, expected_not_exists, check_size=True,
                        check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
-    size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
     print('Running metadce test: %s:' % filename, args, expected_exists,
@@ -7171,19 +7191,14 @@ int main() {
       self.assertNotIn(not_exists, sent)
 
     if check_size:
-      size_file = expected_basename + '.size'
       # measure the wasm size without the name section
       self.run_process([wasm_opt, 'a.out.wasm', '--strip-debug', '--all-features', '-o', 'a.out.nodebug.wasm'])
       wasm_size = os.path.getsize('a.out.nodebug.wasm')
-      if common.EMTEST_REBASELINE:
-        with open(size_file, 'w') as f:
-          f.write(f'{wasm_size}\n')
-
-      expected_size = int(read_file(size_file).strip())
-      delta = wasm_size - expected_size
-      ratio = abs(delta) / float(expected_size)
-      print('  seen wasm size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (wasm_size, expected_size, delta, ratio))
-      self.assertLess(ratio, size_slack)
+      size_file = expected_basename + '.size'
+      js_size = os.path.getsize('a.out.js')
+      js_size_file = expected_basename + '.jssize'
+      self.check_expected_size_in_file('wasm', size_file, wasm_size)
+      self.check_expected_size_in_file('js', js_size_file, js_size)
 
     imports, exports, funcs = parse_wasm('a.out.wasm')
     imports.sort()
@@ -8393,6 +8408,12 @@ test_module().then((test_module_instance) => {
     ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
     self.assertContained('OK', ret)
 
+  def test_node_eval(self):
+    self.run_process([EMCC, '-sENVIRONMENT=node', test_file('hello_world.c'), '-o', 'a.js', '-O3'])
+    js = open('a.js').read()
+    ret = self.run_process(config.NODE_JS + ['-e', js], stdout=PIPE).stdout
+    self.assertContained('hello, world!', ret)
+
   def test_is_bitcode(self):
     fname = 'tmp.o'
 
@@ -9297,12 +9318,13 @@ int main(void) {
     self.assertContained('undefined symbol: malloc', stderr)
 
   @parameterized({
-    'c': ['c'],
-    'cpp': ['cpp'],
+    'c': ['c', []],
+    'cpp': ['cpp', []],
+    'growth': ['cpp', ['-sALLOW_MEMORY_GROWTH']],
   })
-  def test_lsan_leaks(self, ext):
+  def test_lsan_leaks(self, ext, args):
     self.do_smart_test(test_file('other/test_lsan_leaks.' + ext),
-                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH'],
+                       emcc_args=['-fsanitize=leak'] + args,
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
       'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
@@ -9327,7 +9349,7 @@ int main(void) {
   })
   def test_lsan_stack_trace(self, ext, regexes):
     self.do_smart_test(test_file('other/test_lsan_leaks.' + ext),
-                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH', '-gsource-map'],
+                       emcc_args=['-fsanitize=leak', '-gsource-map'],
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
       'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
@@ -9340,12 +9362,12 @@ int main(void) {
   })
   def test_lsan_no_leak(self, ext):
     self.do_smart_test(test_file('other/test_lsan_no_leak.' + ext),
-                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'ASSERTIONS=0'],
+                       emcc_args=['-fsanitize=leak', '-s', 'ASSERTIONS=0'],
                        regexes=[r'^\s*$'])
 
   def test_lsan_no_stack_trace(self):
     self.do_smart_test(test_file('other/test_lsan_leaks.c'),
-                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH', '-DDISABLE_CONTEXT'],
+                       emcc_args=['-fsanitize=leak', '-DDISABLE_CONTEXT'],
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
       'SUMMARY: LeakSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
@@ -9353,26 +9375,33 @@ int main(void) {
 
   def test_asan_null_deref(self):
     self.do_smart_test(test_file('other/test_asan_null_deref.c'),
-                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1'],
+                       emcc_args=['-fsanitize=address'],
+                       assert_returncode=NON_ZERO, literals=[
+      'AddressSanitizer: null-pointer-dereference on address',
+    ])
+
+  def test_asan_memory_growth(self):
+    self.do_smart_test(test_file('other/test_asan_null_deref.c'),
+                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'],
                        assert_returncode=NON_ZERO, literals=[
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
   def test_asan_no_stack_trace(self):
     self.do_smart_test(test_file('other/test_lsan_leaks.c'),
-                       emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH=1', '-DDISABLE_CONTEXT', '-s', 'EXIT_RUNTIME'],
+                       emcc_args=['-fsanitize=address', '-DDISABLE_CONTEXT', '-s', 'EXIT_RUNTIME'],
                        assert_returncode=NON_ZERO, literals=[
       'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
       'SUMMARY: AddressSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
     ])
 
   def test_asan_pthread_stubs(self):
-    self.do_smart_test(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'])
+    self.do_smart_test(test_file('other/test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address'])
 
   def test_asan_strncpy(self):
     # Regression test for asan false positives in strncpy:
     # https://github.com/emscripten-core/emscripten/issues/14618
-    self.do_smart_test(test_file('other/test_asan_strncpy.c'), emcc_args=['-fsanitize=address', '-sALLOW_MEMORY_GROWTH'])
+    self.do_smart_test(test_file('other/test_asan_strncpy.c'), emcc_args=['-fsanitize=address'])
 
   @node_pthreads
   def test_proxy_to_pthread_stack(self):
@@ -9476,7 +9505,7 @@ int main(void) {
     self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-s', 'NO_FILESYSTEM'])
 
   def test_mmap_and_munmap_anonymous_asan(self):
-    self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH'])
+    self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-s', 'NO_FILESYSTEM', '-fsanitize=address'])
 
   def test_mmap_memorygrowth(self):
     self.do_other_test('test_mmap_memorygrowth.cpp', ['-s', 'ALLOW_MEMORY_GROWTH'])
@@ -10469,6 +10498,12 @@ exec "$@"
       ''')
     self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$__foo'])
 
+  def test_asan_no_dylink(self):
+    for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE', '-sMAIN_MODULE=2', '-sSIDE_MODULE=2']:
+      print(arg)
+      err = self.expect_fail([EMCC, test_file('hello_world.c'), '-fsanitize=address', arg])
+      self.assertContained('ASan does not support dynamic linking', err)
+
   def test_wasm2js_no_dylink(self):
     for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE']:
       print(arg)
@@ -10504,9 +10539,9 @@ exec "$@"
 
   def test_post_link(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '--oformat=bare', '-o', 'bare.wasm'], stderr=PIPE).stderr
-    self.assertContained('--oformat=base/--post-link are experimental and subject to change', err)
+    self.assertContained('--oformat=bare/--post-link are experimental and subject to change', err)
     err = self.run_process([EMCC, '--post-link', 'bare.wasm'], stderr=PIPE).stderr
-    self.assertContained('--oformat=base/--post-link are experimental and subject to change', err)
+    self.assertContained('--oformat=bare/--post-link are experimental and subject to change', err)
     err = self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def compile_with_wasi_sdk(self, filename, output):
@@ -11049,7 +11084,6 @@ void foo() {}
     self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('INITIAL_MEMORY', '256MB')
     self.emcc_args += ['-gsource-map']
     self.do_run_in_out_file_test(test_file('pthread/test_pthread_lsan_no_leak.cpp'), emcc_args=['-fsanitize=leak'])
     self.do_run_in_out_file_test(test_file('pthread/test_pthread_lsan_no_leak.cpp'), emcc_args=['-fsanitize=address'])
@@ -11059,7 +11093,6 @@ void foo() {}
     self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('INITIAL_MEMORY', '256MB')
     self.add_pre_run("Module['LSAN_OPTIONS'] = 'exitcode=0'")
     self.emcc_args += ['-gsource-map']
     expected = [
@@ -11160,8 +11193,8 @@ void foo() {}
     self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['--profiling-funcs']
     output = self.do_runf(test_file('pthread/test_pthread_trap.c'), assert_returncode=NON_ZERO)
-    self.assertContained("pthread sent an error!", output)
-    self.assertContained("at thread_main", output)
+    self.assertContained('sent an error!', output)
+    self.assertContained('at thread_main', output)
 
   @node_pthreads
   def test_emscripten_set_interval(self):
@@ -11301,3 +11334,70 @@ void foo() {}
     # reference them in our docs.  Should we move this file to somewhere else such
     # as `examples/`?)
     self.run_process([EMCC, test_file('hello_function.cpp'), '-o', 'function.html', '-sEXPORTED_FUNCTIONS=_int_sqrt', '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap'])
+
+  @parameterized({
+    '': ([],),
+    'O2': (['-O2'],),
+  })
+  def test_es5_transpile(self, args):
+    self.emcc_args += args
+
+    # Create a library file that uses the following ES6 features
+    # - let/const
+    # - arrow funcs
+    # - for..of
+    # - object.assign
+    create_file('es6_library.js', '''\
+    mergeInto(LibraryManager.library, {
+      foo: function() {
+        // Object.assign + let
+        let obj = Object.assign({}, {prop:1});
+        err('prop: ' + obj.prop);
+
+        // arror funcs + const
+        const bar = () => 2;
+        err('bar: ' + bar());
+      }
+    });
+    ''')
+    create_file('test.c', 'extern void foo(); int main() { foo(); }')
+    self.emcc_args += ['--js-library', 'es6_library.js']
+    self.uses_es6 = True
+
+    def check_for_es6(filename, expect):
+      js = read_file(filename)
+      if expect:
+        self.assertContained(['() => 2', '()=>2'], js)
+        self.assertContained('const ', js)
+        self.assertContained('let ', js)
+      else:
+        self.verify_es5(filename)
+        self.assertNotContained('() => 2', js)
+        self.assertNotContained('()=>2', js)
+        self.assertNotContained('const ', js)
+        self.assertNotContained('let ', js)
+
+    # Check that under normal circumstances none of these features get
+    # removed / transpiled.
+    print('base case')
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n')
+    check_for_es6('test.js', True)
+
+    # If we select and older browser than closure will kick in by default
+    # to traspile.
+    print('with old browser')
+    self.emcc_args.remove('-Werror')
+    self.set_setting('MIN_CHROME_VERSION', '10')
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n', output_basename='test2')
+    check_for_es6('test2.js', False)
+
+    # If we add `--closure=0` that traspiler (closure) is not run at all
+    print('with old browser + --closure=0')
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=0'], output_basename='test3')
+    check_for_es6('test3.js', True)
+
+    # If we use `--closure=1` closure will run in full optimization mode
+    # and also transpile to ES5
+    print('with old browser + --closure=1')
+    self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=1'], output_basename='test4')
+    check_for_es6('test4.js', False)

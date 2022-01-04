@@ -7,7 +7,7 @@
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread__deps: ['_emscripten_thread_init',
-                   'emscripten_futex_wake', '$killThread',
+                   '$killThread',
                    '$cancelThread', '$cleanupThread', '$zeroMemory',
                    '_emscripten_thread_free_data',
                    'exit',
@@ -56,7 +56,7 @@ var LibraryPThread = {
 #if PTHREADS_PROFILING
     createProfilerBlock: function(pthreadPtr) {
       var profilerBlock = _malloc({{{ C_STRUCTS.thread_profiler_block.__size__ }}});
-      Atomics.store(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, profilerBlock);
+      {{{ makeSetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, 'profilerBlock', POINTER_TYPE) }}};
 
       // Zero fill contents at startup.
       zeroMemory(profilerBlock, {{{ C_STRUCTS.thread_profiler_block.__size__ }}});
@@ -65,26 +65,26 @@ var LibraryPThread = {
 
     // Sets the current thread status, but only if it was in the given expected state before. This is used
     // to allow high-level control flow "override" the thread status before low-level (futex wait) operations set it.
-    setThreadStatusConditional: function(pthreadPtr, expectedStatus, newStatus) {
-      var profilerBlock = Atomics.load(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
+    setThreadStatusConditional: function(expectedStatus, newStatus) {
+      var pthreadPtr = _pthread_self();
+      var profilerBlock = {{{ makeGetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, POINTER_TYPE) }}};
       if (!profilerBlock) return;
 
-      var prevStatus = Atomics.load(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.threadStatus }}} ) >> 2);
-
+      var prevStatus = {{{ makeGetValue('profilerBlock', C_STRUCTS.thread_profiler_block.threadStatus, 'i32') }}};
       if (prevStatus != newStatus && (prevStatus == expectedStatus || expectedStatus == -1)) {
         var now = performance.now();
         var startState = HEAPF64[(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 3];
         var duration = now - startState;
 
         HEAPF64[((profilerBlock + {{{ C_STRUCTS.thread_profiler_block.timeSpentInStatus }}} ) >> 3) + prevStatus] += duration;
-        Atomics.store(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.threadStatus }}} ) >> 2, newStatus);
+        {{{ makeSetValue('profilerBlock', C_STRUCTS.thread_profiler_block.threadStatus, 'newStatus', 'i32') }}};
         HEAPF64[(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 3] = now;
       }
     },
 
     // Unconditionally sets the thread status.
-    setThreadStatus: function(pthreadPtr, newStatus) {
-      PThread.setThreadStatusConditional(pthreadPtr, -1, newStatus);
+    setThreadStatus: function(newStatus) {
+      PThread.setThreadStatusConditional(-1, newStatus);
     },
 
     setThreadName: function(pthreadPtr, name) {
@@ -216,7 +216,7 @@ var LibraryPThread = {
       err('Pthread 0x' + _pthread_self().toString(16) + ' threadInit.');
 #endif
 #if PTHREADS_PROFILING
-      PThread.setThreadStatus(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
+      PThread.setThreadStatus({{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
 #endif
       // Call thread init functions (these are the emscripten_tls_init for each
       // module loaded.
@@ -295,7 +295,16 @@ var LibraryPThread = {
       };
 
       worker.onerror = function(e) {
-        err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
+        var message = 'worker sent an error!';
+#if ASSERTIONS
+        if (worker.pthread) {
+          var pthread_ptr = worker.pthread.threadInfoStruct;
+          if (pthread_ptr) {
+            message = 'Pthread 0x' + pthread_ptr.toString(16) + ' sent an error!';
+          }
+        }
+#endif
+        err(message + ' ' + e.filename + ':' + e.lineno + ': ' + e.message);
         throw e;
       };
 
@@ -951,42 +960,6 @@ var LibraryPThread = {
     return 0;
   },
 
-  // Returns the number of threads (>= 0) woken up, or the value -EINVAL on error.
-  // Pass count == INT_MAX to wake up all threads.
-  emscripten_futex_wake: function(addr, count) {
-    if (addr <= 0 || addr > HEAP8.length || addr&3 != 0 || count < 0) return -{{{ cDefine('EINVAL') }}};
-    if (count == 0) return 0;
-    // Waking (at least) INT_MAX waiters is defined to mean wake all callers.
-    // For Atomics.notify() API Infinity is to be passed in that case.
-    if (count >= {{{ cDefine('INT_MAX') }}}) count = Infinity;
-
-    // See if main thread is waiting on this address? If so, wake it up by resetting its wake location to zero.
-    // Note that this is not a fair procedure, since we always wake main thread first before any workers, so
-    // this scheme does not adhere to real queue-based waiting.
-    var mainThreadWaitAddress = Atomics.load(HEAP32, __emscripten_main_thread_futex >> 2);
-    var mainThreadWoken = 0;
-    if (mainThreadWaitAddress == addr) {
-#if ASSERTIONS
-      // We only use __emscripten_main_thread_futex on the main browser thread, where we
-      // cannot block while we wait. Therefore we should only see it set from
-      // other threads, and not on the main thread itself. In other words, the
-      // main thread must never try to wake itself up!
-      assert(!ENVIRONMENT_IS_WEB);
-#endif
-      var loadedAddr = Atomics.compareExchange(HEAP32, __emscripten_main_thread_futex >> 2, mainThreadWaitAddress, 0);
-      if (loadedAddr == mainThreadWaitAddress) {
-        --count;
-        mainThreadWoken = 1;
-        if (count <= 0) return 1;
-      }
-    }
-
-    // Wake any workers waiting on this address.
-    var ret = Atomics.notify(HEAP32, addr >> 2, count);
-    if (ret >= 0) return ret + mainThreadWoken;
-    throw 'Atomics.notify returned an unexpected value ' + ret;
-  },
-
   __atomic_is_lock_free: function(size, ptr) {
     return size <= 4 && (size & (size-1)) == 0 && (ptr&(size-1)) == 0;
   },
@@ -1014,14 +987,14 @@ var LibraryPThread = {
   emscripten_conditional_set_current_thread_status__sig: 'vii',
   emscripten_conditional_set_current_thread_status: function(expectedStatus, newStatus) {
 #if PTHREADS_PROFILING
-    PThread.setThreadStatusConditional(_pthread_self(), expectedStatus, newStatus);
+    PThread.setThreadStatusConditional(expectedStatus, newStatus);
 #endif
   },
 
   emscripten_set_current_thread_status__sig: 'vi',
   emscripten_set_current_thread_status: function(newStatus) {
 #if PTHREADS_PROFILING
-    PThread.setThreadStatus(_pthread_self(), newStatus);
+    PThread.setThreadStatus(newStatus);
 #endif
   },
 

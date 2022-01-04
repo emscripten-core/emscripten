@@ -2496,10 +2496,10 @@ void *getBindBuffer() {
   def test_emscripten_async_wget2(self):
     self.btest_exit('test_emscripten_async_wget2.cpp')
 
+  @disabled('https://github.com/emscripten-core/emscripten/issues/15818')
   def test_emscripten_async_wget2_data(self):
     create_file('hello.txt', 'Hello Emscripten!')
     self.btest('test_emscripten_async_wget2_data.cpp', expected='0')
-    time.sleep(10)
 
   def test_emscripten_async_wget_side_module(self):
     self.run_process([EMCC, test_file('browser_module.c'), '-o', 'lib.wasm', '-O2', '-s', 'SIDE_MODULE'])
@@ -2601,7 +2601,7 @@ Module["preRun"].push(function () {
     '': ([],),
     'closure': (['-O2', '-g1', '--closure=1', '-s', 'HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0'],),
     'pthread': (['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'],),
-    'legacy': (['-s', 'MIN_FIREFOX_VERSION=0', '-s', 'MIN_SAFARI_VERSION=0', '-s', 'MIN_IE_VERSION=0', '-s', 'MIN_EDGE_VERSION=0', '-s', 'MIN_CHROME_VERSION=0'],)
+    'legacy': (['-s', 'MIN_FIREFOX_VERSION=0', '-s', 'MIN_SAFARI_VERSION=0', '-s', 'MIN_IE_VERSION=0', '-s', 'MIN_EDGE_VERSION=0', '-s', 'MIN_CHROME_VERSION=0', '-Wno-transpile'],)
   })
   @requires_threads
   def test_html5_core(self, opts):
@@ -2666,7 +2666,7 @@ Module["preRun"].push(function () {
   @requires_graphics_hardware
   def test_webgl2(self):
     for opts in [
-      ['-s', 'MIN_CHROME_VERSION=0'],
+      ['-s', 'MIN_CHROME_VERSION=0', '-Wno-transpile'],
       ['-O2', '-g1', '--closure=1', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG'],
       ['-s', 'FULL_ES2=1'],
     ]:

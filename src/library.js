@@ -325,14 +325,12 @@ LibraryManager.library = {
       var cp = require('child_process');
       var ret = cp.spawnSync(cmdstr, [], {shell:true, stdio:'inherit'});
 
-      var _W_EXITCODE = function(ret, sig) {
-        return ((ret) << 8 | (sig));
-      }
+      var _W_EXITCODE = (ret, sig) => ((ret) << 8 | (sig));
 
       // this really only can happen if process is killed by signal
       if (ret.status === null) {
         // sadly node doesn't expose such function
-        var signalToNumber = function(sig) {
+        var signalToNumber = (sig) => {
           // implement only the most common ones, and fallback to SIGINT
           switch (sig) {
             case 'SIGHUP': return 1;
@@ -1177,7 +1175,7 @@ LibraryManager.library = {
       var date = initDate();
       var value;
 
-      var getMatch = function(symbol) {
+      var getMatch = (symbol) => {
         var pos = capture.indexOf(symbol);
         // check if symbol appears in regexp
         if (pos >= 0) {
@@ -2530,7 +2528,7 @@ LibraryManager.library = {
   emscripten_get_now: ';' +
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +
-                               "  _emscripten_get_now = function() {\n" +
+                               "  _emscripten_get_now = () => {\n" +
                                "    var t = process['hrtime']();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
                                "  };\n" +
@@ -2539,7 +2537,7 @@ LibraryManager.library = {
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
                                "if (ENVIRONMENT_IS_PTHREAD) {\n" +
-                               "  _emscripten_get_now = function() { return performance.now() - Module['__performance_now_clock_drift']; };\n" +
+                               "  _emscripten_get_now = () => performance.now() - Module['__performance_now_clock_drift'];\n" +
                                "} else " +
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -2549,14 +2547,14 @@ LibraryManager.library = {
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
                                "if (typeof performance !== 'undefined' && performance.now) {\n" +
-                               "  _emscripten_get_now = function() { return performance.now(); }\n" +
+                               "  _emscripten_get_now = () => performance.now();\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
                                "}",
 #else
                                // Modern environment where performance.now() is supported:
                                // N.B. a shorter form "_emscripten_get_now = return performance.now;" is unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
-                               "_emscripten_get_now = function() { return performance.now(); }\n",
+                               "_emscripten_get_now = () => performance.now();\n",
 #endif
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
@@ -2828,9 +2826,10 @@ LibraryManager.library = {
   // Generates a representation of the program counter from a line of stack trace.
   // The exact return value depends in whether we are running WASM or JS, and whether
   // the engine supports offsets into WASM. See the function body for details.
-  emscripten_generate_pc: function(frame) {
+  $convertFrameToPC__internal: true,
+  $convertFrameToPC: function(frame) {
 #if !USE_OFFSET_CONVERTER
-    abort('Cannot use emscripten_generate_pc (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
+    abort('Cannot use convertFrameToPC (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
 #else
 #if ASSERTIONS
     assert(wasmOffsetConverter);
@@ -2860,14 +2859,14 @@ LibraryManager.library = {
   // Returns a representation of a call site of the caller of this function, in a manner
   // similar to __builtin_return_address. If level is 0, we return the call site of the
   // caller of this function.
-  emscripten_return_address__deps: ['emscripten_generate_pc'],
+  emscripten_return_address__deps: ['$convertFrameToPC'],
   emscripten_return_address: function(level) {
     var callstack = new Error().stack.split('\n');
     if (callstack[0] == 'Error') {
       callstack.shift();
     }
     // skip this function and the caller to get caller's return address
-    return _emscripten_generate_pc(callstack[level + 2]);
+    return convertFrameToPC(callstack[level + 2]);
   },
 
   $UNWIND_CACHE: {},
@@ -2904,24 +2903,25 @@ LibraryManager.library = {
   // JavaScript frames, so we have to rely on PC values. Therefore, we must be able to unwind from
   // a PC value that may no longer be on the execution stack, and so we are forced to cache the
   // entire call stack.
-  emscripten_stack_snapshot__deps: ['emscripten_generate_pc', '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
+  emscripten_stack_snapshot__deps: ['$convertFrameToPC', '$UNWIND_CACHE', '$saveInUnwindCache'],
   emscripten_stack_snapshot: function () {
     var callstack = new Error().stack.split('\n');
     if (callstack[0] == 'Error') {
       callstack.shift();
     }
-    __emscripten_save_in_unwind_cache(callstack);
+    saveInUnwindCache(callstack);
 
     // Caches the stack snapshot so that emscripten_stack_unwind_buffer() can unwind from this spot.
-    UNWIND_CACHE.last_addr = _emscripten_generate_pc(callstack[2]);
+    UNWIND_CACHE.last_addr = convertFrameToPC(callstack[2]);
     UNWIND_CACHE.last_stack = callstack;
     return UNWIND_CACHE.last_addr;
   },
 
-  _emscripten_save_in_unwind_cache__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
-  _emscripten_save_in_unwind_cache: function (callstack) {
+  $saveInUnwindCache__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
+  $saveInUnwindCache__internal: true,
+  $saveInUnwindCache: function (callstack) {
     callstack.forEach(function (frame) {
-      var pc = _emscripten_generate_pc(frame);
+      var pc = convertFrameToPC(frame);
       if (pc) {
         UNWIND_CACHE[pc] = frame;
       }
@@ -2931,7 +2931,7 @@ LibraryManager.library = {
   // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for how this is used.
   // addr must be the return address of the last call to emscripten_stack_snapshot, or this
   // function will instead use the current call stack.
-  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '_emscripten_save_in_unwind_cache', 'emscripten_generate_pc'],
+  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '$saveInUnwindCache', '$convertFrameToPC'],
   emscripten_stack_unwind_buffer: function (addr, buffer, count) {
     var stack;
     if (UNWIND_CACHE.last_addr == addr) {
@@ -2941,16 +2941,16 @@ LibraryManager.library = {
       if (stack[0] == 'Error') {
         stack.shift();
       }
-      __emscripten_save_in_unwind_cache(stack);
+      saveInUnwindCache(stack);
     }
 
     var offset = 2;
-    while (stack[offset] && _emscripten_generate_pc(stack[offset]) != addr) {
+    while (stack[offset] && convertFrameToPC(stack[offset]) != addr) {
       ++offset;
     }
 
     for (var i = 0; i < count && stack[i+offset]; ++i) {
-      {{{ makeSetValue('buffer', 'i*4', '_emscripten_generate_pc(stack[i + offset])', 'i32', 0, true) }}};
+      {{{ makeSetValue('buffer', 'i*4', 'convertFrameToPC(stack[i + offset])', 'i32', 0, true) }}};
     }
     return i;
   },
@@ -2994,8 +2994,8 @@ LibraryManager.library = {
 #endif
   },
 
-  emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
-  emscripten_pc_get_source_js: function (pc) {
+  $convertPCtoSourceLocation__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
+  $convertPCtoSourceLocation: function(pc) {
     if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 
     var match;
@@ -3026,7 +3026,7 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'free',
+  emscripten_pc_get_file__deps: ['$convertPCtoSourceLocation', 'free',
 #if MINIMAL_RUNTIME
     '$allocateUTF8',
 #endif
@@ -3034,7 +3034,7 @@ LibraryManager.library = {
   // Don't treat allocation of _emscripten_pc_get_file.ret as a leak
   emscripten_pc_get_file__noleakcheck: true,
   emscripten_pc_get_file: function (pc) {
-    var result = _emscripten_pc_get_source_js(pc);
+    var result = convertPCtoSourceLocation(pc);
     if (!result) return 0;
 
     if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
@@ -3043,16 +3043,16 @@ LibraryManager.library = {
   },
 
   // Look up the line number from our stack frame cache with our PC representation.
-  emscripten_pc_get_line__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_line__deps: ['$convertPCtoSourceLocation'],
   emscripten_pc_get_line: function (pc) {
-    var result = _emscripten_pc_get_source_js(pc);
+    var result = convertPCtoSourceLocation(pc);
     return result ? result.line : 0;
   },
 
   // Look up the column number from our stack frame cache with our PC representation.
-  emscripten_pc_get_column__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_column__deps: ['$convertPCtoSourceLocation'],
   emscripten_pc_get_column: function (pc) {
-    var result = _emscripten_pc_get_source_js(pc);
+    var result = convertPCtoSourceLocation(pc);
     return result ? result.column || 0 : 0;
   },
 

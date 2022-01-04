@@ -25,7 +25,8 @@ mergeInto(LibraryManager.library, {
         "{{{ cDefine('O_RDWR') }}}": flags["O_RDWR"],
         "{{{ cDefine('O_DSYNC') }}}": flags["O_SYNC"],
         "{{{ cDefine('O_TRUNC') }}}": flags["O_TRUNC"],
-        "{{{ cDefine('O_WRONLY') }}}": flags["O_WRONLY"]
+        "{{{ cDefine('O_WRONLY') }}}": flags["O_WRONLY"],
+        "{{{ cDefine('O_NOFOLLOW') }}}": flags["O_NOFOLLOW"],
       };
 #if ASSERTIONS
       // The 0 define must match on both sides, as otherwise we would not

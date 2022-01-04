@@ -70,7 +70,7 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.append(__rootdir__)
 
 import posixpath
-from tools import shared, utils
+from tools import shared, utils, js_manipulation
 from subprocess import PIPE
 import fnmatch
 import json
@@ -510,7 +510,7 @@ def main():
             }
       '''
       use_data += ("          Module['removeRunDependency']('datafile_%s');\n"
-                   % shared.JS.escape_for_js_string(data_target))
+                   % js_manipulation.escape_for_js_string(data_target))
 
     else:
       # LZ4FS usage
@@ -526,7 +526,7 @@ def main():
             assert(typeof Module['LZ4'] === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
             Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
             Module['removeRunDependency']('datafile_%s');
-      ''' % (meta, "true" if use_preload_plugins else "false", shared.JS.escape_for_js_string(data_target))
+      ''' % (meta, "true" if use_preload_plugins else "false", js_manipulation.escape_for_js_string(data_target))
 
     package_uuid = uuid.uuid4()
     package_name = data_target
@@ -547,8 +547,8 @@ def main():
         err('warning: you defined Module.locateFilePackage, that has been renamed to Module.locateFile (using your locateFilePackage for now)');
       }
       var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;
-    ''' % (shared.JS.escape_for_js_string(data_target),
-           shared.JS.escape_for_js_string(remote_package_name))
+    ''' % (js_manipulation.escape_for_js_string(data_target),
+           js_manipulation.escape_for_js_string(remote_package_name))
     metadata['remote_package_size'] = remote_package_size
     metadata['package_uuid'] = str(package_uuid)
     ret += '''
@@ -799,7 +799,7 @@ def main():
         %s
       };
       Module['addRunDependency']('datafile_%s');
-    ''' % (use_data, shared.JS.escape_for_js_string(data_target))
+    ''' % (use_data, js_manipulation.escape_for_js_string(data_target))
     # use basename because from the browser's point of view,
     # we need to find the datafile in the same dir as the html file
 

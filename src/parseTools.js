@@ -8,7 +8,7 @@
 // specific to Emscripten (and hence not in utility.js).
 
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
-const FLOAT_TYPES = set('float', 'double');
+const FLOAT_TYPES = new Set(['float', 'double']);
 
 let currentlyParsedFilename = '';
 
@@ -307,7 +307,7 @@ function asmEnsureFloat(value, type) {
     value = ensureDot(value);
     return 'Math.fround(' + value + ')';
   }
-  if (type in FLOAT_TYPES) {
+  if (FLOAT_TYPES.has(type)) {
     return ensureDot(value);
   }
   return value;
@@ -316,7 +316,7 @@ function asmEnsureFloat(value, type) {
 function asmCoercion(value, type, signedness) {
   if (type == 'void') {
     return value;
-  } else if (type in FLOAT_TYPES) {
+  } else if (FLOAT_TYPES.has(type)) {
     if (isNumber(value)) {
       return asmEnsureFloat(value, type);
     } else {
@@ -408,7 +408,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
     if (!ignore) {
-      return asmCoercion('SAFE_HEAP_LOAD' + ((type in FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned + 0) + ')', type, unsigned ? 'u' : undefined);
+      return asmCoercion('SAFE_HEAP_LOAD' + (FLOAT_TYPES.has(type) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned + 0) + ')', type, unsigned ? 'u' : undefined);
     }
   }
 
@@ -486,7 +486,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   const offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
     if (!ignore) {
-      return 'SAFE_HEAP_STORE' + ((type in FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ')';
+      return 'SAFE_HEAP_STORE' + (FLOAT_TYPES.has(type) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ')';
     }
   }
 
@@ -503,9 +503,8 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
   sep = sep || ';';
   function unroll(type, num, jump) {
     jump = jump || 1;
-    return range(num).map((i) => {
-      return makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type);
-    }).join(sep);
+    const setValues = range(num).map((i) => makeSetValue(dest, i * jump, makeGetValue(src, i * jump, type), type));
+    return setValues.join(sep);
   }
   // If we don't know how to handle this at compile-time, or handling it is best
   // done in a large amount of code, call memcpy
@@ -604,7 +603,7 @@ function getFastValue(a, op, b, type) {
   if (op === '*') {
     // We can't eliminate where a or b are 0 as that would break things for creating
     // a negative 0.
-    if ((aNumber === 0 || bNumber === 0) && !(type in FLOAT_TYPES)) {
+    if ((aNumber === 0 || bNumber === 0) && !FLOAT_TYPES.has(type)) {
       return '0';
     } else if (aNumber === 1) {
       return b;
@@ -616,7 +615,7 @@ function getFastValue(a, op, b, type) {
         return `(${a}<<${shifts})`;
       }
     }
-    if (!(type in FLOAT_TYPES)) {
+    if (!FLOAT_TYPES.has(type)) {
       // if guaranteed small enough to not overflow into a double, do a normal multiply
       // default is 32-bit multiply for things like getelementptr indexes
       const bits = getBits(type) || 32;
@@ -630,7 +629,7 @@ function getFastValue(a, op, b, type) {
     }
   } else if (op === '/') {
     // careful on floats, since 0*NaN is not 0
-    if (a === '0' && !(type in FLOAT_TYPES)) {
+    if (a === '0' && !FLOAT_TYPES.has(type)) {
       return '0';
     } else if (b === 1) {
       return a;
@@ -888,17 +887,17 @@ function addAtExit(code) {
 }
 
 function makeRetainedCompilerSettings() {
-  const ignore = set('STRUCT_INFO');
+  const ignore = new Set(['STRUCT_INFO']);
   if (STRICT) {
     for (const setting of LEGACY_SETTINGS) {
       const name = setting[0];
-      ignore[name] = 0;
+      ignore.add(name);
     }
   }
 
   const ret = {};
   for (const x in global) {
-    if (!(x in ignore) && x[0] !== '_' && x == x.toUpperCase()) {
+    if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
       try {
         if (typeof global[x] === 'number' || typeof global[x] === 'string' || this.isArray()) {
           ret[x] = global[x];
@@ -950,7 +949,7 @@ function runOnMainThread(text) {
 }
 
 function expectToReceiveOnModule(name) {
-  return name in INCOMING_MODULE_JS_API;
+  return INCOMING_MODULE_JS_API.has(name);
 }
 
 function makeRemovedModuleAPIAssert(moduleName, localName) {
@@ -1053,7 +1052,7 @@ function _asmjsDemangle(symbol) {
 }
 
 function hasExportedFunction(func) {
-  return Object.keys(WASM_EXPORTS).includes(_asmjsDemangle(func));
+  return WASM_EXPORTS.has(_asmjsDemangle(func));
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
@@ -1112,7 +1111,7 @@ function addReadyPromiseAssertions(promise) {
   //  var instance = Module();
   //  ...
   //  instance._main();
-  const properties = keys(EXPORTED_FUNCTIONS);
+  const properties = Array.from(EXPORTED_FUNCTIONS.values());
   // Also warn on onRuntimeInitialized which might be a common pattern with
   // older MODULARIZE-using codebases.
   properties.push('onRuntimeInitialized');

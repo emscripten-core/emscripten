@@ -42,40 +42,11 @@ int emscripten_futex_wait(volatile void/*uint32_t*/ *addr, uint32_t val, double 
 // INT_MAX to wake all waiters on that location.
 int emscripten_futex_wake(volatile void/*uint32_t*/ *addr, int count);
 
-typedef union em_variant_val
-{
-  int i;
-  int64_t i64;
-  float f;
-  double d;
-  void *vp;
-  char *cp;
-} em_variant_val;
-
-// Proxied C/C++ functions support at most this many arguments. Dispatch is
-// static/strongly typed by signature.
-#define EM_QUEUED_CALL_MAX_ARGS 11
 // Proxied JS function can support a few more arguments than proxied C/C++
 // functions, because the dispatch is variadic and signature independent.
 #define EM_QUEUED_JS_CALL_MAX_ARGS 20
-typedef struct em_queued_call
-{
-  int functionEnum;
-  void *functionPtr;
-  _Atomic uint32_t operationDone;
-  em_variant_val args[EM_QUEUED_JS_CALL_MAX_ARGS];
-  em_variant_val returnValue;
 
-  // An optional pointer to a secondary data block that should be free()d when
-  // this queued call is freed.
-  void *satelliteData;
-
-  // If true, the caller has "detached" itself from this call object and the
-  // Emscripten main runtime thread should free up this em_queued_call object
-  // after it has been executed. If false, the caller is in control of the
-  // memory.
-  int calleeDelete;
-} em_queued_call;
+typedef struct em_queued_call em_queued_call;
 
 void emscripten_sync_run_in_main_thread(em_queued_call *call);
 void *emscripten_sync_run_in_main_thread_0(int function);
@@ -83,39 +54,6 @@ void *emscripten_sync_run_in_main_thread_1(int function, void *arg1);
 void *emscripten_sync_run_in_main_thread_2(int function, void *arg1, void *arg2);
 void *emscripten_sync_run_in_main_thread_3(int function, void *arg1, void *arg2, void *arg3);
 void *emscripten_sync_run_in_main_thread_7(int function, void *arg1, void *arg2, void *arg3, void *arg4, void *arg5, void *arg6, void *arg7);
-
-typedef void (*em_func_v)(void);
-typedef void (*em_func_vi)(int);
-typedef void (*em_func_vf)(float);
-typedef void (*em_func_vii)(int, int);
-typedef void (*em_func_vif)(int, float);
-typedef void (*em_func_vff)(float, float);
-typedef void (*em_func_viii)(int, int, int);
-typedef void (*em_func_viif)(int, int, float);
-typedef void (*em_func_viff)(int, float, float);
-typedef void (*em_func_vfff)(float, float, float);
-typedef void (*em_func_viiii)(int, int, int, int);
-typedef void (*em_func_viifi)(int, int, float, int);
-typedef void (*em_func_vifff)(int, float, float, float);
-typedef void (*em_func_vffff)(float, float, float, float);
-typedef void (*em_func_viiiii)(int, int, int, int, int);
-typedef void (*em_func_viffff)(int, float, float, float, float);
-typedef void (*em_func_viiiiii)(int, int, int, int, int, int);
-typedef void (*em_func_viiiiiii)(int, int, int, int, int, int, int);
-typedef void (*em_func_viiiiiiii)(int, int, int, int, int, int, int, int);
-typedef void (*em_func_viiiiiiiii)(int, int, int, int, int, int, int, int, int);
-typedef void (*em_func_viiiiiiiiii)(int, int, int, int, int, int, int, int, int, int);
-typedef void (*em_func_viiiiiiiiiii)(int, int, int, int, int, int, int, int, int, int, int);
-typedef int (*em_func_i)(void);
-typedef int (*em_func_ii)(int);
-typedef int (*em_func_iii)(int, int);
-typedef int (*em_func_iiii)(int, int, int);
-typedef int (*em_func_iiiii)(int, int, int, int);
-typedef int (*em_func_iiiiii)(int, int, int, int, int);
-typedef int (*em_func_iiiiiii)(int, int, int, int, int, int);
-typedef int (*em_func_iiiiiiii)(int, int, int, int, int, int, int);
-typedef int (*em_func_iiiiiiiii)(int, int, int, int, int, int, int, int);
-typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 
 // Encode function signatures into a single uint32_t integer.
 // N.B. This encoding scheme is internal to the implementation, and can change

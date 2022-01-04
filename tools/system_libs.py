@@ -36,7 +36,7 @@ def files_in_path(path, filenames):
 def glob_in_path(path, glob_pattern, excludes=()):
   srcdir = utils.path_from_root(path)
   files = iglob(os.path.join(srcdir, glob_pattern), recursive=True)
-  return [f for f in files if os.path.basename(f) not in excludes]
+  return sorted(f for f in files if os.path.basename(f) not in excludes)
 
 
 def get_base_cflags(force_object_files=False):
@@ -75,6 +75,7 @@ def run_build_commands(commands):
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
   suffix = shared.suffix(libname)
+  inputs = sorted(inputs, key=lambda x: os.path.basename(x))
   if suffix in ('.bc', '.o'):
     if len(inputs) == 1:
       if inputs[0] != libname:
@@ -240,7 +241,7 @@ class Library:
   # extra code size. The -fno-unroll-loops flags was added here when loop
   # unrolling landed upstream in LLVM to avoid changing behavior but was not
   # specifically evaluated.
-  cflags = ['-Werror', '-fno-unroll-loops']
+  cflags = ['-O2', '-Werror', '-fno-unroll-loops']
 
   # A list of directories to put in the include path when building.
   # This is a list of tuples of path components.
@@ -744,7 +745,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
-  cflags = ['-O2', '-fno-builtin']
+  cflags = ['-fno-builtin']
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   # gcc_personality_v0.c depends on libunwind, which don't include by default.
   src_files = glob_in_path(src_dir, '*.c', excludes=['gcc_personality_v0.c'])
@@ -829,6 +830,7 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
           'emscripten_proxy_main.c',
           'emscripten_thread_state.S',
           'emscripten_futex_wait.c',
+          'emscripten_futex_wake.c',
         ])
     else:
       ignore += ['thread']
@@ -1012,7 +1014,6 @@ class libsockets_proxy(MTLibrary):
 
 class crt1(MuslInternalLibrary):
   name = 'crt1'
-  cflags = ['-O2']
   src_dir = 'system/lib/libc'
   src_files = ['crt1.c']
 
@@ -1027,7 +1028,6 @@ class crt1(MuslInternalLibrary):
 
 class crt1_reactor(MuslInternalLibrary):
   name = 'crt1_reactor'
-  cflags = ['-O2']
   src_dir = 'system/lib/libc'
   src_files = ['crt1_reactor.c']
 
@@ -1042,7 +1042,7 @@ class crt1_reactor(MuslInternalLibrary):
 
 class crtbegin(Library):
   name = 'crtbegin'
-  cflags = ['-O2', '-s', 'USE_PTHREADS']
+  cflags = ['-s', 'USE_PTHREADS']
   src_dir = 'system/lib/pthread'
   src_files = ['emscripten_tls_init.c']
 
@@ -1158,7 +1158,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
 class libmalloc(MTLibrary):
   name = 'libmalloc'
 
-  cflags = ['-O2', '-fno-builtin']
+  cflags = ['-fno-builtin']
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
@@ -1314,7 +1314,7 @@ class libGL(MTLibrary):
 class libwebgpu_cpp(MTLibrary):
   name = 'libwebgpu_cpp'
 
-  cflags = ['-std=c++11', '-O2']
+  cflags = ['-std=c++11']
   src_dir = 'system/lib/webgpu'
   src_files = ['webgpu_cpp.cpp']
 
@@ -1381,10 +1381,10 @@ class libasmfs(MTLibrary):
     return True
 
 
-class libwasmfs(MTLibrary, DebugLibrary):
+class libwasmfs(MTLibrary, DebugLibrary, AsanInstrumentedLibrary):
   name = 'libwasmfs'
 
-  cflags = ['-O2', '-fno-exceptions', '-std=c++17']
+  cflags = ['-fno-exceptions', '-std=c++17']
 
   def get_files(self):
     return files_in_path(
@@ -1404,7 +1404,7 @@ class libhtml5(Library):
 
 
 class CompilerRTLibrary(Library):
-  cflags = ['-O2', '-fno-builtin']
+  cflags = ['-fno-builtin']
   # compiler_rt files can't currently be part of LTO although we are hoping to remove this
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
@@ -1573,7 +1573,6 @@ class libjsmath(Library):
 
 class libstubs(DebugLibrary):
   name = 'libstubs'
-  cflags = ['-O2']
   src_dir = 'system/lib/libc'
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
 
@@ -1652,6 +1651,7 @@ def calculate(input_files, forced):
 
   handle_reverse_deps(input_files)
 
+  force_include = []
   libs_to_link = []
   already_included = set()
   system_libs_map = Library.get_usable_variations()
@@ -1663,8 +1663,10 @@ def calculate(input_files, forced):
   # ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   if force == '1':
-    force = ','.join(name for name, lib in system_libs_map.items() if not lib.never_force)
-  force_include = set((force.split(',') if force else []) + forced)
+    force_include = [name for name, lib in system_libs_map.items() if not lib.never_force]
+  elif force is not None:
+    force_include = force.split(',')
+  force_include += forced
   if force_include:
     logger.debug(f'forcing stdlibs: {force_include}')
 
@@ -1733,11 +1735,11 @@ def calculate(input_files, forced):
     add_library('libc_rt')
 
     if settings.USE_LSAN:
-      force_include.add('liblsan_rt')
+      force_include.append('liblsan_rt')
       add_library('liblsan_rt')
 
     if settings.USE_ASAN:
-      force_include.add('libasan_rt')
+      force_include.append('libasan_rt')
       add_library('libasan_rt')
       add_library('libasan_js')
 
