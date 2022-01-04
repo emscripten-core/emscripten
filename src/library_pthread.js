@@ -295,7 +295,16 @@ var LibraryPThread = {
       };
 
       worker.onerror = function(e) {
-        err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
+        var message = 'worker sent an error!';
+#if ASSERTIONS
+        if (worker.pthread) {
+          var pthread_ptr = worker.pthread.threadInfoStruct;
+          if (pthread_ptr) {
+            message = 'Pthread 0x' + pthread_ptr.toString(16) + ' sent an error!';
+          }
+        }
+#endif
+        err(message + ' ' + e.filename + ':' + e.lineno + ': ' + e.message);
         throw e;
       };
 
