@@ -29,10 +29,19 @@
                 "timeSpentInStatus",
                 "name"
             ]
-        },
+        }
+    },
+    {
+        "file": "threading_internal.h",
         "defines": [
-          "EM_THREAD_NAME_MAX"
-        ]
+          "EM_THREAD_NAME_MAX",
+          "EM_THREAD_STATUS_NOTSTARTED",
+          "EM_THREAD_STATUS_RUNNING",
+          "EM_THREAD_STATUS_SLEEPING",
+          "EM_THREAD_STATUS_WAITFUTEX",
+          "EM_THREAD_STATUS_WAITPROXY",
+          "EM_THREAD_STATUS_FINISHED"
+      ]
     },
     {
         "file": "dynlink.h",

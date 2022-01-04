@@ -14,7 +14,7 @@
 // musl-internal headers like this.
 #define weak __attribute__(__weak__)
 #define hidden __attribute__((__visibility__("hidden")))
-#include "../../system/lib/libc/musl/src/internal/pthread_impl.h"
+#include "pthread_impl.h"
 
 #define NUM_THREADS  1
 

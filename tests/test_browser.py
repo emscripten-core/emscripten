@@ -4723,6 +4723,8 @@ window.close = function() {
 
   @requires_threads
   def test_pthread_locale(self):
+    self.emcc_args.append('-I' + path_from_root('system/lib/libc/musl/src/internal'))
+    self.emcc_args.append('-I' + path_from_root('system/lib/pthread'))
     for args in [
         [],
         ['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'],
