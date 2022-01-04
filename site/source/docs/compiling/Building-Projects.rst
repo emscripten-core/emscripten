@@ -368,7 +368,7 @@ set via an environment variable.  e.g::
 Examples / test code
 ====================
 
-The Emscripten test suite (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/main/tests/runner.py>`_) contains a number of good examples — large C/C++ projects that are built using their normal build systems as described above: `freetype <https://github.com/emscripten-core/emscripten/tree/main/tests/freetype>`_, `openjpeg <https://github.com/emscripten-core/emscripten/tree/main/tests/openjpeg>`_, `zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/third_party/zlib>`_, `bullet <https://github.com/emscripten-core/emscripten/tree/main/tests/bullet>`_ and `poppler <https://github.com/emscripten-core/emscripten/tree/main/tests/poppler>`_.
+The Emscripten test suite (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/main/tests/runner.py>`_) contains a number of good examples — large C/C++ projects that are built using their normal build systems as described above: `freetype <https://github.com/emscripten-core/emscripten/tree/main/tests/third_party/freetype>`_, `openjpeg <https://github.com/emscripten-core/emscripten/tree/main/tests/third_party/openjpeg>`_, `zlib <https://github.com/emscripten-core/emscripten/tree/main/tests/third_party/zlib>`_, `bullet <https://github.com/emscripten-core/emscripten/tree/main/tests/third_party/bullet>`_ and `poppler <https://github.com/emscripten-core/emscripten/tree/main/tests/third_party/poppler>`_.
 
 It is also worth looking at the build scripts in the `ammo.js <https://github.com/kripken/ammo.js/blob/main/CMakeLists.txt>`_ project.
 
