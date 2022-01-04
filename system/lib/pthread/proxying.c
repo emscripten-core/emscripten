@@ -200,6 +200,8 @@ static task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
   return tasks;
 }
 
+// Exported for use in worker.js.
+EMSCRIPTEN_KEEPALIVE
 void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   assert(q != NULL);
   pthread_mutex_lock(&q->mutex);

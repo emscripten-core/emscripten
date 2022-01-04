@@ -29,9 +29,9 @@ void em_proxying_queue_destroy(em_proxying_queue* q);
 // nonblocking and safe to run at any time, similar to a native signal handler.
 em_proxying_queue* emscripten_proxy_get_system_queue();
 
-// Execute all the tasks enqueued for the current thread on the given queue.
-// Exported for use in worker.js.
-EMSCRIPTEN_KEEPALIVE
+// Execute all the tasks enqueued for the current thread on the given queue. New
+// tasks that are enqueued concurrently with this execution will be executed as
+// well. This function returns once it observes an empty queue.
 void emscripten_proxy_execute_queue(em_proxying_queue* q);
 
 // Opaque handle to a currently-executing proxied task, used to signal the end
