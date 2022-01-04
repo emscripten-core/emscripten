@@ -58,7 +58,7 @@ static int task_queue_init(task_queue* tasks, pthread_t thread) {
 static void task_queue_deinit(task_queue* tasks) { free(tasks->tasks); }
 
 // Not thread safe.
-static int task_queue_empty(task_queue* tasks) {
+static int task_queue_is_empty(task_queue* tasks) {
   return tasks->head == tasks->tail;
 }
 
@@ -214,7 +214,7 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   }
   // Found the task queue; process the tasks.
   tasks->processing = 1;
-  while (!task_queue_empty(tasks)) {
+  while (!task_queue_is_empty(tasks)) {
     task t = task_queue_dequeue(tasks);
     // Unlock while the task is running to allow more work to be queued in
     // parallel.
@@ -238,7 +238,7 @@ int emscripten_proxy_async(em_proxying_queue* q,
   if (tasks == NULL) {
     goto failed;
   }
-  int empty = task_queue_empty(tasks);
+  int empty = task_queue_is_empty(tasks);
   if (!task_queue_enqueue(tasks, (task){func, arg})) {
     goto failed;
   }
