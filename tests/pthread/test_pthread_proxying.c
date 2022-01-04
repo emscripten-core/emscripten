@@ -17,7 +17,12 @@ pthread_t returner;
 
 // The queue used to send work to both `looper` and `returner`.
 em_proxying_queue* proxy_queue = NULL;
+
+// Whether `looper` should exit.
 _Atomic int should_quit = 0;
+
+// Whether `returner` has spun up.
+_Atomic int has_begun = 0;
 
 void* looper_main(void* arg) {
   while (!should_quit) {
@@ -27,7 +32,10 @@ void* looper_main(void* arg) {
   return NULL;
 }
 
-void* returner_main(void* arg) { emscripten_exit_with_live_runtime(); }
+void* returner_main(void* arg) {
+  has_begun = 1;
+  emscripten_exit_with_live_runtime();
+}
 
 typedef struct widget {
   // `val` will be stored to `out` and the current thread will be stored to
@@ -321,6 +329,11 @@ int main(int argc, char* argv[]) {
 
   pthread_create(&looper, NULL, looper_main, NULL);
   pthread_create(&returner, NULL, returner_main, NULL);
+
+  // `returner` can't process its queue until it starts up.
+  while (!has_begun) {
+    sched_yield();
+  }
 
   test_proxy_async();
   test_proxy_sync();
