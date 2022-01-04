@@ -13,7 +13,6 @@
 #include "file_table.h"
 #include <assert.h>
 #include <emscripten/html5.h>
-#include <map>
 #include <mutex>
 #include <sys/stat.h>
 #include <vector>

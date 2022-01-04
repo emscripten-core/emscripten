@@ -43,6 +43,20 @@ var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : 
 #include "promise_polyfill.js"
 #endif
 
+// See https://caniuse.com/mdn-javascript_builtins_object_assign
+#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 90000
+function objAssign(target, source) {
+  for (var key in source) {
+    if (source.hasOwnProperty(key)) {
+      target[key] = source[key];
+    }
+  }
+  return target;
+}
+#else
+var objAssign = Object.assign;
+#endif
+
 #if MODULARIZE
 // Set up the promise that indicates the Module is initialized
 var readyPromiseResolve, readyPromiseReject;
@@ -64,17 +78,11 @@ Module['ready'] = new Promise(function(resolve, reject) {
 // we collect those properties and reapply _after_ we configure
 // the current environment's defaults to avoid having to be so
 // defensive during initialization.
-var moduleOverrides = {};
-var key;
-for (key in Module) {
-  if (Module.hasOwnProperty(key)) {
-    moduleOverrides[key] = Module[key];
-  }
-}
+var moduleOverrides = objAssign({}, Module);
 
 var arguments_ = [];
 var thisProgram = './this.program';
-var quit_ = function(status, toThrow) {
+var quit_ = (status, toThrow) => {
   throw toThrow;
 };
 
@@ -163,7 +171,7 @@ var read_,
 // this may no longer be needed under node.
 function logExceptionOnExit(e) {
   if (e instanceof ExitStatus) return;
-  var toLog = e;
+  let toLog = e;
 #if ASSERTIONS
   if (e && typeof e === 'object' && e.stack) {
     toLog = [e, e.stack];
@@ -224,7 +232,7 @@ if (ENVIRONMENT_IS_NODE) {
   process['on']('unhandledRejection', function(reason) { throw reason; });
 #endif
 
-  quit_ = function(status, toThrow) {
+  quit_ = (status, toThrow) => {
     if (keepRuntimeAlive()) {
       process['exitCode'] = status;
       throw toThrow;
@@ -236,7 +244,7 @@ if (ENVIRONMENT_IS_NODE) {
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
 
 #if USE_PTHREADS
-  var nodeWorkerThreads;
+  let nodeWorkerThreads;
   try {
     nodeWorkerThreads = require('worker_threads');
   } catch (e) {
@@ -268,7 +276,7 @@ if (ENVIRONMENT_IS_SHELL) {
   if (typeof read != 'undefined') {
     read_ = function shell_read(f) {
 #if SUPPORT_BASE64_EMBEDDING
-      var data = tryParseAsDataURI(f);
+      const data = tryParseAsDataURI(f);
       if (data) {
         return intArrayToString(data);
       }
@@ -278,7 +286,7 @@ if (ENVIRONMENT_IS_SHELL) {
   }
 
   readBinary = function readBinary(f) {
-    var data;
+    let data;
 #if SUPPORT_BASE64_EMBEDDING
     data = tryParseAsDataURI(f);
     if (data) {
@@ -294,7 +302,7 @@ if (ENVIRONMENT_IS_SHELL) {
   };
 
   readAsync = function readAsync(f, onload, onerror) {
-    setTimeout(function() { onload(readBinary(f)); }, 0);
+    setTimeout(() => onload(readBinary(f)), 0);
   };
 
   if (typeof scriptArgs != 'undefined') {
@@ -304,7 +312,7 @@ if (ENVIRONMENT_IS_SHELL) {
   }
 
   if (typeof quit === 'function') {
-    quit_ = function(status, toThrow) {
+    quit_ = (status, toThrow) => {
       logExceptionOnExit(toThrow);
       quit(status);
     };
@@ -377,7 +385,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   }
 
-  setWindowTitle = function(title) { document.title = title };
+  setWindowTitle = (title) => document.title = title;
 } else
 #endif // ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 {
@@ -405,8 +413,8 @@ var defaultPrint = console.log.bind(console);
 var defaultPrintErr = console.warn.bind(console);
 if (ENVIRONMENT_IS_NODE) {
   requireNodeFS();
-  defaultPrint = function(str) { fs.writeSync(1, str + '\n'); };
-  defaultPrintErr = function(str) { fs.writeSync(2, str + '\n'); };
+  defaultPrint = (str) => fs.writeSync(1, str + '\n');
+  defaultPrintErr = (str) => fs.writeSync(2, str + '\n');
 }
 {{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint',    true) }}}
 {{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr', true) }}}
@@ -416,11 +424,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 // Merge back in the overrides
-for (key in moduleOverrides) {
-  if (moduleOverrides.hasOwnProperty(key)) {
-    Module[key] = moduleOverrides[key];
-  }
-}
+objAssign(Module, moduleOverrides);
 // Free the object hierarchy contained in the overrides, this lets the GC
 // reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
 moduleOverrides = null;

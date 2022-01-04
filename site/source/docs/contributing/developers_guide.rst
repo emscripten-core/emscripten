@@ -30,7 +30,7 @@ binaries with a checkout of the core Emscripten repository, simply by calling
 ``emcc.py`` from that checkout, and it will use the binaries from the emsdk.
 
 If you do want to contribute to LLVM or Binaryen, or to test modifications
-to them, you can 
+to them, you can
 :ref:`build them from source <installing-from-source>`.
 
 Repositories and branches of interest
@@ -55,6 +55,8 @@ When submitting patches, please:
   in ``tests/*.py`` for related tests, as often the simplest thing is to add to
   an existing one. If you're not sure how to test your code, feel free to ask
   for help.
+- Pay attention to our coding style specified in
+  `.clang-format <https://github.com/emscripten-core/emscripten/blob/main/.clang-format>`_.
 - We normally squash and merge PRs, which means the PR turns into a single
   commit on the target branch. Because of that, it's ok to have merge commits
   in the PR itself, as they get removed. Please put a good description for

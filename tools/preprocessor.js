@@ -13,11 +13,11 @@
 //    shell file     This is the file that will be processed by the preprocessor
 
 
-var fs = require('fs');
-var path = require('path');
+const fs = require('fs');
+const path = require('path');
 
-var arguments_ = process['argv'].slice(2);
-var debug = false;
+const arguments_ = process['argv'].slice(2);
+const debug = false;
 
 print = function(x) {
   process['stdout'].write(x + '\n');
@@ -27,9 +27,9 @@ printErr = function(x) {
 };
 
 function find(filename) {
-  var prefixes = [process.cwd(), path.join(__dirname, '..', 'src')];
-  for (var i = 0; i < prefixes.length; ++i) {
-    var combined = path.join(prefixes[i], filename);
+  const prefixes = [process.cwd(), path.join(__dirname, '..', 'src')];
+  for (let i = 0; i < prefixes.length; ++i) {
+    const combined = path.join(prefixes[i], filename);
     if (fs.existsSync(combined)) {
       return combined;
     }
@@ -38,7 +38,7 @@ function find(filename) {
 }
 
 read = function(filename) {
-  var absolute = find(filename);
+  const absolute = find(filename);
   return fs.readFileSync(absolute).toString();
 };
 
@@ -46,16 +46,16 @@ load = function(f) {
   eval.call(null, read(f));
 };
 
-var settings_file = arguments_[0];
-var shell_file = arguments_[1];
-var process_macros = arguments_.includes('--expandMacros');
+const settingsFile = arguments_[0];
+const shellFile = arguments_[1];
+const expandMacros = arguments_.includes('--expandMacros');
 
-load(settings_file)
+load(settingsFile);
 load('utility.js');
 load('modules.js');
 load('parseTools.js');
 
-var from_html = read(shell_file);
-var to_html = process_macros ? processMacros(preprocess(from_html, shell_file)) : preprocess(from_html, shell_file);
+const fromHTML = read(shellFile);
+const toHTML = expandMacros ? processMacros(preprocess(fromHTML, shellFile)) : preprocess(fromHTML, shellFile);
 
-print(to_html);
+print(toHTML);

@@ -205,7 +205,7 @@ worker.onmessage = function worker_onmessage(event) {
     case 'Image': {
       assert(data.method === 'src');
       var img = new Image();
-      img.onload = function() {
+      img.onload = () => {
         assert(img.complete);
         var canvas = document.createElement('canvas');
         canvas.width = img.width;
@@ -215,7 +215,7 @@ worker.onmessage = function worker_onmessage(event) {
         var imageData = ctx.getImageData(0, 0, img.width, img.height);
         worker.postMessage({ target: 'Image', method: 'onload', id: data.id, width: img.width, height: img.height, data: imageData.data, preMain: true });
       };
-      img.onerror = function() {
+      img.onerror = () => {
         worker.postMessage({ target: 'Image', method: 'onerror', id: data.id, preMain: true });
       };
       img.src = data.src;

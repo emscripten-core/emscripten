@@ -12,10 +12,9 @@ import tempfile
 import time
 from contextlib import ContextDecorator
 
-sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logger = logging.getLogger('profiler')
 
-from tools import response_file
+from . import response_file
 
 EMPROFILE = int(os.getenv('EMPROFILE', '0'))
 
@@ -27,10 +26,13 @@ class Logger(ContextDecorator):
   def __enter__(self):
     self.start = time.time()
 
-  def __exit__(self, type, value, traceback):
+  def __exit__(self, exc_type, value, traceback):
     # When a block ends debug log the total duration.
     now = time.time()
-    logger.debug('block "%s" took %.2f seconds', self.name, now - self.start)
+    if exc_type:
+      logger.debug('block "%s" raised an exception after %.2f seconds', self.name, now - self.start)
+    else:
+      logger.debug('block "%s" took %.2f seconds', self.name, now - self.start)
 
 
 if EMPROFILE:

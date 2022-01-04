@@ -184,12 +184,12 @@
         return Module['downloadedData'];
       }
 
-      var dataDownload = download('manual_download_data.data').then(function(data) {
+      var dataDownload = download('/test/manual_download_data.data').then(function(data) {
         console.log('downloaded data file');
-        Module.manuallyDownloadedData = 1;
         Module['downloadedData'] = data;
         var jsDownload = download('manual_download_data.js').then(function(data) {
           console.log('downloaded js file');
+          Module['mainScriptUrlOrBlob'] = new Blob([data]);
           addScriptToDom(data);
         });
       });

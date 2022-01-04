@@ -4,31 +4,33 @@
  * SPDX-License-Identifier: MIT
  */
 
-//"use strict";
+// "use strict";
 
 // General JS utilities - things that might be useful in any JS project.
 // Nothing specific to Emscripten appears here.
 
 function safeQuote(x) {
-  return x.replace(/"/g, '\\"')
-          .replace(/'/g, "\\'");
+  return x.replace(/"/g, '\\"').replace(/'/g, "\\'");
 }
 
 function dump(item) {
+  let funcData;
   try {
     if (typeof item == 'object' && item !== null && item.funcData) {
-      var funcData = item.funcData;
+      funcData = item.funcData;
       item.funcData = null;
     }
     return '// ' + JSON.stringify(item, null, '  ').replace(/\n/g, '\n// ');
-  } catch(e) {
-    var ret = [];
-    for (var i in item) {
-      var j = item[i];
-      if (typeof j === 'string' || typeof j === 'number') {
-        ret.push(i + ': ' + j);
-      } else {
-        ret.push(i + ': [?]');
+  } catch (e) {
+    const ret = [];
+    for (const i in item) {
+      if (Object.prototype.hasOwnProperty.call(item, i)) {
+        const j = item[i];
+        if (typeof j === 'string' || typeof j === 'number') {
+          ret.push(i + ': ' + j);
+        } else {
+          ret.push(i + ': [?]');
+        }
       }
     }
     return ret.join(',\n');
@@ -69,7 +71,7 @@ function warnOnce(a, msg) {
   }
 }
 
-var abortExecution = false;
+global.abortExecution = false;
 
 function error(msg) {
   abortExecution = true;
@@ -77,30 +79,26 @@ function error(msg) {
 }
 
 function range(size) {
-  var ret = [];
-  for (var i = 0; i < size; i++) ret.push(i);
-  return ret;
-}
-
-function keys(x) {
-  var ret = [];
-  for (var a in x) ret.push(a);
+  const ret = [];
+  for (let i = 0; i < size; i++) ret.push(i);
   return ret;
 }
 
 function bind(self, func) {
-  return function() {
-    func.apply(self, arguments);
+  return function(...args) {
+    func.apply(self, args);
   };
 }
 
 function sum(x) {
-  return x.reduce(function(a,b) { return a+b }, 0);
+  return x.reduce((a, b) => a + b, 0);
 }
 
 function mergeInto(obj, other) {
-  for (var i in other) {
-    obj[i] = other[i];
+  for (const i in other) {
+    if (Object.prototype.hasOwnProperty.call(other, i)) {
+      obj[i] = other[i];
+    }
   }
   return obj;
 }
@@ -127,46 +125,35 @@ function isJsLibraryConfigIdentifier(ident) {
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }
 
-// Sets
-
-function set() {
-  var args = typeof arguments[0] === 'object' ? arguments[0] : arguments;
-  var ret = {};
-  for (var i = 0; i < args.length; i++) {
-    ret[args[i]] = 0;
-  }
-  return ret;
-}
-var unset = keys;
-
 function isPowerOfTwo(x) {
-  return x > 0 && ((x & (x-1)) == 0);
+  return x > 0 && ((x & (x - 1)) == 0);
 }
 
 function Benchmarker() {
-  var totals = {};
-  var ids = [], lastTime = 0;
+  const totals = {};
+  const ids = [];
+  const lastTime = 0;
   this.start = function(id) {
-    var now = Date.now();
+    const now = Date.now();
     if (ids.length > 0) {
-      totals[ids[ids.length-1]] += now - lastTime;
+      totals[ids[ids.length - 1]] += now - lastTime;
     }
     lastTime = now;
     ids.push(id);
     totals[id] = totals[id] || 0;
   };
   this.stop = function(id) {
-    var now = Date.now();
-    assert(id === ids[ids.length-1]);
+    const now = Date.now();
+    assert(id === ids[ids.length - 1]);
     totals[id] += now - lastTime;
     lastTime = now;
     ids.pop();
   };
   this.print = function(text) {
-    var ids = keys(totals);
+    const ids = Object.keys(totals);
     if (ids.length > 0) {
-      ids.sort(function(a, b) { return totals[b] - totals[a] });
-      printErr(text + ' times: \n' + ids.map(function(id) { return id + ' : ' + totals[id] + ' ms' }).join('\n'));
+      ids.sort((a, b) => totals[b] - totals[a]);
+      printErr(text + ' times: \n' + ids.map((id) => id + ' : ' + totals[id] + ' ms').join('\n'));
     }
   };
 }
