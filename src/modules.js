@@ -191,6 +191,7 @@ global.LibraryManager = {
             if (!isJsLibraryConfigIdentifier(prop)) {
               target[prop + '__user'] = true;
             }
+            return true;
           },
         });
       }
