@@ -894,6 +894,7 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
           'asctime.c',
           'ctime.c',
           'gmtime.c',
+          'gmtime_r.c',
           'localtime.c',
           'nanosleep.c',
           'clock_nanosleep.c',
@@ -1546,7 +1547,6 @@ class libstandalonewasm(MuslInternalLibrary):
                    'ctime_r.c',
                    'difftime.c',
                    'gettimeofday.c',
-                   'gmtime_r.c',
                    'localtime_r.c',
                    'mktime.c',
                    'time.c'])
