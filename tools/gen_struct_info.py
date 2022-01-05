@@ -429,6 +429,7 @@ def main(args):
   internal_cflags = [
     '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
     '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
+    '-I' + utils.path_from_root('system/lib/pthread/'),
   ]
 
   cxxflags = [

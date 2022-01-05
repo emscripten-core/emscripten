@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <math.h>
 #include <emscripten/threading.h>
+#include "threading_internal.h"
 
 int _emscripten_thread_supports_atomics_wait(void);
 int _emscripten_futex_wait_non_blocking(volatile void *addr, uint32_t val, double max_wait_ms);
