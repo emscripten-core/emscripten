@@ -380,6 +380,7 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile):
 
   if settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
+    metadata['globalImports'] += ['__asyncify_state', '__asyncify_data']
 
   report_missing_symbols(forwarded_json['librarySymbols'])
 
