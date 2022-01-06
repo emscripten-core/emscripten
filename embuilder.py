@@ -53,7 +53,8 @@ MINIMAL_TASKS = [
     'struct_info',
     'libstandalonewasm',
     'crt1',
-    'libunwind-except'
+    'libunwind-except',
+    'libnoexit',
 ]
 
 # Variant builds that we want to support for certain ports
