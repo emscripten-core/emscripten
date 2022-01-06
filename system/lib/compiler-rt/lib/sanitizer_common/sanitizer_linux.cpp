@@ -728,7 +728,7 @@ void FutexWake(atomic_uint32_t *p, u32 count) {
 #    elif SANITIZER_NETBSD
                    /* No userspace futex-like synchronization */
 #    elif SANITIZER_EMSCRIPTEN
-  emscripten_futex_wake(p, 1);
+  emscripten_futex_wake(p, count);
 #    else
   internal_syscall(SYSCALL(futex), (uptr)p, FUTEX_WAKE_PRIVATE, count, 0, 0, 0);
 #    endif
