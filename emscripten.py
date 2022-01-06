@@ -137,13 +137,6 @@ def update_settings_glue(metadata, DEBUG):
   if settings.MEMORY64:
     assert '--enable-memory64' in settings.BINARYEN_FEATURES
 
-  if settings.RELOCATABLE:
-    # When building relocatable output (e.g. MAIN_MODULE) the reported table
-    # size does not include the reserved slot at zero for the null pointer.
-    # Instead we use __table_base to offset the elements by 1.
-    if settings.INITIAL_TABLE == -1:
-      settings.INITIAL_TABLE = metadata['tableSize'] + 1
-
   settings.HAS_MAIN = settings.MAIN_MODULE or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS
 
   # When using dynamic linking the main function might be in a side module.
@@ -316,9 +309,16 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
   # memory and global initializers
 
   if settings.RELOCATABLE:
-    static_bump = align_memory(webassembly.parse_dylink_section(in_wasm).mem_size)
+    dylink_sec = webassembly.parse_dylink_section(in_wasm)
+    static_bump = align_memory(dylink_sec.mem_size)
     set_memory(static_bump)
     logger.debug('stack_base: %d, stack_max: %d, heap_base: %d', settings.STACK_BASE, settings.STACK_MAX, settings.HEAP_BASE)
+
+    # When building relocatable output (e.g. MAIN_MODULE) the reported table
+    # size does not include the reserved slot at zero for the null pointer.
+    # So we need to offset the elements by 1.
+    if settings.INITIAL_TABLE == -1:
+      settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
   glue, forwarded_data = compile_settings()
   if DEBUG:
@@ -767,8 +767,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   metadata = {
     'declares': [],
     'globalImports': [],
-    'staticBump': 0,
-    'tableSize': 0,
     'exports': [],
     'namedGlobals': {},
     'emJsFuncs': {},
@@ -777,9 +775,8 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'features': [],
     'mainReadsParams': 1,
   }
-  legacy_keys = set(['implementedFunctions', 'initializers', 'simd', 'externs'])
+  legacy_keys = set(['implementedFunctions', 'initializers', 'simd', 'externs', 'staticBump', 'tableSize'])
 
-  assert 'tableSize' in metadata_json.keys()
   for key, value in metadata_json.items():
     if key in legacy_keys:
       continue

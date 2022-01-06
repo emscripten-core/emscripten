@@ -17,7 +17,7 @@
 // character.
 function TextDecoderWrapper(encoding) {
   var textDecoder = new TextDecoder(encoding);
-  this.decode = function(data) {
+  this.decode = (data) => {
 #if ASSERTIONS
     assert(data instanceof Uint8Array);
 #endif

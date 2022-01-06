@@ -5,9 +5,9 @@
 
 import os
 
-TAG = 'version_24'
-HASH = '5a8181acdcce29cdda7e7a4cc876602740f5b9deebd366ecec71ae15c4bbf1f352da4dd0e3c5e0ba8160709dda0270566d64a6cd3892da894463ecf8502836aa'
-SUBDIR = 'SDL2-' + TAG
+TAG = 'release-2.0.18'
+HASH = '89e716846f72d0de291b5e1b4b98275358fbb415624ed40dde2405c4fc8b0a0c72ac68cd11088188ae69d3ef794a84a335b0cfdb4c0bd4f7df7793d7a2252a93'
+SUBDIR = 'SDL-' + TAG
 
 
 def needed(settings):
@@ -20,7 +20,7 @@ def get_lib_name(settings):
 
 def get(ports, settings, shared):
   # get the port
-  ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
+  ports.fetch_project('sdl2', 'https://github.com/libsdl-org/SDL/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
 
   def create(final):
     # copy includes to a location so they can be used as 'SDL2/'
@@ -31,8 +31,8 @@ def get(ports, settings, shared):
     srcs = '''SDL.c SDL_assert.c SDL_dataqueue.c SDL_error.c SDL_hints.c SDL_log.c atomic/SDL_atomic.c
     atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c audio/SDL_audiodev.c
     audio/SDL_audiotypecvt.c audio/SDL_mixer.c audio/SDL_wave.c cpuinfo/SDL_cpuinfo.c
-    dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_dropevents.c events/SDL_events.c
-    events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c
+    dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_displayevents.c events/SDL_dropevents.c
+    events/SDL_events.c events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c
     events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c
     joystick/SDL_gamecontroller.c joystick/SDL_joystick.c
     power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c
@@ -41,7 +41,8 @@ def get(ports, settings, shared):
     render/opengles2/SDL_render_gles2.c render/opengles2/SDL_shaders_gles2.c
     render/psp/SDL_render_psp.c render/software/SDL_blendfillrect.c render/software/SDL_blendline.c
     render/software/SDL_blendpoint.c render/software/SDL_drawline.c render/software/SDL_drawpoint.c
-    render/software/SDL_render_sw.c render/software/SDL_rotate.c sensor/SDL_sensor.c
+    render/software/SDL_render_sw.c render/software/SDL_rotate.c render/software/SDL_triangle.c
+    sensor/SDL_sensor.c sensor/dummy/SDL_dummysensor.c
     stdlib/SDL_getenv.c stdlib/SDL_iconv.c stdlib/SDL_malloc.c stdlib/SDL_qsort.c
     stdlib/SDL_stdlib.c stdlib/SDL_string.c thread/SDL_thread.c timer/SDL_timer.c
     video/SDL_RLEaccel.c video/SDL_blit.c video/SDL_blit_0.c video/SDL_blit_1.c video/SDL_blit_A.c

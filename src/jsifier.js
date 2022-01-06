@@ -4,16 +4,16 @@
  * SPDX-License-Identifier: MIT
  */
 
-//"use strict";
+// "use strict";
 
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
-var addedLibraryItems = {};
+global.addedLibraryItems = {};
 
 // Some JS-implemented library functions are proxied to be called on the main browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not the same namespace as function pointers in general).
-var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*/];
+global.proxiedFunctionTable = ['null'/* Reserve index 0 for an undefined function*/];
 
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
@@ -22,9 +22,9 @@ function mangleCSymbolName(f) {
 
 // Splits out items that pass filter. Returns also the original sans the filtered
 function splitter(array, filter) {
-  var splitOut = array.filter(filter);
-  var leftIn = array.filter((x) => !filter(x));
-  return { leftIn: leftIn, splitOut: splitOut };
+  const splitOut = array.filter(filter);
+  const leftIn = array.filter((x) => !filter(x));
+  return {leftIn: leftIn, splitOut: splitOut};
 }
 
 // Functions that start with '$' should not be exported to the wasm module.
@@ -45,12 +45,12 @@ function stringifyWithFunctions(obj) {
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   } else {
-    return '{' + keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
+    return '{' + Object.keys(obj).map((key) => escapeJSONKey(key) + ':' + stringifyWithFunctions(obj[key])).join(',') + '}';
   }
 }
 
 function isDefined(symName) {
-  if (symName in WASM_EXPORTS || symName in SIDE_MODULE_EXPORTS) {
+  if (WASM_EXPORTS.has(symName) || SIDE_MODULE_EXPORTS.has(symName)) {
     return true;
   }
   // 'invoke_' symbols are created at runtime in libary_dylink.py so can
@@ -62,11 +62,11 @@ function isDefined(symName) {
 }
 
 // JSifier
-function JSify(functionsOnly) {
-  var mainPass = !functionsOnly;
-  var functionStubs = [];
+function runJSify(functionsOnly) {
+  const mainPass = !functionsOnly;
+  const functionStubs = [];
 
-  var itemsDict = { type: [], functionStub: [], function: [], globalVariablePostSet: [] };
+  const itemsDict = {type: [], functionStub: [], function: [], globalVariablePostSet: []};
 
   if (mainPass) {
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
@@ -74,9 +74,9 @@ function JSify(functionsOnly) {
 
     LibraryManager.load();
 
-    var libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
+    const libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     if (INCLUDE_FULL_LIBRARY) {
-      for (var key in LibraryManager.library) {
+      for (const key in LibraryManager.library) {
         if (!isJsLibraryConfigIdentifier(key)) {
           libFuncsToInclude.push(key);
         }
@@ -85,7 +85,7 @@ function JSify(functionsOnly) {
     libFuncsToInclude.forEach((ident) => {
       functionStubs.push({
         identOrig: ident,
-        identMangled: mangleCSymbolName(ident)
+        identMangled: mangleCSymbolName(ident),
       });
     });
   }
@@ -94,23 +94,21 @@ function JSify(functionsOnly) {
     // It is possible that when printing the function as a string on Windows, the js interpreter we are in returns the string with Windows
     // line endings \r\n. This is undesirable, since line endings are managed in the form \n in the output for binary file writes, so
     // make sure the endings are uniform.
-    snippet = snippet.toString().replace(/\r\n/gm,'\n');
+    snippet = snippet.toString().replace(/\r\n/gm, '\n');
 
     // name the function; overwrite if it's already named
     snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + finalName + '(');
 
     // apply LIBRARY_DEBUG if relevant
     if (LIBRARY_DEBUG && !isJsOnlyIdentifier(ident)) {
-      snippet = modifyFunction(snippet, (name, args, body) => {
-        return `\
+      snippet = modifyFunction(snippet, (name, args, body) => `\
 function ${name}(${args}) {
   var ret = (function() { if (runtimeDebug) err("[library call:${finalName}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
   ${body}
   }).apply(this, arguments);
   if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret));
   return ret;
-}`
-      });
+}`);
     }
     return snippet;
   }
@@ -125,7 +123,7 @@ function ${name}(${args}) {
         error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
         return;
       }
-      var num = +item.identMangled.split('_').slice(-1)[0];
+      const num = +item.identMangled.split('_').slice(-1)[0];
       addCxaCatch(num);
       // Continue, with the code below emitting the proper JavaScript based on
       // what we just added to the library.
@@ -137,8 +135,8 @@ function ${name}(${args}) {
       // dependencies can be JS functions, which we just run
       if (typeof item == 'function') return item();
 
-      var ident = item.identOrig;
-      var finalName = item.identMangled;
+      const ident = item.identOrig;
+      const finalName = item.identMangled;
 
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
@@ -149,26 +147,26 @@ function ${name}(${args}) {
       }
 
       // if the function was implemented in compiled code, there is no need to include the js version
-      if (ident in WASM_EXPORTS) {
+      if (WASM_EXPORTS.has(ident)) {
         return '';
       }
 
-      var noExport = false;
+      let noExport = false;
 
       if (!LibraryManager.library.hasOwnProperty(ident)) {
         if (ONLY_CALC_JS_SYMBOLS) {
           return;
         }
         if (!isDefined(ident)) {
-          var msg = 'undefined symbol: ' + ident;
+          let msg = 'undefined symbol: ' + ident;
           if (dependent) msg += ` (referenced by ${dependent})`;
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
             if (dependent == TOP_LEVEL && !LLD_REPORT_UNDEFINED) {
               warnOnce('Link with `-s LLD_REPORT_UNDEFINED` to get more information on undefined symbols');
             }
-            warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
-            warnOnce(finalName + ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library')
+            warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`');
+            warnOnce(finalName + ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library');
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
             warn(msg);
           }
@@ -184,41 +182,39 @@ function ${name}(${args}) {
           // (not useful to warn/error multiple times)
           LibraryManager.library[ident + '__docs'] = '/** @type {function(...*):?} */';
         } else {
-          var target = `Module['${finalName}']`;
-          var assertion = '';
+          const target = `Module['${finalName}']`;
+          let assertion = '';
           if (ASSERTIONS) {
-            var what = 'function';
             assertion += `if (!${target}) abort("external symbol '${ident}' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n`;
-
           }
-          var functionBody = assertion + `return ${target}.apply(null, arguments);`;
+          const functionBody = assertion + `return ${target}.apply(null, arguments);`;
           LibraryManager.library[ident] = new Function(functionBody);
           noExport = true;
         }
       }
 
-      var original = LibraryManager.library[ident];
-      var snippet = original;
-      var redirectedIdent = null;
-      var deps = LibraryManager.library[ident + '__deps'] || [];
+      const original = LibraryManager.library[ident];
+      let snippet = original;
+      let redirectedIdent = null;
+      const deps = LibraryManager.library[ident + '__deps'] || [];
       if (!Array.isArray(deps)) {
         error(`JS library directive ${ident}__deps=${deps.toString()} is of type ${typeof deps}, but it should be an array!`);
         return;
       }
-      var isUserSymbol = LibraryManager.library[ident + '__user'];
+      const isUserSymbol = LibraryManager.library[ident + '__user'];
       deps.forEach((dep) => {
         if (typeof snippet === 'string' && !(dep in LibraryManager.library)) {
           warn(`missing library dependency ${dep}, make sure you are compiling with the right options (see #if in src/library*.js)`);
         }
         if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
-          warn(`user library symbol '${ident}' depends on internal symbol '${dep}'`)
+          warn(`user library symbol '${ident}' depends on internal symbol '${dep}'`);
         }
       });
-      var isFunction = false;
+      let isFunction = false;
 
       if (typeof snippet === 'string') {
         if (snippet[0] != '=') {
-          var target = LibraryManager.library[snippet];
+          const target = LibraryManager.library[snippet];
           if (target) {
             // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
             // This avoid having duplicate functions with identical content.
@@ -246,11 +242,12 @@ function ${name}(${args}) {
         libraryFunctions.push(finalName);
       }
 
-      if (ONLY_CALC_JS_SYMBOLS)
+      if (ONLY_CALC_JS_SYMBOLS) {
         return '';
+      }
 
-      var postsetId = ident + '__postset';
-      var postset = LibraryManager.library[postsetId];
+      const postsetId = ident + '__postset';
+      let postset = LibraryManager.library[postsetId];
       if (postset) {
         // A postset is either code to run right now, or some text we should emit.
         // If it's code, it may return some text to emit as well.
@@ -260,7 +257,7 @@ function ${name}(${args}) {
         if (postset && !addedLibraryItems[postsetId]) {
           addedLibraryItems[postsetId] = true;
           itemsDict.globalVariablePostSet.push({
-            JS: postset + ';'
+            JS: postset + ';',
           });
         }
       }
@@ -271,41 +268,37 @@ function ${name}(${args}) {
       if (VERBOSE) {
         printErr(`adding ${finalName} and deps ${deps} : ` + (snippet + '').substr(0, 40));
       }
-      var identDependents = ident + "__deps: ['" + deps.join("','")+"']";
+      const identDependents = ident + "__deps: ['" + deps.join("','") + "']";
       function addDependency(dep) {
         if (typeof dep !== 'function') {
           dep = {identOrig: dep, identMangled: mangleCSymbolName(dep)};
         }
         return addFromLibrary(dep, `${identDependents}, referenced by ${dependent}`);
       }
-      var contentText;
+      let contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
-        var proxyingMode = LibraryManager.library[ident + '__proxy'];
+        const proxyingMode = LibraryManager.library[ident + '__proxy'];
         if (USE_PTHREADS && proxyingMode) {
           if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
-            throw `Invalid proxyingMode ${ident}__proxy: '${proxyingMode}' specified!`;
+            throw new Error(`Invalid proxyingMode ${ident}__proxy: '${proxyingMode}' specified!`);
           }
-          var sync = proxyingMode === 'sync';
+          const sync = proxyingMode === 'sync';
           assert(typeof original === 'function');
-          contentText = modifyFunction(snippet, (name, args, body) => {
-            return `
+          contentText = modifyFunction(snippet, (name, args, body) => `
 function ${name}(${args}) {
   if (ENVIRONMENT_IS_PTHREAD)
     return _emscripten_proxy_to_main_thread_js(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
   ${body}
-}\n`;
-          });
+}\n`);
           proxiedFunctionTable.push(finalName);
         } else if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[ident + '__noleakcheck']) {
-          contentText = modifyFunction(snippet, (name, args, body) => {
-            return `
+          contentText = modifyFunction(snippet, (name, args, body) => `
 function ${name}(${args}) {
   return withBuiltinMalloc(function() {
     ${body}
   });
-}\n`;
-          });
+}\n`);
           deps.push('$withBuiltinMalloc');
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
@@ -316,7 +309,7 @@ function ${name}(${args}) {
         //  emits
         //   'var foo;[code here verbatim];'
         contentText = 'var ' + finalName + snippet;
-        if (snippet[snippet.length-1] != ';' && snippet[snippet.length-1] != '}') contentText += ';';
+        if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') contentText += ';';
       } else {
         // In JS libraries
         //   foo: '=[value]'
@@ -325,22 +318,22 @@ function ${name}(${args}) {
         if (typeof snippet === 'string' && snippet[0] == '=') snippet = snippet.substr(1);
         contentText = `var ${finalName} = ${snippet};`;
       }
-      var sig = LibraryManager.library[ident + '__sig'];
+      const sig = LibraryManager.library[ident + '__sig'];
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
-      if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
+      if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(finalName)) && !noExport) {
         contentText += `\nModule["${finalName}"] = ${finalName};`;
       }
       if (MAIN_MODULE && sig) {
         contentText += `\n${finalName}.sig = '${sig}';`;
       }
 
-      var commentText = '';
+      let commentText = '';
       if (LibraryManager.library[ident + '__docs']) {
         commentText = LibraryManager.library[ident + '__docs'] + '\n';
       }
 
-      var depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
+      const depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
       return depsText + commentText + contentText;
     }
 
@@ -351,15 +344,15 @@ function ${name}(${args}) {
   // Final combiner
 
   function finalCombiner() {
-    var splitPostSets = splitter(itemsDict.globalVariablePostSet, (x) => x.ident && x.dependencies);
+    const splitPostSets = splitter(itemsDict.globalVariablePostSet, (x) => x.ident && x.dependencies);
     itemsDict.globalVariablePostSet = splitPostSets.leftIn;
-    var orderedPostSets = splitPostSets.splitOut;
+    const orderedPostSets = splitPostSets.splitOut;
 
-    var limit = orderedPostSets.length * orderedPostSets.length;
-    for (var i = 0; i < orderedPostSets.length; i++) {
-      for (var j = i+1; j < orderedPostSets.length; j++) {
+    let limit = orderedPostSets.length * orderedPostSets.length;
+    for (let i = 0; i < orderedPostSets.length; i++) {
+      for (let j = i + 1; j < orderedPostSets.length; j++) {
         if (orderedPostSets[j].ident in orderedPostSets[i].dependencies) {
-          var temp = orderedPostSets[i];
+          const temp = orderedPostSets[i];
           orderedPostSets[i] = orderedPostSets[j];
           orderedPostSets[j] = temp;
           i--;
@@ -375,16 +368,16 @@ function ${name}(${args}) {
     //
 
     if (!mainPass) {
-      var generated = itemsDict.function.concat(itemsDict.type);
+      const generated = itemsDict.function.concat(itemsDict.type);
       print(generated.map((item) => item.JS).join('\n'));
       return;
     }
 
-    var shellFile = SHELL_FILE ? SHELL_FILE : (MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js');
+    const shellFile = SHELL_FILE ? SHELL_FILE : (MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js');
 
-    var shellParts = read(shellFile).split('{{BODY}}');
+    const shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[0], shellFile)));
-    var pre;
+    let pre;
     if (MINIMAL_RUNTIME) {
       pre = processMacros(preprocess(read('preamble_minimal.js'), 'preamble_minimal.js'));
     } else {
@@ -394,18 +387,18 @@ function ${name}(${args}) {
     print(pre);
 
     // Print out global variables and postsets TODO: batching
-    var legalizedI64sDefault = legalizedI64s;
+    const legalizedI64sDefault = legalizedI64s;
     legalizedI64s = false;
 
-    JSify(true);
+    runJSify(true);
 
-    var generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
+    const generated = itemsDict.functionStub.concat(itemsDict.globalVariablePostSet);
     generated.forEach((item) => print(indentify(item.JS || '', 2)));
 
     legalizedI64s = legalizedI64sDefault;
 
     if (USE_PTHREADS) {
-      print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.')
+      print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.');
       print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
     }
 
@@ -443,11 +436,10 @@ function ${name}(${args}) {
       print(read('deterministic.js'));
     }
 
-    var postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
-    var post = processMacros(preprocess(read(postFile), postFile));
+    const postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
+    const post = processMacros(preprocess(read(postFile), postFile));
     print(post);
 
-    var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[1], shellFile)));
 
     print('\n//FORWARDED_DATA:' + JSON.stringify({

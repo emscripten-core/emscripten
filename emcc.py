@@ -187,6 +187,11 @@ def base64_encode(b):
   return b64.decode('ascii')
 
 
+def align_to_wasm_page_boundary(address):
+  page_size = webassembly.WASM_PAGE_SIZE
+  return ((address + (page_size - 1)) // page_size) * page_size
+
+
 @unique
 class OFormat(Enum):
   # Output a relocatable object file.  We use this
@@ -862,6 +867,14 @@ def get_cflags(user_args):
   if settings.LTO:
     if not any(a.startswith('-flto') for a in user_args):
       cflags.append('-flto=' + settings.LTO)
+    # setjmp/longjmp handling using Wasm EH
+    # For non-LTO, '-mllvm -wasm-enable-eh' added in
+    # building.llvm_backend_args() sets this feature in clang. But in LTO, the
+    # argument is added to wasm-ld instead, so clang needs to know that EH is
+    # enabled so that it can be added to the attributes in LLVM IR.
+    if settings.SUPPORT_LONGJMP == 'wasm':
+      cflags.append('-mexception-handling')
+
   else:
     # In LTO mode these args get passed instead at link time when the backend runs.
     for a in building.llvm_backend_args():
@@ -1192,7 +1205,7 @@ def phase_parse_arguments(state):
   options, settings_changes, user_js_defines, newargs = parse_args(newargs)
 
   if options.post_link or options.oformat == OFormat.BARE:
-    diagnostics.warning('experimental', '--oformat=base/--post-link are experimental and subject to change.')
+    diagnostics.warning('experimental', '--oformat=bare/--post-link are experimental and subject to change.')
 
   explicit_settings_changes, newargs = parse_s_args(newargs)
   settings_changes += explicit_settings_changes
@@ -1811,6 +1824,24 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   setup_environment_settings()
 
+  if options.use_closure_compiler != 0:
+    # Emscripten requires certain ES6 constructs by default in library code
+    # - https://caniuse.com/let              : EDGE:12 FF:44 CHROME:49 SAFARI:11
+    # - https://caniuse.com/const            : EDGE:12 FF:36 CHROME:49 SAFARI:11
+    # - https://caniuse.com/arrow-functions: : EDGE:12 FF:22 CHROME:45 SAFARI:10
+    # - https://caniuse.com/mdn-javascript_builtins_object_assign:
+    #                                          EDGE:12 FF:34 CHROME:45 SAFARI:9
+    # Taking the highest requirements gives is our minimum:
+    #                             Max Version: EDGE:12 FF:44 CHROME:49 SAFARI:11
+    settings.TRANSPILE_TO_ES5 = (settings.MIN_EDGE_VERSION < 12 or
+                                 settings.MIN_FIREFOX_VERSION < 44 or
+                                 settings.MIN_CHROME_VERSION < 49 or
+                                 settings.MIN_SAFARI_VERSION < 110000 or
+                                 settings.MIN_IE_VERSION != 0x7FFFFFFF)
+
+    if options.use_closure_compiler is None and settings.TRANSPILE_TO_ES5:
+      diagnostics.warning('transpile', 'enabling transpilation via closure due to browser version settings.  This warning can be suppressed by passing `--closure=1` or `--closure=0` to opt into our explicitly.')
+
   # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
   if not settings.WASM2JS:
     settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
@@ -2179,6 +2210,17 @@ def phase_linker_setup(options, state, newargs, settings_map):
         'emscripten_builtin_free',
     ]
 
+  if ('leak' in sanitize or 'address' in sanitize) and not settings.ALLOW_MEMORY_GROWTH:
+    # Increase the minimum memory requirements to account for extra memory
+    # that the sanitizers might need (in addition to the shadow memory
+    # requirements handled below).
+    # These values are designed be an over-estimate of the actual requirements and
+    # are based on experimentation with different tests/programs under asan and
+    # lsan.
+    settings.INITIAL_MEMORY += 50 * 1024 * 1024
+    if settings.USE_PTHREADS:
+      settings.INITIAL_MEMORY += 50 * 1024 * 1024
+
   if settings.USE_OFFSET_CONVERTER and settings.WASM2JS:
     exit_with_error('wasm2js is not compatible with USE_OFFSET_CONVERTER (see #14630)')
 
@@ -2192,7 +2234,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
     settings.USE_LSAN = 1
     default_setting('EXIT_RUNTIME', 1)
 
-    if settings.LINKABLE:
+    if settings.RELOCATABLE:
       exit_with_error('LSan does not support dynamic linking')
 
   if 'address' in sanitize:
@@ -2235,27 +2277,38 @@ def phase_linker_setup(options, state, newargs, settings_map):
     if settings.GLOBAL_BASE != -1:
       exit_with_error("ASan does not support custom GLOBAL_BASE")
 
-    max_mem = settings.INITIAL_MEMORY
+    # Increase the TOTAL_MEMORY and shift GLOBAL_BASE to account for
+    # the ASan shadow region which starts at address zero.
+    # The shadow region is 1/8th the size of the total memory and is
+    # itself part of the total memory.
+    # We use the following variables in this calculation:
+    # - user_mem : memory usable/visible by the user program.
+    # - shadow_size : memory used by asan for shadow memory.
+    # - total_mem : the sum of the above. this is the size of the wasm memory (and must be aligned to WASM_PAGE_SIZE)
+    user_mem = settings.INITIAL_MEMORY
     if settings.ALLOW_MEMORY_GROWTH:
-      max_mem = settings.MAXIMUM_MEMORY
+      user_mem = settings.MAXIMUM_MEMORY
 
-    shadow_size = max_mem // 8
+    # Given the know value of user memory size we can work backwards
+    # to find the total memory and the shadow size based on the fact
+    # that the user memory is 7/8ths of the total memory.
+    # (i.e. user_mem == total_mem * 7 / 8
+    total_mem = user_mem * 8 / 7
+
+    # But we might need to re-align to wasm page size
+    total_mem = int(align_to_wasm_page_boundary(total_mem))
+
+    # The shadow size is 1/8th the resulting rounded up size
+    shadow_size = total_mem // 8
+
+    # We start our global data after the shadow memory.
+    # We don't need to worry about alignment here.  wasm-ld will take care of that.
     settings.GLOBAL_BASE = shadow_size
 
-    sanitizer_mem = (shadow_size + webassembly.WASM_PAGE_SIZE) & ~webassembly.WASM_PAGE_SIZE
-    # sanitizers do at least 9 page allocs of a single page during startup.
-    sanitizer_mem += webassembly.WASM_PAGE_SIZE * 9
-    # we also allocate at least 11 "regions". Each region is kRegionSize (2 << 20) but
-    # MmapAlignedOrDieOnFatalError adds another 2 << 20 for alignment.
-    sanitizer_mem += (1 << 21) * 11
-    # When running in the threaded mode asan needs to allocate an array of kMaxNumberOfThreads
-    # (1 << 22) pointers.  See compiler-rt/lib/asan/asan_thread.cpp.
-    if settings.USE_PTHREADS:
-      sanitizer_mem += (1 << 22) * 4
-
-    # Increase the size of the initial memory according to how much memory
-    # we think the sanitizers will use.
-    settings.INITIAL_MEMORY += sanitizer_mem
+    if not settings.ALLOW_MEMORY_GROWTH:
+      settings.INITIAL_MEMORY = total_mem
+    else:
+      settings.INITIAL_MEMORY += align_to_wasm_page_boundary(shadow_size)
 
     if settings.SAFE_HEAP:
       # SAFE_HEAP instruments ASan's shadow memory accesses.
@@ -2263,7 +2316,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
       # by SAFE_HEAP as a null pointer dereference.
       exit_with_error('ASan does not work with SAFE_HEAP')
 
-    if settings.LINKABLE:
+    if settings.RELOCATABLE:
       exit_with_error('ASan does not support dynamic linking')
 
   if sanitize and settings.GENERATE_SOURCE_MAP:
@@ -3245,14 +3298,13 @@ def phase_binaryen(target, options, wasm_target):
   def preprocess_wasm2js_script():
     return read_and_preprocess(utils.path_from_root('src/wasm2js.js'), expand_macros=True)
 
-  def run_closure_compiler():
-    global final_js
-    final_js = building.closure_compiler(final_js, pretty=not minify_whitespace(),
-                                         extra_closure_args=options.closure_args)
+  if final_js and (options.use_closure_compiler or settings.TRANSPILE_TO_ES5):
+    if options.use_closure_compiler:
+      final_js = building.closure_compiler(final_js, pretty=not minify_whitespace(),
+                                           extra_closure_args=options.closure_args)
+    else:
+      final_js = building.closure_transpile(final_js, pretty=not minify_whitespace())
     save_intermediate_with_wasm('closure', wasm_target)
-
-  if final_js and options.use_closure_compiler:
-    run_closure_compiler()
 
   symbols_file = None
   if options.emit_symbol_map:
@@ -3372,7 +3424,7 @@ function(%(EXPORT_NAME)s) {
       if shared.target_environment_may_be('node'):
         script_url_node = "if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;"
     src = '''
-var %(EXPORT_NAME)s = (function() {
+var %(EXPORT_NAME)s = (() => {
   var _scriptDir = %(script_url)s;
   %(script_url_node)s
   return (%(src)s);

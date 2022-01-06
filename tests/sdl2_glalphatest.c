@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
 
   glDeleteTextures(1, &texture);
 
-  SDL_Quit();
+  // Don't quit - we need to reftest the canvas! SDL_Quit();
 
   return 0;
 }

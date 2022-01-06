@@ -325,14 +325,12 @@ LibraryManager.library = {
       var cp = require('child_process');
       var ret = cp.spawnSync(cmdstr, [], {shell:true, stdio:'inherit'});
 
-      var _W_EXITCODE = function(ret, sig) {
-        return ((ret) << 8 | (sig));
-      }
+      var _W_EXITCODE = (ret, sig) => ((ret) << 8 | (sig));
 
       // this really only can happen if process is killed by signal
       if (ret.status === null) {
         // sadly node doesn't expose such function
-        var signalToNumber = function(sig) {
+        var signalToNumber = (sig) => {
           // implement only the most common ones, and fallback to SIGINT
           switch (sig) {
             case 'SIGHUP': return 1;
@@ -516,11 +514,8 @@ LibraryManager.library = {
   },
   timelocal: 'mktime',
 
-#if MINIMAL_RUNTIME
-  gmtime_r__deps: ['$allocateUTF8'],
-#endif
-  gmtime_r__sig: 'iii',
-  gmtime_r: function(time, tmPtr) {
+  _gmtime_js__sig: 'iii',
+  _gmtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
@@ -529,17 +524,10 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getUTCMonth()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getUTCFullYear()-1900', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '0', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    // Allocate a string "GMT" for us to point to.
-    if (!_gmtime_r.GMTString) _gmtime_r.GMTString = allocateUTF8("GMT");
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '_gmtime_r.GMTString', 'i32') }}};
-    return tmPtr;
   },
-  __gmtime_r: 'gmtime_r',
 
   timegm__deps: ['tzset'],
   timegm__sig: 'ii',
@@ -1177,7 +1165,7 @@ LibraryManager.library = {
       var date = initDate();
       var value;
 
-      var getMatch = function(symbol) {
+      var getMatch = (symbol) => {
         var pos = capture.indexOf(symbol);
         // check if symbol appears in regexp
         if (pos >= 0) {
@@ -2530,7 +2518,7 @@ LibraryManager.library = {
   emscripten_get_now: ';' +
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +
-                               "  _emscripten_get_now = function() {\n" +
+                               "  _emscripten_get_now = () => {\n" +
                                "    var t = process['hrtime']();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
                                "  };\n" +
@@ -2539,7 +2527,7 @@ LibraryManager.library = {
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
                                "if (ENVIRONMENT_IS_PTHREAD) {\n" +
-                               "  _emscripten_get_now = function() { return performance.now() - Module['__performance_now_clock_drift']; };\n" +
+                               "  _emscripten_get_now = () => performance.now() - Module['__performance_now_clock_drift'];\n" +
                                "} else " +
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -2549,14 +2537,14 @@ LibraryManager.library = {
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
                                "if (typeof performance !== 'undefined' && performance.now) {\n" +
-                               "  _emscripten_get_now = function() { return performance.now(); }\n" +
+                               "  _emscripten_get_now = () => performance.now();\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
                                "}",
 #else
                                // Modern environment where performance.now() is supported:
                                // N.B. a shorter form "_emscripten_get_now = return performance.now;" is unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
-                               "_emscripten_get_now = function() { return performance.now(); }\n",
+                               "_emscripten_get_now = () => performance.now();\n",
 #endif
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds

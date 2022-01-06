@@ -139,8 +139,6 @@ def with_both_sjlj_handling(f):
       if not self.is_wasm():
         self.skipTest('wasm2js does not support Wasm SjLj')
       self.require_v8()
-      if '-flto' in self.emcc_args:
-        self.skipTest('https://github.com/emscripten-core/emscripten/issues/15665')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       # These are for Emscripten EH/SjLj
       self.set_setting('DISABLE_EXCEPTION_THROWING')
@@ -1626,6 +1624,8 @@ int main() {
 
   @also_with_wasmfs
   def test_rename(self):
+    if is_sanitizing(self.emcc_args) and self.get_setting('WASMFS'):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/15820')
     self.do_run_in_out_file_test('stdio/test_rename.c')
 
   def test_remove(self):
@@ -6294,9 +6294,6 @@ void* operator new(size_t size) {
   @needs_make('make')
   @is_slow_test
   def test_openjpeg(self):
-    if '-flto' in self.emcc_args:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/15679')
-
     def do_test_openjpeg():
       def line_splitter(data):
         out = ''
@@ -8479,11 +8476,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthread_cxx_threads(self):
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.clear_setting('ALLOW_MEMORY_GROWTH')
-    self.set_setting('INITIAL_MEMORY', '64Mb')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_cxx_threads.cpp')
+
+  @node_pthreads
+  def test_pthread_busy_wait(self):
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('pthread/test_pthread_busy_wait.cpp')
 
   @node_pthreads
   def test_pthread_create_pool(self):

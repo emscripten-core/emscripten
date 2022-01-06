@@ -18,8 +18,24 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.0.1
+3.1.1
 -----
+- Updated SDL 2 port to upstream version 2.0.18 (from a patched 2.0.10). This
+  includes all downstream patches and many upstream changes.
+
+3.1.0 - 12/22/2021
+------------------
+- Emscripten in starting to use ES6 features in its core libraries (at last!).
+  For most users targeting the default set of browsers this is a code size win.
+  For projects targeting older browsers (e.g. `-sMIN_CHROME_VERSION=10`),
+  emscripten will now run closure compiler in `WHITESPACE_ONLY` mode in order to
+  traspile any ES6 down to ES5.  When this automatic transpilation is performed
+  we generate a warning which can be disabled (using `-Wno-transpile`) or by
+  explicitly opting in-to or out-of closure using `--closure=1` or
+  `--closure=0`. (#15763).
+
+3.0.1 - 12/17/2021
+------------------
 - Deprecate `EMMAKEN_CFLAGS` is favor of `EMCC_CFLAGS`.
 - Fixed an issue where user provided --js-library directives would not be
   processed as the last item after all system provided JS libraries have been

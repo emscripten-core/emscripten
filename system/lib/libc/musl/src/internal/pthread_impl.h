@@ -11,28 +11,13 @@
 #include "atomic.h"
 #ifdef __EMSCRIPTEN__
 #include <emscripten/threading.h>
+#include "threading_internal.h"
 #endif
 #include "futex.h"
 
 #include "pthread_arch.h"
 
 #define pthread __pthread
-
-#ifdef __EMSCRIPTEN__
-#define EM_THREAD_NAME_MAX 32
-
-typedef struct thread_profiler_block {
-	// One of THREAD_STATUS_*
-	_Atomic int threadStatus;
-	// Wallclock time denoting when the current thread state was entered in.
-	double currentStatusStartTime;
-	// Accumulated duration times denoting how much time has been spent in each
-	// state, in msecs.
-	double timeSpentInStatus[EM_THREAD_STATUS_NUMFIELDS];
-	// A human-readable name for this thread.
-	char name[EM_THREAD_NAME_MAX];
-} thread_profiler_block;
-#endif
 
 struct pthread {
 	/* Part 1 -- these fields may be external or
