@@ -8476,11 +8476,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthread_cxx_threads(self):
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.clear_setting('ALLOW_MEMORY_GROWTH')
-    self.set_setting('INITIAL_MEMORY', '64Mb')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_cxx_threads.cpp')
+
+  @node_pthreads
+  def test_pthread_busy_wait(self):
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('pthread/test_pthread_busy_wait.cpp')
 
   @node_pthreads
   def test_pthread_create_pool(self):
