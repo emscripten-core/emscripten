@@ -10946,6 +10946,9 @@ kill -9 $$
   def test_concepts(self):
     self.do_runf(test_file('other/test_concepts.cpp'), '', emcc_args=['-std=c++20'])
 
+  def test_std_cmp(self):
+    self.do_runf(test_file('other/test_std_cmp.cpp'), '', emcc_args=['-std=c++20'])
+
   def test_link_only_setting_warning(self):
     err = self.run_process([EMCC, '-sALLOW_MEMORY_GROWTH', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained("warning: linker setting ignored during compilation: 'ALLOW_MEMORY_GROWTH' [-Wunused-command-line-argument]", err)

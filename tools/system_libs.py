@@ -1120,7 +1120,13 @@ class libcxx(NoExceptLibrary, MTLibrary):
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
-  src_glob_exclude = ['locale_win32.cpp', 'thread_win32.cpp', 'support.cpp', 'int128_builtins.cpp']
+  src_glob_exclude = [
+    'xlocale_zos.cpp',
+    'locale_win32.cpp',
+    'thread_win32.cpp',
+    'support.cpp',
+    'int128_builtins.cpp'
+  ]
 
 
 class libunwind(NoExceptLibrary, MTLibrary):
