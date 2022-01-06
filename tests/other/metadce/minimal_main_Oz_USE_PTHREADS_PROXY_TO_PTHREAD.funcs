@@ -7,6 +7,7 @@ $__pthread_mutex_unlock
 $__pthread_rwlock_tryrdlock
 $__pthread_self_internal
 $__pthread_setcancelstate
+$__set_thread_state
 $__stdio_write
 $__timedwait
 $__wasi_syscall_ret

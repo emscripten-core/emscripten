@@ -96,10 +96,16 @@ typedef struct thread_profiler_block {
   char name[EM_THREAD_NAME_MAX];
 } thread_profiler_block;
 
+void __emscripten_init_main_thread_js(void* tb);
+void _emscripten_thread_profiler_enable();
+
 #ifdef NDEBUG
 #define emscripten_set_current_thread_status(newStatus)
 #define emscripten_conditional_set_current_thread_status(expectedStatus, newStatus)
 #else
+// Allocate the thread profile block for the given thread.
+void _emscripten_thread_profiler_init(pthread_t thread);
+
 // Sets the profiler status of the calling thread. This is a no-op if thread
 // profiling is not active.
 // This is an internal function and generally not intended for user code.
