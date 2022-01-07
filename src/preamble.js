@@ -69,14 +69,23 @@ var EXITSTATUS;
 /** @type {function(*, string=)} */
 function assert(condition, text) {
   if (!condition) {
-    abort('Assertion failed: ' + text);
+#if ASSERTIONS
+    abort('Assertion failed' + (text ? ': ' + text : ''));
+#else
+    // This build was created without ASSERTIONS defined.  `assert()` should not
+    // ever be called in this configuration but in case there are callers in
+    // the wild leave this simple abort() implemenation here for now.
+    abort(text);
+#endif
   }
 }
 
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
   var func = Module['_' + ident]; // closure exported function
+#if ASSERTIONS
   assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
+#endif
   return func;
 }
 
@@ -354,8 +363,8 @@ function keepRuntimeAlive() {
 }
 
 function preRun() {
-#if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#if ASSERTIONS && USE_PTHREADS
+  assert(!ENVIRONMENT_IS_PTHREAD); // PThreads reuse the runtime from the main thread.
 #endif
 
 #if expectToReceiveOnModule('preRun')
@@ -925,14 +934,14 @@ function instantiateSync(file, info) {
       // to load ok, but we do actually recompile the binary every time).
       var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
       cachedCodeFile = locateFile(cachedCodeFile);
-      if (!nodeFS) nodeFS = require('fs');
-      var hasCached = nodeFS.existsSync(cachedCodeFile);
+      requireNodeFS();
+      var hasCached = fs.existsSync(cachedCodeFile);
       if (hasCached) {
 #if RUNTIME_LOGGING
         err('NODE_CODE_CACHING: loading module');
 #endif
         try {
-          module = v8.deserialize(nodeFS.readFileSync(cachedCodeFile));
+          module = v8.deserialize(fs.readFileSync(cachedCodeFile));
         } catch (e) {
           err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (' + cachedCodeFile + ')');
           // Save the new compiled code when we have it.
@@ -947,7 +956,7 @@ function instantiateSync(file, info) {
 #if RUNTIME_LOGGING
       err('NODE_CODE_CACHING: saving module');
 #endif
-      nodeFS.writeFileSync(cachedCodeFile, v8.serialize(module));
+      fs.writeFileSync(cachedCodeFile, v8.serialize(module));
     }
 #else // NODE_CODE_CACHING
     module = new WebAssembly.Module(binary);
@@ -978,12 +987,7 @@ function instantiateSync(file, info) {
 // This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
 function resetPrototype(constructor, attrs) {
   var object = Object.create(constructor.prototype);
-  for (var key in attrs) {
-    if (attrs.hasOwnProperty(key)) {
-      object[key] = attrs[key];
-    }
-  }
-  return object;
+  return objAssign(object, attrs);
 }
 #endif
 

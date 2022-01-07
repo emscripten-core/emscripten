@@ -3,7 +3,9 @@ import os
 import re
 import sys
 
-sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootdir__ = os.path.dirname(__scriptdir__)
+sys.path.append(__rootdir__)
 
 from tools import building
 from tools.utils import read_file, write_file
@@ -45,6 +47,9 @@ f = re.sub(r'var (\w);\1\|\|\(\1=Module\);', r'var \1=Module;', f)
 # ->
 # var Module=function(a){
 f = re.sub(r'\s*function\s*\(Module\)\s*{\s*Module\s*=\s*Module\s*\|\|\s*{\s*}\s*;\s*var\s+(\w+)\s*=\s*Module\s*;', r'function(\1){', f)
+
+# Same as above but for arrow function
+f = re.sub(r'\s*\(Module\)\s*=>\s*{\s*Module\s*=\s*Module\s*\|\|\s*{\s*}\s*;\s*var\s+(\w+)\s*=\s*Module\s*;', r'(\1)=>{', f)
 
 f = re.sub(r'\s+', ' ', f)
 f = re.sub(r'[\n\s]+\n\s*', '\n', f)

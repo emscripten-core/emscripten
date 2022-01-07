@@ -29,12 +29,8 @@ var tempI64;
 #endif
 
 var tempRet0 = 0;
-var setTempRet0 = function(value) {
-  tempRet0 = value;
-}
-var getTempRet0 = function() {
-  return tempRet0;
-}
+var setTempRet0 = (value) => { tempRet0 = value };
+var getTempRet0 = () => tempRet0;
 
 function alignUp(x, multiple) {
   if (x % multiple > 0) {

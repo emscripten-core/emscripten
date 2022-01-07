@@ -96,18 +96,15 @@ class SettingsManager:
     self.allowed_settings.clear()
 
     # Load the JS defaults into python.
-    with open(path_from_root('src/settings.js')) as fh:
-      settings = fh.read().replace('//', '#')
-    settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
-    # Variable TARGET_NOT_SUPPORTED is referenced by value settings.js (also beyond declaring it),
-    # so must pass it there explicitly.
-    exec(settings, {'attrs': self.attrs})
+    def read_js_settings(filename, attrs):
+      with open(filename) as fh:
+        settings = fh.read().replace('//', '#')
+      settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
+      exec(settings, {'attrs': attrs})
 
-    with open(path_from_root('src/settings_internal.js')) as fh:
-      settings = fh.read().replace('//', '#')
-    settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
     internal_attrs = {}
-    exec(settings, {'attrs': internal_attrs})
+    read_js_settings(path_from_root('src/settings.js'), self.attrs)
+    read_js_settings(path_from_root('src/settings_internal.js'), internal_attrs)
     self.attrs.update(internal_attrs)
 
     if 'EMCC_STRICT' in os.environ:

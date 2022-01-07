@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL/SDL.h>
@@ -76,8 +77,7 @@ int main(int argc, char **argv) {
 
   printf("done.\n");
 
-  int result = sum > 3000 && sum < 5000; // varies a little on different browsers, font differences?
-  REPORT_RESULT(result);
+  assert(sum > 3000 && sum < 5000); // varies a little on different browsers, font differences?
 
   return 0;
 }

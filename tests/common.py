@@ -57,6 +57,7 @@ EMTEST_SKIP_SLOW = None
 EMTEST_LACKS_NATIVE_CLANG = None
 EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
+EMTEST_FORCE64 = None
 
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
@@ -73,6 +74,8 @@ EMMAKE = shared.bat_suffix(path_from_root('emmake'))
 def delete_contents(pathname):
   for entry in os.listdir(pathname):
     try_delete(os.path.join(pathname, entry))
+    # TODO(sbc): Should we make try_delete have a stronger guarantee?
+    assert not os.path.exists(os.path.join(pathname, entry))
 
 
 def test_file(*path_components):
@@ -433,8 +436,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           print('Not clearing existing test directory')
         else:
           print('Clearing existing test directory')
-          # Even when EMTEST_SAVE_DIR we still try to start with an empty directoy as many tests
-          # expect this.  EMTEST_SAVE_DIR=2 can be used to keep the old contents for the new test
+          # Even when --save-dir is used we still try to start with an empty directory as many tests
+          # expect this.  --no-clean can be used to keep the old contents for the new test
           # run. This can be useful when iterating on a given test with extra files you want to keep
           # around in the output directory.
           delete_contents(self.working_dir)
@@ -584,8 +587,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
-    if js_outfile and not self.uses_es6:
-      self.verify_es5(output)
 
     if js_outfile and self.uses_memory_init_file():
       src = read_file(output)
@@ -739,7 +740,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       print("Expected to have '%s' == '%s'" % (limit_size(values[0]), limit_size(y)))
     fail_message = 'Unexpected difference:\n' + limit_size(diff)
     if not EMTEST_VERBOSE:
-      fail_message += '\nFor full output run with EMTEST_VERBOSE=1.'
+      fail_message += '\nFor full output run with --verbose.'
     if msg:
       fail_message += '\n' + msg
     self.fail(fail_message)
@@ -750,6 +751,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self.assertContained(text1, text2)
 
   def assertFileContents(self, filename, contents):
+    if EMTEST_VERBOSE:
+      print(f'Comparing results contents of file: {filename}')
+
     contents = contents.replace('\r', '')
 
     if EMTEST_REBASELINE:
@@ -759,9 +763,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     if not os.path.exists(filename):
       self.fail('Test expectation file not found: ' + filename + '.\n' +
-                'Run with EMTEST_REBASELINE to generate.')
+                'Run with --rebaseline to generate.')
     expected_content = read_file(filename)
-    message = "Run with EMTEST_REBASELINE=1 to automatically update expectations"
+    message = "Run with --rebaseline to automatically update expectations"
     self.assertTextDataIdentical(expected_content, contents, message,
                                  filename, filename + '.new')
 
@@ -1330,7 +1334,7 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    cls.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
+    cls.also_wasm2js = int(os.getenv('EMTEST_BROWSER_ALSO_WASM2JS', '0')) == 1
     cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
@@ -1556,6 +1560,8 @@ class BrowserCore(RunnerCore):
     REPORT_RESULT macro to the C code.
     """
     self.set_setting('EXIT_RUNTIME')
+    assert('reporting' not in kwargs)
+    assert('expected' not in kwargs)
     kwargs['reporting'] = Reporting.JS_ONLY
     kwargs['expected'] = 'exit:%d' % assert_returncode
     return self.btest(filename, *args, **kwargs)
@@ -1563,7 +1569,7 @@ class BrowserCore(RunnerCore):
   def btest(self, filename, expected=None, reference=None,
             reference_slack=0, manual_reference=False, post_build=None,
             args=None, message='.', also_proxied=False,
-            url_suffix='', timeout=None, also_asmjs=False,
+            url_suffix='', timeout=None, also_wasm2js=False,
             manually_trigger_reftest=False, extra_tries=1,
             reporting=Reporting.FULL):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
@@ -1598,7 +1604,7 @@ class BrowserCore(RunnerCore):
       self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
     # Tests can opt into being run under asmjs as well
-    if 'WASM=0' not in original_args and (also_asmjs or self.also_asmjs):
+    if 'WASM=0' not in original_args and (also_wasm2js or self.also_wasm2js):
       print('WASM=0')
       self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
                  original_args + ['-s', 'WASM=0'], message, also_proxied=False, timeout=timeout)

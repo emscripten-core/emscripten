@@ -8,11 +8,11 @@
 
 #pragma once
 
+#include "backend.h"
 #include "file.h"
 #include "file_table.h"
 #include <assert.h>
 #include <emscripten/html5.h>
-#include <map>
 #include <mutex>
 #include <sys/stat.h>
 #include <vector>
@@ -22,9 +22,10 @@ namespace wasmfs {
 
 class WasmFS {
 
+  std::vector<std::unique_ptr<Backend>> backendTable;
   FileTable fileTable;
   std::shared_ptr<Directory> rootDirectory;
-  std::shared_ptr<File> cwd;
+  std::shared_ptr<Directory> cwd;
   std::mutex mutex;
 
   // Private method to initialize root directory once.
@@ -54,15 +55,22 @@ public:
 
   // For getting and setting cwd, a lock must be acquired. There is a chance
   // that two threads could be mutating the cwd simultaneously.
-  std::shared_ptr<File> getCWD() {
+  std::shared_ptr<Directory> getCWD() {
     const std::lock_guard<std::mutex> lock(mutex);
     return cwd;
   };
 
-  void setCWD(std::shared_ptr<File> directory) {
+  void setCWD(std::shared_ptr<Directory> directory) {
     const std::lock_guard<std::mutex> lock(mutex);
     cwd = directory;
   };
+
+  // Utility functions that can get and set a backend in the backendTable.
+  backend_t addBackend(std::unique_ptr<Backend> backend) {
+    const std::lock_guard<std::mutex> lock(mutex);
+    backendTable.push_back(std::move(backend));
+    return backendTable.back().get();
+  }
 };
 
 // Global state instance.

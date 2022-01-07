@@ -12,51 +12,155 @@
 
 namespace wasmfs {
 //
+// DataFile
+//
+void DataFile::Handle::preloadFromJS(int index) {
+  // TODO: Each Datafile type could have its own impl of file preloading.
+  // Create a buffer with the required file size.
+  std::vector<uint8_t> buffer(
+    EM_ASM_INT({return wasmFS$preloadedFiles[$0].fileData.length}, index));
+  // Ensure that files are preloaded from the main thread.
+  assert(emscripten_is_main_runtime_thread());
+  // TODO: Replace every EM_ASM with EM_JS.
+  // Load data into the in-memory buffer.
+  EM_ASM({ HEAPU8.set(wasmFS$preloadedFiles[$1].fileData, $0); },
+         buffer.data(),
+         index);
+
+  write((const uint8_t*)buffer.data(), buffer.size(), 0);
+}
+//
 // Directory
 //
 std::shared_ptr<File> Directory::Handle::getEntry(std::string pathName) {
-  auto it = getDir()->entries.find(pathName);
-  if (it == getDir()->entries.end()) {
-    return nullptr;
-  } else {
-    return it->second;
+  auto found =
+    std::find_if(getDir()->entries.begin(),
+                 getDir()->entries.end(),
+                 [&](const auto& entry) { return entry.name == pathName; });
+
+  if (found != getDir()->entries.end()) {
+    return found->file;
   }
+
+  return nullptr;
 }
-//
-// MemoryFile
-//
-__wasi_errno_t MemoryFile::write(const uint8_t* buf, size_t len, off_t offset) {
-  if (offset + len >= buffer.size()) {
-    buffer.resize(offset + len);
+
+void Directory::Handle::setEntry(std::string pathName,
+                                 std::shared_ptr<File> inserted) {
+  // Hold the lock over both functions to cover the case in which two
+  // directories attempt to add the file.
+  auto lockedInserted = inserted->locked();
+  // Simultaneously, set the parent of the inserted node to be this Dir.
+  // inserted must be locked because we have to go through Handle.
+  // TODO: When rename is implemented, ensure that the source directory has
+  // been removed as a parent.
+  // https://github.com/emscripten-core/emscripten/pull/15410#discussion_r742171264
+  assert(!lockedInserted.getParent());
+  lockedInserted.setParent(file);
+
+  // During testing, this will check that an existing file associated with
+  // pathName does not exist. For rename, the existing file must be unlinked
+  // first.
+  assert(!getEntry(pathName));
+  getDir()->entries.push_back({pathName, inserted});
+}
+
+void Directory::Handle::unlinkEntry(std::string pathName) {
+  // The file lock must be held for both operations. Removing the child file
+  // from the parent's entries and removing the parent pointer from the
+  // child should be atomic. The state should not be mutated in between.
+  auto unlinked = getEntry(pathName)->locked();
+  unlinked.setParent({});
+
+  getDir()->entries.erase(
+    std::remove_if(getDir()->entries.begin(),
+                   getDir()->entries.end(),
+                   [&](const auto& entry) { return entry.name == pathName; }),
+    getDir()->entries.end());
+}
+
+std::string Directory::Handle::getName(std::shared_ptr<File> target) {
+  auto found =
+    std::find_if(getDir()->entries.begin(),
+                 getDir()->entries.end(),
+                 [&](const auto& entry) { return entry.file == target; });
+
+  if (found != getDir()->entries.end()) {
+    return found->name;
   }
-  memcpy(&buffer[offset], buf, len);
 
-  return __WASI_ERRNO_SUCCESS;
-}
-
-__wasi_errno_t MemoryFile::read(uint8_t* buf, size_t len, off_t offset) {
-  assert(offset + len - 1 < buffer.size());
-  std::memcpy(buf, &buffer[offset], len);
-
-  return __WASI_ERRNO_SUCCESS;
-}
-
-void MemoryFile::Handle::preloadFromJS(int index) {
-  getFile()->buffer.resize(
-    EM_ASM_INT({return wasmFS$preloadedFiles[$0].fileData.length}, index));
-  // Ensure that files are preloaded from the main thread.
-  assert(emscripten_is_main_browser_thread());
-  // TODO: Replace every EM_ASM with EM_JS.
-  EM_ASM({ HEAPU8.set(wasmFS$preloadedFiles[$1].fileData, $0); },
-         getFile()->buffer.data(),
-         index);
+  return "";
 }
 //
 // Path Parsing utilities
 //
+ParsedPath getParsedPath(std::vector<std::string> pathParts,
+                         long& err,
+                         std::shared_ptr<File> forbiddenAncestor) {
+  std::shared_ptr<Directory> curr;
+  auto begin = pathParts.begin();
+
+  if (pathParts.empty()) {
+    err = -ENOENT;
+    return ParsedPath{{}, nullptr};
+  }
+
+  // Check if the first path element is '/', indicating an absolute path.
+  if (pathParts[0] == "/") {
+    curr = wasmFS.getRootDirectory();
+    begin++;
+    // If the pathname is the root directory, return the root as the child.
+    if (pathParts.size() == 1) {
+      return ParsedPath{curr->locked(), curr};
+    }
+  } else {
+    curr = wasmFS.getCWD();
+  }
+
+  for (auto pathPart = begin; pathPart != pathParts.end() - 1; ++pathPart) {
+    // Find the next entry in the current directory entry
+#ifdef WASMFS_DEBUG
+    curr->locked().printKeys();
+#endif
+    auto entry = curr->locked().getEntry(*pathPart);
+
+    if (forbiddenAncestor) {
+      if (entry == forbiddenAncestor) {
+        err = -EINVAL;
+        return ParsedPath{{}, nullptr};
+      }
+    }
+
+    // An entry is defined in the current directory's entries vector.
+    if (!entry) {
+      err = -ENOENT;
+      return ParsedPath{{}, nullptr};
+    }
+
+    curr = entry->dynCast<Directory>();
+
+    // If file is nullptr, then the file was not a Directory.
+    // TODO: Change this to accommodate symlinks
+    if (!curr) {
+      err = -ENOTDIR;
+      return ParsedPath{{}, nullptr};
+    }
+
+#ifdef WASMFS_DEBUG
+    emscripten_console_log(*pathPart->c_str());
+#endif
+  }
+
+  // Lock the parent once.
+  auto lockedCurr = curr->locked();
+  auto child = lockedCurr.getEntry(*(pathParts.end() - 1));
+  return ParsedPath{std::move(lockedCurr), child};
+}
+
 std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
                                   std::vector<std::string>::iterator end,
-                                  long& err) {
+                                  long& err,
+                                  std::shared_ptr<File> forbiddenAncestor) {
 
   std::shared_ptr<File> curr;
   // Check if the first path element is '/', indicating an absolute path.
@@ -82,6 +186,13 @@ std::shared_ptr<Directory> getDir(std::vector<std::string>::iterator begin,
     directory->locked().printKeys();
 #endif
     curr = directory->locked().getEntry(*it);
+
+    if (forbiddenAncestor) {
+      if (curr == forbiddenAncestor) {
+        err = -EINVAL;
+        return nullptr;
+      }
+    }
 
     // Requested entry (file or directory)
     if (!curr) {

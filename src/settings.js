@@ -1440,11 +1440,6 @@ var SDL2_IMAGE_FORMATS = [];
 // [link]
 var SDL2_MIXER_FORMATS = ["ogg"];
 
-// The list of defines (C_DEFINES) was moved into struct_info.json in the same
-// directory.  That file is automatically parsed by tools/gen_struct_info.py.
-// If you modify the headers, just clear your cache and emscripten libc should
-// see the new values.
-
 // If true, the current build is performed for the Emscripten test harness.
 // [other]
 var IN_TEST_HARNESS = 0;

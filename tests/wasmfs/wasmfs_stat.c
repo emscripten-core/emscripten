@@ -33,12 +33,7 @@ int main() {
   off_t fileInode = file.st_ino;
 
   assert(file.st_size == 0);
-  // TODO: In a follow up PR change /dev/stdout to have type S_IFCHR
-#ifdef WASMFS
-  assert((file.st_mode & S_IFMT) == S_IFREG);
-#else
   assert((file.st_mode & S_IFMT) == S_IFCHR);
-#endif
   assert(file.st_dev);
   assert(file.st_nlink);
   assert(file.st_uid == 0);
@@ -100,11 +95,7 @@ int main() {
   assert(stat("/dev/stdout/", &statFile) != -1);
 
   assert(statFile.st_size == 0);
-#ifdef WASMFS
-  assert((statFile.st_mode & S_IFMT) == S_IFREG);
-#else
   assert((statFile.st_mode & S_IFMT) == S_IFCHR);
-#endif
   assert(statFile.st_dev);
   assert(statFile.st_nlink);
   assert(statFile.st_uid == 0);
@@ -133,14 +124,25 @@ int main() {
 #endif
   assert(statDirectory.st_blksize == 4096);
 
+  // Test calling stat with an empty path.
+  errno = 0;
+  assert(stat("", &invalid));
+  assert(errno == ENOENT);
+
+  // Test calling stat with a non-existent path.
+  errno = 0;
+  assert(stat("/non-existent", &invalid));
+  assert(errno == ENOENT);
+
   // Test calling lstat without opening a file.
   struct stat lstatFile;
   errno = 0;
   assert(lstat("/dev/stdout", &lstatFile) != -1);
 
   assert(lstatFile.st_dev);
+  // TODO: When symlinks are added, this WasmFS should return S_IFLNK.
 #ifdef WASMFS
-  assert((lstatFile.st_mode & S_IFMT) == S_IFREG);
+  assert((lstatFile.st_mode & S_IFMT) == S_IFCHR);
 #else
   assert((lstatFile.st_mode & S_IFMT) == S_IFLNK);
 #endif

@@ -675,7 +675,7 @@ var LibraryGL = {
 #endif
 
 #if GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN
-      function disableHalfFloatExtensionIfBroken(ctx) {
+      const disableHalfFloatExtensionIfBroken = (ctx) => {
         var t = ctx.createTexture();
         ctx.bindTexture(0xDE1/*GL_TEXTURE_2D*/, t);
         for (var i = 0; i < 8 && ctx.getError(); ++i) /*no-op*/;
@@ -4199,7 +4199,7 @@ function copyLibEntry(lib, a, b) {
 
 function recordGLProcAddressGet(lib) {
   // GL proc address retrieval - allow access through glX and emscripten_glX, to allow name collisions with user-implemented things having the same name (see gl.c)
-  keys(lib).forEach(function(x) {
+  Object.keys(lib).forEach(function(x) {
     if (isJsLibraryConfigIdentifier(x)) return;
     if (x.substr(0, 2) != 'gl') return;
     while (typeof lib[x] === 'string') {

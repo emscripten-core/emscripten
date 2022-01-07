@@ -849,6 +849,9 @@ FS.staticInit();` +
     unlink: function(path) {
       var lookup = FS.lookupPath(path, { parent: true });
       var parent = lookup.node;
+      if (!parent) {
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
+      }
       var name = PATH.basename(path);
       var node = FS.lookupNode(parent, name);
       var errCode = FS.mayDelete(parent, name, false);
@@ -1512,8 +1515,9 @@ FS.staticInit();` +
     quit: function() {
       FS.init.initialized = false;
       // force-flush all streams, so we get musl std streams printed out
-      var fflush = Module['_fflush'];
-      if (fflush) fflush(0);
+#if hasExportedFunction('_fflush')
+      _fflush(0);
+#endif
       // close all of our streams
       for (var i = 0; i < FS.streams.length; i++) {
         var stream = FS.streams[i];

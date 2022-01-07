@@ -24,17 +24,11 @@ from tools.settings import settings
 import emscripten
 
 
-SYSTEM_LIBRARIES = system_libs.Library.get_all_variations()
-SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
-
-# This is needed to build the generated_struct_info.json file.
-# It is not a system library, but it needs to be built before running with FROZEN_CACHE.
-SYSTEM_TASKS += ['struct_info']
-
-# Minimal subset of SYSTEM_TASKS used by CI systems to build enough to useful
+# Minimal subset of targets used by CI systems to build enough to useful
 MINIMAL_TASKS = [
     'libcompiler_rt',
     'libc',
+    'libc-debug',
     'libc++abi',
     'libc++abi-except',
     'libc++abi-noexcept',
@@ -62,13 +56,14 @@ MINIMAL_TASKS = [
     'libunwind-except'
 ]
 
-# Variant builds that we want to support for cetain ports
+# Variant builds that we want to support for certain ports
 # TODO: It would be nice if the ports themselves could specify the variants that they
 # support.
 PORT_VARIANTS = {
     'regal-mt': ('regal', {'USE_PTHREADS': 1}),
     'harfbuzz-mt': ('harfbuzz', {'USE_PTHREADS': 1}),
     'sdl2-mt': ('sdl2', {'USE_PTHREADS': 1}),
+    'icu-mt': ('icu', {'USE_PTHREADS': 1}),
     'sdl2_mixer_mp3': ('sdl2_mixer', {'SDL2_MIXER_FORMATS': ["mp3"]}),
     'sdl2_mixer_none': ('sdl2_mixer', {'SDL2_MIXER_FORMATS': []}),
     'sdl2_image_png': ('sdl2_image', {'SDL2_IMAGE_FORMATS': ["png"]}),
@@ -85,7 +80,7 @@ legacy_prefixes = {
 
 
 def get_help():
-  all_tasks = SYSTEM_TASKS + PORTS
+  all_tasks = get_system_tasks()[1] + PORTS
   all_tasks.sort()
   return '''
 Available targets:
@@ -112,6 +107,17 @@ def build_port(port_name):
   ports.build_port(port_name, settings)
   if old_settings:
     settings.dict().update(old_settings)
+
+
+def get_system_tasks():
+  system_libraries = system_libs.Library.get_all_variations()
+  system_tasks = list(system_libraries.keys())
+  # This is needed to build the generated_struct_info.json file.
+  # It is not a system library, but it needs to be built before
+  # running with FROZEN_CACHE.
+  system_tasks += ['struct_info']
+
+  return system_libraries, system_tasks
 
 
 def main():
@@ -149,6 +155,7 @@ def main():
 
   if args.wasm64:
     settings.MEMORY64 = 2
+    MINIMAL_TASKS[:] = [t for t in MINIMAL_TASKS if 'emmalloc' not in t]
 
   do_build = args.operation == 'build'
   do_clear = args.operation == 'clear'
@@ -158,8 +165,9 @@ def main():
   # process tasks
   auto_tasks = False
   tasks = args.targets
+  system_libraries, system_tasks = get_system_tasks()
   if 'SYSTEM' in tasks:
-    tasks = SYSTEM_TASKS
+    tasks = system_tasks
     auto_tasks = True
   elif 'USER' in tasks:
     tasks = PORTS
@@ -168,7 +176,7 @@ def main():
     tasks = MINIMAL_TASKS
     auto_tasks = True
   elif 'ALL' in tasks:
-    tasks = SYSTEM_TASKS + PORTS
+    tasks = system_tasks + PORTS
     auto_tasks = True
   if auto_tasks:
     # cocos2d: must be ported, errors on
@@ -185,8 +193,8 @@ def main():
     else:
       logger.info('clearing ' + what)
     start_time = time.time()
-    if what in SYSTEM_LIBRARIES:
-      library = SYSTEM_LIBRARIES[what]
+    if what in system_libraries:
+      library = system_libraries[what]
       if do_clear:
         library.erase()
       if do_build:

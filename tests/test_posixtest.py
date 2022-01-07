@@ -70,7 +70,6 @@ unsupported_noreturn = {
 unsupported = {
   'test_pthread_attr_setinheritsched_2_2': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters are not supported',
-  'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setinheritsched_2_4': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setschedparam_1_3': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setschedparam_1_4': 'scheduling policy/parameters are not supported',

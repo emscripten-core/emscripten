@@ -212,7 +212,7 @@ var WasiLibrary = {
       num += len;
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}}
+    {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
     return 0;
   },
 
@@ -223,7 +223,7 @@ var WasiLibrary = {
     assert(!offset_high, 'offsets over 2^32 not yet supported');
 #endif
     var num = SYSCALLS.doWritev(stream, iov, iovcnt, offset_low);
-    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
   },
 
@@ -252,7 +252,7 @@ var WasiLibrary = {
   fd_read: function(fd, iov, iovcnt, pnum) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = SYSCALLS.doReadv(stream, iov, iovcnt);
-    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
   },
 
@@ -263,7 +263,7 @@ var WasiLibrary = {
 #endif
     var stream = SYSCALLS.getStreamFromFD(fd)
     var num = SYSCALLS.doReadv(stream, iov, iovcnt, offset_low);
-    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}};
     return 0;
   },
 

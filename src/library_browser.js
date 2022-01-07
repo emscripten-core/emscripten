@@ -150,7 +150,7 @@ var LibraryBrowser = {
         assert(typeof url == 'string', 'createObjectURL must return a url as a string');
 #endif
         var img = new Image();
-        img.onload = function img_onload() {
+        img.onload = () => {
           assert(img.complete, 'Image ' + name + ' could not be decoded');
           var canvas = document.createElement('canvas');
           canvas.width = img.width;
@@ -161,7 +161,7 @@ var LibraryBrowser = {
           Browser.URLObject.revokeObjectURL(url);
           if (onload) onload(byteArray);
         };
-        img.onerror = function img_onerror(event) {
+        img.onerror = (event) => {
           out('Image ' + url + ' could not be decoded');
           if (onerror) onerror();
         };
@@ -694,7 +694,7 @@ var LibraryBrowser = {
       if (typeof SDL != "undefined") {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
         flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
-        {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}}
+        {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
       Browser.updateCanvasDimensions(Module['canvas']);
       Browser.updateResizeListeners();
@@ -705,7 +705,7 @@ var LibraryBrowser = {
       if (typeof SDL != "undefined") {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
         flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
-        {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}}
+        {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
       Browser.updateCanvasDimensions(Module['canvas']);
       Browser.updateResizeListeners();

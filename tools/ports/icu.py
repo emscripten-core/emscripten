@@ -11,13 +11,17 @@ TAG = 'release-68-2'
 VERSION = '68_2'
 HASH = '12c3db5966c234c94e7918fb8acc8bd0838edc36a620f3faa788e7ff27b06f1aa431eb117401026e3963622b9323212f444b735d5c9dd3d0b82d772a4834b993'
 
-libname_libicu_common = 'libicu_common.a'
-libname_libicu_stubdata = 'libicu_stubdata.a'
-libname_libicu_i18n = 'libicu_i18n.a'
+libname_libicu_common = 'libicu_common'
+libname_libicu_stubdata = 'libicu_stubdata'
+libname_libicu_i18n = 'libicu_i18n'
 
 
 def needed(settings):
   return settings.USE_ICU
+
+
+def get_lib_name(base_name, settings):
+  return base_name + ('-mt' if settings.USE_PTHREADS else '') + '.a'
 
 
 def get(ports, settings, shared):
@@ -48,6 +52,9 @@ def get(ports, settings, shared):
         # CXXFLAGS
         '-std=c++11'
     ]
+    if settings.USE_PTHREADS:
+      additional_build_flags.append('-pthread')
+
     ports.build_port(lib_src, lib_output, other_includes, build_flags + additional_build_flags)
 
   # creator for libicu_common
@@ -71,16 +78,16 @@ def get(ports, settings, shared):
     build_lib(lib_output, lib_src, other_includes, ['-DU_I18N_IMPLEMENTATION=1'])
 
   return [
-      shared.Cache.get_lib(libname_libicu_common, create_libicu_common), # this also prepares the build
-      shared.Cache.get_lib(libname_libicu_stubdata, create_libicu_stubdata),
-      shared.Cache.get_lib(libname_libicu_i18n, create_libicu_i18n)
+      shared.Cache.get_lib(get_lib_name(libname_libicu_common, settings), create_libicu_common), # this also prepares the build
+      shared.Cache.get_lib(get_lib_name(libname_libicu_stubdata, settings), create_libicu_stubdata),
+      shared.Cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n)
   ]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_lib(libname_libicu_common)
-  shared.Cache.erase_lib(libname_libicu_stubdata)
-  shared.Cache.erase_lib(libname_libicu_i18n)
+  shared.Cache.erase_lib(get_lib_name(libname_libicu_common, settings))
+  shared.Cache.erase_lib(get_lib_name(libname_libicu_stubdata, settings))
+  shared.Cache.erase_lib(get_lib_name(libname_libicu_i18n, settings))
 
 
 def process_args(ports):

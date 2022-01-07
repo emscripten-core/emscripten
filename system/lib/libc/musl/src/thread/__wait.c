@@ -5,10 +5,6 @@
 
 #include "pthread_impl.h"
 
-#ifdef __EMSCRIPTEN__
-int _pthread_isduecanceled(struct pthread *pthread_ptr);
-#endif
-
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 {
 	int spins=100;
@@ -19,21 +15,21 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 	}
 	if (waiters) a_inc(waiters);
 #ifdef __EMSCRIPTEN__
-	int is_main_thread = emscripten_is_main_runtime_thread();
+	int is_runtime_thread = emscripten_is_main_runtime_thread();
 	while (*addr==val) {
-		if (is_main_thread || pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
+		if (is_runtime_thread || pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
 			// Must wait in slices in case this thread is cancelled in between.
 			int e;
 			do {
-				if (_pthread_isduecanceled(pthread_self())) {
+				if (pthread_self()->cancel) {
 					if (waiters) a_dec(waiters);
 					return;
 				}
 				// Assist other threads by executing proxied operations that are effectively singlethreaded.
-				if (is_main_thread) emscripten_main_thread_process_queued_calls();
+				if (is_runtime_thread) emscripten_main_thread_process_queued_calls();
 				// Main thread waits in _very_ small slices so that it stays responsive to assist proxied
 				// pthread calls.
-				e = emscripten_futex_wait((void*)addr, val, is_main_thread ? 1 : 100);
+				e = emscripten_futex_wait((void*)addr, val, is_runtime_thread ? 1 : 100);
 			} while(e == -ETIMEDOUT);
 		} else {
 			// Can wait in one go.

@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_ttf.h>
 #include <assert.h>
@@ -58,7 +59,8 @@ int main() {
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK);
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
   emscripten_async_call(main_2, NULL, 3000); // avoid startup delays and intermittent errors
-  return 0;
+  // Return code ignored since emscripten_async_call keeps the runtime alive
+  return 99;
 }
 
 void main_2(void* arg) {
@@ -127,6 +129,6 @@ void main_2(void* arg) {
 
   // End test.
   printf("Test passed!\n");
-  REPORT_RESULT(2);
+  exit(0);
 }
 

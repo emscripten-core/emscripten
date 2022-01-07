@@ -23,6 +23,8 @@ import shutil
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
 local_src = os.path.join(script_dir, 'libc', 'musl')
+emscripten_root = os.path.dirname(os.path.dirname(script_dir))
+default_musl_dir = os.path.join(os.path.dirname(emscripten_root), 'musl')
 exclude_dirs = (
   # Top level directories we don't include
   'tools', 'obj', 'lib', 'crt', 'musl', 'compat',
@@ -34,7 +36,10 @@ exclude_dirs = (
   'm68k', 'microblaze', 'or1k')
 
 
-musl_dir = os.path.abspath(sys.argv[1])
+if len(sys.argv) > 1:
+  musl_dir = os.path.abspath(sys.argv[1])
+else:
+  musl_dir = default_musl_dir
 
 
 def should_ignore(name):

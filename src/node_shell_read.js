@@ -4,6 +4,16 @@
  * SPDX-License-Identifier: MIT
  */
 
+requireNodeFS = function() {
+  // Use nodePath as the indicator for these not being initialized,
+  // since in some environments a global fs may have already been
+  // created.
+  if (!nodePath) {
+    fs = require('fs');
+    nodePath = require('path');
+  }
+}
+
 read_ = function shell_read(filename, binary) {
 #if SUPPORT_BASE64_EMBEDDING
   var ret = tryParseAsDataURI(filename);
@@ -11,10 +21,9 @@ read_ = function shell_read(filename, binary) {
     return binary ? ret : ret.toString();
   }
 #endif
-  if (!nodeFS) nodeFS = require('fs');
-  if (!nodePath) nodePath = require('path');
+  requireNodeFS();
   filename = nodePath['normalize'](filename);
-  return nodeFS['readFileSync'](filename, binary ? null : 'utf8');
+  return fs.readFileSync(filename, binary ? null : 'utf8');
 };
 
 readBinary = function readBinary(filename) {
@@ -22,7 +31,9 @@ readBinary = function readBinary(filename) {
   if (!ret.buffer) {
     ret = new Uint8Array(ret);
   }
+#if ASSERTIONS
   assert(ret.buffer);
+#endif
   return ret;
 };
 
@@ -33,10 +44,9 @@ readAsync = function readAsync(filename, onload, onerror) {
     onload(ret);
   }
 #endif
-  if (!nodeFS) nodeFS = require('fs');
-  if (!nodePath) nodePath = require('path');
+  requireNodeFS();
   filename = nodePath['normalize'](filename);
-  nodeFS['readFile'](filename, function(err, data) {
+  fs.readFile(filename, function(err, data) {
     if (err) onerror(err);
     else onload(data.buffer);
   });

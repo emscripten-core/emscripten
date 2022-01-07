@@ -34,7 +34,13 @@ std::shared_ptr<StdinFile> StdinFile::getSingleton() {
 }
 
 __wasi_errno_t StdoutFile::write(const uint8_t* buf, size_t len, off_t offset) {
-  return writeStdBuffer(buf, len, &emscripten_console_log, writeBuffer);
+  // Node and worker threads issue in Emscripten:
+  // https://github.com/emscripten-core/emscripten/issues/14804.
+  // Issue filed in Node: https://github.com/nodejs/node/issues/40961
+  // This is confirmed to occur when running with EXIT_RUNTIME and
+  // PROXY_TO_PTHREAD. This results in only a single console.log statement being
+  // outputted. The solution for now is to use out() and err() instead.
+  return writeStdBuffer(buf, len, &_emscripten_out, writeBuffer);
 }
 
 std::shared_ptr<StdoutFile> StdoutFile::getSingleton() {
@@ -44,7 +50,8 @@ std::shared_ptr<StdoutFile> StdoutFile::getSingleton() {
 }
 
 __wasi_errno_t StderrFile::write(const uint8_t* buf, size_t len, off_t offset) {
-  return writeStdBuffer(buf, len, &emscripten_console_error, writeBuffer);
+  // Similar issue with Node and worker threads as emscripten_out.
+  return writeStdBuffer(buf, len, &_emscripten_err, writeBuffer);
 }
 
 std::shared_ptr<StderrFile> StderrFile::getSingleton() {

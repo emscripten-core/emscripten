@@ -23,25 +23,25 @@
 #include "lsan/lsan_common.h"
 #include "sanitizer_common/sanitizer_libc.h"
 
-// There is no general interception at all on Fuchsia, RTEMS and Emscripten.
-// Only the functions in asan_interceptors_memintrinsics.cc are
+// There is no general interception at all on Fuchsia or Emscripten.
+// Only the functions in asan_interceptors_memintrinsics.cpp are
 // really defined to replace libc functions.
-#if !SANITIZER_FUCHSIA && !SANITIZER_RTEMS && !SANITIZER_EMSCRIPTEN
+#if !SANITIZER_FUCHSIA && !SANITIZER_EMSCRIPTEN
 
-#if SANITIZER_POSIX
-#include "sanitizer_common/sanitizer_posix.h"
-#endif
+#  if SANITIZER_POSIX
+#    include "sanitizer_common/sanitizer_posix.h"
+#  endif
 
-#if ASAN_INTERCEPT__UNWIND_RAISEEXCEPTION || \
-    ASAN_INTERCEPT__SJLJ_UNWIND_RAISEEXCEPTION
-#include <unwind.h>
-#endif
+#  if ASAN_INTERCEPT__UNWIND_RAISEEXCEPTION || \
+      ASAN_INTERCEPT__SJLJ_UNWIND_RAISEEXCEPTION
+#    include <unwind.h>
+#  endif
 
-#if defined(__i386) && SANITIZER_LINUX
-#define ASAN_PTHREAD_CREATE_VERSION "GLIBC_2.1"
-#elif defined(__mips__) && SANITIZER_LINUX
-#define ASAN_PTHREAD_CREATE_VERSION "GLIBC_2.2"
-#endif
+#  if defined(__i386) && SANITIZER_LINUX
+#    define ASAN_PTHREAD_CREATE_VERSION "GLIBC_2.1"
+#  elif defined(__mips__) && SANITIZER_LINUX
+#    define ASAN_PTHREAD_CREATE_VERSION "GLIBC_2.2"
+#  endif
 
 namespace __asan {
 
@@ -90,8 +90,10 @@ DECLARE_REAL_AND_INTERCEPTOR(void, free, void *)
   (void) ctx;                                                                  \
 
 #define COMMON_INTERCEPT_FUNCTION(name) ASAN_INTERCEPT_FUNC(name)
-#define COMMON_INTERCEPT_FUNCTION_VER(name, ver)                          \
+#define COMMON_INTERCEPT_FUNCTION_VER(name, ver) \
   ASAN_INTERCEPT_FUNC_VER(name, ver)
+#define COMMON_INTERCEPT_FUNCTION_VER_UNVERSIONED_FALLBACK(name, ver) \
+  ASAN_INTERCEPT_FUNC_VER_UNVERSIONED_FALLBACK(name, ver)
 #define COMMON_INTERCEPTOR_WRITE_RANGE(ctx, ptr, size) \
   ASAN_WRITE_RANGE(ctx, ptr, size)
 #define COMMON_INTERCEPTOR_READ_RANGE(ctx, ptr, size) \
@@ -672,6 +674,7 @@ void InitializeAsanInterceptors() {
 
   // Intercept threading-related functions
 #if ASAN_INTERCEPT_PTHREAD_CREATE
+// TODO: this should probably have an unversioned fallback for newer arches?
 #if defined(ASAN_PTHREAD_CREATE_VERSION)
   ASAN_INTERCEPT_FUNC_VER(pthread_create, ASAN_PTHREAD_CREATE_VERSION);
 #else

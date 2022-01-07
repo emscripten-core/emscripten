@@ -133,7 +133,7 @@ void render(wgpu::TextureView view) {
         {
             wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&renderpass);
             pass.SetPipeline(pipeline);
-            pass.Draw(3, 1, 0, 0);
+            pass.Draw(3);
             pass.EndPass();
         }
         commands = encoder.Finish();

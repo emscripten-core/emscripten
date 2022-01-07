@@ -5,29 +5,35 @@
  * found in the LICENSE file.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <emscripten.h>
+#include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
 
 #define DB "THE_DB"
 
 long expected;
 int result;
 
+void doExit(void* userData) {
+  emscripten_force_exit(0);
+}
+
 void ok(void* arg)
 {
   assert(expected == (long)arg);
-  REPORT_RESULT(result);
+  emscripten_set_timeout(doExit, 0, 0);
 }
 
 void onerror(void* arg)
 {
   assert(expected == (long)arg);
-  REPORT_RESULT(999);
+  assert(false);
 }
 
 void onload(void* arg, void* ptr, int num)
@@ -36,13 +42,13 @@ void onload(void* arg, void* ptr, int num)
   printf("loaded %s\n", (char*)ptr);
   assert(num == strlen(SECRET)+1);
   assert(strcmp(ptr, SECRET) == 0);
-  REPORT_RESULT(1);
+  emscripten_set_timeout(doExit, 0, 0);
 }
 
 void onbadload(void* arg, void* ptr, int num)
 {
   printf("load failed, surprising\n");
-  REPORT_RESULT(999);
+  assert(false);
 }
 
 void oncheck(void* arg, int exists)
@@ -50,7 +56,7 @@ void oncheck(void* arg, int exists)
   assert(expected == (long)arg);
   printf("exists? %d\n", exists);
   assert(exists);
-  REPORT_RESULT(result);
+  emscripten_set_timeout(doExit, 0, 0);
 }
 
 void onchecknope(void* arg, int exists)
@@ -58,26 +64,27 @@ void onchecknope(void* arg, int exists)
   assert(expected == (long)arg);
   printf("exists (hopefully not)? %d\n", exists);
   assert(!exists);
-  REPORT_RESULT(result);
+  emscripten_set_timeout(doExit, 0, 0);
 }
 
-void test() {
+int main() {
   result = STAGE;
 #if STAGE == 0
   expected = 12;
-  emscripten_idb_async_store(DB, "the_secret", SECRET, strlen(SECRET)+1, (void*)expected, ok, onerror);
   printf("storing %s\n", SECRET);
+  emscripten_idb_async_store(DB, "the_secret", SECRET, strlen(SECRET)+1, (void*)expected, ok, onerror);
 #elif STAGE == 1
   expected = 31;
+  printf("loading the_secret\n");
   emscripten_idb_async_load(DB, "the_secret", (void*)expected, onload, onerror);
 #elif STAGE == 2
   expected = 44;
-  emscripten_idb_async_delete(DB, "the_secret", (void*)expected, ok, onerror);
   printf("deleting the_secret\n");
+  emscripten_idb_async_delete(DB, "the_secret", (void*)expected, ok, onerror);
 #elif STAGE == 3
   expected = 55;
-  emscripten_idb_async_load(DB, "the_secret", (void*)expected, onbadload, ok);
   printf("loading, should fail as we deleted\n");
+  emscripten_idb_async_load(DB, "the_secret", (void*)expected, onbadload, ok);
 #elif STAGE == 4
   expected = 66;
   emscripten_idb_async_exists(DB, "the_secret", (void*)expected, oncheck, onerror);
@@ -87,18 +94,8 @@ void test() {
 #else
   assert(0);
 #endif
-}
 
-void never() {
-  EM_ASM({ alert('this should never be reached! runtime must not be shut down!') });
-  assert(0);
-  while (1) {}
-}
-
-int main() {
-  atexit(never);
-  test();
   emscripten_exit_with_live_runtime();
-  return 0;
+  __builtin_trap();
 }
 

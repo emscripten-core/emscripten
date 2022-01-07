@@ -44,25 +44,20 @@ int main() {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_SWSURFACE);
 
-  int result = 0;
+  int result;
 
-  result |= testImage(screen, SCREENSHOT_DIRNAME "/" SCREENSHOT_BASENAME); // absolute path
-  assert(result != 0);
+  result = testImage(screen, SCREENSHOT_DIRNAME "/" SCREENSHOT_BASENAME); // absolute path
+  assert(result == 600);
 
   chdir(SCREENSHOT_DIRNAME);
   result = testImage(screen, "./" SCREENSHOT_BASENAME); // relative path
-  assert(result != 0);
+  assert(result == 600);
 
   SDL_Flip(screen);
 
   printf("you should see an image.\n");
 
   SDL_Quit();
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
-
   return 0;
 }
 

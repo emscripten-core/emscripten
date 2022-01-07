@@ -236,9 +236,8 @@ namespace wgpu {
     };
 
     enum class ErrorFilter : uint32_t {
-        None = 0x00000000,
-        Validation = 0x00000001,
-        OutOfMemory = 0x00000002,
+        Validation = 0x00000000,
+        OutOfMemory = 0x00000001,
     };
 
     enum class ErrorType : uint32_t {
@@ -1035,9 +1034,9 @@ namespace wgpu {
         void PopDebugGroup() const;
         void PushDebugGroup(char const * groupLabel) const;
         void SetBindGroup(uint32_t groupIndex, BindGroup const& group, uint32_t dynamicOffsetCount = 0, uint32_t const * dynamicOffsets = nullptr) const;
-        void SetIndexBuffer(Buffer const& buffer, IndexFormat format, uint64_t offset = 0, uint64_t size = 0) const;
+        void SetIndexBuffer(Buffer const& buffer, IndexFormat format, uint64_t offset = 0, uint64_t size = WGPU_WHOLE_SIZE) const;
         void SetPipeline(RenderPipeline const& pipeline) const;
-        void SetVertexBuffer(uint32_t slot, Buffer const& buffer, uint64_t offset = 0, uint64_t size = 0) const;
+        void SetVertexBuffer(uint32_t slot, Buffer const& buffer, uint64_t offset = 0, uint64_t size = WGPU_WHOLE_SIZE) const;
 
       private:
         friend ObjectBase<RenderBundleEncoder, WGPURenderBundleEncoder>;
@@ -1065,11 +1064,11 @@ namespace wgpu {
         void PushDebugGroup(char const * groupLabel) const;
         void SetBindGroup(uint32_t groupIndex, BindGroup const& group, uint32_t dynamicOffsetCount = 0, uint32_t const * dynamicOffsets = nullptr) const;
         void SetBlendConstant(Color const * color) const;
-        void SetIndexBuffer(Buffer const& buffer, IndexFormat format, uint64_t offset = 0, uint64_t size = 0) const;
+        void SetIndexBuffer(Buffer const& buffer, IndexFormat format, uint64_t offset = 0, uint64_t size = WGPU_WHOLE_SIZE) const;
         void SetPipeline(RenderPipeline const& pipeline) const;
         void SetScissorRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height) const;
         void SetStencilReference(uint32_t reference) const;
-        void SetVertexBuffer(uint32_t slot, Buffer const& buffer, uint64_t offset = 0, uint64_t size = 0) const;
+        void SetVertexBuffer(uint32_t slot, Buffer const& buffer, uint64_t offset = 0, uint64_t size = WGPU_WHOLE_SIZE) const;
         void SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth) const;
         void WriteTimestamp(QuerySet const& querySet, uint32_t queryIndex) const;
 

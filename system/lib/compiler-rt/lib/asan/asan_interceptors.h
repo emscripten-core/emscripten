@@ -34,10 +34,10 @@ void InitializePlatformInterceptors();
 
 }  // namespace __asan
 
-// There is no general interception at all on Fuchsia and RTEMS.
+// There is no general interception at all on Fuchsia.
 // Only the functions in asan_interceptors_memintrinsics.h are
 // really defined to replace libc functions.
-#if !SANITIZER_FUCHSIA && !SANITIZER_RTEMS
+#if !SANITIZER_FUCHSIA
 
 // Use macro to describe if specific function should be
 // intercepted on a given platform.
@@ -145,6 +145,13 @@ DECLARE_REAL(char*, strstr, const char *s1, const char *s2)
       VReport(1, "AddressSanitizer: failed to intercept '%s@@%s'\n", #name, \
               #ver);                                                        \
   } while (0)
+#define ASAN_INTERCEPT_FUNC_VER_UNVERSIONED_FALLBACK(name, ver)              \
+  do {                                                                       \
+    if (!INTERCEPT_FUNCTION_VER(name, ver) && !INTERCEPT_FUNCTION(name))     \
+      VReport(1, "AddressSanitizer: failed to intercept '%s@@%s' or '%s'\n", \
+              #name, #ver, #name);                                           \
+  } while (0)
+
 #else
 // OS X interceptors don't need to be initialized with INTERCEPT_FUNCTION.
 #define ASAN_INTERCEPT_FUNC(name)

@@ -14,6 +14,6 @@
     "wasm2c": "1.0.0"
   },
   "scripts": {
-    "lint": "eslint src/parseTools.js"
+    "lint": "eslint ."
   }
 }

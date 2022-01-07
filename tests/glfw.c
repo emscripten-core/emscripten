@@ -416,8 +416,6 @@ void PullInfo(){
   printf("...Done.\n");
   
   printf("================================================================================\n");
-  
-#ifdef REPORT_RESULT  
-  REPORT_RESULT(1);
-#endif
+
+  exit(0);
 }

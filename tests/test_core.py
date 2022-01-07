@@ -68,15 +68,23 @@ def needs_non_trapping_float_to_int(f):
 
 
 def also_with_wasm_bigint(f):
-  def decorated(self):
-    self.set_setting('WASM_BIGINT', 0)
-    f(self)
-    if self.is_wasm():
+  assert callable(f)
+
+  def metafunc(self, with_bigint):
+    assert self.get_setting('WASM_BIGINT') is None
+    if with_bigint:
+      if not self.is_wasm():
+        self.skipTest('wasm2js does not support WASM_BIGINT')
       self.set_setting('WASM_BIGINT')
       self.require_node()
       self.node_args.append('--experimental-wasm-bigint')
       f(self)
-  return decorated
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'bigint': (True,)}
+  return metafunc
 
 
 # without EMTEST_ALL_ENGINES set we only run tests in a single VM by
@@ -154,15 +162,18 @@ def no_wasm2js(note=''):
 
 
 def also_with_noderawfs(func):
-  def decorated(self):
-    orig_args = self.emcc_args.copy()
+  assert callable(func)
+
+  def metafunc(self, rawfs):
+    if rawfs:
+      self.emcc_args += ['-DNODERAWFS']
+      self.set_setting('NODERAWFS')
+      self.js_engines = [config.NODE_JS]
     func(self)
-    print('noderawfs')
-    self.emcc_args = orig_args + ['-DNODERAWFS']
-    self.set_setting('NODERAWFS')
-    self.js_engines = [config.NODE_JS]
-    func(self)
-  return decorated
+
+  metafunc._parameterize = {'': (False,),
+                            'rawfs': (True,)}
+  return metafunc
 
 
 def can_do_standalone(self):
@@ -170,6 +181,7 @@ def can_do_standalone(self):
       self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
       not self.get_setting('SAFE_HEAP') and \
+      not self.get_setting('MEMORY64') and \
       '-fsanitize=address' not in self.emcc_args
 
 
@@ -179,7 +191,10 @@ def also_with_wasmfs(func):
     print('wasmfs')
     if self.get_setting('STANDALONE_WASM'):
       self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
+    if self.get_setting('MEMORY64'):
+      self.skipTest("test currently cannot run both with WASMFS and WASMFS")
     self.set_setting('WASMFS')
+    self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
     func(self)
   return decorated
 
@@ -192,24 +207,25 @@ def also_with_standalone_wasm(wasm2c=False, impure=False):
       if not standalone:
         func(self)
       else:
-        if can_do_standalone(self):
-          self.set_setting('STANDALONE_WASM')
-          # we will not legalize the JS ffi interface, so we must use BigInt
-          # support in order for JS to have a chance to run this without trapping
-          # when it sees an i64 on the ffi.
-          self.set_setting('WASM_BIGINT')
-          self.emcc_args.append('-Wno-unused-command-line-argument')
-          # if we are impure, disallow all wasm engines
-          if impure:
-            self.wasm_engines = []
-          self.js_engines = [config.NODE_JS]
-          self.node_args.append('--experimental-wasm-bigint')
+        if not can_do_standalone(self):
+          self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
+        self.set_setting('STANDALONE_WASM')
+        # we will not legalize the JS ffi interface, so we must use BigInt
+        # support in order for JS to have a chance to run this without trapping
+        # when it sees an i64 on the ffi.
+        self.set_setting('WASM_BIGINT')
+        self.emcc_args.append('-Wno-unused-command-line-argument')
+        # if we are impure, disallow all wasm engines
+        if impure:
+          self.wasm_engines = []
+        self.js_engines = [config.NODE_JS]
+        self.node_args.append('--experimental-wasm-bigint')
+        func(self)
+        if wasm2c:
+          print('wasm2c')
+          self.set_setting('WASM2C')
+          self.wasm_engines = []
           func(self)
-          if wasm2c:
-            print('wasm2c')
-            self.set_setting('WASM2C')
-            self.wasm_engines = []
-            func(self)
 
     metafunc._parameterize = {'': (False,),
                               'standalone': (True,)}
@@ -1606,7 +1622,10 @@ int main() {
   def test_alloca(self):
     self.do_core_test('test_alloca.c')
 
+  @also_with_wasmfs
   def test_rename(self):
+    if is_sanitizing(self.emcc_args) and self.get_setting('WASMFS'):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/15820')
     self.do_run_in_out_file_test('stdio/test_rename.c')
 
   def test_remove(self):
@@ -2152,8 +2171,6 @@ int main(int argc, char **argv) {
   def test_biggerswitch(self):
     if not self.is_optimizing():
       self.skipTest('nodejs takes >6GB to compile this if the wasm is not optimized, which OOMs, see https://github.com/emscripten-core/emscripten/issues/7928#issuecomment-458308453')
-    if '-Os' in self.emcc_args:
-      self.skipTest('hangs in recent upstream clang, see https://bugs.llvm.org/show_bug.cgi?id=43468')
     num_cases = 20000
     switch_case = self.run_process([PYTHON, test_file('gen_large_switchcase.py'), str(num_cases)], stdout=PIPE, stderr=PIPE).stdout
     self.do_run(switch_case, '''58996: 589965899658996
@@ -2441,6 +2458,12 @@ The current type of b is: 9
     self.do_runf(test_file('pthread/test_pthread_setspecific_mainthread.c'), 'done!', emcc_args=['-DEXIT'])
     print('.. pthread_exit')
     self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
+
+  @node_pthreads
+  def test_pthread_attr_getstack(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
 
   @node_pthreads
   @no_mac('https://github.com/emscripten-core/emscripten/issues/15014')
@@ -5169,6 +5192,7 @@ main( int argv, char ** argc ) {
   def test_readdir(self):
     self.do_run_in_out_file_test('dirent/test_readdir.c')
 
+  @also_with_wasm_bigint
   def test_readdir_empty(self):
     self.do_run_in_out_file_test('dirent/test_readdir_empty.c')
 
@@ -5336,6 +5360,14 @@ main( int argv, char ** argc ) {
   def test_fs_nodefs_nofollow(self):
     self.emcc_args += ['-lnodefs.js']
     self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
+
+  @no_windows('no symlink support on windows')
+  def test_fs_noderawfs_nofollow(self):
+    self.set_setting('NODERAWFS')
+    create_file('filename', 'foo')
+    os.symlink('filename', 'linkname')
+    self.emcc_args += ['-lnodefs.js']
+    self.do_runf(test_file('fs/test_noderawfs_nofollow.c'), 'success', js_engines=[config.NODE_JS])
 
   def test_fs_trackingdelegate(self):
     self.set_setting('FS_DEBUG')
@@ -6056,6 +6088,8 @@ void* operator new(size_t size) {
   # Tests invoking the SIMD API via x86 AVX avxintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @is_slow_test
+  @no_asan('local count too large')
   def test_avx(self):
     src = test_file('sse/test_avx.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6367,7 +6401,7 @@ void* operator new(size_t size) {
       # In ASan mode we need a large initial memory (or else wasm-ld fails).
       # The OpenJPEG CMake will build several executables (which we need parts
       # of in our testing, see above), so we must enable the flag for them all.
-      with env_modify({'EMMAKEN_CFLAGS': '-sINITIAL_MEMORY=300MB'}):
+      with env_modify({'EMCC_CFLAGS': '-sINITIAL_MEMORY=300MB'}):
         do_test_openjpeg()
     else:
       do_test_openjpeg()
@@ -7107,6 +7141,8 @@ someweirdtext
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=_malloc,_free', '--post-js=glue.js', '--extern-post-js=extern-post.js']
+    if mode == 'ALL':
+      self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
       self.set_setting('ALLOW_MEMORY_GROWTH')
 
@@ -8154,9 +8190,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @parameterized({
     'fsanitize_undefined': (['-fsanitize=undefined'],),
     'fsanitize_null': (['-fsanitize=null'],),
+    'dylink': (['-fsanitize=null', '-sMAIN_MODULE=2'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_null_ref(self, args):
+    if is_sanitizing(self.emcc_args):
+      self.skipTest('test is specific to null sanitizer')
     self.emcc_args += args
     self.do_runf(test_file('core/test_ubsan_full_null_ref.cpp'),
                  assert_all=True, expected_output=[
@@ -8438,11 +8477,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthread_cxx_threads(self):
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.clear_setting('ALLOW_MEMORY_GROWTH')
-    self.set_setting('INITIAL_MEMORY', '64Mb')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_cxx_threads.cpp')
+
+  @node_pthreads
+  def test_pthread_busy_wait(self):
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('pthread/test_pthread_busy_wait.cpp')
 
   @node_pthreads
   def test_pthread_create_pool(self):
@@ -8790,6 +8833,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('ASYNCIFY')
     self.maybe_closure()
     self.do_core_test('test_em_async_js.c')
+
+  @require_v8
+  @no_wasm2js('wasm2js does not support reference types')
+  def test_externref(self):
+    self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'])
+    self.emcc_args += ['--js-library', test_file('core/test_externref.js')]
+    self.emcc_args += ['-mreference-types']
+    self.do_core_test('test_externref.c', libraries=['asm.o'])
 
 
 # Generate tests for everything

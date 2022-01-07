@@ -50,7 +50,7 @@
     },
 
     makeU64ToNumberWithSentinelAsUndefined: function(lowName, highName) {
-      var ret = `((${highName} === 0xFFFFFFFF && ${lowName} === 0xFFFFFFFF) ? undefined : \
+      var ret = `((${highName} === -1 && ${lowName} === -1) ? undefined : \
           ${this.makeU64ToNumber(lowName, highName)})`;
       return ret;
     },
@@ -356,7 +356,6 @@ var LibraryWebGPU = {
       'back',
     ],
     ErrorFilter: [
-      'none',
       'validation',
       'out-of-memory',
     ],
@@ -1375,9 +1374,12 @@ var LibraryWebGPU = {
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
   ],
-  wgpuQueueOnSubmittedWorkDone: function(queueId, callback, userdata) {
+  wgpuQueueOnSubmittedWorkDone: function(queueId, {{{ defineI64Param('signalValue') }}}, callback, userdata) {
     var queue = WebGPU.mgrQueue.get(queueId);
-    return queue["onSubmittedWorkDone"]();
+#if ASSERTIONS
+    assert(signalValue_low === 0 && signalValue_high === 0, 'signalValue not supported, must be 0');
+#endif
+
     {{{ runtimeKeepalivePush() }}}
     queue["onSubmittedWorkDone"]().then(function() {
       {{{ runtimeKeepalivePop() }}}

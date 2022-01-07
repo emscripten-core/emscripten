@@ -9,9 +9,9 @@
               "profilerBlock",
               "self",
               "tsd",
-              "detach_state",
               "stack",
               "stack_size",
+              "stack_owned",
               "result",
               "robust_list",
               "tid",
@@ -29,15 +29,7 @@
                 "timeSpentInStatus",
                 "name"
             ]
-        },
-        "defines": [
-          "__ATTRP_C11_THREAD",
-          "EM_THREAD_NAME_MAX",
-          "DT_EXITED",
-          "DT_EXITING",
-          "DT_JOINABLE",
-          "DT_DETACHED"
-        ]
+        }
     },
     {
         "file": "dynlink.h",
