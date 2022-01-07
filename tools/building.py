@@ -653,6 +653,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
 # for this, and we are in wasm mode
 def eval_ctors(js_file, binary_file, debug_info=False): # noqa
   cmd = [PYTHON, path_from_root('tools/ctor_evaller.py'), js_file, binary_file, str(settings.INITIAL_MEMORY), str(settings.TOTAL_STACK), str(settings.GLOBAL_BASE), get_binaryen_bin(), str(int(debug_info))]
+  cmd += ['--ignore-external-input'] # TODO: option
   cmd += get_binaryen_feature_flags()
   check_call(cmd)
 
