@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+
+'use strict';
+
 const acorn = require('acorn');
 const terser = require('../third_party/terser');
 const fs = require('fs');
@@ -1593,7 +1596,7 @@ function minifyLocals(ast) {
         if (newNames.has(name)) {
           node.name = newNames.get(name);
         } else if (isLocalName(name)) {
-          minified = getNextMinifiedName();
+          const minified = getNextMinifiedName();
           newNames.set(name, minified);
           node.name = minified;
         }
@@ -1806,27 +1809,27 @@ function reattachComments(ast, comments) {
 
 let suffix = '';
 
-const arguments = process['argv'].slice(2);
+const argv = process['argv'].slice(2);
 // If enabled, output retains parentheses and comments so that the
 // output can further be passed out to Closure.
-let closureFriendly = arguments.indexOf('--closureFriendly');
+let closureFriendly = argv.indexOf('--closureFriendly');
 if (closureFriendly > -1) {
-  arguments.splice(closureFriendly, 1);
+  argv.splice(closureFriendly, 1);
   closureFriendly = true;
 } else {
   closureFriendly = false;
 }
 
-let exportES6 = arguments.indexOf('--exportES6');
+let exportES6 = argv.indexOf('--exportES6');
 if (exportES6 > -1) {
-  arguments.splice(exportES6, 1);
+  argv.splice(exportES6, 1);
   exportES6 = true;
 } else {
   exportES6 = false;
 }
 
-const infile = arguments[0];
-const passes = arguments.slice(1);
+const infile = argv[0];
+const passes = argv.slice(1);
 
 const input = read(infile);
 const extraInfoStart = input.lastIndexOf('// EXTRA_INFO:');
