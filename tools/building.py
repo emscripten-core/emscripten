@@ -676,10 +676,6 @@ def eval_ctors(js_file, binary_file, debug_info=False): # noqa
   wasm_file = binary_file
   logger.warning('ctor_evaller (wasm): trying to eval global ctor')
   num_successful, new_js = do_eval_ctors(js, wasm_file)
-  if num_successful == 0:
-    logger.warning('ctor_evaller: not successful')
-    sys.exit(0)
-  logger.warning('ctor_evaller: we managed to remove the ctors')
   utils.write_file(js_file, new_js)
 
 

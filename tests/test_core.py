@@ -8233,8 +8233,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if g_flag == '-gsource-map':
       if not self.is_wasm():
         self.skipTest('wasm2js has no source map support')
-      elif '-Oz' in self.emcc_args:
-        self.skipTest('-Oz breaks stack traces')
+      elif self.get_setting('EVAL_CTORS'):
+        self.skipTest('EVAL_CTORS does not support source maps')
 
     create_file('pre.js', 'Module = {UBSAN_OPTIONS: "print_stacktrace=1"};')
     self.emcc_args += ['-fsanitize=null', g_flag, '--pre-js=pre.js']
