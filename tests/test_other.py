@@ -7263,6 +7263,10 @@ int main() {
     # exceptions does not pull in demangling by default, which increases code size
     'mangle':   (['-O2', '-fexceptions',
                   '-s', 'DEMANGLE_SUPPORT'], [], ['waka']), # noqa
+    # eval_ctors 1 can partially optimize, but runs into getenv() for locale
+    # code. mode 2 ignores those and fully optimizes out the ctors
+    'ctors1':    (['-O2', '-sEVAL_CTORS'],   [], ['waka']), # noqa
+    'ctors2':    (['-O2', '-sEVAL_CTORS=2'], [], ['waka']), # noqa
   })
   def test_metadce_cxx(self, *args):
     # do not check functions in this test as there are a lot of libc++ functions
