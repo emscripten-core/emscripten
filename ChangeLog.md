@@ -24,6 +24,7 @@ See docs/process.md for more on how version tagging works.
   includes all downstream patches and many upstream changes.
 - libc++ library updated to llvm-13. (#15901)
 - libc++-abi library updated to llvm-13. (#15904)
+- compiler-rt library updated to llvm-13. (#15906)
 
 3.1.0 - 12/22/2021
 ------------------

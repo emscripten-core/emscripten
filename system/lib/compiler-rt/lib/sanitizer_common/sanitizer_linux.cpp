@@ -196,6 +196,14 @@ uptr internal_munmap(void *addr, uptr length) {
   return internal_syscall(SYSCALL(munmap), (uptr)addr, length);
 }
 
+#if SANITIZER_LINUX
+uptr internal_mremap(void *old_address, uptr old_size, uptr new_size, int flags,
+                     void *new_address) {
+  return internal_syscall(SYSCALL(mremap), (uptr)old_address, old_size,
+                          new_size, flags, (uptr)new_address);
+}
+#endif
+
 int internal_mprotect(void *addr, uptr length, int prot) {
   return internal_syscall(SYSCALL(mprotect), (uptr)addr, length, prot);
 }
@@ -470,16 +478,18 @@ uptr internal_sched_yield() {
 #endif
 }
 
-#if !SANITIZER_EMSCRIPTEN
-unsigned int internal_sleep(unsigned int seconds) {
+void internal_usleep(u64 useconds) {
+#if SANITIZER_EMSCRIPTEN
+  usleep(useconds);
+#else
   struct timespec ts;
-  ts.tv_sec = seconds;
-  ts.tv_nsec = 0;
-  int res = internal_syscall(SYSCALL(nanosleep), &ts, &ts);
-  if (res) return ts.tv_sec;
-  return 0;
+  ts.tv_sec = useconds / 1000000;
+  ts.tv_nsec = (useconds % 1000000) * 1000;
+  internal_syscall(SYSCALL(nanosleep), &ts, &ts);
+#endif
 }
 
+#if !SANITIZER_EMSCRIPTEN
 uptr internal_execve(const char *filename, char *const argv[],
                      char *const envp[]) {
   return internal_syscall(SYSCALL(execve), (uptr)filename, (uptr)argv,
@@ -545,22 +555,24 @@ int TgKill(pid_t pid, tid_t tid, int sig) {
 #endif
 #endif
 
-#if !SANITIZER_SOLARIS && !SANITIZER_NETBSD && !SANITIZER_EMSCRIPTEN
+#if SANITIZER_GLIBC
 u64 NanoTime() {
-#if SANITIZER_FREEBSD
-  timeval tv;
-#else
   kernel_timeval tv;
-#endif
   internal_memset(&tv, 0, sizeof(tv));
   internal_syscall(SYSCALL(gettimeofday), &tv, 0);
-  return (u64)tv.tv_sec * 1000*1000*1000 + tv.tv_usec * 1000;
+  return (u64)tv.tv_sec * 1000 * 1000 * 1000 + tv.tv_usec * 1000;
 }
-
+// Used by real_clock_gettime.
 uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
   return internal_syscall(SYSCALL(clock_gettime), clk_id, tp);
 }
-#endif  // !SANITIZER_SOLARIS && !SANITIZER_NETBSD
+#elif !SANITIZER_SOLARIS && !SANITIZER_NETBSD
+u64 NanoTime() {
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  return (u64)ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_nsec;
+}
+#endif
 
 #if SANITIZER_EMSCRIPTEN
 int __clock_gettime(__sanitizer_clockid_t clk_id, void *tp);
@@ -698,11 +710,31 @@ char **GetEnviron() {
 #endif // !SANITIZER_EMSCRIPTEN
 
 #if !SANITIZER_SOLARIS
-enum MutexState {
-  MtxUnlocked = 0,
-  MtxLocked = 1,
-  MtxSleeping = 2
-};
+void FutexWait(atomic_uint32_t *p, u32 cmp) {
+#    if SANITIZER_FREEBSD
+  _umtx_op(p, UMTX_OP_WAIT_UINT, cmp, 0, 0);
+#    elif SANITIZER_NETBSD
+  sched_yield();   /* No userspace futex-like synchronization */
+#    elif SANITIZER_EMSCRIPTEN
+  emscripten_futex_wait(p, cmp, INFINITY);
+#    else
+  internal_syscall(SYSCALL(futex), (uptr)p, FUTEX_WAIT_PRIVATE, cmp, 0, 0, 0);
+#    endif
+}
+
+void FutexWake(atomic_uint32_t *p, u32 count) {
+#    if SANITIZER_FREEBSD
+  _umtx_op(p, UMTX_OP_WAKE, count, 0, 0);
+#    elif SANITIZER_NETBSD
+                   /* No userspace futex-like synchronization */
+#    elif SANITIZER_EMSCRIPTEN
+  emscripten_futex_wake(p, count);
+#    else
+  internal_syscall(SYSCALL(futex), (uptr)p, FUTEX_WAKE_PRIVATE, count, 0, 0, 0);
+#    endif
+}
+
+enum { MtxUnlocked = 0, MtxLocked = 1, MtxSleeping = 2 };
 
 BlockingMutex::BlockingMutex() {
   internal_memset(this, 0, sizeof(*this));
@@ -744,11 +776,11 @@ void BlockingMutex::Unlock() {
   }
 }
 
-void BlockingMutex::CheckLocked() {
-  atomic_uint32_t *m = reinterpret_cast<atomic_uint32_t *>(&opaque_storage_);
+void BlockingMutex::CheckLocked() const {
+  auto m = reinterpret_cast<atomic_uint32_t const *>(&opaque_storage_);
   CHECK_NE(MtxUnlocked, atomic_load(m, memory_order_relaxed));
 }
-#endif // !SANITIZER_SOLARIS
+#  endif  // !SANITIZER_SOLARIS
 
 // ----------------- sanitizer_linux.h
 // The actual size of this structure is specified by d_reclen.
@@ -959,7 +991,7 @@ void internal_sigdelset(__sanitizer_sigset_t *set, int signum) {
   __sanitizer_kernel_sigset_t *k_set = (__sanitizer_kernel_sigset_t *)set;
   const uptr idx = signum / (sizeof(k_set->sig[0]) * 8);
   const uptr bit = signum % (sizeof(k_set->sig[0]) * 8);
-  k_set->sig[idx] &= ~(1 << bit);
+  k_set->sig[idx] &= ~((uptr)1 << bit);
 }
 
 bool internal_sigismember(__sanitizer_sigset_t *set, int signum) {
@@ -969,7 +1001,7 @@ bool internal_sigismember(__sanitizer_sigset_t *set, int signum) {
   __sanitizer_kernel_sigset_t *k_set = (__sanitizer_kernel_sigset_t *)set;
   const uptr idx = signum / (sizeof(k_set->sig[0]) * 8);
   const uptr bit = signum % (sizeof(k_set->sig[0]) * 8);
-  return k_set->sig[idx] & (1 << bit);
+  return k_set->sig[idx] & ((uptr)1 << bit);
 }
 #elif SANITIZER_FREEBSD
 void internal_sigdelset(__sanitizer_sigset_t *set, int signum) {
@@ -1423,50 +1455,42 @@ uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg,
 #elif SANITIZER_RISCV64
 uptr internal_clone(int (*fn)(void *), void *child_stack, int flags, void *arg,
                     int *parent_tidptr, void *newtls, int *child_tidptr) {
-  long long res;
   if (!fn || !child_stack)
     return -EINVAL;
-  CHECK_EQ(0, (uptr)child_stack % 16);
-  child_stack = (char *)child_stack - 2 * sizeof(unsigned long long);
-  ((unsigned long long *)child_stack)[0] = (uptr)fn;
-  ((unsigned long long *)child_stack)[1] = (uptr)arg;
 
-  register int (*__fn)(void *) __asm__("a0") = fn;
+  CHECK_EQ(0, (uptr)child_stack % 16);
+
+  register int res __asm__("a0");
+  register int __flags __asm__("a0") = flags;
   register void *__stack __asm__("a1") = child_stack;
-  register int __flags __asm__("a2") = flags;
-  register void *__arg __asm__("a3") = arg;
-  register int *__ptid __asm__("a4") = parent_tidptr;
-  register void *__tls __asm__("a5") = newtls;
-  register int *__ctid __asm__("a6") = child_tidptr;
+  register int *__ptid __asm__("a2") = parent_tidptr;
+  register void *__tls __asm__("a3") = newtls;
+  register int *__ctid __asm__("a4") = child_tidptr;
+  register int (*__fn)(void *) __asm__("a5") = fn;
+  register void *__arg __asm__("a6") = arg;
+  register int nr_clone __asm__("a7") = __NR_clone;
 
   __asm__ __volatile__(
-      "mv a0,a2\n"          /* flags  */
-      "mv a2,a4\n"          /* ptid  */
-      "mv a3,a5\n"          /* tls  */
-      "mv a4,a6\n"          /* ctid  */
-      "addi a7, zero, %9\n" /* clone  */
-
       "ecall\n"
 
-      /* if (%r0 != 0)
-       *   return %r0;
+      /* if (a0 != 0)
+       *   return a0;
        */
       "bnez a0, 1f\n"
 
-      /* In the child, now. Call "fn(arg)". */
-      "ld  a0,  8(sp)\n"
-      "ld  a1, 16(sp)\n"
-      "jalr a1\n"
+      // In the child, now. Call "fn(arg)".
+      "mv a0, a6\n"
+      "jalr a5\n"
 
-      /* Call _exit(%r0).  */
-      "addi  a7, zero, %10\n"
+      // Call _exit(a0).
+      "addi a7, zero, %9\n"
       "ecall\n"
       "1:\n"
 
       : "=r"(res)
-      : "i"(-EINVAL), "r"(__fn), "r"(__stack), "r"(__flags), "r"(__arg),
-        "r"(__ptid), "r"(__tls), "r"(__ctid), "i"(__NR_clone), "i"(__NR_exit)
-      : "ra", "memory");
+      : "0"(__flags), "r"(__stack), "r"(__ptid), "r"(__tls), "r"(__ctid),
+        "r"(__fn), "r"(__arg), "r"(nr_clone), "i"(__NR_exit)
+      : "memory");
   return res;
 }
 #elif defined(__aarch64__)
