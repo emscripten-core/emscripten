@@ -890,8 +890,7 @@ function makeRetainedCompilerSettings() {
   const ignore = new Set(['STRUCT_INFO']);
   if (STRICT) {
     for (const setting of LEGACY_SETTINGS) {
-      const name = setting[0];
-      ignore.add(name);
+      ignore.add(setting);
     }
   }
 
