@@ -2165,6 +2165,20 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.SINGLE_FILE:
     settings.GENERATE_SOURCE_MAP = 0
 
+  if settings.EVAL_CTORS:
+    if settings.WASM2JS:
+      #diagnostics.warning('emcc', 'disabling EVAL_CTORS due to wasm2js. see #XXXXX') # code size/memory and correctness issues
+      print('emcc', 'disabling EVAL_CTORS due to wasm2js. see #XXXXX') # code size/memory and correctness issues
+      settings.EVAL_CTORS = 0
+    elif settings.USE_PTHREADS:
+      #diagnostics.warning('emcc', 'disabling EVAL_CTORS due to pthreads (passive segments)')
+      print('emcc', 'disabling EVAL_CTORS due to pthreads (passive segments)')
+      settings.EVAL_CTORS = 0
+    elif settings.RELOCATABLE:
+      #diagnostics.warning('emcc', 'disabling EVAL_CTORS due to relocatable (movable segments)')
+      print('emcc', 'disabling EVAL_CTORS due to relocatable (movable segments)')
+      settings.EVAL_CTORS = 0
+
   if options.use_closure_compiler == 2 and not settings.WASM2JS:
     exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
 
