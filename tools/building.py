@@ -652,6 +652,8 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
 def eval_ctors(js_file, binary_file, debug_info=False): # noqa
+  if settings.WASM2JS:
+    exit_with_error('EVAL_CTORS is not supported with wasm2js yet. see #XXXXX') # code size/memory and correctness issues
   cmd = [PYTHON, path_from_root('tools/ctor_evaller.py'), js_file, binary_file, str(settings.INITIAL_MEMORY), str(settings.TOTAL_STACK), str(settings.GLOBAL_BASE), get_binaryen_bin(), str(int(debug_info))]
   cmd += ['--ignore-external-input'] # TODO: option
   cmd += get_binaryen_feature_flags()
