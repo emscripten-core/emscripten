@@ -1567,7 +1567,7 @@ var PTHREADS_DEBUG = 0;
 // to optimize ctors with lowest priority. We do know that, and can optimize all
 // the ctors.
 // [link]
-var EVAL_CTORS = 1;
+var EVAL_CTORS = 0;
 
 // Is enabled, use the JavaScript TextDecoder API for string marshalling.
 // Enabled by default, set this to 0 to disable.
