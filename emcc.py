@@ -3234,7 +3234,6 @@ def phase_binaryen(target, options, wasm_target):
       passes += ['--strip-debug']
     if strip_producers:
       passes += ['--strip-producers']
-    building.save_intermediate(wasm_target, 'pre-byn.wasm')
     # if asyncify is used, we will use it in the next stage, and so if it is
     # the only reason we need intermediate debug info, we can stop keeping it
     if settings.ASYNCIFY:
@@ -3243,16 +3242,17 @@ def phase_binaryen(target, options, wasm_target):
                           wasm_target,
                           args=passes,
                           debug=intermediate_debug_info)
+    building.save_intermediate(wasm_target, 'byn.wasm')
   elif strip_debug or strip_producers:
     # we are not running wasm-opt. if we need to strip certain sections
     # then do so using llvm-objcopy which is fast and does not rewrite the
     # code (which is better for debug info)
-    building.save_intermediate(wasm_target, 'pre-strip.wasm')
     building.strip(wasm_target, wasm_target, debug=strip_debug, producers=strip_producers)
+    building.save_intermediate(wasm_target, 'strip.wasm')
 
   if settings.EVAL_CTORS:
-    building.save_intermediate(wasm_target, 'pre-ctors.wasm')
     building.eval_ctors(final_js, wasm_target, debug_info=intermediate_debug_info)
+    building.save_intermediate(wasm_target, 'ctors.wasm')
 
   # after generating the wasm, do some final operations
 
