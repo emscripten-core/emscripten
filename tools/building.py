@@ -671,7 +671,7 @@ def eval_ctors(js_file, binary_file, debug_info=False): # noqa
   js = utils.read_file(js_file)
   if not has_ctor(js):
     logger.warning('ctor_evaller: no ctors')
-    sys.exit(0)
+    return
 
   wasm_file = binary_file
   logger.warning('ctor_evaller (wasm): trying to eval global ctor')
