@@ -6671,27 +6671,23 @@ int main() {
   @uses_canonical_tmp
   @with_env_modify({'EMCC_DEBUG': '1'})
   def test_eval_ctors_debug_output(self):
-    for wasm in (1, 0):
-      print('wasm', wasm)
-      create_file('lib.js', r'''
+    create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
-  external_thing: function() {}
+external_thing: function() {}
 });
 ''')
-      create_file('src.cpp', r'''
-  extern "C" void external_thing();
-  struct C {
-    C() { external_thing(); } // don't remove this!
-  };
-  C c;
-  int main() {}
-      ''')
-      err = self.run_process([EMXX, 'src.cpp', '--js-library', 'lib.js', '-Oz', '-s', 'WASM=%d' % wasm], stderr=PIPE).stderr
-      # disabled in the wasm backend
-      self.assertContained('Ctor evalling in the wasm backend is disabled', err)
-      self.assertNotContained('ctor_evaller: not successful', err) # with logging
-      # TODO(sbc): Re-enable onece ctor evaluation is working with llvm backend.
-      # self.assertContained('external_thing', err) # the failing call should be mentioned
+    create_file('src.cpp', r'''
+extern "C" void external_thing();
+struct C {
+  C() { external_thing(); } // don't remove this!
+};
+C c;
+int main() {}
+    ''')
+    err = self.run_process([EMXX, 'src.cpp', '--js-library', 'lib.js', '-O2', '-s', 'EVAL_CTORS'], stderr=PIPE).stderr
+    # logging should show we failed, and why
+    self.assertNotContained('ctor_evaller: not successful', err)
+    self.assertContained('stopping since could not eval: call import: env.external_thing', err)
 
   def test_override_js_execution_environment(self):
     create_file('main.cpp', r'''
