@@ -4762,7 +4762,7 @@ window.close = function() {
       ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'],
       ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-s', 'OFFSCREENCANVAS_SUPPORT'],
     ]:
-      cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-s', 'GL_DEBUG', '--threadprofiler'] + args
+      cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-s', 'GL_DEBUG', '--threadprofiler', '-sASSERTIONS'] + args
       print(' '.join(cmd))
       self.btest_exit('canvas_animate_resize.cpp', args=cmd)
 

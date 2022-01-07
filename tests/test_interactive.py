@@ -230,6 +230,7 @@ class interactive(BrowserCore):
   def test_threadprofiler(self):
     args = ['-O2', '--threadprofiler',
             '-s', 'USE_PTHREADS',
+            '-s', 'ASSERTIONS',
             '-DTEST_THREAD_PROFILING=1',
             '-s', 'PTHREAD_POOL_SIZE=16',
             '-s', 'INITIAL_MEMORY=64mb',

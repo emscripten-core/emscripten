@@ -1436,6 +1436,15 @@ def phase_linker_setup(options, state, newargs, settings_map):
   for f in ldflags:
     add_link_flag(state, sys.maxsize, f)
 
+  def default_setting(name, new_default):
+    if name not in settings_map:
+      setattr(settings, name, new_default)
+
+  if settings.OPT_LEVEL >= 1:
+    default_setting('ASSERTIONS', 0)
+  if settings.SHRINK_LEVEL >= 2:
+    default_setting('EVAL_CTORS', 1)
+
   if options.emrun:
     options.pre_js.append(utils.path_from_root('src/emrun_prejs.js'))
     options.post_js.append(utils.path_from_root('src/emrun_postjs.js'))
@@ -1588,15 +1597,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   # Note the exports the user requested
   building.user_requested_exports.update(settings.EXPORTED_FUNCTIONS)
-
-  def default_setting(name, new_default):
-    if name not in settings_map:
-      setattr(settings, name, new_default)
-
-  if settings.OPT_LEVEL >= 1:
-    default_setting('ASSERTIONS', 0)
-  if settings.SHRINK_LEVEL >= 2:
-    default_setting('EVAL_CTORS', 1)
 
   # -s ASSERTIONS=1 implies basic stack overflow checks, and ASSERTIONS=2
   # implies full stack overflow checks.
