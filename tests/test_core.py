@@ -7783,10 +7783,11 @@ Module['onRuntimeInitialized'] = function() {
     # verify that by changing the first wasm to throw in that function
     found_foo_end = break_wasm('emscripten_lazy_load_code.wasm')
     if not conditional and self.is_optimizing():
-      self.assertFalse(found_foo_end, 'should have optimizd out $foo_end')
+      self.assertFalse(found_foo_end, 'should have optimized out $foo_end')
     verify_working()
     # but breaking the second wasm actually breaks us
-    break_wasm('emscripten_lazy_load_code.wasm.lazy.wasm')
+    if not break_wasm('emscripten_lazy_load_code.wasm.lazy.wasm'):
+      raise Exception('could not break lazy wasm - missing expected code')
     verify_broken()
 
     # restore
