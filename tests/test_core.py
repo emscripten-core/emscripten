@@ -6788,35 +6788,21 @@ void* operator new(size_t size) {
       int main() {}
     ''', "constructing!\n")
 
-    def get_code_size():
-      if self.is_wasm():
-        # Use number of functions as a for code size
-        return self.count_wasm_contents('src.wasm', 'funcs')
-      else:
-        return os.path.getsize('src.js')
+    def do_test(test, level=1, prefix='src'):
+      def get_code_size():
+        if self.is_wasm():
+          # this also includes the memory, but it is close enough for our
+          # purposes
+          return os.path.getsize(prefix + '.wasm')
+        else:
+          return os.path.getsize(prefix + '.js')
 
-    def get_mem_size():
-      if self.is_wasm():
-        # Use number of functions as a for code size
-        return self.count_wasm_contents('src.wasm', 'memory-data')
-      if self.uses_memory_init_file():
-        return os.path.getsize('src.js.mem')
-
-      # otherwise we ignore memory size
-      return 0
-
-    def do_test(test):
-      self.set_setting('EVAL_CTORS')
+      self.set_setting('EVAL_CTORS', level)
       test()
       ec_code_size = get_code_size()
-      ec_mem_size = get_mem_size()
       self.clear_setting('EVAL_CTORS')
       test()
       code_size = get_code_size()
-      mem_size = get_mem_size()
-      if mem_size:
-        print('mem: ', mem_size, '=>', ec_mem_size)
-        self.assertGreater(ec_mem_size, mem_size)
       print('code:', code_size, '=>', ec_code_size)
       self.assertLess(ec_code_size, code_size)
 
@@ -6841,56 +6827,14 @@ void* operator new(size_t size) {
 
     do_test(test1)
 
-    # The wasm backend currently exports a single initalizer so the ctor
-    # evaluation is all or nothing.  As well as that it doesn't currently
-    # do DCE of libcxx symbols (because the are marked as visibility(defaault)
-    # and because of that we end up not being able to eval ctors unless all
-    # libcxx constrcutors can be eval'd
-
     print('libcxx - remove 2 ctors from iostream code')
     output = 'hello, world!'
 
     def test2():
       self.do_runf(test_file('hello_libcxx.cpp'), output)
-    do_test(test2)
 
-    print('assertions too')
-    self.set_setting('ASSERTIONS')
-    self.do_runf(test_file('hello_libcxx.cpp'), output)
-    self.set_setting('ASSERTIONS', 0)
-
-    print('remove just some, leave others')
-
-    def test3():
-      self.do_run(r'''
-#include <iostream>
-#include <string>
-
-class std_string {
-public:
-  std_string(): ptr(nullptr) { std::cout << "std_string()\n"; }
-  std_string(const char* s): ptr(s) { std::cout << "std_string(const char* s)" << std::endl; }
-  std_string(const std_string& s): ptr(s.ptr) { std::cout << "std_string(const std_string& s) " << std::endl; }
-  const char* data() const { return ptr; }
-private:
-  const char* ptr;
-};
-
-const std_string txtTestString("212121\0");
-const std::string s2text("someweirdtext");
-
-int main() {
-  std::cout << s2text << std::endl;
-  std::cout << txtTestString.data() << std::endl;
-  std::cout << txtTestString.data() << std::endl;
-  return 0;
-}
-      ''', '''std_string(const char* s)
-someweirdtext
-212121
-212121
-''') # noqa
-    do_test(test3)
+    do_test(test2, level=1, prefix='hello_libcxx')
+    do_test(test2, level=2, prefix='hello_libcxx')
 
   def test_embind(self):
     self.emcc_args += ['--bind']
