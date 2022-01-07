@@ -73,6 +73,7 @@ diagnostics.add_warning('unused-command-line-argument', shared=True)
 diagnostics.add_warning('pthreads-mem-growth')
 diagnostics.add_warning('transpile')
 diagnostics.add_warning('limited-postlink-optimizations')
+diagnostics.add_warning('em-js-i64')
 
 
 # TODO(sbc): Investigate switching to shlex.quote
