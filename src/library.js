@@ -2753,7 +2753,7 @@ LibraryManager.library = {
 
     if (flags & 1 /*EM_LOG_CONSOLE*/) {
       if (flags & 4 /*EM_LOG_ERROR*/) {
-        err(str);
+        console.error(str);
       } else if (flags & 2 /*EM_LOG_WARN*/) {
         console.warn(str);
       } else if (flags & 512 /*EM_LOG_INFO*/) {
@@ -2761,7 +2761,7 @@ LibraryManager.library = {
       } else if (flags & 256 /*EM_LOG_DEBUG*/) {
         console.debug(str);
       } else {
-        out(str);
+        console.log(str);
       }
     } else if (flags & 6 /*EM_LOG_ERROR|EM_LOG_WARN*/) {
       err(str);
