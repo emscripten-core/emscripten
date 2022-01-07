@@ -660,7 +660,8 @@ def eval_ctors(js_file, binary_file, debug_info=False): # noqa
 
   def do_eval_ctors(js, wasm_file):
     args = ['--ctors=' + CTOR_NAME]
-    #args += ['--ignore-external-input'] # TODO: option
+    if settings.EVAL_CTORS == 2:
+      args += ['--ignore-external-input']
     out = run_binaryen_command('wasm-ctor-eval', wasm_file, wasm_file, args=args, stdout=PIPE)
     logger.warning('\n\n' + out)
     num_successful = out.count('success on')

@@ -1566,6 +1566,13 @@ var PTHREADS_DEBUG = 0;
 // that it doesn't know that we will not link in further code, so it only tries
 // to optimize ctors with lowest priority. We do know that, and can optimize all
 // the ctors.
+//
+// If set to a value of 2, this also makes some "unsafe" assumptions,
+// specifically that there is no input received while evalling ctors. That means
+// we ignore args to main() as well as assume no environment vars are readable.
+// This allows more programs to be optimized, but you need to make sure your
+// program does not depend on those features.
+//
 // [link]
 var EVAL_CTORS = 0;
 
