@@ -1442,8 +1442,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if settings.OPT_LEVEL >= 1:
     default_setting('ASSERTIONS', 0)
-  if settings.SHRINK_LEVEL >= 2:
-    default_setting('EVAL_CTORS', 1)
 
   if options.emrun:
     options.pre_js.append(utils.path_from_root('src/emrun_prejs.js'))
