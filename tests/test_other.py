@@ -6620,110 +6620,53 @@ int main() {
 ''')
     self.expect_fail([EMXX, 'src.cpp', '-Oz'])
 
-  def test_eval_ctors_non_terminating(self):
-    for wasm in (1, 0):
-      print('wasm', wasm)
+  def test_eval_ctor_ordering(self):
+    # ensure order of execution remains correct, even with a bad ctor
+    def test(p1, p2, p3, last, expected):
       src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        volatile int total = 0;
         struct C {
-          C() {
-            volatile int y = 0;
-            while (y == 0) {}
+          C(int x) {
+            volatile int y = x;
+            y++;
+            y--;
+            if (y == 0xf) {
+              // A printf can't be evalled ahead of time, so this will stop
+              // us.
+              printf("you can't eval me ahead of time\n");
+            }
+            total <<= 4;
+            total += int(y);
           }
         };
-        C always;
-        int main() {}
-      '''
+        C __attribute__((init_priority(%d))) c1(0x5);
+        C __attribute__((init_priority(%d))) c2(0x8);
+        C __attribute__((init_priority(%d))) c3(%d);
+        int main() {
+          printf("total is 0x%%x.\n", total);
+        }
+      ''' % (p1, p2, p3, last)
       create_file('src.cpp', src)
-      self.run_process([EMXX, 'src.cpp', '-O2', '-s', 'EVAL_CTORS', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
+      self.run_process([EMXX, 'src.cpp', '-O2', '-s', 'EVAL_CTORS', '-profiling-funcs', '-s'])
+      self.assertContained('total is %s.' % hex(expected), self.run_js('a.out.js'))
+      shutil.copyfile('a.out.js', 'x' + hex(expected) + '.js')
+      shutil.copyfile('a.out.wasm', 'x' + hex(expected) + '.wasm')
+      return os.path.getsize('a.out.wasm')
 
-  def test_eval_ctors(self):
-    for wasm in (1, 0):
-      print('wasm', wasm)
-      print('check no ctors is ok')
-
-      # on by default in -Oz, but user-overridable
-
-      def get_size(args):
-        print('get_size', args)
-        self.run_process([EMXX, test_file('hello_libcxx.cpp'), '-s', 'WASM=%d' % wasm] + args)
-        self.assertContained('hello, world!', self.run_js('a.out.js'))
-        if wasm:
-          codesize = self.count_wasm_contents('a.out.wasm', 'funcs')
-          memsize = self.count_wasm_contents('a.out.wasm', 'memory-data')
-        else:
-          codesize = os.path.getsize('a.out.js')
-          memsize = os.path.getsize('a.out.js.mem')
-        return (codesize, memsize)
-
-      def check_size(left, right):
-        # can't measure just the mem out of the wasm, so ignore [1] for wasm
-        if left[0] == right[0] and left[1] == right[1]:
-          return 0
-        if left[0] < right[0] and left[1] > right[1]:
-          return -1 # smaller code, bigger mem
-        if left[0] > right[0] and left[1] < right[1]:
-          return 1
-        assert False, [left, right]
-
-      o2_size = get_size(['-O2'])
-      assert check_size(get_size(['-O2']), o2_size) == 0, 'deterministic'
-      assert check_size(get_size(['-O2', '-s', 'EVAL_CTORS']), o2_size) < 0, 'eval_ctors works if user asks for it'
-      oz_size = get_size(['-Oz'])
-      assert check_size(get_size(['-Oz']), oz_size) == 0, 'deterministic'
-      assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS']), oz_size) == 0, 'eval_ctors is on by default in oz'
-      assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS=0']), oz_size) == 1, 'eval_ctors can be turned off'
-
-      linkable_size = get_size(['-Oz', '-s', 'EVAL_CTORS', '-s', 'LINKABLE'])
-      assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS=0', '-s', 'LINKABLE']), linkable_size) == 1, 'noticeable difference in linkable too'
-
-    def test_eval_ctor_ordering(self):
-      # ensure order of execution remains correct, even with a bad ctor
-      def test(p1, p2, p3, last, expected):
-        src = r'''
-          #include <stdio.h>
-          #include <stdlib.h>
-          volatile int total = 0;
-          struct C {
-            C(int x) {
-              volatile int y = x;
-              y++;
-              y--;
-              if (y == 0xf) {
-                printf("you can't eval me ahead of time\n"); // bad ctor
-              }
-              total <<= 4;
-              total += int(y);
-            }
-          };
-          C __attribute__((init_priority(%d))) c1(0x5);
-          C __attribute__((init_priority(%d))) c2(0x8);
-          C __attribute__((init_priority(%d))) c3(%d);
-          int main() {
-            printf("total is 0x%%x.\n", total);
-          }
-        ''' % (p1, p2, p3, last)
-        create_file('src.cpp', src)
-        self.run_process([EMXX, 'src.cpp', '-O2', '-s', 'EVAL_CTORS', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
-        self.assertContained('total is %s.' % hex(expected), self.run_js('a.out.js'))
-        shutil.copyfile('a.out.js', 'x' + hex(expected) + '.js')
-        if wasm:
-          shutil.copyfile('a.out.wasm', 'x' + hex(expected) + '.wasm')
-          return self.count_wasm_contents('a.out.wasm', 'funcs')
-        else:
-          return read_file('a.out.js').count('function _')
-
-      print('no bad ctor')
-      first  = test(1000, 2000, 3000, 0xe, 0x58e) # noqa
-      second = test(3000, 1000, 2000, 0xe, 0x8e5) # noqa
-      third  = test(2000, 3000, 1000, 0xe, 0xe58) # noqa
-      print(first, second, third)
-      assert first == second and second == third
-      print('with bad ctor')
-      first  = test(1000, 2000, 3000, 0xf, 0x58f) # noqa; 2 will succeed
-      second = test(3000, 1000, 2000, 0xf, 0x8f5) # noqa; 1 will succedd
-      third  = test(2000, 3000, 1000, 0xf, 0xf58) # noqa; 0 will succeed
-      print(first, second, third)
-      assert first < second and second < third, [first, second, third]
+    print('no bad ctor')
+    first  = test(1000, 2000, 3000, 0xe, 0x58e) # noqa
+    second = test(3000, 1000, 2000, 0xe, 0x8e5) # noqa
+    third  = test(2000, 3000, 1000, 0xe, 0xe58) # noqa
+    print(first, second, third)
+    assert first == second and second == third
+    print('with bad ctor')
+    first  = test(1000, 2000, 3000, 0xf, 0x58f) # noqa; 2 will succeed
+    second = test(3000, 1000, 2000, 0xf, 0x8f5) # noqa; 1 will succedd
+    third  = test(2000, 3000, 1000, 0xf, 0xf58) # noqa; 0 will succeed
+    print(first, second, third)
+    assert first < second and second < third, [first, second, third]
 
   @uses_canonical_tmp
   @with_env_modify({'EMCC_DEBUG': '1'})
