@@ -652,10 +652,35 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
 def eval_ctors(js_file, binary_file, debug_info=False): # noqa
-  cmd = [PYTHON, path_from_root('tools/ctor_evaller.py'), js_file, binary_file, str(settings.INITIAL_MEMORY), str(settings.TOTAL_STACK), str(settings.GLOBAL_BASE), get_binaryen_bin(), str(int(debug_info))]
-  cmd += ['--ignore-external-input'] # TODO: option
-  cmd += get_binaryen_feature_flags()
-  check_call(cmd)
+  CTOR_NAME = '__wasm_call_ctors'
+  CTOR_ADD_PATTERN = '''addOnInit(Module['asm']['%s']);''' % CTOR_NAME
+
+  def has_ctor(js):
+    return CTOR_ADD_PATTERN in js
+
+  def do_eval_ctors(js, wasm_file):
+    args = ['--ctors=' + CTOR_NAME]
+    args += ['--ignore-external-input'] # TODO: option
+    out = run_binaryen_command('wasm-ctor-eval', wasm_file, wasm_file, args=args, stdout=PIPE)
+    logger.warning(out)
+    num_successful = out.count('success on')
+    if num_successful:
+      js = js.replace(CTOR_ADD_PATTERN, '')
+    return num_successful, js
+
+  js = utils.read_file(js_file)
+  if not has_ctor(js):
+    logger.warning('ctor_evaller: no ctors')
+    sys.exit(0)
+
+  wasm_file = binary_file
+  logger.warning('ctor_evaller (wasm): trying to eval global ctor')
+  num_successful, new_js = do_eval_ctors(js, wasm_file)
+  if num_successful == 0:
+    logger.warning('ctor_evaller: not successful')
+    sys.exit(0)
+  logger.warning('ctor_evaller: we managed to remove the ctors')
+  utils.write_file(js_file, new_js)
 
 
 def get_closure_compiler():
@@ -1469,7 +1494,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdou
   cmd += get_binaryen_feature_flags()
   # if we are emitting a source map, every time we load and save the wasm
   # we must tell binaryen to update it
-  if settings.GENERATE_SOURCE_MAP and outfile:
+  if settings.GENERATE_SOURCE_MAP and outfile and tool in ['wasm-opt', 'wasm-emscripten-finalize']:
     cmd += [f'--input-source-map={infile}.map']
     cmd += [f'--output-source-map={outfile}.map']
   ret = check_call(cmd, stdout=stdout).stdout
