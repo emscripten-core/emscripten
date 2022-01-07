@@ -7246,6 +7246,8 @@ int main() {
     'Os': (['-Os'], [], []), # noqa
     'Oz': (['-Oz'], [], []), # noqa
     'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 74), # noqa
+    # EVAL_CTORS also removes the __wasm_call_ctors function
+    'Oz-ctors': (['-Oz', '-s', 'EVAL_CTORS'], [], []), # noqa
   })
   def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)
