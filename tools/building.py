@@ -658,7 +658,7 @@ def eval_ctors(js_file, binary_file, debug_info=False): # noqa
   def has_ctor(js):
     return CTOR_ADD_PATTERN in js
 
-  def do_eval_ctors(js, wasm_file):
+  def do_eval_ctors(js, wasm_file): # TODO: remove func
     args = ['--ctors=' + CTOR_NAME]
     if settings.EVAL_CTORS == 2:
       args += ['--ignore-external-input']
