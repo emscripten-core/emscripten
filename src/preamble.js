@@ -430,6 +430,9 @@ function exitRuntime() {
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
 #if EXIT_RUNTIME
+#if !STANDALONE_WASM
+  ___funcs_on_exit(); // Native atexit() functions
+#endif
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
 #endif
