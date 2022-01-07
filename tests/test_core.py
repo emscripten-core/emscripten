@@ -8835,6 +8835,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_core_test('test_em_async_js.c')
 
+  @require_v8
+  @no_wasm2js('wasm2js does not support reference types')
+  def test_externref(self):
+    self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'])
+    self.emcc_args += ['--js-library', test_file('core/test_externref.js')]
+    self.emcc_args += ['-mreference-types']
+    self.do_core_test('test_externref.c', libraries=['asm.o'])
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None, node_args=None):

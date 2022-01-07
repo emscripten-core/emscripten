@@ -1,0 +1,5 @@
+in main
+log_externref_js: null
+extenref stored
+log_externref_js: {"foo":1}
+extenref logged
