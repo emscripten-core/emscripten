@@ -397,7 +397,7 @@ var LibraryEmVal = {
 
 #if DYNAMIC_EXECUTION == 0
     var argN = new Array(argCount - 1);
-    var invokerFunction = function(handle, name, destructors, args) {
+    var invokerFunction = (handle, name, destructors, args) => {
       var offset = 0;
       for (var i = 0; i < argCount - 1; ++i) {
         argN[i] = types[i + 1].readValueFromPointer(args + offset);

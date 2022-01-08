@@ -12,8 +12,7 @@
     @param {number} value
     @param {string} type
     @param {number|boolean=} noSafe */
-function setValue(ptr, value, type, noSafe) {
-  type = type || 'i8';
+function setValue(ptr, value, type = 'i8', noSafe) {
   if (type.charAt(type.length-1) === '*') type = '{{{ POINTER_TYPE }}}';
 #if SAFE_HEAP
   if (noSafe) {
@@ -47,8 +46,7 @@ function setValue(ptr, value, type, noSafe) {
 /** @param {number} ptr
     @param {string} type
     @param {number|boolean=} noSafe */
-function getValue(ptr, type, noSafe) {
-  type = type || 'i8';
+function getValue(ptr, type = 'i8', noSafe) {
   if (type.charAt(type.length-1) === '*') type = '{{{ POINTER_TYPE }}}';
 #if SAFE_HEAP
   if (noSafe) {

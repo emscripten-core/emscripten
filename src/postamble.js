@@ -23,7 +23,7 @@ function runMemoryInitializer() {
     HEAPU8.set(data, {{{ GLOBAL_BASE }}});
   } else {
     addRunDependency('memory initializer');
-    var applyMemoryInitializer = function(data) {
+    var applyMemoryInitializer = (data) => {
       if (data.byteLength) data = new Uint8Array(data);
 #if ASSERTIONS
       for (var i = 0; i < data.length; i++) {
@@ -37,7 +37,7 @@ function runMemoryInitializer() {
       if (Module['memoryInitializerRequest']) delete Module['memoryInitializerRequest'].response;
       removeRunDependency('memory initializer');
     };
-    var doBrowserLoad = function() {
+    var doBrowserLoad = () => {
       readAsync(memoryInitializer, applyMemoryInitializer, function() {
         var e = new Error('could not load memory initializer ' + memoryInitializer);
 #if MODULARIZE
@@ -55,7 +55,7 @@ function runMemoryInitializer() {
 #endif
     if (Module['memoryInitializerRequest']) {
       // a network request has already been created, just use that
-      var useRequest = function() {
+      var useRequest = () => {
         var request = Module['memoryInitializerRequest'];
         var response = request.response;
         if (request.status !== 200 && request.status !== 0) {
@@ -357,7 +357,7 @@ function checkUnflushedContent() {
   var oldOut = out;
   var oldErr = err;
   var has = false;
-  out = err = function(x) {
+  out = err = (x) => {
     has = true;
   }
   try { // it doesn't matter if it fails
@@ -523,7 +523,7 @@ var workerResponded = false, workerCallbackId = -1;
     }
   }
 
-  onmessage = function onmessage(msg) {
+  onmessage = (msg) => {
     // if main has not yet been called (mem init file, other async things), buffer messages
     if (!runtimeInitialized) {
       if (!messageBuffer) {

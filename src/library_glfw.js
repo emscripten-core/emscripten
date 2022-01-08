@@ -760,7 +760,7 @@ var LibraryGLFW = {
       function save(file) {
         var path = '/' + drop_dir + '/' + file.name.replace(/\//g, '_');
         var reader = new FileReader();
-        reader.onloadend = function(e) {
+        reader.onloadend = (e) => {
           if (reader.readyState != 2) { // not DONE
             ++written;
             out('failed to read dropped file: '+file.name+': '+reader.error);

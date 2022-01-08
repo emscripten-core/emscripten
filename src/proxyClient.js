@@ -262,8 +262,7 @@ worker.onmessage = function worker_onmessage(event) {
   }
 };
 
-function postCustomMessage(data, options) {
-  options = options || {};
+function postCustomMessage(data, options = {}) {
   worker.postMessage({ target: 'custom', userData: data, preMain: options.preMain });
 }
 

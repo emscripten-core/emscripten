@@ -369,7 +369,7 @@ function exportRuntime() {
         extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
       }
       if (!isNumber) {
-        return `if (!Object.getOwnPropertyDescriptor(Module, "${name}")) Module["${name}"] = function() { abort("'${name}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)${extra}") };`;
+        return `if (!Object.getOwnPropertyDescriptor(Module, "${name}")) Module["${name}"] = () => abort("'${name}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)${extra}");`;
       } else {
         return `if (!Object.getOwnPropertyDescriptor(Module, "${name}")) Object.defineProperty(Module, "${name}", { configurable: true, get: function() { abort("'${name}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)${extra}") } });`;
       }

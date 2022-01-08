@@ -6,9 +6,9 @@
 
 //== HEADLESS ==//
 
-var headlessPrint = function(x) {
+var headlessPrint = (x) => {
   //print(x);
-}
+};
 
 var window = {
   // adjustable parameters
@@ -211,10 +211,9 @@ var XMLHttpRequest = function() {
       if (!this.async) {
         this.doSend();
       } else {
-        var that = this;
-        window.setTimeout(function() {
-          that.doSend();
-          if (that.onload) that.onload();
+        window.setTimeout(() => {
+          this.doSend();
+          if (this.onload) this.onload();
         }, 0);
       }
     },
@@ -227,7 +226,7 @@ var XMLHttpRequest = function() {
     },
   };
 };
-var Audio = function() {
+var Audio = () => {
   return {
     play: function(){},
     pause: function(){},
@@ -236,16 +235,15 @@ var Audio = function() {
     },
   };
 };
-var Image = function() {
-  var that = this;
-  window.setTimeout(function() {
-    that.complete = true;
-    that.width = 64;
-    that.height = 64;
-    if (that.onload) that.onload();
+var Image = () => {
+  window.setTimeout(() => {
+    this.complete = true;
+    this.width = 64;
+    this.height = 64;
+    if (this.onload) this.onload();
   });
 };
-var Worker = function(workerPath) {
+var Worker = (workerPath) => {
   workerPath = fixPath(workerPath);
   var workerCode = read(workerPath);
   workerCode = workerCode.replace(/Module/g, 'zzModuleyy' + (Worker.id++)). // prevent collision with the global Module object. Note that this becomes global, so we need unique ids
@@ -262,8 +260,8 @@ var Worker = function(workerPath) {
     }
     return JSON.parse(JSON.stringify(json, handleTypedArrays))
   }
-  this.terminate = function(){};
-  this.postMessage = function(msg) {
+  this.terminate = () => {};
+  this.postMessage = (msg) => {
     msg.messageId = Worker.messageId++;
     headlessPrint('main thread sending message ' + msg.messageId + ' to worker ' + workerPath);
     window.setTimeout(function() {
@@ -272,7 +270,7 @@ var Worker = function(workerPath) {
     });
   };
   var thisWorker = this;
-  var postMessage = function(msg) {
+  var postMessage = (msg) => {
     msg.messageId = Worker.messageId++;
     headlessPrint('worker ' + workerPath + ' sending message ' + msg.messageId);
     window.setTimeout(function() {
@@ -296,7 +294,7 @@ if (typeof console === "undefined") {
     }
   };
 }
-var MozBlobBuilder = function() {
+var MozBlobBuilder = () => {
   this.data = new Uint8Array(0);
   this.append = function(buffer) {
     var data = new Uint8Array(buffer);
