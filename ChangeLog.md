@@ -18,8 +18,12 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.1
+3.1.2
 -----
+
+3.1.1 - 08/01/2022
+------------------
+- Happy new year!
 - Updated SDL 2 port to upstream version 2.0.18 (from a patched 2.0.10). This
   includes all downstream patches and many upstream changes.
 - libc++ library updated to llvm-13. (#15901)
