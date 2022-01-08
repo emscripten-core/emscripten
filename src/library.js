@@ -2378,8 +2378,8 @@ LibraryManager.library = {
   // ==========================================================================
 #if SOCKET_WEBRTC
   $Sockets__deps: ['$setErrNo',
-    function() { return 'var SocketIO = ' + read('socket.io.js') + ';\n' },
-    function() { return 'var Peer = ' + read('wrtcp.js') + ';\n' }],
+    function() { return 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n' },
+    function() { return 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n' }],
 #else
   $Sockets__deps: ['$setErrNo'],
 #endif
