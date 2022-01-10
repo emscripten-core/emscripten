@@ -2365,6 +2365,7 @@ int f() {
       int foo(int x) { return x; }
       void bar() {
         emscripten::val(123).call<std::string>("toString");
+        emscripten::val jarray = emscripten::val::global("Float32Array").new_(10);
         emscripten_console_log("ok");
       }
       EMSCRIPTEN_BINDINGS(baz) {
