@@ -15,7 +15,7 @@ see
 http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 """
 
-# Use EMTEST_ALL_ENGINES=1 in the environment or pass --all-engined to test all engines!
+# Use EMTEST_ALL_ENGINES=1 in the environment or pass --all-engines to test all engines!
 
 import argparse
 import atexit
