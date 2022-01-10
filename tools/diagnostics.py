@@ -195,6 +195,8 @@ class WarningManager:
           self.warnings[warning_name]['error'] = enabled
           if enabled:
             self.warnings[warning_name]['enabled'] = True
+          else:
+            self.warnings[warning_name]['enabled'] = False
           cmd_args[i] = ''
           continue
 
