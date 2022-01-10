@@ -780,19 +780,11 @@ def load_metadata_wasm(metadata_raw):
     'features': [],
     'mainReadsParams': 1,
   }
-  legacy_keys = set(['implementedFunctions', 'initializers', 'simd', 'externs', 'staticBump', 'tableSize'])
 
   for key, value in metadata_json.items():
-    if key in legacy_keys:
-      continue
     if key not in metadata:
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
-
-  # Support older metadata when asmConsts values were lists.  We only use the first element
-  # nowadays
-  # TODO(sbc): remove this once binaryen has been changed to only emit the single element
-  metadata['asmConsts'] = {k: v[0] if type(v) is list else v for k, v in metadata['asmConsts'].items()}
 
   if DEBUG:
     logger.debug("Metadata parsed: " + pprint.pformat(metadata))
