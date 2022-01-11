@@ -11401,3 +11401,17 @@ void foo() {}
     # Confirm that gmtime_r does not leak when called in isolation.
     self.emcc_args.append('-fsanitize=leak')
     self.do_other_test('test_gmtime_noleak.c')
+
+  def test_build_fetch_examples(self):
+    # We can't run these outside of the browser, but at least we can
+    # make sure they build.
+    self.set_setting('FETCH')
+    self.build(test_file('fetch/example_async_xhr_to_memory.c'))
+    self.build(test_file('fetch/example_async_xhr_to_memory_via_indexeddb.c'))
+    self.build(test_file('fetch/example_idb_delete.c'))
+    self.build(test_file('fetch/example_idb_store.c'))
+    self.build(test_file('fetch/example_stream_async_xhr.c'))
+    self.build(test_file('fetch/example_synchronous_fetch.c'))
+    self.build(test_file('fetch/example_sync_xhr_to_memory.c'))
+    self.build(test_file('fetch/example_waitable_xhr_to_memory.c'))
+    self.build(test_file('fetch/example_xhr_progress.c'))
