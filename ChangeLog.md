@@ -25,6 +25,10 @@ See docs/process.md for more on how version tagging works.
 - libc++ library updated to llvm-13. (#15901)
 - libc++-abi library updated to llvm-13. (#15904)
 - compiler-rt library updated to llvm-13. (#15906)
+- Added new internal/debugging related environment variable
+  EM_FORCE_RESPONSE_FILES that can be set to 0 to force disable the use of
+  response files, and to 1 to force enable response files. If not set,
+  response files will be used if command lines are long (> 8192 chars). (#15973)
 
 3.1.0 - 12/22/2021
 ------------------
