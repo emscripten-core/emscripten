@@ -450,7 +450,9 @@ assert(typeof Module['TOTAL_MEMORY'] === 'undefined', 'Module.TOTAL_MEMORY has b
 {{{ makeRemovedFSAssert('IDBFS') }}}
 {{{ makeRemovedFSAssert('PROXYFS') }}}
 {{{ makeRemovedFSAssert('WORKERFS') }}}
+#if !NODERAWFS
 {{{ makeRemovedFSAssert('NODEFS') }}}
+#endif
 {{{ makeRemovedRuntimeFunction('alignMemory') }}}
 
 #if USE_PTHREADS
