@@ -1743,7 +1743,7 @@ var LibraryEmbind = {
                            '$releaseClassHandle'],
   $attachFinalizer: function(handle) {
     if ('undefined' === typeof FinalizationRegistry) {
-        attachFinalizer = function (handle) { return handle; };
+        attachFinalizer = (handle) => { return handle; };
         return handle;
     }
     // If the running environment has a FinalizationRegistry (see
@@ -1756,7 +1756,7 @@ var LibraryEmbind = {
 #endif
         releaseClassHandle(info.$$);
     });
-    attachFinalizer = function(handle) {
+    attachFinalizer = (handle) => {
         var $$ = handle.$$;
         var hasSmartPtr = !!$$.smartPtr;
         if (hasSmartPtr) {
@@ -1780,7 +1780,7 @@ var LibraryEmbind = {
         }
         return handle;
     };
-    detachFinalizer = function(handle) {
+    detachFinalizer = (handle) => {
         finalizationRegistry.unregister(handle);
     };
     return attachFinalizer(handle);
