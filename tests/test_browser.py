@@ -4628,13 +4628,13 @@ window.close = function() {
   @requires_threads
   def test_fetch_implicit_append(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/example_synchronous_fetch.cpp', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/example_synchronous_fetch.c', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests synchronous emscripten_fetch() usage from wasm pthread in fastcomp.
   @requires_threads
   def test_fetch_sync_xhr_in_wasm(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/example_synchronous_fetch.cpp', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/example_synchronous_fetch.c', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
   @also_with_wasm2js
