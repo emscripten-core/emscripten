@@ -199,6 +199,11 @@ _deps_info = {
 }
 
 
+def append_wasm_deps_info(wasm_deps_info):
+  for key, value in wasm_deps_info.items():
+    _deps_info[key] = value
+
+
 def get_deps_info():
   if not settings.EXCEPTION_HANDLING and settings.LINK_AS_CXX:
     _deps_info['__cxa_begin_catch'] = ['__cxa_is_pointer_type']

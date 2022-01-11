@@ -35,6 +35,7 @@ import time
 from enum import Enum, unique, auto
 from subprocess import PIPE
 from urllib.parse import quote
+from tools.deps_info import append_wasm_deps_info
 
 
 import emscripten
@@ -3749,6 +3750,11 @@ def process_libraries(state, linker_inputs):
   # Sort the input list from (order, lib_name) pairs to a flat array in the right order.
   settings.JS_LIBRARIES.sort(key=lambda lib: lib[0])
   settings.JS_LIBRARIES = [lib[1] for lib in settings.JS_LIBRARIES]
+
+  for f in settings.JS_LIBRARIES:
+    wasm_deps = shared.run_js_tool(shared.path_from_root('src/read_wasm_deps.js'), [shared.path_from_root('src', f)], stdout=PIPE)
+    append_wasm_deps_info(json.loads(wasm_deps))
+
   state.link_flags = new_flags
 
 

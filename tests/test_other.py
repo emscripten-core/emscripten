@@ -11401,3 +11401,29 @@ void foo() {}
     # Confirm that gmtime_r does not leak when called in isolation.
     self.emcc_args.append('-fsanitize=leak')
     self.do_other_test('test_gmtime_noleak.c')
+
+  # Tests the use of foo__wasm_deps: ['wasmFunc1', 'wasmFunc2'] from JS library files
+  def test_wasm_deps(self):
+    create_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  foo__wasm_deps: ['wasmFunction'],
+  foo: function() {
+    return _wasmFunction();
+  },
+
+  bar__deps: ['foo'],
+  bar: function() {
+    return _foo();
+  }
+});
+''')
+
+    create_file('main.c', r'''
+#include <stdio.h>
+int wasmFunction() { return 492; }
+int bar(void);
+int main() { printf("%d\n", bar()); }
+''')
+
+    self.run_process([EMCC, 'main.c', '--js-library', 'lib.js'])
+    self.assertContained('492', self.run_js('a.out.js'))

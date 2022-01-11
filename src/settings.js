@@ -1947,7 +1947,7 @@ var SPLIT_MODULE = 0;
 //         llvm-nm on all input) and use the map in deps_info.py to determine
 //         the set of additional dependencies.
 // 'all' : Include the full set of possible reverse dependencies.
-// 'none': No reverse dependences will be added by emscriopten. Any reverse
+// 'none': No reverse dependences will be added by emscripten. Any reverse
 //         dependencies will be assumed to be explicitly added to
 //         EXPORTED_FUNCTIONS and deps_info.py will be completely ignored.
 // While 'auto' will produce a minimal set (so is good for code size), 'all'
