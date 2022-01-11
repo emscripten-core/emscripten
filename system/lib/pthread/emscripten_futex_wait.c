@@ -25,6 +25,7 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   // __builtin_wasm_memory_atomic_wait32 so we call out the JS function that
   // will busy wait.
   if (!_emscripten_thread_supports_atomics_wait()) {
+    emscripten_check_blocking_allowed();
     ret = _emscripten_futex_wait_non_blocking(addr, val, max_wait_ms);
     emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
     return ret;
