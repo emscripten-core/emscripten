@@ -4,17 +4,18 @@
 // found in the LICENSE file.
 
 #include <bits/errno.h>
+#include <math.h>
+#include <memory.h>
+#include <stdlib.h>
+#include <string.h>
+#include <threads.h>
+#include <stdbool.h>
+
 #include <emscripten/emscripten.h>
 #include <emscripten/fetch.h>
 #include <emscripten/html5.h>
 #include <emscripten/threading.h>
 #include <emscripten/console.h>
-#include <math.h>
-#include <memory.h>
-#include <stdlib.h>
-#include <string.h>
-
-extern "C" {
 
 // Uncomment the following and clear the cache with emcc --clear-cache to rebuild this file to
 // enable internal debugging. #define FETCH_DEBUG
@@ -27,11 +28,11 @@ int32_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
 int32_t _emscripten_fetch_get_response_headers(int32_t fetchID, int32_t dst, int32_t dstSizeBytes);
 void _emscripten_fetch_free(unsigned int);
 
-struct emscripten_fetch_queue {
+typedef struct emscripten_fetch_queue {
   emscripten_fetch_t** queuedOperations;
   int numQueuedItems;
   int queueSize;
-};
+} emscripten_fetch_queue;
 
 emscripten_fetch_queue* _emscripten_get_fetch_queue() {
   static thread_local emscripten_fetch_queue g_queue;
@@ -318,5 +319,3 @@ static void fetch_free(emscripten_fetch_t* fetch) {
   free((void*)fetch->__attributes.overriddenMimeType);
   free(fetch);
 }
-
-} // extern "C"

@@ -1371,7 +1371,7 @@ class libfetch(MTLibrary):
   never_force = True
 
   def get_files(self):
-    return [utils.path_from_root('system/lib/fetch/emscripten_fetch.cpp')]
+    return [utils.path_from_root('system/lib/fetch/emscripten_fetch.c')]
 
 
 class libstb_image(Library):
