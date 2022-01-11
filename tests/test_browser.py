@@ -1786,7 +1786,7 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_glbook(self):
     self.emcc_args.remove('-Werror')
-    programs = self.get_library('glbook', [
+    programs = self.get_library('third_party/glbook', [
       Path('Chapter_2/Hello_Triangle', 'CH02_HelloTriangle.o'),
       Path('Chapter_8/Simple_VertexShader', 'CH08_SimpleVertexShader.o'),
       Path('Chapter_9/Simple_Texture2D', 'CH09_SimpleTexture2D.o'),
@@ -1797,7 +1797,7 @@ keydown(100);keyup(100); // trigger the end
     ], configure=None)
 
     def book_path(*pathelems):
-      return test_file('glbook', *pathelems)
+      return test_file('third_party/glbook', *pathelems)
 
     for program in programs:
       print(program)
@@ -1823,27 +1823,27 @@ keydown(100);keyup(100); // trigger the end
   })
   def test_gles2_emulation(self, args):
     print(args)
-    shutil.copyfile(test_file('glbook/Chapter_10/MultiTexture/basemap.tga'), 'basemap.tga')
-    shutil.copyfile(test_file('glbook/Chapter_10/MultiTexture/lightmap.tga'), 'lightmap.tga')
-    shutil.copyfile(test_file('glbook/Chapter_13/ParticleSystem/smoke.tga'), 'smoke.tga')
+    shutil.copyfile(test_file('third_party/glbook/Chapter_10/MultiTexture/basemap.tga'), 'basemap.tga')
+    shutil.copyfile(test_file('third_party/glbook/Chapter_10/MultiTexture/lightmap.tga'), 'lightmap.tga')
+    shutil.copyfile(test_file('third_party/glbook/Chapter_13/ParticleSystem/smoke.tga'), 'smoke.tga')
 
     for source, reference in [
-      (Path('glbook/Chapter_2', 'Hello_Triangle', 'Hello_Triangle_orig.c'), test_file('glbook/CH02_HelloTriangle.png')),
-      # (Path('glbook/Chapter_8', 'Simple_VertexShader', 'Simple_VertexShader_orig.c'), test_file('glbook/CH08_SimpleVertexShader.png')), # XXX needs INT extension in WebGL
-      (Path('glbook/Chapter_9', 'TextureWrap', 'TextureWrap_orig.c'), test_file('glbook/CH09_TextureWrap.png')),
-      # (Path('glbook/Chapter_9', 'Simple_TextureCubemap', 'Simple_TextureCubemap_orig.c'), test_file('glbook/CH09_TextureCubemap.png')), # XXX needs INT extension in WebGL
-      (Path('glbook/Chapter_9', 'Simple_Texture2D', 'Simple_Texture2D_orig.c'), test_file('glbook/CH09_SimpleTexture2D.png')),
-      (Path('glbook/Chapter_10', 'MultiTexture', 'MultiTexture_orig.c'), test_file('glbook/CH10_MultiTexture.png')),
-      (Path('glbook/Chapter_13', 'ParticleSystem', 'ParticleSystem_orig.c'), test_file('glbook/CH13_ParticleSystem.png')),
+      (Path('third_party/glbook/Chapter_2', 'Hello_Triangle', 'Hello_Triangle_orig.c'), test_file('third_party/glbook/CH02_HelloTriangle.png')),
+      # (Path('third_party/glbook/Chapter_8', 'Simple_VertexShader', 'Simple_VertexShader_orig.c'), test_file('third_party/glbook/CH08_SimpleVertexShader.png')), # XXX needs INT extension in WebGL
+      (Path('third_party/glbook/Chapter_9', 'TextureWrap', 'TextureWrap_orig.c'), test_file('third_party/glbook/CH09_TextureWrap.png')),
+      # (Path('third_party/glbook/Chapter_9', 'Simple_TextureCubemap', 'Simple_TextureCubemap_orig.c'), test_file('third_party/glbook/CH09_TextureCubemap.png')), # XXX needs INT extension in WebGL
+      (Path('third_party/glbook/Chapter_9', 'Simple_Texture2D', 'Simple_Texture2D_orig.c'), test_file('third_party/glbook/CH09_SimpleTexture2D.png')),
+      (Path('third_party/glbook/Chapter_10', 'MultiTexture', 'MultiTexture_orig.c'), test_file('third_party/glbook/CH10_MultiTexture.png')),
+      (Path('third_party/glbook/Chapter_13', 'ParticleSystem', 'ParticleSystem_orig.c'), test_file('third_party/glbook/CH13_ParticleSystem.png')),
     ]:
       print(source)
       self.btest(source,
                  reference=reference,
-                 args=['-I' + test_file('glbook/Common'),
-                       test_file('glbook/Common/esUtil.c'),
-                       test_file('glbook/Common/esShader.c'),
-                       test_file('glbook/Common/esShapes.c'),
-                       test_file('glbook/Common/esTransform.c'),
+                 args=['-I' + test_file('third_party/glbook/Common'),
+                       test_file('third_party/glbook/Common/esUtil.c'),
+                       test_file('third_party/glbook/Common/esShader.c'),
+                       test_file('third_party/glbook/Common/esShapes.c'),
+                       test_file('third_party/glbook/Common/esTransform.c'),
                        '-lGL', '-lEGL', '-lX11',
                        '--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga', '--preload-file', 'smoke.tga'] + args)
 
