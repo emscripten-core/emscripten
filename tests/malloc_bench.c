@@ -3,7 +3,11 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+// Used internally to test performance of emmalloc against other
+// malloc implementations.  (Not run as part of the emscripten test suite).
+
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h> // for sbrk()
@@ -127,24 +131,23 @@ void randoms() {
     }
   }
   size_t after = (size_t)sbrk(0);
-  printf("checksum:         %x\n", checksum);
-  printf("allocations:      %d\n", allocations);
-  printf("mean alloc size:  %.2f\n", double(sizes) / allocations);
-  printf("max allocated:    %u\n", max_allocated);
-  double allocs_at_max = max_allocated / (double(sizes) / allocations);
+  printf("checksum:         %zx\n", checksum);
+  printf("allocations:      %zu\n", allocations);
+  printf("mean alloc size:  %.2f\n", ((double)sizes) / allocations);
+  printf("max allocated:    %zu\n", max_allocated);
+  double allocs_at_max = max_allocated / (((double)sizes) / allocations);
   printf("allocations #max  %.2f\n", allocs_at_max);
   size_t sbrk_change = after - before;
-  printf("sbrk chng:        %u\n", sbrk_change);
-  printf("sbrk chng/allocs: %.2f\n", sbrk_change / double(allocs_at_max));
-  printf("overhead:         %.2f\n", -((double(sizes) / allocations) - (sbrk_change / double(allocs_at_max))));
+  printf("sbrk chng:        %zu\n", sbrk_change);
+  printf("sbrk chng/allocs: %.2f\n", sbrk_change / ((double)allocs_at_max));
+  printf("overhead:         %.2f\n", -((((double)sizes) / allocations) - (sbrk_change / ((double)allocs_at_max))));
   printf("sbrk top now:     %p\n", (void*)sbrk(0));
   if (POLL_SBRK) {
-    printf("sbrk mean change: %.2f\n", (sum_sbrk / double(ITERS)) - before);
-    printf("sbrk max change:  %u\n", max_sbrk - before);
+    printf("sbrk mean change: %.2f\n", (sum_sbrk / (double)ITERS) - before);
+    printf("sbrk max change:  %lu\n", max_sbrk - before);
   }
 }
 
 int main() {
   randoms();
 }
-
