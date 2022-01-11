@@ -233,11 +233,6 @@ var LibraryPThread = {
           err('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (cmd === 'alert') {
           alert('Thread ' + d['threadId'] + ': ' + d['text']);
-        } else if (cmd === 'detachedExit') {
-#if ASSERTIONS
-          assert(worker.pthread);
-#endif
-          PThread.returnWorkerToPool(worker);
         } else if (d.target === 'setimmediate') {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
@@ -800,12 +795,6 @@ var LibraryPThread = {
     if (!ENVIRONMENT_IS_PTHREAD) cancelThread(thread);
     else postMessage({ 'cmd': 'cancelThread', 'thread': thread});
     return 0;
-  },
-
-  __pthread_detached_exit: function() {
-    // Called at the end of pthread_exit (which occurs also when leaving the
-    // thread main function) if an only if the thread is in a detached state.
-    postMessage({ 'cmd': 'detachedExit' });
   },
 
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
