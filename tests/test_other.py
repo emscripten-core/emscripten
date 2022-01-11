@@ -9077,7 +9077,7 @@ int main () {
       open(results_file, 'w').write(json.dumps(obtained_results, indent=2) + '\n')
     else:
       if total_output_size > total_expected_size:
-        print('Oops, overall generated code size regressed by {total_output_size - total_expected_size} bytes!')
+        print(f'Oops, overall generated code size regressed by {total_output_size - total_expected_size} bytes!')
         print('If this is expected, rerun the test with --rebaseline to update the expected sizes')
       if total_output_size < total_expected_size:
         print(f'Hey amazing, overall generated code size was improved by {total_expected_size - total_output_size} bytes!')
