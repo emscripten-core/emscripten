@@ -703,6 +703,7 @@ class MuslInternalLibrary(Library):
   includes = [
     'system/lib/libc/musl/src/internal',
     'system/lib/libc/musl/src/include',
+    'system/lib/pthread',
   ]
 
   cflags = [
@@ -757,6 +758,12 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
         'emscripten_setjmp.c',
         'emscripten_exception_builtins.c'
       ])
+
+
+class libnoexit(Library):
+  name = 'libnoexit'
+  src_dir = 'system/lib/libc'
+  src_files = ['atexit_dummy.c']
 
 
 class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
@@ -827,6 +834,7 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
           'pthread_join.c',
           'pthread_testcancel.c',
           'emscripten_proxy_main.c',
+          'emscripten_thread_init.c',
           'emscripten_thread_state.S',
           'emscripten_futex_wait.c',
           'emscripten_futex_wake.c',
@@ -893,6 +901,7 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
           'asctime.c',
           'ctime.c',
           'gmtime.c',
+          'gmtime_r.c',
           'localtime.c',
           'nanosleep.c',
           'clock_nanosleep.c',
@@ -915,7 +924,7 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/exit',
-        filenames=['_Exit.c'])
+        filenames=['_Exit.c', 'atexit.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
@@ -965,7 +974,7 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
 
     libc_files += files_in_path(
         path='system/lib/pthread',
-        filenames=['emscripten_atomic.c'])
+        filenames=['emscripten_atomic.c', 'thread_profiler.c'])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
@@ -1061,6 +1070,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary):
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
     ]
+  includes = ['system/lib/libcxx']
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1117,7 +1127,13 @@ class libcxx(NoExceptLibrary, MTLibrary):
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
-  src_glob_exclude = ['locale_win32.cpp', 'thread_win32.cpp', 'support.cpp', 'int128_builtins.cpp']
+  src_glob_exclude = [
+    'xlocale_zos.cpp',
+    'locale_win32.cpp',
+    'thread_win32.cpp',
+    'support.cpp',
+    'int128_builtins.cpp'
+  ]
 
 
 class libunwind(NoExceptLibrary, MTLibrary):
@@ -1545,7 +1561,6 @@ class libstandalonewasm(MuslInternalLibrary):
                    'ctime_r.c',
                    'difftime.c',
                    'gettimeofday.c',
-                   'gmtime_r.c',
                    'localtime_r.c',
                    'mktime.c',
                    'time.c'])
@@ -1553,7 +1568,7 @@ class libstandalonewasm(MuslInternalLibrary):
     # including fprintf etc.
     files += files_in_path(
         path='system/lib/libc/musl/src/exit',
-        filenames=['assert.c', 'atexit.c', 'exit.c'])
+        filenames=['assert.c', 'exit.c'])
     return files
 
   def can_use(self):
@@ -1636,22 +1651,12 @@ def handle_reverse_deps(input_files):
     add_reverse_deps(symbols)
 
 
-def calculate(input_files, forced):
-  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
-  # for unresolved symbols in your project files, which can speed up linking, but if you do not have
-  # the proper list of actually needed libraries, errors can occur. See below for how we must
-  # export all the symbols in deps_info when using this option.
-  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
-  if only_forced:
-    # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
-    # of the input files for reverse dependencies.
-    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` and/or `-s REVERSE_DEPS=none` depending on the desired result')
-    settings.REVERSE_DEPS = 'all'
-
-  handle_reverse_deps(input_files)
-
-  force_include = []
+def get_libs_to_link(args, forced, only_forced):
   libs_to_link = []
+
+  if '-nostdlib' in args:
+    return libs_to_link
+
   already_included = set()
   system_libs_map = Library.get_usable_variations()
 
@@ -1660,6 +1665,7 @@ def calculate(input_files, forced):
   # it can be the name of a lib (libc++, etc.).
   # You can provide 1 to include everything, or a comma-separated list with the
   # ones you want
+  force_include = []
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   if force == '1':
     force_include = [name for name, lib in system_libs_map.items() if not lib.never_force]
@@ -1680,91 +1686,118 @@ def calculate(input_files, forced):
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
     libs_to_link.append((lib.get_link_flag(), need_whole_archive))
 
-  if settings.USE_PTHREADS:
-    add_library('crtbegin')
+  if '-nostartfiles' not in args:
+    if settings.USE_PTHREADS:
+      add_library('crtbegin')
+
+    if settings.STANDALONE_WASM:
+      if settings.EXPECT_MAIN:
+        add_library('crt1')
+      else:
+        add_library('crt1_reactor')
 
   if settings.SIDE_MODULE:
-    return [l[0] for l in libs_to_link]
-
-  if settings.STANDALONE_WASM:
-    if settings.EXPECT_MAIN:
-      add_library('crt1')
-    else:
-      add_library('crt1_reactor')
+    return libs_to_link
 
   for forced in force_include:
     if forced not in system_libs_map:
       shared.exit_with_error('invalid forced library: %s', forced)
     add_library(forced)
 
+  if '-nodefaultlibs' in args:
+    return libs_to_link
+
   if only_forced:
     add_library('libc_rt')
     add_library('libcompiler_rt')
-  else:
-    if settings.AUTO_NATIVE_LIBRARIES:
-      add_library('libGL')
-      add_library('libal')
-      add_library('libhtml5')
+    return libs_to_link
 
-    sanitize = settings.USE_LSAN or settings.USE_ASAN or settings.UBSAN_RUNTIME
+  if settings.AUTO_NATIVE_LIBRARIES:
+    add_library('libGL')
+    add_library('libal')
+    add_library('libhtml5')
 
-    # JS math must come before anything else, so that it overrides the normal
-    # libc math.
-    if settings.JS_MATH:
-      add_library('libjsmath')
+  sanitize = settings.USE_LSAN or settings.USE_ASAN or settings.UBSAN_RUNTIME
 
-    # to override the normal libc printf, we must come before it
-    if settings.PRINTF_LONG_DOUBLE:
-      add_library('libprintf_long_double')
+  # JS math must come before anything else, so that it overrides the normal
+  # libc math.
+  if settings.JS_MATH:
+    add_library('libjsmath')
 
-    if settings.ALLOW_UNIMPLEMENTED_SYSCALLS:
-      add_library('libstubs')
+  # to override the normal libc printf, we must come before it
+  if settings.PRINTF_LONG_DOUBLE:
+    add_library('libprintf_long_double')
+
+  if settings.ALLOW_UNIMPLEMENTED_SYSCALLS:
+    add_library('libstubs')
+  if '-nolibc' not in args:
+    if not settings.EXIT_RUNTIME:
+      add_library('libnoexit')
     add_library('libc')
-    add_library('libcompiler_rt')
-    if settings.LINK_AS_CXX:
-      add_library('libc++')
-    if settings.LINK_AS_CXX or sanitize:
-      add_library('libc++abi')
-      if settings.EXCEPTION_HANDLING:
-        add_library('libunwind')
     if settings.MALLOC != 'none':
       add_library('libmalloc')
-    if settings.STANDALONE_WASM:
-      add_library('libstandalonewasm')
-    add_library('libc_rt')
+  add_library('libcompiler_rt')
+  if settings.LINK_AS_CXX:
+    add_library('libc++')
+  if settings.LINK_AS_CXX or sanitize:
+    add_library('libc++abi')
+    if settings.EXCEPTION_HANDLING:
+      add_library('libunwind')
+  if settings.STANDALONE_WASM:
+    add_library('libstandalonewasm')
+  add_library('libc_rt')
 
-    if settings.USE_LSAN:
-      force_include.append('liblsan_rt')
-      add_library('liblsan_rt')
+  if settings.USE_LSAN:
+    force_include.append('liblsan_rt')
+    add_library('liblsan_rt')
 
-    if settings.USE_ASAN:
-      force_include.append('libasan_rt')
-      add_library('libasan_rt')
-      add_library('libasan_js')
+  if settings.USE_ASAN:
+    force_include.append('libasan_rt')
+    add_library('libasan_rt')
+    add_library('libasan_js')
 
-    if settings.UBSAN_RUNTIME == 1:
-      add_library('libubsan_minimal_rt')
-    elif settings.UBSAN_RUNTIME == 2:
-      add_library('libubsan_rt')
+  if settings.UBSAN_RUNTIME == 1:
+    add_library('libubsan_minimal_rt')
+  elif settings.UBSAN_RUNTIME == 2:
+    add_library('libubsan_rt')
 
-    if settings.USE_LSAN or settings.USE_ASAN:
-      add_library('liblsan_common_rt')
+  if settings.USE_LSAN or settings.USE_ASAN:
+    add_library('liblsan_common_rt')
 
-    if sanitize:
-      add_library('libsanitizer_common_rt')
+  if sanitize:
+    add_library('libsanitizer_common_rt')
 
-    if settings.PROXY_POSIX_SOCKETS:
-      add_library('libsockets_proxy')
-    else:
-      add_library('libsockets')
+  if settings.PROXY_POSIX_SOCKETS:
+    add_library('libsockets_proxy')
+  else:
+    add_library('libsockets')
 
-    if settings.USE_WEBGPU:
-      add_library('libwebgpu_cpp')
+  if settings.USE_WEBGPU:
+    add_library('libwebgpu_cpp')
+
+  return libs_to_link
+
+
+def calculate(input_files, args, forced):
+  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
+  # for unresolved symbols in your project files, which can speed up linking, but if you do not have
+  # the proper list of actually needed libraries, errors can occur. See below for how we must
+  # export all the symbols in deps_info when using this option.
+  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
+  if only_forced:
+    # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
+    # of the input files for reverse dependencies.
+    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` and/or `-s REVERSE_DEPS=none` depending on the desired result')
+    settings.REVERSE_DEPS = 'all'
+
+  handle_reverse_deps(input_files)
+
+  libs_to_link = get_libs_to_link(args, forced, only_forced)
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
   # shouldn't add any extra `--no-whole-archive` or we will undo the intent of building.link_ldd.
-  if settings.LINKABLE:
+  if settings.LINKABLE or settings.SIDE_MODULE:
     return [l[0] for l in libs_to_link]
 
   # Wrap libraries in --whole-archive, as needed.  We need to do this last

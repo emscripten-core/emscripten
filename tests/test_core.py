@@ -6088,6 +6088,8 @@ void* operator new(size_t size) {
   # Tests invoking the SIMD API via x86 AVX avxintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @is_slow_test
+  @no_asan('local count too large')
   def test_avx(self):
     src = test_file('sse/test_avx.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6294,9 +6296,6 @@ void* operator new(size_t size) {
   @needs_make('make')
   @is_slow_test
   def test_openjpeg(self):
-    if '-flto' in self.emcc_args:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/15679')
-
     def do_test_openjpeg():
       def line_splitter(data):
         out = ''
@@ -7882,13 +7881,11 @@ Module['onRuntimeInitialized'] = function() {
     # This test checks for the global variables required to run the memory
     # profiler.  It would fail if these variables were made no longer global
     # or if their identifiers were changed.
-    create_file('main.cpp', '''
-      extern "C" {
-        void check_memprof_requirements();
-      }
+    create_file('main.c', '''
+      int check_memprof_requirements();
+
       int main() {
-        check_memprof_requirements();
-        return 0;
+        return check_memprof_requirements();
       }
     ''')
     create_file('lib.js', '''
@@ -7899,14 +7896,16 @@ Module['onRuntimeInitialized'] = function() {
               typeof _emscripten_stack_get_current === 'function' &&
               typeof Module['___heap_base'] === 'number') {
              out('able to run memprof');
+             return 0;
            } else {
              out('missing the required variables to run memprof');
+             return 1;
            }
         }
       });
     ''')
     self.emcc_args += ['--memoryprofiler', '--js-library', 'lib.js']
-    self.do_runf('main.cpp', 'able to run memprof')
+    self.do_runf('main.c', 'able to run memprof')
 
   def test_fs_dict(self):
     self.set_setting('FORCE_FILESYSTEM')
@@ -8479,11 +8478,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   def test_pthread_cxx_threads(self):
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.clear_setting('ALLOW_MEMORY_GROWTH')
-    self.set_setting('INITIAL_MEMORY', '64Mb')
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_cxx_threads.cpp')
+
+  @node_pthreads
+  def test_pthread_busy_wait(self):
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('pthread/test_pthread_busy_wait.cpp')
+
+  @node_pthreads
+  def test_pthread_busy_wait_atexit(self):
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('pthread/test_pthread_busy_wait_atexit.cpp')
 
   @node_pthreads
   def test_pthread_create_pool(self):
@@ -8831,6 +8840,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('ASYNCIFY')
     self.maybe_closure()
     self.do_core_test('test_em_async_js.c')
+
+  @require_v8
+  @no_wasm2js('wasm2js does not support reference types')
+  def test_externref(self):
+    self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'])
+    self.emcc_args += ['--js-library', test_file('core/test_externref.js')]
+    self.emcc_args += ['-mreference-types']
+    self.do_core_test('test_externref.c', libraries=['asm.o'])
 
 
 # Generate tests for everything

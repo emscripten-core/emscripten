@@ -361,21 +361,6 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-#if MINIMAL_RUNTIME && !EXIT_RUNTIME
-  atexit__sig: 'v', // atexit unsupported in MINIMAL_RUNTIME
-  atexit: function(){},
-  __cxa_atexit: function(){},
-#else
-  atexit__proxy: 'sync',
-  atexit__sig: 'iii',
-  atexit: function(func, arg) {
-#if EXIT_RUNTIME
-    __ATEXIT__.unshift({ func: func, arg: arg });
-#endif
-  },
-  __cxa_atexit: 'atexit',
-#endif
-
   // TODO: There are currently two abort() functions that get imported to asm
   // module scope: the built-in runtime function abort(), and this library
   // function _abort(). Remove one of these, importing two functions for the
@@ -514,11 +499,8 @@ LibraryManager.library = {
   },
   timelocal: 'mktime',
 
-#if MINIMAL_RUNTIME
-  gmtime_r__deps: ['$allocateUTF8'],
-#endif
-  gmtime_r__sig: 'iii',
-  gmtime_r: function(time, tmPtr) {
+  _gmtime_js__sig: 'iii',
+  _gmtime_js: function(time, tmPtr) {
     var date = new Date({{{ makeGetValue('time', 0, 'i32') }}}*1000);
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
@@ -527,17 +509,10 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getUTCMonth()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getUTCFullYear()-1900', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '0', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    // Allocate a string "GMT" for us to point to.
-    if (!_gmtime_r.GMTString) _gmtime_r.GMTString = allocateUTF8("GMT");
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, '_gmtime_r.GMTString', 'i32') }}};
-    return tmPtr;
   },
-  __gmtime_r: 'gmtime_r',
 
   timegm__deps: ['tzset'],
   timegm__sig: 'ii',
@@ -2403,8 +2378,8 @@ LibraryManager.library = {
   // ==========================================================================
 #if SOCKET_WEBRTC
   $Sockets__deps: ['$setErrNo',
-    function() { return 'var SocketIO = ' + read('socket.io.js') + ';\n' },
-    function() { return 'var Peer = ' + read('wrtcp.js') + ';\n' }],
+    function() { return 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n' },
+    function() { return 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n' }],
 #else
   $Sockets__deps: ['$setErrNo'],
 #endif
@@ -2652,19 +2627,19 @@ LibraryManager.library = {
     var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
     callstack = callstack.slice(iNextLine);
 
-    if (flags & 32/*EM_LOG_DEMANGLE*/) {
+    if (flags & {{{ cDefine('EM_LOG_DEMANGLE') }}}) {
       warnOnce('EM_LOG_DEMANGLE is deprecated; ignoring');
     }
 
     // If user requested to see the original source stack, but no source map information is available, just fall back to showing the JS stack.
-    if (flags & 8/*EM_LOG_C_STACK*/ && typeof emscripten_source_map === 'undefined') {
+    if (flags & {{{ cDefine('EM_LOG_C_STACK') }}} && typeof emscripten_source_map === 'undefined') {
       warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
-      flags ^= 8/*EM_LOG_C_STACK*/;
-      flags |= 16/*EM_LOG_JS_STACK*/;
+      flags ^= {{{ cDefine('EM_LOG_C_STACK') }}};
+      flags |= {{{ cDefine('EM_LOG_JS_STACK') }}};
     }
 
     var stack_args = null;
-    if (flags & 128 /*EM_LOG_FUNC_PARAMS*/) {
+    if (flags & {{{ cDefine('EM_LOG_FUNC_PARAMS') }}}) {
       // To get the actual parameters to the functions, traverse the stack via the unfortunately deprecated 'arguments.callee' method, if it works:
       stack_args = traverseStack(arguments);
       while (stack_args[1].includes('_emscripten_'))
@@ -2709,25 +2684,25 @@ LibraryManager.library = {
 
       var haveSourceMap = false;
 
-      if (flags & 8/*EM_LOG_C_STACK*/) {
+      if (flags & {{{ cDefine('EM_LOG_C_STACK') }}}) {
         var orig = emscripten_source_map.originalPositionFor({line: lineno, column: column});
         haveSourceMap = (orig && orig.source);
         if (haveSourceMap) {
-          if (flags & 64/*EM_LOG_NO_PATHS*/) {
+          if (flags & {{{ cDefine('EM_LOG_NO_PATHS') }}}) {
             orig.source = orig.source.substring(orig.source.replace(/\\/g, "/").lastIndexOf('/')+1);
           }
           callstack += '    at ' + symbolName + ' (' + orig.source + ':' + orig.line + ':' + orig.column + ')\n';
         }
       }
-      if ((flags & 16/*EM_LOG_JS_STACK*/) || !haveSourceMap) {
-        if (flags & 64/*EM_LOG_NO_PATHS*/) {
+      if ((flags & {{{ cDefine('EM_LOG_JS_STACK') }}}) || !haveSourceMap) {
+        if (flags & {{{ cDefine('EM_LOG_NO_PATHS') }}}) {
           file = file.substring(file.replace(/\\/g, "/").lastIndexOf('/')+1);
         }
         callstack += (haveSourceMap ? ('     = ' + symbolName) : ('    at '+ symbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
       }
 
       // If we are still keeping track with the callstack by traversing via 'arguments.callee', print the function parameters as well.
-      if (flags & 128 /*EM_LOG_FUNC_PARAMS*/ && stack_args[0]) {
+      if (flags & {{{ cDefine('EM_LOG_FUNC_PARAMS') }}} && stack_args[0]) {
         if (stack_args[1] == symbolName && stack_args[2].length > 0) {
           callstack = callstack.replace(/\s+$/, '');
           callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
@@ -2756,24 +2731,24 @@ LibraryManager.library = {
 
   emscripten_log_js__deps: ['emscripten_get_callstack_js'],
   emscripten_log_js: function(flags, str) {
-    if (flags & 24/*EM_LOG_C_STACK | EM_LOG_JS_STACK*/) {
+    if (flags & {{{ cDefine('EM_LOG_C_STACK') | cDefine('EM_LOG_JS_STACK') }}}) {
       str = str.replace(/\s+$/, ''); // Ensure the message and the callstack are joined cleanly with exactly one newline.
       str += (str.length > 0 ? '\n' : '') + _emscripten_get_callstack_js(flags);
     }
 
-    if (flags & 1 /*EM_LOG_CONSOLE*/) {
-      if (flags & 4 /*EM_LOG_ERROR*/) {
-        err(str);
-      } else if (flags & 2 /*EM_LOG_WARN*/) {
+    if (flags & {{{ cDefine('EM_LOG_CONSOLE') }}}) {
+      if (flags & {{{ cDefine('EM_LOG_ERROR') }}}) {
+        console.error(str);
+      } else if (flags & {{{ cDefine('EM_LOG_WARN') }}}) {
         console.warn(str);
-      } else if (flags & 512 /*EM_LOG_INFO*/) {
+      } else if (flags & {{{ cDefine('EM_LOG_INFO') }}}) {
         console.info(str);
-      } else if (flags & 256 /*EM_LOG_DEBUG*/) {
+      } else if (flags & {{{ cDefine('EM_LOG_DEBUG') }}}) {
         console.debug(str);
       } else {
-        out(str);
+        console.log(str);
       }
-    } else if (flags & 6 /*EM_LOG_ERROR|EM_LOG_WARN*/) {
+    } else if (flags & {{{ cDefine('EM_LOG_ERROR') | cDefine('EM_LOG_WARN') }}}) {
       err(str);
     } else {
       out(str);

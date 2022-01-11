@@ -12,7 +12,6 @@ import gzip
 import itertools
 import json
 import os
-import pipes
 import re
 import select
 import shlex
@@ -161,14 +160,13 @@ class other(RunnerCore):
     output = []
 
     try:
-      env = os.environ.copy()
-      env['TERM'] = 'xterm-color'
-      proc = subprocess.Popen(cmd, stdout=slave, stderr=slave, env=env)
-      while proc.poll() is None:
-        r, w, x = select.select([master], [], [], 1)
-        if r:
-          output.append(os.read(master, 1024))
-      return (proc.returncode, b''.join(output))
+      with env_modify({'TERM': 'xterm-color'}):
+        proc = subprocess.Popen(cmd, stdout=slave, stderr=slave)
+        while proc.poll() is None:
+          r, w, x = select.select([master], [], [], 1)
+          if r:
+            output.append(os.read(master, 1024))
+        return (proc.returncode, b''.join(output))
     finally:
       os.close(master)
       os.close(slave)
@@ -2209,18 +2207,14 @@ int f() {
         if os.path.exists(self.canonical_temp_dir):
           shutil.rmtree(self.canonical_temp_dir)
 
-        env = os.environ.copy()
-        if debug is None:
-          env.pop('EMCC_DEBUG', None)
-        else:
-          env['EMCC_DEBUG'] = debug
-        self.run_process([EMXX, test_file('hello_world.cpp'), '-O' + str(opts)], stderr=PIPE, env=env)
-        if debug is None:
-          self.assertFalse(os.path.exists(self.canonical_temp_dir))
-        elif debug == '1':
-          self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-3-original.js'))
-        elif debug == '2':
-          self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-3-original.js'))
+        with env_modify({'EMCC_DEBUG': debug}):
+          self.run_process([EMXX, test_file('hello_world.cpp'), '-O' + str(opts)], stderr=PIPE)
+          if debug is None:
+            self.assertFalse(os.path.exists(self.canonical_temp_dir))
+          elif debug == '1':
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-3-original.js'))
+          elif debug == '2':
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-3-original.js'))
 
   def test_debuginfo(self):
     for args, expect_debug in [
@@ -2365,6 +2359,7 @@ int f() {
       int foo(int x) { return x; }
       void bar() {
         emscripten::val(123).call<std::string>("toString");
+        emscripten::val jarray = emscripten::val::global("Float32Array").new_(10);
         emscripten_console_log("ok");
       }
       EMSCRIPTEN_BINDINGS(baz) {
@@ -2377,9 +2372,8 @@ int f() {
     self.assertContained('10\nok\n', self.run_js('a.out.js'))
 
   @is_slow_test
+  @with_env_modify({'EMCC_CLOSURE_ARGS': '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))})
   def test_embind(self):
-    environ = os.environ.copy()
-    environ['EMCC_CLOSURE_ARGS'] = environ.get('EMCC_CLOSURE_ARGS', '') + " --externs " + pipes.quote(test_file('embind/underscore-externs.js'))
     test_cases = [
         (['--bind']),
         (['--bind', '-O1']),
@@ -2409,8 +2403,7 @@ int f() {
          '--pre-js', test_file('embind/test.pre.js'),
          '--post-js', test_file('embind/test.post.js'),
          '-s', 'WASM_ASYNC_COMPILATION=0',
-         '-s', 'IN_TEST_HARNESS'] + args,
-        env=environ)
+         '-s', 'IN_TEST_HARNESS'] + args)
 
       if 'DYNAMIC_EXECUTION=0' in args:
         js_binary_str = read_file('a.out.js')
@@ -7929,16 +7922,14 @@ end
     create_file(externs, '')
     self.run_process([EMCC, test, '--closure=1', '--closure-args', '--externs "' + externs + '"'])
 
+  @with_env_modify({'EMPROFILE': '1'})
   def test_toolchain_profiler(self):
     # Verify some basic functionality of EMPROFILE
-    environ = os.environ.copy()
-    environ['EMPROFILE'] = '1'
-
     self.run_process([emprofile, '--reset'])
     err = self.expect_fail([emprofile, '--graph'])
     self.assertContained('No profiler logs were found', err)
 
-    self.run_process([EMCC, test_file('hello_world.c')], env=environ)
+    self.run_process([EMCC, test_file('hello_world.c')])
     self.assertEqual('hello, world!', self.run_js('a.out.js').strip())
 
     self.run_process([emprofile, '--graph'])
@@ -7990,11 +7981,10 @@ end
     self.assertEqual(read_binary(get_cached()).count(b'waka'), 0)
     self.assertNotContained(ERROR, self.run_js('a.out.js'))
 
+  @with_env_modify({'LC_ALL': 'C'})
   def test_autotools_shared_check(self):
-    env = os.environ.copy()
-    env['LC_ALL'] = 'C'
     expected = ': supported targets:.* elf'
-    out = self.run_process([EMCC, '--help'], stdout=PIPE, env=env).stdout
+    out = self.run_process([EMCC, '--help'], stdout=PIPE).stdout
     assert re.search(expected, out)
 
   def test_ioctl_window_size(self):
@@ -10131,6 +10121,8 @@ Aborted(Module.arguments has been replaced with plain arguments_ (the initial va
     libs = ['-lc', '-lcompiler_rt', '-lc_rt']
     self.run_process([EMCC, test_file('unistd/close.c'), '-nostdlib'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nodefaultlibs'] + libs)
+    self.run_process([EMCC, test_file('unistd/close.c'), '-nolibc', '-lc'])
+    self.run_process([EMCC, test_file('unistd/close.c'), '-nostartfiles'])
 
   def test_argument_match(self):
     # Verify that emcc arguments match precisely.  We had a bug where only the prefix
@@ -10587,11 +10579,11 @@ exec "$@"
   # Make sure that --threadprofiler compiles with --closure 1
   def test_threadprofiler_closure(self):
     # TODO: Enable '-s', 'CLOSURE_WARNINGS=error' in the following, but that has currently regressed.
-    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-s', 'USE_PTHREADS', '--closure=1', '--threadprofiler'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-s', 'USE_PTHREADS', '--closure=1', '--threadprofiler', '-sASSERTIONS'])
 
   @node_pthreads
   def test_threadprofiler(self):
-    self.run_process([EMCC, test_file('test_threadprofiler.cpp'), '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '--threadprofiler'])
+    self.run_process([EMCC, test_file('test_threadprofiler.cpp'), '-sUSE_PTHREADS', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '--threadprofiler', '-sASSERTIONS'])
     output = self.run_js('a.out.js')
     self.assertRegex(output, r'Thread "Browser main thread" \(0x.*\) now: running.')
     self.assertRegex(output, r'Thread "Application main thread" \(0x.*\) now: waiting for a futex.')
@@ -10946,6 +10938,9 @@ kill -9 $$
   def test_concepts(self):
     self.do_runf(test_file('other/test_concepts.cpp'), '', emcc_args=['-std=c++20'])
 
+  def test_std_cmp(self):
+    self.do_runf(test_file('other/test_std_cmp.cpp'), '', emcc_args=['-std=c++20'])
+
   def test_link_only_setting_warning(self):
     err = self.run_process([EMCC, '-sALLOW_MEMORY_GROWTH', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained("warning: linker setting ignored during compilation: 'ALLOW_MEMORY_GROWTH' [-Wunused-command-line-argument]", err)
@@ -11193,8 +11188,8 @@ void foo() {}
     self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['--profiling-funcs']
     output = self.do_runf(test_file('pthread/test_pthread_trap.c'), assert_returncode=NON_ZERO)
-    self.assertContained("pthread sent an error!", output)
-    self.assertContained("at thread_main", output)
+    self.assertContained('sent an error!', output)
+    self.assertContained('at thread_main', output)
 
   @node_pthreads
   def test_emscripten_set_interval(self):
@@ -11401,3 +11396,8 @@ void foo() {}
     print('with old browser + --closure=1')
     self.do_runf('test.c', 'prop: 1\nbar: 2\n', emcc_args=['--closure=1'], output_basename='test4')
     check_for_es6('test4.js', False)
+
+  def test_gmtime_noleak(self):
+    # Confirm that gmtime_r does not leak when called in isolation.
+    self.emcc_args.append('-fsanitize=leak')
+    self.do_other_test('test_gmtime_noleak.c')

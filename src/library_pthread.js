@@ -5,7 +5,7 @@
  */
 
 var LibraryPThread = {
-  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
+  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThread();',
   $PThread__deps: ['_emscripten_thread_init',
                    '$killThread',
                    '$cancelThread', '$cleanupThread', '$zeroMemory',
@@ -25,7 +25,7 @@ var LibraryPThread = {
     // Contains all Workers that are currently hosting an active pthread.
     runningWorkers: [],
     tlsInitFunctions: [],
-    initMainThreadBlock: function() {
+    initMainThread: function() {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
@@ -54,47 +54,8 @@ var LibraryPThread = {
     pthreads: {},
 
 #if PTHREADS_PROFILING
-    createProfilerBlock: function(pthreadPtr) {
-      var profilerBlock = _malloc({{{ C_STRUCTS.thread_profiler_block.__size__ }}});
-      {{{ makeSetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, 'profilerBlock', POINTER_TYPE) }}};
-
-      // Zero fill contents at startup.
-      zeroMemory(profilerBlock, {{{ C_STRUCTS.thread_profiler_block.__size__ }}});
-      HEAPF64[(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 3] = performance.now();
-    },
-
-    // Sets the current thread status, but only if it was in the given expected state before. This is used
-    // to allow high-level control flow "override" the thread status before low-level (futex wait) operations set it.
-    setThreadStatusConditional: function(expectedStatus, newStatus) {
-      var pthreadPtr = _pthread_self();
-      var profilerBlock = {{{ makeGetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, POINTER_TYPE) }}};
-      if (!profilerBlock) return;
-
-      var prevStatus = {{{ makeGetValue('profilerBlock', C_STRUCTS.thread_profiler_block.threadStatus, 'i32') }}};
-      if (prevStatus != newStatus && (prevStatus == expectedStatus || expectedStatus == -1)) {
-        var now = performance.now();
-        var startState = HEAPF64[(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 3];
-        var duration = now - startState;
-
-        HEAPF64[((profilerBlock + {{{ C_STRUCTS.thread_profiler_block.timeSpentInStatus }}} ) >> 3) + prevStatus] += duration;
-        {{{ makeSetValue('profilerBlock', C_STRUCTS.thread_profiler_block.threadStatus, 'newStatus', 'i32') }}};
-        HEAPF64[(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 3] = now;
-      }
-    },
-
-    // Unconditionally sets the thread status.
-    setThreadStatus: function(newStatus) {
-      PThread.setThreadStatusConditional(-1, newStatus);
-    },
-
-    setThreadName: function(pthreadPtr, name) {
-      var profilerBlock = Atomics.load(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
-      if (!profilerBlock) return;
-      stringToUTF8(name, profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}}, {{{ cDefine('EM_THREAD_NAME_MAX') }}});
-    },
-
     getThreadName: function(pthreadPtr) {
-      var profilerBlock = Atomics.load(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
+      var profilerBlock = {{{ makeGetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, POINTER_TYPE) }}};
       if (!profilerBlock) return "";
       return UTF8ToString(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}});
     },
@@ -113,7 +74,7 @@ var LibraryPThread = {
     },
 
     threadStatusAsString: function(pthreadPtr) {
-      var profilerBlock = Atomics.load(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
+      var profilerBlock = {{{ makeGetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, POINTER_TYPE) }}};
       var status = (profilerBlock == 0) ? 0 : Atomics.load(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.threadStatus }}} ) >> 2);
       return PThread.threadStatusToString(status);
     },
@@ -215,9 +176,6 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
       err('Pthread 0x' + _pthread_self().toString(16) + ' threadInit.');
 #endif
-#if PTHREADS_PROFILING
-      PThread.setThreadStatus({{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
-#endif
       // Call thread init functions (these are the emscripten_tls_init for each
       // module loaded.
       for (var i in PThread.tlsInitFunctions) {
@@ -229,7 +187,7 @@ var LibraryPThread = {
     //                    the workers have been initialized and are
     //                    ready to host pthreads.
     loadWasmModuleToWorker: function(worker, onFinishedLoading) {
-      worker.onmessage = function(e) {
+      worker.onmessage = (e) => {
         var d = e['data'];
         var cmd = d['cmd'];
         // Sometimes we need to backproxy events to the calling thread (e.g.
@@ -294,8 +252,17 @@ var LibraryPThread = {
         PThread.currentProxiedOperationCallerThread = undefined;
       };
 
-      worker.onerror = function(e) {
-        err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
+      worker.onerror = (e) => {
+        var message = 'worker sent an error!';
+#if ASSERTIONS
+        if (worker.pthread) {
+          var pthread_ptr = worker.pthread.threadInfoStruct;
+          if (pthread_ptr) {
+            message = 'Pthread 0x' + pthread_ptr.toString(16) + ' sent an error!';
+          }
+        }
+#endif
+        err(message + ' ' + e.filename + ':' + e.lineno + ': ' + e.message);
         throw e;
       };
 
@@ -549,10 +516,6 @@ var LibraryPThread = {
       threadInfoStruct: threadParams.pthread_ptr
     };
 
-#if PTHREADS_PROFILING
-    PThread.createProfilerBlock(pthread.threadInfoStruct);
-#endif
-
     worker.pthread = pthread;
     var msg = {
         'cmd': 'run',
@@ -566,7 +529,7 @@ var LibraryPThread = {
     msg.moduleCanvasId = threadParams.moduleCanvasId;
     msg.offscreenCanvases = threadParams.offscreenCanvases;
 #endif
-    worker.runPthread = function() {
+    worker.runPthread = () => {
       // Ask the worker to start executing its pthread entry point function.
       msg.time = performance.now();
       worker.postMessage(msg, threadParams.transferList);
@@ -590,15 +553,18 @@ var LibraryPThread = {
   },
 
   __emscripten_init_main_thread_js: function(tb) {
-#if PTHREADS_PROFILING
-    PThread.createProfilerBlock(tb);
-    PThread.setThreadName(tb, "Browser main thread");
-#endif
-
     // Pass the thread address to the native code where they stored in wasm
     // globals which act as a form of TLS. Global constructors trying
     // to access this value will read the wrong value, but that is UB anyway.
-    __emscripten_thread_init(tb, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1, /*canBlock=*/!ENVIRONMENT_IS_WEB);
+    __emscripten_thread_init(
+      tb,
+      /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER,
+      /*isMainRuntimeThread=*/1,
+      /*canBlock=*/!ENVIRONMENT_IS_WEB,
+#if PTHREADS_PROFILING
+      /*start_profiling=*/true
+#endif
+    );
 #if ASSERTIONS
     PThread.mainRuntimeThread = true;
     // Verify that this native symbol used by futex_wait/wake is exported correctly.
@@ -973,29 +939,6 @@ var LibraryPThread = {
 #endif
 #endif
   },
-
-#if ASSERTIONS
-  emscripten_conditional_set_current_thread_status__sig: 'vii',
-  emscripten_conditional_set_current_thread_status: function(expectedStatus, newStatus) {
-#if PTHREADS_PROFILING
-    PThread.setThreadStatusConditional(expectedStatus, newStatus);
-#endif
-  },
-
-  emscripten_set_current_thread_status__sig: 'vi',
-  emscripten_set_current_thread_status: function(newStatus) {
-#if PTHREADS_PROFILING
-    PThread.setThreadStatus(newStatus);
-#endif
-  },
-
-  emscripten_set_thread_name__sig: 'vii',
-  emscripten_set_thread_name: function(threadId, name) {
-#if PTHREADS_PROFILING
-    PThread.setThreadName(threadId, UTF8ToString(name));
-#endif
-  },
-#endif
 
   // This function is call by a pthread to signal that exit() was called and
   // that the entire process should exit.

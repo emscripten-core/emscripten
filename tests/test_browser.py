@@ -4723,6 +4723,8 @@ window.close = function() {
 
   @requires_threads
   def test_pthread_locale(self):
+    self.emcc_args.append('-I' + path_from_root('system/lib/libc/musl/src/internal'))
+    self.emcc_args.append('-I' + path_from_root('system/lib/pthread'))
     for args in [
         [],
         ['-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=2'],
@@ -4760,7 +4762,7 @@ window.close = function() {
       ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'],
       ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-s', 'OFFSCREENCANVAS_SUPPORT'],
     ]:
-      cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-s', 'GL_DEBUG', '--threadprofiler'] + args
+      cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-s', 'GL_DEBUG', '--threadprofiler', '-sASSERTIONS'] + args
       print(' '.join(cmd))
       self.btest_exit('canvas_animate_resize.cpp', args=cmd)
 
@@ -5328,12 +5330,17 @@ class emrun(RunnerCore):
 
     for args in [
         args_base,
-        args_base + ['--private_browsing', '--port', '6941']
+        args_base + ['--private_browsing', '--port', '6941'],
+        args_base + ['--dump_out_directory', 'other dir/multiple', '--port', '6942']
     ]:
       args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3']
       print(shared.shlex_join(args))
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)
+      dump_dir = 'other dir/multiple' if '--dump_out_directory' in args else 'dump_out'
+      self.assertExists(self.in_dir(f'{dump_dir}/test.dat'))
+      self.assertExists(self.in_dir(f'{dump_dir}/heap.dat'))
+      self.assertExists(self.in_dir(f'{dump_dir}/nested/with space.dat'))
       stdout = read_file(self.in_dir('stdout.txt'))
       stderr = read_file(self.in_dir('stderr.txt'))
       self.assertContained('argc: 4', stdout)

@@ -95,12 +95,7 @@ function sum(x) {
 }
 
 function mergeInto(obj, other) {
-  for (const i in other) {
-    if (Object.prototype.hasOwnProperty.call(other, i)) {
-      obj[i] = other[i];
-    }
-  }
-  return obj;
+  return Object.assign(obj, other);
 }
 
 function isNumber(x) {

@@ -29,10 +29,7 @@
                 "timeSpentInStatus",
                 "name"
             ]
-        },
-        "defines": [
-          "EM_THREAD_NAME_MAX"
-        ]
+        }
     },
     {
         "file": "dynlink.h",

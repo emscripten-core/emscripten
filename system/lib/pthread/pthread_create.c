@@ -23,7 +23,7 @@
 // See musl's pthread_create.c
 
 extern int __pthread_create_js(struct pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
-extern void _emscripten_thread_init(int, int, int, int);
+extern void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
 extern int _emscripten_default_pthread_stack_size();
 extern void __pthread_detached_exit();
 extern void* _emscripten_tls_base();
@@ -139,6 +139,10 @@ int __pthread_create(pthread_t* restrict res,
     new->stack_owned = 1;
   }
 
+#ifndef NDEBUG
+  _emscripten_thread_profiler_init(new);
+#endif
+
   //printf("start __pthread_create: %p\n", self);
   int rtn = __pthread_create_js(new, attrp, entry, arg);
   if (rtn != 0)
@@ -166,9 +170,11 @@ int __pthread_create(pthread_t* restrict res,
  * that is no longer running.
  */
 void _emscripten_thread_free_data(pthread_t t) {
+#ifndef NDEBUG
   if (t->profilerBlock) {
     emscripten_builtin_free(t->profilerBlock);
   }
+#endif
   if (t->stack_owned) {
     emscripten_builtin_free(((char*)t->stack) - t->stack_size);
   }
@@ -225,7 +231,7 @@ void _emscripten_thread_exit(void* result) {
   self->tsd = NULL;
 
   // Not hosting a pthread anymore in this worker set __pthread_self to NULL
-  _emscripten_thread_init(0, 0, 0, 1);
+  __set_thread_state(NULL, 0, 0, 1);
 
   /* This atomic potentially competes with a concurrent pthread_detach
    * call; the loser is responsible for freeing thread resources. */

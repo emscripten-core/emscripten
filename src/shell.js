@@ -40,7 +40,7 @@ var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : 
 // Include a Promise polyfill for legacy browsers. This is needed either for
 // wasm2js, where we polyfill the wasm API which needs Promises, or when using
 // modularize which creates a Promise for when the module is ready.
-#include "promise_polyfill.js"
+#include "polyfill/promise.js"
 #endif
 
 // See https://caniuse.com/mdn-javascript_builtins_object_assign
@@ -373,16 +373,10 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   // Differentiate the Web Worker from the Node Worker case, as reading must
   // be done differently.
 #if USE_PTHREADS && ENVIRONMENT_MAY_BE_NODE
-  if (ENVIRONMENT_IS_NODE) {
-
-#include "node_shell_read.js"
-
-  } else
+  if (!ENVIRONMENT_IS_NODE)
 #endif
   {
-
 #include "web_or_worker_shell_read.js"
-
   }
 
   setWindowTitle = (title) => document.title = title;
@@ -456,7 +450,9 @@ assert(typeof Module['TOTAL_MEMORY'] === 'undefined', 'Module.TOTAL_MEMORY has b
 {{{ makeRemovedFSAssert('IDBFS') }}}
 {{{ makeRemovedFSAssert('PROXYFS') }}}
 {{{ makeRemovedFSAssert('WORKERFS') }}}
+#if !NODERAWFS
 {{{ makeRemovedFSAssert('NODEFS') }}}
+#endif
 {{{ makeRemovedRuntimeFunction('alignMemory') }}}
 
 #if USE_PTHREADS

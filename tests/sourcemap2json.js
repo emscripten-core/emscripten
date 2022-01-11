@@ -7,7 +7,7 @@
 // Quick utility script USED ONLY FOR TESTING.
 // Could be replaced if a good python source map library is found.
 
-"use strict";
+'use strict';
 
 var SourceMapConsumer = require('source-map').SourceMapConsumer;
 var fs = require('fs');
