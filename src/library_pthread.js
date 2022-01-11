@@ -409,6 +409,10 @@ var LibraryPThread = {
 
   __emscripten_thread_cleanup: function(thread) {
     // Called when a thread needs to be cleaned up so it can be reused.
+    // A thread is considered reusable when it either returns from its
+    // entry point, calls pthread_exit, or acts upon a cancellation.
+    // Detached threads are responsible for calling this themselves,
+    // otherwise pthread_join is responsible for calling this.
     if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread);
     else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
   },
