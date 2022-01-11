@@ -5338,8 +5338,8 @@ class emrun(RunnerCore):
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)
       dump_dir = 'other dir/multiple' if '--dump_out_directory' in args else 'dump_out'
-      self.assertExists(self.in_dir(f'{dump_dir}/test.txt'))
-      self.assertExists(self.in_dir(f'{dump_dir}/heap.txt'))
+      self.assertExists(self.in_dir(f'{dump_dir}/test.dat'))
+      self.assertExists(self.in_dir(f'{dump_dir}/heap.dat'))
       self.assertExists(self.in_dir(f'{dump_dir}/nested/with space.dat'))
       stdout = read_file(self.in_dir('stdout.txt'))
       stderr = read_file(self.in_dir('stderr.txt'))
