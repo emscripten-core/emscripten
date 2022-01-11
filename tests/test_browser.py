@@ -4170,6 +4170,7 @@ window.close = function() {
     'no_leak': ['test_pthread_lsan_no_leak'],
   })
   @requires_threads
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/15978')
   def test_pthread_lsan(self, name, args=[]):
     self.btest(test_file('pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
