@@ -5330,12 +5330,17 @@ class emrun(RunnerCore):
 
     for args in [
         args_base,
-        args_base + ['--private_browsing', '--port', '6941']
+        args_base + ['--private_browsing', '--port', '6941'],
+        args_base + ['--dump_out_directory', 'other dir/multiple', '--port', '6942']
     ]:
       args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3']
       print(shared.shlex_join(args))
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)
+      dump_dir = 'other dir/multiple' if '--dump_out_directory' in args else 'dump_out'
+      self.assertExists(self.in_dir(f'{dump_dir}/test.dat'))
+      self.assertExists(self.in_dir(f'{dump_dir}/heap.dat'))
+      self.assertExists(self.in_dir(f'{dump_dir}/nested/with space.dat'))
       stdout = read_file(self.in_dir('stdout.txt'))
       stderr = read_file(self.in_dir('stderr.txt'))
       self.assertContained('argc: 4', stdout)
