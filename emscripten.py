@@ -414,7 +414,37 @@ def get_metadata_python(infile, outfile, modify_wasm, args):
     # When we do this we can generate new imports, so
     # re-read parts of the metadata post-finalize
     extract_metadata.update_metadata(outfile, metadata)
+  elif 'main' in metadata['exports']:
+    # Mimic a bug in wasm-emscripten-finalize where we don't correctly
+    # detect the presense of the main wrapper function unless we are
+    # modifying the binary.  This is because binaryen doesn't reaad
+    # the function bodies in this mode.
+    # TODO(sbc): Remove this once we make the switch away from
+    # binaryen metadata.
+    metadata['mainReadsParams'] = 1
   return metadata
+
+
+# Test function for comparing binaryen vs python metadata.
+# Remove this once we go back to having just one method.
+def compare_metadata(metadata, pymetadata):
+  if sorted(metadata.keys()) != sorted(pymetadata.keys()):
+    print(sorted(metadata.keys()))
+    print(sorted(pymetadata.keys()))
+    exit_with_error('metadata keys mismatch')
+  for key in metadata:
+    old = metadata[key]
+    new = pymetadata[key]
+    if key == 'features':
+      old = sorted(old)
+      new = sorted(new)
+    if old != new:
+      print(key)
+      open(path_from_root('first.txt'), 'w').write(pprint.pformat(old))
+      open(path_from_root('second.txt'), 'w').write(pprint.pformat(new))
+      print(pprint.pformat(old))
+      print(pprint.pformat(new))
+      exit_with_error('metadata mismatch')
 
 
 def finalize_wasm(infile, outfile, memfile):
@@ -478,7 +508,7 @@ def finalize_wasm(infile, outfile, memfile):
   # 1. via wasm-emscripten-finalize (binaryen)
   # 2. via local python code
   # We also have a 'compare' mode that runs both extraction methods and
-  # checkes that producce identical results.
+  # checks that they produce identical results.
   read_metadata = os.environ.get('EMCC_READ_METADATA', 'binaryen')
   if read_metadata == 'binaryen':
     metadata = get_metadata_binaryen(infile, outfile, modify_wasm, args)
@@ -493,32 +523,7 @@ def finalize_wasm(infile, outfile, memfile):
     if settings.GENERATE_SOURCE_MAP:
       shutil.move(infile + '.map.bak', infile + '.map')
     metadata = get_metadata_binaryen(infile, outfile, modify_wasm, args)
-    if not modify_wasm and 'main' in pymetadata['exports']:
-      # Mimic a bug in wasm-emscripten-finalize where we don't correctly
-      # detect the presense of the main wrapper function unless we are
-      # modifying the binary.  This is because binaryen doesn't reaad
-      # the function bodies in this mode.
-      # TODO(sbc): Remove this once we make the switch away from
-      # binaryen metadata.
-      pymetadata['mainReadsParams'] = 1
-    if sorted(metadata.keys()) != sorted(pymetadata.keys()):
-      print(sorted(metadata.keys()))
-      print(sorted(pymetadata.keys()))
-      exit_with_error('metadata keys mismatch')
-    for key in metadata:
-      old = metadata[key]
-      new = pymetadata[key]
-      if key == 'features':
-        old = sorted(old)
-        new = sorted(new)
-
-      if old != new:
-        print(key)
-        open(path_from_root('first.txt'), 'w').write(pprint.pformat(old))
-        open(path_from_root('second.txt'), 'w').write(pprint.pformat(new))
-        print(pprint.pformat(old))
-        print(pprint.pformat(new))
-        exit_with_error('metadata mismatch')
+    compare_metadata(metadata, pymetadata)
   else:
     assert False
 
