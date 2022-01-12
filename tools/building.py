@@ -697,7 +697,7 @@ def eval_ctors(js_file, wasm_file, debug_info=False): # noqa
       args = ['--ctors=_initialize']
   if settings.EVAL_CTORS == 2:
     args += ['--ignore-external-input']
-  logger.warning('ctor_evaller (wasm): trying to eval global ctors (' + ' '.join(args) + ')')
+  logger.warning('ctor_evaller: trying to eval global ctors (' + ' '.join(args) + ')')
   out = run_binaryen_command('wasm-ctor-eval', wasm_file, wasm_file, args=args, stdout=PIPE, debug=debug_info)
   logger.warning('\n\n' + out)
   num_successful = out.count('success on')
