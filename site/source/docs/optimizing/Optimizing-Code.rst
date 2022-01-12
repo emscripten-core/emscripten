@@ -131,8 +131,8 @@ to execute that code, which can save time.
 
 This optimization can either reduce or increase code size. If a small amount
 of code generates many changes in memory, for example, then overall size may
-increase. It is best to build with this flag and then measure and see if the
-tradeoff is worthwhile in your program.
+increase. It is best to build with this flag and then measure code and startup
+speed and see if the tradeoff is worthwhile in your program.
 
 You can make an effort to write EVAL_CTORS-friendly code, by deferring things
 that cannot be evalled as much as possible. For example, calls to imports stop
