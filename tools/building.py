@@ -652,17 +652,21 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
 def eval_ctors(js_file, binary_file, debug_info=False): # noqa
-  CTOR_NAME = '__wasm_call_ctors'
+  WASM_CALL_CTORS = '__wasm_call_ctors'
   if settings.MINIMAL_RUNTIME:
-    CTOR_ADD_PATTERN = f"asm['{CTOR_NAME}']();" # TODO test
+    CTOR_ADD_PATTERN = f"asm['{WASM_CALL_CTORS}']();" # TODO test
   else:
-    CTOR_ADD_PATTERN = f"addOnInit(Module['asm']['{CTOR_NAME}']);"
+    CTOR_ADD_PATTERN = f"addOnInit(Module['asm']['{WASM_CALL_CTORS}']);"
 
   def has_ctor(js):
     return CTOR_ADD_PATTERN in js
 
   def do_eval_ctors(js, wasm_file): # TODO: remove func
-    args = ['--ctors=' + CTOR_NAME]
+    # eval the ctor caller as well as main. note that we must keep main around
+    # even if we eval it (we could in theory remove the call from the JS)
+    # TODO: handle standalone mode and reactors
+    args = ['--ctors=' + WASM_CALL_CTORS + ',main',
+            '--kept-exports=main']    
     if settings.EVAL_CTORS == 2:
       args += ['--ignore-external-input']
     out = run_binaryen_command('wasm-ctor-eval', wasm_file, wasm_file, args=args, stdout=PIPE)
