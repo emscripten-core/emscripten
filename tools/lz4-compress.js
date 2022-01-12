@@ -40,7 +40,7 @@ function load(f) {
 }
 
 global.assert = function(x, message) {
-  if (!x) throw new Errror(message);
+  if (!x) throw new Error(message);
 };
 
 // Redirect console.log message from MiniLZ4 to stderr since stdout is

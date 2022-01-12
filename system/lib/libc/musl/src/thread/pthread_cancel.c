@@ -3,6 +3,7 @@
 #include "pthread_impl.h"
 #include "syscall.h"
 
+#ifndef __EMSCRIPTEN__
 hidden long __cancel(), __syscall_cp_asm(), __syscall_cp_c();
 
 long __cancel()
@@ -83,14 +84,17 @@ static void init_cancellation()
 	memset(&sa.sa_mask, -1, _NSIG/8);
 	__libc_sigaction(SIGCANCEL, &sa, 0);
 }
+#endif
 
 int pthread_cancel(pthread_t t)
 {
+#ifndef __EMSCRIPTEN__
 	static int init;
 	if (!init) {
 		init_cancellation();
 		init = 1;
 	}
+#endif
 	a_store(&t->cancel, 1);
 	if (t == pthread_self()) {
 		if (t->canceldisable == PTHREAD_CANCEL_ENABLE && t->cancelasync)
