@@ -6771,9 +6771,10 @@ void* operator new(size_t size) {
     self.emcc_args += ['--tracing']
     self.do_core_test('test_tracing.c')
 
+  @also_with_standalone_wasm()
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
-      self.skipTest('need js optimizations')
+      self.skipTest('need opts')
     if not self.is_wasm():
       self.skipTest('this test uses wasm binaries')
 

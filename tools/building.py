@@ -651,48 +651,50 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
 
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
-def eval_ctors(js_file, binary_file, debug_info=False): # noqa
+def eval_ctors(js_file, wasm_file, debug_info=False): # noqa
   WASM_CALL_CTORS = '__wasm_call_ctors'
   if settings.MINIMAL_RUNTIME:
     CTOR_ADD_PATTERN = f"asm['{WASM_CALL_CTORS}']();" # TODO test
   else:
     CTOR_ADD_PATTERN = f"addOnInit(Module['asm']['{WASM_CALL_CTORS}']);"
 
-  def has_ctor(js):
-    return CTOR_ADD_PATTERN in js
-
-  def do_eval_ctors(js, wasm_file): # TODO: remove func
-    # eval the ctor caller as well as main. note that we must keep main around
-    # even if we eval it (we could in theory remove the call from the JS)
-    if not settings.STANDALONE_WASM:
-      if settings.HAS_MAIN:
-        args = ['--ctors=' + WASM_CALL_CTORS + ',main',
-              '--kept-exports=main']
-      else:
-        args = ['--ctors=' + WASM_CALL_CTORS]
-    else:
-      if settings.EXPECT_MAIN:
-        args = ['--ctors=_start']
-      else:
-        args = ['--ctors=_instantiate']
-    if settings.EVAL_CTORS == 2:
-      args += ['--ignore-external-input']
-    out = run_binaryen_command('wasm-ctor-eval', wasm_file, wasm_file, args=args, stdout=PIPE)
-    logger.warning('\n\n' + out)
-    num_successful = out.count('success on')
-    if num_successful:
-      js = js.replace(CTOR_ADD_PATTERN, '')
-    return num_successful, js
-
   js = utils.read_file(js_file)
-  if not has_ctor(js):
-    logger.warning('ctor_evaller: no ctors')
-    return
 
-  wasm_file = binary_file
-  logger.warning('ctor_evaller (wasm): trying to eval global ctor')
-  num_successful, new_js = do_eval_ctors(js, wasm_file)
-  utils.write_file(js_file, new_js)
+  has_wasm_call_ctors = False
+
+  # eval the ctor caller as well as main, or, in standalone mode, the proper
+  # entry/init function
+  if not settings.STANDALONE_WASM:
+    ctors = []
+    kept_ctors = []
+    has_wasm_call_ctors = CTOR_ADD_PATTERN in js
+    if has_wasm_call_ctors:
+      ctors += [WASM_CALL_CTORS]
+    if settings.HAS_MAIN:
+      ctors += ['main']
+      # TODO perhaps remove the call to main from the JS? or is this an abi
+      #      we want to preserve?
+      kept_ctors += ['main']
+    if not ctors:
+      logger.warning('ctor_evaller: no ctors')
+      return
+    args = ['--ctors=' + ','.join(ctors)]
+    if kept_ctors:
+      args += ['--kept-exports=' + ','.join(kept_ctors)]
+  else:
+    if settings.EXPECT_MAIN:
+      args = ['--ctors=_start']
+    else:
+      args = ['--ctors=_initialize']
+  if settings.EVAL_CTORS == 2:
+    args += ['--ignore-external-input']
+  logger.warning('ctor_evaller (wasm): trying to eval global ctors (' + ' '.join(args) + ')')
+  out = run_binaryen_command('wasm-ctor-eval', wasm_file, wasm_file, args=args, stdout=PIPE)
+  logger.warning('\n\n' + out)
+  num_successful = out.count('success on')
+  if num_successful and has_wasm_call_ctors:
+    js = js.replace(CTOR_ADD_PATTERN, '')
+  utils.write_file(js_file, js)
 
 
 def get_closure_compiler():
