@@ -1529,6 +1529,12 @@ int main() {
     self.emcc_args.append('--no-entry')
     self.do_core_test('test_ctors_no_main.cpp')
 
+  @also_with_standalone_wasm(impure=True)
+  def test_eval_ctors_no_main(self):
+    self.set_setting('EVAL_CTORS')
+    self.emcc_args.append('--no-entry')
+    self.do_core_test('test_ctors_no_main.cpp')
+
   def test_class(self):
     self.do_core_test('test_class.cpp')
 
