@@ -8898,15 +8898,15 @@ def make_run(name, emcc_args, settings=None, env=None, node_args=None):
 
 
 # Main wasm test modes
-wasm0 = make_run('wasm0', emcc_args=['-O0'])
-wasm0g = make_run('wasm0g', emcc_args=['-O0', '-g'])
-wasm1 = make_run('wasm1', emcc_args=['-O1'])
-wasm2 = make_run('wasm2', emcc_args=['-O2'])
-wasm2g = make_run('wasm2g', emcc_args=['-O2', '-g'])
-wasm3 = make_run('wasm3', emcc_args=['-O3'])
-wasms = make_run('wasms', emcc_args=['-Os'])
-wasmz = make_run('wasmz', emcc_args=['-Oz'])
-wasm64 = make_run('wasm64', emcc_args=['-O0', '-g3'],
+core0 = make_run('core0', emcc_args=['-O0'])
+core0g = make_run('core0g', emcc_args=['-O0', '-g'])
+core1 = make_run('core1', emcc_args=['-O1'])
+core2 = make_run('core2', emcc_args=['-O2'])
+core2g = make_run('core2g', emcc_args=['-O2', '-g'])
+core3 = make_run('core3', emcc_args=['-O3'])
+cores = make_run('cores', emcc_args=['-Os'])
+corez = make_run('corez', emcc_args=['-Oz'])
+core64 = make_run('core64', emcc_args=['-O0', '-g3'],
                   settings={'MEMORY64': 2}, env=None, node_args='--experimental-wasm-bigint')
 
 lto0 = make_run('lto0', emcc_args=['-flto', '-O0'])
@@ -8930,9 +8930,10 @@ wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
 
-# wasm
-wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
-wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
+# SAFE_HEAP/STACK_OVERFLOW_CHECK
+core2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
+core2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
+
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 

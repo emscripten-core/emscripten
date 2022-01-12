@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.2
 -----
+- `wasmX` test suites that are defined in `test_core.py` have been renamed to
+  `coreX` to better reflect where they are defined.  The old suite names such
+  as `wasm2` will continue to work for now as aliases.
 
 3.1.1 - 08/01/2022
 ------------------
