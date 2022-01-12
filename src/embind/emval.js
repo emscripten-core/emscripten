@@ -148,11 +148,11 @@ var LibraryEmVal = {
     /*This function returns a new function that looks like this:
     function emval_allocator_3(constructor, argTypes, args) {
         var argType0 = requireRegisteredType(HEAP32[(argTypes >> 2)], "parameter 0");
-        var arg0 = argType0.readValueFromPointer(args);
+        var arg0 = argType0['readValueFromPointer'](args);
         var argType1 = requireRegisteredType(HEAP32[(argTypes >> 2) + 1], "parameter 1");
-        var arg1 = argType1.readValueFromPointer(args + 8);
+        var arg1 = argType1['readValueFromPointer'](args + 8);
         var argType2 = requireRegisteredType(HEAP32[(argTypes >> 2) + 2], "parameter 2");
-        var arg2 = argType2.readValueFromPointer(args + 16);
+        var arg2 = argType2['readValueFromPointer'](args + 16);
         var obj = new constructor(arg0, arg1, arg2);
         return Emval.toHandle(obj);
     } */
@@ -162,8 +162,8 @@ var LibraryEmVal = {
       argsList[0] = constructor;
       for (var i = 0; i < argCount; ++i) {
         var argType = requireRegisteredType(HEAP32[(argTypes >> 2) + i], 'parameter ' + i);
-        argsList[i + 1] = argType.readValueFromPointer(args);
-        args += argType.argPackAdvance;
+        argsList[i + 1] = argType['readValueFromPointer'](args);
+        args += argType['argPackAdvance'];
       }
       var obj = new (constructor.bind.apply(constructor, argsList));
       return Emval.toHandle(obj);
@@ -397,11 +397,11 @@ var LibraryEmVal = {
 
 #if DYNAMIC_EXECUTION == 0
     var argN = new Array(argCount - 1);
-    var invokerFunction = function(handle, name, destructors, args) {
+    var invokerFunction = (handle, name, destructors, args) => {
       var offset = 0;
       for (var i = 0; i < argCount - 1; ++i) {
-        argN[i] = types[i + 1].readValueFromPointer(args + offset);
-        offset += types[i + 1].argPackAdvance;
+        argN[i] = types[i + 1]['readValueFromPointer'](args + offset);
+        offset += types[i + 1]['argPackAdvance'];
       }
       var rv = handle[name].apply(handle, argN);
       for (var i = 0; i < argCount - 1; ++i) {

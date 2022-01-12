@@ -4,17 +4,27 @@
 // found in the LICENSE file.
 
 #include <bits/errno.h>
+#include <math.h>
+#include <memory.h>
+#include <stdlib.h>
+#include <string.h>
+#include <threads.h>
+#include <stdbool.h>
+
 #include <emscripten/emscripten.h>
 #include <emscripten/fetch.h>
 #include <emscripten/html5.h>
 #include <emscripten/threading.h>
 #include <emscripten/console.h>
-#include <math.h>
-#include <memory.h>
-#include <stdlib.h>
-#include <string.h>
 
-extern "C" {
+// From https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/readyState
+#define STATE_UNSENT           0 // Client has been created. open() not called yet.
+#define STATE_OPENED           1 // open() has been called.
+#define STATE_HEADERS_RECEIVED 2 // send() has been called, and headers and status are available.
+#define STATE_LOADING          3 // Downloading; responseText holds partial data.
+#define STATE_DONE             4 // The operation is complete.
+
+#define STATE_MAX STATE_DONE
 
 // Uncomment the following and clear the cache with emcc --clear-cache to rebuild this file to
 // enable internal debugging. #define FETCH_DEBUG
@@ -27,11 +37,11 @@ int32_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
 int32_t _emscripten_fetch_get_response_headers(int32_t fetchID, int32_t dst, int32_t dstSizeBytes);
 void _emscripten_fetch_free(unsigned int);
 
-struct emscripten_fetch_queue {
+typedef struct emscripten_fetch_queue {
   emscripten_fetch_t** queuedOperations;
   int numQueuedItems;
   int queueSize;
-};
+} emscripten_fetch_queue;
 
 emscripten_fetch_queue* _emscripten_get_fetch_queue() {
   static thread_local emscripten_fetch_queue g_queue;
@@ -203,7 +213,7 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t* fetch, double timeou
   else
     return EMSCRIPTEN_RESULT_FAILED;
 #else
-  if (fetch->readyState >= 4 /*XMLHttpRequest.readyState.DONE*/)
+  if (fetch->readyState >= STATE_DONE)
     return EMSCRIPTEN_RESULT_SUCCESS; // already finished.
   if (timeoutMsecs == 0)
     return EMSCRIPTEN_RESULT_TIMED_OUT /*Main thread testing completion with sleep=0msecs*/;
@@ -226,12 +236,12 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t* fetch) {
   // This function frees the fetch pointer so that it is invalid to access it anymore.
   // Use a few key fields as an integrity check that we are being passed a good pointer to a valid
   // fetch structure, which has not been yet closed. (double close is an error)
-  if (fetch->id == 0 || fetch->readyState > 4)
+  if (fetch->id == 0 || fetch->readyState > STATE_MAX)
     return EMSCRIPTEN_RESULT_INVALID_PARAM;
 
   // This fetch is aborted. Call the error handler if the fetch was still in progress and was
   // canceled in flight.
-  if (fetch->readyState != 4 /*DONE*/ && fetch->__attributes.onerror) {
+  if (fetch->readyState != STATE_DONE && fetch->__attributes.onerror) {
     fetch->status = (unsigned short)-1;
     strcpy(fetch->statusText, "aborted with emscripten_fetch_close()");
     fetch->__attributes.onerror(fetch);
@@ -242,13 +252,13 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t* fetch) {
 }
 
 size_t emscripten_fetch_get_response_headers_length(emscripten_fetch_t *fetch) {
-  if (!fetch || fetch->readyState < 2) return 0;
+  if (!fetch || fetch->readyState < STATE_HEADERS_RECEIVED) return 0;
 
   return (size_t)_emscripten_fetch_get_response_headers_length((int32_t)fetch->id);
 }
 
 size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *dst, size_t dstSizeBytes) {
-  if (!fetch || fetch->readyState < 2) return 0;
+  if (!fetch || fetch->readyState < STATE_HEADERS_RECEIVED) return 0;
 
   return (size_t)_emscripten_fetch_get_response_headers((int32_t)fetch->id, (int32_t)dst, (int32_t)dstSizeBytes);
 }
@@ -256,7 +266,7 @@ size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *ds
 char **emscripten_fetch_unpack_response_headers(const char *headersString) {
   // Get size of output array and allocate.
   size_t numHeaders = 0;
-  for(const char *pos = strchr(headersString, '\n'); pos; pos = strchr(pos + 1, '\n'))
+  for (const char *pos = strchr(headersString, '\n'); pos; pos = strchr(pos + 1, '\n'))
   {
     numHeaders++;
   }
@@ -266,7 +276,7 @@ char **emscripten_fetch_unpack_response_headers(const char *headersString) {
   // Allocate each header.
   const char *rowStart = headersString;
   const char *rowEnd = strchr(rowStart, '\n');
-  for(size_t headerNum = 0; rowEnd; headerNum += 2)
+  for (size_t headerNum = 0; rowEnd; headerNum += 2)
   {
     const char *split = strchr(rowStart, ':');
     size_t headerSize = (size_t)split - (size_t)rowStart;
@@ -290,9 +300,9 @@ char **emscripten_fetch_unpack_response_headers(const char *headersString) {
 }
 
 void emscripten_fetch_free_unpacked_response_headers(char **unpackedHeaders) {
-  if(unpackedHeaders)
+  if (unpackedHeaders)
   {
-    for(size_t i = 0; unpackedHeaders[i]; ++i)
+    for (size_t i = 0; unpackedHeaders[i]; ++i)
       free((void*)unpackedHeaders[i]);
     free((void*)unpackedHeaders);
   }
@@ -318,5 +328,3 @@ static void fetch_free(emscripten_fetch_t* fetch) {
   free((void*)fetch->__attributes.overriddenMimeType);
   free(fetch);
 }
-
-} // extern "C"

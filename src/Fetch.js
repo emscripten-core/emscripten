@@ -28,7 +28,7 @@ var Fetch = {
       var openRequest = indexedDB.open(dbname, dbversion);
     } catch (e) { return onerror(e); }
 
-    openRequest.onupgradeneeded = function(event) {
+    openRequest.onupgradeneeded = (event) => {
 #if FETCH_DEBUG
       console.log('fetch: IndexedDB upgrade needed. Clearing database.');
 #endif
@@ -38,8 +38,8 @@ var Fetch = {
       }
       db.createObjectStore('FILES');
     };
-    openRequest.onsuccess = function(event) { onsuccess(event.target.result); };
-    openRequest.onerror = function(error) { onerror(error); };
+    openRequest.onsuccess = (event) => onsuccess(event.target.result);
+    openRequest.onerror = (error) => onerror(error);
   },
 #endif
 
@@ -47,7 +47,7 @@ var Fetch = {
     var isMainThread = true;
 
 #if FETCH_SUPPORT_INDEXEDDB
-    var onsuccess = function(db) {
+    var onsuccess = (db) => {
 #if FETCH_DEBUG
       console.log('fetch: IndexedDB successfully opened.');
 #endif
@@ -57,7 +57,7 @@ var Fetch = {
         removeRunDependency('library_fetch_init');
       }
     };
-    var onerror = function() {
+    var onerror = () => {
 #if FETCH_DEBUG
       console.error('fetch: IndexedDB open failed.');
 #endif
@@ -95,7 +95,7 @@ function fetchDeleteCachedData(db, fetch, onsuccess, onerror) {
     var transaction = db.transaction(['FILES'], 'readwrite');
     var packages = transaction.objectStore('FILES');
     var request = packages.delete(pathStr);
-    request.onsuccess = function(event) {
+    request.onsuccess = (event) => {
       var value = event.target.result;
 #if FETCH_DEBUG
       console.log('fetch: Deleted file ' + pathStr + ' from IndexedDB');
@@ -109,7 +109,7 @@ function fetchDeleteCachedData(db, fetch, onsuccess, onerror) {
       stringToUTF8("OK", fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
       onsuccess(fetch, 0, value);
     };
-    request.onerror = function(error) {
+    request.onerror = (error) => {
 #if FETCH_DEBUG
       console.error('fetch: Failed to delete file ' + pathStr + ' from IndexedDB! error: ' + error);
 #endif
@@ -144,7 +144,7 @@ function fetchLoadCachedData(db, fetch, onsuccess, onerror) {
     var transaction = db.transaction(['FILES'], 'readonly');
     var packages = transaction.objectStore('FILES');
     var getRequest = packages.get(pathStr);
-    getRequest.onsuccess = function(event) {
+    getRequest.onsuccess = (event) => {
       if (event.target.result) {
         var value = event.target.result;
         var len = value.byteLength || value.length;
@@ -174,7 +174,7 @@ function fetchLoadCachedData(db, fetch, onsuccess, onerror) {
         onerror(fetch, 0, 'no data');
       }
     };
-    getRequest.onerror = function(error) {
+    getRequest.onerror = (error) => {
 #if FETCH_DEBUG
       console.error('fetch: Failed to load file ' + pathStr + ' from IndexedDB!');
 #endif
@@ -209,7 +209,7 @@ function fetchCacheData(db, fetch, data, onsuccess, onerror) {
     var transaction = db.transaction(['FILES'], 'readwrite');
     var packages = transaction.objectStore('FILES');
     var putRequest = packages.put(data, destinationPathStr);
-    putRequest.onsuccess = function(event) {
+    putRequest.onsuccess = (event) => {
 #if FETCH_DEBUG
       console.log('fetch: Stored file "' + destinationPathStr + '" to IndexedDB cache.');
 #endif
@@ -218,7 +218,7 @@ function fetchCacheData(db, fetch, data, onsuccess, onerror) {
       stringToUTF8("OK", fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
       onsuccess(fetch, 0, destinationPathStr);
     };
-    putRequest.onerror = function(error) {
+    putRequest.onerror = (error) => {
 #if FETCH_DEBUG
       console.error('fetch: Failed to store file "' + destinationPathStr + '" to IndexedDB cache!');
 #endif
@@ -341,7 +341,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
   }
 
-  xhr.onload = function(e) {
+  xhr.onload = (e) => {
     saveResponse(fetchAttrLoadToMemory && !fetchAttrStreamData);
     var len = xhr.response ? xhr.response.byteLength : 0;
     Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
@@ -366,7 +366,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       if (onerror) onerror(fetch, xhr, e);
     }
   };
-  xhr.onerror = function(e) {
+  xhr.onerror = (e) => {
     saveResponse(fetchAttrLoadToMemory);
     var status = xhr.status; // XXX TODO: Overwriting xhr.status doesn't work here, so don't override anywhere else either.
 #if FETCH_DEBUG
@@ -378,13 +378,13 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = status;
     if (onerror) onerror(fetch, xhr, e);
   };
-  xhr.ontimeout = function(e) {
+  xhr.ontimeout = (e) => {
 #if FETCH_DEBUG
     console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" timed out, readyState ' + xhr.readyState + ' and status ' + xhr.status);
 #endif
     if (onerror) onerror(fetch, xhr, e);
   };
-  xhr.onprogress = function(e) {
+  xhr.onprogress = (e) => {
     var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData && xhr.response) ? xhr.response.byteLength : 0;
     var ptr = 0;
     if (fetchAttrLoadToMemory && fetchAttrStreamData) {
@@ -411,7 +411,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       _free(ptr);
     }
   };
-  xhr.onreadystatechange = function(e) {
+  xhr.onreadystatechange = (e) => {
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
     if (xhr.readyState >= 2) {
       HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
@@ -453,7 +453,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
   var fetchAttrReplace = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_REPLACE') }}});
   var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_SYNCHRONOUS') }}});
 
-  var reportSuccess = function(fetch, xhr, e) {
+  var reportSuccess = (fetch, xhr, e) => {
 #if FETCH_DEBUG
     console.log('fetch: operation success. e: ' + e);
 #endif
@@ -464,14 +464,14 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     }, fetchAttrSynchronous);
   };
 
-  var reportProgress = function(fetch, xhr, e) {
+  var reportProgress = (fetch, xhr, e) => {
     callUserCallback(function() {
       if (onprogress) {{{ makeDynCall('vi', 'onprogress') }}}(fetch);
       else if (progresscb) progresscb(fetch);
     }, fetchAttrSynchronous);
   };
 
-  var reportError = function(fetch, xhr, e) {
+  var reportError = (fetch, xhr, e) => {
 #if FETCH_DEBUG
     console.error('fetch: operation failed: ' + e);
 #endif
@@ -482,7 +482,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     }, fetchAttrSynchronous);
   };
 
-  var reportReadyStateChange = function(fetch, xhr, e) {
+  var reportReadyStateChange = (fetch, xhr, e) => {
 #if FETCH_DEBUG
     console.log('fetch: ready state change. e: ' + e);
 #endif
@@ -492,7 +492,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     }, fetchAttrSynchronous);
   };
 
-  var performUncachedXhr = function(fetch, xhr, e) {
+  var performUncachedXhr = (fetch, xhr, e) => {
 #if FETCH_DEBUG
     console.error('fetch: starting (uncached) XHR: ' + e);
 #endif
@@ -500,11 +500,11 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
   };
 
 #if FETCH_SUPPORT_INDEXEDDB
-  var cacheResultAndReportSuccess = function(fetch, xhr, e) {
+  var cacheResultAndReportSuccess = (fetch, xhr, e) => {
 #if FETCH_DEBUG
     console.log('fetch: operation success. Caching result.. e: ' + e);
 #endif
-    var storeSuccess = function(fetch, xhr, e) {
+    var storeSuccess = (fetch, xhr, e) => {
 #if FETCH_DEBUG
       console.log('fetch: IndexedDB store succeeded.');
 #endif
@@ -514,7 +514,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
         else if (successcb) successcb(fetch);
       }, fetchAttrSynchronous);
     };
-    var storeError = function(fetch, xhr, e) {
+    var storeError = (fetch, xhr, e) => {
 #if FETCH_DEBUG
       console.error('fetch: IndexedDB store failed.');
 #endif
@@ -527,7 +527,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     fetchCacheData(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);
   };
 
-  var performCachedXhr = function(fetch, xhr, e) {
+  var performCachedXhr = (fetch, xhr, e) => {
 #if FETCH_DEBUG
     console.error('fetch: starting (cached) XHR: ' + e);
 #endif

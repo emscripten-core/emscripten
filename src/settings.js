@@ -1198,10 +1198,12 @@ var EXPORT_NAME = 'Module';
 // that is targeting a privileged or a certified execution environment, see
 // Firefox Content Security Policy (CSP) webpage for details:
 // https://developer.mozilla.org/en-US/Apps/Build/Building_apps_for_Firefox_OS/CSP
+//
 // When this flag is set, the following features (linker flags) are unavailable:
-//  --closure 1: When using closure compiler, eval() would be needed to locate the Module object.
 //  -s RELOCATABLE=1: the function Runtime.loadDynamicLibrary would need to eval().
-//  --bind: Embind would need to eval().
+// and some features may fall back to slower code paths when they need to:
+//  --bind: Embind uses eval() to jit functions for speed.
+//
 // Additionally, the following Emscripten runtime functions are unavailable when
 // DYNAMIC_EXECUTION=0 is set, and an attempt to call them will throw an exception:
 // - emscripten_run_script(),
@@ -1210,6 +1212,7 @@ var EXPORT_NAME = 'Module';
 // - dlopen(),
 // - the functions ccall() and cwrap() are still available, but they are restricted to only
 //   being able to call functions that have been exported in the Module object in advance.
+//
 // When set to -s DYNAMIC_EXECUTION=2 flag is set, attempts to call to eval() are demoted
 // to warnings instead of throwing an exception.
 // [link]

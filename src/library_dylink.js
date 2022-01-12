@@ -797,7 +797,7 @@ var LibraryDylink = {
 #endif
     var searchpaths = [];
 
-    var isValidFile = function(filename) {
+    var isValidFile = (filename) => {
       var target = FS.findObject(filename);
       return target && !target.isFolder && !target.isDevice;
     };

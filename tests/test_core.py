@@ -7825,13 +7825,11 @@ Module['onRuntimeInitialized'] = function() {
     # This test checks for the global variables required to run the memory
     # profiler.  It would fail if these variables were made no longer global
     # or if their identifiers were changed.
-    create_file('main.cpp', '''
-      extern "C" {
-        void check_memprof_requirements();
-      }
+    create_file('main.c', '''
+      int check_memprof_requirements();
+
       int main() {
-        check_memprof_requirements();
-        return 0;
+        return check_memprof_requirements();
       }
     ''')
     create_file('lib.js', '''
@@ -7842,14 +7840,16 @@ Module['onRuntimeInitialized'] = function() {
               typeof _emscripten_stack_get_current === 'function' &&
               typeof Module['___heap_base'] === 'number') {
              out('able to run memprof');
+             return 0;
            } else {
              out('missing the required variables to run memprof');
+             return 1;
            }
         }
       });
     ''')
     self.emcc_args += ['--memoryprofiler', '--js-library', 'lib.js']
-    self.do_runf('main.cpp', 'able to run memprof')
+    self.do_runf('main.c', 'able to run memprof')
 
   def test_fs_dict(self):
     self.set_setting('FORCE_FILESYSTEM')
@@ -8431,6 +8431,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_busy_wait.cpp')
+
+  @node_pthreads
+  def test_pthread_busy_wait_atexit(self):
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('pthread/test_pthread_busy_wait_atexit.cpp')
 
   @node_pthreads
   def test_pthread_create_pool(self):

@@ -537,8 +537,6 @@ def get_binaryen_passes():
     passes += ['--memory64-lowering']
   if run_binaryen_optimizer:
     passes += ['--post-emscripten']
-    if not settings.EXIT_RUNTIME:
-      passes += ['--no-exit-runtime']
   if run_binaryen_optimizer:
     passes += [building.opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
   # when optimizing, use the fact that low memory is never used (1024 is a
@@ -2348,6 +2346,13 @@ def phase_linker_setup(options, state, newargs, settings_map):
     # always does.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
 
+  if settings.EXIT_RUNTIME and not settings.STANDALONE_WASM:
+    # Internal function implemented in musl that calls any functions registered
+    # via `atexit` et al.  With STANDALONE_WASM this is all taken care of via
+    # _start and exit handling in musl, but with the normal emscripten ABI we
+    # need to be able to call these explicitly.
+    settings.REQUIRED_EXPORTS += ['__funcs_on_exit']
+
   # various settings require malloc/free support from JS
   if settings.RELOCATABLE or \
      settings.BUILD_AS_WORKER or \
@@ -2467,7 +2472,7 @@ def phase_linker_setup(options, state, newargs, settings_map):
 @ToolchainProfiler.profile_block('compile inputs')
 def phase_compile_inputs(options, state, newargs, input_files):
   def is_link_flag(flag):
-    if flag.startswith('-nostdlib'):
+    if flag in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs'):
       return True
     return flag.startswith(('-l', '-L', '-Wl,'))
 
@@ -2633,8 +2638,8 @@ def phase_calculate_system_libraries(state, linker_arguments, linker_inputs, new
   if not settings.SIDE_MODULE:
     # Ports are always linked into the main module, never the size module.
     extra_files_to_link += ports.get_libs(settings)
-  if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
-    extra_files_to_link += system_libs.calculate([f for _, f in sorted(linker_inputs)] + extra_files_to_link, forced=state.forced_stdlibs)
+  all_linker_inputs = [f for _, f in sorted(linker_inputs)] + extra_files_to_link
+  extra_files_to_link += system_libs.calculate(all_linker_inputs, newargs, forced=state.forced_stdlibs)
   linker_arguments.extend(extra_files_to_link)
 
 

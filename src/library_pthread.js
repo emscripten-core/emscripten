@@ -187,7 +187,7 @@ var LibraryPThread = {
     //                    the workers have been initialized and are
     //                    ready to host pthreads.
     loadWasmModuleToWorker: function(worker, onFinishedLoading) {
-      worker.onmessage = function(e) {
+      worker.onmessage = (e) => {
         var d = e['data'];
         var cmd = d['cmd'];
         // Sometimes we need to backproxy events to the calling thread (e.g.
@@ -233,11 +233,6 @@ var LibraryPThread = {
           err('Thread ' + d['threadId'] + ': ' + d['text']);
         } else if (cmd === 'alert') {
           alert('Thread ' + d['threadId'] + ': ' + d['text']);
-        } else if (cmd === 'detachedExit') {
-#if ASSERTIONS
-          assert(worker.pthread);
-#endif
-          PThread.returnWorkerToPool(worker);
         } else if (d.target === 'setimmediate') {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
@@ -252,7 +247,7 @@ var LibraryPThread = {
         PThread.currentProxiedOperationCallerThread = undefined;
       };
 
-      worker.onerror = function(e) {
+      worker.onerror = (e) => {
         var message = 'worker sent an error!';
 #if ASSERTIONS
         if (worker.pthread) {
@@ -529,7 +524,7 @@ var LibraryPThread = {
     msg.moduleCanvasId = threadParams.moduleCanvasId;
     msg.offscreenCanvases = threadParams.offscreenCanvases;
 #endif
-    worker.runPthread = function() {
+    worker.runPthread = () => {
       // Ask the worker to start executing its pthread entry point function.
       msg.time = performance.now();
       worker.postMessage(msg, threadParams.transferList);
@@ -800,12 +795,6 @@ var LibraryPThread = {
     if (!ENVIRONMENT_IS_PTHREAD) cancelThread(thread);
     else postMessage({ 'cmd': 'cancelThread', 'thread': thread});
     return 0;
-  },
-
-  __pthread_detached_exit: function() {
-    // Called at the end of pthread_exit (which occurs also when leaving the
-    // thread main function) if an only if the thread is in a detached state.
-    postMessage({ 'cmd': 'detachedExit' });
   },
 
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.

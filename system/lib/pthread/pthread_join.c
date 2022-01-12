@@ -10,7 +10,7 @@
 #include <pthread.h>
 
 extern int __pthread_join_js(pthread_t t, void **res, int tryjoin);
-extern int __emscripten_thread_cleanup(pthread_t t);
+extern void __emscripten_thread_cleanup(pthread_t t);
 
 static int __pthread_join_internal(pthread_t t, void **res) {
   if (t->self != t) {
