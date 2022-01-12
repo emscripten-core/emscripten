@@ -33,7 +33,7 @@ from tools import building
 # 5: 10 seconds
 DEFAULT_ARG = '4'
 
-TEST_REPS = 5
+TEST_REPS = 0
 
 # by default, run just core benchmarks
 CORE_BENCHMARKS = True
@@ -211,7 +211,7 @@ class EmscriptenBenchmarker(Benchmarker):
     if common.EMTEST_FORCE64:
       cmd += ['--profiling']
     else:
-      cmd += ['--closure=1', '-sMINIMAL_RUNTIME']
+      cmd += ['--closure=0', '-sMINIMAL_RUNTIME']
     # add additional emcc args at the end, which may override other things
     # above, such as minimal runtime
     cmd += emcc_args + self.extra_args
@@ -361,7 +361,7 @@ benchmarkers = []
 
 if not common.EMTEST_FORCE64:
   benchmarkers += [
-    NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
+    # NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
     # NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie'])
   ]
 
@@ -377,8 +377,9 @@ if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
     ]
   else:
     benchmarkers += [
-      EmscriptenBenchmarker(default_v8_name, aot_v8),
-      EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
+      EmscriptenBenchmarker('norm', aot_v8),
+      EmscriptenBenchmarker('eval', aot_v8, ['-sEVAL_CTORS=2']),
+      #EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
       # EmscriptenWasm2CBenchmarker('wasm2c')
     ]
   if os.path.exists(CHEERP_BIN):

@@ -653,7 +653,10 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
 # for this, and we are in wasm mode
 def eval_ctors(js_file, binary_file, debug_info=False): # noqa
   CTOR_NAME = '__wasm_call_ctors'
-  CTOR_ADD_PATTERN = "addOnInit(Module['asm']['%s']);" % CTOR_NAME
+  if settings.MINIMAL_RUNTIME:
+    CTOR_ADD_PATTERN = f"asm['{CTOR_NAME}']();" # TODO test
+  else:
+    CTOR_ADD_PATTERN = f"addOnInit(Module['asm']['{CTOR_NAME}']);"
 
   def has_ctor(js):
     return CTOR_ADD_PATTERN in js
