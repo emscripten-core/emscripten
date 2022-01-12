@@ -161,7 +161,13 @@ var WasmfsLibrary = {
     wasmFS$JSMemoryFiles[index] = null;
     // Add the index to the free list.
     wasmFS$JSMemoryFreeList.push(index);
-  }
+  },
+  _emscripten_get_preloaded_file_size: function(index) {
+    return wasmFS$preloadedFiles[index].fileData.length
+  },
+  _emscripten_copy_preloaded_file_data: function(index, buffer) {
+    HEAPU8.set(wasmFS$preloadedFiles[index].fileData, buffer);
+  },
 }
 
 mergeInto(LibraryManager.library, WasmfsLibrary);
