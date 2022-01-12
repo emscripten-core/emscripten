@@ -664,9 +664,17 @@ def eval_ctors(js_file, binary_file, debug_info=False): # noqa
   def do_eval_ctors(js, wasm_file): # TODO: remove func
     # eval the ctor caller as well as main. note that we must keep main around
     # even if we eval it (we could in theory remove the call from the JS)
-    # TODO: handle standalone mode and reactors
-    args = ['--ctors=' + WASM_CALL_CTORS + ',main',
-            '--kept-exports=main']    
+    if not settings.STANDALONE_WASM:
+      if settings.HAS_MAIN:
+        args = ['--ctors=' + WASM_CALL_CTORS + ',main',
+              '--kept-exports=main']
+      else:
+        args = ['--ctors=' + WASM_CALL_CTORS]
+    else:
+      if settings.EXPECT_MAIN:
+        args = ['--ctors=_start']
+      else:
+        args = ['--ctors=_instantiate']
     if settings.EVAL_CTORS == 2:
       args += ['--ignore-external-input']
     out = run_binaryen_command('wasm-ctor-eval', wasm_file, wasm_file, args=args, stdout=PIPE)
