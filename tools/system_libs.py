@@ -1746,14 +1746,13 @@ def get_libs_to_link(args, forced, only_forced):
     add_library('libstandalonewasm')
   add_library('libc_rt')
 
-  if settings.USE_LSAN:
-    force_include.append('liblsan_rt')
-    add_library('liblsan_rt')
-
   if settings.USE_ASAN:
     force_include.append('libasan_rt')
     add_library('libasan_rt')
     add_library('libasan_js')
+  elif settings.USE_LSAN:
+    force_include.append('liblsan_rt')
+    add_library('liblsan_rt')
 
   if settings.UBSAN_RUNTIME == 1:
     add_library('libubsan_minimal_rt')

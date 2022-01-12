@@ -394,6 +394,7 @@ INTERCEPTOR(int, pthread_atfork, void (*prepare)(), void (*parent)(),
 #endif
 
 #if SANITIZER_EMSCRIPTEN
+#define __ATTRP_C11_THREAD ((void*)(uptr)-1)
 extern "C" {
   int emscripten_builtin_pthread_create(void *thread, void *attr,
                                         void *(*callback)(void *), void *arg);
@@ -452,7 +453,7 @@ INTERCEPTOR(int, pthread_create, void *th, void *attr,
   ENSURE_LSAN_INITED;
   EnsureMainThreadIDIsCorrect();
   __sanitizer_pthread_attr_t myattr;
-  if (!attr) {
+  if (!attr || attr == __ATTRP_C11_THREAD) {
     pthread_attr_init(&myattr);
     attr = &myattr;
   }

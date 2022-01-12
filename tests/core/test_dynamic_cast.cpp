@@ -16,4 +16,6 @@ struct Derived : Support {};
 int main() {
   Support* p = new Derived;
   dynamic_cast<Derived*>(p)->f();
+  delete p;
+  return 0;
 }
