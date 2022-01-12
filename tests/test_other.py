@@ -11415,3 +11415,31 @@ void foo() {}
     self.build(test_file('fetch/example_sync_xhr_to_memory.c'))
     self.build(test_file('fetch/example_waitable_xhr_to_memory.c'))
     self.build(test_file('fetch/example_xhr_progress.c'))
+
+  # Test that using llvm-nm works when response files are in use, and inputs are linked using relative paths.
+  # llvm-nm has a quirk that it does not remove escape chars when printing out filenames.
+  @with_env_modify({'EM_FORCE_RESPONSE_FILES': '1'})
+  def test_llvm_nm_relative_paths_works_with_response_files(self):
+    os.mkdir('foo')
+    # Test creating a library file with a relative path in a subdir, so it gets a double backslash "\\" in the generated llvm-nm output.
+    # Also add a space to stress space escaping, e.g. "\ ".
+    create_file(os.path.join('foo', 'foo bar.c'), r'''
+      #include <time.h>
+      #include <stdint.h>
+      time_t foo()
+      {
+        int64_t secondsSinceEpoch = 0;
+        struct tm* utcTime = gmtime((time_t*)&secondsSinceEpoch);
+        return mktime(utcTime);
+      }
+    ''')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <time.h>
+      time_t foo(void);
+      int main()
+      {
+        printf("%d\n", (int)foo());
+      }
+    ''')
+    self.run_process([EMCC, 'main.c', os.path.join('foo', 'foo bar.c')])
