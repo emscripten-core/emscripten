@@ -6794,7 +6794,7 @@ void* operator new(size_t size) {
         if self.is_wasm():
           # this also includes the memory, but it is close enough for our
           # purposes
-          return os.path.getsize(prefix + '.wasm')
+          return self.measure_wasm_code_lines(prefix + '.wasm')
         else:
           return os.path.getsize(prefix + '.js')
 
@@ -6834,7 +6834,12 @@ void* operator new(size_t size) {
     def test2():
       self.do_runf(test_file('hello_libcxx.cpp'), output)
 
-    do_test(test2, level=1, prefix='hello_libcxx')
+    # in standalone more there is more usage of WASI APIs, which mode 2 is
+    # needed to avoid in order to fully optimize, so do not test mode 1 in
+    # that mode.
+    if not self.get_setting('STANDALONE_WASM'):
+      do_test(test2, level=1, prefix='hello_libcxx')
+
     do_test(test2, level=2, prefix='hello_libcxx')
 
   def test_embind(self):
