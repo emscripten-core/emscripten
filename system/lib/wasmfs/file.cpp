@@ -10,10 +10,12 @@
 #include "wasmfs.h"
 #include <emscripten/threading.h>
 
-extern "C" size_t _emscripten_get_preloaded_file_size(uint32_t index);
+extern "C" {
+  size_t _emscripten_get_preloaded_file_size(uint32_t index);
 
-extern "C" size_t _emscripten_copy_preloaded_file_data(uint32_t index,
-                                                       uint8_t* data);
+  size_t _emscripten_copy_preloaded_file_data(uint32_t index,
+                                              uint8_t* data);
+}
 
 namespace wasmfs {
 //
