@@ -7881,13 +7881,11 @@ Module['onRuntimeInitialized'] = function() {
     # This test checks for the global variables required to run the memory
     # profiler.  It would fail if these variables were made no longer global
     # or if their identifiers were changed.
-    create_file('main.cpp', '''
-      extern "C" {
-        void check_memprof_requirements();
-      }
+    create_file('main.c', '''
+      int check_memprof_requirements();
+
       int main() {
-        check_memprof_requirements();
-        return 0;
+        return check_memprof_requirements();
       }
     ''')
     create_file('lib.js', '''
@@ -7898,14 +7896,16 @@ Module['onRuntimeInitialized'] = function() {
               typeof _emscripten_stack_get_current === 'function' &&
               typeof Module['___heap_base'] === 'number') {
              out('able to run memprof');
+             return 0;
            } else {
              out('missing the required variables to run memprof');
+             return 1;
            }
         }
       });
     ''')
     self.emcc_args += ['--memoryprofiler', '--js-library', 'lib.js']
-    self.do_runf('main.cpp', 'able to run memprof')
+    self.do_runf('main.c', 'able to run memprof')
 
   def test_fs_dict(self):
     self.set_setting('FORCE_FILESYSTEM')
@@ -8489,6 +8489,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('pthread/test_pthread_busy_wait.cpp')
 
   @node_pthreads
+  def test_pthread_busy_wait_atexit(self):
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('pthread/test_pthread_busy_wait_atexit.cpp')
+
+  @node_pthreads
   def test_pthread_create_pool(self):
     # with a pool, we can synchronously depend on workers being available
     self.set_setting('PTHREAD_POOL_SIZE', 2)
@@ -8835,6 +8841,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_core_test('test_em_async_js.c')
 
+  @require_v8
+  @no_wasm2js('wasm2js does not support reference types')
+  def test_externref(self):
+    self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'])
+    self.emcc_args += ['--js-library', test_file('core/test_externref.js')]
+    self.emcc_args += ['-mreference-types']
+    self.do_core_test('test_externref.c', libraries=['asm.o'])
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None, node_args=None):
@@ -8884,15 +8898,15 @@ def make_run(name, emcc_args, settings=None, env=None, node_args=None):
 
 
 # Main wasm test modes
-wasm0 = make_run('wasm0', emcc_args=['-O0'])
-wasm0g = make_run('wasm0g', emcc_args=['-O0', '-g'])
-wasm1 = make_run('wasm1', emcc_args=['-O1'])
-wasm2 = make_run('wasm2', emcc_args=['-O2'])
-wasm2g = make_run('wasm2g', emcc_args=['-O2', '-g'])
-wasm3 = make_run('wasm3', emcc_args=['-O3'])
-wasms = make_run('wasms', emcc_args=['-Os'])
-wasmz = make_run('wasmz', emcc_args=['-Oz'])
-wasm64 = make_run('wasm64', emcc_args=['-O0', '-g3'],
+core0 = make_run('core0', emcc_args=['-O0'])
+core0g = make_run('core0g', emcc_args=['-O0', '-g'])
+core1 = make_run('core1', emcc_args=['-O1'])
+core2 = make_run('core2', emcc_args=['-O2'])
+core2g = make_run('core2g', emcc_args=['-O2', '-g'])
+core3 = make_run('core3', emcc_args=['-O3'])
+cores = make_run('cores', emcc_args=['-Os'])
+corez = make_run('corez', emcc_args=['-Oz'])
+core64 = make_run('core64', emcc_args=['-O0', '-g3'],
                   settings={'MEMORY64': 2}, env=None, node_args='--experimental-wasm-bigint')
 
 lto0 = make_run('lto0', emcc_args=['-flto', '-O0'])
@@ -8916,9 +8930,10 @@ wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
 
-# wasm
-wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
-wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
+# SAFE_HEAP/STACK_OVERFLOW_CHECK
+core2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
+core2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
+
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 

@@ -73,15 +73,13 @@ function threadAlert() {
 // We don't need out() for now, but may need to add it if we want to use it
 // here. Or, if this code all moves into the main JS, that problem will go
 // away. (For now, adding it here increases code size for no benefit.)
-var out = function() {
-  throw 'out() is not defined in worker.js.';
-}
+var out = () => { throw 'out() is not defined in worker.js.'; }
 #endif
 var err = threadPrintErr;
 self.alert = threadAlert;
 
 #if !MINIMAL_RUNTIME
-Module['instantiateWasm'] = function(info, receiveInstance) {
+Module['instantiateWasm'] = (info, receiveInstance) => {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
   var instance = new WebAssembly.Instance(Module['wasmModule'], info);
@@ -96,10 +94,10 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
   // We don't need the module anymore; new threads will be spawned from the main thread.
   Module['wasmModule'] = null;
   return instance.exports;
-};
+}
 #endif
 
-self.onmessage = function(e) {
+self.onmessage = (e) => {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if MINIMAL_RUNTIME

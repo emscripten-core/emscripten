@@ -16,7 +16,7 @@
 
 #if BENCHMARK
 Module.realPrint = out;
-out = err = function(){};
+out = err = () => {};
 #endif
 
 #if RELOCATABLE
@@ -430,6 +430,9 @@ function exitRuntime() {
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
 #if EXIT_RUNTIME
+#if !STANDALONE_WASM
+  ___funcs_on_exit(); // Native atexit() functions
+#endif
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
 #endif
@@ -746,7 +749,7 @@ function instrumentWasmTableWithAbort() {
   // Override the wasmTable get function to return the wrappers
   var realGet = wasmTable.get;
   var wrapperCache = {};
-  wasmTable.get = function(i) {
+  wasmTable.get = (i) => {
     {{{ from64('i') }}}
     var func = realGet.call(wasmTable, i);
     var cached = wrapperCache[i];
@@ -776,26 +779,26 @@ function instrumentWasmExportsForMemory64(exports) {
       var replacement = original;
       if (name === 'stackAlloc' || name === 'malloc') {
         // get one i64, return an i64
-        replacement = function(x) {
+        replacement = (x) => {
           var r = Number(original(BigInt(x)));
           return r;
         };
       } else if (name === 'free') {
         // get one i64
-        replacement = function(x) {
+        replacement = (x) => {
           original(BigInt(x));
         };
       } else if (name === 'emscripten_stack_get_end' ||
                  name === 'emscripten_stack_get_base' ||
                  name === 'emscripten_stack_get_current') {
         // return an i64
-        replacement = function() {
+        replacement = () => {
           var r = Number(original());
           return r;
         };
       } else if (name === 'main') {
         // get a i64 as second arg
-        replacement = function(x, y) {
+        replacement = (x, y) => {
           var r = original(x, BigInt(y));
           return r;
         };

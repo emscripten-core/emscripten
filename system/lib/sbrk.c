@@ -18,7 +18,7 @@
 #endif
 
 #ifdef __EMSCRIPTEN_TRACING__
-#include <emscripten/em_asm.h>
+void emscripten_memprof_sbrk_grow(intptr_t old, intptr_t new);
 #endif
 
 #include <emscripten/heap.h>
@@ -96,7 +96,7 @@ void *sbrk(intptr_t increment_) {
 #endif // __EMSCRIPTEN_PTHREADS__
 
 #ifdef __EMSCRIPTEN_TRACING__
-    EM_ASM({if (typeof emscriptenMemoryProfiler !== 'undefined') emscriptenMemoryProfiler.onSbrkGrow($0, $1)}, old_brk, old_brk + increment );
+    emscripten_memprof_sbrk_grow(old_brk, new_brk);
 #endif
     return (void*)old_brk;
 

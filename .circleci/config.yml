@@ -361,25 +361,25 @@ jobs:
     steps:
       - run-tests:
           test_targets: "posixtest"
-  test-wasm0:
+  test-core0:
     executor: bionic
     steps:
       - run-tests:
-          test_targets: "wasm0"
-  test-wasm2:
+          test_targets: "core0"
+  test-core2:
     executor: bionic
     environment:
       EMTEST_BROWSER: "node"
     steps:
       - run-tests:
           # also add a few asan tests and a single test of EMTEST_BROWSER=node
-          test_targets: "wasm2 asan.test_stat asan.test_float_builtins asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread* asan.test_dyncall_specific_minimal_runtime asan.test_async_hello lsan.test_stdio_locking lsan.test_pthread_create browser.test_pthread_join"
-  test-wasm3:
+          test_targets: "core2 asan.test_stat asan.test_float_builtins asan.test_embind* asan.test_abort_on_exceptions asan.test_ubsan_full_left_shift_fsanitize_integer asan.test_pthread* asan.test_dyncall_specific_minimal_runtime asan.test_async_hello lsan.test_stdio_locking lsan.test_pthread_create browser.test_pthread_join"
+  test-core3:
     executor: bionic
     steps:
       - run-tests:
           # also add a little select testing for wasm2js in -O3
-          test_targets: "wasm3 wasm2js3.test_memorygrowth_2"
+          test_targets: "core3 wasm2js3.test_memorygrowth_2"
   test-wasm2js1:
     executor: bionic
     steps:
@@ -439,7 +439,7 @@ jobs:
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - run-tests:
-          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple wasm2.test_sse1 wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file wasm2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs other.test_response_file_encoding"
+          test_targets: "other.test_emcc_cflags other.test_stdin other.test_bad_triple core2.test_sse1 core2.test_ccall other.test_closure_externs other.test_binaryen_debug other.test_js_optimizer_parse_error other.test_output_to_nowhere other.test_emcc_dev_null other.test_cmake* other.test_system_include_paths other.test_emar_response_file core2.test_utf16 other.test_special_chars_in_arguments other.test_toolchain_profiler other.test_realpath_nodefs other.test_response_file_encoding"
   test-mac:
     executor: mac
     environment:
@@ -457,7 +457,7 @@ jobs:
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - run-tests-mac:
-          test_targets: "other wasm0.test_lua wasm0.test_longjmp_standalone wasm2.test_sse1 skip:other.test_native_link_error_message"
+          test_targets: "other core0.test_lua core0.test_longjmp_standalone core2.test_sse1 skip:other.test_native_link_error_message"
 
 workflows:
   build-test:
@@ -472,13 +472,13 @@ workflows:
       - test-posixtest:
           requires:
             - build-linux
-      - test-wasm0:
+      - test-core0:
           requires:
             - build-linux
-      - test-wasm2:
+      - test-core2:
           requires:
             - build-linux
-      - test-wasm3:
+      - test-core3:
           requires:
             - build-linux
       - test-wasm64:

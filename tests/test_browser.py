@@ -1786,7 +1786,7 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_glbook(self):
     self.emcc_args.remove('-Werror')
-    programs = self.get_library('glbook', [
+    programs = self.get_library('third_party/glbook', [
       Path('Chapter_2/Hello_Triangle', 'CH02_HelloTriangle.o'),
       Path('Chapter_8/Simple_VertexShader', 'CH08_SimpleVertexShader.o'),
       Path('Chapter_9/Simple_Texture2D', 'CH09_SimpleTexture2D.o'),
@@ -1797,7 +1797,7 @@ keydown(100);keyup(100); // trigger the end
     ], configure=None)
 
     def book_path(*pathelems):
-      return test_file('glbook', *pathelems)
+      return test_file('third_party/glbook', *pathelems)
 
     for program in programs:
       print(program)
@@ -1823,27 +1823,27 @@ keydown(100);keyup(100); // trigger the end
   })
   def test_gles2_emulation(self, args):
     print(args)
-    shutil.copyfile(test_file('glbook/Chapter_10/MultiTexture/basemap.tga'), 'basemap.tga')
-    shutil.copyfile(test_file('glbook/Chapter_10/MultiTexture/lightmap.tga'), 'lightmap.tga')
-    shutil.copyfile(test_file('glbook/Chapter_13/ParticleSystem/smoke.tga'), 'smoke.tga')
+    shutil.copyfile(test_file('third_party/glbook/Chapter_10/MultiTexture/basemap.tga'), 'basemap.tga')
+    shutil.copyfile(test_file('third_party/glbook/Chapter_10/MultiTexture/lightmap.tga'), 'lightmap.tga')
+    shutil.copyfile(test_file('third_party/glbook/Chapter_13/ParticleSystem/smoke.tga'), 'smoke.tga')
 
     for source, reference in [
-      (Path('glbook/Chapter_2', 'Hello_Triangle', 'Hello_Triangle_orig.c'), test_file('glbook/CH02_HelloTriangle.png')),
-      # (Path('glbook/Chapter_8', 'Simple_VertexShader', 'Simple_VertexShader_orig.c'), test_file('glbook/CH08_SimpleVertexShader.png')), # XXX needs INT extension in WebGL
-      (Path('glbook/Chapter_9', 'TextureWrap', 'TextureWrap_orig.c'), test_file('glbook/CH09_TextureWrap.png')),
-      # (Path('glbook/Chapter_9', 'Simple_TextureCubemap', 'Simple_TextureCubemap_orig.c'), test_file('glbook/CH09_TextureCubemap.png')), # XXX needs INT extension in WebGL
-      (Path('glbook/Chapter_9', 'Simple_Texture2D', 'Simple_Texture2D_orig.c'), test_file('glbook/CH09_SimpleTexture2D.png')),
-      (Path('glbook/Chapter_10', 'MultiTexture', 'MultiTexture_orig.c'), test_file('glbook/CH10_MultiTexture.png')),
-      (Path('glbook/Chapter_13', 'ParticleSystem', 'ParticleSystem_orig.c'), test_file('glbook/CH13_ParticleSystem.png')),
+      (Path('third_party/glbook/Chapter_2', 'Hello_Triangle', 'Hello_Triangle_orig.c'), test_file('third_party/glbook/CH02_HelloTriangle.png')),
+      # (Path('third_party/glbook/Chapter_8', 'Simple_VertexShader', 'Simple_VertexShader_orig.c'), test_file('third_party/glbook/CH08_SimpleVertexShader.png')), # XXX needs INT extension in WebGL
+      (Path('third_party/glbook/Chapter_9', 'TextureWrap', 'TextureWrap_orig.c'), test_file('third_party/glbook/CH09_TextureWrap.png')),
+      # (Path('third_party/glbook/Chapter_9', 'Simple_TextureCubemap', 'Simple_TextureCubemap_orig.c'), test_file('third_party/glbook/CH09_TextureCubemap.png')), # XXX needs INT extension in WebGL
+      (Path('third_party/glbook/Chapter_9', 'Simple_Texture2D', 'Simple_Texture2D_orig.c'), test_file('third_party/glbook/CH09_SimpleTexture2D.png')),
+      (Path('third_party/glbook/Chapter_10', 'MultiTexture', 'MultiTexture_orig.c'), test_file('third_party/glbook/CH10_MultiTexture.png')),
+      (Path('third_party/glbook/Chapter_13', 'ParticleSystem', 'ParticleSystem_orig.c'), test_file('third_party/glbook/CH13_ParticleSystem.png')),
     ]:
       print(source)
       self.btest(source,
                  reference=reference,
-                 args=['-I' + test_file('glbook/Common'),
-                       test_file('glbook/Common/esUtil.c'),
-                       test_file('glbook/Common/esShader.c'),
-                       test_file('glbook/Common/esShapes.c'),
-                       test_file('glbook/Common/esTransform.c'),
+                 args=['-I' + test_file('third_party/glbook/Common'),
+                       test_file('third_party/glbook/Common/esUtil.c'),
+                       test_file('third_party/glbook/Common/esShader.c'),
+                       test_file('third_party/glbook/Common/esShapes.c'),
+                       test_file('third_party/glbook/Common/esTransform.c'),
                        '-lGL', '-lEGL', '-lX11',
                        '--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga', '--preload-file', 'smoke.tga'] + args)
 
@@ -4170,6 +4170,7 @@ window.close = function() {
     'no_leak': ['test_pthread_lsan_no_leak'],
   })
   @requires_threads
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/15978')
   def test_pthread_lsan(self, name, args=[]):
     self.btest(test_file('pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
@@ -4627,13 +4628,13 @@ window.close = function() {
   @requires_threads
   def test_fetch_implicit_append(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/example_synchronous_fetch.cpp', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/example_synchronous_fetch.c', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests synchronous emscripten_fetch() usage from wasm pthread in fastcomp.
   @requires_threads
   def test_fetch_sync_xhr_in_wasm(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/example_synchronous_fetch.cpp', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/example_synchronous_fetch.c', args=['-s', 'FETCH', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
 
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
   @also_with_wasm2js
@@ -4762,7 +4763,7 @@ window.close = function() {
       ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'],
       ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-s', 'OFFSCREENCANVAS_SUPPORT'],
     ]:
-      cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-s', 'GL_DEBUG', '--threadprofiler'] + args
+      cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-s', 'GL_DEBUG', '--threadprofiler', '-sASSERTIONS'] + args
       print(' '.join(cmd))
       self.btest_exit('canvas_animate_resize.cpp', args=cmd)
 
@@ -5330,12 +5331,17 @@ class emrun(RunnerCore):
 
     for args in [
         args_base,
-        args_base + ['--private_browsing', '--port', '6941']
+        args_base + ['--private_browsing', '--port', '6941'],
+        args_base + ['--dump_out_directory', 'other dir/multiple', '--port', '6942']
     ]:
       args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3']
       print(shared.shlex_join(args))
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)
+      dump_dir = 'other dir/multiple' if '--dump_out_directory' in args else 'dump_out'
+      self.assertExists(self.in_dir(f'{dump_dir}/test.dat'))
+      self.assertExists(self.in_dir(f'{dump_dir}/heap.dat'))
+      self.assertExists(self.in_dir(f'{dump_dir}/nested/with space.dat'))
       stdout = read_file(self.in_dir('stdout.txt'))
       stderr = read_file(self.in_dir('stderr.txt'))
       self.assertContained('argc: 4', stdout)

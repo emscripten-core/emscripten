@@ -28,11 +28,6 @@ void downloadProgress(emscripten_fetch_t *fetch)
     (fetch->totalBytes > 0) ? "%" : " bytes",
     fetch->readyState, fetch->status, fetch->statusText,
     fetch->dataOffset, fetch->dataOffset + fetch->numBytes);
-
-  // Process the partial data stream fetch->data[0] thru fetch->data[fetch->numBytes-1]
-  // This buffer represents the file at offset fetch->dataOffset.
-  for(size_t i = 0; i < fetch->numBytes; ++i)
-    ; // Process fetch->data[i];
 }
 
 int main()
@@ -40,10 +35,10 @@ int main()
   emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "GET");
-  attr.attributes = EMSCRIPTEN_FETCH_STREAM_DATA;
+  attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
   attr.onsuccess = downloadSucceeded;
   attr.onprogress = downloadProgress;
   attr.onerror = downloadFailed;
-  attr.timeoutMsecs = 2*60;
+  attr.timeoutMSecs = 2*60;
   emscripten_fetch(&attr, "myfile.dat");
 }

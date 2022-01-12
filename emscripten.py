@@ -28,7 +28,7 @@ from tools import utils
 from tools import gen_struct_info
 from tools import webassembly
 from tools.utils import exit_with_error, path_from_root
-from tools.shared import WINDOWS, asmjs_mangle
+from tools.shared import DEBUG, WINDOWS, asmjs_mangle
 from tools.shared import treat_as_user_function, strip_prefix
 from tools.settings import settings
 
@@ -63,7 +63,7 @@ def write_output_file(outfile, module):
     outfile.write(module[i])
 
 
-def optimize_syscalls(declares, DEBUG):
+def optimize_syscalls(declares):
   """Disables filesystem if only a limited subset of syscalls is used.
 
   Our syscalls are static, and so if we see a very limited set of them - in particular,
@@ -112,8 +112,8 @@ def to_nice_ident(ident): # limited version of the JS function toNiceIdent
   return ident.replace('%', '$').replace('@', '_').replace('.', '_')
 
 
-def update_settings_glue(metadata, DEBUG):
-  optimize_syscalls(metadata['declares'], DEBUG)
+def update_settings_glue(metadata):
+  optimize_syscalls(metadata['declares'])
 
   # Integrate info from backend
   if settings.SIDE_MODULE:
@@ -166,10 +166,15 @@ def compile_settings():
     logger.info('logging stderr in js compiler phase into %s' % stderr_file)
     stderr_file = open(stderr_file, 'w')
 
+  # Only the names of the legacy settings are used by the JS compiler
+  # so we can reduce the size of serialized json by simplifying this
+  # otherwise complex value.
+  settings['LEGACY_SETTINGS'] = [l[0] for l in settings['LEGACY_SETTINGS']]
+
   # Save settings to a file to work around v8 issue 1579
-  with shared.configuration.get_temp_files().get_file('.txt') as settings_file:
+  with shared.configuration.get_temp_files().get_file('.json') as settings_file:
     with open(settings_file, 'w') as s:
-      json.dump(settings.dict(), s, sort_keys=True)
+      json.dump(settings.dict(), s, sort_keys=True, indent=2)
 
     # Call js compiler
     env = os.environ.copy()
@@ -277,7 +282,7 @@ def create_named_globals(metadata):
   return '\n'.join(named_globals)
 
 
-def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
+def emscript(in_wasm, out_wasm, outfile_js, memfile):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
@@ -290,9 +295,9 @@ def emscript(in_wasm, out_wasm, outfile_js, memfile, DEBUG):
     # set file locations, so that JS glue can find what it needs
     settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
 
-  metadata = finalize_wasm(in_wasm, out_wasm, memfile, DEBUG)
+  metadata = finalize_wasm(in_wasm, out_wasm, memfile)
 
-  update_settings_glue(metadata, DEBUG)
+  update_settings_glue(metadata)
 
   if settings.SIDE_MODULE:
     if metadata['asmConsts']:
@@ -385,7 +390,7 @@ def remove_trailing_zeros(memfile):
   utils.write_binary(memfile, mem_data[:end])
 
 
-def finalize_wasm(infile, outfile, memfile, DEBUG):
+def finalize_wasm(infile, outfile, memfile):
   building.save_intermediate(infile, 'base.wasm')
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
@@ -459,7 +464,7 @@ def finalize_wasm(infile, outfile, memfile, DEBUG):
     # the dynamic linking case, our loader zeros it out)
     remove_trailing_zeros(memfile)
 
-  return load_metadata_wasm(stdout, DEBUG)
+  return load_metadata_wasm(stdout)
 
 
 def create_asm_consts(metadata):
@@ -757,7 +762,7 @@ def create_module(sending, receiving, invoke_funcs, metadata):
   return module
 
 
-def load_metadata_wasm(metadata_raw, DEBUG):
+def load_metadata_wasm(metadata_raw):
   try:
     metadata_json = json.loads(metadata_raw)
   except Exception:
@@ -775,19 +780,11 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'features': [],
     'mainReadsParams': 1,
   }
-  legacy_keys = set(['implementedFunctions', 'initializers', 'simd', 'externs', 'staticBump', 'tableSize'])
 
   for key, value in metadata_json.items():
-    if key in legacy_keys:
-      continue
     if key not in metadata:
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
-
-  # Support older metadata when asmConsts values were lists.  We only use the first element
-  # nowadays
-  # TODO(sbc): remove this once binaryen has been changed to only emit the single element
-  metadata['asmConsts'] = {k: v[0] if type(v) is list else v for k, v in metadata['asmConsts'].items()}
 
   if DEBUG:
     logger.debug("Metadata parsed: " + pprint.pformat(metadata))
@@ -848,4 +845,4 @@ def generate_struct_info():
 def run(in_wasm, out_wasm, outfile_js, memfile):
   generate_struct_info()
 
-  emscript(in_wasm, out_wasm, outfile_js, memfile, shared.DEBUG)
+  emscript(in_wasm, out_wasm, outfile_js, memfile)
