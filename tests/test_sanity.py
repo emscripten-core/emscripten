@@ -206,11 +206,11 @@ class sanity(RunnerCore):
       self.assertContained('Please edit the file if any of those are incorrect', output)
       self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
       self.assertTrue(output.strip().endswith('============='))
-      template_file = Path(path_from_root('tools/settings_template.py')).read_text()
+      template_data = Path(path_from_root('tools/config_template.py')).read_text()
       self.assertNotContained('{{{', config_data)
       self.assertNotContained('}}}', config_data)
-      self.assertContained('{{{', template_file)
-      self.assertContained('}}}', template_file)
+      self.assertContained('{{{', template_data)
+      self.assertContained('}}}', template_data)
       for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'JS_ENGINES']:
         self.assertContained(content, config_data)
 

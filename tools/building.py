@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 #  Building
 binaryen_checked = False
 
-EXPECTED_BINARYEN_VERSION = 103
+EXPECTED_BINARYEN_VERSION = 104
 # cache results of nm - it can be slow to run
 nm_cache = {}
 # Stores the object files contained in different archive files passed as input
@@ -178,7 +178,7 @@ def make_paths_absolute(f):
 # Runs llvm-nm for the given list of files.
 # The results are populated in nm_cache, and also returned as an array with order corresponding with the input files.
 # If a given file cannot be processed, None will be present in its place.
-@ToolchainProfiler.profile_block('llvm_nm_multiple')
+@ToolchainProfiler.profile()
 def llvm_nm_multiple(files):
   if len(files) == 0:
     return []
@@ -202,7 +202,7 @@ def llvm_nm(file):
   return llvm_nm_multiple([file])[0]
 
 
-@ToolchainProfiler.profile_block('read_link_inputs')
+@ToolchainProfiler.profile()
 def read_link_inputs(files):
   # Before performing the link, we need to look at each input file to determine which symbols
   # each of them provides. Do this in multiple parallel processes.
@@ -259,7 +259,7 @@ def llvm_backend_args():
   return args
 
 
-@ToolchainProfiler.profile_block('linking to object file')
+@ToolchainProfiler.profile()
 def link_to_object(args, target):
   # link using lld unless LTO is requested (lld can't output LTO/bitcode object files).
   if not settings.LTO:
@@ -741,7 +741,7 @@ def get_closure_compiler_and_env(user_args):
   return closure_cmd, env
 
 
-@ToolchainProfiler.profile_block('closure_transpile')
+@ToolchainProfiler.profile()
 def closure_transpile(filename, pretty):
   user_args = []
   closure_cmd, env = get_closure_compiler_and_env(user_args)
@@ -750,7 +750,7 @@ def closure_transpile(filename, pretty):
   return run_closure_cmd(closure_cmd, filename, env, pretty)
 
 
-@ToolchainProfiler.profile_block('closure_compiler')
+@ToolchainProfiler.profile()
 def closure_compiler(filename, pretty, advanced=True, extra_closure_args=None):
   user_args = []
   env_args = os.environ.get('EMCC_CLOSURE_ARGS')
