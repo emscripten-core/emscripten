@@ -1553,14 +1553,14 @@ var PTHREADS_DEBUG = 0;
 // LLVM's GlobalOpt *almost* does this operation. It does in simple cases, where
 // LLVM IR is not too complex for its logic to evaluate, but it isn't powerful
 // enough for e.g. libc++ iostream ctors. It is just hard to do at the LLVM IR
-// level - LLVM IR is complex and getting more complex, this would require
+// level - LLVM IR is complex and getting more complex, so this would require
 // GlobalOpt to have a full interpreter, plus a way to write back into LLVM IR
 // global objects.  At the wasm level, however, everything has been lowered
 // into a simple low level, and we also just need to write bytes into an array,
 // so this is easy for us to do. A further issue for LLVM is that it doesn't
 // know that we will not link in further code, so it only tries to optimize
-// ctors with lowest priority (we do know that, if dynamic linking is not
-// enabled).
+// ctors with lowest priority (while we do know explicitly if dynamic linking is
+// enabled or not).
 //
 // If set to a value of 2, this also makes some "unsafe" assumptions,
 // specifically that there is no input received while evalling ctors. That means
