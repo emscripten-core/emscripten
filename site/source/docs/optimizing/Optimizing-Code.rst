@@ -171,6 +171,14 @@ Now it has succeeded to eval ``__wasm_call_ctors`` completely. It then moved on
 to ``main``, where it stopped because of a call to WASI's ``fd_write``, that is,
 a call to print something.
 
+Another form of output that you may see is
+
+::
+
+    ...partial evalling successful, but stopping since could not eval: call import: wasi_snapshot_preview1.fd_write
+
+That indicates that part of the function was evalled but not all of it.
+
 Very large codebases
 ====================
 

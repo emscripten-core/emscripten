@@ -1533,6 +1533,7 @@ int main() {
     self.emcc_args.append('--no-entry')
     self.do_core_test('test_ctors_no_main.cpp')
 
+  @no_wasm2js('eval_ctors not supported yet')
   @also_with_standalone_wasm(impure=True)
   def test_eval_ctors_no_main(self):
     self.set_setting('EVAL_CTORS')
@@ -6789,12 +6790,11 @@ void* operator new(size_t size) {
     self.emcc_args += ['--tracing']
     self.do_core_test('test_tracing.c')
 
+  @no_wasm2js('eval_ctors not supported yet')
   @also_with_standalone_wasm()
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
       self.skipTest('need opts')
-    if not self.is_wasm():
-      self.skipTest('this test uses wasm binaries')
 
     print('leave printf in ctor')
     self.set_setting('EVAL_CTORS')
