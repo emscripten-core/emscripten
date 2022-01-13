@@ -25,6 +25,11 @@ class Logger(ContextDecorator):
   def __init__(self, name):
     self.name = name
 
+  def __call__(self, func):
+    if self.name is None:
+      self.name = func.__name__
+    return super().__call__(func)
+
   def __enter__(self):
     if EMPROFILE == 2:
       indentation = '  ' * Logger.depth
@@ -37,9 +42,9 @@ class Logger(ContextDecorator):
     now = time.time()
     duration = now - self.start
     if exc_type:
-      msg = 'block "%s" raised an exception after %.2f seconds'
+      msg = 'block "%s" raised an exception after %.3f seconds'
     else:
-      msg = 'block "%s" took %.2f seconds'
+      msg = 'block "%s" took %.3f seconds'
     if EMPROFILE == 2:
       Logger.depth -= 1
       indentation = '  ' * Logger.depth
@@ -232,17 +237,21 @@ if EMPROFILE == 1:
     class ProfileBlock(Logger):
       def __init__(self, block_name):
         super().__init__(block_name)
-        self.block_name = block_name
+        self.name = block_name
 
       def __enter__(self):
-        ToolchainProfiler.enter_block(self.block_name)
+        ToolchainProfiler.enter_block(self.name)
 
       def __exit__(self, type, value, traceback):
-        ToolchainProfiler.exit_block(self.block_name)
+        ToolchainProfiler.exit_block(self.name)
 
     @staticmethod
     def profile_block(block_name):
       return ToolchainProfiler.ProfileBlock(ToolchainProfiler.escape_string(block_name))
+
+    @staticmethod
+    def profile():
+      return ToolchainProfiler.ProfileBlock(None)
 
     @staticmethod
     def imaginary_pid():
@@ -263,3 +272,6 @@ else:
     @staticmethod
     def profile_block(block_name):
       return Logger(block_name)
+
+    def profile():
+      return Logger(None)

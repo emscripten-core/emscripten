@@ -391,6 +391,7 @@ def remove_trailing_zeros(memfile):
   utils.write_binary(memfile, mem_data[:end])
 
 
+@ToolchainProfiler.profile()
 def get_metadata_binaryen(infile, outfile, modify_wasm, args):
   stdout = building.run_binaryen_command('wasm-emscripten-finalize',
                                          infile=infile,
@@ -401,6 +402,7 @@ def get_metadata_binaryen(infile, outfile, modify_wasm, args):
   return metadata
 
 
+@ToolchainProfiler.profile()
 def get_metadata_python(infile, outfile, modify_wasm, args):
   metadata = extract_metadata.extract_metadata(infile)
   if modify_wasm:
@@ -911,7 +913,7 @@ def generate_struct_info():
   if settings.BOOTSTRAPPING_STRUCT_INFO:
     return
 
-  @ToolchainProfiler.profile_block('gen_struct_info')
+  @ToolchainProfiler.profile()
   def generate_struct_info(out):
     gen_struct_info.main(['-q', '-o', out])
 

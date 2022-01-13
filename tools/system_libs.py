@@ -1866,6 +1866,6 @@ def install_system_headers(stamp):
   return stamp
 
 
-@ToolchainProfiler.profile_block('ensure_sysroot')
+@ToolchainProfiler.profile()
 def ensure_sysroot():
   shared.Cache.get('sysroot_install.stamp', install_system_headers, what='system headers')

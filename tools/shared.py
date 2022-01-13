@@ -361,7 +361,7 @@ def perform_sanity_checks():
         exit_with_error('Cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 
 
-@ToolchainProfiler.profile_block('sanity')
+@ToolchainProfiler.profile()
 def check_sanity(force=False):
   """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
   and LLVM) exists.
