@@ -11,10 +11,9 @@
 #include <emscripten/threading.h>
 
 extern "C" {
-  size_t _emscripten_get_preloaded_file_size(uint32_t index);
+size_t _wasmfs_get_preloaded_file_size(uint32_t index);
 
-  size_t _emscripten_copy_preloaded_file_data(uint32_t index,
-                                              uint8_t* data);
+size_t _wasmfs_copy_preloaded_file_data(uint32_t index, uint8_t* data);
 }
 
 namespace wasmfs {
@@ -24,13 +23,13 @@ namespace wasmfs {
 void DataFile::Handle::preloadFromJS(int index) {
   // TODO: Each Datafile type could have its own impl of file preloading.
   // Create a buffer with the required file size.
-  std::vector<uint8_t> buffer(_emscripten_get_preloaded_file_size(index));
+  std::vector<uint8_t> buffer(_wasmfs_get_preloaded_file_size(index));
 
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_runtime_thread());
 
   // Load data into the in-memory buffer.
-  _emscripten_copy_preloaded_file_data(index, buffer.data());
+  _wasmfs_copy_preloaded_file_data(index, buffer.data());
 
   write((const uint8_t*)buffer.data(), buffer.size(), 0);
 }

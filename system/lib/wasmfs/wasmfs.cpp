@@ -28,12 +28,12 @@ __attribute__((init_priority(100))) WasmFS wasmFS;
 
 // These helper functions will be linked in from library_wasmfs.js.
 extern "C" {
-int _emscripten_get_num_preloaded_files();
-int _emscripten_get_num_preloaded_dirs();
-int _emscripten_get_preloaded_file_mode(int index);
-void _emscripten_get_preloaded_parent_path(int index, char* parentPath);
-void _emscripten_get_preloaded_path_name(int index, char* fileName);
-void _emscripten_get_preloaded_child_path(int index, char* childName);
+int _wasmfs_get_num_preloaded_files();
+int _wasmfs_get_num_preloaded_dirs();
+int _wasmfs_get_preloaded_file_mode(int index);
+void _wasmfs_get_preloaded_parent_path(int index, char* parentPath);
+void _wasmfs_get_preloaded_path_name(int index, char* fileName);
+void _wasmfs_get_preloaded_child_path(int index, char* childName);
 }
 
 std::shared_ptr<Directory> WasmFS::initRootDirectory() {
@@ -71,8 +71,8 @@ void WasmFS::preloadFiles() {
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_runtime_thread());
 
-  auto numFiles = _emscripten_get_num_preloaded_files();
-  auto numDirs = _emscripten_get_num_preloaded_dirs();
+  auto numFiles = _wasmfs_get_num_preloaded_files();
+  auto numDirs = _wasmfs_get_num_preloaded_dirs();
 
   // If there are no preloaded files, exit early.
   if (numDirs == 0 && numFiles == 0) {
@@ -83,7 +83,7 @@ void WasmFS::preloadFiles() {
   // Ex. Module['FS_createPath']("/foo/parent", "child", true, true);
   for (int i = 0; i < numDirs; i++) {
     char parentPath[PATH_MAX] = {};
-    _emscripten_get_preloaded_parent_path(i, parentPath);
+    _wasmfs_get_preloaded_parent_path(i, parentPath);
 
     auto pathParts = splitPath(parentPath);
 
@@ -99,7 +99,7 @@ void WasmFS::preloadFiles() {
     }
 
     char childName[PATH_MAX] = {};
-    _emscripten_get_preloaded_child_path(i, childName);
+    _wasmfs_get_preloaded_child_path(i, childName);
 
     auto created = rootBackend->createDirectory(S_IRUGO | S_IXUGO);
 
@@ -108,9 +108,9 @@ void WasmFS::preloadFiles() {
 
   for (int i = 0; i < numFiles; i++) {
     char fileName[PATH_MAX] = {};
-    _emscripten_get_preloaded_path_name(i, fileName);
+    _wasmfs_get_preloaded_path_name(i, fileName);
 
-    auto mode = _emscripten_get_preloaded_file_mode(i);
+    auto mode = _wasmfs_get_preloaded_file_mode(i);
 
     auto pathParts = splitPath(fileName);
 
