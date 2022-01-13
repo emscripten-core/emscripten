@@ -536,9 +536,12 @@ def link_bitcode(args, target, force_archive_contents=False):
 
 
 def get_command_with_possible_response_file(cmd):
+  # One of None, 0 or 1. (None: do default decision, 0: force disable, 1: force enable)
+  force_response_files = os.getenv('EM_FORCE_RESPONSE_FILES')
+
   # 8k is a bit of an arbitrary limit, but a reasonable one
   # for max command line size before we use a response file
-  if len(shared.shlex_join(cmd)) <= 8192:
+  if (len(shared.shlex_join(cmd)) <= 8192 and force_response_files != '1') or force_response_files == '0':
     return cmd
 
   logger.debug('using response file for %s' % cmd[0])
@@ -551,6 +554,12 @@ def get_command_with_possible_response_file(cmd):
 # This function can be called either for a single file output listing ("llvm-nm a.o", or for
 # multiple files listing ("llvm-nm a.o b.o").
 def parse_llvm_nm_symbols(output):
+  # If response files are used in a call to llvm-nm, the output printed by llvm-nm has a
+  # quirk that it will contain double backslashes as directory separators on Windows. (it will
+  # not remove the escape characters when printing)
+  # Therefore canonicalize the output to single backslashes.
+  output = output.replace('\\\\', '\\')
+
   # a dictionary from 'filename' -> { 'defs': set(), 'undefs': set(), 'commons': set() }
   symbols = {}
 

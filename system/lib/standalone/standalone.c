@@ -70,6 +70,9 @@ long __syscall_mmap2(long addr, long len, long prot, long flags, long fd, long o
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it
 // open()
+// Mark this as weak so that wasmfs does not collide with it. That is, if wasmfs
+// is in use, we want to use that and not this.
+__attribute__((__weak__))
 long __syscall_open(const char* path, long flags, ...) {
   if (!strcmp(path, "/dev/stdin")) return STDIN_FILENO;
   if (!strcmp(path, "/dev/stdout")) return STDOUT_FILENO;

@@ -322,6 +322,7 @@
         "SEEK_END": 2,
         "SEEK_SET": 0,
         "SIGALRM": 14,
+        "SIGCANCEL": 33,
         "SOCK_CLOEXEC": 524288,
         "SOCK_DGRAM": 2,
         "SOCK_NONBLOCK": 2048,
