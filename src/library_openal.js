@@ -609,9 +609,9 @@ var LibraryOpenAL = {
       }
 
       if (panner.positionX) {
-        panner.positionX.value = posX;
-        panner.positionY.value = posY;
-        panner.positionZ.value = posZ;
+        if (posX != panner.positionX.value) panner.positionX.value = posX;
+        if (posY != panner.positionY.value) panner.positionY.value = posY;
+        if (posZ != panner.positionZ.value) panner.positionZ.value = posZ;
       } else {
 #if OPENAL_DEBUG
         warnOnce('Panner position attributes are not present, falling back to setPosition()');
@@ -619,9 +619,9 @@ var LibraryOpenAL = {
         panner.setPosition(posX, posY, posZ);
       }
       if (panner.orientationX) {
-        panner.orientationX.value = dirX;
-        panner.orientationY.value = dirY;
-        panner.orientationZ.value = dirZ;
+        if (dirX != panner.orientationX.value) panner.orientationX.value = dirX;
+        if (dirY != panner.orientationY.value) panner.orientationY.value = dirY;
+        if (dirZ != panner.orientationZ.value) panner.orientationZ.value = dirZ;
       } else {
 #if OPENAL_DEBUG
         warnOnce('Panner orientation attributes are not present, falling back to setOrientation()');
