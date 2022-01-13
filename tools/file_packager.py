@@ -21,7 +21,7 @@ data downloads.
 
 Usage:
 
-  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--wasmfs]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -50,6 +50,11 @@ Usage:
                         and audio using the browser's codecs.
 
   --no-node Whether to support Node.js. By default we do, which emits some extra code.
+
+  --wasmfs-c Whether to emit C code for wasmfs. This only supports embedding
+             (as it literally embeds the data in the C). If you prefer
+             preloading, you can use that normally and wasmfs will interact
+             with the JS normally.
 
 Notes:
 
@@ -185,6 +190,7 @@ def main():
   lz4 = False
   use_preload_plugins = False
   support_node = True
+  wasmfs_c = False
 
   for arg in sys.argv[2:]:
     if arg == '--preload':
@@ -217,6 +223,9 @@ def main():
       leading = ''
     elif arg == '--no-node':
       support_node = False
+      leading = ''
+    elif arg == '--wasmfs-c':
+      wasmfs_c = True
       leading = ''
     elif arg.startswith('--js-output'):
       jsoutput = arg.split('=', 1)[1] if '=' in arg else None
@@ -468,6 +477,8 @@ def main():
               }
       ''')
 
+  c_output = ''
+
   counter = 0
   for file_ in data_files:
     filename = file_['dstpath']
@@ -475,13 +486,30 @@ def main():
     basename = os.path.basename(filename)
     if file_['mode'] == 'embed':
       # Embed
-      data = base64_encode(utils.read_binary(file_['srcpath']))
-      code += '''var fileData%d = '%s';\n''' % (counter, data)
-      code += ('''Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, false);\n'''
-               % (dirname, basename, counter))
+      binary = utils.read_binary(file_['srcpath'])
+      if not wasmfs_c:
+        # JS output
+        data = base64_encode(binary)
+        code += '''var fileData%d = '%s';\n''' % (counter, data)
+        code += ('''Module['FS_createDataFile']('%s', '%s', decodeBase64(fileData%d), true, true, false);\n'''
+                 % (dirname, basename, counter))
+      else:
+        # C output.
+        # convert the binary data into a C escaped string, \xAB for hex code AB
+        def escape_for_c(char):
+          if char < 16:
+            # add a 0 to keep the output in two bytes
+            return '\\x0' + hex(char)[-1:]
+          return '\\x' + hex(char)[-2:]
+        data = ''.join([escape_for_c(char) for char in binary])
+        c_output += '''static const char fileData%d = "%s";\n''' % (counter, data)
+        c_output += ('''wasmfs_create_data_file("%s", "%s", fileData%d);\n'''
+                     % (dirname, basename, counter))
       counter += 1
     elif file_['mode'] == 'preload':
       # Preload
+      assert not wasmfs_c, 'wasmfs-c mode only supports embedding'
+
       counter += 1
 
       metadata_el = {
@@ -919,6 +947,9 @@ def main():
   ret += '''%s
   })();
   ''' % _metadata_template
+
+  if wasmfs_c:
+    ret = c_output
 
   if force or len(data_files):
     if jsoutput is None:
