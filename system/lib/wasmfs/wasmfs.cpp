@@ -53,12 +53,8 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   return rootDirectory;
 }
 
-// Initialize files specified by the --preload-file option.
-// Set up directories and files in wasmFS$preloadedDirs and
-// wasmFS$preloadedFiles from JS. This function will be called before any file
-// operation to ensure any preloaded files are eagerly available for use.
-void WasmFS::preloadFiles() {
-  // Debug builds only: add check to ensure preloadFiles() is called once.
+void WasmFS::loadInitialFiles() {
+  // Debug builds only: add check to ensure loadInitialFiles() is called once.
 #ifndef NDEBUG
   static std::atomic<int> timesCalled;
   timesCalled++;
@@ -71,6 +67,17 @@ void WasmFS::preloadFiles() {
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_runtime_thread());
 
+  // First, handle embedded files, if there are any. If there are, a special
+  // symbol exists that we call to do that.
+  __attribute__((__weak__)) extern "C" void __wasmfs_load_embedded();
+  if (__wasmfs_load_embedded) {
+    __wasmfs_load_embedded();
+  }
+
+  // Handle preloaded files.
+  // Set up directories and files in wasmFS$preloadedDirs and
+  // wasmFS$preloadedFiles from JS. This function will be called before any file
+  // operation to ensure any preloaded files are eagerly available for use.
   auto numFiles = _wasmfs_get_num_preloaded_files();
   auto numDirs = _wasmfs_get_num_preloaded_dirs();
 

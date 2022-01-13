@@ -130,6 +130,8 @@ protected:
   std::weak_ptr<File> parent;
 
   // This specifies which backend a file is associated with.
+  // TODO: Should this be a shared_ptr? Or do we assume backends are never
+  //       deallocated?
   backend_t backend;
 };
 

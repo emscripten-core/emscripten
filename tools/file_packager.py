@@ -21,7 +21,7 @@ data downloads.
 
 Usage:
 
-  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--wasmfs]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--wasmfs-c]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -502,9 +502,13 @@ def main():
             return '\\x0' + hex(char)[-1:]
           return '\\x' + hex(char)[-2:]
         data = ''.join([escape_for_c(char) for char in binary])
-        c_output += '''static const char fileData%d = "%s";\n''' % (counter, data)
-        c_output += ('''wasmfs_create_data_file("%s", "%s", fileData%d);\n'''
-                     % (dirname, basename, counter))
+        c_output += f'''static const char fileData{counter} = "{data}";\n'''
+        c_output += f'''
+FILE* file{counter} = fopen("{dirname}" "{basename}", "wb");
+fwrite(fileData{counter}, 1, {len(binary)}, file{counter});
+fclose(file{counter});
+'''
+
       counter += 1
     elif file_['mode'] == 'preload':
       # Preload
@@ -949,7 +953,16 @@ def main():
   ''' % _metadata_template
 
   if wasmfs_c:
-    ret = c_output
+    ret = r'''
+#include <stdio.h>
+
+extern "C" void __wasmfs_load_embedded() {
+
+%s
+
+}
+''' % c_output
+
 
   if force or len(data_files):
     if jsoutput is None:

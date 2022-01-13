@@ -2715,13 +2715,13 @@ def phase_source_transforms(options, target):
   if len(options.preload_files) or len(options.embed_files):
     logger.debug('setting up files')
     file_args = ['--from-emcc', '--export-name=' + settings.EXPORT_NAME]
-    if len(options.preload_files):
+    if options.preload_files:
       file_args.append('--preload')
       file_args += options.preload_files
-    if len(options.embed_files):
+    if options.embed_files:
       file_args.append('--embed')
       file_args += options.embed_files
-    if len(options.exclude_files):
+    if options.exclude_files:
       file_args.append('--exclude')
       file_args += options.exclude_files
     if options.use_preload_cache:
@@ -2732,8 +2732,15 @@ def phase_source_transforms(options, target):
       file_args.append('--use-preload-plugins')
     if not settings.ENVIRONMENT_MAY_BE_NODE:
       file_args.append('--no-node')
+    wasmfs_c = settings.WASMFS and options.embed_files
+    if wasmfs_c:
+      file_args += ['--wasmfs-c']
     file_code = shared.check_call([shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args, stdout=PIPE).stdout
-    options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
+    if wasmfs_c:
+      print(file_code)
+      1/0
+    else:
+      options.pre_js = js_manipulation.add_files_pre_js(options.pre_js, file_code)
 
   # Apply pre and postjs files
   if final_js and (options.pre_js or options.post_js):

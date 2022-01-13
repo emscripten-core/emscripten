@@ -33,15 +33,15 @@ class WasmFS {
   // dev/stderr. Refers to the same std streams in the open file table.
   std::shared_ptr<Directory> initRootDirectory();
 
-  // Initialize files specified by --preload-file option.
-  void preloadFiles();
+  // Initialize files specified by --preload-file and --embed-file options.
+  void loadInitialFiles();
 
 public:
   // Files will be preloaded in this constructor.
   // This global constructor has init_priority 100. Please see wasmfs.cpp.
   // The current working directory is initialized to the root directory.
   WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
-    preloadFiles();
+    loadInitialFiles();
   }
 
   // This get method returns a locked file table.
