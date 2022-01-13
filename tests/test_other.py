@@ -7935,6 +7935,12 @@ end
     self.run_process([emprofile, '--graph'])
     self.assertTrue(glob.glob('toolchain_profiler.results*.html'))
 
+  @with_env_modify({'EMPROFILE': '2'})
+  def test_toolchain_profiler_stderr(self):
+    stderr = self.run_process([EMCC, test_file('hello_world.c')], stderr=PIPE).stderr
+    self.assertContained('start block "main"', stderr)
+    self.assertContained('block "main" took', stderr)
+
   def test_noderawfs(self):
     fopen_write = read_file(test_file('asmfs/fopen_write.cpp'))
     create_file('main.cpp', fopen_write)

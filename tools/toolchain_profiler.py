@@ -20,22 +20,35 @@ EMPROFILE = int(os.getenv('EMPROFILE', '0'))
 
 
 class Logger(ContextDecorator):
+  depth = 0
+
   def __init__(self, name):
     self.name = name
 
   def __enter__(self):
+    if EMPROFILE == 2:
+      indentation = '  ' * Logger.depth
+      logger.info('%sstart block "%s"', indentation, self.name)
+      Logger.depth += 1
     self.start = time.time()
 
   def __exit__(self, exc_type, value, traceback):
     # When a block ends debug log the total duration.
     now = time.time()
+    duration = now - self.start
     if exc_type:
-      logger.debug('block "%s" raised an exception after %.2f seconds', self.name, now - self.start)
+      msg = 'block "%s" raised an exception after %.2f seconds'
     else:
-      logger.debug('block "%s" took %.2f seconds', self.name, now - self.start)
+      msg = 'block "%s" took %.2f seconds'
+    if EMPROFILE == 2:
+      Logger.depth -= 1
+      indentation = '  ' * Logger.depth
+      logger.info(indentation + msg, self.name, duration)
+    else:
+      logger.debug(msg, self.name, duration)
 
 
-if EMPROFILE:
+if EMPROFILE == 1:
   original_sys_exit = sys.exit
   original_subprocess_call = subprocess.call
   original_subprocess_check_call = subprocess.check_call
