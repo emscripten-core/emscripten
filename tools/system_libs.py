@@ -1859,8 +1859,8 @@ def install_system_headers(stamp):
   bin_dest = shared.Cache.get_sysroot_dir('bin')
   copytree_exist_ok(bin_src, bin_dest)
 
-  cmake_src = utils.path_from_root('system/cmake')
-  cmake_dest = shared.Cache.get_sysroot_dir('cmake')
+  cmake_src = utils.path_from_root('system/lib/cmake')
+  cmake_dest = shared.Cache.get_sysroot_dir('lib', 'cmake')
   copytree_exist_ok(cmake_src, cmake_dest)
 
   # Create a stamp file that signal the the header have been installed
