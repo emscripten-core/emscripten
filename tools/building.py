@@ -692,9 +692,10 @@ def eval_ctors(js_file, wasm_file, debug_info=False): # noqa
       args += ['--kept-exports=' + ','.join(kept_ctors)]
   else:
     if settings.EXPECT_MAIN:
-      args = ['--ctors=_start', '--kept-exports=_start']
+      ctor = '_start'
     else:
-      args = ['--ctors=_initialize', '--kept-exports=_initialize']
+      ctor = '_initialize'
+    args = ['--ctors=' + ctor, '--kept-exports=' + ctor]
   if settings.EVAL_CTORS == 2:
     args += ['--ignore-external-input']
   logger.warning('ctor_evaller: trying to eval global ctors (' + ' '.join(args) + ')')
