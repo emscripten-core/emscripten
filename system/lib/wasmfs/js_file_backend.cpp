@@ -14,13 +14,13 @@ using js_index_t = uint32_t;
 
 extern "C" {
 int _wasmfs_write_js_file(js_index_t index,
-                              const uint8_t* buffer,
-                              size_t length,
-                              off_t offset);
+                          const uint8_t* buffer,
+                          size_t length,
+                          off_t offset);
 int _wasmfs_read_js_file(js_index_t index,
-                             const uint8_t* buffer,
-                             size_t length,
-                             off_t offset);
+                         const uint8_t* buffer,
+                         size_t length,
+                         off_t offset);
 int _wasmfs_get_js_file_size(js_index_t index);
 int _wasmfs_create_js_file();
 void _wasmfs_remove_js_file(js_index_t index);
