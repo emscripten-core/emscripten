@@ -87,65 +87,6 @@ def create_lib(libname, inputs):
     building.emar('cr', libname, inputs)
 
 
-def non_lto_libc_files():
-  # Combining static linking with LTO is tricky under LLVM.  The codegen that
-  # happens during LTO can generate references to new symbols that didn't exist
-  # in the linker inputs themselves.
-  # These symbols are called libcalls in LLVM and are the result of intrinsics
-  # and builtins at the LLVM level.  These libcalls cannot themselves be part
-  # of LTO because once the linker is running the LTO phase new bitcode objects
-  # cannot be added to link.  Another way of putting it: by the time LTO happens
-  # the decision about which bitcode symbols to compile has already been made.
-  # See: https://bugs.llvm.org/show_bug.cgi?id=44353.
-  # To solve this we put all such libcalls in a separate library that, like
-  # compiler-rt, is never compiled as LTO/bitcode (see force_object_files in
-  # CompilerRTLibrary).
-  # Note that this also includes things that may be depended on by those
-  # functions - fmin uses signbit, for example, so signbit must be here (so if
-  # fmin is added by codegen, it will have all it needs).
-  math_files = [
-    'fmin.c', 'fminf.c', 'fminl.c',
-    'fmax.c', 'fmaxf.c', 'fmaxl.c',
-    'fmod.c', 'fmodf.c', 'fmodl.c',
-    'logf.c', 'logf_data.c',
-    'log2f.c', 'log2f_data.c',
-    'log10.c', 'log10f.c',
-    'exp.c', 'exp_data.c',
-    'exp2.c',
-    'exp2f.c', 'exp2f_data.c',
-    'exp10.c', 'exp10f.c',
-    'ldexp.c', 'ldexpf.c', 'ldexpl.c',
-    'scalbn.c', '__fpclassifyl.c',
-    '__signbitl.c', '__signbitf.c', '__signbit.c',
-    '__math_divzero.c', '__math_divzerof.c',
-    '__math_oflow.c', '__math_oflowf.c',
-    '__math_uflow.c', '__math_uflowf.c',
-    '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
-    'pow_small.c', 'log_small.c', 'log2_small.c',
-    'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c'
-  ]
-  math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
-
-  other_files = files_in_path(
-    path='system/lib/libc',
-    filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
-               'emscripten_scan_stack.c',
-               'emscripten_memmove.c'])
-  # Calls to iprintf can be generated during codegen. Ideally we wouldn't
-  # compile these with -O2 like we do the rest of compiler-rt since its
-  # probably not performance sensitive.  However we don't currently have
-  # a way to set per-file compiler flags.  And hopefully we should be able
-  # move all this stuff back into libc once we it LTO compatible.
-  iprintf_files = files_in_path(
-    path='system/lib/libc/musl/src/stdio',
-    filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
-               'printf.c', 'puts.c', '__lockfile.c'])
-  iprintf_files += files_in_path(
-    path='system/lib/libc/musl/src/string',
-    filenames=['strlen.c'])
-  return math_files + other_files + iprintf_files
-
-
 def is_case_insensitive(path):
   """Returns True if the filesystem at `path` is case insensitive."""
   utils.write_file(os.path.join(path, 'test_file'), '')
@@ -379,6 +320,9 @@ class Library:
     return objects
 
   def customize_build_cmd(self, cmd, filename):  # noqa
+    """Allows libraries to customize the build command used on per-file basis.
+
+    For example, libc uses this to replace -Oz with -O2 for some subset of files."""
     return cmd
 
   def build(self, out_filename):
@@ -783,8 +727,66 @@ class libc(MuslInternalLibrary,
              '-Wno-pointer-sign']
 
   def __init__(self, **kwargs):
-    self.non_lto_files = non_lto_libc_files()
+    self.non_lto_files = self.get_non_lto_files()
     super().__init__(**kwargs)
+
+  def get_non_lto_files(self):
+    # Combining static linking with LTO is tricky under LLVM.  The codegen that
+    # happens during LTO can generate references to new symbols that didn't exist
+    # in the linker inputs themselves.
+    # These symbols are called libcalls in LLVM and are the result of intrinsics
+    # and builtins at the LLVM level.  These libcalls cannot themselves be part
+    # of LTO because once the linker is running the LTO phase new bitcode objects
+    # cannot be added to link.  Another way of putting it: by the time LTO happens
+    # the decision about which bitcode symbols to compile has already been made.
+    # See: https://bugs.llvm.org/show_bug.cgi?id=44353.
+    # To solve this we put all such libcalls in a separate library that, like
+    # compiler-rt, is never compiled as LTO/bitcode (see force_object_files in
+    # CompilerRTLibrary).
+    # Note that this also includes things that may be depended on by those
+    # functions - fmin uses signbit, for example, so signbit must be here (so if
+    # fmin is added by codegen, it will have all it needs).
+    math_files = [
+      'fmin.c', 'fminf.c', 'fminl.c',
+      'fmax.c', 'fmaxf.c', 'fmaxl.c',
+      'fmod.c', 'fmodf.c', 'fmodl.c',
+      'logf.c', 'logf_data.c',
+      'log2f.c', 'log2f_data.c',
+      'log10.c', 'log10f.c',
+      'exp.c', 'exp_data.c',
+      'exp2.c',
+      'exp2f.c', 'exp2f_data.c',
+      'exp10.c', 'exp10f.c',
+      'ldexp.c', 'ldexpf.c', 'ldexpl.c',
+      'scalbn.c', '__fpclassifyl.c',
+      '__signbitl.c', '__signbitf.c', '__signbit.c',
+      '__math_divzero.c', '__math_divzerof.c',
+      '__math_oflow.c', '__math_oflowf.c',
+      '__math_uflow.c', '__math_uflowf.c',
+      '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
+      'pow_small.c', 'log_small.c', 'log2_small.c',
+      'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c'
+    ]
+    math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
+
+    other_files = files_in_path(
+      path='system/lib/libc',
+      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+                 'emscripten_scan_stack.c',
+                 'emscripten_memmove.c'])
+    # Calls to iprintf can be generated during codegen. Ideally we wouldn't
+    # compile these with -O2 like we do the rest of compiler-rt since its
+    # probably not performance sensitive.  However we don't currently have
+    # a way to set per-file compiler flags.  And hopefully we should be able
+    # move all this stuff back into libc once we it LTO compatible.
+    iprintf_files = files_in_path(
+      path='system/lib/libc/musl/src/stdio',
+      filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
+                 'printf.c', 'puts.c', '__lockfile.c'])
+    iprintf_files += files_in_path(
+      path='system/lib/libc/musl/src/string',
+      filenames=['strlen.c'])
+    return math_files + other_files + iprintf_files
 
   def get_files(self):
     libc_files = []
@@ -992,9 +994,11 @@ class libc(MuslInternalLibrary,
   def customize_build_cmd(self, cmd, filename):
     if filename in self.non_lto_files:
       # These files act more like the part of compiler-rt in that
-      # references to them can be generated at compiler time.
-      # Treat them link compiler-rt in as much as never compile
-      # them as LTO and build them with -O2 rather then -Oz
+      # references to them can be generated at compile time.
+      # Treat them like compiler-rt in as much as never compile
+      # them as LTO and build them with -O2 rather then -Os (which
+      # use used for the rest of libc) because this set of files
+      # also contains performance sensitive math functions.
       cmd = [a for a in cmd if not a.startswith('-flto')]
       cmd = [a for a in cmd if not a.startswith('-O')]
       cmd += ['-O2']
