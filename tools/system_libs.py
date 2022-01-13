@@ -823,7 +823,6 @@ class libc(DebugLibrary, AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary
         # TODO: Support this. See #12216.
         'pthread_setname_np.c',
         # TODO: These could be moved away from JS in the upcoming musl upgrade.
-        'pthread_cancel.c',
         'pthread_join.c', 'pthread_testcancel.c',
       ]
       libc_files += files_in_path(
@@ -1371,7 +1370,7 @@ class libfetch(MTLibrary):
   never_force = True
 
   def get_files(self):
-    return [utils.path_from_root('system/lib/fetch/emscripten_fetch.cpp')]
+    return [utils.path_from_root('system/lib/fetch/emscripten_fetch.c')]
 
 
 class libstb_image(Library):
@@ -1747,14 +1746,13 @@ def get_libs_to_link(args, forced, only_forced):
     add_library('libstandalonewasm')
   add_library('libc_rt')
 
-  if settings.USE_LSAN:
-    force_include.append('liblsan_rt')
-    add_library('liblsan_rt')
-
   if settings.USE_ASAN:
     force_include.append('libasan_rt')
     add_library('libasan_rt')
     add_library('libasan_js')
+  elif settings.USE_LSAN:
+    force_include.append('liblsan_rt')
+    add_library('liblsan_rt')
 
   if settings.UBSAN_RUNTIME == 1:
     add_library('libubsan_minimal_rt')
