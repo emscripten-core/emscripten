@@ -394,7 +394,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(params, opt_level, link_params, closure, has_malloc)
       self.clear()
       keep_debug = '-g' in params
-      args = [compiler, test_file('hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params
+      if has_malloc:
+        filename = test_file('hello_world_loop_malloc.c')
+      else:
+        filename = test_file('hello_world_loop.c')
+      args = [compiler, filename] + params
       print('..', args)
       output = self.run_process(args, stdout=PIPE, stderr=PIPE)
       assert len(output.stdout) == 0, output.stdout
