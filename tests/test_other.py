@@ -571,7 +571,7 @@ f.close()
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
     # We expand this in case the EM_CONFIG is ~/.emscripten (default)
     conf = os.path.expanduser(config.EM_CONFIG)
-    proc = self.run_process([EMAR, '--em-config', conf, '-version'], stdout=PIPE, stderr=PIPE)
+    proc = self.run_process([EMAR, '--em-config', conf, '--version'], stdout=PIPE, stderr=PIPE)
     self.assertEqual(proc.stderr, "")
     self.assertContained('LLVM', proc.stdout)
 
