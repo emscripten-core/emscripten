@@ -62,7 +62,7 @@ int __timedwait_cp(volatile int *addr, int val,
 	int is_runtime_thread = emscripten_is_main_runtime_thread();
 
 	// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
-	double max_ms_to_sleep = is_runtime_thread ? 1 : 100;
+	double max_ms_slice_to_sleep = is_runtime_thread ? 1 : 100;
 
 	// cp suffix in the function name means "cancellation point", so this wait can be cancelled
 	// by the users unless current threads cancelability is set to PTHREAD_CANCEL_DISABLE
@@ -80,7 +80,7 @@ int __timedwait_cp(volatile int *addr, int val,
 			}
 			// Must wait in slices in case this thread is cancelled in between.
 			r = -emscripten_futex_wait((void*)addr, val,
-				msecsToSleep > max_ms_to_sleep ? max_ms_to_sleep : msecsToSleep);
+				msecsToSleep > max_ms_slice_to_sleep ? max_ms_slice_to_sleep : msecsToSleep);
 			// Assist other threads by executing proxied operations that are effectively singlethreaded.
 			if (is_runtime_thread) emscripten_main_thread_process_queued_calls();
 
