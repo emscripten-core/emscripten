@@ -17,6 +17,9 @@ ignore_dirs = set([
   'metadce',
   '__pycache__',
 ])
+ignore_files = set([
+  'legacy_exported_runtime_numbers_assert.out',
+])
 ignore_root_patterns = ['runner.*', 'test_*.py']
 ignore_root_files = set([
   'jsrun.py',
@@ -38,12 +41,18 @@ def check_file(dirpath, filename):
   relpath = os.path.relpath(normpath, test_dir)
   stem, ext = os.path.splitext(normpath)
 
+  # Ignore explict exceptions
   if dirpath == test_dir:
     if filename in ignore_root_files:
       return
     if any(fnmatch.fnmatch(filename, pattern) for pattern in ignore_root_patterns):
       return
 
+  # .out files are live if and only if they live alongside a live source file
+  if ext == '.out' and os.path.exists(stem + '.cpp') or os.path.exists(stem + '.c'):
+    return
+
+  # Files under 'core' can be live if they are find in a `do_core_test` call.
   parts = relpath.split(os.path.sep)
   if parts[0] == 'core':
     pattern = "do_core_test('" + os.path.join(*parts[1:]) + "'"
@@ -53,17 +62,21 @@ def check_file(dirpath, filename):
     if grep(pattern, 'test_core.py'):
       return
 
+  # Files under 'other' can be live if they are find in a `do_other_test` call.
   if parts[0] == 'other':
     pattern = "do_other_test('" + os.path.join(*parts[1:]) + "'"
     if grep(pattern, 'test_other.py'):
       return
 
+  # Files under 'code_size' are live if the stem can be found quoted in test code.
   if parts[0] == 'code_size':
     if ext == '.json' and grep("'" + os.path.basename(stem) + "'"):
       return
 
-  if ext == '.out' and os.path.exists(stem + '.cpp') or os.path.exists(stem + '.c'):
-    return
+  # test_asan builds it pathnames programatically based on the basename, so just
+  # search for the basename.
+  if filename.startswith('test_asan_'):
+    relpath = os.path.basename(relpath)
 
   if grep(relpath):
     return
