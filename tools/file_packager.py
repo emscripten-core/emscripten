@@ -956,7 +956,7 @@ fclose(file{counter});
     ret = r'''
 #include <stdio.h>
 
-extern "C" void __wasmfs_load_embedded() {
+void __wasmfs_load_embedded() {
 
 %s
 

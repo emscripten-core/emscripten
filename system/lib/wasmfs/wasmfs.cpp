@@ -53,6 +53,10 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   return rootDirectory;
 }
 
+// If files are embedded in the program, then this symbol is defined. We will
+// call it and it will set those files up.
+__attribute__((__weak__)) extern "C" void __wasmfs_load_embedded();
+
 void WasmFS::loadInitialFiles() {
   // Debug builds only: add check to ensure loadInitialFiles() is called once.
 #ifndef NDEBUG
@@ -67,9 +71,7 @@ void WasmFS::loadInitialFiles() {
   // Ensure that files are preloaded from the main thread.
   assert(emscripten_is_main_runtime_thread());
 
-  // First, handle embedded files, if there are any. If there are, a special
-  // symbol exists that we call to do that.
-  __attribute__((__weak__)) extern "C" void __wasmfs_load_embedded();
+  // First, handle embedded files, if there are any.
   if (__wasmfs_load_embedded) {
     __wasmfs_load_embedded();
   }
