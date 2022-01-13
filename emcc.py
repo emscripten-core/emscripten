@@ -2165,8 +2165,8 @@ def phase_linker_setup(options, state, newargs, settings_map):
 
   if settings.EVAL_CTORS:
     if settings.WASM2JS:
-      # code size/memory and correctness issues, file issue
-      diagnostics.warning('emcc', 'disabling EVAL_CTORS due to wasm2js. see #XXXXX')
+      # code size/memory and correctness issues TODO
+      diagnostics.warning('emcc', 'disabling EVAL_CTORS due to wasm2js')
       settings.EVAL_CTORS = 0
     elif settings.USE_PTHREADS:
       diagnostics.warning('emcc', 'disabling EVAL_CTORS due to pthreads (passive segments)')
@@ -2175,7 +2175,6 @@ def phase_linker_setup(options, state, newargs, settings_map):
       diagnostics.warning('emcc', 'disabling EVAL_CTORS due to relocatable (movable segments)')
       settings.EVAL_CTORS = 0
     elif settings.ASYNCIFY:
-      #diagnostics.warning('emcc', 'disabling EVAL_CTORS due to relocatable (movable segments)')
       # In Asyncify exports can be called more than once, and this seems to not
       # work properly yet (see test_emscripten_scan_registers).
       diagnostics.warning('emcc', 'disabling EVAL_CTORS due to asyncify')
