@@ -154,10 +154,11 @@ be improved. Here is an example of output from ``emcc -s EVAL_CTORS``:
     ...stopping
 
 The first line indicates an attempt to eval LLVM's function that runs global
-ctors. It fails on the WASI import ``environ_sizes_get``, which means it is
-trying to read from the environment. As the output says, you can tell
-``EVAL_CTORS`` to ignore external input, which will ignore such things. You
-can enable that with mode ``2``, that is, build with ``emcc -s EVAL_CTORS-2``:
+ctors. It evalled some of the function but then it stopped on the WASI import
+``environ_sizes_get``, which means it is trying to read from the environment.
+As the output says, you can tell ``EVAL_CTORS`` to ignore external input, which
+will ignore such things. You can enable that with mode ``2``, that is, build
+with ``emcc -s EVAL_CTORS=2``:
 
 ::
 
@@ -170,14 +171,6 @@ can enable that with mode ``2``, that is, build with ``emcc -s EVAL_CTORS-2``:
 Now it has succeeded to eval ``__wasm_call_ctors`` completely. It then moved on
 to ``main``, where it stopped because of a call to WASI's ``fd_write``, that is,
 a call to print something.
-
-Another form of output that you may see is
-
-::
-
-    ...partial evalling successful, but stopping since could not eval: call import: wasi_snapshot_preview1.fd_write
-
-That indicates that part of the function was evalled but not all of it.
 
 Very large codebases
 ====================
