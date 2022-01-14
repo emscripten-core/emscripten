@@ -2166,19 +2166,15 @@ def phase_linker_setup(options, state, newargs, settings_map):
   if settings.EVAL_CTORS:
     if settings.WASM2JS:
       # code size/memory and correctness issues TODO
-      diagnostics.warning('emcc', 'disabling EVAL_CTORS due to wasm2js')
-      settings.EVAL_CTORS = 0
+      exit_with_error('EVAL_CTORS is not compatible with wasm2js yet')
     elif settings.USE_PTHREADS:
-      diagnostics.warning('emcc', 'disabling EVAL_CTORS due to pthreads (passive segments)')
-      settings.EVAL_CTORS = 0
+      exit_with_error('EVAL_CTORS is not compatible with pthreads yet (passive segments)')
     elif settings.RELOCATABLE:
-      diagnostics.warning('emcc', 'disabling EVAL_CTORS due to relocatable (movable segments)')
-      settings.EVAL_CTORS = 0
+      exit_with_error('EVAL_CTORS is not compatible with relocatable yet (movable segments)')
     elif settings.ASYNCIFY:
       # In Asyncify exports can be called more than once, and this seems to not
       # work properly yet (see test_emscripten_scan_registers).
-      diagnostics.warning('emcc', 'disabling EVAL_CTORS due to asyncify')
-      settings.EVAL_CTORS = 0
+      exit_with_error('EVAL_CTORS is not compatible with asyncify yet')
 
   if options.use_closure_compiler == 2 and not settings.WASM2JS:
     exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
