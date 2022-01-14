@@ -7163,8 +7163,7 @@ void* operator new(size_t size) {
 
     self.emcc(os.path.abspath('src.cpp'),
               self.get_emcc_args(),
-              out_filename,
-              stderr=PIPE)
+              out_filename)
     map_referent = out_filename if not self.is_wasm() else wasm_filename
     # after removing the @line and @sourceMappingURL comments, the build
     # result should be identical to the non-source-mapped debug version.
